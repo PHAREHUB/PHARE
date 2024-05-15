@@ -3,95 +3,142 @@
 
 #include "core/utilities/meta/meta_utilities.hpp"
 
+#include "field_resource.hpp"
+#include "particle_resource.hpp"
+#include "core/data/ions/ion_population/particle_pack.hpp"
+
 #include <string>
 #include <type_traits>
 #include <vector>
+
 
 namespace PHARE
 {
 namespace amr
 {
-    template<typename ResourcesUser, typename Attempt = void>
-    struct has_field : std::false_type
-    {
-    };
 
-    template<typename ResourcesUser, typename Attempt = void>
-    struct has_particles : std::false_type
-    {
-    };
-
-    template<typename ResourcesUser, typename Attempt = void>
-    struct has_sub_resources : std::false_type
-    {
-    };
-
-
-    template<typename ResourcesUser, typename Attempt = void>
-    struct has_runtime_subresourceuser_list : std::false_type
-    {
-    };
-
-
-    template<typename ResourcesUser, typename Attempt = void>
-    struct has_compiletime_subresourcesuser_list : std::false_type
-    {
-    };
-
-
-
-    /** \brief has_field is a traits that permit to check if a ResourcesUser
-     * has field
+    /** \brief is_field is a traits that permit to check if a ResourceView
+     * is a field
      */
+    template<typename ResourceView, typename Attempt = void>
+    struct is_field : std::false_type
+    {
+    };
+
     template<typename ResourcesUser>
-    struct has_field<ResourcesUser,
-                     core::tryToInstanciate<decltype(
-                         std::declval<ResourcesUser>().getFieldNamesAndQuantities())>>
+    struct is_field<ResourcesUser, core::tryToInstanciate<
+                                       decltype(std::declval<ResourcesUser>().physicalQuantity())>>
         : std::true_type
     {
     };
+    template<typename ResourceView>
+    bool constexpr static is_field_v = is_field<ResourceView>::value;
 
 
-
-
-    /** \brief has_particles is a traits that permit to check if a ResourcesUser
+    /** \brief is_particles is a traits that permit to check if a ResourceView
      * has particles
      */
-    template<typename ResourcesUser>
-    struct has_particles<ResourcesUser, core::tryToInstanciate<decltype(
-                                            std::declval<ResourcesUser>().getParticleArrayNames())>>
-        : std::true_type
+    template<typename ResourceView, typename Attempt = void>
+    struct is_particles : std::false_type
     {
     };
 
+    template<typename ResourceView>
+    struct is_particles<
+        ResourceView,
+        core::tryToInstanciate<decltype(std::declval<ResourceView>().setBuffer(
+            static_cast<core::ParticlesPack<typename ResourceView::particle_array_type>*>(
+                nullptr)))>> : std::true_type
+    {
+    };
+    template<typename ResourceView>
+    bool constexpr static is_particles_v = is_particles<ResourceView>::value;
 
 
-    /** @brief has_runtime_subresourceuser_list is a compile-time function that returns true if the
-     * given ResourcesUser has a runtime list of ResourcesUsers, like a vector of ResourcesUsers.
+
+    template<typename ResourceView>
+    struct is_resource
+    {
+        bool constexpr static value = is_field_v<ResourceView> or is_particles_v<ResourceView>;
+    };
+    template<typename ResourceView>
+    bool constexpr static is_resource_v = is_resource<ResourceView>::value;
+
+    template<typename ResourceManager, typename ResourceView>
+    class ResourceResolver
+    {
+        auto constexpr static resolve_t()
+        {
+            if constexpr (is_field_v<ResourceView>)
+                return typename ResourceManager::UserField_t{};
+            else if constexpr (is_particles_v<ResourceView>)
+                return typename ResourceManager::template UserParticle_t<ResourceView>{};
+            else
+                throw std::runtime_error("bad condition");
+        }
+
+    public:
+        using type = std::decay_t<decltype(resolve_t())>;
+
+        auto static make_shared_variable(ResourceView const& view)
+        {
+            if constexpr (is_field_v<ResourceView>)
+                return std::make_shared<typename type::variable_type>(view.name(),
+                                                                      view.physicalQuantity());
+            else
+                return std::make_shared<typename type::variable_type>(view.name());
+        }
+    };
+
+
+    /** @brief has_runtime_subresourceview_list is a compile-time function that returns true if the
+     * given ResourceView has a runtime list of ResourceViews, like a vector of ResourceViews.
      */
-    template<typename ResourcesUser>
-    struct has_runtime_subresourceuser_list<
-        ResourcesUser, core::tryToInstanciate<decltype(
-                           std::declval<ResourcesUser>().getRunTimeResourcesUserList())>>
-        : std::true_type
+    template<typename ResourceView, typename Attempt = void>
+    struct has_runtime_subresourceview_list : std::false_type
     {
     };
 
+    template<typename ResourceView>
+    struct has_runtime_subresourceview_list<
+        ResourceView, core::tryToInstanciate<
+                          decltype(std::declval<ResourceView>().getRunTimeResourcesViewList())>>
+        : std::true_type
+    {
+    };
+    template<typename ResourceView>
+    bool constexpr static has_runtime_subresourceview_list_v
+        = has_runtime_subresourceview_list<ResourceView>::value;
 
-    /** @brief has_compiletime_subresourcesuser_list is a compile-time function that returns true if
-     * the given ResourcesUser has one or several ResourcesUsers that can be put in a compile-time
+
+    /** @brief has_compiletime_subresourcesview_list is a compile-time function that returns true if
+     * the given ResourceView has one or several ResourceViews that can be put in a compile-time
      * list.
      */
-    template<typename ResourcesUser>
-    struct has_compiletime_subresourcesuser_list<
-        ResourcesUser, core::tryToInstanciate<decltype(
-                           std::declval<ResourcesUser>().getCompileTimeResourcesUserList())>>
+    template<typename ResourceView, typename Attempt = void>
+    struct has_compiletime_subresourcesview_list : std::false_type
+    {
+    };
+    template<typename ResourceView>
+    struct has_compiletime_subresourcesview_list<
+        ResourceView, core::tryToInstanciate<
+                          decltype(std::declval<ResourceView>().getCompileTimeResourcesViewList())>>
         : std::true_type
     {
     };
+    template<typename ResourceView>
+    bool constexpr static has_compiletime_subresourcesview_list_v
+        = has_compiletime_subresourcesview_list<ResourceView>::value;
 
 
-
+    template<typename RV>
+    struct has_sub_resources
+    {
+        bool constexpr static value
+            = has_compiletime_subresourcesview_list_v<RV> or has_runtime_subresourceview_list_v<RV>;
+    };
+    template<typename ResourceView>
+    bool constexpr static has_sub_resources_v = has_sub_resources<ResourceView>::value;
 
     /** UseResourcePtr is used to select the resources patch data */
     struct UseResourcePtr
@@ -106,61 +153,39 @@ namespace amr
 
 
 
-    /** extractNames of direct Field and Particle Resources of the given ResourcesUser
+    /** extractNames of direct Field and Particle Resources of the given ResourceView
      * Is called by the other overload of extractNames()
      */
-    template<typename ResourcesUser>
-    void extractNames(ResourcesUser& user, std::vector<std::string>& names)
+    template<typename ResourceView>
+    void extractNames(ResourceView& view, std::vector<std::string>& names)
     {
-        if constexpr (has_field<ResourcesUser>::value)
-        {
-            auto properties = user.getFieldNamesAndQuantities();
-
-            for (auto const& property : properties)
-            {
-                names.push_back(property.name);
-            }
-        }
-
-        if constexpr (has_particles<ResourcesUser>::value)
-        {
-            auto pnames = user.getParticleArrayNames();
-            for (auto const& p : pnames)
-            {
-                names.push_back(p.name);
-            }
-        }
+        if constexpr (is_resource_v<ResourceView>)
+            names.push_back(view.name());
     }
 
 
     /** @brief extractNames returns a vector of strings containing the names of all resources
-     * associated with a ResourcesUser
+     * associated with a ResourceView
      */
-    template<typename ResourcesUser>
-    std::vector<std::string> extractNames(ResourcesUser& user)
+    template<typename ResourceView>
+    std::vector<std::string> extractNames(ResourceView& view)
     {
         std::vector<std::string> names;
 
-        if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
+        if constexpr (has_compiletime_subresourcesview_list<ResourceView>::value)
         {
-            // get a tuple here
-            auto&& subResources = user.getCompileTimeResourcesUserList();
-
             // unpack the tuple subResources and apply for each element registerResources()
             std::apply([&names](auto&... subResource) { (extractNames(subResource, names), ...); },
-                       subResources);
+                       view.getCompileTimeResourceViewList());
         }
 
-        if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
+        if constexpr (has_runtime_subresourceview_list<ResourceView>::value)
         {
-            auto&& resourcesUsers = user.getRunTimeResourcesUserList();
-            for (auto& resourcesUser : resourcesUsers)
-            {
+            for (auto& resourcesUser : view.getRunTimeResourceViewList())
                 extractNames(resourcesUser, names);
-            }
         }
 
-        extractNames(user, names);
+        extractNames(view, names);
 
         return names;
     }

@@ -48,10 +48,10 @@ private:
         SAMRAI::hier::IntVector ghost{SAMRAI::hier::IntVector::getOne(dimension)};
 
         SAMRAI::hier::Box sourceDomain{sourceBox};
-        ParticlesData sourceData{sourceDomain, ghost};
+        ParticlesData sourceData{sourceDomain, ghost, "name"};
 
         SAMRAI::hier::Box destDomain{destBox};
-        ParticlesData destData{destDomain, ghost};
+        ParticlesData destData{destDomain, ghost, "name"};
     };
 
     std::unique_ptr<_DATA_> data;

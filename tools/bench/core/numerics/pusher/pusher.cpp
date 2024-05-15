@@ -10,7 +10,7 @@ void push(benchmark::State& state)
     using GridLayout_t      = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using Interpolator      = PHARE::core::Interpolator<dim, interp>;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dim, interp>;
-    using Electromag_t      = PHARE::core::bench::Electromag<GridLayout_t>;
+    using Electromag_t      = PHARE::core::UsableElectromag<dim>;
     using Ions_t            = typename PHARE_Types::Ions_t;
     using ParticleArray     = typename Ions_t::particle_array_type;
     using Particle_t        = typename ParticleArray::value_type;

@@ -1,6 +1,7 @@
 
 #include "tools/bench/core/bench.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
 template<std::size_t dim, std::size_t interp>
 void interpolate(benchmark::State& state)
@@ -9,24 +10,26 @@ void interpolate(benchmark::State& state)
     constexpr std::uint32_t n_parts = 1e7;
 
     using PHARE_Types   = PHARE::core::PHARE_Types<dim, interp>;
-    using GridLayout_t  = typename PHARE_Types::GridLayout_t;
+    using GridLayout_t  = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using ParticleArray = typename PHARE_Types::ParticleArray_t;
+    using Grid_t        = typename PHARE_Types::Grid_t;
 
+    GridLayout_t layout{cells};
     PHARE::core::Interpolator<dim, interp> interpolator;
-    ParticleArray particles{n_parts, PHARE::core::bench::particle<dim>()};
-    GridLayout_t layout{PHARE::core::ConstArray<double, dim>(1.0 / cells),
-                        PHARE::core::ConstArray<std::uint32_t, dim>(cells),
-                        PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)}};
-    PHARE::core::bench::Electromag<GridLayout_t> em{layout};
-    PHARE::core::bench::Flux<GridLayout_t> flux{layout};
-    auto rho = PHARE::core::bench::rho(layout);
+    ParticleArray particles{layout.AMRBox()};
+    particles.vector().resize(n_parts, PHARE::core::bench::particle<dim>());
+    PHARE::core::UsableElectromag<dim> em{layout};
+    PHARE::core::UsableVecField<dim> flux{"F", layout, PHARE::core::HybridQuantity::Vector::V};
+    Grid_t rho{"rho", PHARE::core::HybridQuantity::Scalar::rho,
+               layout.allocSize(PHARE::core::HybridQuantity::Scalar::rho)};
 
     PHARE::core::bench::disperse(particles, 0, cells - 1);
 
     while (state.KeepRunning())
     {
         // meshToParticle
-        interpolator(particles, em, layout);
+        for (auto& particle : particles)
+            interpolator(particle, em, layout);
 
         // particleToMesh
         interpolator(particles, rho, flux, layout);

@@ -3,6 +3,7 @@
 
 #include <string>
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield.hpp"
@@ -26,28 +27,33 @@ public:
 
 protected:
     std::string vf2_name = "vf";
-    VecField<NdArrayImpl, HybridQuantity::Scalar> vf2;
+    VecField<Field<NdArrayImpl::dimension, HybridQuantity::Scalar>, HybridQuantity> vf2;
 };
 
-using NdArrays = ::testing::Types<NdArrayVector<1>, NdArrayVector<2>, NdArrayVector<3>>;
-
+using NdArrays = ::testing::Types<NdArrayView<1>, NdArrayView<2>, NdArrayView<3>>;
 
 TYPED_TEST_SUITE(VecFieldGeneric, NdArrays);
+
+template<std::size_t dim>
+using Field_t = Field<dim, HybridQuantity::Scalar>;
+
+template<std::size_t dim>
+using VecField_t = VecField<Field_t<dim>, HybridQuantity>;
 
 
 class VecFieldTest : public ::testing::Test
 {
 public:
     VecFieldTest()
-        : bx1d_{"field", HybridQuantity::Scalar::Bx, nx}
-        , by1d_{"field", HybridQuantity::Scalar::By, nx}
-        , bz1d_{"field", HybridQuantity::Scalar::Bz, nx}
-        , bx2d_{"field", HybridQuantity::Scalar::Bx, nx, ny}
-        , by2d_{"field", HybridQuantity::Scalar::By, nx, ny}
-        , bz2d_{"field", HybridQuantity::Scalar::Bz, nx, ny}
-        , bx3d_{"field", HybridQuantity::Scalar::Bx, nx, ny, nz}
-        , by3d_{"field", HybridQuantity::Scalar::By, nx, ny, nz}
-        , bz3d_{"field", HybridQuantity::Scalar::Bz, nx, ny, nz}
+        : bx1d_{"B1D_x", HybridQuantity::Scalar::Bx, nx}
+        , by1d_{"B1D_y", HybridQuantity::Scalar::By, nx}
+        , bz1d_{"B1D_z", HybridQuantity::Scalar::Bz, nx}
+        , bx2d_{"B2D_x", HybridQuantity::Scalar::Bx, nx, ny}
+        , by2d_{"B2D_y", HybridQuantity::Scalar::By, nx, ny}
+        , bz2d_{"B2D_z", HybridQuantity::Scalar::Bz, nx, ny}
+        , bx3d_{"B3D_x", HybridQuantity::Scalar::Bx, nx, ny, nz}
+        , by3d_{"B3D_y", HybridQuantity::Scalar::By, nx, ny, nz}
+        , bz3d_{"B3D_z", HybridQuantity::Scalar::Bz, nx, ny, nz}
         , B1D_{"B1D", HybridQuantity::Vector::B}
         , B2D_{"B2D", HybridQuantity::Vector::B}
         , B3D_{"B3D", HybridQuantity::Vector::B}
@@ -57,52 +63,52 @@ public:
 protected:
     void setBuffers()
     {
-        B1D_.setBuffer("B1D_x", &bx1d_);
-        B1D_.setBuffer("B1D_y", &by1d_);
-        B1D_.setBuffer("B1D_z", &bz1d_);
+        B1D_[0].setBuffer(&bx1d_);
+        B1D_[1].setBuffer(&by1d_);
+        B1D_[2].setBuffer(&bz1d_);
 
-        B2D_.setBuffer("B2D_x", &bx2d_);
-        B2D_.setBuffer("B2D_y", &by2d_);
-        B2D_.setBuffer("B2D_z", &bz2d_);
+        B2D_[0].setBuffer(&bx2d_);
+        B2D_[1].setBuffer(&by2d_);
+        B2D_[2].setBuffer(&bz2d_);
 
-        B3D_.setBuffer("B3D_x", &bx3d_);
-        B3D_.setBuffer("B3D_y", &by3d_);
-        B3D_.setBuffer("B3D_z", &bz3d_);
+        B3D_[0].setBuffer(&bx3d_);
+        B3D_[1].setBuffer(&by3d_);
+        B3D_[2].setBuffer(&bz3d_);
     }
 
     void unsetBuffers()
     {
-        B1D_.setBuffer("B1D_x", nullptr);
-        B1D_.setBuffer("B1D_y", nullptr);
-        B1D_.setBuffer("B1D_z", nullptr);
+        B1D_[0].setBuffer(nullptr);
+        B1D_[1].setBuffer(nullptr);
+        B1D_[2].setBuffer(nullptr);
 
-        B2D_.setBuffer("B2D_x", nullptr);
-        B2D_.setBuffer("B2D_y", nullptr);
-        B2D_.setBuffer("B2D_z", nullptr);
+        B2D_[0].setBuffer(nullptr);
+        B2D_[1].setBuffer(nullptr);
+        B2D_[2].setBuffer(nullptr);
 
-        B3D_.setBuffer("B3D_x", nullptr);
-        B3D_.setBuffer("B3D_y", nullptr);
-        B3D_.setBuffer("B3D_z", nullptr);
+        B3D_[0].setBuffer(nullptr);
+        B3D_[1].setBuffer(nullptr);
+        B3D_[2].setBuffer(nullptr);
     }
 
     static const std::uint32_t nx;
     static const std::uint32_t ny;
     static const std::uint32_t nz;
-    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
-    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> by1d_;
-    Field<NdArrayVector<1>, typename HybridQuantity::Scalar> bz1d_;
+    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
+    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> by1d_;
+    Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bz1d_;
 
-    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> bx2d_;
-    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> by2d_;
-    Field<NdArrayVector<2>, typename HybridQuantity::Scalar> bz2d_;
+    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> bx2d_;
+    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> by2d_;
+    Grid<NdArrayVector<2>, typename HybridQuantity::Scalar> bz2d_;
 
-    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> bx3d_;
-    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> by3d_;
-    Field<NdArrayVector<3>, typename HybridQuantity::Scalar> bz3d_;
+    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> bx3d_;
+    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> by3d_;
+    Grid<NdArrayVector<3>, typename HybridQuantity::Scalar> bz3d_;
 
-    VecField<NdArrayVector<1>, HybridQuantity> B1D_;
-    VecField<NdArrayVector<2>, HybridQuantity> B2D_;
-    VecField<NdArrayVector<3>, HybridQuantity> B3D_;
+    VecField_t<1> B1D_;
+    VecField_t<2> B2D_;
+    VecField_t<3> B3D_;
 };
 
 const std::uint32_t VecFieldTest::nx = 10;
@@ -225,44 +231,6 @@ TEST_F(VecFieldTest, SizeIsOkAfterSet3D)
     this->unsetBuffers();
 }
 
-TEST_F(VecFieldTest, HasThreeBuffers1D)
-{
-    auto pairs = B1D_.getFieldNamesAndQuantities();
-    EXPECT_EQ(3, pairs.size());
-}
-
-TEST_F(VecFieldTest, HasThreeBuffers2D)
-{
-    auto pairs = B2D_.getFieldNamesAndQuantities();
-    EXPECT_EQ(3, pairs.size());
-}
-
-TEST_F(VecFieldTest, HasThreeBuffers3D)
-{
-    auto pairs = B3D_.getFieldNamesAndQuantities();
-    EXPECT_EQ(3, pairs.size());
-}
-
-
-TEST_F(VecFieldTest, ComponentNames)
-{
-    auto pairs1D = B1D_.getFieldNamesAndQuantities();
-    auto pairs2D = B2D_.getFieldNamesAndQuantities();
-    auto pairs3D = B3D_.getFieldNamesAndQuantities();
-
-    EXPECT_EQ(B1D_.name() + "_x", pairs1D[0].name);
-    EXPECT_EQ(B1D_.name() + "_y", pairs1D[1].name);
-    EXPECT_EQ(B1D_.name() + "_z", pairs1D[2].name);
-
-    EXPECT_EQ(B2D_.name() + "_x", pairs2D[0].name);
-    EXPECT_EQ(B2D_.name() + "_y", pairs2D[1].name);
-    EXPECT_EQ(B2D_.name() + "_z", pairs2D[2].name);
-
-    EXPECT_EQ(B3D_.name() + "_x", pairs3D[0].name);
-    EXPECT_EQ(B3D_.name() + "_y", pairs3D[1].name);
-    EXPECT_EQ(B3D_.name() + "_z", pairs3D[2].name);
-}
-
 
 
 
@@ -274,50 +242,29 @@ TEST_F(VecFieldTest, VecFieldsHaveBeginAndEnd)
 
 
 
-TEST_F(VecFieldTest, PhysicalQuantities)
-{
-    auto pairs1D = B1D_.getFieldNamesAndQuantities();
-    auto pairs2D = B2D_.getFieldNamesAndQuantities();
-    auto pairs3D = B3D_.getFieldNamesAndQuantities();
-
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs1D[0].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs1D[1].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs1D[2].qty);
-
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs2D[0].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs2D[1].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs2D[2].qty);
-
-    EXPECT_EQ(HybridQuantity::Scalar::Bx, pairs3D[0].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::By, pairs3D[1].qty);
-    EXPECT_EQ(HybridQuantity::Scalar::Bz, pairs3D[2].qty);
-}
-
-
-
 TEST(aVecField, dataCanBeCopiedIntoAnother)
 {
     using Scalar = typename HybridQuantity::Scalar;
 
-    Field<NdArrayVector<3>, Scalar> bx1{"B1_bx1", Scalar::Bx, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> by1{"B1_by1", Scalar::By, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> bz1{"B1_bz1", Scalar::Bz, 2u, 3u, 4u};
-    VecField<NdArrayVector<3>, HybridQuantity> B1{"B1", HybridQuantity::Vector::B};
-    B1.setBuffer("B1_x", &bx1);
-    B1.setBuffer("B1_y", &by1);
-    B1.setBuffer("B1_z", &bz1);
+    Grid<NdArrayVector<3>, Scalar> bx1{"B1_x", Scalar::Bx, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> by1{"B1_y", Scalar::By, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> bz1{"B1_z", Scalar::Bz, 2u, 3u, 4u};
+    VecField_t<3> B1{"B1", HybridQuantity::Vector::B};
+    B1[0].setBuffer(&bx1);
+    B1[1].setBuffer(&by1);
+    B1[2].setBuffer(&bz1);
 
     bx1(1, 1, 1) = 12;
     by1(1, 1, 1) = 13;
     bz1(1, 1, 1) = 14;
 
-    Field<NdArrayVector<3>, Scalar> bx2{"B2_bx2", Scalar::Bx, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> by2{"B2_by2", Scalar::By, 2u, 3u, 4u};
-    Field<NdArrayVector<3>, Scalar> bz2{"B2_bz2", Scalar::Bz, 2u, 3u, 4u};
-    VecField<NdArrayVector<3>, HybridQuantity> B2{"B2", HybridQuantity::Vector::B};
-    B2.setBuffer("B2_x", &bx2);
-    B2.setBuffer("B2_y", &by2);
-    B2.setBuffer("B2_z", &bz2);
+    Grid<NdArrayVector<3>, Scalar> bx2{"B2_x", Scalar::Bx, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> by2{"B2_y", Scalar::By, 2u, 3u, 4u};
+    Grid<NdArrayVector<3>, Scalar> bz2{"B2_z", Scalar::Bz, 2u, 3u, 4u};
+    VecField_t<3> B2{"B2", HybridQuantity::Vector::B};
+    B2[0].setBuffer(&bx2);
+    B2[1].setBuffer(&by2);
+    B2[2].setBuffer(&bz2);
 
     B2.copyData(B1);
 

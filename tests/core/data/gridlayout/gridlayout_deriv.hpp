@@ -2,7 +2,7 @@
 #define PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_DERIV_HPP
 
 
-#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "gridlayout_base_params.hpp"
@@ -27,8 +27,8 @@ class a1DDerivative : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ez;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> By;
+    Grid<NdArrayVector<1>, HybridQuantity::Scalar> Ez;
 
 public:
     a1DDerivative()
@@ -47,8 +47,8 @@ class a2DDerivative : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ez;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> By;
+    Grid<NdArrayVector<2>, HybridQuantity::Scalar> Ez;
 
 public:
     a2DDerivative()
@@ -67,8 +67,8 @@ class a3DDerivative : public ::testing::Test
 protected:
     GridLayout<GridLayoutImpl> layout;
     static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ez;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> By;
+    Grid<NdArrayVector<3>, HybridQuantity::Scalar> Ez;
 
 public:
     a3DDerivative()

@@ -11,6 +11,9 @@
 #include <iostream>
 
 
+#include "core/utilities/types.hpp"
+
+
 namespace PHARE::core
 {
 template<std::size_t dim, bool c_ordering = true, typename DataType = double>
@@ -62,13 +65,13 @@ struct NdArrayViewer
 
     {
         if constexpr (dim == 1)
-            return data[indexes[0]];
+            return at(data, nCells, indexes[0]);
 
         else if constexpr (dim == 2)
-            return data[indexes[1] + indexes[0] * nCells[1]];
+            return at(data, nCells, indexes[0], indexes[1]);
 
         else if constexpr (dim == 3)
-            return data[indexes[2] + indexes[1] * nCells[2] + indexes[0] * nCells[1] * nCells[2]];
+            return at(data, nCells, indexes[0], indexes[1], indexes[2]);
     }
 };
 
@@ -128,31 +131,26 @@ private:
 
 
 
-template<std::size_t dim, typename DataType = double, typename Pointer = DataType const*,
-         bool c_ordering = true>
-class NdArrayView : NdArrayViewer<dim, c_ordering, DataType>
+template<std::size_t dim, typename DataType = double, bool c_ordering = true>
+class NdArrayView
 {
 public:
     static constexpr bool is_contiguous = 1;
     static const std::size_t dimension  = dim;
     using type                          = DataType;
+    using pointer_type                  = DataType*;
+    using viewer                        = NdArrayViewer<dim, c_ordering, DataType>;
 
-    explicit NdArrayView(Pointer ptr, std::array<std::uint32_t, dim> const& nCells)
+    explicit NdArrayView(pointer_type ptr, std::array<std::uint32_t, dim> const& nCells)
         : ptr_{ptr}
         , nCells_{nCells}
     {
     }
 
-    explicit NdArrayView(std::vector<DataType> const& v,
+    explicit NdArrayView(std::vector<std::decay_t<DataType>> const& v,
                          std::array<std::uint32_t, dim> const& nbCell)
         : NdArrayView{v.data(), nbCell}
     {
-    }
-
-    template<typename... Indexes>
-    NO_DISCARD DataType const& operator()(Indexes... indexes) const
-    {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes...);
     }
 
     template<typename... Indexes>
@@ -161,10 +159,16 @@ public:
         return const_cast<DataType&>(static_cast<NdArrayView const&>(*this)(indexes...));
     }
 
+    template<typename... Indexes>
+    NO_DISCARD DataType const& operator()(Indexes... indexes) const
+    {
+        return viewer::at(ptr_, nCells_, indexes...);
+    }
+
     template<typename Index>
     NO_DISCARD DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(ptr_, nCells_, indexes);
+        return viewer::at(ptr_, nCells_, indexes);
     }
 
     template<typename Index>
@@ -174,14 +178,37 @@ public:
     }
 
     NO_DISCARD auto data() const { return ptr_; }
-    NO_DISCARD std::size_t size() const
+    NO_DISCARD auto size() const
     {
         return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
     }
     NO_DISCARD auto shape() const { return nCells_; }
 
+    void fill_from(NdArrayView const& that)
+    {
+        if (for_N_any<dim>([&](auto i) { return shape()[i] != that.shape()[i]; }))
+            throw std::runtime_error("ArrayView::fill_from: Incompatible input shape");
+        std::copy(that.data(), that.data() + size(), data());
+    }
+
+    NO_DISCARD auto begin() const { return ptr_; }
+    NO_DISCARD auto begin() { return ptr_; }
+
+    NO_DISCARD auto end() const { return ptr_ + size(); }
+    NO_DISCARD auto end() { return ptr_ + size(); }
+
+    void zero() { fill(0); }
+    auto& fill(DataType const& v)
+    {
+        std::fill(begin(), end(), v);
+        return *this;
+    }
+
+    void setBuffer(pointer_type ptr) { ptr_ = ptr; }
+    void setShape(std::array<std::uint32_t, dim> const nCells) { nCells_ = nCells; }
+
 private:
-    Pointer ptr_ = nullptr;
+    pointer_type ptr_ = nullptr;
     std::array<std::uint32_t, dim> nCells_;
 };
 
@@ -227,10 +254,6 @@ public:
 
     NO_DISCARD auto end() const { return std::end(data_); }
     NO_DISCARD auto end() { return std::end(data_); }
-
-    void zero() { std::fill(data_.begin(), data_.end(), 0); }
-
-
 
 
     template<typename... Indexes>

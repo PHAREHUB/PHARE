@@ -43,8 +43,8 @@ struct twoParticlesDataNDTouchingPeriodicBorders : public testing::Test
     SAMRAI::hier::Patch destPatch{destDomain, patchDescriptor};
     SAMRAI::hier::Patch sourcePatch{sourceDomain, patchDescriptor};
 
-    ParticlesData<ParticleArray<dim>> destPdat{destDomain, ghost};
-    ParticlesData<ParticleArray<dim>> sourcePdat{sourceDomain, ghost};
+    ParticlesData<ParticleArray<dim>> destPdat{destDomain, ghost, "name"};
+    ParticlesData<ParticleArray<dim>> sourcePdat{sourceDomain, ghost, "name"};
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destGeom{
         std::make_shared<SAMRAI::pdat::CellGeometry>(destPatch.getBox(), ghost)};

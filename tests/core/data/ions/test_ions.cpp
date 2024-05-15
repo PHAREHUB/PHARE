@@ -9,10 +9,12 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 
-#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+
 #include "initializer/data_provider.hpp"
 
 #include "gmock/gmock.h"
@@ -34,12 +36,12 @@ using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleAr
 class theIons : public ::testing::Test
 {
 protected:
-    using VecField1D       = VecField<NdArrayVector<1>, HybridQuantity>;
-    using SymTensorField1D = SymTensorField<NdArrayVector<1>, HybridQuantity>;
+    using Field1D          = Field<1, HybridQuantity::Scalar>;
+    using VecField1D       = VecField<Field1D, HybridQuantity>;
+    using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
     using InitFunctionT    = PHARE::initializer::InitFunction<1>;
 
-    using IonPopulation1D
-        = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D, GridYee1D>;
+    using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
     Ions<IonPopulation1D, GridYee1D> ions;
 
     PHARE::initializer::PHAREDict createIonsDict()
@@ -126,7 +128,6 @@ theIons::~theIons() {}
 
 TEST_F(theIons, areAContainerOfIonPopulations)
 {
-    //
     for (auto& pop : ions)
     {
         (void)pop;
@@ -151,12 +152,12 @@ TEST_F(theIons, areSettableUponConstruction)
 
 
 
-
+#ifndef NDEBUG // no throw in release mode! JUST SEGFAULTS! :D
 TEST_F(theIons, throwIfAccessingDensityWhileNotUsable)
 {
-    EXPECT_ANY_THROW(auto& n = ions.density());
+    EXPECT_ANY_THROW(auto& n = ions.density()(0));
 }
-
+#endif
 
 
 int main(int argc, char** argv)

@@ -1,6 +1,7 @@
 #include "test_resources_manager.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/electrons/electrons.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 #include "initializer/data_provider.hpp"
@@ -29,17 +30,22 @@ static constexpr std::size_t interpOrder = 1;
 using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
 using GridYee1D                          = GridLayout<GridImplYee1D>;
 
-using VecField1D       = VecField<NdArrayVector<1>, HybridQuantity>;
-using SymTensorField1D = SymTensorField<NdArrayVector<1>, HybridQuantity>;
-using IonPopulation1D  = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D, GridYee1D>;
+using GridImplYee1D    = GridLayoutImplYee<dim, interpOrder>;
+using GridYee1D        = GridLayout<GridImplYee1D>;
+using Field1D          = Field<dim, HybridQuantity::Scalar>;
+using Grid1D           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+using VecField1D       = VecField<Field1D, HybridQuantity>;
+using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
+using IonPopulation1D  = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
 using Ions1D           = Ions<IonPopulation1D, GridYee1D>;
 using Electromag1D     = Electromag<VecField1D>;
 using Electrons1D      = Electrons<Ions1D>;
-using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
-using HybridState1D                   = HybridState<Electromag1D, Ions1D, Electrons1D>;
+using HybridState1D    = HybridState<Electromag1D, Ions1D, Electrons1D>;
 
+using MaxwellianParticleInitializer1D
+    = MaxwellianParticleInitializer<ParticleArray<dim>, GridYee1D>;
 
-using InitFunctionT = PHARE::initializer::InitFunction<1>;
+using InitFunctionT = PHARE::initializer::InitFunction<dim>;
 
 PHARE::initializer::PHAREDict createInitDict()
 {
@@ -208,8 +214,10 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
 TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
 {
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>> resourcesManager;
+    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>, Grid1D> resourcesManager;
     IonPopulation1D_P pop;
+    static_assert(is_particles_v<ParticlesPack<ParticleArray<1>>>);
+
     auto s    = inputBase + std::string("/input/input_db_1d");
     hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
     hierarchy->init();

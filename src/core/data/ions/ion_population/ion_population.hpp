@@ -18,14 +18,13 @@ namespace PHARE
 {
 namespace core
 {
-    template<typename ParticleArray, typename VecField, typename TensorField, typename GridLayout>
+    template<typename ParticleArray, typename VecField, typename TensorField>
     class IonPopulation
     {
     public:
         using field_type                       = typename VecField::field_type;
         static constexpr std::size_t dimension = VecField::dimension;
         using particle_array_type              = ParticleArray;
-        using particle_resource_type           = ParticlesPack<ParticleArray>;
         using vecfield_type                    = VecField;
         using tensorfield_type                 = TensorField;
 
@@ -35,6 +34,8 @@ namespace core
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
+            , rho_{name_ + "_rho", HybridQuantity::Scalar::rho}
+            , particles_{name_}
             , particleInitializerInfo_{initializer["particle_initializer"]}
         {
         }
@@ -51,142 +52,41 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return particles_ != nullptr && rho_ != nullptr && flux_.isUsable()
+            return particles_.isUsable() && rho_.isUsable() && flux_.isUsable()
                    && momentumTensor_.isUsable();
         }
 
 
         NO_DISCARD bool isSettable() const
         {
-            return particles_ == nullptr && rho_ == nullptr && flux_.isSettable()
+            return particles_.isSettable() && rho_.isSettable() && flux_.isSettable()
                    && momentumTensor_.isSettable();
         }
 
+        NO_DISCARD auto& domainParticles() const { return particles_.domainParticles(); }
+        NO_DISCARD auto& domainParticles() { return particles_.domainParticles(); }
 
+        NO_DISCARD auto& patchGhostParticles() const { return particles_.patchGhostParticles(); }
+        NO_DISCARD auto& patchGhostParticles() { return particles_.patchGhostParticles(); }
 
+        NO_DISCARD auto& levelGhostParticles() const { return particles_.levelGhostParticles(); }
+        NO_DISCARD auto& levelGhostParticles() { return particles_.levelGhostParticles(); }
 
-        NO_DISCARD auto nbrParticles() const
+        NO_DISCARD auto& levelGhostParticlesOld() { return particles_.levelGhostParticlesOld(); }
+        NO_DISCARD auto& levelGhostParticlesOld() const
         {
-            if (isUsable())
-            {
-                return particles_->domainParticles->size();
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot access to particles");
-            }
+            return particles_.levelGhostParticlesOld();
+        }
+
+        NO_DISCARD auto& levelGhostParticlesNew() { return particles_.levelGhostParticlesNew(); }
+        NO_DISCARD auto& levelGhostParticlesNew() const
+        {
+            return particles_.levelGhostParticlesNew();
         }
 
 
-
-
-        NO_DISCARD auto& domainParticles() const
-        {
-            if (isUsable())
-            {
-                return *particles_->domainParticles;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD auto& domainParticles()
-        {
-            return const_cast<ParticleArray&>(
-                static_cast<IonPopulation const*>(this)->domainParticles());
-        }
-
-
-
-        NO_DISCARD auto& patchGhostParticles() const
-        {
-            if (isUsable())
-            {
-                return *particles_->patchGhostParticles;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD auto& patchGhostParticles()
-        {
-            return const_cast<ParticleArray&>(
-                static_cast<IonPopulation const*>(this)->patchGhostParticles());
-        }
-
-
-        NO_DISCARD auto& levelGhostParticles() const
-        {
-            if (isUsable())
-            {
-                return *particles_->levelGhostParticles;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-        NO_DISCARD auto& levelGhostParticles()
-        {
-            return const_cast<ParticleArray&>(
-                static_cast<IonPopulation const*>(this)->levelGhostParticles());
-        }
-
-
-
-
-        NO_DISCARD ParticleArray& levelGhostParticlesOld()
-        {
-            if (isUsable())
-            {
-                return *particles_->levelGhostParticlesOld;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-
-
-        NO_DISCARD ParticleArray& levelGhostParticlesNew()
-        {
-            if (isUsable())
-            {
-                return *particles_->levelGhostParticlesNew;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to particle buffers");
-            }
-        }
-
-
-
-        NO_DISCARD field_type const& density() const
-        {
-            if (isUsable())
-            {
-                return *rho_;
-            }
-            else
-            {
-                throw std::runtime_error("Error - cannot provide access to density field");
-            }
-        }
-
-
-        NO_DISCARD field_type& density()
-        {
-            return const_cast<field_type&>(static_cast<const IonPopulation*>(this)->density());
-        }
-
-
+        NO_DISCARD field_type const& density() const { return rho_; }
+        NO_DISCARD field_type& density() { return rho_; }
 
         NO_DISCARD VecField const& flux() const { return flux_; }
         NO_DISCARD VecField& flux() { return flux_; }
@@ -202,65 +102,10 @@ namespace core
 
 
 
-        struct MomentsProperty
+
+        NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            std::string name;
-            typename HybridQuantity::Scalar qty;
-        };
-
-        using MomentProperties = std::array<MomentsProperty, 1>;
-
-
-
-        NO_DISCARD MomentProperties getFieldNamesAndQuantities() const
-        {
-            return {{{name_ + "_rho", HybridQuantity::Scalar::rho}}};
-        }
-
-
-
-        struct ParticleProperty
-        {
-            std::string name;
-        };
-
-
-
-        using ParticleProperties = std::array<ParticleProperty, 1>;
-
-        NO_DISCARD ParticleProperties getParticleArrayNames() const { return {{{name_}}}; }
-
-
-
-
-        void setBuffer(std::string const& bufferName, ParticlesPack<ParticleArray>* pack)
-        {
-            if (bufferName == name_)
-                particles_ = pack;
-            else
-                throw std::runtime_error("Error - invalid particle resource name");
-        }
-
-
-
-
-        void setBuffer(std::string const& bufferName, field_type* field)
-        {
-            if (bufferName == name_ + "_rho")
-            {
-                rho_ = field;
-            }
-            else
-            {
-                throw std::runtime_error("Error - invalid density buffer name");
-            }
-        }
-
-
-
-        NO_DISCARD auto getCompileTimeResourcesUserList()
-        {
-            return std::forward_as_tuple(flux_, momentumTensor_);
+            return std::forward_as_tuple(flux_, momentumTensor_, rho_, particles_);
         }
 
 
@@ -284,8 +129,8 @@ namespace core
         double mass_;
         VecField flux_;
         TensorField momentumTensor_;
-        field_type* rho_{nullptr};
-        ParticlesPack<ParticleArray>* particles_{nullptr};
+        field_type rho_;
+        ParticlesPack<ParticleArray> particles_;
         initializer::PHAREDict const& particleInitializerInfo_;
     };
 } // namespace core

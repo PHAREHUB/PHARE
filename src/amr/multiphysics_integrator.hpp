@@ -345,6 +345,11 @@ namespace solver
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
                                         initDataTime, isRegridding);
+
+            if (static_cast<std::size_t>(levelNumber) == model_views_.size())
+                model_views_.push_back(solver.make_view(*level, model));
+            else
+                model_views_[levelNumber] = solver.make_view(*level, model);
         }
 
 
@@ -361,7 +366,11 @@ namespace solver
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
+                {
                     messenger.registerLevel(hierarchy, ilvl);
+                    model_views_.push_back(getSolver_(ilvl).make_view(
+                        AMR_Types::getLevel(*hierarchy, ilvl), getModel_(ilvl)));
+                }
                 restartInitialized_ = true;
             }
         }
@@ -487,7 +496,8 @@ namespace solver
 
             fromCoarser.prepareStep(model, *level, currentTime);
 
-            solver.advanceLevel(hierarchy, iLevel, model, fromCoarser, currentTime, newTime);
+            solver.advanceLevel(*hierarchy, iLevel, getModelView_(iLevel), fromCoarser, currentTime,
+                                newTime);
 
             if (lastStep)
             {
@@ -566,6 +576,9 @@ namespace solver
         std::vector<LevelDescriptor> levelDescriptors_;
         std::vector<std::unique_ptr<ISolver<AMR_Types>>> solvers_;
         std::vector<std::shared_ptr<IPhysicalModel<AMR_Types>>> models_;
+
+        std::vector<std::shared_ptr<ISolverModelView>> model_views_;
+
         std::vector<std::shared_ptr<PHARE::amr::Tagger>> taggers_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
@@ -792,6 +805,7 @@ namespace solver
         }
 
 
+        auto& getModelView_(int iLevel) { return *model_views_[iLevel]; }
 
 
         IPhysicalModel<AMR_Types>& getModel_(int iLevel)

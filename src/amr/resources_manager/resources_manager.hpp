@@ -44,7 +44,7 @@ namespace amr
      * get access to it whenever needed, without having to know the SAMRAI database system.
      *
      * Objects registering and retrieving data through the ResourcesManager are called
-     * ResourcesUsers. A ResourcesUser needs to satisfy a specific interface to work with
+     * ResourcesViews. A ResourcesView needs to satisfy a specific interface to work with
      * the ResourcesManager.
      *
      * There are only two kinds of Resources that can be registered to the SAMRAI system via the
@@ -53,29 +53,26 @@ namespace amr
      * - Field
      * - ParticleArray
      *
-     * Several kinds of ResourcesUser can register their resources to the ResourcesManager
+     * Several kinds of ResourcesView can register their resources to the ResourcesManager
      * and are identified by the following type traits:
      *
-     * - has_field <ResourcesUser>
-     * - has_particles <ResourcesUser>
-     * - has_runtime_subresourceuser_list <ResourcesUser>
-     * - has_compiletime_subresourcesuser_list <ResourcesUser>
+     * - has_runtime_subresourceview_list <ResourcesView>
+     * - has_compiletime_subresourcesview_list <ResourcesView>
      *
      *
      * for example:
      *
-     * - has_field<VecField>  is true
-     * - has_compiletime_subresourcesuser_list<Electromag> is true because it holds 2 VecFields that
+     * - has_compiletime_subresourcesview_list<Electromag> is true because it holds 2 VecFields that
      * hold Field objects.
      *
      * ResourcesManager is used to register ResourceUsers to the SAMRAI system, this is done
      * by calling the registerResources() method. It is also used to allocate already registered
-     * ResourcesUsers on a patch by calling the method allocate(). One can also get the identifier
-     * (ID) of a patchdata corresponding to one or several ResourcesUsers by calling getID() or
+     * ResourcesViews on a patch by calling the method allocate(). One can also get the identifier
+     * (ID) of a patchdata corresponding to one or several ResourcesViews by calling getID() or
      * getIDs() methods.
      *
-     * Data objects like VecField and Ions etc., i.e. ResourcesUsers, need to be set on a patch
-     * before being usable. Having a Patch and several ResourcesUsers obj1, obj2, etc. this is done
+     * Data objects like VecField and Ions etc., i.e. ResourcesViews, need to be set on a patch
+     * before being usable. Having a Patch and several ResourcesViews obj1, obj2, etc. this is done
      * by calling:
      *
      * dataOnPatch = setOnPatch(patch, obj1, obj2);
@@ -84,18 +81,19 @@ namespace amr
      *
      *
      */
-    template<typename GridLayoutT>
+    template<typename GridLayoutT, typename Grid_t>
     class ResourcesManager
     {
+        using This = ResourcesManager<GridLayoutT, Grid_t>;
+
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
 
-        template<typename ResourcesUser>
-        using UserField_t = UserFieldType<ResourcesUser, GridLayoutT>;
+        using UserField_t = UserFieldType<Grid_t, GridLayoutT>;
 
-        template<typename ResourcesUser>
-        using UserParticle_t = UserParticleType<ResourcesUser, interp_order>;
+        template<typename ResourcesView>
+        using UserParticle_t = UserParticleType<ResourcesView, interp_order>;
 
 
         ResourcesManager()
@@ -112,89 +110,87 @@ namespace amr
         ResourcesManager& operator=(ResourcesManager&&)             = delete;
 
 
-        /** @brief registerResources takes a ResourcesUser to register its resources
+        /** @brief registerResources takes a ResourcesView to register its resources
          * to the SAMRAI data system.
          *
-         * the function asks the ResourcesUser informations (at least the name) of the
+         * the function asks the ResourcesView informations (at least the name) of the
          * buffers to register. This information is used to know which kind of
          * SAMRAI patchdata & variable to create, but is also stored to retrieve
-         * this data when the ResourcesUser is later going to ask for it (via the BufferGuard)
+         * this data when the ResourcesView is later going to ask for it (via the BufferGuard)
          *
-         * The function registers all FieldData for ResourcesUser that have Fields, all ParticleData
-         * for ResourcesUser that have particle Arrays. In case the ResourcesUser has sub-resources
+         * The function registers all FieldData for ResourcesView that have Fields, all ParticleData
+         * for ResourcesView that have particle Arrays. In case the ResourcesView has sub-resources
          * we ask for them in a tuple, and recursively call registerResources() for all of the
          * unpacked elements
          */
-        template<typename ResourcesUser>
-        void registerResources(ResourcesUser& obj)
+        template<typename ResourcesView>
+        void registerResources(ResourcesView& obj)
         {
-            if constexpr (has_field<ResourcesUser>::value)
+            if constexpr (is_resource<ResourcesView>::value)
             {
-                registerFieldResources_<UserField_t<ResourcesUser>>(obj);
+                registerResource_(obj);
             }
-
-            if constexpr (has_particles<ResourcesUser>::value)
+            else
             {
-                registerParticleResources_<UserParticle_t<ResourcesUser>>(obj);
-            }
+                static_assert(has_sub_resources_v<ResourcesView>);
 
-
-            if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
-            {
-                for (auto& resourcesUser : obj.getRunTimeResourcesUserList())
+                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
                 {
-                    this->registerResources(resourcesUser);
+                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
+                    {
+                        this->registerResources(resourcesUser);
+                    }
                 }
-            }
 
-
-            if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
-            {
-                // unpack the tuple subResources and apply for each element registerResources()
-                // (recursively)
-                std::apply(
-                    [this](auto&... subResource) { (this->registerResources(subResource), ...); },
-                    obj.getCompileTimeResourcesUserList());
+                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+                {
+                    // unpack the tuple subResources and apply for each element registerResources()
+                    // (recursively)
+                    std::apply(
+                        [this](auto&... subResource) {
+                            (this->registerResources(subResource), ...);
+                        },
+                        obj.getCompileTimeResourcesViewList());
+                }
             }
         }
 
 
 
-        /** @brief allocate the appropriate PatchDatas on the Patch for the ResourcesUser
+        /** @brief allocate the appropriate PatchDatas on the Patch for the ResourcesView
          *
-         * The function allocates all FieldData for ResourcesUser that have Fields, all ParticleData
-         * for ResourcesUser that have particle Arrays. In case the ResourcesUser has sub-resources
+         * The function allocates all FieldData for ResourcesView that have Fields, all ParticleData
+         * for ResourcesView that have particle Arrays. In case the ResourcesView has sub-resources
          * we ask for them in a tuple, and recursively call allocate() for all of the unpacked
          * elements
          */
-        template<typename ResourcesUser>
-        void allocate(ResourcesUser& obj, SAMRAI::hier::Patch& patch,
+        template<typename ResourcesView>
+        void allocate(ResourcesView& obj, SAMRAI::hier::Patch& patch,
                       double const allocateTime) const
         {
-            if constexpr (has_field<ResourcesUser>::value)
+            if constexpr (is_resource<ResourcesView>::value)
             {
-                allocate_(obj, obj.getFieldNamesAndQuantities(), patch, allocateTime);
+                allocate_(obj, patch, allocateTime);
             }
-
-            if constexpr (has_particles<ResourcesUser>::value)
+            else
             {
-                allocate_(obj, obj.getParticleArrayNames(), patch, allocateTime);
-            }
+                static_assert(has_sub_resources_v<ResourcesView>);
 
-            if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
-            {
-                for (auto& resourcesUser : obj.getRunTimeResourcesUserList())
+                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
                 {
-                    this->allocate(resourcesUser, patch, allocateTime);
+                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
+                    {
+                        this->allocate(resourcesUser, patch, allocateTime);
+                    }
                 }
-            }
 
-            if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
-            {
-                // unpack the tuple subResources and apply for each element registerResources()
-                std::apply([this, &patch, allocateTime](auto&... subResource) //
-                           { (this->allocate(subResource, patch, allocateTime), ...); },
-                           obj.getCompileTimeResourcesUserList());
+                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+                {
+                    // unpack the tuple subResources and apply for each element registerResources()
+                    std::apply([this, &patch, allocateTime](auto&... subResource) //
+                               { (this->allocate(subResource, patch, allocateTime), ...); },
+                               obj.getCompileTimeResourcesViewList());
+                }
             }
         }
 
@@ -208,21 +204,21 @@ namespace amr
          * now obj1, obj2 data containers contain data defined on the given patch.
          * At the end of the scope of dataOnPatch, obj1 and obj2 will become unusable again
          */
-        template<typename... ResourcesUsers>
-        NO_DISCARD constexpr ResourcesGuard<ResourcesManager, ResourcesUsers...>
-        setOnPatch(SAMRAI::hier::Patch const& patch, ResourcesUsers&... resourcesUsers)
+        template<typename... ResourcesViews>
+        NO_DISCARD constexpr ResourcesGuard<ResourcesManager, ResourcesViews...>
+        setOnPatch(SAMRAI::hier::Patch const& patch, ResourcesViews&... resourcesUsers)
         {
-            return ResourcesGuard<ResourcesManager, ResourcesUsers...>{patch, *this,
+            return ResourcesGuard<ResourcesManager, ResourcesViews...>{patch, *this,
                                                                        resourcesUsers...};
         }
 
 
 
         /** @brief getTime is used to get the time of the Resources associated with the given
-         * ResourcesUser on the given patch.
+         * ResourcesView on the given patch.
          */
-        template<typename ResourcesUser>
-        NO_DISCARD auto getTimes(ResourcesUser& obj, SAMRAI::hier::Patch const& patch) const
+        template<typename ResourcesView>
+        NO_DISCARD auto getTimes(ResourcesView& obj, SAMRAI::hier::Patch const& patch) const
         {
             auto IDs = getIDs(obj);
             std::vector<double> times;
@@ -243,10 +239,10 @@ namespace amr
 
 
         /** @brief setTime is used to set the time of the Resources associated with the given
-         * ResourcesUser on the given patch.
+         * ResourcesView on the given patch.
          */
-        template<typename ResourcesUser>
-        void setTime(ResourcesUser& obj, SAMRAI::hier::Patch const& patch, double time) const
+        template<typename ResourcesView>
+        void setTime(ResourcesView& obj, SAMRAI::hier::Patch const& patch, double time) const
         {
             for (auto const& id : getIDs(obj))
             {
@@ -257,11 +253,11 @@ namespace amr
 
 
 
-        /** \brief Get all the names and resources id that the resource user
+        /** \brief Get all the names and resources id that the resource view
          *  have registered via the ResourcesManager
          */
-        template<typename ResourcesUser>
-        NO_DISCARD std::vector<int> getIDs(ResourcesUser& obj) const
+        template<typename ResourcesView>
+        NO_DISCARD std::vector<int> getIDs(ResourcesView& obj) const
         {
             std::vector<int> IDs;
             this->getIDs_(obj, IDs);
@@ -270,7 +266,7 @@ namespace amr
 
 
 
-        /** \brief Get all the names and resources id that the resource user
+        /** \brief Get all the names and resources id that the resource view
          *  have registered via the ResourcesManager
          */
         NO_DISCARD std::optional<int> getID(std::string const& resourceName) const
@@ -294,19 +290,19 @@ namespace amr
         }
 
 
-        template<typename ResourcesUser>
-        void registerForRestarts(ResourcesUser const& user) const
+        template<typename ResourcesView>
+        void registerForRestarts(ResourcesView const& view) const
         {
             auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
 
-            for (auto const& id : restart_patch_data_ids(user))
+            for (auto const& id : restart_patch_data_ids(view))
                 pdrm->registerPatchDataForRestart(id);
         }
 
-        template<typename ResourcesUser>
-        NO_DISCARD auto restart_patch_data_ids(ResourcesUser const& user) const
+        template<typename ResourcesView>
+        NO_DISCARD auto restart_patch_data_ids(ResourcesView const& view) const
         {
-            // // true for now with https://github.com/PHAREHUB/PHARE/issues/664
+            // true for now with https://github.com/PHAREHUB/PHARE/issues/664
             constexpr bool ALL_IDS = true;
 
             std::vector<int> ids;
@@ -318,66 +314,44 @@ namespace amr
             }
             else
             { // this is the case when transient datas not to be saved
-                getIDs_(user, ids);
+                getIDs_(view, ids);
             }
             return ids;
         }
 
     private:
-        template<typename ResourcesUser>
-        void getIDs_(ResourcesUser& obj, std::vector<int>& IDs) const
+        template<typename ResourcesView>
+        void getIDs_(ResourcesView& obj, std::vector<int>& IDs) const
         {
-            if constexpr (has_field<ResourcesUser>::value)
+            if constexpr (is_resource<ResourcesView>::value)
             {
-                for (auto const& properties : obj.getFieldNamesAndQuantities())
+                auto foundIt = nameToResourceInfo_.find(obj.name());
+                if (foundIt == nameToResourceInfo_.end())
+                    throw std::runtime_error("Cannot find " + obj.name());
+                IDs.push_back(foundIt->second.id);
+            }
+            else
+            {
+                static_assert(has_sub_resources_v<ResourcesView>);
+
+                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
                 {
-                    auto foundIt = nameToResourceInfo_.find(properties.name);
-                    if (foundIt != nameToResourceInfo_.end())
+                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
                     {
-                        IDs.push_back(foundIt->second.id);
-                    }
-                    else
-                    {
-                        throw std::runtime_error("Cannot find " + properties.name);
+                        //
+                        this->getIDs_(resourcesUser, IDs);
                     }
                 }
-            }
 
-            if constexpr (has_particles<ResourcesUser>::value)
-            {
-                for (auto const& properties : obj.getParticleArrayNames())
+                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
                 {
-                    auto foundIt = nameToResourceInfo_.find(properties.name);
-                    if (foundIt != nameToResourceInfo_.end())
-                    {
-                        IDs.push_back(foundIt->second.id);
-                    }
-                    else
-                    {
-                        throw std::runtime_error("Cannot find " + properties.name);
-                    }
+                    // unpack the tuple subResources and apply for each element registerResources()
+                    std::apply(
+                        [this, &IDs](auto&... subResource) {
+                            (this->getIDs_(subResource, IDs), ...);
+                        },
+                        obj.getCompileTimeResourcesViewList());
                 }
-            }
-
-            if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
-            {
-                auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
-                for (auto& resourcesUser : resourcesUsers)
-                {
-                    //
-                    this->getIDs_(resourcesUser, IDs);
-                }
-            }
-
-            if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
-            {
-                // get a tuple here
-                auto&& subResources = obj.getCompileTimeResourcesUserList();
-
-                // unpack the tuple subResources and apply for each element registerResources()
-                std::apply(
-                    [this, &IDs](auto&... subResource) { (this->getIDs_(subResource, IDs), ...); },
-                    subResources);
             }
         }
 
@@ -387,11 +361,10 @@ namespace amr
         // the real pointer or a nullptr to the correct type.
 
         /** \brief Returns a pointer to the patch data instantiated in the patch
-         * is used by getResourcesPointer_ when user code wants the pointer to the data
+         * is used by getResourcesPointer_ when view code wants the pointer to the data
          */
         template<typename ResourceType>
-        auto getPatchData_([[maybe_unused]] ResourceType resourceType,
-                           ResourcesInfo const& resourcesVariableInfo,
+        auto getPatchData_(ResourcesInfo const& resourcesVariableInfo,
                            SAMRAI::hier::Patch const& patch) const
         {
             auto patchData = patch.getPatchData(resourcesVariableInfo.variable, context_);
@@ -406,161 +379,108 @@ namespace amr
          * the client code wants to get a pointer to a patch data resource
          */
         template<typename ResourceType, typename RequestedPtr>
-        auto getResourcesPointer_([[maybe_unused]] ResourceType resourceType,
-                                  ResourcesInfo const& resourcesVariableInfo,
+        auto getResourcesPointer_(ResourcesInfo const& resourcesVariableInfo,
                                   SAMRAI::hier::Patch const& patch) const
         {
             if constexpr (std::is_same_v<RequestedPtr, UseResourcePtr>)
             {
-                return getPatchData_(resourceType, resourcesVariableInfo, patch);
+                return getPatchData_<ResourceType>(resourcesVariableInfo, patch);
             }
 
             else if constexpr (std::is_same_v<RequestedPtr, UseNullPtr>)
             {
-                return static_cast<decltype(getPatchData_(resourceType, resourcesVariableInfo,
-                                                          patch))>(nullptr);
+                return static_cast<decltype(getPatchData_<ResourceType>(resourcesVariableInfo,
+                                                                        patch))>(nullptr);
             }
         }
 
 
 
 
-        template<typename ResourcesUser, typename NullOrResourcePtr>
-        void setResources_(ResourcesUser& obj, NullOrResourcePtr nullOrResourcePtr,
+        template<typename ResourcesView, typename NullOrResourcePtr>
+        void setResources_(ResourcesView& obj, NullOrResourcePtr nullOrResourcePtr,
                            SAMRAI::hier::Patch const& patch) const
         {
-            if constexpr (has_field<ResourcesUser>::value)
+            if constexpr (is_resource<ResourcesView>::value)
             {
-                setResourcesInternal_(obj, UserField_t<ResourcesUser>{},
-                                      obj.getFieldNamesAndQuantities(), patch, nullOrResourcePtr);
+                setResourcesInternal_(obj, patch, nullOrResourcePtr);
             }
-
-            if constexpr (has_particles<ResourcesUser>::value)
+            else
             {
-                setResourcesInternal_(obj, UserParticle_t<ResourcesUser>{},
-                                      obj.getParticleArrayNames(), patch, nullOrResourcePtr);
-            }
+                static_assert(has_sub_resources_v<ResourcesView>);
 
-
-            if constexpr (has_runtime_subresourceuser_list<ResourcesUser>::value)
-            {
-                auto&& resourcesUsers = obj.getRunTimeResourcesUserList();
-                for (auto& resourcesUser : resourcesUsers)
+                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
                 {
-                    this->setResources_(resourcesUser, nullOrResourcePtr, patch);
+                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
+                    {
+                        this->setResources_(resourcesUser, nullOrResourcePtr, patch);
+                    }
+                }
+
+                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+                {
+                    // unpack the tuple subResources and apply for each element setResources_()
+                    std::apply(
+                        [this, &patch, &nullOrResourcePtr](auto&... subResource) {
+                            (this->setResources_(subResource, nullOrResourcePtr, patch), ...);
+                        },
+                        obj.getCompileTimeResourcesViewList());
                 }
             }
-
-
-            if constexpr (has_compiletime_subresourcesuser_list<ResourcesUser>::value)
-            {
-                // get a tuple here
-                auto&& subResources = obj.getCompileTimeResourcesUserList();
-
-                // unpack the tuple subResources and apply for each element setResources_()
-                std::apply(
-                    [this, &patch, &nullOrResourcePtr](auto&... subResource) {
-                        (this->setResources_(subResource, nullOrResourcePtr, patch), ...);
-                    },
-                    subResources);
-            }
         }
-
-
-
-        template<typename ResourcesType, typename ResourcesUser>
-        void registerFieldResources_(ResourcesUser const& user)
+        template<typename ResourcesView>
+        void registerResource_(ResourcesView const& view)
         {
-            for (auto const& properties : user.getFieldNamesAndQuantities())
+            using ResourcesResolver_t = ResourceResolver<This, ResourcesView>;
+
+            if (nameToResourceInfo_.count(view.name()) == 0)
             {
-                auto const& resourcesName = properties.name;
+                ResourcesInfo info;
+                info.variable = ResourcesResolver_t::make_shared_variable(view);
+                info.id       = variableDatabase_->registerVariableAndContext(
+                          info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                if (nameToResourceInfo_.count(resourcesName) == 0)
-                {
-                    ResourcesInfo info;
-                    info.variable = std::make_shared<typename ResourcesType::variable_type>(
-                        resourcesName, properties.qty);
-
-                    info.id = variableDatabase_->registerVariableAndContext(
-                        info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
-
-                    nameToResourceInfo_.emplace(resourcesName, info);
-                }
-            }
-        }
-
-        template<typename ResourcesType, typename ResourcesUser>
-        void registerParticleResources_(ResourcesUser const& user)
-        {
-            for (auto const& properties : user.getParticleArrayNames())
-            {
-                auto const& name = properties.name;
-
-                if (nameToResourceInfo_.count(name) == 0)
-                {
-                    ResourcesInfo info;
-
-                    info.variable = std::make_shared<typename ResourcesType::variable_type>(name);
-
-                    info.id = variableDatabase_->registerVariableAndContext(
-                        info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
-
-                    nameToResourceInfo_.emplace(name, info);
-                }
+                nameToResourceInfo_.emplace(view.name(), info);
             }
         }
 
 
 
-        /** \brief setResourcesInternal_ aims at setting ResourcesUser pointers to the
+        /** \brief setResourcesInternal_ aims at setting ResourcesView pointers to the
          * appropriate data on the Patch or to reset them to nullptr.
          */
-        template<typename ResourcesUser, typename ResourcesType, typename ResourcesProperties,
-                 typename RequestedPtr>
-        void setResourcesInternal_(ResourcesUser& obj, ResourcesType resourceType,
-                                   ResourcesProperties const& resourcesProperties,
-                                   SAMRAI::hier::Patch const& patch, RequestedPtr) const
+        template<typename ResourcesView, typename RequestedPtr>
+        void setResourcesInternal_(ResourcesView& obj, SAMRAI::hier::Patch const& patch,
+                                   RequestedPtr) const
         {
-            for (auto const& properties : resourcesProperties)
-            {
-                std::string const& resourcesName = properties.name;
-                auto const& resourceInfoIt       = nameToResourceInfo_.find(resourcesName);
-                if (resourceInfoIt != nameToResourceInfo_.end())
-                {
-                    auto data = getResourcesPointer_<ResourcesType, RequestedPtr>(
-                        resourceType, resourceInfoIt->second, patch);
+            using ResourceResolver_t = ResourceResolver<This, ResourcesView>;
+            using ResourcesType      = typename ResourceResolver_t::type;
 
-                    obj.setBuffer(resourcesName, data);
-                }
-                else
-                {
-                    throw std::runtime_error("Resources not found !");
-                }
-            }
+            auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
+            if (resourceInfoIt == nameToResourceInfo_.end())
+                throw std::runtime_error("Resources not found !");
+
+            obj.setBuffer(
+                getResourcesPointer_<ResourcesType, RequestedPtr>(resourceInfoIt->second, patch));
         }
-
 
 
 
         //! \brief Allocate the data on the given level
-        template<typename ResourcesUser, typename ResourcesProperties>
-        void allocate_([[maybe_unused]] ResourcesUser const& obj,
-                       ResourcesProperties const& resourcesProperties, SAMRAI::hier::Patch& patch,
+        template<typename ResourcesView>
+        void allocate_(ResourcesView const& obj, SAMRAI::hier::Patch& patch,
                        double const allocateTime) const
         {
-            for (auto const& properties : resourcesProperties)
+            std::string const& resourcesName  = obj.name();
+            auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
+            if (resourceVariablesInfo != nameToResourceInfo_.end())
             {
-                std::string const& resourcesName  = properties.name;
-                auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
-                if (resourceVariablesInfo != nameToResourceInfo_.end())
-                {
-                    if (!patch.checkAllocated(resourceVariablesInfo->second.id))
-                        patch.allocatePatchData(resourceVariablesInfo->second.id, allocateTime);
-                }
-                else
-                {
-                    throw std::runtime_error("Resources not found !");
-                }
+                if (!patch.checkAllocated(resourceVariablesInfo->second.id))
+                    patch.allocatePatchData(resourceVariablesInfo->second.id, allocateTime);
+            }
+            else
+            {
+                throw std::runtime_error("Resources not found !");
             }
         }
 
@@ -570,7 +490,7 @@ namespace amr
         SAMRAI::tbox::Dimension dimension_;
         std::map<std::string, ResourcesInfo> nameToResourceInfo_;
 
-        template<typename ResourcesManager, typename... ResourcesUsers>
+        template<typename ResourcesManager, typename... ResourcesViews>
         friend class ResourcesGuard;
     };
 } // namespace amr

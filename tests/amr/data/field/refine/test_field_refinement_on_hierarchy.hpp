@@ -6,6 +6,7 @@
 #include "amr/data/field/field_variable.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "test_tag_strategy.hpp"
 

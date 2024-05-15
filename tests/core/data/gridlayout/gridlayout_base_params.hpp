@@ -4,21 +4,24 @@
 #include <memory>
 
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
-#include "gridlayout_utilities.hpp"
 #include "core/utilities/point/point.hpp"
+
+#include "gridlayout_utilities.hpp"
 
 using namespace PHARE::core;
 
 template<typename GridLayoutImpl>
 struct GridLayoutTestParam
 {
-    std::shared_ptr<GridLayout<GridLayoutImpl>> layout;
     static constexpr std::size_t dim         = GridLayoutImpl::dimension;
     static constexpr std::size_t interpOrder = GridLayoutImpl::interp_order;
+    using Grid_t = Grid<decltype(getNdArrayVecImpl(SelectorDim<dim>{})), HybridQuantity::Scalar>;
 
+    std::shared_ptr<GridLayout<GridLayoutImpl>> layout;
     std::array<double, dim> dxdydz;
     std::array<std::uint32_t, dim> nbCellXYZ;
 
@@ -26,16 +29,13 @@ struct GridLayoutTestParam
 
     HybridQuantity::Scalar currentQuantity;
 
-    std::shared_ptr<Field<decltype(getNdArrayVecImpl(SelectorDim<dim>{})), HybridQuantity::Scalar>>
-        field;
+    std::shared_ptr<Grid_t> field;
 
 
     template<typename Container, std::size_t... I>
     auto makeIt_(Container allocSize, std::index_sequence<I...>)
     {
-        return std::make_shared<
-            Field<decltype(getNdArrayVecImpl(SelectorDim<dim>{})), HybridQuantity::Scalar>>(
-            "field", currentQuantity, (allocSize[I])...);
+        return std::make_shared<Grid_t>("field", currentQuantity, (allocSize[I])...);
     }
 
     template<typename Container>

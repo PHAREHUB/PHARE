@@ -29,23 +29,25 @@ namespace amr
 
         // SAMRAI interface
 
-        ParticlesDataFactory(SAMRAI::hier::IntVector ghost, bool fineBoundaryRepresentsVariable)
+        ParticlesDataFactory(SAMRAI::hier::IntVector ghost, bool fineBoundaryRepresentsVariable,
+                             std::string const& name)
             : SAMRAI::hier::PatchDataFactory{ghost}
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
+            , name_{name}
         {
         }
 
         std::shared_ptr<SAMRAI::hier::PatchDataFactory>
         cloneFactory(SAMRAI::hier::IntVector const&) final
         {
-            return std::make_shared<ParticlesDataFactory>(d_ghosts,
-                                                          fineBoundaryRepresentsVariable_);
+            return std::make_shared<ParticlesDataFactory>(d_ghosts, fineBoundaryRepresentsVariable_,
+                                                          name_);
         }
 
         std::shared_ptr<SAMRAI::hier::PatchData>
         allocate(const SAMRAI::hier::Patch& patch) const final
         {
-            return std::make_shared<ParticlesData<ParticleArray>>(patch.getBox(), d_ghosts);
+            return std::make_shared<ParticlesData<ParticleArray>>(patch.getBox(), d_ghosts, name_);
         }
 
         std::shared_ptr<SAMRAI::hier::BoxGeometry>
@@ -77,9 +79,7 @@ namespace amr
         // End SAMRAI interface
     private:
         bool fineBoundaryRepresentsVariable_;
-
-
-    private:
+        std::string const name_;
     };
 } // namespace amr
 

@@ -26,8 +26,8 @@ namespace amr
     // We use another class here so that we can specialize specifics function: copy , pack , unpack
     // on the dimension and we don't want to loose non specialized function related to SAMRAI
     // interface
-    template<typename GridLayoutT, std::size_t dim, typename FieldImpl,
-             typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
+    template<typename GridLayoutT, std::size_t dim, typename Grid_t,
+             typename PhysicalQuantity = decltype(std::declval<Grid_t>().physicalQuantity())>
     class FieldDataInternals
     {
     };
@@ -36,8 +36,8 @@ namespace amr
     /**@brief FieldData is the specialization of SAMRAI::hier::PatchData to Field objects
      *
      */
-    template<typename GridLayoutT, typename FieldImpl,
-             typename PhysicalQuantity = decltype(std::declval<FieldImpl>().physicalQuantity())>
+    template<typename GridLayoutT, typename Grid_t,
+             typename PhysicalQuantity = decltype(std::declval<Grid_t>().physicalQuantity())>
     class FieldData : public SAMRAI::hier::PatchData
     {
         using Super = SAMRAI::hier::PatchData;
@@ -86,7 +86,9 @@ namespace amr
         {
             Super::getFromRestart(restart_db);
 
-            restart_db->getVector("field_" + field.name(), field.vector());
+            assert(field.vector().size() > 0);
+            restart_db->getDoubleArray("field_" + field.name(), field.vector().data(),
+                                       field.vector().size()); // do not reallocate!
         }
 
         void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& restart_db) const override
@@ -224,7 +226,7 @@ namespace amr
 
             // getDataStreamSize_<true> mean that we want to apply the transformation
             std::size_t expectedSize = getDataStreamSize_<true>(overlap) / sizeof(double);
-            std::vector<typename FieldImpl::type> buffer;
+            std::vector<typename Grid_t::type> buffer;
             buffer.reserve(expectedSize);
 
             auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
@@ -309,13 +311,13 @@ namespace amr
 
 
 
-        FieldImpl* getPointer() { return &field; }
+        auto* getPointer() { return &field; }
 
 
         static GridLayoutT const& getLayout(SAMRAI::hier::Patch const& patch, int id)
         {
-            auto const& patchData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(
-                patch.getPatchData(id));
+            auto const& patchData
+                = std::dynamic_pointer_cast<FieldData<GridLayoutT, Grid_t>>(patch.getPatchData(id));
             if (!patchData)
             {
                 throw std::runtime_error("cannot cast to FieldData");
@@ -324,10 +326,10 @@ namespace amr
         }
 
 
-        static FieldImpl& getField(SAMRAI::hier::Patch const& patch, int id)
+        static Grid_t& getField(SAMRAI::hier::Patch const& patch, int id)
         {
-            auto const& patchData = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldImpl>>(
-                patch.getPatchData(id));
+            auto const& patchData
+                = std::dynamic_pointer_cast<FieldData<GridLayoutT, Grid_t>>(patch.getPatchData(id));
             if (!patchData)
             {
                 throw std::runtime_error("cannot cast to FieldData");
@@ -339,7 +341,7 @@ namespace amr
 
 
         GridLayoutT gridLayout;
-        FieldImpl field;
+        Grid_t field;
 
     private:
         PhysicalQuantity quantity_; ///! PhysicalQuantity used for this field data
@@ -352,8 +354,8 @@ namespace amr
          */
         void copy_(SAMRAI::hier::Box const& intersectBox, SAMRAI::hier::Box const& sourceBox,
                    SAMRAI::hier::Box const& destinationBox,
-                   [[maybe_unused]] FieldData const& source, FieldImpl const& fieldSource,
-                   FieldImpl& fieldDestination)
+                   [[maybe_unused]] FieldData const& source, Grid_t const& fieldSource,
+                   Grid_t& fieldDestination)
         {
             // First we represent the intersection that is defined in AMR space to the local space
             // of the source
@@ -411,8 +413,8 @@ namespace amr
 
                         if (!intersectionBox.empty())
                         {
-                            FieldImpl const& sourceField = source.field;
-                            FieldImpl& destinationField  = field;
+                            Grid_t const& sourceField = source.field;
+                            Grid_t& destinationField  = field;
 
                             copy_(intersectionBox, transformedSource, destinationBox, source,
                                   sourceField, destinationField);
@@ -451,23 +453,23 @@ namespace amr
             SAMRAI::hier::BoxContainer const& boxContainer
                 = fieldOverlap.getDestinationBoxContainer();
 
-            return boxContainer.getTotalSizeOfBoxes() * sizeof(typename FieldImpl::type);
+            return boxContainer.getTotalSizeOfBoxes() * sizeof(typename Grid_t::type);
         }
 
 
-        FieldDataInternals<GridLayoutT, dimension, FieldImpl, PhysicalQuantity> internals_;
+        FieldDataInternals<GridLayoutT, dimension, Grid_t, PhysicalQuantity> internals_;
     }; // namespace PHARE
 
 
 
 
     // 1D internals implementation
-    template<typename GridLayoutT, typename FieldImpl, typename PhysicalQuantity>
-    class FieldDataInternals<GridLayoutT, 1, FieldImpl, PhysicalQuantity>
+    template<typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
+    class FieldDataInternals<GridLayoutT, 1, Grid_t, PhysicalQuantity>
     {
     public:
-        void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
-                      SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
+        void copyImpl(SAMRAI::hier::Box const& localSourceBox, Grid_t const& source,
+                      SAMRAI::hier::Box const& localDestinationBox, Grid_t& destination) const
         {
             std::uint32_t xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
             std::uint32_t xDestinationStart
@@ -487,7 +489,7 @@ namespace amr
 
 
 
-        void packImpl(std::vector<double>& buffer, FieldImpl const& source,
+        void packImpl(std::vector<double>& buffer, Grid_t const& source,
                       SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& sourceBox) const
         {
             int xStart = overlap.lower(0) - sourceBox.lower(0);
@@ -501,7 +503,7 @@ namespace amr
 
 
 
-        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
+        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, Grid_t& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {
@@ -519,12 +521,12 @@ namespace amr
 
 
     // 2D internals implementation
-    template<typename GridLayoutT, typename FieldImpl, typename PhysicalQuantity>
-    class FieldDataInternals<GridLayoutT, 2, FieldImpl, PhysicalQuantity>
+    template<typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
+    class FieldDataInternals<GridLayoutT, 2, Grid_t, PhysicalQuantity>
     {
     public:
-        void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
-                      SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
+        void copyImpl(SAMRAI::hier::Box const& localSourceBox, Grid_t const& source,
+                      SAMRAI::hier::Box const& localDestinationBox, Grid_t& destination) const
         {
             std::uint32_t xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
             std::uint32_t xDestinationStart
@@ -558,7 +560,7 @@ namespace amr
 
 
 
-        void packImpl(std::vector<double>& buffer, FieldImpl const& source,
+        void packImpl(std::vector<double>& buffer, Grid_t const& source,
                       SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& destination) const
 
         {
@@ -580,7 +582,7 @@ namespace amr
 
 
 
-        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
+        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, Grid_t& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {
@@ -604,12 +606,12 @@ namespace amr
 
 
     // 3D internals implementation
-    template<typename GridLayoutT, typename FieldImpl, typename PhysicalQuantity>
-    class FieldDataInternals<GridLayoutT, 3, FieldImpl, PhysicalQuantity>
+    template<typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
+    class FieldDataInternals<GridLayoutT, 3, Grid_t, PhysicalQuantity>
     {
     public:
-        void copyImpl(SAMRAI::hier::Box const& localSourceBox, FieldImpl const& source,
-                      SAMRAI::hier::Box const& localDestinationBox, FieldImpl& destination) const
+        void copyImpl(SAMRAI::hier::Box const& localSourceBox, Grid_t const& source,
+                      SAMRAI::hier::Box const& localDestinationBox, Grid_t& destination) const
         {
             std::uint32_t xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
             std::uint32_t xDestinationStart
@@ -657,7 +659,7 @@ namespace amr
 
 
 
-        void packImpl(std::vector<double>& buffer, FieldImpl const& source,
+        void packImpl(std::vector<double>& buffer, Grid_t const& source,
                       SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& destination) const
         {
             int xStart = overlap.lower(0) - destination.lower(0);
@@ -684,7 +686,7 @@ namespace amr
 
 
 
-        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, FieldImpl& source,
+        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, Grid_t& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {

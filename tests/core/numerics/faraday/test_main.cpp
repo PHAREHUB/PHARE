@@ -5,7 +5,7 @@
 #include <memory>
 
 
-#include "core/data/field/field.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -17,6 +17,7 @@
 
 #include "tests/core/data/field/test_field.hpp"
 #include "tests/core/data/vecfield/test_vecfield.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
 
 using namespace PHARE::core;
@@ -29,19 +30,13 @@ struct GridLayoutMock1D
     static const auto dimension = 1u;
 
     template<auto direction>
-    double deriv([[maybe_unused]] FieldMock<1> const& f, [[maybe_unused]] MeshIndex<1u> mi)
+    double deriv(FieldMock<1> const& /*f*/, MeshIndex<1u> /*mi*/)
     {
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<1>&, [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<1>&, Direction /*dir*/) { return 0; }
 };
 
 struct GridLayoutMock2D
@@ -49,21 +44,13 @@ struct GridLayoutMock2D
     static const auto dimension = 2u;
 
     template<auto direction>
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<2u> mi)
+    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<2u> /*mi*/)
     {
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
-                                   [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
-                                 [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
 };
 
 struct GridLayoutMock3D
@@ -72,21 +59,13 @@ struct GridLayoutMock3D
 
 
     template<auto direction>
-    double deriv([[maybe_unused]] FieldMock<dimension> const& f, [[maybe_unused]] MeshIndex<3u> mi)
+    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<3u> /*mi*/)
     {
         return 0;
     }
 
-    std::size_t physicalStartIndex([[maybe_unused]] FieldMock<dimension>&,
-                                   [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
-    std::size_t physicalEndIndex([[maybe_unused]] FieldMock<dimension>&,
-                                 [[maybe_unused]] Direction dir)
-    {
-        return 0;
-    }
+    std::size_t physicalStartIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
+    std::size_t physicalEndIndex(FieldMock<dimension>&, Direction /*dir*/) { return 0; }
 };
 
 
@@ -158,48 +137,25 @@ std::vector<double> read(std::string filename)
 class Faraday1DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<1, 1>;
+    static constexpr auto dim          = 1;
+    static constexpr auto interp_order = 1;
+
+    using UsableVecFieldND = UsableVecField<dim>;
+    using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector<1>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector<1>, HybridQuantity> B;
-    VecField<NdArrayVector<1>, HybridQuantity> E;
-    VecField<NdArrayVector<1>, HybridQuantity> Bnew;
+
+    UsableVecFieldND B, E, Bnew;
+
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
     Faraday1DTest()
         : layout{{{0.1}}, {{50}}, Point{0.}}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Ex{"Ex", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Ey{"Ey", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Ez{"Ez", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , Bxnew{"Bxnew", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , Bynew{"Bynew", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bznew{"Bznew", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , B{"B", HybridQuantity::Vector::B}
-        , E{"E", HybridQuantity::Vector::E}
-        , Bnew{"Bnew", HybridQuantity::Vector::B}
+        , B{"B", layout, HybridQuantity::Vector::B}
+        , E{"E", layout, HybridQuantity::Vector::E}
+        , Bnew{"Bnew", layout, HybridQuantity::Vector::B}
     {
-        B.setBuffer("B_x", &Bx);
-        B.setBuffer("B_y", &By);
-        B.setBuffer("B_z", &Bz);
-        E.setBuffer("E_x", &Ex);
-        E.setBuffer("E_y", &Ey);
-        E.setBuffer("E_z", &Ez);
-        Bnew.setBuffer("Bnew_x", &Bxnew);
-        Bnew.setBuffer("Bnew_y", &Bynew);
-        Bnew.setBuffer("Bnew_z", &Bznew);
     }
 };
 
@@ -209,48 +165,25 @@ public:
 class Faraday2DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<2, 1>;
+    static constexpr auto dim          = 2;
+    static constexpr auto interp_order = 1;
+
+    using UsableVecFieldND = UsableVecField<dim>;
+    using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector<2>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector<2>, HybridQuantity> B;
-    VecField<NdArrayVector<2>, HybridQuantity> E;
-    VecField<NdArrayVector<2>, HybridQuantity> Bnew;
+
+    UsableVecFieldND B, E, Bnew;
+
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
     Faraday2DTest()
         : layout{{{0.1, 0.2}}, {{50, 30}}, Point{0., 0.}}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Ex{"Ex", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Ey{"Ey", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Ez{"Ez", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , Bxnew{"Bxnew", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , Bynew{"Bynew", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bznew{"Bznew", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , B{"B", HybridQuantity::Vector::B}
-        , E{"E", HybridQuantity::Vector::E}
-        , Bnew{"Bnew", HybridQuantity::Vector::B}
+        , B{"B", layout, HybridQuantity::Vector::B}
+        , E{"E", layout, HybridQuantity::Vector::E}
+        , Bnew{"Bnew", layout, HybridQuantity::Vector::B}
     {
-        B.setBuffer("B_x", &Bx);
-        B.setBuffer("B_y", &By);
-        B.setBuffer("B_z", &Bz);
-        E.setBuffer("E_x", &Ex);
-        E.setBuffer("E_y", &Ey);
-        E.setBuffer("E_z", &Ez);
-        Bnew.setBuffer("Bnew_x", &Bxnew);
-        Bnew.setBuffer("Bnew_y", &Bynew);
-        Bnew.setBuffer("Bnew_z", &Bznew);
     }
 };
 
@@ -260,48 +193,25 @@ public:
 class Faraday3DTest : public ::testing::Test
 {
 protected:
-    using GridLayoutImpl = GridLayoutImplYee<3, 1>;
+    static constexpr auto dim          = 3;
+    static constexpr auto interp_order = 1;
+
+    using UsableVecFieldND = UsableVecField<dim>;
+    using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
+
     GridLayout<GridLayoutImpl> layout;
-    static constexpr auto interp_order = GridLayoutImpl::interp_order;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bx;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> By;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bz;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ex;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ey;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Ez;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bxnew;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bynew;
-    Field<NdArrayVector<3>, HybridQuantity::Scalar> Bznew;
-    VecField<NdArrayVector<3>, HybridQuantity> B;
-    VecField<NdArrayVector<3>, HybridQuantity> E;
-    VecField<NdArrayVector<3>, HybridQuantity> Bnew;
+
+    UsableVecFieldND B, E, Bnew;
+
     Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
     Faraday3DTest()
         : layout{{{0.1, 0.2, 0.3}}, {{50, 30, 40}}, Point{0., 0., 0.}}
-        , Bx{"Bx", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , By{"By", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bz{"Bz", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , Ex{"Ex", HybridQuantity::Scalar::Jx, layout.allocSize(HybridQuantity::Scalar::Jx)}
-        , Ey{"Ey", HybridQuantity::Scalar::Jy, layout.allocSize(HybridQuantity::Scalar::Jy)}
-        , Ez{"Ez", HybridQuantity::Scalar::Jz, layout.allocSize(HybridQuantity::Scalar::Jz)}
-        , Bxnew{"Bxnew", HybridQuantity::Scalar::Bx, layout.allocSize(HybridQuantity::Scalar::Bx)}
-        , Bynew{"Bynew", HybridQuantity::Scalar::By, layout.allocSize(HybridQuantity::Scalar::By)}
-        , Bznew{"Bznew", HybridQuantity::Scalar::Bz, layout.allocSize(HybridQuantity::Scalar::Bz)}
-        , B{"B", HybridQuantity::Vector::B}
-        , E{"E", HybridQuantity::Vector::E}
-        , Bnew{"Bnew", HybridQuantity::Vector::B}
+        , B{"B", layout, HybridQuantity::Vector::B}
+        , E{"E", layout, HybridQuantity::Vector::E}
+        , Bnew{"Bnew", layout, HybridQuantity::Vector::B}
     {
-        B.setBuffer("B_x", &Bx);
-        B.setBuffer("B_y", &By);
-        B.setBuffer("B_z", &Bz);
-        E.setBuffer("E_x", &Ex);
-        E.setBuffer("E_y", &Ey);
-        E.setBuffer("E_z", &Ez);
-        Bnew.setBuffer("Bnew_x", &Bxnew);
-        Bnew.setBuffer("Bnew_y", &Bynew);
-        Bnew.setBuffer("Bnew_z", &Bznew);
     }
 };
 
@@ -317,6 +227,10 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
 
     auto gsi_p_X = this->layout.ghostStartIndex(QtyCentering::primal, Direction::X);
     auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
+
+    auto const& [Ex, Ey, Ez]          = E();
+    auto const& [Bx, By, Bz]          = B();
+    auto const& [Bxnew, Bynew, Bznew] = Bnew();
 
     for (auto ix = gsi_p_X; ix <= gei_p_X; ++ix)
     {
@@ -371,6 +285,10 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
     auto gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
     auto gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
+
+    auto const& [Ex, Ey, Ez]          = E();
+    auto const& [Bx, By, Bz]          = B();
+    auto const& [Bxnew, Bynew, Bznew] = Bnew();
 
     for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
@@ -504,6 +422,10 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
     auto gei_p_Z = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Z);
     auto gsi_d_Z = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Z);
     auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
+
+    auto const& [Ex, Ey, Ez]          = E();
+    auto const& [Bx, By, Bz]          = B();
+    auto const& [Bxnew, Bynew, Bznew] = Bnew();
 
     for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {

@@ -19,27 +19,31 @@ namespace PHARE::solver
  * holds a HybridState and a ResourcesManager.
  */
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
-         typename AMR_Types>
+         typename AMR_Types, typename Grid_t>
 class HybridModel : public IPhysicalModel<AMR_Types>
 {
 public:
-    using type_list = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>;
-    using Interface = IPhysicalModel<AMR_Types>;
-    using amr_types = AMR_Types;
-    using patch_t   = typename AMR_Types::patch_t;
-    using level_t   = typename AMR_Types::level_t;
-    static const std::string model_name;
-    using gridlayout_type              = GridLayoutT;
-    using electromag_type              = Electromag;
-    using vecfield_type                = typename Electromag::vecfield_type;
-    using field_type                   = typename vecfield_type::field_type;
-    using ions_type                    = Ions;
-    using particle_array_type          = typename Ions::particle_array_type;
-    using resources_manager_type       = amr::ResourcesManager<gridlayout_type>;
-    static constexpr auto dimension    = GridLayoutT::dimension;
-    static constexpr auto interp_order = GridLayoutT::interp_order;
+    static constexpr auto dimension = GridLayoutT::dimension;
+
+    using type_list
+        = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>;
+    using Interface              = IPhysicalModel<AMR_Types>;
+    using amr_types              = AMR_Types;
+    using electrons_t            = Electrons;
+    using patch_t                = typename AMR_Types::patch_t;
+    using level_t                = typename AMR_Types::level_t;
+    using gridlayout_type        = GridLayoutT;
+    using electromag_type        = Electromag;
+    using vecfield_type          = typename Electromag::vecfield_type;
+    using field_type             = typename vecfield_type::field_type;
+    using grid_type              = Grid_t;
+    using ions_type              = Ions;
+    using particle_array_type    = typename Ions::particle_array_type;
+    using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+
+    static const inline std::string model_name = "HybridModel";
 
 
     core::HybridState<Electromag, Ions, Electrons> state;
@@ -94,9 +98,9 @@ public:
 
     NO_DISCARD bool isSettable() const { return state.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() const { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
 
-    NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -114,8 +118,9 @@ public:
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
-         typename AMR_Types>
-void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::initialize(level_t& level)
+         typename AMR_Types, typename Grid_t>
+void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::initialize(
+    level_t& level)
 {
     for (auto& patch : level)
     {
@@ -141,8 +146,8 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::initializ
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
-         typename AMR_Types>
-void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::fillMessengerInfo(
+         typename AMR_Types, typename Grid_t>
+void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::fillMessengerInfo(
     std::unique_ptr<amr::IMessengerInfo> const& info) const
 {
     auto& hybridInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
@@ -173,11 +178,6 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::fillMesse
 }
 
 
-
-template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
-         typename AMR_Types>
-const std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types>::model_name
-    = "HybridModel";
 
 template<typename... Args>
 HybridModel<Args...> hybrid_model_from_type_list(core::type_list<Args...>);

@@ -31,12 +31,12 @@ namespace core
         NO_DISCARD bool isSettable() const { return B.isSettable() and V.isSettable(); }
 
 
-        NO_DISCARD auto getCompileTimeResourcesUserList() const
+        NO_DISCARD auto getCompileTimeResourcesViewList() const
         {
             return std::forward_as_tuple(B, V);
         }
 
-        NO_DISCARD auto getCompileTimeResourcesUserList() { return std::forward_as_tuple(B, V); }
+        NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(B, V); }
 
 
         //-------------------------------------------------------------------------

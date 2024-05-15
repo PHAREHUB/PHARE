@@ -72,14 +72,14 @@ namespace core
         }
 
 
-        NO_DISCARD auto getCompileTimeResourcesUserList() const
+        NO_DISCARD auto getCompileTimeResourcesViewList() const
         {
-            return std::forward_as_tuple(electromag, ions, electrons);
+            return std::forward_as_tuple(electromag, ions, electrons, J);
         }
 
-        NO_DISCARD auto getCompileTimeResourcesUserList()
+        NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            return std::forward_as_tuple(electromag, ions, electrons);
+            return std::forward_as_tuple(electromag, ions, electrons, J);
         }
 
 

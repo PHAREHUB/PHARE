@@ -14,6 +14,10 @@ namespace solver
     class SolverMHD : public ISolver<AMR_Types>
     {
     public:
+        using patch_t     = typename AMR_Types::patch_t;
+        using level_t     = typename AMR_Types::level_t;
+        using hierarchy_t = typename AMR_Types::hierarchy_t;
+
         SolverMHD()
             : ISolver<AMR_Types>{"MHDSolver"}
         {
@@ -22,29 +26,33 @@ namespace solver
 
         virtual ~SolverMHD() = default;
 
-        virtual std::string modelName() const override { return MHDModel::model_name; }
+        std::string modelName() const override { return MHDModel::model_name; }
 
 
-        virtual void
-        fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override
+        void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override
         {
         }
 
 
-        virtual void registerResources(IPhysicalModel<AMR_Types>& /*model*/) override {}
+        void registerResources(IPhysicalModel<AMR_Types>& /*model*/) override {}
 
         // TODO make this a resourcesUser
-        virtual void allocate(IPhysicalModel<AMR_Types>& /*model*/, SAMRAI::hier::Patch& /*patch*/,
-                              double const /*allocateTime*/) const override
+        void allocate(IPhysicalModel<AMR_Types>& /*model*/, patch_t& /*patch*/,
+                      double const /*allocateTime*/) const override
         {
         }
 
-        virtual void
-        advanceLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                     int const /*levelNumber*/, IPhysicalModel<AMR_Types>& /*model*/,
-                     amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
-                     const double /*currentTime*/, const double /*newTime*/) override
+        void advanceLevel(hierarchy_t const& /*hierarchy*/, int const /*levelNumber*/,
+                          ISolverModelView& /*view*/,
+                          amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
+                          const double /*currentTime*/, const double /*newTime*/) override
         {
+        }
+
+        std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&) override
+        {
+            throw std::runtime_error("Not implemented in mhd solver");
+            return nullptr;
         }
     };
 } // namespace solver

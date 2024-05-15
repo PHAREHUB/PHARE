@@ -1,4 +1,5 @@
 #include "amr/types/amr_types.hpp"
+#include "core/data/grid/grid.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
@@ -29,22 +30,27 @@ using namespace PHARE::amr;
 #include "tests/initializer/init_functions.hpp"
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
-
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
-using VecField1D                         = VecField<NdArrayVector<1>, HybridQuantity>;
-using SymTensorField1D                   = SymTensorField<NdArrayVector<1>, HybridQuantity>;
-using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
-using ParticleArray1D                    = ParticleArray<dim>;
-using GridYee1D                          = GridLayout<GridImplYee1D>;
+
+using Field_t          = Field<1, HybridQuantity::Scalar>;
+using Grid1D           = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
+using VecField1D       = VecField<Field_t, HybridQuantity>;
+using SymTensorField1D = SymTensorField<Field_t, HybridQuantity>;
+using GridImplYee1D    = GridLayoutImplYee<dim, interpOrder>;
+using ParticleArray1D  = ParticleArray<dim>;
+using GridYee1D        = GridLayout<GridImplYee1D>;
+
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray1D, GridYee1D>;
-using IonsPop1D         = IonPopulation<ParticleArray1D, VecField1D, SymTensorField1D, GridYee1D>;
-using Ions1D            = Ions<IonsPop1D, GridYee1D>;
-using Electromag1D      = Electromag<VecField1D>;
-using Electrons1D       = Electrons<Ions1D>;
-using HybridModelT      = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types>;
-using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types>;
-using ResourcesManagerT = ResourcesManager<GridYee1D>;
+
+using IonsPop1D    = IonPopulation<ParticleArray1D, VecField1D, SymTensorField1D>;
+using Ions1D       = Ions<IonsPop1D, GridYee1D>;
+using Electromag1D = Electromag<VecField1D>;
+using Electrons1D  = Electrons<Ions1D>;
+using HybridModelT
+    = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types, Grid1D>;
+using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types, Grid1D>;
+using ResourcesManagerT = ResourcesManager<GridYee1D, Grid1D>;
 
 
 using InitFunctionT = PHARE::initializer::InitFunction<1>;
