@@ -311,15 +311,14 @@ namespace solver
             auto& levelInitializer = getLevelInitializer(model.name());
 
             bool const isRegridding = oldLevel != nullptr;
-
+            auto level              = hierarchy->getPatchLevel(levelNumber);
 
             std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
                       << "\n";
             PHARE_LOG_START(3, "initializeLevelData::allocate block");
-
             if (allocateData)
             {
-                for (auto patch : *hierarchy->getPatchLevel(levelNumber))
+                for (auto patch : *level)
                 {
                     model.allocate(*patch, initDataTime);
                     solver.allocate(model, *patch, initDataTime);
@@ -367,7 +366,7 @@ namespace solver
                 solver.onRegrid();
             }
             else
-                load_balancer_manager_->estimate(*hierarchy->getPatchLevel(levelNumber), model);
+                load_balancer_manager_->estimate(*level, model);
 
             if (static_cast<std::size_t>(levelNumber) == model_views_.size())
                 model_views_.push_back(solver.make_view(*level, model));
@@ -395,14 +394,14 @@ namespace solver
                     model_views_.push_back(getSolver_(ilvl).make_view(
                         AMR_Types::getLevel(*hierarchy, ilvl), getModel_(ilvl)));
 
-                    for (auto& patch : *hierarchy->getPatchLevel(ilvl))
+                    auto level = hierarchy->getPatchLevel(ilvl);
+                    for (auto& patch : *level)
                     {
                         auto time = dict_["restarts"]["restart_time"].template to<double>();
                         load_balancer_manager_->allocate(*patch, time);
                     }
                     // if load balance on restart advance
-                    load_balancer_manager_->estimate(*hierarchy->getPatchLevel(ilvl),
-                                                     getModel_(ilvl));
+                    load_balancer_manager_->estimate(*level, getModel_(ilvl));
                 }
                 restartInitialized_ = true;
             }
