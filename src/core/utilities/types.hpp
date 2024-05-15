@@ -443,7 +443,7 @@ constexpr auto for_N(Fn& fn)
 
     static_assert(std::is_same_v<decltype(M), for_N_R_mode>);
     using return_type
-        = std::decay_t<std::result_of_t<Fn(std::integral_constant<std::uint16_t, 0>)>>;
+        = std::decay_t<std::invoke_result_t<Fn, std::integral_constant<std::uint16_t, 0>>>;
     constexpr bool returns = !std::is_same_v<return_type, void>;
 
     if constexpr (returns)
