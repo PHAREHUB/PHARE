@@ -80,6 +80,10 @@ option(PGO_GEN "profile guided optimization generate" OFF)
 option(PGO_USE "profile guided optimization use" OFF)
 
 
+# -DPHARE_COMPILER_WORKAROUNDS=OFF
+option(PHARE_COMPILER_WORKAROUNDS "Attempt silence compiler false positives" ON) # on by default
+
+
 # Controlling the activation of tests
 if (NOT DEFINED PHARE_EXEC_LEVEL_MIN)
   set(PHARE_EXEC_LEVEL_MIN 1)

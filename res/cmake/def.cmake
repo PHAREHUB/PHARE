@@ -2,22 +2,26 @@
 
 # Per compiler CXXFLAGS
 set (PHARE_FLAGS ${PHARE_FLAGS} )
-# mostly for silencing spurious Werrors
-if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")  u
-  unset(CHECK_SUPPORTS_FLAG CACHE)
-  # --param=min-pagesize=0    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105523
-  check_cxx_compiler_flag( --param=min-pagesize=0 CHECK_SUPPORTS_FLAG)
-  if (${CHECK_SUPPORTS_FLAG})
-    set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
-  endif()
 
-  unset(CHECK_SUPPORTS_FLAG CACHE)
-  # --param=evrp-mode=legacy  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
-  check_cxx_compiler_flag( --param=evrp-mode=legacy CHECK_SUPPORTS_FLAG)
-  if (${CHECK_SUPPORTS_FLAG})
-    set (PHARE_FLAGS ${PHARE_FLAGS} --param=evrp-mode=legacy )
-  endif()
-endif() # compiler is GNU
+if(PHARE_COMPILER_WORKAROUNDS)
+  # mostly for silencing spurious Werrors
+  if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+    unset(CHECK_SUPPORTS_FLAG CACHE)
+    # --param=min-pagesize=0    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105523
+    check_cxx_compiler_flag( --param=min-pagesize=0 CHECK_SUPPORTS_FLAG)
+    if (${CHECK_SUPPORTS_FLAG})
+      set (PHARE_FLAGS ${PHARE_FLAGS} --param=min-pagesize=0 )
+    endif()
+
+    unset(CHECK_SUPPORTS_FLAG CACHE)
+    # --param=evrp-mode=legacy  https://gcc.gnu.org/bugzilla/show_bug.cgi?id=105329
+    check_cxx_compiler_flag( --param=evrp-mode=legacy CHECK_SUPPORTS_FLAG)
+    if (${CHECK_SUPPORTS_FLAG})
+      set (PHARE_FLAGS ${PHARE_FLAGS} --param=evrp-mode=legacy )
+    endif()
+  endif() # compiler is GNU
+endif(PHARE_COMPILER_WORKAROUNDS)
+
 
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
