@@ -31,6 +31,7 @@ set( SOURCES_INC
      numerics/pusher/pusher.hpp
      numerics/pusher/pusher_factory.hpp
      numerics/ampere/ampere.hpp
+     numerics/ampere/maxwell_ampere.hpp
      numerics/faraday/faraday.hpp
      numerics/ohm/ohm.hpp
      numerics/moments/moments.hpp
