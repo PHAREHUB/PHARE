@@ -66,6 +66,24 @@ def plot_timestep_time(timestep_times):
 
 
 class Simulator:
+    """
+
+    **Mandatory arguments**
+
+        *  **simulation**: a `Simulation` object
+
+
+    **Optional expert arguments**
+
+        These arguments have good default, change them at your own risk.
+
+        *  **print_one_line**: (``bool``), default True, will print simulator info per advance on one line (erasing the previous)
+        *  **auto_dump**: (``bool``), if True (default), will dump diagnostics automatically at requested timestamps
+        *  **post_advance**: (``Function``),  default None. A python function to execute after each advance()
+        *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
+
+    """
+
     def __init__(self, simulation, auto_dump=True, **kwargs):
         assert isinstance(simulation, ph.Simulation)  # pylint: disable=no-member
         self.simulation = simulation
@@ -179,7 +197,10 @@ class Simulator:
         )
 
     def run(self, plot_times=False, monitoring=None):
-        """monitoring requires phlop"""
+        """
+        Run the simulation until the end time
+        monitoring requires phlop
+        """
         from pyphare.cpp import cpp_lib
 
         self._check_init()

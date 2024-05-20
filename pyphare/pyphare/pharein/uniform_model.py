@@ -59,12 +59,12 @@ class UniformModel(object):
 
         add_population(name,charge=1, mass=1, nbrPartCell=100, density=1, vbulk=(0,0,0), beta=1, anisotropy=1)
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         name        : name of the species, str
 
-        Optional Parameters:
-        -------------------
+        Other Parameters
+        ----------------
         charge      : charge of the species particles, float (default = 1.)
         nbrPartCell : number of particles per cell, int (default = 100)
         density     : particle density, float (default = 1.)
