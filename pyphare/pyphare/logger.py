@@ -1,10 +1,8 @@
 import os
 import logging
 
-logging.basicConfig(level=logging.DEBUG)
-
 LOG_LEVEL = os.environ.get("PYPHARE_LOG_LEVEL", "INFO")
-log_levels = {"INFO": 20, "ERROR": 40, "DEBUG": 10}  # maps enum values
+log_levels = {"INFO": 20, "WARNING": 30, "ERROR": 40, "DEBUG": 10}  # maps enum values
 
 
 def getLogger(name, level=LOG_LEVEL):

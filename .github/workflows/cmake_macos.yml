@@ -21,7 +21,7 @@ jobs:
         - os: macos-13
           dylib_path: /usr/local/lib/gcc/current
         - os: macos-latest
-          dylib_path: /opt/homebrew/Cellar/gcc/13.2.0/lib/gcc/current
+          dylib_path: /opt/homebrew/Cellar/gcc/14.1.0/lib/gcc/current
 
 
     steps:
