@@ -76,9 +76,9 @@ the mesh resolution wherever the solution needs it.
    :maxdepth: 1
    :hidden:
 
+   usage/simulation_inputs
    usage/run_from_python
    usage/run_from_exe
-   usage/simulation_inputs
    usage/examples
 
 
@@ -98,14 +98,6 @@ the mesh resolution wherever the solution needs it.
 
 
 
-.. Development
-.. -----------
-.. toctree::
-   :caption: DEVELOPMENT
-   :maxdepth: 1
-   :hidden:
-
-   development/tests
 
 .. Indices and tables
 .. ------------------

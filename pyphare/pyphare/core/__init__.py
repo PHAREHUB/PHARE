@@ -12,11 +12,15 @@ options:
 
 import sys
 import dataclasses
+import os
 
 
 def disabled_for_testing():
     # check if any module is loaded from PHARE tests directory
     from pathlib import Path
+
+    if "PHARE_SKIP_CLI" in os.environ:
+        return os.environ["PHARE_SKIP_CLI"] == "1"
 
     test_dir = Path(__file__).resolve().parent.parent.parent.parent / "tests"
     if test_dir.exists():
@@ -34,7 +38,7 @@ class CliArgs:
 
 
 def parse_cli_args():
-    default_off = len(sys.argv) == 1 and disabled_for_testing()
+    default_off = len(sys.argv) == 1 or disabled_for_testing()
     if default_off:
         return CliArgs()
 
