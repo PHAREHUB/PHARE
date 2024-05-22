@@ -335,7 +335,27 @@ Particle Diagnostics
 These diagnostics are used to write particle data to disk.
 They are typically much heavier than any other diagnostics.
 
+The block below declares a particle diagnostics so that "protons" are
+written to disk at the given timestamps.
+Note the `quantity="domain"` parameter. This is used to write all the particles
+living within the interior of the simulation patches.
 
+.. code-block:: python
+
+    from pyphare.pharein import ParticleDiagnostics
+
+    time_step_nbr = 1000
+    time_step = 0.001
+    final_time = time_step * time_step_nbr
+    dt = 10 * time_step
+    nt = final_time / dt + 1
+    timestamps = dt * np.arange(nt)
+
+    ph.ParticleDiagnostics(
+            quantity="domain",
+            population_name="protons",
+            write_timestamps=timestamps
+        )
 
 
 
