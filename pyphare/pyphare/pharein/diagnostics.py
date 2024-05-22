@@ -313,11 +313,10 @@ class ParticleDiagnostics(Diagnostics):
         )
 
     def _setSubTypeAttributes(self, **kwargs):
-        if kwargs["quantity"] not in ParticleDiagnostics.particle_quantities:
-            error_msg = "Error: '{}' not a valid particle diagnostics : " + ", ".join(
-                ParticleDiagnostics.particle_quantities
-            )
-            raise ValueError(error_msg.format(kwargs["quantity"]))
+
+        # domain is good default for users who should not worry about what that means
+        # even less about ghosts...
+        kwargs["quantity"] = kwargs.get("quantity", "domain")
 
         if kwargs["quantity"] not in ParticleDiagnostics.particle_quantities:
             error_msg = "Error: '{}' not a valid particle diagnostics : " + ", ".join(
