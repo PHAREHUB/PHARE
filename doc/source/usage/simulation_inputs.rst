@@ -359,8 +359,6 @@ living within the interior of the simulation patches.
 
 
 
-Meta-data Diagnostics
-^^^^^^^^^^^^^^^^^^^^^
 
 
 
