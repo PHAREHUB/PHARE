@@ -3,10 +3,10 @@
 # basically a harris run
 
 import unittest
+from ddt import data, ddt, unpack
 import pyphare.pharein as ph
 from pyphare.pharesee.hierarchy import hierarchy_compare
 from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
-
 
 from pyphare.simulator.simulator import Simulator, startMPI
 from tests.simulator import SimulatorTest
@@ -24,7 +24,7 @@ startMPI()
 ndim = 2
 interp = 1
 mpi_size = cpp.mpi_size()
-time_step_nbr = 2
+time_step_nbr = 3
 time_step = 0.001
 cells = (100, 100)
 dl = (0.2, 0.2)
@@ -197,6 +197,7 @@ def time_info(diag_dir, time=0):
     return per_rank
 
 
+@ddt
 class LoadBalancingTest(SimulatorTest):
     def tearDown(self):
         ph.global_vars.sim = None
@@ -207,37 +208,40 @@ class LoadBalancingTest(SimulatorTest):
         Simulator(config(diags_dir, dic)).run()
         return diags_dir
 
-    def test_has_balanced_auto(self):
+    @data(dict(auto=True, every=1))
+    @unpack
+    def test_raises(self, **lbkwargs):
+        if mpi_size == 1:  # doesn't make sense
+            return
+
+        with self.assertRaises(RuntimeError):
+            diag_dir = self.run_sim(
+                self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
+                dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
+            )
+            # does not get here
+
+    @data(
+        dict(auto=True),  # tolerance checks
+        dict(on_init=True, every=0),  # on init only
+        dict(on_init=True, every=1),
+        dict(on_init=False, auto=True, next_rebalance=1),
+        dict(on_init=False, every=1),
+    )
+    @unpack
+    def test_has_balanced(self, **lbkwargs):
         if mpi_size == 1:  # doesn't make sense
             return
 
         diag_dir = self.run_sim(
             self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
-            dict(active=True, auto=True, mode="nppc", tol=0.05),
+            dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
         )
 
-        if cpp.mpi_rank() > 0:
-            return
-
-        t0_sdev = np.std(list(time_info(diag_dir).values()))
-        tend_sdev = np.std(list(time_info(diag_dir, timestamps[-1]).values()))
-        self.assertLess(tend_sdev, t0_sdev * 0.1)  # empirical
-
-    def test_has_balanced_manual(self):
-        if mpi_size == 1:  # doesn't make sense
-            return
-
-        diag_dir = self.run_sim(
-            self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
-            dict(active=True, on_init=True, every=1, mode="nppc", tol=0.05),
-        )
-
-        if cpp.mpi_rank() > 0:
-            return
-
-        t0_sdev = np.std(list(time_info(diag_dir).values()))
-        tend_sdev = np.std(list(time_info(diag_dir, timestamps[-1]).values()))
-        self.assertLess(tend_sdev, t0_sdev * 0.1)  # empirical
+        if cpp.mpi_rank() == 0:
+            t0_sdev = np.std(list(time_info(diag_dir).values()))
+            tend_sdev = np.std(list(time_info(diag_dir, timestamps[-1]).values()))
+            self.assertLess(tend_sdev, t0_sdev * 0.1)  # empirical
 
     def test_has_not_balanced_as_defaults(self):
         if mpi_size == 1:  # doesn't make sense
@@ -247,12 +251,10 @@ class LoadBalancingTest(SimulatorTest):
             self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp)
         )
 
-        if cpp.mpi_rank() > 0:
-            return
-
-        t0_sdev = np.std(list(time_info(diag_dir).values()))
-        tend_sdev = np.std(list(time_info(diag_dir, timestamps[-1]).values()))
-        self.assertGreater(tend_sdev, t0_sdev * 0.1)  # empirical
+        if cpp.mpi_rank() == 0:
+            t0_sdev = np.std(list(time_info(diag_dir).values()))
+            tend_sdev = np.std(list(time_info(diag_dir, timestamps[-1]).values()))
+            self.assertGreater(tend_sdev, t0_sdev * 0.1)  # empirical
 
     def test_compare_is_and_is_not_balanced(self):
         if mpi_size == 1:  # doesn't make sense
