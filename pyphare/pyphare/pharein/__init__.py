@@ -226,7 +226,7 @@ def populateDict():
     add_double("simulation/algo/ohm/hyper_resistivity", simulation.hyper_resistivity)
 
     # load balancer block start
-    lb = simulation.load_balancer or LoadBalancer(_register=False)
+    lb = simulation.load_balancer or LoadBalancer(active=False, _register=False)
     base = "simulation/AMR/loadbalancing"
     add_bool(f"{base}/active", lb.active)
     add_string(f"{base}/mode", lb.mode)
