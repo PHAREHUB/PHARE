@@ -227,19 +227,30 @@ class Patch:
     A patch represents a hyper-rectangular region of space
     """
 
-    def __init__(self, patch_datas, patch_id=""):
+    def __init__(self, patch_datas, patch_id="", layout=None, attrs=None):
         """
         :param patch_datas: a list of PatchData objects
         these are assumed to "belong" to the Patch so to
         share the same origin, mesh size and box.
         """
-        pdata0 = list(patch_datas.values())[0]  # 0 represents all others
-        self.layout = pdata0.layout
-        self.box = pdata0.layout.box
-        self.origin = pdata0.layout.origin
-        self.dl = pdata0.layout.dl
-        self.patch_datas = patch_datas
-        self.id = patch_id
+        if layout is not None:
+            self.layout = layout
+            self.box = layout.box
+            self.origin = layout.origin
+            self.dl = layout.dl
+            self.patch_datas = patch_datas
+            self.id = patch_id
+
+        if len(patch_datas):
+            pdata0 = list(patch_datas.values())[0]  # 0 represents all others
+            self.layout = pdata0.layout
+            self.box = pdata0.layout.box
+            self.origin = pdata0.layout.origin
+            self.dl = pdata0.layout.dl
+            self.patch_datas = patch_datas
+            self.id = patch_id
+
+        self.attrs = attrs
 
     def __str__(self):
         return f"Patch: box( {self.box}), id({self.id})"
@@ -1415,10 +1426,10 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         if not silent:
             print("creating hierarchy from all times in file")
         times = list(data_file[h5_time_grp_key].keys())
-        hier = hierarchy_fromh5(h5_filename, time=times[0], hier=hier)
+        hier = hierarchy_fromh5(h5_filename, time=times[0], hier=hier, silent=silent)
         if len(times) > 1:
             for t in times[1:]:
-                hierarchy_fromh5(h5_filename, t, hier)
+                hierarchy_fromh5(h5_filename, t, hier, silent=silent)
         return hier
 
     if create_from_one_time(time, hier):
@@ -1441,16 +1452,21 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
             for pkey in h5_patch_lvl_grp.keys():
                 h5_patch_grp = h5_patch_lvl_grp[pkey]
 
+                patch_datas = {}
+                layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
                 if patch_has_datasets(h5_patch_grp):
-                    patch_datas = {}
-                    layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
                     add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
 
-                    patches[ilvl].append(
-                        Patch(patch_datas, h5_patch_grp.name.split("/")[-1])
+                patches[ilvl].append(
+                    Patch(
+                        patch_datas,
+                        h5_patch_grp.name.split("/")[-1],
+                        layout=layout,
+                        attrs={k: v for k, v in h5_patch_grp.attrs.items()},
                     )
+                )
 
-                    patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
+            patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
         diag_hier = PatchHierarchy(
             patch_levels, domain_box, refinement_ratio, t, data_file
@@ -1517,11 +1533,18 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
             for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
                 h5_patch_grp = h5_time_grp[plvl_key][pkey]
 
+                layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
+                patch_datas = {}
                 if patch_has_datasets(h5_patch_grp):
-                    layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
-                    patch_datas = {}
                     add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
-                    lvl_patches.append(Patch(patch_datas))
+                lvl_patches.append(
+                    Patch(
+                        patch_datas,
+                        h5_patch_grp.name.split("/")[-1],
+                        layout=layout,
+                        attrs={k: v for k, v in h5_patch_grp.attrs.items()},
+                    )
+                )
 
             patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
 
@@ -1532,7 +1555,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
         if not silent:
             print("loading all times in existing hier")
         for time in data_file[h5_time_grp_key].keys():
-            hier = hierarchy_fromh5(h5_filename, time, hier)
+            hier = hierarchy_fromh5(h5_filename, time, hier, silent=silent)
 
         return hier
 

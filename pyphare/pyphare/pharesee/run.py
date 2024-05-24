@@ -405,6 +405,10 @@ class Run:
             return hier
         return self._get_hierarchy(time, filename(pop_name), hier=hier)
 
+    def GetParticleCount(self, time):
+        c = self._get_hierarchy(time, "particle_count.h5")
+        return c
+
     def GetMass(self, pop_name):
         list_of_qty = ["density", "flux", "domain", "levelGhost", "patchGhost"]
         list_of_mass = []
