@@ -17,7 +17,8 @@ from pyphare.pharein.diagnostics import (
 )
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
-from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
+from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import all_timestamps

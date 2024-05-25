@@ -245,7 +245,7 @@ def finest_field_plot(run_path, qty, **kwargs):
     """
 
     import os
-    from pyphare.pharesee.hierarchy import get_times_from_h5
+    from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
     from pyphare.pharesee.run import Run
     from mpl_toolkits.axes_grid1 import make_axes_locatable
     import pyphare.core.gridlayout as gridlayout

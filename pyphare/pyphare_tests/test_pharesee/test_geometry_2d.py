@@ -1,19 +1,11 @@
 import unittest
 import numpy as np
 from ddt import ddt, data, unpack
-import pyphare.core.box as boxm
 from pyphare.core.box import Box, Box2D
-from pyphare.core.phare_utilities import listify
-from pyphare.pharesee.particles import Particles
-from pyphare.pharesee.hierarchy import FieldData
-from pyphare.pharesee.hierarchy import ParticleData
-from pyphare.pharesee.hierarchy import PatchHierarchy
-from pyphare.pharesee.hierarchy import Patch, PatchLevel
 from pyphare.pharesee.geometry import (
     level_ghost_boxes,
     hierarchy_overlaps,
     touch_domain_border,
-    toFieldBox,
     ghost_area_boxes,
     get_periodic_list,
 )

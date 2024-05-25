@@ -16,7 +16,8 @@ from pyphare.pharein.diagnostics import (
 )
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import level_ghost_boxes
-from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
+from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
+from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 from pyphare.simulator.simulator import Simulator
 
@@ -718,7 +719,11 @@ class InitializationTest(SimulatorTest):
                 ]
             )
         )
-        self.assertTrue((1 in datahier.levels()) == has_patch_ghost)
+        nbrPatchGhostPatchDatasOnL1 = sum(
+            [len(p.patch_datas) for p in datahier.patch_levels[1].patches]
+        )
+
+        self.assertTrue((nbrPatchGhostPatchDatasOnL1 > 0) == has_patch_ghost)
 
     def _test_levelghostparticles_have_correct_split_from_coarser_particle(
         self, datahier

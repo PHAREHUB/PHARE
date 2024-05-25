@@ -1,11 +1,10 @@
 import os
 import numpy as np
 
-from .hierarchy import (
-    compute_hier_from,
-    flat_finest_field,
-    hierarchy_from,
-)
+from .hierarchy.hierarchy_utils import compute_hier_from
+from .hierarchy.hierarchy_utils import flat_finest_field
+from .hierarchy import hierarchy_from
+
 from pyphare.logger import getLogger
 
 logger = getLogger(__name__)
