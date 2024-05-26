@@ -23,7 +23,7 @@ reviews:
   collapse_walkthrough: true
   path_filters: []
   path_instructions:
-    - path: '**.hpp'
+    - path: '**/*.hpp'
       instructions: >-
         Review the C++ code, point out issues relative to principles of clean
         code, expressiveness, and performance.
