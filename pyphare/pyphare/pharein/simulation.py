@@ -5,9 +5,6 @@ from ..core import phare_utilities
 from . import global_vars
 from ..core import box as boxm
 from ..core.box import Box
-from ..core import parse_cli_args
-
-CLI_ARGS = parse_cli_args()
 
 
 # ------------------------------------------------------------------------------
@@ -611,6 +608,8 @@ def checker(func):
             "restart_options",
             "tag_buffer",
             "description",
+            "dry_run",
+            "write_reports",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -677,8 +676,12 @@ def checker(func):
 
         kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
 
-        # kwargs["dry_run"] = CLI_ARGS.dry_run
-        # kwargs["write_reports"] = CLI_ARGS.reports
+        kwargs["dry_run"] = kwargs.get(
+            "dry_run", os.environ.get("PHARE_DRY_RUN", "0") == "1"
+        )
+        kwargs["write_reports"] = kwargs.get(  # on by default except for tests
+            "write_reports", os.environ.get("PHARE_TESTING", "0") != "1"
+        )
 
         return func(simulation_object, **kwargs)
 
