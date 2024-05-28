@@ -35,7 +35,7 @@ def dist_plot(particles, **kwargs):
     return value : fig,ax
     """
     from pyphare.pharesee.particles import Particles, aggregate
-    from scipy.interpolate import interp2d
+    from scipy.interpolate import LinearNDInterpolator
 
     if isinstance(particles, list):
         particles = aggregate(particles)
@@ -139,7 +139,8 @@ def dist_plot(particles, **kwargs):
         xbins = 0.5 * (xh[1:] + xh[:-1])
         ybins = 0.5 * (yh[1:] + yh[:-1])
         xx, yy = np.meshgrid(xbins, ybins, indexing="ij")
-        interpdist = interp2d(xx, yy, image.T)
+        coords = np.array([xx.flatten(), yy.flatten()]).T
+        interpdist = LinearNDInterpolator(coords, image.flatten())
         return fig, ax, interpdist, xbins, ybins
 
     return fig, ax
