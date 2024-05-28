@@ -150,7 +150,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     set_property(TEST ${binary}        PROPERTY ENVIRONMENT "PYTHONPATH=${PHARE_PYTHONPATH}")
     # ASAN detects leaks by default, even in system/third party libraries
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
-    set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT PHARE_SKIP_CLI=1 )
+    set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT PHARE_TESTING=1 )
   endfunction(set_exe_paths_)
 
   function(add_phare_test_ binary directory)

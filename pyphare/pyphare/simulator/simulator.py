@@ -8,7 +8,6 @@ import time as timem
 import numpy as np
 import pyphare.pharein as ph
 
-CLI_ARGS = ph.simulation.CLI_ARGS
 
 life_cycles = {}
 
@@ -63,12 +62,11 @@ class Simulator:
         # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
         try:
             from pyphare.cpp import cpp_lib
+            import pyphare.cpp.validate as validate_cpp
 
             startMPI()
 
-            import pyphare.cpp.validate as validate_cpp
-
-            if all([not CLI_ARGS.dry_run, CLI_ARGS.write_reports]):
+            if all([not self.simulation.dry_run, self.simulation.write_reports]):
                 # not necessary during testing
                 validate_cpp.log_runtime_config()
             validate_cpp.check_build_config_is_runtime_compatible()
@@ -102,7 +100,7 @@ class Simulator:
             if self.cpp_hier is None:
                 self.setup()
 
-            if CLI_ARGS.dry_run:
+            if self.simulation.dry_run:
                 return self
 
             self.cpp_sim.initialize()
@@ -128,7 +126,7 @@ class Simulator:
 
     def advance(self, dt=None):
         self._check_init()
-        if CLI_ARGS.dry_run:
+        if self.simulation.dry_run:
             return self
         if dt is None:
             dt = self.timeStep()
@@ -155,7 +153,7 @@ class Simulator:
         from pyphare.cpp import cpp_lib
 
         self._check_init()
-        if CLI_ARGS.dry_run:
+        if self.simulation.dry_run:
             return self
         perf = []
         end_time = self.cpp_sim.endTime()
