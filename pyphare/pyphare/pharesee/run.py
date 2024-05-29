@@ -3,10 +3,6 @@ import numpy as np
 
 import pyphare.pharein as ph
 
-# from pyphare.pharesee.hierarchy import compute_hier_from
-# from pyphare.pharesee.hierarchy import ScalarField, VectorField
-# from .hierarchy import flat_finest_field, hierarchy_from
-
 from pyphare.pharesee.hierarchy import (
     compute_hier_from,
     flat_finest_field,
@@ -14,6 +10,8 @@ from pyphare.pharesee.hierarchy import (
     ScalarField,
     VectorField,
 )
+
+from pyphare.core.gridlayout import yee_centering
 
 
 def _current1d(by, bz, xby, xbz):
@@ -139,9 +137,161 @@ def _compute_divB(patchdatas, **kwargs):
         raise RuntimeError("dimension not implemented")
 
 
+def _ppp_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (primal,primal,primal) to (primal,primal,primal)
+    centering that is the centering of moments on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, _, _ = _inner_slices(nb_ghosts)
+
+    if ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_all,)
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
+def _pdd_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,primal,primal) to (primal,primal,primal)
+    centering that is the centering of Bx on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+
+    if ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, ((inner, inner_shift_left),
+                           (inner, inner_shift_right))
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
+def _dpd_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,primal,primal) to (primal,primal,primal)
+    centering that is the centering of By on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+
+    if ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, ((inner_shift_left, inner),
+                           (inner_shift_right, inner))
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
+def _ddp_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,primal,primal) to (primal,primal,primal)
+    centering that is the centering of Bz on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+
+    if ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, ((inner_shift_left, inner_shift_left),
+                           (inner_shift_left, inner_shift_right),
+                           (inner_shift_right, inner_shift_left),
+                           (inner_shift_right, inner_shift_right))
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
+def _dpp_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,primal,primal) to (primal,primal,primal)
+    centering that is the centering of Ex on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+
+    if ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, ((inner_shift_left, inner),
+                           (inner_shift_right, inner))
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
+def _pdp_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,primal,primal) to (primal,primal,primal)
+    centering that is the centering of Ey on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+
+    if ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, ((inner, inner_shift_left),
+                           (inner, inner_shift_right))
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
+def _ppd_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,primal,primal) to (primal,primal,primal)
+    centering that is the centering of Ez on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, _, _ = _inner_slices(nb_ghosts)
+
+    if ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_all,)
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
+slices_to_primal_ = {"primal_primal_primal": _ppp_to_ppp_domain_slicing,
+                     "primal_dual_dual": _pdd_to_ppp_domain_slicing,
+                     "dual_primal_dual": _dpd_to_ppp_domain_slicing,
+                     "dual_dual_primal": _ddp_to_ppp_domain_slicing,
+                     "dual_primal_primal": _dpp_to_ppp_domain_slicing,
+                     "primal_dual_primal": _pdp_to_ppp_domain_slicing,
+                     "primal_primal_dual": _ppd_to_ppp_domain_slicing,
+                     }
+
+
+def merge_centerings(pdname):
+    from pyphare.core.gridlayout import directions
+    return "_".join([yee_centering[d][pdname] for d in directions])
+
+
+def slices_to_primal(pdname, **kwargs):
+    return slices_to_primal_[merge_centerings(pdname)](**kwargs)
+
+
 def _compute_to_primal(patchdatas, **kwargs):
     """
-    thecreated  datasets have NaN in their ghosts... might need to be properly filled
+    datasets have NaN in their ghosts... might need to be properly filled
     with their neighbors already properly projected on primal
     """
 
@@ -168,42 +318,18 @@ def _compute_to_primal(patchdatas, **kwargs):
         ds_all_primal = np.full(ds_shape, np.nan)
         ds_ = np.zeros(ds_shape)
 
-        if pd_name in ["Fx", "Fy", "Fz", "Vx", "Vy", "Vz", "rho", "tags"]:
-            ds_all_primal = np.asarray(patchdatas[pd_name].dataset)
-        elif pd_name == "Bx":
-            inner, chunks = _pdd_to_ppp_domain_slicing(nb_ghosts, ndim)
-            for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-            ds_all_primal[inner] = ds_[inner]
-        elif pd_name == "By":
-            inner, chunks = _dpd_to_ppp_domain_slicing(nb_ghosts, ndim)
-            for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-            ds_all_primal[inner] = ds_[inner]
-        elif pd_name == "Bz":
-            inner, chunks = _ddp_to_ppp_domain_slicing(nb_ghosts, ndim)
-            for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-            ds_all_primal[inner] = ds_[inner]
-        elif pd_name in ["Ex", "Jx"]:
-            inner, chunks = _dpp_to_ppp_domain_slicing(nb_ghosts, ndim)
-            for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-            ds_all_primal[inner] = ds_[inner]
-        elif pd_name in ["Ey", "Jy"]:
-            inner, chunks = _pdp_to_ppp_domain_slicing(nb_ghosts, ndim)
-            for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-            ds_all_primal[inner] = ds_[inner]
-        elif pd_name in ["Ez", "Jz"]:
-            inner, chunks = _ppd_to_ppp_domain_slicing(nb_ghosts, ndim)
-            for chunk in chunks:
-                ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-            ds_all_primal[inner] = ds_[inner]
-        else:
-            raise RuntimeError("patchdata name unknown")
+        inner, chunks = slices_to_primal(pd_name,
+                                         nb_ghosts=nb_ghosts,
+                                         ndim=ndim)
 
-        pd_attrs.append({"name": name, "data": ds_all_primal, "centering": centerings})
+
+        for chunk in chunks:
+            ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
+        ds_all_primal[inner] = ds_[inner]
+
+        pd_attrs.append({"name": name,
+                         "data": ds_all_primal,
+                         "centering": centerings})
 
     return tuple(pd_attrs)
 
@@ -216,101 +342,6 @@ def _inner_slices(nb_ghosts):
     return inner, inner_shift_left, inner_shift_right
 
 
-def _pdd_to_ppp_domain_slicing(nb_ghosts, ndim):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Bx on a Yee grid
-    """
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 2:
-        inner_all = tuple([inner] * 2)
-        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _dpd_to_ppp_domain_slicing(nb_ghosts, ndim):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of By on a Yee grid
-    """
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 2:
-        inner_all = tuple([inner] * 2)
-        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _ddp_to_ppp_domain_slicing(nb_ghosts, ndim):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Bz on a Yee grid
-    """
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 2:
-        inner_all = tuple([inner] * 2)
-        return inner_all, (
-            (inner_shift_left, inner_shift_left),
-            (inner_shift_left, inner_shift_right),
-            (inner_shift_right, inner_shift_left),
-            (inner_shift_right, inner_shift_right),
-        )
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _dpp_to_ppp_domain_slicing(nb_ghosts, ndim):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ex on a Yee grid
-    """
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 2:
-        inner_all = tuple([inner] * 2)
-        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _pdp_to_ppp_domain_slicing(nb_ghosts, ndim):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ey on a Yee grid
-    """
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 2:
-        inner_all = tuple([inner] * 2)
-        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _ppd_to_ppp_domain_slicing(nb_ghosts, ndim):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ez on a Yee grid
-    """
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 2:
-        inner_all = tuple([inner] * 2)
-        return inner_all, ((inner, inner),)
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
 def _get_rank(patchdatas, **kwargs):
     """
     make a field dataset cell centered coding the MPI rank
@@ -318,7 +349,7 @@ def _get_rank(patchdatas, **kwargs):
     """
     from pyphare.core.box import grow
 
-    reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
+    reference_pd = patchdatas["Bx"]  # Bx as a ref, but could be any other
     ndim = reference_pd.box.ndim
     pid = kwargs["id"]
 
