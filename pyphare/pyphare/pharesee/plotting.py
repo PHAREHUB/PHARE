@@ -140,7 +140,7 @@ def dist_plot(particles, **kwargs):
         ybins = 0.5 * (yh[1:] + yh[:-1])
         xx, yy = np.meshgrid(xbins, ybins, indexing="ij")
         coords = np.array([xx.flatten(), yy.flatten()]).T
-        interpdist = LinearNDInterpolator(coords, image.flatten())
+        interpdist = LinearNDInterpolator(coords, image.T.flatten())
         return fig, ax, interpdist, xbins, ybins
 
     return fig, ax
