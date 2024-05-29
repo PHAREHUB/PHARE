@@ -65,6 +65,13 @@ set( SOURCES_INC
      level_initializer/hybrid_level_initializer.hpp
      level_initializer/level_initializer_factory.hpp
      data/field/field_variable_fill_pattern.hpp
+     load_balancing/load_balancer_manager.hpp
+     load_balancing/load_balancer_estimator.hpp
+     load_balancing/load_balancer_estimator_hybrid.hpp
+     load_balancing/load_balancer_hybrid_strategy_factory.hpp
+     load_balancing/load_balancer_hybrid_strategy.hpp
+     load_balancing/concrete_load_balancer_hybrid_strategy_homogeneous.hpp
+     load_balancing/concrete_load_balancer_hybrid_strategy_nppc.hpp
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp
@@ -77,7 +84,7 @@ add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
-target_link_directories(${PROJECT_NAME} PUBLIC MPI::MPI_C)
+target_link_directories(${PROJECT_NAME} PUBLIC ${MPI_LIBRARY_PATH})
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_core
   SAMRAI_algs
