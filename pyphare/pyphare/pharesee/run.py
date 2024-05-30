@@ -315,13 +315,18 @@ def _compute_to_primal(patchdatas, **kwargs):
             if pd.centerings[i] == "dual":
                 ds_shape[i] += 1
 
+        # should be something else than nan values when the ghosts cells
+        # will be filled with correct values coming from the neighbors
         ds_all_primal = np.full(ds_shape, np.nan)
         ds_ = np.zeros(ds_shape)
 
+        # inner is the slice containing the points that are updated
+        # in the all_primal dataset
+        # chunks is a tupls of all the slices coming from the initial dataset
+        # that are needed to calculate the average for the all_primal dataset
         inner, chunks = slices_to_primal(pd_name,
                                          nb_ghosts=nb_ghosts,
                                          ndim=ndim)
-
 
         for chunk in chunks:
             ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
@@ -577,21 +582,12 @@ class Run:
 
     def GetNi(self, time, merged=False, interp="nearest", all_primal=True):
         hier = self._get_hierarchy(time, "ions_density.h5")
-        if not all_primal:
-            return self._get(hier, time, merged, interp)
+        # if not all_primal:
+        #     return self._get(hier, time, merged, interp)
 
-        h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
-        return ScalarField(
-            h.patch_levels,
-            h.domain_box,
-            refinement_ratio=h.refinement_ratio,
-            time=time,
-            data_files=h.data_files,
-        )
+        # h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
 
-    def GetN(self, time, pop_name, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5")
-        # return self._get(hier, time, merged, interp)
+        return ScalarField(hier)
         return ScalarField(
             hier.patch_levels,
             hier.domain_box,
@@ -599,6 +595,18 @@ class Run:
             time=time,
             data_files=hier.data_files,
         )
+
+    def GetN(self, time, pop_name, merged=False, interp="nearest"):
+        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5")
+        # return self._get(hier, time, merged, interp)
+        return ScalarField(hier, time)
+        # return ScalarField(
+        #     hier.patch_levels,
+        #     hier.domain_box,
+        #     refinement_ratio=hier.refinement_ratio,
+        #     time=time,
+        #     data_files=hier.data_files,
+        # )
 
     def GetVi(self, time, merged=False, interp="nearest"):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5")
@@ -642,28 +650,25 @@ class Run:
         return self._get(Pi, time, merged, interp)
 
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
-        # # TODO Te should come from the run... as an attribute of a hierarchy ?
-        # Te = 1.0
         hier = self._get_hierarchy(time, "ions_density.h5")
 
-        # sim = ph.simulation.deserialize(hier.data_files["py_attrs"].attrs["serialized_simulation"])
-        # Te = sim.electrons.closure.Te
         Te = hier.sim.electrons.closure.Te
 
         if not all_primal:
             return Te * self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
-        return (
-            ScalarField(
-                h.patch_levels,
-                h.domain_box,
-                refinement_ratio=h.refinement_ratio,
-                time=time,
-                data_files=h.data_files,
-            )
-            * Te
-        )
+        return ScalarField(h, time)*Te
+        # return (
+        #     ScalarField(
+        #         h.patch_levels,
+        #         h.domain_box,
+        #         refinement_ratio=h.refinement_ratio,
+        #         time=time,
+        #         data_files=h.data_files,
+        #     )
+        #     * Te
+        # )
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True):
         B = self.GetB(time, all_primal=False)

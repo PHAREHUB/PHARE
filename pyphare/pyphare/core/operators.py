@@ -16,17 +16,17 @@ def _compute_dot_product(patch_datas, **kwargs):
     )
 
     return (
-        {"name": "scalar", "data": dset, "centering": patch_datas[ref_name].centerings},
+        {"name": "value", "data": dset, "centering": patch_datas[ref_name].centerings},
     )
 
 
 def _compute_sqrt(patch_datas, **kwargs):
     ref_name = next(iter(patch_datas.keys()))
 
-    dset = np.sqrt(patch_datas["scalar"].dataset[:])
+    dset = np.sqrt(patch_datas["value"].dataset[:])
 
     return (
-        {"name": "scalar", "data": dset, "centering": patch_datas[ref_name].centerings},
+        {"name": "value", "data": dset, "centering": patch_datas[ref_name].centerings},
     )
 
 
@@ -54,9 +54,9 @@ def _compute_cross_product(patch_datas, **kwargs):
 
 
 def _compute_grad(patch_data, **kwargs):
-    ndim = patch_data["scalar"].box.ndim
+    ndim = patch_data["value"].box.ndim
     nb_ghosts = kwargs["nb_ghosts"]
-    ds = patch_data["scalar"].dataset
+    ds = patch_data["value"].dataset
 
     ds_shape = list(ds.shape)
 
@@ -81,9 +81,9 @@ def _compute_grad(patch_data, **kwargs):
         raise RuntimeError("dimension not yet implemented")
 
     return (
-        {"name": "x", "data": ds_x, "centering": patch_data["scalar"].centerings},
-        {"name": "y", "data": ds_y, "centering": patch_data["scalar"].centerings},
-        {"name": "z", "data": ds_z, "centering": patch_data["scalar"].centerings},
+        {"name": "x", "data": ds_x, "centering": patch_data["value"].centerings},
+        {"name": "y", "data": ds_y, "centering": patch_data["value"].centerings},
+        {"name": "z", "data": ds_z, "centering": patch_data["value"].centerings},
     )
 
 
@@ -109,13 +109,14 @@ def dot(hier_left, hier_right, **kwargs):
     # hier_left = rename(hl, names_left_kept)
     # hier_right = rename(hr, names_right_kept)
 
-    return ScalarField(
-        h.patch_levels,
-        h.domain_box,
-        refinement_ratio=h.refinement_ratio,
-        time=h.times()[0],
-        data_files=h.data_files,
-    )
+    return ScalarField(h)
+    # return ScalarField(
+    #     h.patch_levels,
+    #     h.domain_box,
+    #     refinement_ratio=h.refinement_ratio,
+    #     time=h.times()[0],
+    #     data_files=h.data_files,
+    # )
 
 
 def cross(hier_left, hier_right, **kwargs):
@@ -155,13 +156,14 @@ def sqrt(hier, **kwargs):
         hier,
     )
 
-    return ScalarField(
-        h.patch_levels,
-        h.domain_box,
-        refinement_ratio=h.refinement_ratio,
-        time=h.times()[0],
-        data_files=h.data_files,
-    )
+    return ScalarField(h)
+    # return ScalarField(
+    #     h.patch_levels,
+    #     h.domain_box,
+    #     refinement_ratio=h.refinement_ratio,
+    #     time=h.times()[0],
+    #     data_files=h.data_files,
+    # )
 
 
 def modulus(hier):

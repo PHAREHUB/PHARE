@@ -606,10 +606,20 @@ class PatchHierarchy(object):
         data_files=None,
         **kwargs,
     ):
+        times = time
+        if not isinstance(times, (list, tuple)):
+            times = listify(time)
+
+        if not isinstance(patch_levels, (list, tuple)):
+            patch_levels = listify(patch_levels)
+
+        assert len(times) == len(patch_levels)
+
         self.patch_levels = patch_levels
         self.ndim = len(domain_box.lower)
         self.time_hier = {}
-        self.time_hier.update({self.format_timestamp(time): patch_levels})
+        # self.time_hier.update({self.format_timestamp(time): patch_levels})
+        self.time_hier.update({self.format_timestamp(t): pl for t, pl in zip(times, patch_levels)})
 
         self.domain_box = domain_box
         self.refinement_ratio = refinement_ratio
@@ -1139,28 +1149,51 @@ class PatchHierarchy(object):
         )
 
 
+def compute_rename(patch_datas, **kwargs):
+    new_names = kwargs["new_names"]
+    pd_attrs = []
+
+    for new_name, pd_name in zip(new_names, patch_datas):
+        pd_attrs.append(
+            {
+                "name": new_name,
+                "data": patch_datas[pd_name].dataset,
+                "centering": patch_datas[pd_name].centerings,
+            }
+        )
+
+    return tuple(pd_attrs)
+
+
 class ScalarField(PatchHierarchy):
-    # name = 'scalar'
 
-    def __init__(self, patch_levels, domain_box, **kwargs):
-        refinement_ratio = kwargs.get("refinement_ratio", 2)
-        time = kwargs.get("time", 0.0)
-        data_files = kwargs.get("data_files", None)
+    # def __init__(self, patch_levels, domain_box, **kwargs):
+    def __init__(self, hier):
+        # refinement_ratio = kwargs.get("refinement_ratio", 2)
+        # time = kwargs.get("time", 0.0)
+        # data_files = kwargs.get("data_files", None)
+        renamed_hier = compute_hier_from(compute_rename, hier, new_names=("value",))
+        patch_levels = renamed_hier.patch_levels
+        domain_box = renamed_hier.domain_box
+        refinement_ratio = renamed_hier.refinement_ratio
+        data_files = renamed_hier.data_files
 
-        super().__init__(patch_levels, domain_box, refinement_ratio, time, data_files)
+        super().__init__(patch_levels, domain_box, refinement_ratio, renamed_hier.times(), data_files)
 
     def __mul__(self, other):
         assert isinstance(other, (int, float))
 
-        h = compute_hier_from(_compute_mul, self, names=self.get_names(), other=other)
+        # h = compute_hier_from(_compute_mul, self, names=self.get_names(), other=other)
+        h = compute_hier_from(_compute_mul, self, names=("value",), other=other)
 
-        return ScalarField(
-            h.patch_levels,
-            h.domain_box,
-            refinement_ratio=h.refinement_ratio,
-            time=h.times()[0],
-            data_files=h.data_files,
-        )
+        return ScalarField(h)
+        # return ScalarField(
+        #     h.patch_levels,
+        #     h.domain_box,
+        #     refinement_ratio=h.refinement_ratio,
+        #     time=h.times()[0],
+        #     data_files=h.data_files,
+        # )
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -1251,12 +1284,22 @@ class VectorField(PatchHierarchy):
         )
 
     def __truediv__(self, other):
-        if isinstance(other, ScalarField):
-            names = self.get_names()
-        else:
+        # if isinstance(other, ScalarField):
+        #     pass
+        #     # names = self.get_names()
+        # else:
+        #     raise RuntimeError("type of hierarchy not yet considered")
+
+        if not isinstance(other, (ScalarField, int, float)): 
             raise RuntimeError("type of hierarchy not yet considered")
 
-        h = compute_hier_from(_compute_truediv, (self, other), names=names)
+        
+        if isinstance(other, ScalarField): 
+            h = compute_hier_from(_compute_truediv, (self, other), res_names=("x", "y", "z"))
+            return VectorField(h)
+        elif isinstance(other, (int, float)):
+            pass
+
 
         return VectorField(
             h.patch_levels,
@@ -1272,12 +1315,12 @@ def _compute_mul(patch_datas, **kwargs):
     other = kwargs["other"]
     pd_attrs = []
 
-    for name in names:
+    for name, pd_name in zip(names, patch_datas):
         pd_attrs.append(
             {
                 "name": name,
-                "data": other * patch_datas[name].dataset,
-                "centering": patch_datas[name].centerings,
+                "data": other * patch_datas[pd_name].dataset[:],
+                "centering": patch_datas[pd_name].centerings,
             }
         )
 
@@ -1329,14 +1372,19 @@ def _compute_neg(patch_datas, **kwargs):
 
 
 def _compute_truediv(patch_datas, **kwargs):
-    names = kwargs["names"]
+    names = kwargs["res_names"]
     pd_attrs = []
 
-    for name in names:
+    # the denominator is a scalar field which name is "value"
+    # hence the associated patchdata has to be removed from the list
+    # of patchdata from the vectorField of the numerator
+    left_ops = {k:v for k,v in patch_datas.items() if k != "value"}
+    right_op = patch_datas["value"]
+    for name, left_op in zip(names, left_ops.values()):
         pd_attrs.append(
             {
                 "name": name,
-                "data": patch_datas[name].dataset / patch_datas["scalar"].dataset,
+                "data": left_op.dataset / right_op.dataset,
                 "centering": patch_datas[name].centerings,
             }
         )
@@ -1549,11 +1597,11 @@ def are_compatible_hierarchies(hierarchies):
     return True
 
 
-def extract_patchdatas(hierarchies, ilvl, ipatch):
+def extract_patchdatas(hierarchies, ilvl, ipatch, t):
     """
     returns a dict {patchdata_name:patchdata} from a list of hierarchies for patch ipatch at level ilvl
     """
-    patches = [h.patch_levels[ilvl].patches[ipatch] for h in hierarchies]
+    patches = [h.level(ilvl,t).patches[ipatch] for h in hierarchies]
     patch_datas = {
         pdname: pd for p in patches for pdname, pd in list(p.patch_datas.items())
     }
@@ -1569,14 +1617,14 @@ def new_patchdatas_from(compute, patchdatas, layout, **kwargs):
     return new_patch_datas
 
 
-def new_patches_from(compute, hierarchies, ilvl, **kwargs):
+def new_patches_from(compute, hierarchies, ilvl,t, **kwargs):
     reference_hier = hierarchies[0]
     new_patches = []
-    patch_nbr = len(reference_hier.patch_levels[ilvl].patches)
+    patch_nbr = len(reference_hier.level(ilvl, t).patches)
     for ip in range(patch_nbr):
-        current_patch = reference_hier.patch_levels[ilvl].patches[ip]
+        current_patch = reference_hier.level(ilvl, t).patches[ip]
         layout = current_patch.layout
-        patch_datas = extract_patchdatas(hierarchies, ilvl, ip)
+        patch_datas = extract_patchdatas(hierarchies, ilvl, ip, t)
         new_patch_datas = new_patchdatas_from(compute, patch_datas, layout, **kwargs)
         new_patches.append(Patch(new_patch_datas, current_patch.id))
     return new_patches
@@ -1592,11 +1640,12 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     hierarchies = listify(hierarchies)
     reference_hier = hierarchies[0]
     domain_box = reference_hier.domain_box
-    patch_levels = {}
-    for ilvl in range(reference_hier.levelNbr()):
-        patch_levels[ilvl] = PatchLevel(
-            ilvl, new_patches_from(compute, hierarchies, ilvl, **kwargs)
-        )
+    patch_levels = [{}]*len(reference_hier.times())
+    for it, t in enumerate(reference_hier.times()):
+        for ilvl in range(reference_hier.levelNbr()):
+            patch_levels[it][ilvl] = PatchLevel(
+                ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
+            )
 
     assert len(reference_hier.time_hier) == 1  # only single time hierarchies now
     t = list(reference_hier.time_hier.keys())[0]
