@@ -357,7 +357,8 @@ class AdvanceTestBase(SimulatorTest):
 
             overlaps = hierarchy_overlaps(datahier, coarsest_time)
 
-            for ilvl, lvl in datahier.patch_levels.items():
+            # should it be levels(coarsest_time)?
+            for ilvl, lvl in datahier.levels().items():
                 print("testing level {}".format(ilvl))
                 for overlap in overlaps[ilvl]:
                     pd1, pd2 = overlap["pdatas"]

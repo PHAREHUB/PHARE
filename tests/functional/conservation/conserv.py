@@ -131,10 +131,10 @@ def total_particles(parts, fun, lvlNbr=0, **kwargs):
     quantity on a given level, quantity being estimated
     by the callback "fun" (could be kinetic energy, momentum, et.)
     """
-    for ilvl, lvl in parts.patch_levels.items():
+    tot = 0.0
+    for ilvl, lvl in parts.levels().items():
         if lvlNbr == ilvl:
-            tot = 0.0
-            for ip, patch in enumerate(lvl.patches):
+            for patch in lvl.patches:
                 keys = list(patch.patch_datas.keys())
                 pdata = patch.patch_datas[keys[0]]
                 particles = pdata.dataset
@@ -151,7 +151,7 @@ def mag_energy(B, lvlNbr=0):
     """
     return the total magnetic energy on a given level
     """
-    for ilvl, lvl in B.patch_levels.items():
+    for ilvl, lvl in B.levels().items():
         if lvlNbr == ilvl:
             tot = 0.0
             for ip, patch in enumerate(lvl.patches):
@@ -172,9 +172,7 @@ def mag_energy(B, lvlNbr=0):
                 bz = 0.5 * (bztmp[1:] + bztmp[:-1])
 
                 # sum 0.5B^2 * dx over all nodes
-                per_patch = np.sum(
-                    (bx**2 + by**2 + bz**2) * 0.5 * pdata.layout.dl[0]
-                )
+                per_patch = np.sum((bx**2 + by**2 + bz**2) * 0.5 * pdata.layout.dl[0])
                 tot += per_patch
         return tot
 

@@ -720,7 +720,7 @@ class InitializationTest(SimulatorTest):
             )
         )
         nbrPatchGhostPatchDatasOnL1 = sum(
-            [len(p.patch_datas) for p in datahier.patch_levels[1].patches]
+            [len(p.patch_datas) for p in datahier.level(1).patches]
         )
 
         self.assertTrue((nbrPatchGhostPatchDatasOnL1 > 0) == has_patch_ghost)

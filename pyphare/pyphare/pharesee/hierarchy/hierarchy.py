@@ -32,6 +32,9 @@ class PatchHierarchy(object):
             selection_box = kwargs["selection_box"]
             if not isinstance(selection_box, (tuple, list)):
                 selection_box = listify(selection_box)
+            self.selection_box = {
+                self.format_timestamp(t): box for t, box in zip(times, selection_box)
+            }
             assert len(times) == len(selection_box)
 
         assert len(times) == len(patch_levels)
@@ -45,9 +48,6 @@ class PatchHierarchy(object):
 
         self.domain_box = domain_box
         self.refinement_ratio = refinement_ratio
-        self.selection_box = {
-            self.format_timestamp(t): box for t, box in zip(times, selection_box)
-        }
 
         self.data_files = {}
         self._sim = None

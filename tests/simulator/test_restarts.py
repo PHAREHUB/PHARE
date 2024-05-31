@@ -155,8 +155,8 @@ class RestartsTest(SimulatorTest):
         def count_levels_and_patches(qty):
             n_levels = len(qty.levels())
             n_patches = 0
-            for ilvl, lvl in qty.patch_levels.items():
-                n_patches += len(qty.patch_levels[ilvl].patches)
+            for ilvl in qty.levels().keys():
+                n_patches += len(qty.level(ilvl).patches)
             return n_levels, n_patches
 
         self.assertGreater(len(timestamps), 0)
