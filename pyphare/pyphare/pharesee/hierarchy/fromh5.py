@@ -10,6 +10,7 @@ from ...core.box import Box
 from ...core.phare_utilities import refinement_ratio
 from ...core.gridlayout import GridLayout
 from .hierarchy_utils import field_qties
+import h5py
 
 
 particle_files_patterns = ("domain", "patchGhost", "levelGhost")
@@ -111,7 +112,6 @@ def h5_filename_from(diagInfo):
 
 
 def get_times_from_h5(filepath):
-    import h5py
 
     f = h5py.File(filepath, "r")
     times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
@@ -138,24 +138,109 @@ def load_one_time(time, hier):
     return time is not None and hier is not None
 
 
-def fromh5_single_time(h5_filename, time, silent=True):
-    pass
+def patch_levels_from_h5(filepath, time, selection_box=None):
+    """
+    creates a dictionary of PatchLevels from a given time in a h5 file
+    {ilvl: PatchLevel}
+    """
+    import os
+
+    h5f = h5py.File(filepath, "r")
+    root_cell_width = h5f.attrs["cell_width"]
+    interp_order = h5f.attrs["interpOrder"]
+    basename = os.path.basename(filepath)
+
+    patch_levels = {}
+
+    for lvl_key, lvl in h5f["t"][time].items():
+
+        ilvl = int(lvl_key[2:])  # pl1-->1
+        lvl_cell_width = root_cell_width / refinement_ratio**ilvl
+
+        patches = []
+
+        for h5_patch in lvl.values():
+            lower = h5_patch.attrs["lower"]
+            upper = h5_patch.attrs["upper"]
+            origin = h5_patch.attrs["origin"]
+
+            patch_box = Box(lower, upper)
+
+            pos_upper = [
+                orig + shape * dl
+                for orig, shape, dl in zip(origin, patch_box.shape, lvl_cell_width)
+            ]
+            pos_patch_box = Box(origin, pos_upper)
+
+            intersect = None
+            if selection_box is not None:
+                intersect = selection_box * pos_patch_box
+
+            if intersect is not None or selection_box is None:
+                patch_datas = {}
+                layout = make_layout(h5_patch, lvl_cell_width, interp_order)
+                if patch_has_datasets(h5_patch):
+                    # we only add to patchdatas is there are datasets
+                    # in the hdf5 patch group.
+                    # but we do create a Patch (below) anyway since
+                    # we want empty patches to be there as well to access their attributes.
+                    add_to_patchdata(patch_datas, h5_patch, basename, layout)
+
+                patches.append(
+                    Patch(
+                        patch_datas,
+                        h5_patch.name.split("/")[-1],
+                        layout=layout,
+                        attrs={k: v for k, v in h5_patch.attrs.items()},
+                    )
+                )
+
+        patch_levels[ilvl] = PatchLevel(ilvl, patches)
+    return patch_levels, h5f
 
 
-def hierarchy_fromh5_(h5_filename, time, hier, silent=True):
+def add_time_from_h5(hier, filepath, time, selection_box=None):
+    # add times to 'hier'
+    # we may have a different selection box for that time as for already existing times
+    # but we need to keep them, per time
+    if hier.has_time(time):
+        raise ValueError("time already exists in hierarchy")
 
-    import h5py
+    patch_levels, h5f = patch_levels_from_h5(
+        filepath, time, selection_box=selection_box
+    )
 
-    data_file = h5py.File(h5_filename, "r")
-    basename = os.path.basename(h5_filename)
-    root_cell_width = np.asarray(data_file.attrs["cell_width"])
-    interp = data_file.attrs["interpOrder"]
-    dimension = len(data_file.attrs["domain_box"])
-    domain_box = Box([0] * dimension, data_file.attrs["domain_box"])
+    hier.add_time(time, patch_levels, h5f, selection_box=selection_box)
+
+    return hier
+
+
+def new_from_h5(filepath, time, selection_box=None):
+    # create a patchhierarchy from a given time and optional selection box
+    # loads all datasets from the filepath h5 file as patchdatas
+
+    patch_levels, h5f = patch_levels_from_h5(
+        filepath, time, selection_box=selection_box
+    )
+    dim = len(h5f.attrs["domain_box"])
+    domain_box = Box([0] * dim, h5f.attrs["domain_box"])
+
+    # in hierarchy, we need to keep selection_box now
+    # because we want that operations involving several hierarchies will need to check
+    # that each time has the same patch layout.
+    hier = PatchHierarchy(
+        patch_levels,
+        domain_box,
+        refinement_ratio,
+        time,
+        h5f,
+        selection_box=selection_box,
+    )
+
+    return hier
 
 
 def hierarchy_fromh5(h5_filename, time, hier, silent=True):
-    import h5py
 
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)

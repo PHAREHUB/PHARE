@@ -3,6 +3,7 @@ from .patchlevel import PatchLevel
 from ...core.box import Box
 from ...core import box as boxm
 from ...core.phare_utilities import refinement_ratio
+from ...core.phare_utilities import listify
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -20,20 +21,40 @@ class PatchHierarchy(object):
         data_files=None,
         **kwargs,
     ):
+        times = time
+        if not isinstance(times, (tuple, list)):
+            times = listify(times)
+
+        if not isinstance(patch_levels, (tuple, list)):
+            patch_levels = listify(patch_levels)
+
+        if "selection_box" in kwargs:
+            selection_box = kwargs["selection_box"]
+            if not isinstance(selection_box, (tuple, list)):
+                selection_box = listify(selection_box)
+            assert len(times) == len(selection_box)
+
+        assert len(times) == len(patch_levels)
+
         self.patch_levels = patch_levels
         self.ndim = len(domain_box.lower)
         self.time_hier = {}
-        self.time_hier.update({self.format_timestamp(time): patch_levels})
+        self.time_hier.update(
+            {self.format_timestamp(t): pl for t, pl in zip(times, patch_levels)}
+        )
 
         self.domain_box = domain_box
         self.refinement_ratio = refinement_ratio
+        self.selection_box = {self.format_timestamp(time): domain_box}
 
         self.data_files = {}
         self._sim = None
 
         if data_files is not None:
-            self.data_files.update(data_files)
+            self.data_files.update({data_files.filename: data_files})
 
+        # TODO : need to update this after add_time() is called
+        # beter in another function
         if len(self.quantities()) > 1:
             for qty in self.quantities():
                 if qty in self.__dict__:
@@ -170,6 +191,15 @@ class PatchHierarchy(object):
             time = self._default_time()
         return list(self.levels(time).keys())
 
+    def add_time(self, time, patch_level, h5file, selection_box=None):
+        formated_time = self.format_timestamp(time)
+
+        self.time_hier[self.format_timestamp(time)] = patch_level
+        if selection_box is not None:
+            self.selection_box[formated_time] = selection_box
+
+        self.data_files[h5file.filename] = h5file
+
     def is_homogeneous(self):
         """
         return True if all patches of all levels at all times
@@ -261,6 +291,12 @@ class PatchHierarchy(object):
                         )
                         s = s + "\n"
         return s
+
+    def has_time(self, time):
+        return self.format_timestamp(time) in self.time_hier
+
+    def has_file(self, filename):
+        return filename in self.data_files
 
     def times(self):
         return np.sort(np.asarray(list(self.time_hier.keys())))
