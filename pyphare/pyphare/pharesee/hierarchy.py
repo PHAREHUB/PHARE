@@ -586,17 +586,6 @@ class PatchHierarchy(object):
         else:
             raise ValueError("{} is not a valid quantity".format(qty))
 
-        # if qty in ['rho', 'tags']:
-        #     return 'scalar'
-        # elif qty in ['Bx', 'Ex', 'Fx', 'Vx']:
-        #     return 'x'
-        # elif qty in ['By', 'Ey', 'Fy', 'Vy']:
-        #     return 'y'
-        # elif qty in ['Bz', 'Ez', 'Fz', 'Vz']:
-        #     return 'z'
-        # else:
-        #     raise ValueError("{} is not a valid quantity".format(qty))
-
     def __init__(
         self,
         patch_levels,
@@ -1137,16 +1126,8 @@ class PatchHierarchy(object):
 
     def __neg__(self):
         names_self = self.get_names()
-
         h = compute_hier_from(_compute_neg, self, names=names_self)
-
-        return VectorField(
-            h.patch_levels,
-            h.domain_box,
-            refinement_ratio=h.refinement_ratio,
-            time=h.times()[0],
-            data_files=h.data_files,
-        )
+        return VectorField(h)
 
 
 def compute_rename(patch_datas, **kwargs):
@@ -1167,11 +1148,7 @@ def compute_rename(patch_datas, **kwargs):
 
 class ScalarField(PatchHierarchy):
 
-    # def __init__(self, patch_levels, domain_box, **kwargs):
     def __init__(self, hier):
-        # refinement_ratio = kwargs.get("refinement_ratio", 2)
-        # time = kwargs.get("time", 0.0)
-        # data_files = kwargs.get("data_files", None)
         renamed_hier = compute_hier_from(compute_rename, hier, new_names=("value",))
         patch_levels = renamed_hier.patch_levels
         domain_box = renamed_hier.domain_box
@@ -1182,45 +1159,48 @@ class ScalarField(PatchHierarchy):
 
     def __mul__(self, other):
         assert isinstance(other, (int, float))
-
-        # h = compute_hier_from(_compute_mul, self, names=self.get_names(), other=other)
         h = compute_hier_from(_compute_mul, self, names=("value",), other=other)
-
         return ScalarField(h)
-        # return ScalarField(
-        #     h.patch_levels,
-        #     h.domain_box,
-        #     refinement_ratio=h.refinement_ratio,
-        #     time=h.times()[0],
-        #     data_files=h.data_files,
-        # )
 
     def __rmul__(self, other):
         return self.__mul__(other)
 
+    def __add__(self, other):
+        assert isinstance(other, ScalarField)
+        h_self = rename(self, ["self_value"])
+        h_other = rename(other, ["other_value"])
+        h = compute_hier_from(self._compute_add, (h_self, h_other),)
+        return ScalarField(h)
+
+    def _compute_add(self, patch_datas, **kwargs):
+        ref_name = next(iter(patch_datas.keys()))
+
+        dset_value = patch_datas["self_value"].dataset[:] +\
+            patch_datas["other_value"].dataset[:]
+
+        return (
+            {"name": "value", "data": dset_value, "centering": patch_datas[ref_name].centerings},
+        )
+
+
 
 class VectorField(PatchHierarchy):
-    def __init__(self, patch_levels, domain_box, **kwargs):
-        refinement_ratio = kwargs.get("refinement_ratio", 2)
-        time = kwargs.get("time", 0.0)
-        data_files = kwargs.get("data_files", None)
+
+    def __init__(self, hier):
+        renamed_hier = compute_hier_from(compute_rename, hier, new_names=("x", "y", "z"))
+        patch_levels = renamed_hier.patch_levels
+        domain_box = renamed_hier.domain_box
+        refinement_ratio = renamed_hier.refinement_ratio
+        data_files = renamed_hier.data_files
 
         self.names = ["x", "y", "z"]
 
-        super().__init__(patch_levels, domain_box, refinement_ratio, time, data_files)
+        super().__init__(patch_levels, domain_box, refinement_ratio, renamed_hier.times(), data_files)
 
     def __mul__(self, other):
         assert isinstance(other, (int, float))
-
-        h = compute_hier_from(_compute_mul, self, names=self.get_names(), other=other)
-
-        return VectorField(
-            h.patch_levels,
-            h.domain_box,
-            refinement_ratio=h.refinement_ratio,
-            time=h.times()[0],
-            data_files=h.data_files,
-        )
+        h = compute_hier_from(_compute_mul, self, names=["x", "y", "z"], other=other)
+        return VectorField(h)
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -1238,21 +1218,12 @@ class VectorField(PatchHierarchy):
         h_self = rename(self, names_self)
         h_other = rename(other, names_other)
 
-        h = compute_hier_from(
-            _compute_add,
-            (h_self, h_other),
-        )
+        h = compute_hier_from(_compute_add, (h_self, h_other),)
 
-        self = rename(h_self, names_self_kept)
+        self = rename(h_self, names_self_kept)  # needed ?
         other = rename(h_other, names_other_kept)
 
-        return VectorField(
-            h.patch_levels,
-            h.domain_box,
-            refinement_ratio=h.refinement_ratio,
-            time=h.times()[0],
-            data_files=h.data_files,
-        )
+        return VectorField(h)
 
     def __sub__(self, other):
         names_self_kept = self.get_names()
@@ -1267,47 +1238,27 @@ class VectorField(PatchHierarchy):
         h_self = rename(self, names_self)
         h_other = rename(other, names_other)
 
-        h = compute_hier_from(
-            _compute_sub,
-            (h_self, h_other),
-        )
+        h = compute_hier_from(_compute_sub, (h_self, h_other),)
 
         self = rename(h_self, names_self_kept)
         other = rename(h_other, names_other_kept)
 
-        return VectorField(
-            h.patch_levels,
-            h.domain_box,
-            refinement_ratio=h.refinement_ratio,
-            time=h.times()[0],
-            data_files=h.data_files,
-        )
+        return VectorField(h)
 
     def __truediv__(self, other):
-        # if isinstance(other, ScalarField):
-        #     pass
-        #     # names = self.get_names()
-        # else:
-        #     raise RuntimeError("type of hierarchy not yet considered")
 
-        if not isinstance(other, (ScalarField, int, float)): 
-            raise RuntimeError("type of hierarchy not yet considered")
+        if not isinstance(other, (ScalarField, int, float)):
+            raise RuntimeError("type of operand not considered")
 
-        
-        if isinstance(other, ScalarField): 
-            h = compute_hier_from(_compute_truediv, (self, other), res_names=("x", "y", "z"))
-            return VectorField(h)
+        if isinstance(other, ScalarField):
+            return VectorField(compute_hier_from(_compute_truediv,
+                                                 (self, other),
+                                                 res_names=("x", "y", "z")))
         elif isinstance(other, (int, float)):
-            pass
-
-
-        return VectorField(
-            h.patch_levels,
-            h.domain_box,
-            refinement_ratio=h.refinement_ratio,
-            time=h.times()[0],
-            data_files=h.data_files,
-        )
+            return VectorField(compute_hier_from(_compute_scalardiv,
+                                                 (self,),
+                                                 res_names=("x", "y", "z"),
+                                                 scalar=other))
 
 
 def _compute_mul(patch_datas, **kwargs):
@@ -1378,13 +1329,31 @@ def _compute_truediv(patch_datas, **kwargs):
     # the denominator is a scalar field which name is "value"
     # hence the associated patchdata has to be removed from the list
     # of patchdata from the vectorField of the numerator
-    left_ops = {k:v for k,v in patch_datas.items() if k != "value"}
+    left_ops = {k: v for k, v in patch_datas.items() if k != "value"}
     right_op = patch_datas["value"]
     for name, left_op in zip(names, left_ops.values()):
         pd_attrs.append(
             {
                 "name": name,
                 "data": left_op.dataset / right_op.dataset,
+                "centering": patch_datas[name].centerings,
+            }
+        )
+
+    return tuple(pd_attrs)
+
+
+def _compute_scalardiv(patch_datas, **kwargs):
+    names = kwargs["res_names"]
+    scalar = kwargs["scalar"]
+    pd_attrs = []
+
+    left_ops = {k: v for k, v in patch_datas.items()}
+    for name, left_op in zip(names, left_ops.values()):
+        pd_attrs.append(
+            {
+                "name": name,
+                "data": left_op.dataset / scalar,
                 "centering": patch_datas[name].centerings,
             }
         )

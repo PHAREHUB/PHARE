@@ -141,13 +141,14 @@ def cross(hier_left, hier_right, **kwargs):
     # hier_left = rename(hl, names_left_kept)
     # hier_right = rename(hr, names_right_kept)
 
-    return VectorField(
-        h.patch_levels,
-        h.domain_box,
-        refinement_ratio=h.refinement_ratio,
-        time=h.times()[0],
-        data_files=h.data_files,
-    )
+    return VectorField(h)
+    # return VectorField(
+    #     h.patch_levels,
+    #     h.domain_box,
+    #     refinement_ratio=h.refinement_ratio,
+    #     time=h.times()[0],
+    #     data_files=h.data_files,
+    # )
 
 
 def sqrt(hier, **kwargs):
@@ -178,10 +179,11 @@ def grad(hier, **kwargs):
     h = compute_hier_from(_compute_grad, hier, nb_ghosts=nb_ghosts)
 
     # TODO the plot of a grad displays only 1 patch if vmin and vmax are not specified... any idea why ?
-    return VectorField(
-        h.patch_levels,
-        h.domain_box,
-        refinement_ratio=h.refinement_ratio,
-        time=h.times()[0],
-        data_files=h.data_files,
-    )
+    return VectorField(h)
+    # return VectorField(
+    #     h.patch_levels,
+    #     h.domain_box,
+    #     refinement_ratio=h.refinement_ratio,
+    #     time=h.times()[0],
+    #     data_files=h.data_files,
+    # )
