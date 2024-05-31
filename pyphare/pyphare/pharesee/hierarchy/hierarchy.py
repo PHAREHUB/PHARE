@@ -83,14 +83,18 @@ class PatchHierarchy(object):
         if self._sim:
             return self._sim
 
-        if "py_attrs" not in self.data_files:
+        # data_files has a key/value per h5 filename.
+        # but the "serialized_simulation" in "py_attrs" should be the same for all files
+        # used by the hierarchy. So we just take the first one.
+        first_file = list(self.data_files.values())[0]
+        if "py_attrs" not in first_file.keys():
             raise ValueError("Simulation is not available for deserialization")
 
         from ...pharein.simulation import deserialize
 
         try:
             self._sim = deserialize(
-                self.data_files["py_attrs"].attrs["serialized_simulation"]
+                first_file["py_attrs"].attrs["serialized_simulation"]
             )
         except Exception as e:
             raise RuntimeError(f"Failed to deserialize simulation from data file : {e}")
