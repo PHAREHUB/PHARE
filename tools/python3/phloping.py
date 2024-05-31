@@ -50,7 +50,7 @@ class ScopeTimerFile(phScopeTimerFile):
         pcount_hier = None
         for it, time in enumerate(all_times):
             pcount_hier = self.run.GetParticleCount(time)
-             for ilvl, lvl in pcount_hier.levels().items():
+             for ilvl, lvl in pcount_hier.levels(time).items():
                 pc = sum([p.attrs["particle_count"] for p in lvl.patches])
                 particles_per_level_per_time_step[ilvl][it] = pc
         return pcount_hier, particles_per_level_per_time_step

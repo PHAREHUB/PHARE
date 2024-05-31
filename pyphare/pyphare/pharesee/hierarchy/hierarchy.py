@@ -45,7 +45,9 @@ class PatchHierarchy(object):
 
         self.domain_box = domain_box
         self.refinement_ratio = refinement_ratio
-        self.selection_box = {self.format_timestamp(time): domain_box}
+        self.selection_box = {
+            self.format_timestamp(t): box for t, box in zip(times, selection_box)
+        }
 
         self.data_files = {}
         self._sim = None

@@ -215,6 +215,28 @@ def add_time_from_h5(hier, filepath, time, selection_box=None):
     return hier
 
 
+def add_data_from_h5(hier, filepath, time):
+    """
+    adds new PatchDatas to an existing PatchHierarchy for an existing time
+
+    Data will be added from the given filepath.
+    Data will be extracted from the selection box of the hierarchy at that time.
+    """
+    if not hier.has_time(time):
+        raise ValueError("time does not exist in hierarchy")
+
+    # force using the hierarchy selection box at that time if existing
+    patch_levels, h5f = patch_levels_from_h5(
+        filepath, time, selection_box=hier.selection_box[time]
+    )
+
+    for ilvl, lvl in hier.levels(time).items():
+        for ip, patch in enumerate(lvl.patches):
+            patch.patch_datas.update(patch_levels[ilvl].patches[ip].patch_datas)
+
+    return hier
+
+
 def new_from_h5(filepath, time, selection_box=None):
     # create a patchhierarchy from a given time and optional selection box
     # loads all datasets from the filepath h5 file as patchdatas
