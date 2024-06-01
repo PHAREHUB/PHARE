@@ -63,9 +63,6 @@ class PatchHierarchy(object):
     def update(self):
         if len(self.quantities()) > 1:
             for qty in self.quantities():
-                if qty in self.__dict__:
-                    continue
-                first = True
                 for time, levels in self.time_hier.items():
                     new_lvls = {}
                     for ilvl, level in levels.items():
@@ -73,13 +70,12 @@ class PatchHierarchy(object):
                         for patch in level.patches:
                             patches += [Patch({qty: patch.patch_datas[qty]}, patch.id)]
                         new_lvls[ilvl] = PatchLevel(ilvl, patches)
-                    if first:
+                    if qty not in self.__dict__:
                         self.__dict__[qty] = PatchHierarchy(
                             new_lvls, self.domain_box, time=time
                         )
-                        first = False
                     else:
-                        self.qty.time_hier[time] = new_lvls  # pylint: disable=E1101
+                        self.__dict__[qty].time_hier[time] = new_lvls
 
     @property
     def sim(self):
