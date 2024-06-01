@@ -34,6 +34,16 @@ field_qties = {
 
 
 def are_compatible_hierarchies(hierarchies):
+    ref = hierarchies[0]
+    same_box = True
+    same_selection = True
+    same_files = True
+    same_times = True
+    for hier in hierarchies[1:]:
+        same_box = same_box and (hier.domain_box == ref.domain_box)
+        same_selection = same_selection and (hier.selection_box == ref.selection_box)
+        same_files = same_files and (hier.data_files.keys() == ref.data_files.keys())
+        same_times = same_times and (hier.time_hier.keys() == ref.time_hier.keys())
     return True
 
 
@@ -100,28 +110,31 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     """return a new hierarchy using the callback 'compute' on all patchdatas
     of the given hierarchies
     """
-    if not are_compatible_hierarchies(hierarchies):
-        raise RuntimeError("hierarchies are not compatible")
 
     hierarchies = listify(hierarchies)
+    if not are_compatible_hierarchies(hierarchies):
+        raise RuntimeError("hierarchies are not compatible")
     reference_hier = hierarchies[0]
     domain_box = reference_hier.domain_box
-    patch_levels = {}
-    for ilvl in range(reference_hier.levelNbr()):
-        patch_levels[ilvl] = PatchLevel(
-            ilvl, new_patches_from(compute, hierarchies, ilvl, **kwargs)
-        )
+    patch_levels_per_time = []
+    for t in reference_hier.times():
+        patch_levels = {}
+        for ilvl in range(reference_hier.levelNbr()):
+            patch_levels[ilvl] = PatchLevel(
+                ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
+            )
+        patch_levels_per_time.append(patch_levels)
 
-    assert len(reference_hier.time_hier) == 1  # only single time hierarchies now
-    t = list(reference_hier.time_hier.keys())[0]
-    return PatchHierarchy(patch_levels, domain_box, refinement_ratio, time=t)
+    return PatchHierarchy(
+        patch_levels_per_time, domain_box, refinement_ratio, time=reference_hier.times()
+    )
 
 
-def extract_patchdatas(hierarchies, ilvl, ipatch):
+def extract_patchdatas(hierarchies, ilvl, t, ipatch):
     """
     returns a dict {patchdata_name:patchdata} from a list of hierarchies for patch ipatch at level ilvl
     """
-    patches = [h.patch_levels[ilvl].patches[ipatch] for h in hierarchies]
+    patches = [h.level(ilvl, time=t).patches[ipatch] for h in hierarchies]
     patch_datas = {
         pdname: pd for p in patches for pdname, pd in list(p.patch_datas.items())
     }
@@ -137,14 +150,14 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
     return new_patch_datas
 
 
-def new_patches_from(compute, hierarchies, ilvl, **kwargs):
+def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     reference_hier = hierarchies[0]
     new_patches = []
-    patch_nbr = len(reference_hier.patch_levels[ilvl].patches)
+    patch_nbr = len(reference_hier.level(ilvl, time=t).patches)
     for ip in range(patch_nbr):
-        current_patch = reference_hier.patch_levels[ilvl].patches[ip]
+        current_patch = reference_hier.level(ilvl, time=t).patches[ip]
         layout = current_patch.layout
-        patch_datas = extract_patchdatas(hierarchies, ilvl, ip)
+        patch_datas = extract_patchdatas(hierarchies, ilvl, t, ip)
         new_patch_datas = new_patchdatas_from(
             compute, patch_datas, layout, id=current_patch.id, **kwargs
         )
