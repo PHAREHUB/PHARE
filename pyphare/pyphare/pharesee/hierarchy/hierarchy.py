@@ -55,8 +55,12 @@ class PatchHierarchy(object):
         if data_files is not None:
             self.data_files.update({data_files.filename: data_files})
 
-        # TODO : need to update this after add_time() is called
-        # beter in another function
+        self.update()
+
+    def __getitem__(self, qty):
+        return self.__dict__[qty]
+
+    def update(self):
         if len(self.quantities()) > 1:
             for qty in self.quantities():
                 if qty in self.__dict__:
@@ -76,9 +80,6 @@ class PatchHierarchy(object):
                         first = False
                     else:
                         self.qty.time_hier[time] = new_lvls  # pylint: disable=E1101
-
-    def __getitem__(self, qty):
-        return self.__dict__[qty]
 
     @property
     def sim(self):
@@ -205,6 +206,7 @@ class PatchHierarchy(object):
             self.selection_box[formated_time] = selection_box
 
         self.data_files[h5file.filename] = h5file
+        self.update()
 
     def is_homogeneous(self):
         """
