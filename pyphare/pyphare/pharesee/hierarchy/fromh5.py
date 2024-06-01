@@ -262,6 +262,27 @@ def new_from_h5(filepath, time, selection_box=None):
     return hier
 
 
+def hierarchy_fromh5_(h5_filename, time=None, hier=None, silent=True):
+    """
+    creates a PatchHierarchy from a given time in a h5 file
+    if hier is None, a new hierarchy is created
+    if hier is not None, data is added to the hierarchy
+    """
+    if create_from_one_time(time, hier):
+        return new_from_h5(h5_filename, time)
+
+    if create_from_all_times(time, hier):
+        times = get_times_from_h5(h5_filename)
+        h = new_from_h5(h5_filename, times[0])
+        for time in times[1:]:
+            add_time_from_h5(h, h5_filename, time)
+
+    if load_one_time(time, hier):
+        return add_time_from_h5(hier, h5_filename, time)
+
+    return add_data_from_h5(hier, h5_filename, time)
+
+
 def hierarchy_fromh5(h5_filename, time, hier, silent=True):
 
     data_file = h5py.File(h5_filename, "r")
