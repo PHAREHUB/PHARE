@@ -4,7 +4,6 @@ from .patchlevel import PatchLevel
 from .patch import Patch
 from ...core.phare_utilities import listify
 from ...core.phare_utilities import refinement_ratio
-from ...core import box as boxm
 
 import numpy as np
 
