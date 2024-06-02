@@ -343,7 +343,7 @@ def hierarchy_fromh5(h5_filename, time, hier, silent=True):
             patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
         diag_hier = PatchHierarchy(
-            patch_levels, domain_box, refinement_ratio, t, data_file
+            patch_levels, domain_box, refinement_ratio, t, data_files=data_file
         )
 
         return diag_hier
