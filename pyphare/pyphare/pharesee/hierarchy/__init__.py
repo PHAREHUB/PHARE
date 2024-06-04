@@ -4,7 +4,7 @@ from .fromsim import hierarchy_from_sim
 
 
 def hierarchy_from(
-    simulator=None, qty=None, pop="", h5_filename=None, time=None, hier=None
+    simulator=None, qty=None, pop="", h5_filename=None, times=None, hier=None, **kwargs
 ):
     from .fromh5 import hierarchy_fromh5
     from .fromsim import hierarchy_from_sim
@@ -24,7 +24,7 @@ def hierarchy_from(
         raise ValueError("cannot pass both a simulator and a h5 file")
 
     if h5_filename is not None:
-        return hierarchy_fromh5(h5_filename, time, hier)
+        return hierarchy_fromh5(h5_filename, times, hier, **kwargs)
 
     if simulator is not None and qty is not None:
         return hierarchy_from_sim(simulator, qty, pop=pop)

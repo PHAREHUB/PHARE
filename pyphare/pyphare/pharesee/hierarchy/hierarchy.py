@@ -17,11 +17,10 @@ class PatchHierarchy(object):
         patch_levels,
         domain_box,
         refinement_ratio=2,
-        time=0.0,
+        times=[0.0],
         data_files=None,
         **kwargs,
     ):
-        times = time
         if not isinstance(times, (tuple, list)):
             times = listify(times)
 
@@ -85,6 +84,22 @@ class PatchHierarchy(object):
                         )
                     else:
                         self.__dict__[qty].time_hier[time] = new_lvls
+
+    def nbytes(self):
+        n = 0
+        for t in self.times():
+            for lvl in self.levels(t).values():
+                for p in lvl.patches:
+                    for pd in p.patch_datas.values():
+                        n += pd.dataset.nbytes
+        return n
+
+    def nbrPatches(self):
+        n = 0
+        for t in self.times():
+            for lvl in self.levels(t).values():
+                n += len(lvl.patches)
+        return n
 
     @property
     def sim(self):

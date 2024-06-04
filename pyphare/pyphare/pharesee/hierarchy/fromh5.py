@@ -126,8 +126,8 @@ def create_from_all_times(time, hier):
     return time is None and hier is None
 
 
-def create_from_one_time(time, hier):
-    return time is not None and hier is None
+def create_from_times(times, hier):
+    return times is not None and hier is None
 
 
 def load_all_times(time, hier):
@@ -138,17 +138,16 @@ def load_one_time(time, hier):
     return time is not None and hier is not None
 
 
-def patch_levels_from_h5(filepath, time, selection_box=None):
+def patch_levels_from_h5(h5f, time, selection_box=None):
     """
     creates a dictionary of PatchLevels from a given time in a h5 file
     {ilvl: PatchLevel}
     """
     import os
 
-    h5f = h5py.File(filepath, "r")
     root_cell_width = h5f.attrs["cell_width"]
     interp_order = h5f.attrs["interpOrder"]
-    basename = os.path.basename(filepath)
+    basename = os.path.basename(h5f.filename)
 
     patch_levels = {}
 
@@ -196,13 +195,15 @@ def patch_levels_from_h5(filepath, time, selection_box=None):
                 )
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches)
-    return patch_levels, h5f
+    return patch_levels
 
 
-def add_time_from_h5(hier, filepath, time, selection_box=None):
+def add_time_from_h5(hier, filepath, time, **kwargs):
     # add times to 'hier'
     # we may have a different selection box for that time as for already existing times
     # but we need to keep them, per time
+
+    selection_box = kwargs.get("selection_box", None)
     if hier.has_time(time):
         raise ValueError("time already exists in hierarchy")
 
@@ -237,13 +238,19 @@ def add_data_from_h5(hier, filepath, time):
     return hier
 
 
-def new_from_h5(filepath, time, selection_box=None):
+def new_from_h5(filepath, times, **kwargs):
     # create a patchhierarchy from a given time and optional selection box
     # loads all datasets from the filepath h5 file as patchdatas
 
-    patch_levels, h5f = patch_levels_from_h5(
-        filepath, time, selection_box=selection_box
-    )
+    selection_box = kwargs.get("selection_box", None)
+
+    patch_levels_per_time = []
+
+    h5f = h5py.File(filepath, "r")
+    for time in times:
+        patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
+        patch_levels_per_time.append(patch_levels)
+
     dim = len(h5f.attrs["domain_box"])
     domain_box = Box([0] * dim, h5f.attrs["domain_box"])
 
@@ -251,10 +258,10 @@ def new_from_h5(filepath, time, selection_box=None):
     # because we want that operations involving several hierarchies will need to check
     # that each time has the same patch layout.
     hier = PatchHierarchy(
-        patch_levels,
+        patch_levels_per_time,
         domain_box,
         refinement_ratio,
-        time,
+        times,
         h5f,
         selection_box=selection_box,
     )
@@ -262,28 +269,28 @@ def new_from_h5(filepath, time, selection_box=None):
     return hier
 
 
-def hierarchy_fromh5_(h5_filename, time=None, hier=None, silent=True):
+def hierarchy_fromh5(h5_filename, time=None, hier=None, silent=True, **kwargs):
     """
     creates a PatchHierarchy from a given time in a h5 file
     if hier is None, a new hierarchy is created
     if hier is not None, data is added to the hierarchy
     """
-    if create_from_one_time(time, hier):
-        return new_from_h5(h5_filename, time)
+    if create_from_times(time, hier):
+        return new_from_h5(h5_filename, time, **kwargs)
 
     if create_from_all_times(time, hier):
         times = get_times_from_h5(h5_filename)
-        h = new_from_h5(h5_filename, times[0])
+        h = new_from_h5(h5_filename, times[0], **kwargs)
         for time in times[1:]:
-            add_time_from_h5(h, h5_filename, time)
+            add_time_from_h5(h, h5_filename, time, **kwargs)
 
     if load_one_time(time, hier):
-        return add_time_from_h5(hier, h5_filename, time)
+        return add_time_from_h5(hier, h5_filename, time, **kwargs)
 
     return add_data_from_h5(hier, h5_filename, time)
 
 
-def hierarchy_fromh5(h5_filename, time, hier, silent=True):
+def hierarchy_fromh5_(h5_filename, time, hier, silent=True):
 
     data_file = h5py.File(h5_filename, "r")
     basename = os.path.basename(h5_filename)
