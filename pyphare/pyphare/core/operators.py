@@ -1,6 +1,5 @@
 import numpy as np
 
-# from pyphare.pharesee.hierarchy import PatchLevel, Patch, FieldData
 from pyphare.pharesee.hierarchy import ScalarField, VectorField  # TensorField
 from pyphare.pharesee.hierarchy import compute_hier_from
 from pyphare.pharesee.hierarchy import rename
@@ -88,9 +87,6 @@ def _compute_grad(patch_data, **kwargs):
 
 
 def dot(hier_left, hier_right, **kwargs):
-    names_left_kept = hier_left.get_names()
-    names_right_kept = hier_right.get_names()
-
     if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
         names_left = ["left_x", "left_y", "left_z"]
         names_right = ["right_x", "right_y", "right_z"]
@@ -106,23 +102,10 @@ def dot(hier_left, hier_right, **kwargs):
         (hl, hr),
     )
 
-    # hier_left = rename(hl, names_left_kept)
-    # hier_right = rename(hr, names_right_kept)
-
     return ScalarField(h)
-    # return ScalarField(
-    #     h.patch_levels,
-    #     h.domain_box,
-    #     refinement_ratio=h.refinement_ratio,
-    #     time=h.times()[0],
-    #     data_files=h.data_files,
-    # )
 
 
 def cross(hier_left, hier_right, **kwargs):
-    names_left_kept = hier_left.get_names()
-    names_right_kept = hier_right.get_names()
-
     if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
         names_left = ["left_x", "left_y", "left_z"]
         names_right = ["right_x", "right_y", "right_z"]
@@ -138,17 +121,7 @@ def cross(hier_left, hier_right, **kwargs):
         (hl, hr),
     )
 
-    # hier_left = rename(hl, names_left_kept)
-    # hier_right = rename(hr, names_right_kept)
-
     return VectorField(h)
-    # return VectorField(
-    #     h.patch_levels,
-    #     h.domain_box,
-    #     refinement_ratio=h.refinement_ratio,
-    #     time=h.times()[0],
-    #     data_files=h.data_files,
-    # )
 
 
 def sqrt(hier, **kwargs):
@@ -158,13 +131,6 @@ def sqrt(hier, **kwargs):
     )
 
     return ScalarField(h)
-    # return ScalarField(
-    #     h.patch_levels,
-    #     h.domain_box,
-    #     refinement_ratio=h.refinement_ratio,
-    #     time=h.times()[0],
-    #     data_files=h.data_files,
-    # )
 
 
 def modulus(hier):
@@ -178,12 +144,4 @@ def grad(hier, **kwargs):
     nb_ghosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr[0]
     h = compute_hier_from(_compute_grad, hier, nb_ghosts=nb_ghosts)
 
-    # TODO the plot of a grad displays only 1 patch if vmin and vmax are not specified... any idea why ?
     return VectorField(h)
-    # return VectorField(
-    #     h.patch_levels,
-    #     h.domain_box,
-    #     refinement_ratio=h.refinement_ratio,
-    #     time=h.times()[0],
-    #     data_files=h.data_files,
-    # )

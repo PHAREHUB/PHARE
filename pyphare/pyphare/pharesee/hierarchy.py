@@ -1217,6 +1217,14 @@ class ScalarField(PatchHierarchy):
 
         return ScalarField(h)
 
+    def __rtruediv__(self, other):
+        assert isinstance(other, (int, float))
+        h_self = rename(self, ["self_value"])
+
+        h = compute_hier_from(self._compute_rtruediv, (h_self,), other=other)
+
+        return ScalarField(h)
+
     def _compute_add(self, patch_datas, **kwargs):
         ref_name = next(iter(patch_datas.keys()))
 
@@ -1227,9 +1235,9 @@ class ScalarField(PatchHierarchy):
             dset_value = patch_datas["self_value"].dataset[:] +\
                 patch_datas["other_value"].dataset[:]
 
-        return (
-            {"name": "value", "data": dset_value, "centering": patch_datas[ref_name].centerings},
-        )
+        return ({"name": "value",
+                 "data": dset_value,
+                 "centering": patch_datas[ref_name].centerings},)
 
     def _compute_sub(self, patch_datas, **kwargs):
         # subtract a scalar from the dataset of a scalarField
@@ -1254,7 +1262,7 @@ class ScalarField(PatchHierarchy):
             for pd_name in patch_datas:
                 pd_attrs.append({"name": "value",
                                  "data": other * patch_datas[pd_name].dataset[:],
-                                 "centering": patch_datas[pd_name].centerings,})
+                                 "centering": patch_datas[pd_name].centerings, })
         # multiplication of 2 scalarField
         else:
             dset_value = patch_datas["self_value"].dataset[:] *\
@@ -1274,7 +1282,7 @@ class ScalarField(PatchHierarchy):
             for pd_name in patch_datas:
                 pd_attrs.append({"name": "value",
                                  "data": patch_datas[pd_name].dataset[:] / other,
-                                 "centering": patch_datas[pd_name].centerings,})
+                                 "centering": patch_datas[pd_name].centerings, })
         # multiplication of 2 scalarField
         else:
             dset_value = patch_datas["self_value"].dataset[:] /\
@@ -1282,6 +1290,18 @@ class ScalarField(PatchHierarchy):
             pd_attrs = ({"name": "value",
                          "data": dset_value,
                          "centering": patch_datas["self_value"].centerings},)
+
+        return tuple(pd_attrs)
+
+    def _compute_rtruediv(self, patch_datas, **kwargs):
+        # Scalar divided by a scalarField
+        other = kwargs["other"]
+        pd_attrs = []
+
+        for pd_name in patch_datas:
+            pd_attrs.append({"name": "value",
+                             "data": other / patch_datas[pd_name].dataset[:],
+                             "centering": patch_datas[pd_name].centerings, })
 
         return tuple(pd_attrs)
 
@@ -1393,11 +1413,15 @@ def _compute_add(patch_datas, **kwargs):
     dset_y = patch_datas["self_y"].dataset[:] + patch_datas["other_y"].dataset[:]
     dset_z = patch_datas["self_z"].dataset[:] + patch_datas["other_z"].dataset[:]
 
-    return (
-        {"name": "x", "data": dset_x, "centering": patch_datas[ref_name].centerings},
-        {"name": "y", "data": dset_y, "centering": patch_datas[ref_name].centerings},
-        {"name": "z", "data": dset_z, "centering": patch_datas[ref_name].centerings},
-    )
+    return ({"name": "x",
+             "data": dset_x,
+             "centering": patch_datas[ref_name].centerings},
+            {"name": "y",
+             "data": dset_y,
+             "centering": patch_datas[ref_name].centerings},
+            {"name": "z",
+             "data": dset_z,
+             "centering": patch_datas[ref_name].centerings},)
 
 
 def _compute_sub(patch_datas, **kwargs):
@@ -1407,11 +1431,15 @@ def _compute_sub(patch_datas, **kwargs):
     dset_y = patch_datas["self_y"].dataset[:] - patch_datas["other_y"].dataset[:]
     dset_z = patch_datas["self_z"].dataset[:] - patch_datas["other_z"].dataset[:]
 
-    return (
-        {"name": "x", "data": dset_x, "centering": patch_datas[ref_name].centerings},
-        {"name": "y", "data": dset_y, "centering": patch_datas[ref_name].centerings},
-        {"name": "z", "data": dset_z, "centering": patch_datas[ref_name].centerings},
-    )
+    return ({"name": "x",
+             "data": dset_x,
+             "centering": patch_datas[ref_name].centerings},
+            {"name": "y",
+             "data": dset_y,
+             "centering": patch_datas[ref_name].centerings},
+            {"name": "z",
+             "data": dset_z,
+             "centering": patch_datas[ref_name].centerings},)
 
 
 def _compute_neg(patch_datas, **kwargs):
@@ -1419,13 +1447,9 @@ def _compute_neg(patch_datas, **kwargs):
     pd_attrs = []
 
     for name in names:
-        pd_attrs.append(
-            {
-                "name": name,
-                "data": -patch_datas[name].dataset,
-                "centering": patch_datas[name].centerings,
-            }
-        )
+        pd_attrs.append({"name": name,
+                         "data": -patch_datas[name].dataset,
+                         "centering": patch_datas[name].centerings, })
 
     return tuple(pd_attrs)
 

@@ -1,8 +1,6 @@
 import os
 import numpy as np
 
-import pyphare.pharein as ph
-
 from pyphare.pharesee.hierarchy import (
     compute_hier_from,
     flat_finest_field,
@@ -148,11 +146,8 @@ def _ppp_to_ppp_domain_slicing(**kwargs):
 
     inner, _, _ = _inner_slices(nb_ghosts)
 
-    if ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    else:
-        raise RuntimeError("dimension not yet implemented")
+    inner_all = tuple([inner] * ndim)
+    return inner_all, (inner_all,)
 
 
 def _pdd_to_ppp_domain_slicing(**kwargs):
@@ -166,7 +161,10 @@ def _pdd_to_ppp_domain_slicing(**kwargs):
 
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
-    if ndim == 2:
+    if ndim == 1:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_all,)
+    elif ndim == 2:
         inner_all = tuple([inner] * ndim)
         return inner_all, ((inner, inner_shift_left),
                            (inner, inner_shift_right))
@@ -185,7 +183,11 @@ def _dpd_to_ppp_domain_slicing(**kwargs):
 
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
-    if ndim == 2:
+    if ndim == 1:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_shift_left,
+                           inner_shift_right)
+    elif ndim == 2:
         inner_all = tuple([inner] * ndim)
         return inner_all, ((inner_shift_left, inner),
                            (inner_shift_right, inner))
@@ -204,7 +206,11 @@ def _ddp_to_ppp_domain_slicing(**kwargs):
 
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
-    if ndim == 2:
+    if ndim == 1:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_shift_left,
+                           inner_shift_right)
+    elif ndim == 2:
         inner_all = tuple([inner] * ndim)
         return inner_all, ((inner_shift_left, inner_shift_left),
                            (inner_shift_left, inner_shift_right),
@@ -225,7 +231,11 @@ def _dpp_to_ppp_domain_slicing(**kwargs):
 
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
-    if ndim == 2:
+    if ndim == 1:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_shift_left,
+                           inner_shift_right)
+    elif ndim == 2:
         inner_all = tuple([inner] * ndim)
         return inner_all, ((inner_shift_left, inner),
                            (inner_shift_right, inner))
@@ -244,7 +254,10 @@ def _pdp_to_ppp_domain_slicing(**kwargs):
 
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
 
-    if ndim == 2:
+    if ndim == 1:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_all,)
+    elif ndim == 2:
         inner_all = tuple([inner] * ndim)
         return inner_all, ((inner, inner_shift_left),
                            (inner, inner_shift_right))
@@ -263,7 +276,10 @@ def _ppd_to_ppp_domain_slicing(**kwargs):
 
     inner, _, _ = _inner_slices(nb_ghosts)
 
-    if ndim == 2:
+    if ndim == 1:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_all,)
+    elif ndim == 2:
         inner_all = tuple([inner] * ndim)
         return inner_all, (inner_all,)
     else:
