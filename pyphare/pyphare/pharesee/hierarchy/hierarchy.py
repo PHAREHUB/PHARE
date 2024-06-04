@@ -307,6 +307,7 @@ class PatchHierarchy(object):
     def __str__(self):
         s = "Hierarchy: \n"
         for t, patch_levels in self.time_hier.items():
+            s = s + "Time {}\n".format(t)
             for ilvl, lvl in patch_levels.items():
                 s = s + "Level {}\n".format(ilvl)
                 for ip, patch in enumerate(lvl.patches):

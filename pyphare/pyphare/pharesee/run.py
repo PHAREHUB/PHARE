@@ -463,7 +463,7 @@ class Run:
         if time is None:
             time = float(list(data_file[h5_time_grp_key].keys())[0])
 
-        hier = self._get_hierarchy(time, h5_filename, **kwargs)
+        hier = self._get_hierarchy(time, h5_filename)
 
         if level == "finest":
             level = hier.finest_level(time)

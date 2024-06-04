@@ -111,10 +111,13 @@ def h5_filename_from(diagInfo):
     return (diagInfo.quantity + ".h5").replace("/", "_")[1:]
 
 
-def get_times_from_h5(filepath):
+def get_times_from_h5(filepath, as_float=True):
 
     f = h5py.File(filepath, "r")
-    times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
+    if as_float:
+        times = np.array(sorted([float(s) for s in list(f["t"].keys())]))
+    else:
+        times = list(f["t"].keys())
     f.close()
     return times
 
@@ -208,9 +211,9 @@ def add_time_from_h5(hier, filepath, time, **kwargs):
     if hier.has_time(time):
         add_data_from_h5(hier, filepath, time)
 
-    patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
-
-    hier.add_time(time, patch_levels, h5f, selection_box=selection_box)
+    else:
+        patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
+        hier.add_time(time, patch_levels, h5f, selection_box=selection_box)
 
     return hier
 
@@ -251,6 +254,8 @@ def new_from_h5(filepath, times, **kwargs):
 
     h5f = h5py.File(filepath, "r")
     for time in times:
+        if isinstance(time, float):
+            time = f"{time:.10f}"
         patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
         patch_levels_per_time.append(patch_levels)
 
@@ -283,161 +288,20 @@ def hierarchy_fromh5(h5_filename, time=None, hier=None, silent=True, **kwargs):
 
     if create_from_all_times(time, hier):
         times = get_times_from_h5(h5_filename)
-        h = new_from_h5(h5_filename, times[0], **kwargs)
-        for time in times[1:]:
-            add_time_from_h5(h, h5_filename, time, **kwargs)
+        print("creating from all times : ", times, h5_filename)
+        return new_from_h5(h5_filename, times, **kwargs)
 
     if load_one_time(time, hier):
         assert len(time) == 1
+        print("load one time : ", time, hier, h5_filename)
         return add_time_from_h5(hier, h5_filename, time[0], **kwargs)
 
-
-def hierarchy_fromh5_(h5_filename, time, hier, silent=True):
-
-    data_file = h5py.File(h5_filename, "r")
-    basename = os.path.basename(h5_filename)
-
-    root_cell_width = np.asarray(data_file.attrs["cell_width"])
-    interp = data_file.attrs["interpOrder"]
-    domain_box = Box(
-        [0] * len(data_file.attrs["domain_box"]), data_file.attrs["domain_box"]
-    )
-
-    if create_from_all_times(time, hier):
-        # first create from first time
-        # then add all other times
-        if not silent:
-            print("creating hierarchy from all times in file")
-        times = list(data_file[h5_time_grp_key].keys())
-        hier = hierarchy_fromh5(h5_filename, time=times[0], hier=hier, silent=silent)
-        if len(times) > 1:
-            for t in times[1:]:
-                hierarchy_fromh5(h5_filename, t, hier, silent=silent)
-        return hier
-
-    if create_from_one_time(time, hier):
-        if not silent:
-            print("creating hierarchy from time {}".format(time))
-        t = time
-
-        h5_time_grp = data_file[h5_time_grp_key][time]
-        patch_levels = {}
-
-        for plvl_key in h5_time_grp.keys():
-            h5_patch_lvl_grp = h5_time_grp[plvl_key]
-            ilvl = int(plvl_key[2:])
-            lvl_cell_width = root_cell_width / refinement_ratio**ilvl
-            patches = {}
-
-            if ilvl not in patches:
-                patches[ilvl] = []
-
-            for pkey in h5_patch_lvl_grp.keys():
-                h5_patch_grp = h5_patch_lvl_grp[pkey]
-
-                patch_datas = {}
-                layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
-                if patch_has_datasets(h5_patch_grp):
-                    add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
-
-                patches[ilvl].append(
-                    Patch(
-                        patch_datas,
-                        h5_patch_grp.name.split("/")[-1],
-                        layout=layout,
-                        attrs={k: v for k, v in h5_patch_grp.attrs.items()},
-                    )
-                )
-
-            patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
-
-        diag_hier = PatchHierarchy(
-            patch_levels, domain_box, refinement_ratio, t, data_files=data_file
-        )
-
-        return diag_hier
-
-    if load_one_time(time, hier):
-        if not silent:
-            print("loading data at time {} into existing hierarchy".format(time))
-        h5_time_grp = data_file[h5_time_grp_key][time]
-        t = time
-
-        if t in hier.time_hier:
-            if not silent:
-                print("time already exist, adding data...")
-
-            # time already exists in the hierarchy
-            # all we need to do is adding the data
-            # as patchDatas in the appropriate patches
-            # and levels, if data compatible with hierarchy
-
-            patch_levels = hier.time_hier[t]
-
-            for plvl_key in h5_time_grp.keys():
-                ilvl = int(plvl_key[2:])
-                lvl_cell_width = root_cell_width / refinement_ratio**ilvl
-
-                for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
-                    h5_patch_grp = h5_time_grp[plvl_key][pkey]
-
-                    if patch_has_datasets(h5_patch_grp):
-                        hier_patch = patch_levels[ilvl].patches[ipatch]
-                        origin = h5_time_grp[plvl_key][pkey].attrs["origin"]
-                        upper = h5_time_grp[plvl_key][pkey].attrs["upper"]
-                        lower = h5_time_grp[plvl_key][pkey].attrs["lower"]
-                        file_patch_box = Box(lower, upper)
-
-                        assert file_patch_box == hier_patch.box
-                        assert (abs(origin - hier_patch.origin) < 1e-6).all()
-                        assert (abs(lvl_cell_width - hier_patch.dl) < 1e-6).all()
-
-                        layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
-                        add_to_patchdata(
-                            hier_patch.patch_datas, h5_patch_grp, basename, layout
-                        )
-
-            return hier
-
-        if not silent:
-            print("adding data to new time")
-        # time does not exist in the hierarchy
-        # we have to create a brand new set of patchLevels
-        # containing patches, and load data in their patchdatas
-
-        patch_levels = {}
-
-        for plvl_key in h5_time_grp.keys():
-            ilvl = int(plvl_key[2:])
-
-            lvl_cell_width = root_cell_width / refinement_ratio**ilvl
-            lvl_patches = []
-
-            for ipatch, pkey in enumerate(h5_time_grp[plvl_key].keys()):
-                h5_patch_grp = h5_time_grp[plvl_key][pkey]
-
-                layout = make_layout(h5_patch_grp, lvl_cell_width, interp)
-                patch_datas = {}
-                if patch_has_datasets(h5_patch_grp):
-                    add_to_patchdata(patch_datas, h5_patch_grp, basename, layout)
-                lvl_patches.append(
-                    Patch(
-                        patch_datas,
-                        h5_patch_grp.name.split("/")[-1],
-                        layout=layout,
-                        attrs={k: v for k, v in h5_patch_grp.attrs.items()},
-                    )
-                )
-
-            patch_levels[ilvl] = PatchLevel(ilvl, lvl_patches)
-
-        hier.time_hier[t] = patch_levels
-        return hier
-
     if load_all_times(time, hier):
-        if not silent:
-            print("loading all times in existing hier")
-        for time in data_file[h5_time_grp_key].keys():
-            hier = hierarchy_fromh5(h5_filename, time, hier, silent=silent)
-
+        print("load all times in existing : ", time, h5_filename)
+        times = get_times_from_h5(h5_filename, as_float=False)
+        for t in times:
+            add_time_from_h5(hier, h5_filename, t, **kwargs)
         return hier
+
+    print("SHOULD NOT BE THERE : ", time, hier)
+    assert False
