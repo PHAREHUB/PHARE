@@ -203,13 +203,12 @@ def add_time_from_h5(hier, filepath, time, **kwargs):
     # we may have a different selection box for that time as for already existing times
     # but we need to keep them, per time
 
+    h5f = h5py.File(filepath, "r")
     selection_box = kwargs.get("selection_box", None)
     if hier.has_time(time):
-        raise ValueError("time already exists in hierarchy")
+        add_data_from_h5(hier, filepath, time)
 
-    patch_levels, h5f = patch_levels_from_h5(
-        filepath, time, selection_box=selection_box
-    )
+    patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
 
     hier.add_time(time, patch_levels, h5f, selection_box=selection_box)
 
@@ -226,10 +225,14 @@ def add_data_from_h5(hier, filepath, time):
     if not hier.has_time(time):
         raise ValueError("time does not exist in hierarchy")
 
+    h5f = h5py.File(filepath, "r")
+
     # force using the hierarchy selection box at that time if existing
-    patch_levels, h5f = patch_levels_from_h5(
-        filepath, time, selection_box=hier.selection_box[time]
-    )
+    if hier.selection_box is not None:
+        selection_box = hier.selection_box[time]
+    else:
+        selection_box = None
+    patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
 
     for ilvl, lvl in hier.levels(time).items():
         for ip, patch in enumerate(lvl.patches):
@@ -285,9 +288,8 @@ def hierarchy_fromh5(h5_filename, time=None, hier=None, silent=True, **kwargs):
             add_time_from_h5(h, h5_filename, time, **kwargs)
 
     if load_one_time(time, hier):
-        return add_time_from_h5(hier, h5_filename, time, **kwargs)
-
-    return add_data_from_h5(hier, h5_filename, time)
+        assert len(time) == 1
+        return add_time_from_h5(hier, h5_filename, time[0], **kwargs)
 
 
 def hierarchy_fromh5_(h5_filename, time, hier, silent=True):

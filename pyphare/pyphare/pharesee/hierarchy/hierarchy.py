@@ -58,6 +58,8 @@ class PatchHierarchy(object):
                 self.data_files.update({data_files.filename: data_files})
             else:
                 self.data_files = {data_files.filename: data_files}
+        else:
+            self.data_files = {}
 
         self.update()
 
@@ -79,7 +81,7 @@ class PatchHierarchy(object):
                             new_lvls,
                             self.domain_box,
                             selection_box=self.domain_box,
-                            time=time,
+                            times=time,
                             data_files=self.data_files,
                         )
                     else:
