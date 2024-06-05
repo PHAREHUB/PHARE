@@ -330,7 +330,7 @@ class PatchHierarchy(object):
         return filename in self.data_files
 
     def times(self):
-        return np.sort(np.asarray(list(self.time_hier.keys())))
+        return np.sort(np.asarray(list(self.time_hier.keys()), dtype=np.float32))
 
     def plot_patches(self, save=False):
         fig, ax = plt.subplots(figsize=(10, 3))

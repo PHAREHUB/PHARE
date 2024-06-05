@@ -7,7 +7,12 @@ from .patchdata import FieldData, ParticleData
 from ..particles import Particles
 from .hierarchy import PatchHierarchy
 from ...core.box import Box
-from ...core.phare_utilities import refinement_ratio
+from ...core.phare_utilities import (
+    refinement_ratio,
+    none_iterable,
+    all_iterables,
+    listify,
+)
 from ...core.gridlayout import GridLayout
 from .hierarchy_utils import field_qties
 import h5py
@@ -248,15 +253,19 @@ def new_from_h5(filepath, times, **kwargs):
     # create a patchhierarchy from a given time and optional selection box
     # loads all datasets from the filepath h5 file as patchdatas
 
-    selection_box = kwargs.get("selection_box", None)
+    # we authorize user to pass only one selection box for all times
+    # but in this case they're all the same
+    selection_box = kwargs.get("selection_box", [None] * len(times))
+    if none_iterable(selection_box) and all_iterables(times):
+        selection_box = [selection_box] * len(times)
 
     patch_levels_per_time = []
 
     h5f = h5py.File(filepath, "r")
-    for time in times:
+    for it, time in enumerate(times):
         if isinstance(time, float):
             time = f"{time:.10f}"
-        patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
+        patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box[it])
         patch_levels_per_time.append(patch_levels)
 
     dim = len(h5f.attrs["domain_box"])

@@ -280,14 +280,27 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
 
 
 class Run:
+
     def __init__(self, path, single_hier_for_all_quantities=False):
+        import glob
+
         self.path = path
         self.single_hier_for_all_quantities = single_hier_for_all_quantities
         self.hier = None  # only used if single_hier_for_all_quantities == True
+        self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
+        if len(self.available_diags) == 0:
+            raise FileNotFoundError(f"No diagnostic files found in {self.path}")
 
     def _get_hierarchy(self, times, filename, hier=None, **kwargs):
+        from pyphare.core.box import Box
+
         times = listify(times)
         times = [f"{t:.10f}" for t in times]
+        if "selection_box" in kwargs:
+            if isinstance(kwargs["selection_box"], tuple):
+                lower = kwargs["selection_box"][:2]
+                upper = kwargs["selection_box"][2:]
+                kwargs["selection_box"] = Box(lower, upper)
 
         def _get_hier(h):
             return hierarchy_from(
@@ -452,10 +465,12 @@ class Run:
         :param level: the level at which get the associated grid size
         :param time: the time because level depends on it
         """
+        import glob
 
         h5_time_grp_key = "t"
-        h5_filename = "EM_B.h5"  # _____ TODO : could be another file
-
+        files = glob.glob(os.path.join(self.path, "*.h5"))
+        any_file = files[0]
+        h5_filename = any_file
         import h5py
 
         data_file = h5py.File(os.path.join(self.path, h5_filename), "r")
