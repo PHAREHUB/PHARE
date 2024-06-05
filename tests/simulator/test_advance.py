@@ -712,7 +712,7 @@ class AdvanceTestBase(SimulatorTest):
 
         import random
 
-        rando = random.randint(0, 1e10)
+        rando = random.randint(0, int(1e10))
 
         def _getHier(diag_dir, boxes=[]):
             return self.getHierarchy(
