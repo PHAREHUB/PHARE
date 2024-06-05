@@ -168,7 +168,7 @@ class PatchHierarchyTest(unittest.TestCase):
         Vi = r.GetVi(times)
         for hier in (B, E, Ni, Vi):
             self.assertEqual(len(hier.times()), 2)
-            self.assertTrue(np.allclose(hier.times(), times))
+            self.assertTrue(np.allclose(hier.times().astype(np.float32), times))
 
     def test_hierarchy_is_refined(self):
         r = Run(diag_outputs)

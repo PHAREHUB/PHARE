@@ -288,8 +288,6 @@ class Run:
         self.single_hier_for_all_quantities = single_hier_for_all_quantities
         self.hier = None  # only used if single_hier_for_all_quantities == True
         self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
-        if len(self.available_diags) == 0:
-            raise FileNotFoundError(f"No diagnostic files found in {self.path}")
 
     def _get_hierarchy(self, times, filename, hier=None, **kwargs):
         from pyphare.core.box import Box
