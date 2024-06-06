@@ -77,7 +77,7 @@ add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
-target_link_directories(${PROJECT_NAME} PUBLIC MPI::MPI_C)
+target_link_directories(${PROJECT_NAME} PUBLIC ${MPI_LIBRARY_PATH})
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_core
   SAMRAI_algs

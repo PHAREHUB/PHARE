@@ -188,7 +188,7 @@ def main():
     import random
 
     startMPI()
-    rando = random.randint(0, 1e10)
+    rando = random.randint(0, int(1e10))
 
     refinement_boxes = {"L0": {"B0": [(10, 10), (14, 14)]}}
 
