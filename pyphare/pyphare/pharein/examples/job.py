@@ -1,25 +1,20 @@
 #!/usr/bin/env python
 
-
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectronModel
-from pyphare.pharein import ElectromagDiagnostics
-from pyphare.pharein import FluidDiagnostics
-from pyphare.pharein import getSimulation
+import numpy as np
+import pyphare.pharein as ph
 
 
 # ------------------------------------
 #     configure the simulation
 # ------------------------------------
 
-Simulation(
+ph.Simulation(
     time_step_nbr=1000,  # number of time steps (not specified if time_step and final_time provided)
     final_time=1.0,  # simulation final time (not specified if time_step and time_step_nbr given)
     boundary_types="periodic",  # boundary condition, string or tuple, length == len(cell) == len(dl)
     cells=80,  # integer or tuple length == dimension
     dl=0.1,  # mesh size of the root level, float or tuple
-    path="test5"  # directory where INI file and diagnostics directories will be
+    path="test5",  # directory where INI file and diagnostics directories will be
     # time_step = 0.005,                  # simulation time step (not specified if time_step_nbr and final_time given)
     # domain_size = 8.,                   # float or tuple, not specified if dl and cells are
     # interp_order = 1,                   # interpolation order, [default = 1] can be 1, 2, 3 or 4
@@ -36,7 +31,6 @@ Simulation(
 
 # in the following we use the MaxwellianFluidModel
 
-import numpy as np
 
 Te = 0.12
 
@@ -46,17 +40,17 @@ def n(x):
 
 
 def bx(x):
-    xmax = getSimulation().simulation_domain()[0]
+    xmax = ph.getSimulation().simulation_domain()[0]
     return np.cos(2 * np.pi / xmax * x)
 
 
-MaxwellianFluidModel(bx=bx, protons={"density": n}, background={})
+ph.MaxwellianFluidModel(bx=bx, protons={"density": n}, background={})
 
 
-ElectronModel(closure="isothermal", Te=Te)
+ph.ElectronModel(closure="isothermal", Te=Te)
 
 
-ElectromagDiagnostics(
+ph.ElectromagDiagnostics(
     diag_type="E",  # available : ("E", "B")
     write_every=10,
     compute_every=5,
@@ -66,18 +60,18 @@ ElectromagDiagnostics(
 )
 
 
-FluidDiagnostics(
+ph.FluidDiagnostics(
     diag_type="density",  # choose in (rho_s, flux_s)
     write_every=10,  # write on disk every x iterations
     compute_every=5,  # compute diagnostics every x iterations ( x <= write_every)
     start_iteration=0,  # iteration at which diag is enabled
     last_iteration=990,  # iteration at which diag is turned off
-    population_name="protons"  # name of the population for which the diagnostics is made
+    population_name="protons",  # name of the population for which the diagnostics is made
     # ,path = 'FluidDiagnostics1'      # where output files will be written, [default: name]
 )
 
 
-FluidDiagnostics(
+ph.FluidDiagnostics(
     diag_type="bulkVelocity",
     write_every=10,
     compute_every=5,
@@ -86,7 +80,7 @@ FluidDiagnostics(
     population_name="background",
 )
 
-FluidDiagnostics(
+ph.FluidDiagnostics(
     diag_type="density",
     write_every=10,
     compute_every=5,
@@ -95,7 +89,7 @@ FluidDiagnostics(
     population_name="all",
 )
 
-FluidDiagnostics(
+ph.FluidDiagnostics(
     diag_type="flux",
     write_every=10,
     compute_every=5,
@@ -104,9 +98,13 @@ FluidDiagnostics(
     population_name="background",
 )
 
-ElectromagDiagnostics(
-    diag_type="B", write_every=10, compute_every=5, start_teration=0, last_iteration=990
+ph.ElectromagDiagnostics(
+    diag_type="B",
+    write_every=10,
+    compute_every=5,
+    start_iteration=0,
+    last_iteration=990,
 )
 
-for item in getSimulation().electrons.dict_path():
+for item in ph.getSimulation().electrons.dict_path():
     print(item[0], item[1])

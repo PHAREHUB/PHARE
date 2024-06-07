@@ -147,7 +147,7 @@ class Diagnostics(object):
 
         self.__extent = None
 
-        # if a diag already is registered we just contactenate the timestamps
+        # if a diag already is registered we just concatenate the timestamps
         addIt = True
         registered_diags = global_vars.sim.diagnostics
         for diagname, diag in registered_diags.items():
@@ -313,7 +313,6 @@ class ParticleDiagnostics(Diagnostics):
         )
 
     def _setSubTypeAttributes(self, **kwargs):
-
         # domain is good default for users who should not worry about what that means
         # even less about ghosts...
         kwargs["quantity"] = kwargs.get("quantity", "domain")

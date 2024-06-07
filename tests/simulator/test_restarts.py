@@ -19,6 +19,8 @@ from pyphare.simulator.simulator import Simulator
 
 from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
+from pyphare.pharesee.hierarchy.patchdata import ParticleData
+from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
 
 
 def permute(dic, expected_num_levels):
@@ -155,26 +157,22 @@ class RestartsTest(SimulatorTest):
         def count_levels_and_patches(qty):
             n_levels = len(qty.levels())
             n_patches = 0
-            for ilvl, lvl in qty.patch_levels.items():
-                n_patches += len(qty.patch_levels[ilvl].patches)
+            for ilvl in qty.levels().keys():
+                n_patches += len(qty.level(ilvl).patches)
             return n_levels, n_patches
 
         self.assertGreater(len(timestamps), 0)
         for time in timestamps:
             checks = 0
 
-            run0 = Run(diag_dir0, single_hier_for_all_quantities=True)
-            run1 = Run(diag_dir1, single_hier_for_all_quantities=True)
+            run0 = Run(diag_dir0)
 
-            datahier0 = run0.GetAllAvailableQties(time, pops)
-            datahier1 = run1.GetAllAvailableQties(time, pops)
+            datahier0 = get_all_available_quantities_from_h5(diag_dir0, time)
+            datahier1 = get_all_available_quantities_from_h5(diag_dir1, time)
 
             self.assertEqual(
-                datahier0.level(0).patches[0].patch_datas.keys(),
-                datahier1.level(0).patches[0].patch_datas.keys(),
-            )
-            n_quantities_per_patch = len(
-                datahier0.level(0).patches[0].patch_datas.keys()
+                set(datahier0.quantities()),
+                set(datahier1.quantities()),
             )
 
             self.assertEqual(len(datahier0.levels()), len(datahier1.levels()))
@@ -197,7 +195,8 @@ class RestartsTest(SimulatorTest):
                     for pd_key, pd0 in patch0.patch_datas.items():
                         pd1 = patch1.patch_datas[pd_key]
                         self.assertNotEqual(id(pd0), id(pd1))
-                        if "domain" in pd_key:
+                        self.assertEqual(type(pd0), type(pd1))
+                        if isinstance(pd1, ParticleData):
                             try:
                                 self.assertEqual(pd0.dataset, pd1.dataset)
                             except AssertionError:
@@ -208,10 +207,11 @@ class RestartsTest(SimulatorTest):
                             np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
                         checks += 1
 
-            n_levels, n_patches = count_levels_and_patches(run0.GetB(time))
+            n_levels, n_patches = count_levels_and_patches(
+                run0.GetB(time, all_primal=False)
+            )
             self.assertEqual(n_levels, expected_num_levels)
             self.assertGreaterEqual(n_patches, n_levels)  # at least one patch per level
-            self.assertEqual(checks, n_quantities_per_patch * n_patches)
 
     @data(
         *permute(

@@ -17,7 +17,9 @@ from pyphare.pharein.diagnostics import (
 )
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
-from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
+from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
+from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import all_timestamps
@@ -356,7 +358,8 @@ class AdvanceTestBase(SimulatorTest):
 
             overlaps = hierarchy_overlaps(datahier, coarsest_time)
 
-            for ilvl, lvl in datahier.patch_levels.items():
+            # should it be levels(coarsest_time)?
+            for ilvl, lvl in datahier.levels().items():
                 print("testing level {}".format(ilvl))
                 for overlap in overlaps[ilvl]:
                     pd1, pd2 = overlap["pdatas"]
@@ -454,7 +457,7 @@ class AdvanceTestBase(SimulatorTest):
         uniqTimes = set([0])
 
         for step in range(1, finest_level_step_nbr + 1):
-            checkTime = datahier.format_timestamp(finestTimeStep * step)
+            checkTime = format_timestamp(finestTimeStep * step)
             self.assertIn(checkTime, datahier.times())
             uniqTimes.add(checkTime)
 
@@ -470,7 +473,7 @@ class AdvanceTestBase(SimulatorTest):
         )  # skip first coarsest step due to issue 400
 
         for step in range(startStep, syncSteps + 1):
-            checkTime = datahier.format_timestamp(secondFinestTimeStep * step)
+            checkTime = format_timestamp(secondFinestTimeStep * step)
             self.assertIn(checkTime, datahier.times())
             nLevels = datahier.levelNbr(checkTime)
             self.assertGreaterEqual(nLevels, 2)
@@ -556,7 +559,7 @@ class AdvanceTestBase(SimulatorTest):
 
         def assert_time_in_hier(*ts):
             for t in ts:
-                self.assertIn(L0L1_datahier.format_timestamp(t), L0L1_datahier.times())
+                self.assertIn(format_timestamp(t), L0L1_datahier.times())
 
         checks = 0
         ndim = global_vars.sim.ndim
@@ -710,7 +713,7 @@ class AdvanceTestBase(SimulatorTest):
 
         import random
 
-        rando = random.randint(0, 1e10)
+        rando = random.randint(0, int(1e10))
 
         def _getHier(diag_dir, boxes=[]):
             return self.getHierarchy(

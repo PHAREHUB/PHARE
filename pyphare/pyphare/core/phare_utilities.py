@@ -155,7 +155,8 @@ def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=Fal
 
 
 def print_trace():
-    import sys, traceback
+    import sys
+    import traceback
 
     _, _, tb = sys.exc_info()
     traceback.print_tb(tb)

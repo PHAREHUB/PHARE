@@ -38,25 +38,28 @@ class ScopeTimerFile(phScopeTimerFile):
         """
         Extract particle count per timestep per level from phlop logging
         """
+        from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
+
         bad_diag_error = (
             "Simulation was not configured with Particle Count info diagnostic"
         )
-        pcount_hier = hierarchy_from(h5_filename=self.run.path + "/particle_count.h5")
-        particles_per_level_per_time_step = {  # per coarse timestep only
-            li: np.zeros(len(self.advances))
-            for li in range(len(pcount_hier.data_files["t"][pcount_hier.times()[0]]))
-        }
-        for ti, t in enumerate(pcount_hier.times()[1:]):
-            for plk, pl in pcount_hier.data_files["t"][t].items():
-                pc = 0
-                for pid, p in pl.items():
-                    if "particle_count" not in p.attrs:
-                        raise ValueError(bad_diag_error)
-                    if pid.split("#")[0][1:] == self.rank:
-                        pc += p.attrs["particle_count"]
-                if pc == 0:
-                    pc += 1  # avoid div by 0 for rank missing patch on level
-                particles_per_level_per_time_step[int(plk[2:])][ti] += pc
+        filepath = self.run.path + "/particle_count.h5"
+        all_times = get_times_from_h5(filepath)
+
+        particles_per_level_per_time_step = {}
+        pcount_hier = None
+        seen_levels = []
+        for it, time in enumerate(all_times):
+            pcount_hier = self.run.GetParticleCount(time)
+            for ilvl, lvl in pcount_hier.levels(time).items():
+                if ilvl not in seen_levels:
+                    seen_levels += [ilvl]
+                pc = sum([p.attrs["particle_count"] for p in lvl.patches])
+                if ilvl not in particles_per_level_per_time_step:
+                    particles_per_level_per_time_step[ilvl] = np.zeros(
+                        len(all_times), dtype=int
+                    )
+                particles_per_level_per_time_step[ilvl][it] = pc
         return pcount_hier, particles_per_level_per_time_step
 
     def advance_times_for_L(self, ilvl):

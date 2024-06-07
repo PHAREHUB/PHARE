@@ -332,7 +332,7 @@ def check_refinement_boxes(ndim, **kwargs):
 
         for box_idx, ref_box in enumerate(boxes):
             for cmp_box in boxes[box_idx + 1 :]:
-                if ref_box * cmp_box != None:
+                if ref_box * cmp_box is not None:
                     raise ValueError(
                         f"Error: Box({ref_box}) overlaps with Box({cmp_box})"
                     )
@@ -352,8 +352,8 @@ def check_refinement_boxes(ndim, **kwargs):
 
             if box.ndim != ndim:
                 raise ValueError(f"Box({box}) has incorrect dimensions for simulation")
-            for l in boxm.refine(box, refinement_ratio).shape:
-                if (l < smallest_patch_size).any():
+            for length in boxm.refine(box, refinement_ratio).shape:
+                if (length < smallest_patch_size).any():
                     raise ValueError(
                         "Invalid box incompatible with smallest_patch_size"
                     )
@@ -558,7 +558,7 @@ def check_optional_keywords(**kwargs):
 def check_resistivity(**kwargs):
     resistivity = kwargs.get("resistivity", 0.0)
     if resistivity < 0.0:
-        raise ValueError(f"Error: resistivity should not be negative")
+        raise ValueError("Error: resistivity should not be negative")
 
     return resistivity
 
@@ -566,7 +566,7 @@ def check_resistivity(**kwargs):
 def check_hyper_resistivity(**kwargs):
     hyper_resistivity = kwargs.get("hyper_resistivity", 0.0001)
     if hyper_resistivity < 0.0:
-        raise ValueError(f"Error: hyper_resistivity should not be negative")
+        raise ValueError("Error: hyper_resistivity should not be negative")
 
     return hyper_resistivity
 
@@ -675,7 +675,7 @@ def checker(func):
             ) = check_refinement_boxes(ndim, **kwargs)
         else:
             kwargs["max_nbr_levels"] = kwargs.get("max_nbr_levels", None)
-            assert kwargs["max_nbr_levels"] != None  # this needs setting otherwise
+            assert kwargs["max_nbr_levels"] is not None  # this needs setting otherwise
             kwargs["refinement_boxes"] = None
 
         kwargs["resistivity"] = check_resistivity(**kwargs)
@@ -936,12 +936,14 @@ class Simulation(object):
 
 def serialize(sim):
     # pickle cannot handle simulation objects
-    import dill, codecs
+    import dill
+    import codecs
 
     return codecs.encode(dill.dumps(sim), "hex")
 
 
 def deserialize(hex):
-    import dill, codecs
+    import dill
+    import codecs
 
     return dill.loads(codecs.decode(hex, "hex"))

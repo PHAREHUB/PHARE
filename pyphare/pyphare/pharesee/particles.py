@@ -85,7 +85,7 @@ class Particles:
                 all_assert_sorted(self, that)
                 return True
             except AssertionError as ex:
-                print(f"particles.py:Particles::eq failed with:", ex)
+                print(f"particles.py:Particles::eq failed with: {ex}")
                 print_trace()
                 return False
 

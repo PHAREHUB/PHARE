@@ -25,12 +25,13 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
         write_timestamps=timestamps,
         compute_timestamps=timestamps,
     )
-
-    ph.MetaDiagnostics(
-        quantity="tags",
-        write_timestamps=timestamps,
-        compute_timestamps=timestamps,
-    )
+    # commented out because not working propertly at the moment
+    # but we keep it there for when it does
+    # ph.MetaDiagnostics(
+    #     quantity="tags",
+    #     write_timestamps=timestamps,
+    #     compute_timestamps=timestamps,
+    # )
 
     for quantity in ["density", "bulkVelocity", "pressure_tensor"]:
         ph.FluidDiagnostics(

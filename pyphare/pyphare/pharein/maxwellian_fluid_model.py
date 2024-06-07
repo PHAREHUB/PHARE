@@ -1,7 +1,7 @@
 import numpy as np
 from pyphare.core import phare_utilities
 from pyphare.core.box import Box
-from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
+from pyphare.core.gridlayout import GridLayout
 from pyphare.pharein import global_vars
 
 
