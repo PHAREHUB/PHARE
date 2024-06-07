@@ -1,11 +1,11 @@
 import os
 import numpy as np
 
-from .hierarchy import (
-    compute_hier_from,
-    flat_finest_field,
-    hierarchy_from,
-)
+from .hierarchy.hierarchy_utils import compute_hier_from
+from .hierarchy.hierarchy_utils import flat_finest_field
+from .hierarchy import hierarchy_from
+from pyphare.core.phare_utilities import listify
+
 from pyphare.logger import getLogger
 
 logger = getLogger(__name__)
@@ -280,17 +280,32 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
 
 
 class Run:
+
     def __init__(self, path, single_hier_for_all_quantities=False):
+        import glob
+
         self.path = path
         self.single_hier_for_all_quantities = single_hier_for_all_quantities
         self.hier = None  # only used if single_hier_for_all_quantities == True
+        self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
 
-    def _get_hierarchy(self, time, filename, hier=None):
-        t = "{:.10f}".format(time)
+    def _get_hierarchy(self, times, filename, hier=None, **kwargs):
+        from pyphare.core.box import Box
+
+        times = listify(times)
+        times = [f"{t:.10f}" for t in times]
+        if "selection_box" in kwargs:
+            if isinstance(kwargs["selection_box"], tuple):
+                lower = kwargs["selection_box"][:2]
+                upper = kwargs["selection_box"][2:]
+                kwargs["selection_box"] = Box(lower, upper)
 
         def _get_hier(h):
             return hierarchy_from(
-                h5_filename=os.path.join(self.path, filename), time=t, hier=h
+                h5_filename=os.path.join(self.path, filename),
+                times=times,
+                hier=h,
+                **kwargs,
             )
 
         if self.single_hier_for_all_quantities:
@@ -298,6 +313,7 @@ class Run:
             return self.hier
         return _get_hier(hier)
 
+    # TODO maybe transform that so multiple times can be accepted
     def _get(self, hierarchy, time, merged, interp):
         """
         if merged=True, will return an interpolator and a tuple of 1d arrays
@@ -323,89 +339,95 @@ class Run:
         else:
             return hierarchy
 
-    def GetTags(self, time, merged=False):
-        hier = self._get_hierarchy(time, "tags.h5")
+    def GetTags(self, time, merged=False, **kwargs):
+        hier = self._get_hierarchy(time, "tags.h5", **kwargs)
         return self._get(hier, time, merged, "nearest")
 
-    def GetB(self, time, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, "EM_B.h5")
+    def GetB(self, time, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, "EM_B.h5", **kwargs)
         return self._get(hier, time, merged, interp)
 
-    def GetE(self, time, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, "EM_E.h5")
+    def GetE(self, time, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, "EM_E.h5", **kwargs)
         return self._get(hier, time, merged, interp)
 
-    def GetMassDensity(self, time, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, "ions_mass_density.h5")
+    def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
         return self._get(hier, time, merged, interp)
 
-    def GetNi(self, time, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, "ions_density.h5")
+    def GetNi(self, time, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, "ions_density.h5", **kwargs)
         return self._get(hier, time, merged, interp)
 
-    def GetN(self, time, pop_name, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5")
+    def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
         return self._get(hier, time, merged, interp)
 
-    def GetVi(self, time, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, "ions_bulkVelocity.h5")
+    def GetVi(self, time, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
         return self._get(hier, time, merged, interp)
 
-    def GetFlux(self, time, pop_name, merged=False, interp="nearest"):
-        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5")
+    def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
         return self._get(hier, time, merged, interp)
 
-    def GetPressure(self, time, pop_name, merged=False, interp="nearest"):
-        M = self._get_hierarchy(time, f"ions_pop_{pop_name}_momentum_tensor.h5")
-        V = self.GetFlux(time, pop_name)
-        N = self.GetN(time, pop_name)
+    def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+        M = self._get_hierarchy(
+            time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
+        )
+        V = self.GetFlux(time, pop_name, **kwargs)
+        N = self.GetN(time, pop_name, **kwargs)
         P = compute_hier_from(
             _compute_pop_pressure,
             (M, V, N),
             popname=pop_name,
-            mass=self.GetMass(pop_name),
+            mass=self.GetMass(pop_name, **kwargs),
         )
         return self._get(P, time, merged, interp)
 
-    def GetPi(self, time, merged=False, interp="nearest"):
-        M = self._get_hierarchy(time, f"ions_momentum_tensor.h5")
-        massDensity = self.GetMassDensity(time)
-        Vi = self._get_hierarchy(time, f"ions_bulkVelocity.h5")
+    def GetPi(self, time, merged=False, interp="nearest", **kwargs):
+        M = self._get_hierarchy(time, f"ions_momentum_tensor.h5", **kwargs)
+        massDensity = self.GetMassDensity(time, **kwargs)
+        Vi = self._get_hierarchy(time, f"ions_bulkVelocity.h5", **kwargs)
         Pi = compute_hier_from(_compute_pressure, (M, massDensity, Vi))
         return self._get(Pi, time, merged, interp)
 
-    def GetJ(self, time, merged=False, interp="nearest"):
-        B = self.GetB(time)
+    def GetJ(self, time, merged=False, interp="nearest", **kwargs):
+        B = self.GetB(time, **kwargs)
         J = compute_hier_from(_compute_current, B)
         return self._get(J, time, merged, interp)
 
-    def GetDivB(self, time, merged=False, interp="nearest"):
-        B = self.GetB(time)
+    def GetDivB(self, time, merged=False, interp="nearest", **kwargs):
+        B = self.GetB(time, **kwargs)
         db = compute_hier_from(_compute_divB, B)
         return self._get(db, time, merged, interp)
 
-    def GetRanks(self, time, merged=False, interp="nearest"):
+    def GetRanks(self, time, merged=False, interp="nearest", **kwargs):
         """
         returns a hierarchy of MPI ranks
         takes the information from magnetic field diagnostics arbitrarily
         this fails if the magnetic field is not written and could at some point
         be replace by a search of any available diag at the requested time.
         """
-        B = self.GetB(time)
+        B = self.GetB(time, **kwargs)
         ranks = compute_hier_from(_get_rank, B)
         return self._get(ranks, time, merged, interp)
 
-    def GetParticles(self, time, pop_name, hier=None):
+    def GetParticles(self, time, pop_name, hier=None, **kwargs):
         def filename(name):
             return f"ions_pop_{name}_domain.h5"
 
         if isinstance(pop_name, (list, tuple)):
             for pop in pop_name:
-                hier = self._get_hierarchy(time, filename(pop), hier=hier)
+                hier = self._get_hierarchy(time, filename(pop), hier=hier, **kwargs)
             return hier
-        return self._get_hierarchy(time, filename(pop_name), hier=hier)
+        return self._get_hierarchy(time, filename(pop_name), hier=hier, **kwargs)
 
-    def GetMass(self, pop_name):
+    def GetParticleCount(self, time, **kwargs):
+        c = self._get_hierarchy(time, "particle_count.h5", **kwargs)
+        return c
+
+    def GetMass(self, pop_name, **kwargs):
         list_of_qty = ["density", "flux", "domain", "levelGhost", "patchGhost"]
         list_of_mass = []
 
@@ -421,7 +443,7 @@ class Run:
 
         return list_of_mass[0]
 
-    def GetDomainSize(self):
+    def GetDomainSize(self, **kwargs):
         h5_filename = "EM_B.h5"  # _____ TODO : could be another file
 
         import h5py
@@ -441,10 +463,12 @@ class Run:
         :param level: the level at which get the associated grid size
         :param time: the time because level depends on it
         """
+        import glob
 
         h5_time_grp_key = "t"
-        h5_filename = "EM_B.h5"  # _____ TODO : could be another file
-
+        files = glob.glob(os.path.join(self.path, "*.h5"))
+        any_file = files[0]
+        h5_filename = any_file
         import h5py
 
         data_file = h5py.File(os.path.join(self.path, h5_filename), "r")
@@ -462,7 +486,7 @@ class Run:
 
         return root_cell_width / fac
 
-    def GetAllAvailableQties(self, time=0, pops=[]):
+    def GetAllAvailableQties(self, time=0, pops=[], **kwargs):
         assert self.single_hier_for_all_quantities  # can't work otherwise
 
         def _try(fn, *args, **kwargs):
@@ -472,14 +496,14 @@ class Run:
                 # normal to not have a diagnostic if not requested
                 logger.debug(f"No file for function {fn.__name__}")
 
-        _try(self.GetParticles, time, pops)
-        _try(self.GetB, time)
-        _try(self.GetE, time)
-        _try(self.GetNi, time)
-        _try(self.GetVi, time)
+        _try(self.GetParticles, time, pops, **kwargs)
+        _try(self.GetB, time, **kwargs)
+        _try(self.GetE, time, **kwargs)
+        _try(self.GetNi, time, **kwargs)
+        _try(self.GetVi, time, **kwargs)
 
         for pop in pops:
-            _try(self.GetFlux, time, pop)
-            _try(self.GetN, time, pop)
+            _try(self.GetFlux, time, pop, **kwargs)
+            _try(self.GetN, time, pop, **kwargs)
 
         return self.hier

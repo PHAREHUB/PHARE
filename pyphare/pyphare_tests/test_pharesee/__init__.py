@@ -7,10 +7,11 @@ from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
 
 from pyphare.pharesee.particles import Particles
 
-from pyphare.pharesee.hierarchy import FieldData
-from pyphare.pharesee.hierarchy import ParticleData
+from pyphare.pharesee.hierarchy.patchdata import FieldData
+from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.hierarchy import PatchHierarchy
-from pyphare.pharesee.hierarchy import Patch, PatchLevel
+from pyphare.pharesee.hierarchy.patch import Patch
+from pyphare.pharesee.hierarchy.patchlevel import PatchLevel
 
 """
 number of ghosts is hard coded to 5

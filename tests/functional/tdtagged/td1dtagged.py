@@ -263,7 +263,7 @@ def get_time(path, time):
         time = "{:.10f}".format(time)
     from pyphare.pharesee.hierarchy import hierarchy_from
 
-    return hierarchy_from(h5_filename=path + "/ions_pop_protons_domain.h5", time=time)
+    return hierarchy_from(h5_filename=path + "/ions_pop_protons_domain.h5", times=time)
 
 
 def post_advance(new_time):

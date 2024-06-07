@@ -2,7 +2,8 @@ import numpy as np
 
 from ..core import box as boxm
 from pyphare.core.box import Box
-from .hierarchy import FieldData, is_root_lvl
+from .hierarchy.patchdata import FieldData
+from .hierarchy.hierarchy_utils import is_root_lvl
 
 from pyphare.core.phare_utilities import listify, is_scalar
 

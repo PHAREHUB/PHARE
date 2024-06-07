@@ -17,7 +17,8 @@ from pyphare.pharein.diagnostics import (
 )
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
-from pyphare.pharesee.hierarchy import hierarchy_from, merge_particles
+from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import all_timestamps
@@ -356,7 +357,8 @@ class AdvanceTestBase(SimulatorTest):
 
             overlaps = hierarchy_overlaps(datahier, coarsest_time)
 
-            for ilvl, lvl in datahier.patch_levels.items():
+            # should it be levels(coarsest_time)?
+            for ilvl, lvl in datahier.levels().items():
                 print("testing level {}".format(ilvl))
                 for overlap in overlaps[ilvl]:
                     pd1, pd2 = overlap["pdatas"]
@@ -710,7 +712,7 @@ class AdvanceTestBase(SimulatorTest):
 
         import random
 
-        rando = random.randint(0, 1e10)
+        rando = random.randint(0, int(1e10))
 
         def _getHier(diag_dir, boxes=[]):
             return self.getHierarchy(

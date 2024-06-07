@@ -13,8 +13,9 @@ import numpy as np
 import pyphare.pharein as ph
 from ddt import data, ddt
 from pyphare.pharein.simulation import supported_dimensions
-from pyphare.pharesee.hierarchy import h5_filename_from, h5_time_grp_key, hierarchy_from
-from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
+from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import dump_all_diags
 

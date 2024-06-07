@@ -3,7 +3,7 @@ import numpy as np
 from pyphare.core import box as boxm
 from pyphare.core.gridlayout import GridLayout
 from pyphare.core.phare_utilities import refinement_ratio
-from pyphare.pharesee.hierarchy import FieldData
+from pyphare.pharesee.hierarchy.patchdata import FieldData
 
 # in this module, we assume the refinement ratio is 2
 refinement_ratio = 2
