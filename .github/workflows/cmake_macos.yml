@@ -20,7 +20,7 @@ jobs:
           dylib_path: /usr/local/lib/gcc/current
         - os: macos-13
           dylib_path: /usr/local/lib/gcc/current
-        - os: macos-latest
+        - os: macos-latest # https://github.com/actions/runner/issues/3337
           dylib_path: /opt/homebrew/Cellar/gcc/14.1.0_1/lib/gcc/current
 
 
@@ -81,6 +81,7 @@ jobs:
       env:
         LIBRARY_PATH: ${{ matrix.dylib_path }} # used by clang, needed to find libquadmath - else link error
       run: |
+        [ -d /opt/homebrew/Cellar/gcc ] && ls -l /opt/homebrew/Cellar/gcc
         [ ! -d "${{matrix.dylib_path}}" ] && echo dylib_path not found && find / -name "libquadmath.0.dylib" && exit 1
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
