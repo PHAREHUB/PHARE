@@ -222,6 +222,7 @@ def population_in_model(population):
 class FluidDiagnostics_(Diagnostics):
     fluid_quantities = [
         "density",
+        "charge_density",
         "mass_density",
         "flux",
         "bulkVelocity",

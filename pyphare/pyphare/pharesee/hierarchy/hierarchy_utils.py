@@ -36,6 +36,7 @@ field_qties = {
     "momentum_tensor_zz": "Mzz",
     "density": "rho",
     "mass_density": "rho",
+    "charge_density": "rho",
     "tags": "tags",
 }
 
