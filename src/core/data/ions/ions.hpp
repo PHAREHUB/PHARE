@@ -72,7 +72,7 @@ namespace core
         NO_DISCARD vecfield_type const& velocity() const { return bulkVelocity_; }
         NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
 
-        NO_DISCARD std::string static particleDensityName() { return "chargeDensity"; }
+        NO_DISCARD std::string static particleDensityName() { return "particleDensity"; }
         NO_DISCARD std::string static massDensityName() { return "massDensity"; }
 
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
