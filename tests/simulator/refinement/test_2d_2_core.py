@@ -101,7 +101,7 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-    for quantity in ["density", "bulkVelocity"]:
+    for quantity in ["charge_density", "bulkVelocity"]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
@@ -113,7 +113,7 @@ def make_fig(hier, fig_name, ilvl, extra_collections=[]):
         collections = [
             {
                 "boxes": l0_in_l1,
-                "facecolor": "grey",
+                "value": 1,
             }
         ]
         if 1 in hier.levels():
@@ -121,7 +121,7 @@ def make_fig(hier, fig_name, ilvl, extra_collections=[]):
             collections += [
                 {
                     "boxes": l1_over_l0,
-                    "facecolor": "yellow",
+                    "value": 2,
                 }
             ]
         hier.plot_2d_patches(
@@ -171,7 +171,7 @@ def post_advance_1(new_time):
             extra_collections += [
                 {
                     "boxes": errors,
-                    "facecolor": "black",
+                    "value": 1,
                 }
             ]
         make_fig(L0L1_datahier, L0L1_diags.split("/")[-1], 1, extra_collections)

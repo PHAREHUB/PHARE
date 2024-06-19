@@ -65,7 +65,7 @@ public:
     {
         if (isUsable())
         {
-            return ions_.density();
+            return ions_.chargeDensity();
         }
         else
         {
@@ -78,7 +78,7 @@ public:
     {
         if (isUsable())
         {
-            return ions_.density();
+            return ions_.chargeDensity();
         }
         else
         {
@@ -112,23 +112,23 @@ public:
         auto const& Vix = ions_.velocity()(Component::X);
         auto const& Viy = ions_.velocity()(Component::Y);
         auto const& Viz = ions_.velocity()(Component::Z);
-        auto const& Ni  = ions_.density();
+        auto const& Ne  = ions_.chargeDensity();
 
         auto& Vex = Ve_(Component::X);
         auto& Vey = Ve_(Component::Y);
         auto& Vez = Ve_(Component::Z);
 
         // from Ni because all components defined on primal
-        layout.evalOnBox(Ni, [&](auto const&... args) {
+        layout.evalOnBox(Ne, [&](auto const&... args) {
             auto arr = std::array{args...};
 
             auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
             auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
             auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
 
-            Vex(arr) = Vix(arr) - JxOnVx / Ni(arr);
-            Vey(arr) = Viy(arr) - JyOnVy / Ni(arr);
-            Vez(arr) = Viz(arr) - JzOnVz / Ni(arr);
+            Vex(arr) = Vix(arr) - JxOnVx / Ne(arr);
+            Vey(arr) = Viy(arr) - JyOnVy / Ne(arr);
+            Vez(arr) = Viz(arr) - JzOnVz / Ne(arr);
         });
     }
 
@@ -211,7 +211,7 @@ public:
         if (!Pe_.isUsable())
             throw std::runtime_error("Error - isothermal closure pressure not usable");
 
-        auto const& Ne_ = ions_.density();
+        auto const& Ne_ = ions_.chargeDensity();
         std::transform(std::begin(Ne_), std::end(Ne_), std::begin(Pe_),
                        [this](auto n) { return n * Te_; });
     }
