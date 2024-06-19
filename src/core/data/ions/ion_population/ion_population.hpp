@@ -34,7 +34,7 @@ namespace core
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
-            , rho_{name_ + "_rho", HybridQuantity::Scalar::rho}
+            , particleDensity_{name_ + "_rho", HybridQuantity::Scalar::rho}
             , particles_{name_}
             , particleInitializerInfo_{initializer["particle_initializer"]}
         {
@@ -52,14 +52,14 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return particles_.isUsable() && rho_.isUsable() && flux_.isUsable()
+            return particles_.isUsable() && particleDensity_.isUsable() && flux_.isUsable()
                    && momentumTensor_.isUsable();
         }
 
 
         NO_DISCARD bool isSettable() const
         {
-            return particles_.isSettable() && rho_.isSettable() && flux_.isSettable()
+            return particles_.isSettable() && particleDensity_.isSettable() && flux_.isSettable()
                    && momentumTensor_.isSettable();
         }
 
@@ -85,8 +85,8 @@ namespace core
         }
 
 
-        NO_DISCARD field_type const& density() const { return rho_; }
-        NO_DISCARD field_type& density() { return rho_; }
+        NO_DISCARD field_type const& density() const { return particleDensity_; }
+        NO_DISCARD field_type& density() { return particleDensity_; }
 
         NO_DISCARD VecField const& flux() const { return flux_; }
         NO_DISCARD VecField& flux() { return flux_; }
@@ -105,7 +105,7 @@ namespace core
 
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            return std::forward_as_tuple(flux_, momentumTensor_, rho_, particles_);
+            return std::forward_as_tuple(flux_, momentumTensor_, particleDensity_, particles_);
         }
 
 
@@ -129,7 +129,7 @@ namespace core
         double mass_;
         VecField flux_;
         TensorField momentumTensor_;
-        field_type rho_;
+        field_type particleDensity_;
         ParticlesPack<ParticleArray> particles_;
         initializer::PHAREDict const& particleInitializerInfo_;
     };
