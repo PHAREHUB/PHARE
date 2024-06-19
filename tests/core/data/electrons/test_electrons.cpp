@@ -128,7 +128,7 @@ struct ElectronsTest : public ::testing::Test
 {
     static constexpr auto dim         = typename TypeInfo::first_type{}();
     static constexpr auto interp      = typename TypeInfo::second_type{}();
-    static constexpr auto densityName = std::string_view{"rho"};
+    static constexpr auto densityName = std::string_view{"particleDensity"};
 
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;

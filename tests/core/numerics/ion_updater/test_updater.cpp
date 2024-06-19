@@ -237,7 +237,7 @@ struct IonsBuffers
     ParticlesPack<ParticleArray> alphaPack;
 
     IonsBuffers(GridLayout const& layout)
-        : ionDensity{"rho", HybridQuantity::Scalar::rho,
+        : ionDensity{"particleDensity", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
