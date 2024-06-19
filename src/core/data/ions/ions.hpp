@@ -41,15 +41,14 @@ namespace core
 
 
         explicit Ions(PHARE::initializer::PHAREDict const& dict)
-            : rho_{densityName(), HybridQuantity::Scalar::rho}
-            , massDensity_{massDensityName(), HybridQuantity::Scalar::rho}
+            : massDensity_{massDensityName(), HybridQuantity::Scalar::rho}
+            , chargeDensity_{chargeDensityName(), HybridQuantity::Scalar::rho}
             , bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
             , populations_{generate(
                   [&dict](auto ipop) { //
                       return IonPopulation{dict["pop" + std::to_string(ipop)]};
                   },
                   dict["nbrPopulations"].template to<std::size_t>())}
-            , sameMasses_{allSameMass_()}
             , momentumTensor_{"momentumTensor", HybridQuantity::Tensor::M}
         {
         }
@@ -58,29 +57,24 @@ namespace core
         NO_DISCARD auto nbrPopulations() const { return populations_.size(); }
         NO_DISCARD auto size() const { return nbrPopulations(); }
 
+        NO_DISCARD field_type const& massDensity() const { return massDensity_; }
+        NO_DISCARD field_type const& massDensity() { return massDensity_; }
 
-        NO_DISCARD field_type const& density() const { return rho_; }
-        NO_DISCARD field_type& density() { return rho_; }
-
-        NO_DISCARD field_type const& massDensity() const
-        {
-            return sameMasses_ ? rho_ : massDensity_;
-        }
-        NO_DISCARD field_type& massDensity() { return sameMasses_ ? rho_ : massDensity_; }
-
+        NO_DISCARD field_type const& chargeDensity() const { return chargeDensity_; }
+        NO_DISCARD field_type& chargeDensity() { return chargeDensity_; }
 
         NO_DISCARD vecfield_type const& velocity() const { return bulkVelocity_; }
         NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
 
-        NO_DISCARD std::string static densityName() { return "rho"; }
+        NO_DISCARD std::string static chargeDensityName() { return "chargeDensity"; }
         NO_DISCARD std::string static massDensityName() { return "massDensity"; }
 
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
         tensorfield_type& momentumTensor() { return momentumTensor_; }
 
-        void computeDensity()
+        void computeChargeDensity()
         {
-            rho_.zero();
+            chargeDensity_.zero();
 
             for (auto const& pop : populations_)
             {
@@ -88,11 +82,13 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.density();
-                std::transform(std::begin(rho_), std::end(rho_), std::begin(popDensity),
-                               std::begin(rho_), std::plus<Float>{});
+                auto& popDensity = pop.chargeDensity();
+                std::transform(std::begin(chargeDensity_), std::end(chargeDensity_),
+                               std::begin(popDensity), std::begin(chargeDensity_),
+                               std::plus<Float>{});
             }
         }
+
         void computeMassDensity()
         {
             massDensity_.zero();
@@ -103,7 +99,7 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.density();
+                auto& popDensity = pop.particleDensity();
                 std::transform(
                     std::begin(massDensity_), std::end(massDensity_), std::begin(popDensity),
                     std::begin(massDensity_),
@@ -114,14 +110,7 @@ namespace core
 
         void computeBulkVelocity()
         {
-            // the bulk velocity is sum(pop_mass * pop_flux) / sum(pop_mass * pop_density)
-            // if all populations have the same mass, this is equivalent to sum(pop_flux) /
-            // sum(pop_density) sum(pop_density) is rho_ and already known by the time we get here.
-            // sum(pop_mass * pop_flux) is massDensity_ and is computed by computeMassDensity() if
-            // needed
-            if (!sameMasses_)
-                computeMassDensity();
-            auto const& density = (sameMasses_) ? rho_ : massDensity_;
+            computeMassDensity();
 
             bulkVelocity_.zero();
             auto& vx = bulkVelocity_.getComponent(Component::X);
@@ -131,28 +120,26 @@ namespace core
             for (auto& pop : populations_)
             {
                 // account for mass only if populations have different masses
-                std::function<Float(Float, Float)> plus = std::plus<Float>{};
                 std::function<Float(Float, Float)> plusMass
                     = [&pop](Float const& v, Float const& f) { return v + f * pop.mass(); };
 
                 auto const& flux    = pop.flux();
                 auto&& [fx, fy, fz] = flux();
 
-
                 std::transform(std::begin(vx), std::end(vx), std::begin(fx), std::begin(vx),
-                               sameMasses_ ? plus : plusMass);
+                               plusMass);
                 std::transform(std::begin(vy), std::end(vy), std::begin(fy), std::begin(vy),
-                               sameMasses_ ? plus : plusMass);
+                               plusMass);
                 std::transform(std::begin(vz), std::end(vz), std::begin(fz), std::begin(vz),
-                               sameMasses_ ? plus : plusMass);
+                               plusMass);
             }
 
 
-            std::transform(std::begin(vx), std::end(vx), std::begin(density), std::begin(vx),
+            std::transform(std::begin(vx), std::end(vx), std::begin(massDensity_), std::begin(vx),
                            std::divides<Float>{});
-            std::transform(std::begin(vy), std::end(vy), std::begin(density), std::begin(vy),
+            std::transform(std::begin(vy), std::end(vy), std::begin(massDensity_), std::begin(vy),
                            std::divides<Float>{});
-            std::transform(std::begin(vz), std::end(vz), std::begin(density), std::begin(vz),
+            std::transform(std::begin(vz), std::end(vz), std::begin(massDensity_), std::begin(vz),
                            std::divides<Float>{});
         }
 
@@ -185,11 +172,8 @@ namespace core
         // because it is for internal use only so no object will ever need to access it.
         NO_DISCARD bool isUsable() const
         {
-            bool usable
-                = rho_.isUsable() and bulkVelocity_.isUsable() and momentumTensor_.isUsable();
-
-            // if all populations have the same mass, we don't need the massDensity_
-            usable &= (sameMasses_) ? true : massDensity_.isUsable();
+            bool usable = chargeDensity_.isUsable() and bulkVelocity_.isUsable()
+                          and momentumTensor_.isUsable() and massDensity_.isUsable();
 
             for (auto const& pop : populations_)
             {
@@ -202,11 +186,8 @@ namespace core
 
         NO_DISCARD bool isSettable() const
         {
-            bool settable
-                = rho_.isSettable() and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
-
-            // if all populations have the same mass, we don't need the massDensity_
-            settable &= (sameMasses_) ? true : massDensity_.isSettable();
+            bool settable = massDensity_.isSettable() and chargeDensity_.isSettable()
+                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
 
             for (auto const& pop : populations_)
             {
@@ -230,7 +211,8 @@ namespace core
 
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            return std::forward_as_tuple(bulkVelocity_, momentumTensor_, rho_, massDensity_);
+            return std::forward_as_tuple(bulkVelocity_, momentumTensor_, chargeDensity_,
+                                         massDensity_);
         }
 
 
@@ -251,29 +233,12 @@ namespace core
             return ss.str();
         }
 
-        NO_DISCARD bool sameMasses() const { return sameMasses_; }
-
 
     private:
-        bool allSameMass_() const
-        {
-            return all(populations_, [this](auto const& pop) { // arbitrary small diff
-                return float_equals(pop.mass(), populations_.front().mass(), /*abs_tol=*/1e-10);
-            });
-        }
-
-
-
-
-        field_type rho_;
         field_type massDensity_;
+        field_type chargeDensity_;
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_;
-
-        // note this is set at construction when all populations are added
-        // in the future if some populations are dynamically created during the simulation
-        // this should be updated accordingly
-        bool sameMasses_{false};
         tensorfield_type momentumTensor_;
     };
 } // namespace core
