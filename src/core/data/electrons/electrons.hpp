@@ -102,7 +102,7 @@ public:
     }
 
 
-    void computeDensity() {}
+    void computeParticleDensity() {} // TODO which is the same as the charge particle... except the sign
 
     void computeBulkVelocity(GridLayout const& layout)
     {
@@ -281,7 +281,7 @@ public:
 
 
 
-    void computeDensity() { fluxComput_.computeDensity(); }
+    void computeParticleDensity() { fluxComput_.computeParticleDensity(); }
     void computeBulkVelocity(GridLayout const& layout) { fluxComput_.computeBulkVelocity(layout); }
     void computePressure(GridLayout const& layout) { pressureClosure_.computePressure(layout); }
 
@@ -310,7 +310,7 @@ public:
     {
         if (isUsable())
         {
-            momentModel_.computeDensity();
+            momentModel_.computeParticleDensity();
             momentModel_.computeBulkVelocity(layout);
             momentModel_.computePressure(layout);
         }

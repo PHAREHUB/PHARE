@@ -526,7 +526,7 @@ struct IonUpdaterTest : public ::testing::Test
                                       PHARE::core::LevelGhostDeposit{});
 
 
-        ions.computeDensity();
+        ions.computeParticleDensity(); // TODO should we need here the charge density
         ions.computeBulkVelocity();
     } // end Ctor
 

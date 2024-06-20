@@ -78,7 +78,7 @@ namespace core
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
         tensorfield_type& momentumTensor() { return momentumTensor_; }
 
-        void computeDensity()
+        void computeParticleDensity()
         {
             particleDensity_.zero();
 
