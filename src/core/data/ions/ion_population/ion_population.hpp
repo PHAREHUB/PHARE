@@ -34,7 +34,7 @@ namespace core
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
-            , particleDensity_{name_ + "_rho", HybridQuantity::Scalar::rho}
+            , particleDensity_{name_ + "_particleDensity", HybridQuantity::Scalar::rho}
             , particles_{name_}
             , particleInitializerInfo_{initializer["particle_initializer"]}
         {
@@ -130,6 +130,7 @@ namespace core
         VecField flux_;
         TensorField momentumTensor_;
         field_type particleDensity_;
+        // field_type chargeDensity_;
         ParticlesPack<ParticleArray> particles_;
         initializer::PHAREDict const& particleInitializerInfo_;
     };

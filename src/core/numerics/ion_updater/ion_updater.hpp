@@ -107,7 +107,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
 template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
 {
-    ions.computeParticleDensity(); // TODO should we need here to compute the charge density ?
+    ions.computeParticleDensity(); // TODO ouam : should we need here to compute the charge density ?
     ions.computeBulkVelocity();
 }
 
