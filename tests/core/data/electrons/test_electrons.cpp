@@ -195,7 +195,7 @@ struct ElectronsTest : public ::testing::Test
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , Nibuffer{std::string{densityName}, HybridQuantity::Scalar::rho,
                    layout.allocSize(HybridQuantity::Scalar::rho)}
-        , NiProtons{"protons_rho", HybridQuantity::Scalar::rho,
+        , NiProtons{"protons_particleDensity", HybridQuantity::Scalar::rho,
                     layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
         , ions{_ions(F, Nibuffer, NiProtons, Vi, M, protons_M, pack)}

@@ -102,7 +102,7 @@ public:
     }
 
 
-    void computeParticleDensity() {} // TODO which is the same as the charge particle... except the sign
+    void computeParticleDensity() {} // TODO ouam : which is the same as the charge particle... except the sign
 
     void computeBulkVelocity(GridLayout const& layout)
     {

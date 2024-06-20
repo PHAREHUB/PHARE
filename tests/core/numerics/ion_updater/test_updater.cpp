@@ -241,9 +241,9 @@ struct IonsBuffers
                      layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonDensity{"protons_rho", HybridQuantity::Scalar::rho,
+        , protonDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
+        , alphaDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
@@ -274,9 +274,9 @@ struct IonsBuffers
                      layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonDensity{"protons_rho", HybridQuantity::Scalar::rho,
+        , protonDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaDensity{"alpha_rho", HybridQuantity::Scalar::rho,
+        , alphaDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
@@ -526,7 +526,7 @@ struct IonUpdaterTest : public ::testing::Test
                                       PHARE::core::LevelGhostDeposit{});
 
 
-        ions.computeParticleDensity(); // TODO should we need here the charge density
+        ions.computeParticleDensity(); // TODO ouam : should we need here the charge density
         ions.computeBulkVelocity();
     } // end Ctor
 
