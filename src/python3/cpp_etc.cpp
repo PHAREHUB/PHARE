@@ -1,15 +1,17 @@
 
+#include "pybind11/stl.h"
+#include "pybind11/stl_bind.h"
 #include "python3/pybind_def.hpp"
 #include "simulator/simulator.hpp"
 
+#include "core/env.hpp"
 #include "core/def/phare_config.hpp"
-
 
 #include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
 
-
-
 namespace py = pybind11;
+
+PYBIND11_MAKE_OPAQUE(std::unordered_map<std::string, PHARE::env::Var*>);
 
 namespace PHARE::pydata
 {
@@ -55,5 +57,21 @@ PYBIND11_MODULE(cpp_etc, m)
     });
 
     m.def("phare_build_config", []() { return PHARE::build_config(); });
+
+    m.def("phare_env_exists",
+          [](std::string const& s) { return Env::INSTANCE().vars.count(s) > 0; });
+    m.def("phare_env_val", [](std::string const& s) { return Env::INSTANCE()(s)(); });
+    py::class_<env::Var>(m, "phare_env_var")
+        .def_readonly("id", &env::Var::id)
+        .def_readonly("desc", &env::Var::desc)
+        .def_readonly("options", &env::Var::options)
+        .def_readonly("default", &env::Var::_default)
+        .def_readonly("results", &env::Var::results);
+
+    py::bind_map<std::unordered_map<std::string, env::Var*>>(m, "EnvVarMap");
+
+    m.def(
+        "phare_env_vars", []() -> auto& { return Env::INSTANCE().vars; },
+        py::return_value_policy::reference);
 }
 } // namespace PHARE::pydata

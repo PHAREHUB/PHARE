@@ -8,6 +8,7 @@
 #include "phare_types.hpp"
 
 #include "core/def.hpp"
+#include "core/env.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
@@ -116,32 +117,7 @@ protected:
 private:
     auto find_model(std::string name);
 
-    auto static log_file_name()
-    {
-        // ".log" directory is not created here, but in python if PHARE_LOG != "NONE"
-        if (auto log = core::get_env("PHARE_LOG"))
-        {
-            if (log == "RANK_FILES")
-                return ".log/" + std::to_string(core::mpi::rank()) + ".out";
-
-
-            if (log == "DATETIME_FILES")
-            {
-                auto date_time = core::mpi::date_time();
-                auto rank      = std::to_string(core::mpi::rank());
-                auto size      = std::to_string(core::mpi::size());
-                return ".log/" + date_time + "_" + rank + "_of_" + size + ".out";
-            }
-
-            if (log != "NONE")
-                throw std::runtime_error(
-                    "PHARE_LOG invalid type, valid keys are RANK_FILES/DATETIME_FILES/NONE");
-        }
-
-        return std::string{""}; // unused
-    }
-
-    std::ofstream log_out{log_file_name()};
+    std::ofstream log_out{Env::INSTANCE().PHARE_LOG("PHARE_LOG_FILE", "")};
     std::streambuf* coutbuf = nullptr;
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
@@ -192,7 +168,7 @@ namespace
     inline auto logging(std::ofstream& log_out)
     {
         std::streambuf* buf = nullptr;
-        if (auto log = core::get_env("PHARE_LOG"); log != "NONE")
+        if (auto log = Env::INSTANCE().PHARE_LOG(); log and log != "NONE")
         {
             buf = std::cout.rdbuf();
             std::cout.rdbuf(log_out.rdbuf());
