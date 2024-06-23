@@ -27,6 +27,7 @@ std::size_t max(std::size_t const local, int mpi_size)
 
 
 
+
 bool any(bool b)
 {
     int global_sum, local_sum = static_cast<int>(b);

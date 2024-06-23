@@ -4,6 +4,8 @@
 
 #include "core/def/phlop.hpp" // scope timing
 
+#include "core/env.hpp" // scope timing
+
 #include "simulator/simulator.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/mpi_utils.hpp"
@@ -41,7 +43,7 @@ public:
             = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
         SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
         PHARE_WITH_PHLOP( //
-            if (auto e = core::get_env("PHARE_SCOPE_TIMING", "false"); e == "1" || e == "true")
+            if (auto e = Env::INSTANCE().PHARE_SCOPE_TIMING(); e == "1" || e == "true")
                 phlop::ScopeTimerMan::INSTANCE()
                     .file_name(".phare_times." + std::to_string(core::mpi::rank()) + ".txt")
                     .init(); //
