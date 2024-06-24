@@ -70,14 +70,19 @@ option(withPhlop "Use phlop" OFF)
 # -DlowResourceTests=ON
 option(lowResourceTests "Disable heavy tests for CI (2d/3d/etc" OFF)
 
+# -DhighResourceTests=ON
+option(highResourceTests "Enable heavy tests for CI (3d/etc" OFF)
+
 # -DtestDuringBuild=ON enabled if devMode=ON, disabled if asan=ON (needs LD_PRELOAD)
 option(testDuringBuild "Runs C++ unit tests after they are built" OFF)
+
 
 
 # -DPGO_GEN=OFF profile guided optimization generate
 option(PGO_GEN "profile guided optimization generate" OFF)
 # -DPGO_USE=OFF
 option(PGO_USE "profile guided optimization use" OFF)
+
 
 
 # Controlling the activation of tests
