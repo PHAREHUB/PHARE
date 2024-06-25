@@ -65,21 +65,14 @@ auto createParam(std::array<double, GridLayoutImpl::dimension> const& dxdydz,
 
 
 template<typename Array>
-void writeToArray(std::ifstream& stream, Array& array)
+bool writeToArray(std::ifstream& stream, Array& array)
 {
     std::size_t dim = array.size();
-    stream >> array[0];
-    if (dim > 1)
-    {
-        stream >> array[1];
-    }
-    if (dim > 2)
-    {
-        stream >> array[2];
-    }
+    for (std::size_t i = 0; i < dim; ++i)
+        if (!(stream >> array[i]))
+            return false;
+    return true;
 }
-
-
 
 
 #endif
