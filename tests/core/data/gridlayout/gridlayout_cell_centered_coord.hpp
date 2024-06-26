@@ -114,20 +114,12 @@ auto createCellCenteringParam()
         = createParam<GridLayoutImpl>(dl, nbCell, Point<double, GridLayoutImpl::dimension>{origin});
 
 
+    std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
+    std::array<double, GridLayoutImpl::dimension> realPosition;
 
-    while (!value.eof())
+    while (writeToArray(value, icell) && writeToArray(value, realPosition))
     {
-        std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
-        std::array<double, GridLayoutImpl::dimension> realPosition;
-
-        if (value.eof() || value.bad())
-            break;
-
-        writeToArray(value, icell);
-        writeToArray(value, realPosition);
-
         auto& param = params[0];
-
         param.iCellForCentering.push_back(icell);
         param.expectedPosition.push_back(realPosition);
     }

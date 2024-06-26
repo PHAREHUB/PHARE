@@ -95,20 +95,14 @@ auto createFieldCenteringParam()
 
     // constexpr std::uint32_t numberOfQuantities{14};
 
-    while (!summary.eof())
+    std::string quantity;
+    while (summary >> quantity)
     {
-        std::string quantity;
-
         std::array<std::uint32_t, GridLayoutImpl::dimension> nbCell;
         std::array<double, GridLayoutImpl::dimension> dl;
         std::array<std::uint32_t, GridLayoutImpl::dimension> iStart;
         std::array<std::uint32_t, GridLayoutImpl::dimension> iEnd;
         std::array<double, GridLayoutImpl::dimension> origin;
-
-        summary >> quantity;
-
-        if (summary.eof() || summary.bad())
-            break;
 
         writeToArray(summary, nbCell);
         writeToArray(summary, dl);
@@ -128,21 +122,11 @@ auto createFieldCenteringParam()
     }
 
 
+    std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
+    std::array<double, GridLayoutImpl::dimension> realPosition;
 
-    while (!value.eof())
+    while (value >> quantity && writeToArray(value, icell) && writeToArray(value, realPosition))
     {
-        std::string quantity;
-        std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
-        std::array<double, GridLayoutImpl::dimension> realPosition;
-
-        value >> quantity;
-
-        if (value.eof() || value.bad())
-            break;
-
-        writeToArray(value, icell);
-        writeToArray(value, realPosition);
-
         auto quantityIt = namesToQuantity.find(quantity);
         if (quantityIt != namesToQuantity.end())
         {

@@ -81,16 +81,11 @@ auto createIndexingParam()
         throw std::runtime_error("Error cannot open " + fullName);
     }
 
-    while (!inputFile.eof())
+    std::uint32_t iQuantity;
+    while (inputFile >> iQuantity)
     {
-        std::uint32_t iQuantity;
         std::array<std::uint32_t, GridLayoutImpl::dimension> numberCells;
         std::array<double, GridLayoutImpl::dimension> dl;
-
-        inputFile >> iQuantity;
-
-        if (inputFile.eof() || inputFile.bad())
-            break;
 
         writeToArray(inputFile, numberCells);
         writeToArray(inputFile, dl);
