@@ -40,6 +40,22 @@ inline bool is_init()
     return flag > 0;
 }
 
+
+struct Lifecycle
+{ // mostly used in core tests without samrai
+    Lifecycle(int argc, char** argv)
+    {
+        if (MPI_Init(&argc, &argv) != MPI_SUCCESS)
+            throw std::runtime_error("MPI Initialization failed");
+    }
+    ~Lifecycle()
+    {
+        if (MPI_Finalize() != MPI_SUCCESS)
+            std::cerr << "MPI Finalization failed" << std::endl;
+    }
+};
+
+
 template<typename Data>
 NO_DISCARD auto mpi_type_for()
 {
