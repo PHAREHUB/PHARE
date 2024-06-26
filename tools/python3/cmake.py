@@ -33,10 +33,8 @@ def build(use_ninja=False, threads=1):
 
 def list_tests():
     proc = run("ctest -N", capture_output=True)
-    out  = decode_bytes(proc.stdout)
-    return [
-        line.split(" ")[-1] for line in out.splitlines()[1:-2]
-    ]
+    out = decode_bytes(proc.stdout)
+    return [line.split(" ")[-1] for line in out.splitlines()[1:-2]]
 
 
 def test_cmd(test, verbose=False):
@@ -48,4 +46,3 @@ def test_cmd(test, verbose=False):
 
 def run_test(test, verbose=False, capture_output=False):
     run(test_cmd(cmd, verbose=verbose), capture_output=capture_output)
-

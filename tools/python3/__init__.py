@@ -1,5 +1,29 @@
+import time
+import subprocess
+
+
 def decode_bytes(input):
     return input.decode("ascii", errors="ignore")
+
+
+class RunTimer:
+    def __init__(
+        self,
+        cmd,
+        shell=True,
+        capture_output=True,
+        check=False,
+        print_cmd=True,
+        **kwargs,
+    ):
+        self.cmd = cmd
+        start = time.time()
+        self.run = subprocess.run(
+            self.cmd, shell=shell, capture_output=capture_output, check=check, **kwargs
+        )
+        self.t = time.time() - start
+        self.stdout = self.run.stdout
+        self.stderr = self.run.stderr
 
 
 def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True, **kwargs):
@@ -11,10 +35,16 @@ def run(cmd, shell=True, capture_output=True, check=False, print_cmd=True, **kwa
     if print_cmd:
         print(f"running: {cmd}")
     try:
-        return subprocess.run(cmd, shell=shell, capture_output=capture_output, check=check, **kwargs)
-    except subprocess.CalledProcessError as e: # only triggers on failure if check=True
-        print(f"run failed with error: {e}\n\t{e.stdout}\n\t{e.stderr} ")
-        raise RuntimeError(decode_bytes(e.stderr))
+        return RunTimer(
+            cmd, shell=shell, capture_output=capture_output, check=check, **kwargs
+        )
+    except subprocess.CalledProcessError as e:  # only triggers on failure if check=True
+        what = f"run failed with error: {e}"
+        print(what)
+        if capture_output:
+            raise RuntimeError(decode_bytes(e.stderr))
+        raise RuntimeError(what)
+
 
 def run_mp(cmds, N_CORES=None, **kwargs):
     """
@@ -31,9 +61,11 @@ def run_mp(cmds, N_CORES=None, **kwargs):
         results = []
         for future in concurrent.futures.as_completed(jobs):
             try:
-                results += [future.result()]
+                proc = future.result()
+                results += [proc]
                 if future.exception() is not None:
                     raise future.exception()
+                print(proc.cmd, f"finished in {proc.t:.2f} seconds")
             except Exception as exc:
                 if kwargs.get("check", False):
                     executor.shutdown(wait=False, cancel_futures=True)
@@ -43,11 +75,21 @@ def run_mp(cmds, N_CORES=None, **kwargs):
         return results
 
 
+def find_on_path(file):
+    import os
+
+    for dir in os.environ["PATH"].split(os.pathsep):
+        full = os.path.join(dir, file)
+        if os.path.exists(full):
+            return full
+    return ""
+
+
 def binary_exists_on_path(bin):
     """
     https://linux.die.net/man/1/which
     """
-    return run(f"which {bin}").returncode == 0
+    return len(find_on_path(bin))
 
 
 def scan_dir(path, files_only=False, dirs_only=False, drop=[]):
@@ -65,10 +107,14 @@ def scan_dir(path, files_only=False, dirs_only=False, drop=[]):
         if all([check(entry) for check in checks])
     ]
 
+
 import contextlib
+
+
 @contextlib.contextmanager
 def pushd(new_cwd):
     import os
+
     cwd = os.getcwd()
     os.chdir(new_cwd)
     try:

@@ -11,7 +11,7 @@ def hashes(N=1):
 
 
 def log(N=10, use_short=False):
-    """ enjoy """
+    # https://git-scm.com/docs/pretty-formats
     short = '--pretty=format:"%h%x09%an%x09%ad%x09%s"' if use_short else ""
     return decode_bytes(run(f"git log -{N} {short}").stdout)
 
