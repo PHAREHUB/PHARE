@@ -151,7 +151,8 @@ struct ElectronsTest : public ::testing::Test
     UsableVecField<dim> J, F, Ve, Vi;
     UsableTensorField<dim> M, protons_M;
 
-    GridND Nibuffer, NiProtons, Pe;
+    // GridND Nibuffer, NiProtons, Pe;
+    GridND Nibuffer, NiProtons, Ncharge, Pe;
 
     ParticleArray_t domainParticles{layout.AMRBox()};
     ParticleArray_t patchGhostParticles = domainParticles;
@@ -164,7 +165,8 @@ struct ElectronsTest : public ::testing::Test
     template<typename... Args>
     auto static _ions(Args&... args)
     {
-        auto const& [Fi, Nibuffer, NiProtons, Vi, M, protons_M, pack]
+        //auto const& [Fi, Nibuffer, NiProtons, Vi, M, protons_M, pack]
+        auto const& [Fi, Nibuffer, NiProtons, Ncharge, Vi, M, protons_M, pack]
             = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
@@ -176,8 +178,11 @@ struct ElectronsTest : public ::testing::Test
         auto& pops = ions.getRunTimeResourcesViewList();
         assert(pops.size() == 1);
 
-        auto const& [F, m, d, poppack] = pops[0].getCompileTimeResourcesViewList();
-        d.setBuffer(&NiProtons);
+        // auto const& [F, m, d, poppack] = pops[0].getCompileTimeResourcesViewList();
+        auto const& [F, m, Np, Nc, poppack] = pops[0].getCompileTimeResourcesViewList();
+        // d.setBuffer(&NiProtons);
+        Np.setBuffer(&NiProtons);
+        Nc.setBuffer(&Ncharge);
         Fi.set_on(F);
         protons_M.set_on(m);
         poppack.setBuffer(&pack);
@@ -197,8 +202,11 @@ struct ElectronsTest : public ::testing::Test
                    layout.allocSize(HybridQuantity::Scalar::rho)}
         , NiProtons{"protons_particleDensity", HybridQuantity::Scalar::rho,
                     layout.allocSize(HybridQuantity::Scalar::rho)}
+        , Ncharge{"protons_chargeDensity", HybridQuantity::Scalar::rho,
+                    layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
-        , ions{_ions(F, Nibuffer, NiProtons, Vi, M, protons_M, pack)}
+        // , ions{_ions(F, Nibuffer, NiProtons, Vi, M, protons_M, pack)}
+        , ions{_ions(F, Nibuffer, NiProtons, Ncharge, Vi, M, protons_M, pack)}
         , electrons{createDict<dim>()["electrons"], ions, J}
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
