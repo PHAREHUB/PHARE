@@ -1,38 +1,41 @@
+"""
+  This test case is for assessing the impact of copy/stream for various patch size and parameter sets
+"""
+
 import os
 from pathlib import Path
 from pyphare.pharein.simulation import supported_dimensions
-
 
 FILE_DIR = Path(__file__).resolve().parent
 this_file_name, file_ext = os.path.splitext(os.path.basename(__file__))
 gen_path = FILE_DIR / ".." / "generated" / this_file_name
 #### DO NOT EDIT ABOVE ####
 
-
 ### test permutation section - minimized is best ###
-dl = 0.2
 time_step = 0.001
-smallest_patch_size = 50
-largest_patch_size = 50
 time_step_nbr = 500
+dl = 0.25
+cells = 500
 
 permutables = [
     ("ndim", supported_dimensions()),
     ("interp", [1, 2, 3]),
-    ("cells", [50, 150, 300]),
     ("ppc", [50, 100, 200]),
+    ("patch_size", [25, 50, 100]),
 ]
 
-
-def permutation_filename(ndim, interp, cells, ppc):
-    return f"{ndim}_{interp}_{cells}_{ppc}.py"
+vth = {f"vth{xyz}": lambda *xyz: 0.3 for xyz in "xyz"}
 
 
-def permutation_filepath(ndim, interp, cells, ppc):
-    return str(gen_path / permutation_filename(ndim, interp, cells, ppc))
+def permutation_filename(ndim, interp, ppc, patch_size):
+    return f"{int(ndim)}_{int(interp)}_{int(ppc)}_{int(patch_size)}.py"
 
 
-def generate(ndim, interp, cells, ppc):
+def permutation_filepath(ndim, interp, ppc, patch_size):
+    return str(gen_path / permutation_filename(ndim, interp, ppc, patch_size))
+
+
+def generate(ndim, interp, ppc, patch_size):
     """
     Params may include functions for the default population "protons"
        see: simulation_setup.py::setup for all available dict keys
@@ -40,24 +43,26 @@ def generate(ndim, interp, cells, ppc):
        simulation_setup.setup doesn't even have to be used, any job.py style file is allowed
        A "params" dict must exist for exporting test case information
     """
-    filepath = permutation_filepath(ndim, interp, cells, ppc)
+    filepath = permutation_filepath(ndim, interp, ppc, patch_size)
     with open(filepath, "w") as out:
         out.write(
             """
+import tools.bench.functional.test_cases.uniform_w_patch_variance as inputs # scary
 params = {"""
             + f"""
     "ndim"                : {ndim},
     "interp_order"        : {interp},
-    "cells"               : {cells},
     "ppc"                 : {ppc},
-    "time_step_nbr"       : {time_step_nbr},
-    "dl"                  : {dl},
-    "time_step"           : {time_step},
-    "smallest_patch_size" : {smallest_patch_size},
-    "largest_patch_size"  : {largest_patch_size}, """
+    "smallest_patch_size" : {patch_size},
+    "largest_patch_size"  : {patch_size},
+    "cells"               : inputs.cells,
+    "time_step"           : inputs.time_step,
+    "dl"                  : inputs.dl,
+    "time_step_nbr"       : inputs.time_step_nbr,
+    **inputs.vth,
+"""
             + """
 }
-
 import pyphare.pharein as ph
 if ph.PHARE_EXE: # needed to allow params export without calling "job.py"
     from tools.bench.functional.simulation_setup import setup
