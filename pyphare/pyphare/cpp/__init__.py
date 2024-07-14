@@ -22,7 +22,7 @@ def cpp_lib(override=None):
         return importlib.import_module("pybindlibs.cpp")
     try:
         return importlib.import_module("pybindlibs.cpp_dbg")
-    except ImportError as err:
+    except ImportError:
         return importlib.import_module("pybindlibs.cpp")
 
 
@@ -41,11 +41,12 @@ def env_vars():
 
 
 def print_env_vars_info():
-    for k, v in cpp_etc_lib().phare_env_vars().items():
-        print(f"{k}: {v.desc}")
+    # see: src/core/env.hpp
+    for env_var_name, env_var in cpp_etc_lib().phare_env_vars().items():
+        print(f"{env_var_name}: {env_var.desc}")
         print("Options:")
-        for k, v in v.options:
-            print(f"  {k}: {v}")
+        for option_key, option_val in env_var.options:
+            print(f"  {option_key}: {option_val}")
         print("")
 
 
