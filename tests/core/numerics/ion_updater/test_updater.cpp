@@ -553,16 +553,16 @@ struct IonUpdaterTest : public ::testing::Test
 
         for (auto& pop : this->ions)
         {
-            interpolate(makeIndexRange(pop.patchGhostParticles()), pop.density(), pop.flux(),
+            interpolate(makeIndexRange(pop.patchGhostParticles()), pop.density(), pop.chargeDensity(), pop.flux(),
                         layout);
 
             double alpha = 0.5;
-            interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.density(), pop.flux(),
+            interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.density(), pop.chargeDensity(), pop.flux(),
                         layout,
                         /*coef = */ alpha);
 
 
-            interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.density(), pop.flux(),
+            interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.density(), pop.chargeDensity(), pop.flux(),
                         layout,
                         /*coef = */ (1. - alpha));
         }

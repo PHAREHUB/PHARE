@@ -469,7 +469,7 @@ public:
      * onto the particle.
      */
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(ParticleRange& particleRange, Field& density, VecField& flux,
+    inline void operator()(ParticleRange& particleRange, Field& density, Field& chargeDensity, VecField& flux,
                            GridLayout const& layout, double coef = 1.)
     {
         auto begin                        = particleRange.begin();
@@ -502,10 +502,10 @@ public:
         PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
     }
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(ParticleRange&& range, Field& density, VecField& flux,
+    inline void operator()(ParticleRange&& range, Field& density, Field& chargeDensity, VecField& flux,
                            GridLayout const& layout, double coef = 1.)
     {
-        (*this)(range, density, flux, layout, coef);
+        (*this)(range, density, chargeDensity, flux, layout, coef);
     }
 
 
