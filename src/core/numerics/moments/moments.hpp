@@ -41,22 +41,23 @@ namespace core
         for (auto& pop : ions)
         {
             auto& density = pop.density();
+            auto& chargeDensity = pop.chargeDensity();
             auto& flux    = pop.flux();
 
             if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
             {
                 auto& partArray = pop.domainParticles();
-                interpolate(partArray, density, flux, layout);
+                interpolate(partArray, density, chargeDensity, flux, layout);
             }
             else if constexpr (std::is_same_v<DepositTag, PatchGhostDeposit>)
             {
                 auto& partArray = pop.patchGhostParticles();
-                interpolate(partArray, density, flux, layout);
+                interpolate(partArray, density, chargeDensity, flux, layout);
             }
             else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
             {
                 auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(partArray, density, flux, layout);
+                interpolate(partArray, density, chargeDensity, flux, layout);
             }
         }
     }

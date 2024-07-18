@@ -516,6 +516,7 @@ public:
     ParticleArray_t particles;
 
     Grid_t rho;
+    Grid_t rho_c;
 
     UsableVecFieldND v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
@@ -526,6 +527,7 @@ public:
         : part{}
         , particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
+        , rho_c{"field", HybridQuantity::Scalar::rho, nx}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
         if constexpr (Interpolator::interp_order == 1)
@@ -632,7 +634,7 @@ public:
             part.v[2]     = +1.;
             particles.push_back(part);
         }
-        interpolator(makeIndexRange(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, rho_c, v, layout);
     }
 
 
@@ -678,12 +680,14 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
     ParticleArray_t particles;
     Grid_t rho;
+    Grid_t rho_c;
     UsableVecFieldND v;
     Interpolator interpolator;
 
     ACollectionOfParticles_2d()
         : particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx, ny}
+        , rho_c{"field", HybridQuantity::Scalar::rho, nx, ny}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
         for (int i = start; i < end; i++)
@@ -697,7 +701,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
                 part.v[1]   = -1.;
                 part.v[2]   = +1.;
             }
-        interpolator(makeIndexRange(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, rho_c, v, layout);
     }
 };
 TYPED_TEST_SUITE_P(ACollectionOfParticles_2d);
