@@ -490,6 +490,9 @@ public:
                 density, *currPart, [](auto const& part) { return 1.; }, startIndex_, weights_,
                 coef);
             particleToMesh_(
+                chargeDensity, *currPart, [](auto const& part) { return part.charge; }, startIndex_, weights_,
+                coef);
+            particleToMesh_(
                 xFlux, *currPart, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
                 coef);
             particleToMesh_(
