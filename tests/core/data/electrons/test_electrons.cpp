@@ -148,7 +148,7 @@ struct ElectronsTest : public ::testing::Test
     Electromag<VecFieldND> electromag;
 
     UsableVecField<dim> J, F, Ve, Vi;
-    UsableTensorField<dim> M, protons_M;
+    UsableTensorField<dim> ionTensor, protonTensor;
 
     GridND ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Pe;
 
@@ -163,7 +163,7 @@ struct ElectronsTest : public ::testing::Test
     template<typename... Args>
     auto static _ions(Args&... args)
     {
-        auto const& [Fi, ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Vi, M, protons_M, pack]
+        auto const& [ionFlux, ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Vi, ionTensor, protonTensor, pack]
             = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
@@ -171,7 +171,7 @@ struct ElectronsTest : public ::testing::Test
             d.setBuffer(&ionParticleDensity);
             d_c.setBuffer(&ionChargeDensity);
             Vi.set_on(V);
-            M.set_on(m);
+            ionTensor.set_on(m);
         }
         auto& pops = ions.getRunTimeResourcesViewList();
         assert(pops.size() == 1);
@@ -179,8 +179,8 @@ struct ElectronsTest : public ::testing::Test
         auto const& [F, m, Np, Nc, poppack] = pops[0].getCompileTimeResourcesViewList();
         Np.setBuffer(&protonParticleDensity);
         Nc.setBuffer(&protonChargeDensity);
-        Fi.set_on(F);
-        protons_M.set_on(m);
+        ionFlux.set_on(F);
+        protonTensor.set_on(m);
         poppack.setBuffer(&pack);
         return ions;
     }
@@ -192,8 +192,8 @@ struct ElectronsTest : public ::testing::Test
         , F{"protons_flux", layout, HybridQuantity::Vector::V}
         , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
+        , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
+        , protonTensor{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionParticleDensity{"particleDensity", HybridQuantity::Scalar::rho,
                    layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
@@ -203,7 +203,7 @@ struct ElectronsTest : public ::testing::Test
         , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
                     layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
-        , ions{_ions(F, ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Vi, M, protons_M, pack)}
+        , ions{_ions(F, ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Vi, ionTensor, protonTensor, pack)}
         , electrons{createDict<dim>()["electrons"], ions, J}
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
