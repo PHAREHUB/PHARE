@@ -43,6 +43,7 @@ namespace core
         explicit Ions(PHARE::initializer::PHAREDict const& dict)
             : particleDensity_{particleDensityName(), HybridQuantity::Scalar::rho}
             , massDensity_{massDensityName(), HybridQuantity::Scalar::rho}
+            , chargeDensity_{chargeDensityName(), HybridQuantity::Scalar::rho}
             , bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
             , populations_{generate(
                   [&dict](auto ipop) { //
@@ -68,11 +69,14 @@ namespace core
         }
         NO_DISCARD field_type& massDensity() { return sameMasses_ ? particleDensity_ : massDensity_; }
 
+        NO_DISCARD field_type const& chargeDensity() const { return chargeDensity_; }
+        NO_DISCARD field_type& chargeDensity() { return chargeDensity_; }
 
         NO_DISCARD vecfield_type const& velocity() const { return bulkVelocity_; }
         NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
 
         NO_DISCARD std::string static particleDensityName() { return "particleDensity"; }
+        NO_DISCARD std::string static chargeDensityName() { return "chargeDensity"; }
         NO_DISCARD std::string static massDensityName() { return "massDensity"; }
 
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
@@ -186,7 +190,7 @@ namespace core
         NO_DISCARD bool isUsable() const
         {
             bool usable
-                = particleDensity_.isUsable() and bulkVelocity_.isUsable() and momentumTensor_.isUsable();
+                = particleDensity_.isUsable() and chargeDensity_.isUsable() and bulkVelocity_.isUsable() and momentumTensor_.isUsable();
 
             // if all populations have the same mass, we don't need the massDensity_
             usable &= (sameMasses_) ? true : massDensity_.isUsable();
@@ -203,7 +207,7 @@ namespace core
         NO_DISCARD bool isSettable() const
         {
             bool settable
-                = particleDensity_.isSettable() and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
+                = particleDensity_.isSettable() and chargeDensity_.isSettable() and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
 
             // if all populations have the same mass, we don't need the massDensity_
             settable &= (sameMasses_) ? true : massDensity_.isSettable();
@@ -230,7 +234,7 @@ namespace core
 
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            return std::forward_as_tuple(bulkVelocity_, momentumTensor_, particleDensity_, massDensity_);
+            return std::forward_as_tuple(bulkVelocity_, momentumTensor_, particleDensity_, chargeDensity_, massDensity_);
         }
 
 
@@ -267,7 +271,7 @@ namespace core
 
         field_type particleDensity_;
         field_type massDensity_;
-        // field_type chargeDensity_;
+        field_type chargeDensity_;
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_;
 

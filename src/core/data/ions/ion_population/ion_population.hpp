@@ -83,8 +83,11 @@ namespace core
             return particles_.levelGhostParticlesNew();
         }
 
-        NO_DISCARD field_type const& density() const { return particleDensity_; }
-        NO_DISCARD field_type& density() { return particleDensity_; }
+        NO_DISCARD field_type const& density() const { return particleDensity_; }  // TODO ouam : to remove
+        NO_DISCARD field_type& density() { return particleDensity_; }  // TODO ouam : to remove
+
+        // NO_DISCARD field_type const& particleDensity() const { return particleDensity_; }
+        // NO_DISCARD field_type& particleDensity() { return particleDensity_; }
 
         NO_DISCARD field_type const& chargeDensity() const { return chargeDensity_; }
         NO_DISCARD field_type& chargeDensity() { return chargeDensity_; }
