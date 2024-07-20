@@ -212,6 +212,7 @@ struct IonsBuffers
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
     Grid ionDensity;
+    Grid ionChargeDensity;
     Grid ionMassDensity;
     Grid protonDensity;
     Grid protonChargeDensity;
@@ -241,6 +242,8 @@ struct IonsBuffers
     IonsBuffers(GridLayout const& layout)
         : ionDensity{"particleDensity", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
+                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
@@ -278,6 +281,8 @@ struct IonsBuffers
     IonsBuffers(IonsBuffers const& source, GridLayout const& layout)
         : ionDensity{"rho", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
+                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
@@ -311,6 +316,7 @@ struct IonsBuffers
 
     {
         ionDensity.copyData(source.ionDensity);
+        ionChargeDensity.copyData(source.ionChargeDensity);
         ionMassDensity.copyData(source.ionMassDensity);
         protonDensity.copyData(source.protonDensity);
         protonChargeDensity.copyData(source.protonChargeDensity);
@@ -325,10 +331,11 @@ struct IonsBuffers
     void setBuffers(Ions& ions)
     {
         {
-            auto const& [V, m, d, md] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, m, d, cd, md] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
             M.set_on(m);
             d.setBuffer(&ionDensity);
+            cd.setBuffer(&ionChargeDensity);
             md.setBuffer(&ionMassDensity);
         }
 
