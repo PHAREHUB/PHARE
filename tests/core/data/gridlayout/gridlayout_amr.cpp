@@ -80,11 +80,13 @@ TEST(GridLayout, canTransformAnAMRIndexIntoALocalIndex)
 
 TEST(GridLayout, canTransformAnAMRBoxIntoALocalBox)
 {
-    GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
+    std::size_t constexpr static dim = 1;
+    GridLayout<GridLayoutImplYee<dim, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
 
-    int nGhosts           = layout.nbrGhosts(QtyCentering::dual);
-    auto AMRBox           = Box{Point{55}, Point{65}};
-    auto expectedLocalBox = Box<std::uint32_t, 1>{Point{nGhosts + 5}, Point{nGhosts + 15}};
+    std::uint32_t nGhosts = layout.nbrGhosts(QtyCentering::dual);
+    auto AMRBox           = Box<int, dim>{Point<int, dim>{55}, Point<int, dim>{65}};
+    auto expectedLocalBox = Box<std::uint32_t, dim>{Point<std::uint32_t, dim>{nGhosts + 5},
+                                                    Point<std::uint32_t, dim>{nGhosts + 15}};
 
     EXPECT_EQ(expectedLocalBox, layout.AMRToLocal(AMRBox));
 }

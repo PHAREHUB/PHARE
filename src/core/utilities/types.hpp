@@ -269,7 +269,7 @@ template<typename Container, typename F>
 NO_DISCARD auto sum_from(Container const& container, F fn)
 {
     using value_type  = typename Container::value_type;
-    using return_type = std::decay_t<std::result_of_t<F const&(value_type const&)>>;
+    using return_type = std::decay_t<std::invoke_result_t<F const&, value_type const&>>;
     return_type sum   = 0;
     for (auto const& el : container)
         sum += fn(el);
@@ -283,7 +283,7 @@ template<typename F>
 NO_DISCARD auto generate(F&& f, std::size_t from, std::size_t to)
 {
     assert(from <= to);
-    using value_type = std::decay_t<std::result_of_t<F&(std::size_t const&)>>;
+    using value_type = std::decay_t<std::invoke_result_t<F&, std::size_t const&>>;
     std::vector<value_type> v;
     std::size_t count = to - from;
     if (count > 0)
@@ -301,10 +301,10 @@ NO_DISCARD auto generate(F&& f, std::size_t count)
 
 
 template<typename F, typename Container>
-NO_DISCARD auto generate(F&& f, Container& container)
+NO_DISCARD auto generate(F&& f, Container const& container)
 {
     using T          = typename Container::value_type;
-    using value_type = std::decay_t<std::result_of_t<F&(T&)>>;
+    using value_type = std::decay_t<std::invoke_result_t<F&, T&>>;
     std::vector<value_type> v1;
     if (container.size() > 0)
         v1.reserve(container.size());
@@ -355,11 +355,38 @@ NO_DISCARD auto constexpr any(Container const& container, Fn fn = to_bool)
     return std::any_of(container.begin(), container.end(), fn);
 }
 
-
 template<typename Container, typename Fn = decltype(to_bool)>
 NO_DISCARD auto constexpr none(Container const& container, Fn fn = to_bool)
 {
     return std::none_of(container.begin(), container.end(), fn);
+}
+
+
+template<typename SignedInt, typename UnsignedInt>
+bool diff_sign_int_equals(SignedInt const& i0, UnsignedInt const& i1)
+{
+    static_assert(std::is_unsigned_v<UnsignedInt>);
+    static_assert(std::is_signed_v<SignedInt>);
+    static_assert(sizeof(UnsignedInt) >= sizeof(SignedInt), "Bad int comparison!");
+    if (i0 < 0)
+        return false;
+    return static_cast<UnsignedInt>(i0) == i1;
+}
+
+
+template<typename Int0, typename Int1>
+bool int_equals(Int0 const& i0, Int1 const& i1)
+{
+    if constexpr (std::is_same_v<Int0, Int1>)
+        return i0 == i1;
+    else
+    {
+        if constexpr (std::is_unsigned_v<Int0> and std::is_signed_v<Int1>)
+            return diff_sign_int_equals(i1, i0);
+        if constexpr (std::is_unsigned_v<Int1> and std::is_signed_v<Int0>)
+            return diff_sign_int_equals(i0, i1);
+    }
+    // reaching here == compiler error
 }
 
 
@@ -416,7 +443,7 @@ constexpr auto for_N(Fn& fn)
 
     static_assert(std::is_same_v<decltype(M), for_N_R_mode>);
     using return_type
-        = std::decay_t<std::result_of_t<Fn(std::integral_constant<std::uint16_t, 0>)>>;
+        = std::decay_t<std::invoke_result_t<Fn, std::integral_constant<std::uint16_t, 0>>>;
     constexpr bool returns = !std::is_same_v<return_type, void>;
 
     if constexpr (returns)

@@ -49,8 +49,8 @@ namespace core
         }
 
 
-        constexpr Point(std::array<Type, dim> coords)
-            : r{std::move(coords)}
+        constexpr Point(std::array<Type, dim> const& coords)
+            : r{coords}
         {
         }
 
@@ -69,7 +69,8 @@ namespace core
         NO_DISCARD auto const& operator[](std::size_t i) const { return r[i]; }
 
 
-        NO_DISCARD bool operator==(Point const& p) const
+        template<typename T2>
+        NO_DISCARD bool operator==(Point<T2, dim> const& p) const
         {
             bool areEqual = true;
             for (std::size_t i = 0; i < dim; ++i)
@@ -77,7 +78,7 @@ namespace core
                 static_assert(std::is_integral_v<Type>,
                               "this function is only valid for integral type of Point");
 
-                areEqual &= ((*this)[i] == p[i]);
+                areEqual &= int_equals((*this)[i], p[i]); // handles signed differences
             }
             return areEqual;
         }

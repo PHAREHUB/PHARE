@@ -197,54 +197,63 @@ TEST(BoxIterator, iterates)
     Box<int, 2> b2{{1, 4}, {10, 12}};
     Box<int, 3> b3{{1, 4, 9}, {10, 12, 24}};
 
-    auto expected = Point{2};
-    auto actual   = std::begin(b1);
-    EXPECT_EQ(expected, *(++actual));
-
-    auto const cexpected = Point{2};
-    auto cactual         = std::begin(cb1);
-    EXPECT_EQ(cexpected, *(++cactual));
-
-    auto expected2 = Point{1, 5};
-    auto actual2   = std::begin(b2);
-    EXPECT_EQ(expected2, *(++actual2));
-
-    auto expected3 = Point{1, 4, 10};
-    auto actual3   = std::begin(b3);
-    EXPECT_EQ(expected3, *(++actual3));
-
-    Box<int, 2> small{{2, 1}, {3, 2}};
-    auto it = std::begin(small);
-    ++it;
-    expected = Point{2, 2};
-    EXPECT_EQ(expected, *it);
-    ++it;
-    expected = Point{3, 1};
-    EXPECT_EQ(expected, *it);
-
-    auto dummy1 = Point<int, 1>{};
-    for (auto const& point : b1)
     {
-        dummy1 = point;
+        auto expected = Point{2};
+        auto actual   = std::begin(b1);
+        EXPECT_EQ(expected, *(++actual));
     }
-    auto expected1 = Point{10};
-    EXPECT_EQ(expected1, dummy1);
-
-    auto dummy = Point<int, 2>{};
-    for (auto const& point : b2)
     {
-        dummy = point;
+        auto const cexpected = Point{2};
+        auto cactual         = std::begin(cb1);
+        EXPECT_EQ(cexpected, *(++cactual));
     }
-    expected = Point{10, 12};
-    EXPECT_EQ(expected, dummy);
-
-    auto dummy3 = Point<int, 3>{};
-    for (auto const& point : b3)
     {
-        dummy3 = point;
+        auto expected2 = Point{1, 5};
+        auto actual2   = std::begin(b2);
+        EXPECT_EQ(expected2, *(++actual2));
     }
-    expected = Point{10, 12, 24};
-    EXPECT_EQ(expected, dummy3);
+    {
+        auto expected3 = Point{1, 4, 10};
+        auto actual3   = std::begin(b3);
+        EXPECT_EQ(expected3, *(++actual3));
+    }
+    {
+        Box<int, 2> small{{2, 1}, {3, 2}};
+        auto it = std::begin(small);
+        ++it;
+        auto expected = Point{2, 2};
+        EXPECT_EQ(expected, *it);
+        ++it;
+        expected = Point{3, 1};
+        EXPECT_EQ(expected, *it);
+    }
+    {
+        auto dummy1 = Point<int, 1>{};
+        for (auto const& point : b1)
+        {
+            dummy1 = point;
+        }
+        auto expected1 = Point{10};
+        EXPECT_EQ(expected1, dummy1);
+    }
+    {
+        auto dummy = Point<int, 2>{};
+        for (auto const& point : b2)
+        {
+            dummy = point;
+        }
+        auto expected = Point{10, 12};
+        EXPECT_EQ(expected, dummy);
+    }
+    {
+        auto dummy3 = Point<int, 3>{};
+        for (auto const& point : b3)
+        {
+            dummy3 = point;
+        }
+        auto expected = Point{10, 12, 24};
+        EXPECT_EQ(expected, dummy3);
+    }
 }
 
 
