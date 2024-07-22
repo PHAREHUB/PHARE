@@ -581,16 +581,6 @@ def check_clustering(**kwargs):
     return clustering
 
 
-def check_loadbalancing(**kwargs):
-    valid_keys = ["nppc", "homogeneous"]
-    loadbalancing = kwargs.get("loadbalancing", "nppc")
-    if loadbalancing not in valid_keys:
-        raise ValueError(
-            f"Error: loadbalancing type is not supported, supported types are {valid_keys}"
-        )
-    return loadbalancing
-
-
 # ------------------------------------------------------------------------------
 
 
