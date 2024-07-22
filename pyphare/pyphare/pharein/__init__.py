@@ -44,6 +44,7 @@ from .simulation import (
     serialize as serialize_sim,
     deserialize as deserialize_sim,
 )
+from .load_balancer import LoadBalancer
 
 
 def NO_GUI():
@@ -86,9 +87,7 @@ class py_fn_wrapper:
         self.fn = fn
 
     def __call__(self, *xyz):
-        args = []
-        for i, arg in enumerate(xyz):
-            args.append(np.asarray(arg))
+        args = [np.asarray(arg) for arg in xyz]
         ret = self.fn(*args)
         if isinstance(ret, list):
             ret = np.asarray(ret)
@@ -127,6 +126,9 @@ def populateDict():
     # pybind complains if receiving wrong type
     def add_int(path, val):
         pp.add_int(path, int(val))
+
+    def add_bool(path, val):
+        pp.add_bool(path, bool(val))
 
     def add_double(path, val):
         pp.add_double(path, float(val))
@@ -223,6 +225,27 @@ def populateDict():
     add_double("simulation/algo/ohm/resistivity", simulation.resistivity)
     add_double("simulation/algo/ohm/hyper_resistivity", simulation.hyper_resistivity)
 
+    # load balancer block start
+    lb = simulation.load_balancer or LoadBalancer(active=False, _register=False)
+    base = "simulation/AMR/loadbalancing"
+    add_bool(f"{base}/active", lb.active)
+    add_string(f"{base}/mode", lb.mode)
+    add_double(f"{base}/tolerance", lb.tol)
+
+    # if mode==nppc, imbalance allowed
+    add_bool(f"{base}/auto", lb.auto)
+    add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
+    add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)
+    add_size_t(
+        f"{base}/next_rebalance_backoff_multiplier",
+        lb.next_rebalance_backoff_multiplier,
+    )
+
+    # cadence based values
+    add_size_t(f"{base}/every", lb.every)
+    add_bool(f"{base}/on_init", lb.on_init)
+    # load balancer block end
+
     init_model = simulation.model
     modelDict = init_model.model_dict
 
@@ -246,11 +269,13 @@ def populateDict():
         addInitFunction(partinit_path + "thermal_velocity_x", fn_wrapper(d["vthx"]))
         addInitFunction(partinit_path + "thermal_velocity_y", fn_wrapper(d["vthy"]))
         addInitFunction(partinit_path + "thermal_velocity_z", fn_wrapper(d["vthz"]))
-        add_int(partinit_path + "nbr_part_per_cell", d["nbrParticlesPerCell"])
         add_double(partinit_path + "charge", d["charge"])
         add_string(partinit_path + "basis", "cartesian")
         if "init" in d and "seed" in d["init"]:
             pp.add_optional_size_t(partinit_path + "init/seed", d["init"]["seed"])
+
+        add_int(partinit_path + "nbr_part_per_cell", d["nbrParticlesPerCell"])
+        add_double(partinit_path + "density_cut_off", d["density_cut_off"])
 
     add_string("simulation/electromag/name", "EM")
     add_string("simulation/electromag/electric/name", "E")

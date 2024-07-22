@@ -420,9 +420,9 @@ namespace amr
                                 }
                             }
                         } // end species loop
-                    }     // end box loop
-                }         // end no rotation
-            }             // end overlap not empty
+                    } // end box loop
+                } // end no rotation
+            } // end overlap not empty
         }
 
 

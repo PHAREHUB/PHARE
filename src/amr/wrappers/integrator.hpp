@@ -1,8 +1,10 @@
 #ifndef INTEGRATOR_HPP
 #define INTEGRATOR_HPP
 
+#include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
 
+#include <SAMRAI/mesh/BalanceUtilities.h>
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
 #include <SAMRAI/hier/Box.h>
@@ -13,38 +15,122 @@
 #include <SAMRAI/mesh/BergerRigoutsos.h>
 #include <SAMRAI/mesh/GriddingAlgorithm.h>
 #include <SAMRAI/mesh/StandardTagAndInitialize.h>
-#include <SAMRAI/mesh/TreeLoadBalancer.h>
+#include <SAMRAI/mesh/CascadePartitioner.h>
 #include <SAMRAI/tbox/Database.h>
 #include <SAMRAI/tbox/DatabaseBox.h>
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
 
 
-
 #include "initializer/data_provider.hpp"
+
+#include "amr/load_balancing/load_balancer_details.hpp"
 
 
 namespace PHARE::amr
 {
+
 template<std::size_t _dimension>
 class Integrator
 {
+    bool static _is_tagging_refinement(initializer::PHAREDict const& dict)
+    {
+        return cppdict::get_value(dict, "simulation/AMR/refinement/tagging/method",
+                                  std::string{"none"})
+               == std::string{"auto"};
+    }
+
+
 public:
     static constexpr std::size_t dimension = _dimension;
 
-    double advance(double dt) { return timeRefIntegrator_->advanceHierarchy(dt); }
+    double advance(double dt)
+    {
+        bool rebalance_coarsest_now = _should_rebalance_now();
+
+        auto new_time = timeRefIntegrator_->advanceHierarchy(dt, rebalance_coarsest_now);
+        ++time_step_idx;
+        return new_time;
+    }
 
     void initialize() { timeRefIntegrator_->initializeHierarchy(); }
-
 
     Integrator(PHARE::initializer::PHAREDict const& dict,
                std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
                std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
                std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
-               double startTime, double endTime);
+               std::shared_ptr<SAMRAI::mesh::CascadePartitioner> loadBalancer, //
+               double startTime, double endTime, amr::LoadBalancerDetails const& lb_info,
+               int loadBalancerPatchId);
 
 private:
+    amr::LoadBalancerDetails const lb_info_;
+    bool const is_tagging_refinement                = false;
+    int loadBalancerPatchId_                        = -1;
+    std::size_t rebalance_coarsest_auto_back_off    = 0;
+    std::size_t time_step_idx                       = 0;
+    std::size_t rebalance_coarsest_auto_back_off_by = 1;
+
+
     std::shared_ptr<SAMRAI::algs::TimeRefinementIntegrator> timeRefIntegrator_;
+
+
+    // essentially CascadePartitioner::computeNonUniformWorkload which is private
+    auto computeNonUniformWorkLoadForLevel0() const
+    {
+        auto const& L0 = *timeRefIntegrator_->getPatchHierarchy()->getPatchLevel(0);
+        double load    = 0.0;
+        for (SAMRAI::hier::PatchLevel::iterator ip(L0.begin()); ip != L0.end(); ++ip)
+        {
+            std::shared_ptr<SAMRAI::hier::Patch> const& patch = *ip;
+            load += SAMRAI::mesh::BalanceUtilities::computeNonUniformWorkload(
+                patch, loadBalancerPatchId_, patch->getBox());
+        }
+        return load;
+    }
+
+    bool _should_rebalance_now();
+
+    bool cadence_rebalance_check()
+    {
+        return (time_step_idx == 0 and lb_info_.on_init)
+               or (lb_info_.every > 0 and time_step_idx > 0
+                   and time_step_idx % lb_info_.every == 0);
+    }
+
+    bool tolerance_rebalance_check()
+    {
+        if (rebalance_coarsest_auto_back_off == 0)
+        {
+            PHARE_LOG_SCOPE(1, "Integrator::_should_rebalance_now::automatic");
+
+            auto workLoads       = core::mpi::collect(computeNonUniformWorkLoadForLevel0());
+            auto const max_value = *std::max_element(workLoads.begin(), workLoads.end());
+            for (auto& workload : workLoads)
+                workload /= max_value;
+            auto const min_value = *std::min_element(workLoads.begin(), workLoads.end());
+            assert(min_value <= 1);
+
+            if ((1 - min_value) > lb_info_.tolerance)
+            {
+                rebalance_coarsest_auto_back_off_by = lb_info_.next_rebalance;
+                rebalance_coarsest_auto_back_off    = rebalance_coarsest_auto_back_off_by;
+                return true;
+            }
+
+            rebalance_coarsest_auto_back_off_by *= lb_info_.next_rebalance_backoff_multiplier;
+            rebalance_coarsest_auto_back_off = rebalance_coarsest_auto_back_off_by;
+
+            if (rebalance_coarsest_auto_back_off > lb_info_.max_next_rebalance)
+                rebalance_coarsest_auto_back_off_by = rebalance_coarsest_auto_back_off
+                    = lb_info_.max_next_rebalance;
+        }
+
+        --rebalance_coarsest_auto_back_off;
+        return false;
+    };
+
+    std::function<bool()> _rebalance_check;
 };
 
 
@@ -67,16 +153,22 @@ Integrator<_dimension>::Integrator(
     PHARE::initializer::PHAREDict const& dict,
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
     std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
-    std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy, double startTime,
-    double endTime)
+    std::shared_ptr<SAMRAI::mesh::StandardTagAndInitStrategy> tagAndInitStrategy,
+    std::shared_ptr<SAMRAI::mesh::CascadePartitioner> loadBalancer, double startTime,
+    double endTime, amr::LoadBalancerDetails const& lb_info, int loadBalancerPatchId)
+    : lb_info_{lb_info}
+    , is_tagging_refinement{_is_tagging_refinement(dict)}
+    , loadBalancerPatchId_{loadBalancerPatchId}
+    , rebalance_coarsest_auto_back_off{lb_info_.on_init ? 0 : lb_info_.next_rebalance}
+    , _rebalance_check{lb_info_.automatic ? std::bind(&Integrator::tolerance_rebalance_check, this)
+                                          : std::bind(&Integrator::cadence_rebalance_check, this)}
 {
-    auto loadBalancer = std::make_shared<SAMRAI::mesh::TreeLoadBalancer>(
-        SAMRAI::tbox::Dimension{dimension}, "LoadBalancer");
+    loadBalancer->setSAMRAI_MPI(
+        SAMRAI::tbox::SAMRAI_MPI::getSAMRAIWorld()); // TODO Is it really needed ?
 
     auto refineDB    = getUserRefinementBoxesDatabase<dimension>(dict["simulation"]["AMR"]);
     auto standardTag = std::make_shared<SAMRAI::mesh::StandardTagAndInitialize>(
         "StandardTagAndInitialize", tagAndInitStrategy.get(), refineDB);
-
 
     auto clustering = [&]() -> std::shared_ptr<SAMRAI::mesh::BoxGeneratorStrategy> {
         if (!dict["simulation"]["AMR"].contains("clustering"))
@@ -120,8 +212,14 @@ Integrator<_dimension>::Integrator(
         "TimeRefinementIntegrator", db, hierarchy, timeRefLevelStrategy, gridding);
 }
 
+template<std::size_t _dimension>
+bool Integrator<_dimension>::_should_rebalance_now()
+{
+    if (is_tagging_refinement and lb_info_.active)
+        return _rebalance_check();
 
-
+    return false;
+}
 
 template<std::size_t dimension>
 std::shared_ptr<SAMRAI::tbox::MemoryDatabase>

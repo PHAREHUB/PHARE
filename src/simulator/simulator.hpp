@@ -1,7 +1,8 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_HPP
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
-
+#include <vector>
+#include <string>
 
 #include "phare_core.hpp"
 #include "phare_types.hpp"
@@ -12,11 +13,9 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
 #include "amr/tagging/tagger_factory.hpp"
-
-#include <chrono>
-#include <exception>
-#include <unordered_set>
-
+#include "amr/load_balancing/load_balancer_details.hpp"
+#include "amr/load_balancing/load_balancer_manager.hpp"
+#include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
 
 namespace PHARE
 {
@@ -73,7 +72,9 @@ public:
         }
 
         if (dMan)
+        {
             return dMan->dump(timestamp, timestep);
+        }
 
         return false;
     }
@@ -267,11 +268,40 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
     auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
     multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
 
+    amr::LoadBalancerDetails lb_info
+        = amr::LoadBalancerDetails::FROM(dict["simulation"]["AMR"]["loadbalancing"]);
+
+    auto lbm_ = std::make_unique<amr::LoadBalancerManager<dim>>(dict);
+    auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(lb_info.mode,
+                                                                               lbm_->getId());
+
+    auto loadBalancer_db = std::make_shared<SAMRAI::tbox::MemoryDatabase>("LoadBalancerDB");
+    loadBalancer_db->putDouble("flexible_load_tolerance", lb_info.tolerance);
+    auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
+        SAMRAI::tbox::Dimension{dimension}, "LoadBalancer", loadBalancer_db);
+
+    if (dict["simulation"]["AMR"]["refinement"].contains("tagging"))
+    { // Load balancers break with refinement boxes - only tagging supported
+        /*
+          P=0000000:Program abort called in file ``/.../SAMRAI/xfer/RefineSchedule.cpp'' at line 369
+          P=0000000:ERROR MESSAGE:
+          P=0000000:RefineSchedule:RefineSchedule error: We are not currently
+          P=0000000:supporting RefineSchedules with the source level finer
+          P=0000000:than the destination level
+        */
+        lbm_->addLoadBalancerEstimator(0, maxLevelNumber_ - 1, std::move(lbe_));
+        lbm_->setLoadBalancer(loadBalancer);
+    }
+
+    auto lbm_id = lbm_->getId(); // moved on next line
+    multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
+
     if (dict["simulation"].contains("restarts"))
         startTime_ = restarts_init(dict["simulation"]["restarts"]);
 
-    integrator_ = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
-                                               startTime_, finalTime_);
+    integrator_
+        = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
+                                       loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
 
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
@@ -364,6 +394,7 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 {
+    PHARE_LOG_SCOPE(1, "Simulator::advance");
     double dt_new = 0;
 
     if (!integrator_)
@@ -372,6 +403,7 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
     try
     {
         PHARE_LOG_SCOPE(1, "Simulator::advance");
+
         dt_new       = integrator_->advance(dt);
         currentTime_ = startTime_ + ((*timeStamper) += dt);
     }

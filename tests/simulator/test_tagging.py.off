@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+# renamed to not be run on test discovery by directory
+
 from pyphare.cpp import cpp_lib
 
 cpp = cpp_lib()

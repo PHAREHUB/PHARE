@@ -3,6 +3,7 @@ find_package(MPI REQUIRED COMPONENTS C)
 # some linkers (like mold) don't use default library paths
 get_filename_component(MPI_LIBRARY_PATH ${MPI_LIBRARY} DIRECTORY)
 
+
 find_package(SAMRAI CONFIG QUIET)
 if (NOT SAMRAI_FOUND)
     message("SAMRAI NOT FOUND")

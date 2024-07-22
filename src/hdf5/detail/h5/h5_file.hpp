@@ -69,10 +69,7 @@ public:
 
     ~HighFiveFile() {}
 
-    NO_DISCARD HiFile& file()
-    {
-        return h5file_;
-    }
+    NO_DISCARD HiFile& file() { return h5file_; }
 
 
     template<typename T, std::size_t dim = 1>
@@ -149,8 +146,6 @@ public:
         // clang-format off
         PHARE_DEBUG_DO(
             auto const paths = core::mpi::collect(keyPath, core::mpi::size());
-            for (auto const& path : paths)
-                PHARE_LOG_LINE_STR(std::to_string(core::mpi::size()) << " " << path)
             if (!core::all(paths, [&](auto const& path) { return path == paths[0]; }))
                 throw std::runtime_error("Function does not support different paths per mpi core");
         )

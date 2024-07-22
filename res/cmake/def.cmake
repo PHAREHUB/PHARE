@@ -157,6 +157,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   endif()
 
   function(set_exe_paths_ binary)
+    set_property(TEST ${binary}        PROPERTY ENVIRONMENT "PATH=$ENV{PATH}")
     set_property(TEST ${binary}        PROPERTY ENVIRONMENT "PYTHONPATH=${PHARE_PYTHONPATH}")
     # ASAN detects leaks by default, even in system/third party libraries
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
@@ -190,7 +191,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   function(add_no_mpi_python3_test name file directory)
     if(NOT testMPI OR (testMPI AND forceSerialTests))
-      add_test(NAME py3_${name} COMMAND python3 -u ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND ${Python_EXECUTABLE} -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endif()
   endfunction(add_no_mpi_python3_test)
@@ -264,7 +265,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       if(${N} EQUAL 1)
         add_test(
             NAME py3_${target}
-            COMMAND python3 -u ${file} ${CLI_ARGS}
+            COMMAND ${Python_EXECUTABLE} -u ${file} ${CLI_ARGS}
             WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target})
       else()
@@ -288,7 +289,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     function(phare_python3_exec level target file directory)
       if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
         string (REPLACE ";" " " CLI_ARGS "${ARGN}")
-        add_test(NAME py3_${target} COMMAND python3 -u ${file} ${CLI_ARGS} WORKING_DIRECTORY ${directory})
+        add_test(NAME py3_${target} COMMAND ${Python_EXECUTABLE} -u ${file} ${CLI_ARGS} WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target})
       endif()
     endfunction(phare_python3_exec)

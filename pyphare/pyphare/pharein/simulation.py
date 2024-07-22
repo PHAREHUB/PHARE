@@ -124,6 +124,8 @@ def check_time(**kwargs):
         and "time_step" not in kwargs
     )
 
+    start_time = kwargs.get("restart_options", {}).get("restart_time", 0)
+
     if final_and_dt:
         time_step_nbr = int(kwargs["final_time"] / kwargs["time_step"])
         time_step = kwargs["final_time"] / time_step_nbr
@@ -142,7 +144,11 @@ def check_time(**kwargs):
             + " or 'final_time' and 'time_step_nbr'"
         )
 
-    return time_step_nbr, time_step, kwargs.get("final_time", time_step * time_step_nbr)
+    return (
+        time_step_nbr,
+        time_step,
+        kwargs.get("final_time", start_time + time_step * time_step_nbr),
+    )
 
 
 # ------------------------------------------------------------------------------
@@ -830,6 +836,7 @@ class Simulation(object):
         self.diagnostics = {}
         self.model = None
         self.electrons = None
+        self.load_balancer = None
 
         # hard coded in C++ MultiPhysicsIntegrator::getMaxFinerLevelDt
         self.nSubcycles = 4
@@ -844,9 +851,6 @@ class Simulation(object):
             for ilvl in levelNumbers
         ]
         validate_restart_options(self)
-
-    def final_time(self):
-        return self.time_step * self.time_step_nbr
 
     def simulation_domain(self):
         return [dl * n + ori for dl, n, ori in zip(self.dl, self.cells, self.origin)]

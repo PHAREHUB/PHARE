@@ -152,6 +152,9 @@ public:
 
     NO_DISCARD auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
 
+    using cell_t = std::array<int, dim>;
+    auto nbr_particles_in(cell_t const& cell) const { return cellMap_.size(cell); }
+
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {
         PHARE_LOG_SCOPE(3, "ParticleArray::export_particles");
