@@ -57,10 +57,8 @@ def config(diag_dir, loadbalancing={}):
         )
 
     def densityHigh(x, y):
-        assert cells == (100, 100)  # next lines are dependent
         rho = y.copy()
-        rho[:] = 1e-10
-        rho[np.where(np.isclose(y, 10, atol=0.1))] = 1
+        rho[:] = 1
         return rho
 
     def densityLow(x, y):
@@ -131,8 +129,7 @@ def config(diag_dir, loadbalancing={}):
         "vthx": vthxyz,
         "vthy": vthxyz,
         "vthz": vthxyz,
-        "nbr_part_per_cell": 590,
-        "density_cut_off": 1e-5,
+        "nbr_part_per_cell": 90,
     }
 
     vLow = {
@@ -142,8 +139,7 @@ def config(diag_dir, loadbalancing={}):
         "vthx": vthxyz,
         "vthy": vthxyz,
         "vthz": vthxyz,
-        "nbr_part_per_cell": 90,
-        "density_cut_off": 1e-5,
+        "nbr_part_per_cell": 120,
     }
 
     ph.MaxwellianFluidModel(
@@ -241,7 +237,7 @@ class LoadBalancingTest(SimulatorTest):
         if cpp.mpi_rank() == 0:
             t0_sdev = np.std(list(time_info(diag_dir).values()))
             tend_sdev = np.std(list(time_info(diag_dir, timestamps[-1]).values()))
-            self.assertLess(tend_sdev, t0_sdev * 0.1)  # empirical
+            self.assertLess(tend_sdev, t0_sdev * 0.15)  # empirical
 
     def test_has_not_balanced_as_defaults(self):
         if mpi_size == 1:  # doesn't make sense

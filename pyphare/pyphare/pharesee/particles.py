@@ -296,7 +296,8 @@ def single_patch_per_level_per_pop_from(hier, only_keep_L0=True):  # dragons
                     particles[key] += [patch[patch_data_key].dataset]
 
             for key in particles.keys():
-                patch0[key].dataset = aggregate(particles[key])
+                if particles[key]:
+                    patch0[key].dataset = aggregate(particles[key])
 
             patch_levels[level_idx].patches = [patch0]  # just one patch
 
