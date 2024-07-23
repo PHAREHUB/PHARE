@@ -171,7 +171,7 @@ def get_time(path, time=0, pop="protons", datahier=None):
     from pyphare.pharesee.hierarchy import hierarchy_from
 
     return hierarchy_from(
-        h5_filename=path + f"/ions_pop_{pop}_domain.h5", time=time, hier=datahier
+        h5_filename=path + f"/ions_pop_{pop}_domain.h5", times=time, hier=datahier
     )
 
 
