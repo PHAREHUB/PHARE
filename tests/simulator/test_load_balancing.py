@@ -5,7 +5,7 @@
 import unittest
 from ddt import data, ddt, unpack
 import pyphare.pharein as ph
-from pyphare.pharesee.hierarchy import hierarchy_compare
+from pyphare.pharesee.hierarchy.hierarchy_utils import hierarchy_compare
 from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
 
 from pyphare.simulator.simulator import Simulator, startMPI

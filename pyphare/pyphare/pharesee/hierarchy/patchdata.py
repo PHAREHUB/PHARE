@@ -80,6 +80,9 @@ class FieldData(PatchData):
     def __repr__(self):
         return self.__str__()
 
+    def __eq__(self, that):
+        return self.field_name == that.field_name and self.dataset[:] == that.dataset[:]
+
     def select(self, box):
         """
         return view of internal data based on overlap of input box
@@ -215,3 +218,6 @@ class ParticleData(PatchData):
 
     def size(self):
         return self.dataset.size()
+
+    def __eq__(self, that):
+        return self.name == that.name and self.dataset == that.dataset

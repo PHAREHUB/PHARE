@@ -80,6 +80,7 @@ def merge_particles(hierarchy):
                 popname = domain_pdata[0].split("_")[0]
                 pdatas[popname + "_particles"] = pdatas[domain_pdata[0]]
                 del pdatas[domain_pdata[0]]
+    return hierarchy
 
 
 def getPatch(hier, point):
@@ -549,3 +550,61 @@ def _compute_scalardiv(patch_datas, **kwargs):
         )
 
     return tuple(pd_attrs)
+
+
+from dataclasses import dataclass
+
+
+@dataclass
+class EqualityReport:
+    ok: bool
+    reason: str
+
+    def __bool__(self):
+        return self.ok
+
+
+def hierarchy_compare(this, that):
+    if not isinstance(this, PatchHierarchy) or not isinstance(that, PatchHierarchy):
+        return EqualityReport(False, "class type mismatch")
+
+    if this.ndim != that.ndim or this.domain_box != that.domain_box:
+        return EqualityReport(False, "dimensional mismatch")
+
+    if this.time_hier.keys() != that.time_hier.keys():
+        return EqualityReport(False, "timesteps mismatch")
+
+    for tidx in this.times():
+        patch_levels_ref = this.time_hier[tidx]
+        patch_levels_cmp = that.time_hier[tidx]
+
+        if patch_levels_ref.keys() != patch_levels_cmp.keys():
+            return EqualityReport(False, "levels mismatch")
+
+        for level_idx in patch_levels_cmp.keys():
+            patch_level_ref = patch_levels_ref[level_idx]
+            patch_level_cmp = patch_levels_cmp[level_idx]
+
+            for patch_idx in range(len(patch_level_cmp.patches)):
+                patch_ref = patch_level_ref.patches[patch_idx]
+                patch_cmp = patch_level_cmp.patches[patch_idx]
+
+                if patch_ref.patch_datas.keys() != patch_cmp.patch_datas.keys():
+                    print(list(patch_ref.patch_datas.keys()))
+                    print(list(patch_cmp.patch_datas.keys()))
+                    return EqualityReport(False, "data keys mismatch")
+
+                for patch_data_key in patch_ref.patch_datas.keys():
+                    patch_data_ref = patch_ref.patch_datas[patch_data_key]
+                    patch_data_cmp = patch_cmp.patch_datas[patch_data_key]
+
+                    if patch_data_cmp != patch_data_ref:
+                        return EqualityReport(
+                            False,
+                            "data mismatch: "
+                            + type(patch_data_cmp).__name__
+                            + " "
+                            + type(patch_data_ref).__name__,
+                        )
+
+    return EqualityReport(True, "OK")

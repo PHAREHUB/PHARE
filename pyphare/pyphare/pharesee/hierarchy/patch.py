@@ -37,6 +37,9 @@ class Patch:
     def __repr__(self):
         return self.__str__()
 
+    def __getitem__(self, key):
+        return self.patch_datas[key]
+
     def copy(self):
         """does not copy patchdatas.datasets (see class PatchData)"""
         from copy import deepcopy
