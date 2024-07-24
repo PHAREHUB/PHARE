@@ -24,6 +24,13 @@ if (NOT SAMRAI_FOUND)
       endif(devMode)
     endif()
 
+    if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
+      # enable samrai assertions if not in release mode
+      set (DEBUG_INITIALIZE_UNDEFINED On)
+      set (DEBUG_CHECK_ASSERTIONS On)
+      set (DEBUG_CHECK_DIM_ASSERTIONS On)
+    endif()
+
     option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
     option(ENABLE_SAMRAI_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
 

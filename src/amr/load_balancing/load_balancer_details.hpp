@@ -43,7 +43,7 @@ struct LoadBalancerDetails
             cppdict::get_value(dict, "on_init", false),
             cppdict::get_value(dict, "every", std::size_t{0}),
             cppdict::get_value(dict, "mode", std::string{"nppc"}),
-            cppdict::get_value(dict, "tol", defaults.tolerance),
+            cppdict::get_value(dict, "tolerance", defaults.tolerance),
             cppdict::get_value(dict, "next_rebalance_backoff_multiplier",
                                defaults.next_rebalance_backoff_multiplier),
             cppdict::get_value(dict, "next_rebalance", defaults.next_rebalance),
