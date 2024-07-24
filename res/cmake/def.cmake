@@ -47,10 +47,11 @@ set (PHARE_MPIRUN_POSTFIX ${PHARE_MPIRUN_POSTFIX})
 # now we see if we are running with configurator
 if (phare_configurator)
   execute_process(
-    COMMAND ./tools/config/cmake.sh "${CMAKE_COMMAND}" "${CMAKE_CXX_COMPILER}" "${Python_EXECUTABLE}"
+    COMMAND ./tools/config/cmake.sh "${CMAKE_COMMAND}" "${CMAKE_CXX_COMPILER}" "${Python_EXECUTABLE}" "${CMAKE_BINARY_DIR}"
     WORKING_DIRECTORY ${PHARE_PROJECT_DIR}
     COMMAND_ERROR_IS_FATAL ANY
   )
+  include_directories(${CMAKE_BINARY_DIR}/src) # for generated files
   include("${PHARE_PROJECT_DIR}/tools/config/local.cmake")
 endif(phare_configurator)
 

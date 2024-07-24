@@ -4,7 +4,7 @@
 #  ./tools/report.sh
 #    generates zip archive for logging issues
 
-set -eu
+set -e
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 ROOT=$(cd "$SCRIPT_DIR/.." && pwd)
 (

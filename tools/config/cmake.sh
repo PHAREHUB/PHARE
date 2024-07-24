@@ -9,6 +9,7 @@ ROOT_DIR=$(cd ../.. && pwd)
 export CMAKE_COMMAND=${1}
 export CMAKE_CXX_COMPILER=${2}
 export PYTHON_EXECUTABLE=${3}
+export PHARE_BUILD_DIR=${4}
 
 [ -d build ] || (
     mkdir -p build && cd build

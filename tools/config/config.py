@@ -6,10 +6,11 @@ from pathlib import Path
 
 FILE_DIR = Path(__file__).resolve().parent
 BUILD_DIR = FILE_DIR / "build"
+PHARE_BUILD_DIR = Path(os.environ["PHARE_BUILD_DIR"])
 ROOT_DIR = FILE_DIR.parent.parent
 DOT_PHARE_DIR = ROOT_DIR / ".phare"
 FILES = list(BUILD_DIR.glob("PHARE_*"))
-DEF_DIR = ROOT_DIR / "src" / "core" / "def"
+DEF_DIR = PHARE_BUILD_DIR / "src" / "core" / "def"
 GENERATED_CONFIGS = dict(
     mpi=DEF_DIR / "_gen_mpi.hpp",
     system=DEF_DIR / "_gen_sys.hpp",
@@ -249,8 +250,13 @@ message("")
             )
 
 
+def mkdirs(*dirs):
+    for directory in dirs:
+        directory.mkdir(exist_ok=True, parents=True)
+
+
 def main():
-    DOT_PHARE_DIR.mkdir(exist_ok=True, parents=True)
+    mkdirs(DEF_DIR, DOT_PHARE_DIR)
     mpi_results = config_mpi()
     gen_system_file()
     write_local_cmake_file(mpi_results)
@@ -258,6 +264,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-    print("PHARE configurator generating configs:")
-    for k, v in GENERATED_CONFIGS.items():
-        print(f"  {v.relative_to(ROOT_DIR)}")
