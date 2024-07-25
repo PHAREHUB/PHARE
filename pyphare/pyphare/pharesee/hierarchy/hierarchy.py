@@ -165,15 +165,14 @@ class PatchHierarchy(object):
                     "The PatchHierarchy has several quantities but none is specified"
                 )
 
-        if len(kwargs) == 1:  # 1D cut
-            if "x" in kwargs:
-                c = kwargs["x"]
-                slice_dim = 1
-                cst_dim = 0
-            else:
-                c = kwargs["y"]
-                slice_dim = 0
-                cst_dim = 1
+        if "x" in kwargs:
+            c = kwargs["x"]
+            slice_dim = 1
+            cst_dim = 0
+        else:
+            c = kwargs["y"]
+            slice_dim = 0
+            cst_dim = 1
 
         extractor = Extractor()
         datas = []
