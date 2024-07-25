@@ -40,9 +40,6 @@ class ScopeTimerFile(phScopeTimerFile):
         """
         from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 
-        bad_diag_error = (
-            "Simulation was not configured with Particle Count info diagnostic"
-        )
         filepath = self.run.path + "/particle_count.h5"
         all_times = get_times_from_h5(filepath)
 

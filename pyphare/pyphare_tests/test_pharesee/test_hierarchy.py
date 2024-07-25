@@ -190,7 +190,7 @@ class PatchHierarchyTest(unittest.TestCase):
         r = Run(diag_outputs)
         time = 0.0
         B = r.GetB(time)
-        self.assertTrue(B.nbrPatches() > 0)
+        self.assertGreater(B.nbrPatches(), 0)
 
     def test_access_patchdatas_as_hierarchies(self):
         r = Run(diag_outputs)

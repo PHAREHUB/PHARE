@@ -1,6 +1,6 @@
 import numpy as np
 
-from pyphare.pharesee.hierarchy import ScalarField, VectorField  # TensorField
+from pyphare.pharesee.hierarchy import ScalarField, VectorField
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import rename
 

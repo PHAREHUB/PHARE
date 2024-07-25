@@ -292,7 +292,7 @@ class GeometryTest(unittest.TestCase):
 
             for ref_box_i, ref_box in enumerate(periodic_boxes):
                 for cmp_box in periodic_boxes[ref_box_i + 1 :]:
-                    self.assertTrue(ref_box * cmp_box is None)
+                    self.assertIs(ref_box * cmp_box, None)
 
             self.assertEqual(expected[ilvl], periodic_boxes)
 

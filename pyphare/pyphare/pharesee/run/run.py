@@ -235,7 +235,7 @@ class Run:
         import glob
 
         h5_time_grp_key = "t"
-        files = glob.glob(os.path.join(self.path, "*.h5"))
+        files = self.available_diags
         any_file = files[0]
         h5_filename = any_file
         import h5py
@@ -261,7 +261,7 @@ class Run:
         import h5py
 
         path = self.path
-        files = glob(path + "/*.h5")
+        files = self.available_diags
         ts = {}
         for file in files:
             basename = os.path.basename(file).split(".")[0]
