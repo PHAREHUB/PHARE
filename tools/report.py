@@ -3,10 +3,10 @@ import sys
 import shutil
 import tempfile
 import datetime
+import contextlib
 from pathlib import Path
 from zipfile import ZipFile
 
-from tools.python3 import pushd
 
 SEARCH_PATHS = list(set([os.getcwd()] + sys.path))
 
@@ -55,6 +55,19 @@ def main():
                     for item in phare_dir.glob("**/*"):
                         zip_object.write(item, arcname=item.relative_to(tmpdirname))
             shutil.move(tmp_report_zip, cwd)
+
+
+@contextlib.contextmanager
+def pushd(new_cwd):
+    if not os.path.exists(new_cwd):
+        raise RuntimeError("pushd: new_cwd does not exist")
+
+    cwd = os.getcwd()
+    os.chdir(new_cwd)
+    try:
+        yield
+    finally:
+        os.chdir(cwd)
 
 
 if __name__ == "__main__":
