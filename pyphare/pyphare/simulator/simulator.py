@@ -107,10 +107,10 @@ class Simulator:
             return self
         except:
             import sys
+            import traceback
 
-            print(
-                'Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()[0])
-            )
+            print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
+            print(traceback.extract_stack())
             raise ValueError("Error in Simulator.setup(), see previous error")
 
     def initialize(self):
@@ -159,7 +159,7 @@ class Simulator:
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
 
-        if self._auto_dump() and self.post_advance != None:
+        if self._auto_dump() and self.post_advance is not None:
             self.post_advance(self.cpp_sim.currentTime())
         return self
 

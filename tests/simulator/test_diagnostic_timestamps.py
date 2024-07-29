@@ -12,7 +12,9 @@ import pyphare.pharein as ph
 from ddt import data, ddt
 from pyphare.core.box import Box1D
 from pyphare.pharein import ElectromagDiagnostics, ElectronModel
-from pyphare.pharesee.hierarchy import h5_filename_from, h5_time_grp_key, hierarchy_from
+from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from
+from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
 from pyphare.simulator.simulator import Simulator
 
 
@@ -176,9 +178,7 @@ class DiagnosticsTest(unittest.TestCase):
                     self.assertEqual(len(time_hier_keys), len(timestamps))
 
                     for i, timestamp in enumerate(time_hier_keys):
-                        self.assertEqual(
-                            hier.format_timestamp(timestamps[i]), timestamp
-                        )
+                        self.assertEqual(format_timestamp(timestamps[i]), timestamp)
 
 
 if __name__ == "__main__":

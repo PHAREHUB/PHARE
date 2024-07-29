@@ -2,9 +2,9 @@
 
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import get_times_from_h5
+from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import flat_finest_field
+from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
 
 from tests.diagnostic import all_timestamps
 
@@ -161,7 +161,7 @@ def main():
         by, xby = flat_finest_field(B, "By")
         ax.plot(xby, by, label="t = 500", alpha=0.6)
 
-        sorted_patches = sorted(B.patch_levels[1].patches, key=lambda p: p.box.lower[0])
+        sorted_patches = sorted(B.level(1).patches, key=lambda p: p.box.lower[0])
 
         x0 = sorted_patches[0].patch_datas["By"].x[0]
         x1 = sorted_patches[-1].patch_datas["By"].x[-1]

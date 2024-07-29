@@ -21,14 +21,14 @@ def validate(sim):
 
         if not np.all(np.diff(restart_options["elapsed_timestamps"]) >= 0):
             raise RuntimeError(
-                f"Error: restart_options elapsed_timestamps not in ascending order)"
+                "Error: restart_options elapsed_timestamps not in ascending order)"
             )
 
         # seconds_in_an_hour = 60 ** 2
         # for cmp_idx, ref_ts in enumerate(restart_options["elapsed_timestamps"][1:]):
         #     cmp_ts = restart_options["elapsed_timestamps"][cmp_idx]
         #     if ref_ts - cmp_ts < seconds_in_an_hour:
-        #         raise RuntimeError(f"Error: time betweeen restart_options elapsed_timestamps must be at least one hour)")
+        #         raise RuntimeError("Error: time betweeen restart_options elapsed_timestamps must be at least one hour)")
 
     if "timestamps" in restart_options:
         restart_options["timestamps"] = phare_utilities.np_array_ify(
@@ -47,7 +47,7 @@ def validate(sim):
             )
         if not np.all(np.diff(timestamps) >= 0):
             raise RuntimeError(
-                f"Error: restart_options timestamps not in ascending order)"
+                "Error: restart_options timestamps not in ascending order)"
             )
         if not np.all(
             np.abs(
@@ -55,7 +55,7 @@ def validate(sim):
             )
         ):
             raise RuntimeError(
-                f"Error: restart_options timestamps is inconsistent with simulation.time_step"
+                "Error: restart_options timestamps is inconsistent with simulation.time_step"
             )
 
         sim.restart_options["timestamps"] = conserve_existing(sim)

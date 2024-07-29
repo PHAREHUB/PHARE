@@ -1,16 +1,17 @@
 import numpy as np
 
 import pyphare.core.box as boxm
-from pyphare.core.box import Box, nDBox
+from pyphare.core.box import Box
 from pyphare.core.phare_utilities import listify
 from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
 
 from pyphare.pharesee.particles import Particles
 
-from pyphare.pharesee.hierarchy import FieldData
-from pyphare.pharesee.hierarchy import ParticleData
+from pyphare.pharesee.hierarchy.patchdata import FieldData
+from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.hierarchy import PatchHierarchy
-from pyphare.pharesee.hierarchy import Patch, PatchLevel
+from pyphare.pharesee.hierarchy.patch import Patch
+from pyphare.pharesee.hierarchy.patchlevel import PatchLevel
 
 """
 number of ghosts is hard coded to 5
@@ -240,9 +241,6 @@ def build_hierarchy(**kwargs):
 
     - nbr_cells
     - origin
-    - interp_order
-    - domain_size
-    - cell_width
     - refinement_ratio
     - refinement_boxes
     """
@@ -253,9 +251,6 @@ def build_hierarchy(**kwargs):
     dim = len(origin)
     if dim > 1:
         assert len(nbr_cells) == dim
-    interp_order = kwargs["interp_order"]
-    domain_size = kwargs["domain_size"]
-    cell_width = kwargs["cell_width"]
     refinement_ratio = kwargs["refinement_ratio"]
 
     domain_box = boxm.Box([0] * dim, nbr_cells - 1)

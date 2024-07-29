@@ -20,12 +20,13 @@ cpp = cpp_lib()
 startMPI()
 
 time_step = 0.005
-final_time = .1
+final_time = 0.1
 time_step_nbr = int(final_time / time_step)
-timestamps = np.arange(0, final_time+.01, 0.05)
+timestamps = np.arange(0, final_time + 0.01, 0.05)
 diag_dir = "phare_outputs/test_run"
 plot_dir = Path(f"{diag_dir}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
+
 
 def config():
     L = 0.5
@@ -45,7 +46,7 @@ def config():
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
-        }
+        },
     )
 
     def density(x, y):
@@ -154,7 +155,9 @@ def config():
         write_timestamps=timestamps,
         population_name=pop,
     )
-    ph.FluidDiagnostics(quantity="density", write_timestamps=timestamps, population_name=pop)
+    ph.FluidDiagnostics(
+        quantity="density", write_timestamps=timestamps, population_name=pop
+    )
 
     return sim
 
@@ -173,22 +176,21 @@ def plot(diag_dir):
             vmax=2e-10,
         )
         run.GetRanks(time).plot(
-            filename=plot_file_for_qty("Ranks", time),
-            plot_patches=True,
+            filename=plot_file_for_qty("Ranks", time), plot_patches=True
         )
         run.GetN(time, pop_name="protons").plot(
-            filename=plot_file_for_qty("N", time),
-            plot_patches=True,
+            filename=plot_file_for_qty("N", time), plot_patches=True
         )
-        for c in ["x","y","z"]:
-            run.GetB(time).plot(
+        for c in ["x", "y", "z"]:
+            run.GetB(time, all_primal=False).plot(
                 filename=plot_file_for_qty(f"b{c}", time),
                 qty=f"B{c}",
                 plot_patches=True,
             )
         run.GetJ(time).plot(
+            all_primal=False,
             filename=plot_file_for_qty("jz", time),
-            qty="Jz",
+            qty="z",
             plot_patches=True,
             vmin=-2,
             vmax=2,
@@ -200,7 +202,10 @@ def assert_file_exists_with_size_at_least(file, size=10000):
     if not path.exists():
         raise FileNotFoundError("file not found: " + file)
     if path.stat().st_size < size:
-        raise ValueError("file has unexpected size, possibly corrupt or not written properly: " + file)
+        raise ValueError(
+            "file has unexpected size, possibly corrupt or not written properly: "
+            + file
+        )
 
 
 class RunTest(SimulatorTest):
@@ -223,10 +228,10 @@ class RunTest(SimulatorTest):
             plot(diag_dir)
 
         for time in timestamps:
-            for q in ["divb","Ranks","N","jz"]:
+            for q in ["divb", "Ranks", "N", "jz"]:
                 assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
 
-            for c in ["x","y","z"]:
+            for c in ["x", "y", "z"]:
                 assert_file_exists_with_size_at_least(plot_file_for_qty(f"b{c}", time))
 
         cpp.mpi_barrier()
@@ -234,4 +239,5 @@ class RunTest(SimulatorTest):
 
 if __name__ == "__main__":
     import unittest
+
     unittest.main()

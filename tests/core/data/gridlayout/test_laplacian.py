@@ -210,9 +210,7 @@ def test_laplacian_yee2D(path):
         Jz = np.tensordot(np.sinh(0.2 * x_primal), np.cosh(0.2 * y_primal), axes=0)
 
         Jx_x[psi_d_X : pei_d_X + 1, :] = (
-            Jx[
-                psi_d_X + 1 : pei_d_X + 2 :,
-            ]
+            Jx[psi_d_X + 1 : pei_d_X + 2, :]
             - 2.0 * Jx[psi_d_X : pei_d_X + 1, :]
             + Jx[psi_d_X - 1 : pei_d_X, :]
         ) / (tv.meshSize[0] * tv.meshSize[0])

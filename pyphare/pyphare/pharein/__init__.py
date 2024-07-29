@@ -4,6 +4,34 @@ import subprocess
 import numpy as np
 
 from pyphare.core.phare_utilities import is_scalar
+from .uniform_model import UniformModel
+from .maxwellian_fluid_model import MaxwellianFluidModel
+from .electron_model import ElectronModel
+from .diagnostics import (
+    FluidDiagnostics,
+    ElectromagDiagnostics,
+    ParticleDiagnostics,
+    MetaDiagnostics,
+    InfoDiagnostics,
+)
+from .simulation import (
+    Simulation,
+    serialize as serialize_sim,
+    deserialize as deserialize_sim,
+)
+from .load_balancer import LoadBalancer
+
+__all__ = [
+    "UniformModel",
+    "MaxwellianFluidModel",
+    "ElectronModel",
+    "FluidDiagnostics",
+    "ElectromagDiagnostics",
+    "ParticleDiagnostics",
+    "MetaDiagnostics",
+    "InfoDiagnostics",
+    "Simulation",
+]
 
 # This exists to allow a condition variable for when we are running PHARE from C++ via phare-exe
 #  It is configured to "True" in pyphare/pyphare/pharein/init.py::get_user_inputs(jobname)
@@ -27,24 +55,6 @@ if venv_path is not None:
     s = s.split(",")[1:]
     pythonpath = [ss.strip() for ss in s]
     sys.path = sys.path + pythonpath
-
-
-from .uniform_model import UniformModel
-from .maxwellian_fluid_model import MaxwellianFluidModel
-from .electron_model import ElectronModel
-from .diagnostics import (
-    FluidDiagnostics,
-    ElectromagDiagnostics,
-    ParticleDiagnostics,
-    MetaDiagnostics,
-    InfoDiagnostics,
-)
-from .simulation import (
-    Simulation,
-    serialize as serialize_sim,
-    deserialize as deserialize_sim,
-)
-from .load_balancer import LoadBalancer
 
 
 def NO_GUI():

@@ -1,23 +1,14 @@
 import unittest
 import numpy as np
 from ddt import ddt, data, unpack
-import pyphare.core.box as boxm
 from pyphare.core.box import Box, Box2D
-from pyphare.core.phare_utilities import listify
-from pyphare.pharesee.particles import Particles
-from pyphare.pharesee.hierarchy import FieldData
-from pyphare.pharesee.hierarchy import ParticleData
-from pyphare.pharesee.hierarchy import PatchHierarchy
-from pyphare.pharesee.hierarchy import Patch, PatchLevel
 from pyphare.pharesee.geometry import (
     level_ghost_boxes,
     hierarchy_overlaps,
     touch_domain_border,
-    toFieldBox,
     ghost_area_boxes,
     get_periodic_list,
 )
-from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
 
 from pyphare_tests.test_pharesee import build_hierarchy
 
@@ -123,7 +114,7 @@ class GeometryTest(AGeometryTest):
         )
 
         level_overlaps = hierarchy_overlaps(hierarchy)
-        for ilvl, lvl in enumerate(hierarchy.patch_levels):
+        for ilvl, lvl in enumerate(hierarchy.levels().items()):
             if ilvl not in expected:
                 continue
             self.assertEqual(len(expected[ilvl]), len(level_overlaps[ilvl]))
@@ -171,7 +162,6 @@ class GeometryTest(AGeometryTest):
 
         level_overlaps = hierarchy_overlaps(hierarchy)
         ilvl = 0
-        lvl = hierarchy.level(ilvl)
         overlap_boxes = []
 
         self.assertEqual(len(expected), len(level_overlaps[ilvl]))
@@ -275,7 +265,7 @@ class GeometryTest(AGeometryTest):
 
         self.assertEqual(len(expected), len(gaboxes))
 
-        for ilvl, lvl in enumerate(hierarchy.patch_levels):
+        for ilvl, lvl in enumerate(hierarchy.levels().items()):
             self.assertEqual(len(gaboxes[ilvl][particles]), len(expected[ilvl]))
             for act_pdata, exp_pdata in zip(gaboxes[ilvl][particles], expected[ilvl]):
                 self.assertEqual(len(exp_pdata["boxes"]), len(act_pdata["boxes"]))
@@ -297,7 +287,7 @@ class GeometryTest(AGeometryTest):
                 assert len(gaboxes_list) > 0
                 for pdatainfo in gaboxes_list:
                     for box in pdatainfo["boxes"]:
-                        for patch in hierarchy.patch_levels[ilvl].patches:
+                        for patch in hierarchy.level(ilvl).patches:
                             self.assertIsNone(patch.box * box)
 
 
@@ -386,7 +376,7 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
         )
         lvl_gaboxes = level_ghost_boxes(hierarchy, "particles")
 
-        for ilvl in range(1, len(hierarchy.patch_levels)):
+        for ilvl in range(1, len(hierarchy.levels())):
             self.assertEqual(len(lvl_gaboxes[ilvl].keys()), 1)
 
             key = list(lvl_gaboxes[ilvl].keys())[0]

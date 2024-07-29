@@ -70,26 +70,26 @@ class Box:
 
 
 class nDBox(Box):
-    def __init__(self, dim, l, u):
+    def __init__(self, dim, lower, upper):
         def _get(self, p):
             return np.asarray([p] * dim)
 
-        super().__init__(_get(dim, l), _get(dim, u))
+        super().__init__(_get(dim, lower), _get(dim, upper))
 
 
 class Box1D(nDBox):
-    def __init__(self, l, u):
-        super().__init__(1, l, u)
+    def __init__(self, lower, upper):
+        super().__init__(1, lower, upper)
 
 
 class Box2D(nDBox):
-    def __init__(self, l, u):
-        super().__init__(2, l, u)
+    def __init__(self, lower, upper):
+        super().__init__(2, lower, upper)
 
 
 class Box3D(nDBox):
-    def __init__(self, l, u):
-        super().__init__(3, l, u)
+    def __init__(self, lower, upper):
+        super().__init__(3, lower, upper)
 
 
 def refine(box, ratio):

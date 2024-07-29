@@ -11,7 +11,7 @@ from pyphare.core import gridlayout
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import directions
 from pyphare.core.phare_utilities import refinement_ratio
-from pyphare.pharesee.hierarchy import FieldData
+from pyphare.pharesee.hierarchy.patchdata import FieldData
 
 
 def exec_fn(xyz, fn):

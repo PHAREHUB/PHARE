@@ -6,6 +6,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include <cstddef>
+#include <iostream>
 
 
 namespace PHARE::amr
