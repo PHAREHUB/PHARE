@@ -167,16 +167,12 @@ class InitializationTest(SimulatorTest):
 
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(
-                quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr),
-                compute_timestamps=np.zeros(time_step_nbr),
+                quantity=quantity, write_timestamps=np.zeros(time_step_nbr)
             )
 
         for quantity in ["density", "bulkVelocity"]:
             FluidDiagnostics(
-                quantity=quantity,
-                write_timestamps=np.zeros(time_step_nbr),
-                compute_timestamps=np.zeros(time_step_nbr),
+                quantity=quantity, write_timestamps=np.zeros(time_step_nbr)
             )
 
         poplist = ["protons", "beam"] if beam else ["protons"]
@@ -185,14 +181,12 @@ class InitializationTest(SimulatorTest):
                 FluidDiagnostics(
                     quantity=quantity,
                     write_timestamps=np.zeros(time_step_nbr),
-                    compute_timestamps=np.zeros(time_step_nbr),
                     population_name=pop,
                 )
 
             for quantity in ["domain", "levelGhost", "patchGhost"]:
                 ParticleDiagnostics(
                     quantity=quantity,
-                    compute_timestamps=np.zeros(time_step_nbr),
                     write_timestamps=np.zeros(time_step_nbr),
                     population_name=pop,
                 )

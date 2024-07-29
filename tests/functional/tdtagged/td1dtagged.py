@@ -116,23 +116,14 @@ def config(**options):
     timestamps = all_timestamps(sim)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
     for quantity in ["density", "bulkVelocity"]:
-        ph.FluidDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     for pop in sim.model.populations:
         for quantity in ["domain"]:
             ph.ParticleDiagnostics(
                 quantity=quantity,
-                compute_timestamps=timestamps[: particle_diagnostics["count"] + 1],
                 write_timestamps=timestamps[: particle_diagnostics["count"] + 1],
                 population_name=pop,
             )

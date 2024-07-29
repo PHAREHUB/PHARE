@@ -96,18 +96,11 @@ def config():
     timestamps = np.arange(0, sim.final_time, 0.1)
 
     for quantity in ["B", "E"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     for pop_name in ["main", "beam"]:
         ph.ParticleDiagnostics(
-            quantity="domain",
-            population_name=pop_name,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
+            quantity="domain", population_name=pop_name, write_timestamps=timestamps
         )
     return sim
 

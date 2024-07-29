@@ -85,18 +85,10 @@ def config_uni(**kwargs):
     timestamps = all_timestamps(sim)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     for quantity in ["density", "bulkVelocity"]:
-        ph.FluidDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 
@@ -188,18 +180,10 @@ def config_td(**kwargs):
     timestamps = all_timestamps(sim)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     for quantity in ["density", "bulkVelocity"]:
-        ph.FluidDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 
