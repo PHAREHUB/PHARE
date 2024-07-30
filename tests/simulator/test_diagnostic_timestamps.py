@@ -13,7 +13,7 @@ from ddt import data, ddt
 from pyphare.core.box import Box1D
 from pyphare.pharein import ElectromagDiagnostics, ElectronModel
 from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from
+from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
 from pyphare.simulator.simulator import Simulator
 
