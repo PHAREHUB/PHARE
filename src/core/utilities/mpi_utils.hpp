@@ -40,6 +40,8 @@ inline bool is_init()
     return flag > 0;
 }
 
+
+
 template<typename Data>
 NO_DISCARD auto mpi_type_for()
 {

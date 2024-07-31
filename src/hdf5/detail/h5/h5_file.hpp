@@ -69,7 +69,10 @@ public:
 
     ~HighFiveFile() {}
 
-    NO_DISCARD HiFile& file() { return h5file_; }
+    NO_DISCARD HiFile& file()
+    {
+        return h5file_;
+    }
 
 
     template<typename T, std::size_t dim = 1>
@@ -143,13 +146,11 @@ public:
     void write_attribute(std::string const& keyPath, std::string const& key, Data const& data)
     {
         // assumes all keyPaths and values are identical, and no null patches
-        // clang-format off
-        PHARE_DEBUG_DO(
+        PHARE_DEBUG_DO({
             auto const paths = core::mpi::collect(keyPath, core::mpi::size());
             if (!core::all(paths, [&](auto const& path) { return path == paths[0]; }))
                 throw std::runtime_error("Function does not support different paths per mpi core");
-        )
-        // clang-format on
+        })
 
         constexpr bool data_is_vector = core::is_std_vector_v<Data>;
 

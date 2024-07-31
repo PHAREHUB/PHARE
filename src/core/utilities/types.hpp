@@ -196,6 +196,18 @@ namespace core
     };
 
     template<typename T>
+    NO_DISCARD T from_string(std::string const& s)
+    {
+        T t;
+        std::stringstream ss(s);
+        ss >> t;
+        ss >> t;
+        if (ss.fail())
+            throw std::runtime_error("PHARE::core::from_string - Conversion failed: " + s);
+        return t;
+    }
+
+    template<typename T>
     NO_DISCARD std::string to_string_with_precision(T const& a_value, std::size_t const len)
     {
         std::ostringstream out;
@@ -243,6 +255,24 @@ namespace core
         if (auto e = get_env(key))
             return *e;
         return _default;
+    }
+
+
+    template<typename T>
+    NO_DISCARD inline std::optional<T> get_env_as(std::string const& key)
+    {
+        if (auto e = get_env(key))
+            return from_string<T>(*e);
+        return std::nullopt;
+    }
+
+
+    template<typename T>
+    NO_DISCARD inline T get_env_as(std::string const& key, T const& t)
+    {
+        if (auto e = get_env(key))
+            return from_string<T>(*e);
+        return t;
     }
 
 

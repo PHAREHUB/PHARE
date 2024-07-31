@@ -36,6 +36,20 @@ def build_config():
     return cpp_etc_lib().phare_build_config()
 
 
+def env_vars():
+    return cpp_etc_lib().phare_env_vars()
+
+
+def print_env_vars_info():
+    # see: src/core/env.hpp
+    for env_var_name, env_var in cpp_etc_lib().phare_env_vars().items():
+        print(f"{env_var_name}: {env_var.desc}")
+        print("Options:")
+        for option_key, option_val in env_var.options:
+            print(f"  {option_key}: {option_val}")
+        print("")
+
+
 def build_config_as_json():
     return json.dumps(build_config())
 
