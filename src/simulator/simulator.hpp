@@ -213,7 +213,11 @@ double Simulator<dim, _interp, nbRefinedPart>::restarts_init(initializer::PHARED
     rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *hybridModel_, dict);
 
     if (dict.contains("restart_time"))
-        return (currentTime_ = dict["restart_time"].template to<double>());
+    {
+        currentTime_ = dict["restart_time"].template to<double>();
+        finalTime_ += currentTime_;
+        return currentTime_;
+    }
 
     return 0;
 }
