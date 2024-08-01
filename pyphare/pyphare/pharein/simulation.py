@@ -870,9 +870,14 @@ class Simulation(object):
         return self.restart_options.get("dir", "phare_outputs")
 
     def start_time(self):
-        if self.restart_options is not None:
-            return self.restart_options.get("restart_time", 0)
+        if self.is_from_restart():
+            return self.restart_options["restart_time"]
         return 0
+
+    def is_from_restart(self):
+        return (
+            self.restart_options is not None and "restart_time" in self.restart_options
+        )
 
     def __getattr__(
         self, name

@@ -43,7 +43,10 @@ class MaxwellianFluidModel(object):
         for population in self.populations:
             self.add_population(population, **kwargs[population])
 
-        if not global_vars.sim.dry_run:
+        should_validate = not any(
+            [global_vars.sim.dry_run, global_vars.sim.is_from_restart()]
+        )
+        if should_validate:
             self.validate(global_vars.sim)
 
         global_vars.sim.set_model(self)
