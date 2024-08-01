@@ -70,24 +70,20 @@ def getSimulation():
     return sim
 
 
-def _patch_data_ids(path):
+def _patch_data_ids(restart_file_dir):
     """
     for restarts we save samrai patch data ids to the restart files, which we access from here
     to tell samrai which patch datas to load from the restart file on restart
     """
-    import h5py
     from pyphare.cpp import cpp_etc_lib
 
-    h5File = cpp_etc_lib().samrai_restart_file(path)
-    return h5py.File(h5File, "r")["phare"]["patch"]["ids"][:]
+    return cpp_etc_lib().patch_data_ids(restart_file_dir)
 
 
-def _serialized_simulation_string(path):
-    import h5py
+def _serialized_simulation_string(restart_file_dir):
     from pyphare.cpp import cpp_etc_lib
 
-    h5File = cpp_etc_lib().samrai_restart_file(path)
-    return h5py.File(h5File, "r")["phare"].attrs["serialized_simulation"]
+    return cpp_etc_lib().serialized_simulation_string(restart_file_dir)
 
 
 # converts scalars to array of expected size

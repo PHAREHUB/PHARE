@@ -69,7 +69,10 @@ public:
 
     ~HighFiveFile() {}
 
-    NO_DISCARD HiFile& file() { return h5file_; }
+    NO_DISCARD HiFile& file()
+    {
+        return h5file_;
+    }
 
 
     template<typename T, std::size_t dim = 1>
@@ -233,6 +236,15 @@ public:
                     doAttribute(h5file_.getGroup(keyPath), key, values[i]);
             }
         }
+    }
+
+    template<typename Attr = std::string>
+    auto read_attribute(std::string const& path, std::string const& key)
+    {
+        auto at = h5file_.getGroup(path).getAttribute(key);
+        Attr attr;
+        at.read(attr);
+        return attr;
     }
 
 
