@@ -2,7 +2,7 @@ import os
 
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import get_times_from_h5
+from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
 
 from tests.diagnostic import all_timestamps

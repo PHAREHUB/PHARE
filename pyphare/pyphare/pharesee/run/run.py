@@ -91,6 +91,8 @@ class Run:
         return self._get(hier, time, merged, "nearest")
 
     def GetB(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged == True:
+            all_primal = False
         hier = self._get_hierarchy(time, "EM_B.h5", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
@@ -99,6 +101,8 @@ class Run:
         return VectorField(h)
 
     def GetE(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged == True:
+            all_primal = False
         hier = self._get_hierarchy(time, "EM_E.h5", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
@@ -159,6 +163,8 @@ class Run:
         return ScalarField(h) * Te
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged == True:
+            all_primal = False
         B = self.GetB(time, all_primal=False, **kwargs)
         J = compute_hier_from(_compute_current, B)
         if not all_primal:
@@ -240,12 +246,12 @@ class Run:
         h5_filename = any_file
         import h5py
 
-        data_file = h5py.File(os.path.join(self.path, h5_filename), "r")
+        data_file = h5py.File(h5_filename, "r")
 
         if time is None:
             time = float(list(data_file[h5_time_grp_key].keys())[0])
 
-        hier = self._get_hierarchy(time, h5_filename)
+        hier = self._get_hierarchy(time, h5_filename.split("/")[-1])
 
         if level == "finest":
             level = hier.finest_level(time)
@@ -260,7 +266,6 @@ class Run:
         import os
         import h5py
 
-        path = self.path
         files = self.available_diags
         ts = {}
         for file in files:

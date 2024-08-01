@@ -3,7 +3,7 @@
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import get_times_from_h5
+from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 
 import os
 import numpy as np
@@ -151,30 +151,16 @@ def mag_energy(B, lvlNbr=0):
     """
     return the total magnetic energy on a given level
     """
-    for ilvl, lvl in B.levels().items():
-        if lvlNbr == ilvl:
-            tot = 0.0
-            for ip, patch in enumerate(lvl.patches):
-                pdata = patch.patch_datas["Bx"]
+    from pyphare.core.operators import dot
 
-                # Bx is primal, but By and Bz dual so
-                # we average By and Bz onto Bx to use them
-                # in the same formula
-                ghosts_nbr = pdata.ghosts_nbr[0]
-                bx = patch.patch_datas["Bx"].dataset[ghosts_nbr:-ghosts_nbr]
-                bytmp = patch.patch_datas["By"].dataset[
-                    ghosts_nbr - 1 : -(ghosts_nbr - 1)
-                ]
-                bztmp = patch.patch_datas["Bz"].dataset[
-                    ghosts_nbr - 1 : -(ghosts_nbr - 1)
-                ]
-                by = 0.5 * (bytmp[1:] + bytmp[:-1])
-                bz = 0.5 * (bztmp[1:] + bztmp[:-1])
+    nrj = 0.5 * dot(B, B)
+    tot = 0.0
+    for lvl in nrj.levels().values():
+        for patch in lvl.patches:
+            pdata = patch.patch_datas["value"]
+            tot += pdata.dataset[:].sum()
 
-                # sum 0.5B^2 * dx over all nodes
-                per_patch = np.sum((bx**2 + by**2 + bz**2) * 0.5 * pdata.layout.dl[0])
-                tot += per_patch
-        return tot
+    return tot
 
 
 def energies(path, kkind="iso"):
