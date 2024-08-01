@@ -472,6 +472,7 @@ class InitializationTest(SimulatorTest):
                 print("patch {}".format(ip))
 
                 ion_density = patch.patch_datas["rho"].dataset[:]
+                # print(patch.patch_datas.items())
                 proton_density = patch.patch_datas["protons_rho"].dataset[:]
                 beam_density = patch.patch_datas["beam_rho"].dataset[:]
                 x = patch.patch_datas["rho"].x
