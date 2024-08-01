@@ -145,11 +145,7 @@ class PatchHierarchyTest(unittest.TestCase):
                 ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
             for quantity in ["density", "bulkVelocity"]:
-                ph.FluidDiagnostics(
-                    quantity=quantity,
-                    write_timestamps=timestamps,
-                    compute_timestamps=timestamps,
-                )
+                ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
             return sim
 

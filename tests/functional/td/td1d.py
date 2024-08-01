@@ -98,17 +98,12 @@ def config():
     timestamps = np.linspace(0, sim.final_time, n_dump)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     for quantity in ["density", "bulkVelocity"]:
         ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
-            compute_timestamps=timestamps,
         )
     return sim
 

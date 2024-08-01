@@ -83,16 +83,11 @@ def uniform(vth, dl, cells, nbr_steps):
     timestamps = np.arange(0, sim.final_time, 50 * sim.time_step)
 
     for quantity in ["B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     for name in ["domain", "levelGhost", "patchGhost"]:
         ph.ParticleDiagnostics(
             quantity=name,
-            compute_timestamps=timestamps,
             write_timestamps=timestamps,
             population_name="protons",
         )

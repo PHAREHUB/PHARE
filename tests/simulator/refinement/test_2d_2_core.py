@@ -99,18 +99,10 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
     timestamps = dt * np.arange(nt)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     for quantity in ["density", "bulkVelocity"]:
-        ph.FluidDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            compute_timestamps=timestamps,
-        )
+        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 

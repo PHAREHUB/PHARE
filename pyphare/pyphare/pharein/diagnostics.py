@@ -28,7 +28,6 @@ def diagnostics_checker(func):
 
         accepted_keywords = [
             "path",
-            "compute_timestamps",
             "population_name",
             "flush_every",
         ]
@@ -117,9 +116,11 @@ class Diagnostics(object):
         self.write_timestamps = validate_timestamps(
             self.__class__.__name__, "write_timestamps", **kwargs
         )
-        self.compute_timestamps = validate_timestamps(
-            self.__class__.__name__, "compute_timestamps", **kwargs
-        )
+        # for now every diagnostics needing computation (like momentum tensor)
+        # is computing at the same time as written.
+        # later this parameter can evolve to allow for different timestamps
+        # that will depend on the type of diagnostics.
+        self.compute_timestamps = self.write_timestamps
 
         self.attributes = kwargs.get("attributes", {})
 

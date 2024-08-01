@@ -150,17 +150,12 @@ class AdvanceTestBase(SimulatorTest):
             timestamps = all_timestamps(global_vars.sim)
 
         for quantity in ["E", "B"]:
-            ElectromagDiagnostics(
-                quantity=quantity,
-                write_timestamps=timestamps,
-                compute_timestamps=timestamps,
-            )
+            ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
         for quantity in ["density", "bulkVelocity"]:
             FluidDiagnostics(
                 quantity=quantity,
                 write_timestamps=timestamps,
-                compute_timestamps=timestamps,
             )
 
         poplist = ["protons"]
@@ -169,14 +164,12 @@ class AdvanceTestBase(SimulatorTest):
                 FluidDiagnostics(
                     quantity=quantity,
                     write_timestamps=timestamps,
-                    compute_timestamps=timestamps,
                     population_name=pop,
                 )
 
             for quantity in ["domain", "levelGhost", "patchGhost"]:
                 ParticleDiagnostics(
                     quantity=quantity,
-                    compute_timestamps=timestamps,
                     write_timestamps=timestamps,
                     population_name=pop,
                 )

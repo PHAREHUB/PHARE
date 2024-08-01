@@ -20,24 +20,18 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
     if timestamps is None:
         timestamps = all_timestamps(sim)
 
-    ph.InfoDiagnostics(
-        quantity="particle_count",
-        write_timestamps=timestamps,
-        compute_timestamps=timestamps,
-    )
+    ph.InfoDiagnostics(quantity="particle_count", write_timestamps=timestamps)
     # commented out because not working propertly at the moment
     # but we keep it there for when it does
     # ph.MetaDiagnostics(
     #     quantity="tags",
-    #     write_timestamps=timestamps,
-    #     compute_timestamps=timestamps,
+    #     write_timestamps=timestamps
     # )
 
     for quantity in ["density", "bulkVelocity", "pressure_tensor"]:
         ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
-            compute_timestamps=timestamps,
             flush_every=flush_every,
         )
 
@@ -46,7 +40,6 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
             ph.FluidDiagnostics(
                 quantity=quantity,
                 write_timestamps=timestamps,
-                compute_timestamps=timestamps,
                 flush_every=flush_every,
                 population_name=pop,
             )
@@ -54,7 +47,6 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
         for quantity in ["domain", "levelGhost", "patchGhost"]:
             ph.ParticleDiagnostics(
                 quantity=quantity,
-                compute_timestamps=timestamps,
                 write_timestamps=timestamps,
                 flush_every=flush_every,
                 population_name=pop,
@@ -64,6 +56,5 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
         ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
-            compute_timestamps=timestamps,
             flush_every=flush_every,
         )

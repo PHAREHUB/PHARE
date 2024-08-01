@@ -117,7 +117,6 @@ class DiagnosticsTest(unittest.TestCase):
             ElectromagDiagnostics(
                 quantity=quantity,
                 write_timestamps=timestamps,
-                compute_timestamps=timestamps,
                 flush_every=ElectromagDiagnostics.h5_flush_never,
             )
 
@@ -162,7 +161,6 @@ class DiagnosticsTest(unittest.TestCase):
                     ElectromagDiagnostics(
                         quantity=quantity,
                         write_timestamps=timestamps,
-                        compute_timestamps=timestamps,
                         flush_every=ElectromagDiagnostics.h5_flush_never,
                     )
 
