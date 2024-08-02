@@ -4,7 +4,7 @@ import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+
 
 from tests.diagnostic import all_timestamps
 
@@ -23,11 +23,14 @@ mpl.use("Agg")
 def config():
     # configure the simulation
 
+    final_time = 1000
+    time_step_nbr = 100000
+
     sim = ph.Simulation(
         smallest_patch_size=50,
         largest_patch_size=50,
-        time_step_nbr=100000,  # number of time steps (not specified if time_step and final_time provided)
-        final_time=1000,  # simulation final time (not specified if time_step and time_step_nbr provided)
+        time_step_nbr=time_step_nbr,  # number of time steps (not specified if time_step and final_time provided)
+        final_time=final_time,  # simulation final time (not specified if time_step and time_step_nbr provided)
         boundary_types="periodic",  # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=1000,  # integer or tuple length == dimension
         dl=1,  # mesh size of the root level, float or tuple
@@ -88,7 +91,7 @@ def config():
 
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
-    timestamps = all_timestamps(sim)
+    timestamps = [0, int(final_time / 2), final_time]
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
@@ -145,7 +148,7 @@ def main():
     if cpp.mpi_rank() == 0:
         vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)
 
-        r = Run(".")
+        r = Run(".", 0)
         t = get_times_from_h5("EM_B.h5")
         fig, ax = plt.subplots(figsize=(9, 5), nrows=1)
 
