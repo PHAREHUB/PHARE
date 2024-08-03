@@ -4,7 +4,6 @@ import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
 
 
-import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
@@ -168,10 +167,14 @@ def prescribedModes():
     timestamps = np.arange(0, sim.final_time + sim.time_step, sim.time_step)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
+        ph.ElectromagDiagnostics(
+            quantity=quantity, write_timestamps=timestamps, flush_every=0
+        )
 
     for quantity in ["density", "bulkVelocity"]:
-        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
+        ph.FluidDiagnostics(
+            quantity=quantity, write_timestamps=timestamps, flush_every=0
+        )
 
     return sim
 

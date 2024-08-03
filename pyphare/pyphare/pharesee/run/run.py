@@ -33,8 +33,9 @@ quantities_per_file = {
 
 
 class Run:
-    def __init__(self, path):
+    def __init__(self, path, default_time=None):
         self.path = path
+        self.default_time_ = default_time
         import glob
 
         self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
@@ -69,7 +70,7 @@ class Run:
         """
         if merged:
             domain = self.GetDomainSize()
-            dl = self.GetDl()
+            dl = self.GetDl(time=time)
 
             # assumes all qties in the hierarchy have the same ghost width
             # so take the first patch data of the first patch of the first level....
@@ -248,8 +249,15 @@ class Run:
 
         data_file = h5py.File(h5_filename, "r")
 
-        if time is None:
-            time = float(list(data_file[h5_time_grp_key].keys())[0])
+        def _get_time():
+            if time:
+                return time
+            if self.default_time_:
+                return self.default_time_
+            self.default_time_ = float(list(data_file[h5_time_grp_key].keys())[0])
+            return self.default_time_
+
+        time = _get_time()
 
         hier = self._get_hierarchy(time, h5_filename.split("/")[-1])
 

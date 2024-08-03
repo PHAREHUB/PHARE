@@ -5,15 +5,13 @@ from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
 
-from tests.diagnostic import all_timestamps
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 from scipy.optimize import curve_fit
 from scipy.signal import find_peaks
-from pyphare.pharesee import plotting
-from pathlib import Path
+
 
 mpl.use("Agg")
 

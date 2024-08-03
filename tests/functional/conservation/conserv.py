@@ -5,7 +5,6 @@ from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.run import Run
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 
-import os
 import numpy as np
 from glob import glob
 
