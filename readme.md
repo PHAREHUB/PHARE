@@ -1,14 +1,15 @@
 
 
 <div align="center">
-<img src="https://user-images.githubusercontent.com/3200931/213649230-da966bb5-9384-4c58-8e77-24ebe46cf2bf.png" alt="PHARE snapshot">
+<img src="https://github.com/user-attachments/assets/5e330ec4-99c7-4872-a5d4-73c618aaba07" alt="PHARE snapshot">
+
 
 <p align="center">
 <a  href="https://www.gnu.org/licenses/gpl-3.0">
 <img src="https://img.shields.io/badge/PHARE-GPL%20v3-blue.svg" alt="License: GPL v3" />
 </a>
 <a  href="">
-<img src="https://img.shields.io/badge/Language-C++17-blue.svg" alt="CPP17" />
+<img src="https://img.shields.io/badge/Language-C++20-blue.svg" alt="CPP20" />
 </a>
 <a  href="https://phare.readthedocs.io/en/latest/?badge=latest">
 <img src="https://readthedocs.org/projects/phare/badge/?version=latest" alt="Documentation Status" />
@@ -22,7 +23,7 @@
 </p>
 </div>
 
-# Parallel Hybrid PIC code with Adaptive mesh REfinement
+# PHARE: Parallel Hybrid PIC code with Adaptive mesh REfinement
 
 
 PHARE is a Hybrid Particle-In-Cell (PIC) code. It solves the evolution of the Vlasov equation
@@ -131,6 +132,9 @@ keywords = {Particle in cell, Adaptive mesh refinement, Collisionless plasmas},
 - [Particle Splitting](https://doi.org/10.1016/j.cpc.2020.107666): Roch Smets et al. *A new method to dispatch split particles in Particle-In-Cell codes.* Computer Physics Communications, 2021, 261, pp.107666. ⟨10.1016/j.cpc.2020.107666⟩. ([Free Version here](https://universite-paris-saclay.hal.science/hal-03203893/)) 
 
 
+## More
+
+- follow us on [Youtube](https://www.youtube.com/@PHARE-v1u)
 
 
 ## Acknowledgments
