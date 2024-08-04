@@ -20,12 +20,10 @@ timestamps = dt * np.arange(nt)
 
 @ddt
 class PatchHierarchyTest(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        from pyphare.pharein import global_vars
+    def setUp(self):
         import pyphare.pharein as ph
 
-        global_vars.sim = None
+        ph.global_vars.sim = None
 
         def config():
             test_diag_outputs = diag_outputs + self._testMethodName
