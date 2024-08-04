@@ -53,7 +53,7 @@ detailed in a :doc:`simulation_inputs` file, and adding a `main` function to run
 the simulation.
 
 If running the simulation from python, you need to define a `main` function that
-basically runs the simulation. Heere is a small example:
+basically runs the simulation. Here is a small example:
 
 
 .. code-block:: python
