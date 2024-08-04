@@ -431,11 +431,10 @@ def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
     return : {level_number : [{"pdata":patch_data1, "boxes":lvl_ghost_boxes},
                               {"pdata":patch_data2, "boxes":lvl_ghost_boxes}, ...]}
 
-    optional parameters
-    -----
+    Other parameters
+    ----------------
       levelNbrs : limit working set of hierarchy levels to those requested, if scalar, returns just that level
       time      : the simulation time to access the appropriate data for the requested time
-    -----
     """
     quantities = listify(quantities)
 
