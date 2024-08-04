@@ -20,13 +20,15 @@ timestamps = dt * np.arange(nt)
 
 @ddt
 class PatchHierarchyTest(unittest.TestCase):
+    def diag_dir(self):
+        return diag_outputs + self._testMethodName
+
     def setUp(self):
         import pyphare.pharein as ph
 
         ph.global_vars.sim = None
 
         def config():
-            test_diag_outputs = diag_outputs + self._testMethodName
             sim = ph.Simulation(
                 time_step_nbr=time_step_nbr,
                 time_step=time_step,
@@ -38,7 +40,7 @@ class PatchHierarchyTest(unittest.TestCase):
                 resistivity=0.001,
                 diag_options={
                     "format": "phareh5",
-                    "options": {"dir": test_diag_outputs, "mode": "overwrite"},
+                    "options": {"dir": self.diag_dir(), "mode": "overwrite"},
                 },
             )
 
@@ -151,12 +153,12 @@ class PatchHierarchyTest(unittest.TestCase):
         Simulator(config()).run()
 
     def test_data_is_a_hierarchy(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         B = r.GetB(0.0)
         self.assertTrue(isinstance(B, PatchHierarchy))
 
     def test_can_read_multiple_times(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         times = (0.0, 0.1)
         B = r.GetB(times)
         E = r.GetE(times)
@@ -167,7 +169,7 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertTrue(np.allclose(hier.times().astype(np.float32), times))
 
     def test_hierarchy_is_refined(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         B = r.GetB(time)
         self.assertEqual(len(B.levels()), B.levelNbr())
@@ -176,19 +178,19 @@ class PatchHierarchyTest(unittest.TestCase):
         self.assertEqual(len(B.levels(time)), B.levelNbr(time))
 
     def test_can_get_nbytes(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         B = r.GetB(time)
         self.assertGreater(B.nbytes(), 0)
 
     def test_hierarchy_has_patches(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         B = r.GetB(time)
         self.assertGreater(B.nbrPatches(), 0)
 
     def test_access_patchdatas_as_hierarchies(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         B = r.GetB(time)
         self.assertTrue(isinstance(B.x, PatchHierarchy))
@@ -199,7 +201,7 @@ class PatchHierarchyTest(unittest.TestCase):
         import matplotlib.pyplot as plt
         from matplotlib.patches import Rectangle
 
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         box = Box((10, 5), (18, 12.5))
         B = r.GetB(time)
@@ -225,7 +227,7 @@ class PatchHierarchyTest(unittest.TestCase):
         self.assertLess(Bpartial.nbrPatches(), B.nbrPatches())
 
     def test_scalarfield_quantities(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         Vi = r.GetVi(time)
@@ -233,7 +235,7 @@ class PatchHierarchyTest(unittest.TestCase):
         self.assertTrue(isinstance(Vi, VectorField))
 
     def test_sum_two_scalarfields(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         Pe = r.GetPe(time)
@@ -242,7 +244,7 @@ class PatchHierarchyTest(unittest.TestCase):
         self.assertEqual(s.quantities(), ["value"])
 
     def test_sum_with_scalar(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         s1 = Ni + 0.1
@@ -252,7 +254,7 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertEqual(s.quantities(), ["value"])
 
     def test_scalarfield_difference(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         Pe = r.GetPe(time)
@@ -264,7 +266,7 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertEqual(s.quantities(), ["value"])
 
     def test_scalarfield_product(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         Pe = r.GetPe(time)
@@ -275,7 +277,7 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertEqual(s.quantities(), ["value"])
 
     def test_scalarfield_division(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         Pe = r.GetPe(time)
@@ -288,14 +290,14 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertEqual(s.quantities(), ["value"])
 
     def test_scalarfield_sqrt(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         nisqrt = sqrt(Ni)
         self.assertTrue(isinstance(nisqrt, ScalarField))
 
     def test_vectorfield_dot_product(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         B = r.GetB(time)
         s1 = dot(B, B)
@@ -305,7 +307,7 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertEqual(s.quantities(), ["value"])
 
     def test_vectorfield_binary_ops(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         B = r.GetB(time)
         V = r.GetVi(time)
@@ -320,7 +322,7 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertEqual(s.quantities(), ["x", "y", "z"])
 
     def test_scalarfield_to_vectorfield_ops(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         Ni = r.GetNi(time)
         s1 = grad(Ni)
@@ -329,7 +331,7 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertEqual(s.quantities(), ["x", "y", "z"])
 
     def test_vectorfield_to_vectorfield_ops(self):
-        r = Run(diag_outputs)
+        r = Run(self.diag_dir())
         time = 0.0
         B = r.GetB(time)
         E = r.GetE(time)
