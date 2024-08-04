@@ -28,6 +28,7 @@ class PatchHierarchyTest(unittest.TestCase):
         global_vars.sim = None
 
         def config():
+            test_diag_outputs = diag_outputs + self._testMethodName
             sim = ph.Simulation(
                 time_step_nbr=time_step_nbr,
                 time_step=time_step,
@@ -39,7 +40,7 @@ class PatchHierarchyTest(unittest.TestCase):
                 resistivity=0.001,
                 diag_options={
                     "format": "phareh5",
-                    "options": {"dir": diag_outputs, "mode": "overwrite"},
+                    "options": {"dir": test_diag_outputs, "mode": "overwrite"},
                 },
             )
 
