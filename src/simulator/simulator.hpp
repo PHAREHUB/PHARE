@@ -269,7 +269,7 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
     multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
 
     // hard coded for now, should get some params later from the dict
-    auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make("HybridModel", "default");
+    auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make(dict["tagging"]);
     multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
 
     amr::LoadBalancerDetails lb_info
