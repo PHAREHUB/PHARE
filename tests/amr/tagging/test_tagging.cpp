@@ -21,16 +21,27 @@ using namespace PHARE::amr;
 
 
 
-TEST(test_tagger, fromFactory)
+TEST(test_tagger, fromFactoryValid)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
-    auto hybridTagger = TaggerFactory<phare_types>::make("HybridModel", "default");
+    PHARE::initializer::PHAREDict dict;
+    dict["model"]  = std::string{"HybridModel"};
+    dict["method"]  = std::string{"default"};
+    dict["threshold"]  = 0.2;
+    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
-
-    auto badTagger = TaggerFactory<phare_types>::make("invalidModel", "invalidStrat");
-    EXPECT_TRUE(badTagger == nullptr);
 }
 
+TEST(test_tagger, fromFactoryInvalid)
+{
+    using phare_types = PHARE::PHARE_Types<1, 1, 2>;
+    PHARE::initializer::PHAREDict dict;
+    dict["model"]  = std::string{"invalidModel"};
+    dict["method"]  = std::string{"invalidStrat"};
+    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
+    auto badTagger = TaggerFactory<phare_types>::make(dict);
+    EXPECT_TRUE(badTagger == nullptr);
+}
 
 
 using Param   = std::vector<double>;
