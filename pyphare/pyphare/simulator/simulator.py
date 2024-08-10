@@ -7,6 +7,7 @@ import atexit
 import time as timem
 import numpy as np
 import pyphare.pharein as ph
+from . import monitoring as mon
 
 
 life_cycles = {}
@@ -127,6 +128,7 @@ class Simulator:
 
             self.cpp_sim.initialize()
             self._auto_dump()  # first dump might be before first advance
+
             return self
         except:
             import sys
@@ -140,7 +142,6 @@ class Simulator:
 
     def _throw(self, e):
         import sys
-        from pyphare.cpp import cpp_lib
 
         print_rank0(e)
         sys.exit(1)
@@ -170,12 +171,16 @@ class Simulator:
             self.timeStep(),
         )
 
-    def run(self, plot_times=False):
+    def run(self, plot_times=False, monitoring=True):
+        """monitoring requires phlop"""
         from pyphare.cpp import cpp_lib
 
         self._check_init()
+
         if self.simulation.dry_run:
             return self
+        if monitoring:
+            mon.setup_monitoring(cpp_lib())
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -197,6 +202,7 @@ class Simulator:
         if plot_times:
             plot_timestep_time(perf)
 
+        mon.monitoring_shutdown(cpp_lib())
         return self.reset()
 
     def _auto_dump(self):
