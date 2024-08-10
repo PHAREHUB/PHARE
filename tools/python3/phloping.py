@@ -6,7 +6,6 @@ import numpy as np
 from dataclasses import dataclass, field
 
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import hierarchy_from
 
 from phlop.timing.scope_timer import ScopeTimerFile as phScopeTimerFile
 from phlop.timing.scope_timer import file_parser as phfile_parser
@@ -124,17 +123,24 @@ class ScopeTimerFile(phScopeTimerFile):
         """
         Normalise substep time against particle count for that level
           at the most recent coarse time, no refined timesteps
+        Particle counts may include init dump, so be one bigger.
         """
         times = self.advance_times_for_L(ilvl)
+        counts = len(self.particles_per_level_per_time_step[ilvl])
+
+        # trim init particle count for lvl
+        Li_times = (
+            self.particles_per_level_per_time_step[ilvl]
+            if counts == len(times)
+            else self.particles_per_level_per_time_step[ilvl][1:]
+        )
         if ilvl == 0:
-            return times / self.particles_per_level_per_time_step[0]
+            return times / Li_times
         substeps = self.steps_per_coarse_timestep_for_L(ilvl)
         norm_times = times.copy()
         return (
             norm_times.reshape(int(times.shape[0] / substeps), substeps)
-            / self.particles_per_level_per_time_step[ilvl].reshape(
-                self.particles_per_level_per_time_step[ilvl].shape[0], 1
-            )
+            / Li_times.reshape(Li_times.shape[0], 1)
         ).reshape(times.shape[0])
 
 
