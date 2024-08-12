@@ -51,14 +51,12 @@ namespace core
         NO_DISCARD bool isUsable() const
         {
             return particles_.isUsable() && particleDensity_.isUsable() && chargeDensity_.isUsable() && flux_.isUsable()
-            // return particles_.isUsable() && particleDensity_.isUsable() && flux_.isUsable()
                    && momentumTensor_.isUsable();
         }
 
         NO_DISCARD bool isSettable() const
         {
             return particles_.isSettable() && particleDensity_.isSettable() && chargeDensity_.isSettable() && flux_.isSettable()
-            // return particles_.isSettable() && particleDensity_.isSettable() && flux_.isSettable()
                    && momentumTensor_.isSettable();
         }
 
@@ -86,8 +84,8 @@ namespace core
         NO_DISCARD field_type const& density() const { return particleDensity_; }  // TODO ouam : to remove
         NO_DISCARD field_type& density() { return particleDensity_; }  // TODO ouam : to remove
 
-        // NO_DISCARD field_type const& particleDensity() const { return particleDensity_; }
-        // NO_DISCARD field_type& particleDensity() { return particleDensity_; }
+        NO_DISCARD field_type const& particleDensity() const { return particleDensity_; }
+        NO_DISCARD field_type& particleDensity() { return particleDensity_; }
 
         NO_DISCARD field_type const& chargeDensity() const { return chargeDensity_; }
         NO_DISCARD field_type& chargeDensity() { return chargeDensity_; }
@@ -110,7 +108,6 @@ namespace core
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
             return std::forward_as_tuple(flux_, momentumTensor_, particleDensity_, chargeDensity_, particles_);
-            // return std::forward_as_tuple(flux_, momentumTensor_, particleDensity_, particles_);
         }
 
 

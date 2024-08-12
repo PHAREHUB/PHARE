@@ -60,8 +60,8 @@ namespace core
         NO_DISCARD auto size() const { return nbrPopulations(); }
 
 
-        NO_DISCARD field_type const& density() const { return particleDensity_; }
-        NO_DISCARD field_type& density() { return particleDensity_; }
+        NO_DISCARD field_type const& density() const { return particleDensity_; }  // TODO ouam : to remove
+        NO_DISCARD field_type& density() { return particleDensity_; }  // TODO ouam : to remove
 
         NO_DISCARD field_type const& massDensity() const
         {
@@ -92,7 +92,7 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.density();
+                auto& popDensity = pop.particleDensity();
                 std::transform(std::begin(particleDensity_), std::end(particleDensity_), std::begin(popDensity),
                                std::begin(particleDensity_), std::plus<Float>{});
             }
@@ -107,7 +107,7 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.density();
+                auto& popDensity = pop.particleDensity();
                 std::transform(
                     std::begin(massDensity_), std::end(massDensity_), std::begin(popDensity),
                     std::begin(massDensity_),

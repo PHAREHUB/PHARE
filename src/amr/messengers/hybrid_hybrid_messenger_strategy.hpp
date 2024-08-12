@@ -385,21 +385,21 @@ namespace amr
                 {
                     // first thing to do is to project patchGhostParitcles moments
                     auto& patchGhosts = pop.patchGhostParticles();
-                    auto& density     = pop.density();
+                    auto& particleDensity     = pop.particleDensity();
                     auto& chargeDensity     = pop.chargeDensity();
                     auto& flux        = pop.flux();
 
-                    interpolate_(makeRange(patchGhosts), density, chargeDensity, flux, layout);
+                    interpolate_(makeRange(patchGhosts), particleDensity, chargeDensity, flux, layout);
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
                         // then grab levelGhostParticlesOld and levelGhostParticlesNew
                         // and project them with alpha and (1-alpha) coefs, respectively
                         auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), density, chargeDensity, flux, layout, 1. - alpha);
+                        interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux, layout, 1. - alpha);
 
                         auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), density, chargeDensity, flux, layout, alpha);
+                        interpolate_(makeRange(levelGhostNew), particleDensity, chargeDensity, flux, layout, alpha);
                     }
                 }
             }
