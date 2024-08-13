@@ -59,7 +59,7 @@ public:
                 if (!pop_data.count(pop.name()))
                     pop_data.emplace(pop.name(), Inner());
 
-                setPatchDataFromField(pop_data.at(pop.name()).emplace_back(), pop.density(), grid,
+                setPatchDataFromField(pop_data.at(pop.name()).emplace_back(), pop.chargeDensity(), grid,
                                       patchID);
             }
         };

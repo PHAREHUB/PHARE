@@ -211,7 +211,7 @@ struct IonsBuffers
     using ParticleArray              = typename PHARETypes::ParticleArray_t;
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
-    Grid ionDensity;
+    Grid ionParticleDensity;
     Grid ionChargeDensity;
     Grid ionMassDensity;
     Grid protonDensity;
@@ -240,7 +240,7 @@ struct IonsBuffers
     ParticlesPack<ParticleArray> alphaPack;
 
     IonsBuffers(GridLayout const& layout)
-        : ionDensity{"particleDensity", HybridQuantity::Scalar::rho,
+        : ionParticleDensity{"particleDensity", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -279,7 +279,7 @@ struct IonsBuffers
 
 
     IonsBuffers(IonsBuffers const& source, GridLayout const& layout)
-        : ionDensity{"rho", HybridQuantity::Scalar::rho,
+        : ionParticleDensity{"rho", HybridQuantity::Scalar::rho,
                      layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -315,7 +315,7 @@ struct IonsBuffers
                     &alphaLevelGhost, &alphaLevelGhostOld, &alphaLevelGhostNew}
 
     {
-        ionDensity.copyData(source.ionDensity);
+        ionParticleDensity.copyData(source.ionParticleDensity);
         ionChargeDensity.copyData(source.ionChargeDensity);
         ionMassDensity.copyData(source.ionMassDensity);
         protonDensity.copyData(source.protonDensity);
@@ -334,7 +334,7 @@ struct IonsBuffers
             auto const& [V, m, d, cd, md] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
             M.set_on(m);
-            d.setBuffer(&ionDensity);
+            d.setBuffer(&ionParticleDensity);
             cd.setBuffer(&ionChargeDensity);
             md.setBuffer(&ionMassDensity);
         }
@@ -560,16 +560,16 @@ struct IonUpdaterTest : public ::testing::Test
 
         for (auto& pop : this->ions)
         {
-            interpolate(makeIndexRange(pop.patchGhostParticles()), pop.density(), pop.chargeDensity(), pop.flux(),
+            interpolate(makeIndexRange(pop.patchGhostParticles()), pop.particleDensity(), pop.chargeDensity(), pop.flux(),
                         layout);
 
             double alpha = 0.5;
-            interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.density(), pop.chargeDensity(), pop.flux(),
+            interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.particleDensity(), pop.chargeDensity(), pop.flux(),
                         layout,
                         /*coef = */ alpha);
 
 
-            interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.density(), pop.chargeDensity(), pop.flux(),
+            interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.particleDensity(), pop.chargeDensity(), pop.flux(),
                         layout,
                         /*coef = */ (1. - alpha));
         }
@@ -632,7 +632,7 @@ struct IonUpdaterTest : public ::testing::Test
         check(alphaFy, ionsBufferCpy.alphaF(Component::Y));
         check(alphaFz, ionsBufferCpy.alphaF(Component::Z));
 
-        check(ions.density(), ionsBufferCpy.ionDensity);
+        check(ions.density(), ionsBufferCpy.ionParticleDensity);
         check(ions.velocity().getComponent(Component::X), ionsBufferCpy.Vi(Component::X));
         check(ions.velocity().getComponent(Component::Y), ionsBufferCpy.Vi(Component::Y));
         check(ions.velocity().getComponent(Component::Z), ionsBufferCpy.Vi(Component::Z));
@@ -932,7 +932,7 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
     {
         for (auto ix = ix0; ix <= ix1; ++ix)
         {
-            auto& density = pop.density();
+            auto& density = pop.particleDensity();
             auto& flux    = pop.flux();
 
             auto& fx = flux.getComponent(Component::X);

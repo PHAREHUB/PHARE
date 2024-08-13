@@ -198,7 +198,7 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         auto& popAttr = patchAttributes[lvlPatchID]["fluid_" + pop.name()];
         if (isActiveDiag(diagnostic, tree, "density"))
-            infoDS(pop.density(), "density", popAttr);
+            infoDS(pop.chargeDensity(), "density", popAttr);
         if (isActiveDiag(diagnostic, tree, "flux"))
             infoVF(pop.flux(), "flux", popAttr);
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
@@ -307,7 +307,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         if (isActiveDiag(diagnostic, tree, "density"))
-            writeDS(path + "density", pop.density());
+            writeDS(path + "density", pop.chargeDensity());
         if (isActiveDiag(diagnostic, tree, "flux"))
             writeTF(path + "flux", pop.flux());
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))

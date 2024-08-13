@@ -122,7 +122,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
         auto& ions = hi5.modelView.getIons();
         for (auto& pop : ions)
         {
-            checkF(layout, path, "/ions/pop/" + pop.name(), "/density"s, pop.density());
+            checkF(layout, path, "/ions/pop/" + pop.name(), "/density"s, pop.chargeDensity());
             checkVF(layout, path, "/ions/pop/" + pop.name(), "/flux"s, pop.flux());
         }
         checkF(layout, path, "/ions"s, "/density"s, ions.density());
