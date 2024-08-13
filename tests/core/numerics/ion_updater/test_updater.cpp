@@ -214,9 +214,9 @@ struct IonsBuffers
     Grid ionParticleDensity;
     Grid ionChargeDensity;
     Grid ionMassDensity;
-    Grid protonDensity;
+    Grid protonParticleDensity;
     Grid protonChargeDensity;
-    Grid alphaDensity;
+    Grid alphaParticleDensity;
     Grid alphaChargeDensity;
 
     UsableVecFieldND protonF, alphaF, Vi;
@@ -246,11 +246,11 @@ struct IonsBuffers
                          layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
+        , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
+        , alphaParticleDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
         , alphaChargeDensity{"alpha_chargeDensity", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -285,11 +285,11 @@ struct IonsBuffers
                          layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
-        , protonDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
+        , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
                         layout.allocSize(HybridQuantity::Scalar::rho)}
-        , alphaDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
+        , alphaParticleDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
         , alphaChargeDensity{"alpha_chargeDensity", HybridQuantity::Scalar::rho,
                        layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -318,9 +318,9 @@ struct IonsBuffers
         ionParticleDensity.copyData(source.ionParticleDensity);
         ionChargeDensity.copyData(source.ionChargeDensity);
         ionMassDensity.copyData(source.ionMassDensity);
-        protonDensity.copyData(source.protonDensity);
+        protonParticleDensity.copyData(source.protonParticleDensity);
         protonChargeDensity.copyData(source.protonChargeDensity);
-        alphaDensity.copyData(source.alphaDensity);
+        alphaParticleDensity.copyData(source.alphaParticleDensity);
         alphaChargeDensity.copyData(source.alphaChargeDensity);
 
         protonF.copyData(source.protonF);
@@ -342,7 +342,7 @@ struct IonsBuffers
         auto& pops = ions.getRunTimeResourcesViewList();
         {
             auto const& [F, M, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
-            d.setBuffer(&protonDensity);
+            d.setBuffer(&protonParticleDensity);
             c.setBuffer(&protonChargeDensity);
             protons_M.set_on(M);
             protonF.set_on(F);
@@ -351,7 +351,7 @@ struct IonsBuffers
 
         {
             auto const& [F, M, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
-            d.setBuffer(&alphaDensity);
+            d.setBuffer(&alphaParticleDensity);
             c.setBuffer(&alphaChargeDensity);
             alpha_M.set_on(M);
             alphaF.set_on(F);
@@ -548,6 +548,7 @@ struct IonUpdaterTest : public ::testing::Test
 
 
         ions.computeParticleDensity(); // TODO ouam : should we need here the charge density
+        // ions.computeChargeDensity(); // TODO ouam : should be included when ions will have a coimputeChargeDensity
         ions.computeBulkVelocity();
     } // end Ctor
 
@@ -581,13 +582,13 @@ struct IonUpdaterTest : public ::testing::Test
     {
         auto& populations = this->ions.getRunTimeResourcesViewList();
 
-        auto& protonDensity = populations[0].density();
+        auto& protonParticleDensity = populations[0].particleDensity();
         auto& protonChargeDensity = populations[0].chargeDensity();
         auto& protonFx      = populations[0].flux().getComponent(Component::X);
         auto& protonFy      = populations[0].flux().getComponent(Component::Y);
         auto& protonFz      = populations[0].flux().getComponent(Component::Z);
 
-        auto& alphaDensity = populations[1].density();
+        auto& alphaParticleDensity = populations[1].particleDensity();
         auto& alphaChargeDensity = populations[1].chargeDensity();
         auto& alphaFx      = populations[1].flux().getComponent(Component::X);
         auto& alphaFy      = populations[1].flux().getComponent(Component::Y);
@@ -620,14 +621,14 @@ struct IonUpdaterTest : public ::testing::Test
             }
         };
 
-        check(protonDensity, ionsBufferCpy.protonDensity);
-        // check(protonChargeDensity, ionsBufferCpy.protonChargeDensity);
+        check(protonParticleDensity, ionsBufferCpy.protonParticleDensity);
+        check(protonChargeDensity, ionsBufferCpy.protonChargeDensity);
         check(protonFx, ionsBufferCpy.protonF(Component::X));
         check(protonFy, ionsBufferCpy.protonF(Component::Y));
         check(protonFz, ionsBufferCpy.protonF(Component::Z));
 
-        check(alphaDensity, ionsBufferCpy.alphaDensity);
-        // check(alphaChargeDensity, ionsBufferCpy.alphaChargeDensity);
+        check(alphaParticleDensity, ionsBufferCpy.alphaParticleDensity);
+        check(alphaChargeDensity, ionsBufferCpy.alphaChargeDensity);
         check(alphaFx, ionsBufferCpy.alphaF(Component::X));
         check(alphaFy, ionsBufferCpy.alphaF(Component::Y));
         check(alphaFz, ionsBufferCpy.alphaF(Component::Z));
@@ -674,11 +675,11 @@ struct IonUpdaterTest : public ::testing::Test
         };
 
         auto& populations   = this->ions.getRunTimeResourcesViewList();
-        auto& protonDensity = populations[0].density();
-        auto& alphaDensity  = populations[1].density();
+        auto& protonParticleDensity = populations[0].particleDensity();
+        auto& alphaParticleDensity  = populations[1].particleDensity();
 
-        check(protonDensity, density);
-        check(alphaDensity, density);
+        check(protonParticleDensity, density);
+        check(alphaParticleDensity, density);
     }
 };
 
