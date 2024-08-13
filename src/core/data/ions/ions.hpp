@@ -63,6 +63,9 @@ namespace core
         NO_DISCARD field_type const& density() const { return particleDensity_; }  // TODO ouam : to remove
         NO_DISCARD field_type& density() { return particleDensity_; }  // TODO ouam : to remove
 
+        NO_DISCARD field_type const& particleDensity() const { return particleDensity_; }
+        NO_DISCARD field_type& particleDensity() { return particleDensity_; }
+
         NO_DISCARD field_type const& massDensity() const
         {
             return sameMasses_ ? particleDensity_ : massDensity_;

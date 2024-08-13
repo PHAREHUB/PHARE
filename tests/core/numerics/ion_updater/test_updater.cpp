@@ -633,7 +633,7 @@ struct IonUpdaterTest : public ::testing::Test
         check(alphaFy, ionsBufferCpy.alphaF(Component::Y));
         check(alphaFz, ionsBufferCpy.alphaF(Component::Z));
 
-        check(ions.density(), ionsBufferCpy.ionParticleDensity);
+        check(ions.particleDensity(), ionsBufferCpy.ionParticleDensity);
         check(ions.velocity().getComponent(Component::X), ionsBufferCpy.Vi(Component::X));
         check(ions.velocity().getComponent(Component::Y), ionsBufferCpy.Vi(Component::Y));
         check(ions.velocity().getComponent(Component::Z), ionsBufferCpy.Vi(Component::Z));
