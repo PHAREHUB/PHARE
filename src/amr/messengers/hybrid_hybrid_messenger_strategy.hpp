@@ -585,7 +585,7 @@ namespace amr
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::synchronize");
 
             auto levelNumber = level.getLevelNumber();
-            std::cout << "synchronizing level " << levelNumber << "\n";
+            PHARE_LOG_LINE_STR("synchronizing level " + std::to_string(levelNumber));
 
             // call coarsning schedules...
             magnetoSynchronizers_.sync(levelNumber);
@@ -607,7 +607,7 @@ namespace amr
             auto levelNumber  = level.getLevelNumber();
             auto& hybridModel = static_cast<HybridModel&>(model);
 
-            std::cout << "postSynchronize level " << levelNumber << "\n";
+            PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber))
 
             magSharedNodesRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
             elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
