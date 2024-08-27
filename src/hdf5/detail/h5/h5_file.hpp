@@ -13,7 +13,7 @@
 namespace PHARE::hdf5::h5
 {
 using HiFile = HighFive::File;
-
+using FileOp = HighFive::File::AccessMode;
 
 
 
@@ -43,7 +43,7 @@ class HighFiveFile
 {
 public:
     template<typename FileAccessProps>
-    static auto createHighFiveFile(std::string const path, unsigned flags, bool para,
+    static auto createHighFiveFile(std::string const path, FileOp flags, bool para,
                                    FileAccessProps& fapl)
     {
         if (para)
@@ -61,7 +61,7 @@ public:
         return HiFile{path, flags, fapl};
     }
 
-    HighFiveFile(std::string const path, unsigned flags = HiFile::ReadWrite, bool para = true)
+    HighFiveFile(std::string const path, FileOp flags = HiFile::ReadWrite, bool para = true)
         : fapl_{}
         , h5file_{createHighFiveFile(path, flags, para, fapl_)}
     {
@@ -69,10 +69,7 @@ public:
 
     ~HighFiveFile() {}
 
-    NO_DISCARD HiFile& file()
-    {
-        return h5file_;
-    }
+    NO_DISCARD HiFile& file() { return h5file_; }
 
 
     template<typename T, std::size_t dim = 1>
