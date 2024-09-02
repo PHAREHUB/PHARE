@@ -28,13 +28,13 @@ def de_numpify_recursive(owner, key):
     if isinstance(obj, np.ndarray):
         object.__setattr__(owner, key, obj.tolist())
     elif hasattr(obj, "__dict__"):
-        for k in obj.__dict__.keys():
+        for k in obj.__dict__:
             de_numpify_recursive(obj, k)
 
 
 def de_numpify_simulation(sim):
     assert isinstance(sim, Simulation)
-    for k in sim.__dict__.keys():
+    for k in sim.__dict__:
         de_numpify_recursive(sim, k)
     return sim
 
@@ -46,13 +46,13 @@ def re_numpify_recursive(owner, key):
     if isinstance(obj, list) and len(obj) and not isinstance(obj[0], str):
         object.__setattr__(owner, key, np.array(obj))
     elif hasattr(obj, "__dict__"):
-        for k in obj.__dict__.keys():
+        for k in obj.__dict__:
             re_numpify_recursive(obj, k)
 
 
 def re_numpify_simulation(sim):
     assert isinstance(sim, Simulation)
-    for k in sim.__dict__.keys():
+    for k in sim.__dict__:
         re_numpify_recursive(sim, k)
     return sim
 
