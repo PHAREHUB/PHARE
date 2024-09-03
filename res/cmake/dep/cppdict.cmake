@@ -1,14 +1,6 @@
 
 
 set(CPPDICT_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/cppdict)
+set(CPPDICT_VERSION master)
+phare_github_get_or_update(cppdict ${CPPDICT_SRCDIR} LaboratoryOfPlasmaPhysics/cppdict ${CPPDICT_VERSION})
 
-if (NOT EXISTS ${CPPDICT_SRCDIR})
-  execute_process(
-    COMMAND ${Git} clone https://github.com/LaboratoryOfPlasmaPhysics/cppdict ${CPPDICT_SRCDIR} -b master --recursive --depth 10
-  )
-else()
-  if(devMode)
-    message("downloading latest cppdict updates")
-    execute_process(COMMAND ${Git} pull origin master WORKING_DIRECTORY ${CPPDICT_SRCDIR})
-  endif(devMode)
-endif()

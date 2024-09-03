@@ -11,17 +11,9 @@ function(get_pybind)
 
   message("downloading subproject pybind11")
   set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
+  set(PYBIND11_VERSION master)
 
-  if (NOT EXISTS ${PYBIND11_SRCDIR})
-    execute_process(
-      COMMAND ${Git} clone https://github.com/pybind/pybind11 ${PYBIND11_SRCDIR} --depth 1 -b master
-    )
-  else()
-    if(devMode)
-      message("downloading latest pybind11 updates")
-      execute_process(COMMAND ${Git} pull origin master WORKING_DIRECTORY ${PYBIND11_SRCDIR})
-    endif(devMode)
-  endif()
+  phare_github_get_or_update(pybind11 ${PYBIND11_SRCDIR} pybind/pybind11 ${PYBIND11_VERSION})
 
   add_subdirectory(${PYBIND11_SRCDIR})
 

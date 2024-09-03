@@ -18,16 +18,7 @@ if (withCaliper)
     set(CALIPER_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/caliper)
     set(CALIPER_BIN ${CMAKE_CURRENT_BINARY_DIR}/subprojects/caliper)
 
-    if (NOT EXISTS ${CALIPER_SRCDIR})
-      execute_process(
-        COMMAND ${Git} clone https://github.com/LLNL/Caliper ${CALIPER_SRCDIR} -b master --recursive --depth 10
-      )
-    else()
-      if(devMode)
-        message("downloading latest Caliper updates")
-        execute_process(COMMAND ${Git} pull origin master WORKING_DIRECTORY ${CALIPER_SRCDIR})
-      endif(devMode)
-    endif()
+    phare_github_get_or_update(Caliper ${CALIPER_SRCDIR} LLNL/Caliper master)
 
     option(CALIPER_OPTION_PREFIX ON)
     set(CALIPER_OPTION_PREFIX ON)
