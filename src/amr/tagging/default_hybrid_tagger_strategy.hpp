@@ -19,9 +19,8 @@ class DefaultHybridTaggerStrategy : public HybridTaggerStrategy<HybridModel>
 
 public:
     DefaultHybridTaggerStrategy(initializer::PHAREDict const& dict)
-        :threshold_{[&](){return (dict.contains("threshold")) ? dict["threshold"].template to<double>() : 0.1;}()}
+        : threshold_{cppdict::get_value(dict, "threshold", 0.1)}
     {
-
     }
     void tag(HybridModel& model, gridlayout_type const& layout, int* tags) const override;
 
