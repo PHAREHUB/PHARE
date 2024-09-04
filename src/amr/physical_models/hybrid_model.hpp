@@ -3,14 +3,18 @@
 
 #include <string>
 
-#include "initializer/data_provider.hpp"
+#include "core/def.hpp"
+#include "core/data/vecfield/vecfield.hpp"
 #include "core/models/hybrid_state.hpp"
+
+#include "initializer/data_provider.hpp"
+
 #include "amr/physical_models/physical_model.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+#include "amr/data/particles/initializers/particle_initializer_factory.hpp"
+
 #include "amr/resources_manager/resources_manager.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/def.hpp"
+
 
 namespace PHARE::solver
 {
@@ -41,7 +45,7 @@ public:
     using particle_array_type    = typename Ions::particle_array_type;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
     using ParticleInitializerFactory
-        = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+        = amr::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
     static const inline std::string model_name = "HybridModel";
 
@@ -133,7 +137,7 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::i
         {
             auto const& info         = pop.particleInitializerInfo();
             auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout);
+            particleInitializer->loadParticles(pop.domainParticles(), layout, pop.name());
         }
 
         state.electromag.initialize(layout);

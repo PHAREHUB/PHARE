@@ -4,19 +4,16 @@
 #include "core/utilities/span.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 
+#include "amr/data/particles/initializers/particle_initializer_factory.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <vector>
 #include <type_traits>
-
-using namespace PHARE::core;
-using namespace PHARE::initializer;
 
 using namespace PHARE::core;
 using namespace PHARE::initializer;
@@ -47,7 +44,8 @@ TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleVectorInitial
     dict["nbrPartPerCell"] = int{100};
     dict["basis"]          = std::string{"Cartesian"};
 
-    auto initializer = ParticleInitializerFactory<ParticleArrayT, GridLayoutT>::create(dict);
+    auto initializer
+        = PHARE::amr::ParticleInitializerFactory<ParticleArrayT, GridLayoutT>::create(dict);
 }
 
 int main(int argc, char** argv)
