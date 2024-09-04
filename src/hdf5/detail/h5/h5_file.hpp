@@ -10,6 +10,8 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
+#include <unordered_set>
+
 namespace PHARE::hdf5::h5
 {
 using HiFile = HighFive::File;
@@ -69,7 +71,8 @@ public:
 
     ~HighFiveFile() {}
 
-    NO_DISCARD HiFile& file() { return h5file_; }
+    NO_DISCARD auto& file() { return h5file_; }
+    NO_DISCARD auto& file() const { return h5file_; }
 
 
     template<typename T, std::size_t dim = 1>
@@ -242,6 +245,56 @@ public:
         Attr attr;
         at.read(attr);
         return attr;
+    }
+
+    // std::unordered_set<std::string> scan_for_groups(){}
+
+    // std::unordered_set<std::string> scan_for_groups(std::string const& contains){}
+
+    struct GroupScanner
+    {
+        auto& scan(std::string const& from = "/")
+        {
+            scan(h5.file().getGroup(from), from);
+            return groups;
+        }
+        void scan(HighFive::Group const& group, std::string const& path)
+        {
+            for (auto const& node : group.listObjectNames())
+            {
+                if (group.getObjectType(node) == HighFive::ObjectType::Group)
+                    scan(group.getGroup(node), path + "/" + node);
+                else
+                {
+                    auto fpath = path + "/" + node;
+                    if (contains.size() == 0)
+                        groups.insert(fpath);
+                    else
+                    {
+                        bool cont = false;
+                        for (auto const& c : contains)
+                            if (fpath.find(c) == std::string::npos)
+                            {
+                                cont = true;
+                                break;
+                            }
+                        if (cont) // next node in listObjectNames
+                            continue;
+                        groups.insert(fpath);
+                    }
+                }
+            }
+        }
+
+
+        HighFiveFile const& h5;
+        std::vector<std::string> contains{};
+        std::unordered_set<std::string> groups{};
+    };
+
+    std::unordered_set<std::string> scan_for_groups(std::vector<std::string> const& contains)
+    {
+        return GroupScanner{*this, contains}.scan();
     }
 
 

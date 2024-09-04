@@ -33,14 +33,19 @@ def setup_model(ppc=100):
 
 
 timestep = 0.001
-out = "phare_outputs/parse_restarts"
+out = "phare_outputs/restarts/test/test_restarts_1/1/1/1/00000.00400"
 simArgs = dict(
     time_step_nbr=2,
     time_step=timestep,
-    cells=200,
+    cells=100,
     dl=0.3,
-    restart_options=dict(dir=out, mode="overwrite"),
+    init_options=dict(dir=out, mode="overwrite"),
 )
+
+
+def dup(dic={}):
+    dic.update(copy.deepcopy(simArgs))
+    return dic
 
 
 def traverse_h5_for_groups_recursive(h5content: "H5Content", group, path=""):
@@ -89,6 +94,10 @@ class RestartsParserTest(SimulatorTest):
         )
         for k in h5.data:
             print(k)
+
+        sim = ph.Simulation(**dup())
+        model = setup_model()
+        Simulator(sim).initialize()
 
 
 if __name__ == "__main__":

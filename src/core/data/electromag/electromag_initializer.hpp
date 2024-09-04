@@ -43,9 +43,10 @@ public:
     NO_DISCARD static std::unique_ptr<ElectromagInitializer<Electromag_t, GridLayout>>
     create(initializer::PHAREDict const& dict)
     {
-        return std::make_unique<ElectromagUserFuncInitializer<Electromag_t, GridLayout>>(dict);
-        // else
-        // return std::make_unique<ElectromagInitializer<Electromag_t>>();
+        if (dict["magnetic"]["initializer"].contains("x_component"))
+            return std::make_unique<ElectromagUserFuncInitializer<Electromag_t, GridLayout>>(dict);
+        else
+            return std::make_unique<ElectromagInitializer<Electromag_t, GridLayout>>();
     }
 };
 
