@@ -50,14 +50,13 @@ public:
 
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
-    static constexpr auto READ_WRITE  = HiFile::ReadWrite | HiFile::Create;
+    static constexpr auto READ_WRITE  = HiFile::AccessMode::OpenOrCreate;
 
     // flush_never: disables manual file closing, but still occurrs via RAII
     static constexpr std::size_t flush_never = 0;
 
     template<typename Hierarchy, typename Model>
-    H5Writer(Hierarchy& hier, Model& model, std::string const hifivePath,
-             unsigned _flags /* = HiFile::ReadWrite | HiFile::Create | HiFile::Truncate */)
+    H5Writer(Hierarchy& hier, Model& model, std::string const hifivePath, HiFile::AccessMode _flags)
         : flags{_flags}
         , filePath_{hifivePath}
         , modelView_{hier, model}
@@ -69,8 +68,8 @@ public:
     template<typename Hierarchy, typename Model>
     static auto make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
     {
-        std::string filePath = dict["filePath"].template to<std::string>();
-        unsigned flags       = READ_WRITE;
+        std::string filePath     = dict["filePath"].template to<std::string>();
+        HiFile::AccessMode flags = READ_WRITE;
         if (dict.contains("mode") and dict["mode"].template to<std::string>() == "overwrite")
             flags |= HiFile::Truncate;
         return std::make_unique<This>(hier, model, filePath, flags);
@@ -95,7 +94,7 @@ public:
         return fileStr + ".h5";
     }
 
-    auto makeFile(std::string const filename, unsigned file_flag)
+    auto makeFile(std::string const filename, HiFile::AccessMode const file_flag)
     {
         return std::make_unique<HighFiveFile>(filePath_ + "/" + filename, file_flag);
     }
@@ -169,7 +168,7 @@ public:
     auto& modelView() { return modelView_; }
 
     std::size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
-    unsigned flags;
+    HiFile::AccessMode flags;
 
 
 private:
@@ -179,7 +178,7 @@ private:
     ModelView modelView_;
     Attributes fileAttributes_;
 
-    std::unordered_map<std::string, unsigned> file_flags;
+    std::unordered_map<std::string, HiFile::AccessMode> file_flags;
 
     std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> typeWriters_{
         {"info", make_writer<InfoDiagnosticWriter<This>>()},

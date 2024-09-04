@@ -206,7 +206,8 @@ class DiagnosticsTest(unittest.TestCase):
 
                 h5_version = h5_file["py_attrs"].attrs["highfive_version"].split(".")
                 self.assertTrue(len(h5_version) == 3)
-                self.assertTrue(all(i.isdigit() for i in h5_version))
+                # semver patch version may contain "-beta" so ignore
+                self.assertTrue(all(i.isdigit() for i in h5_version[:2]))
 
                 self.assertTrue(
                     ph.simulation.deserialize(

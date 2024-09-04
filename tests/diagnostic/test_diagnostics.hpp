@@ -16,8 +16,7 @@ using namespace PHARE;
 using namespace PHARE::diagnostic;
 using namespace PHARE::diagnostic::h5;
 
-constexpr unsigned NEW_HI5_FILE
-    = HighFive::File::ReadWrite | HighFive::File::Create | HighFive::File::Truncate;
+constexpr auto NEW_HI5_FILE = HighFive::File::AccessMode::Overwrite;
 
 
 template<typename GridLayout, typename Field, typename FieldFilter = PHARE::FieldNullFilter>
@@ -48,7 +47,7 @@ struct Hi5Diagnostic
     using Writer_t    = H5Writer<ModelView_t>;
 
     Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, std::string out,
-                  unsigned flags = NEW_HI5_FILE)
+                  auto const flags = NEW_HI5_FILE)
         : hierarchy_{hierarchy}
         , model_{hybridModel}
         , out_{out}
@@ -92,8 +91,8 @@ struct Hi5Diagnostic
 
     Hierarchy& hierarchy_;
     HybridModel& model_;
-    std::string out_;
-    unsigned flags_;
+    std::string const out_;
+    HiFile::AccessMode const flags_;
 
     DiagnosticsManager<Writer_t> dMan;
     Writer_t& writer;
