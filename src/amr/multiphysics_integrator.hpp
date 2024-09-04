@@ -314,9 +314,7 @@ namespace solver
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
 
-            PHARE_LOG_LINE_STR((std::stringstream{} << "init level " << levelNumber
-                                                    << " with regriding = " << isRegridding)
-                                   .str());
+            PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding);
 
             PHARE_LOG_START(3, "initializeLevelData::allocate block");
             if (allocateData)
@@ -511,10 +509,9 @@ namespace solver
 
             auto iLevel = level->getLevelNumber();
 
-            PHARE_LOG_LINE_STR((std::stringstream{} << "advanceLevel " << iLevel << " with dt = "
-                                                    << newTime - currentTime << " from t = "
-                                                    << currentTime << " to t = " << newTime)
-                                   .str());
+            PHARE_LOG_LINE_SS("advanceLevel " << iLevel << " with dt = " << newTime - currentTime
+                                              << " from t = " << currentTime
+                                              << " to t = " << newTime);
 
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
