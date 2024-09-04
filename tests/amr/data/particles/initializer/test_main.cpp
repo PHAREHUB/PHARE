@@ -29,7 +29,7 @@ using ParticleArrayT = ParticleArray<1>;
 TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleVectorInitializer)
 {
     PHARE::initializer::PHAREDict dict;
-    dict["name"]            = std::string{"MaxwellianParticleInitializer"};
+    dict["name"]            = std::string{"maxwellian"};
     dict["fn_type"]         = std::string{"vector"};
     dict["density"]         = static_cast<PHARE::initializer::InitFunction<1>>(density);
     dict["bulk_velocity_x"] = static_cast<PHARE::initializer::InitFunction<1>>(vx);
@@ -40,9 +40,9 @@ TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleVectorInitial
     dict["thermal_velocity_y"] = static_cast<PHARE::initializer::InitFunction<1>>(vthy);
     dict["thermal_velocity_z"] = static_cast<PHARE::initializer::InitFunction<1>>(vthz);
 
-    dict["charge"]         = 1.;
-    dict["nbrPartPerCell"] = int{100};
-    dict["basis"]          = std::string{"Cartesian"};
+    dict["charge"]            = 1.;
+    dict["nbr_part_per_cell"] = int{100};
+    dict["basis"]             = std::string{"cartesian"};
 
     auto initializer
         = PHARE::amr::ParticleInitializerFactory<ParticleArrayT, GridLayoutT>::create(dict);
