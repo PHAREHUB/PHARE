@@ -1,6 +1,7 @@
 #ifndef PHARE_HYBRID_MODEL_HPP
 #define PHARE_HYBRID_MODEL_HPP
 
+#include <memory>
 #include <string>
 
 #include "core/def.hpp"
@@ -11,6 +12,8 @@
 
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/data/particles/initializers/particle_initializer_factory.hpp"
+
+#include "amr/data/electromag/electromag_initializer.hpp"
 
 #include "amr/resources_manager/resources_manager.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
@@ -26,6 +29,9 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
          typename AMR_Types, typename Grid_t>
 class HybridModel : public IPhysicalModel<AMR_Types>
 {
+    struct _Initializers;
+
+
 public:
     static constexpr auto dimension = GridLayoutT::dimension;
 
@@ -46,11 +52,11 @@ public:
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
     using ParticleInitializerFactory
         = amr::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
-
+    using HybridState_t                        = core::HybridState<Electromag, Ions, Electrons>;
     static const inline std::string model_name = "HybridModel";
 
 
-    core::HybridState<Electromag, Ions, Electrons> state;
+    HybridState_t state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
 
@@ -88,6 +94,7 @@ public:
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict}
         , resourcesManager{std::move(_resourcesManager)}
+        , initializers_{std::make_unique<_Initializers>(dict, state)}
     {
     }
 
@@ -111,6 +118,9 @@ public:
     //-------------------------------------------------------------------------
 
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
+    std::unique_ptr<_Initializers> initializers_;
+
+    auto& initializers() { return *initializers_; }
 };
 
 
@@ -134,17 +144,12 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::i
         auto _      = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions);
 
         for (auto& pop : ions)
-        {
-            auto const& info         = pop.particleInitializerInfo();
-            auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout, pop.name());
-        }
-
-        state.electromag.initialize(layout);
+            initializers_->particles(pop).loadParticles(pop.domainParticles(), layout, pop.name());
+        initializers_->electromag().init(state.electromag, layout);
     }
 
-
     resourcesManager->registerForRestarts(*this);
+    initializers_.release();
 }
 
 
@@ -194,6 +199,40 @@ struct type_list_to_hybrid_model
 
 template<typename TypeList>
 using type_list_to_hybrid_model_t = typename type_list_to_hybrid_model<TypeList>::type;
+
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+struct HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::_Initializers
+{
+    using particle_array_type   = typename Ions::particle_array_type;
+    using ParticleInitializer_t = core::ParticleInitializer<particle_array_type, GridLayoutT>;
+    using ParticleInitializerFactory
+        = amr::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+    using ElectromagInitializer_t = amr::ElectromagInitializer<Electromag, GridLayoutT>;
+
+    _Initializers(initializer::PHAREDict const& dict, HybridState_t const& state)
+        : dict_{dict}
+        , electromag_init{amr::ElectromagInitializerFactory::create<Electromag, GridLayoutT>(
+              dict["electromag"])}
+    {
+        for (auto& pop : state.ions)
+            particle_pop_init.emplace(
+                pop.name(), ParticleInitializerFactory::create(pop.particleInitializerInfo()));
+    }
+
+    auto& electromag() { return *electromag_init; }
+
+    auto& particles(typename Ions::value_type& pop) { return *particle_pop_init[pop.name()]; }
+
+    initializer::PHAREDict dict_;
+    std::unique_ptr<ElectromagInitializer_t> electromag_init;
+    std::unordered_map<std::string, std::unique_ptr<ParticleInitializer_t>> particle_pop_init;
+};
+
+
+
 
 } // namespace PHARE::solver
 

@@ -10,6 +10,7 @@
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
 #include "samrai_hdf5_particle_initializer.hpp"
+#include "amr/data/initializers/samrai_hdf5_initializer.hpp"
 
 #include <memory>
 

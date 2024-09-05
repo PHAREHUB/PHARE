@@ -161,9 +161,7 @@ def populateDict(sim):
         # per model
         add_string("simulation/AMR/refinement/tagging/model", "HybridModel")
         add_string("simulation/AMR/refinement/tagging/method", "default")
-        add_double(
-            "simulation/AMR/refinement/tagging/threshold", simulation.tagging_threshold
-        )
+        add_double("simulation/AMR/refinement/tagging/threshold", sim.tagging_threshold)
     else:
         add_string(
             "simulation/AMR/refinement/tagging/method", "none"

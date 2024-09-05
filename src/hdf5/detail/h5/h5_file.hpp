@@ -12,6 +12,9 @@
 
 #include <unordered_set>
 
+#include "group_scanner.hpp"
+
+
 namespace PHARE::hdf5::h5
 {
 using HiFile = HighFive::File;
@@ -40,6 +43,7 @@ NO_DISCARD auto vector_for_dim()
     if constexpr (dim == 3)
         return std::vector<std::vector<std::vector<Data>>>();
 }
+
 
 class HighFiveFile
 {
@@ -247,54 +251,11 @@ public:
         return attr;
     }
 
-    // std::unordered_set<std::string> scan_for_groups(){}
 
-    // std::unordered_set<std::string> scan_for_groups(std::string const& contains){}
-
-    struct GroupScanner
-    {
-        auto& scan(std::string const& from = "/")
-        {
-            scan(h5.file().getGroup(from), from);
-            return groups;
-        }
-        void scan(HighFive::Group const& group, std::string const& path)
-        {
-            for (auto const& node : group.listObjectNames())
-            {
-                if (group.getObjectType(node) == HighFive::ObjectType::Group)
-                    scan(group.getGroup(node), path + "/" + node);
-                else
-                {
-                    auto fpath = path + "/" + node;
-                    if (contains.size() == 0)
-                        groups.insert(fpath);
-                    else
-                    {
-                        bool cont = false;
-                        for (auto const& c : contains)
-                            if (fpath.find(c) == std::string::npos)
-                            {
-                                cont = true;
-                                break;
-                            }
-                        if (cont) // next node in listObjectNames
-                            continue;
-                        groups.insert(fpath);
-                    }
-                }
-            }
-        }
-
-
-        HighFiveFile const& h5;
-        std::vector<std::string> contains{};
-        std::unordered_set<std::string> groups{};
-    };
 
     std::unordered_set<std::string> scan_for_groups(std::vector<std::string> const& contains)
     {
-        return GroupScanner{*this, contains}.scan();
+        return GroupScanner<HighFiveFile>{*this, contains}.scan();
     }
 
 
@@ -337,7 +298,6 @@ private:
             return size == 0;
     }
 };
-
 
 
 

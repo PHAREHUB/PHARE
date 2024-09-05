@@ -3,6 +3,7 @@
 #include "phare_core.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "amr/data/electromag/electromag_initializer.hpp"
 #include "amr/data/particles/initializers/particle_initializer_factory.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -357,6 +358,7 @@ struct IonUpdaterTest : public ::testing::Test
     using ParticleInitializerFactory
         = PHARE::amr::ParticleInitializerFactory<ParticleArray, GridLayout>;
 
+    using ElectromagInitializerFactory_t = PHARE::amr::ElectromagInitializerFactory;
     using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
 
@@ -394,8 +396,7 @@ struct IonUpdaterTest : public ::testing::Test
         // now let's initialize Electromag fields to user input functions
         // and ion population particles to user supplied moments
 
-
-        EM.initialize(layout);
+        ElectromagInitializerFactory_t::create<Electromag, GridLayout>(init_dict)->init(EM, layout);
         for (auto& pop : ions)
         {
             auto const& info         = pop.particleInitializerInfo();
