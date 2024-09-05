@@ -6,8 +6,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include <cstddef>
-#include <iostream>
-
+#include "initializer/data_provider.hpp"
 
 namespace PHARE::amr
 {
@@ -17,8 +16,16 @@ class DefaultHybridTaggerStrategy : public HybridTaggerStrategy<HybridModel>
     using gridlayout_type           = typename HybridModel::gridlayout_type;
     static auto constexpr dimension = HybridModel::dimension;
 
+
 public:
+    DefaultHybridTaggerStrategy(initializer::PHAREDict const& dict)
+        : threshold_{cppdict::get_value(dict, "threshold", 0.1)}
+    {
+    }
     void tag(HybridModel& model, gridlayout_type const& layout, int* tags) const override;
+
+private:
+    double threshold_ = 0.1;
 };
 
 template<typename HybridModel>
@@ -30,8 +37,6 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     auto& Bz = model.state.electromag.B.getComponent(PHARE::core::Component::Z);
 
     auto& N = model.state.ions.density();
-
-    double threshold = 0.1;
 
     // we loop on cell indexes for all qties regardless of their centering
     auto const& [start_x, _]
@@ -56,7 +61,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
             auto crit_bz_x = (Bz(ix + 2) - Bz(ix)) / (1 + Bz(ix + 1) - Bz(ix));
             auto criter    = std::max(crit_by_x, crit_bz_x);
 
-            if (criter > threshold)
+            if (criter > threshold_)
             {
                 tagsv(iCell) = 1;
             }
@@ -82,7 +87,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
             auto criter_b  = std::sqrt(criter_by * criter_by + criter_bz * criter_bz);
             auto criter    = criter_b;
 
-            if (criter > threshold)
+            if (criter > threshold_)
             {
                 tagsv(iCell) = 1;
             }
@@ -113,7 +118,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
                 auto const& [Bz_x, Bz_y] = field_diff(Bz);
                 auto crit                = std::max({Bx_x, Bx_y, By_x, By_y, Bz_x, Bz_y});
 
-                if (crit > threshold)
+                if (crit > threshold_)
                 {
                     tagsv(iTag_x, iTag_y) = 1;
                 }

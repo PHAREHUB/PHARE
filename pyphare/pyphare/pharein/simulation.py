@@ -640,6 +640,7 @@ def checker(func):
             "diag_export_format",
             "refinement_boxes",
             "refinement",
+            "tagging_threshold",
             "clustering",
             "smallest_patch_size",
             "largest_patch_size",
@@ -713,6 +714,7 @@ def checker(func):
             kwargs["max_nbr_levels"] = kwargs.get("max_nbr_levels", None)
             assert kwargs["max_nbr_levels"] is not None  # this needs setting otherwise
             kwargs["refinement_boxes"] = None
+            kwargs["tagging_threshold"] = kwargs.get("tagging_threshold", 0.1)
 
         kwargs["resistivity"] = check_resistivity(**kwargs)
 
@@ -840,6 +842,11 @@ class Simulation(object):
         :Keyword Arguments:
             * *nesting_buffer* (``ìnt``)--
               [default=0] minimum gap in coarse cells from the border of a level and any refined patch border
+            kwargs["
+            * *refinement* (``str``)--
+               "boxes" (default), "tagging" type of refinement to use.
+               "tagging": use tagging_threshold to tag cells for refinement
+               "boxes": use refinement_boxes to define refinement levels
             * *refinement_boxes* --
               [default=None] {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
             * *smallest_patch_size* (``int`` or ``tuple``)--

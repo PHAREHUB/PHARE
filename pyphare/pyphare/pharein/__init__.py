@@ -222,6 +222,14 @@ def populateDict():
         as_paths(refinement_boxes)
     elif simulation.refinement == "tagging":
         add_string("simulation/AMR/refinement/tagging/method", "auto")
+        # the two following params are hard-coded for now
+        # they will become configurable when we have multi-models or several methods
+        # per model
+        add_string("simulation/AMR/refinement/tagging/model", "HybridModel")
+        add_string("simulation/AMR/refinement/tagging/method", "default")
+        add_double(
+            "simulation/AMR/refinement/tagging/threshold", simulation.tagging_threshold
+        )
     else:
         add_string(
             "simulation/AMR/refinement/tagging/method", "none"
