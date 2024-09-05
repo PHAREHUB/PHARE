@@ -396,7 +396,8 @@ struct IonUpdaterTest : public ::testing::Test
         // now let's initialize Electromag fields to user input functions
         // and ion population particles to user supplied moments
 
-        ElectromagInitializerFactory_t::create<Electromag, GridLayout>(init_dict)->init(EM, layout);
+        ElectromagInitializerFactory_t::create<Electromag, GridLayout>(init_dict["electromag"])
+            ->init(EM, layout);
         for (auto& pop : ions)
         {
             auto const& info         = pop.particleInitializerInfo();
