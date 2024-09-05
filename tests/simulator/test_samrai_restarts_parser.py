@@ -95,9 +95,16 @@ class RestartsParserTest(SimulatorTest):
         for k in h5.data:
             print(k)
 
-        sim = ph.Simulation(**dup())
-        model = setup_model()
-        Simulator(sim).initialize()
+        print(
+            "h5.file[]",
+            h5.file[
+                "/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EM_B_y##default/d_box"
+            ][:],
+        )
+
+        # sim = ph.Simulation(**dup())
+        # model = setup_model()
+        # Simulator(sim).initialize()
 
 
 if __name__ == "__main__":

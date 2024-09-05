@@ -4,12 +4,11 @@
 #include <string>
 #include <tuple>
 
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_initializer.hpp"
-#include "initializer/data_provider.hpp"
 #include "core/def.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 
-#include "electromag_initializer.hpp"
+#include "initializer/data_provider.hpp"
+
 
 namespace PHARE
 {
@@ -38,17 +37,9 @@ namespace core
             , B{dict["name"].template to<std::string>() + "_"
                     + dict["magnetic"]["name"].template to<std::string>(),
                 HybridQuantity::Vector::B}
-            , dict_{dict}
         {
         }
 
-
-        template<typename GridLayout>
-        void initialize(GridLayout const& layout)
-        {
-            ElectromagInitializerFactory<This, GridLayout>::create(dict_)->init(*this, layout);
-            // dict = initializer::PHAREDict{}; // clear ?
-        }
 
 
         //-------------------------------------------------------------------------
@@ -79,9 +70,6 @@ namespace core
 
         VecFieldT E;
         VecFieldT B;
-
-    private:
-        initializer::PHAREDict dict_{};
     };
 
 
