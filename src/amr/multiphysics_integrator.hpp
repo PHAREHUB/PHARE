@@ -313,8 +313,9 @@ namespace solver
             bool const isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
-            std::cout << "init level " << levelNumber << " with regriding = " << isRegridding
-                      << "\n";
+
+            PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding);
+
             PHARE_LOG_START(3, "initializeLevelData::allocate block");
             if (allocateData)
             {
@@ -414,7 +415,7 @@ namespace solver
                                    int const tag_index, bool const /*initialTime*/,
                                    bool const /*usesRichardsonExtrapolationToo*/) override
         {
-            std::cout << "apply gradient detector on level " << levelNumber << "\n";
+            PHARE_LOG_LINE_STR("apply gradient detector on level " + std::to_string(levelNumber));
 
             auto level = hierarchy->getPatchLevel(levelNumber);
             for (auto& patch : *level)
@@ -508,9 +509,9 @@ namespace solver
 
             auto iLevel = level->getLevelNumber();
 
-            PHARE_LOG_LINE_STR("advanceLevel " << iLevel << " with dt = " << newTime - currentTime
-                                               << " from t = " << currentTime
-                                               << " to t = " << newTime);
+            PHARE_LOG_LINE_SS("advanceLevel " << iLevel << " with dt = " << newTime - currentTime
+                                              << " from t = " << currentTime
+                                              << " to t = " << newTime);
 
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);

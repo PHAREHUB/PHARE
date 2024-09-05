@@ -57,7 +57,7 @@ namespace solver
 
             if (isRegridding)
             {
-                std::cout << "regriding level " << levelNumber << "\n";
+                PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
                 PHARE_LOG_START(3, "hybridLevelInitializer::initialize : regriding block");
                 messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
                 PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : regriding block");
