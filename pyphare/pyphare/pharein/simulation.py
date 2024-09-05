@@ -5,7 +5,7 @@ from ..core import phare_utilities
 from . import global_vars
 from ..core import box as boxm
 from ..core.box import Box
-
+from copy import deepcopy
 
 # ------------------------------------------------------------------------------
 
@@ -19,6 +19,42 @@ def compute_dimension(cells):
 
 
 # ------------------------------------------------------------------------------
+
+
+def de_numpify_recursive(owner, key):
+    obj = getattr(owner, key)
+    if obj is None:
+        return
+    if isinstance(obj, np.ndarray):
+        object.__setattr__(owner, key, obj.tolist())
+    elif hasattr(obj, "__dict__"):
+        for k in obj.__dict__:
+            de_numpify_recursive(obj, k)
+
+
+def de_numpify_simulation(sim):
+    assert isinstance(sim, Simulation)
+    for k in sim.__dict__:
+        de_numpify_recursive(sim, k)
+    return sim
+
+
+def re_numpify_recursive(owner, key):
+    obj = getattr(owner, key)
+    if obj is None:
+        return
+    if isinstance(obj, list) and len(obj) and not isinstance(obj[0], str):
+        object.__setattr__(owner, key, np.array(obj))
+    elif hasattr(obj, "__dict__"):
+        for k in obj.__dict__:
+            re_numpify_recursive(obj, k)
+
+
+def re_numpify_simulation(sim):
+    assert isinstance(sim, Simulation)
+    for k in sim.__dict__:
+        re_numpify_recursive(sim, k)
+    return sim
 
 
 def check_domain(**kwargs):
@@ -944,11 +980,11 @@ def serialize(sim):
     import dill
     import codecs
 
-    return codecs.encode(dill.dumps(sim), "hex")
+    return codecs.encode(dill.dumps(de_numpify_simulation(deepcopy(sim))), "hex")
 
 
 def deserialize(hex):
     import dill
     import codecs
 
-    return dill.loads(codecs.decode(hex, "hex"))
+    return re_numpify_simulation(dill.loads(codecs.decode(hex, "hex")))

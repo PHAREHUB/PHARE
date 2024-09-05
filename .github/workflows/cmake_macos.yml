@@ -21,7 +21,7 @@ jobs:
         - os: macos-13
           dylib_path: /usr/local/lib/gcc/current
         - os: macos-latest # https://github.com/actions/runner/issues/3337
-          dylib_path: /opt/homebrew/Cellar/gcc/14.1.0_2/lib/gcc/current
+          dylib_path: /opt/homebrew/Cellar/gcc/14.2.0/lib/gcc/current
 
 
     steps:
