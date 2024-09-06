@@ -268,10 +268,12 @@ def post_advance(new_time):
 
 
 def main():
-    Simulator(noRefinement(diagdir="noRefinement")).run()
+    Simulator(noRefinement(diagdir="noRefinement")).run().reset()
     ph.global_vars.sim = None
 
-    Simulator(withTagging(diagdir="withTagging"), post_advance=post_advance).run()
+    Simulator(
+        withTagging(diagdir="withTagging"), post_advance=post_advance
+    ).run().reset()
     ph.global_vars.sim = None
 
     if cpp.mpi_rank() == 0:
