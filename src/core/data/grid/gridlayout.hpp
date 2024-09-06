@@ -826,7 +826,7 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        NO_DISCARD auto AMRToLocal(Box<T, dimension> AMRBox) const
+        NO_DISCARD auto AMRToLocal(Box<T, dimension> const& AMRBox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
             auto localBox = Box<std::uint32_t, dimension>{};

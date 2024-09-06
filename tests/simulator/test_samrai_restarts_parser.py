@@ -84,27 +84,27 @@ class RestartsParserTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def test_restart_parser(self):
-        h5_filepath = "phare_outputs/restarts/test/test_restarts_1/1/1/1/00000.00400/restore.000000/nodes.0000001/proc.0000000"
+        # h5_filepath = "phare_outputs/restarts/test/test_restarts_1/1/1/1/00000.00400/restore.000000/nodes.0000001/proc.0000000"
 
-        h5 = H5Content(h5_filepath)
-        print(
-            h5.file[
-                "/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EMAvg_B_x##default/d_ghost_box"
-            ][:]
-        )
-        for k in h5.data:
-            print(k)
+        # h5 = H5Content(h5_filepath)
+        # print(
+        #     h5.file[
+        #         "/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EMAvg_B_x##default/d_ghost_box"
+        #     ][:]
+        # )
+        # for k in h5.data:
+        #     print(k)
 
-        print(
-            "h5.file[]",
-            h5.file[
-                "/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EM_B_y##default/d_box"
-            ][:],
-        )
+        # print(
+        #     "h5.file[]",
+        #     h5.file[
+        #         "/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EM_B_y##default/d_box"
+        #     ][:],
+        # )
 
-        # sim = ph.Simulation(**dup())
-        # model = setup_model()
-        # Simulator(sim).initialize()
+        sim = ph.Simulation(**dup())
+        model = setup_model()
+        Simulator(sim).initialize()
 
 
 if __name__ == "__main__":

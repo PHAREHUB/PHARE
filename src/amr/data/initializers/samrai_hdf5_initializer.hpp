@@ -25,33 +25,32 @@
 namespace PHARE::amr
 {
 
-/*
-example paths
+template<std::size_t dim>
+struct SamraiH5PatchDataInfo
+{
+    using Box_t = core::Box<int, dim>;
 
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/d_box
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/d_ghost_box
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/d_ghosts
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/d_timestamp
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/domainParticles_charge
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/domainParticles_delta
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/domainParticles_iCell
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/domainParticles_v
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/protons##default/domainParticles_weight
+    SamraiH5PatchDataInfo(Box_t const& b, std::string const& p)
+        : box{b}
+        , base_path{p}
+    {
+    }
 
 
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EM_B_y##default/d_box
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EM_B_x##default/field_EM_B_x
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EM_B_y##default/field_EM_B_y
-/PHARE_hierarchy/level_0000/level_0000-patch_0000000-block_0000000/EM_B_z##default/field_EM_B_z
-*/
+    Box_t const box;
+    std::string const base_path;
+};
 
 
-template<typename ParticleArray, typename GridLayout>
+
+template<typename GridLayout>
 class SamraiH5Interface
 {
-    struct SamraiHDF5File; // : PHARE::hdf5::h5::HighFiveFile;
+    struct SamraiHDF5File;
 
 public:
+    using Box_t = core::Box<int, GridLayout::dimension>;
+
     static SamraiH5Interface& INSTANCE()
     {
         static SamraiH5Interface i;
@@ -69,6 +68,18 @@ public:
                + "/proc." + SAMRAI::tbox::Utilities::processorToString(rank);
     }
 
+    auto box_intersections(Box_t const& box)
+    {
+        using Pair = std::pair<SamraiHDF5File const* const,
+                               SamraiH5PatchDataInfo<GridLayout::dimension> const* const>;
+        std::vector<Pair> overlaps;
+        for (auto const& h5File : restart_files)
+            for (auto const& patch : h5File->patches)
+                if (auto const intersection = box * patch.box)
+                    overlaps.emplace_back(h5File.get(), &patch);
+        return overlaps;
+    }
+
 
 
 private:
@@ -76,11 +87,10 @@ private:
     std::unordered_map<std::string, std::string> box2dataset;
 };
 
-template<typename ParticleArray, typename GridLayout>
-struct SamraiH5Interface<ParticleArray, GridLayout>::SamraiHDF5File : public hdf5::h5::HighFiveFile
+template<typename GridLayout>
+struct SamraiH5Interface<GridLayout>::SamraiHDF5File : public hdf5::h5::HighFiveFile
 {
     using Super = hdf5::h5::HighFiveFile;
-    using Box_t = core::Box<int, ParticleArray::dimension>;
 
     SamraiHDF5File(std::string const& filepath)
         : Super{filepath, HighFive::File::ReadOnly, /*para=*/false}
@@ -119,6 +129,8 @@ struct SamraiH5Interface<ParticleArray, GridLayout>::SamraiHDF5File : public hdf
        }
     */
 
+
+
     struct BoxData
     {
         std::int32_t dim;
@@ -149,40 +161,35 @@ struct SamraiH5Interface<ParticleArray, GridLayout>::SamraiHDF5File : public hdf
         assert(boxes.size() == 1);
 
         // auto const& bx = boxes[0];
-        // return Box_t{core::as_sized_array<ParticleArray::dimension>(bx.lo0, bx.lo1, bx.lo2),
-        //              core::as_sized_array<ParticleArray::dimension>(bx.hi0, bx.hi1, bx.hi2)};
+        // return Box_t{core::as_sized_array<GridLayout::dimension>(bx.lo0, bx.lo1, bx.lo2),
+        //              core::as_sized_array<GridLayout::dimension>(bx.hi0, bx.hi1, bx.hi2)};
 
-        return Box_t{core::sized_array<ParticleArray::dimension>(boxes[0].lo),
-                     core::sized_array<ParticleArray::dimension>(boxes[0].hi)};
+        return Box_t{core::sized_array<GridLayout::dimension>(boxes[0].lo),
+                     core::sized_array<GridLayout::dimension>(boxes[0].hi)};
     }
+
+    std::vector<SamraiH5PatchDataInfo<GridLayout::dimension>> patches;
 };
 
 
 
-template<typename ParticleArray, typename GridLayout>
-void SamraiH5Interface<ParticleArray, GridLayout>::populate_from(std::string const& dir,
-                                                                 int const& idx,
-                                                                 int const& mpi_size)
+
+template<typename GridLayout>
+void SamraiH5Interface<GridLayout>::populate_from(std::string const& dir, int const& idx,
+                                                  int const& mpi_size)
 {
+    Box_t const mock{{0}, {99}};
     for (int rank = 0; rank < mpi_size; ++rank)
     {
         auto const hdf5_filepath = getRestartFileFullPath(dir, idx, mpi_size, rank);
-
-        hdf5::h5::HighFiveFile h5File{hdf5_filepath, HighFive::File::ReadOnly, /*para=*/false};
-
-        PHARE_LOG_LINE_STR("SamraiH5Interface::populate_from");
-
-        auto groups = h5File.scan_for_groups({"level_0000", "domainParticles_charge"});
-
-        for (auto const& g : groups)
+        auto& h5File = *restart_files.emplace_back(std::make_unique<SamraiHDF5File>(hdf5_filepath));
+        for (auto const& group : h5File.scan_for_groups({"level_0000", "field_EM_B_x"}))
         {
-            PHARE_LOG_LINE_STR(g);
+            auto const em_path = group.substr(0, group.rfind("/"));
+            h5File.patches.emplace_back(mock, em_path.substr(0, em_path.rfind("/")));
         }
-
-        restart_files.emplace_back(std::make_unique<SamraiHDF5File>(hdf5_filepath));
     }
 }
-
 
 
 

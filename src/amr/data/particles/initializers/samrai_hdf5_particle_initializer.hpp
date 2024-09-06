@@ -6,6 +6,10 @@
 #include <cassert>
 #include <functional>
 
+#include "core/def.hpp"
+#include "core/logger.hpp"
+#include "core/utilities/box/box.hpp"
+
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/utilities/types.hpp"
@@ -13,13 +17,12 @@
 #include "core/data/particles/particle.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/utilities/point/point.hpp"
-#include "core/def.hpp"
-#include "core/logger.hpp"
+
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
-
-#include "SAMRAI/hier/PatchDataRestartManager.h"
+#include "core/data/particles/particle_packer.hpp"
+#include "amr/data/field/initializers/samrai_hdf5_field_initializer.hpp"
 
 
 namespace PHARE::amr
@@ -48,7 +51,38 @@ template<typename ParticleArray, typename GridLayout>
 void SamraiHDF5ParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     ParticleArray& particles, GridLayout const& layout, std::string const& popname) const
 {
+    using Packer = core::ParticlePacker<ParticleArray::dimension>;
     PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
+    PHARE_LOG_LINE_SS(popname << " " << layout.AMRBox());
+
+    auto const& dest_box = layout.AMRBox();
+
+    auto const& overlaps = SamraiH5Interface<GridLayout>::INSTANCE().box_intersections(dest_box);
+    for (auto const& [h5FilePtr, pdataptr] : overlaps)
+    {
+        auto& h5File              = *h5FilePtr;
+        auto& pdata               = *pdataptr;
+        std::string const poppath = pdata.base_path + "/" + popname + "##default/domainParticles_";
+        core::ContiguousParticles<ParticleArray::dimension> soa{0};
+
+        {
+            std::size_t part_idx = 0;
+            core::apply(soa.as_tuple(), [&](auto& arg) {
+                auto const datapath = poppath + Packer::keys()[part_idx++];
+                PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
+                PHARE_LOG_LINE_STR(datapath);
+                h5File.file().getDataSet(datapath).read(arg);
+                PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
+            });
+        }
+
+        for (std::size_t i = 0; i < soa.size(); ++i)
+            if (auto const p = soa.copy(i); core::isIn(core::Point{p.iCell}, dest_box))
+                particles.push_back(p);
+
+        PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
+        PHARE_LOG_LINE_STR(particles.size());
+    }
 }
 
 

@@ -1,8 +1,6 @@
 #ifndef _PHARE_AMR_DATA_ELECTROMAG_ELECTROMAG_INITIALIZER_HPP_
 #define _PHARE_AMR_DATA_ELECTROMAG_ELECTROMAG_INITIALIZER_HPP_
 
-// #include "core/data/electromag/electromag.hpp"
-
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "amr/data/field/initializers/samrai_hdf5_field_initializer.hpp"
 #include "initializer/data_provider.hpp"
