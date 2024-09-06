@@ -28,7 +28,8 @@ struct GroupScanner
 
     auto& scan(std::string const& from = "/")
     {
-        scan(h5.file().getGroup(from), from);
+        // prevent double / at start of full path
+        scan(h5.file().getGroup(from), from == "/" ? "" : from);
         return groups;
     }
     void scan(HighFive::Group const& group, std::string const& path)

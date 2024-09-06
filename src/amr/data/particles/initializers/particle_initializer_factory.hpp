@@ -94,8 +94,7 @@ namespace amr
                 int const mpi_size = dict["mpi_size"].template to<int>();
 
                 // scan restart files for later use
-                SamraiH5Interface<ParticleArray, GridLayout>::INSTANCE().populate_from(dir, index,
-                                                                                       mpi_size);
+                SamraiH5Interface<GridLayout>::INSTANCE().populate_from(dir, index, mpi_size);
 
                 return std::make_unique<SamraiHDF5ParticleInitializer<ParticleArray, GridLayout>>();
             }
