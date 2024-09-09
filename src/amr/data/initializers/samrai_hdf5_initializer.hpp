@@ -87,6 +87,28 @@ private:
     std::unordered_map<std::string, std::string> box2dataset;
 };
 
+
+// struct BoxData
+// {
+//     int dim;
+//     std::array<int, 3> lo;
+//     std::array<int, 3> hi;
+// };
+
+typedef struct
+{
+    int dim;
+    std::array<int, 3> lo;
+    std::array<int, 3> hi;
+} BoxData;
+
+HighFive::CompoundType static box_compound_type()
+{
+    return {{"dim", HighFive::create_datatype<int>()},
+            {"lo", HighFive::create_datatype<std::array<int, 3>>()},
+            {"hi", HighFive::create_datatype<std::array<int, 3>>()}};
+}
+
 template<typename GridLayout>
 struct SamraiH5Interface<GridLayout>::SamraiHDF5File : public hdf5::h5::HighFiveFile
 {
@@ -129,43 +151,22 @@ struct SamraiH5Interface<GridLayout>::SamraiHDF5File : public hdf5::h5::HighFive
        }
     */
 
-
-
-    struct BoxData
-    {
-        std::int32_t dim;
-        std::array<std::int32_t, 3> lo;
-        std::array<std::int32_t, 3> hi;
-    };
-
-    // struct BoxData
-    // {
-    //     int dim;
-    //     int lo0, lo1, lo2;
-    //     int hi0, hi1, hi2;
-    // };
-
-    HighFive::CompoundType static box_compound_type()
-    {
-        return {{"dim", HighFive::create_datatype<std::int32_t>()},
-                {"lo", HighFive::create_datatype<std::array<std::int32_t, 3>>()},
-                {"hi", HighFive::create_datatype<std::array<std::int32_t, 3>>()}};
-    }
-
     auto getBoxFromPath(std::string const& path) const
     {
         // auto const& data = Super::read_data_set<int>(path);
-        // PHARE_LOG_LINE_STR(data.size());
-        std::vector<BoxData> boxes;
-        Super::file().getDataSet(path).read(boxes);
-        assert(boxes.size() == 1);
+        PHARE_LOG_LINE_STR(path);
+        std::vector<BoxData> data;
+        Super::file().getDataSet(path).read(data);
+        assert(data.size() == 1);
 
-        // auto const& bx = boxes[0];
+        // return Box_t{core::as_sized_array<GridLayout::dimension>(data[1], data[2], data[3]),
+        //              core::as_sized_array<GridLayout::dimension>(data[4], data[5], data[6])};
+
         // return Box_t{core::as_sized_array<GridLayout::dimension>(bx.lo0, bx.lo1, bx.lo2),
         //              core::as_sized_array<GridLayout::dimension>(bx.hi0, bx.hi1, bx.hi2)};
 
-        return Box_t{core::sized_array<GridLayout::dimension>(boxes[0].lo),
-                     core::sized_array<GridLayout::dimension>(boxes[0].hi)};
+        return Box_t{core::sized_array<GridLayout::dimension>(data[0].lo),
+                     core::sized_array<GridLayout::dimension>(data[0].hi)};
     }
 
     std::vector<SamraiH5PatchDataInfo<GridLayout::dimension>> patches;
@@ -173,12 +174,17 @@ struct SamraiH5Interface<GridLayout>::SamraiHDF5File : public hdf5::h5::HighFive
 
 
 
-
 template<typename GridLayout>
 void SamraiH5Interface<GridLayout>::populate_from(std::string const& dir, int const& idx,
                                                   int const& mpi_size)
 {
-    Box_t const mock{{0}, {99}};
+    auto upstr = core::get_env("PHARE_RESTART_BUP", "199");
+    int up     = 199;
+    std::stringstream ss{upstr};
+    ss >> up;
+
+
+    Box_t const mock{{0}, {up}};
     for (int rank = 0; rank < mpi_size; ++rank)
     {
         auto const hdf5_filepath = getRestartFileFullPath(dir, idx, mpi_size, rank);
@@ -186,7 +192,8 @@ void SamraiH5Interface<GridLayout>::populate_from(std::string const& dir, int co
         for (auto const& group : h5File.scan_for_groups({"level_0000", "field_EM_B_x"}))
         {
             auto const em_path = group.substr(0, group.rfind("/"));
-            h5File.patches.emplace_back(mock, em_path.substr(0, em_path.rfind("/")));
+            h5File.patches.emplace_back(/*h5File.getBoxFromPath(em_path + "/d_box")*/ mock,
+                                        em_path.substr(0, em_path.rfind("/")));
         }
     }
 }
@@ -195,5 +202,6 @@ void SamraiH5Interface<GridLayout>::populate_from(std::string const& dir, int co
 
 } // namespace PHARE::amr
 
+HIGHFIVE_REGISTER_TYPE(PHARE::amr::BoxData, PHARE::amr::box_compound_type)
 
 #endif

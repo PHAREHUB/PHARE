@@ -563,6 +563,9 @@ class EqualityReport:
     def __bool__(self):
         return self.ok
 
+    def __repr__(self):
+        return self.reason
+
 
 def hierarchy_compare(this, that):
     if not isinstance(this, PatchHierarchy) or not isinstance(that, PatchHierarchy):
@@ -599,12 +602,7 @@ def hierarchy_compare(this, that):
                     patch_data_cmp = patch_cmp.patch_datas[patch_data_key]
 
                     if patch_data_cmp != patch_data_ref:
-                        return EqualityReport(
-                            False,
-                            "data mismatch: "
-                            + type(patch_data_cmp).__name__
-                            + " "
-                            + type(patch_data_ref).__name__,
-                        )
+                        msg = f"data mismatch:  {patch_data_key} {type(patch_data_cmp).__name__} {type(patch_data_ref).__name__}"
+                        return EqualityReport(False, msg)
 
     return EqualityReport(True, "OK")
