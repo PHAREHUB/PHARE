@@ -1,6 +1,6 @@
 import numpy as np
 
-from ...core.phare_utilities import deep_copy
+from ...core.phare_utilities import deep_copy, fp_any_all_close
 from ...core import box as boxm
 from ...core.box import Box
 
@@ -80,8 +80,14 @@ class FieldData(PatchData):
     def __repr__(self):
         return self.__str__()
 
+    def compare(self, that, atol=1e-16):
+        return fp_any_all_close(self.dataset[:], that.dataset[:], atol)
+
     def __eq__(self, that):
-        return self.field_name == that.field_name and self.dataset[:] == that.dataset[:]
+        return self.field_name == that.field_name and self.compare(that)
+
+    def __ne__(self, that):
+        return not (self == that)
 
     def select(self, box):
         """
