@@ -17,6 +17,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/core/data/ion_population)
   add_subdirectory(tests/core/data/maxwellian_particle_initializer)
   add_subdirectory(tests/core/data/particle_initializer)
+  add_subdirectory(tests/core/data/mhd_state)
   add_subdirectory(tests/core/utilities/box)
   add_subdirectory(tests/core/utilities/range)
   add_subdirectory(tests/core/utilities/index)
