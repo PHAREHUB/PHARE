@@ -52,13 +52,10 @@ void SamraiHDF5ParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     ParticleArray& particles, GridLayout const& layout, std::string const& popname) const
 {
     using Packer = core::ParticlePacker<ParticleArray::dimension>;
-    PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
-    PHARE_LOG_LINE_SS(popname << " " << layout.AMRBox());
 
-    auto const& dest_box = layout.AMRBox();
-
-    auto const& overlaps = SamraiH5Interface<GridLayout>::INSTANCE().box_intersections(dest_box);
-    for (auto const& [h5FilePtr, pdataptr] : overlaps)
+    auto const& overlaps
+        = SamraiH5Interface<GridLayout>::INSTANCE().box_intersections(layout.AMRBox());
+    for (auto const& [overlap_box, h5FilePtr, pdataptr] : overlaps)
     {
         auto& h5File              = *h5FilePtr;
         auto& pdata               = *pdataptr;
@@ -69,19 +66,13 @@ void SamraiHDF5ParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             std::size_t part_idx = 0;
             core::apply(soa.as_tuple(), [&](auto& arg) {
                 auto const datapath = poppath + Packer::keys()[part_idx++];
-                PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
-                PHARE_LOG_LINE_STR(datapath);
                 h5File.file().getDataSet(datapath).read(arg);
-                PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
             });
         }
 
         for (std::size_t i = 0; i < soa.size(); ++i)
-            if (auto const p = soa.copy(i); core::isIn(core::Point{p.iCell}, dest_box))
+            if (auto const p = soa.copy(i); core::isIn(core::Point{p.iCell}, overlap_box))
                 particles.push_back(p);
-
-        PHARE_LOG_LINE_STR("SamraiHDF5ParticleInitializer::loadParticles");
-        PHARE_LOG_LINE_STR(particles.size());
     }
 }
 

@@ -298,7 +298,7 @@ def overlap_mask_2d(x, y, dl, level, qty):
     return is_overlaped
 
 
-def flat_finest_field(hierarchy, qty, time=None):
+def flat_finest_field(hierarchy, qty, time=None, neghosts=1):
     """
     returns 2 flattened arrays containing the data (with shape [Npoints])
     and the coordinates (with shape [Npoints, Ndim]) for the given
@@ -311,7 +311,7 @@ def flat_finest_field(hierarchy, qty, time=None):
     dim = hierarchy.ndim
 
     if dim == 1:
-        return flat_finest_field_1d(hierarchy, qty, time)
+        return flat_finest_field_1d(hierarchy, qty, time, neghosts)
     elif dim == 2:
         return flat_finest_field_2d(hierarchy, qty, time)
     elif dim == 3:
@@ -321,7 +321,7 @@ def flat_finest_field(hierarchy, qty, time=None):
         raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
 
 
-def flat_finest_field_1d(hierarchy, qty, time=None):
+def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
@@ -333,7 +333,7 @@ def flat_finest_field_1d(hierarchy, qty, time=None):
             # all but 1 ghost nodes are removed in order to limit
             # the overlapping, but to keep enough point to avoid
             # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - 1
+            needed_points = pdata.ghosts_nbr - neghosts
 
             # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
             data = pdata.dataset[needed_points[0] : -needed_points[0]]
