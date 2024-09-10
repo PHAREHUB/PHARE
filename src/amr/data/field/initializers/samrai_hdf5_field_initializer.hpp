@@ -46,7 +46,6 @@ void SamraiHDF5FieldInitializer<Field_t, GridLayout>::load(Field_t& field,
                                                            GridLayout const& layout) const
 {
     bool static constexpr c_ordering = false;
-    // using Viewer                     = core::NdArrayViewer<Field_t::dimension>;
 
     auto const local_cell = [&](auto const& box, auto const& point) {
         core::Point<std::uint32_t, dimension> localPoint;
@@ -56,33 +55,16 @@ void SamraiHDF5FieldInitializer<Field_t, GridLayout>::load(Field_t& field,
         return localPoint;
     };
 
-    // PHARE_LOG_LINE_STR("SamraiHDF5FieldInitializer::load");
-
+    auto const& dest_box  = layout.AMRBox();
     auto const& centering = layout.centering(field.physicalQuantity());
-    auto const& dest_box  = layout.AMRBox(); // grow(layout.AMRBox(), GridLayout::nbrGhosts());
     auto const& overlaps  = SamraiH5Interface<GridLayout>::INSTANCE().box_intersections(dest_box);
-
-    // PHARE_LOG_LINE_STR(layout.AMRBox());
-    for (auto const& [h5FilePtr, pdataptr] : overlaps)
+    for (auto const& [overlap_box, h5FilePtr, pdataptr] : overlaps)
     {
-        auto& h5File = *h5FilePtr;
-        auto& pdata  = *pdataptr;
-        // PHARE_LOG_LINE_STR(pdata.box);
-
-        auto const src_box = [&]() {
-            auto copy = pdata.box;
-            // for (std::size_t i = 0; i < Field_t::dimension; ++i)
-            //     copy.upper[i] += centering[i] == core::QtyCentering::primal ? 1 : 0;
-            return copy;
-        }();
-
-        std::vector<double> data;
-        std::string const fieldpath
-            = pdata.base_path + "/" + field.name() + "##default/field_" + field.name();
-        h5File.file().getDataSet(fieldpath).read(data);
-
-        // PHARE_LOG_LINE_STR(data.size());
-
+        auto& h5File       = *h5FilePtr;
+        auto& pdata        = *pdataptr;
+        auto const src_box = pdata.box;
+        auto const data    = h5File.template read_data_set_flat<double>(
+            pdata.base_path + "/" + field.name() + "##default/field_" + field.name());
         core::Box<std::uint32_t, GridLayout::dimension> const lcl_src_box{
             core::Point{core::ConstArray<std::uint32_t, GridLayout::dimension>()},
             core::Point{
@@ -91,51 +73,16 @@ void SamraiHDF5FieldInitializer<Field_t, GridLayout>::load(Field_t& field,
                         src_box.upper[i] - src_box.lower[i] + (GridLayout::nbrGhosts() * 2)
                         + (centering[i] == core::QtyCentering::primal ? 1 : 0));
                 })}};
-
-        // PHARE_LOG_LINE_STR(lcl_src_box.size());
-
-        assert(data.size() == lcl_src_box.size());
-
         auto data_view = core::make_array_view<c_ordering>(data.data(), *lcl_src_box.shape());
-        auto dst_iter  = dest_box.begin();
-        auto src_iter  = src_box.begin();
-        for (; src_iter != src_box.end(); ++src_iter)
-        {
-            // for (auto const& el : **src_iter)
-            //     if (el < 0)
-            //         continue;
-            // if (core::any(*src_iter, [](auto const& el) { el < 0; }))
-            //     continue; // skip ghosts
-
-            if (isIn(core::Point{*src_iter}, dest_box))
-            {
-                while (*dst_iter != *src_iter and dst_iter != dest_box.end())
-                    ++dst_iter;
-
-                if (dst_iter == dest_box.end() or not isIn(core::Point{*dst_iter}, dest_box))
-                    break;
-
-                // auto src_idx = Viewer::idx(lcl_src_box.shape(), *src_iter);
-                // auto dst_idx = Viewer::idx(dest_box.shape(), *dst_iter);
-
-                // PHARE_LOG_LINE_STR(src_idx);
-                // PHARE_LOG_LINE_STR(dst_idx);
-
-                field(local_cell(dest_box, *dst_iter)) = data_view(local_cell(src_box, *src_iter));
-
-                // PHARE_LOG_LINE_STR(*src_iter);
-                // PHARE_LOG_LINE_STR(*dst_iter);
-
-                // PHARE_LOG_LINE_STR(field(local_cell(dest_box, *dst_iter)));
-                // PHARE_LOG_LINE_STR(data_view(local_cell(src_box, *src_iter)));
-            }
-        }
+        for (auto const& point : overlap_box)
+            field(local_cell(dest_box, point)) = data_view(local_cell(src_box, point));
     }
 }
 
 
 
 } // namespace PHARE::amr
+
 
 
 #endif
