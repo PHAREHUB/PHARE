@@ -2,6 +2,19 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(phare_python3)
 
+pybind11_add_module(pyMHD pyMHD.cpp)
+target_include_directories(pyMHD 
+    PRIVATE 
+    ${CMAKE_SOURCE_DIR}
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>
+)
+target_link_libraries(pyMHD PUBLIC phare_simulator)
+target_compile_options(pyMHD PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
+set_target_properties(pyMHD
+    PROPERTIES
+    LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
+)
+
 pybind11_add_module(cpp cpp_simulator.cpp)
 target_link_libraries(cpp PUBLIC phare_simulator)
 target_compile_options(cpp PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
