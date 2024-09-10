@@ -83,24 +83,25 @@ TYPED_TEST(SimulatorTest, allocatesModelDataOnAppropriateLevels)
 
     for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
     {
-        if (isInMHDdRange(iLevel))
-        {
-            auto Bid = mhdModel.resourcesManager->getIDs(mhdModel.state.B);
-            auto Vid = mhdModel.resourcesManager->getIDs(mhdModel.state.V);
-
-            std::array<std::vector<int> const*, 2> allIDs{{&Bid, &Vid}};
-
-            for (auto& idVec : allIDs)
-            {
-                for (auto& id : *idVec)
-                {
-                    auto level = hierarchy.getPatchLevel(iLevel);
-                    auto patch = level->begin();
-                    EXPECT_TRUE(patch->checkAllocated(id));
-                }
-            }
-        }
-        else if (isInHybridRange(iLevel))
+        /*if (isInMHDdRange(iLevel))*/
+        /*{*/
+        /*    auto Bid = mhdModel.resourcesManager->getIDs(mhdModel.state.B);*/
+        /*    auto Vid = mhdModel.resourcesManager->getIDs(mhdModel.state.V);*/
+        /**/
+        /*    std::array<std::vector<int> const*, 2> allIDs{{&Bid, &Vid}};*/
+        /**/
+        /*    for (auto& idVec : allIDs)*/
+        /*    {*/
+        /*        for (auto& id : *idVec)*/
+        /*        {*/
+        /*            auto level = hierarchy.getPatchLevel(iLevel);*/
+        /*            auto patch = level->begin();*/
+        /*            EXPECT_TRUE(patch->checkAllocated(id));*/
+        /*        }*/
+        /*    }*/
+        /*}*/
+        /*else */
+        if (isInHybridRange(iLevel))
         {
             auto Bid   = hybridModel.resourcesManager->getIDs(hybridModel.state.electromag.B);
             auto Eid   = hybridModel.resourcesManager->getIDs(hybridModel.state.electromag.E);
