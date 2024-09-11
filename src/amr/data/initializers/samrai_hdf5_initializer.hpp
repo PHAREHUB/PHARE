@@ -2,27 +2,14 @@
 #define _PHARE_AMR_DATA_INITIAZILIZERS_SAMRAI_HDF5_INITIALIZER_HPP_
 
 #include <memory>
-#include <random>
 #include <cassert>
-#include <functional>
 
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "core/utilities/types.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer.hpp"
-#include "core/data/particles/particle.hpp"
-#include "initializer/data_provider.hpp"
-#include "core/utilities/point/point.hpp"
 #include "core/def.hpp"
-#include "core/logger.hpp"
-
+#include "core/utilities/types.hpp"
+#include "core/utilities/box/box.hpp"
 #include "hdf5/detail/h5/h5_file.hpp"
 
 #include "SAMRAI/tbox/HDFDatabase.h"
-
-#include "amr/utilities/box/amr_box.hpp"
-
-#include "SAMRAI/hier/PatchDataRestartManager.h"
 
 
 namespace PHARE::amr
