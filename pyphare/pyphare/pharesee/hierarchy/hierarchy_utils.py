@@ -1,11 +1,17 @@
-from .hierarchy import PatchHierarchy
-from .patchdata import FieldData
+from dataclasses import dataclass
+from copy import deepcopy
+import numpy as np
+
+from .hierarchy import PatchHierarchy, format_timestamp
+from .patchdata import FieldData, ParticleData
 from .patchlevel import PatchLevel
 from .patch import Patch
+from ...core.box import Box
+from ...core.gridlayout import GridLayout
 from ...core.phare_utilities import listify
 from ...core.phare_utilities import refinement_ratio
+from pyphare.pharesee import particles as mparticles
 
-import numpy as np
 
 field_qties = {
     "EM_B_x": "Bx",
@@ -552,9 +558,6 @@ def _compute_scalardiv(patch_datas, **kwargs):
     return tuple(pd_attrs)
 
 
-from dataclasses import dataclass
-
-
 @dataclass
 class EqualityReport:
     ok: bool
@@ -606,3 +609,46 @@ def hierarchy_compare(this, that):
                         return EqualityReport(False, msg)
 
     return EqualityReport(True, "OK")
+
+
+def single_patch_for_LO(hier, qties=None):
+    def _skip(qty):
+        return qties is not None and qty not in qties
+
+    cier = deepcopy(hier)
+    sim = hier.sim
+    layout = GridLayout(
+        Box(sim.origin, sim.cells), sim.origin, sim.dl, interp_order=sim.interp_order
+    )
+    p0 = Patch(patch_datas={}, patch_id="", layout=layout)
+    for t in cier.times():
+        cier.time_hier[format_timestamp(t)] = {0: cier.level(0, t)}
+        cier.level(0, t).patches = [deepcopy(p0)]
+        l0_pds = cier.level(0, t).patches[0].patch_datas
+        for k, v in hier.level(0, t).patches[0].patch_datas.items():
+            if _skip(k):
+                continue
+            if isinstance(v, FieldData):
+                l0_pds[k] = FieldData(
+                    layout, v.field_name, None, centering=v.centerings
+                )
+                l0_pds[k].dataset = np.zeros(l0_pds[k].size)
+
+            elif isinstance(v, ParticleData):
+                l0_pds[k] = deepcopy(v)
+            else:
+                raise RuntimeError("unexpected state")
+
+        for patch in hier.level(0, t).patches:
+            for k, v in patch.patch_datas.items():
+                if _skip(k):
+                    continue
+                if isinstance(v, FieldData):
+                    l0_pds[k][patch.box] = v[patch.box]
+                elif isinstance(v, ParticleData):
+                    l0_pds[k].dataset = mparticles.aggregate(
+                        [l0_pds[k].dataset, v.dataset]
+                    )
+                else:
+                    raise RuntimeError("unexpected state")
+    return cier

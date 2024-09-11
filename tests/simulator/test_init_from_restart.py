@@ -9,22 +9,26 @@ from pyphare.simulator.simulator import Simulator
 from pyphare.core import phare_utilities as phut
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
 from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+from pyphare.pharesee.hierarchy.hierarchy_utils import (
+    flat_finest_field,
+    single_patch_for_LO,
+    hierarchy_compare,
+)
 
 from tests.simulator import SimulatorTest, test_restarts
 from tests.diagnostic import dump_all_diags
 
 timestep = 0.001
 time_step_nbr = 1
-first_mpi_size = 1
+first_mpi_size = 4
 ppc = 100
 cells = 200
 first_out = "phare_outputs/reinit/first"
 secnd_out = "phare_outputs/reinit/secnd"
-timestamps = [0]  # np.array([timestep * 2, timestep * 4])
+timestamps = [0]
 restart_idx = Z = 0
 simInitArgs = dict(
-    # largest_patch_size=100,
+    largest_patch_size=100,
     time_step_nbr=time_step_nbr,
     time_step=timestep,
     cells=cells,
@@ -63,20 +67,12 @@ class RestartsParserTest(SimulatorTest):
         Simulator(sim).run().reset()
         datahier0 = get_all_available_quantities_from_h5(first_out, timestamps[0])
         datahier1 = get_all_available_quantities_from_h5(secnd_out, timestamps[0])
-
-        for k in "xyz":
-            a = flat_finest_field(datahier0, f"B{k}", timestamps[0], 0)
-            b = flat_finest_field(datahier1, f"B{k}", timestamps[0], 0)
-            phut.assert_fp_any_all_close(a, b)
-
-        def get_merged(hier):
-            return single_patch_per_level_per_pop_from(hier)
-
-        ds = [get_merged(datahier0), get_merged(datahier1)]
-        for key in ["alpha", "protons"]:
-            a, b = [d.level(0).patches[0].patch_datas[f"{key}_domain"] for d in ds]
-            self.assertGreater(a.size(), (cells - 1) * ppc)
-            self.assertEqual(a, b)
+        qties = ["protons_domain", "alpha_domain", "Bx", "By", "Bz"]
+        ds = [single_patch_for_LO(d, qties) for d in [datahier0, datahier1]]
+        eq = hierarchy_compare(*ds)
+        if not eq:
+            print(eq)
+        self.assertTrue(eq)
 
 
 def run_first_sim():

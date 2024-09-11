@@ -118,6 +118,9 @@ class FieldData(PatchData):
             return self.dataset[box_or_slice]
         return self.select(box_or_slice)
 
+    def __setitem__(self, box_or_slice, val):
+        self.__getitem__(box_or_slice)[:] = val
+
     def __init__(self, layout, field_name, data, **kwargs):
         """
         :param layout: A GridLayout representing the domain on which data is defined
