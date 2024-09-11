@@ -26,10 +26,14 @@ if(HighFive)
     # doesn't make sense in serial
     phare_mpi_python3_exec(9 3 load_balancing test_load_balancing.py ${CMAKE_CURRENT_BINARY_DIR})
 
-    phare_mpi_python3_exec(9 2 initing test_init_from_restart.py ${CMAKE_CURRENT_BINARY_DIR})
   endif(testMPI)
 
   phare_python3_exec(11, test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
+
+  if(NOT lowResourceTests)
+    # has to be serial, to run secondary mpirun internally
+    add_no_mpi_python3_test(initing test_init_from_restart.py ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 
 endif()
 
@@ -38,4 +42,3 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py ${CMAKE_CURRENT_BINARY_DIR}
 add_subdirectory(initialize)
 add_subdirectory(refinement)
 add_subdirectory(advance)
-

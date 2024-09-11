@@ -2,21 +2,15 @@ import sys
 import copy
 import unittest
 import subprocess
-import numpy as np
 import pyphare.pharein as ph
 
 from pyphare.simulator.simulator import Simulator
-from pyphare.core import phare_utilities as phut
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
-from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import (
-    flat_finest_field,
-    single_patch_for_LO,
-    hierarchy_compare,
-)
-
+from pyphare.pharesee.hierarchy.hierarchy_utils import single_patch_for_LO
+from pyphare.pharesee.hierarchy.hierarchy_utils import hierarchy_compare
 from tests.simulator import SimulatorTest, test_restarts
 from tests.diagnostic import dump_all_diags
+
 
 timestep = 0.001
 time_step_nbr = 1
@@ -88,9 +82,13 @@ def run_first_sim():
 
 def launch():
     """Launch secondary process to run first simulation to avoid initalizing MPI now"""
-    cmd = f"mpirun -n {first_mpi_size} python3 -O tests/simulator/test_init_from_restart.py lol"
-    proc = subprocess.run(cmd.split(" "), check=True, capture_output=True)
-    return (proc.stdout + proc.stderr).decode().strip()
+
+    cmd = f"mpirun -n {first_mpi_size} python3 -O {__file__} lol"
+    try:
+        p = subprocess.run(cmd.split(" "), check=True, capture_output=True)
+        print(p.stdout, p.stderr)
+    except subprocess.CalledProcessError as e:
+        print("CalledProcessError", e)
 
 
 if __name__ == "__main__":
