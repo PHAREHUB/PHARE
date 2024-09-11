@@ -14,11 +14,10 @@ add_no_mpi_python3_test(periodicity test_init_periodicity.py ${CMAKE_CURRENT_BIN
 
 if(HighFive)
   ## These test use dump diagnostics so require HighFive!
-  phare_python3_exec(9       diagnostics test_diagnostics.py       ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
-  phare_python3_exec(9       restarts    test_restarts.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
-  phare_python3_exec(9       run         test_run.py               ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
-
-  # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       diagnostics test_diagnostics.py ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       restarts    test_restarts.py    ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       run         test_run.py         ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  # phare_python3_exec(9      tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
   if(testMPI)
     phare_mpi_python3_exec(9 3 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
@@ -26,13 +25,12 @@ if(HighFive)
 
     # doesn't make sense in serial
     phare_mpi_python3_exec(9 3 load_balancing test_load_balancing.py ${CMAKE_CURRENT_BINARY_DIR})
+
+    phare_mpi_python3_exec(9 2 initing test_init_from_restart.py ${CMAKE_CURRENT_BINARY_DIR})
   endif(testMPI)
 
   phare_python3_exec(11, test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 
-  if(NOT lowResourceTests)
-    phare_python3_exec(9 initing test_init_from_restart.py ${CMAKE_CURRENT_BINARY_DIR})
-  endif()
 endif()
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py ${CMAKE_CURRENT_BINARY_DIR}/config.py @ONLY)

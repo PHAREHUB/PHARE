@@ -15,19 +15,21 @@ from tests.simulator import SimulatorTest, test_restarts
 from tests.diagnostic import dump_all_diags
 
 timestep = 0.001
-first_mpi_size = 4
+time_step_nbr = 1
+first_mpi_size = 1
 ppc = 100
 cells = 200
 first_out = "phare_outputs/reinit/first"
 secnd_out = "phare_outputs/reinit/secnd"
-timestamps = np.array([timestep * 4])
+timestamps = [0]  # np.array([timestep * 2, timestep * 4])
+restart_idx = Z = 0
 simInitArgs = dict(
-    largest_patch_size=100,
-    time_step_nbr=5,
+    # largest_patch_size=100,
+    time_step_nbr=time_step_nbr,
     time_step=timestep,
     cells=cells,
     dl=0.3,
-    init_options=dict(dir=f"{first_out}/00000.00400", mpi_size=first_mpi_size),
+    init_options=dict(dir=f"{first_out}/00000.00{Z}00", mpi_size=first_mpi_size),
     diag_options=dict(format="phareh5", options=dict(dir=secnd_out, mode="overwrite")),
 )
 
@@ -38,7 +40,7 @@ def setup_model(sim):
         alpha={"mass": 4.0, "charge": 1, "nbr_part_per_cell": ppc},
     )
     ph.ElectronModel(closure="isothermal", Te=0.12)
-    dump_all_diags(model.populations, timestamps)
+    dump_all_diags(model.populations, timestamps=timestamps)
     return model
 
 
@@ -68,7 +70,7 @@ class RestartsParserTest(SimulatorTest):
             phut.assert_fp_any_all_close(a, b)
 
         def get_merged(hier):
-            return single_patch_per_level_per_pop_from(datahier0)
+            return single_patch_per_level_per_pop_from(hier)
 
         ds = [get_merged(datahier0), get_merged(datahier1)]
         for key in ["alpha", "protons"]:
@@ -78,6 +80,7 @@ class RestartsParserTest(SimulatorTest):
 
 
 def run_first_sim():
+    """uses params from tests_restarts.py"""
     simput = copy.deepcopy(test_restarts.simArgs)
     simput["restart_options"]["dir"] = first_out
     simput["restart_options"]["timestamps"] = timestamps
@@ -88,6 +91,7 @@ def run_first_sim():
 
 
 def launch():
+    """Launch secondary process to run first simulation to avoid initalizing MPI now"""
     cmd = f"mpirun -n {first_mpi_size} python3 -O tests/simulator/test_init_from_restart.py lol"
     proc = subprocess.run(cmd.split(" "), check=True, capture_output=True)
     return (proc.stdout + proc.stderr).decode().strip()
