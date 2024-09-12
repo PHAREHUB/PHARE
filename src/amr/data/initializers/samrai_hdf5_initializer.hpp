@@ -116,15 +116,18 @@ void SamraiH5Interface<GridLayout>::populate_from(std::string const& dir, int co
                                                   int const& mpi_size,
                                                   std::string const& field_name)
 {
+    if (restart_files.size()) // executed per pop, but we only need to run this once
+        return;
+
     for (int rank = 0; rank < mpi_size; ++rank)
     {
         auto const hdf5_filepath = getRestartFileFullPath(dir, idx, mpi_size, rank);
         auto& h5File = *restart_files.emplace_back(std::make_unique<SamraiHDF5File>(hdf5_filepath));
         for (auto const& group : h5File.scan_for_groups({"level_0000", field_name}))
         {
-            auto const em_path = group.substr(0, group.rfind("/"));
-            h5File.patches.emplace_back(h5File.getBoxFromPath(em_path + "/d_box"),
-                                        em_path.substr(0, em_path.rfind("/")));
+            auto const field_path = group.substr(0, group.rfind("/"));
+            auto const& field_box = h5File.getBoxFromPath(field_path + "/d_box");
+            h5File.patches.emplace_back(field_box, field_path.substr(0, field_path.rfind("/")));
         }
     }
 }

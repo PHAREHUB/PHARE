@@ -40,12 +40,14 @@ void SamraiHDF5ParticleInitializer<ParticleArray, GridLayout>::loadParticles(
 {
     using Packer = core::ParticlePacker<ParticleArray::dimension>;
 
-    auto const& overlaps
-        = SamraiH5Interface<GridLayout>::INSTANCE().box_intersections(layout.AMRBox());
+    auto const& dest_box = layout.AMRBox();
+    auto const& overlaps = SamraiH5Interface<GridLayout>::INSTANCE().box_intersections(dest_box);
+
     for (auto const& [overlap_box, h5FilePtr, pdataptr] : overlaps)
     {
-        auto& h5File              = *h5FilePtr;
-        auto& pdata               = *pdataptr;
+        auto& h5File = *h5FilePtr;
+        auto& pdata  = *pdataptr;
+
         std::string const poppath = pdata.base_path + "/" + popname + "##default/domainParticles_";
         core::ContiguousParticles<ParticleArray::dimension> soa{0};
 
@@ -58,12 +60,10 @@ void SamraiHDF5ParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         }
 
         for (std::size_t i = 0; i < soa.size(); ++i)
-            if (auto const p = soa.copy(i); core::isIn(core::Point{p.iCell}, overlap_box))
+            if (auto const p = soa.copy(i); core::isIn(core::Point{p.iCell}, dest_box))
                 particles.push_back(p);
     }
 }
-
-
 
 
 } // namespace PHARE::amr

@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from copy import deepcopy
 import numpy as np
 
+from typing import Any
+
 from .hierarchy import PatchHierarchy, format_timestamp
 from .patchdata import FieldData, ParticleData
 from .patchlevel import PatchLevel
@@ -10,7 +12,6 @@ from ...core.box import Box
 from ...core.gridlayout import GridLayout
 from ...core.phare_utilities import listify
 from ...core.phare_utilities import refinement_ratio
-from pyphare.pharesee import particles as mparticles
 
 
 field_qties = {
@@ -562,6 +563,8 @@ def _compute_scalardiv(patch_datas, **kwargs):
 class EqualityReport:
     ok: bool
     reason: str
+    ref: Any = None
+    cmp: Any = None
 
     def __bool__(self):
         return self.ok
@@ -569,8 +572,15 @@ class EqualityReport:
     def __repr__(self):
         return self.reason
 
+    def __post_init__(self):
+        not_nones = [a is not None for a in [self.ref, self.cmp]]
+        if all(not_nones):
+            assert id(self.ref) != id(self.cmp)
+        else:
+            assert not any(not_nones)
 
-def hierarchy_compare(this, that):
+
+def hierarchy_compare(this, that, atol=1e-16):
     if not isinstance(this, PatchHierarchy) or not isinstance(that, PatchHierarchy):
         return EqualityReport(False, "class type mismatch")
 
@@ -596,24 +606,26 @@ def hierarchy_compare(this, that):
                 patch_cmp = patch_level_cmp.patches[patch_idx]
 
                 if patch_ref.patch_datas.keys() != patch_cmp.patch_datas.keys():
-                    print(list(patch_ref.patch_datas.keys()))
-                    print(list(patch_cmp.patch_datas.keys()))
                     return EqualityReport(False, "data keys mismatch")
 
                 for patch_data_key in patch_ref.patch_datas.keys():
                     patch_data_ref = patch_ref.patch_datas[patch_data_key]
                     patch_data_cmp = patch_cmp.patch_datas[patch_data_key]
 
-                    if patch_data_cmp != patch_data_ref:
-                        msg = f"data mismatch:  {patch_data_key} {type(patch_data_cmp).__name__} {type(patch_data_ref).__name__}"
-                        return EqualityReport(False, msg)
+                    if not patch_data_cmp.compare(patch_data_ref, atol=atol):
+                        msg = f"data mismatch: {type(patch_data_ref).__name__} {patch_data_key}"
+                        return EqualityReport(
+                            False, msg, patch_data_cmp, patch_data_ref
+                        )
 
     return EqualityReport(True, "OK")
 
 
-def single_patch_for_LO(hier, qties=None):
+def single_patch_for_LO(hier, qties=None, skip=None):
     def _skip(qty):
-        return qties is not None and qty not in qties
+        return (qties is not None and qty not in qties) or (
+            skip is not None and qty in skip
+        )
 
     cier = deepcopy(hier)
     sim = hier.sim
@@ -633,22 +645,22 @@ def single_patch_for_LO(hier, qties=None):
                     layout, v.field_name, None, centering=v.centerings
                 )
                 l0_pds[k].dataset = np.zeros(l0_pds[k].size)
+                patch_box = hier.level(0, t).patches[0].box
+                l0_pds[k][patch_box] = v[patch_box]
 
             elif isinstance(v, ParticleData):
                 l0_pds[k] = deepcopy(v)
             else:
                 raise RuntimeError("unexpected state")
 
-        for patch in hier.level(0, t).patches:
+        for patch in hier.level(0, t).patches[1:]:
             for k, v in patch.patch_datas.items():
                 if _skip(k):
                     continue
                 if isinstance(v, FieldData):
                     l0_pds[k][patch.box] = v[patch.box]
                 elif isinstance(v, ParticleData):
-                    l0_pds[k].dataset = mparticles.aggregate(
-                        [l0_pds[k].dataset, v.dataset]
-                    )
+                    l0_pds[k].dataset.add(v.dataset)
                 else:
                     raise RuntimeError("unexpected state")
     return cier

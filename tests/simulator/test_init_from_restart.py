@@ -2,29 +2,35 @@ import sys
 import copy
 import unittest
 import subprocess
+import numpy as np
 import pyphare.pharein as ph
 
+from pyphare.core import phare_utilities as phut
 from pyphare.simulator.simulator import Simulator
+from pyphare.pharesee.hierarchy.patchdata import FieldData, ParticleData
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
+from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
 from pyphare.pharesee.hierarchy.hierarchy_utils import single_patch_for_LO
 from pyphare.pharesee.hierarchy.hierarchy_utils import hierarchy_compare
 from tests.simulator import SimulatorTest, test_restarts
 from tests.diagnostic import dump_all_diags
 
 
-timestep = 0.001
-time_step_nbr = 1
+time_step = 0.001
+time_step_nbr = 5
+final_time = time_step_nbr * time_step
 first_mpi_size = 4
 ppc = 100
 cells = 200
 first_out = "phare_outputs/reinit/first"
 secnd_out = "phare_outputs/reinit/secnd"
-timestamps = [0]
-restart_idx = Z = 0
+# timestamps = [0,time_step]
+timestamps = np.arange(0, final_time + time_step, time_step)
+restart_idx = Z = 2
 simInitArgs = dict(
     largest_patch_size=100,
     time_step_nbr=time_step_nbr,
-    time_step=timestep,
+    time_step=time_step,
     cells=cells,
     dl=0.3,
     init_options=dict(dir=f"{first_out}/00000.00{Z}00", mpi_size=first_mpi_size),
@@ -59,13 +65,22 @@ class RestartsParserTest(SimulatorTest):
         sim = ph.Simulation(**copy.deepcopy(simInitArgs))
         setup_model(sim)
         Simulator(sim).run().reset()
-        datahier0 = get_all_available_quantities_from_h5(first_out, timestamps[0])
-        datahier1 = get_all_available_quantities_from_h5(secnd_out, timestamps[0])
+        fidx, sidx = 2, 0
+        datahier0 = get_all_available_quantities_from_h5(first_out, timestamps[fidx])
+        datahier0.time_hier = {  # swap times
+            format_timestamp(timestamps[sidx]): datahier0.time_hier[
+                format_timestamp(timestamps[fidx])
+            ]
+        }
+        datahier1 = get_all_available_quantities_from_h5(secnd_out, timestamps[sidx])
         qties = ["protons_domain", "alpha_domain", "Bx", "By", "Bz"]
-        ds = [single_patch_for_LO(d, qties) for d in [datahier0, datahier1]]
-        eq = hierarchy_compare(*ds)
+        skip = None  # ["protons_patchGhost", "alpha_patchGhost"]
+        ds = [single_patch_for_LO(d, qties, skip) for d in [datahier0, datahier1]]
+        eq = hierarchy_compare(*ds, atol=1e-14)
         if not eq:
             print(eq)
+            if type(eq.ref) == FieldData:
+                phut.assert_fp_any_all_close(eq.ref[:], eq.cmp[:], atol=1e-16)
         self.assertTrue(eq)
 
 
@@ -86,7 +101,6 @@ def launch():
     cmd = f"mpirun -n {first_mpi_size} python3 -O {__file__} lol"
     try:
         p = subprocess.run(cmd.split(" "), check=True, capture_output=True)
-        print(p.stdout, p.stderr)
     except subprocess.CalledProcessError as e:
         print("CalledProcessError", e)
 

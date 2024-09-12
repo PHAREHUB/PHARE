@@ -1,6 +1,8 @@
 import numpy as np
 
-from ...core.phare_utilities import deep_copy, fp_any_all_close
+from ...core import phare_utilities as phut
+
+# deep_copy, fp_any_all_close, assert_fp_any_all_close
 from ...core import box as boxm
 from ...core.box import Box
 
@@ -24,7 +26,7 @@ class PatchData:
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["dataset"]  # do not copy these things
-        return deep_copy(self, memo, no_copy_keys)
+        return phut.deep_copy(self, memo, no_copy_keys)
 
 
 class FieldData(PatchData):
@@ -81,10 +83,12 @@ class FieldData(PatchData):
         return self.__str__()
 
     def compare(self, that, atol=1e-16):
-        return fp_any_all_close(self.dataset[:], that.dataset[:], atol)
+        return self.field_name == that.field_name and phut.fp_any_all_close(
+            self.dataset[:], that.dataset[:], atol=atol
+        )
 
     def __eq__(self, that):
-        return self.field_name == that.field_name and self.compare(that)
+        return self.compare(that)
 
     def __ne__(self, that):
         return not (self == that)
@@ -228,5 +232,9 @@ class ParticleData(PatchData):
     def size(self):
         return self.dataset.size()
 
-    def __eq__(self, that):
+    def compare(self, that, *args, **kwargs):
+        """args/kwargs may include atol for consistency with field::compare"""
         return self.name == that.name and self.dataset == that.dataset
+
+    def __eq__(self, that):
+        return self.compare(that)
