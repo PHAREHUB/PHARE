@@ -27,7 +27,7 @@ quantities_per_file = {
     "EM_B": "B",
     "EM_E": "E",
     "ions_bulkVelocity": "Vi",
-    "ions_density": "Ni",
+    "ions_charge_density": "Ni",
     "particle_count": "nppc",
 }
 
@@ -116,7 +116,7 @@ class Run:
         return ScalarField(self._get(hier, time, merged, interp))
 
     def GetNi(self, time, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hierarchy(time, "ions_density.h5", **kwargs)
+        hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
         return ScalarField(self._get(hier, time, merged, interp))
 
     def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
@@ -153,7 +153,7 @@ class Run:
         return self._get(Pi, time, merged, interp)  # should later be a TensorField
 
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
-        hier = self._get_hierarchy(time, "ions_density.h5")
+        hier = self._get_hierarchy(time, "ions_charge_density.h5")
 
         Te = hier.sim.electrons.closure.Te
 

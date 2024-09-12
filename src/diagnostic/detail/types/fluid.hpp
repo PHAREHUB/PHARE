@@ -146,7 +146,7 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
     for (auto const& pop : this->h5Writer_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreateFileFor_(diagnostic, fileData_, tree, "density", "flux", "momentum_tensor");
+        checkCreateFileFor_(diagnostic, fileData_, tree, "charge_density", "flux", "momentum_tensor");
     }
 
     std::string tree{"/ions/"};
@@ -206,8 +206,8 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
     }
 
     std::string tree{"/ions/"};
-    if (isActiveDiag(diagnostic, tree, "density"))
-        infoDS(ions.density(), "density", patchAttributes[lvlPatchID]["ion"]);
+    if (isActiveDiag(diagnostic, tree, "charge_density"))
+        infoDS(ions.chargeDensity(), "charge_density", patchAttributes[lvlPatchID]["ion"]);
     if (isActiveDiag(diagnostic, tree, "mass_density"))
         infoDS(ions.massDensity(), "mass_density", patchAttributes[lvlPatchID]["ion"]);
     if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
@@ -275,8 +275,8 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
         }
 
         std::string tree{"/ions/"};
-        if (isActiveDiag(diagnostic, tree, "density"))
-            initDS(path, attr["ion"], "density", null);
+        if (isActiveDiag(diagnostic, tree, "charge_density"))
+            initDS(path, attr["ion"], "charge_density", null);
         if (isActiveDiag(diagnostic, tree, "mass_density"))
             initDS(path, attr["ion"], "mass_density", null);
         if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
@@ -315,8 +315,8 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     }
 
     std::string tree{"/ions/"};
-    if (isActiveDiag(diagnostic, tree, "density"))
-        writeDS(path + "density", ions.density());
+    if (isActiveDiag(diagnostic, tree, "charge_density"))
+        writeDS(path + "charge_density", ions.chargeDensity());
     if (isActiveDiag(diagnostic, tree, "mass_density"))
         writeDS(path + "mass_density", ions.massDensity());
     if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
@@ -344,7 +344,7 @@ void FluidDiagnosticWriter<H5Writer>::writeAttributes(
     for (auto& pop : h5Writer.modelView().getIons())
     {
         std::string tree = "/ions/pop/" + pop.name() + "/";
-        checkWrite(tree, "density", pop);
+        checkWrite(tree, "charge_density", pop);
         checkWrite(tree, "flux", pop);
         checkWrite(tree, "momentum_tensor", pop);
     }

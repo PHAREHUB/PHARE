@@ -539,7 +539,7 @@ namespace amr
 
                 auto& J  = hybridModel.state.J;
                 auto& Vi = hybridModel.state.ions.velocity();
-                auto& Ni = hybridModel.state.ions.density();
+                auto& Ni = hybridModel.state.ions.chargeDensity();
 
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);

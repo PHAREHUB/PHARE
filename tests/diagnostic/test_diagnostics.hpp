@@ -125,7 +125,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
             checkF(layout, path, "/ions/pop/" + pop.name(), "/density"s, pop.chargeDensity());
             checkVF(layout, path, "/ions/pop/" + pop.name(), "/flux"s, pop.flux());
         }
-        checkF(layout, path, "/ions"s, "/density"s, ions.density());
+        checkF(layout, path, "/ions"s, "/charge_density"s, ions.chargeDensity());
 
         std::string tree{"/ions"}, var{"/bulkVelocity"};
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + var), hi5.flags_);
@@ -236,7 +236,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     auto nbrPop = dict["simulation"]["ions"]["nbrPopulations"].template to<std::size_t>();
     EXPECT_EQ(nbrPop, expectedPopNbr);
 
-    std::vector<std::string> h5FileTypes{"/EM_B", "/EM_E", "/ions/density", "/ions/bulkVelocity"};
+    std::vector<std::string> h5FileTypes{"/EM_B", "/EM_E", "/ions/charge_density", "/ions/bulkVelocity"};
 
     for (std::size_t i = 0; i < nbrPop; ++i)
     {

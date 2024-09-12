@@ -222,6 +222,7 @@ def population_in_model(population):
 class FluidDiagnostics_(Diagnostics):
     fluid_quantities = [
         "density",
+        "charge_density",
         "mass_density",
         "flux",
         "bulkVelocity",
@@ -290,7 +291,7 @@ class FluidDiagnostics:
             if for_total_ions(**kwargs):
                 needed_quantities = ["mass_density", "bulkVelocity", "momentum_tensor"]
             else:
-                needed_quantities = ["density", "flux", "momentum_tensor"]
+                needed_quantities = ["charge_density", "flux", "momentum_tensor"]
 
             for quantity in needed_quantities:
                 kwargs["quantity"] = quantity

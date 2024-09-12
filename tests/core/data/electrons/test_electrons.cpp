@@ -368,7 +368,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsDensityEqualIonDensity)
     electrons.update(layout);
 
     auto& Ne = electrons.density();
-    auto& Ni = ions.density();
+    auto& Ni = ions.chargeDensity();
 
     if constexpr (dim == 1)
     {
