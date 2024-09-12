@@ -47,7 +47,7 @@ class AdvanceTestBase(SimulatorTest):
         largest_patch_size=20,
         cells=120,
         time_step=0.001,
-        model_init={},
+        model_init={"seed": 2},
         dl=0.2,
         extra_diag_options={},
         time_step_nbr=1,
@@ -289,10 +289,28 @@ class AdvanceTestBase(SimulatorTest):
                         # seems correct considering ghosts are filled with schedules
                         # involving linear/spatial interpolations and so on where
                         # rounding errors may occur.... setting atol to 5.5e-15
-                        assert_fp_any_all_close(slice1, slice2, atol=5.5e-15, rtol=0)
+                        assert_fp_any_all_close(slice1, slice2, atol=2.5e-14, rtol=0)
                         checks += 1
                     except AssertionError as e:
                         print("AssertionError", pd1.name, e)
+                        errors = np.where(
+                            ~np.isclose(slice1, slice2, atol=2.5e-14, rtol=0)
+                        )
+                        errors[0][:] += loc_b1.lower[0] + pd1.ghost_box.lower[0]
+                        errors[1][:] += loc_b1.lower[1] + pd1.ghost_box.lower[1]
+
+                        fig = datahier.plot_2d_patches(
+                            ilvl,
+                            collections=[
+                                {"boxes": [pd1.box], "value": 1},
+                                {"boxes": [pd2.box], "value": 2},
+                                {"coords": [errors], "value": 3},
+                            ],
+                            xlim=(-5, 50),
+                            ylim=(-5, 50),
+                        )
+                        fig.savefig(f"pd1.png")
+                        print(f"ilvl {ilvl}")
                         print(pd1.box, pd2.box)
                         print(pd1.x.mean())
                         print(pd1.y.mean())

@@ -98,7 +98,7 @@ namespace solver
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
-                ions.computeParticleDensity(); // TODO ouam : do we need here the charge density
+                ions.computeChargeDensity();
                 ions.computeBulkVelocity();
             }
 
