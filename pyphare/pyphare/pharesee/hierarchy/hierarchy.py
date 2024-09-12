@@ -353,6 +353,8 @@ class PatchHierarchy(object):
         return Rectangle(box.lower, *box.shape)
 
     def plot_2d_patches(self, ilvl, collections, **kwargs):
+        from matplotlib.patches import Rectangle
+
         if isinstance(collections, list) and all(
             [isinstance(el, Box) for el in collections]
         ):
@@ -363,19 +365,37 @@ class PatchHierarchy(object):
         level_domain_box = self.level_domain_box(ilvl)
         mi, ma = level_domain_box.lower.min(), level_domain_box.upper.max()
 
-        fig, ax = kwargs.get("subplot", plt.subplots(figsize=(6, 6)))
+        fig, ax = kwargs.get("subplot", plt.subplots(figsize=(16, 16)))
+
+        color = 1
+        i0, j0 = level_domain_box.lower
+        i1, j1 = level_domain_box.upper
+        ij = np.zeros((i1 - i0 + 1, j1 - j0 + 1)) + np.nan
+        ix = np.arange(i0, i1 + 1)
+        iy = np.arange(j0, j1 + 1)
 
         for collection in collections:
-            facecolor = collection.get("facecolor", "none")
-            edgecolor = collection.get("edgecolor", "purple")
-            alpha = collection.get("alpha", 1)
-            rects = [self.box_to_Rectangle(box) for box in collection["boxes"]]
+            facecolor = collection.get("facecolor", np.nan)
+            for box in collection["boxes"]:
+                if isinstance(box, Box):
+                    i0, j0 = box.lower
+                    i1, j1 = box.upper
+                    ij[i0 : i1 + 1, j0 : j1 + 1] = facecolor
+                else:
+                    ij[box] = facecolor
 
-            ax.add_collection(
-                PatchCollection(
-                    rects, facecolor=facecolor, alpha=alpha, edgecolor=edgecolor
-                )
-            )
+        ax.pcolormesh(ix, iy, ij.T, edgecolors="k", cmap="jet")
+        ax.set_xticks(ix)
+        ax.set_yticks(iy)
+
+        for patch in self.level(ilvl).patches:
+            box = patch.box
+            r = Rectangle(box.lower - 0.5, *(box.upper + 0.5))
+
+            r.set_edgecolor("r")
+            r.set_facecolor("none")
+            r.set_linewidth(2)
+            ax.add_patch(r)
 
         if "title" in kwargs:
             from textwrap import wrap
@@ -383,15 +403,10 @@ class PatchHierarchy(object):
             xfigsize = int(fig.get_size_inches()[0] * 10)  # 10 characters per inch
             ax.set_title("\n".join(wrap(kwargs["title"], xfigsize)))
 
-        major_ticks = np.arange(mi - 5, ma + 5 + 5, 5)
-        ax.set_xticks(major_ticks)
-        ax.set_yticks(major_ticks)
-
-        minor_ticks = np.arange(mi - 5, ma + 5 + 5, 1)
-        ax.set_xticks(minor_ticks, minor=True)
-        ax.set_yticks(minor_ticks, minor=True)
-
-        ax.grid(which="both")
+        if "xlim" in kwargs:
+            ax.set_xlim(kwargs["xlim"])
+        if "ylim" in kwargs:
+            ax.set_ylim(kwargs["ylim"])
 
         return fig
 

@@ -16,6 +16,7 @@ namespace core
         for (auto& pop : ions)
         {
             pop.particleDensity().zero();
+            pop.chargeDensity().zero();
             pop.flux().zero();
         }
     }
@@ -41,8 +42,8 @@ namespace core
         for (auto& pop : ions)
         {
             auto& particleDensity = pop.particleDensity();
-            auto& chargeDensity = pop.chargeDensity();
-            auto& flux    = pop.flux();
+            auto& chargeDensity   = pop.chargeDensity();
+            auto& flux            = pop.flux();
 
             if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
             {

@@ -107,8 +107,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
 template<typename Ions, typename Electromag, typename GridLayout>
 void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
 {
-    ions.computeParticleDensity();  // TODO ouam : should we need here to compute the charge density ?
-    // ions.computeChargeDensity();  // TODO ouam : this one might be better for the diagnostics
+    ions.computeChargeDensity();
     ions.computeBulkVelocity();
 }
 
@@ -182,7 +181,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
             auto enteredInDomain = pusher_->move(inRange, outRange, em, pop.mass(), interpolator_,
                                                  layout, inGhostBox, inDomainBox);
 
-            interpolator_(enteredInDomain, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+            interpolator_(enteredInDomain, pop.particleDensity(), pop.chargeDensity(), pop.flux(),
+                          layout);
 
             if (copyInDomain)
             {
@@ -270,7 +270,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         pushAndCopyInDomain(makeIndexRange(pop.patchGhostParticles()));
         pushAndCopyInDomain(makeIndexRange(pop.levelGhostParticles()));
 
-        interpolator_(makeIndexRange(domainParticles), pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+        interpolator_(makeIndexRange(domainParticles), pop.particleDensity(), pop.chargeDensity(),
+                      pop.flux(), layout);
     }
 }
 

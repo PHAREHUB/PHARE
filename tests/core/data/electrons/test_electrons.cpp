@@ -126,8 +126,8 @@ public:
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
 struct ElectronsTest : public ::testing::Test
 {
-    static constexpr auto dim         = typename TypeInfo::first_type{}();
-    static constexpr auto interp      = typename TypeInfo::second_type{}();
+    static constexpr auto dim    = typename TypeInfo::first_type{}();
+    static constexpr auto interp = typename TypeInfo::second_type{}();
 
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
@@ -150,7 +150,7 @@ struct ElectronsTest : public ::testing::Test
     UsableVecField<dim> J, F, Ve, Vi;
     UsableTensorField<dim> ionTensor, protonTensor;
 
-    GridND ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Pe;
+    GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
 
     ParticleArray_t domainParticles{layout.AMRBox()};
     ParticleArray_t patchGhostParticles = domainParticles;
@@ -163,13 +163,14 @@ struct ElectronsTest : public ::testing::Test
     template<typename... Args>
     auto static _ions(Args&... args)
     {
-        auto const& [ionFlux, ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Vi, ionTensor, protonTensor, pack]
+        auto const& [ionFlux, ionChargeDensity, ionMassDensity, protonParticleDensity,
+                     protonChargeDensity, Vi, ionTensor, protonTensor, pack]
             = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
-            auto const& [V, m, d, d_c, d_m] = ions.getCompileTimeResourcesViewList();
-            d.setBuffer(&ionParticleDensity);
+            auto const& [V, m, d_c, d_m] = ions.getCompileTimeResourcesViewList();
             d_c.setBuffer(&ionChargeDensity);
+            d_m.setBuffer(&ionMassDensity);
             Vi.set_on(V);
             ionTensor.set_on(m);
         }
@@ -194,16 +195,17 @@ struct ElectronsTest : public ::testing::Test
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonTensor{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , ionParticleDensity{"particleDensity", HybridQuantity::Scalar::rho,
-                   layout.allocSize(HybridQuantity::Scalar::rho)}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
-                   layout.allocSize(HybridQuantity::Scalar::rho)}
+                           layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionMassDensity{"chargeDensity", HybridQuantity::Scalar::rho,
+                         layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
-                    layout.allocSize(HybridQuantity::Scalar::rho)}
+                                layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
-                    layout.allocSize(HybridQuantity::Scalar::rho)}
+                              layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
-        , ions{_ions(F, ionParticleDensity, ionChargeDensity, protonParticleDensity, protonChargeDensity, Vi, ionTensor, protonTensor, pack)}
+        , ions{_ions(F, ionChargeDensity, ionMassDensity, protonParticleDensity,
+                     protonChargeDensity, Vi, ionTensor, protonTensor, pack)}
         , electrons{createDict<dim>()["electrons"], ions, J}
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
@@ -242,7 +244,7 @@ struct ElectronsTest : public ::testing::Test
             fill(Jy, [](double x) { return std::sinh(0.3 * x); });
             fill(Jz, [](double x) { return std::sinh(0.4 * x); });
 
-            fill(ionParticleDensity, [](double x) { return std::cosh(0.1 * x); });
+            fill(ionChargeDensity, [](double x) { return std::cosh(0.1 * x); });
         }
         else if constexpr (dim == 2)
         {
@@ -271,7 +273,7 @@ struct ElectronsTest : public ::testing::Test
             fill(Jy, [](double x, double y) { return std::sinh(0.3 * x) * std::sinh(0.3 * y); });
             fill(Jz, [](double x, double y) { return std::sinh(0.4 * x) * std::sinh(0.4 * y); });
 
-            fill(ionParticleDensity,
+            fill(ionChargeDensity,
                  [](double x, double y) { return std::cosh(0.1 * x) * std::cosh(0.1 * y); });
         }
         else if constexpr (dim == 3)
@@ -318,7 +320,7 @@ struct ElectronsTest : public ::testing::Test
                 return std::sinh(0.4 * x) * std::sinh(0.4 * y) * std::sinh(0.4 * z);
             });
 
-            fill(ionParticleDensity, [](double x, double y, double z) {
+            fill(ionChargeDensity, [](double x, double y, double z) {
                 return std::cosh(0.1 * x) * std::cosh(0.1 * y) * std::cosh(0.1 * z);
             });
         }

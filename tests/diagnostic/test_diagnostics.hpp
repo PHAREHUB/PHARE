@@ -226,7 +226,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     using GridLayout                           = typename Simulator::PHARETypes::GridLayout_t;
     constexpr auto dimension                   = Simulator::dimension;
     constexpr std::size_t expectedPopNbr       = 2;
-    constexpr std::size_t expectedPopAttrFiles = 5;
+    constexpr std::size_t expectedPopAttrFiles = 6;
 
     std::string const ionsPopPath = "/ions/pop/";
 
@@ -236,7 +236,8 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     auto nbrPop = dict["simulation"]["ions"]["nbrPopulations"].template to<std::size_t>();
     EXPECT_EQ(nbrPop, expectedPopNbr);
 
-    std::vector<std::string> h5FileTypes{"/EM_B", "/EM_E", "/ions/charge_density", "/ions/bulkVelocity"};
+    std::vector<std::string> h5FileTypes{"/EM_B", "/EM_E", "/ions/charge_density",
+                                         "/ions/mass_density", "/ions/bulkVelocity"};
 
     for (std::size_t i = 0; i < nbrPop; ++i)
     {
@@ -247,6 +248,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
         h5FileTypes.emplace_back(ionsPopPath + popName + "/levelGhost");
         h5FileTypes.emplace_back(ionsPopPath + popName + "/patchGhost");
         h5FileTypes.emplace_back(ionsPopPath + popName + "/density");
+        h5FileTypes.emplace_back(ionsPopPath + popName + "/charge_density");
         h5FileTypes.emplace_back(ionsPopPath + popName + "/flux");
     }
 
