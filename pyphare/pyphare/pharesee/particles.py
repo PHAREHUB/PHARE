@@ -77,6 +77,11 @@ class Particles:
 
     def __eq__(self, that):
         if isinstance(that, Particles):
+            if self.size() != that.size():
+                print(
+                    f"particles.py:Particles::eq size diff: {self.size()} != {that.size()}"
+                )
+                return False
             # fails on OSX for some reason
             set_check = set(self.as_tuples()) == set(that.as_tuples())
             if set_check:
@@ -88,8 +93,11 @@ class Particles:
                 print(f"particles.py:Particles::eq failed with: {ex}")
                 print_trace()
                 return False
-
+        print(f"particles.py:Particles::eq bad type: {type(that)}")
         return False
+
+    def __ne__(self, that):
+        return not (self == that)
 
     def select(self, box, box_type="cell"):
         """
