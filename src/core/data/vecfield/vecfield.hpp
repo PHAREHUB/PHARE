@@ -32,6 +32,7 @@ namespace core
     }
 
 
+
     struct VecFieldNames
     {
         std::string vecName;
