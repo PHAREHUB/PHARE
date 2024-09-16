@@ -10,6 +10,7 @@
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "initializer/data_provider.hpp"
 
 #include "core/data/ndarray/ndarray_vector.hpp"
 
@@ -71,6 +72,25 @@ public:
 
     bool isUsable() const { return Super::data() != nullptr; }
     bool isSettable() const { return !isUsable(); }
+    
+    template<typename GridLayout>
+    void initialize(GridLayout const& layout,
+                              initializer::InitFunction<dimension> const& init)
+    {
+        auto const indices = layout.ghostStartToEndIndices(*this, /*includeEnd=*/true);
+        auto const coords  = layout.template indexesToCoordVectors</*WithField=*/true>(
+            indices, *this, [](auto& gridLayout, auto& field_, auto const&... args) {
+                return gridLayout.fieldNodeCoordinates(field_, gridLayout.origin(), args...);
+            });
+
+        std::shared_ptr<Span<double>> gridPtr // keep grid data alive
+            = std::apply([&](auto&... args) { return init(args...); }, coords);
+        Span<double>& grid = *gridPtr;
+
+        for (std::size_t cell_idx = 0; cell_idx < indices.size(); cell_idx++)
+            std::apply([&](auto&... args) { (*this)(args...) = grid[cell_idx]; },
+                       indices[cell_idx]);
+    }
 
 
     template<typename... Args>
