@@ -76,7 +76,7 @@ private:
         Exyz(ijk...) = ideal_<Tag>(Ve, B, {ijk...})      //
                        + pressure_<Tag>(n, Pe, {ijk...}) //
                        + resistive_<Tag>(J, {ijk...})    //
-                       + hyperresistive_<Tag>(J, {ijk...});
+                       + hyperresistive_<Tag>(J, B, n, {ijk...});
     }
 
 
@@ -335,7 +335,8 @@ private:
 
 
     template<auto component, typename VecField>
-    auto hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    auto hyperresistive_(VecField const& J, VecField const& B, VecField const& n,
+                         MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
         return -nu_ * layout_->laplacian(J(component), index);
     }

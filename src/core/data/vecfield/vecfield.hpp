@@ -31,6 +31,12 @@ namespace core
                 Vavg.getComponent(Component::Z));
     }
 
+    // template<std::size_t... Index>
+    // NO_DISCARD auto norm(std::index_sequence<Index...>) const
+    // {
+    //     std::sqrt(std::accumulate(std::begin(components_), std::end(components_), Type{0},
+    //                               [](auto acc, auto const& c) { return acc + c * c; }));
+    // }
 
     struct VecFieldNames
     {
