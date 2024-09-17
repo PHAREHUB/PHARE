@@ -832,17 +832,19 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        NO_DISCARD auto AMRToLocal(Box<T, dimension> const& AMRBox) const
+        NO_DISCARD auto AMRToLocal(Box<T, dimension> const& AMRBox,
+                                   Box<int, dimension> const& localbox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            auto localBox = Box<std::uint32_t, dimension>{};
-
-            localBox.lower = AMRToLocal(AMRBox.lower);
-            localBox.upper = AMRToLocal(AMRBox.upper);
-
-            return localBox;
+            return Box<std::uint32_t, dimension>{AMRToLocal(AMRBox.lower, localbox),
+                                                 AMRToLocal(AMRBox.upper, localbox)};
         }
 
+        template<typename T>
+        NO_DISCARD auto AMRToLocal(Box<T, dimension> const& AMRBox) const
+        {
+            return AMRToLocal(AMRBox, AMRBox_);
+        }
 
 
         template<typename Field, std::size_t nbr_points>
@@ -1171,6 +1173,22 @@ namespace core
             evalOnBox_(field, fn, indices);
         }
 
+        template<typename Field>
+        auto domainBoxFor(Field const& field) const
+        {
+            return _BoxFor(field, [&](auto const& centering, auto const direction) {
+                return this->physicalStartToEnd(centering, direction);
+            });
+        }
+
+        template<typename Field>
+        auto ghostBoxFor(Field const& field) const
+        {
+            return _BoxFor(field, [&](auto const& centering, auto const direction) {
+                return this->ghostStartToEnd(centering, direction);
+            });
+        }
+
 
     private:
         template<typename Field, typename IndicesFn, typename Fn>
@@ -1203,6 +1221,20 @@ namespace core
                     }
                 }
             }
+        }
+
+
+        template<typename Field, typename Fn>
+        auto _BoxFor(Field const& field, Fn startToEnd) const
+        {
+            constexpr auto directions = std::array{Direction::X, Direction::Y, Direction::Z};
+            std::array<std::uint32_t, dimension> lower, upper;
+            core::for_N<dimension>([&](auto i) {
+                auto const [i0, i1] = startToEnd(field, directions[i]);
+                lower[i]            = i0;
+                upper[i]            = i1;
+            });
+            return Box<std::uint32_t, dimension>{lower, upper};
         }
 
 

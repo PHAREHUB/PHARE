@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 import pyphare.pharein as ph
 
-from pyphare.core import phare_utilities as phut
+
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.patchdata import FieldData, ParticleData
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
@@ -24,11 +24,9 @@ ppc = 100
 cells = 200
 first_out = "phare_outputs/reinit/first"
 secnd_out = "phare_outputs/reinit/secnd"
-# timestamps = [0,time_step]
 timestamps = np.arange(0, final_time + time_step, time_step)
 restart_idx = Z = 2
 simInitArgs = dict(
-    largest_patch_size=100,
     time_step_nbr=time_step_nbr,
     time_step=time_step,
     cells=cells,
@@ -41,7 +39,7 @@ simInitArgs = dict(
 def setup_model(sim):
     model = ph.MaxwellianFluidModel(
         protons={"mass": 1, "charge": 1, "nbr_part_per_cell": ppc},
-        alpha={"mass": 4.0, "charge": 1, "nbr_part_per_cell": ppc},
+        alpha={"mass": 4, "charge": 1, "nbr_part_per_cell": ppc},
     )
     ph.ElectronModel(closure="isothermal", Te=0.12)
     dump_all_diags(model.populations, timestamps=timestamps)
@@ -65,7 +63,7 @@ class RestartsParserTest(SimulatorTest):
         sim = ph.Simulation(**copy.deepcopy(simInitArgs))
         setup_model(sim)
         Simulator(sim).run().reset()
-        fidx, sidx = 2, 0
+        fidx, sidx = 4, 2
         datahier0 = get_all_available_quantities_from_h5(first_out, timestamps[fidx])
         datahier0.time_hier = {  # swap times
             format_timestamp(timestamps[sidx]): datahier0.time_hier[
@@ -73,15 +71,10 @@ class RestartsParserTest(SimulatorTest):
             ]
         }
         datahier1 = get_all_available_quantities_from_h5(secnd_out, timestamps[sidx])
-        qties = ["protons_domain", "alpha_domain", "Bx", "By", "Bz"]
-        skip = None  # ["protons_patchGhost", "alpha_patchGhost"]
+        qties = None
+        skip = ["protons_patchGhost", "alpha_patchGhost"]
         ds = [single_patch_for_LO(d, qties, skip) for d in [datahier0, datahier1]]
-        eq = hierarchy_compare(*ds, atol=1e-14)
-        if not eq:
-            print(eq)
-            if type(eq.ref) == FieldData:
-                phut.assert_fp_any_all_close(eq.ref[:], eq.cmp[:], atol=1e-16)
-        self.assertTrue(eq)
+        self.assertTrue(hierarchy_compare(*ds, atol=1e-12))
 
 
 def run_first_sim():
