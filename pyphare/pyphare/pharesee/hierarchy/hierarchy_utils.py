@@ -1,8 +1,8 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from copy import deepcopy
 import numpy as np
 
-from typing import Any
+from typing import Any, List, Tuple
 
 from .hierarchy import PatchHierarchy, format_timestamp
 from .patchdata import FieldData, ParticleData
@@ -12,6 +12,7 @@ from ...core.box import Box
 from ...core.gridlayout import GridLayout
 from ...core.phare_utilities import listify
 from ...core.phare_utilities import refinement_ratio
+from pyphare.core import phare_utilities as phut
 
 
 field_qties = {
@@ -561,41 +562,53 @@ def _compute_scalardiv(patch_datas, **kwargs):
 
 @dataclass
 class EqualityReport:
-    ok: bool
-    reason: str
-    ref: Any = None
-    cmp: Any = None
+    failed: List[Tuple[str, Any, Any]] = field(default_factory=lambda: [])
 
     def __bool__(self):
-        return self.ok
+        return not self.failed
 
     def __repr__(self):
-        return self.reason
+        for msg, ref, cmp in self:
+            print(msg)
+            try:
+                if type(ref) is FieldData:
+                    phut.assert_fp_any_all_close(ref[:], cmp[:], atol=1e-16)
+            except AssertionError as e:
+                print(e)
+        return self.failed[0][0]
 
-    def __post_init__(self):
-        not_nones = [a is not None for a in [self.ref, self.cmp]]
-        if all(not_nones):
-            assert id(self.ref) != id(self.cmp)
-        else:
-            assert not any(not_nones)
+    def __call__(self, reason, ref=None, cmp=None):
+        self.failed.append((reason, ref, cmp))
+        return self
+
+    def __getitem__(self, idx):
+        return (self.failed[idx][1], self.failed[idx][2])
+
+    def __iter__(self):
+        return self.failed.__iter__()
+
+    def __reversed__(self):
+        return reversed(self.failed)
 
 
 def hierarchy_compare(this, that, atol=1e-16):
+    eqr = EqualityReport()
+
     if not isinstance(this, PatchHierarchy) or not isinstance(that, PatchHierarchy):
-        return EqualityReport(False, "class type mismatch")
+        return eqr("class type mismatch")
 
     if this.ndim != that.ndim or this.domain_box != that.domain_box:
-        return EqualityReport(False, "dimensional mismatch")
+        return eqr("dimensional mismatch")
 
     if this.time_hier.keys() != that.time_hier.keys():
-        return EqualityReport(False, "timesteps mismatch")
+        return eqr("timesteps mismatch")
 
     for tidx in this.times():
         patch_levels_ref = this.time_hier[tidx]
         patch_levels_cmp = that.time_hier[tidx]
 
         if patch_levels_ref.keys() != patch_levels_cmp.keys():
-            return EqualityReport(False, "levels mismatch")
+            return eqr("levels mismatch")
 
         for level_idx in patch_levels_cmp.keys():
             patch_level_ref = patch_levels_ref[level_idx]
@@ -606,7 +619,7 @@ def hierarchy_compare(this, that, atol=1e-16):
                 patch_cmp = patch_level_cmp.patches[patch_idx]
 
                 if patch_ref.patch_datas.keys() != patch_cmp.patch_datas.keys():
-                    return EqualityReport(False, "data keys mismatch")
+                    return eqr("data keys mismatch")
 
                 for patch_data_key in patch_ref.patch_datas.keys():
                     patch_data_ref = patch_ref.patch_datas[patch_data_key]
@@ -614,11 +627,12 @@ def hierarchy_compare(this, that, atol=1e-16):
 
                     if not patch_data_cmp.compare(patch_data_ref, atol=atol):
                         msg = f"data mismatch: {type(patch_data_ref).__name__} {patch_data_key}"
-                        return EqualityReport(
-                            False, msg, patch_data_cmp, patch_data_ref
-                        )
+                        eqr(msg, patch_data_cmp, patch_data_ref)
 
-    return EqualityReport(True, "OK")
+                if not eqr:
+                    return eqr
+
+    return eqr
 
 
 def single_patch_for_LO(hier, qties=None, skip=None):
