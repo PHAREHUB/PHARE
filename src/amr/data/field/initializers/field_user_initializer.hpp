@@ -1,7 +1,11 @@
 #ifndef _PHARE_AMR_DATA_FIELD_INITIAZILIZERS_FIELD_USER_INITIALIZER_HPP_
 #define _PHARE_AMR_DATA_FIELD_INITIAZILIZERS_FIELD_USER_INITIALIZER_HPP_
 
+#include "core/utilities/span.hpp"
 #include "initializer/data_provider.hpp"
+
+#include <tuple>
+#include <memory>
 
 namespace PHARE 
 {
