@@ -4,6 +4,8 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
+#include "amr/data/field/initializers/field_user_initializer.hpp"
+#include <core/data/field/field.hpp>
 
 #include <array>
 
@@ -30,10 +32,10 @@ namespace core
         {
             static_assert(GridLayout::dimension == VecField::dimension,
                           "dimension mismatch between vecfield and gridlayout");
-          
-            v.getComponent(Component::X).initialize(layout, x_);
-            v.getComponent(Component::Y).initialize(layout, y_);
-            v.getComponent(Component::Z).initialize(layout, z_);
+         
+            FieldUserFunctionInitializer::initialize(v.getComponent(Component::X), layout, x_);
+            FieldUserFunctionInitializer::initialize(v.getComponent(Component::Y), layout, y_); 
+            FieldUserFunctionInitializer::initialize(v.getComponent(Component::Z), layout, z_);
         }
 
     private:
