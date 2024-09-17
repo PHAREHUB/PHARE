@@ -5,7 +5,6 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
 #include "amr/data/field/initializers/field_user_initializer.hpp"
-#include <core/data/field/field.hpp>
 
 #include <array>
 
