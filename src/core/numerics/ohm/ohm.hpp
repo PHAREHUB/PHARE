@@ -11,6 +11,8 @@
 
 #include "initializer/data_provider.hpp"
 
+#include <numeric>
+
 
 namespace PHARE::core
 {
@@ -52,10 +54,11 @@ public:
 
 
 
+
+private:
     double const eta_;
     double const nu_;
 
-private:
     template<typename VecField, typename Field>
     struct OhmPack
     {
@@ -281,6 +284,7 @@ private:
                 return -gradPOnEy / nOnEy;
             }
             else
+#include <cmath>
             {
                 return 0.;
             }
@@ -334,11 +338,42 @@ private:
 
 
 
-    template<auto component, typename VecField>
-    auto hyperresistive_(VecField const& J, VecField const& B, VecField const& n,
+    template<auto component, typename VecField, typename Field>
+    auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                          MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        return -nu_ * layout_->laplacian(J(component), index);
+
+        double const dl2{std::accumulate(std::begin(layout_->meshSize()),
+                                         std::end(layout_->meshSize()), 0.,
+                                         [](double acc, double d) { return acc + d * d; })};
+
+        if constexpr (component == Component::X)
+        {
+            auto const BxOnE = GridLayout::project(B(Component::X), index, GridLayout::BxToEx());
+            auto const ByOnE = GridLayout::project(B(Component::Y), index, GridLayout::ByToEx());
+            auto const BzOnE = GridLayout::project(B(Component::Z), index, GridLayout::BzToEx());
+            auto const nOnE  = GridLayout::project(n, index, GridLayout::momentsToEx());
+            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
+            return -nu_ * b / nOnE * dl2 * layout_->laplacian(J(component), index);
+        }
+        if constexpr (component == Component::Y)
+        {
+            auto const BxOnE = GridLayout::project(B(Component::X), index, GridLayout::BxToEy());
+            auto const ByOnE = GridLayout::project(B(Component::Y), index, GridLayout::ByToEy());
+            auto const BzOnE = GridLayout::project(B(Component::Z), index, GridLayout::BzToEy());
+            auto const nOnE  = GridLayout::project(n, index, GridLayout::momentsToEy());
+            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
+            return -nu_ * b / nOnE * dl2 * layout_->laplacian(J(component), index);
+        }
+        if constexpr (component == Component::Z)
+        {
+            auto const BxOnE = GridLayout::project(B(Component::X), index, GridLayout::BxToEz());
+            auto const ByOnE = GridLayout::project(B(Component::Y), index, GridLayout::ByToEz());
+            auto const BzOnE = GridLayout::project(B(Component::Z), index, GridLayout::BzToEz());
+            auto const nOnE  = GridLayout::project(n, index, GridLayout::momentsToEz());
+            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
+            return -nu_ * b / nOnE * dl2 * layout_->laplacian(J(component), index);
+        }
     }
 };
 

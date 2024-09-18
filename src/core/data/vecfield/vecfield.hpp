@@ -31,11 +31,16 @@ namespace core
                 Vavg.getComponent(Component::Z));
     }
 
-    // template<std::size_t... Index>
-    // NO_DISCARD auto norm(std::index_sequence<Index...>) const
+    // template<typename VecField, typename... Index>
+    // NO_DISCARD auto norm(VecField const& vf, Index... index)
     // {
-    //     std::sqrt(std::accumulate(std::begin(components_), std::end(components_), Type{0},
-    //                               [](auto acc, auto const& c) { return acc + c * c; }));
+    //     using Type = typename VecField::value_type;
+    //     std::sqrt(std::accumulate(std::begin(vf.components()), std::end(vf.components()),
+    //     Type{0},
+    //                               [&](auto acc, auto const& c) {
+    //                                   auto const v = c(index...);
+    //                                   return acc(index...) + v * v;
+    //                               }));
     // }
 
     struct VecFieldNames

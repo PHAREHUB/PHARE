@@ -1073,6 +1073,7 @@ namespace core
          */
         NO_DISCARD auto static constexpr JzToMoments() { return GridLayoutImpl::JzToMoments(); }
 
+        NO_DISCARD auto static constexpr BxToEx() { return GridLayoutImpl::BxToEx(); }
 
         /**
          * @brief ByToEx return the indexes and associated coef to compute the linear
@@ -1088,6 +1089,7 @@ namespace core
         NO_DISCARD auto static constexpr BzToEx() { return GridLayoutImpl::BzToEx(); }
 
 
+
         /**
          * @brief BxToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bx onto Ey.
@@ -1095,6 +1097,7 @@ namespace core
         NO_DISCARD auto static constexpr BxToEy() { return GridLayoutImpl::BxToEy(); }
 
 
+        NO_DISCARD auto static constexpr ByToEy() { return GridLayoutImpl::ByToEy(); }
 
         /**
          * @brief BzToEy return the indexes and associated coef to compute the linear
@@ -1117,6 +1120,8 @@ namespace core
          * interpolation necessary to project By onto Ez.
          */
         NO_DISCARD auto static constexpr ByToEz() { return GridLayoutImpl::ByToEz(); }
+
+        NO_DISCARD auto static constexpr BzToEz() { return GridLayoutImpl::BzToEz(); }
 
 
 
