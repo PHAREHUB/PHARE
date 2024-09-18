@@ -197,7 +197,7 @@ struct ElectronsTest : public ::testing::Test
         , protonTensor{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
                            layout.allocSize(HybridQuantity::Scalar::rho)}
-        , ionMassDensity{"chargeDensity", HybridQuantity::Scalar::rho,
+        , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
                          layout.allocSize(HybridQuantity::Scalar::rho)}
         , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
                                 layout.allocSize(HybridQuantity::Scalar::rho)}
