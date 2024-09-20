@@ -369,32 +369,29 @@ private:
                                          std::end(layout_->meshSize()), 0.,
                                          [](double acc, double d) { return acc + d * d; })};
 
-        if constexpr (component == Component::X)
-        {
-            auto const BxOnE = GridLayout::project(B(Component::X), index, GridLayout::BxToEx());
-            auto const ByOnE = GridLayout::project(B(Component::Y), index, GridLayout::ByToEx());
-            auto const BzOnE = GridLayout::project(B(Component::Z), index, GridLayout::BzToEx());
-            auto const nOnE  = GridLayout::project(n, index, GridLayout::momentsToEx());
+        auto computeHR = [&](auto BxProj, auto ByProj, auto BzProj, auto nProj) {
+            auto const BxOnE = GridLayout::project(B(Component::X), index, BxProj);
+            auto const ByOnE = GridLayout::project(B(Component::Y), index, ByProj);
+            auto const BzOnE = GridLayout::project(B(Component::Z), index, BzProj);
+            auto const nOnE  = GridLayout::project(n, index, nProj);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             return -nu_ * b / nOnE * dl2 * layout_->laplacian(J(component), index);
+        };
+
+        if constexpr (component == Component::X)
+        {
+            return computeHR(GridLayout::BxToEx(), GridLayout::ByToEx(), GridLayout::BzToEx(),
+                             GridLayout::momentsToEx());
         }
         if constexpr (component == Component::Y)
         {
-            auto const BxOnE = GridLayout::project(B(Component::X), index, GridLayout::BxToEy());
-            auto const ByOnE = GridLayout::project(B(Component::Y), index, GridLayout::ByToEy());
-            auto const BzOnE = GridLayout::project(B(Component::Z), index, GridLayout::BzToEy());
-            auto const nOnE  = GridLayout::project(n, index, GridLayout::momentsToEy());
-            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
-            return -nu_ * b / nOnE * dl2 * layout_->laplacian(J(component), index);
+            return computeHR(GridLayout::BxToEy(), GridLayout::ByToEy(), GridLayout::BzToEy(),
+                             GridLayout::momentsToEy());
         }
         if constexpr (component == Component::Z)
         {
-            auto const BxOnE = GridLayout::project(B(Component::X), index, GridLayout::BxToEz());
-            auto const ByOnE = GridLayout::project(B(Component::Y), index, GridLayout::ByToEz());
-            auto const BzOnE = GridLayout::project(B(Component::Z), index, GridLayout::BzToEz());
-            auto const nOnE  = GridLayout::project(n, index, GridLayout::momentsToEz());
-            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
-            return -nu_ * b / nOnE * dl2 * layout_->laplacian(J(component), index);
+            return computeHR(GridLayout::BxToEz(), GridLayout::ByToEz(), GridLayout::BzToEz(),
+                             GridLayout::momentsToEz());
         }
     }
 };
