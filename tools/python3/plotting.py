@@ -24,7 +24,7 @@ def plot_run_timer_data(diag_dir=None, rank=0):
         parser = argparse.ArgumentParser()
         parser.add_argument("-d", "--dir", default=".", help="Diagnostics directory")
         diag_dir = parser.parse_args().dir
-    run = Run(diag_dir, single_hier_for_all_quantities=True)
+    run = Run(diag_dir)
     res = phloping.file_parser(run, rank, Path(f".phare_times.{rank}.txt"))
     fig, ax = plt.subplots()
     L0X = res.time_steps_for_L(0)

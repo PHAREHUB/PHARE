@@ -245,7 +245,7 @@ message("")
         if mpi_type == "OMPI":
             # work around for https://github.com/open-mpi/ompi/issues/10761#issuecomment-1236909802
             file.write(
-                """set (PHARE_MPIRUN_POSTFIX "${PHARE_MPIRUN_POSTFIX} --bind-to none")
+                """set (PHARE_MPIRUN_POSTFIX "${PHARE_MPIRUN_POSTFIX};--bind-to;none")
                 """
             )
 
