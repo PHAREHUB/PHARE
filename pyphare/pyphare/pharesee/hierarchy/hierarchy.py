@@ -381,7 +381,7 @@ class PatchHierarchy(object):
                 ij[i0 : i1 + 1, j0 : j1 + 1] = value
             if "coords" in collection:
                 for coords in collection["coords"]:
-                    ij[box] = collection["value"]
+                    ij[coords] = collection["value"]
 
         ax.pcolormesh(ix, iy, ij.T, edgecolors="k", cmap="jet")
         ax.set_xticks(ix)

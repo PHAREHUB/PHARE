@@ -47,7 +47,7 @@ class AdvanceTestBase(SimulatorTest):
         largest_patch_size=20,
         cells=120,
         time_step=0.001,
-        model_init={"seed": 2},
+        model_init={},
         dl=0.2,
         extra_diag_options={},
         time_step_nbr=1,
