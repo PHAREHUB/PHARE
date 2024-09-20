@@ -349,6 +349,8 @@ private:
             return constant_hyperresistive_<component>(J, index);
         else if (hyper_mode == HyperMode::spatial)
             return spatial_hyperresistive_<component>(J, B, n, index);
+        else // should not happen but otherwise -Wreturn-type fails with Werror
+            return 0.;
     }
 
 
