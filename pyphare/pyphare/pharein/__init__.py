@@ -236,8 +236,10 @@ def populateDict():
         )  # integrator.h might want some looking at
 
     add_string("simulation/algo/ion_updater/pusher/name", simulation.particle_pusher)
+
     add_double("simulation/algo/ohm/resistivity", simulation.resistivity)
     add_double("simulation/algo/ohm/hyper_resistivity", simulation.hyper_resistivity)
+    add_double("simulation/algo/ohm/hyper_mode", simulation.hyper_mode)
 
     # load balancer block start
     lb = simulation.load_balancer or LoadBalancer(active=False, _register=False)

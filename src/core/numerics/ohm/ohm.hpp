@@ -16,6 +16,8 @@
 
 namespace PHARE::core
 {
+enum class HyperMode { constant, spatial };
+
 template<typename GridLayout>
 class Ohm : public LayoutHolder<GridLayout>
 {
@@ -26,6 +28,9 @@ public:
     explicit Ohm(PHARE::initializer::PHAREDict const& dict)
         : eta_{dict["resistivity"].template to<double>()}
         , nu_{dict["hyper_resistivity"].template to<double>()}
+        , hyper_mode{cppdict::get_value(dict, "hyper_mode", std::string{"constant"}) == "constant"
+                         ? HyperMode::constant
+                         : HyperMode::spatial}
     {
     }
 
@@ -58,6 +63,7 @@ public:
 private:
     double const eta_;
     double const nu_;
+    HyperMode const hyper_mode;
 
     template<typename VecField, typename Field>
     struct OhmPack
@@ -335,14 +341,28 @@ private:
         }
     }
 
-
-
-
     template<auto component, typename VecField, typename Field>
     auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                          MeshIndex<VecField::dimension> index) const
-    { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
+    {
+        if (hyper_mode == HyperMode::constant)
+            return constant_hyperresistive_<component>(J, index);
+        else if (hyper_mode == HyperMode::spatial)
+            return spatial_hyperresistive_<component>(J, B, n, index);
+    }
 
+
+    template<auto component, typename VecField>
+    auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
+        return -nu_ * layout_->laplacian(J(component), index);
+    }
+
+
+    template<auto component, typename VecField, typename Field>
+    auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
+                                 MeshIndex<VecField::dimension> index) const
+    { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
         double const dl2{std::accumulate(std::begin(layout_->meshSize()),
                                          std::end(layout_->meshSize()), 0.,
                                          [](double acc, double d) { return acc + d * d; })};
