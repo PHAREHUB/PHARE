@@ -223,16 +223,16 @@ class RunTest(SimulatorTest):
     def test_run(self):
         sim = config()
         self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(sim).run()
+        Simulator(sim).run().reset()
         if cpp.mpi_rank() == 0:
             plot(diag_dir)
 
-        for time in timestamps:
-            for q in ["divb", "Ranks", "N", "jz"]:
-                assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
-
-            for c in ["x", "y", "z"]:
-                assert_file_exists_with_size_at_least(plot_file_for_qty(f"b{c}", time))
+            for time in timestamps:
+                for q in ["divb", "Ranks", "N", "jz"]:
+                    assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
+    
+                for c in ["x", "y", "z"]:
+                    assert_file_exists_with_size_at_least(plot_file_for_qty(f"b{c}", time))
 
         cpp.mpi_barrier()
 
