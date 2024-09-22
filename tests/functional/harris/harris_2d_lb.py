@@ -171,12 +171,12 @@ def plot(diag_dir):
         for c in ["x", "y", "z"]:
             run.GetB(time).plot(
                 filename=plot_file_for_qty(f"b{c}", time),
-                qty=f"B{c}",
+                qty=f"{c}",
                 plot_patches=True,
             )
         run.GetJ(time).plot(
             filename=plot_file_for_qty("jz", time),
-            qty="Jz",
+            qty="z",
             plot_patches=True,
             vmin=-2,
             vmax=2,

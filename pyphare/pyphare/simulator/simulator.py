@@ -171,7 +171,7 @@ class Simulator:
             self.timeStep(),
         )
 
-    def run(self, plot_times=False, monitoring=True):
+    def run(self, plot_times=False, monitoring=False):
         """monitoring requires phlop"""
         from pyphare.cpp import cpp_lib
 
