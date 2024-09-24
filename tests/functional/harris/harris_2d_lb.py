@@ -133,11 +133,11 @@ def config():
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
-    for quantity in ["density", "bulkVelocity"]:
+    for quantity in ["charge_density", "bulkVelocity"]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     ph.FluidDiagnostics(
-        quantity="density", write_timestamps=timestamps, population_name="protons"
+        quantity="charge_density", write_timestamps=timestamps, population_name="protons"
     )
     ph.InfoDiagnostics(quantity="particle_count")
 
