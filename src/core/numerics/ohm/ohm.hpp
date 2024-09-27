@@ -365,9 +365,7 @@ private:
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        double const dl2{std::accumulate(std::begin(layout_->meshSize()),
-                                         std::end(layout_->meshSize()), 0.,
-                                         [](double acc, double d) { return acc + d * d; })};
+        auto const lvlCoeff = std::pow(4, layout_->levelNumber());
 
         auto computeHR = [&](auto BxProj, auto ByProj, auto BzProj, auto nProj) {
             auto const BxOnE = GridLayout::project(B(Component::X), index, BxProj);
@@ -375,7 +373,7 @@ private:
             auto const BzOnE = GridLayout::project(B(Component::Z), index, BzProj);
             auto const nOnE  = GridLayout::project(n, index, nProj);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
-            return -nu_ * b / nOnE * dl2 * layout_->laplacian(J(component), index);
+            return -nu_ * b / nOnE * lvlCoeff * layout_->laplacian(J(component), index);
         };
 
         if constexpr (component == Component::X)
