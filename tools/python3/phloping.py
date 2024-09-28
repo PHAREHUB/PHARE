@@ -157,7 +157,7 @@ def write_root_as_csv(scope_timer_file, outfile, headers=None, regex=None):
             print_root_as_csv(scope_timer_file, headers, regex)
 
 
-def print_root_as_csv(scope_timer_file, headers=None, regex=None, n_parts):
+def print_root_as_csv(scope_timer_file, n_parts, headers=None, regex=None):
     stf = scope_timer_file  # alias
     stf = file_parser(stf) if isinstance(stf, str) else stf
 

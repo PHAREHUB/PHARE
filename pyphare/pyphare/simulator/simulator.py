@@ -8,11 +8,13 @@ import atexit
 import time as timem
 import numpy as np
 import pyphare.pharein as ph
+from pathlib import Path
 from . import monitoring as mon
 
 
 life_cycles = {}
-PHARE_SIM_MON = os.getenv("PHARE_SIM_MON", "False").lower() in ("true", "1", "t")
+SIM_MONITOR = os.getenv("PHARE_SIM_MON", "False").lower() in ("true", "1", "t")
+SCOPE_TIMING = os.getenv("PHARE_SCOPE_TIMING", "False").lower() in ("true", "1", "t")
 
 
 @atexit.register
@@ -26,6 +28,9 @@ def simulator_shutdown():
 
 def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
     from pyphare.cpp import cpp_lib
+
+    if SCOPE_TIMING:
+        Path(".phare/timings").mkdir(exist_ok=True)
 
     make_sim = f"make_simulator_{dim}_{interp}_{nbrRefinedPart}"
     return getattr(cpp_lib(), make_sim)(hier)
@@ -180,7 +185,7 @@ class Simulator:
         self._check_init()
 
         if monitoring is None:  # check env
-            monitoring = PHARE_SIM_MON
+            monitoring = SIM_MONITOR
 
         if self.simulation.dry_run:
             return self
@@ -281,6 +286,4 @@ class Simulator:
         from pyphare.cpp import cpp_lib
 
         if os.environ["PHARE_LOG"] != "NONE" and cpp_lib().mpi_rank() == 0:
-            from pathlib import Path
-
             Path(".log").mkdir(exist_ok=True)
