@@ -25,7 +25,7 @@ def plot_run_timer_data(diag_dir=None, rank=0):
         parser.add_argument("-d", "--dir", default=".", help="Diagnostics directory")
         diag_dir = parser.parse_args().dir
     run = Run(diag_dir)
-    res = phloping.file_parser(run, rank, Path(f".phare_times.{rank}.txt"))
+    res = phloping.file_parser(run, rank, Path(f".phare/timings/rank.{rank}.txt"))
     fig, ax = plt.subplots()
     L0X = res.time_steps_for_L(0)
     ax.plot(L0X, res.normalised_times_for_L(0), ":", label="L0 times", color="black")
