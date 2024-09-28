@@ -200,6 +200,8 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, ModelViews_t& views)
 {
+    PHARE_LOG_SCOPE(1, "SolverPPC::saveState_");
+
     for (auto& state : views)
     {
         std::stringstream ss;
@@ -222,6 +224,8 @@ void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, ModelViews_t&
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, ModelViews_t& views)
 {
+    PHARE_LOG_SCOPE(1, "SolverPPC::restoreState_");
+
     for (auto& state : views)
     {
         std::stringstream ss;
@@ -442,6 +446,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     TimeSetter setTime{views, newTime};
 
     {
+        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons_updatePopulations");
         auto dt = newTime - currentTime;
         for (auto& state : views)
             ionUpdater_.updatePopulations(state.ions, state.electromagAvg, state.layout, dt, mode);
@@ -450,7 +455,10 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     // this needs to be done before calling the messenger
     setTime([](auto& state) -> auto& { return state.ions; });
 
-    fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
+    {
+        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons_fillIonGhostParticles");
+        fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
+    }
     fromCoarser.fillIonPopMomentGhosts(views.model().state.ions, level, newTime);
 
     for (auto& state : views)
