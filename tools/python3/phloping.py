@@ -147,3 +147,26 @@ class ScopeTimerFile(phScopeTimerFile):
 def file_parser(run, rank, times_filepath):
     supe = phfile_parser(times_filepath)
     return ScopeTimerFile(supe.id_keys, supe.roots, run, str(rank))
+
+
+def write_root_as_csv(scope_timer_file, outfile, headers=None, regex=None):
+    from contextlib import redirect_stdout
+
+    with open(outfile, "w") as f:
+        with redirect_stdout(f):
+            print_root_as_csv(scope_timer_file, headers, regex)
+
+
+def print_root_as_csv(scope_timer_file, headers=None, regex=None, n_parts):
+    stf = scope_timer_file  # alias
+    stf = file_parser(stf) if isinstance(stf, str) else stf
+
+    if headers:
+        print(",".join(headers))
+    for root in stf.roots:
+        s = stf(root.k)
+        if regex and regex not in s:
+            continue
+        bits = s.split(",")
+        dim = int(bits[1])
+        print(f"{s}{root.t},{root.t/n_parts}")

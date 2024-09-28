@@ -2,6 +2,7 @@
 #
 #
 
+import os
 import datetime
 import atexit
 import time as timem
@@ -11,6 +12,7 @@ from . import monitoring as mon
 
 
 life_cycles = {}
+PHARE_SIM_MON = os.getenv("PHARE_SIM_MON", "False").lower() in ("true", "1", "t")
 
 
 @atexit.register
@@ -171,11 +173,14 @@ class Simulator:
             self.timeStep(),
         )
 
-    def run(self, plot_times=False, monitoring=False):
+    def run(self, plot_times=False, monitoring=None):
         """monitoring requires phlop"""
         from pyphare.cpp import cpp_lib
 
         self._check_init()
+
+        if monitoring is None:  # check env
+            monitoring = PHARE_SIM_MON
 
         if self.simulation.dry_run:
             return self
