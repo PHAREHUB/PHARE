@@ -647,6 +647,7 @@ def checker(func):
             "diag_options",
             "resistivity",
             "hyper_resistivity",
+            "hyper_mode",
             "strict",
             "restart_options",
             "tag_buffer",
