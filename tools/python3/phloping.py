@@ -2,20 +2,19 @@
 # parsing PHARE scope funtion timers
 #
 
+import sys
+import argparse
 import numpy as np
 from dataclasses import dataclass, field
 
 from pyphare.pharesee.run import Run
-
-from phlop.timing.scope_timer import ScopeTimerFile as phScopeTimerFile
-from phlop.timing.scope_timer import file_parser as phfile_parser
-
+from phlop.timing import scope_timer as st
 
 substeps_per_finer_level = 4
 
 
 @dataclass
-class ScopeTimerFile(phScopeTimerFile):
+class ScopeTimerFile(st.ScopeTimerFile):
     run: Run
     rank: str
     advances: list = field(default_factory=lambda: [])
@@ -145,7 +144,7 @@ class ScopeTimerFile(phScopeTimerFile):
 
 
 def file_parser(run, rank, times_filepath):
-    supe = phfile_parser(times_filepath)
+    supe = st.file_parser(times_filepath)
     return ScopeTimerFile(supe.id_keys, supe.roots, run, str(rank))
 
 
@@ -168,5 +167,22 @@ def print_root_as_csv(scope_timer_file, n_parts, headers=None, regex=None):
         if regex and regex not in s:
             continue
         bits = s.split(",")
-        dim = int(bits[1])
         print(f"{s}{root.t},{root.t/n_parts}")
+
+
+def print_variance_across(scope_timer_filepath=None):
+    if scope_timer_filepath is None:  # assume cli
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-f", "--file", default=None, help="timer file")
+        scope_timer_filepath = parser.parse_args().file
+        if not scope_timer_filepath:
+            parser.print_help()
+            sys.exit(1)
+    st.print_variance_across(scope_timer_filepath)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        fn = sys.argv[1]
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        globals()[fn]()
