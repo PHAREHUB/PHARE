@@ -279,7 +279,6 @@ class Simulator:
             DATETIME_FILES - logfile with starting datetime timestamp per rank
             NONE - no logging files, display to cout
         """
-        import os
 
         if "PHARE_LOG" not in os.environ:
             os.environ["PHARE_LOG"] = "RANK_FILES"
