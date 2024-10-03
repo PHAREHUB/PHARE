@@ -1,18 +1,15 @@
 #ifndef PHARE_ION_POPULATION_HPP
 #define PHARE_ION_POPULATION_HPP
 
-#include <memory>
-#include <sstream>
-#include <stdexcept>
-#include <string>
 #include <tuple>
-#include <array>
+#include <string>
+#include <sstream>
 
 
 #include "core/def.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "initializer/data_provider.hpp"
 #include "particle_pack.hpp"
+#include "initializer/data_provider.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 
 namespace PHARE
 {
@@ -52,15 +49,13 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return particles_.isUsable() && rho_.isUsable() && flux_.isUsable()
-                   && momentumTensor_.isUsable();
+            return core::isUsable(particles_, rho_, flux_, momentumTensor_);
         }
 
 
         NO_DISCARD bool isSettable() const
         {
-            return particles_.isSettable() && rho_.isSettable() && flux_.isSettable()
-                   && momentumTensor_.isSettable();
+            return core::isSettable(particles_, rho_, flux_, momentumTensor_);
         }
 
         NO_DISCARD auto& domainParticles() const { return particles_.domainParticles(); }

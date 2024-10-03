@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_HPP
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_PACK_HPP
 
+#include "core/def.hpp"
 #include "core/data/particles/particle_array.hpp"
 
 namespace PHARE
@@ -36,25 +37,16 @@ namespace core
 
         auto& name() const { return _name; }
 
-        auto _as_tuple() const
-        {
-            return std::forward_as_tuple(_domainParticles, _patchGhostParticles,
-                                         _levelGhostParticles);
-        }
 
         NO_DISCARD bool isUsable() const
         {
-            auto tup = _as_tuple();
-            return for_N_all<std::tuple_size_v<pointer_tuple_t>>(
-                [&](auto i) { return std::get<i>(tup) != nullptr; });
+            return core::isUsable(_domainParticles, _patchGhostParticles, _levelGhostParticles);
         }
 
 
         NO_DISCARD bool isSettable() const
         {
-            auto tup = _as_tuple();
-            return for_N_all<std::tuple_size_v<pointer_tuple_t>>(
-                [&](auto i) { return std::get<i>(tup) == nullptr; });
+            return core::isSettable(_domainParticles, _patchGhostParticles, _levelGhostParticles);
         }
 
 
