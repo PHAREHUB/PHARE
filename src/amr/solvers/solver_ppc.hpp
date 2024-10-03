@@ -152,6 +152,22 @@ private:
     std::unordered_map<std::string, ParticleArray> tmpDomain;
     std::unordered_map<std::string, ParticleArray> patchGhost;
 
+    template<typename Map>
+    static void add_to(Map& map, std::string const& key, ParticleArray const& ps)
+    {
+        // vector copy drops the capacity (over allocation of the source)
+        // we want to keep the overallocation somewhat - how much to be assessed
+        ParticleArray empty{ps.box()};
+
+        if (!map.count(key))
+            map.emplace(key, empty);
+        else
+            map.at(key) = empty;
+
+        auto& v = map.at(key);
+        v.reserve(ps.capacity());
+        v.replace_from(ps);
+    }
 
 }; // end solverPPC
 
@@ -206,15 +222,9 @@ void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, ModelViews_t&
         ss << state.patch->getGlobalId();
         for (auto& pop : state.ions)
         {
-            auto key = ss.str() + "_" + pop.name();
-            if (!tmpDomain.count(key))
-                tmpDomain.emplace(key, pop.domainParticles());
-            else
-                tmpDomain.at(key) = pop.domainParticles();
-            if (!patchGhost.count(key))
-                patchGhost.emplace(key, pop.patchGhostParticles());
-            else
-                patchGhost.at(key) = pop.patchGhostParticles();
+            std::string const key = ss.str() + "_" + pop.name();
+            add_to(tmpDomain, key, pop.domainParticles());
+            add_to(patchGhost, key, pop.patchGhostParticles());
         }
     }
 }
