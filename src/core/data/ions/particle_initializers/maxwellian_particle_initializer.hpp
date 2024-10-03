@@ -178,6 +178,21 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     auto randGen           = getRNG(rngSeed_);
     ParticleDeltaDistribution<double> deltaDistrib;
 
+    std::size_t const expected_size
+        = [&](auto const& _n /* or error: reference to local binding 'n' declared*/) {
+              std::size_t size = 0;
+              for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx)
+                  if (_n[flatCellIdx] >= densityCutOff_)
+                      ++size;
+              return size * nbrParticlePerCell_;
+          }(n);
+
+    double const over_alloc_factor = .1; // todo from dict
+    std::size_t const allocate_size
+        = expected_size
+          + (layout.AMRBox().surface_cell_count() * (nbrParticlePerCell_ * over_alloc_factor));
+    particles.reserve(allocate_size);
+
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx)
     {
         if (n[flatCellIdx] < densityCutOff_)

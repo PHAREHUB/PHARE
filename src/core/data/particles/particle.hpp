@@ -39,6 +39,7 @@ NO_DISCARD auto cellAsPoint(Particle const& particle)
 template<size_t dim>
 struct Particle
 {
+    std::array<std::uint8_t, 3> constexpr static sizes = {52, 64, 76};
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static const size_t dimension = dim;
 
@@ -54,12 +55,11 @@ struct Particle
 
     Particle() = default;
 
-    double weight = 0;
-    double charge = 0;
-
-    std::array<int, dim> iCell    = ConstArray<int, dim>();
-    std::array<double, dim> delta = ConstArray<double, dim>();
-    std::array<double, 3> v       = ConstArray<double, 3>();
+    double weight                 = 0;                         // 8
+    double charge                 = 0;                         // 8
+    std::array<int, dim> iCell    = ConstArray<int, dim>();    // 4 * dim
+    std::array<double, dim> delta = ConstArray<double, dim>(); // 8 * dim
+    std::array<double, 3> v       = ConstArray<double, 3>();   // 8 * 3
 
     NO_DISCARD bool operator==(Particle<dim> const& that) const
     {
@@ -121,9 +121,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-NO_DISCARD typename std::enable_if_t<
-    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
-    bool>
+NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
+                                         and is_phare_particle_type<dim, ParticleB<dim>>,
+                                     bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //
