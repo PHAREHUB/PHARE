@@ -26,7 +26,7 @@ template<typename Type, std::size_t dim>
 struct Box
 {
     static const size_t dimension = dim;
-
+    using value_type              = Type;
 
     Point<Type, dim> lower;
     Point<Type, dim> upper;
@@ -130,8 +130,15 @@ struct Box
             return iterator{this, {upper[0] + 1, upper[1] + 1, upper[2] + 1}};
         }
     }
-    using value_type = Type;
 
+
+    NO_DISCARD auto surface_cell_count() const
+    {
+        // assumes box never smaller than 3 in any direction
+        auto const shape_ = shape();
+        auto const nested = shape_ - 2;
+        return core::product(shape_) - core::product(nested);
+    }
 
     NO_DISCARD constexpr static std::size_t nbrRemainBoxes()
     {
