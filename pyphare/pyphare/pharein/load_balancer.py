@@ -33,7 +33,7 @@ class LoadBalancer:
 
     def __post_init__(self):
         if self.auto and self.every:
-            raise RuntimeError(f"LoadBalancer cannot work with both 'every' and 'auto'")
+            raise RuntimeError("LoadBalancer cannot work with both 'every' and 'auto'")
 
         if self.every is None:
             self.auto = True
@@ -50,8 +50,8 @@ class LoadBalancer:
         if self._register:
             if not gv.sim:
                 raise RuntimeError(
-                    f"LoadBalancer cannot be registered as no simulation exists"
+                    "LoadBalancer cannot be registered as no simulation exists"
                 )
             if gv.sim.load_balancer:
-                raise RuntimeError(f"LoadBalancer is already registered to simulation")
+                raise RuntimeError("LoadBalancer is already registered to simulation")
             gv.sim.load_balancer = self
