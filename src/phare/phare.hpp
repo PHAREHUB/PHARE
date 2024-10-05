@@ -43,7 +43,7 @@ public:
         PHARE_WITH_PHLOP( //
             if (auto e = core::get_env("PHARE_SCOPE_TIMING", "false"); e == "1" || e == "true")
                 phlop::ScopeTimerMan::INSTANCE()
-                    .file_name(".phare_times." + std::to_string(core::mpi::rank()) + ".txt")
+                    .file_name(".phare/timings/rank." + std::to_string(core::mpi::rank()) + ".txt")
                     .init(); //
         )
     }

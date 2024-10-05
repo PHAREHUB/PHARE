@@ -216,6 +216,8 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, ModelViews_t& views)
 {
+    PHARE_LOG_SCOPE(1, "SolverPPC::saveState_");
+
     for (auto& state : views)
     {
         std::stringstream ss;
@@ -232,6 +234,8 @@ void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, ModelViews_t&
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, ModelViews_t& views)
 {
+    PHARE_LOG_SCOPE(1, "SolverPPC::restoreState_");
+
     for (auto& state : views)
     {
         std::stringstream ss;

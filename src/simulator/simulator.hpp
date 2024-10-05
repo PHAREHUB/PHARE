@@ -367,6 +367,8 @@ std::string Simulator<_dimension, _interp_order, _nbRefinedPart>::to_str()
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
 {
+    PHARE_LOG_SCOPE(1, "Simulator::initialize");
+
     try
     {
         if (isInitialized)
@@ -414,8 +416,6 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 
     try
     {
-        PHARE_LOG_SCOPE(1, "Simulator::advance");
-
         dt_new       = integrator_->advance(dt);
         currentTime_ = startTime_ + ((*timeStamper) += dt);
     }

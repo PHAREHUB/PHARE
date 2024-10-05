@@ -100,8 +100,6 @@ namespace amr
         void add(std::unique_ptr<Algorithm> const& algo, std::shared_ptr<Schedule>& schedule,
                  int levelNumber)
         {
-            // for shared border node value exchange in parallel
-            schedule->setDeterministicUnpackOrderingFlag(true);
             schedules_[levelNumber][algo.get()] = schedule;
         }
 

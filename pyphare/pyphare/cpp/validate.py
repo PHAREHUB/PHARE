@@ -107,11 +107,12 @@ def log_runtime_config():
         git_hash=get_git_hash(),
     )
 
+    rank_info_dir = DOT_PHARE_DIR / "rank_info"
     if cpp_lib.mpi_rank() == 0:
-        DOT_PHARE_DIR.mkdir(exist_ok=True, parents=True)
+        rank_info_dir.mkdir(exist_ok=True, parents=True)
     cpp_lib.mpi_barrier()
 
-    rank_dir = DOT_PHARE_DIR / f"rank_{cpp_lib.mpi_rank()}"
+    rank_dir = rank_info_dir / f"{cpp_lib.mpi_rank()}"
     rank_dir.mkdir(exist_ok=True)
 
     with open(rank_dir / "runtime_config.json", "w") as f:

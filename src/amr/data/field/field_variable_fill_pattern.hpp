@@ -36,6 +36,7 @@ namespace PHARE::amr
     none of the two patches overwrites the shared border nodes and only pure ghost nodes are
     filled.
 
+  Notes on shared-node overwrite interior: https://github.com/LLNL/SAMRAI/issues/170
 
 */
 // This class is mostly a copy of BoxGeometryVariableFillPattern
@@ -112,10 +113,7 @@ public:
                                              transformation);
     }
 
-    std::string const& getPatternName() const
-    {
-        return s_name_id;
-    }
+    std::string const& getPatternName() const { return s_name_id; }
 
 private:
     FieldFillPattern(FieldFillPattern const&)            = delete;
