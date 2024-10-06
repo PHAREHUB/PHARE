@@ -20,8 +20,8 @@
 
 namespace PHARE::core
 {
-template<typename... Args>
-NO_DISCARD bool isUsable(Args const&... args)
+
+NO_DISCARD bool isUsable(auto const&... args)
 {
     auto check = [](auto const& arg) {
         if constexpr (std::is_pointer_v<std::decay_t<decltype(arg)>>)
@@ -32,8 +32,8 @@ NO_DISCARD bool isUsable(Args const&... args)
     return (check(args) && ...);
 }
 
-template<typename... Args>
-NO_DISCARD bool isSettable(Args const&... args)
+
+NO_DISCARD bool isSettable(auto const&... args)
 {
     auto check = [](auto const& arg) {
         if constexpr (std::is_pointer_v<std::decay_t<decltype(arg)>>)
@@ -43,6 +43,7 @@ NO_DISCARD bool isSettable(Args const&... args)
     };
     return (check(args) && ...);
 }
+
 } // namespace PHARE::core
 
 #endif // PHARE_CORE_DEF_HPP
