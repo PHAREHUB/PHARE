@@ -12,6 +12,7 @@
 #include "initializer/data_provider.hpp"
 
 #include <numeric>
+#include <algorithm>
 
 
 namespace PHARE::core
@@ -365,7 +366,11 @@ private:
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        auto const lvlCoeff = 1. / std::pow(4, layout_->levelNumber());
+        //        auto const lvlCoeff = 1. / std::pow(4, layout_->levelNumber());
+        auto const coef = 2.0;
+        auto const dl
+            = *std::min_element(std::begin(layout_->meshSize()), std::end(layout_->meshSize()));
+        auto const lvlCoeff = coef * dl * dl;
 
         auto computeHR = [&](auto BxProj, auto ByProj, auto BzProj, auto nProj) {
             auto const BxOnE = GridLayout::project(B(Component::X), index, BxProj);
