@@ -647,6 +647,7 @@ def checker(func):
             "diag_options",
             "resistivity",
             "hyper_resistivity",
+            "hyper_mode",
             "strict",
             "restart_options",
             "tag_buffer",
@@ -719,6 +720,7 @@ def checker(func):
         kwargs["resistivity"] = check_resistivity(**kwargs)
 
         kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
+        kwargs["hyper_mode"] = kwargs.get("hyper_mode", "constant")
 
         kwargs["dry_run"] = kwargs.get(
             "dry_run", os.environ.get("PHARE_DRY_RUN", "0") == "1"

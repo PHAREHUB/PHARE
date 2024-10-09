@@ -82,15 +82,13 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
-            return components_[i];
-        });
+        return for_N<N, for_N_R_mode::forward_tuple>(
+            [&](auto i) -> auto& { return components_[i]; });
     }
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return for_N<N, for_N_R_mode::forward_tuple>([&](auto i) -> auto& {
-            return components_[i];
-        });
+        return for_N<N, for_N_R_mode::forward_tuple>(
+            [&](auto i) -> auto& { return components_[i]; });
     }
 
 
