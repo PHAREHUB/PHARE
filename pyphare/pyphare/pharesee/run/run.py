@@ -284,6 +284,7 @@ class Run:
             for it, t in enumerate(time_keys):
                 time[it] = float(t)
             ts[quantities_per_file[basename]] = time
+            ff.close()
         return ts
 
     def times(self, qty):
