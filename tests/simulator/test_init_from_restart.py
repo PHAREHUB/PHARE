@@ -4,7 +4,7 @@ import unittest
 import subprocess
 import numpy as np
 import pyphare.pharein as ph
-
+from pathlib import Path
 
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.patchdata import FieldData, ParticleData
@@ -19,10 +19,10 @@ from tests.diagnostic import dump_all_diags
 time_step = 0.001
 time_step_nbr = 5
 final_time = time_step_nbr * time_step
-first_mpi_size = 4
+first_mpi_size = 5
 ppc = 100
 cells = 200
-first_out = "phare_outputs/reinit/first"
+first_out = "test_init_from_restart"
 secnd_out = "phare_outputs/reinit/secnd"
 timestamps = np.arange(0, final_time + time_step, time_step)
 restart_idx = Z = 2
@@ -77,30 +77,8 @@ class RestartsParserTest(SimulatorTest):
         self.assertTrue(hierarchy_compare(*ds, atol=1e-12))
 
 
-def run_first_sim():
-    """uses params from tests_restarts.py"""
-    simput = copy.deepcopy(test_restarts.simArgs)
-    simput["restart_options"]["dir"] = first_out
-    simput["restart_options"]["timestamps"] = timestamps
-    simput["diag_options"]["options"]["dir"] = first_out
-    sim = ph.Simulation(**simput)
-    dump_all_diags(test_restarts.setup_model().populations, timestamps=timestamps)
-    Simulator(sim).run()
-
-
-def launch():
-    """Launch secondary process to run first simulation to avoid initalizing MPI now"""
-
-    cmd = f"mpirun -n {first_mpi_size} python3 -O {__file__} lol"
-    try:
-        p = subprocess.run(cmd.split(" "), check=True, capture_output=True)
-    except subprocess.CalledProcessError as e:
-        print("CalledProcessError", e)
-
-
 if __name__ == "__main__":
-    if len(sys.argv) == 1:
-        launch()
+    if Path("test_init_from_restart").exists():
         unittest.main()
     else:
-        run_first_sim()
+        print("No source data found - see tools/test_data_gen.py ")
