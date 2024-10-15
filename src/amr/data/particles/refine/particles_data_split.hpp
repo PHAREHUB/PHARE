@@ -2,22 +2,22 @@
 #define PHARE_PARTICLES_DATA_SPLIT_HPP
 
 
-#include "core/def/phare_mpi.hpp"
-
 #include "core/def.hpp"
-#include "amr/data/particles/particles_data.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include "split.hpp"
-#include "core/utilities/constants.hpp"
 #include "phare_core.hpp"
+#include "core/def/phare_mpi.hpp"
+#include "core/utilities/constants.hpp"
+
+#include "split.hpp"
 #include "amr/amr_constants.hpp"
+#include "amr/utilities/box/amr_box.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/particles/particles_data.hpp"
 
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/pdat/CellOverlap.h>
 
-#include <functional>
 
 
 namespace PHARE
@@ -53,6 +53,12 @@ namespace amr
     template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {
+        using Particle_t = typename ParticleArray::value_type;
+        static constexpr bool putParticlesInCoarseBoundary
+            = splitType == ParticlesDataSplitType::coarseBoundary
+              || splitType == ParticlesDataSplitType::coarseBoundaryOld
+              || splitType == ParticlesDataSplitType::coarseBoundaryNew;
+
     public:
         static constexpr auto dim           = Splitter::dimension;
         static constexpr auto interpOrder   = Splitter::interp_order;
@@ -99,7 +105,7 @@ namespace amr
                 = std::dynamic_pointer_cast<ParticlesData<ParticleArray>>(
                     source.getPatchData(sourceComponent));
 
-            // Finnaly we need the cartesion geometry of both patch.
+            // Finaly we need the cartesion geometry of both patch.
             auto patchGeomDestination
                 = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
                     destination.getPatchGeometry());
@@ -133,9 +139,15 @@ namespace amr
             }
         }
 
+        template<typename Fn>
+        static void _reserve(ParticleArray& particles, Fn&& counter)
+        { // only reserve for regular refinement of domain to start with
+            if constexpr (!putParticlesInCoarseBoundary)
+                particles.reserve(counter() * nbRefinedPart);
+        }
 
         /** @brief given two ParticlesData (destination and source),
-         * an overlap , a ratio and the geometry of both patches, perform the
+         * an overlap, a ratio and the geometry of both patches, perform the
          * splitting of coarse particles onto the destination patch
          */
         void refine_(ParticlesData<ParticleArray>& destParticlesData,
@@ -166,6 +178,21 @@ namespace amr
             // same for destinationGhostBox and destinationDomainBox the later will allow to get an
             // index relative to the interior
 
+            std::array const particlesArrays{&srcInteriorParticles, &srcGhostParticles};
+
+            auto const count_expected = [&]() {
+                std::size_t incoming_estimate = 0;
+                for (auto const& destinationBox : destBoxes)
+                {
+                    auto const coarseSplitBox
+                        = coarsen(phare_box_from<dim>(getSplitBox(destinationBox)));
+                    for (auto const& sourceParticlesArray : particlesArrays)
+                        incoming_estimate += sourceParticlesArray->nbr_particles_in(coarseSplitBox);
+                }
+                return incoming_estimate;
+            };
+            _reserve(destDomainParticles, count_expected);
+
             Splitter split;
 
             // The PatchLevelFillPattern had compute boxes that correspond to the expected filling.
@@ -173,35 +200,24 @@ namespace amr
             // in case of interior, this will be just one box usually
             for (auto const& destinationBox : destBoxes)
             {
-                std::array particlesArrays{&srcInteriorParticles, &srcGhostParticles};
-                auto splitBox = getSplitBox(destinationBox);
+                auto const splitBox = getSplitBox(destinationBox);
 
-                auto isInDest = [&destinationBox](auto const& particle) //
+                auto const isInDest = [&destinationBox](auto const& particle) //
                 { return isInBox(destinationBox, particle); };
-
 
                 for (auto const& sourceParticlesArray : particlesArrays)
                 {
                     for (auto const& particle : *sourceParticlesArray)
                     {
-                        std::array<typename ParticleArray::value_type, nbRefinedPart>
-                            refinedParticles;
-                        auto particleRefinedPos = toFineGrid<interpOrder>(particle);
+                        auto const particleRefinedPos = toFineGrid<interpOrder>(particle);
 
                         if (isInBox(splitBox, particleRefinedPos))
                         {
+                            std::array<Particle_t, nbRefinedPart> refinedParticles;
                             split(particleRefinedPos, refinedParticles);
-
 
                             // we need to know in which of interior or levelGhostParticlesXXXX
                             // arrays we must put particles
-
-                            bool constexpr putParticlesInCoarseBoundary
-                                = splitType == ParticlesDataSplitType::coarseBoundary
-                                  || splitType == ParticlesDataSplitType::coarseBoundaryOld
-                                  || splitType == ParticlesDataSplitType::coarseBoundaryNew;
-
-
 
                             if constexpr (putParticlesInCoarseBoundary)
                             {
@@ -243,9 +259,9 @@ namespace amr
                                              std::back_inserter(destDomainParticles), isInDest);
                             }
                         } // end is candidate for split
-                    }     // end loop on particles
-                }         // end loop on source particle arrays
-            }             // loop on destination box
+                    } // end loop on particles
+                } // end loop on source particle arrays
+            } // loop on destination box
         }
 
 
