@@ -175,7 +175,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
            TARGET ${binary}
            POST_BUILD
            WORKING_DIRECTORY ${directory}
-           COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> -R \"^${binary}$$\" --output-on-failures
+           COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> -R \"^${binary}$$\" --output-on-failure
       )
     endif(testDuringBuild)
   endfunction(add_phare_test_)
