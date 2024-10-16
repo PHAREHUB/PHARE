@@ -52,7 +52,7 @@ public:
             fapl.add(HighFive::MPIOFileAccess{MPI_COMM_WORLD, MPI_INFO_NULL});
 #else
             std::cout << "WARNING: PARALLEL HDF5 not available" << std::endl;
-            if (core::mpi_size() > 1)
+            if (core::mpi::size() > 1)
             {
                 throw std::runtime_error("HDF5 NOT PARALLEL!");
             }

@@ -15,6 +15,7 @@ from tools.python3 import plotting as m_plotting
 
 mpl.use("Agg")
 
+SCOPE_TIMING = os.getenv("PHARE_SCOPE_TIMING", "True").lower() in ("true", "1", "t")
 LOAD_BALANCE = os.getenv("LOAD_BALANCE", "True").lower() in ("true", "1", "t")
 
 cpp = cpp_lib()
@@ -171,12 +172,12 @@ def plot(diag_dir):
         for c in ["x", "y", "z"]:
             run.GetB(time).plot(
                 filename=plot_file_for_qty(f"b{c}", time),
-                qty=f"B{c}",
+                qty=f"{c}",
                 plot_patches=True,
             )
         run.GetJ(time).plot(
             filename=plot_file_for_qty("jz", time),
-            qty="Jz",
+            qty="z",
             plot_patches=True,
             vmin=-2,
             vmax=2,
@@ -200,7 +201,8 @@ class HarrisTest(SimulatorTest):
         Simulator(config()).run().reset()
         if cpp.mpi_rank() == 0:
             plot(diag_dir)
-        m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
+        if SCOPE_TIMING:
+            m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
         cpp.mpi_barrier()
         return self
 

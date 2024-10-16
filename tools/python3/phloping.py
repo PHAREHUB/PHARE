@@ -2,21 +2,19 @@
 # parsing PHARE scope funtion timers
 #
 
+import sys
+import argparse
 import numpy as np
 from dataclasses import dataclass, field
 
 from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy import hierarchy_from
-
-from phlop.timing.scope_timer import ScopeTimerFile as phScopeTimerFile
-from phlop.timing.scope_timer import file_parser as phfile_parser
-
+from phlop.timing import scope_timer as st
 
 substeps_per_finer_level = 4
 
 
 @dataclass
-class ScopeTimerFile(phScopeTimerFile):
+class ScopeTimerFile(st.ScopeTimerFile):
     run: Run
     rank: str
     advances: list = field(default_factory=lambda: [])
@@ -124,20 +122,67 @@ class ScopeTimerFile(phScopeTimerFile):
         """
         Normalise substep time against particle count for that level
           at the most recent coarse time, no refined timesteps
+        Particle counts may include init dump, so be one bigger.
         """
         times = self.advance_times_for_L(ilvl)
+        counts = len(self.particles_per_level_per_time_step[ilvl])
+
+        # trim init particle count for lvl
+        Li_times = (
+            self.particles_per_level_per_time_step[ilvl]
+            if counts == len(times)
+            else self.particles_per_level_per_time_step[ilvl][1:]
+        )
         if ilvl == 0:
-            return times / self.particles_per_level_per_time_step[0]
+            return times / Li_times
         substeps = self.steps_per_coarse_timestep_for_L(ilvl)
         norm_times = times.copy()
         return (
             norm_times.reshape(int(times.shape[0] / substeps), substeps)
-            / self.particles_per_level_per_time_step[ilvl].reshape(
-                self.particles_per_level_per_time_step[ilvl].shape[0], 1
-            )
+            / Li_times.reshape(Li_times.shape[0], 1)
         ).reshape(times.shape[0])
 
 
 def file_parser(run, rank, times_filepath):
-    supe = phfile_parser(times_filepath)
+    supe = st.file_parser(times_filepath)
     return ScopeTimerFile(supe.id_keys, supe.roots, run, str(rank))
+
+
+def write_root_as_csv(scope_timer_file, outfile, headers=None, regex=None):
+    from contextlib import redirect_stdout
+
+    with open(outfile, "w") as f:
+        with redirect_stdout(f):
+            print_root_as_csv(scope_timer_file, headers, regex)
+
+
+def print_root_as_csv(scope_timer_file, n_parts, headers=None, regex=None):
+    stf = scope_timer_file  # alias
+    stf = file_parser(stf) if isinstance(stf, str) else stf
+
+    if headers:
+        print(",".join(headers))
+    for root in stf.roots:
+        s = stf(root.k)
+        if regex and regex not in s:
+            continue
+        bits = s.split(",")
+        print(f"{s}{root.t},{root.t/n_parts}")
+
+
+def print_variance_across(scope_timer_filepath=None):
+    if scope_timer_filepath is None:  # assume cli
+        parser = argparse.ArgumentParser()
+        parser.add_argument("-f", "--file", default=None, help="timer file")
+        scope_timer_filepath = parser.parse_args().file
+        if not scope_timer_filepath:
+            parser.print_help()
+            sys.exit(1)
+    st.print_variance_across(scope_timer_filepath)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        fn = sys.argv[1]
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        globals()[fn]()
