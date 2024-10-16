@@ -42,15 +42,14 @@ std::array<int, 3> boxBoundsUpper(Box const& box)
 
 
 template<std::size_t dimension>
-ParticleArray<dimension> loadCell(int iCellX, int iCellY, int iCellZ)
+void loadCell(ParticleArray<dimension>& particles, int iCellX, int iCellY, int iCellZ)
 {
-    std::array<int, 3> _3diCell = {iCellX, iCellY, iCellZ};
+    std::array<int, 3> const _3diCell = {iCellX, iCellY, iCellZ};
 
-    float middle = 0.5;
-    float delta  = 0.30f;
+    float const middle = 0.5;
+    float const delta  = 0.30f;
 
     Particle<dimension> particle;
-    ParticleArray<dimension> particles;
 
     particle.weight = 1.;
     particle.charge = 1.;
@@ -79,8 +78,6 @@ ParticleArray<dimension> loadCell(int iCellX, int iCellY, int iCellZ)
 
     particle.delta[dirX] = middle + delta / 3;
     particles.push_back(particle);
-
-    return particles;
 }
 
 
@@ -156,17 +153,9 @@ public:
                     auto const upper = boxBoundsUpper<dimension>(particlesBox);
 
                     for (auto iCellX = lower[dirX]; iCellX <= upper[dirX]; ++iCellX)
-                    {
                         for (auto iCellY = lower[dirY]; iCellY <= upper[dirY]; ++iCellY)
-                        {
                             for (auto iCellZ = lower[dirZ]; iCellZ <= upper[dirZ]; ++iCellZ)
-                            {
-                                auto const particles = loadCell<dimension>(iCellX, iCellY, iCellZ);
-                                interior.insert(std::end(interior), std::begin(particles),
-                                                std::end(particles));
-                            }
-                        }
-                    }
+                                loadCell<dimension>(interior, iCellX, iCellY, iCellZ);
                 }
             }
         }
@@ -210,7 +199,19 @@ public:
         // do nothing
     }
 
-
+    auto domainParticlesForLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                 int levelNumber)
+    {
+        std::vector<ParticleArray<dimension>*> particle_arrays;
+        auto level = hierarchy->getPatchLevel(levelNumber);
+        for (auto& patch : *level)
+            for (auto const& [name, dataId] : dataToAllocate_)
+                particle_arrays.emplace_back(
+                    &std::dynamic_pointer_cast<ParticlesData<ParticleArray<dimension>>>(
+                         patch->getPatchData(dataId))
+                         ->domainParticles);
+        return particle_arrays;
+    }
 
 private:
     std::map<std::string, int> dataToAllocate_;

@@ -24,8 +24,8 @@ namespace PHARE
 {
 namespace amr
 {
-    enum class ParticlesDataSplitType {
-        coarseBoundary,
+    enum class ParticlesDataSplitType : std::uint8_t {
+        coarseBoundary = 0,
         interior,
         coarseBoundaryOld,
         coarseBoundaryNew
@@ -191,6 +191,7 @@ namespace amr
                 }
                 return incoming_estimate;
             };
+
             _reserve(destDomainParticles, count_expected);
 
             Splitter split;
