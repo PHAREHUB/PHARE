@@ -46,8 +46,8 @@ void loadCell(ParticleArray<dimension>& particles, int iCellX, int iCellY, int i
 {
     std::array<int, 3> const _3diCell = {iCellX, iCellY, iCellZ};
 
-    float const middle = 0.5;
-    float const delta  = 0.30f;
+    double const middle = 0.5;
+    double const delta  = 0.30;
 
     Particle<dimension> particle;
 
