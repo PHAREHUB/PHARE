@@ -74,11 +74,11 @@ jobs:
         set -ex
         cmake $GITHUB_WORKSPACE
         cd ${{runner.workspace}}/PHARE/subprojects/samrai && mkdir build && cd build
-        cmake .. -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug
+        cmake .. -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_BUILD_TYPE=Debug  -DCMAKE_CXX_FLAGS="-O3"
         make -j2 && sudo make install && cd ../.. && rm -rf samrai
         cd ${{runner.workspace}}/build && rm -rf *
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
-              -DCMAKE_BUILD_TYPE=RelWithDebInfo -Dasan=OFF \
+              -DCMAKE_BUILD_TYPE=Debug -Dasan=OFF \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
               -DlowResourceTests=ON -DdevMode=ON -Dbench=ON \
