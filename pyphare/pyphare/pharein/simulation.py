@@ -604,7 +604,11 @@ def check_hyper_resistivity(**kwargs):
     if hyper_resistivity < 0.0:
         raise ValueError("Error: hyper_resistivity should not be negative")
 
-    return hyper_resistivity
+    hyper_mode = kwargs.get("hyper_mode", "constant")
+    if hyper_mode not in ["constant", "spatial"]:
+        raise ValueError("Error: hyper_mode should be 'constant' or 'spatial'")
+
+    return hyper_resistivity, hyper_mode
 
 
 def check_clustering(**kwargs):
@@ -719,8 +723,9 @@ def checker(func):
 
         kwargs["resistivity"] = check_resistivity(**kwargs)
 
-        kwargs["hyper_resistivity"] = check_hyper_resistivity(**kwargs)
-        kwargs["hyper_mode"] = kwargs.get("hyper_mode", "constant")
+        nu, hyper_mode = check_hyper_resistivity(**kwargs)
+        kwargs["hyper_resistivity"] = nu
+        kwargs["hyper_mode"] = hyper_mode
 
         kwargs["dry_run"] = kwargs.get(
             "dry_run", os.environ.get("PHARE_DRY_RUN", "0") == "1"
