@@ -108,9 +108,15 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
             {
                 auto field_diff = [&](auto const& F) //
                 {
-                    return std::make_tuple(
-                        std::abs((F(ix + 2, iy) - F(ix, iy)) / (1 + F(ix + 1, iy) - F(ix, iy))),
-                        std::abs((F(ix, iy + 2) - F(ix, iy)) / (F(ix, iy + 1) - F(ix, iy) + 1)));
+                    auto const delta_2x = std::abs(F(ix + 2, iy) - F(ix, iy));
+                    auto const delta_2y = std::abs(F(ix, iy + 2) - F(ix, iy));
+                    auto const delta_x  = std::abs(F(ix + 1, iy) - F(ix, iy));
+                    auto const delta_y  = std::abs(F(ix, iy + 1) - F(ix, iy));
+
+                    auto const criter_x = delta_2x / (1 + delta_x);
+                    auto const criter_y = delta_2y / (1 + delta_y);
+
+                    return std::make_tuple(criter_x, criter_y);
                 };
 
                 auto const& [Bx_x, Bx_y] = field_diff(Bx);
