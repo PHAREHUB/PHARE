@@ -286,7 +286,6 @@ private:
                 return -gradPOnEy / nOnEy;
             }
             else
-#include <cmath>
             {
                 return 0.;
             }
