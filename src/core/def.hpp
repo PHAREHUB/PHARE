@@ -44,6 +44,8 @@ NO_DISCARD bool isSettable(auto const&... args)
     return (check(args) && ...);
 }
 
+
+
 } // namespace PHARE::core
 
 #endif // PHARE_CORE_DEF_HPP
