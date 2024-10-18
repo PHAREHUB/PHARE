@@ -77,6 +77,11 @@ class Particles:
 
     def __eq__(self, that):
         if isinstance(that, Particles):
+            if self.size() != that.size():
+                print(
+                    f"particles.py:Particles::eq size diff: {self.size()} != {that.size()}"
+                )
+                return False
             # fails on OSX for some reason
             set_check = set(self.as_tuples()) == set(that.as_tuples())
             if set_check:
@@ -88,8 +93,11 @@ class Particles:
                 print(f"particles.py:Particles::eq failed with: {ex}")
                 print_trace()
                 return False
-
+        print(f"particles.py:Particles::eq bad type: {type(that)}")
         return False
+
+    def __ne__(self, that):
+        return not (self == that)
 
     def select(self, box, box_type="cell"):
         """
@@ -292,8 +300,9 @@ def single_patch_per_level_per_pop_from(hier, only_keep_L0=True):  # dragons
                     particles[key] = []
 
             for patch in patch_level.patches:
-                for patch_data_key in patch.patch_datas.keys():
-                    particles[key] += [patch[patch_data_key].dataset]
+                for key in patch.patch_datas.keys():
+                    if key in particles:
+                        particles[key] += [patch[key].dataset]
 
             for key in particles.keys():
                 if particles[key]:
