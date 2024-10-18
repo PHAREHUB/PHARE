@@ -31,7 +31,7 @@ private:
 
 
 public:
-    CellMap(Box<cell_index_t, dim> box)
+    CellMap(Box<cell_index_t, dim> box = {})
         : box_{box}
         , cellIndexes_{box.shape().template toArray<std::uint32_t>()}
     {
