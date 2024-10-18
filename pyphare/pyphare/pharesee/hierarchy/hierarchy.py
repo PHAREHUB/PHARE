@@ -1,12 +1,13 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
 from .patch import Patch
 from .patchlevel import PatchLevel
 from ...core.box import Box
 from ...core import box as boxm
-from ...core.phare_utilities import refinement_ratio
 from ...core.phare_utilities import listify
-
-import numpy as np
-import matplotlib.pyplot as plt
+from ...core.phare_utilities import deep_copy
+from ...core.phare_utilities import refinement_ratio
 
 
 def format_timestamp(timestamp):
@@ -67,6 +68,10 @@ class PatchHierarchy(object):
             self.data_files = {}
 
         self.update()
+
+    def __deepcopy__(self, memo):
+        no_copy_keys = ["data_files"]  # do not copy these things
+        return deep_copy(self, memo, no_copy_keys)
 
     def __getitem__(self, qty):
         return self.__dict__[qty]
