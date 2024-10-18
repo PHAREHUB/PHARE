@@ -685,6 +685,47 @@ namespace core
             }
         }
 
+        NO_DISCARD auto static constexpr BxToEx()
+        {
+            // Bx is primal dual dual
+            // Ex is dual primal primal
+            // operation is pdd to dpp
+            [[maybe_unused]] auto constexpr p2dShift = primalToDual();
+            [[maybe_unused]] auto constexpr d2pShift = dualToPrimal();
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{p2dShift}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+            else if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.25};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, d2pShift}, 0.25};
+                constexpr WeightPoint<dimension> P3{Point<int, dimension>{p2dShift, 0}, 0.25};
+                constexpr WeightPoint<dimension> P4{Point<int, dimension>{p2dShift, d2pShift},
+                                                    0.25};
+                return std::array<WeightPoint<dimension>, 4>{P1, P2, P3, P4};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.125};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, d2pShift, 0}, 0.125};
+                constexpr WeightPoint<dimension> P3{Point<int, dimension>{p2dShift, 0, 0}, 0.125};
+                constexpr WeightPoint<dimension> P4{Point<int, dimension>{p2dShift, d2pShift, 0},
+                                                    0.125};
+
+                constexpr WeightPoint<dimension> P5{Point<int, dimension>{0, 0, d2pShift}, 0.125};
+                constexpr WeightPoint<dimension> P6{Point<int, dimension>{0, d2pShift, d2pShift},
+                                                    0.125};
+                constexpr WeightPoint<dimension> P7{Point<int, dimension>{p2dShift, 0, d2pShift},
+                                                    0.125};
+                constexpr WeightPoint<dimension> P8{
+                    Point<int, dimension>{p2dShift, d2pShift, d2pShift}, 0.125};
+                return std::array<WeightPoint<dimension>, 8>{P1, P2, P3, P4, P5, P6, P7, P8};
+            }
+        }
 
 
         NO_DISCARD auto static constexpr ByToEx()
@@ -744,6 +785,47 @@ namespace core
         }
 
 
+        NO_DISCARD auto static constexpr BzToEz()
+        {
+            // Bz is dual dual primal
+            // Ez is primal primal dual
+            // operation is thus ddp to ppd
+            auto constexpr p2dShift = primalToDual();
+            auto constexpr d2pShift = dualToPrimal();
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+
+            else if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.25};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0}, 0.25};
+                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, d2pShift}, 0.25};
+                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, d2pShift},
+                                                    0.25};
+                return std::array<WeightPoint<dimension>, 4>{P1, P2, P3, P4};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.25};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0, 0}, 0.25};
+                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, d2pShift, 0}, 0.25};
+                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, d2pShift, 0},
+                                                    0.25};
+                constexpr WeightPoint<dimension> P5{Point<int, dimension>{0, 0, p2dShift}, 0.25};
+                constexpr WeightPoint<dimension> P6{Point<int, dimension>{d2pShift, 0, p2dShift},
+                                                    0.25};
+                constexpr WeightPoint<dimension> P7{Point<int, dimension>{0, d2pShift, p2dShift},
+                                                    0.25};
+                constexpr WeightPoint<dimension> P8{
+                    Point<int, dimension>{d2pShift, d2pShift, p2dShift}, 0.25};
+                return std::array<WeightPoint<dimension>, 8>{P1, P2, P3, P4, P5, P6, P7, P8};
+            }
+        }
 
 
         NO_DISCARD auto static constexpr ByToEz()
@@ -838,6 +920,46 @@ namespace core
         }
 
 
+        NO_DISCARD auto static constexpr ByToEy()
+        {
+            // By is dual primal dual
+            // Ey is primal dual primal
+            // the operation is thus dpd to pdp
+            auto constexpr p2dShift = primalToDual();
+            auto constexpr d2pShift = dualToPrimal();
+
+            if constexpr (dimension == 1)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift}, 0.5};
+                return std::array<WeightPoint<dimension>, 2>{P1, P2};
+            }
+            else if constexpr (dimension == 2)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.25};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0}, 0.25};
+                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, p2dShift}, 0.25};
+                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, p2dShift},
+                                                    0.25};
+                return std::array<WeightPoint<dimension>, 4>{P1, P2, P3, P4};
+            }
+            else if constexpr (dimension == 3)
+            {
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.25};
+                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0, 0}, 0.25};
+                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, p2dShift, 0}, 0.25};
+                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, p2dShift, 0},
+                                                    0.25};
+                constexpr WeightPoint<dimension> P5{Point<int, dimension>{0, 0, d2pShift}, 0.25};
+                constexpr WeightPoint<dimension> P6{Point<int, dimension>{d2pShift, 0, d2pShift},
+                                                    0.25};
+                constexpr WeightPoint<dimension> P7{Point<int, dimension>{0, p2dShift, d2pShift},
+                                                    0.25};
+                constexpr WeightPoint<dimension> P8{
+                    Point<int, dimension>{d2pShift, p2dShift, d2pShift}, 0.25};
+                return std::array<WeightPoint<dimension>, 8>{P1, P2, P3, P4, P5, P6, P7, P8};
+            }
+        }
 
 
         NO_DISCARD auto static constexpr BzToEy()

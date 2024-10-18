@@ -182,7 +182,8 @@ namespace amr
             nbrCell[iDim] = static_cast<std::uint32_t>(domain.numberCells(iDim));
         }
 
-        return GridLayoutT{dl, nbrCell, origin, amr::Box<int, dimension>{domain}};
+        auto lvlNbr = patch.getPatchLevelNumber();
+        return GridLayoutT{dl, nbrCell, origin, amr::Box<int, dimension>{domain}, lvlNbr};
     }
 
     inline auto to_string(SAMRAI::hier::GlobalId const& id)
