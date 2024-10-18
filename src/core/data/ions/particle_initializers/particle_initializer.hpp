@@ -10,7 +10,9 @@ namespace core
     class ParticleInitializer
     {
     public:
-        virtual void loadParticles(ParticleArray& particles, GridLayout const& layout) const = 0;
+        virtual void loadParticles(ParticleArray& particles, GridLayout const& layout,
+                                   std::string const& popname) const
+            = 0;
         virtual ~ParticleInitializer() = default;
     };
 
