@@ -207,9 +207,7 @@ def get_hier(path):
 
 
 def post_advance(new_time):
-    datahier = check_hier(
-        get_hier("/home/aunai/Documents/code/phare/phare_jobs/run104/diags_master")
-    )
+    datahier = check_hier(get_hier("diags_master"))
     errors = test.base_test_overlaped_fields_are_equal(datahier, new_time)
 
 
