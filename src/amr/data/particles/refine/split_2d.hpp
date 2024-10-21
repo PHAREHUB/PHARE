@@ -18,11 +18,11 @@ using namespace PHARE::core;
 
 /**************************************************************************/
 template<>
-struct PurpleDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticlesConst<4>>
+struct PurplePattern<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticlesConst<4>>
 {
     using Super = SplitPattern<DimConst<2>, RefinedParticlesConst<4>>;
 
-    constexpr PurpleDispatcher(float const weight, float const delta)
+    constexpr PurplePattern(float const weight, float const delta)
         : Super{weight}
     {
         Super::deltas_[0] = {-delta, -delta};
@@ -34,12 +34,12 @@ struct PurpleDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticle
 
 
 template<>
-struct BrownDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticlesConst<8>>
+struct BrownPattern<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticlesConst<8>>
 {
     using Super = SplitPattern<DimConst<2>, RefinedParticlesConst<8>>;
 
     template<typename Delta>
-    constexpr BrownDispatcher(float const weight, Delta const& delta)
+    constexpr BrownPattern(float const weight, Delta const& delta)
         : Super{weight}
     {
         for (std::size_t i = 0; i < 2; i++)
@@ -55,11 +55,11 @@ struct BrownDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticles
 };
 
 template<>
-struct PinkDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticlesConst<4>>
+struct PinkPattern<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticlesConst<4>>
 {
     using Super = SplitPattern<DimConst<2>, RefinedParticlesConst<4>>;
 
-    constexpr PinkDispatcher(float const weight, float const delta)
+    constexpr PinkPattern(float const weight, float const delta)
         : Super{weight}
     {
         Super::deltas_[0] = {0.0f, -delta};
@@ -71,7 +71,7 @@ struct PinkDispatcher<DimConst<2>> : SplitPattern<DimConst<2>, RefinedParticlesC
 
 
 /**************************************************************************/
-using SplitPattern_2_1_4_Dispatcher = PatternDispatcher<PurpleDispatcher<DimConst<2>>>;
+using SplitPattern_2_1_4_Dispatcher = PatternDispatcher<PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<4>>
@@ -90,7 +90,7 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<4>>
 
 /**************************************************************************/
 using SplitPattern_2_1_5_Dispatcher
-    = PatternDispatcher<BlackDispatcher<DimConst<2>>, PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<BlackPattern<DimConst<2>>, PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<5>>
@@ -109,7 +109,7 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<5>>
 
 /**************************************************************************/
 using SplitPattern_2_1_8_Dispatcher
-    = PatternDispatcher<PurpleDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>>;
+    = PatternDispatcher<PurplePattern<DimConst<2>>, PinkPattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<8>>
@@ -128,8 +128,8 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<8>>
 
 /**************************************************************************/
 using SplitPattern_2_1_9_Dispatcher
-    = PatternDispatcher<BlackDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>,
-                        PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<BlackPattern<DimConst<2>>, PinkPattern<DimConst<2>>,
+                        PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<9>>
@@ -147,7 +147,7 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<9>>
 
 
 /**************************************************************************/
-using SplitPattern_2_2_4_Dispatcher = PatternDispatcher<PinkDispatcher<DimConst<2>>>;
+using SplitPattern_2_2_4_Dispatcher = PatternDispatcher<PinkPattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<4>>
@@ -166,7 +166,7 @@ struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<4>>
 
 /**************************************************************************/
 using SplitPattern_2_2_5_Dispatcher
-    = PatternDispatcher<BlackDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>>;
+    = PatternDispatcher<BlackPattern<DimConst<2>>, PinkPattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<5>>
@@ -185,7 +185,7 @@ struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<5>>
 
 /**************************************************************************/
 using SplitPattern_2_2_8_Dispatcher
-    = PatternDispatcher<PinkDispatcher<DimConst<2>>, PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<PinkPattern<DimConst<2>>, PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<8>>
@@ -204,8 +204,8 @@ struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<8>>
 
 /**************************************************************************/
 using SplitPattern_2_2_9_Dispatcher
-    = PatternDispatcher<BlackDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>,
-                        PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<BlackPattern<DimConst<2>>, PinkPattern<DimConst<2>>,
+                        PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<9>>
@@ -224,8 +224,8 @@ struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<9>>
 
 /**************************************************************************/
 using SplitPattern_2_2_16_Dispatcher
-    = PatternDispatcher<PurpleDispatcher<DimConst<2>>, BrownDispatcher<DimConst<2>>,
-                        PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<PurplePattern<DimConst<2>>, BrownPattern<DimConst<2>>,
+                        PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<16>>
@@ -244,7 +244,7 @@ struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<16>>
 
 
 /**************************************************************************/
-using SplitPattern_2_3_4_Dispatcher = PatternDispatcher<PurpleDispatcher<DimConst<2>>>;
+using SplitPattern_2_3_4_Dispatcher = PatternDispatcher<PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<4>>
@@ -263,7 +263,7 @@ struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<4>>
 
 /**************************************************************************/
 using SplitPattern_2_3_5_Dispatcher
-    = PatternDispatcher<BlackDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>>;
+    = PatternDispatcher<BlackPattern<DimConst<2>>, PinkPattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<5>>
@@ -282,7 +282,7 @@ struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<5>>
 
 /**************************************************************************/
 using SplitPattern_2_3_8_Dispatcher
-    = PatternDispatcher<PinkDispatcher<DimConst<2>>, PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<PinkPattern<DimConst<2>>, PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<8>>
@@ -301,8 +301,8 @@ struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<8>>
 
 /**************************************************************************/
 using SplitPattern_2_3_9_Dispatcher
-    = PatternDispatcher<BlackDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>,
-                        PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<BlackPattern<DimConst<2>>, PinkPattern<DimConst<2>>,
+                        PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<9>>
@@ -321,9 +321,9 @@ struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<9>>
 
 /**************************************************************************/
 using SplitPattern_2_3_25_Dispatcher
-    = PatternDispatcher<BlackDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>,
-                        PurpleDispatcher<DimConst<2>>, PinkDispatcher<DimConst<2>>,
-                        BrownDispatcher<DimConst<2>>, PurpleDispatcher<DimConst<2>>>;
+    = PatternDispatcher<BlackPattern<DimConst<2>>, PinkPattern<DimConst<2>>,
+                        PurplePattern<DimConst<2>>, PinkPattern<DimConst<2>>,
+                        BrownPattern<DimConst<2>>, PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<3>, RefinedParticlesConst<25>>
