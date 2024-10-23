@@ -30,7 +30,7 @@ def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
     from pyphare.cpp import cpp_lib
 
     if SCOPE_TIMING:
-        Path(".phare/timings").mkdir(exist_ok=True)
+        mon.timing_setup(cpp_lib())
 
     make_sim = f"make_simulator_{dim}_{interp}_{nbrRefinedPart}"
     return getattr(cpp_lib(), make_sim)(hier)
