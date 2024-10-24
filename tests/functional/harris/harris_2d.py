@@ -35,8 +35,6 @@ timestamps = dt * np.arange(nt)
 
 def config():
     sim = ph.Simulation(
-        smallest_patch_size=15,
-        largest_patch_size=25,
         time_step_nbr=time_step_nbr,
         time_step=time_step,
         # boundary_types="periodic",
@@ -155,13 +153,6 @@ def config():
 
 def main():
     Simulator(config()).run()
-    try:
-        from tools.python3 import plotting as m_plotting
-
-        m_plotting.plot_run_timer_data(diag_outputs, cpp.mpi_rank())
-    except ImportError:
-        print("Phlop not found - install with: `pip install phlop`")
-    cpp.mpi_barrier()
 
 
 if __name__ == "__main__":
