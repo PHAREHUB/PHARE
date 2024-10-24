@@ -1,4 +1,13 @@
+#
+#
+#
+
+import os
 from pathlib import Path
+
+from pyphare.logger import getLogger
+
+logger = getLogger(__name__)
 
 
 def have_phlop():
@@ -46,3 +55,11 @@ def monitoring_shutdown(cpplib):
 
     if _globals.stats_man:
         _globals.stats_man.kill().join()
+
+
+def timing_setup(cpplib):
+    if cpplib.mpi_rank() == 0:
+        try:
+            Path(".phare/timings").mkdir(parents=True, exist_ok=True)
+        except FileNotFoundError:
+            logger.error(f"Couldn't find timing dir from {os.getcwd() }")
