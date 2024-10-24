@@ -40,6 +40,35 @@ field_qties = {
 }
 
 
+def nbr_ranks(hier):
+    """
+    returns the number of mpi ranks used in the given hierarchy
+    """
+    max_rank = 0
+    t0 = hier.times()[0]
+    for _, lvl in hier.levels(t0).items():
+        for patch in lvl.patches:
+            rank = patch.attrs["mpi_rank"]
+            if rank > max_rank:
+                max_rank = rank
+    return max_rank
+
+
+def patch_per_rank(hier):
+    """
+    returns the number of patch per mpi rank for each time step
+    """
+    nbranks = nbr_ranks(hier)
+    ppr = {}
+    for t in hier.times():
+        ppr[t] = {ir: 0 for ir in np.arange(nbranks + 1)}
+        for _, lvl in hier.levels(t).items():
+            for patch in lvl.patches:
+                ppr[t][patch.attrs["mpi_rank"]] += 1
+
+    return ppr
+
+
 def are_compatible_hierarchies(hierarchies):
     ref = hierarchies[0]
     same_box = True
