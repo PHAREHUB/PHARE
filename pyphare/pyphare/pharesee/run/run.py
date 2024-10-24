@@ -1,4 +1,5 @@
 import os
+import glob
 import numpy as np
 
 from pyphare.pharesee.hierarchy import hierarchy_from
@@ -9,7 +10,6 @@ from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
 from pyphare.core.phare_utilities import listify
 
 from pyphare.logger import getLogger
-from .utils import _current1d
 from .utils import (
     _compute_to_primal,
     _compute_pop_pressure,
@@ -36,8 +36,6 @@ class Run:
     def __init__(self, path, default_time=None):
         self.path = path
         self.default_time_ = default_time
-        import glob
-
         self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
 
     def _get_hierarchy(self, times, filename, hier=None, **kwargs):
@@ -92,7 +90,7 @@ class Run:
         return self._get(hier, time, merged, "nearest")
 
     def GetB(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
-        if merged == True:
+        if merged:
             all_primal = False
         hier = self._get_hierarchy(time, "EM_B.h5", **kwargs)
         if not all_primal:
@@ -102,7 +100,7 @@ class Run:
         return VectorField(h)
 
     def GetE(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
-        if merged == True:
+        if merged:
             all_primal = False
         hier = self._get_hierarchy(time, "EM_E.h5", **kwargs)
         if not all_primal:
@@ -164,7 +162,7 @@ class Run:
         return ScalarField(h) * Te
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
-        if merged == True:
+        if merged:
             all_primal = False
         B = self.GetB(time, all_primal=False, **kwargs)
         J = compute_hier_from(_compute_current, B)
@@ -239,15 +237,8 @@ class Run:
         :param level: the level at which get the associated grid size
         :param time: the time because level depends on it
         """
-        import glob
 
-        h5_time_grp_key = "t"
-        files = self.available_diags
-        any_file = files[0]
-        h5_filename = any_file
         import h5py
-
-        data_file = h5py.File(h5_filename, "r")
 
         def _get_time():
             if time:
@@ -257,21 +248,31 @@ class Run:
             self.default_time_ = float(list(data_file[h5_time_grp_key].keys())[0])
             return self.default_time_
 
-        time = _get_time()
+        h5_time_grp_key = "t"
+        files = self.available_diags
 
-        hier = self._get_hierarchy(time, h5_filename.split("/")[-1])
+        for h5_filename in files:
+            data_file = h5py.File(h5_filename, "r")
 
-        if level == "finest":
-            level = hier.finest_level(time)
-        fac = np.power(hier.refinement_ratio, level)
+            time = _get_time()
 
-        root_cell_width = np.asarray(data_file.attrs["cell_width"])
+            try:
+                hier = self._get_hierarchy(time, h5_filename.split("/")[-1])
 
-        return root_cell_width / fac
+                if level == "finest":
+                    level = hier.finest_level(time)
+                fac = np.power(hier.refinement_ratio, level)
+
+                root_cell_width = np.asarray(data_file.attrs["cell_width"])
+
+                return root_cell_width / fac
+
+            except KeyError:
+                ...  # time may not be avilaable for given quantity
+
+        raise RuntimeError("Unable toGetDl")
 
     def all_times(self):
-        from glob import glob
-        import os
         import h5py
 
         files = self.available_diags

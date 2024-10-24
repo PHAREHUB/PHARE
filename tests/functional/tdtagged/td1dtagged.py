@@ -10,10 +10,13 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
-mpl.use("Agg")
-
-
+from tests.simulator.test_advance import AdvanceTestBase
 from tests.diagnostic import all_timestamps
+from pyphare.cpp import cpp_lib
+
+cpp = cpp_lib()
+
+mpl.use("Agg")
 
 
 def density(x):
@@ -238,12 +241,6 @@ def make_figure():
         raise RuntimeError(f"L (={L}) too far from 1.O")
     if np.abs(x0 - (150 + plot_time * v)) > 0.5:
         raise RuntimeError(f"x0 (={x0}) too far from 172")
-
-
-from tests.simulator.test_advance import AdvanceTestBase
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
 
 
 test = AdvanceTestBase()

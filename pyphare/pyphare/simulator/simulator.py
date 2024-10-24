@@ -113,7 +113,7 @@ class Simulator:
                 self.cpp_hier,
             )
             return self
-        except:
+        except Exception:
             import sys
             import traceback
 
@@ -137,7 +137,7 @@ class Simulator:
             self._auto_dump()  # first dump might be before first advance
 
             return self
-        except:
+        except Exception:
             import sys
 
             print(
