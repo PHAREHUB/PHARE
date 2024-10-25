@@ -10,8 +10,8 @@ from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
+
 from tests.simulator import SimulatorTest
-from tools.python3 import plotting as m_plotting
 
 mpl.use("Agg")
 
@@ -184,6 +184,15 @@ def plot(diag_dir):
         )
 
 
+def plot_runtimer(diag_dir, rank):
+    try:
+        from tools.python3 import plotting as m_plotting
+
+        m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
+    except ImportError:
+        print("phlop not found - or phare src dir not in pythonpath")
+
+
 class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super(HarrisTest, self).__init__(*args, **kwargs)
@@ -202,7 +211,7 @@ class HarrisTest(SimulatorTest):
         if cpp.mpi_rank() == 0:
             plot(diag_dir)
         if SCOPE_TIMING:
-            m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
+            plot_runtimer(diag_dir, cpp.mpi_rank())
         cpp.mpi_barrier()
         return self
 
