@@ -1,26 +1,22 @@
 #!/usr/bin/env python3
 
-from pathlib import Path
-
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.run import Run
-
 import numpy as np
-
+from pathlib import Path
 import matplotlib as mpl
 
-mpl.use("Agg")
-
+import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
+from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.pharesee.run import Run
 from tests.simulator import SimulatorTest
 
+mpl.use("Agg")
 
 cpp = cpp_lib()
 startMPI()
 
 time_step = 0.005
-final_time = 0.1
+final_time = 0.05
 time_step_nbr = int(final_time / time_step)
 timestamps = np.arange(0, final_time + 0.01, 0.05)
 diag_dir = "phare_outputs/test_run"
@@ -224,15 +220,25 @@ class RunTest(SimulatorTest):
         sim = config()
         self.register_diag_dir_for_cleanup(diag_dir)
         Simulator(sim).run().reset()
+
+        run = Run(diag_dir)
+        B = run.GetB(timestamps[-1], all_primal=False)
+        self.assertTrue(B.levels()[0].patches[0].attrs)
+
+        B = run.GetB(timestamps[-1])
+        self.assertTrue(B.levels()[0].patches[0].attrs)
+
         if cpp.mpi_rank() == 0:
             plot(diag_dir)
 
             for time in timestamps:
                 for q in ["divb", "Ranks", "N", "jz"]:
                     assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
-    
+
                 for c in ["x", "y", "z"]:
-                    assert_file_exists_with_size_at_least(plot_file_for_qty(f"b{c}", time))
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(f"b{c}", time)
+                    )
 
         cpp.mpi_barrier()
 

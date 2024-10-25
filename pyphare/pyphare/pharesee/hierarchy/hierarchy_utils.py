@@ -192,15 +192,16 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
 def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     reference_hier = hierarchies[0]
     new_patches = []
-    patch_nbr = len(reference_hier.level(ilvl, time=t).patches)
-    for ip in range(patch_nbr):
-        current_patch = reference_hier.level(ilvl, time=t).patches[ip]
+    ref_patches = reference_hier.level(ilvl, time=t).patches
+    for ip, current_patch in enumerate(ref_patches):
         layout = current_patch.layout
         patch_datas = extract_patchdatas(hierarchies, ilvl, t, ip)
         new_patch_datas = new_patchdatas_from(
             compute, patch_datas, layout, id=current_patch.id, **kwargs
         )
-        new_patches.append(Patch(new_patch_datas, current_patch.id))
+        new_patches.append(
+            Patch(new_patch_datas, current_patch.id, attrs=current_patch.attrs)
+        )
     return new_patches
 
 
