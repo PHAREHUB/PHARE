@@ -1,8 +1,8 @@
 cmake_minimum_required (VERSION 3.20.1)
 
-project(test-cluster)
+project(test-tile)
 
-set(SOURCES test_cluster.cpp)
+set(SOURCES test_tile.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

@@ -2,13 +2,13 @@
 #define PHARE_PARTICLE_TILE_HPP
 
 #include "core/utilities/box/box.hpp"
-#include "core/data/clusters/clusters.hpp"
+#include "core/data/tiles/tiles.hpp"
 
 namespace PHARE::core
 {
 
 template<typename ParticleArray>
-struct ParticleCluster : public Box<int, ParticleArray::dimension>
+struct Particletile : public Box<int, ParticleArray::dimension>
 {
     // *this: box constructed first
     ParticleArray domainParticles_{*this};
@@ -20,7 +20,7 @@ struct ParticleCluster : public Box<int, ParticleArray::dimension>
 
 
 template<typename ParticleArray>
-class ParticleClusterSet : public ClusterSet<ParticleCluster<ParticleArray>>
+class ParticleTileSet : public TileSet<ParticleTile<ParticleArray>>
 {
 public:
     static auto constexpr dimension = ParticleArray::dimension;
@@ -29,17 +29,17 @@ public:
     {
         ParticleArray selected;
 
-        auto overlaped_clusters = export_overlaped_with(from);
-        for (auto const& [complete, cluster] : overlaped_clusters)
+        auto overlaped_tiles = export_overlaped_with(from);
+        for (auto const& [complete, tile] : overlaped_tiles)
         {
             if (complete)
             {
-                selected.push_back(cluster.domainParticles_);
+                selected.push_back(tile.domainParticles_);
             }
             else
             {
-                auto intersection = cluster * from;
-                cluster.domainParticles.export_to(*intersection, selected);
+                auto intersection = tile * from;
+                tile.domainParticles.export_to(*intersection, selected);
             }
         }
         return selected;

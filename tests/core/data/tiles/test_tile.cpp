@@ -3,7 +3,7 @@
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/types.hpp"
-#include "core/data/clusters/clusters.hpp"
+#include "core/data/tiles/tiles.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -14,15 +14,15 @@
 using namespace PHARE::core;
 
 
-template<typename ClusterSet>
-class ClusterTest : public ::testing::Test
+template<typename TileSet>
+class TileTest : public ::testing::Test
 {
 public:
-    ClusterTest() {}
+    TileTest() {}
 };
 
 template<std::size_t dim>
-class ClusterMock
+class TileMock
 {
 public:
     static auto constexpr dimension = dim;
@@ -33,17 +33,16 @@ public:
     auto size() const { return Box<int, dim>{lower, upper}.size(); }
 };
 
-using DimClusters = testing::Types<ClusterSet<ClusterMock<1>>, ClusterSet<ClusterMock<2>>,
-                                   ClusterSet<ClusterMock<3>>>;
+using DimTiles = testing::Types<TileSet<TileMock<1>>, TileSet<TileMock<2>>, TileSet<TileMock<3>>>;
 
-TYPED_TEST_SUITE(ClusterTest, DimClusters);
+TYPED_TEST_SUITE(TileTest, DimTiles);
 
-TYPED_TEST(ClusterTest, expectedNbrOfClustersPerDimToCoverTheBox)
+TYPED_TEST(TileTest, expectedNbrOfTilesPerDimToCoverTheBox)
 {
     constexpr auto dim = TypeParam::dimension;
     Box<int, dim> box{ConstArray<int, dim>(0), ConstArray<int, dim>(50)};
-    auto const cluster_size = PHARE::core::ConstArray<int, dim>(4);
-    TypeParam cs{box, cluster_size};
+    auto const tile_size = PHARE::core::ConstArray<int, dim>(4);
+    TypeParam cs{box, tile_size};
 
 
     auto const& shape = cs.shape();
@@ -51,23 +50,23 @@ TYPED_TEST(ClusterTest, expectedNbrOfClustersPerDimToCoverTheBox)
         EXPECT_EQ(shape[i], 13);
 }
 
-TYPED_TEST(ClusterTest, cluserSetSizeIsCorrect)
+TYPED_TEST(TileTest, cluserSetSizeIsCorrect)
 {
     constexpr auto dim = TypeParam::dimension;
     Box<int, dim> box{ConstArray<int, dim>(0), ConstArray<int, dim>(47)};
-    auto const cluster_size = PHARE::core::ConstArray<int, dim>(4);
-    TypeParam cs{box, cluster_size};
+    auto const tile_size = PHARE::core::ConstArray<int, dim>(4);
+    TypeParam cs{box, tile_size};
 
     EXPECT_EQ(cs.size(), std::pow(12, dim));
 }
 
 
-TYPED_TEST(ClusterTest, totalClusterSetSurfaceIsEqualToBoxSurface)
+TYPED_TEST(TileTest, totalTileSetSurfaceIsEqualToBoxSurface)
 {
     constexpr auto dim = TypeParam::dimension;
     Box<int, dim> box{ConstArray<int, dim>(0), ConstArray<int, dim>(49)};
-    auto const cluster_size = PHARE::core::ConstArray<int, dim>(4);
-    TypeParam cs{box, cluster_size};
+    auto const tile_size = PHARE::core::ConstArray<int, dim>(4);
+    TypeParam cs{box, tile_size};
 
     auto surface = 0.;
     for (auto i = 0u; i < cs.size(); ++i)
@@ -85,20 +84,20 @@ TYPED_TEST(ClusterTest, totalClusterSetSurfaceIsEqualToBoxSurface)
 
 
 
-TYPED_TEST(ClusterTest, clusterHasNoOverlapWithOthers)
+TYPED_TEST(TileTest, tileHasNoOverlapWithOthers)
 {
     constexpr auto dim = TypeParam::dimension;
     Box<int, dim> box{ConstArray<int, dim>(0), ConstArray<int, dim>(54)};
-    auto const cluster_size = PHARE::core::ConstArray<int, dim>(4);
-    TypeParam cs{box, cluster_size};
+    auto const tile_size = PHARE::core::ConstArray<int, dim>(4);
+    TypeParam cs{box, tile_size};
 
-    for (auto const& cluster : cs)
+    for (auto const& tile : cs)
     {
         for (auto const& other : cs)
         {
-            if (&cluster != &other)
+            if (&tile != &other)
             {
-                auto const box1 = Box<int, dim>{cluster.lower, cluster.upper};
+                auto const box1 = Box<int, dim>{tile.lower, tile.upper};
                 auto const box2 = Box<int, dim>{other.lower, other.upper};
                 auto overlap    = box1 * box2;
                 EXPECT_FALSE(overlap.has_value());
@@ -108,12 +107,12 @@ TYPED_TEST(ClusterTest, clusterHasNoOverlapWithOthers)
 }
 
 
-TYPED_TEST(ClusterTest, retrieveClustersFromBoxOverlap)
+TYPED_TEST(TileTest, retrieveTilesFromBoxOverlap)
 {
     constexpr auto dim = TypeParam::dimension;
     Box<int, dim> box{ConstArray<int, dim>(0), ConstArray<int, dim>(54)};
-    auto const cluster_size = PHARE::core::ConstArray<int, dim>(4);
-    TypeParam cs{box, cluster_size};
+    auto const tile_size = PHARE::core::ConstArray<int, dim>(4);
+    TypeParam cs{box, tile_size};
     Box<int, dim> selection_box{ConstArray<int, dim>(11), ConstArray<int, dim>(34)};
 
     auto expected_nbr = std::pow(7, dim);
@@ -124,7 +123,7 @@ TYPED_TEST(ClusterTest, retrieveClustersFromBoxOverlap)
     auto incompletes = 0.;
     for (auto const& overlaped : overlapeds)
     {
-        auto const& [is_complete, cluster] = overlaped;
+        auto const& [is_complete, tile] = overlaped;
         if (is_complete)
             ++completes;
         else
@@ -135,12 +134,12 @@ TYPED_TEST(ClusterTest, retrieveClustersFromBoxOverlap)
 }
 
 
-TYPED_TEST(ClusterTest, cannotCreateClusterWithClusterSizeBiggerThanBox)
+TYPED_TEST(TileTest, cannotCreateTileWithTileSizeBiggerThanBox)
 {
     constexpr auto dim = TypeParam::dimension;
     Box<int, dim> box{ConstArray<int, dim>(0), ConstArray<int, dim>(5)};
-    auto const cluster_size = PHARE::core::ConstArray<int, dim>(7); // larger than box shape
-    EXPECT_THROW(std::make_unique<TypeParam>(box, cluster_size), std::runtime_error);
+    auto const tile_size = PHARE::core::ConstArray<int, dim>(7); // larger than box shape
+    EXPECT_THROW(std::make_unique<TypeParam>(box, tile_size), std::runtime_error);
 }
 
 

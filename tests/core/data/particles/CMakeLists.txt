@@ -20,4 +20,4 @@ endfunction(_particles_test)
 
 _particles_test(test_main.cpp test-particles)
 _particles_test(test_interop.cpp test-particles-interop)
-_particles_test(test_particle_clusters.cpp test-particle-clusters)
+_particles_test(test_particle_tiles.cpp test-particle-tiles)
