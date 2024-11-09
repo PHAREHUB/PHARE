@@ -2,13 +2,13 @@
 #define PHARE_PARTICLE_TILE_HPP
 
 #include "core/utilities/box/box.hpp"
-#include "core/data/tiles/tiles.hpp"
+#include "core/data/tiles/tile_set.hpp"
 
 namespace PHARE::core
 {
 
 template<typename ParticleArray>
-struct Particletile : public Box<int, ParticleArray::dimension>
+struct ParticleTile : public Box<int, ParticleArray::dimension>
 {
     // *this: box constructed first
     ParticleArray domainParticles_{*this};

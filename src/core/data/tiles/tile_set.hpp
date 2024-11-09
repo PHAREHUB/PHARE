@@ -3,6 +3,8 @@
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/types.hpp"
+#include "core/def.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 
 #include <iostream>
 #include <array>
@@ -31,13 +33,15 @@ public:
             return s;
         }()}
         , tiles_(product(shape_))
+        , cells_{box.shape().template toArray<std::uint32_t>()}
     {
         consistent_tile_size_();
-        tile_();
+        make_tiles_();
+        tag_cells_();
     }
 
 
-    auto export_overlaped_with(Box<int, dimension> const& box) const
+    NO_DISCARD auto export_overlaped_with(Box<int, dimension> const& box) const
     {
         std::vector<std::pair<bool, Tile>> overlaped;
         for (auto const& tile : tiles_)
@@ -52,17 +56,17 @@ public:
         return overlaped;
     }
 
-    auto shape() const { return shape_; }
-    auto size() const { return tiles_.size(); }
+    NO_DISCARD auto shape() const { return shape_; }
+    NO_DISCARD auto size() const { return tiles_.size(); }
 
-    auto begin() { return tiles_.begin(); }
-    auto begin() const { return tiles_.begin(); }
+    NO_DISCARD auto begin() { return tiles_.begin(); }
+    NO_DISCARD auto begin() const { return tiles_.begin(); }
 
-    auto end() { return tiles_.end(); }
-    auto end() const { return tiles_.end(); }
+    NO_DISCARD auto end() { return tiles_.end(); }
+    NO_DISCARD auto end() const { return tiles_.end(); }
 
-    auto& operator[](std::size_t i) { return tiles_[i]; }
-    auto const& operator[](std::size_t i) const { return tiles_[i]; }
+    NO_DISCARD auto& operator[](std::size_t i) { return tiles_[i]; }
+    NO_DISCARD auto const& operator[](std::size_t i) const { return tiles_[i]; }
 
 private:
     void consistent_tile_size_() const
@@ -77,7 +81,7 @@ private:
         }
     }
 
-    void tile_()
+    void make_tiles_()
     {
         auto const size_me = [&](auto dim, auto idx) {
             if (idx == shape_[dim] - 1)
@@ -94,7 +98,7 @@ private:
             if constexpr (dimension == 1)
             {
                 // -1 because upper is included
-                tiles_[ix].lower[0] = box.lower[0] + ix * tile_size_[0];
+                tiles_[ix].lower[0] = box_.lower[0] + ix * tile_size_[0];
                 tiles_[ix].upper[0] = tiles_[ix].lower[0] + size_me(0, ix) - 1;
             }
             else
@@ -104,9 +108,9 @@ private:
                     if constexpr (dimension == 2)
                     {
                         auto const i       = ix * shape_[1] + iy;
-                        tiles_[i].lower[0] = box.lower[0] + ix * tile_size_[0];
+                        tiles_[i].lower[0] = box_.lower[0] + ix * tile_size_[0];
                         tiles_[i].upper[0] = tiles_[i].lower[0] + size_me(0, ix) - 1;
-                        tiles_[i].lower[1] = box.lower[1] + iy * tile_size_[1];
+                        tiles_[i].lower[1] = box_.lower[1] + iy * tile_size_[1];
                         tiles_[i].upper[1] = tiles_[i].lower[1] + size_me(1, iy) - 1;
                     }
                     else
@@ -114,11 +118,11 @@ private:
                         for (auto iz = 0u; iz < shape_[2]; ++iz)
                         {
                             auto const i       = ix * shape_[1] * shape_[2] + shape_[2] * iy + iz;
-                            tiles_[i].lower[0] = box.lower[0] + ix * tile_size_[0];
+                            tiles_[i].lower[0] = box_.lower[0] + ix * tile_size_[0];
                             tiles_[i].upper[0] = tiles_[i].lower[0] + size_me(0, ix) - 1;
-                            tiles_[i].lower[1] = box.lower[1] + iy * tile_size_[1];
+                            tiles_[i].lower[1] = box_.lower[1] + iy * tile_size_[1];
                             tiles_[i].upper[1] = tiles_[i].lower[1] + size_me(1, iy) - 1;
-                            tiles_[i].lower[2] = box.lower[2] + iz * tile_size_[2];
+                            tiles_[i].lower[2] = box_.lower[2] + iz * tile_size_[2];
                             tiles_[i].upper[2] = tiles_[i].lower[2] + size_me(2, iz) - 1;
                         }
                     }
@@ -128,10 +132,24 @@ private:
     }
 
 
+    //! bri
+    void tag_cells_()
+    {
+        for (auto& tile : tiles_)
+        {
+            for (auto const& cell : tile)
+            {
+                cells_(cell) = &tile;
+            }
+        }
+    }
+
+
     Box<int, dimension> box_;
     std::array<int, dimension> tile_size_;
     std::array<int, dimension> shape_;
     std::vector<Tile> tiles_;
+    NdArrayVector<dimension, Tile*> cells_;
 };
 } // namespace PHARE::core
 

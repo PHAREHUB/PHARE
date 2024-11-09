@@ -3,7 +3,7 @@
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/types.hpp"
-#include "core/data/tiles/tiles.hpp"
+#include "core/data/tiles/tile_set.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -22,15 +22,8 @@ public:
 };
 
 template<std::size_t dim>
-class TileMock
+class TileMock : public Box<int, dim>
 {
-public:
-    static auto constexpr dimension = dim;
-    Point<int, dim> lower;
-    Point<int, dim> upper;
-
-
-    auto size() const { return Box<int, dim>{lower, upper}.size(); }
 };
 
 using DimTiles = testing::Types<TileSet<TileMock<1>>, TileSet<TileMock<2>>, TileSet<TileMock<3>>>;
