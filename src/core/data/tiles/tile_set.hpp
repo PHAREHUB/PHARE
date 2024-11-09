@@ -13,6 +13,9 @@
 
 namespace PHARE::core
 {
+
+
+
 template<typename Tile>
 class TileSetView
 {
@@ -29,6 +32,37 @@ public:
         , tiles_{tiles, tile_nbr}
         , cells_{cells, nbr_cells}
     {
+    }
+    NO_DISCARD auto export_overlaped_with(Box<int, dimension> const& box) const
+    {
+        std::vector<std::pair<bool, Tile>> overlaped;
+        for (auto const& tile : tiles_)
+        {
+            auto overlap = box * Box<int, dimension>{tile.lower, tile.upper};
+            if (overlap)
+            {
+                auto complete_overlap = (*overlap).size() == tile.size();
+                overlaped.emplace_back(complete_overlap, tile);
+            }
+        }
+        return overlaped;
+    }
+    NO_DISCARD auto shape() const { return shape_; }
+    NO_DISCARD auto size() const { return tiles_.size(); }
+
+    NO_DISCARD auto begin() { return tiles_.begin(); }
+    NO_DISCARD auto begin() const { return tiles_.begin(); }
+
+    NO_DISCARD auto end() { return tiles_.end(); }
+    NO_DISCARD auto end() const { return tiles_.end(); }
+
+    NO_DISCARD auto& operator[](std::size_t i) { return tiles_[i]; }
+    NO_DISCARD auto const& operator[](std::size_t i) const { return tiles_[i]; }
+
+    template<typename... Index>
+    NO_DISCARD auto& at(Index... indexes)
+    {
+        return cells_(indexes...);
     }
 
 private:

@@ -176,7 +176,12 @@ TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, canRetrieveTileFromCell)
 
 TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, getView)
 {
-    auto view = this->tileSet.make_view();
+    auto view  = this->tileSet.make_view();
+    auto shape = view.shape();
+    for (auto const& tile : view)
+    {
+        auto tile_ = tile;
+    }
 }
 
 
