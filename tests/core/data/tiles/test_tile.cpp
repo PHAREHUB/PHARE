@@ -174,15 +174,23 @@ TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, canRetrieveTileFromCell)
 }
 
 
-TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, getView)
+TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, useTileSetView)
 {
     auto view  = this->tileSet.make_view();
     auto shape = view.shape();
     for (auto const& tile : view)
     {
-        auto tile_ = tile;
+        EXPECT_LE(tile.size(), std::pow(4, this->dimension));
     }
 }
+
+
+
+TEST(TileSetViewSpan, fromManyPatches)
+{
+    //
+}
+
 
 
 

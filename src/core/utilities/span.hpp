@@ -19,8 +19,8 @@ struct Span
     NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
     NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
     NO_DISCARD T const* const& data() const { return ptr; }
-    NO_DISCARD T const* const& begin() const { return ptr; }
-    NO_DISCARD T const* const& end() const { return ptr + s; }
+    NO_DISCARD auto begin() const { return ptr; }
+    NO_DISCARD auto end() const { return ptr + s; }
     NO_DISCARD SIZE const& size() const { return s; }
 
     T const* ptr = nullptr;
