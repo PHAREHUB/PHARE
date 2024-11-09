@@ -108,14 +108,15 @@ TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, totalTileSetSurfaceIsEqualToBoxS
 
 TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, tileHasNoOverlapWithOthers)
 {
+    auto constexpr dim = TypeParam::dimension;
     for (auto const& tile : this->tileSet)
     {
         for (auto const& other : this->tileSet)
         {
             if (&tile != &other)
             {
-                auto const box1 = Box<int, this->dimension>{tile.lower, tile.upper};
-                auto const box2 = Box<int, this->dimension>{other.lower, other.upper};
+                auto const box1 = Box<int, dim>{tile.lower, tile.upper};
+                auto const box2 = Box<int, dim>{other.lower, other.upper};
                 auto overlap    = box1 * box2;
                 EXPECT_FALSE(overlap.has_value());
             }
@@ -126,8 +127,8 @@ TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, tileHasNoOverlapWithOthers)
 
 TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, retrieveTilesFromBoxOverlap)
 {
-    Box<int, this->dimension> selection_box{ConstArray<int, this->dimension>(11),
-                                            ConstArray<int, this->dimension>(34)};
+    auto constexpr dim = TypeParam::dimension;
+    Box<int, dim> selection_box{ConstArray<int, dim>(11), ConstArray<int, dim>(34)};
 
     auto expected_nbr = std::pow(7, this->dimension);
     auto overlapeds   = this->tileSet.export_overlaped_with(selection_box);
@@ -143,8 +144,8 @@ TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, retrieveTilesFromBoxOverlap)
         else
             ++incompletes;
     }
-    EXPECT_EQ(completes, std::pow(5, this->dimension));
-    EXPECT_EQ(incompletes, std::pow(7, this->dimension) - std::pow(5, this->dimension));
+    EXPECT_EQ(completes, std::pow(5, dim));
+    EXPECT_EQ(incompletes, std::pow(7, dim) - std::pow(5, dim));
 }
 
 
@@ -159,16 +160,16 @@ TYPED_TEST(TileTest, cannotCreateTileWithTileSizeBiggerThanBox)
 
 TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, canRetrieveTileFromCell)
 {
-    auto tile = [&]() {
-        if constexpr (this->dimension == 1)
+    auto constexpr dim = TypeParam::dimension;
+    auto tile          = [&]() {
+        if constexpr (dim == 1)
             return this->tileSet.at(13);
-        else if constexpr (this->dimension == 2)
+        else if constexpr (dim == 2)
             return this->tileSet.at(13, 13);
-        else if constexpr (this->dimension == 3)
+        else if constexpr (dim == 3)
             return this->tileSet.at(13, 13, 13);
     }();
-    auto const expected_box = Box<int, this->dimension>{ConstArray<int, this->dimension>(12),
-                                                        ConstArray<int, this->dimension>(15)};
+    auto const expected_box = Box<int, dim>{ConstArray<int, dim>(12), ConstArray<int, dim>(15)};
     EXPECT_TRUE(*tile == expected_box);
 }
 
