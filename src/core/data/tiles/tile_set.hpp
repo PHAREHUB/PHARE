@@ -5,6 +5,7 @@
 #include "core/utilities/types.hpp"
 #include "core/def.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/utilities/span.hpp"
 
 #include <array>
 #include <utility>
@@ -12,6 +13,31 @@
 
 namespace PHARE::core
 {
+template<typename Tile>
+class TileSetView
+{
+public:
+    static auto constexpr dimension = Tile::dimension;
+
+    TileSetView(Box<int, dimension> const& box, std::array<std::size_t, dimension> const& tile_size,
+                std::array<int, dimension> const& shape, Tile** tiles, std::size_t tile_nbr,
+                int** cells, std::size_t nbr_cells)
+        : box_{box}
+        , tile_size_{tile_size}
+        , shape_{shape}
+        , tiles_{tiles, tile_nbr}
+        , cells_{cells, nbr_cells}
+    {
+    }
+
+private:
+    Box<int, dimension> const box_;
+    std::array<std::size_t, dimension> tile_size_;
+    std::array<int, dimension> shape_;
+    Span<Tile*> tiles_;
+    NdArrayView<dimension, Tile*> cells_;
+};
+
 template<typename Tile>
 class TileSet
 {
@@ -71,6 +97,13 @@ public:
     NO_DISCARD auto& at(Index... indexes)
     {
         return cells_(indexes...);
+    }
+
+
+    auto make_view()
+    {
+        return TileSetView<Tile>{box_,          tile_size_,    shape_,       tiles_.data(),
+                                 tiles_.size(), cells_.data(), cells_.size()};
     }
 
 private:
@@ -156,6 +189,10 @@ private:
     std::vector<Tile> tiles_;
     NdArrayVector<dimension, Tile*> cells_;
 };
+
+
+
+
 } // namespace PHARE::core
 
 
