@@ -32,6 +32,41 @@ public:
         }()}
         , tiles_(product(shape_))
     {
+        consistent_tile_size_();
+        tile_();
+    }
+
+
+    auto export_overlaped_with(Box<int, dimension> const& box) const
+    {
+        std::vector<std::pair<bool, Tile>> overlaped;
+        for (auto const& tile : tiles_)
+        {
+            auto overlap = box * Box<int, dimension>{tile.lower, tile.upper};
+            if (overlap)
+            {
+                auto complete_overlap = (*overlap).size() == tile.size();
+                overlaped.emplace_back(complete_overlap, tile);
+            }
+        }
+        return overlaped;
+    }
+
+    auto shape() const { return shape_; }
+    auto size() const { return tiles_.size(); }
+
+    auto begin() { return tiles_.begin(); }
+    auto begin() const { return tiles_.begin(); }
+
+    auto end() { return tiles_.end(); }
+    auto end() const { return tiles_.end(); }
+
+    auto& operator[](std::size_t i) { return tiles_[i]; }
+    auto const& operator[](std::size_t i) const { return tiles_[i]; }
+
+private:
+    void consistent_tile_size_() const
+    {
         for (auto idim = 0u; idim < dimension; ++idim)
         {
             if (box_.shape()[idim] < tile_size_[idim])
@@ -40,7 +75,10 @@ public:
                                          + std::to_string(idim));
             }
         }
+    }
 
+    void tile_()
+    {
         auto const size_me = [&](auto dim, auto idx) {
             if (idx == shape_[dim] - 1)
             {
@@ -90,34 +128,6 @@ public:
     }
 
 
-    auto export_overlaped_with(Box<int, dimension> const& box) const
-    {
-        std::vector<std::pair<bool, Tile>> overlaped;
-        for (auto const& tile : tiles_)
-        {
-            auto overlap = box * Box<int, dimension>{tile.lower, tile.upper};
-            if (overlap)
-            {
-                auto complete_overlap = (*overlap).size() == tile.size();
-                overlaped.emplace_back(complete_overlap, tile);
-            }
-        }
-        return overlaped;
-    }
-
-    auto shape() const { return shape_; }
-    auto size() const { return tiles_.size(); }
-
-    auto begin() { return tiles_.begin(); }
-    auto begin() const { return tiles_.begin(); }
-
-    auto end() { return tiles_.end(); }
-    auto end() const { return tiles_.end(); }
-
-    auto& operator[](std::size_t i) { return tiles_[i]; }
-    auto const& operator[](std::size_t i) const { return tiles_[i]; }
-
-private:
     Box<int, dimension> box_;
     std::array<int, dimension> tile_size_;
     std::array<int, dimension> shape_;
