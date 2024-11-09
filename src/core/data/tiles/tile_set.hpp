@@ -6,9 +6,8 @@
 #include "core/def.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
-#include <iostream>
 #include <array>
-#include <tuple>
+#include <utility>
 #include <string>
 
 namespace PHARE::core
@@ -19,7 +18,7 @@ class TileSet
 public:
     static auto constexpr dimension = Tile::dimension;
 
-    TileSet(Box<int, dimension> const& box, std::array<int, dimension> const& tile_size)
+    TileSet(Box<int, dimension> const& box, std::array<std::size_t, dimension> const& tile_size)
         : box_{box}
         , tile_size_{tile_size}
         , shape_{[&]() {
@@ -67,6 +66,12 @@ public:
 
     NO_DISCARD auto& operator[](std::size_t i) { return tiles_[i]; }
     NO_DISCARD auto const& operator[](std::size_t i) const { return tiles_[i]; }
+
+    template<typename... Index>
+    NO_DISCARD auto& at(Index... indexes)
+    {
+        return cells_(indexes...);
+    }
 
 private:
     void consistent_tile_size_() const
@@ -132,7 +137,7 @@ private:
     }
 
 
-    //! bri
+    //! store the pointer to the tile associated with each cell
     void tag_cells_()
     {
         for (auto& tile : tiles_)
@@ -146,7 +151,7 @@ private:
 
 
     Box<int, dimension> box_;
-    std::array<int, dimension> tile_size_;
+    std::array<std::size_t, dimension> tile_size_;
     std::array<int, dimension> shape_;
     std::vector<Tile> tiles_;
     NdArrayVector<dimension, Tile*> cells_;

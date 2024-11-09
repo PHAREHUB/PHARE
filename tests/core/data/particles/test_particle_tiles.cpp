@@ -28,7 +28,7 @@ TYPED_TEST(ParticleTileTest, constructs)
 {
     constexpr auto dim = TypeParam::dimension;
     Box<int, dim> box{ConstArray<int, dim>(0), ConstArray<int, dim>(50)};
-    auto const tile_size = PHARE::core::ConstArray<int, dim>(4);
+    auto const tile_size = PHARE::core::ConstArray<std::size_t, dim>(4);
     TileSet<TypeParam> particleTileSet{box, tile_size};
 }
 
