@@ -174,6 +174,12 @@ TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, canRetrieveTileFromCell)
 }
 
 
+TYPED_TEST(TileTestBoxShapeNotMultipleTileSize, getView)
+{
+    auto view = this->tileSet.make_view();
+}
+
+
 
 int main(int argc, char** argv)
 {

@@ -20,8 +20,9 @@ public:
     static auto constexpr dimension = Tile::dimension;
 
     TileSetView(Box<int, dimension> const& box, std::array<std::size_t, dimension> const& tile_size,
-                std::array<int, dimension> const& shape, Tile** tiles, std::size_t tile_nbr,
-                int** cells, std::size_t nbr_cells)
+                std::array<std::uint32_t, dimension> const& shape, Tile* tiles,
+                std::uint32_t tile_nbr, Tile** cells,
+                std::array<std::uint32_t, dimension> const& nbr_cells)
         : box_{box}
         , tile_size_{tile_size}
         , shape_{shape}
@@ -33,10 +34,12 @@ public:
 private:
     Box<int, dimension> const box_;
     std::array<std::size_t, dimension> tile_size_;
-    std::array<int, dimension> shape_;
-    Span<Tile*> tiles_;
+    std::array<std::uint32_t, dimension> shape_;
+    Span<Tile> tiles_;
     NdArrayView<dimension, Tile*> cells_;
 };
+
+
 
 template<typename Tile>
 class TileSet
@@ -48,7 +51,7 @@ public:
         : box_{box}
         , tile_size_{tile_size}
         , shape_{[&]() {
-            std::array<int, dimension> s;
+            std::array<std::uint32_t, dimension> s;
             auto bs = box.shape();
             for (auto i = 0u; i < dimension; ++i)
             {
@@ -102,8 +105,8 @@ public:
 
     auto make_view()
     {
-        return TileSetView<Tile>{box_,          tile_size_,    shape_,       tiles_.data(),
-                                 tiles_.size(), cells_.data(), cells_.size()};
+        return TileSetView<Tile>{box_,          tile_size_,    shape_,        tiles_.data(),
+                                 tiles_.size(), cells_.data(), cells_.shape()};
     }
 
 private:
@@ -185,7 +188,7 @@ private:
 
     Box<int, dimension> box_;
     std::array<std::size_t, dimension> tile_size_;
-    std::array<int, dimension> shape_;
+    std::array<std::uint32_t, dimension> shape_;
     std::vector<Tile> tiles_;
     NdArrayVector<dimension, Tile*> cells_;
 };
