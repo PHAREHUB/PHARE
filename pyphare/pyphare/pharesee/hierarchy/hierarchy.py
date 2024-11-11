@@ -278,7 +278,7 @@ class PatchHierarchy(object):
                     m = np.nanmin(pd.dataset[:])
                     first = False
                 else:
-                    data_and_min = np.concatenate(([m], pd.dataset[:]))
+                    data_and_min = np.concatenate(([m], pd.dataset[:].flatten()))
                     m = np.nanmin(data_and_min)
 
         return m
@@ -293,7 +293,7 @@ class PatchHierarchy(object):
                     m = np.nanmax(pd.dataset[:])
                     first = False
                 else:
-                    data_and_max = np.concatenate(([m], pd.dataset[:]))
+                    data_and_max = np.concatenate(([m], pd.dataset[:].flatten()))
                     m = np.nanmax(data_and_max)
 
         return m
