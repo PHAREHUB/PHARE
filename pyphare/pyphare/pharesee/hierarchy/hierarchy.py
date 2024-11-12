@@ -275,10 +275,11 @@ class PatchHierarchy(object):
             for patch in lvl.patches:
                 pd = patch.patch_datas[qty]
                 if first:
-                    m = pd.dataset[:].min()
+                    m = np.nanmin(pd.dataset[:])
                     first = False
                 else:
-                    m = min(m, pd.dataset[:].min())
+                    data_and_min = np.concatenate(([m], pd.dataset[:].flatten()))
+                    m = np.nanmin(data_and_min)
 
         return m
 
@@ -289,10 +290,11 @@ class PatchHierarchy(object):
             for patch in lvl.patches:
                 pd = patch.patch_datas[qty]
                 if first:
-                    m = pd.dataset[:].max()
+                    m = np.nanmax(pd.dataset[:])
                     first = False
                 else:
-                    m = max(m, pd.dataset[:].max())
+                    data_and_max = np.concatenate(([m], pd.dataset[:].flatten()))
+                    m = np.nanmax(data_and_max)
 
         return m
 
