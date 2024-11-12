@@ -48,6 +48,10 @@ template<std::size_t dimension, std::size_t interpOrder, ParticlesDataSplitType 
 class BasicHierarchy
 {
     using ParticlesVariable_t = ParticlesVariable<ParticleArray<dimension>, interpOrder>;
+    using Splitter_t          = Splitter<DimConst<dimension>, InterpConst<interpOrder>,
+                                         RefinedParticlesConst<refinedParticlesNbr>>;
+    using ParticlesRefineOperator_t
+        = ParticlesRefineOperator<ParticleArray<dimension>, splitType, Splitter_t>;
 
 public:
     /**
@@ -74,7 +78,7 @@ public:
     }
 
 
-    explicit BasicHierarchy(int _ratio)
+    explicit BasicHierarchy(int _ratio = 2)
         : ratio{SAMRAI::tbox::Dimension{dimension}, _ratio}
         , inputDatabase_{SAMRAI::tbox::InputManager::getManager()->parseInputFile(
               inputString(_ratio))}
@@ -97,10 +101,7 @@ public:
               dimension_, "ChopAndPackLoadBalancer",
               inputDatabase_->getDatabase("ChopAndPackLoadBalancer"))}
 
-        , refineOperator_{std::make_shared<
-              ParticlesRefineOperator<ParticleArray<dimension>, splitType,
-                                      Splitter<DimConst<dimension>, InterpConst<interpOrder>,
-                                               RefinedParticlesConst<refinedParticlesNbr>>>>()}
+        , refineOperator_{std::make_shared<ParticlesRefineOperator_t>()}
 
 
         , tagStrategy_{std::make_shared<TagStrategy<dimension>>(variablesIds_, refineOperator_,
@@ -166,6 +167,11 @@ public:
     }
 
     SAMRAI::hier::IntVector const ratio;
+
+    auto domainParticlesForLevel(int levelNumber) const
+    {
+        return tagStrategy_->domainParticlesForLevel(hierarchy_, levelNumber);
+    }
 
 private:
     std::map<std::string, int> getVariablesIds_()
