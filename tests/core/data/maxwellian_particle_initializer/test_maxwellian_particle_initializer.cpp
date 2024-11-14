@@ -51,7 +51,7 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 {
     auto nbrCells             = layout.nbrCells();
     auto expectedNbrParticles = nbrParticlesPerCell * nbrCells[0];
-    initializer->loadParticles(particles, layout);
+    initializer->loadParticles(particles, layout, "protons");
     EXPECT_EQ(expectedNbrParticles, particles.size());
 }
 
@@ -60,7 +60,7 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 
 TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
 {
-    initializer->loadParticles(particles, layout);
+    initializer->loadParticles(particles, layout, "protons");
     for (auto const& particle : particles)
     {
         EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
