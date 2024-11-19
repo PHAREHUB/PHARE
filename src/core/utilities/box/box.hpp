@@ -7,6 +7,7 @@
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/def.hpp"
 
+#include <vector>
 #include <cstddef>
 #include <algorithm>
 #include <optional>
@@ -146,6 +147,26 @@ struct Box
         else
             return 6;
     }
+
+    auto as_points() const
+    {
+        std::vector<Point<Type, dim>> points;
+        if constexpr (dim == 1)
+            for (Type i = lower[0]; i <= upper[0]; ++i)
+                points.emplace_back(Point{i});
+
+        else if constexpr (dim == 2)
+            for (Type i = lower[0]; i <= upper[0]; ++i)
+                for (Type j = lower[1]; j <= upper[1]; ++j)
+                    points.emplace_back(Point{i, j});
+        else
+            for (Type i = lower[0]; i <= upper[0]; ++i)
+                for (Type j = lower[1]; j <= upper[1]; ++j)
+                    for (Type k = lower[2]; k <= upper[2]; ++k)
+                        points.emplace_back(Point{i, j, k});
+
+        return points;
+    }
 };
 
 template<typename Type, std::size_t dim>
@@ -194,7 +215,7 @@ private:
 
 
 template<typename T, std::size_t s>
-Box(Point<T, s> lower, Point<T, s> upper) -> Box<T, s>;
+Box(Point<T, s> lower, Point<T, s> upper)->Box<T, s>;
 
 
 

@@ -102,6 +102,9 @@ def refine_electric(field, **kwargs):
             fine_data[::2, 1::2] = 0.5 * (coarse_data[:, 1:] + coarse_data[:, :-1])
             fine_data[1::2, 1::2] = 0.5 * (coarse_data[:, 1:] + coarse_data[:, :-1])
 
+    elif field.box.ndim == 3:
+        assert False # fix
+
     return cropToFieldData(fine_data, field)
 
 
