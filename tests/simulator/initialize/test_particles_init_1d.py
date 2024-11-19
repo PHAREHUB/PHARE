@@ -8,11 +8,8 @@ import unittest
 import matplotlib
 from ddt import data, ddt, unpack
 from pyphare.core.box import Box1D
-from pyphare.cpp import cpp_lib
 
 from tests.simulator.test_initialization import InitializationTest
-
-cpp = cpp_lib()
 
 matplotlib.use("Agg")  # for systems without GUI
 

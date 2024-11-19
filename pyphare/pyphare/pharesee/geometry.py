@@ -54,19 +54,24 @@ def domain_border_ghost_boxes(domain_box, patches):
     elif domain_box.ndim == 2:
         upper_x, upper_y = domain_box.upper
         return {
-            "bottom": Box(
-                (
-                    0,
-                    0,
-                ),
-                (upper_x, ghost_box_width),
-            ),
-            "top": Box((0, upper_y - ghost_box_width), (upper_x, upper_y)),
             "left": Box((0, 0), (ghost_box_width, upper_y)),
             "right": Box((upper_x - ghost_box_width, 0), (upper_x, upper_y)),
+            "bottom": Box((0, 0), (upper_x, ghost_box_width)),
+            "top": Box((0, upper_y - ghost_box_width), (upper_x, upper_y)),
         }
 
-    raise ValueError("Unhandeled dimension")
+    else:
+        upper_x, upper_y, upper_z = domain_box.upper
+        return {
+            "left": Box((0, 0, 0), (ghost_box_width, upper_y, upper_z)),
+            "right": Box(
+                (upper_x - ghost_box_width, 0, 0), (upper_x, upper_y, upper_z)
+            ),
+            "bottom": Box((0, 0, 0), (upper_x, ghost_box_width, upper_z)),
+            "top": Box((0, upper_y - ghost_box_width, 0), (upper_x, upper_y, upper_z)),
+            "front": Box((0, 0, 0), (upper_x, upper_y, ghost_box_width)),
+            "back": Box((0, 0, upper_z - ghost_box_width), (upper_x, upper_y, upper_z)),
+        }
 
 
 def touch_domain_border(box, domain_box, border):
@@ -79,21 +84,29 @@ def touch_domain_border(box, domain_box, border):
 
 
 def periodicity_shifts(domain_box):
+    shifts = {}
+
     if domain_box.ndim == 1:
         shape_x = domain_box.shape
-        return {
+        shifts = {
             "left": shape_x,
             "right": -shape_x,
         }
+        shifts.update({"leftright": [shifts["left"], shifts["right"]]})
 
     if domain_box.ndim == 2:
         shape_x, shape_y = domain_box.shape
+    if domain_box.ndim == 3:
+        shape_x, shape_y, shape_z = domain_box.shape
+
+    if domain_box.ndim > 1:
         shifts = {
             "left": [(shape_x, 0)],
             "right": [(-shape_x, 0)],
             "bottom": [(0, shape_y)],
             "top": [(0, -shape_y)],
         }
+
         shifts.update(
             {
                 "bottomleft": [*shifts["left"], *shifts["bottom"], (shape_x, shape_y)],
@@ -134,7 +147,7 @@ def periodicity_shifts(domain_box):
                     shifts["topleft"][-1],
                     shifts["topright"][-1],
                 ],
-                "bottomtopleftright": [  # one patch covers domain
+                "leftrightbottomtop": [  # one patch covers domain
                     *shifts["bottomleft"],
                     *shifts["topright"],
                     shifts["bottomright"][-1],
@@ -144,7 +157,35 @@ def periodicity_shifts(domain_box):
         )
 
     if domain_box.ndim == 3:
-        raise ValueError("Unhandeled dimension")
+        front = {
+            f"{k}front": [(v[0], v[1], shape_z) for v in l] for k, l in shifts.items()
+        }
+        back = {
+            f"{k}back": [([v[0], v[1], -shape_z]) for v in l] for k, l in shifts.items()
+        }
+
+        shifts = {k: [([v[0], v[1], 0]) for v in l] for k, l in shifts.items()}
+
+        shifts.update(front)
+        shifts.update(back)
+        shifts.update(
+            {
+                "back": [(0, 0, -shape_z)],
+                "front": [(0, 0, shape_z)],
+                "leftrightbottomtopfrontback": [
+                    *shifts["bottomleftfront"],
+                    *shifts["bottomrightback"],
+                    *shifts["topleftfront"],
+                    *shifts["toprightback"],
+                ],
+            }
+        )
+
+    assert len(list(shifts.keys())) == len(
+        set(["".join(sorted(k)) for k in list(shifts.keys())])
+    )
+
+    shifts = {"".join(sorted(k)): l for k, l in shifts.items()}
 
     return shifts
 
@@ -246,7 +287,7 @@ def compute_overlaps(patches, domain_box):
     ]
 
     for patch_i, ref_patch in enumerate(border_patches):
-        in_sides = borders_per_patch[ref_patch]
+        in_sides = "".join(sorted(borders_per_patch[ref_patch]))
         assert in_sides in shifts
 
         for ref_pdname, ref_pd in ref_patch.patch_datas.items():
@@ -336,36 +377,41 @@ def get_periodic_list(patches, domain_box, n_ghosts):
             shift_patch(first_patch, domain_box.shape)
             sorted_patches.append(first_patch)
 
+        return sorted_patches
+
+    dbu = domain_box.upper
+
     if dim == 2:
         sides = {
-            "bottom": Box([0, 0], [domain_box.upper[0], 0]),
-            "top": Box(
-                [0, domain_box.upper[1]], [domain_box.upper[0], domain_box.upper[1]]
-            ),
-            "left": Box([0, 0], [0, domain_box.upper[1]]),
-            "right": Box(
-                [domain_box.upper[0], 0], [domain_box.upper[0], domain_box.upper[1]]
-            ),
+            "left": Box([0, 0], [0, dbu[1]]),
+            "right": Box([dbu[0], 0], [dbu[0], dbu[1]]),
+            "bottom": Box([0, 0], [dbu[0], 0]),
+            "top": Box([0, dbu[1]], [dbu[0], dbu[1]]),
         }
 
-        shifts = periodicity_shifts(domain_box)
+    else:
+        sides = {
+            "left": Box([0, 0, 0], [0, dbu[1], dbu[2]]),
+            "right": Box([dbu[0], 0, 0], [dbu[0], dbu[1], dbu[2]]),
+            "bottom": Box([0, 0, 0], [dbu[0], 0, dbu[2]]),
+            "top": Box([0, dbu[1], 0], [dbu[0], dbu[1], dbu[2]]),
+            "front": Box([0, 0, 0], [dbu[0], dbu[1], 0]),
+            "back": Box([0, 0, dbu[2]], [dbu[0], dbu[1], dbu[2]]),
+        }
 
-        def borders_per(box):
-            return "".join(
-                [key for key, side in sides.items() if box * side is not None]
-            )
+    shifts = periodicity_shifts(domain_box)
 
-        for patch in patches:
-            in_sides = borders_per(boxm.grow(patch.box, n_ghosts))
+    def borders_per(box):
+        return "".join([key for key, side in sides.items() if box * side is not None])
 
-            if in_sides in shifts:  # in_sides might be empty, so no borders
-                for shift in shifts[in_sides]:
-                    patch_copy = copy(patch)
-                    shift_patch(patch_copy, shift)
-                    sorted_patches.append(patch_copy)
+    for patch in patches:
+        in_sides = "".join(sorted(borders_per(boxm.grow(patch.box, n_ghosts))))
 
-    if dim == 3:
-        raise ValueError("not yet implemented")
+        if in_sides in shifts:  # in_sides might be empty, so no borders
+            for shift in shifts[in_sides]:
+                patch_copy = copy(patch)
+                shift_patch(patch_copy, shift)
+                sorted_patches.append(patch_copy)
 
     return sorted_patches
 
@@ -470,18 +516,7 @@ def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
                     check_patches = patches
 
                 for gabox in ghostAreaBoxes:
-                    remaining = gabox - check_patches[0].box
-
-                    for patch in check_patches[1:]:
-                        tmp = []
-                        remove = []
-                        for i, rem in enumerate(remaining):
-                            if rem * patch.box is not None:
-                                remove.append(i)
-                                tmp += rem - patch.box
-                        for rm in reversed(remove):
-                            del remaining[rm]
-                        remaining += tmp
+                    remaining = gabox - [p.box for p in check_patches]
 
                     if ilvl not in lvl_gaboxes:
                         lvl_gaboxes[ilvl] = {}

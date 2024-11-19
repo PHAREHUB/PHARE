@@ -93,7 +93,7 @@ class AdvanceTest(AdvanceTestBase):
         print(f"{self._testMethodName}_{ndim}d")
         self._test_field_coarsening_via_subcycles(ndim, interp_order, refinement_boxes)
 
-    @unittest.skip("should change to work on moments")
+    # @unittest.skip("should change to work on moments")
     @data(  # only supports a hierarchy with 2 levels
         *per_interp(({"L0": [Box1D(5, 9)]})),
         *per_interp(({"L0": [Box1D(5, 24)]})),

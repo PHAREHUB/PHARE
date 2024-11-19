@@ -13,7 +13,6 @@
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
@@ -21,8 +20,9 @@
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-using testing::Eq;
 
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 
 TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimal)
@@ -52,7 +52,8 @@ TEST(UniformIntervalPartition, givesCorrectPartitionsForDual)
     }
 }
 
-
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
@@ -82,6 +83,8 @@ TYPED_TEST(aFieldRefineOperator, canBeCreated)
 }
 
 
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 
 template<typename dimType>
@@ -109,6 +112,8 @@ TYPED_TEST(aFieldRefine, canBeCreated)
 }
 
 
+// ----------------------------------------------------------------------------
+// ----------------------------------------------------------------------------
 
 
 template<typename dimType>

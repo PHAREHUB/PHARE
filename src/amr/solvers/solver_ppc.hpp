@@ -4,6 +4,7 @@
 #include "core/def/phare_mpi.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/ion_updater/new_updater.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/ohm/ohm.hpp"

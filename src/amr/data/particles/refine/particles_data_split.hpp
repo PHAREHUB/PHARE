@@ -50,6 +50,9 @@ namespace amr
     }
 
 
+    /** \brief the ParticlesRefineOperator is the concrete RefineOperator PHARE provides to
+     * SAMRAI to refine particles from coarse to fine levels.
+     */
     template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {

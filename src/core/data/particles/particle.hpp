@@ -57,9 +57,10 @@ struct Particle
     double weight = 0;
     double charge = 0;
 
-    std::array<int, dim> iCell    = ConstArray<int, dim>();
-    std::array<double, dim> delta = ConstArray<double, dim>();
-    std::array<double, 3> v       = ConstArray<double, 3>();
+    // {} zero initialization
+    std::array<int, dim> iCell{};
+    std::array<double, dim> delta{};
+    std::array<double, 3> v{};
 
     NO_DISCARD bool operator==(Particle<dim> const& that) const
     {

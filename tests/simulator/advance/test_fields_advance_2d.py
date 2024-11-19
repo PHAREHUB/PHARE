@@ -98,7 +98,7 @@ class AdvanceTest(AdvanceTestBase):
             ndim, interp_order, refinement_boxes, dl=0.3
         )
 
-    @unittest.skip("should change to work with moments")
+    # @unittest.skip("should change to work with moments")
     @data(  # only supports a hierarchy with 2 levels
         *per_interp(({"L0": [Box2D(0, 4)]})),
         *per_interp(({"L0": [Box2D(10, 14)]})),

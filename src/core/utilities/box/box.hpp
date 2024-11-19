@@ -8,9 +8,9 @@
 #include "core/def.hpp"
 
 #include <cstddef>
-#include <algorithm>
 #include <optional>
 #include <iostream>
+#include <algorithm>
 
 namespace PHARE::core
 {
@@ -265,6 +265,7 @@ NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
 
     return false;
 }
+
 
 
 

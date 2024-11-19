@@ -23,7 +23,7 @@ class Initialization2DTest(InitializationTest):
     @data(*interp_orders)
     def test_B_is_as_provided_by_user(self, interp_order):
         print(f"\n{self._testMethodName}_{ndim}d")
-        self._test_B_is_as_provided_by_user(ndim, interp_order, nbr_part_per_cell=ppc)
+        self._test_B_is_as_provided_by_user(ndim, interp_order, ppc=ppc)
 
     @data(*interp_orders)
     def test_bulkvel_is_as_provided_by_user(self, interp_order):

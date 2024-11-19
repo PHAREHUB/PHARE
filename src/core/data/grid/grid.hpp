@@ -14,13 +14,14 @@
 namespace PHARE::core
 {
 
-/* Grid is the structure owning the field type memory via its inheritance from NdArrayImpl
-Grid exists to decouple the usage of memory by computing routines from the allocation of
-memory. Components needing to own/allocate memory will use a Grid.
-On the contrary, components that just need to manipulate data (and may not be able to manipulate
-objects encapsulating allocating objects such as vectors) will access it through a Field view. For
-convenience, Grid can spawn its own Field view.
-*/
+/* \brief Grid is the structure owning the field type memory via its inheritance from NdArrayImpl
+ *
+ * Grid exists to decouple the usage of memory by computing routines from the allocation of
+ * memory. Components needing to own/allocate memory will use a Grid.
+ * On the contrary, components that just need to manipulate data (and may not be able to manipulate
+ * objects encapsulating allocating objects such as vectors) will access it through a Field view.
+ * For convenience, Grid can spawn its own Field view.
+ */
 template<typename NdArrayImpl, typename PhysicalQuantity>
 class Grid : public NdArrayImpl
 {

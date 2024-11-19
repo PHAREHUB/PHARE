@@ -1,5 +1,3 @@
-
-
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -740,6 +738,73 @@ REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeig
 using My2dTypes = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
 INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_2d, My2dTypes);
 
+
+
+/*********************************************************************************************/
+template<typename Interpolator>
+struct ACollectionOfParticles_3d : public ::testing::Test
+{
+    static constexpr auto interp_order = Interpolator::interp_order;
+    static constexpr std::size_t dim   = 3;
+    static constexpr std::uint32_t nx = 15, ny = 15, nz = 15;
+    static constexpr int start = 0, end = 5;
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
+
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<dim, interp_order>;
+    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
+    using Grid_t           = typename PHARE_TYPES::Grid_t;
+    using UsableVecFieldND = UsableVecField<dim>;
+
+    GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
+    ParticleArray_t particles;
+    Grid_t rho;
+    UsableVecFieldND v;
+    Interpolator interpolator;
+
+    ACollectionOfParticles_3d()
+        : particles{grow(layout.AMRBox(), safeLayer)}
+        , rho{"field", HybridQuantity::Scalar::rho, nx, ny, nz}
+        , v{"v", layout, HybridQuantity::Vector::V}
+    {
+        double weight = [](auto const& meshSize) {
+            return std::accumulate(meshSize.begin(), meshSize.end(), 1.0,
+                                   std::multiplies<double>());
+        }(layout.meshSize());
+
+        for (int i = start; i < end; i++)
+            for (int j = start; j < end; j++)
+                for (int k = start; k < end; k++)
+                {
+                    auto& part  = particles.emplace_back();
+                    part.iCell  = {i, j, k};
+                    part.delta  = ConstArray<double, dim>(.5);
+                    part.weight = weight;
+                    part.v[0]   = +2.;
+                    part.v[1]   = -1.;
+                    part.v[2]   = +1.;
+                }
+
+        interpolator(particles, rho, v, layout);
+    }
+};
+TYPED_TEST_SUITE_P(ACollectionOfParticles_3d);
+
+
+TYPED_TEST_P(ACollectionOfParticles_3d, DepositCorrectlyTheirWeight_3d)
+{
+    // auto const& [vx, vy, vz] = this->v();
+    // EXPECT_DOUBLE_EQ(this->rho(7, 7, 7), 1.0);
+    // EXPECT_DOUBLE_EQ(vx(7, 7, 7), 2.0);
+    // EXPECT_DOUBLE_EQ(vy(7, 7, 7), -1.0);
+    // EXPECT_DOUBLE_EQ(vz(7, 7, 7), 1.0);
+}
+REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_3d, DepositCorrectlyTheirWeight_3d);
+
+
+using My3dTypes = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
+INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_3d, My3dTypes);
+/*********************************************************************************************/
 
 int main(int argc, char** argv)
 {
