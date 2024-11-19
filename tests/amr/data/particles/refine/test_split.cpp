@@ -22,7 +22,7 @@ struct SplitterTest : public ::testing::Test
     SplitterTest() { Splitter splitter; }
 };
 
-using Splitters = testing::Types<Splitter<1, 1, 2>, Splitter<2, 1, 8> /*, Splitter<3, 1, 27>*/>;
+using Splitters = testing::Types<Splitter<1, 1, 2>, Splitter<2, 1, 8>, Splitter<3, 1, 27>>;
 
 TYPED_TEST_SUITE(SplitterTest, Splitters);
 

@@ -23,7 +23,7 @@ def per_interp(dic):
 
 
 @ddt
-class Initialization1DTest(InitializationTest):
+class Initialization2DTest(InitializationTest):
     @data(*interp_orders)
     def test_nbr_particles_per_cell_is_as_provided(self, interp_order):
         print(f"{self._testMethodName}_{ndim}d")
