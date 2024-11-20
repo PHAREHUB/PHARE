@@ -20,4 +20,6 @@ if(HighFive)
 
   endif()
 
+  phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-densities test_density_init.py  ${CMAKE_CURRENT_BINARY_DIR})
+
 endif()
