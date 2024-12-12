@@ -8,6 +8,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+env:
+  dylib_path: Monday
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
@@ -15,14 +18,6 @@ jobs:
       fail-fast: false
       matrix:
         os: [ macos-13, macos-14, macos-latest]
-        include:
-        - os: macos-13
-          dylib_path: /usr/local/lib/gcc/current
-        - os: macos-14
-          dylib_path: /usr/local/lib/gcc/current
-        - os: macos-latest # https://github.com/actions/runner/issues/3337
-          dylib_path: /opt/homebrew/Cellar/gcc/14.2.0/lib/gcc/current
-
 
     steps:
     - name: Build Info
@@ -79,10 +74,10 @@ jobs:
     - name: Configure CMake
       working-directory: ${{runner.workspace}}/build
       env:
-        LIBRARY_PATH: ${{ matrix.dylib_path }} # used by clang, needed to find libquadmath - else link error
+        LIBRARY_PATH: ${{ env.dylib_path }} # used by clang, needed to find libquadmath - else link error
       run: |
         [ -d /opt/homebrew/Cellar/gcc ] && ls -l /opt/homebrew/Cellar/gcc
-        [ ! -d "${{matrix.dylib_path}}" ] && echo dylib_path not found && find / -name "libquadmath.0.dylib" && exit 1
+        [ ! -d "${{env.dylib_path}}" ] && echo dylib_path not found && find / -name "libquadmath.0.dylib" && exit 1
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -92,7 +87,7 @@ jobs:
     - name: Build
       working-directory: ${{runner.workspace}}/build
       env:
-        LIBRARY_PATH: ${{ matrix.dylib_path }} # used by clang, needed to find libquadmath - else link error
+        LIBRARY_PATH: ${{ env.dylib_path }} # used by clang, needed to find libquadmath - else link error
       run: cmake --build . -j 2
 
     - name: Test
