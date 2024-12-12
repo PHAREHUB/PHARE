@@ -14,11 +14,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ macos-12, macos-13, macos-latest]
+        os: [ macos-13, macos-14, macos-latest]
         include:
-        - os: macos-12
-          dylib_path: /usr/local/lib/gcc/current
         - os: macos-13
+          dylib_path: /usr/local/lib/gcc/current
+        - os: macos-14
           dylib_path: /usr/local/lib/gcc/current
         - os: macos-latest # https://github.com/actions/runner/issues/3337
           dylib_path: /opt/homebrew/Cellar/gcc/14.2.0/lib/gcc/current
