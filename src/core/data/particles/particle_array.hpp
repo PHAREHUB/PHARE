@@ -41,14 +41,7 @@ public:
 
 
 public:
-    ParticleArray(box_t box)
-        : box_{box}
-        , cellMap_{box_}
-    {
-        assert(box_.size() > 0);
-    }
-
-    ParticleArray(box_t box, std::size_t size)
+    ParticleArray(box_t box = box_t{}, std::size_t size = 0)
         : particles_(size)
         , box_{box}
         , cellMap_{box_}
@@ -79,6 +72,9 @@ public:
     {
         return (this->particles_ == that.particles_);
     }
+
+    NO_DISCARD auto data() const { return particles_.data(); }
+    NO_DISCARD auto data() { return particles_.data(); }
 
     NO_DISCARD auto begin() const { return particles_.begin(); }
     NO_DISCARD auto begin() { return particles_.begin(); }
@@ -235,6 +231,7 @@ public:
     NO_DISCARD auto& vector() const { return particles_; }
 
     auto& box() const { return box_; }
+    auto& map() const { return cellMap_; }
 
 
     auto& replace_from(ParticleArray const& that)
@@ -245,6 +242,14 @@ public:
         std::copy(that.begin(), that.end(), this->begin());
         this->box_     = that.box_;
         this->cellMap_ = that.cellMap_;
+        return *this;
+    }
+    auto& replace_from(Particle_t const* particles, std::size_t size, CellMap_t const& map)
+    {
+        this->resize(size);
+        this->cellMap_ = map;
+        this->box_     = map.box();
+        std::copy(particles, particles + size, particles_.data());
         return *this;
     }
 
