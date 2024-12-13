@@ -4,12 +4,14 @@
 
 #include "core/def/phare_mpi.hpp"
 
-#include <SAMRAI/hier/Box.h>
-
+#include "amr/amr_constants.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+
 #include "core/utilities/constants.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
+
+#include <SAMRAI/hier/Box.h>
 
 #include <cstddef>
 
@@ -43,8 +45,8 @@ public:
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
-        auto const locFineIdx          = AMRToLocal(fineIndex, fineBox_);
-        auto constexpr refinementRatio = 2;
+        auto const locFineIdx = AMRToLocal(fineIndex, fineBox_);
+
         auto coarseIdx{fineIndex};
         for (auto& idx : coarseIdx)
             idx = idx / refinementRatio;

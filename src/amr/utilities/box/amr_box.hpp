@@ -2,13 +2,13 @@
 #define PHARE_AMR_UTILITIES_BOX_BOX_HPP
 
 
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp"
+#include "core/utilities/box/box.hpp"
 
+#include "amr/amr_constants.hpp"
 
 #include "SAMRAI/hier/Box.h"
-#include "core/utilities/box/box.hpp"
-#include "core/def.hpp"
-
 
 namespace PHARE::amr
 {
@@ -84,6 +84,22 @@ struct Box : public PHARE::core::Box<Type, dim>
         return eq;
     }
 };
+
+template<std::size_t dim>
+auto refine(core::Box<int, dim> box)
+{
+    for (std::uint8_t di = 0; di < dim; ++di)
+        box.lower[di] *= refinementRatio, box.upper[di] *= refinementRatio;
+    return box;
+}
+template<std::size_t dim>
+auto coarsen(core::Box<int, dim> box)
+{
+    for (std::uint8_t di = 0; di < dim; ++di)
+        box.lower[di] /= refinementRatio, box.upper[di] /= refinementRatio;
+
+    return box;
+}
 
 } // namespace PHARE::amr
 

@@ -44,7 +44,7 @@ public:
         std::uint32_t const& nbrParticlesPerCell, std::optional<std::size_t> seed = {},
         Basis const basis                                 = Basis::Cartesian,
         std::array<InputFunction, 3> const& magneticField = {nullptr, nullptr, nullptr},
-        double densityCutOff                              = 1e-5)
+        double const densityCutOff = 1e-5, double const over_alloc_factor = .1)
         : density_{density}
         , bulkVelocity_{bulkVelocity}
         , thermalVelocity_{thermalVelocity}
@@ -54,6 +54,7 @@ public:
         , nbrParticlePerCell_{nbrParticlesPerCell}
         , basis_{basis}
         , rngSeed_{seed}
+        , over_alloc_factor_{over_alloc_factor}
     {
     }
 
@@ -92,6 +93,7 @@ private:
     std::uint32_t nbrParticlePerCell_;
     Basis basis_;
     std::optional<std::size_t> rngSeed_;
+    double over_alloc_factor_ = .1;
 };
 
 
@@ -177,6 +179,17 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     auto const [n, V, Vth] = fns();
     auto randGen           = getRNG(rngSeed_);
     ParticleDeltaDistribution<double> deltaDistrib;
+
+    auto const expected_size = std::accumulate(n, n + ndCellIndices.size(), std::size_t{0},
+                                               [&](auto const& sum, auto const& density_value) {
+                                                   return (density_value > densityCutOff_)
+                                                              ? sum + nbrParticlePerCell_
+                                                              : sum;
+                                               });
+
+    auto const incoming_estimate
+        = (layout.AMRBox().surface_cell_count() * (nbrParticlePerCell_ * over_alloc_factor_));
+    particles.reserve(expected_size + incoming_estimate);
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx)
     {
