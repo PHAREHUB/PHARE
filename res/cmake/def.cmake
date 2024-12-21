@@ -87,6 +87,13 @@ if(devMode) # -DdevMode=ON
       set(PHARE_WITH_CCACHE TRUE)
     endif()
   endif()
+
+else()
+
+  if (CMAKE_BUILD_TYPE STREQUAL "Release")
+    include("${PHARE_PROJECT_DIR}/res/cmake/release.cmake")
+  endif()
+
 endif(devMode)
 
 function(phare_sanitize_ san cflags )
