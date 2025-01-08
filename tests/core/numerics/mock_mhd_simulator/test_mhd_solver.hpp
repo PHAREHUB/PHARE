@@ -60,6 +60,16 @@ struct DummyModelViewConstructor
         , B_z{"B_z", layout, MHDQuantity::Vector::VecFlux_z}
         , Etot_z{"Etot_z", layout, MHDQuantity::Scalar::ScalarFlux_z}
 
+        , rho1{"rho1", layout, MHDQuantity::Scalar::rho}
+        , rhoV1{"rhoV1", layout, MHDQuantity::Vector::rhoV}
+        , B1{"B1", layout, MHDQuantity::Vector::B}
+        , Etot1{"Etot1", layout, MHDQuantity::Scalar::Etot}
+
+        , rho2{"rho2", layout, MHDQuantity::Scalar::rho}
+        , rhoV2{"rhoV2", layout, MHDQuantity::Vector::rhoV}
+        , B2{"B2", layout, MHDQuantity::Vector::B}
+        , Etot2{"Etot2", layout, MHDQuantity::Scalar::Etot}
+
         , layouts{layout}
     {
     }
@@ -78,6 +88,16 @@ struct DummyModelViewConstructor
     PHARE::core::UsableVecFieldMHD<dimension> rhoV_z;
     PHARE::core::UsableVecFieldMHD<dimension> B_z;
     PHARE::core::UsableFieldMHD<dimension> Etot_z;
+
+    PHARE::core::UsableFieldMHD<dimension> rho1;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV1;
+    PHARE::core::UsableVecFieldMHD<dimension> B1;
+    PHARE::core::UsableFieldMHD<dimension> Etot1;
+
+    PHARE::core::UsableFieldMHD<dimension> rho2;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV2;
+    PHARE::core::UsableVecFieldMHD<dimension> B2;
+    PHARE::core::UsableFieldMHD<dimension> Etot2;
 
     GridLayout_t layouts;
 };
@@ -174,6 +194,16 @@ struct DummyModelView : public PHARE::solver::ISolverModelView
         B_z.push_back(&construct.B_z.super());
         Etot_z.push_back(&construct.Etot_z.super());
 
+        rho1.push_back(&construct.rho1.super());
+        rhoV1.push_back(&construct.rhoV1.super());
+        B1.push_back(&construct.B1.super());
+        Etot1.push_back(&construct.Etot1.super());
+
+        rho2.push_back(&construct.rho2.super());
+        rhoV2.push_back(&construct.rhoV2.super());
+        B2.push_back(&construct.B2.super());
+        Etot2.push_back(&construct.Etot2.super());
+
         layouts.push_back(&construct.layouts);
     }
 
@@ -204,6 +234,16 @@ struct DummyModelView : public PHARE::solver::ISolverModelView
     std::vector<VecFieldMHD*> rhoV_z;
     std::vector<VecFieldMHD*> B_z;
     std::vector<FieldMHD*> Etot_z;
+
+    std::vector<FieldMHD*> rho1;
+    std::vector<VecFieldMHD*> rhoV1;
+    std::vector<VecFieldMHD*> B1;
+    std::vector<FieldMHD*> Etot1;
+
+    std::vector<FieldMHD*> rho2;
+    std::vector<VecFieldMHD*> rhoV2;
+    std::vector<VecFieldMHD*> B2;
+    std::vector<FieldMHD*> Etot2;
 
     std::vector<GridLayout_t*> layouts;
 
