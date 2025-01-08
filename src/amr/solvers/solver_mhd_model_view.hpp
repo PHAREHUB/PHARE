@@ -9,6 +9,7 @@
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
+#include "core/numerics/time_integrator/time_integrator.hpp"
 
 namespace PHARE::solver
 {
@@ -118,6 +119,57 @@ public:
     core_type to_primtitve_;
 };
 
+template<typename GridLayout>
+class TimeIntegratorTransformer
+{
+    using core_type = PHARE::core::TimeIntegrator<GridLayout>;
+
+public:
+    template<typename Layout, typename Field, typename VecField, typename... Fluxes>
+    void euler(Layout const& layouts, Field& rho, VecField& rhoV, VecField& B, Field& Etot,
+               VecField& E, double const dt, Fluxes&... fluxes)
+    {
+        assert_equal_sizes(rho, rhoV, B, Etot, E, fluxes...);
+        for (std::size_t i = 0; i < layouts.size(); ++i)
+        {
+            auto _ = core::SetLayout(layouts[i], time_integrator_);
+            time_integrator_.euler(*rho[i], *rhoV[i], *B[i], *Etot[i], *E[i], dt, *fluxes[i]...);
+        }
+    }
+
+    template<typename Layout, typename Field, typename VecField, typename... Fluxes>
+    void tvdrk2(Layout const& layouts, Field& rho, VecField& rhoV, VecField& B, Field& Etot,
+                Field& rho1, VecField& rhoV1, VecField& B1, Field& Etot1, VecField& E,
+                double const dt, Fluxes&... fluxes)
+    {
+        assert_equal_sizes(rho, rhoV, B, Etot, E, fluxes...);
+        for (std::size_t i = 0; i < layouts.size(); ++i)
+        {
+            auto _ = core::SetLayout(layouts[i], time_integrator_);
+            time_integrator_.tvdrk2(*rho[i], *rhoV[i], *B[i], *Etot[i], *rho1[i], *rhoV1[i], *B1[i],
+                                    *Etot1[i], *E[i], dt, *fluxes[i]...);
+        }
+    }
+
+    template<typename Layout, typename Field, typename VecField, typename... Fluxes>
+    void tvdrk3(Layout const& layouts, Field& rho, VecField& rhoV, VecField& B, Field& Etot,
+                Field& rho1, VecField& rhoV1, VecField& B1, Field& Etot1, Field& rho2,
+                VecField& rhoV2, VecField& B2, Field& Etot2, VecField& E, double const dt,
+                Fluxes&... fluxes)
+    {
+        assert_equal_sizes(rho, rhoV, B, Etot, E, fluxes...);
+        for (std::size_t i = 0; i < layouts.size(); ++i)
+        {
+            auto _ = core::SetLayout(layouts[i], time_integrator_);
+            time_integrator_.tvdrk3(*rho[i], *rhoV[i], *B[i], *Etot[i], *rho1[i], *rhoV1[i], *B1[i],
+                                    *Etot1[i], *rho2[i], *rhoV2[i], *B2[i], *Etot2[i], *E[i], dt,
+                                    *fluxes[i]...);
+        }
+    }
+
+    core_type time_integrator_;
+};
+
 
 template<typename MHDModel_>
 class MHDModelView : public ISolverModelView
@@ -127,11 +179,13 @@ public:
     using GridLayout                = typename MHDModel_t::gridlayout_type;
     using GodunovFluxes_t           = GodunovFluxesTransformer<GridLayout>;
     using Ampere_t                  = AmpereTransformer<GridLayout>;
-    using FiniteVolumeEuler_t       = FiniteVolumeEulerTransformer<GridLayout>;
-    using ConstrainedTransport_t    = ConstrainedTransportTransformer<GridLayout>;
-    using Faraday_t                 = FaradayTransformer<GridLayout>;
     using ToPrimitiveConverter_t    = ToPrimitiveTransformer<GridLayout>;
     using ToConservativeConverter_t = ToConservativeTransformer<GridLayout>;
+    using TimeIntegrator_t          = TimeIntegratorTransformer<GridLayout>;
+
+    using FiniteVolumeEuler_t    = FiniteVolumeEulerTransformer<GridLayout>;
+    using ConstrainedTransport_t = ConstrainedTransportTransformer<GridLayout>;
+    using Faraday_t              = FaradayTransformer<GridLayout>;
 };
 
 }; // namespace PHARE::solver

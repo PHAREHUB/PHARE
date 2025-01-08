@@ -10,12 +10,37 @@
 namespace PHARE::core
 {
 template<typename GridLayout>
+class ConstrainedTransport_ref;
+
+template<typename GridLayout>
 class ConstrainedTransport : public LayoutHolder<GridLayout>
 {
     constexpr static auto dimension = GridLayout::dimension;
     using LayoutHolder<GridLayout>::layout_;
 
 public:
+    template<typename VecField, typename... Fluxes>
+    void operator()(VecField& E, const Fluxes&... fluxes) const
+    {
+        if (!this->hasLayout())
+            throw std::runtime_error(
+                "Error - ConstrainedTransport - GridLayout not set, cannot proceed to computation");
+
+        ConstrainedTransport_ref{*this->layout_}(E, fluxes...);
+    }
+};
+
+template<typename GridLayout>
+class ConstrainedTransport_ref
+{
+    constexpr static auto dimension = GridLayout::dimension;
+
+public:
+    ConstrainedTransport_ref(GridLayout const& layout)
+        : layout_{layout}
+    {
+    }
+
     template<typename VecField, typename... Fluxes>
     void operator()(VecField& E, const Fluxes&... fluxes) const
     {
@@ -31,9 +56,9 @@ public:
 
         if constexpr (dimension == 1)
         {
-            layout_->evalOnBox(Ey, [&](auto&... args) mutable { this->Ey_(Ey, {args...}, Bz_x); });
+            layout_.evalOnBox(Ey, [&](auto&... args) mutable { Ey_(Ey, {args...}, Bz_x); });
 
-            layout_->evalOnBox(Ez, [&](auto&... args) mutable { this->Ez_(Ez, {args...}, By_x); });
+            layout_.evalOnBox(Ez, [&](auto&... args) mutable { Ez_(Ez, {args...}, By_x); });
         }
         else if constexpr (dimension >= 2)
         {
@@ -43,14 +68,12 @@ public:
 
             if constexpr (dimension == 2)
             {
-                layout_->evalOnBox(Ex,
-                                   [&](auto&... args) mutable { this->Ex_(Ex, {args...}, Bz_y); });
+                layout_.evalOnBox(Ex, [&](auto&... args) mutable { Ex_(Ex, {args...}, Bz_y); });
 
-                layout_->evalOnBox(Ey,
-                                   [&](auto&... args) mutable { this->Ey_(Ey, {args...}, Bz_x); });
+                layout_.evalOnBox(Ey, [&](auto&... args) mutable { Ey_(Ey, {args...}, Bz_x); });
 
-                layout_->evalOnBox(
-                    Ez, [&](auto&... args) mutable { this->Ez_(Ez, {args...}, By_x, Bx_y); });
+                layout_.evalOnBox(Ez,
+                                  [&](auto&... args) mutable { Ez_(Ez, {args...}, By_x, Bx_y); });
             }
             else if constexpr (dimension == 3)
             {
@@ -58,19 +81,21 @@ public:
                 auto const& Bx_z = B_z(Component::X);
                 auto const& By_z = B_z(Component::Y);
 
-                layout_->evalOnBox(
-                    Ex, [&](auto&... args) mutable { this->Ex_(Ex, {args...}, Bz_y, By_z); });
+                layout_.evalOnBox(Ex,
+                                  [&](auto&... args) mutable { Ex_(Ex, {args...}, Bz_y, By_z); });
 
-                layout_->evalOnBox(
-                    Ey, [&](auto&... args) mutable { this->Ey_(Ey, {args...}, Bz_x, Bx_z); });
+                layout_.evalOnBox(Ey,
+                                  [&](auto&... args) mutable { Ey_(Ey, {args...}, Bz_x, Bx_z); });
 
-                layout_->evalOnBox(
-                    Ez, [&](auto&... args) mutable { this->Ez_(Ez, {args...}, By_x, Bx_y); });
+                layout_.evalOnBox(Ez,
+                                  [&](auto&... args) mutable { Ez_(Ez, {args...}, By_x, Bx_y); });
             }
         }
     }
 
 private:
+    GridLayout layout_;
+
     template<typename Field, typename... Fluxes>
     void Ex_(Field& Ex, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
     {
