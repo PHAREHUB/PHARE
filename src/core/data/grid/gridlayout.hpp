@@ -566,7 +566,7 @@ namespace core
          * on the dimensionality of the GridLayout.
          */
         template<auto direction, typename Field>
-        NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index)
+        NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index) const
         {
             auto fieldCentering = centering(operand.physicalQuantity());
             using PHARE::core::dirX;
