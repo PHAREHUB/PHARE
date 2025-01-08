@@ -20,7 +20,7 @@ def config():
         reconstruction="linear",
         limiter="vanleer",
         riemann="rusanov",
-        integrator="euler",
+        integrator="tvdrk3",
     )
 
     B0 = 1.0 / (np.sqrt(4.0 * np.pi))

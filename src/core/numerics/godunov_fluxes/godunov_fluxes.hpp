@@ -318,7 +318,7 @@ private:
 
         auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
 
-        return for_N<N_elements, for_N_R_mode::make_array>([&](auto i) {
+        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
             return (std::get<i>(fL) + std::get<i>(fR)) * 0.5
                    - S * (std::get<i>(uR) - std::get<i>(uL)) * 0.5;
         });
