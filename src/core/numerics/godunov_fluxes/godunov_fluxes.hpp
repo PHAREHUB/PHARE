@@ -247,25 +247,37 @@ private:
     auto riemann_steps_(auto const& uL, auto const& ubL, auto const& uR, auto const& ubR,
                         auto const& fL, auto const& fbL, auto const& fR, auto const& fbR) const
     {
-        auto [speeds, speedsb]
-            = riemann_speeds_<direction>(std::tuple_cat(uL, ubL), std::tuple_cat(uR, ubR));
+        // 2 calls separate calls of the riemann solver in case we are in hall-mhd (the second time
+        // for B and the total energy with whisler contribution).
 
-        auto [rho, rhoVx, rhoVy, rhoVz] = std::apply(
-            [&](auto... args) { return riemann_solver_(uL, uR, fL, fR, args...); }, speeds);
-
-        auto [Bx, By, Bz, Etot] = std::apply(
-            [&](auto... args) { return riemann_solver_(ubL, ubR, fbL, fbR, args...); }, speedsb);
-
-        return std::make_tuple(rho, rhoVx, rhoVy, rhoVz, Bx, By, Bz, Etot);
-    }
-
-    template<auto direction>
-    auto riemann_speeds_(auto const& uL, auto const& uR) const
-    {
         if (riemann_ == "rusanov")
-            return rusanov_speeds_<direction>(uL, uR);
+        {
+            auto [speeds, speedsb]
+                = rusanov_speeds_<direction>(std::tuple_cat(uL, ubL), std::tuple_cat(uR, ubR));
+
+            auto [rho, rhoVx, rhoVy, rhoVz] = std::apply(
+                [&](auto... args) { return rusanov_(uL, uR, fL, fR, args...); }, speeds);
+
+            auto [Bx, By, Bz, Etot] = std::apply(
+                [&](auto... args) { return rusanov_(ubL, ubR, fbL, fbR, args...); }, speedsb);
+
+            return std::make_tuple(rho, rhoVx, rhoVy, rhoVz, Bx, By, Bz, Etot);
+        }
+        else if (riemann_ == "hll")
+        {
+            auto [speeds, speedsb]
+                = hll_speeds_<direction>(std::tuple_cat(uL, ubL), std::tuple_cat(uR, ubR));
+
+            auto [rho, rhoVx, rhoVy, rhoVz]
+                = std::apply([&](auto... args) { return hll_(uL, uR, fL, fR, args...); }, speeds);
+
+            auto [Bx, By, Bz, Etot] = std::apply(
+                [&](auto... args) { return hll_(ubL, ubR, fbL, fbR, args...); }, speedsb);
+
+            return std::make_tuple(rho, rhoVx, rhoVy, rhoVz, Bx, By, Bz, Etot);
+        }
         else
-            throw std::runtime_error("Error - Riemann Solver - Unknown Riemann solver");
+            throw std::runtime_error("Error - GodunovFluxes - Unknown Riemann solver");
     }
 
     template<auto direction>
@@ -301,26 +313,69 @@ private:
             return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VzL, VzR, BzL, BzR);
     }
 
-    template<typename... Speeds>
-    auto riemann_solver_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
-                         Speeds... S) const
+    template<auto direction>
+    auto hll_speeds_(auto const& uL, auto const& uR) const
     {
-        if (riemann_ == "rusanov")
-            return rusanov_(uL, uR, fL, fR, S...);
-        else
-            throw std::runtime_error("Error - Riemann Solver - Unknown Riemann solver");
+        auto const& [rhoL, VxL, VyL, VzL, BxL, ByL, BzL, PL] = uL;
+        auto const& [rhoR, VxR, VyR, VzR, BxR, ByR, BzR, PR] = uR;
+        auto BdotBL                                          = BxL * BxL + ByL * ByL + BzL * BzL;
+        auto BdotBR                                          = BxR * BxR + ByR * ByR + BzR * BzR;
+
+        auto compute_speeds = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR,
+                                  auto VcompL, auto VcompR, auto BcompL, auto BcompR) {
+            auto cfastL = compute_fast_magnetosonic_(rhoL, BcompL, BdotBL, PL);
+            auto cfastR = compute_fast_magnetosonic_(rhoR, BcompR, BdotBR, PR);
+            auto SL     = std::min(VcompL - cfastL, VcompR - cfastR);
+            auto SR     = std::max(VcompL + cfastL, VcompR + cfastR);
+            auto SLb    = SL;
+            auto SRb    = SR;
+
+            if (terms_ == "hall")
+            {
+                auto cwL = compute_whistler_(layout_->inverseMeshSize(direction), rhoL, BdotBL);
+                auto cwR = compute_whistler_(layout_->inverseMeshSize(direction), rhoR, BdotBR);
+                SLb      = std::min(VcompL - cfastL - cwL, VcompR - cfastR - cwR);
+                SRb      = std::max(VcompL + cfastL + cwL, VcompR + cfastR + cwR);
+            }
+
+            return std::make_tuple(std::make_tuple(SL, SR), std::make_tuple(SLb, SRb));
+        };
+
+        if constexpr (direction == Direction::X)
+            return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VxL, VxR, BxL, BxR);
+        else if constexpr (direction == Direction::Y)
+            return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VyL, VyR, ByL, ByR);
+        else if constexpr (direction == Direction::Z)
+            return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VzL, VzR, BzL, BzR);
     }
 
     auto rusanov_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
                   auto const S) const
     {
-        // to be used 2 times in hall mhd (the second time for B with whisler contribution).
-
         auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
 
         return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
             return (std::get<i>(fL) + std::get<i>(fR)) * 0.5
                    - S * (std::get<i>(uR) - std::get<i>(uL)) * 0.5;
+        });
+    }
+
+    auto hll_(auto const& uL, auto const& uR, auto const& fL, auto const& fR, auto const& SL,
+              auto const& SR) const
+    {
+        auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
+
+        auto hll = [&](auto const ul, auto const ur, auto const fl, auto const fr) {
+            if (SL > 0.0)
+                return fl;
+            else if (SR < 0.0)
+                return fr;
+            else
+                return (SR * fl - SL * fr + SL * SR * (ur - ul)) / (SR - SL);
+        };
+
+        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
+            return hll(std::get<i>(uL), std::get<i>(uR), std::get<i>(fL), std::get<i>(fR));
         });
     }
 
