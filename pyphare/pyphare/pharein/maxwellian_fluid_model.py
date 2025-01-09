@@ -6,6 +6,48 @@ from pyphare.pharein import global_vars
 
 
 class MaxwellianFluidModel(object):
+    """
+    MaxwellianFluidModel is used to setup ion populations in a simulation
+    along with the magnetic field.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        ph.MaxwellianFluidModel(
+            bx=bx,
+            by=by,
+            bz=bz,
+            protons={"charge": 1,
+                     "density": density,
+                     "vbulkx": vx,
+                     "vbulky": vy,
+                     "vbulkz": vz,
+                     "vthx": vthx,
+                     "vthy": vthy,
+                     "vthz": vthz,
+                     "nbr_part_per_cell": 100},
+
+            beam={"charge": 1,
+                     "density": beam_density,
+                     "vbulkx": vx_beam,
+                     "vbulky": vy_beam,
+                     "vbulkz": vz_beam,
+                     "vthx": vthx_beam,
+                     "vthy": vthy_beam,
+                     "vthz": vthz_beam,
+                     "nbr_part_per_cell": 500}
+        )
+
+    **Parameters**:
+
+        * **bx** (*function*): magnetic field in x direction
+        * **by** (*function*): magnetic field in y direction
+        * **bz** (*function*): magnetic field in z direction
+
+
+    """
+
     def defaulter(self, input, value):
         if input is not None:
             import inspect
@@ -82,12 +124,12 @@ class MaxwellianFluidModel(object):
 
         add_population(name,charge=1, mass=1, nbrPartCell=100, density=1, vbulk=(0,0,0), beta=1, anisotropy=1)
 
-        Parameters:
-        -----------
+        Parameters
+        ----------
         name        : name of the species, str
 
-        Optional Parameters:
-        -------------------
+        Other Parameters
+        ----------------
         charge      : charge of the species particles, float (default = 1.)
         nbrPartCell : number of particles per cell, int (default = 100)
         density     : particle density, float (default = 1.)

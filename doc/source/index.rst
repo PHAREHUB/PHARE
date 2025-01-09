@@ -20,6 +20,7 @@ Using Adaptive Mesh Refinement, provided by the library SAMRAI, PHARE aims at
 filling the gap between sub-ion scales and large "MHD" scales by increasing
 the mesh resolution wherever the solution needs it.
 
+Warning: This documentation is a work in progress. It is not complete and may contain errors.
 
 
 .. raw:: html
@@ -76,9 +77,9 @@ the mesh resolution wherever the solution needs it.
    :maxdepth: 1
    :hidden:
 
+   usage/simulation_inputs
    usage/run_from_python
    usage/run_from_exe
-   usage/simulation_inputs
    usage/examples
 
 
@@ -98,14 +99,6 @@ the mesh resolution wherever the solution needs it.
 
 
 
-.. Development
-.. -----------
-.. toctree::
-   :caption: DEVELOPMENT
-   :maxdepth: 1
-   :hidden:
-
-   development/tests
 
 .. Indices and tables
 .. ------------------

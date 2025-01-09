@@ -21,7 +21,7 @@ sys.path.insert(0, os.path.abspath("../../pyphare"))
 # -- Project information -----------------------------------------------------
 
 project = "PHARE"
-copyright = "2018-2023, Nicolas Aunai, Roch Smets, Philip Deegan"
+copyright = "2018-2024, Nicolas Aunai, Roch Smets, Philip Deegan"
 author = "Nicolas Aunai, Roch Smets, Philip Deegan"
 
 # The short X.Y version
@@ -43,22 +43,20 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.mathjax",
     "sphinx.ext.githubpages",
-    "sphinx.ext.autodoc",
     "sphinx.ext.viewcode",
     "sphinx.ext.doctest",
     "sphinx.ext.intersphinx",
     "sphinx.ext.autosectionlabel",
     "sphinx_gallery.load_style",
     "sphinx_codeautolink",
-    "sphinxcontrib.apidoc",
     "nbsphinx",
-    "numpydoc",
 ]
-apidoc_module_dir = "../../pyphare"
-apidoc_output_dir = "development"
-apidoc_separate_modules = True
-apidoc_module_first = True
 
+autodoc_default_options = {
+    "members": True,
+    "private-members": False,
+    "special-members": False,
+}
 
 autosectionlabel_prefix_document = True
 codeautolink_custom_blocks = {
@@ -104,7 +102,8 @@ language = None
 exclude_patterns = []
 
 # The name of the Pygments (syntax highlighting) style to use.
-pygments_style = None
+# pygments_style = None
+pygments_style = "sphinx"
 
 
 # -- Options for HTML output -------------------------------------------------

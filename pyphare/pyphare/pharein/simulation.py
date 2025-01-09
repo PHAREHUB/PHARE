@@ -744,131 +744,204 @@ def checker(func):
 
 class Simulation(object):
     """
+
+    **Usage example:**
+
+    This declares a 2D simulation of 100x100 cells
+    with an isotropic mesh size of 0.2. The simulation will run
+    1000 time steps of dt=0.001 and so will stop at t=1
+
+    The simulation will run with adaptive mesh refinement and evolve up to 3 levels,
+    i.e. a base coarsest mesh with up to 2 additional refinement levels.
+
+    Diagnostics, if declared, will be saved as native PHARE HDF5 (default format)
+    in the directory `diag_outputs` and will overwrite any existing h5 files there.
+
+    The resistivity and hyper-resistivity are set to constant custom values.
+
         .. code-block:: python
 
             from pyphare.pharein import Simulation
 
 
-            # This declares a 2D simulation of 100x100 cells
-            # with an isotropic mesh size of 0.2. The simulation will run
-            # 1000 time steps of dt=0.001 and so will stop at t=1
-            # there is no refinement boxes set and since max_nbr_levels defaults to 1
-            # this simulation will consists of only 1 level with no refinement.
-            # diagnostics, if declared, will be saved as native PHARE HDF5
-            # in the directory 'diag_outputs' and will overwrite any existing h5 files there
-            # the resistivity and hyper-resistivity are set to constant custom values
-            # the smallest and largest patch sizes are set to 15 and 25 cells, respectively
-            Simulation(smallest_patch_size=15,
-                       largest_patch_size=25,
+
+            Simulation(
+                       # time evolution parameters
                        time_step_nbr=1000,
                        time_step=0.001,
-                       # boundary_types="periodic",
+
+                       # Domain parameters
                        cells=(100,100),
                        dl=(0.2, 0.2),
-                       refinement_boxes={},
+
+                       # AMR parameters
+                       max_nbr_levels=3,
+
+                        # general physics parameters
                        hyper_resistivity=0.001,
                        resistivity=0.001,
+
+                       # diagnostics and restart parameters
                        diag_options={"format": "phareh5",
                                      "options": {"dir": diag_outputs,
                                                  "mode":"overwrite"}},
-                       restart_options={"dir": restart_outputs,
-                                       "mode": "overwrite" or "conserve",
-                                       "timestamps" : [.009, 99999]
-                                       "elapsed_timestamps" : [datetime.timedelta(hours=1)],
-                                       "restart_time" : 99999.99999 },
-                       strict=True (turns warnings to errors, false by default),
                       )
 
 
-    Setting time parameters:
+    **Time parameters:**
 
-        :Keyword Arguments:
-            * *final_time* (``float``)--
-              final simulation time. Use with time_step OR time_step_nbr
-            * *time_step* (``float``)--
-              simulation time step. Use with time_step_nbr OR final_time
-            * *time_step_nbr* (``int``) -- number of time step to perform.
-              Use with final_time OR time_step
+        * **final_time** (``float``), final simulation time. Use with time_step OR time_step_nbr
+        * **time_step** (``float``), simulation time step. Use with time_step_nbr OR final_time
+        * **time_step_nbr** (``int``), number of time step to perform. Use with final_time OR time_step
 
 
+        .. code-block:: python
 
-    Setting domain/grid parameters:
+            Simulation(
+                       time_step_nbr=1000,
+                       time_step=0.001,
+
+                    # ....
+                    )
+
+        is equivalent to:
+
+        .. code-block:: python
+
+            Simulation(
+                       time_step_nbr=1000,
+                       final_time=1.,
+
+                    # ....
+                    )
+
+        or even to:
+
+        .. code-block:: python
+
+            Simulation(
+                       time_step=0.001,
+                       final_time=1.,
+
+                    # ....
+                    )
+
+
+    **Domain/grid parameters:**
 
         The number of dimensions of the simulation is deduced from the length
         of these parameters.
 
-        :Keyword Arguments:
-            * *dl* (``float``, ``tuple``) --
-              grid spacing dx, (dx,dy) or (dx,dy,dz) in 1D, 2D or 3D.
-              A single float value in 2D or 3D are assumed equal for each dimension.
-              Use this parameter with either domain_size OR cells
-            * *domain_size* (``float`` or ``tuple``) --
-              size of the physical domain Lx, (Lx,Ly), (Lx,Ly,Lz) in 1D, 2D or 3D
-              Single float is assumed equal for each direction.
-              Use this parameter with either cells or dl
-            * *cells* (``int`` or ``tuple``) --
-              number of cells nx or (nx, ny) or (nx, ny, nz) in 1, 2 and 3D.
-              Single int is assumed equal for each direction
-              Use this parameter with either domain_size or dl
-            * *layout* (``str``)--
-              layout of the physical quantities on the mesh (default = "yee")
-            * *origin* (``int`` or ``tuple``) --
-              origin of the physical domain, (default (0,0,0) in 3D)
+        * **dl** (``float``, ``tuple``) grid spacing dx, (dx,dy) or (dx,dy,dz) in 1D, 2D or 3D.
+          A single float value in 2D or 3D are assumed equal for each dimension.
+          Use this parameter with either `domain_size` OR `cells`
+
+        * **domain_size** (``float`` or ``tuple``)
+          size of the physical domain Lx, (Lx,Ly), (Lx,Ly,Lz) in 1D, 2D or 3D
+          Single float is assumed equal for each direction. Use this parameter with either `cells` or `dl`
+
+        * **cells** (``int`` or ``tuple``)
+          number of cells nx or (nx, ny) or (nx, ny, nz) in 1, 2 and 3D.
+          Single int is assumed equal for each direction
+          Use this parameter with either `domain_size` or `dl`
+
+        **Expert parameters:**
+
+        These parameters are more advanced, modify them at your own risk
+
+            * **layout** (``str``), layout of the physical quantities on the mesh (default = "yee")
+            * **origin** (``int`` or ``tuple``), origin of the physical domain, (default (0,0,0) in 3D)
 
 
-    Setting particle parameters:
+    For instance:
 
-        :Keyword Arguments:
-            * *interp_order* (``int``)--
-              1, 2 or 3 (default=1) particle b-spline order
-            * *particle_pusher* (``str``) --
-              algo to push particles (default = "modifiedBoris")
+        .. code-block:: python
+
+            Simulation(
+                       dl=(0.1, 0.1),
+                       domain_size=(100,100),
+
+                    # ....
+                    )
+
+        is equivalent to:
 
 
-    Setting diagnostics output parameters:
+        .. code-block:: python
 
-        :Keyword Arguments:
-            * *path* (``str``)
-              path for outputs (default : './')
-            * *boundary_types* (``str`` or ``tuple``)
-              type of boundary conditions (default is "periodic" for each direction)
-            * *diag_export_format* (``str``)
-              format of the output diagnostics (default= "phareh5")
+            Simulation(
+                       cells=(1000, 1000),
+                       domain_size=(100,100),
 
+                    # ....
+                    )
+
+        or even to:
+
+        .. code-block:: python
+
+            Simulation(
+                       cells=(1000, 1000),
+                       dl=(0.1,0.1),
+
+                    # ....
+                    )
+
+    **Macro-particle parameters:**
+
+        * **interp_order** (``int``), 1, 2 or 3 (default=1) particle b-spline order
+        * **particle_pusher** (``str``), algo to push particles (default = "modifiedBoris")
+
+
+    **Diagnostics output parameters:**
+
+        * **diag_options** (``dict``)
+            * **path** (``str``) path for outputs (default : './')
+            * **diag_export_format** (``str``) format of the output diagnostics (default= "phareh5")
+            * **mode** (``str``) mode of the output diagnostics (default= "overwrite" will write over existing files)
+
+
+
+    **Adaptive Mesh Refinement (AMR) parameters:**
+
+        * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. Used if no `refinement_boxes` are set
+        * **tag_buffer** (``int``), default=1, value representing the number of cells by which tagged cells are buffered before clustering into boxes. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
+        * **clustering** (``str``), {"berger" (default), "tile"}, type of clustering to use for AMR. `tile` results in wider patches, less artifacts and better scalability
+
+        **Expert parameters:**
+
+        These parameters are more advanced, modify them at your own risk
+
+        * **refined_particle_nbr** (``ìnt``), number of refined particle per coarse particle.
+        * **nesting_buffer** (``ìnt``), default=0 minimum gap in coarse cells from the border of a level and any refined patch border
+        * **refinement_boxes**, default=None, {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
+        * **smallest_patch_size** (``int`` or ``tuple``), minimum number of cells in a patch in each direction
+          This parameter cannot be smaller than the number of field ghost nodes
+        * **largest_patch_size** (``int`` or ``tuple``), maximum size of a patch in each direction
+
+
+
+    **Restart parameters:**
+
+    These parameters are used to restart a simulation from a previous state and dump chekpoints.
+
+        * **restart_options** (``dict``)
+            * **dir** (``str``) path for restart files (default : './')
+            * **mode** (``str``) mode of the restart files
+                * "conserve"  - (default), will conserve existing files
+                * "overwrite" - will overwrite existing files
+
+            * **restart_time** (``float``) time at which to restart the simulation (default=0)
+            * **timestamps** (``list``) list of timestamps at which to restart the simulation
 
     Misc:
 
-        :Keyword Arguments:
-            * *strict* (``bool``)--
-              turns warnings into errors (default False)
+        * **description** (``string``), [default=None] arbitrary string for per simulation context - injected in output files when feasible
+        * **strict** (``bool``), turns warnings into errors (default False)
+        * **resistivity** (``float``), resistivity value (default=0.0)
+        * **hyper-resistivity** (``float``), hyper-resistivity value (default=0.0)
+        * **boundary_types** (``str`` or ``tuple``) type of boundary conditions (default is "periodic" for each direction)
 
-
-
-    Adaptive Mesh Refinement (AMR) parameters
-
-        :Keyword Arguments:
-            * *nesting_buffer* (``ìnt``)--
-              [default=0] minimum gap in coarse cells from the border of a level and any refined patch border
-            kwargs["
-            * *refinement* (``str``)--
-               "boxes" (default), "tagging" type of refinement to use.
-               "tagging": use tagging_threshold to tag cells for refinement
-               "boxes": use refinement_boxes to define refinement levels
-            * *refinement_boxes* --
-              [default=None] {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
-            * *smallest_patch_size* (``int`` or ``tuple``)--
-              minimum number of cells in a patch in each direction
-              This parameter cannot be smaller than the number of field ghost nodes
-            * *largest_patch_size* (``int`` or ``tuple``)--
-              maximum size of a patch in each direction
-            * *max_nbr_levels* (``int``)--
-              [default=1] max number of levels in the hierarchy. Used if no refinement_boxes are set
-            * *refined_particle_nbr* (``ìnt``) --
-              number of refined particle per coarse particle.
-            * *tag_buffer* (``int``) --
-              [default=1] value representing the number of cells by which tagged cells are buffered before clustering into boxes.
-            * *description* (``string``) --
-              [default=None] arbitrary string for per simulation context - injected in output files when feasible
     """
 
     @checker
@@ -945,6 +1018,11 @@ class Simulation(object):
     # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
+        """
+
+        :meta private:
+
+        """
         if diag.name in self.diagnostics:
             raise ValueError(
                 "Error: diagnostics {} already registered".format(diag.name)
@@ -961,6 +1039,10 @@ class Simulation(object):
     # ------------------------------------------------------------------------------
 
     def is_restartable_compared_to(self, sim):
+        """
+
+        :meta private:
+        """
         # to be considered https://github.com/PHAREHUB/PHARE/issues/666
         check = ["cells", "dl"]
         are_comparable = all([getattr(self, k) == getattr(sim, k)] for k in check)
@@ -969,6 +1051,10 @@ class Simulation(object):
     # ------------------------------------------------------------------------------
 
     def count_diagnostics(self, type_name):
+        """
+
+        :meta private:
+        """
         return len(
             [
                 diag
@@ -980,9 +1066,17 @@ class Simulation(object):
     # ------------------------------------------------------------------------------
 
     def set_model(self, model):
+        """
+
+        :meta private:
+        """
         self.model = model
 
     def set_electrons(self, electrons):
+        """
+
+        :meta private:
+        """
         self.electrons = electrons
 
 
@@ -990,6 +1084,10 @@ class Simulation(object):
 
 
 def serialize(sim):
+    """
+
+    :meta private:
+    """
     # pickle cannot handle simulation objects
     import dill
     import codecs
@@ -998,7 +1096,7 @@ def serialize(sim):
 
 
 def deserialize(hex):
-    import dill
-    import codecs
+    """:meta private:"""
+    import dill, codecs
 
     return re_numpify_simulation(dill.loads(codecs.decode(hex, "hex")))
