@@ -11,7 +11,7 @@ def config():
     sim = s.Simulation(
         ndim=2,
         order=1,
-        timestep=0.001,
+        timestep=0.002,
         final_time=10,
         cells=cells,
         dl=dl,
@@ -20,6 +20,10 @@ def config():
         nu=0.0,
         gamma=5.0 / 3.0,
         terms="hall",
+        reconstruction="linear",
+        limiter="vanleer",
+        riemann="rusanov",
+        integrator="tvdrk2",
     )
 
     Lx = cells[0] * dl[0]
@@ -85,7 +89,7 @@ def config():
 
 
 def main():
-    MHDMockSimulator(config()).run("hall_harris4.h5", dumpfrequency=500)
+    MHDMockSimulator(config()).run("hall_harris.h5", dumpfrequency=500)
 
 
 if __name__ == "__main__":
