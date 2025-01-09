@@ -8,7 +8,7 @@ def config():
     sim = s.Simulation(
         ndim=2,
         order=1,
-        timestep=0.0014,
+        timestep=0.001,
         final_time=0.5,
         cells=(128, 128),
         dl=(1.0 / 128.0, 1.0 / 128.0),
@@ -17,6 +17,10 @@ def config():
         nu=0.0,
         gamma=5.0 / 3.0,
         terms="ideal",
+        reconstruction="linear",
+        limiter="vanleer",
+        riemann="rusanov",
+        integrator="euler",
     )
 
     B0 = 1.0 / (np.sqrt(4.0 * np.pi))
@@ -51,7 +55,7 @@ def config():
 
 
 def main():
-    MHDMockSimulator(config()).run("orszag_tang.h5", dumpfrequency=1)
+    MHDMockSimulator(config()).run("orszag_tang.h5", dumpfrequency=80)
 
 
 if __name__ == "__main__":
