@@ -22,7 +22,7 @@ def config():
         terms="hall",
         reconstruction="linear",
         limiter="vanleer",
-        riemann="rusanov",
+        riemann="hll",
         integrator="tvdrk2",
     )
 

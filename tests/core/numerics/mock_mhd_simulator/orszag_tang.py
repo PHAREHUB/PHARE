@@ -18,9 +18,9 @@ def config():
         gamma=5.0 / 3.0,
         terms="ideal",
         reconstruction="linear",
-        limiter="vanleer",
-        riemann="rusanov",
-        integrator="tvdrk3",
+        limiter="minmod",
+        riemann="hll",
+        integrator="tvdrk2",
     )
 
     B0 = 1.0 / (np.sqrt(4.0 * np.pi))
