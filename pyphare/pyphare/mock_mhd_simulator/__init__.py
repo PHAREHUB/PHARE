@@ -1,7 +1,9 @@
 import numpy as np
 
+
 def is_scalar(arg):
     return not isinstance(arg, (list, tuple)) and not is_nd_array(arg)
+
 
 def is_nd_array(arg):
     return isinstance(arg, np.ndarray)
@@ -45,9 +47,11 @@ def clearDict():
 
     pp.stop()
 
+
 def populateDict():
-    from .global_vars import sim as simulation
     import pybindlibs.dictator as pp
+
+    from .global_vars import sim as simulation
 
     def add_int(path, val):
         pp.add_int(path, int(val))
@@ -79,10 +83,14 @@ def populateDict():
     add_double("godunov/hyper_resistivity", simulation.nu)
     add_double("godunov/heat_capacity_ratio", simulation.gamma)
     add_string("godunov/terms", simulation.terms)
+    add_string("godunov/reconstruction", simulation.reconstruction)
+    add_string("godunov/limiter", simulation.limiter)
+    add_string("godunov/riemann", simulation.riemann)
     add_double("to_primitive/heat_capacity_ratio", simulation.gamma)
     add_double("to_conservative/heat_capacity_ratio", simulation.gamma)
+    add_string("integrator", simulation.integrator)
 
-    d=simulation.model.model_dict
+    d = simulation.model.model_dict
 
     addInitFunction("density/initializer", fn_wrapper(d["density"]))
     addInitFunction("velocity/initializer/x_component", fn_wrapper(d["vx"]))
