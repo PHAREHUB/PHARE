@@ -23,7 +23,11 @@ public:
         : gamma_{dict["heat_capacity_ratio"].template to<double>()}
         , eta_{dict["resistivity"].template to<double>()}
         , nu_{dict["hyper_resistivity"].template to<double>()}
+
         , terms_{dict["terms"].template to<std::string>()}
+        , reconstruction_{dict["reconstruction"].template to<std::string>()}
+        , limiter_{dict["limiter"].template to<std::string>()}
+        , riemann_{dict["riemann"].template to<std::string>()}
     {
     }
 
@@ -32,7 +36,7 @@ public:
                     VecField const& J, Fluxes&... fluxes) const
     {
         if (!this->hasLayout())
-            throw std::runtime_error("Error - Reconstruction - GridLayout not set, cannot proceed "
+            throw std::runtime_error("Error - GodunovFluxes - GridLayout not set, cannot proceed "
                                      "to reconstruction");
 
         if constexpr (dimension == 1)
@@ -113,7 +117,11 @@ private:
     double const gamma_;
     double const eta_;
     double const nu_;
+
     std::string const terms_;
+    std::string const reconstruction_;
+    std::string const limiter_;
+    std::string const riemann_;
 
     template<auto direction, typename Field, typename VecField>
     void godunov_fluxes_(Field const& rho, VecField const& V, VecField const& B, Field const& P,
@@ -124,8 +132,13 @@ private:
         auto const& [Bx, By, Bz] = B();
         auto const& [Jx, Jy, Jz] = J();
 
-        auto [BxL, ByL, BzL, BxR, ByR, BzR] = center_reconstruct_B_<direction>(B, index);
-        auto [JxL, JyL, JzL, JxR, JyR, JzR] = center_reconstruct_J_<direction>(J, index);
+        auto [BxL, ByL, BzL, BxR, ByR, BzR] = center_reconstruct_<direction>(
+            B, index, GridLayout::faceXToCellCenter(), GridLayout::faceYToCellCenter(),
+            GridLayout::faceZToCellCenter());
+
+        auto [JxL, JyL, JzL, JxR, JyR, JzR] = center_reconstruct_<direction>(
+            J, index, GridLayout::edgeXToCellCenter(), GridLayout::edgeYToCellCenter(),
+            GridLayout::edgeZToCellCenter());
 
         auto const& Quantities = std::forward_as_tuple(rho, Vx, Vy, Vz, P);
 
@@ -184,7 +197,7 @@ private:
                                         F_EtotR);
 
         auto [rho_, rhoVx_, rhoVy_, rhoVz_, Bx_, By_, Bz_, Etot_]
-            = riemann_solver_<direction>(uL, uR, fL, fR);
+            = riemann_fluxes_<direction>(uL, uR, fL, fR);
 
         rho_flux(index)                = rho_;
         rhoV_flux(Component::X)(index) = rhoVx_;
@@ -197,7 +210,7 @@ private:
     }
 
     template<auto direction>
-    auto riemann_solver_(auto const& uL, auto const& uR, auto const& fL, auto const& fR) const
+    auto riemann_fluxes_(auto const& uL, auto const& uR, auto const& fL, auto const& fR) const
     {
         auto const& [rhoL, VxL, VyL, VzL, BxL, ByL, BzL, PL]                             = uL;
         auto const& [rhoR, VxR, VyR, VzR, BxR, ByR, BzR, PR]                             = uR;
@@ -227,12 +240,32 @@ private:
         auto fbL = std::forward_as_tuple(F_BxL, F_ByL, F_BzL, F_EtotL);
         auto fbR = std::forward_as_tuple(F_BxR, F_ByR, F_BzR, F_EtotR);
 
-        // for rusanov riemann solver
-        auto const [S, Sb]                  = rusanov_speeds_<direction>(uL, uR);
-        auto [rho_, rhoVx_, rhoVy_, rhoVz_] = rusanov_(uL_, uR_, fL_, fR_, S);
-        auto [Bx_, By_, Bz_, Etot_]         = rusanov_(ubL, ubR, fbL, fbR, Sb);
+        return riemann_steps_<direction>(uL_, ubL, uR_, ubR, fL_, fbL, fR_, fbR);
+    }
 
-        return std::make_tuple(rho_, rhoVx_, rhoVy_, rhoVz_, Bx_, By_, Bz_, Etot_);
+    template<auto direction>
+    auto riemann_steps_(auto const& uL, auto const& ubL, auto const& uR, auto const& ubR,
+                        auto const& fL, auto const& fbL, auto const& fR, auto const& fbR) const
+    {
+        auto [speeds, speedsb]
+            = riemann_speeds_<direction>(std::tuple_cat(uL, ubL), std::tuple_cat(uR, ubR));
+
+        auto [rho, rhoVx, rhoVy, rhoVz] = std::apply(
+            [&](auto... args) { return riemann_solver_(uL, uR, fL, fR, args...); }, speeds);
+
+        auto [Bx, By, Bz, Etot] = std::apply(
+            [&](auto... args) { return riemann_solver_(ubL, ubR, fbL, fbR, args...); }, speedsb);
+
+        return std::make_tuple(rho, rhoVx, rhoVy, rhoVz, Bx, By, Bz, Etot);
+    }
+
+    template<auto direction>
+    auto riemann_speeds_(auto const& uL, auto const& uR) const
+    {
+        if (riemann_ == "rusanov")
+            return rusanov_speeds_<direction>(uL, uR);
+        else
+            throw std::runtime_error("Error - Riemann Solver - Unknown Riemann solver");
     }
 
     template<auto direction>
@@ -257,7 +290,7 @@ private:
                 Sb = std::max(std::abs(VcompL) + cfastL + cwL, std::abs(VcompR) + cfastR + cwR);
             }
 
-            return std::make_tuple(S, Sb);
+            return std::make_tuple(std::make_tuple(S), std::make_tuple(Sb));
         };
 
         if constexpr (direction == Direction::X)
@@ -266,6 +299,16 @@ private:
             return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VyL, VyR, ByL, ByR);
         else if constexpr (direction == Direction::Z)
             return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VzL, VzR, BzL, BzR);
+    }
+
+    template<typename... Speeds>
+    auto riemann_solver_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
+                         Speeds... S) const
+    {
+        if (riemann_ == "rusanov")
+            return rusanov_(uL, uR, fL, fR, S...);
+        else
+            throw std::runtime_error("Error - Riemann Solver - Unknown Riemann solver");
     }
 
     auto rusanov_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
@@ -511,55 +554,82 @@ private:
     }
 
     template<auto direction, typename VecField>
-    auto center_reconstruct_B_(const VecField& B, MeshIndex<VecField::dimension> index) const
+    auto center_reconstruct_(const VecField& U, MeshIndex<VecField::dimension> index,
+                             auto projectionX, auto projectionY, auto projectionZ) const
     {
-        auto const& [Bx, By, Bz] = B();
+        auto const& Ux = U(Component::X);
+        auto const& Uy = U(Component::Y);
+        auto const& Uz = U(Component::Z);
 
-        // constant reconstruction
-        auto BxL = GridLayout::project(Bx, previous_<direction>(Bx, index),
-                                       GridLayout::faceXToCellCenter());
-        auto ByL = GridLayout::project(By, previous_<direction>(By, index),
-                                       GridLayout::faceYToCellCenter());
-        auto BzL = GridLayout::project(Bz, previous_<direction>(Bz, index),
-                                       GridLayout::faceZToCellCenter());
+        if (reconstruction_ == "constant")
+        {
+            auto UxL = GridLayout::project(Ux, previous_<direction>(Ux, index), projectionX);
+            auto UyL = GridLayout::project(Uy, previous_<direction>(Uy, index), projectionY);
+            auto UzL = GridLayout::project(Uz, previous_<direction>(Uz, index), projectionZ);
 
-        auto BxR = GridLayout::project(Bx, index, GridLayout::faceXToCellCenter());
-        auto ByR = GridLayout::project(By, index, GridLayout::faceYToCellCenter());
-        auto BzR = GridLayout::project(Bz, index, GridLayout::faceZToCellCenter());
+            auto UxR = GridLayout::project(Ux, index, projectionX);
+            auto UyR = GridLayout::project(Uy, index, projectionY);
+            auto UzR = GridLayout::project(Uz, index, projectionZ);
 
-        return std::make_tuple(BxL, ByL, BzL, BxR, ByR, BzR);
+            return std::make_tuple(UxL, UyL, UzL, UxR, UyR, UzR);
+        }
+        else if (reconstruction_ == "linear")
+        {
+            auto UxL = center_recons_linear_L_<direction>(Ux, index, projectionX);
+            auto UyL = center_recons_linear_L_<direction>(Uy, index, projectionY);
+            auto UzL = center_recons_linear_L_<direction>(Uz, index, projectionZ);
+
+            auto UxR = center_recons_linear_R_<direction>(Ux, index, projectionX);
+            auto UyR = center_recons_linear_R_<direction>(Uy, index, projectionY);
+            auto UzR = center_recons_linear_R_<direction>(Uz, index, projectionZ);
+
+            return std::make_tuple(UxL, UyL, UzL, UxR, UyR, UzR);
+        }
+        else
+            throw std::runtime_error("Error - Reconstruct - Unknown reconstruction method");
     }
 
-    template<auto direction, typename VecField>
-    auto center_reconstruct_J_(const VecField& J, MeshIndex<VecField::dimension> index) const
+    template<auto direction>
+    auto center_recons_linear_L_(auto U, MeshIndex<dimension> index, auto projection) const
     {
-        auto const& [Jx, Jy, Jz] = J();
+        auto u_2 = GridLayout::project(U, previous_<direction>(U, previous_<direction>(U, index)),
+                                       projection);
+        auto u_1 = GridLayout::project(U, previous_<direction>(U, index), projection);
+        auto u   = GridLayout::project(U, index, projection);
 
-        // constant reconstruction
-        auto JxL = GridLayout::project(Jx, previous_<direction>(Jx, index),
-                                       GridLayout::edgeXToCellCenter());
-        auto JyL = GridLayout::project(Jy, previous_<direction>(Jy, index),
-                                       GridLayout::edgeYToCellCenter());
-        auto JzL = GridLayout::project(Jz, previous_<direction>(Jz, index),
-                                       GridLayout::edgeZToCellCenter());
+        return recons_linear_L_(u_2, u_1, u);
+    }
 
-        auto JxR = GridLayout::project(Jx, index, GridLayout::edgeXToCellCenter());
-        auto JyR = GridLayout::project(Jy, index, GridLayout::edgeYToCellCenter());
-        auto JzR = GridLayout::project(Jz, index, GridLayout::edgeZToCellCenter());
+    template<auto direction>
+    auto center_recons_linear_R_(auto U, MeshIndex<dimension> index, auto projection) const
+    {
+        auto u_1 = GridLayout::project(U, previous_<direction>(U, index), projection);
+        auto u   = GridLayout::project(U, index, projection);
+        auto u1  = GridLayout::project(U, next_<direction>(U, index), projection);
 
-        return std::make_tuple(JxL, JyL, JzL, JxR, JyR, JzR);
+        return recons_linear_R_(u_1, u, u1);
     }
 
     template<auto direction, typename Field>
     auto reconstruct_uL_(Field const& F, MeshIndex<Field::dimension> index) const
     {
-        return constant_uL_<direction>(F, index);
+        if (reconstruction_ == "constant")
+            return constant_uL_<direction>(F, index);
+        else if (reconstruction_ == "linear")
+            return linear_uL_<direction>(F, index);
+        else
+            throw std::runtime_error("Error - Reconstruct - Unknown reconstruction method");
     }
 
     template<auto direction, typename Field>
     auto reconstruct_uR_(Field const& F, MeshIndex<Field::dimension> index) const
     {
-        return constant_uR_<direction>(F, index);
+        if (reconstruction_ == "constant")
+            return constant_uR_<direction>(F, index);
+        else if (reconstruction_ == "linear")
+            return linear_uR_<direction>(F, index);
+        else
+            throw std::runtime_error("Error - Reconstruct - Unknown reconstruction method");
     }
 
     template<auto direction, typename Field>
@@ -572,6 +642,101 @@ private:
     auto constant_uR_(Field const& F, MeshIndex<Field::dimension> index) const
     {
         return F(index);
+    }
+
+    template<auto direction, typename Field>
+    auto linear_uL_(Field const& F, MeshIndex<Field::dimension> index) const
+    {
+        auto ui_2 = F(previous_<direction>(F, previous_<direction>(F, index)));
+        auto ui_1 = F(previous_<direction>(F, index));
+        auto ui   = F(index);
+
+        return recons_linear_L_(ui_2, ui_1, ui);
+    }
+
+    template<auto direction, typename Field>
+    auto linear_uR_(Field const& F, MeshIndex<Field::dimension> index) const
+    {
+        auto ui_1 = F(previous_<direction>(F, index));
+        auto ui   = F(index);
+        auto ui1  = F(next_<direction>(F, index));
+
+        return recons_linear_R_(ui_1, ui, ui1);
+    }
+
+    auto recons_linear_L_(auto ul, auto u, auto ur) const
+    {
+        auto Dil = (u - ul);
+        auto Dir = (ur - u);
+        auto Di  = slope_limiter_(Dil, Dir);
+
+        return u + 0.5 * Di;
+    }
+
+    auto recons_linear_R_(auto ul, auto u, auto ur) const
+    {
+        auto Dil = (u - ul);
+        auto Dir = (ur - u);
+        auto Di  = slope_limiter_(Dil, Dir);
+
+        return u - 0.5 * Di;
+    }
+
+    auto slope_limiter_(auto const& Dil, auto const& Dir) const
+    {
+        if (limiter_ == "minmod")
+            return min_mod_limiter_(Dil, Dir);
+        else if (limiter_ == "vanleer")
+            return van_leer_limiter_(Dil, Dir);
+        else
+            throw std::runtime_error("Error - Slope Limiter - Unknown slope limiter method");
+    }
+
+    auto van_leer_limiter_(auto const& Dil, auto const& Dir) const
+    {
+        return Dil * Dir > 0.0 ? 2.0 * Dil * Dir / (Dil + Dir) : 0.0;
+    }
+
+    auto min_mod_limiter_(auto const& Dil, auto const& Dir) const
+    {
+        return Dil * Dir < 0.0 ? 0.0 : fabs(Dir) < fabs(Dil) ? Dir : Dil;
+    }
+
+    template<auto direction, typename Field>
+    MeshIndex<Field::dimension> next_(Field const& F, MeshIndex<Field::dimension> index) const
+    {
+        auto fieldCentering = layout_->centering(F.physicalQuantity());
+
+        if constexpr (dimension == 1)
+        {
+            return make_index(index[0] + 1);
+        }
+        else if constexpr (dimension == 2)
+        {
+            if constexpr (direction == Direction::X)
+            {
+                return make_index(index[0] + 1, index[1]);
+            }
+            else if constexpr (direction == Direction::Y)
+            {
+                return make_index(index[0], index[1] + 1);
+            }
+        }
+        else if constexpr (dimension == 3)
+        {
+            if constexpr (direction == Direction::X)
+            {
+                return make_index(index[0] + 1, index[1], index[2]);
+            }
+            else if constexpr (direction == Direction::Y)
+            {
+                return make_index(index[0], index[1] + 1, index[2]);
+            }
+            else if constexpr (direction == Direction::Z)
+            {
+                return make_index(index[0], index[1], index[2] + 1);
+            }
+        }
     }
 
     template<auto direction, typename Field>

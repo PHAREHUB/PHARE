@@ -87,12 +87,15 @@ private:
     ConstrainedTransport_t constrained_transport_;
     Faraday_t faraday_;
 
+    std::string const integrator_;
+
 public:
     SolverMHD(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"MHDSolver"}
         , godunov_{dict["godunov"]}
         , to_primitive_{dict["to_primitive"]}
         , to_conservative_{dict["to_conservative"]}
+        , integrator_{dict["integrator"].template to<std::string>()}
     {
     }
 
@@ -251,14 +254,21 @@ void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::time_integrator_(
     to_conservative_(views.layouts, views.rho, views.V, views.B, views.P, views.rhoV, views.Etot);
 
     Q Un = make_q(views.rho, views.rhoV, views.B, views.Etot);
-    // Q U1(views.rho1, views.rhoV1, views.B1, views.Etot1);
 
     Q F_x = make_q(views.rho_x, views.rhoV_x, views.B_x, views.Etot_x);
 
     if constexpr (dimension == 1)
     {
-        euler_(fromCoarser, level, newTime, views.layouts, Un, views.E, views.model().state.E, Un,
-               dt, F_x);
+        if (integrator_ == "euler")
+            euler_(fromCoarser, level, newTime, views.layouts, Un, views.E, views.model().state.E,
+                   Un, dt, F_x);
+        /*else if (integrator_ == "TVDRK2")*/
+        /*{*/
+        /*    Q U1(views.rho1, views.rhoV1, views.B1, views.Etot1);*/
+        /*    euler_(fromCoarser, level, newTime, views.layouts, Un, views.E,
+         * views.model().state.E,*/
+        /*           U1, dt, F_x);*/
+        /*}*/
     }
     if constexpr (dimension >= 2)
     {
