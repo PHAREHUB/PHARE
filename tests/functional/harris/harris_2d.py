@@ -7,34 +7,25 @@ from pyphare.cpp import cpp_lib
 from pyphare.simulator.simulator import Simulator
 from pyphare.simulator.simulator import startMPI
 
-os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
-"""
-  For scope timings to work
-  The env var PHARE_SCOPE_TIMING must be == "1" (or "true")
-    See src/phare/phare.hpp
-  CMake must be configured with: -DwithPhlop=ON
-  And a LOG_LEVEL must be defined via compile args: -DPHARE_LOG_LEVEL=1
-  Or change the default value in src/core/logger.hpp
-  And phlop must be available on PYTHONPATH either from subprojects
-   or install phlop via pip
-"""
+
+def default_setup():
+
+    ph.NO_GUI()
+    cpp = cpp_lib()
+    startMPI()
 
 
-ph.NO_GUI()
-cpp = cpp_lib()
-startMPI()
+    diag_outputs = "phare_outputs/test/harris/2d"
+    time_step_nbr = 1000
+    time_step = 0.001
+    final_time = time_step * time_step_nbr
+    dt = 10 * time_step
+    nt = final_time / dt + 1
+    timestamps = dt * np.arange(nt)
 
-diag_outputs = "phare_outputs/test/harris/2d"
-time_step_nbr = 1000
-time_step = 0.001
-final_time = time_step * time_step_nbr
-dt = 10 * time_step
-nt = final_time / dt + 1
-timestamps = dt * np.arange(nt)
-
-
-def config():
-    sim = ph.Simulation(
+    return ph.Simulation(
+        smallest_patch_size=15,
+        largest_patch_size=25,
         time_step_nbr=time_step_nbr,
         time_step=time_step,
         # boundary_types="periodic",
@@ -50,6 +41,11 @@ def config():
         },
         strict=True,
     )
+
+
+def config(sim = None, seed = 12334):
+    if not sim:
+        sim = default_setup()
 
     def density(x, y):
         L = sim.simulation_domain()[1]
@@ -139,7 +135,7 @@ def config():
         bx=bx,
         by=by,
         bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "init": {"seed": 12334}},
+        protons={"charge": 1, "density": density, **vvv, "init": {"seed": seed}},
     )
 
     ph.ElectronModel(closure="isothermal", Te=0.0)
@@ -153,6 +149,7 @@ def config():
 
 def main():
     Simulator(config()).run()
+
 
 
 if __name__ == "__main__":

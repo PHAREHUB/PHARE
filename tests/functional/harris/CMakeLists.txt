@@ -12,7 +12,9 @@ if(HighFive AND testMPI)
   ## These test use dump diagnostics so require HighFive!
 
   if(testMPI)
-    phare_mpi_python3_exec(11 10 harris_2d harris_2d_lb.py ${CMAKE_CURRENT_BINARY_DIR})
+
+    phare_mpi_python3_exec(11 4 harris_2d_100_x_100 harris_2d_100_x_100.py ${CMAKE_CURRENT_BINARY_DIR})
+
   endif(testMPI)
 
 endif()
