@@ -10,43 +10,52 @@ from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
-
 from tests.simulator import SimulatorTest
+from tools.python3 import plotting as m_plotting
+
+import harris_2d as base
 
 mpl.use("Agg")
 
 SCOPE_TIMING = os.getenv("PHARE_SCOPE_TIMING", "False").lower() in ("true", "1", "t")
+"""
+  For scope timings to work
+  The env var PHARE_SCOPE_TIMING must be == "1" (or "true")
+    See src/phare/phare.hpp
+  CMake must be configured with: -DwithPhlop=ON
+  And a LOG_LEVEL must be defined via compile args: -DPHARE_LOG_LEVEL=1
+  Or change the default value in src/core/logger.hpp
+  And phlop must be available on PYTHONPATH either from subprojects
+   or install phlop via pip
+"""
+
 LOAD_BALANCE = os.getenv("LOAD_BALANCE", "True").lower() in ("true", "1", "t")
 
 cpp = cpp_lib()
 startMPI()
 
-cells = (800, 800)
+cells = (100, 100)
+time_steps = 1000
 time_step = 0.005
-final_time = 50
+final_time = time_step * time_steps
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
 
 if cpp.mpi_rank() == 0:
     print(LOAD_BALANCE, "diag timestamps:", timestamps)
 
-diag_dir = "phare_outputs/harris_lb"
-if not LOAD_BALANCE:
-    diag_dir = "phare_outputs/harris"
-
+diag_dir = "phare_outputs/harris_2d_100_x_100"
 plot_dir = Path(f"{diag_dir}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
 
 
 def config():
-    L = 0.5
-
     sim = ph.Simulation(
         time_step=time_step,
         final_time=final_time,
         cells=cells,
         dl=(0.40, 0.40),
-        refinement="tagging",
-        max_nbr_levels=2,
+        # refinement="tagging",
+        max_nbr_levels=1,
         nesting_buffer=1,
         clustering="tile",
         tag_buffer="1",
@@ -56,91 +65,9 @@ def config():
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
         },
-        restart_options={
-            "dir": "checkpoints",
-            "mode": "overwrite",
-            "timestamps": timestamps,
-            # "restart_time": 0.0,
-        },
     )
 
-    def density(x, y):
-        Ly = sim.simulation_domain()[1]
-        return (
-            0.4
-            + 1.0 / np.cosh((y - Ly * 0.3) / L) ** 2
-            + 1.0 / np.cosh((y - Ly * 0.7) / L) ** 2
-        )
-
-    def S(y, y0, l):
-        return 0.5 * (1.0 + np.tanh((y - y0) / l))
-
-    def by(x, y):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
-        sigma = 1.0
-        dB = 0.1
-
-        x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
-
-        dBy1 = 2 * dB * x0 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
-        dBy2 = -2 * dB * x0 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
-
-        return dBy1 + dBy2
-
-    def bx(x, y):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
-        sigma = 1.0
-        dB = 0.1
-
-        x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
-
-        dBx1 = -2 * dB * y1 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
-        dBx2 = 2 * dB * y2 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
-
-        v1 = -1
-        v2 = 1.0
-        return v1 + (v2 - v1) * (S(y, Ly * 0.3, L) - S(y, Ly * 0.7, L)) + dBx1 + dBx2
-
-    def bz(x, y):
-        return 0.0
-
-    def b2(x, y):
-        return bx(x, y) ** 2 + by(x, y) ** 2 + bz(x, y) ** 2
-
-    def T(x, y):
-        K = 0.7
-        temp = 1.0 / density(x, y) * (K - b2(x, y) * 0.5)
-        assert np.all(temp > 0)
-        return temp
-
-    def vxyz(x, y):
-        return 0.0
-
-    def vthxyz(x, y):
-        return np.sqrt(T(x, y))
-
-    vvv = {**{f"vbulk{c}": vxyz for c in "xyz"}, **{f"vth{c}": vthxyz for c in "xyz"}}
-
-    ph.MaxwellianFluidModel(
-        bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
-    )
-    ph.ElectronModel(closure="isothermal", Te=0.0)
-
-    for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
-    for quantity in ["density", "bulkVelocity"]:
-        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
-
-    ph.FluidDiagnostics(
-        quantity="density", write_timestamps=timestamps, population_name="protons"
-    )
-    ph.InfoDiagnostics(quantity="particle_count")
+    sim = base.config(sim)
 
     if LOAD_BALANCE:
         ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
@@ -184,15 +111,6 @@ def plot(diag_dir):
         )
 
 
-def plot_runtimer(diag_dir, rank):
-    try:
-        from tools.python3 import plotting as m_plotting
-
-        m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
-    except ImportError:
-        print("phlop not found - or phare src dir not in pythonpath")
-
-
 class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super(HarrisTest, self).__init__(*args, **kwargs)
@@ -211,7 +129,7 @@ class HarrisTest(SimulatorTest):
         if cpp.mpi_rank() == 0:
             plot(diag_dir)
         if SCOPE_TIMING:
-            plot_runtimer(diag_dir, cpp.mpi_rank())
+            m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
         cpp.mpi_barrier()
         return self
 
