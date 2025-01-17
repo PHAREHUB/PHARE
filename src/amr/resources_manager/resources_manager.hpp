@@ -438,7 +438,7 @@ namespace amr
                 ResourcesInfo info;
                 info.variable = ResourcesResolver_t::make_shared_variable(view);
                 info.id       = variableDatabase_->registerVariableAndContext(
-                          info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+                    info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
                 nameToResourceInfo_.emplace(view.name(), info);
             }

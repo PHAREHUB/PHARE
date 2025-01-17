@@ -25,9 +25,9 @@ TEST(test_tagger, fromFactoryValid)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"HybridModel"};
-    dict["method"]  = std::string{"default"};
-    dict["threshold"]  = 0.2;
+    dict["model"]     = std::string{"HybridModel"};
+    dict["method"]    = std::string{"default"};
+    dict["threshold"] = 0.2;
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
 }
@@ -36,10 +36,10 @@ TEST(test_tagger, fromFactoryInvalid)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"invalidModel"};
-    dict["method"]  = std::string{"invalidStrat"};
+    dict["model"]     = std::string{"invalidModel"};
+    dict["method"]    = std::string{"invalidStrat"};
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
-    auto badTagger = TaggerFactory<phare_types>::make(dict);
+    auto badTagger    = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(badTagger == nullptr);
 }
 

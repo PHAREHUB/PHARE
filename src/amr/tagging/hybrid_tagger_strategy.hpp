@@ -18,6 +18,6 @@ template<typename HybridModel>
 HybridTaggerStrategy<HybridModel>::~HybridTaggerStrategy()
 {
 }
-}
+} // namespace PHARE::amr
 
 #endif // HYBRID_TAGGER_STRATEGY_HPP

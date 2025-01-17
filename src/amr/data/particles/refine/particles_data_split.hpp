@@ -243,9 +243,9 @@ namespace amr
                                              std::back_inserter(destDomainParticles), isInDest);
                             }
                         } // end is candidate for split
-                    }     // end loop on particles
-                }         // end loop on source particle arrays
-            }             // loop on destination box
+                    } // end loop on particles
+                } // end loop on source particle arrays
+            } // loop on destination box
         }
 
 

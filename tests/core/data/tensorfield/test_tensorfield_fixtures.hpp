@@ -50,9 +50,8 @@ protected:
     auto static make_grids(ComponentNames const& compNames, GridLayout const& layout, tensor_t qty)
     {
         auto qts = HybridQuantity::componentsQuantities(qty);
-        return for_N<N_elements, for_N_R_mode::make_array>([&](auto i) {
-            return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i])};
-        });
+        return for_N<N_elements, for_N_R_mode::make_array>(
+            [&](auto i) { return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i])}; });
     }
 
     std::array<Grid_t, N_elements> xyz;

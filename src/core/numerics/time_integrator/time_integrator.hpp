@@ -6,6 +6,7 @@
 #include "core/numerics/constrained_transport/constrained_transport.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
+#include "core/numerics/godunov_fluxes/godunov_fluxes.hpp"
 #include "initializer/data_provider.hpp"
 #include <string>
 
@@ -136,13 +137,15 @@ public:
     }
 
 private:
-    std::string const integrator_;
-
     template<typename Field, typename VecField, typename... Fluxes>
-    void euler_step_(Field& rho, VecField& rhoV, VecField& B, Field& Etot, Field& rhonew,
-                     VecField& rhoVnew, VecField& Bnew, Field& Etotnew, VecField& E,
-                     double const dt, Fluxes&... fluxes) const
+    void euler_step_(Field const& rho, VecField const& rhoV, VecField const& B, Field const& Etot,
+                     Field& rhonew, VecField& rhoVnew, VecField& Bnew, Field& Etotnew, VecField& E,
+                     double const dt, Fluxes const&... fluxes) const
     {
+        auto const fve     = FiniteVolumeEuler_ref{*layout_, dt};
+        auto const ct      = ConstrainedTransport_ref{*layout_};
+        auto const faraday = Faraday_ref{*layout_, dt};
+
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
         auto& rho_x  = std::get<0>(flux_tuple);
@@ -162,9 +165,6 @@ private:
         auto const& rhoVy_x = rhoV_x(Component::Y);
         auto const& rhoVz_x = rhoV_x(Component::Z);
 
-        auto const fve     = FiniteVolumeEuler_ref{*layout_, dt};
-        auto const ct      = ConstrainedTransport_ref{*layout_};
-        auto const faraday = Faraday_ref{*layout_, dt};
 
         if constexpr (dimension == 1)
         {

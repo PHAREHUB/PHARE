@@ -74,7 +74,7 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
             // highfive doesn't accept uint32 which ndarray.shape() is
             auto const& array_shape = vecF.getComponent(type).shape();
             attr[name][id]          = std::vector<std::size_t>(array_shape.data(),
-                                                      array_shape.data() + array_shape.size());
+                                                               array_shape.data() + array_shape.size());
             auto ghosts = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
             attr[name][id + "_ghosts_x"] = static_cast<std::size_t>(ghosts[0]);
             if constexpr (GridLayout::dimension > 1)
