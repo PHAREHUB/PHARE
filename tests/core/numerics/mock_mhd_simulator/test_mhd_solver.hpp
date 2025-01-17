@@ -673,6 +673,40 @@ public:
                                      currentGroup, "ey");
                 H5writer::writeField(model_.state.E(PHARE::core::Component::Z), layout_, h5file,
                                      currentGroup, "ez");
+
+
+                H5writer::writeField(dummy_view_construct_.rho_x, layout_, h5file, currentGroup,
+                                     "rho_x"); // debug
+                H5writer::writeField(dummy_view_construct_.rhoV_x(PHARE::core::Component::X),
+                                     layout_, h5file, currentGroup, "rhovx_x"); // debug
+                H5writer::writeField(dummy_view_construct_.rhoV_x(PHARE::core::Component::Y),
+                                     layout_, h5file, currentGroup, "rhovy_x"); // debug
+                H5writer::writeField(dummy_view_construct_.rhoV_x(PHARE::core::Component::Z),
+                                     layout_, h5file, currentGroup, "rhovz_x"); // debug
+                H5writer::writeField(dummy_view_construct_.B_x(PHARE::core::Component::X), layout_,
+                                     h5file, currentGroup, "bx_x"); // debug
+                H5writer::writeField(dummy_view_construct_.B_x(PHARE::core::Component::Y), layout_,
+                                     h5file, currentGroup, "by_x"); // debug
+                H5writer::writeField(dummy_view_construct_.B_x(PHARE::core::Component::Z), layout_,
+                                     h5file, currentGroup, "bz_x"); // debug
+                H5writer::writeField(dummy_view_construct_.Etot_x, layout_, h5file, currentGroup,
+                                     "etot_x"); // debug
+                H5writer::writeField(dummy_view_construct_.rho_y, layout_, h5file, currentGroup,
+                                     "rho_y"); // debug
+                H5writer::writeField(dummy_view_construct_.rhoV_y(PHARE::core::Component::X),
+                                     layout_, h5file, currentGroup, "rhovx_y"); // debug
+                H5writer::writeField(dummy_view_construct_.rhoV_y(PHARE::core::Component::Y),
+                                     layout_, h5file, currentGroup, "rhovy_y"); // debug
+                H5writer::writeField(dummy_view_construct_.rhoV_y(PHARE::core::Component::Z),
+                                     layout_, h5file, currentGroup, "rhovz_y"); // debug
+                H5writer::writeField(dummy_view_construct_.B_y(PHARE::core::Component::X), layout_,
+                                     h5file, currentGroup, "bx_y"); // debug
+                H5writer::writeField(dummy_view_construct_.B_y(PHARE::core::Component::Y), layout_,
+                                     h5file, currentGroup, "by_y"); // debug
+                H5writer::writeField(dummy_view_construct_.B_y(PHARE::core::Component::Z), layout_,
+                                     h5file, currentGroup, "bz_y"); // debug
+                H5writer::writeField(dummy_view_construct_.Etot_y, layout_, h5file, currentGroup,
+                                     "etot_y"); // debug
             }
             step++;
         }

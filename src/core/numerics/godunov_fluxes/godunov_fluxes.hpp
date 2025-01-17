@@ -7,11 +7,15 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
 #include "initializer/data_provider.hpp"
+#include <cmath>
 #include <cstddef>
 #include <tuple>
 
 namespace PHARE::core
 {
+template<typename GridLayout>
+class GodunovFluxes_ref;
+
 template<typename GridLayout>
 class GodunovFluxes : public LayoutHolder<GridLayout>
 {
@@ -39,6 +43,48 @@ public:
             throw std::runtime_error("Error - GodunovFluxes - GridLayout not set, cannot proceed "
                                      "to reconstruction");
 
+        GodunovFluxes_ref<GridLayout>{*this->layout_, gamma_,          eta_,     nu_,
+                                      terms_,         reconstruction_, limiter_, riemann_}(
+            rho, V, B, P, J, fluxes...);
+    }
+
+private:
+    double const gamma_;
+    double const eta_;
+    double const nu_;
+
+    std::string const terms_;
+    std::string const reconstruction_;
+    std::string const limiter_;
+    std::string const riemann_;
+};
+
+
+template<typename GridLayout>
+class GodunovFluxes_ref
+{
+    constexpr static auto dimension = GridLayout::dimension;
+
+public:
+    GodunovFluxes_ref(GridLayout const& layout, double const gamma, double const eta,
+                      double const nu, std::string const& terms, std::string const& reconstruction,
+                      std::string const& limiter, std::string const& riemann)
+        : layout_{layout}
+        , gamma_{gamma}
+        , eta_{eta}
+        , nu_{nu}
+
+        , terms_{terms}
+        , reconstruction_{reconstruction}
+        , limiter_{limiter}
+        , riemann_{riemann}
+    {
+    }
+
+    template<typename Field, typename VecField, typename... Fluxes>
+    void operator()(Field const& rho, VecField const& V, VecField const& B, Field const& P,
+                    VecField const& J, Fluxes&... fluxes) const
+    {
         if constexpr (dimension == 1)
         {
             auto&& flux_tuple = std::forward_as_tuple(fluxes...);
@@ -48,7 +94,7 @@ public:
             auto& B_x    = std::get<2>(flux_tuple);
             auto& Etot_x = std::get<3>(flux_tuple);
 
-            layout_->evalOnBox(rho_x, [&](auto&... args) mutable {
+            layout_.evalOnBox(rho_x, [&](auto&... args) mutable {
                 this->template godunov_fluxes_<Direction::X>(rho, V, B, P, J, rho_x, rhoV_x, B_x,
                                                              Etot_x, {args...});
             });
@@ -67,12 +113,12 @@ public:
             auto& B_y    = std::get<6>(flux_tuple);
             auto& Etot_y = std::get<7>(flux_tuple);
 
-            layout_->evalOnBox(rho_x, [&](auto&... args) mutable {
+            layout_.evalOnBox(rho_x, [&](auto&... args) mutable {
                 this->template godunov_fluxes_<Direction::X>(rho, V, B, P, J, rho_x, rhoV_x, B_x,
                                                              Etot_x, {args...});
             });
 
-            layout_->evalOnBox(rho_y, [&](auto&... args) mutable {
+            layout_.evalOnBox(rho_y, [&](auto&... args) mutable {
                 this->template godunov_fluxes_<Direction::Y>(rho, V, B, P, J, rho_y, rhoV_y, B_y,
                                                              Etot_y, {args...});
             });
@@ -96,17 +142,17 @@ public:
             auto& B_z    = std::get<10>(flux_tuple);
             auto& Etot_z = std::get<11>(flux_tuple);
 
-            layout_->evalOnBox(rho_x, [&](auto&... args) mutable {
+            layout_.evalOnBox(rho_x, [&](auto&... args) mutable {
                 this->template godunov_fluxes_<Direction::X>(rho, V, B, P, J, rho_x, rhoV_x, B_x,
                                                              Etot_x, {args...});
             });
 
-            layout_->evalOnBox(rho_y, [&](auto&... args) mutable {
+            layout_.evalOnBox(rho_y, [&](auto&... args) mutable {
                 this->template godunov_fluxes_<Direction::Y>(rho, V, B, P, J, rho_y, rhoV_y, B_y,
                                                              Etot_y, {args...});
             });
 
-            layout_->evalOnBox(rho_z, [&](auto&... args) mutable {
+            layout_.evalOnBox(rho_z, [&](auto&... args) mutable {
                 this->template godunov_fluxes_<Direction::Z>(rho, V, B, P, J, rho_z, rhoV_z, B_z,
                                                              Etot_z, {args...});
             });
@@ -114,6 +160,7 @@ public:
     }
 
 private:
+    GridLayout layout_;
     double const gamma_;
     double const eta_;
     double const nu_;
@@ -280,6 +327,36 @@ private:
             throw std::runtime_error("Error - GodunovFluxes - Unknown Riemann solver");
     }
 
+    auto rusanov_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
+                  auto const S) const
+    {
+        auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
+
+        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
+            return (std::get<i>(fL) + std::get<i>(fR)) * 0.5
+                   - S * (std::get<i>(uR) - std::get<i>(uL)) * 0.5;
+        });
+    }
+
+    auto hll_(auto const& uL, auto const& uR, auto const& fL, auto const& fR, auto const& SL,
+              auto const& SR) const
+    {
+        auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
+
+        auto hll = [&](auto const ul, auto const ur, auto const fl, auto const fr) {
+            if (SL > 0.0)
+                return fl;
+            else if (SR < 0.0)
+                return fr;
+            else
+                return (SR * fl - SL * fr + SL * SR * (ur - ul)) / (SR - SL);
+        };
+
+        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
+            return hll(std::get<i>(uL), std::get<i>(uR), std::get<i>(fL), std::get<i>(fR));
+        });
+    }
+
     template<auto direction>
     auto rusanov_speeds_(auto const& uL, auto const& uR) const
     {
@@ -297,8 +374,8 @@ private:
 
             if (terms_ == "hall")
             {
-                auto cwL = compute_whistler_(layout_->inverseMeshSize(direction), rhoL, BdotBL);
-                auto cwR = compute_whistler_(layout_->inverseMeshSize(direction), rhoR, BdotBR);
+                auto cwL = compute_whistler_(layout_.inverseMeshSize(direction), rhoL, BdotBL);
+                auto cwR = compute_whistler_(layout_.inverseMeshSize(direction), rhoR, BdotBR);
                 Sb = std::max(std::abs(VcompL) + cfastL + cwL, std::abs(VcompR) + cfastR + cwR);
             }
 
@@ -332,8 +409,8 @@ private:
 
             if (terms_ == "hall")
             {
-                auto cwL = compute_whistler_(layout_->inverseMeshSize(direction), rhoL, BdotBL);
-                auto cwR = compute_whistler_(layout_->inverseMeshSize(direction), rhoR, BdotBR);
+                auto cwL = compute_whistler_(layout_.inverseMeshSize(direction), rhoL, BdotBL);
+                auto cwR = compute_whistler_(layout_.inverseMeshSize(direction), rhoR, BdotBR);
                 SLb      = std::min(VcompL - cfastL - cwL, VcompR - cfastR - cwR);
                 SRb      = std::max(VcompL + cfastL + cwL, VcompR + cfastR + cwR);
             }
@@ -347,36 +424,6 @@ private:
             return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VyL, VyR, ByL, ByR);
         else if constexpr (direction == Direction::Z)
             return compute_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VzL, VzR, BzL, BzR);
-    }
-
-    auto rusanov_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
-                  auto const S) const
-    {
-        auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
-
-        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
-            return (std::get<i>(fL) + std::get<i>(fR)) * 0.5
-                   - S * (std::get<i>(uR) - std::get<i>(uL)) * 0.5;
-        });
-    }
-
-    auto hll_(auto const& uL, auto const& uR, auto const& fL, auto const& fR, auto const& SL,
-              auto const& SR) const
-    {
-        auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
-
-        auto hll = [&](auto const ul, auto const ur, auto const fl, auto const fr) {
-            if (SL > 0.0)
-                return fl;
-            else if (SR < 0.0)
-                return fr;
-            else
-                return (SR * fl - SL * fr + SL * SR * (ur - ul)) / (SR - SL);
-        };
-
-        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
-            return hll(std::get<i>(uL), std::get<i>(uR), std::get<i>(fL), std::get<i>(fR));
-        });
     }
 
     auto compute_fast_magnetosonic_(auto const& rho, auto const& B, auto const& BdotB,
@@ -400,6 +447,7 @@ private:
         return std::sqrt(BdotB) * vw / rho;
     }
 
+
     template<auto direction>
     auto ideal_flux_vector_(auto const& rho, auto const& Vx, auto const& Vy, auto const& Vz,
                             auto const& Bx, auto const& By, auto const& Bz, auto const& P) const
@@ -407,6 +455,7 @@ private:
         auto GeneralisedPressure = P + 0.5 * (Bx * Bx + By * By + Bz * Bz);
         auto TotalEnergy         = P / (gamma_ - 1) + 0.5 * rho * (Vx * Vx + Vy * Vy + Vz * Vz)
                            + 0.5 * (Bx * Bx + By * By + Bz * Bz);
+
         if constexpr (direction == Direction::X)
         {
             auto F_rho   = rho * Vx;
@@ -516,7 +565,7 @@ private:
     {
         auto d2
             = [&](Direction dir, auto const& prevValue, auto const& Value, auto const& nextValue) {
-                  return (layout_->inverseMeshSize(dir)) * (layout_->inverseMeshSize(dir))
+                  return (layout_.inverseMeshSize(dir)) * (layout_.inverseMeshSize(dir))
                          * (prevValue - 2.0 * Value + nextValue);
               };
 
@@ -608,6 +657,7 @@ private:
         }
     }
 
+
     template<auto direction, typename VecField>
     auto center_reconstruct_(const VecField& U, MeshIndex<VecField::dimension> index,
                              auto projectionX, auto projectionY, auto projectionZ) const
@@ -640,12 +690,25 @@ private:
 
             return std::make_tuple(UxL, UyL, UzL, UxR, UyR, UzR);
         }
+        else if (reconstruction_ == "WENO3")
+        {
+            auto UxL = center_recons_WENO3_L_<direction>(Ux, index, projectionX);
+            auto UyL = center_recons_WENO3_L_<direction>(Uy, index, projectionY);
+            auto UzL = center_recons_WENO3_L_<direction>(Uz, index, projectionZ);
+
+            auto UxR = center_recons_WENO3_R_<direction>(Ux, index, projectionX);
+            auto UyR = center_recons_WENO3_R_<direction>(Uy, index, projectionY);
+            auto UzR = center_recons_WENO3_R_<direction>(Uz, index, projectionZ);
+
+            return std::make_tuple(UxL, UyL, UzL, UxR, UyR, UzR);
+        }
         else
             throw std::runtime_error("Error - Reconstruct - Unknown reconstruction method");
     }
 
-    template<auto direction>
-    auto center_recons_linear_L_(auto U, MeshIndex<dimension> index, auto projection) const
+    template<auto direction, typename Field>
+    auto center_recons_linear_L_(Field const& U, MeshIndex<Field::dimension> index,
+                                 auto projection) const
     {
         auto u_2 = GridLayout::project(U, previous_<direction>(U, previous_<direction>(U, index)),
                                        projection);
@@ -655,8 +718,9 @@ private:
         return recons_linear_L_(u_2, u_1, u);
     }
 
-    template<auto direction>
-    auto center_recons_linear_R_(auto U, MeshIndex<dimension> index, auto projection) const
+    template<auto direction, typename Field>
+    auto center_recons_linear_R_(Field const& U, MeshIndex<Field::dimension> index,
+                                 auto projection) const
     {
         auto u_1 = GridLayout::project(U, previous_<direction>(U, index), projection);
         auto u   = GridLayout::project(U, index, projection);
@@ -666,12 +730,37 @@ private:
     }
 
     template<auto direction, typename Field>
+    auto center_recons_WENO3_L_(Field const& U, MeshIndex<Field::dimension> index,
+                                auto projection) const
+    {
+        auto u_2 = GridLayout::project(U, previous_<direction>(U, previous_<direction>(U, index)),
+                                       projection);
+        auto u_1 = GridLayout::project(U, previous_<direction>(U, index), projection);
+        auto u   = GridLayout::project(U, index, projection);
+
+        return recons_WENO3_L_(u_2, u_1, u);
+    }
+
+    template<auto direction, typename Field>
+    auto center_recons_WENO3_R_(Field const& U, MeshIndex<dimension> index, auto projection) const
+    {
+        auto u_1 = GridLayout::project(U, previous_<direction>(U, index), projection);
+        auto u   = GridLayout::project(U, index, projection);
+        auto u1  = GridLayout::project(U, next_<direction>(U, index), projection);
+
+        return recons_WENO3_R_(u_1, u, u1);
+    }
+
+
+    template<auto direction, typename Field>
     auto reconstruct_uL_(Field const& F, MeshIndex<Field::dimension> index) const
     {
         if (reconstruction_ == "constant")
             return constant_uL_<direction>(F, index);
         else if (reconstruction_ == "linear")
             return linear_uL_<direction>(F, index);
+        else if (reconstruction_ == "WENO3")
+            return WENO3_uL_<direction>(F, index);
         else
             throw std::runtime_error("Error - Reconstruct - Unknown reconstruction method");
     }
@@ -683,9 +772,12 @@ private:
             return constant_uR_<direction>(F, index);
         else if (reconstruction_ == "linear")
             return linear_uR_<direction>(F, index);
+        else if (reconstruction_ == "WENO3")
+            return WENO3_uR_<direction>(F, index);
         else
             throw std::runtime_error("Error - Reconstruct - Unknown reconstruction method");
     }
+
 
     template<auto direction, typename Field>
     auto constant_uL_(Field const& F, MeshIndex<Field::dimension> index) const
@@ -698,6 +790,7 @@ private:
     {
         return F(index);
     }
+
 
     template<auto direction, typename Field>
     auto linear_uL_(Field const& F, MeshIndex<Field::dimension> index) const
@@ -737,6 +830,66 @@ private:
         return u - 0.5 * Di;
     }
 
+
+    template<auto direction, typename Field>
+    auto WENO3_uL_(Field const& F, MeshIndex<Field::dimension> index) const
+    {
+        auto ui_2 = F(previous_<direction>(F, previous_<direction>(F, index)));
+        auto ui_1 = F(previous_<direction>(F, index));
+        auto ui   = F(index);
+
+        return recons_WENO3_L_(ui_2, ui_1, ui);
+    }
+
+    template<auto direction, typename Field>
+    auto WENO3_uR_(Field const& F, MeshIndex<Field::dimension> index) const
+    {
+        auto ui_1 = F(previous_<direction>(F, index));
+        auto ui   = F(index);
+        auto ui1  = F(next_<direction>(F, index));
+
+        return recons_WENO3_R_(ui_1, ui, ui1);
+    }
+
+    auto recons_WENO3_L_(auto ul, auto u, auto ur) const
+    {
+        double eps = 1.e-6;
+
+        double dL0 = 1. / 3.;
+        double dL1 = 2. / 3.;
+
+        auto beta0 = (u - ul) * (u - ul);
+        auto beta1 = (ur - u) * (ur - u);
+
+        auto alphaL0 = dL0 / ((beta0 + eps) * (beta0 + eps));
+        auto alphaL1 = dL1 / ((beta1 + eps) * (beta1 + eps));
+
+        auto wL0 = alphaL0 / (alphaL0 + alphaL1);
+        auto wL1 = alphaL1 / (alphaL0 + alphaL1);
+
+        return wL0 * (-0.5 * ul + 1.5 * u) + wL1 * (0.5 * u + 0.5 * ur);
+    }
+
+    auto recons_WENO3_R_(auto ul, auto u, auto ur) const
+    {
+        double eps = 1.e-6;
+
+        double dR0 = 2. / 3.;
+        double dR1 = 1. / 3.;
+
+        auto beta1 = (u - ul) * (u - ul);
+        auto beta2 = (ur - u) * (ur - u);
+
+        auto alphaR0 = dR0 / ((beta1 + eps) * (beta1 + eps));
+        auto alphaR1 = dR1 / ((beta2 + eps) * (beta2 + eps));
+
+        auto wR0 = alphaR0 / (alphaR0 + alphaR1);
+        auto wR1 = alphaR1 / (alphaR0 + alphaR1);
+
+        return wR0 * (0.5 * u + 0.5 * ul) + wR1 * (-0.5 * ur + 1.5 * u);
+    }
+
+
     auto slope_limiter_(auto const& Dil, auto const& Dir) const
     {
         if (limiter_ == "minmod")
@@ -757,10 +910,11 @@ private:
         return Dil * Dir < 0.0 ? 0.0 : fabs(Dir) < fabs(Dil) ? Dir : Dil;
     }
 
+
     template<auto direction, typename Field>
     MeshIndex<Field::dimension> next_(Field const& F, MeshIndex<Field::dimension> index) const
     {
-        auto fieldCentering = layout_->centering(F.physicalQuantity());
+        auto fieldCentering = layout_.centering(F.physicalQuantity());
 
         if constexpr (dimension == 1)
         {
@@ -797,7 +951,7 @@ private:
     template<auto direction, typename Field>
     MeshIndex<Field::dimension> previous_(Field const& F, MeshIndex<Field::dimension> index) const
     {
-        auto fieldCentering = layout_->centering(F.physicalQuantity());
+        auto fieldCentering = layout_.centering(F.physicalQuantity());
 
         if constexpr (dimension == 1)
         {

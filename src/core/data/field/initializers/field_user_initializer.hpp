@@ -7,19 +7,22 @@
 #include "core/utilities/span.hpp"
 #include "initializer/data_provider.hpp"
 
-namespace PHARE::core {
-class FieldUserFunctionInitializer {
-   public:
-    template <typename Field, typename GridLayout>
+namespace PHARE::core
+{
+class FieldUserFunctionInitializer
+{
+public:
+    template<typename Field, typename GridLayout>
     void static initialize(Field& field, GridLayout const& layout,
-                           initializer::InitFunction<GridLayout::dimension> const& init) {
+                           initializer::InitFunction<GridLayout::dimension> const& init)
+    {
         auto const indices = layout.ghostStartToEndIndices(field, /*includeEnd=*/true);
         auto const coords  = layout.template indexesToCoordVectors</*WithField=*/true>(
             indices, field, [](auto& gridLayout, auto& field_, auto const&... args) {
                 return gridLayout.fieldNodeCoordinates(field_, gridLayout.origin(), args...);
             });
 
-        std::shared_ptr<Span<double>> gridPtr  // keep grid data alive
+        std::shared_ptr<Span<double>> gridPtr // keep grid data alive
             = std::apply([&](auto&... args) { return init(args...); }, coords);
         Span<double>& grid = *gridPtr;
 
@@ -28,6 +31,6 @@ class FieldUserFunctionInitializer {
     }
 };
 
-}  // namespace PHARE::core
+} // namespace PHARE::core
 
 #endif

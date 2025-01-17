@@ -16,4 +16,4 @@ std::vector<MessengerDescriptor> makeDescriptors(std::vector<std::string> modelN
     else
         throw std::runtime_error("Error max number of models is 2");
 }
-}
+} // namespace PHARE::amr

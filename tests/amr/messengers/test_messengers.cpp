@@ -86,7 +86,8 @@
 //         dict["electromag"]["magnetic"]["initializer"]["z_component"]
 //             = static_cast<InitFunctionT<dim>>(bz);
 
-//         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
+//         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] =
+//         std::string{"modified_boris"};
 //     }
 // };
 
@@ -151,7 +152,8 @@
 //         dict["electromag"]["magnetic"]["initializer"]["z_component"]
 //             = static_cast<InitFunctionT<dim>>(bz);
 
-//         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
+//         dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] =
+//         std::string{"modified_boris"};
 //     }
 // };
 
@@ -299,7 +301,8 @@
 // TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 // {
 //     auto mhdSolver = std::make_unique<SolverMHD<MHDModelT, SAMRAI_Types>>();
-//     MessengerRegistration::registerQuantities(*messengers[0], *models[0], *models[0], *mhdSolver);
+//     MessengerRegistration::registerQuantities(*messengers[0], *models[0], *models[0],
+//     *mhdSolver);
 // }
 
 
@@ -335,7 +338,8 @@
 //     auto& hybridhybridMessenger = *messengers[2];
 //     auto& mhdModel              = *models[0];
 //     auto& hybridModel           = *models[1];
-//     EXPECT_ANY_THROW(MessengerRegistration::registerQuantities(hybridhybridMessenger, hybridModel,
+//     EXPECT_ANY_THROW(MessengerRegistration::registerQuantities(hybridhybridMessenger,
+//     hybridModel,
 //                                                                mhdModel, *hybridSolver));
 // }
 
@@ -361,9 +365,8 @@
 // #if 0
 // TEST_F(HybridHybridMessenger, initializesNewLevelDuringRegrid)
 // {
-//     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
-//     int const ratio = 2;
-//     short unsigned const dimension = 1;
+//     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver,
+//     messenger); int const ratio = 2; short unsigned const dimension = 1;
 
 //     auto integratorStrat = std::make_shared<TestIntegratorStrat>();
 
@@ -388,7 +391,8 @@
 //         for (auto& patch : *level)
 //         {
 //             auto _
-//                 = hybridModel->resourcesManager->setOnPatch(*patch, hybridModel->state.electromag);
+//                 = hybridModel->resourcesManager->setOnPatch(*patch,
+//                 hybridModel->state.electromag);
 
 //             auto layout = PHARE::layoutFromPatch<typename HybridModelT::gridLayout_type>(*patch);
 
@@ -431,9 +435,8 @@
 
 // TEST_F(HybridHybridMessenger, initializesNewFinestLevelAfterRegrid)
 // {
-//     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver, messenger);
-//     int const ratio = 2;
-//     short unsigned const dimension = 1;
+//     auto tagStrat   = std::make_shared<TagStrategy<HybridModelT>>(hybridModel, solver,
+//     messenger); int const ratio = 2; short unsigned const dimension = 1;
 
 //     auto integratorStrat = std::make_shared<TestIntegratorStrat>();
 
@@ -525,7 +528,7 @@
 
 int main(int argc, char** argv)
 {
-//     ::testing::InitGoogleTest(&argc, argv);
-//     PHARE::SamraiLifeCycle samsam(argc, argv);
-//     return RUN_ALL_TESTS();
+    //     ::testing::InitGoogleTest(&argc, argv);
+    //     PHARE::SamraiLifeCycle samsam(argc, argv);
+    //     return RUN_ALL_TESTS();
 }

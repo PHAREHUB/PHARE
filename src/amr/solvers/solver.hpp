@@ -100,7 +100,8 @@ namespace solver
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
         virtual void allocate(IPhysicalModel<AMR_Types>& model, patch_t& patch,
-                              double const allocateTime) const = 0;
+                              double const allocateTime) const
+            = 0;
 
 
 

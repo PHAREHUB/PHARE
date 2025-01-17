@@ -1,5 +1,6 @@
 from . import global_vars
 
+
 class Simulation(object):
     def __init__(self, **kwargs):
         if global_vars.sim is not None:
@@ -14,3 +15,6 @@ class Simulation(object):
 
     def set_model(self, model):
         self.model = model
+
+    def clear(self):
+        global_vars.sim = None

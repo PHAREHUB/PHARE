@@ -121,9 +121,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-NO_DISCARD typename std::enable_if_t<
-    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
-    bool>
+NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
+                                         and is_phare_particle_type<dim, ParticleB<dim>>,
+                                     bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //

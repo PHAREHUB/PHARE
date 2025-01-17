@@ -29,7 +29,7 @@ public:
         , id_{variableDatabase_->registerVariableAndContext(loadBalancerVar_, context_,
                                                             SAMRAI::hier::IntVector::getZero(dim_))}
         , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
-        , loadBalancerEstimators_(maxLevelNumber_){};
+        , loadBalancerEstimators_(maxLevelNumber_) {};
 
     ~LoadBalancerManager() { variableDatabase_->removeVariable("LoadBalancerVariable"); };
 
