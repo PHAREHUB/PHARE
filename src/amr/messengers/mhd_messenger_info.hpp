@@ -14,6 +14,7 @@ namespace amr
     class MHDMessengerInfo : public IMessengerInfo
     {
         using VecFieldNames = core::VecFieldNames;
+
     public:
         // What is needed here ?
         virtual ~MHDMessengerInfo() = default;

@@ -515,7 +515,7 @@ struct IonUpdaterTest : public ::testing::Test
                 }
 
             } // end 1D
-        }     // end pop loop
+        } // end pop loop
         PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
                                       PHARE::core::DomainDeposit{});
 

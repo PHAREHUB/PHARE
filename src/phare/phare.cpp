@@ -45,10 +45,12 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
 
 int main(int argc, char** argv)
 {
-    if (std::signal(SIGINT, signal_handler) == SIG_ERR) {
+    if (std::signal(SIGINT, signal_handler) == SIG_ERR)
+    {
         throw std::runtime_error("PHARE Error: Failed to register SIGINT signal handler");
     }
-    if (std::signal(SIGABRT, signal_handler) == SIG_ERR) {
+    if (std::signal(SIGABRT, signal_handler) == SIG_ERR)
+    {
         throw std::runtime_error("PHARE Error: Failed to register SIGABRT signal handler");
     }
 
