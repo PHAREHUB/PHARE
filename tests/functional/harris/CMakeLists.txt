@@ -14,6 +14,7 @@ if(HighFive AND testMPI)
   if(testMPI)
 
     phare_mpi_python3_exec(11 4 harris_2d_100_x_100 harris_2d_100_x_100.py ${CMAKE_CURRENT_BINARY_DIR})
+    phare_mpi_python3_exec(11 4 harris_2d_100_x_100_slow harris_2d_100_x_100_slow.py ${CMAKE_CURRENT_BINARY_DIR})
 
   endif(testMPI)
 

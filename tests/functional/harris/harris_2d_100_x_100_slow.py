@@ -36,10 +36,10 @@ startMPI()
 
 cells = (100, 100)
 final_time = 50
-time_step = 0.005
+time_step = 0.001
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
 
-diag_dir = "phare_outputs/harris_2d_100_x_100"
+diag_dir = "phare_outputs/harris_2d_100_x_100_slow"
 plot_dir = Path(f"{diag_dir}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
 

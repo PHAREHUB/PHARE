@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import os
+
 import numpy as np
 
 import pyphare.pharein as ph
@@ -8,20 +8,25 @@ from pyphare.simulator.simulator import Simulator
 from pyphare.simulator.simulator import startMPI
 
 
-def default_setup():
-
-    ph.NO_GUI()
-    cpp = cpp_lib()
-    startMPI()
+ph.NO_GUI()
+cpp = cpp_lib()
 
 
-    diag_outputs = "phare_outputs/test/harris/2d"
-    time_step_nbr = 1000
-    time_step = 0.001
-    final_time = time_step * time_step_nbr
+
+diag_outputs = "phare_outputs/test/harris/2d"
+time_step_nbr = 1000
+time_step = 0.001
+final_time = time_step * time_step_nbr
+
+
+def default_timestamps():
     dt = 10 * time_step
     nt = final_time / dt + 1
     timestamps = dt * np.arange(nt)
+
+
+def default_setup():
+    startMPI()
 
     return ph.Simulation(
         smallest_patch_size=15,
@@ -43,9 +48,11 @@ def default_setup():
     )
 
 
-def config(sim = None, seed = 12334):
-    if not sim:
+def config(sim = None, timestamps = None, seed = 12334):
+    if sim is None:
         sim = default_setup()
+    if timestamps is None:
+        timestamps = default_timestamps()
 
     def density(x, y):
         L = sim.simulation_domain()[1]
