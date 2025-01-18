@@ -11,7 +11,6 @@ from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
 from tests.simulator import SimulatorTest
-from tools.python3 import plotting as m_plotting
 
 import harris_2d as base
 
@@ -131,8 +130,15 @@ class HarrisTest(SimulatorTest):
         Simulator(config()).run().reset()
         if cpp.mpi_rank() == 0:
             plot(diag_dir)
+
         if SCOPE_TIMING:
-            m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
+            try:
+                from tools.python3 import plotting as m_plotting
+
+                m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
+            except ImportError:
+                print("Phlop not found - install with: `pip install phlop`")
+
         cpp.mpi_barrier()
         return self
 
