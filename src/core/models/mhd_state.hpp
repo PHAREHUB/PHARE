@@ -53,18 +53,20 @@ namespace core
         //-------------------------------------------------------------------------
 
         MHDState(PHARE::initializer::PHAREDict const& dict)
-            : rho{"rho", MHDQuantity::Scalar::rho}
-            , V{"V", MHDQuantity::Vector::V}
-            , B{"B", MHDQuantity::Vector::B}
-            , P{"P", MHDQuantity::Scalar::P}
+            : rho{dict["name"].template to<std::string>() + "_" + "rho", MHDQuantity::Scalar::rho}
+            , V{dict["name"].template to<std::string>() + "_" + "V", MHDQuantity::Vector::V}
+            , B{dict["name"].template to<std::string>() + "_" + "B", MHDQuantity::Vector::B}
+            , P{dict["name"].template to<std::string>() + "_" + "P", MHDQuantity::Scalar::P}
 
 
-            , rhoV{"rhoV", MHDQuantity::Vector::rhoV}
-            , Etot{"Etot", MHDQuantity::Scalar::Etot}
+            , rhoV{dict["name"].template to<std::string>() + "_" + "rhoV",
+                   MHDQuantity::Vector::rhoV}
+            , Etot{dict["name"].template to<std::string>() + "_" + "Etot",
+                   MHDQuantity::Scalar::Etot}
 
 
-            , E{"E", MHDQuantity::Vector::E}
-            , J{"J", MHDQuantity::Vector::J}
+            , E{dict["name"].template to<std::string>() + "_" + "E", MHDQuantity::Vector::E}
+            , J{dict["name"].template to<std::string>() + "_" + "J", MHDQuantity::Vector::J}
 
 
             , rhoinit_{dict["density"]["initializer"]
