@@ -20,10 +20,10 @@ def config():
         nu=0.0,
         gamma=5.0 / 3.0,
         terms="hall",
-        reconstruction="linear",
+        reconstruction="WENO3",
         limiter="vanleer",
         riemann="hll",
-        integrator="tvdrk2",
+        integrator="tvdrk3",
     )
 
     Lx = cells[0] * dl[0]

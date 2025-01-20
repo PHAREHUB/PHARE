@@ -17,7 +17,7 @@ def config(nx, Dx):
         nu=0.0,
         gamma=5.0 / 3.0,
         terms="ideal",
-        reconstruction="linear",
+        reconstruction="constant",
         limiter="vanleer",
         riemann="hll",
         integrator="tvdrk2",

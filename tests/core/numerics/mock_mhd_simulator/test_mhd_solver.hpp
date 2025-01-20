@@ -60,16 +60,6 @@ struct DummyModelViewConstructor
         , B_z{"B_z", layout, MHDQuantity::Vector::VecFlux_z}
         , Etot_z{"Etot_z", layout, MHDQuantity::Scalar::ScalarFlux_z}
 
-        , rho1{"rho1", layout, MHDQuantity::Scalar::rho}
-        , rhoV1{"rhoV1", layout, MHDQuantity::Vector::rhoV}
-        , B1{"B1", layout, MHDQuantity::Vector::B}
-        , Etot1{"Etot1", layout, MHDQuantity::Scalar::Etot}
-
-        , rho2{"rho2", layout, MHDQuantity::Scalar::rho}
-        , rhoV2{"rhoV2", layout, MHDQuantity::Vector::rhoV}
-        , B2{"B2", layout, MHDQuantity::Vector::B}
-        , Etot2{"Etot2", layout, MHDQuantity::Scalar::Etot}
-
         , layouts{layout}
     {
     }
@@ -88,16 +78,6 @@ struct DummyModelViewConstructor
     PHARE::core::UsableVecFieldMHD<dimension> rhoV_z;
     PHARE::core::UsableVecFieldMHD<dimension> B_z;
     PHARE::core::UsableFieldMHD<dimension> Etot_z;
-
-    PHARE::core::UsableFieldMHD<dimension> rho1;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV1;
-    PHARE::core::UsableVecFieldMHD<dimension> B1;
-    PHARE::core::UsableFieldMHD<dimension> Etot1;
-
-    PHARE::core::UsableFieldMHD<dimension> rho2;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV2;
-    PHARE::core::UsableVecFieldMHD<dimension> B2;
-    PHARE::core::UsableFieldMHD<dimension> Etot2;
 
     GridLayout_t layouts;
 };
@@ -137,8 +117,12 @@ struct DummyMHDModel : public PHARE::solver::IPhysicalModel<DummyTypes>
 
     DummyMHDModel(GridLayout_t const& layout, PHARE::initializer::PHAREDict const& dict)
         : PHARE::solver::IPhysicalModel<DummyTypes>(model_name)
-        , usablestate{layout, dict}
+        , usablestate{layout, dict["state"]}
+        , usablestate1{layout, dict["state1"]}
+        , usablestate2{layout, dict["state2"]}
         , state{usablestate.super()}
+        , state1{usablestate1.super()}
+        , state2{usablestate2.super()}
     {
         state.initialize(layout);
     }
@@ -152,7 +136,11 @@ struct DummyMHDModel : public PHARE::solver::IPhysicalModel<DummyTypes>
     }
 
     PHARE::core::UsableMHDState<dimension> usablestate;
+    PHARE::core::UsableMHDState<dimension> usablestate1;
+    PHARE::core::UsableMHDState<dimension> usablestate2;
     PHARE::core::MHDState<VecFieldMHD>& state;
+    PHARE::core::MHDState<VecFieldMHD>& state1;
+    PHARE::core::MHDState<VecFieldMHD>& state2;
 };
 
 template<std::size_t dimension, std::size_t order>
@@ -175,7 +163,6 @@ struct DummyModelView : public PHARE::solver::ISolverModelView
         P.push_back(&model_.state.P);
         J.push_back(&model_.state.J);
         E.push_back(&model_.state.E);
-
         rhoV.push_back(&model_.state.rhoV);
         Etot.push_back(&model_.state.Etot);
 
@@ -194,15 +181,23 @@ struct DummyModelView : public PHARE::solver::ISolverModelView
         B_z.push_back(&construct.B_z.super());
         Etot_z.push_back(&construct.Etot_z.super());
 
-        rho1.push_back(&construct.rho1.super());
-        rhoV1.push_back(&construct.rhoV1.super());
-        B1.push_back(&construct.B1.super());
-        Etot1.push_back(&construct.Etot1.super());
+        rho1.push_back(&model_.state1.rho);
+        V1.push_back(&model_.state1.V);
+        B1.push_back(&model_.state1.B);
+        P1.push_back(&model_.state1.P);
+        J1.push_back(&model_.state1.J);
+        E1.push_back(&model_.state1.E);
+        rhoV1.push_back(&model_.state1.rhoV);
+        Etot1.push_back(&model_.state1.Etot);
 
-        rho2.push_back(&construct.rho2.super());
-        rhoV2.push_back(&construct.rhoV2.super());
-        B2.push_back(&construct.B2.super());
-        Etot2.push_back(&construct.Etot2.super());
+        rho2.push_back(&model_.state2.rho);
+        V2.push_back(&model_.state2.V);
+        B2.push_back(&model_.state2.B);
+        P2.push_back(&model_.state2.P);
+        J2.push_back(&model_.state2.J);
+        E2.push_back(&model_.state2.E);
+        rhoV2.push_back(&model_.state2.rhoV);
+        Etot2.push_back(&model_.state2.Etot);
 
         layouts.push_back(&construct.layouts);
     }
@@ -216,7 +211,6 @@ struct DummyModelView : public PHARE::solver::ISolverModelView
     std::vector<FieldMHD*> P;
     std::vector<VecFieldMHD*> J;
     std::vector<VecFieldMHD*> E;
-
     std::vector<VecFieldMHD*> rhoV;
     std::vector<FieldMHD*> Etot;
 
@@ -236,13 +230,21 @@ struct DummyModelView : public PHARE::solver::ISolverModelView
     std::vector<FieldMHD*> Etot_z;
 
     std::vector<FieldMHD*> rho1;
-    std::vector<VecFieldMHD*> rhoV1;
+    std::vector<VecFieldMHD*> V1;
     std::vector<VecFieldMHD*> B1;
+    std::vector<FieldMHD*> P1;
+    std::vector<VecFieldMHD*> J1;
+    std::vector<VecFieldMHD*> E1;
+    std::vector<VecFieldMHD*> rhoV1;
     std::vector<FieldMHD*> Etot1;
 
     std::vector<FieldMHD*> rho2;
-    std::vector<VecFieldMHD*> rhoV2;
+    std::vector<VecFieldMHD*> V2;
     std::vector<VecFieldMHD*> B2;
+    std::vector<FieldMHD*> P2;
+    std::vector<VecFieldMHD*> J2;
+    std::vector<VecFieldMHD*> E2;
+    std::vector<VecFieldMHD*> rhoV2;
     std::vector<FieldMHD*> Etot2;
 
     std::vector<GridLayout_t*> layouts;
@@ -673,40 +675,6 @@ public:
                                      currentGroup, "ey");
                 H5writer::writeField(model_.state.E(PHARE::core::Component::Z), layout_, h5file,
                                      currentGroup, "ez");
-
-
-                H5writer::writeField(dummy_view_construct_.rho_x, layout_, h5file, currentGroup,
-                                     "rho_x"); // debug
-                H5writer::writeField(dummy_view_construct_.rhoV_x(PHARE::core::Component::X),
-                                     layout_, h5file, currentGroup, "rhovx_x"); // debug
-                H5writer::writeField(dummy_view_construct_.rhoV_x(PHARE::core::Component::Y),
-                                     layout_, h5file, currentGroup, "rhovy_x"); // debug
-                H5writer::writeField(dummy_view_construct_.rhoV_x(PHARE::core::Component::Z),
-                                     layout_, h5file, currentGroup, "rhovz_x"); // debug
-                H5writer::writeField(dummy_view_construct_.B_x(PHARE::core::Component::X), layout_,
-                                     h5file, currentGroup, "bx_x"); // debug
-                H5writer::writeField(dummy_view_construct_.B_x(PHARE::core::Component::Y), layout_,
-                                     h5file, currentGroup, "by_x"); // debug
-                H5writer::writeField(dummy_view_construct_.B_x(PHARE::core::Component::Z), layout_,
-                                     h5file, currentGroup, "bz_x"); // debug
-                H5writer::writeField(dummy_view_construct_.Etot_x, layout_, h5file, currentGroup,
-                                     "etot_x"); // debug
-                H5writer::writeField(dummy_view_construct_.rho_y, layout_, h5file, currentGroup,
-                                     "rho_y"); // debug
-                H5writer::writeField(dummy_view_construct_.rhoV_y(PHARE::core::Component::X),
-                                     layout_, h5file, currentGroup, "rhovx_y"); // debug
-                H5writer::writeField(dummy_view_construct_.rhoV_y(PHARE::core::Component::Y),
-                                     layout_, h5file, currentGroup, "rhovy_y"); // debug
-                H5writer::writeField(dummy_view_construct_.rhoV_y(PHARE::core::Component::Z),
-                                     layout_, h5file, currentGroup, "rhovz_y"); // debug
-                H5writer::writeField(dummy_view_construct_.B_y(PHARE::core::Component::X), layout_,
-                                     h5file, currentGroup, "bx_y"); // debug
-                H5writer::writeField(dummy_view_construct_.B_y(PHARE::core::Component::Y), layout_,
-                                     h5file, currentGroup, "by_y"); // debug
-                H5writer::writeField(dummy_view_construct_.B_y(PHARE::core::Component::Z), layout_,
-                                     h5file, currentGroup, "bz_y"); // debug
-                H5writer::writeField(dummy_view_construct_.Etot_y, layout_, h5file, currentGroup,
-                                     "etot_y"); // debug
             }
             step++;
         }

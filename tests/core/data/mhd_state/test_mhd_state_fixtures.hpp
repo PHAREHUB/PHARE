@@ -37,14 +37,17 @@ public:
     template<typename GridLayout>
     UsableMHDState(GridLayout const& layout, PHAREDict const& dict)
         : Super{dict}
-        , rho{"rho", layout, MHDQuantity::Scalar::rho}
-        , V{"V", layout, MHDQuantity::Vector::V}
-        , B{"B", layout, MHDQuantity::Vector::B}
-        , P{"P", layout, MHDQuantity::Scalar::P}
-        , rhoV{"rhoV", layout, MHDQuantity::Vector::rhoV}
-        , Etot{"Etot", layout, MHDQuantity::Scalar::Etot}
-        , J{"J", layout, MHDQuantity::Vector::J}
-        , E{"E", layout, MHDQuantity::Vector::E}
+        , rho{dict["name"].template to<std::string>() + "_" + "rho", layout,
+              MHDQuantity::Scalar::rho}
+        , V{dict["name"].template to<std::string>() + "_" + "V", layout, MHDQuantity::Vector::V}
+        , B{dict["name"].template to<std::string>() + "_" + "B", layout, MHDQuantity::Vector::B}
+        , P{dict["name"].template to<std::string>() + "_" + "P", layout, MHDQuantity::Scalar::P}
+        , rhoV{dict["name"].template to<std::string>() + "_" + "rhoV", layout,
+               MHDQuantity::Vector::rhoV}
+        , Etot{dict["name"].template to<std::string>() + "_" + "Etot", layout,
+               MHDQuantity::Scalar::Etot}
+        , J{dict["name"].template to<std::string>() + "_" + "J", layout, MHDQuantity::Vector::J}
+        , E{dict["name"].template to<std::string>() + "_" + "E", layout, MHDQuantity::Vector::E}
     {
         _set();
     }

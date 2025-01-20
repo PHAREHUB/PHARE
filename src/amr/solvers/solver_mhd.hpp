@@ -67,15 +67,23 @@ private:
     FieldT Etot_z{"rho_z", MHDQuantity::Scalar::ScalarFlux_z};
 
     // Time integration
-    FieldT rho1{"rho1", MHDQuantity::Scalar::rho};
-    VecFieldT rhoV1{"rhoV1", MHDQuantity::Vector::rhoV};
-    VecFieldT B1{"B1", MHDQuantity::Vector::B};
-    FieldT Etot1{"Etot1", MHDQuantity::Scalar::Etot};
+    FieldT rho1{"state1_rho", MHDQuantity::Scalar::rho};
+    VecFieldT rhoV1{"state1_rhoV", MHDQuantity::Vector::rhoV};
+    VecFieldT B1{"state1_B", MHDQuantity::Vector::B};
+    FieldT Etot1{"state1_Etot", MHDQuantity::Scalar::Etot};
+    VecFieldT V1{"state1_V", MHDQuantity::Vector::V};
+    FieldT P1{"state1_P", MHDQuantity::Scalar::P};
+    VecFieldT J1{"state1_J", MHDQuantity::Vector::J};
+    VecFieldT E1{"state1_E", MHDQuantity::Vector::E};
 
-    FieldT rho2{"rho2", MHDQuantity::Scalar::rho};
-    VecFieldT rhoV2{"rhoV2", MHDQuantity::Vector::rhoV};
-    VecFieldT B2{"B2", MHDQuantity::Vector::B};
-    FieldT Etot2{"Etot2", MHDQuantity::Scalar::Etot};
+    FieldT rho2{"state2_rho", MHDQuantity::Scalar::rho};
+    VecFieldT rhoV2{"state2_rhoV", MHDQuantity::Vector::rhoV};
+    VecFieldT B2{"state2_B", MHDQuantity::Vector::B};
+    FieldT Etot2{"state2_Etot", MHDQuantity::Scalar::Etot};
+    VecFieldT V2{"state2_V", MHDQuantity::Vector::V};
+    FieldT P2{"state2_P", MHDQuantity::Scalar::P};
+    VecFieldT J2{"state2_J", MHDQuantity::Vector::J};
+    VecFieldT E2{"state2_E", MHDQuantity::Vector::E};
 
     Ampere_t ampere_;
     GodunovFluxes_t godunov_;
@@ -125,13 +133,32 @@ private:
     void godunov_fluxes_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
                          double const currentTime, double const newTime);
 
-    void time_integration_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+    void godunov_fluxes_1_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
                            double const currentTime, double const newTime);
 
-    template<typename Layout, typename View, typename VecField, typename Qs, typename... Fluxes>
-    void euler_(Messenger& fromCoarser, level_t& level, double const newTime, Layout& layouts,
-                Qs quantities, View E, VecField Emodel, Qs quantities_new, double const dt,
-                Fluxes... fluxes);
+    void godunov_fluxes_2_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                           double const currentTime, double const newTime);
+
+    void euler_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                double const currentTime, double const newTime);
+
+    void euler_1_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                  double const currentTime, double const newTime);
+
+    void euler_1_1_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                    double const currentTime, double const newTime);
+
+    void euler_2_2_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                    double const currentTime, double const newTime);
+
+    void tvdrk2_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                 double const currentTime, double const newTime);
+
+    void tvdrk3_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                 double const currentTime, double const newTime);
+
+    void time_integration_(level_t& level, ModelViews_t& views, Messenger& fromCoarser,
+                           double const currentTime, double const newTime);
 
     struct TimeSetter
     {
@@ -158,8 +185,6 @@ void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::advanceLevel(
     auto& modelView   = dynamic_cast<ModelViews_t&>(view);
     auto& fromCoarser = dynamic_cast<Messenger&>(fromCoarserMessenger);
     auto level        = hierarchy.getPatchLevel(levelNumber);
-
-    godunov_fluxes_(*level, modelView, fromCoarser, currentTime, newTime);
 
     time_integration_(*level, modelView, fromCoarser, currentTime, newTime);
 }
@@ -203,6 +228,324 @@ void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::godunov_fluxes_(
     }
 }
 
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::godunov_fluxes_1_(
+    level_t& level, ModelViews_t& views, Messenger& fromCoarser, double const currentTime,
+    double const newTime)
+{
+    PHARE_LOG_SCOPE(1, "SolverMHD::godunov_fluxes_1_");
+
+    fromCoarser.fillMagneticGhosts(views.model().state1.B, level, newTime);
+
+    ampere_(views.layouts, views.B1, views.J1);
+
+    fromCoarser.fillMomentGhosts(views.model().state1.rho, level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state1.V(core::Component::X), level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state1.V(core::Component::Y), level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state1.V(core::Component::Z), level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state1.P, level, newTime);
+
+    fromCoarser.fillCurrentGhosts(views.model().state1.J, level, newTime);
+
+    if constexpr (dimension == 1)
+    {
+        godunov_(views.layouts, views.rho1, views.V1, views.B1, views.P1, views.J1, views.rho_x,
+                 views.rhoV_x, views.B_x, views.Etot_x);
+    }
+    if constexpr (dimension == 2)
+    {
+        godunov_(views.layouts, views.rho1, views.V1, views.B1, views.P1, views.J1, views.rho_x,
+                 views.rhoV_x, views.B_x, views.Etot_x, views.rho_y, views.rhoV_y, views.B_y,
+                 views.Etot_y);
+    }
+    if constexpr (dimension == 3)
+    {
+        godunov_(views.layouts, views.rho1, views.V1, views.B1, views.P1, views.J1, views.rho_x,
+                 views.rhoV_x, views.B_x, views.Etot_x, views.rho_y, views.rhoV_y, views.B_y,
+                 views.Etot_y, views.rho_z, views.rhoV_z, views.B_z, views.Etot_z);
+    }
+}
+
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::godunov_fluxes_2_(
+    level_t& level, ModelViews_t& views, Messenger& fromCoarser, double const currentTime,
+    double const newTime)
+{
+    PHARE_LOG_SCOPE(2, "SolverMHD::godunov_fluxes_2_");
+
+    fromCoarser.fillMagneticGhosts(views.model().state2.B, level, newTime);
+
+    ampere_(views.layouts, views.B2, views.J2);
+
+    fromCoarser.fillMomentGhosts(views.model().state2.rho, level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state2.V(core::Component::X), level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state2.V(core::Component::Y), level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state2.V(core::Component::Z), level, newTime);
+    fromCoarser.fillMomentGhosts(views.model().state2.P, level, newTime);
+
+    fromCoarser.fillCurrentGhosts(views.model().state2.J, level, newTime);
+
+    if constexpr (dimension == 1)
+    {
+        godunov_(views.layouts, views.rho2, views.V2, views.B2, views.P2, views.J2, views.rho_x,
+                 views.rhoV_x, views.B_x, views.Etot_x);
+    }
+    if constexpr (dimension == 2)
+    {
+        godunov_(views.layouts, views.rho2, views.V2, views.B2, views.P2, views.J2, views.rho_x,
+                 views.rhoV_x, views.B_x, views.Etot_x, views.rho_y, views.rhoV_y, views.B_y,
+                 views.Etot_y);
+    }
+    if constexpr (dimension == 3)
+    {
+        godunov_(views.layouts, views.rho2, views.V2, views.B2, views.P2, views.J2, views.rho_x,
+                 views.rhoV_x, views.B_x, views.Etot_x, views.rho_y, views.rhoV_y, views.B_y,
+                 views.Etot_y, views.rho_z, views.rhoV_z, views.B_z, views.Etot_z);
+    }
+}
+
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::euler_(level_t& level,
+                                                                     ModelViews_t& views,
+                                                                     Messenger& fromCoarser,
+                                                                     double const currentTime,
+                                                                     double const newTime)
+{
+    auto dt = newTime - currentTime;
+
+    godunov_fluxes_(level, views, fromCoarser, currentTime, newTime);
+
+    to_conservative_(views.layouts, views.rho, views.V, views.B, views.P, views.rhoV, views.Etot);
+
+    fromCoarser.fillMagneticFluxGhosts(views.B_x, level, newTime);
+
+    if constexpr (dimension == 1)
+    {
+        time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot, views.rho,
+                               views.rhoV, views.B, views.Etot, views.E, dt, views.rho_x,
+                               views.rhoV_x, views.B_x, views.Etot_x);
+    }
+    if constexpr (dimension >= 2)
+    {
+        fromCoarser.fillMagneticFluxGhosts(views.B_y, level, newTime);
+
+        if constexpr (dimension == 2)
+        {
+            time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                                   views.rho, views.rhoV, views.B, views.Etot, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y);
+        }
+        if constexpr (dimension == 3)
+        {
+            fromCoarser.fillMagneticFluxGhosts(views.B_z, level, newTime);
+
+            time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                                   views.rho, views.rhoV, views.B, views.Etot, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y, views.rho_z, views.rhoV_z,
+                                   views.B_z, views.Etot_z);
+        }
+    }
+
+    to_primitive_(views.layouts, views.rho, views.rhoV, views.B, views.Etot, views.V, views.P);
+}
+
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::euler_1_(level_t& level,
+                                                                       ModelViews_t& views,
+                                                                       Messenger& fromCoarser,
+                                                                       double const currentTime,
+                                                                       double const newTime)
+{
+    auto dt = newTime - currentTime;
+
+    godunov_fluxes_(level, views, fromCoarser, currentTime, newTime);
+
+    to_conservative_(views.layouts, views.rho, views.V, views.B, views.P, views.rhoV, views.Etot);
+
+    fromCoarser.fillMagneticFluxGhosts(views.B_x, level, newTime);
+
+    if constexpr (dimension == 1)
+    {
+        time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                               views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
+                               views.rho_x, views.rhoV_x, views.B_x, views.Etot_x);
+    }
+    if constexpr (dimension >= 2)
+    {
+        fromCoarser.fillMagneticFluxGhosts(views.B_y, level, newTime);
+
+        if constexpr (dimension == 2)
+        {
+            time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                                   views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y);
+        }
+        if constexpr (dimension == 3)
+        {
+            fromCoarser.fillMagneticFluxGhosts(views.B_z, level, newTime);
+
+            time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                                   views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y, views.rho_z, views.rhoV_z,
+                                   views.B_z, views.Etot_z);
+        }
+    }
+
+    to_primitive_(views.layouts, views.rho1, views.rhoV1, views.B1, views.Etot1, views.V1,
+                  views.P1);
+}
+
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::euler_1_1_(level_t& level,
+                                                                         ModelViews_t& views,
+                                                                         Messenger& fromCoarser,
+                                                                         double const currentTime,
+                                                                         double const newTime)
+{
+    auto dt = newTime - currentTime;
+
+    godunov_fluxes_1_(level, views, fromCoarser, currentTime, newTime);
+
+    to_conservative_(views.layouts, views.rho1, views.V1, views.B1, views.P1, views.rhoV1,
+                     views.Etot1);
+
+    fromCoarser.fillMagneticFluxGhosts(views.B_x, level, newTime);
+
+    if constexpr (dimension == 1)
+    {
+        time_integrator_.euler(views.layouts, views.rho1, views.rhoV1, views.B1, views.Etot1,
+                               views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
+                               views.rho_x, views.rhoV_x, views.B_x, views.Etot_x);
+    }
+    if constexpr (dimension >= 2)
+    {
+        fromCoarser.fillMagneticFluxGhosts(views.B_y, level, newTime);
+
+        if constexpr (dimension == 2)
+        {
+            time_integrator_.euler(views.layouts, views.rho1, views.rhoV1, views.B1, views.Etot1,
+                                   views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y);
+        }
+        if constexpr (dimension == 3)
+        {
+            fromCoarser.fillMagneticFluxGhosts(views.B_z, level, newTime);
+
+            time_integrator_.euler(views.layouts, views.rho1, views.rhoV1, views.B1, views.Etot1,
+                                   views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y, views.rho_z, views.rhoV_z,
+                                   views.B_z, views.Etot_z);
+        }
+    }
+
+    to_primitive_(views.layouts, views.rho1, views.rhoV1, views.B1, views.Etot1, views.V1,
+                  views.P1);
+}
+
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::euler_2_2_(level_t& level,
+                                                                         ModelViews_t& views,
+                                                                         Messenger& fromCoarser,
+                                                                         double const currentTime,
+                                                                         double const newTime)
+{
+    auto dt = newTime - currentTime;
+
+    godunov_fluxes_2_(level, views, fromCoarser, currentTime, newTime);
+
+    to_conservative_(views.layouts, views.rho2, views.V2, views.B2, views.P2, views.rhoV2,
+                     views.Etot2);
+
+    fromCoarser.fillMagneticFluxGhosts(views.B_x, level, newTime);
+
+    if constexpr (dimension == 1)
+    {
+        time_integrator_.euler(views.layouts, views.rho2, views.rhoV2, views.B2, views.Etot2,
+                               views.rho2, views.rhoV2, views.B2, views.Etot2, views.E, dt,
+                               views.rho_x, views.rhoV_x, views.B_x, views.Etot_x);
+    }
+    if constexpr (dimension >= 2)
+    {
+        fromCoarser.fillMagneticFluxGhosts(views.B_y, level, newTime);
+
+        if constexpr (dimension == 2)
+        {
+            time_integrator_.euler(views.layouts, views.rho2, views.rhoV2, views.B2, views.Etot2,
+                                   views.rho2, views.rhoV2, views.B2, views.Etot2, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y);
+        }
+        if constexpr (dimension == 3)
+        {
+            fromCoarser.fillMagneticFluxGhosts(views.B_z, level, newTime);
+
+            time_integrator_.euler(views.layouts, views.rho2, views.rhoV2, views.B2, views.Etot2,
+                                   views.rho2, views.rhoV2, views.B2, views.Etot2, views.E, dt,
+                                   views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y,
+                                   views.rhoV_y, views.B_y, views.Etot_y, views.rho_z, views.rhoV_z,
+                                   views.B_z, views.Etot_z);
+        }
+    }
+
+    to_primitive_(views.layouts, views.rho2, views.rhoV2, views.B2, views.Etot2, views.V2,
+                  views.P2);
+}
+
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::tvdrk2_(level_t& level,
+                                                                      ModelViews_t& views,
+                                                                      Messenger& fromCoarser,
+                                                                      double const currentTime,
+                                                                      double const newTime)
+{
+    auto dt = newTime - currentTime;
+
+    euler_1_(level, views, fromCoarser, currentTime, newTime); // step1: U1 = Euler(Un)
+
+    euler_1_1_(level, views, fromCoarser, currentTime, newTime); // U1 <- Euler(U1)
+
+    time_integrator_.tvdrk2_step2(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                                  views.rho1, views.rhoV1, views.B1,
+                                  views.Etot1); // step 2: Un1 = 0.5 Un + 0.5 Euler(U1)
+
+    to_primitive_(views.layouts, views.rho, views.rhoV, views.B, views.Etot, views.V, views.P);
+}
+
+template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::tvdrk3_(level_t& level,
+                                                                      ModelViews_t& views,
+                                                                      Messenger& fromCoarser,
+                                                                      double const currentTime,
+                                                                      double const newTime)
+{
+    auto dt = newTime - currentTime;
+
+    euler_1_(level, views, fromCoarser, currentTime, newTime); // step1: U1 = Euler(Un)
+
+    euler_1_1_(level, views, fromCoarser, currentTime, newTime); // U1 <- Euler(U1)
+
+    time_integrator_.tvdrk3_step2(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                                  views.rho1, views.rhoV1, views.B1, views.Etot1, views.rho2,
+                                  views.rhoV2, views.B2,
+                                  views.Etot2); // step 2: U2 = 0.75 Un + 0.25 Euler(U1)
+
+    to_primitive_(views.layouts, views.rho2, views.rhoV2, views.B2, views.Etot2, views.V2,
+                  views.P2);
+
+    euler_2_2_(level, views, fromCoarser, currentTime, newTime); // U2 <- Euler(U2)
+
+    time_integrator_.tvdrk3_step3(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
+                                  views.rho2, views.rhoV2, views.B2,
+                                  views.Etot2); // step 3: Un1 = 1/3 Un + 2/3 Euler(U2)
+
+    to_primitive_(views.layouts, views.rho, views.rhoV, views.B, views.Etot, views.V, views.P);
+}
 
 template<typename MHDModel, typename AMR_Types, typename Messenger, typename ModelViews_t>
 void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::time_integration_(
@@ -213,74 +556,34 @@ void SolverMHD<MHDModel, AMR_Types, Messenger, ModelViews_t>::time_integration_(
 
     auto dt = newTime - currentTime;
 
-    to_conservative_(views.layouts, views.rho, views.V, views.B, views.P, views.rhoV, views.Etot);
-
     fromCoarser.fillMagneticFluxGhosts(views.B_x, level, newTime);
 
-    if constexpr (dimension == 1)
-    {
-        if (integrator_ == "euler")
-            time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                   views.E, dt, views.rho_x, views.rhoV_x, views.B_x, views.Etot_x);
-        else if (integrator_ == "tvdrk2")
-            time_integrator_.tvdrk2(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                    views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
-                                    views.rho_x, views.rhoV_x, views.B_x, views.Etot_x);
-        else if (integrator_ == "tvdrk3")
-            time_integrator_.tvdrk3(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                    views.rho1, views.rhoV1, views.B1, views.Etot1, views.rho2,
-                                    views.rhoV2, views.B2, views.Etot2, views.E, dt, views.rho_x,
-                                    views.rhoV_x, views.B_x, views.Etot_x);
-    }
     if constexpr (dimension >= 2)
     {
         fromCoarser.fillMagneticFluxGhosts(views.B_y, level, newTime);
 
-        if constexpr (dimension == 2)
-        {
-            if (integrator_ == "euler")
-                time_integrator_.euler(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                       views.E, dt, views.rho_x, views.rhoV_x, views.B_x,
-                                       views.Etot_x, views.rho_y, views.rhoV_y, views.B_y,
-                                       views.Etot_y);
-            else if (integrator_ == "tvdrk2")
-                time_integrator_.tvdrk2(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                        views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
-                                        views.rho_x, views.rhoV_x, views.B_x, views.Etot_x,
-                                        views.rho_y, views.rhoV_y, views.B_y, views.Etot_y);
-            else if (integrator_ == "tvdrk3")
-                time_integrator_.tvdrk3(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                        views.rho1, views.rhoV1, views.B1, views.Etot1, views.rho2,
-                                        views.rhoV2, views.B2, views.Etot2, views.E, dt,
-                                        views.rho_x, views.rhoV_x, views.B_x, views.Etot_x,
-                                        views.rho_y, views.rhoV_y, views.B_y, views.Etot_y);
-        }
         if constexpr (dimension == 3)
         {
             fromCoarser.fillMagneticFluxGhosts(views.B_z, level, newTime);
-
-            if (integrator_ == "euler")
-                time_integrator_.euler(
-                    views.layouts, views.rho, views.rhoV, views.B, views.Etot, views.E, dt,
-                    views.rho_x, views.rhoV_x, views.B_x, views.Etot_x, views.rho_y, views.rhoV_y,
-                    views.B_y, views.Etot_y, views.rho_z, views.rhoV_z, views.B_z, views.Etot_z);
-            else if (integrator_ == "tvdrk2")
-                time_integrator_.tvdrk2(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                        views.rho1, views.rhoV1, views.B1, views.Etot1, views.E, dt,
-                                        views.rho_x, views.rhoV_x, views.B_x, views.Etot_x,
-                                        views.rho_y, views.rhoV_y, views.B_y, views.Etot_y,
-                                        views.rho_z, views.rhoV_z, views.B_z, views.Etot_z);
-            else if (integrator_ == "tvdrk3")
-                time_integrator_.tvdrk3(views.layouts, views.rho, views.rhoV, views.B, views.Etot,
-                                        views.rho1, views.rhoV1, views.B1, views.Etot1, views.rho2,
-                                        views.rhoV2, views.B2, views.Etot2, views.E, dt,
-                                        views.rho_x, views.rhoV_x, views.B_x, views.Etot_x,
-                                        views.rho_y, views.rhoV_y, views.B_y, views.Etot_y,
-                                        views.rho_z, views.rhoV_z, views.B_z, views.Etot_z);
         }
     }
 
-    to_primitive_(views.layouts, views.rho, views.rhoV, views.B, views.Etot, views.V, views.P);
+    if (integrator_ == "euler")
+    {
+        euler_(level, views, fromCoarser, currentTime, newTime);
+    }
+    else if (integrator_ == "tvdrk2")
+    {
+        tvdrk2_(level, views, fromCoarser, currentTime, newTime);
+    }
+    else if (integrator_ == "tvdrk3")
+    {
+        tvdrk3_(level, views, fromCoarser, currentTime, newTime);
+    }
+    else
+    {
+        throw std::runtime_error("Unknown integrator: " + integrator_);
+    }
 }
 
 } // namespace PHARE::solver
