@@ -1,17 +1,17 @@
 #ifndef PHARE_CORE_PUSHER_BORIS_HPP
 #define PHARE_CORE_PUSHER_BORIS_HPP
 
+#include "core/errors.hpp"
+#include "core/logger.hpp"
+#include "core/numerics/pusher/pusher.hpp"
+
+
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <algorithm>
 #include <iterator>
-#include <stdexcept>
-#include "core/numerics/pusher/pusher.hpp"
-#include "core/utilities/range/range.hpp"
-#include "core/errors.hpp"
-#include "core/logger.hpp"
-#include "core/data/particles/particle.hpp"
+#include <algorithm>
+
 
 namespace PHARE::core
 {
@@ -127,13 +127,14 @@ private:
     template<typename Particle>
     auto advancePosition_(Particle const& partIn, Particle& partOut)
     {
+        using Float_t = floater_t<0>;
+
         std::array<int, dim> newCell;
         for (std::size_t iDim = 0; iDim < dim; ++iDim)
         {
-            double delta
-                = partIn.delta[iDim] + static_cast<double>(halfDtOverDl_[iDim] * partIn.v[iDim]);
+            Float_t delta = partIn.delta[iDim] + halfDtOverDl_[iDim] * Float_t(partIn.v[iDim]);
 
-            double iCell = std::floor(delta);
+            Float_t iCell = std::floor(delta);
             if (std::abs(delta) > 2)
             {
                 PHARE_LOG_ERROR("Error, particle moves more than 1 cell, delta >2");
@@ -255,7 +256,7 @@ private:
 
 
 
-    std::array<double, dim> halfDtOverDl_;
+    std::array<floater_t<0>, dim> halfDtOverDl_;
     double dt_;
 };
 

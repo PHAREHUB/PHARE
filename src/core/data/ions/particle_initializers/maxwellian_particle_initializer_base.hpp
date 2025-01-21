@@ -1,20 +1,28 @@
+#ifndef PHARE_MAXWELLIAN_PARTICLE_INITIALIZER_BASE_HPP
+#define PHARE_MAXWELLIAN_PARTICLE_INITIALIZER_BASE_HPP
+
 #include <array>
+#include <tuple>
 #include <random>
 
-#include "core/utilities/types.hpp"
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 
 
 namespace PHARE
 {
 namespace core
 {
-    void maxwellianVelocity(std::array<double, 3> const& V, std::array<double, 3> const& Vth,
-                            std::mt19937_64& generator, std::array<double, 3>& partVelocity)
+
+    template<typename T, typename... Args>
+    void maxwellianVelocity(std::array<T, 3>& partVelocity, std::mt19937_64& generator,
+                            Args const... args)
     {
-        std::normal_distribution<> maxwellX(V[0], Vth[0]);
-        std::normal_distribution<> maxwellY(V[1], Vth[1]);
-        std::normal_distribution<> maxwellZ(V[2], Vth[2]);
+        auto const& [V0, V1, V2, Vth0, Vth1, Vth2] = std::forward_as_tuple(args...);
+
+        std::normal_distribution<> maxwellX(V0, Vth0);
+        std::normal_distribution<> maxwellY(V1, Vth1);
+        std::normal_distribution<> maxwellZ(V2, Vth2);
 
         partVelocity[0] = maxwellX(generator);
         partVelocity[1] = maxwellY(generator);
@@ -23,12 +31,11 @@ namespace core
 
 
 
-
-    NO_DISCARD std::array<double, 3>
-    basisTransform(std::array<std::array<double, 3>, 3> const& basis,
-                   std::array<double, 3> const& vec)
+    template<typename T>
+    NO_DISCARD std::array<T, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
+                                               std::array<T, 3> const& vec)
     {
-        std::array<double, 3> newVec;
+        std::array<T, 3> newVec;
 
         for (std::uint32_t comp = 0; comp < 3; comp++)
         {
@@ -40,9 +47,11 @@ namespace core
     }
 
 
-
-    void localMagneticBasis(std::array<double, 3> B, std::array<std::array<double, 3>, 3>& basis)
+    template<typename T0, typename... Bargs>
+    void localMagneticBasis(std::array<std::array<T0, 3>, 3>& basis, Bargs const... bargs)
     {
+        std::array const B{bargs...};
+
         auto b2 = norm(B);
 
         if (b2 < 1e-8)
@@ -85,3 +94,5 @@ namespace core
 
 } // namespace core
 } // namespace PHARE
+
+#endif /*PHARE_MAXWELLIAN_PARTICLE_INITIALIZER_BASE_HPP*/

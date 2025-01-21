@@ -691,7 +691,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
             {
                 auto& part  = particles.emplace_back();
                 part.iCell  = {i, j};
-                part.delta  = ConstArray<double, dim>(.5);
+                part.delta  = ConstArray<floater_t<0>, dim>(.5);
                 part.weight = 1.;
                 part.v[0]   = +2.;
                 part.v[1]   = -1.;

@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 
 #include <array>
+#include <core/data/particles/particle.hpp>
 #include <cstddef>
 #include <fstream>
 #include <iterator>
@@ -125,6 +126,8 @@ struct DummyLayout
 template<std::size_t dim>
 class APusher : public ::testing::Test
 {
+    using ParticleArray_t = ParticleArray<dim>;
+
 public:
     using Pusher_ = BorisPusher<dim, IndexRange<ParticleArray<dim>>, Electromag, Interpolator,
                                 BoundaryCondition<dim, 1>, DummyLayout<dim>>;
@@ -141,10 +144,9 @@ public:
         , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
 
     {
-        particlesIn.emplace_back(
-            Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
-        particlesOut.emplace_back(
-            Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
+        particlesIn.emplace_back(Particle{
+            1., 1., ConstArray<int, dim>(5), ConstArray<floater_t<0>, dim>(0.), {0., 10., 0.}});
+        particlesOut.emplace_back(particlesIn.back());
         dxyz.fill(0.05);
         for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
@@ -184,9 +186,12 @@ TEST_F(APusher3D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
-        actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
-        actual[2][i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * dxyz[2];
+        actual[0][i]
+            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * floater_t<0>(dxyz[0]);
+        actual[1][i]
+            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * floater_t<0>(dxyz[1]);
+        actual[2][i]
+            = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * floater_t<0>(dxyz[2]);
 
         pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
 
@@ -209,8 +214,10 @@ TEST_F(APusher2D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
-        actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
+        actual[0][i]
+            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * floater_t<0>(dxyz[0]);
+        actual[1][i]
+            = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * floater_t<0>(dxyz[1]);
 
         pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
 
@@ -231,7 +238,8 @@ TEST_F(APusher1D, trajectoryIsOk)
 
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
+        actual[0][i]
+            = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * floater_t<0>(dxyz[0]);
 
         pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
 
@@ -249,11 +257,13 @@ TEST_F(APusher1D, trajectoryIsOk)
 // and those that stay.
 class APusherWithLeavingParticles : public ::testing::Test
 {
+    using ParticleArray_t = ParticleArray<1>;
+
 public:
     APusherWithLeavingParticles()
         : pusher{std::make_unique<
-            BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
-                        BoundaryCondition<1, 1>, DummyLayout<1>>>()}
+              BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
+                          BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , mass{1}
         , dt{0.001}
         , tstart{0}
@@ -268,7 +278,7 @@ public:
         std::random_device rd;
         std::mt19937 gen(rd());
         std::uniform_int_distribution<> dis(0, 9);
-        std::uniform_real_distribution<double> delta(0, 1);
+        std::uniform_real_distribution<floater_t<0>> delta(0, 1);
 
         for (std::size_t iPart = 0; iPart < 1000; ++iPart)
         {
@@ -294,9 +304,9 @@ protected:
     Box<double, 1> domain;
     Box<int, 1> cells;
     BoundaryCondition<1, 1> bc;
-    ParticleArray<1> particlesIn;
-    ParticleArray<1> particlesOut1;
-    ParticleArray<1> particlesOut2;
+    ParticleArray_t particlesIn;
+    ParticleArray_t particlesOut1;
+    ParticleArray_t particlesOut2;
 };
 
 

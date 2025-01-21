@@ -1,12 +1,15 @@
 #ifndef PHARE_PYTHON_PYBIND_DEF_HPP
 #define PHARE_PYTHON_PYBIND_DEF_HPP
 
+#include "core/def.hpp"
+#include "core/utilities/span.hpp"
+
 #include <tuple>
 #include <cassert>
 #include <cstdint>
 #include <stdexcept>
 
-#include "core/utilities/span.hpp"
+
 
 #include "pybind11/stl.h"
 #include "pybind11/numpy.h"
@@ -19,12 +22,19 @@ template<typename T>
 using py_array_t = pybind11::array_t<T, pybind11::array::c_style | pybind11::array::forcecast>;
 
 
-using pyarray_particles_t = std::tuple<py_array_t<int32_t>, py_array_t<double>, py_array_t<double>,
-                                       py_array_t<double>, py_array_t<double>>;
+using pyarray_particles_t = std::tuple<py_array_t<std::int32_t>,       // iCell
+                                       py_array_t<core::floater_t<0>>, // delta
+                                       py_array_t<core::floater_t<3>>, // weight
+                                       py_array_t<core::floater_t<2>>, // charge
+                                       py_array_t<core::floater_t<1>>  // v
+                                       >;
 
-using pyarray_particles_crt
-    = std::tuple<py_array_t<int32_t> const&, py_array_t<double> const&, py_array_t<double> const&,
-                 py_array_t<double> const&, py_array_t<double> const&>;
+using pyarray_particles_crt = std::tuple<py_array_t<std::int32_t> const&,       // iCell
+                                         py_array_t<core::floater_t<0>> const&, // delta
+                                         py_array_t<core::floater_t<3>> const&, // weight
+                                         py_array_t<core::floater_t<2>> const&, // charge
+                                         py_array_t<core::floater_t<1>> const&  // v
+                                         >;
 
 template<typename PyArrayInfo>
 std::size_t ndSize(PyArrayInfo const& ar_info)

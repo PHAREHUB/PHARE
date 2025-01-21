@@ -1,30 +1,23 @@
 #ifndef PHARE_CORE_INCLUDE_HPP
 #define PHARE_CORE_INCLUDE_HPP
 
-#include "core/data/grid/grid.hpp"
-#include "core/data/electromag/electromag.hpp"
-#include "core/data/electrons/electrons.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
-#include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/ions.hpp"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/data/particles/particle_array.hpp"
+#include "core/data/grid/grid.hpp"
+#include "core/data/grid/gridlayout.hpp"
 #include "core/data/vecfield/vecfield.hpp"
-#include "core/models/physical_state.hpp"
-#include "core/models/physical_state.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
-#include "core/utilities/algorithm.hpp"
-#include "core/logger.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/grid/gridlayoutimplyee.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
-#include <string>
-#include <vector>
-#include <cstdint>
+#include "cppdict/include/dict.hpp"
+
 #include <functional>
 #include <unordered_map>
 
-#include "cppdict/include/dict.hpp"
 
 namespace PHARE::core
 {
@@ -34,7 +27,7 @@ struct PHARE_Types
     static auto constexpr dimension    = dimension_;
     static auto constexpr interp_order = interp_order_;
 
-    using Array_t          = PHARE::core::NdArrayVector<dimension>;
+    using Array_t          = PHARE::core::NdArrayVector<dimension, floater_t<4>>;
     using ArrayView_t      = PHARE::core::NdArrayView<dimension>;
     using Grid_t           = PHARE::core::Grid<Array_t, PHARE::core::HybridQuantity::Scalar>;
     using Field_t          = PHARE::core::Field<dimension, PHARE::core::HybridQuantity::Scalar>;

@@ -1,6 +1,8 @@
 #ifndef PHARE_CORE_DEF_HPP
 #define PHARE_CORE_DEF_HPP
 
+#include <bitset>
+#include <cstdint>
 #include <type_traits>
 
 #define NO_DISCARD [[nodiscard]]
@@ -43,6 +45,35 @@ NO_DISCARD bool isSettable(auto const&... args)
     };
     return (check(args) && ...);
 }
+
+
+#ifndef PHARE_DOUBLE_BITSET
+constexpr std::bitset<5> doubles{0b11110}; // index 0 starts on the right in binary
+#else                                      // PHARE_DOUBLE_BITSET
+constexpr std::bitset<5> doubles{PHARE_DOUBLE_BITSET};
+#endif
+
+template<std::uint8_t i>
+bool constexpr is_double()
+{
+    // 0 = particle delta
+    // 1 = particle v
+    // 2 = particle charge
+    // 3 = particle weight
+    // 4 = fields
+
+    return doubles[i] == 1;
+}
+
+template<std::uint8_t i>
+struct Floater
+{
+    using value_type = std::conditional_t<is_double<i>(), double, float>;
+};
+
+template<std::uint8_t i>
+using floater_t = Floater<i>::value_type;
+
 
 } // namespace PHARE::core
 

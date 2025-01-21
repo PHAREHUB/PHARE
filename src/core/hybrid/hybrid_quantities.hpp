@@ -69,19 +69,6 @@ public:
         // no condition, for now there's only then momentum tensor M
         return {{Scalar::Mxx, Scalar::Mxy, Scalar::Mxz, Scalar::Myy, Scalar::Myz, Scalar::Mzz}};
     }
-
-    NO_DISCARD static constexpr auto B_items()
-    {
-        auto const& [Bx, By, Bz] = B();
-        return std::make_tuple(std::make_pair("Bx", Bx), std::make_pair("By", By),
-                               std::make_pair("Bz", Bz));
-    }
-    NO_DISCARD static constexpr auto E_items()
-    {
-        auto const& [Ex, Ey, Ez] = E();
-        return std::make_tuple(std::make_pair("Ex", Ex), std::make_pair("Ey", Ey),
-                               std::make_pair("Ez", Ez));
-    }
 };
 
 } // namespace PHARE::core

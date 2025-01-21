@@ -2,18 +2,18 @@
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_HPP
 
 
-#include <cstddef>
-#include <utility>
-#include <vector>
-
-#include "core/utilities/indexer.hpp"
+#include "core/def.hpp"
 #include "particle.hpp"
-#include "core/utilities/point/point.hpp"
-#include "core/utilities/cellmap.hpp"
 #include "core/logger.hpp"
+#include "core/utilities/cellmap.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
-#include "core/def.hpp"
+
+
+#include <vector>
+#include <cstddef>
+#include <utility>
+
 
 namespace PHARE::core
 {
@@ -295,10 +295,9 @@ namespace core
         {
         }
 
-        template<typename Container_int, typename Container_double>
-        ContiguousParticles(Container_int&& _iCell, Container_double&& _delta,
-                            Container_double&& _weight, Container_double&& _charge,
-                            Container_double&& _v)
+        template<typename ICell, typename Delta, typename Weight, typename Charge, typename V>
+        ContiguousParticles(ICell&& _iCell, Delta&& _delta, Weight&& _weight, Charge&& _charge,
+                            V&& _v)
             : iCell{_iCell}
             , delta{_delta}
             , weight{_weight}
@@ -319,10 +318,10 @@ namespace core
         NO_DISCARD Return _to(std::size_t i)
         {
             return {
-                *const_cast<double*>(weight.data() + i),     //
-                *const_cast<double*>(charge.data() + i),     //
-                *_array_cast<dim>(iCell.data() + (dim * i)), //
-                *_array_cast<dim>(delta.data() + (dim * i)), //
+                *const_cast<floater_t<3>*>(weight.data() + i), //
+                *const_cast<floater_t<2>*>(charge.data() + i), //
+                *_array_cast<dim>(iCell.data() + (dim * i)),   //
+                *_array_cast<dim>(delta.data() + (dim * i)),   //
                 *_array_cast<3>(v.data() + (3 * i)),
             };
         }
@@ -374,8 +373,10 @@ namespace core
         NO_DISCARD auto cend() const { return iterator(this); }
 
         container_t<int> iCell;
-        container_t<double> delta;
-        container_t<double> weight, charge, v;
+        container_t<floater_t<0>> delta;
+        container_t<floater_t<3>> weight;
+        container_t<floater_t<2>> charge;
+        container_t<floater_t<1>> v;
     };
 
 
