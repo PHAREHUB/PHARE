@@ -55,7 +55,7 @@ struct Files
 template<std::size_t dim>
 struct EMData
 {
-    using Grid_t  = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using Grid_t  = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
     using GridPtr = std::shared_ptr<Grid_t>;
 
     std::string em_key;

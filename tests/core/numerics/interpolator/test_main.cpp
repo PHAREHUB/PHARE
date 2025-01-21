@@ -81,9 +81,10 @@ public:
 protected:
     Weighter weighter;
     static const int nbr_tests = 100000;
-    std::array<double, nbr_tests> normalizedPositions;
-    std::array<double, nbr_tests> weightsSums;
-    std::array<std::array<double, nbrPointsSupport(Weighter::interp_order)>, nbr_tests> weights_;
+    std::array<floater_t<4>, nbr_tests> normalizedPositions;
+    std::array<floater_t<4>, nbr_tests> weightsSums;
+    std::array<std::array<floater_t<4>, nbrPointsSupport(Weighter::interp_order)>, nbr_tests>
+        weights_;
 };
 
 
@@ -97,7 +98,7 @@ TYPED_TEST_SUITE(AWeighter, Weighters);
 
 TYPED_TEST(AWeighter, ComputesWeightThatSumIsOne)
 {
-    auto equalsOne = [](double sum) { return std::abs(sum - 1.) < 1e-10; };
+    auto equalsOne = [](auto sum) { return std::abs(sum - 1.) < 1e-10; };
     EXPECT_TRUE(std::all_of(std::begin(this->weightsSums), std::end(this->weightsSums), equalsOne));
 }
 
@@ -675,7 +676,8 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     using Grid_t           = typename PHARE_TYPES::Grid_t;
     using UsableVecFieldND = UsableVecField<dim>;
 
-    GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
+    GridLayout_t layout{
+        ConstArray<floater_t<4>, dim>(.1), {nx, ny}, ConstArray<floater_t<4>, dim>(0)};
     ParticleArray_t particles;
     Grid_t rho;
     UsableVecFieldND v;

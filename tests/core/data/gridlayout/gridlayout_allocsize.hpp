@@ -76,14 +76,14 @@ auto createAllocSizeParam()
     while (inputFile >> iQuantity)
     {
         std::array<std::uint32_t, GridLayoutImpl::dimension> numberCells;
-        std::array<double, GridLayoutImpl::dimension> dl;
+        std::array<floater_t<4>, GridLayoutImpl::dimension> dl;
 
         writeToArray(inputFile, numberCells);
         writeToArray(inputFile, dl);
 
         params.emplace_back();
         params.back().base = createParam<GridLayoutImpl>(
-            dl, numberCells, Point<double, GridLayoutImpl::dimension>{});
+            dl, numberCells, Point<floater_t<4>, GridLayoutImpl::dimension>{});
 
         writeToArray(inputFile, params.back().expectedAllocSize);
         writeToArray(inputFile, params.back().expectedAllocSizeDerived);

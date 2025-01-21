@@ -48,7 +48,7 @@ NO_DISCARD bool isSettable(auto const&... args)
 
 
 #ifndef PHARE_DOUBLE_BITSET
-constexpr std::bitset<5> doubles{0b11110}; // index 0 starts on the right in binary
+constexpr std::bitset<5> doubles{0b00000}; // index 0 starts on the right in binary
 #else                                      // PHARE_DOUBLE_BITSET
 constexpr std::bitset<5> doubles{PHARE_DOUBLE_BITSET};
 #endif

@@ -218,8 +218,16 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
 
     for (std::uint32_t ix = psi_p_X; ix <= pei_p_X; ++ix)
     {
-        EXPECT_THAT(Jy(ix), ::testing::DoubleNear((expectedJy[ix]), 1e-12));
-        EXPECT_THAT(Jz(ix), ::testing::DoubleNear((expectedJz[ix]), 1e-12));
+        if constexpr (std::is_same_v<floater_t<4>, double>)
+        {
+            EXPECT_THAT(Jy(ix), ::testing::DoubleNear((expectedJy[ix]), 1e-12));
+            EXPECT_THAT(Jz(ix), ::testing::DoubleNear((expectedJz[ix]), 1e-12));
+        }
+        else
+        {
+            EXPECT_THAT(Jy(ix), ::testing::FloatNear((expectedJy[ix]), 1e-5));
+            EXPECT_THAT(Jz(ix), ::testing::FloatNear((expectedJz[ix]), 1e-5));
+        }
     }
 }
 

@@ -109,9 +109,9 @@ namespace core
          * @param nbrCells is the number of physical cells of the grid
          * @param origin is the point of origin in physical units of the origin of the grid
          */
-        GridLayout(std::array<double, dimension> const& meshSize,
+        GridLayout(std::array<floater_t<4>, dimension> const& meshSize,
                    std::array<std::uint32_t, dimension> const& nbrCells,
-                   Point<double, dimension> const& origin,
+                   Point<floater_t<4>, dimension> const& origin,
                    Box<int, dimension> AMRBox = Box<int, dimension>{}, int level_number = 0)
             : meshSize_{meshSize}
             , origin_{origin}
@@ -155,31 +155,25 @@ namespace core
          * @brief origin return the lower point of the grid described by the GridLayout
          * in physical coordinates
          */
-        NO_DISCARD Point<double, dimension> origin() const noexcept { return origin_; }
+        NO_DISCARD auto origin() const noexcept { return origin_; }
 
 
 
         /**
          * @brief returns the mesh size in the 'dim' dimensions
          */
-        NO_DISCARD std::array<double, dimension> const& meshSize() const noexcept
-        {
-            return meshSize_;
-        }
+        NO_DISCARD auto const& meshSize() const noexcept { return meshSize_; }
 
 
 
-        NO_DISCARD double inverseMeshSize(Direction direction) const noexcept
+        NO_DISCARD auto inverseMeshSize(Direction direction) const noexcept
         {
             return inverseMeshSize_[static_cast<std::uint32_t>(direction)];
         }
 
 
 
-        NO_DISCARD std::array<double, dimension> inverseMeshSize() const noexcept
-        {
-            return inverseMeshSize_;
-        }
+        NO_DISCARD auto inverseMeshSize() const noexcept { return inverseMeshSize_; }
 
 
 
@@ -520,28 +514,28 @@ namespace core
          * of a multidimensional index that is cell-centered.
          */
         template<typename... Indexes>
-        NO_DISCARD Point<double, dimension> cellCenteredCoordinates(Indexes... index) const
+        NO_DISCARD auto cellCenteredCoordinates(Indexes... index) const
         {
             static_assert(sizeof...(Indexes) == dimension,
                           "Error dimension does not match number of arguments");
 
             std::uint32_t constexpr iPrimal = static_cast<std::uint32_t>(QtyCentering::primal);
 
-            constexpr double halfCell = 0.5;
+            constexpr floater_t<4> halfCell = 0.5;
             // A shift of +dx/2, +dy/2, +dz/2 is necessary to get the
             // cell center physical coordinates,
             // because this point is located on the dual mesh
 
             Point<std::uint32_t, dimension> coord(index...);
 
-            Point<double, dimension> physicalPosition;
+            Point<floater_t<4>, dimension> physicalPosition;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
                 auto iStart = physicalStartIndexTable_[iPrimal][iDir];
 
                 physicalPosition[iDir]
-                    = (static_cast<double>(coord[iDir] - iStart) + halfCell) * meshSize_[iDir]
+                    = (static_cast<floater_t<4>>(coord[iDir] - iStart) + halfCell) * meshSize_[iDir]
                       + origin_[iDir];
             }
 
@@ -1497,10 +1491,10 @@ namespace core
 
 
 
-        std::array<double, dimension> meshSize_;
-        Point<double, dimension> origin_;
+        std::array<floater_t<4>, dimension> meshSize_;
+        Point<floater_t<4>, dimension> origin_;
         std::array<std::uint32_t, dimension> nbrPhysicalCells_;
-        std::array<double, dimension> inverseMeshSize_;
+        std::array<floater_t<4>, dimension> inverseMeshSize_;
         static constexpr gridDataT data{};
 
         // stores key indices in each direction (3) for primal and dual nodes (2)

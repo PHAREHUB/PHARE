@@ -75,7 +75,7 @@ TEST_F(AParticle, CanBeReducedToAnIntegerPoint)
 TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
 {
     Point<floater_t<0>, 3> origin;
-    std::array<double, 3> meshSize{{0.2, 0.05, 0.4}};
+    std::array<floater_t<4>, 3> meshSize{{0.2, 0.05, 0.4}};
     std::array<std::uint32_t, 3> nbrCells{{20, 30, 40}};
     GridLayout<GridLayoutImplYee<3, 1>> layout{meshSize, nbrCells, origin,
                                                Box{Point{40, 60, 80}, Point{59, 89, 119}}};

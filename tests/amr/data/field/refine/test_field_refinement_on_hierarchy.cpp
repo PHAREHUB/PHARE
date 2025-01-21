@@ -20,7 +20,7 @@ struct ALinearFieldRefineTest : public ::testing::Test
     static constexpr auto refine = 2;
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using GridND  = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridND  = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
 
 public:
     void SetUp() override

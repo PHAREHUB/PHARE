@@ -2,8 +2,9 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 
 
-
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp"
+
 
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
@@ -87,8 +88,16 @@ namespace amr
             Super::getFromRestart(restart_db);
 
             assert(field.vector().size() > 0);
-            restart_db->getDoubleArray("field_" + field.name(), field.vector().data(),
-                                       field.vector().size()); // do not reallocate!
+            if constexpr (std::is_same_v<core::floater_t<4>, double>)
+            {
+                restart_db->getDoubleArray("field_" + field.name(), field.vector().data(),
+                                           field.vector().size()); // do not reallocate!
+            }
+            else
+            {
+                restart_db->getFloatArray("field_" + field.name(), field.vector().data(),
+                                          field.vector().size()); // do not reallocate!
+            }
         }
 
         void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& restart_db) const override
@@ -471,12 +480,12 @@ namespace amr
         void copyImpl(SAMRAI::hier::Box const& localSourceBox, Grid_t const& source,
                       SAMRAI::hier::Box const& localDestinationBox, Grid_t& destination) const
         {
-            std::uint32_t xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
-            std::uint32_t xDestinationStart
+            std::uint32_t const xSourceStart = static_cast<std::uint32_t>(localSourceBox.lower(0));
+            std::uint32_t const xDestinationStart
                 = static_cast<std::uint32_t>(localDestinationBox.lower(0));
 
-            std::uint32_t xSourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(0));
-            std::uint32_t xDestinationEnd
+            std::uint32_t const xSourceEnd = static_cast<std::uint32_t>(localSourceBox.upper(0));
+            std::uint32_t const xDestinationEnd
                 = static_cast<std::uint32_t>(localDestinationBox.upper(0));
 
             for (std::uint32_t xSource = xSourceStart, xDestination = xDestinationStart;
@@ -489,11 +498,12 @@ namespace amr
 
 
 
-        void packImpl(std::vector<double>& buffer, Grid_t const& source,
+        template<typename T>
+        void packImpl(std::vector<T>& buffer, Grid_t const& source,
                       SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& sourceBox) const
         {
-            int xStart = overlap.lower(0) - sourceBox.lower(0);
-            int xEnd   = overlap.upper(0) - sourceBox.lower(0);
+            int const xStart = overlap.lower(0) - sourceBox.lower(0);
+            int const xEnd   = overlap.upper(0) - sourceBox.lower(0);
 
             for (int xi = xStart; xi <= xEnd; ++xi)
             {
@@ -502,13 +512,13 @@ namespace amr
         }
 
 
-
-        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, Grid_t& source,
+        template<typename T>
+        void unpackImpl(std::size_t& seek, std::vector<T> const& buffer, Grid_t& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {
-            int xStart = overlap.lower(0) - destination.lower(0);
-            int xEnd   = overlap.upper(0) - destination.lower(0);
+            int const xStart = overlap.lower(0) - destination.lower(0);
+            int const xEnd   = overlap.upper(0) - destination.lower(0);
 
             for (int xi = xStart; xi <= xEnd; ++xi)
             {
@@ -559,16 +569,16 @@ namespace amr
 
 
 
-
-        void packImpl(std::vector<double>& buffer, Grid_t const& source,
+        template<typename T>
+        void packImpl(std::vector<T>& buffer, Grid_t const& source,
                       SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& destination) const
 
         {
-            int xStart = overlap.lower(0) - destination.lower(0);
-            int xEnd   = overlap.upper(0) - destination.lower(0);
+            int const xStart = overlap.lower(0) - destination.lower(0);
+            int const xEnd   = overlap.upper(0) - destination.lower(0);
 
-            int yStart = overlap.lower(1) - destination.lower(1);
-            int yEnd   = overlap.upper(1) - destination.lower(1);
+            int const yStart = overlap.lower(1) - destination.lower(1);
+            int const yEnd   = overlap.upper(1) - destination.lower(1);
 
             for (int xi = xStart; xi <= xEnd; ++xi)
             {
@@ -582,15 +592,16 @@ namespace amr
 
 
 
-        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, Grid_t& source,
+        template<typename T>
+        void unpackImpl(std::size_t& seek, std::vector<T> const& buffer, Grid_t& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {
-            int xStart = overlap.lower(0) - destination.lower(0);
-            int xEnd   = overlap.upper(0) - destination.lower(0);
+            int const xStart = overlap.lower(0) - destination.lower(0);
+            int const xEnd   = overlap.upper(0) - destination.lower(0);
 
-            int yStart = overlap.lower(1) - destination.lower(1);
-            int yEnd   = overlap.upper(1) - destination.lower(1);
+            int const yStart = overlap.lower(1) - destination.lower(1);
+            int const yEnd   = overlap.upper(1) - destination.lower(1);
 
             for (int xi = xStart; xi <= xEnd; ++xi)
             {
@@ -658,8 +669,8 @@ namespace amr
 
 
 
-
-        void packImpl(std::vector<double>& buffer, Grid_t const& source,
+        template<typename T>
+        void packImpl(std::vector<T>& buffer, Grid_t const& source,
                       SAMRAI::hier::Box const& overlap, SAMRAI::hier::Box const& destination) const
         {
             int xStart = overlap.lower(0) - destination.lower(0);
@@ -686,7 +697,8 @@ namespace amr
 
 
 
-        void unpackImpl(std::size_t& seek, std::vector<double> const& buffer, Grid_t& source,
+        template<typename T>
+        void unpackImpl(std::size_t& seek, std::vector<T> const& buffer, Grid_t& source,
                         SAMRAI::hier::Box const& overlap,
                         SAMRAI::hier::Box const& destination) const
         {

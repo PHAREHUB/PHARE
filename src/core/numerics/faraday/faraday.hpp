@@ -18,7 +18,7 @@ class Faraday : public LayoutHolder<GridLayout>
 
 public:
     template<typename VecField>
-    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+    void operator()(VecField const& B, VecField const& E, VecField& Bnew, floater_t<4> const dt)
     {
         if (!this->hasLayout())
             throw std::runtime_error(
@@ -49,7 +49,7 @@ public:
 
 
 private:
-    double dt_;
+    floater_t<4> dt_;
 
 
     template<typename VecField, typename Field, typename... Indexes>

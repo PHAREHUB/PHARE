@@ -259,8 +259,16 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
 
     for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
     {
-        EXPECT_THAT(Bynew(ix), ::testing::DoubleNear((expected_dbydt[ix]), 1e-12));
-        EXPECT_THAT(Bznew(ix), ::testing::DoubleNear((expected_dbzdt[ix]), 1e-12));
+        if constexpr (std::is_same_v<floater_t<4>, double>)
+        {
+            EXPECT_THAT(Bynew(ix), ::testing::DoubleNear((expected_dbydt[ix]), 1e-12));
+            EXPECT_THAT(Bznew(ix), ::testing::DoubleNear((expected_dbzdt[ix]), 1e-12));
+        }
+        else
+        {
+            EXPECT_THAT(Bynew(ix), ::testing::FloatNear((expected_dbydt[ix]), 1e-5));
+            EXPECT_THAT(Bznew(ix), ::testing::FloatNear((expected_dbzdt[ix]), 1e-5));
+        }
     }
 }
 

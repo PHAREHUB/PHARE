@@ -68,7 +68,7 @@ struct OhmTest : public ::testing::Test
 
     using GridYee          = GridLayout<GridLayoutImplYee<dim, interp>>;
     using UsableVecFieldND = UsableVecField<dim>;
-    using Grid_t           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using Grid_t           = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
     GridYee layout         = NDlayout<dim, interp>::create();
 
     Grid_t n;

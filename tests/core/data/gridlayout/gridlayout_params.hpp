@@ -51,9 +51,9 @@ inline HybridQuantity::Scalar getQuantity(std::uint32_t iQuantity)
 
 
 template<typename GridLayoutImpl>
-auto createParam(std::array<double, GridLayoutImpl::dimension> const& dxdydz,
+auto createParam(std::array<floater_t<4>, GridLayoutImpl::dimension> const& dxdydz,
                  std::array<std::uint32_t, GridLayoutImpl::dimension> const& nbCellXYZ,
-                 Point<double, GridLayoutImpl::dimension> const& origin)
+                 Point<floater_t<4>, GridLayoutImpl::dimension> const& origin)
 {
     GridLayoutTestParam<GridLayoutImpl> param{};
     param.layout    = std::make_shared<GridLayout<GridLayoutImpl>>(dxdydz, nbCellXYZ, origin);

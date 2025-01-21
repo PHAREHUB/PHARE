@@ -515,7 +515,7 @@ struct IonUpdaterTest : public ::testing::Test
                 }
 
             } // end 1D
-        }     // end pop loop
+        } // end pop loop
         PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
                                       PHARE::core::DomainDeposit{});
 
@@ -574,7 +574,7 @@ struct IonUpdaterTest : public ::testing::Test
         auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
 
         auto nonZero = [&](auto const& field) {
-            auto sum = 0.;
+            floater_t<4> sum = 0;
             for (auto ix = ix0; ix <= ix1; ++ix)
             {
                 sum += std::abs(field(ix));

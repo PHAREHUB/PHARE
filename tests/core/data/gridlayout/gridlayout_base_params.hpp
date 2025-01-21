@@ -22,10 +22,10 @@ struct GridLayoutTestParam
     using Grid_t = Grid<decltype(getNdArrayVecImpl(SelectorDim<dim>{})), HybridQuantity::Scalar>;
 
     std::shared_ptr<GridLayout<GridLayoutImpl>> layout;
-    std::array<double, dim> dxdydz;
+    std::array<floater_t<4>, dim> dxdydz;
     std::array<std::uint32_t, dim> nbCellXYZ;
 
-    Point<double, dim> origin;
+    Point<floater_t<4>, dim> origin;
 
     HybridQuantity::Scalar currentQuantity;
 

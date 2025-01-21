@@ -19,9 +19,9 @@ struct GridLayoutCellCenteringParam
     GridLayoutTestParam<GridLayoutImpl> base;
 
     std::vector<std::array<std::uint32_t, GridLayoutImpl::dimension>> iCellForCentering;
-    std::vector<std::array<double, GridLayoutImpl::dimension>> expectedPosition;
+    std::vector<std::array<floater_t<4>, GridLayoutImpl::dimension>> expectedPosition;
 
-    std::vector<std::array<double, GridLayoutImpl::dimension>> actualPosition;
+    std::vector<std::array<floater_t<4>, GridLayoutImpl::dimension>> actualPosition;
 
     template<typename Array, std::size_t... I>
     auto cellCenteredCoord_impl(Array const& array, std::index_sequence<I...>)
@@ -45,10 +45,10 @@ struct GridLayoutCellCenteringParam
 
         for (auto&& iCell : iCellForCentering)
         {
-            Point<double, GridLayoutImpl::dimension> pos;
+            Point<floater_t<4>, GridLayoutImpl::dimension> pos;
             pos = cellCenteredCoord(iCell);
 
-            std::array<double, GridLayoutImpl::dimension> actualPos;
+            std::array<floater_t<4>, GridLayoutImpl::dimension> actualPos;
 
             for (std::size_t iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
             {
@@ -92,12 +92,12 @@ auto createCellCenteringParam()
         {"Vz", HybridQuantity::Scalar::Vz}, {"P", HybridQuantity::Scalar::P}};
 
     std::array<std::uint32_t, GridLayoutImpl::dimension> nbCell;
-    std::array<double, GridLayoutImpl::dimension> dl;
+    std::array<floater_t<4>, GridLayoutImpl::dimension> dl;
 
     std::array<std::uint32_t, GridLayoutImpl::dimension> iStart;
     std::array<std::uint32_t, GridLayoutImpl::dimension> iEnd;
 
-    std::array<double, GridLayoutImpl::dimension> origin;
+    std::array<floater_t<4>, GridLayoutImpl::dimension> origin;
 
     writeToArray(summary, nbCell);
     writeToArray(summary, dl);
@@ -110,12 +110,12 @@ auto createCellCenteringParam()
     params.emplace_back();
 
     // NOTE: c++17 : Point{origin}, C++14 : Point<double, dim>{origin}
-    params.back().base
-        = createParam<GridLayoutImpl>(dl, nbCell, Point<double, GridLayoutImpl::dimension>{origin});
+    params.back().base = createParam<GridLayoutImpl>(
+        dl, nbCell, Point<floater_t<4>, GridLayoutImpl::dimension>{origin});
 
 
     std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
-    std::array<double, GridLayoutImpl::dimension> realPosition;
+    std::array<floater_t<4>, GridLayoutImpl::dimension> realPosition;
 
     while (writeToArray(value, icell) && writeToArray(value, realPosition))
     {

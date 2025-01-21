@@ -27,11 +27,11 @@ struct PHARE_Types
     static auto constexpr dimension    = dimension_;
     static auto constexpr interp_order = interp_order_;
 
-    using Array_t          = PHARE::core::NdArrayVector<dimension, floater_t<4>>;
-    using ArrayView_t      = PHARE::core::NdArrayView<dimension>;
-    using Grid_t           = PHARE::core::Grid<Array_t, PHARE::core::HybridQuantity::Scalar>;
-    using Field_t          = PHARE::core::Field<dimension, PHARE::core::HybridQuantity::Scalar>;
-    using VecField_t       = PHARE::core::VecField<Field_t, PHARE::core::HybridQuantity>;
+    using Array_t     = PHARE::core::NdArrayVector<dimension, floater_t<4>>;
+    using ArrayView_t = PHARE::core::NdArrayView<dimension>;
+    using Grid_t      = PHARE::core::Grid<Array_t, PHARE::core::HybridQuantity::Scalar>;
+    using Field_t     = core::Field<dimension, PHARE::core::HybridQuantity::Scalar, floater_t<4>>;
+    using VecField_t  = PHARE::core::VecField<Field_t, PHARE::core::HybridQuantity>;
     using SymTensorField_t = PHARE::core::SymTensorField<Field_t, PHARE::core::HybridQuantity>;
     using Electromag_t     = PHARE::core::Electromag<VecField_t>;
     using YeeLayout_t      = PHARE::core::GridLayoutImplYee<dimension, interp_order>;

@@ -48,7 +48,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
     using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using GridND     = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridND     = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
     using FieldDataT = FieldData<GridYee, GridND>;
 
     FieldLinearTimeInterpolate<GridYee, GridND> timeOp{};

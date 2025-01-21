@@ -57,12 +57,15 @@ class Weighter
 template<>
 class Weighter<1>
 {
+    constexpr static floater_t<0> one = 1;
+
 public:
-    inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(1)>& weights)
+    template<typename T>
+    inline void computeWeight(T normalizedPos, int startIndex,
+                              std::array<T, nbrPointsSupport(1)>& weights)
     {
-        weights[1] = normalizedPos - static_cast<double>(startIndex);
-        weights[0] = 1. - weights[1];
+        weights[1] = normalizedPos - static_cast<T>(startIndex);
+        weights[0] = one - weights[1];
     }
 
     static constexpr int interp_order = 1;
@@ -74,20 +77,24 @@ public:
 template<>
 class Weighter<2>
 {
+    constexpr static floater_t<0> p5  = .5;
+    constexpr static floater_t<0> p75 = .75;
+
 public:
-    inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(2)>& weights)
+    template<typename T>
+    inline void computeWeight(T normalizedPos, int startIndex,
+                              std::array<T, nbrPointsSupport(2)>& weights)
     {
         auto index = startIndex + 1;
-        auto delta = static_cast<double>(index) - normalizedPos;
-        double coef1, coef2, coef3;
-        coef1 = 0.5 + delta;
+        auto delta = static_cast<T>(index) - normalizedPos;
+        T coef1, coef2, coef3;
+        coef1 = p5 + delta;
         coef2 = delta;
-        coef3 = 0.5 - delta;
+        coef3 = p5 - delta;
 
-        weights[0] = 0.5 * coef1 * coef1;
-        weights[1] = 0.75 - coef2 * coef2;
-        weights[2] = 0.5 * coef3 * coef3;
+        weights[0] = p5 * coef1 * coef1;
+        weights[1] = p75 - coef2 * coef2;
+        weights[2] = p5 * coef3 * coef3;
     }
 
     static constexpr int interp_order = 2;
@@ -100,27 +107,33 @@ public:
 template<>
 class Weighter<3>
 {
+    constexpr static floater_t<0> _2 = 2;
+    constexpr static floater_t<0> _3 = 3;
+    constexpr static floater_t<0> _4 = 4;
+    constexpr static floater_t<0> p5 = .5;
+
 public:
-    inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(3)>& weights)
+    template<typename T>
+    inline void computeWeight(T normalizedPos, int startIndex,
+                              std::array<T, nbrPointsSupport(3)>& weights)
     {
-        constexpr double _4_over_3 = 4. / 3.;
-        constexpr double _2_over_3 = 2. / 3.;
+        constexpr floater_t<0> _4_over_3 = _4 / _3;
+        constexpr floater_t<0> _2_over_3 = _2 / _3;
 
-        auto index   = static_cast<double>(startIndex) - normalizedPos;
-        double coef1 = 1. + 0.5 * index;
-        double coef2 = index + 1;
-        double coef3 = index + 2;
-        double coef4 = 1. - 0.5 * (index + 3);
+        auto index               = static_cast<floater_t<0>>(startIndex) - normalizedPos;
+        floater_t<0> const coef1 = 1. + p5 * index;
+        floater_t<0> const coef2 = index + 1;
+        floater_t<0> const coef3 = index + 2;
+        floater_t<0> const coef4 = 1. - p5 * (index + 3);
 
-        double coef2_sq  = coef2 * coef2;
-        double coef2_cub = coef2_sq * coef2;
-        double coef3_sq  = coef3 * coef3;
-        double coef3_cub = coef3_sq * coef3;
+        floater_t<0> const coef2_sq  = coef2 * coef2;
+        floater_t<0> const coef2_cub = coef2_sq * coef2;
+        floater_t<0> const coef3_sq  = coef3 * coef3;
+        floater_t<0> const coef3_cub = coef3_sq * coef3;
 
         weights[0] = _4_over_3 * coef1 * coef1 * coef1;
-        weights[1] = _2_over_3 - coef2_sq - 0.5 * coef2_cub;
-        weights[2] = _2_over_3 - coef3_sq + 0.5 * coef3_cub;
+        weights[1] = _2_over_3 - coef2_sq - p5 * coef2_cub;
+        weights[2] = _2_over_3 - coef3_sq + p5 * coef3_cub;
         weights[3] = _4_over_3 * coef4 * coef4 * coef4;
     }
 
@@ -284,7 +297,8 @@ class ParticleToMesh<1>
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
     inline void operator()(Field& field, Particle const& particle, Func&& func,
-                           Indexes const& startIndex, Weights const& weights, double coef = 1.)
+                           Indexes const& startIndex, Weights const& weights,
+                           floater_t<0> const coef = 1.)
     {
         auto const& [xStartIndex] = startIndex;
         auto const& [xWeights]    = weights;
@@ -309,7 +323,8 @@ class ParticleToMesh<2>
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
     inline void operator()(Field& field, Particle const& particle, Func&& func,
-                           Indexes const& startIndex, Weights const& weights, double coef = 1.)
+                           Indexes const& startIndex, Weights const& weights,
+                           floater_t<0> const coef = 1.)
     {
         auto const& [xStartIndex, yStartIndex] = startIndex;
         auto const& [xWeights, yWeights]       = weights;
@@ -321,8 +336,8 @@ public:
         {
             for (auto iy = 0u; iy < order_size; ++iy)
             {
-                auto x = xStartIndex + ix;
-                auto y = yStartIndex + iy;
+                auto const x = xStartIndex + ix;
+                auto const y = yStartIndex + iy;
 
                 field(x, y) += deposit * xWeights[ix] * yWeights[iy];
             }
@@ -340,7 +355,8 @@ class ParticleToMesh<3>
 public:
     template<typename Field, typename Particle, typename Func, typename Indexes, typename Weights>
     inline void operator()(Field& field, Particle const& particle, Func&& func,
-                           Indexes const& startIndex, Weights const& weights, double coef = 1.)
+                           Indexes const& startIndex, Weights const& weights,
+                           floater_t<0> const coef = 1.)
     {
         auto const& [xStartIndex, yStartIndex, zStartIndex] = startIndex;
         auto const& [xWeights, yWeights, zWeights]          = weights;
@@ -354,9 +370,9 @@ public:
             {
                 for (auto iz = 0u; iz < order_size; ++iz)
                 {
-                    auto x = xStartIndex + ix;
-                    auto y = yStartIndex + iy;
-                    auto z = zStartIndex + iz;
+                    auto const x = xStartIndex + ix;
+                    auto const y = yStartIndex + iy;
+                    auto const z = zStartIndex + iz;
 
                     field(x, y, z) += deposit * xWeights[ix] * yWeights[iy] * zWeights[iz];
                 }
@@ -409,6 +425,7 @@ protected:
     }
 
 public:
+    floater_t<0> static constexpr one  = 1;
     auto static constexpr interp_order = interpOrder;
     auto static constexpr dimension    = dim;
 
@@ -470,7 +487,7 @@ public:
      */
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
     inline void operator()(ParticleRange& particleRange, Field& density, VecField& flux,
-                           GridLayout const& layout, double coef = 1.)
+                           GridLayout const& layout, floater_t<0> const coef = 1.)
     {
         auto begin                        = particleRange.begin();
         auto end                          = particleRange.end();
@@ -487,7 +504,7 @@ public:
                                                                  currPart->delta);
 
             particleToMesh_(
-                density, *currPart, [](auto const& part) { return 1.; }, startIndex_, weights_,
+                density, *currPart, [](auto const& part) { return one; }, startIndex_, weights_,
                 coef);
             particleToMesh_(
                 xFlux, *currPart, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
@@ -503,7 +520,7 @@ public:
     }
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
     inline void operator()(ParticleRange&& range, Field& density, VecField& flux,
-                           GridLayout const& layout, double coef = 1.)
+                           GridLayout const& layout, floater_t<0> const coef = 1.)
     {
         (*this)(range, density, flux, layout, coef);
     }
@@ -552,7 +569,7 @@ protected:
     static_assert(dimension <= 3 && dimension > 0 && interpOrder >= 1 && interpOrder <= 3, "error");
 
     using Starts  = std::array<std::uint32_t, dimension>;
-    using Weights = std::array<std::array<double, nbrPointsSupport(interpOrder)>, dimension>;
+    using Weights = std::array<std::array<floater_t<0>, nbrPointsSupport(interpOrder)>, dimension>;
 
     Weighter<interpOrder> weightComputer_;
     MeshToParticle<dimension> meshToParticle_;
