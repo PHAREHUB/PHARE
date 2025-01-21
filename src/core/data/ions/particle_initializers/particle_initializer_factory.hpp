@@ -45,9 +45,14 @@ namespace core
 
                 auto& vthz = dict["thermal_velocity_z"].template to<FunctionType>();
 
-                auto charge = dict["charge"].template to<double>();
+                auto charge = dict["charge"].template to<floater_t<4>>();
 
-                auto densityCutOff = cppdict::get_value(dict, "density_cut_off", double{1e-16});
+                auto const densityCutOff = [&]() {
+                    if constexpr (std::is_same_v<floater_t<4>, double>)
+                        return cppdict::get_value(dict, "density_cut_off", double{1e-16});
+                    else
+                        return cppdict::get_value(dict, "density_cut_off", float{1e-6});
+                }();
 
                 auto nbrPartPerCell = dict["nbr_part_per_cell"].template to<int>();
 

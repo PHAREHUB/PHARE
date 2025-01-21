@@ -134,7 +134,7 @@ struct ElectronsTest : public ::testing::Test
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
     using GridND           = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
-    using FieldND          = Field<dim, HybridQuantity::Scalar>;
+    using FieldND          = Field<dim, HybridQuantity::Scalar, floater_t<4>>;
     using VecFieldND       = VecField<FieldND, HybridQuantity>;
     using SymTensorFieldND = SymTensorField<FieldND, HybridQuantity>;
     using ParticleArray_t  = ParticleArray<dim>;

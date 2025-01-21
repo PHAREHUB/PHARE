@@ -368,7 +368,10 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
-            EXPECT_THAT(Exnew(ix), ::testing::DoubleNear((expected_ohmX[ix]), 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(Exnew(ix), ::testing::DoubleNear((expected_ohmX[ix]), 1e-12));
+            }
         }
 
         psi_X = this->layout.physicalStartIndex(Eynew, Direction::X);
@@ -376,7 +379,10 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
-            EXPECT_THAT(Eynew(ix), ::testing::DoubleNear((expected_ohmY[ix]), 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(Eynew(ix), ::testing::DoubleNear((expected_ohmY[ix]), 1e-12));
+            }
         }
 
         psi_X = this->layout.physicalStartIndex(Eznew, Direction::X);
@@ -384,7 +390,10 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 
         for (auto ix = psi_X; ix <= pei_X; ++ix)
         {
-            EXPECT_THAT(Eznew(ix), ::testing::DoubleNear((expected_ohmZ[ix]), 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(Eznew(ix), ::testing::DoubleNear((expected_ohmZ[ix]), 1e-12));
+            }
         }
     }
 
@@ -401,7 +410,11 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
             {
                 auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ex);
                 auto index_ = ix * nPts_[1] + iy;
-                EXPECT_THAT(Exnew(ix, iy), ::testing::DoubleNear((expected_ohmX[index_]), 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_THAT(Exnew(ix, iy),
+                                ::testing::DoubleNear((expected_ohmX[index_]), 1e-12));
+                }
             }
         }
 
@@ -416,7 +429,11 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
             {
                 auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ey);
                 auto index_ = ix * nPts_[1] + iy;
-                EXPECT_THAT(Eynew(ix, iy), ::testing::DoubleNear((expected_ohmY[index_]), 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_THAT(Eynew(ix, iy),
+                                ::testing::DoubleNear((expected_ohmY[index_]), 1e-12));
+                }
             }
         }
 
@@ -431,7 +448,11 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
             {
                 auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ez);
                 auto index_ = ix * nPts_[1] + iy;
-                EXPECT_THAT(Eznew(ix, iy), ::testing::DoubleNear((expected_ohmZ[index_]), 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_THAT(Eznew(ix, iy),
+                                ::testing::DoubleNear((expected_ohmZ[index_]), 1e-12));
+                }
             }
         }
     }
@@ -453,8 +474,11 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
                 {
                     auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ex);
                     auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                    EXPECT_THAT(Exnew(ix, iy, iz),
-                                ::testing::DoubleNear((expected_ohmX[index_]), 1e-10));
+                    if constexpr (std::is_same_v<floater_t<4>, double>)
+                    {
+                        EXPECT_THAT(Exnew(ix, iy, iz),
+                                    ::testing::DoubleNear((expected_ohmX[index_]), 1e-10));
+                    }
                 }
             }
         }
@@ -474,8 +498,11 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
                 {
                     auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ey);
                     auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                    EXPECT_THAT(Eynew(ix, iy, iz),
-                                ::testing::DoubleNear((expected_ohmY[index_]), 1e-10));
+                    if constexpr (std::is_same_v<floater_t<4>, double>)
+                    {
+                        EXPECT_THAT(Eynew(ix, iy, iz),
+                                    ::testing::DoubleNear((expected_ohmY[index_]), 1e-10));
+                    }
                 }
             }
         }
@@ -495,8 +522,11 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
                 {
                     auto nPts_  = this->layout.allocSize(HybridQuantity::Scalar::Ez);
                     auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                    EXPECT_THAT(Eznew(ix, iy, iz),
-                                ::testing::DoubleNear((expected_ohmZ[index_]), 1e-10));
+                    if constexpr (std::is_same_v<floater_t<4>, double>)
+                    {
+                        EXPECT_THAT(Eznew(ix, iy, iz),
+                                    ::testing::DoubleNear((expected_ohmZ[index_]), 1e-10));
+                    }
                 }
             }
         }

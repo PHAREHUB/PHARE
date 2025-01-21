@@ -32,7 +32,7 @@ namespace core
 
 
     template<typename T>
-    NO_DISCARD std::array<T, 3> basisTransform(std::array<std::array<double, 3>, 3> const& basis,
+    NO_DISCARD std::array<T, 3> basisTransform(std::array<std::array<T, 3>, 3> const& basis,
                                                std::array<T, 3> const& vec)
     {
         std::array<T, 3> newVec;
@@ -50,11 +50,13 @@ namespace core
     template<typename T0, typename... Bargs>
     void localMagneticBasis(std::array<std::array<T0, 3>, 3>& basis, Bargs const... bargs)
     {
+        floater_t<4> constexpr static _1em8 = 1e-8;
+
         std::array const B{bargs...};
 
         auto b2 = norm(B);
 
-        if (b2 < 1e-8)
+        if (b2 < _1em8)
         {
             basis[0][0] = 1.0;
             basis[0][1] = 0.0;

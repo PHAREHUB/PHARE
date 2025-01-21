@@ -272,7 +272,7 @@ namespace core
                     std::get<2>(vectors).emplace_back(point[2]);
             };
 
-            auto xyz = tuple_fixed_type<std::vector<double>, dimension>{};
+            auto xyz = tuple_fixed_type<std::vector<floater_t<4>>, dimension>{};
 
             for (auto const& indiceTuple : indices)
                 std::apply(

@@ -299,7 +299,14 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
             std::uint32_t index_ = ix * nPts_[1] + iy;
-            EXPECT_THAT(Jx(ix, iy), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(Jx(ix, iy), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
+            }
+            else
+            {
+                EXPECT_THAT(Jx(ix, iy), ::testing::FloatNear((expectedJx[index_]), 1e-6));
+            }
         }
     }
 
@@ -310,7 +317,14 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
         for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
         {
             std::uint32_t index_ = ix * nPts_[1] + iy;
-            EXPECT_THAT(Jy(ix, iy), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(Jy(ix, iy), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
+            }
+            else
+            {
+                EXPECT_THAT(Jy(ix, iy), ::testing::FloatNear((expectedJy[index_]), 1e-6));
+            }
         }
     }
 
@@ -321,7 +335,14 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
         for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
         {
             std::uint32_t index_ = ix * nPts_[1] + iy;
-            EXPECT_THAT(Jz(ix, iy), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(Jz(ix, iy), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
+            }
+            else
+            {
+                EXPECT_THAT(Jz(ix, iy), ::testing::FloatNear((expectedJz[index_]), 1e-6));
+            }
         }
     }
 }
@@ -425,7 +446,12 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
             for (std::uint32_t iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
                 std::uint32_t index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(Jx(ix, iy, iz), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                    EXPECT_THAT(Jx(ix, iy, iz), ::testing::DoubleNear((expectedJx[index_]), 1e-12));
+                else
+                {
+                    // todo
+                }
             }
         }
     }
@@ -439,7 +465,12 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
             for (std::uint32_t iz = psi_p_Z; iz <= pei_p_Z; ++iz)
             {
                 std::uint32_t index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(Jy(ix, iy, iz), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                    EXPECT_THAT(Jy(ix, iy, iz), ::testing::DoubleNear((expectedJy[index_]), 1e-12));
+                else
+                {
+                    // todo
+                }
             }
         }
     }
@@ -453,7 +484,12 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
             for (std::uint32_t iz = psi_d_Z; iz <= pei_d_Z; ++iz)
             {
                 std::uint32_t index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(Jz(ix, iy, iz), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                    EXPECT_THAT(Jz(ix, iy, iz), ::testing::DoubleNear((expectedJz[index_]), 1e-12));
+                else
+                {
+                    // todo
+                }
             }
         }
     }

@@ -98,8 +98,18 @@ TYPED_TEST_SUITE(AWeighter, Weighters);
 
 TYPED_TEST(AWeighter, ComputesWeightThatSumIsOne)
 {
-    auto equalsOne = [](auto sum) { return std::abs(sum - 1.) < 1e-10; };
-    EXPECT_TRUE(std::all_of(std::begin(this->weightsSums), std::end(this->weightsSums), equalsOne));
+    if constexpr (std::is_same_v<floater_t<4>, double>)
+    {
+        auto equalsOne = [](auto sum) { return std::abs(sum - 1.) < 1e-10; };
+        EXPECT_TRUE(
+            std::all_of(std::begin(this->weightsSums), std::end(this->weightsSums), equalsOne));
+    }
+    else
+    {
+        auto equalsOne = [](auto sum) { return std::abs(sum - 1.f) < 1e-6; };
+        EXPECT_TRUE(
+            std::all_of(std::begin(this->weightsSums), std::end(this->weightsSums), equalsOne));
+    }
 }
 
 

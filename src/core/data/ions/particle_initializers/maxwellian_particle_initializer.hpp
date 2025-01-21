@@ -32,11 +32,11 @@ public:
 
     MaxwellianParticleInitializer(
         InputFunction density, std::array<InputFunction, 3> const& bulkVelocity,
-        std::array<InputFunction, 3> const& thermalVelocity, double const particleCharge,
+        std::array<InputFunction, 3> const& thermalVelocity, floater_t<4> const particleCharge,
         std::uint32_t const& nbrParticlesPerCell, std::optional<std::size_t> seed = {},
         Basis const basis                                 = Basis::Cartesian,
         std::array<InputFunction, 3> const& magneticField = {nullptr, nullptr, nullptr},
-        double densityCutOff                              = 1e-5)
+        floater_t<4> densityCutOff                        = 1e-5)
         : density_{density}
         , bulkVelocity_{bulkVelocity}
         , thermalVelocity_{thermalVelocity}
@@ -79,8 +79,8 @@ private:
     std::array<InputFunction, 3> thermalVelocity_;
     std::array<InputFunction, 3> magneticField_;
 
-    double particleCharge_;
-    double densityCutOff_ = 1e-5;
+    floater_t<4> particleCharge_;
+    floater_t<4> densityCutOff_ = 1e-5;
     std::uint32_t nbrParticlePerCell_;
     Basis basis_;
     std::optional<std::size_t> rngSeed_;
@@ -108,19 +108,19 @@ public:
                 _B[i] = magneticField[i](coords...);
     }
 
-    NO_DISCARD std::array<double const*, 3> B() const { return ptrs(_B); }
+    NO_DISCARD std::array<floater_t<4> const*, 3> B() const { return ptrs(_B); }
 
     NO_DISCARD auto operator()() const { return std::make_tuple(_n->data(), ptrs(_V), ptrs(_Vth)); }
 
 private:
-    NO_DISCARD std::array<double const*, 3>
-    ptrs(std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> const& v) const
+    NO_DISCARD std::array<floater_t<4> const*, 3>
+    ptrs(std::array<std::shared_ptr<PHARE::core::Span<floater_t<4>>>, 3> const& v) const
     {
         return {v[0]->data(), v[1]->data(), v[2]->data()};
     }
 
-    std::shared_ptr<PHARE::core::Span<double>> const _n, _ppc;
-    std::array<std::shared_ptr<PHARE::core::Span<double>>, 3> _B, _V, _Vth;
+    std::shared_ptr<PHARE::core::Span<floater_t<4>>> const _n, _ppc;
+    std::array<std::shared_ptr<PHARE::core::Span<floater_t<4>>>, 3> _B, _V, _Vth;
 };
 
 
@@ -179,7 +179,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         auto const AMRCellIndex = layout.localToAMR(point(flatCellIdx, ndCellIndices));
         auto const iCell        = AMRCellIndex.template toArray<int>();
         std::array<floater_t<1>, 3> particleVelocity;
-        std::array<std::array<double, 3>, 3> basis{};
+        std::array<std::array<floater_t<4>, 3>, 3> basis{};
 
         if (basis_ == Basis::Magnetic)
         {
