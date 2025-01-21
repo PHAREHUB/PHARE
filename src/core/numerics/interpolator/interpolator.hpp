@@ -400,7 +400,7 @@ protected:
     auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_, Delta const& delta)
     {
         // dual weights require -.5 to take the correct position weight
-        floater_t<0> constexpr dual_offset = .5;
+        [[maybe_unused]] floater_t<0> constexpr dual_offset = .5;
 
         auto const& [startIndex_, weights_] = [&]() {
             if constexpr (centering == QtyCentering::dual)
