@@ -384,7 +384,7 @@ protected:
     auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_, Delta const& delta)
     {
         // dual weights require -.5 to take the correct position weight
-        auto constexpr dual_offset = .5;
+        floater_t<0> constexpr dual_offset = .5;
 
         auto const& [startIndex_, weights_] = [&]() {
             if constexpr (centering == QtyCentering::dual)
@@ -399,7 +399,7 @@ protected:
             startIndex_[iDim]
                 = iCell[iDim] - computeStartLeftShift<CenteringT, centering>(delta[iDim]);
 
-            double normalizedPos = iCell[iDim] + delta[iDim];
+            floater_t<0> normalizedPos = iCell[iDim] + delta[iDim];
 
             if constexpr (centering == QtyCentering::dual)
                 normalizedPos -= dual_offset;
@@ -423,7 +423,7 @@ public:
     template<typename Particle_t, typename Electromag, typename GridLayout>
     inline auto operator()(Particle_t& currPart, Electromag const& Em, GridLayout const& layout)
     {
-        using E_B_tuple = std::tuple<std::array<double, 3>, std::array<double, 3>>;
+        using E_B_tuple = std::tuple<std::array<floater_t<4>, 3>, std::array<floater_t<4>, 3>>;
         using Scalar    = HybridQuantity::Scalar;
 
         // for each particle, first calculate the startIndex and weights for dual and

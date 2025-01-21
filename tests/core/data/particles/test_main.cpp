@@ -88,7 +88,7 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     {
         expectedPosition[i]
             = origin[i] + float(meshSize[i]) * (iCell[i] - startIndexes[i] + part.delta[i]);
-        EXPECT_DOUBLE_EQ(expectedPosition[i], p[i]);
+        EXPECT_FLOAT_EQ(expectedPosition[i], p[i]);
     }
 }
 
