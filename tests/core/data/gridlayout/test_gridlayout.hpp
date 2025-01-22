@@ -15,9 +15,10 @@ public:
     TestGridLayout() = default;
 
     TestGridLayout(std::uint32_t cells)
-        : GridLayout{PHARE::core::ConstArray<double, dim>(1.0 / cells),
+        : GridLayout{PHARE::core::ConstArray<PHARE::core::floater_t<4>, dim>(1.0 / cells),
                      PHARE::core::ConstArray<std::uint32_t, dim>(cells),
-                     PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)}}
+                     PHARE::core::Point<PHARE::core::floater_t<4>, dim>{
+                         PHARE::core::ConstArray<PHARE::core::floater_t<4>, dim>(0)}}
     {
     }
 

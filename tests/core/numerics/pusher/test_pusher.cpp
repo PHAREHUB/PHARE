@@ -170,7 +170,7 @@ protected:
     // BoundaryCondition bc;
 
     std::array<std::vector<float>, dim> actual;
-    std::array<double, dim> dxyz;
+    std::array<floater_t<4>, dim> dxyz;
 };
 
 
@@ -300,7 +300,7 @@ protected:
     std::size_t nt;
     Electromag em;
     Interpolator interpolator;
-    double dx = 0.1;
+    floater_t<0> dx = 0.1;
     Box<double, 1> domain;
     Box<int, 1> cells;
     BoundaryCondition<1, 1> bc;

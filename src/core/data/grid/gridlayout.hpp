@@ -135,13 +135,13 @@ namespace core
             }
 
 
-            inverseMeshSize_[0] = 1. / meshSize_[0];
+            inverseMeshSize_[0] = 1.f / meshSize_[0];
             if constexpr (dimension > 1)
             {
-                inverseMeshSize_[1] = 1. / meshSize_[1];
+                inverseMeshSize_[1] = 1.f / meshSize_[1];
                 if constexpr (dimension > 2)
                 {
-                    inverseMeshSize_[2] = 1. / meshSize_[2];
+                    inverseMeshSize_[2] = 1.f / meshSize_[2];
                 }
             }
         }
@@ -460,31 +460,30 @@ namespace core
          * associated with a given Field, in physical coordinates.
          */
         template<typename Field_t, typename... Indexes>
-        NO_DISCARD Point<double, dimension>
-        fieldNodeCoordinates(Field_t const& field, Point<double, dimension> const& origin,
-                             Indexes... index) const
+        NO_DISCARD auto fieldNodeCoordinates(Field_t const& field,
+                                             Point<double, dimension> const& origin,
+                                             Indexes... index) const
         {
             static_assert(sizeof...(Indexes) == dimension,
                           "Error dimension does not match number of arguments");
 
 
-            std::uint32_t iQuantity       = static_cast<std::uint32_t>(field.physicalQuantity());
+            std::uint32_t const iQuantity = static_cast<std::uint32_t>(field.physicalQuantity());
             constexpr std::uint32_t iDual = static_cast<std::uint32_t>(QtyCentering::dual);
 
 
             constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
 
-            Point<std::int32_t, dimension> coord{static_cast<std::int32_t>(index)...};
+            Point<std::int32_t, dimension> const coord{static_cast<std::int32_t>(index)...};
 
-            Point<double, dimension> position;
+            Point<floater_t<4>, dimension> position;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                double halfCell = 0.0;
-
                 auto const centering
                     = static_cast<std::uint32_t>(hybridQtyCentering[iQuantity][iDir]);
-                std::int32_t const iStart = physicalStartIndexTable_[centering][iDir];
+                std::int32_t const iStart   = physicalStartIndexTable_[centering][iDir];
+                floater_t<4> const halfCell = centering == iDual ? .5f : 0.0f;
 
                 // A shift of +dx/2, +dy/2, +dz/2 is necessary to get the physical
                 // coordinate on the dual mesh
@@ -495,13 +494,8 @@ namespace core
                 // if ix is dual   then ixStart is dual
                 // if iy is primal then iyStart is primal ...
 
-                if (centering == iDual)
-                {
-                    halfCell = 0.5;
-                }
-
                 position[iDir]
-                    = (static_cast<double>(coord[iDir] - iStart) + halfCell) * meshSize_[iDir]
+                    = (static_cast<floater_t<4>>(coord[iDir] - iStart) + halfCell) * meshSize_[iDir]
                       + origin[iDir];
             }
 
@@ -689,8 +683,10 @@ namespace core
          * on the dimensionality of the GridLayout.
          */
         template<typename Field>
-        NO_DISCARD auto laplacian(Field const& operand, MeshIndex<Field::dimension> index)
+        NO_DISCARD floater_t<4> laplacian(Field const& operand, MeshIndex<Field::dimension> index)
         {
+            floater_t<4> constexpr static _2 = 2.0;
+
             static_assert(Field::dimension == dimension,
                           "field dimension must be equal to gridlayout dimension");
             using PHARE::core::dirX;
@@ -704,7 +700,7 @@ namespace core
                 auto nextX = operand(index[0] + 1);
 
                 return inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
-                       * (nextX - 2.0 * hereX + prevX);
+                       * (nextX - _2 * hereX + prevX);
             }
 
             else if constexpr (Field::dimension == 2)
@@ -714,14 +710,14 @@ namespace core
                 auto nextX = operand(index[0] + 1, index[1]);
 
                 auto lapX = inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
-                            * (nextX - 2.0 * hereX + prevX);
+                            * (nextX - _2 * hereX + prevX);
 
                 auto prevY = operand(index[0], index[1] - 1);
                 auto hereY = operand(index[0], index[1]);
                 auto nextY = operand(index[0], index[1] + 1);
 
                 auto lapY = inverseMeshSize_[dirY] * inverseMeshSize_[dirY]
-                            * (nextY - 2.0 * hereY + prevY);
+                            * (nextY - _2 * hereY + prevY);
 
                 return lapX + lapY;
             }
@@ -732,21 +728,21 @@ namespace core
                 auto nextX = operand(index[0] + 1, index[1], index[2]);
 
                 auto lapX = inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
-                            * (nextX - 2.0 * hereX + prevX);
+                            * (nextX - _2 * hereX + prevX);
 
                 auto prevY = operand(index[0], index[1] - 1, index[2]);
                 auto hereY = operand(index[0], index[1], index[2]);
                 auto nextY = operand(index[0], index[1] + 1, index[2]);
 
                 auto lapY = inverseMeshSize_[dirY] * inverseMeshSize_[dirY]
-                            * (nextY - 2.0 * hereY + prevY);
+                            * (nextY - _2 * hereY + prevY);
 
                 auto prevZ = operand(index[0], index[1], index[2] - 1);
                 auto hereZ = operand(index[0], index[1], index[2]);
                 auto nextZ = operand(index[0], index[1], index[2] + 1);
 
                 auto lapZ = inverseMeshSize_[dirZ] * inverseMeshSize_[dirZ]
-                            * (nextZ - 2.0 * hereZ + prevZ);
+                            * (nextZ - _2 * hereZ + prevZ);
 
                 return lapX + lapY + lapZ;
             }

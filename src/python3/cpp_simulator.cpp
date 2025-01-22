@@ -19,8 +19,8 @@ PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
 
     core::apply(core::possibleSimulators(), [&](auto const& simType) { declare_all(m, simType); });
 
-    declarePatchData<std::vector<double>, 1>(m, "PatchDataVectorDouble_1D");
-    declarePatchData<std::vector<double>, 2>(m, "PatchDataVectorDouble_2D");
-    declarePatchData<std::vector<double>, 3>(m, "PatchDataVectorDouble_3D");
+    // declarePatchData<std::vector<core::floater_t<4>>, 1>(m, "PatchDataVectorDouble_1D");
+    // declarePatchData<std::vector<core::floater_t<4>>, 2>(m, "PatchDataVectorDouble_2D");
+    // declarePatchData<std::vector<core::floater_t<4>>, 3>(m, "PatchDataVectorDouble_3D");
 }
 } // namespace PHARE::pydata

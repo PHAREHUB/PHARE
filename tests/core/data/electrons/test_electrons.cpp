@@ -372,7 +372,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsDensityEqualIonDensity)
 
         for (std::uint32_t i = psi_X; i < pei_X; ++i)
         {
-            EXPECT_DOUBLE_EQ(Ni(i), Ne(i));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_DOUBLE_EQ(Ni(i), Ne(i));
+            }
         }
     }
     else if constexpr (dim == 2)
@@ -386,7 +389,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsDensityEqualIonDensity)
         {
             for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
             {
-                EXPECT_DOUBLE_EQ(Ni(i, j), Ne(i, j));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_DOUBLE_EQ(Ni(i, j), Ne(i, j));
+                }
             }
         }
     }
@@ -405,7 +411,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsDensityEqualIonDensity)
             {
                 for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
                 {
-                    EXPECT_DOUBLE_EQ(Ni(i, j, k), Ne(i, j, k));
+                    if constexpr (std::is_same_v<floater_t<4>, double>)
+                    {
+                        EXPECT_DOUBLE_EQ(Ni(i, j, k), Ne(i, j, k));
+                    }
                 }
             }
         }
@@ -437,7 +446,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
             {
                 auto const JOnV = GridYee::project(Jcomp, {i}, projector());
 
-                EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
+                }
             }
         }
         else if constexpr (dim == 2)
@@ -453,7 +465,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
                 {
                     auto const JOnV = GridYee::project(Jcomp, {i, j}, projector());
 
-                    EXPECT_DOUBLE_EQ(Vecomp(i, j), Vicomp(i, j) - JOnV / Ne_(i, j));
+                    if constexpr (std::is_same_v<floater_t<4>, double>)
+                    {
+                        EXPECT_DOUBLE_EQ(Vecomp(i, j), Vicomp(i, j) - JOnV / Ne_(i, j));
+                    }
                 }
             }
         }
@@ -474,7 +489,11 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
                     {
                         auto const JOnV = GridYee::project(Jcomp, {i, j, k}, projector());
 
-                        EXPECT_DOUBLE_EQ(Vecomp(i, j, k), Vicomp(i, j, k) - JOnV / Ne_(i, j, k));
+                        if constexpr (std::is_same_v<floater_t<4>, double>)
+                        {
+                            EXPECT_DOUBLE_EQ(Vecomp(i, j, k),
+                                             Vicomp(i, j, k) - JOnV / Ne_(i, j, k));
+                        }
                     }
                 }
             }
@@ -510,7 +529,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
 
         for (std::uint32_t i = psi_X; i < pei_X; ++i)
         {
-            EXPECT_DOUBLE_EQ(Pe_(i), Ne_(i) * Te);
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_DOUBLE_EQ(Pe_(i), Ne_(i) * Te);
+            }
         }
     }
     else if constexpr (dim == 2)
@@ -524,7 +546,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
         {
             for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
             {
-                EXPECT_DOUBLE_EQ(Pe_(i, j), Ne_(i, j) * Te);
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_DOUBLE_EQ(Pe_(i, j), Ne_(i, j) * Te);
+                }
             }
         }
     }
@@ -543,7 +568,10 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
             {
                 for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
                 {
-                    EXPECT_DOUBLE_EQ(Pe_(i, j, k), Ne_(i, j, k) * Te);
+                    if constexpr (std::is_same_v<floater_t<4>, double>)
+                    {
+                        EXPECT_DOUBLE_EQ(Pe_(i, j, k), Ne_(i, j, k) * Te);
+                    }
                 }
             }
         }

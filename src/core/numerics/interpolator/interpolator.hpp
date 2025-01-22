@@ -107,9 +107,10 @@ public:
 template<>
 class Weighter<3>
 {
-    constexpr static floater_t<0> _2 = 2;
-    constexpr static floater_t<0> _3 = 3;
-    constexpr static floater_t<0> _4 = 4;
+    constexpr static floater_t<0> _1 = 1.0;
+    constexpr static floater_t<0> _2 = 2.0;
+    constexpr static floater_t<0> _3 = 3.0;
+    constexpr static floater_t<0> _4 = 4.0;
     constexpr static floater_t<0> p5 = .5;
 
 public:
@@ -121,10 +122,10 @@ public:
         constexpr floater_t<0> _2_over_3 = _2 / _3;
 
         auto index               = static_cast<floater_t<0>>(startIndex) - normalizedPos;
-        floater_t<0> const coef1 = 1. + p5 * index;
+        floater_t<0> const coef1 = _1 + p5 * index;
         floater_t<0> const coef2 = index + 1;
         floater_t<0> const coef3 = index + 2;
-        floater_t<0> const coef4 = 1. - p5 * (index + 3);
+        floater_t<0> const coef4 = _1 - p5 * (index + 3);
 
         floater_t<0> const coef2_sq  = coef2 * coef2;
         floater_t<0> const coef2_cub = coef2_sq * coef2;
@@ -181,8 +182,8 @@ public:
         auto const& [xStartIndex, xWeights]
             = start_index_and_weights_for_qty<0, GridLayout, quantity>(indexWeights);
 
-        auto const& order_size = xWeights.size();
-        auto fieldAtParticle   = 0.;
+        auto const& order_size       = xWeights.size();
+        floater_t<4> fieldAtParticle = 0.;
 
         for (auto ik = 0u; ik < order_size; ++ik)
         {
@@ -216,11 +217,11 @@ public:
 
         auto const& order_size = xWeights.size();
 
-        double fieldAtParticle = 0.;
+        floater_t<4> fieldAtParticle = 0.;
 
         for (auto ix = 0u; ix < order_size; ++ix)
         {
-            double Yinterp = 0.;
+            floater_t<4> Yinterp = 0.;
             for (auto iy = 0u; iy < order_size; ++iy)
             {
                 Yinterp += field(xStartIndex + ix, yStartIndex + iy) * yWeights[iy];
@@ -259,13 +260,13 @@ public:
 
         auto const& order_size = xWeights.size();
 
-        double fieldAtParticle = 0.;
+        floater_t<4> fieldAtParticle = 0.;
         for (auto ix = 0u; ix < order_size; ++ix)
         {
-            double Yinterp = 0.;
+            floater_t<4> Yinterp = 0.;
             for (auto iy = 0u; iy < order_size; ++iy)
             {
-                double Zinterp = 0.;
+                floater_t<4> Zinterp = 0.;
                 for (auto iz = 0u; iz < order_size; ++iz)
                 {
                     Zinterp += field(xStartIndex + ix, yStartIndex + iy, zStartIndex + iz)

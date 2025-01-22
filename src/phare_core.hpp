@@ -28,7 +28,7 @@ struct PHARE_Types
     static auto constexpr interp_order = interp_order_;
 
     using Array_t     = PHARE::core::NdArrayVector<dimension, floater_t<4>>;
-    using ArrayView_t = PHARE::core::NdArrayView<dimension>;
+    using ArrayView_t = PHARE::core::NdArrayView<dimension, floater_t<4>>;
     using Grid_t      = PHARE::core::Grid<Array_t, PHARE::core::HybridQuantity::Scalar>;
     using Field_t     = core::Field<dimension, PHARE::core::HybridQuantity::Scalar, floater_t<4>>;
     using VecField_t  = PHARE::core::VecField<Field_t, PHARE::core::HybridQuantity>;

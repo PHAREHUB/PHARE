@@ -1,8 +1,6 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-#include <fstream>
-#include <memory>
 
 
 #include "core/data/grid/grid.hpp"
@@ -19,6 +17,14 @@
 #include "tests/core/data/vecfield/test_vecfield.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
+
+#include <memory>
+#include <fstream>
+#include <numbers>
+
+
+PHARE::core::floater_t<4> constexpr static _PI_ = std::numbers::pi_v<PHARE::core::floater_t<4>>;
+
 
 using namespace PHARE::core;
 
@@ -236,8 +242,8 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
     {
         auto point = this->layout.fieldNodeCoordinates(Ey, Point{0.}, ix);
 
-        Ey(ix) = std::cos(2 * M_PI / 5. * point[0]);
-        Ez(ix) = std::sin(2 * M_PI / 5. * point[0]);
+        Ey(ix) = std::cos(2 * _PI_ / 5.f * point[0]);
+        Ez(ix) = std::sin(2 * _PI_ / 5.f * point[0]);
     }
 
     auto gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
@@ -247,8 +253,8 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
     {
         auto point = this->layout.fieldNodeCoordinates(By, Point{0.}, ix);
 
-        By(ix) = std::tanh(point[0] - 5. / 2.);
-        Bz(ix) = std::tanh(point[0] - 5. / 2.);
+        By(ix) = std::tanh(point[0] - 5.f / 2.f);
+        Bz(ix) = std::tanh(point[0] - 5.f / 2.f);
     }
 
     faraday.setLayout(&layout);
@@ -304,7 +310,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
         {
             auto point = this->layout.fieldNodeCoordinates(Ex, Point{0., 0.}, ix, iy);
 
-            Ex(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
+            Ex(ix, iy) = std::cos(2 * _PI_ / 5.f * point[0]) * std::sin(2 * _PI_ / 6.f * point[1]);
         }
     }
 
@@ -314,7 +320,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
         {
             auto point = this->layout.fieldNodeCoordinates(Ey, Point{0., 0.}, ix, iy);
 
-            Ey(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
+            Ey(ix, iy) = std::cos(2 * _PI_ / 5.f * point[0]) * std::tanh(2 * _PI_ / 6.f * point[1]);
         }
     }
 
@@ -324,7 +330,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
         {
             auto point = this->layout.fieldNodeCoordinates(Ez, Point{0., 0.}, ix, iy);
 
-            Ez(ix, iy) = std::sin(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
+            Ez(ix, iy) = std::sin(2 * _PI_ / 5.f * point[0]) * std::tanh(2 * _PI_ / 6.f * point[1]);
         }
     }
 
@@ -334,7 +340,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
         {
             auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0.}, ix, iy);
 
-            Bx(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
+            Bx(ix, iy) = std::tanh(point[0] - 5.f / 2.f) * std::tanh(point[1] - 6.f / 2.f);
         }
     }
 
@@ -344,7 +350,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
         {
             auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0.}, ix, iy);
 
-            By(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
+            By(ix, iy) = std::tanh(point[0] - 5.f / 2.f) * std::tanh(point[1] - 6.f / 2.f);
         }
     }
 
@@ -354,7 +360,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
         {
             auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0.}, ix, iy);
 
-            Bz(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
+            Bz(ix, iy) = std::tanh(point[0] - 5.f / 2.f) * std::tanh(point[1] - 6.f / 2.f);
         }
     }
 
@@ -460,9 +466,9 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
             {
                 auto point = this->layout.fieldNodeCoordinates(Ex, Point{0., 0., 0.}, ix, iy, iz);
 
-                Ex(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                 * std::cos(2 * M_PI / 6. * point[1])
-                                 * std::tanh(2 * M_PI / 12. * point[2]);
+                Ex(ix, iy, iz) = std::sin(2 * _PI_ / 5.f * point[0])
+                                 * std::cos(2 * _PI_ / 6.f * point[1])
+                                 * std::tanh(2 * _PI_ / 12.f * point[2]);
             }
         }
     }
@@ -475,9 +481,9 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
             {
                 auto point = this->layout.fieldNodeCoordinates(Ey, Point{0., 0., 0.}, ix, iy, iz);
 
-                Ey(ix, iy, iz) = std::tanh(2 * M_PI / 5. * point[0])
-                                 * std::sin(2 * M_PI / 6. * point[1])
-                                 * std::cos(2 * M_PI / 12. * point[2]);
+                Ey(ix, iy, iz) = std::tanh(2 * _PI_ / 5.f * point[0])
+                                 * std::sin(2 * _PI_ / 6.f * point[1])
+                                 * std::cos(2 * _PI_ / 12.f * point[2]);
             }
         }
     }
@@ -490,9 +496,9 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
             {
                 auto point = this->layout.fieldNodeCoordinates(Ez, Point{0., 0., 0.}, ix, iy, iz);
 
-                Ez(ix, iy, iz) = std::cos(2 * M_PI / 5. * point[0])
-                                 * std::tanh(2 * M_PI / 6. * point[1])
-                                 * std::sin(2 * M_PI / 12. * point[2]);
+                Ez(ix, iy, iz) = std::cos(2 * _PI_ / 5.f * point[0])
+                                 * std::tanh(2 * _PI_ / 6.f * point[1])
+                                 * std::sin(2 * _PI_ / 12.f * point[2]);
             }
         }
     }
@@ -505,8 +511,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
             {
                 auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0., 0.}, ix, iy, iz);
 
-                Bx(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
-                                 * std::tanh(point[2] - 12. / 2.);
+                Bx(ix, iy, iz) = std::tanh(point[0] - 5.f / 2.f) * std::tanh(point[1] - 6.f / 2.f)
+                                 * std::tanh(point[2] - 12.f / 2.f);
             }
         }
     }
@@ -519,8 +525,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
             {
                 auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0., 0.}, ix, iy, iz);
 
-                By(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
-                                 * std::tanh(point[2] - 12. / 2.);
+                By(ix, iy, iz) = std::tanh(point[0] - 5.f / 2.f) * std::tanh(point[1] - 6.f / 2.f)
+                                 * std::tanh(point[2] - 12.f / 2.f);
             }
         }
     }
@@ -533,8 +539,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
             {
                 auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0., 0.}, ix, iy, iz);
 
-                Bz(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
-                                 * std::tanh(point[2] - 12. / 2.);
+                Bz(ix, iy, iz) = std::tanh(point[0] - 5.f / 2.f) * std::tanh(point[1] - 6.f / 2.f)
+                                 * std::tanh(point[2] - 12.f / 2.f);
             }
         }
     }

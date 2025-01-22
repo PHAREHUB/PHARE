@@ -87,7 +87,8 @@ public:
             else if (centering_[dirX] == core::QtyCentering::dual) // by and bz
             {
                 coarseField(coarseIndex[dirX])
-                    = 0.5 * (fineField(fineStartIndex[dirX] + 1) + fineField(fineStartIndex[dirX]));
+                    = 0.5f
+                      * (fineField(fineStartIndex[dirX] + 1) + fineField(fineStartIndex[dirX]));
             }
         }
 
@@ -97,7 +98,7 @@ public:
                 and centering_[dirY] == core::QtyCentering::dual)
             {
                 coarseField(coarseIndex[dirX], coarseIndex[dirY])
-                    = 0.5
+                    = 0.5f
                       * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
                          + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1));
             }
@@ -105,7 +106,7 @@ public:
                      and centering_[dirY] == core::QtyCentering::primal)
             {
                 coarseField(coarseIndex[dirX], coarseIndex[dirY])
-                    = 0.5
+                    = 0.5f
                       * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
                          + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY]));
             }
@@ -113,7 +114,7 @@ public:
                      and centering_[dirY] == core::QtyCentering::dual)
             {
                 coarseField(coarseIndex[dirX], coarseIndex[dirY])
-                    = 0.25
+                    = 0.25f
                       * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
                          + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY])
                          + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1)

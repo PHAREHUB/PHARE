@@ -28,7 +28,9 @@ namespace core
             = 0;
 
 
-        virtual void setMeshAndTimeStep(std::array<double, dim> ms, double ts) = 0;
+        virtual void setMeshAndTimeStep(std::array<floater_t<4>, dim> const ms,
+                                        floater_t<4> const ts)
+            = 0;
 
         virtual ~Pusher() {}
     };

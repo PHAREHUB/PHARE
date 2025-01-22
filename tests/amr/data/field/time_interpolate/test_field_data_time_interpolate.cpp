@@ -66,24 +66,26 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
 
     std::string const fieldName{"Bx"};
     SAMRAI::hier::IntVector ghost{dimension, 5};
-    static auto constexpr dl = ConstArray<double, dim>(0.01);
+    static auto constexpr dl = ConstArray<floater_t<4>, dim>(0.01);
 
     static constexpr auto nbrCells = ConstArray<std::uint32_t, dim>(upper - lower + 1);
 
-    Point<double, dim> origin{{0.}};
+    Point<floater_t<4>, dim> const origin{{0.}};
 
+    GridYee const layout;
     std::shared_ptr<FieldDataT> srcOld;
     std::shared_ptr<FieldDataT> srcNew;
     std::shared_ptr<FieldDataT> destNew;
 
 
     aFieldLinearTimeInterpolate()
-        : srcOld{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
-        , srcNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
-        , destNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
+        : layout{dl, nbrCells, origin}
+        , srcOld{std::make_shared<FieldDataT>(domain, ghost, fieldName, layout, qty)}
+        , srcNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, layout, qty)}
+        , destNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, layout, qty)}
     {
-        double oldTime = 0.;
-        double newTime = 0.5;
+        floater_t<4> oldTime = 0.;
+        floater_t<4> newTime = 0.5;
 
         srcOld->setTime(oldTime);
         srcNew->setTime(newTime);
@@ -178,7 +180,7 @@ int aFieldLinearTimeInterpolate<TypeInfo>::countLocal = 0;
 
 TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
 {
-    double interpolateTime = 0.;
+    floater_t<4> interpolateTime = 0.;
     this->destNew->setTime(interpolateTime);
 
     auto& layout      = this->srcOld->gridLayout;
@@ -259,7 +261,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
 
 TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
 {
-    double interpolateTime = 0.5;
+    floater_t<4> interpolateTime = 0.5;
     this->destNew->setTime(interpolateTime);
 
     auto& layout      = this->srcOld->gridLayout;
@@ -339,7 +341,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
 
 TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLinear)
 {
-    double interpolateTime = 0.2;
+    floater_t<4> interpolateTime = 0.2;
     this->destNew->setTime(interpolateTime);
 
     auto& layout    = this->srcOld->gridLayout;

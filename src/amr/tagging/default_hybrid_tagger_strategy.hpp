@@ -16,16 +16,17 @@ class DefaultHybridTaggerStrategy : public HybridTaggerStrategy<HybridModel>
     using gridlayout_type           = typename HybridModel::gridlayout_type;
     static auto constexpr dimension = HybridModel::dimension;
 
+    static constexpr core::floater_t<4> def_threshold_ = 0.1;
 
 public:
     DefaultHybridTaggerStrategy(initializer::PHAREDict const& dict)
-        : threshold_{cppdict::get_value(dict, "threshold", 0.1)}
+        : threshold_{cppdict::get_value(dict, "threshold", def_threshold_)}
     {
     }
     void tag(HybridModel& model, gridlayout_type const& layout, int* tags) const override;
 
 private:
-    double threshold_ = 0.1;
+    core::floater_t<4> threshold_ = def_threshold_;
 };
 
 template<typename HybridModel>
@@ -78,10 +79,10 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
         std::size_t oneOrZero     = doLastCell ? 1 : 0;
         for (auto iCell = 0u, ix = start_x; iCell < end_x + oneOrZero; ++ix, ++iCell)
         {
-            auto Byavg     = 0.2 * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2));
-            auto Bzavg     = 0.2 * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
-            auto Byavgp1   = 0.2 * (By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3));
-            auto Bzavgp1   = 0.2 * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3));
+            auto Byavg     = 0.2f * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2));
+            auto Bzavg     = 0.2f * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
+            auto Byavgp1   = 0.2f * (By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3));
+            auto Bzavgp1   = 0.2f * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3));
             auto criter_by = std::abs(Byavgp1 - Byavg) / (1 + std::abs(Byavg));
             auto criter_bz = std::abs(Bzavgp1 - Bzavg) / (1 + std::abs(Bzavg));
             auto criter_b  = std::sqrt(criter_by * criter_by + criter_bz * criter_bz);

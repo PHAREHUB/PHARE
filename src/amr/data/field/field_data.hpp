@@ -41,6 +41,7 @@ namespace amr
              typename PhysicalQuantity = decltype(std::declval<Grid_t>().physicalQuantity())>
     class FieldData : public SAMRAI::hier::PatchData
     {
+        static_assert(std::is_same_v<typename Grid_t::value_type, core::floater_t<4>>);
         using Super = SAMRAI::hier::PatchData;
 
     public:
@@ -63,18 +64,19 @@ namespace amr
         {
         } //
 
-        [[deprecated]] FieldData(SAMRAI::hier::Box const& domain,
-                                 SAMRAI::hier::IntVector const& ghost, std::string name,
-                                 std::array<double, dimension> const& dl,
-                                 std::array<std::uint32_t, dimension> const& nbrCells,
-                                 core::Point<double, dimension> const& origin, PhysicalQuantity qty)
+        // [[deprecated]] FieldData(SAMRAI::hier::Box const& domain,
+        //                          SAMRAI::hier::IntVector const& ghost, std::string name,
+        //                          std::array<double, dimension> const& dl,
+        //                          std::array<std::uint32_t, dimension> const& nbrCells,
+        //                          core::Point<double, dimension> const& origin, PhysicalQuantity
+        //                          qty)
 
-            : SAMRAI::hier::PatchData(domain, ghost)
-            , gridLayout{dl, nbrCells, origin}
-            , field(name, qty, gridLayout.allocSize(qty))
-            , quantity_{qty}
-        {
-        }
+        //     : SAMRAI::hier::PatchData(domain, ghost)
+        //     , gridLayout{dl, nbrCells, origin}
+        //     , field(name, qty, gridLayout.allocSize(qty))
+        //     , quantity_{qty}
+        // {
+        // }
 
         FieldData()                            = delete;
         FieldData(FieldData const&)            = delete;

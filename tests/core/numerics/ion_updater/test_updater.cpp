@@ -11,57 +11,57 @@ using namespace PHARE::core;
 
 
 
-using Param  = std::vector<double> const&;
-using Return = std::shared_ptr<PHARE::core::Span<double>>;
+using Param  = std::vector<floater_t<4>> const&;
+using Return = std::shared_ptr<PHARE::core::Span<floater_t<4>>>;
 
 Return density(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 1);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), 1);
 }
 
 Return vx(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), 0);
 }
 
 Return vy(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), 0);
 }
 
 Return vz(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), 0);
 }
 
 Return vthx(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), .1);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), .1);
 }
 
 Return vthy(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), .1);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), .1);
 }
 
 Return vthz(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), .1);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), .1);
 }
 
 Return bx(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), 0);
 }
 
 Return by(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), 0);
 }
 
 Return bz(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<floater_t<4>>>(x.size(), 0);
 }
 
 
@@ -589,8 +589,8 @@ struct IonUpdaterTest : public ::testing::Test
             {
                 auto evolution = std::abs(newField(ix) - originalField(ix));
                 //  should check that moments are still compatible with user inputs also
-                EXPECT_TRUE(evolution > 0.0);
-                if (evolution <= 0.0)
+                EXPECT_TRUE(evolution > 0.0f);
+                if (evolution <= 0.0f)
                     std::cout << "after update : " << newField(ix)
                               << " before update : " << originalField(ix)
                               << " evolution : " << evolution << " ix : " << ix << "\n";
@@ -624,7 +624,7 @@ struct IonUpdaterTest : public ::testing::Test
 
         auto check = [&](auto const& density, auto const& function) {
             std::vector<std::size_t> ixes;
-            std::vector<double> x;
+            std::vector<floater_t<4>> x;
 
             for (auto ix = ix0; ix < ix1; ++ix)
             {
@@ -642,9 +642,9 @@ struct IonUpdaterTest : public ::testing::Test
                 auto ix   = ixes[i];
                 auto diff = std::abs(density(ix) - functionX[i]);
 
-                EXPECT_GE(0.07, diff);
+                EXPECT_GE(0.07f, diff);
 
-                if (diff >= 0.07)
+                if (diff >= 0.07f)
                     std::cout << "actual : " << density(ix) << " prescribed : " << functionX[i]
                               << " diff : " << diff << " ix : " << ix << "\n";
             }

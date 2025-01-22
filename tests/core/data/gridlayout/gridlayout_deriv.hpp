@@ -17,7 +17,7 @@
 
 using namespace PHARE::core;
 
-std::vector<double> read(std::string filename);
+auto read(std::string filename);
 
 
 

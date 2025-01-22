@@ -106,7 +106,7 @@ TYPED_TEST(AWeighter, ComputesWeightThatSumIsOne)
     }
     else
     {
-        auto equalsOne = [](auto sum) { return std::abs(sum - 1.f) < 1e-6; };
+        auto equalsOne = [](auto sum) { return std::abs(sum - 1.f) < 1e-6f; };
         EXPECT_TRUE(
             std::all_of(std::begin(this->weightsSums), std::end(this->weightsSums), equalsOne));
     }

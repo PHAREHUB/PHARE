@@ -102,23 +102,23 @@ struct OhmTest : public ::testing::Test
             {
                 auto point = this->layout.fieldNodeCoordinates(n, Point<double, 1>{0.}, ix);
 
-                n(ix)  = std::cosh(0.5 * point[0]);
-                Vx(ix) = std::sinh(0.2 * point[0]);
-                Vy(ix) = std::sinh(0.3 * point[0]);
-                Vz(ix) = std::sinh(0.4 * point[0]);
-                P(ix)  = std::cosh(0.5 * point[0]);
-                Bx(ix) = std::cosh(0.2 * point[0]);
-                Jy(ix) = std::tanh(0.3 * point[0]);
-                Jz(ix) = std::tanh(0.4 * point[0]);
+                n(ix)  = std::cosh(0.5f * point[0]);
+                Vx(ix) = std::sinh(0.2f * point[0]);
+                Vy(ix) = std::sinh(0.3f * point[0]);
+                Vz(ix) = std::sinh(0.4f * point[0]);
+                P(ix)  = std::cosh(0.5f * point[0]);
+                Bx(ix) = std::cosh(0.2f * point[0]);
+                Jy(ix) = std::tanh(0.3f * point[0]);
+                Jz(ix) = std::tanh(0.4f * point[0]);
             }
 
             for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
             {
                 auto point = this->layout.fieldNodeCoordinates(Bz, Point<double, 1>{0.}, ix);
 
-                By(ix) = std::cosh(0.3 * point[0]);
-                Bz(ix) = std::cosh(0.4 * point[0]);
-                Jx(ix) = std::tanh(0.2 * point[0]);
+                By(ix) = std::cosh(0.3f * point[0]);
+                Bz(ix) = std::cosh(0.4f * point[0]);
+                Jx(ix) = std::tanh(0.2f * point[0]);
             }
         }
 
@@ -140,20 +140,20 @@ struct OhmTest : public ::testing::Test
                     auto point
                         = this->layout.fieldNodeCoordinates(n, Point<double, 2>{0., 0.}, ix, iy);
 
-                    n(ix, iy)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1]);
-                    Vx(ix, iy) = std::sinh(0.2 * point[0]) * std::sinh(0.2 * point[1]);
-                    Vy(ix, iy) = std::sinh(0.3 * point[0]) * std::sinh(0.3 * point[1]);
-                    Vz(ix, iy) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1]);
-                    P(ix, iy)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1]);
-                    Jz(ix, iy) = std::tanh(0.4 * point[0]) * std::tanh(0.4 * point[1]);
+                    n(ix, iy)  = std::cosh(0.5f * point[0]) * std::cosh(0.5f * point[1]);
+                    Vx(ix, iy) = std::sinh(0.2f * point[0]) * std::sinh(0.2f * point[1]);
+                    Vy(ix, iy) = std::sinh(0.3f * point[0]) * std::sinh(0.3f * point[1]);
+                    Vz(ix, iy) = std::sinh(0.4f * point[0]) * std::sinh(0.4f * point[1]);
+                    P(ix, iy)  = std::cosh(0.5f * point[0]) * std::cosh(0.5f * point[1]);
+                    Jz(ix, iy) = std::tanh(0.4f * point[0]) * std::tanh(0.4f * point[1]);
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
                 {
                     auto point
                         = this->layout.fieldNodeCoordinates(Bx, Point<double, 2>{0., 0.}, ix, iy);
 
-                    Bx(ix, iy) = std::cosh(0.2 * point[0]) * std::cosh(0.2 * point[1]);
-                    Jy(ix, iy) = std::tanh(0.3 * point[0]) * std::tanh(0.3 * point[1]);
+                    Bx(ix, iy) = std::cosh(0.2f * point[0]) * std::cosh(0.2f * point[1]);
+                    Jy(ix, iy) = std::tanh(0.3f * point[0]) * std::tanh(0.3f * point[1]);
                 }
             }
             for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
@@ -163,15 +163,15 @@ struct OhmTest : public ::testing::Test
                     auto point
                         = this->layout.fieldNodeCoordinates(Jx, Point<double, 2>{0., 0.}, ix, iy);
 
-                    By(ix, iy) = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1]);
-                    Jx(ix, iy) = std::tanh(0.2 * point[0]) * std::tanh(0.2 * point[1]);
+                    By(ix, iy) = std::cosh(0.3f * point[0]) * std::cosh(0.3f * point[1]);
+                    Jx(ix, iy) = std::tanh(0.2f * point[0]) * std::tanh(0.2f * point[1]);
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
                 {
                     auto point
                         = this->layout.fieldNodeCoordinates(Bz, Point<double, 2>{0., 0.}, ix, iy);
 
-                    Bz(ix, iy) = std::cosh(0.4 * point[0]) * std::cosh(0.4 * point[1]);
+                    Bz(ix, iy) = std::cosh(0.4f * point[0]) * std::cosh(0.4f * point[1]);
                 }
             }
         }
@@ -200,24 +200,24 @@ struct OhmTest : public ::testing::Test
                         auto point = this->layout.fieldNodeCoordinates(
                             n, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
 
-                        n(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
-                                        * std::cosh(0.5 * point[2]);
-                        Vx(ix, iy, iz) = std::sinh(0.2 * point[0]) * std::sinh(0.2 * point[1])
-                                         * std::sinh(0.2 * point[2]);
-                        Vy(ix, iy, iz) = std::sinh(0.3 * point[0]) * std::sinh(0.3 * point[1])
-                                         * std::sinh(0.3 * point[2]);
-                        Vz(ix, iy, iz) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1])
-                                         * std::sinh(0.4 * point[2]);
-                        P(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
-                                        * std::cosh(0.5 * point[2]);
+                        n(ix, iy, iz) = std::cosh(0.5f * point[0]) * std::cosh(0.5f * point[1])
+                                        * std::cosh(0.5f * point[2]);
+                        Vx(ix, iy, iz) = std::sinh(0.2f * point[0]) * std::sinh(0.2f * point[1])
+                                         * std::sinh(0.2f * point[2]);
+                        Vy(ix, iy, iz) = std::sinh(0.3f * point[0]) * std::sinh(0.3f * point[1])
+                                         * std::sinh(0.3f * point[2]);
+                        Vz(ix, iy, iz) = std::sinh(0.4f * point[0]) * std::sinh(0.4f * point[1])
+                                         * std::sinh(0.4f * point[2]);
+                        P(ix, iy, iz) = std::cosh(0.5f * point[0]) * std::cosh(0.5f * point[1])
+                                        * std::cosh(0.5f * point[2]);
                     }
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
                             Jz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
 
-                        Jz(ix, iy, iz) = std::tanh(0.4 * point[0]) * std::tanh(0.4 * point[1])
-                                         * std::tanh(0.4 * point[2]);
+                        Jz(ix, iy, iz) = std::tanh(0.4f * point[0]) * std::tanh(0.4f * point[1])
+                                         * std::tanh(0.4f * point[2]);
                     }
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
@@ -227,16 +227,16 @@ struct OhmTest : public ::testing::Test
                         auto point = this->layout.fieldNodeCoordinates(
                             Jy, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
 
-                        Jy(ix, iy, iz) = std::tanh(0.3 * point[0]) * std::tanh(0.3 * point[1])
-                                         * std::tanh(0.3 * point[2]);
+                        Jy(ix, iy, iz) = std::tanh(0.3f * point[0]) * std::tanh(0.3f * point[1])
+                                         * std::tanh(0.3f * point[2]);
                     }
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
                             Bx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
 
-                        Bx(ix, iy, iz) = std::cosh(0.2 * point[0]) * std::cosh(0.2 * point[1])
-                                         * std::cosh(0.2 * point[2]);
+                        Bx(ix, iy, iz) = std::cosh(0.2f * point[0]) * std::cosh(0.2f * point[1])
+                                         * std::cosh(0.2f * point[2]);
                     }
                 }
             }
@@ -249,16 +249,16 @@ struct OhmTest : public ::testing::Test
                         auto point = this->layout.fieldNodeCoordinates(
                             Jx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
 
-                        Jx(ix, iy, iz) = std::tanh(0.2 * point[0]) * std::tanh(0.2 * point[1])
-                                         * std::tanh(0.2 * point[2]);
+                        Jx(ix, iy, iz) = std::tanh(0.2f * point[0]) * std::tanh(0.2f * point[1])
+                                         * std::tanh(0.2f * point[2]);
                     }
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
                             By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
 
-                        By(ix, iy, iz) = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1])
-                                         * std::cosh(0.3 * point[2]);
+                        By(ix, iy, iz) = std::cosh(0.3f * point[0]) * std::cosh(0.3f * point[1])
+                                         * std::cosh(0.3f * point[2]);
                     }
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
@@ -268,8 +268,8 @@ struct OhmTest : public ::testing::Test
                         auto point = this->layout.fieldNodeCoordinates(
                             Bz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
 
-                        Bz(ix, iy, iz) = std::cosh(0.4 * point[0]) * std::cosh(0.4 * point[1])
-                                         * std::cosh(0.4 * point[2]);
+                        Bz(ix, iy, iz) = std::cosh(0.4f * point[0]) * std::cosh(0.4f * point[1])
+                                         * std::cosh(0.4f * point[2]);
                     }
                 }
             }
@@ -321,7 +321,7 @@ TYPED_TEST(OhmTest, ShouldBeGivenAGridLayoutPointerToBeOperational)
 }
 
 
-std::vector<double> read(std::string filename)
+auto read(std::string filename)
 {
     std::ifstream readFile(filename);
     assert(readFile.is_open());
@@ -329,7 +329,16 @@ std::vector<double> read(std::string filename)
 
     std::copy(std::istream_iterator<double>(readFile), std::istream_iterator<double>(),
               std::back_inserter(x));
-    return x;
+
+    if constexpr (std::is_same_v<floater_t<4>, float>)
+    {
+        std::vector<floater_t<4>> fx(x.size());
+        for (std::size_t i = 0; i < x.size(); ++i)
+            fx[i] = x[i];
+        return fx;
+    }
+    else
+        return x;
 }
 
 

@@ -14,7 +14,7 @@
 
 // clang-format off
 DISABLE_WARNING(cast-function-type, bad-function-cast, 42)
-#include "mpi.h"
+#include "mpi.h" // IWYU pragma: private, include "core/def/phare_mpi.hpp"
 ENABLE_WARNING(cast-function-type, bad-function-cast, 42)
 // clang-format on
 

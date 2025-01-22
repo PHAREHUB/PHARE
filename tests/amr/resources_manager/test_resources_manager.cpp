@@ -27,20 +27,30 @@ using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
-using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
-using GridYee1D                          = GridLayout<GridImplYee1D>;
 
-using GridImplYee1D    = GridLayoutImplYee<dim, interpOrder>;
-using GridYee1D        = GridLayout<GridImplYee1D>;
-using Field1D          = Field<dim, HybridQuantity::Scalar>;
-using Grid1D           = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
-using VecField1D       = VecField<Field1D, HybridQuantity>;
-using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
-using IonPopulation1D  = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
-using Ions1D           = Ions<IonPopulation1D, GridYee1D>;
-using Electromag1D     = Electromag<VecField1D>;
-using Electrons1D      = Electrons<Ions1D>;
-using HybridState1D    = HybridState<Electromag1D, Ions1D, Electrons1D>;
+using core_Types = PHARE::core::PHARE_Types<dim, interpOrder>;
+
+using Field1D          = core_Types::Field_t;
+using Grid1D           = core_Types::Grid_t;
+using VecField1D       = core_Types::VecField_t;
+using SymTensorField1D = core_Types::SymTensorField_t;
+// using ParticleArray1D  = core_Types::ParticleArray_t;
+using GridYee1D = core_Types::GridLayout_t;
+
+// using GridImplYee1D                      = GridLayoutImplYee<dim, interpOrder>;
+// using GridYee1D                          = GridLayout<GridImplYee1D>;
+
+// using GridImplYee1D    = GridLayoutImplYee<dim, interpOrder>;
+// using GridYee1D        = GridLayout<GridImplYee1D>;
+// using Field1D          = Field<dim, HybridQuantity::Scalar>;
+// using Grid1D           = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
+// using VecField1D       = VecField<Field1D, HybridQuantity>;
+// using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
+using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
+using Ions1D          = Ions<IonPopulation1D, GridYee1D>;
+using Electromag1D    = Electromag<VecField1D>;
+using Electrons1D     = Electrons<Ions1D>;
+using HybridState1D   = HybridState<Electromag1D, Ions1D, Electrons1D>;
 
 using MaxwellianParticleInitializer1D
     = MaxwellianParticleInitializer<ParticleArray<dim>, GridYee1D>;

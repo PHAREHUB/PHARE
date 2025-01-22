@@ -52,10 +52,10 @@ public:
         auto const& fieldDataSrcOld = dynamic_cast<FieldDataT const&>(srcDataOld);
         auto const& fieldDataSrcNew = dynamic_cast<FieldDataT const&>(srcDataNew);
 
-        double const interpTime = fieldDataDest.getTime();
-        double const oldTime    = fieldDataSrcOld.getTime();
-        double const newTime    = fieldDataSrcNew.getTime();
-        double const alpha      = (interpTime - oldTime) / (newTime - oldTime);
+        core::floater_t<4> const interpTime = fieldDataDest.getTime();
+        core::floater_t<4> const oldTime    = fieldDataSrcOld.getTime();
+        core::floater_t<4> const newTime    = fieldDataSrcNew.getTime();
+        core::floater_t<4> const alpha      = (interpTime - oldTime) / (newTime - oldTime);
 
         auto const& fieldSrcOld = fieldDataSrcOld.field;
         auto const& fieldSrcNew = fieldDataSrcNew.field;
@@ -90,7 +90,7 @@ public:
 
             for (auto ix = iDestStartX, ixSrc = iSrcStartX; ix <= iDestEndX; ++ix, ++ixSrc)
             {
-                fieldDest(ix) = (1. - alpha) * fieldSrcOld(ixSrc) + alpha * fieldSrcNew(ixSrc);
+                fieldDest(ix) = (1.f - alpha) * fieldSrcOld(ixSrc) + alpha * fieldSrcNew(ixSrc);
             }
         }
         else if constexpr (dim == 2)
@@ -107,7 +107,7 @@ public:
             {
                 for (auto iy = iDestStartY, iySrc = iSrcStartY; iy <= iDestEndY; ++iy, ++iySrc)
                 {
-                    fieldDest(ix, iy) = (1. - alpha) * fieldSrcOld(ixSrc, iySrc)
+                    fieldDest(ix, iy) = (1.f - alpha) * fieldSrcOld(ixSrc, iySrc)
                                         + alpha * fieldSrcNew(ixSrc, iySrc);
                 }
             }
@@ -131,7 +131,7 @@ public:
                 {
                     for (auto iz = iDestStartZ, izSrc = iSrcStartZ; iz <= iDestEndZ; ++iz, ++izSrc)
                     {
-                        fieldDest(ix, iy, iz) = (1. - alpha) * fieldSrcOld(ixSrc, iySrc, izSrc)
+                        fieldDest(ix, iy, iz) = (1.f - alpha) * fieldSrcOld(ixSrc, iySrc, izSrc)
                                                 + alpha * fieldSrcNew(ixSrc, iySrc, izSrc);
                     }
                 }
