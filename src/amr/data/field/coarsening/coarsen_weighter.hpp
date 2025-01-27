@@ -26,12 +26,12 @@ namespace amr
             computeWeights_(nbrPoints);
         }
 
-        std::vector<double> const& weights() const { return weights_; }
+        std::vector<core::floater_t<4>> const& weights() const { return weights_; }
 
     private:
-        std::vector<double> weights_;
+        std::vector<core::floater_t<4>> weights_;
 
-        double findX_(std::size_t nbrPoints) const;
+        core::floater_t<4> findX_(std::size_t nbrPoints) const;
         void computeWeights_(std::size_t nbrPoints);
     };
 

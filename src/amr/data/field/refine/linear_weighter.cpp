@@ -11,7 +11,7 @@ LinearWeighter::LinearWeighter(core::QtyCentering centering, std::size_t ratio)
     assert(nbrPoints > 1);
     distFromLeftNode_.resize(nbrPoints);
     bool isEvenRatio   = ratio % 2 == 0;
-    auto smallCellSize = 1. / ratio;
+    auto smallCellSize = 1.f / ratio;
 
     std::iota(std::begin(distFromLeftNode_), std::end(distFromLeftNode_), 0);
 
@@ -20,8 +20,9 @@ LinearWeighter::LinearWeighter(core::QtyCentering centering, std::size_t ratio)
     if (centering == core::QtyCentering::primal)
     {
         std::transform(std::begin(distFromLeftNode_), std::end(distFromLeftNode_),
-                       std::begin(distFromLeftNode_),
-                       [ratio](auto const& v) { return static_cast<double>(v) / ratio; });
+                       std::begin(distFromLeftNode_), [ratio](auto const& v) {
+                           return static_cast<core::floater_t<4>>(v) / ratio;
+                       });
     }
     else
     {
@@ -30,7 +31,7 @@ LinearWeighter::LinearWeighter(core::QtyCentering centering, std::size_t ratio)
             auto middle = std::begin(distFromLeftNode_) + distFromLeftNode_.size() / 2;
             std::transform(std::begin(distFromLeftNode_), std::end(distFromLeftNode_),
                            std::begin(distFromLeftNode_), [smallCellSize](auto const& v) {
-                               return (0.5 + static_cast<double>(v)) * smallCellSize;
+                               return (0.5f + static_cast<core::floater_t<4>>(v)) * smallCellSize;
                            });
             std::rotate(std::begin(distFromLeftNode_), middle, std::end(distFromLeftNode_));
         }
@@ -40,7 +41,7 @@ LinearWeighter::LinearWeighter(core::QtyCentering centering, std::size_t ratio)
             auto middle = std::begin(distFromLeftNode_) + distFromLeftNode_.size() / 2 + 1;
             std::transform(std::begin(distFromLeftNode_), std::end(distFromLeftNode_),
                            std::begin(distFromLeftNode_), [smallCellSize](auto const& v) {
-                               return static_cast<double>(v) * smallCellSize;
+                               return static_cast<core::floater_t<4>>(v) * smallCellSize;
                            });
 
             std::rotate(std::begin(distFromLeftNode_), middle, std::end(distFromLeftNode_));
@@ -49,9 +50,8 @@ LinearWeighter::LinearWeighter(core::QtyCentering centering, std::size_t ratio)
 
 
     std::transform(std::begin(distFromLeftNode_), std::end(distFromLeftNode_),
-                   std::back_inserter(weights_), [](auto const& d) {
-                       return std::array<double, 2>{{1. - d, d}};
-                   });
+                   std::back_inserter(weights_),
+                   [](auto const& d) { return std::array<core::floater_t<4>, 2>{{1.f - d, d}}; });
 }
 
 } // namespace PHARE::amr

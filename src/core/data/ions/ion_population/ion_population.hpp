@@ -28,7 +28,7 @@ namespace core
 
         IonPopulation(initializer::PHAREDict const& initializer)
             : name_{initializer["name"].template to<std::string>()}
-            , mass_{initializer["mass"].template to<double>()}
+            , mass_{static_cast<floater_t<4>>(initializer["mass"].template to<double>())}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
             , rho_{name_ + "_rho", HybridQuantity::Scalar::rho}
@@ -38,7 +38,7 @@ namespace core
         }
 
 
-        NO_DISCARD double mass() const { return mass_; }
+        NO_DISCARD floater_t<4> mass() const { return mass_; }
 
         NO_DISCARD std::string const& name() const { return name_; }
 
@@ -121,7 +121,7 @@ namespace core
 
     private:
         std::string name_;
-        double mass_;
+        floater_t<4> mass_;
         VecField flux_;
         TensorField momentumTensor_;
         field_type rho_;

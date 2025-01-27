@@ -287,10 +287,10 @@ namespace core
         }
 
 
-        NO_DISCARD double cellVolume() const
+        NO_DISCARD floater_t<4> cellVolume() const
         {
             return std::accumulate(meshSize().begin(), meshSize().end(), 1.0,
-                                   std::multiplies<double>());
+                                   std::multiplies<floater_t<4>>());
         }
 
         /**
@@ -461,7 +461,7 @@ namespace core
          */
         template<typename Field_t, typename... Indexes>
         NO_DISCARD auto fieldNodeCoordinates(Field_t const& field,
-                                             Point<double, dimension> const& origin,
+                                             Point<floater_t<4>, dimension> const& origin,
                                              Indexes... index) const
         {
             static_assert(sizeof...(Indexes) == dimension,
@@ -616,7 +616,7 @@ namespace core
          * on the dimensionality of the GridLayout.
          */
         template<auto direction, typename Field>
-        NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index)
+        NO_DISCARD floater_t<4> deriv(Field const& operand, MeshIndex<Field::dimension> index)
         {
             auto fieldCentering = centering(operand.physicalQuantity());
             using PHARE::core::dirX;

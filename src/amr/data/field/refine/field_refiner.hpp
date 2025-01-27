@@ -75,7 +75,7 @@ namespace amr
             coarseStartIndex = AMRToLocal(coarseStartIndex, coarseBox_);
             fineIndex        = AMRToLocal(fineIndex, fineBox_);
 
-            double fieldValue = 0.;
+            core::floater_t<4> fieldValue = 0.;
 
 
 
@@ -110,7 +110,7 @@ namespace amr
 
                 for (std::size_t iShiftX = 0; iShiftX < xLeftRightWeights.size(); ++iShiftX)
                 {
-                    double Yinterp = 0.;
+                    core::floater_t<4> Yinterp = 0.;
                     for (std::size_t iShiftY = 0; iShiftY < yLeftRightWeights.size(); ++iShiftY)
                     {
                         Yinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY)
@@ -142,10 +142,10 @@ namespace amr
 
                 for (std::size_t iShiftX = 0; iShiftX < xLeftRightWeights.size(); ++iShiftX)
                 {
-                    double Yinterp = 0.;
+                    core::floater_t<4> Yinterp = 0.;
                     for (std::size_t iShiftY = 0; iShiftY < yLeftRightWeights.size(); ++iShiftY)
                     {
-                        double Zinterp = 0.;
+                        core::floater_t<4> Zinterp = 0.;
                         for (std::size_t iShiftZ = 0; iShiftZ < zLeftRightWeights.size(); ++iShiftZ)
                         {
                             Zinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY,

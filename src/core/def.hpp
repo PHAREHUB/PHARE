@@ -62,7 +62,7 @@ bool constexpr is_double()
     // 3 = particle weight
     // 4 = fields
 
-    return doubles[i] == 1;
+    return 0; // doubles[i] == 1;
 }
 
 template<std::uint8_t i>

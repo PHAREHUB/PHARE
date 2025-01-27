@@ -22,7 +22,7 @@ namespace core
         // TODO : to really be independant on boris which has 2 push steps
         // we should have an arbitrary number of selectors, 1 per push step
         virtual ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
-                                   Electromag const& emFields, double mass,
+                                   Electromag const& emFields, floater_t<4> mass,
                                    Interpolator& interpolator, GridLayout const& layout,
                                    ParticleSelector firstSelector, ParticleSelector secondSelector)
             = 0;

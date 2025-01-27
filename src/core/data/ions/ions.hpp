@@ -257,8 +257,9 @@ namespace core
     private:
         bool allSameMass_() const
         {
+            floater_t<4> constexpr diff = 1e-6;
             return all(populations_, [this](auto const& pop) { // arbitrary small diff
-                return float_equals(pop.mass(), populations_.front().mass(), /*abs_tol=*/1e-10);
+                return float_equals(pop.mass(), populations_.front().mass(), /*abs_tol=*/diff);
             });
         }
 

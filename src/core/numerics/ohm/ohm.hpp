@@ -87,7 +87,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal1D_(VecField const& Ve, VecField const& B, MeshIndex<1> index) const
+    floater_t<4> ideal1D_(VecField const& Ve, VecField const& B, MeshIndex<1> index) const
     {
         if constexpr (component == Component::X)
         {
@@ -250,7 +250,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
+    floater_t<4> ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
     {
         if constexpr (dimension == 1)
             return ideal1D_<component>(Ve, B, index);
@@ -360,7 +360,8 @@ private:
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        auto const lvlCoeff        = 1.f / std::pow(4, layout_->levelNumber());
+        auto const lvlCoeff
+            = 1.f / static_cast<floater_t<4>>(std::pow(4.f, layout_->levelNumber()));
         auto constexpr min_density = 0.1f;
 
         auto computeHR = [&](auto BxProj, auto ByProj, auto BzProj, auto nProj) {
