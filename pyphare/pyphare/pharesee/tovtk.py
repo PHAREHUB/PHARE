@@ -191,15 +191,15 @@ def main():
                 # print(f"patch {patch_id}")
                 patch = phare_lvl[patch_id]
 
-                ph_bx = patch["EM_B_x"][:]
-                ph_by = patch["EM_B_y"][:]
-                ph_bz = patch["EM_B_z"][:]
+                ph_x = patch["f{phare_fn}_x"][:]
+                ph_y = patch["f{phare_fn}_y"][:]
+                ph_z = patch["f{phare_fn}_z"][:]
 
                 box = boxFromPatch(patch)
                 AMRBox.append(box)
                 nbr_boxes += 1
                 npx, npy, npz = nbrNodes(box)
-                b = toFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz)
+                data = toFlatPrimal(ph_x, ph_y, ph_z, npx, npy, npz)
 
                 if first:
                     # this is the first patch of the first time
@@ -208,7 +208,7 @@ def main():
                     # which is unknown hence the None for maxshape
                     # print(f"b shape :{b.shape[0]}")
                     pointData_b = pointData_g.create_dataset(
-                        "B", data=b, maxshape=(None, 3)
+                        "data", data=data, maxshape=(None, 3)
                     )
                     first = False
 
@@ -216,8 +216,8 @@ def main():
                     # dataset already created with shape (current_size,3)
                     # we add b.shape[0] points (=npx*npy) to the first dim
                     # hence need to resize the dataset.
-                    pointData_b.resize(current_size + b.shape[0], axis=0)
-                    pointData_b[current_size:, :] = b
+                    pointData_b.resize(current_size + data.shape[0], axis=0)
+                    pointData_b[current_size:, :] = data
                 # pass
 
                 current_size += b.shape[0]
@@ -231,7 +231,7 @@ def main():
         lvl.create_dataset("AMRBox", data=AMRBox)
         steps_lvl.create_dataset("AMRBoxOffset", data=AMRBoxOffsets)
         steps_lvl.create_dataset("NumberOfAMRBox", data=step_nbrBoxes)
-        pointDataOffset_g.create_dataset("B", data=dataOffsets)
+        pointDataOffset_g.create_dataset("data", data=dataOffsets)
 
     vtk.close()
 
