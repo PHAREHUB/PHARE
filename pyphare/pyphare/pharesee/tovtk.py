@@ -5,9 +5,10 @@
 import h5py
 import sys
 import numpy as np
+import os
 
 
-def toFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz, gn=2):
+def BtoFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz, gn=2):
 
     nbrPoints = npx * npy * npz
     b = np.zeros((nbrPoints, 3), dtype="f")
@@ -18,8 +19,7 @@ def toFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz, gn=2):
     bz = np.zeros((npx, npy, npz), dtype=np.float32)
 
     # converts yee to pure primal
-    # by averaging in the dual direction
-    # first and last will be fucked
+    # we average in the dual direction so we need one extract ghost data in that direction
     bx[:, :, 0] = (
         ph_bx[gn:-gn, gn - 1 : -gn + 1][:, 1:] + ph_bx[gn:-gn, gn - 1 : -gn + 1][:, :-1]
     ) * 0.5
@@ -42,6 +42,40 @@ def toFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz, gn=2):
     return b
 
 
+def EtoFlatPrimal(ph_ex, ph_ey, ph_ez, npx, npy, npz, gn=2):
+
+    nbrPoints = npx * npy * npz
+    e = np.zeros((nbrPoints, 3), dtype="f")
+
+    # pure primal arrays
+    ex = np.zeros((npx, npy, npz), dtype=np.float32)
+    ey = np.zeros((npx, npy, npz), dtype=np.float32)
+    ez = np.zeros((npx, npy, npz), dtype=np.float32)
+
+    # converts yee to pure primal
+    # we average in the dual direction so we need one extract ghost data in that direction
+    ex[:, :, 0] = (
+        ph_ex[gn - 1 : -gn + 1, gn:-gn][1:, :] + ph_ex[gn - 1 : -gn + 1, gn:-gn][:-1, :]
+    ) * 0.5
+
+    ey[:, :, 0] = (
+        ph_ey[gn:-gn, gn - 1 : -gn + 1][:, 1:] + ph_ey[gn:-gn, gn - 1 : -gn + 1][:, :-1]
+    ) * 0.5
+
+    # ez already primal in 2D
+    ez[:, :, 0] = ph_ez[gn:-gn, gn:-gn][:, :]
+
+    ex[:, :, 1] = ex[:, :, 0]
+    ey[:, :, 1] = ey[:, :, 0]
+    ez[:, :, 1] = ez[:, :, 0]
+
+    e[:, 0] = ex.flatten(order="F")
+    e[:, 1] = ey.flatten(order="F")
+    e[:, 2] = ez.flatten(order="F")
+
+    return e
+
+
 def boxFromPatch(patch):
     lower = patch.attrs["lower"]
     upper = patch.attrs["upper"]
@@ -60,7 +94,7 @@ def nbrNodes(box):
 def main():
 
     path = sys.argv[1]
-    phare_h5 = h5py.File(f"{path}/EM_B.h5", "r")
+    phare_h5 = h5py.File(path, "r")
     times_str = list(phare_h5["t"].keys())
     times = np.asarray([float(time) for time in times_str])
     times.sort()
@@ -72,7 +106,28 @@ def main():
         if max_nbr_level < nbrLevels:
             max_nbr_level = nbrLevels
 
-    vtk = h5py.File(f"{path}/EM_B.vtkhdf", "w")
+    numberOfTimes = times.size
+
+    phare_fn = os.path.basename(path).split(".")[0]
+    data_directory = os.path.dirname(path)
+    vtk_fn = f"{data_directory}/{phare_fn}.vtkhdf"
+
+    print("PHARE H5 to VTKHDF conversion")
+    print("-----------------------------")
+    print(f"Converting {phare_fn} to {vtk_fn} in {data_directory}")
+    print(f"Max number of levels : {max_nbr_level}")
+    print(f"Number of time steps : {numberOfTimes}")
+
+    if "_B" in phare_fn:
+        print("Converting B fields")
+        toFlatPrimal = BtoFlatPrimal
+    elif "_E" in phare_fn:
+        print("Converting E fields")
+        toFlatPrimal = EtoFlatPrimal
+    else:
+        pass
+
+    vtk = h5py.File(vtk_fn, "w")
     root = vtk.create_group("VTKHDF", track_order=True)
     root.attrs["Version"] = (2, 2)
     type = b"OverlappingAMR"
@@ -86,13 +141,9 @@ def main():
     origin = [0, 0, 0]
     root.attrs.create("Origin", origin, dtype="f")
 
-    numberOfTimes = 3  # times.size
-
     steps = root.create_group("Steps")
     steps.attrs.create("NSteps", data=numberOfTimes, dtype="i8")
     steps.create_dataset("Values", data=times[:numberOfTimes])
-
-    print(f"maxlevel:{max_nbr_level}")
 
     for ilvl in range(max_nbr_level)[:]:
 
@@ -129,7 +180,6 @@ def main():
             time_str = f"{time:.10f}"
             phare_lvl_name = f"pl{ilvl}"
             dataOffsets += [current_size]
-            print("amr_box_offset", amr_box_offset)
             AMRBoxOffsets += [amr_box_offset]
             # pass this time if this level does not exist
             if phare_lvl_name not in phare_h5["t"][time_str].keys():
@@ -150,9 +200,6 @@ def main():
                 nbr_boxes += 1
                 npx, npy, npz = nbrNodes(box)
                 b = toFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz)
-                # b = np.ones(12 * 14 * 2)  # np.ones((12 * 14, 3), dtype="f")
-                # print(f"b shape :{b.shape} npx:{npx} npy:{npy}")
-                # print(f"box:{box}")
 
                 if first:
                     # this is the first patch of the first time
@@ -166,8 +213,6 @@ def main():
                     first = False
 
                 else:
-                    # print("else")
-                    # print(f"b shape :{b.shape[0]}")
                     # dataset already created with shape (current_size,3)
                     # we add b.shape[0] points (=npx*npy) to the first dim
                     # hence need to resize the dataset.
@@ -176,7 +221,6 @@ def main():
                 # pass
 
                 current_size += b.shape[0]
-            # print(f"current_size:{current_size}")
 
             # of of the patch loops at that time
 
