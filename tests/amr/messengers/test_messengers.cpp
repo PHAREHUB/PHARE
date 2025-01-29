@@ -1,5 +1,3 @@
-
-
 #include "src/simulator/simulator.hpp"
 #include "src/simulator/phare_types.hpp"
 #include "src/phare/phare.hpp"
@@ -202,11 +200,12 @@ static constexpr std::size_t dim          = 1;
 static constexpr std::size_t interpOrder  = 1;
 static constexpr std::size_t nbRefinePart = 2;
 
-using Simulator         = PHARE::Simulator<dim, interpOrder, nbRefinePart>;
-using HybridModelT      = Simulator::HybridModel;
-using MHDModelT         = Simulator::MHDModel;
-using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder, nbRefinePart>;
+using Simulator              = PHARE::Simulator<dim, interpOrder, nbRefinePart>;
+using HybridModelT           = Simulator::HybridModel;
+using MHDModelT              = Simulator::MHDModel;
+using ResourcesManagerHybrid = typename HybridModelT::resources_manager_type;
+using ResourcesManagerMHD    = typename MHDModelT::resources_manager_type;
+using Phare_Types            = PHARE::PHARE_Types<dim, interpOrder, nbRefinePart>;
 
 
 
@@ -254,8 +253,8 @@ public:
 
     HybridMessengers()
     {
-        auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
-        auto resourcesManagerMHD    = std::make_shared<ResourcesManagerT>();
+        auto resourcesManagerHybrid = std::make_shared<ResourcesManagerHybrid>();
+        auto resourcesManagerMHD    = std::make_shared<ResourcesManagerMHD>();
 
         auto hybridModel = std::make_unique<HybridModelT>(createDict(), resourcesManagerHybrid);
         auto mhdModel    = std::make_unique<MHDModelT>(resourcesManagerMHD);
@@ -447,11 +446,12 @@ struct AfullHybridBasicHierarchy
 {
     static constexpr std::size_t interpOrder = 1;
 
-    using Simulator         = typename PHARE::Simulator<dimension, interpOrder, nbRefinePart>;
-    using HybridModelT      = typename Simulator::HybridModel;
-    using MHDModelT         = typename Simulator::MHDModel;
-    using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-    using Phare_Types       = PHARE::PHARE_Types<dimension, interpOrder, nbRefinePart>;
+    using Simulator              = typename PHARE::Simulator<dimension, interpOrder, nbRefinePart>;
+    using HybridModelT           = typename Simulator::HybridModel;
+    using MHDModelT              = typename Simulator::MHDModel;
+    using ResourcesManagerHybrid = typename HybridModelT::resources_manager_type;
+    using ResourcesManagerMHD    = typename MHDModelT::resources_manager_type;
+    using Phare_Types            = PHARE::PHARE_Types<dimension, interpOrder, nbRefinePart>;
 
     int const firstHybLevel{0};
     int const ratio{2};
@@ -463,8 +463,8 @@ struct AfullHybridBasicHierarchy
 
     PHARE::initializer::PHAREDict dict{createDict<dimension>()};
 
-    std::shared_ptr<ResourcesManagerT> resourcesManagerHybrid{
-        std::make_shared<ResourcesManagerT>()};
+    std::shared_ptr<ResourcesManagerHybrid> resourcesManagerHybrid{
+        std::make_shared<ResourcesManagerHybrid>()};
 
     std::shared_ptr<HybridModelT> hybridModel{
         std::make_shared<HybridModelT>(dict, resourcesManagerHybrid)};

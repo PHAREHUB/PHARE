@@ -15,30 +15,15 @@ namespace PHARE
 {
 namespace amr
 {
-    /** \brief ResourcesGuards maintain a link with several resources in order to give them
-     * an access to the data.
-     *
-     *  At construction it will take the patch, and all resourcesManagerUser object that need to
-     *  be set via the ResourcesManager. Upon destruction, it will put all the previous
-     *  object in an inactive state (for now it just put nullptr on them)
-
-     * TODO: add the active mechanism
+    /** \brief ViewGuard ... TODO fix doc
      */
-    template<typename ResourcesManager, typename... ResourcesUsers>
-    class ResourcesGuard
+    template<typename ResourcesManager, typename... Views>
+    class ViewGuard
     {
     public:
-        /**
-         *  \brief At construction, each resourcesUser will be valid. At destruction time, each
-         * resourcesUser will be invalid
-         *
-         *  \param[in] patch
-         *  \param[in] resourcesManager
-         *  \param[in,out] resourcesUsers
-         */
-        ResourcesGuard(SAMRAI::hier::Patch const& patch, ResourcesManager const& resourcesManager,
-                       ResourcesUsers&... resourcesUsers)
-            : resourcesUsers_{resourcesUsers...}
+        ViewGuard(SAMRAI::hier::Patch const& patch, ResourcesManager const& resourcesManager,
+                  Views&... views)
+            : views_{views...}
             , patch_{patch}
             , resourcesManager_{resourcesManager}
         {
@@ -46,36 +31,34 @@ namespace amr
                 [this](auto&... user) {
                     ((resourcesManager_.setResources_(user, UseResourcePtr{}, patch_)), ...);
                 },
-                resourcesUsers_);
+                views_);
         }
 
 
 
 
-        ~ResourcesGuard()
+        ~ViewGuard()
         {
-            // set nullptr to all users in resourcesUsers_
             std::apply(
-                [this](auto&... user) {
-                    ((resourcesManager_.setResources_(user, UseNullPtr{}, patch_)), ...);
+                [this](auto&... view) {
+                    ((resourcesManager_.setResources_(view, UseNullPtr{}, patch_)), ...);
                 },
-                resourcesUsers_);
+                views_);
         }
 
 
 
 
-        // We just need the move constructor for using ResourceManager::createResourcesGuards
-        ResourcesGuard(ResourcesGuard&&)                        = default;
-        ResourcesGuard()                                        = delete;
-        ResourcesGuard(ResourcesGuard const&)                   = delete;
-        ResourcesGuard& operator=(ResourcesGuard const& source) = delete;
-        ResourcesGuard& operator=(ResourcesGuard&&)             = delete;
+        ViewGuard(ViewGuard&&)                        = default;
+        ViewGuard()                                   = delete;
+        ViewGuard(ViewGuard const&)                   = delete;
+        ViewGuard& operator=(ViewGuard const& source) = delete;
+        ViewGuard& operator=(ViewGuard&&)             = delete;
 
 
 
     private:
-        std::tuple<ResourcesUsers&...> resourcesUsers_;
+        std::tuple<Views&...> views_;
         SAMRAI::hier::Patch const& patch_;
         ResourcesManager const& resourcesManager_;
     };

@@ -46,6 +46,7 @@ namespace amr
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
         using Geometry                            = FieldGeometry<GridLayoutT, PhysicalQuantity>;
+        using view_type                           = Grid_t::field_type;
 
         /*** \brief Construct a FieldData from information associated to a patch
          *

@@ -12,10 +12,11 @@ namespace amr
      * also says the type of the actual data buffer
      */
     template<typename Grid_t, typename GridLayoutT>
-    struct UserFieldType
+    struct FieldViewInfo
     {
         using patch_data_type = FieldData<GridLayoutT, Grid_t>;
         using variable_type   = FieldVariable<GridLayoutT, Grid_t>;
+        using view_type       = patch_data_type::view_type;
     };
 
 

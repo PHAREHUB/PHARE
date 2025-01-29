@@ -11,6 +11,7 @@
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/def.hpp"
+#include "core/data/ions/ion_population/particle_pack.hpp"
 
 namespace PHARE::solver
 {
@@ -27,19 +28,20 @@ public:
 
     using type_list
         = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>;
-    using Interface              = IPhysicalModel<AMR_Types>;
-    using amr_types              = AMR_Types;
-    using electrons_t            = Electrons;
-    using patch_t                = typename AMR_Types::patch_t;
-    using level_t                = typename AMR_Types::level_t;
-    using gridlayout_type        = GridLayoutT;
-    using electromag_type        = Electromag;
-    using vecfield_type          = typename Electromag::vecfield_type;
-    using field_type             = typename vecfield_type::field_type;
-    using grid_type              = Grid_t;
-    using ions_type              = Ions;
-    using particle_array_type    = typename Ions::particle_array_type;
-    using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
+    using Interface           = IPhysicalModel<AMR_Types>;
+    using amr_types           = AMR_Types;
+    using electrons_t         = Electrons;
+    using patch_t             = typename AMR_Types::patch_t;
+    using level_t             = typename AMR_Types::level_t;
+    using gridlayout_type     = GridLayoutT;
+    using electromag_type     = Electromag;
+    using vecfield_type       = typename Electromag::vecfield_type;
+    using field_type          = typename vecfield_type::field_type;
+    using grid_type           = Grid_t;
+    using ions_type           = Ions;
+    using particle_array_type = typename Ions::particle_array_type;
+    using resources_manager_type
+        = amr::ResourcesManager<gridlayout_type, grid_type, particle_array_type>;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
@@ -52,6 +54,11 @@ public:
 
     virtual void initialize(level_t& level) override;
 
+
+    virtual amr::IResourcesManager& resources_manager() const override
+    {
+        return *std::dynamic_pointer_cast<amr::IResourcesManager>(resourcesManager);
+    }
 
     /**
      * @brief allocate uses the ResourcesManager to allocate HybridState physical quantities on

@@ -50,7 +50,7 @@ using Electrons1D  = Electrons<Ions1D>;
 using HybridModelT
     = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types, Grid1D>;
 using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types, Grid1D>;
-using ResourcesManagerT = ResourcesManager<GridYee1D, Grid1D>;
+using ResourcesManagerT = ResourcesManager<GridYee1D, Grid1D, ParticleArray1D>;
 
 
 using InitFunctionT = PHARE::initializer::InitFunction<1>;

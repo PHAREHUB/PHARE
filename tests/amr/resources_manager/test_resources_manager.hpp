@@ -25,15 +25,16 @@ using namespace PHARE::amr;
 
 
 
-template<typename ResourcesUsers>
-class aResourceUserCollection : public ::testing::Test
+template<typename View>
+class ViewCollection : public ::testing::Test
 {
 public:
     using Grid_t = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>, Grid_t> resourcesManager;
+    using Layout = GridLayout<GridLayoutImplYee<1, 1>>;
+    ResourcesManager<Layout, Grid_t, ParticleArray<1>> resourcesManager;
 
-    ResourcesUsers users;
+    View views;
 
     void SetUp()
     {
@@ -41,10 +42,10 @@ public:
         hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
         hierarchy->init();
 
-        auto registerAndAllocate = [this](auto& resourcesUser) {
+        auto registerAndAllocate = [this](auto& view) {
             auto& patchHierarchy = hierarchy->hierarchy;
 
-            resourcesManager.registerResources(resourcesUser.user);
+            resourcesManager.registerResources(view.view);
 
             double const initDataTime{0.0};
 
@@ -53,12 +54,12 @@ public:
                 auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
                 for (auto& patch : *patchLevel)
                 {
-                    resourcesManager.allocate(resourcesUser.user, *patch, initDataTime);
+                    resourcesManager.allocate(view.view, *patch, initDataTime);
                 }
             }
         }; // end lambda
 
-        std::apply(registerAndAllocate, users);
+        std::apply(registerAndAllocate, views);
     }
 };
 

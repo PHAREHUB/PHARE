@@ -129,7 +129,7 @@ static auto init_dict = createInitDict();
 
 struct IonPopulation1D_P
 {
-    IonPopulation1D user{init_dict["ions"]["pop0"]};
+    IonPopulation1D view{init_dict["ions"]["pop0"]};
 };
 
 
@@ -137,7 +137,7 @@ struct VecField1D_P
 {
     std::string name = "B";
     HybridQuantity::Vector qty{HybridQuantity::Vector::B};
-    VecField1D user{name, qty};
+    VecField1D view{name, qty};
 };
 
 
@@ -145,7 +145,7 @@ struct VecField1D_P
 
 struct Ions1D_P
 {
-    Ions1D user{init_dict["ions"]};
+    Ions1D view{init_dict["ions"]};
 };
 
 
@@ -154,9 +154,9 @@ struct Ions1D_P
 struct Electromag1D_P
 {
     std::string name = "ElectroTest";
-    Electromag1D user;
+    Electromag1D view;
     Electromag1D_P()
-        : user{init_dict["electromag"]}
+        : view{init_dict["electromag"]}
     {
     }
 };
@@ -165,7 +165,7 @@ struct Electromag1D_P
 
 struct HybridState1D_P
 {
-    HybridState1D user{init_dict};
+    HybridState1D view{init_dict};
 };
 
 
@@ -178,34 +178,32 @@ using VecField1DAndIonPop1D = std::tuple<VecField1D_P, IonPopulation1D_P>;
 using Electromag1DOnly      = std::tuple<Electromag1D_P>;
 using HybridState1DOnly     = std::tuple<HybridState1D_P>;
 
-TYPED_TEST_SUITE_P(aResourceUserCollection);
+TYPED_TEST_SUITE_P(ViewCollection);
 
 
 
 
-TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
+TYPED_TEST_P(ViewCollection, hasPointersValidOnlyWithGuard)
 {
-    TypeParam resourceUserCollection;
+    TypeParam views;
 
-    auto check = [this](auto& resourceUserPack) {
-        auto& hierarchy_   = this->hierarchy->hierarchy;
-        auto& resourceUser = resourceUserPack.user;
-
+    auto check = [this](auto& view) {
+        auto& hierarchy_ = this->hierarchy->hierarchy;
         for (int iLevel = 0; iLevel < hierarchy_->getNumberOfLevels(); ++iLevel)
         {
             auto patchLevel = hierarchy_->getPatchLevel(iLevel);
             for (auto const& patch : *patchLevel)
             {
-                auto dataOnPatch = this->resourcesManager.setOnPatch(*patch, resourceUser);
-                EXPECT_TRUE(resourceUser.isUsable());
-                EXPECT_FALSE(resourceUser.isSettable());
+                auto dataOnPatch = this->resourcesManager.setOnPatch(*patch, view.view);
+                EXPECT_TRUE(view.view.isUsable());
+                EXPECT_FALSE(view.view.isSettable());
             }
-            EXPECT_FALSE(resourceUser.isUsable());
-            EXPECT_TRUE(resourceUser.isSettable());
+            EXPECT_FALSE(view.view.isUsable());
+            EXPECT_TRUE(view.view.isSettable());
         }
     };
 
-    std::apply(check, resourceUserCollection);
+    std::apply(check, views);
 }
 
 
@@ -214,14 +212,14 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidOnlyWithGuard)
 TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
 {
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>, Grid1D> resourcesManager;
+    ResourcesManager<GridYee1D, Grid1D, ParticleArray<1>> resourcesManager;
     IonPopulation1D_P pop;
     static_assert(is_particles_v<ParticlesPack<ParticleArray<1>>>);
 
     auto s    = inputBase + std::string("/input/input_db_1d");
     hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
     hierarchy->init();
-    resourcesManager.registerResources(pop.user);
+    resourcesManager.registerResources(pop.view);
     auto& patchHierarchy = hierarchy->hierarchy;
 
     double const initDataTime{3.14};
@@ -231,8 +229,8 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
         auto patchLevel = patchHierarchy->getPatchLevel(iLevel);
         for (auto& patch : *patchLevel)
         {
-            resourcesManager.allocate(pop.user, *patch, initDataTime);
-            auto times = resourcesManager.getTimes(pop.user, *patch);
+            resourcesManager.allocate(pop.view, *patch, initDataTime);
+            auto times = resourcesManager.getTimes(pop.view, *patch);
 
             EXPECT_TRUE(std::equal(std::begin(times) + 1, std::end(times), std::begin(times)));
             EXPECT_DOUBLE_EQ(initDataTime, times[0]);
@@ -243,13 +241,13 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
 
 
 
-REGISTER_TYPED_TEST_SUITE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard);
+REGISTER_TYPED_TEST_SUITE_P(ViewCollection, hasPointersValidOnlyWithGuard);
 
 
 typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DOnly,
                          HybridState1DOnly>
     MyTypes;
-INSTANTIATE_TYPED_TEST_SUITE_P(testResourcesManager, aResourceUserCollection, MyTypes);
+INSTANTIATE_TYPED_TEST_SUITE_P(testResourcesManager, ViewCollection, MyTypes);
 
 
 

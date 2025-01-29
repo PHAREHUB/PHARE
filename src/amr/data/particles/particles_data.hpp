@@ -112,6 +112,8 @@ namespace amr
         static constexpr int ghostSafeMapLayer = 1;
 
     public:
+        using view_type = typename core::ParticlesPack<ParticleArray>;
+
         ParticlesData(SAMRAI::hier::Box const& box, SAMRAI::hier::IntVector const& ghost,
                       std::string const& name)
             : SAMRAI::hier::PatchData::PatchData(box, ghost)

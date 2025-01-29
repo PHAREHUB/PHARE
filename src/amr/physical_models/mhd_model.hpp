@@ -41,6 +41,10 @@ namespace solver
 
         virtual void initialize(level_t& /*level*/) override {}
 
+        virtual amr::IResourcesManager& resources_manager() const override
+        {
+            return *std::dynamic_pointer_cast<amr::IResourcesManager>(resourcesManager);
+        }
 
         virtual void allocate(patch_t& patch, double const allocateTime) override
         {

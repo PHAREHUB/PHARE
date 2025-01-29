@@ -9,18 +9,20 @@ namespace PHARE
 {
 namespace amr
 {
-    /** @brief tells SAMRAI which kind of variable, patchdata are used for a Field Resource
-     * also says the type of the actual data buffer
+    /** @brief tells SAMRAI which kind of variable, patchdata are used for a Particle resource
      */
-    template<typename ResourcesUser, std::size_t interp>
-    struct UserParticleType
+    template<typename ParticleArray, std::size_t interp>
+    struct ParticleViewInfo
     {
-        static constexpr auto dimension    = ResourcesUser::dimension;
+        static constexpr auto dimension    = ParticleArray::dimension;
         static constexpr auto interp_order = interp;
 
-        using particle_array_type = typename ResourcesUser::particle_array_type;
+        // TODORM this class could be templated by the ParticleArray type and rather
+        // hard code the link to the ParticlePack here
+        using particle_array_type = ParticleArray;
         using variable_type       = ParticlesVariable<particle_array_type, interp_order>;
         using patch_data_type     = ParticlesData<particle_array_type>;
+        using view_type           = patch_data_type::view_type;
     };
 
 } // namespace amr

@@ -1,6 +1,3 @@
-
-
-
 #ifndef PHARE_PHYSICAL_MODEL_HPP
 #define PHARE_PHYSICAL_MODEL_HPP
 
@@ -8,6 +5,7 @@
 #include <string>
 
 #include "amr/messengers/messenger_info.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
 namespace PHARE
 {
@@ -41,6 +39,9 @@ namespace solver
          * @brief initialize is used to initialize data
          */
         virtual void initialize(level_t& level) = 0;
+
+
+        virtual amr::IResourcesManager& resources_manager() const = 0;
 
 
         /**

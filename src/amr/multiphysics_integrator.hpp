@@ -278,25 +278,6 @@ namespace solver
 
         /**
          * @brief see SAMRAI documentation. This function initializes the data on the given level.
-         *
-         * The method first checks wether allocation of patch data must be performed.
-         * If it does, all objects using resources on patches must see their allocate() function
-         * called.
-         *
-         * This is:
-         * - the model (by definition the model has data defined on patches)
-         * - the solver (Some solvers has internal data that needs to exist on patches)
-         * - the messenger (the messenger has data defined on patches for internal reasons)
-         *
-         *
-         * then the level needs to be registered to the messenger.
-         *
-         * Then data initialization per se begins and one can be on one of the following cases:
-         *
-         * - regridding
-         * - initialization of the root level
-         * - initialization of a new level from scratch (not a regridding)
-         *
          */
         void initializeLevelData(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                  int const levelNumber, double const initDataTime,
@@ -342,7 +323,8 @@ namespace solver
                 // this level is the source or destination
                 // we therefore need to rebuild them
                 auto const finestLvlNbr = hierarchy->getFinestLevelNumber();
-                auto nextFiner = (levelNumber == finestLvlNbr) ? levelNumber : levelNumber + 1;
+                auto const nextFiner
+                    = (levelNumber == finestLvlNbr) ? levelNumber : levelNumber + 1;
 
                 for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
                 {
@@ -369,10 +351,13 @@ namespace solver
             else
                 load_balancer_manager_->estimate(*level, model);
 
-            if (static_cast<std::size_t>(levelNumber) == model_views_.size())
-                model_views_.push_back(solver.make_view(*level, model));
-            else
-                model_views_[levelNumber] = solver.make_view(*level, model);
+
+            model.resources_manager().makeLevelViews(*hierarchy, levelNumber);
+
+            // if (static_cast<std::size_t>(levelNumber) == model_views_.size())
+            //     model_views_.push_back(solver.make_view(*level, model));
+            // else
+            //     model_views_[levelNumber] = solver.make_view(*level, model);
         }
 
 
