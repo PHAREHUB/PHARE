@@ -115,12 +115,15 @@ struct OhmDispatcher
     }
 
     template<typename VecField, typename Field>
-    void operator()(Field const& N, VecField const& Ve, Field cosnt& Pe, VecField const& B,
+    void operator()(Field const& N, VecField const& Ve, Field const& Pe, VecField const& B,
                     VecField const& J, VecField& Enew)
     {
-        auto Ns = resourcesManager_.views(N);
-        auto Bs = resourcesManager_.views(B);
-        auto Js = resourcesManager_.views(J);
+        auto Ns    = resourcesManager_.views(N);
+        auto Ves   = resourcesManager_.views(Ve);
+        auto Pes   = resourcesManager_.views(Pe);
+        auto Bs    = resourcesManager_.views(B);
+        auto Js    = resourcesManager_.views(J);
+        auto Enews = resourcesManager_.views(Enew);
 
         std::size_t const view_nbr = Bs.size();
 
@@ -171,20 +174,24 @@ private:
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
 
-    // FaradayDispatcher faraday_;
-    // AmpereDispatcher ampere_;
-    // OhmDispatcher ohm_;
-
-    PHARE::core::IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
-
-
 public:
     using patch_t     = typename AMR_Types::patch_t;
     using level_t     = typename AMR_Types::level_t;
     using hierarchy_t = typename AMR_Types::hierarchy_t;
 
+private:
+    using FaradayDispatcher_t = FaradayDispatcher<GridLayout, ResourcesManager, level_t>;
+    using AmpereDispatcher_t  = AmpereDispatcher<GridLayout, ResourcesManager, level_t>;
+    using OhmDispatcher_t     = OhmDispatcher<GridLayout, ResourcesManager, level_t>;
+
+    FaradayDispatcher_t faraday_;
+    AmpereDispatcher_t ampere_;
+    OhmDispatcher_t ohm_;
+
+    PHARE::core::IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
 
 
+public:
     explicit SolverPPC(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"PPC"}
         , ohm_{dict["ohm"]}
@@ -389,7 +396,6 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     predictor2_(*level, hybridModel, fromCoarser, currentTime, newTime);
 
-
     average_(*level, hybridModel, fromCoarser, newTime);
 
     restoreState_(*level, hybridModel);
@@ -428,16 +434,22 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
         auto& J = model.state.J;
         ampere_(B, J);
         model.resources_manager().setTime(J, level, newTime);
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level.getLevelNumber(), newTime);
+        fromCoarser.fillCurrentGhosts(model.state.J, level.getLevelNumber(), newTime);
     }
 
     {
-        // PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ohm");
+        PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ohm");
+        // TODO
         // for (auto& state : views)
         //     state.electrons.update(state.layout);
-        // ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromagPred_B, views.J,
-        //      views.electromagPred_E);
-        // setTime([](auto& state) -> auto& { return state.electromagPred.E; });
+        auto& N  = model.state.electrons.density();
+        auto& Ve = model.state.electrons.velocity();
+        auto& Pe = model.state.electrons.pressure();
+        auto& B  = electromagPred_.B;
+        auto& J  = model.state.J;
+        auto& E  = electromagPred_.E;
+        ohm_(N, Ve, Pe, B, J, E);
+        model.resources_manager().setTime(E, level, newTime);
     }
 }
 
@@ -472,11 +484,17 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ohm");
-        for (auto& state : views)
-            state.electrons.update(state.layout);
-        ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromagPred_B, views.J,
-             views.electromagPred_E);
-        setTime([](auto& state) -> auto& { return state.electromagPred.E; });
+        // TODO
+        // for (auto& state : views)
+        //     state.electrons.update(state.layout);
+        auto& N  = model.state.electrons.density();
+        auto& Ve = model.state.electrons.velocity();
+        auto& Pe = model.state.electrons.pressure();
+        auto& B  = electromagPred_.B;
+        auto& J  = model.state.J;
+        auto& E  = electromagPred_.E;
+        ohm_(N, Ve, Pe, B, J, E);
+        model.resources_manager().setTime(E, level, newTime);
     }
 }
 
@@ -491,31 +509,40 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     PHARE_LOG_SCOPE(1, "SolverPPC::corrector_");
 
     auto levelNumber = level.getLevelNumber();
-    TimeSetter setTime{views, newTime};
+    model.resources_manager().setTime(model.state, level, newTime);
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.faraday");
         auto dt = newTime - currentTime;
-        faraday_(views.layouts, views.electromag_B, views.electromagAvg_E, views.electromag_B, dt);
-        setTime([](auto& state) -> auto& { return state.electromag.B; });
+        auto& B = model.state.electromag.B;
+        auto& E = electromagAvg_.E;
+
+        faraday_(B, E, B, dt);
+        model.resources_manager().setTime(B, level, newTime);
     }
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere");
-        ampere_(views.layouts, views.electromag_B, views.J);
-        setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, levelNumber, newTime);
+        auto& B = model.state.electromag.B;
+        auto& J = model.state.J;
+        ampere_(B, J);
+        model.resources_manager().setTime(J, level, newTime);
+        fromCoarser.fillCurrentGhosts(model.state.J, level.getLevelNumber(), newTime);
     }
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ohm");
-        for (auto& state : views)
-            state.electrons.update(state.layout);
-        ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromag_B, views.J,
-             views.electromag_E);
-        setTime([](auto& state) -> auto& { return state.electromag.E; });
-
-        fromCoarser.fillElectricGhosts(views.model().state.electromag.E, levelNumber, newTime);
+        // TODO
+        // for (auto& state : views)
+        //     state.electrons.update(state.layout);
+        auto& N  = model.state.electrons.density();
+        auto& Ve = model.state.electrons.velocity();
+        auto& Pe = model.state.electrons.pressure();
+        auto& B  = model.state.electromag.B;
+        auto& J  = model.state.J;
+        auto& E  = model.state.electromag.E;
+        ohm_(N, Ve, Pe, B, J, E);
+        model.resources_manager().setTime(E, level, newTime);
     }
 }
 
@@ -527,11 +554,12 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& mo
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::average_");
 
-    for (auto& state : views)
-    {
-        PHARE::core::average(state.electromag.B, state.electromagPred.B, state.electromagAvg.B);
-        PHARE::core::average(state.electromag.E, state.electromagPred.E, state.electromagAvg.E);
-    }
+    // TODO
+    // for (auto& state : views)
+    // {
+    //     PHARE::core::average(state.electromag.B, state.electromagPred.B, state.electromagAvg.B);
+    //     PHARE::core::average(state.electromag.E, state.electromagPred.E, state.electromagAvg.E);
+    // }
 
     // the following will fill E on all edges of all ghost cells, including those
     // on domain border. For level ghosts, electric field will be obtained from

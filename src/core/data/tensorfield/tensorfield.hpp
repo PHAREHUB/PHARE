@@ -43,6 +43,13 @@ auto static tensor_field_make_fields(std::array<std::string, N> const& names, Qt
 } // namespace PHARE::core::detail
 
 
+namespace PHARE::core::basics
+{
+template<typename Field_t, std::size_t rank = 1>
+struct TensorFIeld
+{
+};
+}; // namespace PHARE::core::basics
 
 namespace PHARE::core
 {
