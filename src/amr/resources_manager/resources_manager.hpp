@@ -26,11 +26,11 @@ namespace amr
     template<typename FieldView, typename... OtherViews>
     class HierarchyViews
     {
-        using AnyView    = std::variant<FieldView, OtherViews...>;
-        using PatchViews = std::vector<AnyView>;
-        using LevelViews = std::vector<PatchViews>;
+        using AnyView = std::variant<FieldView, OtherViews...>;
 
     public:
+        using PatchViews = std::vector<AnyView>;
+        using LevelViews = std::vector<PatchViews>;
         void add(std::string const& name, std::size_t const levelNumber, auto viewPtr)
         {
             assert(exists_(name));
@@ -199,6 +199,30 @@ namespace amr
         ResourcesManager& operator=(ResourcesManager const& source) = delete;
         ResourcesManager& operator=(ResourcesManager&&)             = delete;
 
+        template<typename Fn, typename... Args>
+        auto recursive_on_view(auto& view, Fn& fn, Args&... args)
+        {
+            if constexpr (is_final_view_v<decltype(view)>)
+            {
+                fn(view, std::forward<Args>(args)...);
+            }
+            else
+            {
+                if constexpr (has_runtime_views_v<decltype(view)>)
+                {
+                    for (auto& subview : view.getRunTimeResourcesViewList())
+                    {
+                        recursive_on_view(subview, fn, args...);
+                    }
+                }
+                if constexpr (has_compiletime_views_v<decltype(view)>)
+                {
+                    std::apply(
+                        [&](auto&... subviews) { (recursive_on_view(subviews, fn, args...), ...); },
+                        view.getCompileTimeResourcesViewList());
+                }
+            }
+        }
 
         /** @brief registerResources takes a View to register its resources
          * to the SAMRAI data system.
@@ -327,6 +351,18 @@ namespace amr
         }
 
 
+        template<typename... Views>
+        void setTime(SAMRAI::hier::PatchLevel const& level, double time, Views&... views)
+        {
+            // we take a variadic number of Views, each may represent a runtime/compiletime
+            // hierachy of views.
+            auto time_setter = [&](auto& view, auto& level, auto time) {
+                for (auto& patch : *level)
+                    this->setTime(view, *patch, time);
+            };
+            (recursive_on_view(views, time_setter, level, time), ...);
+        }
+
 
         /** \brief Get all the names and resources id that the view
          *  have registered via the ResourcesManager
@@ -448,6 +484,20 @@ namespace amr
                         views_.add(name, levelNumber, viewPtr);
                     }
             }
+        }
+
+
+        // return a tuple of references to the levelviews of the given views
+        template<typename... Views>
+        auto views(SAMRAI::hier::PatchLevel& level, Views&... views)
+        {
+            auto get_levelview_ref
+                = [&](auto const& v) -> typename Super::HierarchyViews_t::PatchViews& {
+                auto const& name = v.name();
+                return views_.views_[name][level.getLevelNumber()];
+            };
+
+            return std::forward_as_tuple(recursive_on_view(views, get_levelview_ref)...);
         }
 
 

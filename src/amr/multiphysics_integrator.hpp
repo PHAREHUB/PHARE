@@ -354,6 +354,7 @@ namespace solver
 
             model.resources_manager().makeLevelViews(*hierarchy, levelNumber);
 
+            // TORM
             // if (static_cast<std::size_t>(levelNumber) == model_views_.size())
             //     model_views_.push_back(solver.make_view(*level, model));
             // else
@@ -376,9 +377,13 @@ namespace solver
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
                 {
                     messenger.registerLevel(hierarchy, ilvl);
+                    auto& model = getModel_(ilvl);
 
-                    model_views_.push_back(getSolver_(ilvl).make_view(
-                        AMR_Types::getLevel(*hierarchy, ilvl), getModel_(ilvl)));
+                    model.resources_manager().makeLevelViews(*hierarchy, ilvl);
+
+                    // TORM
+                    // model_views_.push_back(getSolver_(ilvl).make_view(
+                    //     AMR_Types::getLevel(*hierarchy, ilvl), getModel_(ilvl)));
 
                     auto level = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
@@ -516,8 +521,7 @@ namespace solver
 
             fromCoarser.prepareStep(model, *level, currentTime);
 
-            solver.advanceLevel(*hierarchy, iLevel, getModelView_(iLevel), fromCoarser, currentTime,
-                                newTime);
+            solver.advanceLevel(*hierarchy, iLevel, model, fromCoarser, currentTime, newTime);
 
             if (lastStep)
             {
@@ -604,7 +608,8 @@ namespace solver
         std::vector<std::unique_ptr<ISolver<AMR_Types>>> solvers_;
         std::vector<std::shared_ptr<IPhysicalModel<AMR_Types>>> models_;
 
-        std::vector<std::shared_ptr<ISolverModelView>> model_views_;
+        // TORM
+        // std::vector<std::shared_ptr<ISolverModelView>> model_views_;
 
         std::vector<std::shared_ptr<PHARE::amr::Tagger>> taggers_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
@@ -833,7 +838,8 @@ namespace solver
         }
 
 
-        auto& getModelView_(int iLevel) { return *model_views_[iLevel]; }
+        // TORM
+        // auto& getModelView_(int iLevel) { return *model_views_[iLevel]; }
 
 
         IPhysicalModel<AMR_Types>& getModel_(int iLevel)

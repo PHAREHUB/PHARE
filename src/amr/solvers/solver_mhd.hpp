@@ -1,4 +1,3 @@
-
 #ifndef PHARE_SOLVER_MHD_HPP
 #define PHARE_SOLVER_MHD_HPP
 
@@ -43,17 +42,19 @@ namespace solver
         }
 
         void advanceLevel(hierarchy_t const& /*hierarchy*/, int const /*levelNumber*/,
-                          ISolverModelView& /*view*/,
+                          IPhysicalModel<AMR_Types>& /*model*/,
                           amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
                           const double /*currentTime*/, const double /*newTime*/) override
         {
         }
 
-        std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&) override
-        {
-            throw std::runtime_error("Not implemented in mhd solver");
-            return nullptr;
-        }
+        // TORM
+        // std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&)
+        // override
+        // {
+        //     throw std::runtime_error("Not implemented in mhd solver");
+        //     return nullptr;
+        // }
     };
 } // namespace solver
 } // namespace PHARE

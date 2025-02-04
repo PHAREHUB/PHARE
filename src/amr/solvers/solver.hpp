@@ -16,14 +16,15 @@ namespace PHARE::solver
 {
 
 
-class ISolverModelView
-{
-public:
-    using This = ISolverModelView;
-
-    virtual ~ISolverModelView() = default;
-};
-
+// TORM
+// class ISolverModelView
+// {
+// public:
+//     using This = ISolverModelView;
+//
+//     virtual ~ISolverModelView() = default;
+// };
+//
 
 } // namespace PHARE::solver
 
@@ -87,7 +88,7 @@ namespace solver
          * @brief advanceLevel advances the given level from t to t+dt
          */
         virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
-                                  ISolverModelView& view,
+                                  IPhysicalModel<AMR_Types>& model,
                                   amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarser,
                                   const double currentTime, const double newTime)
             = 0;
@@ -100,7 +101,8 @@ namespace solver
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
         virtual void allocate(IPhysicalModel<AMR_Types>& model, patch_t& patch,
-                              double const allocateTime) const = 0;
+                              double const allocateTime) const
+            = 0;
 
 
 
@@ -110,8 +112,9 @@ namespace solver
         virtual ~ISolver() = default;
 
 
-        virtual std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&)
-            = 0;
+        // TORM
+        // virtual std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&)
+        //     = 0;
 
     protected:
         explicit ISolver(std::string name)
