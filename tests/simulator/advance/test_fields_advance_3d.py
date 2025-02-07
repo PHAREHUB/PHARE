@@ -76,18 +76,28 @@ class AdvanceTest(AdvanceTestBase):
         )
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
 
-    # @data(
-    #    *per_interp(({"L0": {"B0": Box3D(10, 14)}})),
-    #    *per_interp(({"L0": {"B0": Box3D(10, 14), "B1": Box3D(15, 19)}})),
-    #    *per_interp(({"L0": {"B0": Box3D(6, 23)}})),
-    #    *per_interp(({"L0": {"B0": Box3D( 2, 12), "B1": Box3D(13, 25)}})),
-    #    *per_interp(({"L0": {"B0": Box3D( 5, 20)}, "L1": {"B0": Box3D(15, 19)}})),
-    #    *per_interp(({"L0": {"B0": Box3D( 5, 20)}, "L1": {"B0": Box3D(12, 38)}, "L2": {"B0": Box3D(30, 52)} })),
-    # )
-    # @unpack
-    # def test_field_coarsening_via_subcycles(self, interp_order, refinement_boxes):
-    #     print(f"{self._testMethodName}_{ndim}d")
-    #     self._test_field_coarsening_via_subcycles(ndim, interp_order, refinement_boxes, dl=.3, cells=cells)
+    @data(
+        *per_interp(({"L0": {"B0": Box3D(10, 14)}})),
+        *per_interp(({"L0": {"B0": Box3D(10, 14), "B1": Box3D(15, 19)}})),
+        *per_interp(({"L0": {"B0": Box3D(6, 23)}})),
+        *per_interp(({"L0": {"B0": Box3D(2, 12), "B1": Box3D(13, 25)}})),
+        *per_interp(({"L0": {"B0": Box3D(5, 20)}, "L1": {"B0": Box3D(15, 19)}})),
+        *per_interp(
+            (
+                {
+                    "L0": {"B0": Box3D(5, 20)},
+                    "L1": {"B0": Box3D(12, 38)},
+                    "L2": {"B0": Box3D(30, 52)},
+                }
+            )
+        ),
+    )
+    @unpack
+    def test_field_coarsening_via_subcycles(self, interp_order, refinement_boxes):
+        print(f"{self._testMethodName}_{ndim}d")
+        self._test_field_coarsening_via_subcycles(
+            ndim, interp_order, refinement_boxes, dl=0.3, cells=cells
+        )
 
     # @unittest.skip("should change to work on moments")
     # @data( # only supports a hierarchy with 2 levels

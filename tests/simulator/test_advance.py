@@ -478,9 +478,15 @@ class AdvanceTestBase(SimulatorTest):
                                 coarse_pdDataset = coarse_pd.dataset[:]
                                 fine_pdDataset = fine_pd.dataset[:]
 
+                                # local index of the coarsened fine box in the coarse patch box
+                                # this is important if the L0 patch is not the lower left, its
+                                # box will have a non-zero offset.
                                 coarseOffset = (
                                     coarseBox.lower - coarse_pd.layout.box.lower
                                 )
+
+                                # local index 0 is in the ghost layer, so to get domain data
+                                # we need to shift by the nbr of ghosts
                                 dataBox_lower = (
                                     coarseOffset + coarse_pd.layout.nbrGhostFor(qty)
                                 )
@@ -513,8 +519,26 @@ class AdvanceTestBase(SimulatorTest):
                                 except AssertionError as e:
                                     print("failing for {}".format(qty))
                                     print(np.abs(coarse_pdDataset - afterCoarse).max())
-                                    print(coarse_pdDataset)
-                                    print(afterCoarse)
+                                    print(boxm.DataSelector(coarse_pdDataset)[dataBox])
+                                    print(boxm.DataSelector(afterCoarse)[dataBox])
+                                    print("coarseBox", coarseBox)
+                                    print("dataBox", dataBox)
+                                    print("coarseOffset", coarseOffset)
+                                    print("dataBox_lower", dataBox_lower)
+                                    print("finePatch.box", finePatch.box)
+                                    print("coarsePatch.box", coarsePatch.box)
+                                    print("overlap", lvlOverlap)
+                                    idx = zip(
+                                        *np.where(
+                                            ~np.isclose(
+                                                coarse_pdDataset,
+                                                afterCoarse,
+                                                atol=2e-15,
+                                                rtol=0,
+                                            )
+                                        )
+                                    )
+                                    print("idx", list(idx))
                                     raise e
 
     def base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(
@@ -574,7 +598,6 @@ class AdvanceTestBase(SimulatorTest):
                 L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time
             )
             for qty in quantities:
-                print("ZOB", qty)
                 for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
                     fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
 
