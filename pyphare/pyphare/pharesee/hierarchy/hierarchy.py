@@ -556,44 +556,13 @@ class PatchHierarchy(object):
 
         return fig, ax
 
-    def plot3d(self, **kwargs):
-        """!HAX!"""
-        time = kwargs.get("time", self._default_time())
-        usr_lvls = kwargs.get("levels", self.levelNbrs(time))
-        default_qty = None
-        if len(self.quantities()) == 1:
-            default_qty = self.quantities()[0]
-        qty = kwargs.get("qty", default_qty)
-        for lvl_nbr, lvl in self.levels(time).items():
-            if lvl_nbr not in usr_lvls:
-                continue
-            for patch in self.level(lvl_nbr, time).patches:
-                pdat = patch.patch_datas[qty]
-                primals = pdat.primal_directions()
-                if primals[0]:
-                    pdat._x = pdat.x[:-1]
-                if primals[1]:
-                    pdat._y = pdat.y[:-1]
-                pdat.dataset = pdat.dataset[:, :, int(pdat.ghost_box.shape[2] / 2)]
-                patch.box.lower = patch.box.lower[:-1]
-                patch.box.upper = patch.box.upper[:-1]
-                patch.box.ndim = 2
-
-                pdat.ghost_box.lower = pdat.ghost_box.lower[:-1]
-                pdat.ghost_box.upper = pdat.ghost_box.upper[:-1]
-                pdat.ghost_box.ndim = 2
-                pdat.size = np.copy(pdat.ghost_box.shape)
-                pdat.layout.dl = pdat.layout.dl[:-1]
-
-        return self.plot2d(**kwargs)  # ¯\_(ツ)_/¯
-
     def plot(self, **kwargs):
         if self.ndim == 1:
             return self.plot1d(**kwargs)
         elif self.ndim == 2:
             return self.plot2d(**kwargs)
         elif self.ndim == 3:
-            return self.plot3d(**kwargs)
+            raise NotImplementedError("cannot make 3D plots")
 
     def dist_plot(self, **kwargs):
         """
