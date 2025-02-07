@@ -44,6 +44,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
         dim2 = refined_particle_nbr * ((cellNbr[0] * 2 + (cellNbr[1] * 2)))
         if dim == 2:
             return dim2
+        # TODO3D if dim==3?
         return dim2 * (cellNbr[2] * 2)
 
     def _do_dim(self, dim, min_diff, max_diff):

@@ -1,12 +1,9 @@
-
-
 #ifndef PHARE_SPLITTER_HPP
 #define PHARE_SPLITTER_HPP
 
 #include <array>
 #include <cmath>
 #include <tuple>
-#include <vector>
 #include <cassert>
 #include <cstdint>
 #include <cstddef>
@@ -18,6 +15,18 @@ namespace PHARE::amr
 {
 // see meta_utilities.hpp for list of declared permutations.
 
+/** \brief A SplitPattern identifies where refined particles will be placed
+ * relative to a coarse particle and their weight.
+ *
+ * A pattern is a geometric description of the placement of refined particles
+ * around the coarse particle. All particles refined with a specific pattern
+ * are placed at the same distance (delta) from the coarse particle with the same
+ * weight.
+ *
+ * The concrete splitting of a coarse particle can be the result of a single pattern
+ * or the combination of several patterns.
+ *
+ */
 template<typename _dimension, typename _nbRefinedPart>
 struct SplitPattern
 {
@@ -31,6 +40,9 @@ struct SplitPattern
 };
 
 
+/** \brief PatternDispatcher is the way to concretely place all refined particles
+ * for a combination of patterns given at compile time.
+ */
 template<typename... Patterns>
 class PatternDispatcher
 {
@@ -45,7 +57,7 @@ public:
     inline void operator()(Particle const& coarsePartOnRefinedGrid, Particles& refinedParticles,
                            size_t idx = 0) const
     {
-        dispatch(coarsePartOnRefinedGrid, refinedParticles, idx);
+        dispatch_(coarsePartOnRefinedGrid, refinedParticles, idx);
     }
 
     std::tuple<Patterns...> patterns{};
@@ -53,7 +65,7 @@ public:
 
 private:
     template<typename Particle, typename Particles>
-    void dispatch(Particle const& particle, Particles& particles, size_t idx) const
+    void dispatch_(Particle const& particle, Particles& particles, size_t idx) const
     {
         using Weight_t = std::decay_t<decltype(particle.weight)>;
         using Delta_t  = std::decay_t<decltype(particle.delta[0])>;
@@ -108,6 +120,11 @@ struct ASplitter
     constexpr ASplitter() {}
 };
 
+
+/** \brief this class is just the template declaration of the Splitter class
+ * Only its concrete specializations defined in split_1d, split_2d, split_3d
+ * are to be used therefore the constructor here is deleted to prevent instantiation.
+ */
 template<typename dimension, typename interp_order, typename nbRefinedPart>
 class Splitter : public ASplitter<dimension, interp_order, nbRefinedPart>
 {

@@ -96,7 +96,7 @@ def config():
         )
 
     def bz(x, y, z):
-        return bx(x, y, z) * -1
+        return 0.1
 
     def b2(x, y, z):
         return bx(x, y, z) ** 2 + by(x, y, z) ** 2 + bz(x, y, z) ** 2
@@ -173,8 +173,12 @@ def plot(diag_dir):
 
 def main():
     Simulator(config()).run()
-    if cpp.mpi_rank() == 0:
-        plot(diag_outputs)
+
+    # TODO3D nico : I removed the plot because the hierarchy plot3d has been removed
+    # TODO3D we need to find a way to plot the data
+
+    # if cpp.mpi_rank() == 0:
+    #     plot(diag_outputs)
     # try:
     #     from tools.python3 import plotting as m_plotting
 
