@@ -74,6 +74,7 @@ class Initialization3DTest(InitializationTest):
             f"\n{self._testMethodName}_{ndim}d took {self.datetime_diff(now)} seconds"
         )
 
+    # TODO3D implement patch ghost particle tests
     # @data({"cells": 40, "smallest_patch_size": 20, "largest_patch_size": 20, "nbr_part_per_cell" : ppc})
     # def test_no_patch_ghost_on_refined_level_case(self, simInput):
     #     print(f"\n{self._testMethodName}_{ndim}d")

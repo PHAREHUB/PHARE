@@ -115,17 +115,13 @@ public:
     NO_DISCARD auto operator=(data_type value) { mask_.fill(array_, value); }
 
     NO_DISCARD auto xstart() const { return mask_.min(); }
-
     NO_DISCARD auto xend() const { return shape_[0] - 1 - mask_.max(); }
 
-
     NO_DISCARD auto ystart() const { return mask_.min(); }
-
     NO_DISCARD auto yend() const { return shape_[1] - 1 - mask_.max(); }
 
-
-    auto zstart() const { return mask_.min(); }
-    auto zend() const { return shape_[2] - 1 - mask_.max(); }
+    NO_DISCARD auto zstart() const { return mask_.min(); }
+    NO_DISCARD auto zend() const { return shape_[2] - 1 - mask_.max(); }
 
 
 private:
