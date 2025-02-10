@@ -359,7 +359,7 @@ def _get_rank(patchdatas, patch_id, **kwargs):
     layout = reference_pd.layout
     centering = "dual"
     nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
-    shape = grow(reference_pd.box, [nbrGhosts] * 2).shape
+    shape = grow(reference_pd.box, [nbrGhosts] * ndim).shape
 
     if ndim == 1:
         pass
