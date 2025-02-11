@@ -19,11 +19,10 @@ def config():
         eta=0.0,
         nu=0.0,
         gamma=1.4,
-        terms="ideal",
-        reconstruction="WENO3",
-        limiter="minmod",
+        reconstruction="constant",
+        limiter="",
         riemann="rusanov",
-        integrator="tvdrk3",
+        time_integrator="euler",
     )
 
     B0 = 5 / (np.sqrt(4 * np.pi))

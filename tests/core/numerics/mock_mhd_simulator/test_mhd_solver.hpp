@@ -4,7 +4,6 @@
 #include <amr/physical_models/physical_model.hpp>
 #include <core/data/vecfield/vecfield.hpp>
 #include <core/data/vecfield/vecfield_component.hpp>
-#include <core/numerics/godunov_fluxes/godunov_fluxes.hpp>
 #include <core/utilities/point/point.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -22,10 +21,14 @@
 #include "amr/wrappers/hierarchy.hpp"
 #include "amr/solvers/solver_mhd.hpp"
 #include "amr/solvers/solver.hpp"
+#include "amr/solvers/solver_mhd_model_view.hpp"
 
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/data/grid/gridlayoutimplyee_mhd.hpp"
-#include "core/numerics/boundary_condition/boundary_condition.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/numerics/time_integrator/tvdrk2_integrator.hpp"
+#include "core/numerics/time_integrator/tvdrk3_integrator.hpp"
+#include "core/numerics/godunov_fluxes/godunov_fluxes.hpp"
 
 #include "tests/core/data/field/test_field_fixtures_mhd.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
@@ -40,47 +43,47 @@ using Direction   = PHARE::core::Direction;
 template<std::size_t dimension, std::size_t order>
 struct DummyModelViewConstructor
 {
-    using YeeLayout_t     = PHARE::core::GridLayoutImplYeeMHD<dimension, order>;
-    using GridLayout_t    = PHARE::core::GridLayout<YeeLayout_t>;
-    using GodunovFluxes_t = PHARE::core::GodunovFluxes<GridLayout_t>;
+    using YeeLayout_t  = PHARE::core::GridLayoutImplYeeMHD<dimension, order>;
+    using GridLayout_t = PHARE::core::GridLayout<YeeLayout_t>;
 
     DummyModelViewConstructor(GridLayout_t const& layout)
-        : rho_x{"rho_x", layout, MHDQuantity::Scalar::ScalarFlux_x}
-        , rhoV_x{"rhoV_x", layout, MHDQuantity::Vector::VecFlux_x}
-        , B_x{"B_x", layout, MHDQuantity::Vector::VecFlux_x}
-        , Etot_x{"Etot_x", layout, MHDQuantity::Scalar::ScalarFlux_x}
+        : rho_fx{"rho_fx", layout, MHDQuantity::Scalar::ScalarFlux_x}
+        , rhoV_fx{"rhoV_fx", layout, MHDQuantity::Vector::VecFlux_x}
+        , B_fx{"B_fx", layout, MHDQuantity::Vector::VecFlux_x}
+        , Etot_fx{"Etot_fx", layout, MHDQuantity::Scalar::ScalarFlux_x}
 
-        , rho_y{"rho_y", layout, MHDQuantity::Scalar::ScalarFlux_y}
-        , rhoV_y{"rhoV_y", layout, MHDQuantity::Vector::VecFlux_y}
-        , B_y{"B_y", layout, MHDQuantity::Vector::VecFlux_y}
-        , Etot_y{"Etot_y", layout, MHDQuantity::Scalar::ScalarFlux_y}
+        , rho_fy{"rho_fy", layout, MHDQuantity::Scalar::ScalarFlux_y}
+        , rhoV_fy{"rhoV_fy", layout, MHDQuantity::Vector::VecFlux_y}
+        , B_fy{"B_fy", layout, MHDQuantity::Vector::VecFlux_y}
+        , Etot_fy{"Etot_fy", layout, MHDQuantity::Scalar::ScalarFlux_y}
 
-        , rho_z{"rho_z", layout, MHDQuantity::Scalar::ScalarFlux_z}
-        , rhoV_z{"rhoV_z", layout, MHDQuantity::Vector::VecFlux_z}
-        , B_z{"B_z", layout, MHDQuantity::Vector::VecFlux_z}
-        , Etot_z{"Etot_z", layout, MHDQuantity::Scalar::ScalarFlux_z}
+        , rho_fz{"rho_fz", layout, MHDQuantity::Scalar::ScalarFlux_z}
+        , rhoV_fz{"rhoV_fz", layout, MHDQuantity::Vector::VecFlux_z}
+        , B_fz{"B_fz", layout, MHDQuantity::Vector::VecFlux_z}
+        , Etot_fz{"Etot_fz", layout, MHDQuantity::Scalar::ScalarFlux_z}
 
         , layouts{layout}
     {
     }
 
-    PHARE::core::UsableFieldMHD<dimension> rho_x;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV_x;
-    PHARE::core::UsableVecFieldMHD<dimension> B_x;
-    PHARE::core::UsableFieldMHD<dimension> Etot_x;
+    PHARE::core::UsableFieldMHD<dimension> rho_fx;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fx;
+    PHARE::core::UsableVecFieldMHD<dimension> B_fx;
+    PHARE::core::UsableFieldMHD<dimension> Etot_fx;
 
-    PHARE::core::UsableFieldMHD<dimension> rho_y;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV_y;
-    PHARE::core::UsableVecFieldMHD<dimension> B_y;
-    PHARE::core::UsableFieldMHD<dimension> Etot_y;
+    PHARE::core::UsableFieldMHD<dimension> rho_fy;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fy;
+    PHARE::core::UsableVecFieldMHD<dimension> B_fy;
+    PHARE::core::UsableFieldMHD<dimension> Etot_fy;
 
-    PHARE::core::UsableFieldMHD<dimension> rho_z;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV_z;
-    PHARE::core::UsableVecFieldMHD<dimension> B_z;
-    PHARE::core::UsableFieldMHD<dimension> Etot_z;
+    PHARE::core::UsableFieldMHD<dimension> rho_fz;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fz;
+    PHARE::core::UsableVecFieldMHD<dimension> B_fz;
+    PHARE::core::UsableFieldMHD<dimension> Etot_fz;
 
     GridLayout_t layouts;
 };
+
 
 
 struct DummyHierarchy
@@ -112,17 +115,14 @@ struct DummyMHDModel : public PHARE::solver::IPhysicalModel<DummyTypes>
 
     using field_type                 = FieldMHD;
     using vecfield_type              = VecFieldMHD;
+    using state_type                 = PHARE::core::MHDState<vecfield_type>;
     using gridlayout_type            = GridLayout_t;
     static constexpr auto model_name = "mhd_model";
 
     DummyMHDModel(GridLayout_t const& layout, PHARE::initializer::PHAREDict const& dict)
         : PHARE::solver::IPhysicalModel<DummyTypes>(model_name)
         , usablestate{layout, dict["state"]}
-        , usablestate1{layout, dict["state1"]}
-        , usablestate2{layout, dict["state2"]}
         , state{usablestate.super()}
-        , state1{usablestate1.super()}
-        , state2{usablestate2.super()}
     {
         state.initialize(layout);
     }
@@ -136,19 +136,14 @@ struct DummyMHDModel : public PHARE::solver::IPhysicalModel<DummyTypes>
     }
 
     PHARE::core::UsableMHDState<dimension> usablestate;
-    PHARE::core::UsableMHDState<dimension> usablestate1;
-    PHARE::core::UsableMHDState<dimension> usablestate2;
     PHARE::core::MHDState<VecFieldMHD>& state;
-    PHARE::core::MHDState<VecFieldMHD>& state1;
-    PHARE::core::MHDState<VecFieldMHD>& state2;
 };
 
 template<std::size_t dimension, std::size_t order>
 struct DummyModelView : public PHARE::solver::ISolverModelView
 {
-    using YeeLayout_t     = PHARE::core::GridLayoutImplYeeMHD<dimension, order>;
-    using GridLayout_t    = PHARE::core::GridLayout<YeeLayout_t>;
-    using GodunovFluxes_t = PHARE::core::GodunovFluxes<GridLayout_t>;
+    using YeeLayout_t  = PHARE::core::GridLayoutImplYeeMHD<dimension, order>;
+    using GridLayout_t = PHARE::core::GridLayout<YeeLayout_t>;
 
     using FieldMHD    = PHARE::core::FieldMHD<dimension>;
     using VecFieldMHD = PHARE::core::VecField<FieldMHD, MHDQuantity>;
@@ -157,95 +152,11 @@ struct DummyModelView : public PHARE::solver::ISolverModelView
                    DummyMHDModel<dimension, order>& _model)
         : model_{_model}
     {
-        rho.push_back(&model_.state.rho);
-        V.push_back(&model_.state.V);
-        B.push_back(&model_.state.B);
-        P.push_back(&model_.state.P);
-        J.push_back(&model_.state.J);
-        E.push_back(&model_.state.E);
-        rhoV.push_back(&model_.state.rhoV);
-        Etot.push_back(&model_.state.Etot);
-
-        rho_x.push_back(&construct.rho_x.super());
-        rhoV_x.push_back(&construct.rhoV_x.super());
-        B_x.push_back(&construct.B_x.super());
-        Etot_x.push_back(&construct.Etot_x.super());
-
-        rho_y.push_back(&construct.rho_y.super());
-        rhoV_y.push_back(&construct.rhoV_y.super());
-        B_y.push_back(&construct.B_y.super());
-        Etot_y.push_back(&construct.Etot_y.super());
-
-        rho_z.push_back(&construct.rho_z.super());
-        rhoV_z.push_back(&construct.rhoV_z.super());
-        B_z.push_back(&construct.B_z.super());
-        Etot_z.push_back(&construct.Etot_z.super());
-
-        rho1.push_back(&model_.state1.rho);
-        V1.push_back(&model_.state1.V);
-        B1.push_back(&model_.state1.B);
-        P1.push_back(&model_.state1.P);
-        J1.push_back(&model_.state1.J);
-        E1.push_back(&model_.state1.E);
-        rhoV1.push_back(&model_.state1.rhoV);
-        Etot1.push_back(&model_.state1.Etot);
-
-        rho2.push_back(&model_.state2.rho);
-        V2.push_back(&model_.state2.V);
-        B2.push_back(&model_.state2.B);
-        P2.push_back(&model_.state2.P);
-        J2.push_back(&model_.state2.J);
-        E2.push_back(&model_.state2.E);
-        rhoV2.push_back(&model_.state2.rhoV);
-        Etot2.push_back(&model_.state2.Etot);
-
         layouts.push_back(&construct.layouts);
     }
 
     auto& model() { return model_; }
     auto& model() const { return model_; }
-
-    std::vector<FieldMHD*> rho;
-    std::vector<VecFieldMHD*> V;
-    std::vector<VecFieldMHD*> B;
-    std::vector<FieldMHD*> P;
-    std::vector<VecFieldMHD*> J;
-    std::vector<VecFieldMHD*> E;
-    std::vector<VecFieldMHD*> rhoV;
-    std::vector<FieldMHD*> Etot;
-
-    std::vector<FieldMHD*> rho_x;
-    std::vector<VecFieldMHD*> rhoV_x;
-    std::vector<VecFieldMHD*> B_x;
-    std::vector<FieldMHD*> Etot_x;
-
-    std::vector<FieldMHD*> rho_y;
-    std::vector<VecFieldMHD*> rhoV_y;
-    std::vector<VecFieldMHD*> B_y;
-    std::vector<FieldMHD*> Etot_y;
-
-    std::vector<FieldMHD*> rho_z;
-    std::vector<VecFieldMHD*> rhoV_z;
-    std::vector<VecFieldMHD*> B_z;
-    std::vector<FieldMHD*> Etot_z;
-
-    std::vector<FieldMHD*> rho1;
-    std::vector<VecFieldMHD*> V1;
-    std::vector<VecFieldMHD*> B1;
-    std::vector<FieldMHD*> P1;
-    std::vector<VecFieldMHD*> J1;
-    std::vector<VecFieldMHD*> E1;
-    std::vector<VecFieldMHD*> rhoV1;
-    std::vector<FieldMHD*> Etot1;
-
-    std::vector<FieldMHD*> rho2;
-    std::vector<VecFieldMHD*> V2;
-    std::vector<VecFieldMHD*> B2;
-    std::vector<FieldMHD*> P2;
-    std::vector<VecFieldMHD*> J2;
-    std::vector<VecFieldMHD*> E2;
-    std::vector<VecFieldMHD*> rhoV2;
-    std::vector<FieldMHD*> Etot2;
 
     std::vector<GridLayout_t*> layouts;
 
@@ -473,6 +384,16 @@ public:
     {
     }
 
+    template<typename State>
+    void fillMomentsGhosts(State& state, level_t& level, double const newTime)
+    {
+        fillGhosts_(state.rho);
+        fillGhosts_(state.V(PHARE::core::Component::X));
+        fillGhosts_(state.V(PHARE::core::Component::Y));
+        fillGhosts_(state.V(PHARE::core::Component::Z));
+        fillGhosts_(state.P);
+    }
+
     template<typename Field>
     void fillMomentGhosts(Field& F, level_t& level, double const newTime)
     {
@@ -516,21 +437,105 @@ public:
     }
 
     template<typename VecField>
-    void fillMagneticFluxGhosts(std::vector<VecField*> viewB, level_t& level, double const newTime)
+    void fillMagneticFluxGhosts(VecField F_B, level_t& level, double const newTime)
     {
-        for (auto& ptrB : viewB)
+        auto& F_Bx = F_B(PHARE::core::Component::X);
+        auto& F_By = F_B(PHARE::core::Component::Y);
+        auto& F_Bz = F_B(PHARE::core::Component::Z);
+
+        fillGhosts_(F_Bx);
+        fillGhosts_(F_By);
+        fillGhosts_(F_Bz);
+    }
+};
+
+template<std::size_t dimension, std::size_t order, typename TimeIntegrator,
+         template<typename> typename FVMethod, typename MHDModel>
+class RessourceSetter
+{
+public:
+    using YeeLayout_t  = PHARE::core::GridLayoutImplYeeMHD<dimension, order>;
+    using GridLayout_t = PHARE::core::GridLayout<YeeLayout_t>;
+
+    RessourceSetter(GridLayout_t const& layout)
+        : rho_fx{"rho_fx", layout, MHDQuantity::Scalar::ScalarFlux_x}
+        , rhoV_fx{"rhoV_fx", layout, MHDQuantity::Vector::VecFlux_x}
+        , B_fx{"B_fx", layout, MHDQuantity::Vector::VecFlux_x}
+        , Etot_fx{"Etot_fx", layout, MHDQuantity::Scalar::ScalarFlux_x}
+
+        , rho_fy{"rho_fy", layout, MHDQuantity::Scalar::ScalarFlux_y}
+        , rhoV_fy{"rhoV_fy", layout, MHDQuantity::Vector::VecFlux_y}
+        , B_fy{"B_fy", layout, MHDQuantity::Vector::VecFlux_y}
+        , Etot_fy{"Etot_fy", layout, MHDQuantity::Scalar::ScalarFlux_y}
+
+        , rho_fz{"rho_fz", layout, MHDQuantity::Scalar::ScalarFlux_z}
+        , rhoV_fz{"rhoV_fz", layout, MHDQuantity::Vector::VecFlux_z}
+        , B_fz{"B_fz", layout, MHDQuantity::Vector::VecFlux_z}
+        , Etot_fz{"Etot_fz", layout, MHDQuantity::Scalar::ScalarFlux_z}
+
+        , usablestate1{layout, "state1"}
+        , usablestate2{layout, "state2"}
+    {
+    }
+
+    template<typename Solver>
+    void operator()(Solver& solver)
+    {
+        auto&& [_rho_fx, _rhoV_fx, _B_fx, _Etot_fx, _rho_fy, _rhoV_fy, _B_fy, _Etot_fy, _rho_fz,
+                _rhoV_fz, _B_fz, _Etot_fz, _evolve]
+            = solver.getCompileTimeResourcesViewList();
+
+        rho_fx.set_on(_rho_fx);
+        rhoV_fx.set_on(_rhoV_fx);
+        B_fx.set_on(_B_fx);
+        Etot_fx.set_on(_Etot_fx);
+
+        rho_fy.set_on(_rho_fy);
+        rhoV_fy.set_on(_rhoV_fy);
+        B_fy.set_on(_B_fy);
+        Etot_fy.set_on(_Etot_fy);
+
+        rho_fz.set_on(_rho_fz);
+        rhoV_fz.set_on(_rhoV_fz);
+        B_fz.set_on(_B_fz);
+        Etot_fz.set_on(_Etot_fz);
+
+
+        if constexpr (std::is_same_v<TimeIntegrator,
+                                     PHARE::core::TVDRK3Integrator<FVMethod, MHDModel>>)
         {
-            auto& B = *ptrB;
+            auto&& [s1, s2] = _evolve.getCompileTimeResourcesViewList();
 
-            auto& Bx = B(PHARE::core::Component::X);
-            auto& By = B(PHARE::core::Component::Y);
-            auto& Bz = B(PHARE::core::Component::Z);
+            usablestate1.set_on(s1);
+            usablestate2.set_on(s2);
+        }
+        else if constexpr (std::is_same_v<TimeIntegrator,
+                                          PHARE::core::TVDRK2Integrator<FVMethod, MHDModel>>)
+        {
+            auto&& [s1] = _evolve.getCompileTimeResourcesViewList();
 
-            fillGhosts_(Bx);
-            fillGhosts_(By);
-            fillGhosts_(Bz);
+            usablestate1.set_on(s1);
         }
     }
+
+private:
+    PHARE::core::UsableFieldMHD<dimension> rho_fx;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fx;
+    PHARE::core::UsableVecFieldMHD<dimension> B_fx;
+    PHARE::core::UsableFieldMHD<dimension> Etot_fx;
+
+    PHARE::core::UsableFieldMHD<dimension> rho_fy;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fy;
+    PHARE::core::UsableVecFieldMHD<dimension> B_fy;
+    PHARE::core::UsableFieldMHD<dimension> Etot_fy;
+
+    PHARE::core::UsableFieldMHD<dimension> rho_fz;
+    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fz;
+    PHARE::core::UsableVecFieldMHD<dimension> B_fz;
+    PHARE::core::UsableFieldMHD<dimension> Etot_fz;
+
+    PHARE::core::UsableMHDState<dimension> usablestate1;
+    PHARE::core::UsableMHDState<dimension> usablestate2;
 };
 
 class H5writer
@@ -560,7 +565,12 @@ public:
     }
 };
 
-template<std::size_t dim, std::size_t ord>
+template<std::size_t dim, std::size_t ord,
+         template<template<typename> typename, typename> typename TimeIntegrator,
+         template<typename, typename> typename Reconstruction, typename SlopeLimiter,
+         template<typename, bool> typename RiemannSolver,
+         template<bool, bool, bool> typename Equations, bool Hall, bool Resistivity,
+         bool HyperResistivity>
 class MHDMockSimulator
 {
 public:
@@ -580,7 +590,11 @@ public:
         , dummy_hierachy_()
         , dummy_messenger_{layout_}
         , TestMHDSolver_{dict}
+        , ressource_setter_{layout_}
+        , to_conservative{dict["to_conservative"]}
+        , to_primitive{dict["to_primitive"]}
     {
+        ressource_setter_(TestMHDSolver_);
     }
 
     void advance(const std::string& filename, const int dumpfrequency)
@@ -590,6 +604,8 @@ public:
         double time = 0.0;
 
         std::string initialGroup = H5writer::timeToGroupName(time);
+
+        to_conservative(dummy_view_.layouts, model_.state);
 
         H5writer::writeField(model_.state.rho, layout_, h5file, initialGroup, "rho");
         H5writer::writeField(model_.state.V(PHARE::core::Component::X), layout_, h5file,
@@ -640,6 +656,8 @@ public:
             {
                 std::string currentGroup = H5writer::timeToGroupName(time);
 
+                to_primitive(dummy_view_.layouts, model_.state);
+
                 H5writer::writeField(model_.state.rho, layout_, h5file, currentGroup, "rho");
                 H5writer::writeField(model_.state.V(PHARE::core::Component::X), layout_, h5file,
                                      currentGroup, "vx");
@@ -675,6 +693,70 @@ public:
                                      currentGroup, "ey");
                 H5writer::writeField(model_.state.E(PHARE::core::Component::Z), layout_, h5file,
                                      currentGroup, "ez");
+
+                if constexpr (0)
+                {
+                    auto&& [_rho_fx, _rhoV_fx, _B_fx, _Etot_fx, _rho_fy, _rhoV_fy, _B_fy, _Etot_fy,
+                            _rho_fz, _rhoV_fz, _B_fz, _Etot_fz, _evolve]
+                        = TestMHDSolver_.getCompileTimeResourcesViewList();
+
+                    H5writer::writeField(_rho_fx, layout_, h5file, currentGroup, "rho_x");
+                    H5writer::writeField(_rhoV_fx(PHARE::core::Component::X), layout_, h5file,
+                                         currentGroup, "rhovx_x");
+                    H5writer::writeField(_rhoV_fx(PHARE::core::Component::Y), layout_, h5file,
+                                         currentGroup, "rhovy_x");
+                    H5writer::writeField(_rhoV_fx(PHARE::core::Component::Z), layout_, h5file,
+                                         currentGroup, "rhovz_x");
+                    H5writer::writeField(_B_fx(PHARE::core::Component::X), layout_, h5file,
+                                         currentGroup, "bx_x");
+                    H5writer::writeField(_B_fx(PHARE::core::Component::Y), layout_, h5file,
+                                         currentGroup, "by_x");
+                    H5writer::writeField(_B_fx(PHARE::core::Component::Z), layout_, h5file,
+                                         currentGroup, "bz_x");
+                    H5writer::writeField(_Etot_fx, layout_, h5file, currentGroup, "etot_x");
+
+                    H5writer::writeField(_rho_fy, layout_, h5file, currentGroup, "rho_y");
+                    H5writer::writeField(_rhoV_fy(PHARE::core::Component::X), layout_, h5file,
+                                         currentGroup, "rhovx_y");
+                    H5writer::writeField(_rhoV_fy(PHARE::core::Component::Y), layout_, h5file,
+                                         currentGroup, "rhovy_y");
+                    H5writer::writeField(_rhoV_fy(PHARE::core::Component::Z), layout_, h5file,
+                                         currentGroup, "rhovz_y");
+                    H5writer::writeField(_B_fy(PHARE::core::Component::X), layout_, h5file,
+                                         currentGroup, "bx_y");
+                    H5writer::writeField(_B_fy(PHARE::core::Component::Y), layout_, h5file,
+                                         currentGroup, "by_y");
+                    H5writer::writeField(_B_fy(PHARE::core::Component::Z), layout_, h5file,
+                                         currentGroup, "bz_y");
+                    H5writer::writeField(_Etot_fy, layout_, h5file, currentGroup, "etot_y");
+
+                    auto&& [s1] = _evolve.getCompileTimeResourcesViewList();
+
+                    H5writer::writeField(s1.rho, layout_, h5file, currentGroup, "rho1");
+                    H5writer::writeField(s1.V(PHARE::core::Component::X), layout_, h5file,
+                                         currentGroup, "vx1");
+                    H5writer::writeField(s1.V(PHARE::core::Component::Y), layout_, h5file,
+                                         currentGroup, "vy1");
+                    H5writer::writeField(s1.V(PHARE::core::Component::Z), layout_, h5file,
+                                         currentGroup, "vz1");
+                    H5writer::writeField(s1.B(PHARE::core::Component::X), layout_, h5file,
+                                         currentGroup, "bx1");
+                    H5writer::writeField(s1.B(PHARE::core::Component::Y), layout_, h5file,
+                                         currentGroup, "by1");
+                    H5writer::writeField(s1.B(PHARE::core::Component::Z), layout_, h5file,
+                                         currentGroup, "bz1");
+                    H5writer::writeField(s1.P, layout_, h5file, currentGroup, "p1");
+
+                    H5writer::writeField(s1.rhoV(PHARE::core::Component::X), layout_, h5file,
+                                         currentGroup, "rhovx1");
+                    H5writer::writeField(s1.rhoV(PHARE::core::Component::Y), layout_, h5file,
+                                         currentGroup, "rhovy1");
+                    H5writer::writeField(s1.rhoV(PHARE::core::Component::Z), layout_, h5file,
+                                         currentGroup, "rhovz1");
+                    H5writer::writeField(s1.Etot, layout_, h5file, currentGroup, "etot1");
+                }
+
+                to_conservative(dummy_view_.layouts, model_.state);
             }
             step++;
         }
@@ -688,6 +770,27 @@ private:
     using ModelView_t            = DummyModelView<dimension, order>;
     using Messenger_t            = DummyMessenger<dimension, order>;
 
+    using Equations_t = Equations<Hall, Resistivity, HyperResistivity>;
+
+    template<typename Layout>
+    using RiemannSolver_t = RiemannSolver<Layout, Hall>;
+
+    template<typename Layout>
+    using Reconstruction_t = Reconstruction<Layout, SlopeLimiter>;
+
+    template<typename Layout>
+    using FVMethod_t = PHARE::core::Godunov<Layout, Reconstruction_t, RiemannSolver_t, Equations_t>;
+
+    using TimeIntegrator_t = TimeIntegrator<FVMethod_t, Model_t>;
+
+    using RessourceSetter_t
+        = RessourceSetter<dimension, order, TimeIntegrator_t, FVMethod_t, Model_t>;
+
+    using ToConservativeConverter_t
+        = PHARE::solver::MHDModelView<Model_t>::ToConservativeConverter_t;
+
+    using ToPrimitiveConverter_t = PHARE::solver::MHDModelView<Model_t>::ToPrimitiveConverter_t;
+
     double dt_;
     double final_time_;
 
@@ -697,7 +800,12 @@ private:
     ModelView_t dummy_view_;
     DummyHierarchy dummy_hierachy_;
     Messenger_t dummy_messenger_;
-    PHARE::solver::SolverMHD<Model_t, DummyTypes, Messenger_t, ModelView_t> TestMHDSolver_;
+    PHARE::solver::SolverMHD<Model_t, DummyTypes, TimeIntegrator_t, Messenger_t, ModelView_t>
+        TestMHDSolver_;
+    RessourceSetter_t ressource_setter_;
+
+    ToConservativeConverter_t to_conservative;
+    ToPrimitiveConverter_t to_primitive;
 
     struct LayoutInitData
     {

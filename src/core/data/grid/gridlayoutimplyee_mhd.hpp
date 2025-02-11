@@ -496,7 +496,7 @@ namespace core
                 // since the linear combination is in the Y direction
                 // in 1D the quantities are already on the Y face so return 1 point with no shift
                 // with coef 1.
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
+                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.};
                 return std::array<WeightPoint<dimension>, 1>{P1};
             }
             else if constexpr (dimension == 2)

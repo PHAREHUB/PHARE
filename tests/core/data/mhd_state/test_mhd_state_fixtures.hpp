@@ -4,7 +4,6 @@
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/models/mhd_state.hpp"
 #include "initializer/data_provider.hpp"
-#include "phare_core.hpp"
 #include "tests/core/data/field/test_field_fixtures_mhd.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
 
@@ -52,6 +51,21 @@ public:
         _set();
     }
 
+    template<typename GridLayout>
+    UsableMHDState(GridLayout const& layout, std::string name)
+        : Super{name}
+        , rho{name + "_rho", layout, MHDQuantity::Scalar::rho}
+        , V{name + "_V", layout, MHDQuantity::Vector::V}
+        , B{name + "_B", layout, MHDQuantity::Vector::B}
+        , P{name + "_P", layout, MHDQuantity::Scalar::P}
+        , rhoV{name + "_rhoV", layout, MHDQuantity::Vector::rhoV}
+        , Etot{name + "_Etot", layout, MHDQuantity::Scalar::Etot}
+        , J{name + "_J", layout, MHDQuantity::Vector::J}
+        , E{name + "_E", layout, MHDQuantity::Vector::E}
+    {
+        _set();
+    }
+
     UsableMHDState(UsableMHDState const&) = delete;
 
     UsableMHDState(UsableMHDState&& that)
@@ -66,6 +80,20 @@ public:
         , E{std::move(that.E)}
     {
         _set();
+    }
+
+    void set_on(Super& state)
+    {
+        auto&& [_rho, _V, _B, _P, _rhoV, _Etot, _J, _E] = state.getCompileTimeResourcesViewList();
+
+        _rho.setBuffer(&rho);
+        V.set_on(_V);
+        B.set_on(_B);
+        _P.setBuffer(&P);
+        rhoV.set_on(_rhoV);
+        _Etot.setBuffer(&Etot);
+        J.set_on(_J);
+        E.set_on(_E);
     }
 
     Super& super() { return *this; }

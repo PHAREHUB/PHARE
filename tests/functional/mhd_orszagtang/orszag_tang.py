@@ -8,7 +8,7 @@ def config():
     sim = s.Simulation(
         ndim=2,
         order=1,
-        timestep=0.001,
+        timestep=0.0014,
         final_time=0.5,
         cells=(128, 128),
         dl=(1.0 / 128.0, 1.0 / 128.0),
@@ -16,11 +16,10 @@ def config():
         eta=0.0,
         nu=0.0,
         gamma=5.0 / 3.0,
-        terms="ideal",
-        reconstruction="linear",
-        limiter="vanleer",
+        reconstruction="weno3",
+        limiter="",
         riemann="rusanov",
-        integrator="tvdrk2",
+        time_integrator="tvdrk3",
     )
 
     B0 = 1.0 / (np.sqrt(4.0 * np.pi))

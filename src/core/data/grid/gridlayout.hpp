@@ -1073,6 +1073,76 @@ namespace core
             return GridLayoutImpl::edgeZToCellCenter();
         }
 
+        template<auto direction>
+        static MeshIndex<dimension> next(MeshIndex<dimension> index)
+        {
+            if constexpr (dimension == 1)
+            {
+                return make_index(index[0] + 1);
+            }
+            else if constexpr (dimension == 2)
+            {
+                if constexpr (direction == Direction::X)
+                {
+                    return make_index(index[0] + 1, index[1]);
+                }
+                else if constexpr (direction == Direction::Y)
+                {
+                    return make_index(index[0], index[1] + 1);
+                }
+            }
+            else if constexpr (dimension == 3)
+            {
+                if constexpr (direction == Direction::X)
+                {
+                    return make_index(index[0] + 1, index[1], index[2]);
+                }
+                else if constexpr (direction == Direction::Y)
+                {
+                    return make_index(index[0], index[1] + 1, index[2]);
+                }
+                else if constexpr (direction == Direction::Z)
+                {
+                    return make_index(index[0], index[1], index[2] + 1);
+                }
+            }
+        }
+
+        template<auto direction>
+        static MeshIndex<dimension> previous(MeshIndex<dimension> index)
+        {
+            if constexpr (dimension == 1)
+            {
+                return make_index(index[0] - 1);
+            }
+            else if constexpr (dimension == 2)
+            {
+                if constexpr (direction == Direction::X)
+                {
+                    return make_index(index[0] - 1, index[1]);
+                }
+                else if constexpr (direction == Direction::Y)
+                {
+                    return make_index(index[0], index[1] - 1);
+                }
+            }
+            else if constexpr (dimension == 3)
+            {
+                if constexpr (direction == Direction::X)
+                {
+                    return make_index(index[0] - 1, index[1], index[2]);
+                }
+                else if constexpr (direction == Direction::Y)
+                {
+                    return make_index(index[0], index[1] - 1, index[2]);
+                }
+                else if constexpr (direction == Direction::Z)
+                {
+                    return make_index(index[0], index[1], index[2] - 1);
+                }
+            }
+        }
+
         template<typename Field, typename Fn>
         void evalOnBox(Field& field, Fn&& fn) const
         {

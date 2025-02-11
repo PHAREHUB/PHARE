@@ -22,6 +22,8 @@ PHAREDict getDict()
     using initfunc = InitFunction<1>;
     PHAREDict dict;
 
+    dict["name"] = std::string("state");
+
     dict["density"]["initializer"] = static_cast<initfunc>(density);
 
     dict["velocity"]["initializer"]["x_component"] = static_cast<initfunc>(vx);

@@ -2,95 +2,29 @@
 #define PHARE_SOLVER_SOLVER_MHD_MODEL_VIEW_HPP
 
 #include "amr/solvers/solver.hpp"
-#include "amr/solvers/solver_ppc_model_view.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/constrained_transport/constrained_transport.hpp"
-#include "core/numerics/godunov_fluxes/godunov_fluxes.hpp"
-#include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
-#include "core/numerics/time_integrator/time_integrator.hpp"
+#include "core/numerics/time_integrator/finite_volume_euler.hpp"
+#include "core/numerics/ampere/ampere.hpp"
+#include "core/numerics/faraday/faraday.hpp"
+#include "core/numerics/time_integrator/time_integrator_utils.hpp"
 
 namespace PHARE::solver
 {
-template<typename GridLayout>
-class GodunovFluxesTransformer
-{
-    using core_type = PHARE::core::GodunovFluxes<GridLayout>;
-
-public:
-    template<typename Layout, typename Field, typename VecField, typename... Fluxes>
-    void operator()(Layout const& layouts, Field const& rho, VecField const& V, VecField const& B,
-                    Field const& P, VecField const& J, Fluxes&... fluxes)
-    {
-        assert_equal_sizes(rho, V, B, P, J, fluxes...);
-        for (std::size_t i = 0; i < layouts.size(); ++i)
-        {
-            auto _ = core::SetLayout(layouts[i], godunov_);
-            godunov_(*rho[i], *V[i], *B[i], *P[i], *J[i], *fluxes[i]...);
-        }
-    }
-
-    core_type godunov_;
-};
-
-template<typename GridLayout>
-class FiniteVolumeEulerTransformer
-{
-    using core_type = PHARE::core::FiniteVolumeEuler<GridLayout>;
-
-public:
-    template<typename Layout, typename Field, typename... Fluxes>
-    void operator()(Layout const& layouts, Field const& U, Field& Unew, double const& dt,
-                    const Fluxes&... fluxes)
-    {
-        assert_equal_sizes(U, Unew, fluxes...);
-        for (std::size_t i = 0; i < layouts.size(); ++i)
-        {
-            auto _ = core::SetLayout(layouts[i], finite_volume_euler_);
-            finite_volume_euler_(*U[i], *Unew[i], dt, *fluxes[i]...);
-        }
-    }
-
-    core_type finite_volume_euler_;
-};
-
-template<typename GridLayout>
-class ConstrainedTransportTransformer
-{
-    using core_type = PHARE::core::ConstrainedTransport<GridLayout>;
-
-public:
-    template<typename Layout, typename VecField, typename... Fluxes>
-    void operator()(Layout const& layouts, VecField& E, const Fluxes&... fluxes)
-    {
-        assert_equal_sizes(E, fluxes...);
-        for (std::size_t i = 0; i < layouts.size(); ++i)
-        {
-            auto _ = core::SetLayout(layouts[i], constrained_transport_);
-            constrained_transport_(*E[i], *fluxes[i]...);
-        }
-    }
-
-    core_type constrained_transport_;
-};
-
 template<typename GridLayout>
 class ToConservativeTransformer
 {
     using core_type = PHARE::core::ToConservativeConverter<GridLayout>;
 
 public:
-    template<typename Layout, typename Field, typename VecField>
-    void operator()(Layout const& layouts, const Field& rho, const VecField& V, const VecField& B,
-                    const Field& P, VecField& rhoV, Field& Etot)
+    template<typename Layouts, typename States>
+    void operator()(Layouts const& layouts, States& states)
     {
-        assert_equal_sizes(rho, V, B, P, rhoV, Etot);
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
             auto _ = core::SetLayout(layouts[i], to_conservative_);
-            to_conservative_.vToRhoV(*rho[i], *V[i], *rhoV[i]);
-            to_conservative_.eosPToEtot(*rho[i], *V[i], *B[i], *P[i], *Etot[i]);
+            to_conservative_(states.rho, states.V, states.B, states.P, states.rhoV, states.Etot);
         }
     }
 
@@ -103,85 +37,115 @@ class ToPrimitiveTransformer
     using core_type = PHARE::core::ToPrimitiveConverter<GridLayout>;
 
 public:
-    template<typename Layout, typename Field, typename VecField>
-    void operator()(Layout const& layouts, const Field& rho, const VecField& rhoV,
-                    const VecField& B, const Field& Etot, VecField& V, Field& P)
+    template<typename Layouts, typename States>
+    void operator()(Layouts const& layouts, States& states)
     {
-        assert_equal_sizes(rho, rhoV, B, Etot, V, P);
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
             auto _ = core::SetLayout(layouts[i], to_primtitve_);
-            to_primtitve_.rhoVToV(*rho[i], *rhoV[i], *V[i]);
-            to_primtitve_.eosEtotToP(*rho[i], *rhoV[i], *B[i], *Etot[i], *P[i]);
+            to_primtitve_(states.rho, states.rhoV, states.B, states.Etot, states.V, states.P);
         }
     }
 
     core_type to_primtitve_;
 };
 
-template<typename GridLayout>
-class TimeIntegratorTransformer
+template<typename GridLayout, template<typename> typename FVMethod>
+class FVMethodTransformer
 {
-    using core_type = PHARE::core::TimeIntegrator<GridLayout>;
+    using core_type = FVMethod<GridLayout>;
 
 public:
-    template<typename Layout, typename Field, typename VecField, typename... Fluxes>
-    void euler(Layout const& layouts, Field const& rho, VecField const& rhoV, VecField const& B,
-               Field const& Etot, Field& rhonew, VecField& rhoVnew, VecField& Bnew, Field& Etotnew,
-               VecField& E, double const dt, Fluxes&... fluxes)
+    template<typename Layouts, typename StateViews, typename... Fluxes>
+    void operator()(Layouts const& layouts, StateViews& states, Fluxes&... fluxes)
     {
-        assert_equal_sizes(rho, rhoV, B, Etot, rhonew, rhoVnew, Bnew, Etotnew, E, fluxes...);
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
-            auto _ = core::SetLayout(layouts[i], time_integrator_);
-            time_integrator_.euler_step_(*rho[i], *rhoV[i], *B[i], *Etot[i], *rhonew[i],
-                                         *rhoVnew[i], *Bnew[i], *Etotnew[i], *E[i], dt,
-                                         *fluxes[i]...);
+            auto _ = core::SetLayout(layouts[i], fvm_);
+            fvm_(states, fluxes...);
         }
     }
 
-    template<typename Layout, typename Field, typename VecField>
-    void tvdrk2_step2(Layout const& layouts, Field& rho, VecField& rhoV, VecField& B, Field& Etot,
-                      Field& rho1, VecField& rhoV1, VecField& B1, Field& Etot1)
+    core_type fvm_;
+};
+
+
+template<typename GridLayout>
+class FiniteVolumeEulerTransformer
+{
+    using core_type = PHARE::core::FiniteVolumeEuler<GridLayout>;
+
+public:
+    template<typename Layouts, typename StateViews, typename... Fluxes>
+    void operator()(Layouts const& layouts, StateViews const& states, StateViews statesnew,
+                    double const dt, Fluxes const&... fluxes)
     {
-        assert_equal_sizes(rho, rhoV, B, Etot, rho1, rhoV1, B1, Etot1);
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
-            auto _ = core::SetLayout(layouts[i], time_integrator_);
-            time_integrator_.tvdrk2_step2(*rho[i], *rhoV[i], *B[i], *Etot[i], *rho1[i], *rhoV1[i],
-                                          *B1[i], *Etot1[i]);
+            auto _ = core::SetLayout(layouts[i], euler_);
+            euler_(states, statesnew, dt, fluxes...);
         }
     }
 
-    template<typename Layout, typename Field, typename VecField>
-    void tvdrk3_step2(Layout const& layouts, Field& rho, VecField& rhoV, VecField& B, Field& Etot,
-                      Field& rho1, VecField& rhoV1, VecField& B1, Field& Etot1, Field& rho2,
-                      VecField& rhoV2, VecField& B2, Field& Etot2)
+    core_type euler_;
+};
+
+template<typename GridLayout>
+class ConstrainedTransportTransformer
+{
+    using core_type = PHARE::core::ConstrainedTransport<GridLayout>;
+
+public:
+    template<typename Layout, typename StateViews, typename... Fluxes>
+    void operator()(Layout const& layouts, StateViews& states, Fluxes const&... fluxes)
     {
-        assert_equal_sizes(rho, rhoV, B, Etot, rho1, rhoV1, B1, Etot1, rho2, rhoV2, B2, Etot2);
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
-            auto _ = core::SetLayout(layouts[i], time_integrator_);
-            time_integrator_.tvdrk3_step2(*rho[i], *rhoV[i], *B[i], *Etot[i], *rho1[i], *rhoV1[i],
-                                          *B1[i], *Etot1[i], *rho2[i], *rhoV2[i], *B2[i],
-                                          *Etot2[i]);
+            auto _ = core::SetLayout(layouts[i], constrained_transport_);
+            constrained_transport_(states.E, fluxes...);
         }
     }
 
-    template<typename Layout, typename Field, typename VecField>
-    void tvdrk3_step3(Layout const& layouts, Field& rho, VecField& rhoV, VecField& B, Field& Etot,
-                      Field& rho2, VecField& rhoV2, VecField& B2, Field& Etot2)
+    core_type constrained_transport_;
+};
+
+template<typename GridLayout>
+class FaradayMHDTransformer
+{
+    using core_type = PHARE::core::Faraday<GridLayout>;
+
+public:
+    template<typename GridLayouts, typename StateViews>
+    void operator()(GridLayouts const& layouts, StateViews const& states, StateViews& statesnew,
+                    double dt)
     {
-        assert_equal_sizes(rho, rhoV, B, Etot, rho2, rhoV2, B2, Etot2);
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
-            auto _ = core::SetLayout(layouts[i], time_integrator_);
-            time_integrator_.tvdrk3_step3(*rho[i], *rhoV[i], *B[i], *Etot[i], *rho2[i], *rhoV2[i],
-                                          *B2[i], *Etot2[i]);
+            auto _ = core::SetLayout(layouts[i], faraday_);
+            faraday_(states.B, states.E, statesnew.B, dt);
         }
     }
 
-    core_type time_integrator_;
+    core_type faraday_;
+};
+
+template<typename GridLayout>
+class RKUtilsTransformer
+{
+    using core_type = PHARE::core::RKUtils<GridLayout>;
+
+public:
+    template<typename Layouts, typename ReturnState, typename... Pairs>
+    void operator()(Layouts const& layouts, ReturnState& res, Pairs... pairs)
+    {
+        for (std::size_t i = 0; i < layouts.size(); ++i)
+        {
+            auto _ = core::SetLayout(layouts[i], rkutils_);
+            rkutils_(res, pairs...);
+        }
+    }
+
+    core_type rkutils_;
 };
 
 
@@ -189,17 +153,19 @@ template<typename MHDModel_>
 class MHDModelView : public ISolverModelView
 {
 public:
-    using MHDModel_t                = MHDModel_;
-    using GridLayout                = typename MHDModel_t::gridlayout_type;
-    using GodunovFluxes_t           = GodunovFluxesTransformer<GridLayout>;
-    using Ampere_t                  = AmpereTransformer<GridLayout>;
+    using MHDModel_t = MHDModel_;
+    using GridLayout = typename MHDModel_t::gridlayout_type;
+
     using ToPrimitiveConverter_t    = ToPrimitiveTransformer<GridLayout>;
     using ToConservativeConverter_t = ToConservativeTransformer<GridLayout>;
-    using TimeIntegrator_t          = TimeIntegratorTransformer<GridLayout>;
+
+    template<template<typename> typename FVMethod>
+    using FVMethod_t = FVMethodTransformer<GridLayout, FVMethod>;
 
     using FiniteVolumeEuler_t    = FiniteVolumeEulerTransformer<GridLayout>;
     using ConstrainedTransport_t = ConstrainedTransportTransformer<GridLayout>;
-    using Faraday_t              = FaradayTransformer<GridLayout>;
+    using Faraday_t              = FaradayMHDTransformer<GridLayout>;
+    using RKUtils_t              = RKUtilsTransformer<GridLayout>;
 };
 
 }; // namespace PHARE::solver

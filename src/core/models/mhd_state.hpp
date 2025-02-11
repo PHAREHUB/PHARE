@@ -78,6 +78,22 @@ namespace core
         {
         }
 
+        MHDState(std::string name)
+            : rho{name + "_" + "rho", MHDQuantity::Scalar::rho}
+            , V{name + "_" + "V", MHDQuantity::Vector::V}
+            , B{name + "_" + "B", MHDQuantity::Vector::B}
+            , P{name + "_" + "P", MHDQuantity::Scalar::P}
+
+
+            , rhoV{name + "_" + "rhoV", MHDQuantity::Vector::rhoV}
+            , Etot{name + "_" + "Etot", MHDQuantity::Scalar::Etot}
+
+
+            , E{name + "_" + "E", MHDQuantity::Vector::E}
+            , J{name + "_" + "J", MHDQuantity::Vector::J}
+        {
+        }
+
         template<typename GridLayout>
         void initialize(GridLayout const& layout)
         {

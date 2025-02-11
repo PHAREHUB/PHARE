@@ -11,10 +11,10 @@
 namespace PHARE::core
 {
 template<typename GridLayout>
-class FiniteVolumeEuler_ref;
+class FiniteVolumeEulerPerField_ref;
 
 template<typename GridLayout>
-class FiniteVolumeEuler : public LayoutHolder<GridLayout>
+class FiniteVolumeEulerPerField : public LayoutHolder<GridLayout>
 {
     constexpr static auto dimension = GridLayout::dimension;
     using LayoutHolder<GridLayout>::layout_;
@@ -27,17 +27,17 @@ public:
             throw std::runtime_error("Error - FiniteVolumeEuler - GridLayout not set, cannot "
                                      "proceed to computation");
 
-        FiniteVolumeEuler_ref{*this->layout_, dt}(U, Unew, fluxes...);
+        FiniteVolumeEulerPerField_ref{*this->layout_, dt}(U, Unew, fluxes...);
     }
 };
 
 template<typename GridLayout>
-class FiniteVolumeEuler_ref
+class FiniteVolumeEulerPerField_ref
 {
     constexpr static auto dimension = GridLayout::dimension;
 
 public:
-    FiniteVolumeEuler_ref(GridLayout const& layout, double const dt)
+    FiniteVolumeEulerPerField_ref(GridLayout const& layout, double const dt)
         : layout_{layout}
         , dt_{dt}
     {
