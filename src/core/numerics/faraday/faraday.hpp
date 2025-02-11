@@ -64,24 +64,6 @@ public:
         layout_.evalOnGhostBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
     }
 
-    template<typename VecField>
-    void onBox(VecField const& B, VecField const& E, VecField& Bnew) const
-    {
-        // can't use structured bindings because
-        //   "reference to local binding declared in enclosing function"
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
-
-        auto& Bxnew = Bnew(Component::X);
-        auto& Bynew = Bnew(Component::Y);
-        auto& Bznew = Bnew(Component::Z);
-
-        layout_.evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
-        layout_.evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
-        layout_.evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
-    }
-
 private:
     GridLayout layout_;
     double dt_;

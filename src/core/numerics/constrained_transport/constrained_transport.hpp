@@ -50,45 +50,45 @@ public:
 
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
-        auto const& B_x  = std::get<0>(flux_tuple);
+        auto const& B_x  = std::get<2>(flux_tuple);
         auto const& By_x = B_x(Component::Y);
         auto const& Bz_x = B_x(Component::Z);
 
         if constexpr (dimension == 1)
         {
-            layout_.evalOnBox(Ey, [&](auto&... args) mutable { Ey_(Ey, {args...}, Bz_x); });
+            layout_.evalOnBox(Ey, [&](auto&... args) mutable { EyEq_(Ey, {args...}, Bz_x); });
 
-            layout_.evalOnBox(Ez, [&](auto&... args) mutable { Ez_(Ez, {args...}, By_x); });
+            layout_.evalOnBox(Ez, [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x); });
         }
         else if constexpr (dimension >= 2)
         {
-            auto const& B_y  = std::get<1>(flux_tuple);
+            auto const& B_y  = std::get<6>(flux_tuple);
             auto const& Bx_y = B_y(Component::X);
             auto const& Bz_y = B_y(Component::Z);
 
             if constexpr (dimension == 2)
             {
-                layout_.evalOnBox(Ex, [&](auto&... args) mutable { Ex_(Ex, {args...}, Bz_y); });
+                layout_.evalOnBox(Ex, [&](auto&... args) mutable { ExEq_(Ex, {args...}, Bz_y); });
 
-                layout_.evalOnBox(Ey, [&](auto&... args) mutable { Ey_(Ey, {args...}, Bz_x); });
+                layout_.evalOnBox(Ey, [&](auto&... args) mutable { EyEq_(Ey, {args...}, Bz_x); });
 
                 layout_.evalOnBox(Ez,
-                                  [&](auto&... args) mutable { Ez_(Ez, {args...}, By_x, Bx_y); });
+                                  [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x, Bx_y); });
             }
             else if constexpr (dimension == 3)
             {
-                auto const& B_z  = std::get<2>(flux_tuple);
+                auto const& B_z  = std::get<10>(flux_tuple);
                 auto const& Bx_z = B_z(Component::X);
                 auto const& By_z = B_z(Component::Y);
 
                 layout_.evalOnBox(Ex,
-                                  [&](auto&... args) mutable { Ex_(Ex, {args...}, Bz_y, By_z); });
+                                  [&](auto&... args) mutable { ExEq_(Ex, {args...}, Bz_y, By_z); });
 
                 layout_.evalOnBox(Ey,
-                                  [&](auto&... args) mutable { Ey_(Ey, {args...}, Bz_x, Bx_z); });
+                                  [&](auto&... args) mutable { EyEq_(Ey, {args...}, Bz_x, Bx_z); });
 
                 layout_.evalOnBox(Ez,
-                                  [&](auto&... args) mutable { Ez_(Ez, {args...}, By_x, Bx_y); });
+                                  [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x, Bx_y); });
             }
         }
     }
@@ -97,7 +97,7 @@ private:
     GridLayout layout_;
 
     template<typename Field, typename... Fluxes>
-    void Ex_(Field& Ex, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
+    void ExEq_(Field& Ex, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
@@ -121,7 +121,7 @@ private:
     }
 
     template<typename Field, typename... Fluxes>
-    void Ey_(Field& Ey, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
+    void EyEq_(Field& Ey, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
@@ -142,7 +142,7 @@ private:
     }
 
     template<typename Field, typename... Fluxes>
-    void Ez_(Field& Ez, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
+    void EzEq_(Field& Ez, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 

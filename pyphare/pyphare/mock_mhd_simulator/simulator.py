@@ -7,10 +7,25 @@ def pyMHD():
     return importlib.import_module("pybindlibs.pyMHD")
 
 
-def make_cpp_simulator(dim, interp):
+def make_cpp_simulator(
+    dim,
+    interp,
+    time_integrator,
+    reconstruction,
+    riemann,
+    hall=False,
+    resistivity=False,
+    hyper_resistivity=False,
+    limiter="",
+):
     import pybindlibs.pyMHD
 
-    make_sim = f"make_mhd_mock_simulator_{dim}_{interp}"
+    hall_suffix = "_hall" if hall else ""
+    resistivity_suffix = "_res" if resistivity else ""
+    hyper_res_suffix = "_hyperres" if hyper_resistivity else ""
+    limiter_suffix = f"_{limiter}" if limiter else ""
+
+    make_sim = f"make_mhd_mock_simulator_{dim}_{interp}_{time_integrator}_{reconstruction}{limiter_suffix}_{riemann}{hall_suffix}{resistivity_suffix}{hyper_res_suffix}"
     return getattr(pyMHD(), make_sim)()
 
 
@@ -35,9 +50,22 @@ class MHDMockSimulator:
             )
 
         populateDict()
+
+        hall = getattr(self.simulation, "hall", False)
+        resistivity = getattr(self.simulation, "resistivity", False)
+        hyper_resistivity = getattr(self.simulation, "hyper_resistivity", False)
+        limiter = getattr(self.simulation, "limiter", "")
+
         self.cpp_sim = make_cpp_simulator(
             self.simulation.ndim,
             self.simulation.order,
+            self.simulation.time_integrator,
+            self.simulation.reconstruction,
+            self.simulation.riemann,
+            hall,
+            resistivity,
+            hyper_resistivity,
+            limiter,
         )
 
     def _check_init(self):
