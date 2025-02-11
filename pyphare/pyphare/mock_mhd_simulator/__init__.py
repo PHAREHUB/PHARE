@@ -79,20 +79,14 @@ def populateDict():
             add_double("mesh_size/z", simulation.dl[2])
             add_double("origin/z", simulation.origin[2])
 
-    add_double("godunov/resistivity", simulation.eta)
-    add_double("godunov/hyper_resistivity", simulation.nu)
-    add_double("godunov/heat_capacity_ratio", simulation.gamma)
-    add_string("godunov/terms", simulation.terms)
-    add_string("godunov/reconstruction", simulation.reconstruction)
-    add_string("godunov/limiter", simulation.limiter)
-    add_string("godunov/riemann", simulation.riemann)
+    add_double("fv_method/resistivity", simulation.eta)
+    add_double("fv_method/hyper_resistivity", simulation.nu)
+    add_double("fv_method/heat_capacity_ratio", simulation.gamma)
+    add_double("fv_euler/heat_capacity_ratio", simulation.gamma)
     add_double("to_primitive/heat_capacity_ratio", simulation.gamma)
     add_double("to_conservative/heat_capacity_ratio", simulation.gamma)
-    add_string("integrator", simulation.integrator)
 
     add_string("state/name", "state")
-    add_string("state1/name", "state1")
-    add_string("state2/name", "state2")
 
     d = simulation.model.model_dict
 
@@ -104,21 +98,3 @@ def populateDict():
     addInitFunction("state/magnetic/initializer/y_component", fn_wrapper(d["by"]))
     addInitFunction("state/magnetic/initializer/z_component", fn_wrapper(d["bz"]))
     addInitFunction("state/pressure/initializer", fn_wrapper(d["p"]))
-
-    addInitFunction("state1/density/initializer", fn_wrapper(d["density"]))
-    addInitFunction("state1/velocity/initializer/x_component", fn_wrapper(d["vx"]))
-    addInitFunction("state1/velocity/initializer/y_component", fn_wrapper(d["vy"]))
-    addInitFunction("state1/velocity/initializer/z_component", fn_wrapper(d["vz"]))
-    addInitFunction("state1/magnetic/initializer/x_component", fn_wrapper(d["bx"]))
-    addInitFunction("state1/magnetic/initializer/y_component", fn_wrapper(d["by"]))
-    addInitFunction("state1/magnetic/initializer/z_component", fn_wrapper(d["bz"]))
-    addInitFunction("state1/pressure/initializer", fn_wrapper(d["p"]))
-
-    addInitFunction("state2/density/initializer", fn_wrapper(d["density"]))
-    addInitFunction("state2/velocity/initializer/x_component", fn_wrapper(d["vx"]))
-    addInitFunction("state2/velocity/initializer/y_component", fn_wrapper(d["vy"]))
-    addInitFunction("state2/velocity/initializer/z_component", fn_wrapper(d["vz"]))
-    addInitFunction("state2/magnetic/initializer/x_component", fn_wrapper(d["bx"]))
-    addInitFunction("state2/magnetic/initializer/y_component", fn_wrapper(d["by"]))
-    addInitFunction("state2/magnetic/initializer/z_component", fn_wrapper(d["bz"]))
-    addInitFunction("state2/pressure/initializer", fn_wrapper(d["p"]))

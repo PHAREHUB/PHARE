@@ -41,13 +41,13 @@ struct PHARE_Types
 
 
 
-    using solver_types     = PHARE::solver::PHARE_Types<dimension, interp_order, nbRefinedPart>;
-    using IPhysicalModel   = typename solver_types::IPhysicalModel;
-    using HybridModel_t    = typename solver_types::HybridModel_t;
-    using MHDModel_t       = typename solver_types::MHDModel_t;
-    using SolverPPC_t      = typename solver_types::SolverPPC_t;
-    using SolverMHD_t      = typename solver_types::SolverMHD_t;
-    using MessengerFactory = typename solver_types::MessengerFactory;
+    using solver_types   = PHARE::solver::PHARE_Types<dimension, interp_order, nbRefinedPart>;
+    using IPhysicalModel = typename solver_types::IPhysicalModel;
+    using HybridModel_t  = typename solver_types::HybridModel_t;
+    using MHDModel_t     = typename solver_types::MHDModel_t;
+    using SolverPPC_t    = typename solver_types::SolverPPC_t;
+    /*using SolverMHD_t      = typename solver_types::SolverMHD_t;*/
+    using MessengerFactory          = typename solver_types::MessengerFactory;
     using LevelInitializerFactory_t = typename solver_types::LevelInitializerFactory_t;
     using MultiPhysicsIntegrator    = typename solver_types::MultiPhysicsIntegrator;
 };

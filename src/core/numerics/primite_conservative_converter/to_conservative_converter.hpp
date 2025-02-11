@@ -5,10 +5,30 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
 #include "initializer/data_provider.hpp"
-#include <tuple>
 
 namespace PHARE::core
 {
+inline auto vToRhoV(auto const& rho, auto const& Vx, auto const& Vy, auto const& Vz)
+{
+    auto rhoVx = rho * Vx;
+    auto rhoVy = rho * Vy;
+    auto rhoVz = rho * Vz;
+
+    return std::make_tuple(rhoVx, rhoVy, rhoVz);
+}
+
+inline auto eosPToEtot(double const gamma, auto const& rho, auto const& vx, auto const& vy,
+                       auto const& vz, auto const& bx, auto const& by, auto const& bz,
+                       auto const& p)
+{
+    auto v2 = vx * vx + vy * vy + vz * vz;
+    auto b2 = bx * bx + by * by + bz * bz;
+    return p / (gamma - 1.0) + 0.5 * rho * v2 + 0.5 * b2;
+}
+
+template<typename GridLayout>
+class ToConservativeConverter_ref;
+
 template<typename GridLayout>
 class ToConservativeConverter : public LayoutHolder<GridLayout>
 {
@@ -22,7 +42,43 @@ public:
     }
 
     template<typename Field, typename VecField>
-    void vToRhoV(const Field& rho, const VecField& V, VecField& rhoV) const
+    void operator()(const Field& rho, const VecField& V, VecField const& B, Field const& P,
+                    VecField& rhoV, Field& Etot) const
+    {
+        ToConservativeConverter_ref<GridLayout>{*this->layout_, gamma_}(rho, V, B, P, rhoV, Etot);
+    }
+
+private:
+    double const gamma_;
+};
+
+template<typename GridLayout>
+class ToConservativeConverter_ref
+{
+    constexpr static auto dimension = GridLayout::dimension;
+
+public:
+    ToConservativeConverter_ref(GridLayout const& layout, double const gamma)
+        : layout_{layout}
+        , gamma_{gamma}
+    {
+    }
+
+    template<typename Field, typename VecField>
+    void operator()(const Field& rho, const VecField& V, VecField const& B, Field const& P,
+                    VecField& rhoV, Field& Etot) const
+    {
+        layout_.evalOnBox(rho, [&](auto&... args) mutable { vToRhoV_(rho, V, rhoV, {args...}); });
+
+        layout_.evalOnBox(rho, [&](auto&... args) mutable {
+            eosPToEtot_(gamma_, rho, V, B, P, Etot, {args...});
+        });
+    }
+
+private:
+    template<typename Field, typename VecField>
+    static void vToRhoV_(const Field& rho, const VecField& V, VecField& rhoV,
+                         MeshIndex<Field::dimension> index)
     {
         auto const& Vx = V(Component::X);
         auto const& Vy = V(Component::Y);
@@ -32,18 +88,16 @@ public:
         auto& rhoVy = rhoV(Component::Y);
         auto& rhoVz = rhoV(Component::Z);
 
-        auto v_to_rhov = [&](const Field& V, Field& rhoV, MeshIndex<Field::dimension> index) {
-            rhoV(index) = rho(index) * V(index);
-        };
-
-        layout_->evalOnBox(rhoVx, [&](auto&... args) mutable { v_to_rhov(Vx, rhoVx, {args...}); });
-        layout_->evalOnBox(rhoVy, [&](auto&... args) mutable { v_to_rhov(Vy, rhoVy, {args...}); });
-        layout_->evalOnBox(rhoVz, [&](auto&... args) mutable { v_to_rhov(Vz, rhoVz, {args...}); });
+        auto&& [x, y, z] = vToRhoV(rho(index), Vx(index), Vy(index), Vz(index));
+        rhoVx(index)     = x;
+        rhoVy(index)     = y;
+        rhoVz(index)     = z;
     }
 
     template<typename Field, typename VecField>
-    void eosPToEtot(const Field& rho, const VecField& V, const VecField& B, const Field& P,
-                    Field& Etot) const
+    static void eosPToEtot_(double const gamma, const Field& rho, const VecField& V,
+                            const VecField& B, const Field& P, Field& Etot,
+                            MeshIndex<Field::dimension> index)
     {
         auto const& Vx = V(Component::X);
         auto const& Vy = V(Component::Y);
@@ -53,19 +107,17 @@ public:
         auto const& By = B(Component::Y);
         auto const& Bz = B(Component::Z);
 
-        auto eos_p_to_etot = [&](MeshIndex<Field::dimension> index) {
-            auto bx     = GridLayout::project(Bx, index, GridLayout::faceXToCellCenter());
-            auto by     = GridLayout::project(By, index, GridLayout::faceYToCellCenter());
-            auto bz     = GridLayout::project(Bz, index, GridLayout::faceZToCellCenter());
-            auto v2     = Vx(index) * Vx(index) + Vy(index) * Vy(index) + Vz(index) * Vz(index);
-            auto b2     = bx * bx + by * by + bz * bz;
-            Etot(index) = P(index) / (gamma_ - 1.0) + 0.5 * rho(index) * v2 + 0.5 * b2;
-        };
+        auto bx = GridLayout::project(Bx, index, GridLayout::faceXToCellCenter());
+        auto by = GridLayout::project(By, index, GridLayout::faceYToCellCenter());
+        auto bz = GridLayout::project(Bz, index, GridLayout::faceZToCellCenter());
 
-        layout_->evalOnBox(Etot, [&](auto&... args) mutable { eos_p_to_etot({args...}); });
+        Etot(index)
+            = eosPToEtot(gamma, rho(index), Vx(index), Vy(index), Vz(index), bx, by, bz, P(index));
     }
 
 private:
+    GridLayout layout_;
+
     double const gamma_;
 };
 

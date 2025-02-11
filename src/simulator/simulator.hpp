@@ -98,7 +98,7 @@ public:
     using HybridModel    = typename PHARETypes::HybridModel_t;
     using MHDModel       = typename PHARETypes::MHDModel_t;
 
-    using SolverMHD = typename PHARETypes::SolverMHD_t;
+    /*using SolverMHD = typename PHARETypes::SolverMHD_t;*/
     using SolverPPC = typename PHARETypes::SolverPPC_t;
 
     using MessengerFactory       = typename PHARETypes::MessengerFactory;
