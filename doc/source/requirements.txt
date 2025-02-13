@@ -18,3 +18,4 @@ ipympl
 ipywidgets
 sphinx-codeautolink
 sphinxcontrib-apidoc
+myst-parser
