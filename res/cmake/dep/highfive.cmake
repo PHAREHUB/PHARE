@@ -4,9 +4,9 @@ set (PHARE_HAS_HIGHFIVE "0")
 if(HighFive)
 
   set (HIGHFIVE_SRC ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/highfive)
-  set (HIGHFIVE_VERSION master)
+  set (HIGHFIVE_VERSION main)
 
-  phare_github_get_or_update(HighFive ${HIGHFIVE_SRC} BlueBrain/HighFive ${HIGHFIVE_VERSION})
+  phare_github_get_or_update(HighFive ${HIGHFIVE_SRC} highfive-devs/highfive ${HIGHFIVE_VERSION})
 
   include_directories(
     ${HIGHFIVE_SRC}/include
