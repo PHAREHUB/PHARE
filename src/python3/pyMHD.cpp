@@ -5,6 +5,7 @@
 #include <pybind11/pybind11.h>
 #include <pybind11/stl.h>
 
+#include "core/numerics/reconstructions/wenoz.hpp"
 #include "core/utilities/types.hpp"
 #include "tests/core/numerics/mock_mhd_simulator/test_mhd_solver.hpp"
 
@@ -57,7 +58,7 @@ template<std::size_t Constant>
 using InterpConst = PHARE::core::InterpConst<Constant>;
 
 enum class TimeIntegratorType { Euler, TVDRK2, TVDRK3, count };
-enum class ReconstructionType { Constant, Linear, WENO3, count };
+enum class ReconstructionType { Constant, Linear, WENO3, WENOZ, count };
 enum class SlopeLimiterType { VanLeer, MinMod, count };
 enum class RiemannSolverType { Rusanov, HLL, count };
 
@@ -113,6 +114,13 @@ struct ReconstructionSelector<ReconstructionType::WENO3>
 {
     template<typename GridLayout, typename SlopeLimiter>
     using type = WENO3Reconstruction<GridLayout, SlopeLimiter>;
+};
+
+template<>
+struct ReconstructionSelector<ReconstructionType::WENOZ>
+{
+    template<typename GridLayout, typename SlopeLimiter>
+    using type = WENOZReconstruction<GridLayout, SlopeLimiter>;
 };
 
 template<ReconstructionType R, SlopeLimiterType S>
@@ -242,7 +250,8 @@ void registerSimulatorVariants(py::module& m)
                                           + std::string("_")
                                           + (rc == ReconstructionType::Constant ? "constant"
                                              : rc == ReconstructionType::Linear ? "linear"
-                                                                                : "weno3")
+                                             : rc == ReconstructionType::WENO3  ? "weno3"
+                                                                                : "wenoz")
                                           + std::string("_")
                                           + (sl == SlopeLimiterType::VanLeer ? "vanleer" : "minmod")
 
@@ -263,7 +272,9 @@ void registerSimulatorVariants(py::module& m)
                                        : ti == TimeIntegratorType::TVDRK2 ? "tvdrk2"
                                                                           : "tvdrk3")
                                       + std::string("_")
-                                      + (rc == ReconstructionType::Constant ? "constant" : "weno3")
+                                      + (rc == ReconstructionType::Constant ? "constant"
+                                         : rc == ReconstructionType::WENO3  ? "weno3"
+                                                                            : "wenoz")
                                       + std::string("_")
                                       + (rs == RiemannSolverType::Rusanov ? "rusanov" : "hll")
                                       + (hall ? "_hall" : "") + (res ? "_res" : "")
@@ -296,7 +307,7 @@ PYBIND11_MODULE(pyMHD, m)
     /*           SlopeLimiterType::count, RiemannSolverType::Rusanov, false, false,*/
     /*           false>::registerVariant("2_1_tvdrk2_constant_rusanov", m);*/
 
-    Registerer<2, 1, TimeIntegratorType::TVDRK3, ReconstructionType::WENO3, SlopeLimiterType::count,
-               RiemannSolverType::Rusanov, true, false,
-               false>::registerVariant("2_1_tvdrk3_weno3_rusanov_hall", m);
+    Registerer<2, 2, TimeIntegratorType::TVDRK3, ReconstructionType::WENOZ, SlopeLimiterType::count,
+               RiemannSolverType::Rusanov, false, false,
+               false>::registerVariant("2_2_tvdrk3_wenoz_rusanov", m);
 }

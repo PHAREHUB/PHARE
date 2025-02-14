@@ -10,7 +10,7 @@ def config():
 
     sim = s.Simulation(
         ndim=2,
-        order=1,
+        order=2,
         timestep=0.002,
         final_time=10,
         cells=cells,
@@ -19,7 +19,7 @@ def config():
         eta=0.0,
         nu=0.0,
         gamma=5.0 / 3.0,
-        reconstruction="weno3",
+        reconstruction="wenoz",
         limiter="",
         riemann="rusanov",
         time_integrator="tvdrk3",
