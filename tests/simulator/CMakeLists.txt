@@ -5,6 +5,7 @@ project(test-simulator)
 if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   file(GLOB PYFILES "*.py")
   file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  file(COPY "utilities" DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
 phare_python3_exec(9 validation           test_validation.py      ${CMAKE_CURRENT_BINARY_DIR})
