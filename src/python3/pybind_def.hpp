@@ -10,8 +10,7 @@
 
 #include "pybind11/stl.h"
 #include "pybind11/numpy.h"
-#undef HAVE_SYS_TIMES_H // included in python again, possibly with different value
-#undef HAVE_UNISTD_H
+
 
 namespace PHARE::pydata
 {
