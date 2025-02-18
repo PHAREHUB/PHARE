@@ -1,9 +1,14 @@
 
-#include "python3/pybind_def.hpp"
-#include "simulator/simulator.hpp"
-
+#include "core/def.hpp"
 #include "core/def/phare_config.hpp"
 
+#include "python3/pybind_def.hpp"
+
+#include "hdf5/phare_hdf5.hpp"
+
+#if PHARE_HAS_HIGHFIVE
+#include "hdf5/detail/h5/h5_file.hpp"
+#endif
 
 #include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
 

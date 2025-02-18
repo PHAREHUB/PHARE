@@ -6,18 +6,8 @@
 
 #include "initializer/data_provider.hpp"
 
-#include "core/def/pragma_disable.hpp"
-
-// clang-format off
-DISABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
-
-#undef HAVE_SYS_TIMES_H // included in python again, possibly with different value
-#undef HAVE_UNISTD_H
-
 #include <pybind11/embed.h> // everything needed for embedding
 #include <pybind11/functional.h>
-ENABLE_WARNING(shadow, shadow-field-in-constructor-modified, 42)
-// clang-format on
 
 namespace py = pybind11;
 
