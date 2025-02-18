@@ -52,6 +52,7 @@ PenaltyBreakString: 1000
 PenaltyExcessCharacter: 1000000
 PenaltyReturnTypeOnItsOwnLine: 60
 PointerAlignment: Left
+QualifierAlignment: Right
 ReflowComments: true
 SortIncludes: false
 SpaceAfterTemplateKeyword: false
