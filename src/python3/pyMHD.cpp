@@ -9,9 +9,9 @@
 #include "core/utilities/types.hpp"
 #include "tests/core/numerics/mock_mhd_simulator/test_mhd_solver.hpp"
 
-#include "core/numerics/time_integrator/euler_integrator.hpp"
-#include "core/numerics/time_integrator/tvdrk2_integrator.hpp"
-#include "core/numerics/time_integrator/tvdrk3_integrator.hpp"
+#include "amr/solvers/time_integrator/euler_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk2_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk3_integrator.hpp"
 
 #include "core/numerics/reconstructions/constant.hpp"
 #include "core/numerics/reconstructions/linear.hpp"
@@ -50,6 +50,7 @@ constexpr auto make_enum_tuple()
 
 namespace py = pybind11;
 using namespace PHARE::core;
+using namespace PHARE::solver;
 
 template<std::size_t Constant>
 using DimConst = PHARE::core::DimConst<Constant>;
@@ -178,7 +179,7 @@ class Registerer
                            RiemannSolver, MHDEquations, Hall, Resistivity, HyperResistivity>;
 
 public:
-    static auto registerVariant(const std::string& type, py::module& m)
+    static auto registerVariant(std::string const& type, py::module& m)
     {
         if (unwanted_simulators_())
             return;
@@ -295,9 +296,9 @@ void registerSimulatorVariants(py::module& m)
 
 PYBIND11_MODULE(pyMHD, m)
 {
-    /*registerSimulatorVariants<1, 1>(m);*/
-    /*registerSimulatorVariants<2, 1>(m);*/
-    /*registerSimulatorVariants<3, 1>(m);*/
+    registerSimulatorVariants<1, 1>(m);
+    registerSimulatorVariants<2, 1>(m);
+    registerSimulatorVariants<3, 1>(m);
 
     /*Registerer<2, 1, TimeIntegratorType::TVDRK2, ReconstructionType::Linear,*/
     /*           SlopeLimiterType::VanLeer, RiemannSolverType::Rusanov, false, false,*/
@@ -306,8 +307,4 @@ PYBIND11_MODULE(pyMHD, m)
     /*Registerer<2, 1, TimeIntegratorType::TVDRK2, ReconstructionType::Constant,*/
     /*           SlopeLimiterType::count, RiemannSolverType::Rusanov, false, false,*/
     /*           false>::registerVariant("2_1_tvdrk2_constant_rusanov", m);*/
-
-    Registerer<2, 2, TimeIntegratorType::TVDRK3, ReconstructionType::WENOZ, SlopeLimiterType::count,
-               RiemannSolverType::Rusanov, false, false,
-               false>::registerVariant("2_2_tvdrk3_wenoz_rusanov", m);
 }

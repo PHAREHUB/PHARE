@@ -88,7 +88,7 @@ private:
     static auto compute_wenoz_weights(auto const ull, auto const ul, auto const u, auto const ur,
                                       auto const urr, auto const d0, auto const d1, auto const d2)
     {
-        constexpr auto eps = 1.e-40;
+        static constexpr auto eps = 1.e-40;
 
         auto const beta0 = (13. / 12.) * (ull - 2. * ul + u) * (ull - 2. * ul + u)
                            + (1. / 4.) * (ull - 4. * ul + 3. * u) * (ull - 4. * ul + 3. * u);
@@ -104,6 +104,7 @@ private:
         auto const alpha2 = d2 * (1. + tau5 / (beta2 + eps));
 
         auto const sum_alpha = alpha0 + alpha1 + alpha2;
+
         return std::make_tuple(alpha0 / sum_alpha, alpha1 / sum_alpha, alpha2 / sum_alpha);
     }
 };

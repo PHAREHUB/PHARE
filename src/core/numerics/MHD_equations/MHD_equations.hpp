@@ -22,95 +22,84 @@ public:
     }
 
     template<auto direction>
-    PerIndex compute(PerIndex const& u) const
+    auto compute(auto const& u) const
     {
         auto const rho = u.rho;
-        auto const Vx  = u.Vx;
-        auto const Vy  = u.Vy;
-        auto const Vz  = u.Vz;
-        auto const Bx  = u.Bx;
-        auto const By  = u.By;
-        auto const Bz  = u.Bz;
+        auto const V   = u.V;
+        auto const B   = u.B;
         auto const P   = u.P;
 
-        auto const GeneralisedPressure = P + 0.5 * (Bx * Bx + By * By + Bz * Bz);
-        auto const TotalEnergy         = eosPToEtot(gamma_, rho, Vx, Vy, Vz, Bx, By, Bz, P);
+        auto const GeneralisedPressure = P + 0.5 * (B.x * B.x + B.y * B.y + B.z * B.z);
+        auto const TotalEnergy         = eosPToEtot(gamma_, rho, V.x, V.y, V.z, B.x, B.y, B.z, P);
 
         if constexpr (direction == Direction::X)
         {
-            auto F_rho   = rho * Vx;
-            auto F_rhoVx = rho * Vx * Vx + GeneralisedPressure - Bx * Bx;
-            auto F_rhoVy = rho * Vx * Vy - Bx * By;
-            auto F_rhoVz = rho * Vx * Vz - Bx * Bz;
+            auto F_rho   = rho * V.x;
+            auto F_rhoVx = rho * V.x * V.x + GeneralisedPressure - B.x * B.x;
+            auto F_rhoVy = rho * V.x * V.y - B.x * B.y;
+            auto F_rhoVz = rho * V.x * V.z - B.x * B.z;
             auto F_Bx    = 0.0;
-            auto F_By    = By * Vx - Vy * Bx;
-            auto F_Bz    = Bz * Vx - Vz * Bx;
-            auto F_Etot
-                = (TotalEnergy + GeneralisedPressure) * Vx - Bx * (Vx * Bx + Vy * By + Vz * Bz);
+            auto F_By    = B.y * V.x - V.y * B.x;
+            auto F_Bz    = B.z * V.x - V.z * B.x;
+            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.x
+                          - B.x * (V.x * B.x + V.y * B.y + V.z * B.z);
 
-            return PerIndex(F_rho, F_rhoVx, F_rhoVy, F_rhoVz, F_Bx, F_By, F_Bz, F_Etot);
+            return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
         if constexpr (direction == Direction::Y)
         {
-            auto F_rho   = rho * Vy;
-            auto F_rhoVx = rho * Vy * Vx - By * Bx;
-            auto F_rhoVy = rho * Vy * Vy + GeneralisedPressure - By * By;
-            auto F_rhoVz = rho * Vy * Vz - By * Bz;
-            auto F_Bx    = Bx * Vy - Vx * By;
+            auto F_rho   = rho * V.y;
+            auto F_rhoVx = rho * V.y * V.x - B.y * B.x;
+            auto F_rhoVy = rho * V.y * V.y + GeneralisedPressure - B.y * B.y;
+            auto F_rhoVz = rho * V.y * V.z - B.y * B.z;
+            auto F_Bx    = B.x * V.y - V.x * B.y;
             auto F_By    = 0.0;
-            auto F_Bz    = Bz * Vy - Vz * By;
-            auto F_Etot
-                = (TotalEnergy + GeneralisedPressure) * Vy - By * (Vx * Bx + Vy * By + Vz * Bz);
+            auto F_Bz    = B.z * V.y - V.z * B.y;
+            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.y
+                          - B.y * (V.x * B.x + V.y * B.y + V.z * B.z);
 
-            return PerIndex(F_rho, F_rhoVx, F_rhoVy, F_rhoVz, F_Bx, F_By, F_Bz, F_Etot);
+            return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
         if constexpr (direction == Direction::Z)
         {
-            auto F_rho   = rho * Vz;
-            auto F_rhoVx = rho * Vz * Vx - Bz * Bx;
-            auto F_rhoVy = rho * Vz * Vy - Bz * By;
-            auto F_rhoVz = rho * Vz * Vz + GeneralisedPressure - Bz * Bz;
-            auto F_Bx    = Bx * Vz - Vx * Bz;
-            auto F_By    = By * Vz - Vy * Bz;
+            auto F_rho   = rho * V.z;
+            auto F_rhoVx = rho * V.z * V.x - B.z * B.x;
+            auto F_rhoVy = rho * V.z * V.y - B.z * B.y;
+            auto F_rhoVz = rho * V.z * V.z + GeneralisedPressure - B.z * B.z;
+            auto F_Bx    = B.x * V.z - V.x * B.z;
+            auto F_By    = B.y * V.z - V.y * B.z;
             auto F_Bz    = 0.0;
-            auto F_Etot
-                = (TotalEnergy + GeneralisedPressure) * Vz - Bz * (Vx * Bx + Vy * By + Vz * Bz);
+            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.z
+                          - B.z * (V.x * B.x + V.y * B.y + V.z * B.z);
 
-            return PerIndex(F_rho, F_rhoVx, F_rhoVy, F_rhoVz, F_Bx, F_By, F_Bz, F_Etot);
+            return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
     }
 
     template<auto direction>
-    PerIndex compute(PerIndex const& u, auto const& j) const
+    auto compute(auto const& u, auto const& J) const
     {
-        PerIndex f               = compute<direction>(u);
-        auto const& [jx, jy, jz] = j;
+        PerIndex f = compute<direction>(u);
 
         if constexpr (Hall)
-            hall_contribution_<direction>(u.rho, u.Bx, u.By, u.Bz, jx, jy, jz, f.Bx, f.By, f.Bz,
-                                          f.P);
+            hall_contribution_<direction>(u.rho, u.B, J, f.B, f.P);
         if constexpr (Resistivity)
-            resistive_contributions_<direction>(eta_, u.Bx, u.By, u.Bz, jx, jy, jz, f.Bx, f.By,
-                                                f.Bz, f.P);
+            resistive_contributions_<direction>(eta_, u.B, J, f.B, f.P);
 
         return f;
     }
 
     template<auto direction>
-    PerIndex compute(PerIndex const& u, auto const& j, auto const& LaplJ) const
+    auto compute(auto const& u, auto const& J, auto const& LaplJ) const
     {
-        PerIndex f               = compute<direction>(u);
-        auto const& [jx, jy, jz] = j;
+        PerIndex f = compute<direction>(u);
 
         if constexpr (Hall)
-            hall_contribution_<direction>(u.rho, u.Bx, u.By, u.Bz, jx, jy, jz, f.Bx, f.By, f.Bz,
-                                          f.P);
+            hall_contribution_<direction>(u.rho, u.B, J, f.B, f.P);
         if constexpr (Resistivity)
-            resistive_contributions_<direction>(eta_, u.Bx, u.By, u.Bz, jx, jy, jz, f.Bx, f.By,
-                                                f.Bz, f.P);
+            resistive_contributions_<direction>(eta_, u.B, J, f.B, f.P);
 
-        resistive_contributions_<direction>(nu_, u.Bx, u.By, u.Bz, jx, jy, jz, f.Bx, f.By, f.Bz,
-                                            f.P);
+        resistive_contributions_<direction>(nu_, u.B, J, f.B, f.P);
 
         return f;
     }
@@ -122,62 +111,60 @@ private:
     double const nu_;
 
     template<auto direction>
-    void hall_contribution_(auto const& rho, auto const& Bx, auto const& By, auto const& Bz,
-                            auto const& Jx, auto const& Jy, auto const& Jz, auto& F_Bx, auto& F_By,
-                            auto& F_Bz, auto& F_Etot) const
+    void hall_contribution_(auto const& rho, auto const& B, auto const& J, auto& F_B,
+                            auto& F_Etot) const
     {
-        auto invRho = 1.0 / rho;
+        auto const invRho = 1.0 / rho;
 
-        auto JxB_x = Jy * Bz - Jz * By;
-        auto JxB_y = Jz * Bx - Jx * Bz;
-        auto JxB_z = Jx * By - Jy * Bx;
+        auto const JxB_x = J.y * B.z - J.z * B.y;
+        auto const JxB_y = J.z * B.x - J.x * B.z;
+        auto const JxB_z = J.x * B.y - J.y * B.x;
 
-        auto BdotJ = Bx * Jx + By * Jy + Bz * Jz;
-        auto BdotB = Bx * Bx + By * By + Bz * Bz;
+        auto const BdotJ = B.x * J.x + B.y * J.y + B.z * J.z;
+        auto const BdotB = B.x * B.x + B.y * B.y + B.z * B.z;
 
         if constexpr (direction == Direction::X)
         {
-            F_By += -JxB_z * invRho;
-            F_Bz += JxB_y * invRho;
-            F_Etot += (BdotJ * Bx - BdotB * Jx) * invRho;
+            F_B.y += -JxB_z * invRho;
+            F_B.z += JxB_y * invRho;
+            F_Etot += (BdotJ * B.x - BdotB * J.x) * invRho;
         }
         if constexpr (direction == Direction::Y)
         {
-            F_Bx += JxB_z * invRho;
-            F_Bz += -JxB_x * invRho;
-            F_Etot += (BdotJ * By - BdotB * Jy) * invRho;
+            F_B.x += JxB_z * invRho;
+            F_B.z += -JxB_x * invRho;
+            F_Etot += (BdotJ * B.y - BdotB * J.y) * invRho;
         }
         if constexpr (direction == Direction::Z)
         {
-            F_Bx += -JxB_y * invRho;
-            F_By += JxB_x * invRho;
-            F_Etot += (BdotJ * Bz - BdotB * Jz) * invRho;
+            F_B.x += -JxB_y * invRho;
+            F_B.y += JxB_x * invRho;
+            F_Etot += (BdotJ * B.z - BdotB * J.z) * invRho;
         }
     }
 
     template<auto direction>
-    void resistive_contributions_(auto const& pc, auto const& Bx, auto const& By, auto const& Bz,
-                                  auto const& Jx, auto const& Jy, auto const& Jz, auto& F_Bx,
-                                  auto& F_By, auto& F_Bz, auto& F_Etot) const
+    void resistive_contributions_(auto const& coef, auto const& B, auto const& J, auto& F_B,
+                                  auto& F_Etot) const
     // Can be used for both resistivity with J and eta and hyper resistivity with laplJ and nu
     {
         if constexpr (direction == Direction::X)
         {
-            F_By += -Jz * pc;
-            F_Bz += Jy * pc;
-            F_Etot += (Jy * Bz - Jz * By) * pc;
+            F_B.y += -J.z * coef;
+            F_B.z += J.y * coef;
+            F_Etot += (J.y * B.z - J.z * B.y) * coef;
         }
         if constexpr (direction == Direction::Y)
         {
-            F_Bx += Jz * pc;
-            F_Bz += -Jx * pc;
-            F_Etot += (Jz * Bx - Jx * Bz) * pc;
+            F_B.x += J.z * coef;
+            F_B.z += -J.x * coef;
+            F_Etot += (J.z * B.x - J.x * B.z) * coef;
         }
         if constexpr (direction == Direction::Y)
         {
-            F_Bx += -Jy * pc;
-            F_By += Jx * pc;
-            F_Etot += (Jx * By - Jy * Bx) * pc;
+            F_B.x += -J.y * coef;
+            F_B.y += J.x * coef;
+            F_Etot += (J.x * B.y - J.y * B.x) * coef;
         }
     }
 };

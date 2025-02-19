@@ -5,10 +5,10 @@
 #include "core/numerics/constrained_transport/constrained_transport.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
-#include "core/numerics/time_integrator/finite_volume_euler.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
-#include "core/numerics/time_integrator/time_integrator_utils.hpp"
+#include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
+#include "core/numerics/time_integrator_utils.hpp"
 
 namespace PHARE::solver
 {
@@ -56,13 +56,13 @@ class FVMethodTransformer
     using core_type = FVMethod<GridLayout>;
 
 public:
-    template<typename Layouts, typename StateViews, typename... Fluxes>
-    void operator()(Layouts const& layouts, StateViews& states, Fluxes&... fluxes)
+    template<typename Layouts, typename StateViews, typename Fluxes>
+    void operator()(Layouts const& layouts, StateViews& states, Fluxes& fluxes)
     {
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
             auto _ = core::SetLayout(layouts[i], fvm_);
-            fvm_(states, fluxes...);
+            fvm_(states, fluxes);
         }
     }
 
@@ -76,14 +76,14 @@ class FiniteVolumeEulerTransformer
     using core_type = PHARE::core::FiniteVolumeEuler<GridLayout>;
 
 public:
-    template<typename Layouts, typename StateViews, typename... Fluxes>
+    template<typename Layouts, typename StateViews, typename Fluxes>
     void operator()(Layouts const& layouts, StateViews const& states, StateViews statesnew,
-                    double const dt, Fluxes const&... fluxes)
+                    double const dt, Fluxes const& fluxes)
     {
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
             auto _ = core::SetLayout(layouts[i], euler_);
-            euler_(states, statesnew, dt, fluxes...);
+            euler_(states, statesnew, dt, fluxes);
         }
     }
 
@@ -96,13 +96,13 @@ class ConstrainedTransportTransformer
     using core_type = PHARE::core::ConstrainedTransport<GridLayout>;
 
 public:
-    template<typename Layout, typename StateViews, typename... Fluxes>
-    void operator()(Layout const& layouts, StateViews& states, Fluxes const&... fluxes)
+    template<typename Layout, typename StateViews, typename Fluxes>
+    void operator()(Layout const& layouts, StateViews& states, Fluxes const& fluxes)
     {
         for (std::size_t i = 0; i < layouts.size(); ++i)
         {
             auto _ = core::SetLayout(layouts[i], constrained_transport_);
-            constrained_transport_(states.E, fluxes...);
+            constrained_transport_(states.E, fluxes);
         }
     }
 
@@ -149,18 +149,15 @@ public:
 };
 
 
-template<typename MHDModel_>
-class MHDModelView : public ISolverModelView
+template<typename GridLayout>
+class Dispatchers
 {
 public:
-    using MHDModel_t = MHDModel_;
-    using GridLayout = typename MHDModel_t::gridlayout_type;
-
     using ToPrimitiveConverter_t    = ToPrimitiveTransformer<GridLayout>;
     using ToConservativeConverter_t = ToConservativeTransformer<GridLayout>;
 
-    template<template<typename> typename FVMethod>
-    using FVMethod_t = FVMethodTransformer<GridLayout, FVMethod>;
+    template<template<typename> typename FVMethodStrategy>
+    using FVMethod_t = FVMethodTransformer<GridLayout, FVMethodStrategy>;
 
     using FiniteVolumeEuler_t    = FiniteVolumeEulerTransformer<GridLayout>;
     using ConstrainedTransport_t = ConstrainedTransportTransformer<GridLayout>;

@@ -8,6 +8,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "initializer/data_provider.hpp"
 #include "core/mhd/mhd_quantities.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
@@ -23,7 +25,7 @@ namespace PHARE::solver
 {
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy,
          typename Messenger    = amr::MHDMessenger<MHDModel>,
-         typename ModelViews_t = MHDModelView<MHDModel>>
+         typename ModelViews_t = Dispatchers<typename MHDModel::gridlayout_type>>
 class SolverMHD : public ISolver<AMR_Types>
 {
 private:
@@ -41,26 +43,28 @@ private:
     using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
 
-    FieldT rho_fx{"rho_fx", MHDQuantity::Scalar::ScalarFlux_x};
-    VecFieldT rhoV_fx{"rhoV_fx", MHDQuantity::Vector::VecFlux_x};
-    VecFieldT B_fx{"B_fx", MHDQuantity::Vector::VecFlux_x};
-    FieldT Etot_fx{"Etot_fx", MHDQuantity::Scalar::ScalarFlux_x};
-
-    FieldT rho_fy{"rho_fy", MHDQuantity::Scalar::ScalarFlux_y};
-    VecFieldT rhoV_fy{"rhoV_fy", MHDQuantity::Vector::VecFlux_y};
-    VecFieldT B_fy{"B_fy", MHDQuantity::Vector::VecFlux_y};
-    FieldT Etot_fy{"Etot_fy", MHDQuantity::Scalar::ScalarFlux_y};
-
-    FieldT rho_fz{"rho_fz", MHDQuantity::Scalar::ScalarFlux_z};
-    VecFieldT rhoV_fz{"rhoV_fz", MHDQuantity::Vector::VecFlux_z};
-    VecFieldT B_fz{"B_fz", MHDQuantity::Vector::VecFlux_z};
-    FieldT Etot_fz{"Etot_fz", MHDQuantity::Scalar::ScalarFlux_z};
+    core::AllFluxes<FieldT, VecFieldT> fluxes_;
 
     TimeIntegratorStrategy evolve_;
 
 public:
     SolverMHD(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"MHDSolver"}
+
+        , fluxes_{{"rho_fx", MHDQuantity::Scalar::ScalarFlux_x},
+                  {"rhoV_fx", MHDQuantity::Vector::VecFlux_x},
+                  {"B_fx", MHDQuantity::Vector::VecFlux_x},
+                  {"Etot_fx", MHDQuantity::Scalar::ScalarFlux_x},
+
+                  {"rho_fy", MHDQuantity::Scalar::ScalarFlux_y},
+                  {"rhoV_fy", MHDQuantity::Vector::VecFlux_y},
+                  {"B_fy", MHDQuantity::Vector::VecFlux_y},
+                  {"Etot_fy", MHDQuantity::Scalar::ScalarFlux_y},
+
+                  {"rho_fz", MHDQuantity::Scalar::ScalarFlux_z},
+                  {"rhoV_fz", MHDQuantity::Vector::VecFlux_z},
+                  {"B_fz", MHDQuantity::Vector::VecFlux_z},
+                  {"Etot_fz", MHDQuantity::Scalar::ScalarFlux_z}}
         , evolve_{dict}
     {
     }
@@ -80,8 +84,8 @@ public:
     }
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, ISolverModelView& view,
-                      IMessenger& fromCoarserMessenger, const double currentTime,
-                      const double newTime) override;
+                      IMessenger& fromCoarserMessenger, double const currentTime,
+                      double const newTime) override;
 
 
     std::shared_ptr<ISolverModelView> make_view(level_t& level, IPhysicalModel_t& model) override
@@ -93,14 +97,12 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy, Etot_fy,
-                                     rho_fz, rhoV_fz, B_fz, Etot_fz, evolve_);
+        return std::forward_as_tuple(fluxes_, evolve_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy, Etot_fy,
-                                     rho_fz, rhoV_fz, B_fz, Etot_fz, evolve_);
+        return std::forward_as_tuple(fluxes_, evolve_);
     }
 
 private:
@@ -123,7 +125,7 @@ template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy,
          typename ModelViews_t>
 void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelViews_t>::advanceLevel(
     hierarchy_t const& hierarchy, int const levelNumber, ISolverModelView& view,
-    IMessenger& fromCoarserMessenger, const double currentTime, const double newTime)
+    IMessenger& fromCoarserMessenger, double const currentTime, double const newTime)
 {
     PHARE_LOG_SCOPE(1, "SolverMHD::advanceLevel");
 
@@ -131,10 +133,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelView
     auto& fromCoarser = dynamic_cast<Messenger&>(fromCoarserMessenger);
     auto level        = hierarchy.getPatchLevel(levelNumber);
 
-    auto&& fluxes = std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
-                                          Etot_fy, rho_fz, rhoV_fz, B_fz, Etot_fz);
-
-    evolve_(modelView.layouts, modelView.model().state, fluxes, fromCoarser, *level, currentTime,
+    evolve_(modelView.layouts, modelView.model().state, fluxes_, fromCoarser, *level, currentTime,
             newTime);
 }
 
