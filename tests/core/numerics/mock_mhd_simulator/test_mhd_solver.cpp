@@ -1,9 +1,9 @@
 #include "tests/core/data/mhd_state/init_functions.hpp"
 #include "gtest/gtest.h"
 
-#include "core/numerics/time_integrator/euler_integrator.hpp"
-#include "core/numerics/time_integrator/tvdrk2_integrator.hpp"
-#include "core/numerics/time_integrator/tvdrk3_integrator.hpp"
+#include "amr/solvers/time_integrator/euler_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk2_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk3_integrator.hpp"
 
 #include "core/numerics/reconstructions/constant.hpp"
 #include "core/numerics/reconstructions/linear.hpp"
@@ -97,6 +97,7 @@ PHARE::core::PHAREDict getDict()
 
 TEST(TestSolver, Advance)
 {
+    using namespace PHARE::solver;
     using namespace PHARE::core;
 
     static bool constexpr hall              = true;

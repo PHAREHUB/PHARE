@@ -3,20 +3,22 @@
 
 #include "initializer/data_provider.hpp"
 #include "amr/solvers/solver_mhd_model_view.hpp"
-#include "core/numerics/time_integrator/euler.hpp"
-#include "core/models/mhd_state.hpp"
-#include "core/numerics/time_integrator/time_integrator_utils.hpp"
+#include "amr/solvers/time_integrator/euler.hpp"
+#include "core/numerics/time_integrator_utils.hpp"
 
-namespace PHARE::core
+namespace PHARE::solver
 {
-template<template<typename> typename FVMethod, typename MHDModel>
+template<template<typename> typename FVMethodStrategy, typename MHDModel>
 class TVDRK3Integrator
 {
     using VecFieldT = typename MHDModel::vecfield_type;
     using MHDStateT = typename MHDModel::state_type;
 
-    using ModelView_t = solver::MHDModelView<MHDModel>;
-    using RKUtils_t   = ModelView_t::RKUtils_t;
+    using Layout        = typename MHDModel::gridlayout_type;
+    using Dispatchers_t = Dispatchers<Layout>;
+    using RKUtils_t     = Dispatchers_t::RKUtils_t;
+
+    using RKPair_t = core::RKPair<typename VecFieldT::value_type, MHDStateT>;
 
 public:
     TVDRK3Integrator(PHARE::initializer::PHAREDict const& dict)
@@ -36,13 +38,13 @@ public:
         euler_(layouts, state1_, state1_, fluxes, bc, level, currentTime, newTime);
 
         // U2 = 0.75*Un + 0.25*U1
-        tvdrk3_step_(layouts, state2_, std::make_pair(w00_, state), std::make_pair(w01_, state1_));
+        tvdrk3_step_(layouts, state2_, RKPair_t{w00_, state}, RKPair_t{w01_, state1_});
 
         // U2 = Euler(U2)
         euler_(layouts, state2_, state2_, fluxes, bc, level, currentTime, newTime);
 
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
-        tvdrk3_step_(layouts, state, std::make_pair(w10_, state), std::make_pair(w11_, state2_));
+        tvdrk3_step_(layouts, state, RKPair_t{w10_, state}, RKPair_t{w11_, state2_});
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
@@ -56,18 +58,18 @@ public:
     }
 
 private:
-    double const w00_{0.75};
-    double const w01_{0.25};
-    double const w10_{1. / 3.};
-    double const w11_{2. / 3.};
+    static constexpr auto w00_{0.75};
+    static constexpr auto w01_{0.25};
+    static constexpr auto w10_{1. / 3.};
+    static constexpr auto w11_{2. / 3.};
 
-    Euler<FVMethod, MHDModel> euler_;
+    Euler<FVMethodStrategy, MHDModel> euler_;
     RKUtils_t tvdrk3_step_;
 
     MHDStateT state1_{"state1"};
     MHDStateT state2_{"state2"};
 };
 
-} // namespace PHARE::core
+} // namespace PHARE::solver
 
 #endif

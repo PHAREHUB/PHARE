@@ -29,7 +29,7 @@ public:
     using field_type      = typename VecFieldT::field_type;
     using gridlayout_type = GridLayoutT;
 
-    static const inline std::string model_name = "MHDModel";
+    static inline std::string const model_name = "MHDModel";
     static constexpr auto dimension            = gridlayout_type::dimension;
     using resources_manager_type               = amr::ResourcesManager<gridlayout_type, Grid_t>;
 

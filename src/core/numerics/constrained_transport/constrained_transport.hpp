@@ -19,14 +19,14 @@ class ConstrainedTransport : public LayoutHolder<GridLayout>
     using LayoutHolder<GridLayout>::layout_;
 
 public:
-    template<typename VecField, typename... Fluxes>
-    void operator()(VecField& E, const Fluxes&... fluxes) const
+    template<typename VecField, typename Fluxes>
+    void operator()(VecField& E, Fluxes const& fluxes) const
     {
         if (!this->hasLayout())
             throw std::runtime_error(
                 "Error - ConstrainedTransport - GridLayout not set, cannot proceed to computation");
 
-        ConstrainedTransport_ref{*this->layout_}(E, fluxes...);
+        ConstrainedTransport_ref{*this->layout_}(E, fluxes);
     }
 };
 
@@ -41,18 +41,16 @@ public:
     {
     }
 
-    template<typename VecField, typename... Fluxes>
-    void operator()(VecField& E, const Fluxes&... fluxes) const
+    template<typename VecField, typename Fluxes>
+    void operator()(VecField& E, Fluxes const& fluxes) const
     {
         auto& Ex = E(Component::X);
         auto& Ey = E(Component::Y);
         auto& Ez = E(Component::Z);
 
-        auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
-        auto const& B_x  = std::get<2>(flux_tuple);
-        auto const& By_x = B_x(Component::Y);
-        auto const& Bz_x = B_x(Component::Z);
+        auto const& By_x = fluxes.B_fx(Component::Y);
+        auto const& Bz_x = fluxes.B_fx(Component::Z);
 
         if constexpr (dimension == 1)
         {
@@ -62,9 +60,8 @@ public:
         }
         else if constexpr (dimension >= 2)
         {
-            auto const& B_y  = std::get<6>(flux_tuple);
-            auto const& Bx_y = B_y(Component::X);
-            auto const& Bz_y = B_y(Component::Z);
+            auto const& Bx_y = fluxes.B_fy(Component::X);
+            auto const& Bz_y = fluxes.B_fy(Component::Z);
 
             if constexpr (dimension == 2)
             {
@@ -77,9 +74,8 @@ public:
             }
             else if constexpr (dimension == 3)
             {
-                auto const& B_z  = std::get<10>(flux_tuple);
-                auto const& Bx_z = B_z(Component::X);
-                auto const& By_z = B_z(Component::Y);
+                auto const& Bx_z = fluxes.B_fz(Component::X);
+                auto const& By_z = fluxes.B_fz(Component::Y);
 
                 layout_.evalOnBox(Ex,
                                   [&](auto&... args) mutable { ExEq_(Ex, {args...}, Bz_y, By_z); });
@@ -97,7 +93,7 @@ private:
     GridLayout layout_;
 
     template<typename Field, typename... Fluxes>
-    void ExEq_(Field& Ex, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
+    void ExEq_(Field& Ex, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
@@ -121,7 +117,7 @@ private:
     }
 
     template<typename Field, typename... Fluxes>
-    void EyEq_(Field& Ey, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
+    void EyEq_(Field& Ey, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
@@ -142,7 +138,7 @@ private:
     }
 
     template<typename Field, typename... Fluxes>
-    void EzEq_(Field& Ez, MeshIndex<Field::dimension> index, const Fluxes&... fluxes) const
+    void EzEq_(Field& Ez, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 

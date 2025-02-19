@@ -100,17 +100,13 @@ public:
     {
     }
 
-    template<typename State, typename... Fluxes>
-    void operator()(State& state, Fluxes&... fluxes) const
+    template<typename State, typename Fluxes>
+    void operator()(State& state, Fluxes& fluxes) const
     {
         if constexpr (Hall || Resistivity || HyperResistivity)
         {
             Ampere_ref{this->layout_}(state.B, state.J);
         }
-
-        auto const& f = std::forward_as_tuple(fluxes...);
-
-        AllFluxes<std::decay_t<decltype(std::get<0>(f))>> F{f};
 
         constexpr auto directions = getDirections<dimension>();
 
@@ -119,46 +115,33 @@ public:
         for_N<num_directions>([&](auto i) {
             constexpr Direction direction = std::get<i>(directions);
 
-            constexpr std::uint32_t correcty_centered_field_index
-                = 4 * static_cast<std::uint32_t>(direction);
-
-            static_assert((correcty_centered_field_index == 0)
-                              || (correcty_centered_field_index == 4)
-                              || (correcty_centered_field_index == 8),
-                          "Primal X, Y or Z");
-
-            layout_.evalOnBox(std::get<correcty_centered_field_index>(f), [&](auto&... indices) {
+            layout_.evalOnBox(fluxes.template expose_centering<direction>(), [&](auto&... indices) {
                 if constexpr (Hall || Resistivity || HyperResistivity)
                 {
                     auto&& [uL, uR]
                         = Reconstructor_t::template reconstruct<direction>(state, {indices...});
 
-                    auto const& [jxL, jyL, jzL, jxR, jyR, jzR]
-                        = Reconstructor_t::template center_reconstruct<direction>(
-                            state.J, GridLayout::edgeXToCellCenter(),
-                            GridLayout::edgeYToCellCenter(), GridLayout::edgeZToCellCenter(),
-                            {indices...});
+                    auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<direction>(
+                        state.J, GridLayout::edgeXToCellCenter(), GridLayout::edgeYToCellCenter(),
+                        GridLayout::edgeZToCellCenter(), {indices...});
 
                     auto&& u      = std::forward_as_tuple(uL, uR);
-                    auto const& j = std::make_tuple(std::forward_as_tuple(jxL, jyL, jzL),
-                                                    std::forward_as_tuple(jxR, jyR, jzR));
+                    auto const& j = std::forward_as_tuple(jL, jR);
 
                     if constexpr (HyperResistivity)
                     {
-                        auto const& [laplJxL, laplJyL, laplJzL, laplJxR, laplJyR, laplJzR]
+                        auto const& [laplJL, laplJR]
                             = Reconstructor_t::template reconstructed_laplacian<direction>(
                                 layout_.inverseMeshSize(), state.J, {indices...});
 
-                        auto const& LaplJ
-                            = std::make_tuple(std::forward_as_tuple(laplJxL, laplJyL, laplJzL),
-                                              std::forward_as_tuple(laplJxR, laplJyR, laplJzR));
+                        auto const& LaplJ = std::forward_as_tuple(laplJL, laplJR);
 
                         auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
                             return equations_.template compute<direction>(
                                 std::get<i>(u), std::get<i>(j), std::get<i>(LaplJ));
                         });
 
-                        F.template get_dir<direction>({indices...})
+                        fluxes.template get_dir<direction>({indices...})
                             = riemann_.template solve<direction>(uL, uR, fL, fR);
                     }
                     else
@@ -168,7 +151,7 @@ public:
                                                                           std::get<i>(j));
                         });
 
-                        F.template get_dir<direction>({indices...})
+                        fluxes.template get_dir<direction>({indices...})
                             = riemann_.template solve<direction>(uL, uR, fL, fR);
                     }
                 }
@@ -183,7 +166,7 @@ public:
                         return equations_.template compute<direction>(std::get<i>(u));
                     });
 
-                    F.template get_dir<direction>({indices...})
+                    fluxes.template get_dir<direction>({indices...})
                         = riemann_.template solve<direction>(uL, uR, fL, fR);
                 }
             });

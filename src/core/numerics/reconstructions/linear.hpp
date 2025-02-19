@@ -45,20 +45,24 @@ public:
 private:
     static auto recons_linear_L_(auto ul, auto u, auto ur)
     {
-        auto Dil = (u - ul);
-        auto Dir = (ur - u);
-        auto Di  = SlopeLimiter::limit(Dil, Dir);
+        auto const Di = linear_slope_(ul, u, ur);
 
         return u + 0.5 * Di;
     }
 
     static auto recons_linear_R_(auto ul, auto u, auto ur)
     {
-        auto Dil = (u - ul);
-        auto Dir = (ur - u);
-        auto Di  = SlopeLimiter::limit(Dil, Dir);
+        auto const Di = linear_slope_(ul, u, ur);
 
         return u - 0.5 * Di;
+    }
+
+    static auto linear_slope_(auto ul, auto u, auto ur)
+    {
+        auto const Dil = (u - ul);
+        auto const Dir = (ur - u);
+
+        return SlopeLimiter::limit(Dil, Dir);
     }
 };
 

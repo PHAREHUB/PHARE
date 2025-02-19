@@ -5,21 +5,24 @@ from pyphare.mock_mhd_simulator.simulator import MHDMockSimulator
 
 
 def config():
+    cells = (128, 128)
+    dl = (1.0 / cells[0], 1.0 / cells[1])
+
     sim = s.Simulation(
         ndim=2,
-        order=2,
+        order=1,
         timestep=0.0014,
-        final_time=3,
-        cells=(128, 128),
-        dl=(1.0 / 128.0, 1.0 / 128.0),
+        final_time=0.0014,
+        cells=cells,
+        dl=dl,
         origin=(0.0, 0.0),
         eta=0.0,
         nu=0.0,
         gamma=5.0 / 3.0,
-        reconstruction="wenoz",
+        reconstruction="constant",
         limiter="",
         riemann="rusanov",
-        time_integrator="tvdrk3",
+        time_integrator="euler",
     )
 
     B0 = 1.0 / (np.sqrt(4.0 * np.pi))
@@ -54,7 +57,7 @@ def config():
 
 
 def main():
-    MHDMockSimulator(config()).run("orszag_tang.h5", dumpfrequency=80)
+    MHDMockSimulator(config()).run("orszag_tang.h5", dumpfrequency=1)
 
 
 if __name__ == "__main__":

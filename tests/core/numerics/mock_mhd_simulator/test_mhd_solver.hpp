@@ -1,15 +1,16 @@
 #ifndef PHARE_TESTS_CORE_NUMERICS_TEST_MHD_SOLVER_FIXTURES_HPP
 #define PHARE_TESTS_CORE_NUMERICS_TEST_MHD_SOLVER_FIXTURES_HPP
 
-#include <amr/physical_models/physical_model.hpp>
-#include <core/data/vecfield/vecfield.hpp>
-#include <core/data/vecfield/vecfield_component.hpp>
-#include <core/utilities/point/point.hpp>
 #include <cstddef>
 #include <cstdint>
-#include <initializer/data_provider.hpp>
 #include <string>
 #include <vector>
+
+#include "amr/physical_models/physical_model.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/point/point.hpp"
+#include "initializer/data_provider.hpp"
 
 #include "highfive/H5File.hpp"
 #include "highfive/H5DataSet.hpp"
@@ -26,8 +27,8 @@
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/data/grid/gridlayoutimplyee_mhd.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/numerics/time_integrator/tvdrk2_integrator.hpp"
-#include "core/numerics/time_integrator/tvdrk3_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk2_integrator.hpp"
+#include "amr/solvers/time_integrator/tvdrk3_integrator.hpp"
 #include "core/numerics/godunov_fluxes/godunov_fluxes.hpp"
 
 #include "tests/core/data/field/test_field_fixtures_mhd.hpp"
@@ -47,39 +48,9 @@ struct DummyModelViewConstructor
     using GridLayout_t = PHARE::core::GridLayout<YeeLayout_t>;
 
     DummyModelViewConstructor(GridLayout_t const& layout)
-        : rho_fx{"rho_fx", layout, MHDQuantity::Scalar::ScalarFlux_x}
-        , rhoV_fx{"rhoV_fx", layout, MHDQuantity::Vector::VecFlux_x}
-        , B_fx{"B_fx", layout, MHDQuantity::Vector::VecFlux_x}
-        , Etot_fx{"Etot_fx", layout, MHDQuantity::Scalar::ScalarFlux_x}
-
-        , rho_fy{"rho_fy", layout, MHDQuantity::Scalar::ScalarFlux_y}
-        , rhoV_fy{"rhoV_fy", layout, MHDQuantity::Vector::VecFlux_y}
-        , B_fy{"B_fy", layout, MHDQuantity::Vector::VecFlux_y}
-        , Etot_fy{"Etot_fy", layout, MHDQuantity::Scalar::ScalarFlux_y}
-
-        , rho_fz{"rho_fz", layout, MHDQuantity::Scalar::ScalarFlux_z}
-        , rhoV_fz{"rhoV_fz", layout, MHDQuantity::Vector::VecFlux_z}
-        , B_fz{"B_fz", layout, MHDQuantity::Vector::VecFlux_z}
-        , Etot_fz{"Etot_fz", layout, MHDQuantity::Scalar::ScalarFlux_z}
-
-        , layouts{layout}
+        : layouts{layout}
     {
     }
-
-    PHARE::core::UsableFieldMHD<dimension> rho_fx;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fx;
-    PHARE::core::UsableVecFieldMHD<dimension> B_fx;
-    PHARE::core::UsableFieldMHD<dimension> Etot_fx;
-
-    PHARE::core::UsableFieldMHD<dimension> rho_fy;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fy;
-    PHARE::core::UsableVecFieldMHD<dimension> B_fy;
-    PHARE::core::UsableFieldMHD<dimension> Etot_fy;
-
-    PHARE::core::UsableFieldMHD<dimension> rho_fz;
-    PHARE::core::UsableVecFieldMHD<dimension> rhoV_fz;
-    PHARE::core::UsableVecFieldMHD<dimension> B_fz;
-    PHARE::core::UsableFieldMHD<dimension> Etot_fz;
 
     GridLayout_t layouts;
 };
@@ -190,7 +161,7 @@ class DummyMessenger : public PHARE::amr::IMessenger<PHARE::solver::IPhysicalMod
     {
     }
 
-    void registerLevel(const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
+    void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                        int level) override
     {
     }
@@ -207,7 +178,7 @@ class DummyMessenger : public PHARE::amr::IMessenger<PHARE::solver::IPhysicalMod
     }
 
     void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                   const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
+                   std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                    double const currentTime, double const prevCoarserTime,
                    double const newCoarserTime) override
     {
@@ -238,13 +209,13 @@ class DummyMessenger : public PHARE::amr::IMessenger<PHARE::solver::IPhysicalMod
     template<typename Field>
     void fillGhosts_(Field& F)
     {
-        auto centering = layout_.centering(F.physicalQuantity());
-        auto isDualX   = static_cast<std::uint32_t>(centering[0]);
+        auto const centering = layout_.centering(F.physicalQuantity());
+        auto const isDualX   = static_cast<std::uint32_t>(centering[0]);
 
-        auto phStartX = layout_.physicalStartIndex(F, Direction::X);
-        auto phEndX   = layout_.physicalEndIndex(F, Direction::X);
+        auto const phStartX = layout_.physicalStartIndex(F, Direction::X);
+        auto const phEndX   = layout_.physicalEndIndex(F, Direction::X);
 
-        auto nghost = layout_.nbrGhosts();
+        auto const nghost = layout_.nbrGhosts();
 
         if constexpr (dimension == 1)
         {
@@ -259,10 +230,10 @@ class DummyMessenger : public PHARE::amr::IMessenger<PHARE::solver::IPhysicalMod
             auto const [ix0, ix1] = layout_.physicalStartToEnd(F, Direction::X);
             auto const [iy0, iy1] = layout_.physicalStartToEnd(F, Direction::Y);
 
-            auto isDualY = static_cast<std::uint32_t>(centering[1]);
+            auto const isDualY = static_cast<std::uint32_t>(centering[1]);
 
-            auto phStartY = layout_.physicalStartIndex(F, Direction::Y);
-            auto phEndY   = layout_.physicalEndIndex(F, Direction::Y);
+            auto const phStartY = layout_.physicalStartIndex(F, Direction::Y);
+            auto const phEndY   = layout_.physicalEndIndex(F, Direction::Y);
 
             if constexpr (dimension == 2)
             {
@@ -303,10 +274,10 @@ class DummyMessenger : public PHARE::amr::IMessenger<PHARE::solver::IPhysicalMod
                 auto const [iy0, iy1] = layout_.physicalStartToEnd(F, Direction::Y);
                 auto const [iz0, iz1] = layout_.physicalStartToEnd(F, Direction::Z);
 
-                auto isDualZ = static_cast<std::uint32_t>(centering[2]);
+                auto const isDualZ = static_cast<std::uint32_t>(centering[2]);
 
-                auto phStartZ = layout_.physicalStartIndex(F, Direction::Z);
-                auto phEndZ   = layout_.physicalEndIndex(F, Direction::Z);
+                auto const phStartZ = layout_.physicalStartIndex(F, Direction::Z);
+                auto const phEndZ   = layout_.physicalEndIndex(F, Direction::Z);
 
                 for (auto g = 1u; g <= nghost; ++g)
                 {
@@ -450,7 +421,7 @@ public:
 };
 
 template<std::size_t dimension, std::size_t order, typename TimeIntegrator,
-         template<typename> typename FVMethod, typename MHDModel>
+         template<typename> typename FVMethodStrategy, typename MHDModel>
 class RessourceSetter
 {
 public:
@@ -481,38 +452,36 @@ public:
     template<typename Solver>
     void operator()(Solver& solver)
     {
-        auto&& [_rho_fx, _rhoV_fx, _B_fx, _Etot_fx, _rho_fy, _rhoV_fy, _B_fy, _Etot_fy, _rho_fz,
-                _rhoV_fz, _B_fz, _Etot_fz, _evolve]
-            = solver.getCompileTimeResourcesViewList();
+        auto&& [fluxes, evolve] = solver.getCompileTimeResourcesViewList();
 
-        rho_fx.set_on(_rho_fx);
-        rhoV_fx.set_on(_rhoV_fx);
-        B_fx.set_on(_B_fx);
-        Etot_fx.set_on(_Etot_fx);
+        rho_fx.set_on(fluxes.rho_fx);
+        rhoV_fx.set_on(fluxes.rhoV_fx);
+        B_fx.set_on(fluxes.B_fx);
+        Etot_fx.set_on(fluxes.Etot_fx);
 
-        rho_fy.set_on(_rho_fy);
-        rhoV_fy.set_on(_rhoV_fy);
-        B_fy.set_on(_B_fy);
-        Etot_fy.set_on(_Etot_fy);
+        rho_fy.set_on(fluxes.rho_fy);
+        rhoV_fy.set_on(fluxes.rhoV_fy);
+        B_fy.set_on(fluxes.B_fy);
+        Etot_fy.set_on(fluxes.Etot_fy);
 
-        rho_fz.set_on(_rho_fz);
-        rhoV_fz.set_on(_rhoV_fz);
-        B_fz.set_on(_B_fz);
-        Etot_fz.set_on(_Etot_fz);
+        rho_fz.set_on(fluxes.rho_fz);
+        rhoV_fz.set_on(fluxes.rhoV_fz);
+        B_fz.set_on(fluxes.B_fz);
+        Etot_fz.set_on(fluxes.Etot_fz);
 
 
         if constexpr (std::is_same_v<TimeIntegrator,
-                                     PHARE::core::TVDRK3Integrator<FVMethod, MHDModel>>)
+                                     PHARE::solver::TVDRK3Integrator<FVMethodStrategy, MHDModel>>)
         {
-            auto&& [s1, s2] = _evolve.getCompileTimeResourcesViewList();
+            auto&& [s1, s2] = evolve.getCompileTimeResourcesViewList();
 
             usablestate1.set_on(s1);
             usablestate2.set_on(s2);
         }
-        else if constexpr (std::is_same_v<TimeIntegrator,
-                                          PHARE::core::TVDRK2Integrator<FVMethod, MHDModel>>)
+        else if constexpr (std::is_same_v<TimeIntegrator, PHARE::solver::TVDRK2Integrator<
+                                                              FVMethodStrategy, MHDModel>>)
         {
-            auto&& [s1] = _evolve.getCompileTimeResourcesViewList();
+            auto&& [s1] = evolve.getCompileTimeResourcesViewList();
 
             usablestate1.set_on(s1);
         }
@@ -543,7 +512,7 @@ class H5writer
 public:
     template<typename Field, typename GridLayout>
     static void writeField(Field const& field, GridLayout const& layout, HighFive::File& h5file,
-                           const std::string& groupName, const std::string& fieldName)
+                           std::string const& groupName, std::string const& fieldName)
     {
         auto group
             = h5file.exist(groupName) ? h5file.getGroup(groupName) : h5file.createGroup(groupName);
@@ -597,7 +566,7 @@ public:
         ressource_setter_(TestMHDSolver_);
     }
 
-    void advance(const std::string& filename, const int dumpfrequency)
+    void advance(std::string const& filename, int const dumpfrequency)
     {
         HighFive::File h5file(filename, HighFive::File::Overwrite);
 
@@ -779,27 +748,32 @@ private:
     using Reconstruction_t = Reconstruction<Layout, SlopeLimiter>;
 
     template<typename Layout>
-    using FVMethod_t = PHARE::core::Godunov<Layout, Reconstruction_t, RiemannSolver_t, Equations_t>;
+    using FVMethodStrategy
+        = PHARE::core::Godunov<Layout, Reconstruction_t, RiemannSolver_t, Equations_t>;
 
-    using TimeIntegrator_t = TimeIntegrator<FVMethod_t, Model_t>;
+    using TimeIntegrator_t = TimeIntegrator<FVMethodStrategy, Model_t>;
 
     using RessourceSetter_t
-        = RessourceSetter<dimension, order, TimeIntegrator_t, FVMethod_t, Model_t>;
+        = RessourceSetter<dimension, order, TimeIntegrator_t, FVMethodStrategy, Model_t>;
 
     using ToConservativeConverter_t
-        = PHARE::solver::MHDModelView<Model_t>::ToConservativeConverter_t;
+        = PHARE::solver::Dispatchers<GridLayout_t>::ToConservativeConverter_t;
 
-    using ToPrimitiveConverter_t = PHARE::solver::MHDModelView<Model_t>::ToPrimitiveConverter_t;
+    using ToPrimitiveConverter_t = PHARE::solver::Dispatchers<GridLayout_t>::ToPrimitiveConverter_t;
 
     double dt_;
     double final_time_;
 
     GridLayout_t layout_;
     Model_t model_;
+
+
     ModelViewConstructor_t dummy_view_construct_;
     ModelView_t dummy_view_;
     DummyHierarchy dummy_hierachy_;
     Messenger_t dummy_messenger_;
+
+
     PHARE::solver::SolverMHD<Model_t, DummyTypes, TimeIntegrator_t, Messenger_t, ModelView_t>
         TestMHDSolver_;
     RessourceSetter_t ressource_setter_;
