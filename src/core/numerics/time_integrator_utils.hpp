@@ -7,6 +7,13 @@
 
 namespace PHARE::core
 {
+template<typename Float, typename State>
+struct RKPair
+{
+    Float weight;
+    State state;
+};
+
 template<typename GridLayout>
 class RKUtils : public LayoutHolder<GridLayout>
 {
@@ -15,13 +22,13 @@ class RKUtils : public LayoutHolder<GridLayout>
 
 public:
     template<typename ReturnState, typename... Pairs>
-    void operator()(ReturnState& res, const Pairs... pairs) const
+    void operator()(ReturnState& res, Pairs const... pairs) const
     {
         auto result_fields = getFieldTuples_(res);
 
-        auto weight_tuple = std::make_tuple(std::get<0>(pairs)...);
+        auto weight_tuple = std::make_tuple(pairs.weight...);
 
-        auto state_field_tuples = std::make_tuple(getFieldTuples_(std::get<1>(pairs))...);
+        auto state_field_tuples = std::make_tuple(getFieldTuples_(pairs.state)...);
 
         constexpr auto num_fields = std::tuple_size_v<std::decay_t<decltype(result_fields)>>;
 
@@ -42,7 +49,7 @@ private:
     }
 
     template<typename ReturnState, typename WeightsTuple, typename StatesTuple, typename IndexType>
-    static void RKstep_(ReturnState& res, const WeightsTuple& weights, const StatesTuple& states,
+    static void RKstep_(ReturnState& res, WeightsTuple const& weights, StatesTuple const& states,
                         IndexType field_index, MeshIndex<dimension> index)
     {
         auto sum = 0.0;

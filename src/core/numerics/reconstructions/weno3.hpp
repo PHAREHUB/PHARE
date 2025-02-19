@@ -44,40 +44,38 @@ public:
 private:
     static auto recons_weno3_L_(auto ul, auto u, auto ur)
     {
-        double eps = 1.e-6;
+        static constexpr auto dL0 = 1. / 3.;
+        static constexpr auto dL1 = 2. / 3.;
 
-        double dL0 = 1. / 3.;
-        double dL1 = 2. / 3.;
-
-        auto beta0 = (u - ul) * (u - ul);
-        auto beta1 = (ur - u) * (ur - u);
-
-        auto alphaL0 = dL0 / ((beta0 + eps) * (beta0 + eps));
-        auto alphaL1 = dL1 / ((beta1 + eps) * (beta1 + eps));
-
-        auto wL0 = alphaL0 / (alphaL0 + alphaL1);
-        auto wL1 = alphaL1 / (alphaL0 + alphaL1);
+        auto const [wL0, wL1] = compute_weno3_weights(ul, u, ur, dL0, dL1);
 
         return wL0 * (-0.5 * ul + 1.5 * u) + wL1 * (0.5 * u + 0.5 * ur);
     }
 
     static auto recons_weno3_R_(auto ul, auto u, auto ur)
     {
-        double eps = 1.e-6;
+        static constexpr auto dR0 = 2. / 3.;
+        static constexpr auto dR1 = 1. / 3.;
 
-        double dR0 = 2. / 3.;
-        double dR1 = 1. / 3.;
-
-        auto beta1 = (u - ul) * (u - ul);
-        auto beta2 = (ur - u) * (ur - u);
-
-        auto alphaR0 = dR0 / ((beta1 + eps) * (beta1 + eps));
-        auto alphaR1 = dR1 / ((beta2 + eps) * (beta2 + eps));
-
-        auto wR0 = alphaR0 / (alphaR0 + alphaR1);
-        auto wR1 = alphaR1 / (alphaR0 + alphaR1);
+        auto const [wR0, wR1] = compute_weno3_weights(ul, u, ur, dR0, dR1);
 
         return wR0 * (0.5 * u + 0.5 * ul) + wR1 * (-0.5 * ur + 1.5 * u);
+    }
+
+    static auto compute_weno3_weights(auto const ul, auto const u, auto const ur, auto const d0,
+                                      auto const d1)
+    {
+        static constexpr auto eps = 1.e-6;
+
+        auto const beta0 = (u - ul) * (u - ul);
+        auto const beta1 = (ur - u) * (ur - u);
+
+        auto const alpha0 = d0 / ((beta0 + eps) * (beta0 + eps));
+        auto const alpha1 = d1 / ((beta1 + eps) * (beta1 + eps));
+
+        auto const sum_alpha = alpha0 + alpha1;
+
+        return std::make_tuple(alpha0 / sum_alpha, alpha1 / sum_alpha);
     }
 };
 

@@ -65,6 +65,14 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/conservation)
   add_subdirectory(tests/functional/harris)
 
+  add_subdirectory(tests/functional/mhd_alfven2d)
+  add_subdirectory(tests/functional/mhd_convergence)
+  add_subdirectory(tests/functional/mhd_dispersion)
+  add_subdirectory(tests/functional/mhd_harris)
+  add_subdirectory(tests/functional/mhd_orszagtang)
+  add_subdirectory(tests/functional/mhd_rotor)
+  add_subdirectory(tests/functional/mhd_shock)
+
   add_subdirectory(pyphare/pyphare_tests/test_pharesee/)
   add_subdirectory(pyphare/pyphare_tests/pharein/)
   add_subdirectory(pyphare/pyphare_tests/test_core/)
