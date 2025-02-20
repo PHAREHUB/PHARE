@@ -28,14 +28,14 @@ jobs:
 
     - name: CCache
       id: cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.ccache
         key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
         restore-keys: ${{ runner.os }}-ccache-
 
     - name: Cache PIP (OSX)
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/Library/Caches/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
