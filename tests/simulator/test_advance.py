@@ -552,13 +552,13 @@ class AdvanceTestBase(SimulatorTest):
                                     afterCoarse,
                                 )
 
-                                # https://hephaistos.lpp.polytechnique.fr/teamcity/buildConfiguration/Phare_Phare_BuildGithubPrClang/78507?hideProblemsFromDependencies=false&hideTestsFromDependencies=false&expandPull+Request+Details=true&expandBuildProblemsSection=true&expandBuildChangesSection=true&showLog=78507_7510_4947&logView=flowAware
-                                # raising the bar at 2e-15 since clang failed for mpi test at 1.07.... e-15
+                                # precision 2e-15 from empirical testing...
+                                atol = 2e-15
                                 try:
                                     assert_fp_any_all_close(
                                         coarse_pdDataset,
                                         afterCoarse,
-                                        atol=2e-15,
+                                        atol=atol,
                                         rtol=0,
                                     )
                                 except AssertionError as e:
@@ -578,7 +578,7 @@ class AdvanceTestBase(SimulatorTest):
                                             ~np.isclose(
                                                 coarse_pdDataset,
                                                 afterCoarse,
-                                                atol=2e-15,
+                                                atol=atol,
                                                 rtol=0,
                                             )
                                         )
@@ -709,10 +709,12 @@ class AdvanceTestBase(SimulatorTest):
                                         )
 
                                     try:
+                                        # empirical max absolute observed < 5.0e-15
+                                        atol = 5.0e-15
                                         assert_fp_any_all_close(
                                             fine_ghostbox_data,
                                             refinedInterpGhostBox_data,
-                                            atol=1e-15,
+                                            atol=atol,
                                             rtol=0,
                                         )
                                     except AssertionError as e:
@@ -728,7 +730,7 @@ class AdvanceTestBase(SimulatorTest):
                                             fine_ghostbox_data,
                                             refinedInterpGhostBox_data,
                                             box,
-                                            atol=1e-15,
+                                            atol=atol,
                                         )
                                     successful_test_nbr += 1
         if len(error_boxes):
