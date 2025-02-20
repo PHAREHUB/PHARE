@@ -3,6 +3,7 @@ import unittest
 from datetime import datetime
 import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
+from pyphare.core.box import Box
 
 
 def parse_cli_args(pop_from_sys=True):
