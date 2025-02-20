@@ -100,17 +100,21 @@ class AdvanceTest(AdvanceTestBase):
         )
 
     # @unittest.skip("should change to work on moments")
-    # @data( # only supports a hierarchy with 2 levels
-    #    *per_interp(({"L0": [Box3D(0, 4)]})),
-    #    *per_interp(({"L0": [Box3D(10, 14)]})),
-    #    *per_interp(({"L0": [Box3D(0, 4), Box3D(10, 14)]})),
-    #    *per_interp(({"L0": [Box3D(0, 4), Box3D(5, 9), Box3D(10, 14)]})),
-    #    *per_interp(({"L0": [Box3D(20, 24)]})),
-    # )
-    # @unpack
-    # def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(self, interp_order, refinement_boxes):
-    #     print(f"{self._testMethodName}_{ndim}d")
-    #     self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(ndim, interp_order, refinement_boxes)
+    @data(  # only supports a hierarchy with 2 levels
+        *per_interp(({"L0": [Box3D(0, 4)]})),
+        *per_interp(({"L0": [Box3D(10, 14)]})),
+        *per_interp(({"L0": [Box3D(0, 4), Box3D(10, 14)]})),
+        *per_interp(({"L0": [Box3D(0, 4), Box3D(5, 9), Box3D(10, 14)]})),
+        *per_interp(({"L0": [Box3D(20, 24)]})),
+    )
+    @unpack
+    def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(
+        self, interp_order, refinement_boxes
+    ):
+        print(f"{self._testMethodName}_{ndim}d")
+        self._test_field_level_ghosts_via_subcycles_and_coarser_interpolation(
+            ndim, interp_order, refinement_boxes
+        )
 
 
 if __name__ == "__main__":
