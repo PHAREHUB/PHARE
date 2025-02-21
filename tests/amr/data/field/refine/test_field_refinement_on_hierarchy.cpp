@@ -1,14 +1,19 @@
 #include "test_field_refinement_on_hierarchy.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
-#include "core/data/field/field.hpp"
-#include "amr/data/field/field_geometry.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
+#include "core/data/grid/grid.hpp"
+
+
+
+/**
+ * In this test, we check the linear property of the DEFAULT field refinement operator
+ * Note this operator is used on all fields, including electric and magnetic fields
+ * which, in production, use special operators.
+ */
+
 
 
 
