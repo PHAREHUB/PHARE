@@ -419,7 +419,7 @@ class AdvanceTestBase(SimulatorTest):
 
         from pyphare.pharein import global_vars
 
-        from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
+        from .utilities.field_coarsening import coarsen
 
         time_step_nbr = 3
 

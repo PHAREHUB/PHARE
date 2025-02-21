@@ -1,11 +1,9 @@
-
 #include "core/def/phare_mpi.hpp"
 
 #include "amr/data/particles/particles_data.hpp"
 #include "amr/data/particles/particles_variable.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"
 #include "amr/data/particles/refine/split.hpp"
-#include "test_particledata_refine_basic_hierarchy.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
