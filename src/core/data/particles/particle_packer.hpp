@@ -14,6 +14,8 @@ namespace PHARE::core
 template<std::size_t dim>
 class ParticlePacker
 {
+    constexpr static Particle<dim> default_particle{};
+
 public:
     static constexpr std::size_t n_keys = 5;
 
@@ -28,11 +30,7 @@ public:
                                      particle.delta, particle.v);
     }
 
-    static auto empty()
-    {
-        Particle<dim> particle{};
-        return get(particle);
-    }
+    static constexpr auto empty() { return get(default_particle); }
 
     // sometimes we use this to infer the size of an ParticleArray
     // could be "charge" either
@@ -65,7 +63,7 @@ public:
 private:
     ParticleArray<dim> const& particles_;
     std::size_t it_ = 0;
-    static inline const std::array<std::string, n_keys> keys_{"weight", "charge", "iCell", "delta",
+    static inline std::array<std::string, n_keys> const keys_{"weight", "charge", "iCell", "delta",
                                                               "v"};
 };
 
