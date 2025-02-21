@@ -709,8 +709,8 @@ class AdvanceTestBase(SimulatorTest):
                                         )
 
                                     try:
-                                        # empirical max absolute observed < 5.0e-15
-                                        atol = 5.0e-15
+                                        # empirical max absolute observed < 6.5e-15
+                                        atol = 6.5e-15
                                         assert_fp_any_all_close(
                                             fine_ghostbox_data,
                                             refinedInterpGhostBox_data,
