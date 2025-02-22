@@ -25,9 +25,9 @@ TEST(test_tagger, fromFactoryValid)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"HybridModel"};
-    dict["method"]  = std::string{"default"};
-    dict["threshold"]  = 0.2;
+    dict["model"]     = std::string{"HybridModel"};
+    dict["method"]    = std::string{"default"};
+    dict["threshold"] = 0.2;
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
 }
@@ -36,23 +36,23 @@ TEST(test_tagger, fromFactoryInvalid)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"invalidModel"};
-    dict["method"]  = std::string{"invalidStrat"};
+    dict["model"]     = std::string{"invalidModel"};
+    dict["method"]    = std::string{"invalidStrat"};
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
-    auto badTagger = TaggerFactory<phare_types>::make(dict);
+    auto badTagger    = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(badTagger == nullptr);
 }
 
 
-using Param   = std::vector<double>;
-using RetType = std::shared_ptr<PHARE::core::Span<double>>;
+using Param   = std::vector<floater_t<4>>;
+using RetType = std::shared_ptr<PHARE::core::Span<floater_t<4>>>;
 
 RetType step1(Param const& x)
 {
-    std::vector<double> values(x.size());
+    std::vector<floater_t<4>> values(x.size());
     std::transform(std::begin(x), std::end(x), std::begin(values),
-                   [](auto xx) { return std::tanh((xx - 0.52) / 0.05); });
-    return std::make_shared<PHARE::core::VectorSpan<double>>(std::move(values));
+                   [](auto xx) { return std::tanh((xx - 0.52f) / 0.05f); });
+    return std::make_shared<PHARE::core::VectorSpan<floater_t<4>>>(std::move(values));
 }
 
 RetType step2(Param const& x, Param const& y)

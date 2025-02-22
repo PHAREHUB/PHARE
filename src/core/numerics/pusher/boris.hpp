@@ -1,17 +1,17 @@
 #ifndef PHARE_CORE_PUSHER_BORIS_HPP
 #define PHARE_CORE_PUSHER_BORIS_HPP
 
+#include "core/errors.hpp"
+#include "core/logger.hpp"
+#include "core/numerics/pusher/pusher.hpp"
+
+
 #include <array>
 #include <cmath>
 #include <cstddef>
-#include <algorithm>
 #include <iterator>
-#include <stdexcept>
-#include "core/numerics/pusher/pusher.hpp"
-#include "core/utilities/range/range.hpp"
-#include "core/errors.hpp"
-#include "core/logger.hpp"
-#include "core/data/particles/particle.hpp"
+#include <algorithm>
+
 
 namespace PHARE::core
 {
@@ -35,7 +35,7 @@ public:
     /** see Pusher::move() documentation*/
 #if 0
     ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
-                       Electromag const& emFields, double mass, Interpolator& interpolator,
+                       Electromag const& emFields, floater_t<4> mass, Interpolator& interpolator,
                        ParticleSelector const& particleIsNotLeaving, BoundaryCondition& bc,
                        GridLayout const& layout) override
     {
@@ -77,7 +77,7 @@ public:
 
 
     ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
-                       Electromag const& emFields, double mass, Interpolator& interpolator,
+                       Electromag const& emFields, floater_t<4> mass, Interpolator& interpolator,
                        GridLayout const& layout, ParticleSelector firstSelector,
                        ParticleSelector secondSelector) override
     {
@@ -92,7 +92,7 @@ public:
         rangeOut = firstSelector(rangeOut);
 
 
-        double const dto2m = 0.5 * dt_ / mass;
+        floater_t<4> const dto2m = 0.5f * dt_ / mass;
         for (auto idx = rangeOut.ibegin(); idx < rangeOut.iend(); ++idx)
         {
             auto& currPart = rangeOut.array()[idx];
@@ -112,10 +112,11 @@ public:
 
 
     /** see Pusher::move() documentation*/
-    void setMeshAndTimeStep(std::array<double, dim> ms, double const ts) override
+    void setMeshAndTimeStep(std::array<floater_t<4>, dim> const ms, floater_t<4> const ts) override
     {
+        floater_t<4> constexpr static p5 = .5;
         std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
-                       [ts](double& x) { return 0.5 * ts / x; });
+                       [ts](auto& x) { return p5 * ts / x; });
         dt_ = ts;
     }
 
@@ -127,13 +128,14 @@ private:
     template<typename Particle>
     auto advancePosition_(Particle const& partIn, Particle& partOut)
     {
+        using Float_t = floater_t<0>;
+
         std::array<int, dim> newCell;
         for (std::size_t iDim = 0; iDim < dim; ++iDim)
         {
-            double delta
-                = partIn.delta[iDim] + static_cast<double>(halfDtOverDl_[iDim] * partIn.v[iDim]);
+            Float_t delta = partIn.delta[iDim] + halfDtOverDl_[iDim] * Float_t(partIn.v[iDim]);
 
-            double iCell = std::floor(delta);
+            Float_t iCell = std::floor(delta);
             if (std::abs(delta) > 2)
             {
                 PHARE_LOG_ERROR("Error, particle moves more than 1 cell, delta >2");
@@ -190,55 +192,55 @@ private:
     /** Accelerate the particles in rangeIn and put the new velocity in rangeOut
      */
     template<typename Particle_t, typename ParticleEB>
-    void accelerate_(Particle_t& part, ParticleEB const& particleEB, double const& dto2m)
+    void accelerate_(Particle_t& part, ParticleEB const& particleEB, floater_t<4> const& dto2m)
     {
         auto& [pE, pB]        = particleEB;
         auto& [pEx, pEy, pEz] = pE;
         auto& [pBx, pBy, pBz] = pB;
 
 
-        double const coef1 = part.charge * dto2m;
+        floater_t<4> const coef1 = part.charge * dto2m;
 
         // We now apply the 3 steps of the BORIS PUSHER
 
         // 1st half push of the electric field
-        double velx1 = part.v[0] + coef1 * pEx;
-        double vely1 = part.v[1] + coef1 * pEy;
-        double velz1 = part.v[2] + coef1 * pEz;
+        floater_t<4> velx1 = part.v[0] + coef1 * pEx;
+        floater_t<4> vely1 = part.v[1] + coef1 * pEy;
+        floater_t<4> velz1 = part.v[2] + coef1 * pEz;
 
 
         // preparing variables for magnetic rotation
-        double const rx = coef1 * pBx;
-        double const ry = coef1 * pBy;
-        double const rz = coef1 * pBz;
+        floater_t<4> const rx = coef1 * pBx;
+        floater_t<4> const ry = coef1 * pBy;
+        floater_t<4> const rz = coef1 * pBz;
 
-        double const rx2  = rx * rx;
-        double const ry2  = ry * ry;
-        double const rz2  = rz * rz;
-        double const rxry = rx * ry;
-        double const rxrz = rx * rz;
-        double const ryrz = ry * rz;
+        floater_t<4> const rx2  = rx * rx;
+        floater_t<4> const ry2  = ry * ry;
+        floater_t<4> const rz2  = rz * rz;
+        floater_t<4> const rxry = rx * ry;
+        floater_t<4> const rxrz = rx * rz;
+        floater_t<4> const ryrz = ry * rz;
 
-        double const invDet = 1. / (1. + rx2 + ry2 + rz2);
+        floater_t<4> const invDet = 1.f / (1.f + rx2 + ry2 + rz2);
 
         // preparing rotation matrix due to the magnetic field
         // m = invDet*(I + r*r - r x I) - I where x denotes the cross product
-        double const mxx = 1. + rx2 - ry2 - rz2;
-        double const mxy = 2. * (rxry + rz);
-        double const mxz = 2. * (rxrz - ry);
+        floater_t<4> const mxx = 1.f + rx2 - ry2 - rz2;
+        floater_t<4> const mxy = 2.f * (rxry + rz);
+        floater_t<4> const mxz = 2.f * (rxrz - ry);
 
-        double const myx = 2. * (rxry - rz);
-        double const myy = 1. + ry2 - rx2 - rz2;
-        double const myz = 2. * (ryrz + rx);
+        floater_t<4> const myx = 2.f * (rxry - rz);
+        floater_t<4> const myy = 1.f + ry2 - rx2 - rz2;
+        floater_t<4> const myz = 2.f * (ryrz + rx);
 
-        double const mzx = 2. * (rxrz + ry);
-        double const mzy = 2. * (ryrz - rx);
-        double const mzz = 1. + rz2 - rx2 - ry2;
+        floater_t<4> const mzx = 2.f * (rxrz + ry);
+        floater_t<4> const mzy = 2.f * (ryrz - rx);
+        floater_t<4> const mzz = 1.f + rz2 - rx2 - ry2;
 
         // magnetic rotation
-        double const velx2 = (mxx * velx1 + mxy * vely1 + mxz * velz1) * invDet;
-        double const vely2 = (myx * velx1 + myy * vely1 + myz * velz1) * invDet;
-        double const velz2 = (mzx * velx1 + mzy * vely1 + mzz * velz1) * invDet;
+        floater_t<4> const velx2 = (mxx * velx1 + mxy * vely1 + mxz * velz1) * invDet;
+        floater_t<4> const vely2 = (myx * velx1 + myy * vely1 + myz * velz1) * invDet;
+        floater_t<4> const velz2 = (mzx * velx1 + mzy * vely1 + mzz * velz1) * invDet;
 
 
         // 2nd half push of the electric field
@@ -255,8 +257,8 @@ private:
 
 
 
-    std::array<double, dim> halfDtOverDl_;
-    double dt_;
+    std::array<floater_t<0>, dim> halfDtOverDl_;
+    floater_t<4> dt_;
 };
 
 } // namespace PHARE::core

@@ -21,9 +21,9 @@
 #include "pybind11/functional.h"
 
 #include "python3/particles.hpp"
-#include "python3/patch_data.hpp"
-#include "python3/patch_level.hpp"
-#include "python3/data_wrangler.hpp"
+// #include "python3/patch_data.hpp"
+// #include "python3/patch_level.hpp"
+// #include "python3/data_wrangler.hpp"
 
 
 
@@ -31,18 +31,18 @@ namespace py = pybind11;
 
 namespace PHARE::pydata
 {
-template<typename Type, std::size_t dimension>
-void declarePatchData(py::module& m, std::string key)
-{
-    using PatchDataType = PatchData<Type, dimension>;
-    py::class_<PatchDataType>(m, key.c_str())
-        .def_readonly("patchID", &PatchDataType::patchID)
-        .def_readonly("origin", &PatchDataType::origin)
-        .def_readonly("lower", &PatchDataType::lower)
-        .def_readonly("upper", &PatchDataType::upper)
-        .def_readonly("nGhosts", &PatchDataType::nGhosts)
-        .def_readonly("data", &PatchDataType::data);
-}
+// template<typename Type, std::size_t dimension>
+// void declarePatchData(py::module& m, std::string key)
+// {
+//     using PatchDataType = PatchData<Type, dimension>;
+//     py::class_<PatchDataType>(m, key.c_str())
+//         .def_readonly("patchID", &PatchDataType::patchID)
+//         .def_readonly("origin", &PatchDataType::origin)
+//         .def_readonly("lower", &PatchDataType::lower)
+//         .def_readonly("upper", &PatchDataType::upper)
+//         .def_readonly("nGhosts", &PatchDataType::nGhosts)
+//         .def_readonly("data", &PatchDataType::data);
+// }
 
 template<std::size_t dim>
 void declareDim(py::module& m)
@@ -58,8 +58,8 @@ void declareDim(py::module& m)
         .def_readwrite("v", &CP::v)
         .def("size", &CP::size);
 
-    name = "PatchData" + name;
-    declarePatchData<CP, dim>(m, name.c_str());
+    // name = "PatchData" + name;
+    // declarePatchData<CP, dim>(m, name.c_str());
 }
 
 template<typename Simulator, typename PyClass>
@@ -87,40 +87,41 @@ void declare_etc(py::module& m)
     std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
                               + std::to_string(nbRefinedPart);
 
-    using Sim        = Simulator<dim, interp, nbRefinedPart>;
-    using DW         = DataWrangler<dim, interp, nbRefinedPart>;
-    std::string name = "DataWrangler" + type_string;
-    py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
-        .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def("sync_merge", &DW::sync_merge)
-        .def("getPatchLevel", &DW::getPatchLevel)
-        .def("getNumberOfLevels", &DW::getNumberOfLevels);
+    // using Sim = Simulator<dim, interp, nbRefinedPart>;
 
-    using PL = PatchLevel<dim, interp, nbRefinedPart>;
-    name     = "PatchLevel_" + type_string;
+    std::string name;
 
-    py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
-        .def("getEM", &PL::getEM)
-        .def("getE", &PL::getE)
-        .def("getB", &PL::getB)
-        .def("getBx", &PL::getBx)
-        .def("getBy", &PL::getBy)
-        .def("getBz", &PL::getBz)
-        .def("getEx", &PL::getEx)
-        .def("getEy", &PL::getEy)
-        .def("getEz", &PL::getEz)
-        .def("getVix", &PL::getVix)
-        .def("getViy", &PL::getViy)
-        .def("getViz", &PL::getViz)
-        .def("getDensity", &PL::getDensity)
-        .def("getBulkVelocity", &PL::getBulkVelocity)
-        .def("getPopDensities", &PL::getPopDensities)
-        .def("getPopFluxes", &PL::getPopFlux)
-        .def("getFx", &PL::getFx)
-        .def("getFy", &PL::getFy)
-        .def("getFz", &PL::getFz)
-        .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
+    // using DW         = DataWrangler<dim, interp, nbRefinedPart>;
+    // py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
+    //     .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
+    //     .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy>
+    //     const&>()) .def("sync_merge", &DW::sync_merge) .def("getPatchLevel", &DW::getPatchLevel)
+    //     .def("getNumberOfLevels", &DW::getNumberOfLevels);
+
+    // using PL = PatchLevel<dim, interp, nbRefinedPart>;
+    // name     = "PatchLevel_" + type_string;
+
+    // py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
+    //     .def("getEM", &PL::getEM)
+    //     .def("getE", &PL::getE)
+    //     .def("getB", &PL::getB)
+    //     .def("getBx", &PL::getBx)
+    //     .def("getBy", &PL::getBy)
+    //     .def("getBz", &PL::getBz)
+    //     .def("getEx", &PL::getEx)
+    //     .def("getEy", &PL::getEy)
+    //     .def("getEz", &PL::getEz)
+    //     .def("getVix", &PL::getVix)
+    //     .def("getViy", &PL::getViy)
+    //     .def("getViz", &PL::getViz)
+    //     .def("getDensity", &PL::getDensity)
+    //     .def("getBulkVelocity", &PL::getBulkVelocity)
+    //     .def("getPopDensities", &PL::getPopDensities)
+    //     .def("getPopFluxes", &PL::getPopFlux)
+    //     .def("getFx", &PL::getFx)
+    //     .def("getFy", &PL::getFy)
+    //     .def("getFz", &PL::getFz)
+    //     .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
 
     using _Splitter
         = PHARE::amr::Splitter<_dim, _interp, core::RefinedParticlesConst<nbRefinedPart>>;

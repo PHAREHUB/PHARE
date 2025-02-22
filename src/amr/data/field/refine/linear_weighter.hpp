@@ -27,17 +27,20 @@ namespace amr
     class LinearWeighter
     {
     public:
-        using FineIndexWeight  = std::array<double, 2>;
+        using FineIndexWeight  = std::array<core::floater_t<0>, 2>;
         using FineIndexWeights = std::vector<FineIndexWeight>;
 
 
         LinearWeighter(core::QtyCentering centering, std::size_t ratio);
 
-        std::vector<double> const& getUniformDistances() const { return distFromLeftNode_; }
+        std::vector<core::floater_t<4>> const& getUniformDistances() const
+        {
+            return distFromLeftNode_;
+        }
         FineIndexWeights const& weights() const { return weights_; }
 
     private:
-        std::vector<double> distFromLeftNode_;
+        std::vector<core::floater_t<4>> distFromLeftNode_;
         FineIndexWeights weights_;
     };
 

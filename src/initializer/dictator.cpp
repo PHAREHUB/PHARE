@@ -49,12 +49,14 @@ PYBIND11_MODULE(dictator, m)
     m.def("add_int", add<int>, "add");
     m.def("add_vector_int", add<std::vector<int>>, "add");
     m.def("add_double", add<double>, "add");
+    m.def("add_double", add<float>, "add");
     m.def("add_string", add<std::string>, "add");
 
     m.def("addInitFunction1D", add<InitFunction<1>>, "add");
     m.def("addInitFunction2D", add<InitFunction<2>>, "add");
     m.def("addInitFunction3D", add<InitFunction<3>>, "add");
 
+    m.def("add_array_as_vector", add_array_as_vector<float>, "add_array_as_vector");
     m.def("add_array_as_vector", add_array_as_vector<double>, "add_array_as_vector");
 
     m.def("stop", []() { PHARE::initializer::PHAREDictHandler::INSTANCE().stop(); });

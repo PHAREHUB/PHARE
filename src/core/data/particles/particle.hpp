@@ -20,12 +20,15 @@ namespace PHARE::core
 template<typename T = float>
 struct ParticleDeltaDistribution
 {
+    T constexpr static one = 1;
+    T constexpr static zro = 0;
+
     template<typename Generator>
     NO_DISCARD T operator()(Generator& generator)
     {
         return dist(generator);
     }
-    std::uniform_real_distribution<T> dist{0, 1. - std::numeric_limits<T>::epsilon()};
+    std::uniform_real_distribution<T> dist{zro, one - std::numeric_limits<T>::epsilon()};
 };
 
 
@@ -42,8 +45,8 @@ struct Particle
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static const size_t dimension = dim;
 
-    Particle(double a_weight, double a_charge, std::array<int, dim> cell,
-             std::array<double, dim> a_delta, std::array<double, 3> a_v)
+    Particle(floater_t<3> a_weight, floater_t<2> a_charge, std::array<int, dim> cell,
+             std::array<floater_t<0>, dim> a_delta, std::array<floater_t<1>, 3> a_v)
         : weight{a_weight}
         , charge{a_charge}
         , iCell{cell}
@@ -54,12 +57,12 @@ struct Particle
 
     Particle() = default;
 
-    double weight = 0;
-    double charge = 0;
+    floater_t<3> weight = 0;
+    floater_t<2> charge = 0;
 
-    std::array<int, dim> iCell    = ConstArray<int, dim>();
-    std::array<double, dim> delta = ConstArray<double, dim>();
-    std::array<double, 3> v       = ConstArray<double, 3>();
+    std::array<int, dim> iCell          = ConstArray<int, dim>();
+    std::array<floater_t<0>, dim> delta = ConstArray<floater_t<0>, dim>();
+    std::array<floater_t<1>, 3> v       = ConstArray<floater_t<1>, 3>();
 
     NO_DISCARD bool operator==(Particle<dim> const& that) const
     {
@@ -104,11 +107,11 @@ struct ParticleView
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static constexpr std::size_t dimension = dim;
 
-    double& weight;
-    double& charge;
+    floater_t<3>& weight;
+    floater_t<2>& charge;
     std::array<int, dim>& iCell;
-    std::array<double, dim>& delta;
-    std::array<double, 3>& v;
+    std::array<floater_t<0>, dim>& delta;
+    std::array<floater_t<1>, 3>& v;
 };
 
 
@@ -121,9 +124,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-NO_DISCARD typename std::enable_if_t<
-    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
-    bool>
+NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
+                                         and is_phare_particle_type<dim, ParticleB<dim>>,
+                                     bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //

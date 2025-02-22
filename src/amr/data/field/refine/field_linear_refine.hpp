@@ -70,22 +70,22 @@ namespace amr
             auto coarseIndex{fineIndex};
 
             // here we perform the floating point division, and then we truncate to integer
-            coarseIndex[dirX]
-                = std::floor(static_cast<double>(fineIndex[dirX] + shifts_[dirX]) / ratio_(dirX)
-                             - shifts_[dirX]);
+            coarseIndex[dirX] = std::floor(
+                static_cast<core::floater_t<4>>(fineIndex[dirX] + shifts_[dirX]) / ratio_(dirX)
+                - shifts_[dirX]);
 
             if constexpr (dimension > 1)
             {
-                coarseIndex[dirY]
-                    = std::floor(static_cast<double>(fineIndex[dirY] + shifts_[dirY]) / ratio_(dirY)
-                                 - shifts_[dirY]);
+                coarseIndex[dirY] = std::floor(
+                    static_cast<core::floater_t<4>>(fineIndex[dirY] + shifts_[dirY]) / ratio_(dirY)
+                    - shifts_[dirY]);
             }
 
             if constexpr (dimension > 2)
             {
-                coarseIndex[dirZ]
-                    = std::floor(static_cast<double>(fineIndex[dirZ] + shifts_[dirZ]) / ratio_(dirZ)
-                                 - shifts_[dirZ]);
+                coarseIndex[dirZ] = std::floor(
+                    static_cast<core::floater_t<4>>(fineIndex[dirZ] + shifts_[dirZ]) / ratio_(dirZ)
+                    - shifts_[dirZ]);
             }
 
             return coarseIndex;
@@ -127,7 +127,7 @@ namespace amr
     private:
         SAMRAI::hier::IntVector const ratio_;
         std::array<LinearWeighter, dimension> weighters_;
-        core::Point<double, dimension> shifts_;
+        core::Point<core::floater_t<4>, dimension> shifts_;
     };
 
 } // namespace amr

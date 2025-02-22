@@ -289,7 +289,9 @@ class AdvanceTestBase(SimulatorTest):
                         # seems correct considering ghosts are filled with schedules
                         # involving linear/spatial interpolations and so on where
                         # rounding errors may occur.... setting atol to 5.5e-15
-                        assert_fp_any_all_close(slice1, slice2, atol=5.5e-15, rtol=0)
+                        assert_fp_any_all_close(
+                            slice1, slice2, atol=5.5e-15, atol_fp32=8e-07, rtol=0
+                        )
                         checks += 1
                     except AssertionError as e:
                         print("AssertionError", pd1.name, e)

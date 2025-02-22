@@ -155,7 +155,7 @@ public:
 
     IsothermalElectronPressureClosure(PHARE::initializer::PHAREDict const& dict, Ions const& ions)
         : ions_{ions}
-        , Te_{dict["Te"].template to<double>()}
+        , Te_{dict["Te"].template to<floater_t<4>>()}
         , Pe_{"Pe", HybridQuantity::Scalar::P}
     {
     }
@@ -218,7 +218,7 @@ public:
 
 private:
     Ions ions_;
-    double const Te_ = 0;
+    floater_t<4> const Te_ = 0;
     Field Pe_;
 };
 

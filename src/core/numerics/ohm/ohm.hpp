@@ -22,8 +22,8 @@ class Ohm : public LayoutHolder<GridLayout>
 
 public:
     explicit Ohm(PHARE::initializer::PHAREDict const& dict)
-        : eta_{dict["resistivity"].template to<double>()}
-        , nu_{dict["hyper_resistivity"].template to<double>()}
+        : eta_{dict["resistivity"].template to<floater_t<4>>()}
+        , nu_{dict["hyper_resistivity"].template to<floater_t<4>>()}
         , hyper_mode{cppdict::get_value(dict, "hyper_mode", std::string{"constant"}) == "constant"
                          ? HyperMode::constant
                          : HyperMode::spatial}
@@ -57,8 +57,8 @@ public:
 
 
 private:
-    double const eta_;
-    double const nu_;
+    floater_t<4> const eta_;
+    floater_t<4> const nu_;
     HyperMode const hyper_mode;
 
     template<typename VecField, typename Field>
@@ -87,7 +87,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal1D_(VecField const& Ve, VecField const& B, MeshIndex<1> index) const
+    floater_t<4> ideal1D_(VecField const& Ve, VecField const& B, MeshIndex<1> index) const
     {
         if constexpr (component == Component::X)
         {
@@ -250,7 +250,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
+    floater_t<4> ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
     {
         if constexpr (dimension == 1)
             return ideal1D_<component>(Ve, B, index);
@@ -360,17 +360,20 @@ private:
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        auto const lvlCoeff        = 1. / std::pow(4, layout_->levelNumber());
-        auto constexpr min_density = 0.1;
+        auto const lvlCoeff
+            = 1.f / static_cast<floater_t<4>>(std::pow(4.f, layout_->levelNumber()));
+        auto constexpr min_density = 0.1f;
 
         auto computeHR = [&](auto BxProj, auto ByProj, auto BzProj, auto nProj) {
-            auto const BxOnE = GridLayout::project(B(Component::X), index, BxProj);
-            auto const ByOnE = GridLayout::project(B(Component::Y), index, ByProj);
-            auto const BzOnE = GridLayout::project(B(Component::Z), index, BzProj);
-            auto const nOnE  = GridLayout::project(n, index, nProj);
-            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
-            return -nu_ * (b / (nOnE + min_density) + 1) * lvlCoeff
-                   * layout_->laplacian(J(component), index);
+            auto const BxOnE       = GridLayout::project(B(Component::X), index, BxProj);
+            auto const ByOnE       = GridLayout::project(B(Component::Y), index, ByProj);
+            auto const BzOnE       = GridLayout::project(B(Component::Z), index, BzProj);
+            auto const nOnE        = GridLayout::project(n, index, nProj);
+            floater_t<4> const b   = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
+            floater_t<4> const ret = -nu_ * (b / (nOnE + min_density) + 1) * lvlCoeff
+                                     * layout_->laplacian(J(component), index);
+            static_assert(std::is_same_v<std::decay_t<decltype(ret)>, floater_t<4>>);
+            return ret;
         };
 
         if constexpr (component == Component::X)

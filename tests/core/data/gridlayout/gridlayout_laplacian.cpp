@@ -32,13 +32,20 @@ TYPED_TEST(a1DLaplacian, LaplacianJx1D)
     for (auto ix = gsi_X; ix <= gei_X; ++ix)
     {
         auto point   = this->layout.fieldNodeCoordinates(this->Jx, Point{0.}, ix);
-        this->Jx(ix) = std::sinh(0.1 * point[0]);
+        this->Jx(ix) = std::sinh(0.1f * point[0]);
     }
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
         auto localLaplacian = this->layout.laplacian(this->Jx, make_index(ix));
-        EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
+        if constexpr (std::is_same_v<floater_t<4>, double>)
+        {
+            EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
+        }
+        else
+        {
+            EXPECT_THAT(localLaplacian, ::testing::FloatNear(expLapValue[ix], 1e-6));
+        }
     }
 }
 
@@ -60,13 +67,16 @@ TYPED_TEST(a1DLaplacian, LaplacianJy1D)
     for (auto ix = gsi_X; ix <= gei_X; ++ix)
     {
         auto point   = this->layout.fieldNodeCoordinates(this->Jy, Point{0.}, ix);
-        this->Jy(ix) = std::sinh(0.3 * point[0]);
+        this->Jy(ix) = std::sinh(0.3f * point[0]);
     }
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
         auto localLaplacian = this->layout.laplacian(this->Jy, make_index(ix));
-        EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
+        if constexpr (std::is_same_v<floater_t<4>, double>)
+        {
+            EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
+        }
     }
 }
 
@@ -88,13 +98,16 @@ TYPED_TEST(a1DLaplacian, LaplacianJz1D)
     for (auto ix = gsi_X; ix <= gei_X; ++ix)
     {
         auto point   = this->layout.fieldNodeCoordinates(this->Jz, Point{0.}, ix);
-        this->Jz(ix) = std::sinh(0.2 * point[0]);
+        this->Jz(ix) = std::sinh(0.2f * point[0]);
     }
 
     for (std::uint32_t ix = psi_X; ix <= pei_X; ++ix)
     {
         auto localLaplacian = this->layout.laplacian(this->Jz, make_index(ix));
-        EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
+        if constexpr (std::is_same_v<floater_t<4>, double>)
+        {
+            EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
+        }
     }
 }
 
@@ -132,7 +145,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJx2D)
         for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
         {
             auto point       = this->layout.fieldNodeCoordinates(this->Jx, Point{0., 0.}, ix, iy);
-            this->Jx(ix, iy) = std::sinh(0.1 * point[0]) * std::cosh(0.1 * point[1]);
+            this->Jx(ix, iy) = std::sinh(0.1f * point[0]) * std::cosh(0.1f * point[1]);
         }
     }
 
@@ -146,7 +159,10 @@ TYPED_TEST(a2DLaplacian, LaplacianJx2D)
 
             auto index_ = ix * nPts_[1] + iy;
 
-            EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+            }
         }
     }
 }
@@ -174,7 +190,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJy2D)
         for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
         {
             auto point       = this->layout.fieldNodeCoordinates(this->Jy, Point{0., 0.}, ix, iy);
-            this->Jy(ix, iy) = std::sinh(0.3 * point[0]) * std::cosh(0.3 * point[1]);
+            this->Jy(ix, iy) = std::sinh(0.3f * point[0]) * std::cosh(0.3f * point[1]);
         }
     }
 
@@ -188,7 +204,10 @@ TYPED_TEST(a2DLaplacian, LaplacianJy2D)
 
             auto index_ = ix * nPts_[1] + iy;
 
-            EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+            }
         }
     }
 }
@@ -216,7 +235,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJz2D)
         for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
         {
             auto point       = this->layout.fieldNodeCoordinates(this->Jz, Point{0., 0.}, ix, iy);
-            this->Jz(ix, iy) = std::sinh(0.2 * point[0]) * std::cosh(0.2 * point[1]);
+            this->Jz(ix, iy) = std::sinh(0.2f * point[0]) * std::cosh(0.2f * point[1]);
         }
     }
 
@@ -230,7 +249,10 @@ TYPED_TEST(a2DLaplacian, LaplacianJz2D)
 
             auto index_ = ix * nPts_[1] + iy;
 
-            EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+            if constexpr (std::is_same_v<floater_t<4>, double>)
+            {
+                EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+            }
         }
     }
 }
@@ -277,8 +299,8 @@ TYPED_TEST(a3DLaplacian, LaplacianJx3D)
             {
                 auto point
                     = this->layout.fieldNodeCoordinates(this->Jx, Point{0., 0., 0.}, ix, iy, iz);
-                this->Jx(ix, iy, iz) = std::sinh(0.1 * point[0]) * std::cosh(0.1 * point[1])
-                                       * std::tanh(0.1 * point[2]);
+                this->Jx(ix, iy, iz) = std::sinh(0.1f * point[0]) * std::cosh(0.1f * point[1])
+                                       * std::tanh(0.1f * point[2]);
             }
         }
     }
@@ -295,7 +317,10 @@ TYPED_TEST(a3DLaplacian, LaplacianJx3D)
 
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
 
-                EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+                }
             }
         }
     }
@@ -332,8 +357,8 @@ TYPED_TEST(a3DLaplacian, LaplacianJy3D)
             {
                 auto point
                     = this->layout.fieldNodeCoordinates(this->Jy, Point{0., 0., 0.}, ix, iy, iz);
-                this->Jy(ix, iy, iz) = std::sinh(0.3 * point[0]) * std::cosh(0.3 * point[1])
-                                       * std::tanh(0.3 * point[2]);
+                this->Jy(ix, iy, iz) = std::sinh(0.3f * point[0]) * std::cosh(0.3f * point[1])
+                                       * std::tanh(0.3f * point[2]);
             }
         }
     }
@@ -350,7 +375,10 @@ TYPED_TEST(a3DLaplacian, LaplacianJy3D)
 
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
 
-                EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+                }
             }
         }
     }
@@ -387,8 +415,8 @@ TYPED_TEST(a3DLaplacian, LaplacianJz3D)
             {
                 auto point
                     = this->layout.fieldNodeCoordinates(this->Jz, Point{0., 0., 0.}, ix, iy, iz);
-                this->Jz(ix, iy, iz) = std::sinh(0.2 * point[0]) * std::cosh(0.2 * point[1])
-                                       * std::tanh(0.2 * point[2]);
+                this->Jz(ix, iy, iz) = std::sinh(0.2f * point[0]) * std::cosh(0.2f * point[1])
+                                       * std::tanh(0.2f * point[2]);
             }
         }
     }
@@ -405,7 +433,10 @@ TYPED_TEST(a3DLaplacian, LaplacianJz3D)
 
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
 
-                EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+                if constexpr (std::is_same_v<floater_t<4>, double>)
+                {
+                    EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[index_], 1e-12));
+                }
             }
         }
     }

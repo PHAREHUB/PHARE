@@ -60,6 +60,8 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 
 TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
 {
+    floater_t<4> constexpr static ZRO = 0;
+
     initializer->loadParticles(particles, layout);
     for (auto const& particle : particles)
     {
@@ -67,9 +69,9 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
         auto pos       = positionAsPoint(particle, layout);
         auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
 
-        if (!((pos[0] > 0.) and (pos[0] < endDomain)))
+        if (!((pos[0] > ZRO) and (pos[0] < endDomain)))
             std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << ")\n";
-        EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
+        EXPECT_TRUE(pos[0] > ZRO && pos[0] < endDomain);
     }
 }
 

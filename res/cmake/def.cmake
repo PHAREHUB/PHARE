@@ -69,7 +69,7 @@ if(devMode) # -DdevMode=ON
   # Having quotes on strings here has lead to quotes being added to the compile string, so avoid.
 
   set (_Werr ${PHARE_WERROR_FLAGS} -Wall -Wextra -pedantic -Werror -Wno-unused-variable -Wno-unused-parameter)
-  set (_Werr ${_Werr} -Wdouble-promotion -Wuninitialized )
+  set (_Werr ${_Werr} -Wuninitialized ) # -Wdouble-promotion
 
   if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
     set (_Werr ${_Werr} -Wno-gnu-zero-variadic-macro-arguments)

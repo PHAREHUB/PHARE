@@ -141,9 +141,9 @@ namespace amr
         //  We get geometry information from the patch, such as meshSize, and physical origin
         auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
             patch.getPatchGeometry());
-        core::Point<double, dimension> origin;
+        core::Point<core::floater_t<4>, dimension> origin;
 
-        std::array<double, dimension> dl;
+        std::array<core::floater_t<4>, dimension> dl;
 
         if (patchGeom != nullptr)
         {

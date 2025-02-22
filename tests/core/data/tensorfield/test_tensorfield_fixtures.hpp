@@ -23,8 +23,8 @@ class UsableTensorField : public TensorField<Field_t<dim>, HybridQuantity, rank_
 public:
     auto static constexpr dimension = dim;
     using Super                     = TensorField<Field_t<dim>, HybridQuantity, rank_>;
-    using Grid_t                    = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
-    using tensor_t                  = typename Super::tensor_t;
+    using Grid_t   = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
+    using tensor_t = typename Super::tensor_t;
 
     template<typename GridLayout>
     UsableTensorField(std::string const& name, GridLayout const& layout, tensor_t qty)
@@ -50,9 +50,8 @@ protected:
     auto static make_grids(ComponentNames const& compNames, GridLayout const& layout, tensor_t qty)
     {
         auto qts = HybridQuantity::componentsQuantities(qty);
-        return for_N<N_elements, for_N_R_mode::make_array>([&](auto i) {
-            return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i])};
-        });
+        return for_N<N_elements, for_N_R_mode::make_array>(
+            [&](auto i) { return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i])}; });
     }
 
     std::array<Grid_t, N_elements> xyz;

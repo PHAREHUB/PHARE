@@ -76,7 +76,7 @@ public:
                 else
                 {
                     fineField(locFineIdx[dirX])
-                        = 0.5
+                        = 0.5f
                           * (coarseField(locCoarseIdx[dirX]) + coarseField(locCoarseIdx[dirX] + 1));
                 }
             }
@@ -115,7 +115,7 @@ public:
                     // we're on a fine X face, take the average of the coarse value
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = 0.5
+                        = 0.5f
                           * (coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
                              + coarseField(locCoarseIdx[dirX] + 1, locCoarseIdx[dirY]));
                 }
@@ -136,7 +136,7 @@ public:
                     // we're on a fine Y face, take the average of the coarse value
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = 0.5
+                        = 0.5f
                           * (coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
                              + coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY] + 1));
                 }
@@ -176,7 +176,7 @@ public:
                     // we're on a fine X face, take the average of the coarse value
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix + 1, iy, iz));
+                        = 0.5f * (coarseField(ix, iy, iz) + coarseField(ix + 1, iy, iz));
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -196,7 +196,7 @@ public:
                     // we're on a fine Y face, take the average of the coarse value
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy + 1, iz));
+                        = 0.5f * (coarseField(ix, iy, iz) + coarseField(ix, iy + 1, iz));
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -216,7 +216,7 @@ public:
                     // we're on a fine Z face, take the average of the coarse value
                     // between the two surrounding faces
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy, iz + 1));
+                        = 0.5f * (coarseField(ix, iy, iz) + coarseField(ix, iy, iz + 1));
                 }
             }
         }

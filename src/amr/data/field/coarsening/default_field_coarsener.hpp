@@ -11,6 +11,7 @@
 
 #include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "core/utilities/types.hpp"
 
 #include <SAMRAI/hier/Box.h>
 
@@ -67,7 +68,7 @@ namespace amr
             coarseIndex    = AMRToLocal(coarseIndex, destinationBox_);
 
 
-            double coarseValue = 0.;
+            core::floater_t<4> coarseValue = 0.;
 
 
 
@@ -99,7 +100,7 @@ namespace amr
 
                 for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
                 {
-                    double Yinterp = 0.;
+                    core::floater_t<4> Yinterp = 0.;
                     for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
                     {
                         Yinterp += fineField(xStartIndex + iShiftX, yStartIndex + iShiftY)
@@ -125,11 +126,11 @@ namespace amr
 
                 for (std::size_t iShiftX = 0; iShiftX < xWeights.size(); ++iShiftX)
                 {
-                    double Yinterp = 0.;
+                    core::floater_t<4> Yinterp = 0.;
 
                     for (std::size_t iShiftY = 0; iShiftY < yWeights.size(); ++iShiftY)
                     {
-                        double Zinterp = 0.;
+                        core::floater_t<4> Zinterp = 0.;
                         for (std::size_t iShiftZ = 0; iShiftZ < zWeights.size(); ++iShiftZ)
                         {
                             Zinterp += fineField(xStartIndex + iShiftX, yStartIndex + iShiftY,

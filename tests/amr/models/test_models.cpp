@@ -21,6 +21,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include <phare_core.hpp>
 
 
 using namespace PHARE::core;
@@ -33,13 +34,14 @@ using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 
-using Field_t          = Field<1, HybridQuantity::Scalar>;
-using Grid1D           = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
-using VecField1D       = VecField<Field_t, HybridQuantity>;
-using SymTensorField1D = SymTensorField<Field_t, HybridQuantity>;
-using GridImplYee1D    = GridLayoutImplYee<dim, interpOrder>;
-using ParticleArray1D  = ParticleArray<dim>;
-using GridYee1D        = GridLayout<GridImplYee1D>;
+using core_Types = PHARE::core::PHARE_Types<dim, interpOrder>;
+
+using Field_t          = core_Types::Field_t;
+using Grid1D           = core_Types::Grid_t;
+using VecField1D       = core_Types::VecField_t;
+using SymTensorField1D = core_Types::SymTensorField_t;
+using ParticleArray1D  = core_Types::ParticleArray_t;
+using GridYee1D        = core_Types::GridLayout_t;
 
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray1D, GridYee1D>;
 

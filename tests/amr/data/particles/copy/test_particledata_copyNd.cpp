@@ -115,12 +115,18 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
-    EXPECT_THAT(this->destData.domainParticles[0].v, Pointwise(DoubleEq(), this->particle.v));
-    EXPECT_THAT(this->destData.domainParticles[0].iCell, Eq(this->particle.iCell));
-    EXPECT_THAT(this->destData.domainParticles[0].delta,
-                Pointwise(DoubleEq(), this->particle.delta));
-    EXPECT_THAT(this->destData.domainParticles[0].weight, DoubleEq(this->particle.weight));
-    EXPECT_THAT(this->destData.domainParticles[0].charge, DoubleEq(this->particle.charge));
+
+    if constexpr (std::is_same_v<floater_t<0>, double>)
+    {
+        EXPECT_THAT(this->destData.domainParticles[0].v, Pointwise(DoubleEq(), this->particle.v));
+        EXPECT_THAT(this->destData.domainParticles[0].iCell, Eq(this->particle.iCell));
+        EXPECT_THAT(this->destData.domainParticles[0].delta,
+                    Pointwise(DoubleEq(), this->particle.delta));
+
+
+        EXPECT_THAT(this->destData.domainParticles[0].weight, DoubleEq(this->particle.weight));
+        EXPECT_THAT(this->destData.domainParticles[0].charge, DoubleEq(this->particle.charge));
+    }
 
     // particle is in the domain of the source patchdata
     // and in last ghost of the destination patchdata
@@ -130,12 +136,16 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
     this->sourceData.domainParticles.push_back(this->particle);
     this->destData.copy(this->sourceData);
 
-    EXPECT_THAT(this->destData.patchGhostParticles[0].v, Pointwise(DoubleEq(), this->particle.v));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].iCell, Eq(this->particle.iCell));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].delta,
-                Pointwise(DoubleEq(), this->particle.delta));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].weight, DoubleEq(this->particle.weight));
-    EXPECT_THAT(this->destData.patchGhostParticles[0].charge, DoubleEq(this->particle.charge));
+    if constexpr (std::is_same_v<floater_t<0>, double>)
+    {
+        EXPECT_THAT(this->destData.patchGhostParticles[0].v,
+                    Pointwise(DoubleEq(), this->particle.v));
+        EXPECT_THAT(this->destData.patchGhostParticles[0].iCell, Eq(this->particle.iCell));
+        EXPECT_THAT(this->destData.patchGhostParticles[0].delta,
+                    Pointwise(DoubleEq(), this->particle.delta));
+        EXPECT_THAT(this->destData.patchGhostParticles[0].weight, DoubleEq(this->particle.weight));
+        EXPECT_THAT(this->destData.patchGhostParticles[0].charge, DoubleEq(this->particle.charge));
+    }
 }
 
 

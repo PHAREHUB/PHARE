@@ -99,7 +99,7 @@ namespace amr
         }
 
 
-        NO_DISCARD std::vector<double> const& weights(core::Direction dir) const
+        NO_DISCARD std::vector<core::floater_t<4>> const& weights(core::Direction dir) const
         {
             return weighters_[static_cast<std::size_t>(dir)].weights();
         }

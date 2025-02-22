@@ -1,13 +1,14 @@
 #ifndef PHARE_TEST_CORE_DATA_TEST_FIELD_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_TEST_FIELD_FIXTURES_HPP
 
+#include "core/def.hpp"
 #include "core/data/field/field.hpp"
 
 namespace PHARE::core
 {
 
 template<std::size_t dim>
-using Field_t = Field<dim, HybridQuantity::Scalar, double>;
+using Field_t = Field<dim, HybridQuantity::Scalar, floater_t<4>>;
 
 } // namespace PHARE::core
 

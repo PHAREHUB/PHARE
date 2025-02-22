@@ -74,8 +74,8 @@ TEST_F(AParticle, CanBeReducedToAnIntegerPoint)
 
 TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
 {
-    Point<double, 3> origin;
-    std::array<double, 3> meshSize{{0.2, 0.05, 0.4}};
+    Point<floater_t<0>, 3> origin;
+    std::array<floater_t<4>, 3> meshSize{{0.2, 0.05, 0.4}};
     std::array<std::uint32_t, 3> nbrCells{{20, 30, 40}};
     GridLayout<GridLayoutImplYee<3, 1>> layout{meshSize, nbrCells, origin,
                                                Box{Point{40, 60, 80}, Point{59, 89, 119}}};
@@ -83,12 +83,12 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     auto iCell            = layout.AMRToLocal(Point{part.iCell});
     auto p                = positionAsPoint(part, layout);
     auto startIndexes     = layout.physicalStartIndex(QtyCentering::primal);
-    auto expectedPosition = Point<double, 3>{};
+    auto expectedPosition = Point<floater_t<0>, 3>{};
     for (auto i = 0u; i < 3; ++i)
     {
         expectedPosition[i]
-            = origin[i] + meshSize[i] * (iCell[i] - startIndexes[i] + part.delta[i]);
-        EXPECT_DOUBLE_EQ(expectedPosition[i], p[i]);
+            = origin[i] + float(meshSize[i]) * (iCell[i] - startIndexes[i] + part.delta[i]);
+        EXPECT_FLOAT_EQ(expectedPosition[i], p[i]);
     }
 }
 

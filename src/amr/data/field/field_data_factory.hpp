@@ -35,7 +35,7 @@ namespace amr
         FieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,
                          std::string const& name, PhysicalQuantity qty)
             : SAMRAI::hier::PatchDataFactory(
-                SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), n_ghosts})
+                  SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), n_ghosts})
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
             , dataLivesOnPatchBorder_{dataLivesOnPatchBorder}
             , quantity_{qty}
@@ -88,9 +88,9 @@ namespace amr
             // for the gridlayout, and also we give the box to the FieldGeometry, so that
             // it can use it to get the final box representation.
 
-            std::array<double, dimension> dl;
+            std::array<core::floater_t<4>, dimension> dl;
             std::array<std::uint32_t, dimension> nbCell;
-            core::Point<double, dimension> origin;
+            core::Point<core::floater_t<4>, dimension> origin;
 
             for (std::size_t iDim = 0; iDim < dimension; ++iDim)
             {
@@ -116,9 +116,9 @@ namespace amr
             // TODO: this calculus assumes that we don't need more memory than
             //       alignedMemory(nx*ny*nz*sizeof(double)) + alignedMemory(baseSize)
 
-            std::array<double, dimension> dl;
+            std::array<core::floater_t<4>, dimension> dl;
             std::array<std::uint32_t, dimension> nbCell;
-            core::Point<double, dimension> origin;
+            core::Point<core::floater_t<4>, dimension> origin;
 
             for (std::size_t iDim = 0; iDim < dimension; ++iDim)
             {

@@ -22,9 +22,9 @@ public:
                 return gridLayout.fieldNodeCoordinates(field_, gridLayout.origin(), args...);
             });
 
-        std::shared_ptr<Span<double>> gridPtr // keep grid data alive
+        std::shared_ptr<Span<floater_t<4>>> const gridPtr // keep grid data alive
             = std::apply([&](auto&... args) { return init(args...); }, coords);
-        Span<double>& grid = *gridPtr;
+        auto& grid = *gridPtr;
 
         for (std::size_t cell_idx = 0; cell_idx < indices.size(); cell_idx++)
             std::apply([&](auto&... args) { field(args...) = grid[cell_idx]; }, indices[cell_idx]);

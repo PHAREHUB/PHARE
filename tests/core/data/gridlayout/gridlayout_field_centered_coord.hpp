@@ -17,8 +17,8 @@ struct GridLayoutFieldCenteringParam
     GridLayoutTestParam<GridLayoutImpl> base;
 
     std::vector<std::array<std::uint32_t, GridLayoutImpl::dimension>> iCellForCentering;
-    std::vector<std::array<double, GridLayoutImpl::dimension>> expectedPosition;
-    std::vector<std::array<double, GridLayoutImpl::dimension>> actualPosition;
+    std::vector<std::array<floater_t<4>, GridLayoutImpl::dimension>> expectedPosition;
+    std::vector<std::array<floater_t<4>, GridLayoutImpl::dimension>> actualPosition;
 
     template<typename Array, std::size_t... I>
     auto fieldCoord_impl(Array const& array, std::index_sequence<I...>)
@@ -49,7 +49,7 @@ struct GridLayoutFieldCenteringParam
             Point<double, GridLayoutImpl::dimension> pos;
             pos = fieldCoord(iCell);
 
-            std::array<double, GridLayoutImpl::dimension> actualPos;
+            std::array<floater_t<4>, GridLayoutImpl::dimension> actualPos;
 
             for (std::size_t iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
             {
@@ -99,10 +99,10 @@ auto createFieldCenteringParam()
     while (summary >> quantity)
     {
         std::array<std::uint32_t, GridLayoutImpl::dimension> nbCell;
-        std::array<double, GridLayoutImpl::dimension> dl;
+        std::array<floater_t<4>, GridLayoutImpl::dimension> dl;
         std::array<std::uint32_t, GridLayoutImpl::dimension> iStart;
         std::array<std::uint32_t, GridLayoutImpl::dimension> iEnd;
-        std::array<double, GridLayoutImpl::dimension> origin;
+        std::array<floater_t<4>, GridLayoutImpl::dimension> origin;
 
         writeToArray(summary, nbCell);
         writeToArray(summary, dl);
@@ -123,7 +123,7 @@ auto createFieldCenteringParam()
 
 
     std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
-    std::array<double, GridLayoutImpl::dimension> realPosition;
+    std::array<floater_t<4>, GridLayoutImpl::dimension> realPosition;
 
     while (value >> quantity && writeToArray(value, icell) && writeToArray(value, realPosition))
     {

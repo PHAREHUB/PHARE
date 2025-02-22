@@ -78,7 +78,7 @@ TYPED_TEST(aFieldRefineOperator, canBeCreated)
     static constexpr auto interp = typename TypeParam::second_type{}();
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-    using GridT   = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
+    using GridT   = Grid<NdArrayVector<dim, floater_t<4>>, HybridQuantity::Scalar>;
 
     FieldRefineOperator<GridYee, GridT, DefaultFieldRefiner<dim>> linearRefine{};
 }

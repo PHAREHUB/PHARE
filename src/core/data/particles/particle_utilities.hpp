@@ -19,7 +19,7 @@ template<typename GridLayout>
 NO_DISCARD auto positionAsPoint(Particle<GridLayout::dimension> const& particle,
                                 GridLayout const& layout)
 {
-    Point<double, GridLayout::dimension> position;
+    Point<floater_t<4>, GridLayout::dimension> position;
     auto origin       = layout.origin();
     auto startIndexes = layout.physicalStartIndex(QtyCentering::primal);
     auto meshSize     = layout.meshSize();

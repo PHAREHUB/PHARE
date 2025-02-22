@@ -16,6 +16,7 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include <core/def.hpp>
 
 using testing::Eq;
 
@@ -32,7 +33,7 @@ using namespace PHARE::amr;
 
 
 
-using Grid1D = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
+using Grid1D = Grid<NdArrayVector<1, floater_t<4>>, HybridQuantity::Scalar>;
 
 template<typename GridLayoutT, typename FieldImpl>
 struct FieldGeometryParam

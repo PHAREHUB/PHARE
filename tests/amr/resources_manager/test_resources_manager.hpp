@@ -1,8 +1,9 @@
 #ifndef PHARE_TESTS_AMR_TOOLS_RESSOURCE_RESSOURCE_TEST_1D_HPP
 #define PHARE_TESTS_AMR_TOOLS_RESSOURCE_RESSOURCE_TEST_1D_HPP
 
-#include <memory>
 
+
+#include "phare_core.hpp"
 
 #include "test_resources_manager_basic_hierarchy.hpp"
 #include "core/data/grid/grid.hpp"
@@ -19,6 +20,8 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <memory>
+
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
@@ -29,9 +32,12 @@ template<typename ResourcesUsers>
 class aResourceUserCollection : public ::testing::Test
 {
 public:
-    using Grid_t = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
+    using core_Types   = PHARE::core::PHARE_Types<1, 1>;
+    using Grid_t       = core_Types::Grid_t;
+    using GridLayout_t = core_Types::GridLayout_t;
+
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>, Grid_t> resourcesManager;
+    ResourcesManager<GridLayout_t, Grid_t> resourcesManager;
 
     ResourcesUsers users;
 
