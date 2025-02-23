@@ -5,6 +5,7 @@
 
 #include <SAMRAI/hier/Patch.h>
 
+#include "core/vector.hpp"
 
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
@@ -18,12 +19,13 @@
 #include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 
+#include "core/utilities/cellmap.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
 
-
 #include <iomanip>
 #include <sstream>
+#include <tuple>
 
 namespace PHARE::solver
 {
@@ -130,7 +132,7 @@ private:
                    double const currentTime, double const newTime, core::UpdaterMode mode);
 
 
-    void saveState_(level_t& level, ModelViews_t& views);
+    void saveState_(level_t const& level, ModelViews_t const& views);
     void restoreState_(level_t& level, ModelViews_t& views);
 
 
@@ -148,26 +150,32 @@ private:
     };
 
 
-    // extend lifespan
-    std::unordered_map<std::string, ParticleArray> tmpDomain;
-    std::unordered_map<std::string, ParticleArray> patchGhost;
-
-    template<typename Map>
-    static void add_to(Map& map, std::string const& key, ParticleArray const& ps)
+    struct SaveState
     {
-        // vector copy drops the capacity (over allocation of the source)
-        // we want to keep the overallocation somewhat - how much to be assessed
-        ParticleArray empty{ps.box()};
+        bool constexpr static copy_old = false;
+        using box_t                    = core::Box<int, dimension>;
+        using CellMap_t                = core::CellMap<dimension, int>;
+        using Particle_t               = typename ParticleArray::value_type;
+        using ParticleVec_t            = core::MinimizingVector<Particle_t, copy_old>;
 
-        if (!map.count(key))
-            map.emplace(key, empty);
-        else
-            map.at(key) = empty;
+        using SizeVec_t    = core::MinimizingVector<std::size_t, copy_old>;
+        using CellMapVec_t = core::MinimizingVector<CellMap_t, copy_old>;
 
-        auto& v = map.at(key);
-        v.reserve(ps.capacity());
-        v.replace_from(ps);
-    }
+        auto operator()() { return std::forward_as_tuple(particles(), sizes(), maps()); }
+        auto operator()(std::size_t const& nparts, std::size_t narrays)
+        {
+            if (narrays < sizes.capacity())
+                narrays += narrays * .01;
+            return std::forward_as_tuple(particles(nparts), sizes(narrays), maps(narrays));
+        }
+
+        ParticleVec_t particles;
+        SizeVec_t sizes;
+        CellMapVec_t maps;
+    };
+
+    // extend lifespan
+    SaveState domainState, patchGhostState;
 
 }; // end solverPPC
 
@@ -214,19 +222,42 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, ModelViews_t& views)
+void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t const& level, ModelViews_t const& views)
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::saveState_");
 
+    std::size_t arrays = 0, dcount = 0, pcount = 0;
     for (auto& state : views)
-    {
-        std::stringstream ss;
-        ss << state.patch->getGlobalId();
         for (auto& pop : state.ions)
         {
-            std::string const key = ss.str() + "_" + pop.name();
-            add_to(tmpDomain, key, pop.domainParticles());
-            add_to(patchGhost, key, pop.patchGhostParticles());
+            ++arrays;
+            dcount += pop.domainParticles().capacity();
+            pcount += pop.patchGhostParticles().capacity();
+        }
+
+    auto [dParts, dSizes, dMaps] = domainState(dcount, arrays);
+    auto [pParts, pSizes, pMaps] = patchGhostState(pcount, arrays);
+
+    std::size_t arr_idx = 0, doff = 0, poff = 0;
+    for (auto const& state : views)
+    {
+        for (auto const& pop : state.ions)
+        {
+            auto& dInParts = pop.domainParticles();
+            auto& pInParts = pop.patchGhostParticles();
+
+            dMaps[arr_idx] = dInParts.map();
+            pMaps[arr_idx] = pInParts.map();
+
+            dSizes[arr_idx] = dInParts.size();
+            pSizes[arr_idx] = pInParts.size();
+
+            std::copy(dInParts.data(), dInParts.data() + dSizes[arr_idx], dParts.data() + doff);
+            std::copy(pInParts.data(), pInParts.data() + pSizes[arr_idx], pParts.data() + poff);
+
+            doff += dSizes[arr_idx];
+            poff += pSizes[arr_idx];
+            ++arr_idx;
         }
     }
 }
@@ -236,15 +267,22 @@ void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, ModelViews
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::restoreState_");
 
+    auto const [dInParts, dSizes, dMaps] = domainState();
+    auto const [pInParts, pSizes, pMaps] = patchGhostState();
+
+    std::size_t arr_idx = 0, doff = 0, poff = 0;
     for (auto& state : views)
     {
-        std::stringstream ss;
-        ss << state.patch->getGlobalId();
-
         for (auto& pop : state.ions)
         {
-            pop.domainParticles()     = std::move(tmpDomain.at(ss.str() + "_" + pop.name()));
-            pop.patchGhostParticles() = std::move(patchGhost.at(ss.str() + "_" + pop.name()));
+            pop.domainParticles().replace_from(dInParts.data() + doff, dSizes[arr_idx],
+                                               dMaps[arr_idx]);
+            pop.patchGhostParticles().replace_from(pInParts.data() + poff, pSizes[arr_idx],
+                                                   pMaps[arr_idx]);
+
+            doff += dSizes[arr_idx];
+            poff += pSizes[arr_idx];
+            ++arr_idx;
         }
     }
 }
