@@ -1,4 +1,3 @@
-
 #include "core/def/phare_mpi.hpp"
 
 
@@ -9,15 +8,9 @@
 
 #include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
-#include <fstream>
-#include <numeric>
-
-
-#include "test_linear_coarsen.hpp"
 #include "test_weighter_coarsen.hpp"
 
 
