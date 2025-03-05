@@ -152,7 +152,17 @@ def is_vector_data(patch):
     return len(patch.keys()) == 3
 
 
+def level_spacing_from(root_spacing, ilvl):
+    # hard-coded 2D adds 0 for last dim spacing
+    return [dl / 2**ilvl for dl in root_spacing] + [0.0]
+
+
 def main():
+
+    if len(sys.argv) != 2 or sys.argv[1] in ["-h", "--help"]:
+        print(f"Usage: {os.path.basename(sys.argv[0])} <path_to_phare_h5>")
+        print("Works for EM fields, bulk velocity and density")
+        sys.exit(1)
 
     path = sys.argv[1]
     phare_h5 = h5py.File(path, "r")
@@ -196,8 +206,7 @@ def main():
         print(f"Processing level {ilvl}")
 
         lvl = root.create_group(f"Level{ilvl}")
-        lvl_spacing = root_spacing
-        lvl_spacing = [dl / 2**ilvl for dl in lvl_spacing] + [0.0]
+        lvl_spacing = level_spacing_from(root_spacing, ilvl)
         lvl.attrs.create("Spacing", lvl_spacing, dtype="f")
         steps_lvl = steps.create_group(f"Level{ilvl}")
 
@@ -234,8 +243,11 @@ def main():
             phare_lvl = phare_h5["t"][time_str][phare_lvl_name]
 
             for patch_id in list(phare_lvl.keys())[:]:
-                # print(f"patch {patch_id}")
                 patch = phare_lvl[patch_id]
+                box = boxFromPatch(patch)
+                AMRBox.append(box)
+                nbr_boxes += 1
+                npx, npy, npz = nbrNodes(box)
 
                 if is_vector_data(patch):
                     x_name, y_name, z_name = list(patch.keys())
@@ -243,10 +255,6 @@ def main():
                     ph_y = patch[y_name][:]
                     ph_z = patch[z_name][:]
 
-                    box = boxFromPatch(patch)
-                    AMRBox.append(box)
-                    nbr_boxes += 1
-                    npx, npy, npz = nbrNodes(box)
                     data = toFlatPrimal(ph_x, ph_y, ph_z, npx, npy, npz)
 
                     if first:
@@ -254,7 +262,7 @@ def main():
                         # for this level, we need to create the dataset
                         # the first dimension is the total # of points
                         # which is unknown hence the None for maxshape
-                        pointData_b = pointData_g.create_dataset(
+                        pointData = pointData_g.create_dataset(
                             "data", data=data, maxshape=(None, 3)
                         )
                         first = False
@@ -263,8 +271,8 @@ def main():
                         # dataset already created with shape (current_size,3)
                         # we add b.shape[0] points (=npx*npy) to the first dim
                         # hence need to resize the dataset.
-                        pointData_b.resize(current_size + data.shape[0], axis=0)
-                        pointData_b[current_size:, :] = data
+                        pointData.resize(current_size + data.shape[0], axis=0)
+                        pointData[current_size:, :] = data
                     # pass
 
                     current_size += data.shape[0]
@@ -273,20 +281,11 @@ def main():
                     dataset_name = list(patch.keys())[0]
                     ph_data = patch[dataset_name][:]
 
-                    box = boxFromPatch(patch)
-                    AMRBox.append(box)
-                    nbr_boxes += 1
-                    npx, npy, npz = nbrNodes(box)
                     data = toFlatPrimal(ph_data, npx, npy, npz)
 
                     if first:
-                        # this is the first patch of the first time
-                        # for this level, we need to create the dataset
-                        # the first dimension is the total # of points
-                        # which is unknown hence the None for maxshape
-
                         # 1D resizable datasets maxshape MUST be (None,) tuple
-                        pointData_b = pointData_g.create_dataset(
+                        pointData = pointData_g.create_dataset(
                             "data",
                             data=data,
                             maxshape=(None,),
@@ -294,11 +293,8 @@ def main():
                         first = False
 
                     else:
-                        # dataset already created with shape (current_size,3)
-                        # we add b.shape[0] points (=npx*npy) to the first dim
-                        # hence need to resize the dataset.
-                        pointData_b.resize(current_size + data.shape[0], axis=0)
-                        pointData_b[current_size:] = data
+                        pointData.resize(current_size + data.shape[0], axis=0)
+                        pointData[current_size:] = data
                     # pass
 
                     current_size += data.shape[0]
