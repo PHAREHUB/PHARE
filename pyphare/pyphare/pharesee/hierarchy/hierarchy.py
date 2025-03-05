@@ -561,6 +561,8 @@ class PatchHierarchy(object):
             return self.plot1d(**kwargs)
         elif self.ndim == 2:
             return self.plot2d(**kwargs)
+        elif self.ndim == 3:
+            raise NotImplementedError("cannot make 3D plots")
 
     def dist_plot(self, **kwargs):
         """
