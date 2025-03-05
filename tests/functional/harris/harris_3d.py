@@ -16,7 +16,7 @@ ph.NO_GUI()
 cpp = cpp_lib()
 startMPI()
 
-cells = (40, 40, 40)
+cells = (200, 400, 50)
 dl = (0.2, 0.2, 0.2)
 
 diag_outputs = "phare_outputs/test/harris/3d"
@@ -117,7 +117,7 @@ def config():
     vvv = {
         **{f"vbulk{c}": vxyz for c in C},
         **{f"vth{c}": vthxyz for c in C},
-        "nbr_part_per_cell": 100,
+        "nbr_part_per_cell": 50,
     }
     protons = {"charge": 1, "density": density, **vvv, "init": {"seed": 12334}}
     ph.MaxwellianFluidModel(bx=bx, by=by, bz=bz, protons=protons)
