@@ -102,7 +102,14 @@ def primalVectorToFlatPrimal(ph_vx, ph_vy, ph_vz, npx, npy, npz, gn=2):
 def boxFromPatch(patch):
     lower = patch.attrs["lower"]
     upper = patch.attrs["upper"]
-    return [lower[0], upper[0], lower[1], upper[1], 0, 0]  # 2D
+    if len(lower) == 3:
+        return [lower[0], upper[0], lower[1], upper[1], lower[2], upper[2]]
+    elif len(lower) == 2:
+        return [lower[0], upper[0], lower[1], upper[1], 0, 0]
+    elif len(lower) == 1:
+        return [lower[0], upper[0], 0, 0, 0, 0]
+    else:
+        raise ValueError(f"Unknown dimension {len(lower)}")
 
 
 def nbrNodes(box):
@@ -154,7 +161,15 @@ def is_vector_data(patch):
 
 def level_spacing_from(root_spacing, ilvl):
     # hard-coded 2D adds 0 for last dim spacing
-    return [dl / 2**ilvl for dl in root_spacing] + [0.0]
+    return [dl / 2**ilvl for dl in root_spacing]
+
+
+def make3d(root_spacing):
+    if len(root_spacing) == 1:
+        return root_spacing + [0, 0]
+    elif len(root_spacing) == 2:
+        return root_spacing + [0]
+    return root_spacing
 
 
 def main():
@@ -166,7 +181,7 @@ def main():
 
     path = sys.argv[1]
     phare_h5 = h5py.File(path, "r")
-    root_spacing = phare_h5.attrs["cell_width"]
+    root_spacing = make3d(phare_h5.attrs["cell_width"])
     times = times_in(phare_h5)
     max_nbr_level = max_nbr_levels_in(phare_h5)
     numberOfTimes = times.size
