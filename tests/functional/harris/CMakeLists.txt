@@ -8,10 +8,14 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 if(HighFive AND testMPI)
+
   ## These test use dump diagnostics so require HighFive!
-  # exec level 11
-  # mpirun -n 10
+
   if(testMPI)
-    phare_mpi_python3_exec(11 10 harris_2d harris_2d.py ${CMAKE_CURRENT_BINARY_DIR})
+
+    phare_mpi_python3_exec(11 4 harris_2d_100_x_100 harris_2d_100_x_100.py ${CMAKE_CURRENT_BINARY_DIR})
+    phare_mpi_python3_exec(11 4 harris_2d_100_x_100_slow harris_2d_100_x_100_slow.py ${CMAKE_CURRENT_BINARY_DIR})
+
   endif(testMPI)
+
 endif()
