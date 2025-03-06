@@ -1,13 +1,12 @@
 
-#include "python3/pybind_def.hpp"
+#include "core/def/phare_config.hpp"
+#include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
 #include "simulator/simulator.hpp"
 
-#include "core/def/phare_config.hpp"
+#include "python3/pybind_def.hpp"
 
 
-#include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
-
-
+#include "pybind11/stl.h"
 
 namespace py = pybind11;
 
