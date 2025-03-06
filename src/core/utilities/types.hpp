@@ -226,7 +226,7 @@ namespace core
 
     NO_DISCARD inline std::optional<std::string> get_env(std::string const& key)
     {
-        if (const char* val = std::getenv(key.c_str()))
+        if (char const* val = std::getenv(key.c_str()))
             return std::string{val};
         return std::nullopt;
     }
@@ -424,8 +424,8 @@ enum class for_N_R_mode {
     forward_tuple,
 };
 
-template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
-constexpr auto for_N(Fn& fn)
+template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn, typename... Args>
+constexpr auto for_N(Fn& fn, Args&&... args)
 {
     /*  // how to use
         for_N<2>([](auto ic) {
@@ -435,8 +435,8 @@ constexpr auto for_N(Fn& fn)
     */
 
     static_assert(std::is_same_v<decltype(M), for_N_R_mode>);
-    using return_type
-        = std::decay_t<std::invoke_result_t<Fn, std::integral_constant<std::uint16_t, 0>>>;
+    using return_type = std::decay_t<
+        std::invoke_result_t<Fn, std::integral_constant<std::uint16_t, 0>, Args&...>>;
     constexpr bool returns = !std::is_same_v<return_type, void>;
 
     if constexpr (returns)
@@ -444,24 +444,24 @@ constexpr auto for_N(Fn& fn)
         return std::apply(
             [&](auto... ics) {
                 if constexpr (M == for_N_R_mode::make_tuple)
-                    return std::make_tuple(fn(ics)...);
+                    return std::make_tuple(fn(ics, args...)...);
                 else if constexpr (M == for_N_R_mode::make_array)
-                    return std::array{fn(ics)...};
+                    return std::array{fn(ics, args...)...};
                 else if constexpr (M == for_N_R_mode::forward_tuple)
-                    return std::forward_as_tuple(fn(ics)...);
+                    return std::forward_as_tuple(fn(ics, args...)...);
                 else
                     throw std::runtime_error("unknown return mode");
             },
             apply_N<N>(Apply{}));
     }
     else
-        std::apply([&](auto... ics) { (fn(ics), ...); }, apply_N<N>(Apply{}));
+        std::apply([&](auto... ics) { (fn(ics, args...), ...); }, apply_N<N>(Apply{}));
 }
 
-template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
-constexpr auto for_N(Fn&& fn)
+template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn, typename... Args>
+constexpr auto for_N(Fn&& fn, Args&&... args)
 {
-    return for_N<N, M>(fn);
+    return for_N<N, M>(fn, args...);
 }
 
 template<std::uint16_t N, typename Fn>
