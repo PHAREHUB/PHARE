@@ -47,8 +47,8 @@ namespace PHARE
 namespace amr
 {
 
-    /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid to
-     * hybrid data communications.
+    /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid
+     * to hybrid data communications.
      */
     template<typename HybridModel, typename RefinementParams>
     class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
@@ -82,7 +82,7 @@ namespace amr
         using DefaultCoarsenOp  = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
 
     public:
-        static const inline std::string stratName    = "HybridModel-HybridModel";
+        static inline std::string const stratName    = "HybridModel-HybridModel";
         static constexpr std::size_t rootLevelNumber = 0;
 
 
@@ -191,7 +191,7 @@ namespace amr
          , all quantities that are in initialization refiners need to be regridded
          */
         void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                    const int levelNumber,
+                    int const levelNumber,
                     std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                     IPhysicalModel& model, double const initDataTime) override
         {
@@ -345,7 +345,7 @@ namespace amr
                 auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
                 for (auto& pop : ions)
                 {
-                    empty(pop.patchGhostParticles());
+                    pop.patchGhostParticles().clear();
                 }
             }
             patchGhostPartRefiners_.fill(level.getLevelNumber(), fillTime);
@@ -465,44 +465,24 @@ namespace amr
          */
         void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
         {
-            if (level.getLevelNumber() > 0)
+            if (level.getLevelNumber() == 0)
+                return;
+
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
+
+            auto& hybridModel = static_cast<HybridModel&>(model);
+            for (auto& patch : level)
             {
-                PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
-
-                auto& hybridModel = static_cast<HybridModel&>(model);
-                for (auto& patch : level)
+                auto& ions       = hybridModel.state.ions;
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
+                for (auto& pop : ions)
                 {
-                    auto& ions       = hybridModel.state.ions;
-                    auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                    for (auto& pop : ions)
-                    {
-                        auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                        auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
-                        auto& levelGhostParticles    = pop.levelGhostParticles();
+                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                    auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
+                    auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                        core::swap(levelGhostParticlesNew, levelGhostParticlesOld);
-                        core::empty(levelGhostParticlesNew);
-                        core::empty(levelGhostParticles);
-                        std::copy(std::begin(levelGhostParticlesOld),
-                                  std::end(levelGhostParticlesOld),
-                                  std::back_inserter(levelGhostParticles));
-
-                        if (level.getLevelNumber() == 0)
-                        {
-                            if (levelGhostParticlesNew.size() != 0)
-                                throw std::runtime_error(
-                                    "levelGhostParticlesNew detected in root level : "
-                                    + std::to_string(levelGhostParticlesNew.size()));
-                            if (levelGhostParticles.size() != 0)
-                                throw std::runtime_error(
-                                    "levelGhostParticles detected in root level : "
-                                    + std::to_string(levelGhostParticles.size()));
-                            if (levelGhostParticlesOld.size() != 0)
-                                throw std::runtime_error(
-                                    "levelGhostParticlesOld detected in root level : "
-                                    + std::to_string(levelGhostParticlesOld.size()));
-                        }
-                    }
+                    levelGhostParticlesOld = std::move(levelGhostParticlesNew);
+                    levelGhostParticles    = levelGhostParticlesOld;
                 }
             }
         }
@@ -737,9 +717,7 @@ namespace amr
                     auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
                     auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    core::empty(levelGhostParticles);
-                    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
-                              std::back_inserter(levelGhostParticles));
+                    levelGhostParticles = levelGhostParticlesOld;
                 }
             }
         }
@@ -959,7 +937,7 @@ namespace amr
 
                             // maybe we should keep these for some time
                             // as comments in case they are useful again
-                            PHARE_DEBUG_DO(const std::string before = "BEFORE";
+                            PHARE_DEBUG_DO(std::string const before = "BEFORE";
                                            debug_print(B, layout, loc, ix, iy, before);)
                             Bx(ix, iy - 1)
                                 = Bx(ix + 1, iy - 1) + dx / dy * (By(ix, iy) - By(ix, iy - 1));
@@ -967,7 +945,7 @@ namespace amr
                             By(ix - 1, iy)
                                 = By(ix - 1, iy + 1) + dy / dx * (Bx(ix, iy) - Bx(ix - 1, iy));
 
-                            PHARE_DEBUG_DO(const std::string after = "AFTER";
+                            PHARE_DEBUG_DO(std::string const after = "AFTER";
                                            debug_print(B, layout, loc, ix, iy, after);)
                         }
                     } // end corner loops
