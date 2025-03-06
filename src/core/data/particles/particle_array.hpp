@@ -56,10 +56,33 @@ public:
         assert(box_.size() > 0);
     }
 
-    ParticleArray(ParticleArray const& from)            = default;
-    ParticleArray(ParticleArray&& from)                 = default;
-    ParticleArray& operator=(ParticleArray&& from)      = default;
-    ParticleArray& operator=(ParticleArray const& from) = default;
+    ParticleArray(ParticleArray&& from) = delete; // not used anywhere
+
+    ParticleArray(ParticleArray const& from)
+        : particles_{from.particles_}
+        , box_{from.box_}
+        , cellMap_{from.cellMap_}
+    {
+        remap_particles();
+    }
+
+    ParticleArray& operator=(ParticleArray const& from)
+    {
+        this->particles_ = from.particles_;
+        this->box_       = from.box_;
+        this->cellMap_   = from.cellMap_; // copy for alloc, not alloc on pushback
+        remap_particles();
+        return *this;
+    };
+
+    ParticleArray& operator=(ParticleArray&& from)
+    {
+        this->particles_ = std::move(from.particles_);
+        this->box_       = from.box_;     // not movable
+        this->cellMap_   = from.cellMap_; // std::move == segfault / bug in cellmap?
+        from.cellMap_.clear();
+        return *this;
+    };
 
     NO_DISCARD std::size_t size() const { return particles_.size(); }
     NO_DISCARD std::size_t capacity() const { return particles_.capacity(); }
@@ -148,6 +171,11 @@ public:
 
     void map_particles() const { cellMap_.add(particles_); }
     void empty_map() { cellMap_.empty(); }
+    void remap_particles()
+    {
+        empty_map();
+        map_particles();
+    }
 
 
     NO_DISCARD auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
@@ -262,17 +290,6 @@ namespace PHARE
 {
 namespace core
 {
-    template<std::size_t dim>
-    void empty(ParticleArray<dim>& array)
-    {
-        array.clear();
-    }
-
-    template<std::size_t dim>
-    void swap(ParticleArray<dim>& array1, ParticleArray<dim>& array2)
-    {
-        array1.swap(array2);
-    }
 
 
     template<std::size_t dim, bool OwnedState = true>
