@@ -177,11 +177,11 @@ class GeometryTest(AGeometryTest):
             collections=[
                 {
                     "boxes": overlap_boxes,
-                    "facecolor": "yellow",
+                    "value": 1,
                 },
                 {
                     "boxes": [p.box for p in hierarchy.level(ilvl).patches],
-                    "facecolor": "grey",
+                    "value": 2,
                 },
             ],
         )
@@ -390,11 +390,11 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                 collections=[
                     {
                         "boxes": ghost_area_box_list,
-                        "facecolor": "yellow",
+                        "value": 1,
                     },
                     {
                         "boxes": [p.box for p in hierarchy.level(ilvl).patches],
-                        "facecolor": "grey",
+                        "value": 2,
                     },
                 ],
                 title="".join(
@@ -502,7 +502,7 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                 collections=[
                     {
                         "boxes": [p.box for p in periodic_list],
-                        "facecolor": "grey",
+                        "value": 2,
                     },
                 ],
             )

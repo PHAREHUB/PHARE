@@ -274,7 +274,7 @@ def finest_field_plot(run_path, qty, **kwargs):
             time = times[0]
         interpolator, finest_coords = r.GetVi(time, merged=True, interp=interp)[qty]
     elif qty == "rho":
-        file = os.path.join(run_path, "ions_density.h5")
+        file = os.path.join(run_path, "ions_charge_density.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
