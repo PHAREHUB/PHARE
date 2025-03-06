@@ -4,11 +4,9 @@
 #include <tuple>
 #include <cassert>
 #include <cstdint>
-#include <stdexcept>
 
 #include "core/utilities/span.hpp"
 
-#include "pybind11/stl.h"
 #include "pybind11/numpy.h"
 #undef HAVE_SYS_TIMES_H // included in python again, possibly with different value
 #undef HAVE_UNISTD_H

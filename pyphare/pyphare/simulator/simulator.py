@@ -88,8 +88,7 @@ class Simulator:
         assert isinstance(simulation, ph.Simulation)  # pylint: disable=no-member
         self.simulation = simulation
         self.cpp_hier = None  # HERE
-        self.cpp_sim = None  # BE
-        self.cpp_dw = None  # DRAGONS, i.e. use weakrefs if you have to ref these.
+        self.cpp_sim = None  # BE DRAGONS, i.e. use weakrefs if you have to ref these.
         self.post_advance = kwargs.get("post_advance", None)
 
         self.print_eol = "\n"
@@ -248,20 +247,9 @@ class Simulator:
             )
         return self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
 
-    def data_wrangler(self):
-        self._check_init()
-        if self.cpp_dw is None:
-            from pyphare.data.wrangler import DataWrangler
-
-            self.cpp_dw = DataWrangler(self)
-        return self.cpp_dw
-
     def reset(self):
         if self.cpp_sim is not None:
             ph.clearDict()
-        if self.cpp_dw is not None:
-            self.cpp_dw.kill()
-        self.cpp_dw = None
         self.cpp_sim = None
         self.cpp_hier = None
         if "samrai" in life_cycles:
