@@ -481,8 +481,9 @@ namespace amr
                     auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
                     auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    levelGhostParticlesOld = std::move(levelGhostParticlesNew);
-                    levelGhostParticles    = levelGhostParticlesOld;
+                    std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
+                    levelGhostParticlesNew.clear();
+                    levelGhostParticles = levelGhostParticlesOld;
                 }
             }
         }
