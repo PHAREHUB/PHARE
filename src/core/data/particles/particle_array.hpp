@@ -144,7 +144,7 @@ public:
         cellMap_.add(particles_, particles_.size() - 1);
     }
 
-    void swap(ParticleArray<dim>& that) { std::swap(this->particles_, that.particles_); }
+
 
     void map_particles() const { cellMap_.add(particles_); }
     void empty_map() { cellMap_.empty(); }
@@ -262,17 +262,6 @@ namespace PHARE
 {
 namespace core
 {
-    template<std::size_t dim>
-    void empty(ParticleArray<dim>& array)
-    {
-        array.clear();
-    }
-
-    template<std::size_t dim>
-    void swap(ParticleArray<dim>& array1, ParticleArray<dim>& array2)
-    {
-        array1.swap(array2);
-    }
 
 
     template<std::size_t dim, bool OwnedState = true>
