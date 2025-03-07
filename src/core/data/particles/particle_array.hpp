@@ -144,7 +144,7 @@ public:
         cellMap_.add(particles_, particles_.size() - 1);
     }
 
-    void swap(ParticleArray<dim>& that) { std::swap(this->particles_, that.particles_); }
+
 
     void map_particles() const { cellMap_.add(particles_); }
     void empty_map() { cellMap_.empty(); }
