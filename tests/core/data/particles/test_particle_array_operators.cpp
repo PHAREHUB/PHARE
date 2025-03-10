@@ -57,31 +57,6 @@ using Permutations_t = testing::Types<ParticleArray<1>>;
 
 TYPED_TEST_SUITE(ParticleArrayConstructionTest, Permutations_t, );
 
-TYPED_TEST(ParticleArrayConstructionTest, test_swap_etc)
-{
-    using ParticleArray_t     = TestFixture::ParticleArray_t;
-    auto static constexpr dim = ParticleArray_t::dimension;
-
-    auto levelGhostParticles = ParticleArray<dim>{this->layout.AMRBox()};
-    add_particles_in(levelGhostParticles, this->layout.AMRBox());
-
-    auto levelGhostParticlesNew = ParticleArray<dim>{this->layout.AMRBox()};
-    add_particles_in(levelGhostParticlesNew, this->layout.AMRBox());
-
-    auto levelGhostParticlesOld = ParticleArray<dim>{this->layout.AMRBox()};
-    add_particles_in(levelGhostParticlesOld, this->layout.AMRBox());
-
-    std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
-    levelGhostParticlesNew.clear();
-    levelGhostParticles.clear();
-    std::copy(std::begin(levelGhostParticlesOld), std::end(levelGhostParticlesOld),
-              std::back_inserter(levelGhostParticles));
-
-    EXPECT_EQ(levelGhostParticlesNew.size(), 0);
-    EXPECT_EQ(levelGhostParticlesOld.size(), ppc * std::pow(cells, TestFixture::dim));
-    EXPECT_EQ(levelGhostParticles.size(), ppc * std::pow(cells, TestFixture::dim));
-}
-
 
 
 TYPED_TEST(ParticleArrayConstructionTest, test_move_swap_etc)
@@ -105,6 +80,10 @@ TYPED_TEST(ParticleArrayConstructionTest, test_move_swap_etc)
     EXPECT_EQ(levelGhostParticlesNew.size(), 0);
     EXPECT_EQ(levelGhostParticlesOld.size(), ppc * std::pow(cells, TestFixture::dim));
     EXPECT_EQ(levelGhostParticles.size(), ppc * std::pow(cells, TestFixture::dim));
+
+    EXPECT_TRUE(levelGhostParticlesNew.is_consistent());
+    EXPECT_TRUE(levelGhostParticlesOld.is_consistent());
+    EXPECT_TRUE(levelGhostParticles.is_consistent());
 }
 
 
