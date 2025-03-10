@@ -13,5 +13,3 @@ target_link_libraries(${PROJECT_NAME} INTERFACE
   phare_amr # for mpicc
   phare_diagnostic
 )
-
-set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
