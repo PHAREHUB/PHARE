@@ -208,24 +208,15 @@ public:
     }
 
 
-    NO_DISCARD bool is_mapped() const
+    NO_DISCARD bool is_consistent() const
     {
-        bool ok = true;
         if (particles_.size() != cellMap_.size())
-        {
-            throw std::runtime_error("particle array not mapped, map.size() != array.size()");
-        }
+            return false;
+
         for (std::size_t pidx = 0; pidx < particles_.size(); ++pidx)
-        {
-            auto const& p = particles_[pidx];
-            auto& icell   = p.iCell;
-            auto l        = cellMap_.list_at(icell);
-            if (!l)
-                throw std::runtime_error("particle cell not mapped");
-            auto& ll = l->get();
-            if (!ll.is_indexed(pidx))
-                throw std::runtime_error("particle not indexed");
-        }
+            if (!cellMap_(particles_[pidx].iCell).is_indexed(pidx))
+                return false;
+
         return true;
     }
 
