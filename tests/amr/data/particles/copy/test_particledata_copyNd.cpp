@@ -142,7 +142,7 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
 TYPED_TEST(AParticlesDataND, copiesDataWithOverlapNoTransform)
 {
     static constexpr auto dim = TypeParam{}();
-    auto dimension            = SAMRAI::tbox::Dimension{this->dim};
+    auto dimension            = SAMRAI::tbox::Dimension{dim};
 
     // now, with an overlap as union of 2 boxes
     //
