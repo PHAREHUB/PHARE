@@ -102,6 +102,13 @@ class DiagnosticsTest(unittest.TestCase):
         return self._testMethodName.split("_")[-1]
 
     def test_dump_diags_timestamps(self):
+        """
+        This test was made to run for a long time to make sure we do not have rounding
+        errors in the way the time is set in PHARE. Before, time was incrementally increase
+        by dt, leading to rounding errors, leading to key errors while reading diags. Now with the
+        ConstantTimeStamper, we iterate the time INDEX and get the current time increment
+        from start time, which removes the rounding error.
+        """
         print("test_dump_diags dim/interp:{}/{}".format(1, 1))
 
         simulation = ph.Simulation(**simArgs.copy())
