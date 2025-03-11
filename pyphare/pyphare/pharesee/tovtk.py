@@ -8,6 +8,19 @@ import numpy as np
 import os
 
 
+def ndim_from(npx, npy, npz):
+    if npx > 2 and npy > 2 and npz > 2:
+        return 3
+    elif npx > 2 and npy > 2 and npz == 2:
+        return 2
+    elif npx > 2 and npy == 2 and npz == 2:
+        return 1
+    else:
+        raise ValueError(
+            f" cannot infer dimension from (npx, npy, npz) = {npx} {npy} {npz}"
+        )
+
+
 def BtoFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz, gn=2):
 
     nbrPoints = npx * npy * npz
@@ -18,22 +31,80 @@ def BtoFlatPrimal(ph_bx, ph_by, ph_bz, npx, npy, npz, gn=2):
     by = np.zeros((npx, npy, npz), dtype=np.float32)
     bz = np.zeros((npx, npy, npz), dtype=np.float32)
 
+    domainP1 = slice(gn - 1, -gn + 1)
+    domain = slice(gn, -gn)
+
     # converts yee to pure primal
     # we average in the dual direction so we need one extract ghost data in that direction
-    bx[:, :, 0] = (
-        ph_bx[gn:-gn, gn - 1 : -gn + 1][:, 1:] + ph_bx[gn:-gn, gn - 1 : -gn + 1][:, :-1]
-    ) * 0.5
-    by[:, :, 0] = (
-        ph_by[gn - 1 : -gn + 1, gn:-gn][1:, :] + ph_by[gn - 1 : -gn + 1, gn:-gn][:-1, :]
-    ) * 0.5
-    bz[:, :, 0] = (
-        ph_bz[gn - 1 : -gn + 1, gn - 1 : -gn + 1][1:, 1:]
-        + ph_bz[gn - 1 : -gn + 1, gn - 1 : -gn + 1][:-1, :-1]
-    ) * 0.5
 
-    bx[:, :, 1] = bx[:, :, 0]
-    by[:, :, 1] = by[:, :, 0]
-    bz[:, :, 1] = bz[:, :, 0]
+    if ndim_from(npx, npy, npz) == 2:
+        bx[:, :, 0] = (
+            ph_bx[gn:-gn, gn - 1 : -gn + 1][:, 1:]
+            + ph_bx[gn:-gn, gn - 1 : -gn + 1][:, :-1]
+        ) * 0.5
+        by[:, :, 0] = (
+            ph_by[gn - 1 : -gn + 1, gn:-gn][1:, :]
+            + ph_by[gn - 1 : -gn + 1, gn:-gn][:-1, :]
+        ) * 0.5
+
+        bz[:, :, 0] = 0.5 * (
+            0.5 * (ph_bz[domainP1, domain][1:, :] + ph_bz[domainP1, domain][:-1, :])
+            + 0.5 * (ph_bz[domain, domainP1][:, 1:] + ph_bz[domain, domainP1][:, :-1])
+        )
+
+        bx[:, :, 1] = bx[:, :, 0]
+        by[:, :, 1] = by[:, :, 0]
+        bz[:, :, 1] = bz[:, :, 0]
+
+    elif ndim_from(npx, npy, npz) == 3:
+        # Bx is (primal, dual, dual)
+        print("bx", ph_bx.shape)
+        print(
+            "bx[domain, domainP1, domain][:,1:,:]",
+            ph_bx[domain, domainP1, domain][:, 1:, :].shape,
+        )
+        print(
+            "bx[domain, domainP1, domain][:,:-1,:]",
+            ph_bx[domain, domainP1, domain][:, :-1, :].shape,
+        )
+        bx[:, :, :] = 0.5 * (
+            0.5
+            * (
+                ph_bx[domain, domainP1, domain][:, 1:, :]
+                + ph_bx[domain, domainP1, domain][:, :-1, :]
+            )
+            + 0.5
+            * (
+                ph_bx[domain, domain, domainP1][:, :, 1:]
+                + ph_bx[domain, domain, domainP1][:, :, :-1]
+            )
+        )
+        # By is (dual, primal, dual)
+        by[:, :, :] = 0.5 * (
+            0.5
+            * (
+                ph_by[domain, domainP1, domain][:, 1:, :]
+                + ph_by[domain, domainP1, domain][:, :-1, :]
+            )
+            + 0.5
+            * (
+                ph_bz[domain, domain, domainP1][:, :, 1:]
+                + ph_bz[domain, domain, domainP1][:, :, :-1]
+            )
+        )
+        # Bz is (dual, dual, primal)
+        bz[:, :, :] = 0.5 * (
+            0.5
+            * (
+                ph_bz[domain, domainP1, domain][:, 1:, :]
+                + ph_bz[domain, domainP1, domain][:, :-1, :]
+            )
+            + 0.5
+            * (
+                ph_bz[domainP1, domain, domain][1:, :, :]
+                + ph_bz[domainP1, domain, domain][:-1, :, :]
+            )
+        )
 
     b[:, 0] = bx.flatten(order="F")
     b[:, 1] = by.flatten(order="F")
@@ -52,22 +123,42 @@ def EtoFlatPrimal(ph_ex, ph_ey, ph_ez, npx, npy, npz, gn=2):
     ey = np.zeros((npx, npy, npz), dtype=np.float32)
     ez = np.zeros((npx, npy, npz), dtype=np.float32)
 
+    domainP1 = slice(gn - 1, -gn + 1)
+    domain = slice(gn, -gn)
+
     # converts yee to pure primal
     # we average in the dual direction so we need one extract ghost data in that direction
-    ex[:, :, 0] = (
-        ph_ex[gn - 1 : -gn + 1, gn:-gn][1:, :] + ph_ex[gn - 1 : -gn + 1, gn:-gn][:-1, :]
-    ) * 0.5
+    if ndim_from(npx, npy, npz) == 2:
+        ex[:, :, 0] = (
+            ph_ex[domainP1, domain][1:, :] + ph_ex[domainP1, domain][:-1, :]
+        ) * 0.5
 
-    ey[:, :, 0] = (
-        ph_ey[gn:-gn, gn - 1 : -gn + 1][:, 1:] + ph_ey[gn:-gn, gn - 1 : -gn + 1][:, :-1]
-    ) * 0.5
+        ey[:, :, 0] = (
+            ph_ey[domain, domainP1][:, 1:] + ph_ey[domain, domainP1][:, :-1]
+        ) * 0.5
 
-    # ez already primal in 2D
-    ez[:, :, 0] = ph_ez[gn:-gn, gn:-gn][:, :]
+        # ez already primal in 2D
+        ez[:, :, 0] = ph_ez[domain, domain][:, :]
 
-    ex[:, :, 1] = ex[:, :, 0]
-    ey[:, :, 1] = ey[:, :, 0]
-    ez[:, :, 1] = ez[:, :, 0]
+        ex[:, :, 1] = ex[:, :, 0]
+        ey[:, :, 1] = ey[:, :, 0]
+        ez[:, :, 1] = ez[:, :, 0]
+
+    elif ndim_from(npx, npy, npz) == 3:
+        ex[:, :, :] = (
+            ph_ex[domainP1, domain, domain][1:, :, :]
+            + ph_ex[domainP1, domain, domain][:-1, :, :]
+        ) * 0.5
+
+        ey[:, :, :] = (
+            ph_ey[domain, domainP1, domain][:, 1:, :]
+            + ph_ey[domain, domainP1, domain][:, :-1, :]
+        ) * 0.5
+
+        ez[:, :, :] = (
+            ph_ez[domain, domain, domainP1][:, :, 1:]
+            + ph_ez[domain, domain, domainP1][:, :, :-1]
+        ) * 0.5
 
     e[:, 0] = ex.flatten(order="F")
     e[:, 1] = ey.flatten(order="F")
@@ -79,9 +170,15 @@ def EtoFlatPrimal(ph_ex, ph_ey, ph_ez, npx, npy, npz, gn=2):
 def primalScalarToFlatPrimal(ph_scalar, npx, npy, npz, gn=2):
 
     scalar3d = np.zeros((npx, npy, npz), dtype="f")
-    scalar3d[:, :, 0] = ph_scalar[gn:-gn, gn:-gn]
-    scalar3d[:, :, 1] = ph_scalar[gn:-gn, gn:-gn]
-    return scalar3d.flatten(order="F")
+    if ndim_from(npx, npy, npz) == 2:
+        domain = slice(gn, -gn)
+        scalar3d[:, :, 0] = ph_scalar[domain, domain]
+        scalar3d[:, :, 1] = ph_scalar[domain, domain]
+        return scalar3d.flatten(order="F")
+    elif ndim_from(npx, npy, npz) == 3:
+        domain = slice(gn, -gn)
+        scalar3d[:, :, :] = ph_scalar[domain, domain, domain]
+        return scalar3d.flatten(order="F")
 
 
 def primalVectorToFlatPrimal(ph_vx, ph_vy, ph_vz, npx, npy, npz, gn=2):
@@ -115,6 +212,8 @@ def boxFromPatch(patch):
 def nbrNodes(box):
     lower = box[0], box[2], box[4]
     upper = box[1], box[3], box[5]
+
+    # +1 for nbr cells from lo to up, and +1 for primal
     npx = upper[0] - lower[0] + 1 + 1
     npy = upper[1] - lower[1] + 1 + 1
     npz = upper[2] - lower[2] + 1 + 1
