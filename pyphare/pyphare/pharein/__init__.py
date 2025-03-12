@@ -1,25 +1,20 @@
 import os
-import sys
 import subprocess
-import numpy as np
+import sys
 
+import numpy as np
 from pyphare.core.phare_utilities import is_scalar
-from .uniform_model import UniformModel
-from .maxwellian_fluid_model import MaxwellianFluidModel
+
+from .diagnostics import (ElectromagDiagnostics, FluidDiagnostics,
+                          InfoDiagnostics, MetaDiagnostics,
+                          ParticleDiagnostics)
 from .electron_model import ElectronModel
-from .diagnostics import (
-    FluidDiagnostics,
-    ElectromagDiagnostics,
-    ParticleDiagnostics,
-    MetaDiagnostics,
-    InfoDiagnostics,
-)
-from .simulation import (
-    Simulation,
-    serialize as serialize_sim,
-    deserialize as deserialize_sim,
-)
 from .load_balancer import LoadBalancer
+from .maxwellian_fluid_model import MaxwellianFluidModel
+from .simulation import Simulation
+from .simulation import deserialize as deserialize_sim
+from .simulation import serialize as serialize_sim
+from .uniform_model import UniformModel
 
 __all__ = [
     "UniformModel",
@@ -126,8 +121,9 @@ def clearDict():
 
 
 def populateDict():
-    from .global_vars import sim as simulation
     import pybindlibs.dictator as pp
+
+    from .global_vars import sim as simulation
 
     # pybind complains if receiving wrong type
     def add_int(path, val):
@@ -412,3 +408,44 @@ def populateDict():
                 add_string("simulation/" + item[0], item[1])
             else:
                 add_double("simulation/" + item[0], item[1])
+
+
+    add_double("simualtion/algo/fv_method/resistivity", simulation.eta)
+    add_double("simualtion/algo/fv_method/hyper_resistivity", simulation.nu)
+    add_double("simualtion/algo/fv_method/heat_capacity_ratio", simulation.gamma)
+    add_double("simualtion/algo/fv_euler/heat_capacity_ratio", simulation.gamma)
+    add_double("simualtion/algo/to_primitive/heat_capacity_ratio", simulation.gamma)
+    add_double("simualtion/algo/to_conservative/heat_capacity_ratio", simulation.gamma)
+
+    add_string("simulation/mhd_state/name", "mhd_state")
+
+    addInitFunction(
+        "simulation/mhd_state/density/initializer", fn_wrapper(modelDict["density"])
+    )
+    addInitFunction(
+        "simulation/mhd_state/velocity/initializer/x_component",
+        fn_wrapper(modelDict["vx"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/velocity/initializer/y_component",
+        fn_wrapper(modelDict["vy"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/velocity/initializer/z_component",
+        fn_wrapper(modelDict["vz"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/magnetic/initializer/x_component",
+        fn_wrapper(modelDict["bx"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/magnetic/initializer/y_component",
+        fn_wrapper(modelDict["by"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/magnetic/initializer/z_component",
+        fn_wrapper(modelDict["bz"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/pressure/initializer", fn_wrapper(modelDict["p"])
+    )

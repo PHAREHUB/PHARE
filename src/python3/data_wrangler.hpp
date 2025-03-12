@@ -21,11 +21,12 @@
 
 namespace PHARE::pydata
 {
-template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart>
+template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
 class SimulatorCaster
 {
 public:
-    using Simulator_t = Simulator<dimension, interp_order, nbRefinedPart>;
+    using Simulator_t = Simulator<dimension, interp_order, nbRefinedPart, MHDTimeStepper>;
 
     SimulatorCaster(std::shared_ptr<ISimulator> const& _simulator)
         : simulator{_simulator}
@@ -57,7 +58,8 @@ private:
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
 class DataWrangler
 {
 public:
@@ -65,7 +67,7 @@ public:
     static constexpr std::size_t interp_order  = _interp_order;
     static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
 
-    using Simulator   = PHARE::Simulator<dimension, interp_order, nbRefinedPart>;
+    using Simulator   = PHARE::Simulator<dimension, interp_order, nbRefinedPart, MHDTimeStepper>;
     using HybridModel = typename Simulator::HybridModel;
 
     DataWrangler(std::shared_ptr<ISimulator> const& simulator,
@@ -81,14 +83,14 @@ public:
 
     auto getPatchLevel(size_t lvl)
     {
-        return PatchLevel<_dimension, _interp_order, _nbRefinedPart>{
+        return PatchLevel<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>{
             *hierarchy_, *simulator_.getHybridModel(), lvl};
     }
 
     auto sort_merge_1d(std::vector<PatchData<std::vector<double>, dimension>> const&& input,
                        bool shared_patch_border = false)
     {
-        std::vector<std::pair<double, const PatchData<std::vector<double>, dimension>*>> sorted;
+        std::vector<std::pair<double, PatchData<std::vector<double>, dimension> const*>> sorted;
         for (auto const& data : input)
             sorted.emplace_back(core::Point<double, 1>::fromString(data.origin)[0], &data);
         std::sort(sorted.begin(), sorted.end(), [](auto& a, auto& b) { return a.first < b.first; });
@@ -167,7 +169,8 @@ private:
 
     static Simulator& cast_simulator(std::shared_ptr<ISimulator> const& simulator)
     {
-        using SimulatorCaster = SimulatorCaster<dimension, interp_order, nbRefinedPart>;
+        using SimulatorCaster
+            = SimulatorCaster<dimension, interp_order, nbRefinedPart, MHDTimeStepper>;
 
         auto const& simDict = initializer::PHAREDictHandler::INSTANCE().dict()["simulation"];
 

@@ -1,4 +1,3 @@
-
 #ifndef PHARE_MHD_MESSENGER_INFO_HPP
 #define PHARE_MHD_MESSENGER_INFO_HPP
 
@@ -16,7 +15,30 @@ namespace amr
         using VecFieldNames = core::VecFieldNames;
 
     public:
-        // What is needed here ?
+        std::string modelDensity;
+        VecFieldNames modelVelocity;
+        VecFieldNames modelMagnetic;
+        std::string modelPressure;
+
+        VecFieldNames modelMomentum;
+        VecFieldNames modelTotalEnergy;
+
+        VecFieldNames modelElectric;
+        VecFieldNames modelCurrent;
+
+        std::vector<std::string> initDensity;
+        std::vector<VecFieldNames> initVelocity;
+        std::vector<VecFieldNames> initMagnetic;
+        std::vector<std::string> initPressure;
+
+        std::vector<std::string> ghostDensity;
+        std::vector<VecFieldNames> ghostVelocity;
+        std::vector<std::string> ghostPressure;
+        std::vector<VecFieldNames> ghostMagneticFluxesX;
+        std::vector<VecFieldNames> ghostMagneticFluxesY;
+        std::vector<VecFieldNames> ghostMagneticFluxesZ;
+        std::vector<VecFieldNames> ghostElectric;
+
         virtual ~MHDMessengerInfo() = default;
     };
 

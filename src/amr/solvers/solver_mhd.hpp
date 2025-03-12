@@ -50,7 +50,6 @@ private:
 public:
     SolverMHD(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"MHDSolver"}
-
         , fluxes_{{"rho_fx", MHDQuantity::Scalar::ScalarFlux_x},
                   {"rhoV_fx", MHDQuantity::Vector::VecFlux_x},
                   {"B_fx", MHDQuantity::Vector::VecFlux_x},
@@ -73,26 +72,24 @@ public:
 
     std::string modelName() const override { return MHDModel::model_name; }
 
-    void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override {}
+    void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
-    void registerResources(IPhysicalModel<AMR_Types>& /*model*/) override {}
+    void registerResources(IPhysicalModel<AMR_Types>& model) override;
 
     // TODO make this a resourcesUser
-    void allocate(IPhysicalModel<AMR_Types>& /*model*/, patch_t& /*patch*/,
-                  double const /*allocateTime*/) const override
-    {
-    }
+    void allocate(IPhysicalModel<AMR_Types>& model, patch_t& patch,
+                  double const allocateTime) const override;
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, ISolverModelView& view,
                       IMessenger& fromCoarserMessenger, double const currentTime,
                       double const newTime) override;
 
+    void onRegrid() override {}
 
     std::shared_ptr<ISolverModelView> make_view(level_t& level, IPhysicalModel_t& model) override
     {
         /*return std::make_shared<ModelViews_t>(level, dynamic_cast<MHDModel&>(model));*/
-        throw std::runtime_error("no MHD model yet");
-        return nullptr;
+        throw std::runtime_error("SolverMHD::make_view not implemented");
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
@@ -108,18 +105,106 @@ public:
 private:
     struct TimeSetter
     {
-        /*template <typename QuantityAccessor>*/
-        /*void operator()(QuantityAccessor accessor) {*/
-        /*    for (auto& state : views)*/
-        /*        views.model().resourcesManager->setTime(accessor(state), *state.patch, newTime);*/
-        /*}*/
-        /**/
-        /*ModelViews_t& views;*/
-        /*double        newTime;*/
+        template<typename QuantityAccessor>
+        void operator()(QuantityAccessor accessor)
+        {
+            for (auto& state : views)
+                views.model().resourcesManager->setTime(accessor(state), *state.patch, newTime);
+        }
+
+        ModelViews_t& views;
+        double newTime;
     };
 };
 
 // -----------------------------------------------------------------------------
+
+template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,
+         typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
+               ModelViews_t>::registerResources(IPhysicalModel_t& model)
+{
+    auto& mhdmodel = dynamic_cast<MHDModel&>(model);
+
+    mhdmodel.resourcesManager->registerResources(fluxes_.rho_fx);
+    mhdmodel.resourcesManager->registerResources(fluxes_.rhoV_fx);
+    mhdmodel.resourcesManager->registerResources(fluxes_.B_fx);
+    mhdmodel.resourcesManager->registerResources(fluxes_.Etot_fx);
+
+    if constexpr (dimension >= 2)
+    {
+        mhdmodel.resourcesManager->registerResources(fluxes_.rho_fy);
+        mhdmodel.resourcesManager->registerResources(fluxes_.rhoV_fy);
+        mhdmodel.resourcesManager->registerResources(fluxes_.B_fy);
+        mhdmodel.resourcesManager->registerResources(fluxes_.Etot_fy);
+
+        if constexpr (dimension == 3)
+        {
+            mhdmodel.resourcesManager->registerResources(fluxes_.rho_fz);
+            mhdmodel.resourcesManager->registerResources(fluxes_.rhoV_fz);
+            mhdmodel.resourcesManager->registerResources(fluxes_.B_fz);
+            mhdmodel.resourcesManager->registerResources(fluxes_.Etot_fz);
+        }
+    }
+
+    evolve_.registerResources(mhdmodel);
+}
+
+template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,
+         typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelViews_t>::allocate(
+    IPhysicalModel_t& model, patch_t& patch, double const allocateTime) const
+
+{
+    auto& mhdmodel = dynamic_cast<MHDModel&>(model);
+
+    mhdmodel.resourcesManager->allocate(fluxes_.rho_fx, patch, allocateTime);
+    mhdmodel.resourcesManager->allocate(fluxes_.rhoV_fx, patch, allocateTime);
+    mhdmodel.resourcesManager->allocate(fluxes_.B_fx, patch, allocateTime);
+    mhdmodel.resourcesManager->allocate(fluxes_.Etot_fx, patch, allocateTime);
+
+    if constexpr (dimension >= 2)
+    {
+        mhdmodel.resourcesManager->allocate(fluxes_.rho_fy, patch, allocateTime);
+        mhdmodel.resourcesManager->allocate(fluxes_.rhoV_fy, patch, allocateTime);
+        mhdmodel.resourcesManager->allocate(fluxes_.B_fy, patch, allocateTime);
+        mhdmodel.resourcesManager->allocate(fluxes_.Etot_fy, patch, allocateTime);
+
+        if constexpr (dimension == 3)
+        {
+            mhdmodel.resourcesManager->allocate(fluxes_.rho_fz, patch, allocateTime);
+            mhdmodel.resourcesManager->allocate(fluxes_.rhoV_fz, patch, allocateTime);
+            mhdmodel.resourcesManager->allocate(fluxes_.B_fz, patch, allocateTime);
+            mhdmodel.resourcesManager->allocate(fluxes_.Etot_fz, patch, allocateTime);
+        }
+    }
+
+    evolve_.allocate(mhdmodel, patch, allocateTime);
+}
+
+template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,
+         typename ModelViews_t>
+void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
+               ModelViews_t>::fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info)
+    const
+
+{
+    auto& mhdInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
+
+    mhdInfo.ghostMagneticFluxesX.emplace_back(core::VecFieldNames(fluxes_.B_fx));
+
+    if constexpr (dimension >= 2)
+    {
+        mhdInfo.ghostMagneticFluxesY.emplace_back(core::VecFieldNames(fluxes_.B_fy));
+
+        if constexpr (dimension == 3)
+        {
+            mhdInfo.ghostMagneticFluxesZ.emplace_back(core::VecFieldNames(fluxes_.B_fz));
+        }
+    }
+
+    evolve_.fillMessengerInfo(mhdInfo);
+}
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,
          typename ModelViews_t>
