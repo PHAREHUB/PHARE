@@ -22,16 +22,17 @@ template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename 
 class MHDModel : public IPhysicalModel<AMR_Types>
 {
 public:
+    static constexpr auto dimension = GridLayoutT::dimension;
+
     using patch_t   = typename AMR_Types::patch_t;
     using level_t   = typename AMR_Types::level_t;
     using Interface = IPhysicalModel<AMR_Types>;
 
-    using field_type      = typename VecFieldT::field_type;
-    using gridlayout_type = GridLayoutT;
+    using field_type             = typename VecFieldT::field_type;
+    using gridlayout_type        = GridLayoutT;
+    using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
 
     static inline std::string const model_name = "MHDModel";
-    static constexpr auto dimension            = gridlayout_type::dimension;
-    using resources_manager_type               = amr::ResourcesManager<gridlayout_type, Grid_t>;
 
     core::MHDState<VecFieldT> state;
     std::shared_ptr<resources_manager_type> resourcesManager;
@@ -44,12 +45,7 @@ public:
         resourcesManager->allocate(state, patch, allocateTime);
     }
 
-
-
-    virtual void
-    fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override
-    {
-    }
+    virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
     NO_DISCARD auto setOnPatch(patch_t& patch)
     {
@@ -66,6 +62,9 @@ public:
 
     virtual ~MHDModel() override = default;
 
+    auto& get_B() { return state.B; }
+
+    auto& get_B() const { return state.B; }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -82,6 +81,8 @@ public:
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
+
+    std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
 };
 
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
@@ -95,6 +96,32 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
         state.initialize(layout);
     }
     resourcesManager->registerForRestarts(*this);
+}
+
+template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
+void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
+    std::unique_ptr<amr::IMessengerInfo> const& info) const
+{
+    auto& MHDInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
+
+    MHDInfo.modelDensity     = state.rho.name();
+    MHDInfo.modelMagnetic    = core::VecFieldNames{state.B};
+    MHDInfo.modelVelocity    = core::VecFieldNames{state.V};
+    MHDInfo.modelPressure    = state.P.name();
+    MHDInfo.modelMomentum    = core::VecFieldNames{state.rhoV};
+    MHDInfo.modelTotalEnergy = core::VecFieldNames{state.Etot};
+    MHDInfo.modelElectric    = core::VecFieldNames{state.E};
+    MHDInfo.modelCurrent     = core::VecFieldNames{state.J};
+
+    MHDInfo.initDensity.push_back(state.rho.name());
+    MHDInfo.initVelocity.push_back(core::VecFieldNames{state.V});
+    MHDInfo.initMagnetic.push_back(core::VecFieldNames{state.B});
+    MHDInfo.initPressure.push_back(state.P.name());
+
+    MHDInfo.ghostDensity.push_back(state.rho.name());
+    MHDInfo.ghostVelocity.push_back(core::VecFieldNames{state.V});
+    MHDInfo.ghostPressure.push_back(state.P.name());
+    MHDInfo.ghostElectric.push_back(core::VecFieldNames{state.E});
 }
 
 } // namespace PHARE::solver
