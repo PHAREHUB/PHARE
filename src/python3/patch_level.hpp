@@ -11,7 +11,8 @@
 
 namespace PHARE::pydata
 {
-template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart>
+template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart,
+         template<typename> typename MHDTimeStepper>
 class PatchLevel
 {
 public:
@@ -19,8 +20,9 @@ public:
     static constexpr std::size_t interp_order  = interpOrder;
     static constexpr std::size_t nbRefinedPart = nbrRefPart;
 
-    using PHARESolverTypes = solver::PHARE_Types<dimension, interp_order, nbRefinedPart>;
-    using HybridModel      = typename PHARESolverTypes::HybridModel_t;
+    using PHARESolverTypes
+        = solver::PHARE_Types<dimension, interp_order, nbRefinedPart, MHDTimeStepper>;
+    using HybridModel = typename PHARESolverTypes::HybridModel_t;
 
     using GridLayout = typename HybridModel::gridlayout_type;
 

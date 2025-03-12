@@ -39,9 +39,6 @@ struct PerIndex
 
     void to_conservative(auto const& gamma)
     {
-#ifndef NDEBUG
-        isConservative = true;
-#endif
         auto const [rhoVx, rhoVy, rhoVz] = vToRhoV(rho, V.x, V.y, V.z);
         Float Etot                       = eosPToEtot(gamma, rho, V.x, V.y, V.z, B.x, B.y, B.z, P);
 
@@ -65,29 +62,13 @@ struct PerIndex
         return *this;
     }
 
-    auto& rhoV()
-    {
-        assert(isConservative);
-        return V;
-    }
+    auto& rhoV() { return V; }
 
-    auto& rhoV() const
-    {
-        assert(isConservative);
-        return V;
-    }
+    auto& rhoV() const { return V; }
 
-    auto& Etot()
-    {
-        assert(isConservative);
-        return P;
-    }
+    auto& Etot() { return P; }
 
-    auto& Etot() const
-    {
-        assert(isConservative);
-        return P;
-    }
+    auto& Etot() const { return P; }
 
     Float rho;
     PerIndexVector<Float> V;
@@ -95,7 +76,9 @@ struct PerIndex
     Float P;
 
 #ifndef NDEBUG
-    bool isConservative{false};
+    bool isConservative{
+        true}; // does nothing, we need a better system if we want to enforce this (because the we
+               // also create already conservative versions of this structure)
 #endif
 };
 

@@ -6,7 +6,7 @@
 #include "core/def/phare_mpi.hpp"
 
 #include "tagger.hpp"
-#include "hybrid_tagger_strategy.hpp"
+#include "tagger_strategy.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/types/amr_types.hpp"
 
@@ -21,26 +21,25 @@
 
 namespace PHARE::amr
 {
-template<typename HybridModel>
-class HybridTagger : public Tagger
+template<typename Model>
+class ConcreteTagger : public Tagger
 {
     using patch_t         = typename Tagger::patch_t;
     using amr_t           = PHARE::amr::SAMRAI_Types;
     using IPhysicalModel  = PHARE::solver::IPhysicalModel<amr_t>;
-    using gridlayout_type = typename HybridModel::gridlayout_type;
-
+    using gridlayout_type = typename Model::gridlayout_type;
 
 public:
-    HybridTagger(std::unique_ptr<HybridTaggerStrategy<HybridModel>> strat)
-        : Tagger{"HybridTagger"}
+    ConcreteTagger(std::unique_ptr<TaggerStrategy<Model>> strat)
+        : Tagger{Model::model_name == "HybridModel" ? "HybridTagger" : "MHDTagger"}
         , strat_{std::move(strat)}
     {
     }
 
-    void tag(IPhysicalModel& model, patch_t& patch, int tag_index) override;
+    void tag(IPhysicalModel& model, patch_t& patch, int tag_index);
 
 private:
-    std::unique_ptr<HybridTaggerStrategy<HybridModel>> strat_;
+    std::unique_ptr<TaggerStrategy<Model>> strat_;
 };
 
 
@@ -53,45 +52,44 @@ private:
 
 
 
-template<typename HybridModel>
-void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model, patch_t& patch,
-                                    int tag_index)
+template<typename Model>
+void ConcreteTagger<Model>::tag(PHARE::solver::IPhysicalModel<amr_t>& model, patch_t& patch,
+                                int tag_index)
 {
     if (strat_)
     {
-        auto& hybridModel   = dynamic_cast<HybridModel&>(model);
+        auto& concreteModel = dynamic_cast<Model&>(model);
         auto layout         = PHARE::amr::layoutFromPatch<gridlayout_type>(patch);
-        auto modelIsOnPatch = hybridModel.setOnPatch(patch);
+        auto modelIsOnPatch = concreteModel.setOnPatch(patch);
         auto pd   = dynamic_cast<SAMRAI::pdat::CellData<int>*>(patch.getPatchData(tag_index).get());
         auto tags = pd->getPointer();
-        strat_->tag(hybridModel, layout, tags);
+        strat_->tag(concreteModel, layout, tags);
 
 
         // These tags will be saved even if they are not used in diags during this advance
-        // hybridModel.tags may contain vectors for patches and levels that no longer exist
+        // concreteModel.tags may contain vectors for patches and levels that no longer exist
         auto key = std::to_string(patch.getPatchLevelNumber()) + "_"
                    + amr::to_string(patch.getGlobalId());
 
         auto nCells = core::product(layout.nbrCells());
 
         bool item_exists_and_valid
-            = hybridModel.tags.count(key) and hybridModel.tags[key]->size() == nCells;
+            = concreteModel.tags.count(key) and concreteModel.tags[key]->size() == nCells;
 
         if (!item_exists_and_valid)
         {
-            using Map_value_type = typename std::decay_t<decltype(hybridModel.tags)>::mapped_type;
+            using Map_value_type = typename std::decay_t<decltype(concreteModel.tags)>::mapped_type;
 
 
-            hybridModel.tags[key]
+            concreteModel.tags[key]
                 = std::make_shared<typename Map_value_type::element_type>(layout.nbrCells());
         }
 
         auto nbrCells = layout.nbrCells();
-        auto tagsv = core::NdArrayView<HybridModel::dimension, int>(hybridModel.tags[key]->data(),
-                                                                    layout.nbrCells());
-        auto tagsvF
-            = core::NdArrayView<HybridModel::dimension, int, false>(tags, layout.nbrCells());
-        if constexpr (HybridModel::dimension == 2)
+        auto tagsv    = core::NdArrayView<Model::dimension, int>(concreteModel.tags[key]->data(),
+                                                                 layout.nbrCells());
+        auto tagsvF   = core::NdArrayView<Model::dimension, int, false>(tags, layout.nbrCells());
+        if constexpr (Model::dimension == 2)
         {
             for (auto iTag_x = 0u; iTag_x < nbrCells[0]; ++iTag_x)
             {

@@ -17,7 +17,7 @@ namespace core
     struct dummy
     {
         using type              = int;
-        static const type value = 0;
+        static type const value = 0;
     };
 
 

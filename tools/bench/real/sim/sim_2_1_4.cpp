@@ -1,6 +1,5 @@
-
-
 #include "python3/cpp_simulator.hpp"
+#include "python3/mhd_defaults/default_mhd_registerer.hpp"
 
 namespace PHARE::pydata
 {
@@ -11,6 +10,6 @@ PYBIND11_MODULE(cpp_sim_2_1_4, m)
     using nbRefinePart = std::integral_constant<std::size_t, 4>;
 
     declare_essential(m);
-    declare_sim<dim, interp, nbRefinePart>(m);
+    DefaultMHDRegisterer<dim, interp, nbRefinePart>::declare_sim(m);
 }
 } // namespace PHARE::pydata

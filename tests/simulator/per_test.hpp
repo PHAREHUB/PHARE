@@ -4,9 +4,13 @@
 #include "phare/phare.hpp"
 #include "initializer/python_data_provider.hpp"
 #include "tests/core/data/field/test_field.hpp"
+#include "python3/mhd_defaults/default_mhd_time_stepper.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+template<typename Model>
+using MHDTimeStepper = typename PHARE::DefaultMHDTimeStepper<Model>::type;
 
 
 struct __attribute__((visibility("hidden"))) StaticIntepreter
@@ -36,14 +40,14 @@ struct HierarchyMaker
 
 template<std::size_t _dim, std::size_t _interp, std::size_t _nbRefinePart>
 struct SimulatorTestParam : private HierarchyMaker<_dim>,
-                            public PHARE::Simulator<_dim, _interp, _nbRefinePart>
+                            public PHARE::Simulator<_dim, _interp, _nbRefinePart, MHDTimeStepper>
 {
     static constexpr std::size_t dim          = _dim;
     static constexpr std::size_t interp       = _interp;
     static constexpr std::size_t nbRefinePart = _nbRefinePart;
 
-    using Simulator   = PHARE::Simulator<dim, interp, nbRefinePart>;
-    using PHARETypes  = PHARE::PHARE_Types<dim, interp, nbRefinePart>;
+    using Simulator   = PHARE::Simulator<dim, interp, nbRefinePart, MHDTimeStepper>;
+    using PHARETypes  = PHARE::PHARE_Types<dim, interp, nbRefinePart, MHDTimeStepper>;
     using Hierarchy   = PHARE::amr::Hierarchy;
     using HybridModel = typename PHARETypes::HybridModel_t;
     using MHDModel    = typename PHARETypes::MHDModel_t;

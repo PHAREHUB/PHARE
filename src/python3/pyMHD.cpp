@@ -296,15 +296,15 @@ void registerSimulatorVariants(py::module& m)
 
 PYBIND11_MODULE(pyMHD, m)
 {
-    registerSimulatorVariants<1, 1>(m);
-    registerSimulatorVariants<2, 1>(m);
-    registerSimulatorVariants<3, 1>(m);
+    /*registerSimulatorVariants<1, 1>(m);*/
+    /*registerSimulatorVariants<2, 1>(m);*/
+    /*registerSimulatorVariants<3, 1>(m);*/
 
-    /*Registerer<2, 1, TimeIntegratorType::TVDRK2, ReconstructionType::Linear,*/
-    /*           SlopeLimiterType::VanLeer, RiemannSolverType::Rusanov, false, false,*/
-    /*           false>::registerVariant("2_1_tvdrk2_linear_vanleer_rusanov", m);*/
+    Registerer<2, 1, TimeIntegratorType::TVDRK2, ReconstructionType::Linear,
+               SlopeLimiterType::VanLeer, RiemannSolverType::Rusanov, false, false,
+               false>::registerVariant("2_1_tvdrk2_linear_vanleer_rusanov", m);
 
-    /*Registerer<2, 1, TimeIntegratorType::TVDRK2, ReconstructionType::Constant,*/
-    /*           SlopeLimiterType::count, RiemannSolverType::Rusanov, false, false,*/
-    /*           false>::registerVariant("2_1_tvdrk2_constant_rusanov", m);*/
+    Registerer<2, 1, TimeIntegratorType::TVDRK2, ReconstructionType::Constant,
+               SlopeLimiterType::count, RiemannSolverType::Rusanov, false, false,
+               false>::registerVariant("2_1_tvdrk2_constant_rusanov", m);
 }

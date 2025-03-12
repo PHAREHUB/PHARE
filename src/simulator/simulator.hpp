@@ -16,6 +16,9 @@
 #include "amr/load_balancing/load_balancer_details.hpp"
 #include "amr/load_balancing/load_balancer_manager.hpp"
 #include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
+#include "amr/load_balancing/load_balancer_estimator_mhd.hpp"
+
+#include "python3/mhd_defaults/default_mhd_time_stepper.hpp"
 
 namespace PHARE
 {
@@ -42,7 +45,8 @@ public:
     virtual bool dump(double timestamp, double timestep) { return false; } // overriding optional
 };
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
 class Simulator : public ISimulator
 {
 public:
@@ -92,13 +96,13 @@ public:
     static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
 
     using SAMRAITypes = PHARE::amr::SAMRAI_Types;
-    using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart>;
+    using PHARETypes  = PHARE_Types<dimension, interp_order, nbRefinedPart, MHDTimeStepper>;
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<SAMRAITypes>;
     using HybridModel    = typename PHARETypes::HybridModel_t;
     using MHDModel       = typename PHARETypes::MHDModel_t;
 
-    /*using SolverMHD = typename PHARETypes::SolverMHD_t;*/
+    using SolverMHD = typename PHARETypes::SolverMHD_t;
     using SolverPPC = typename PHARETypes::SolverPPC_t;
 
     using MessengerFactory       = typename PHARETypes::MessengerFactory;
@@ -153,6 +157,7 @@ private:
     float x_lo_[dimension];
     float x_up_[dimension];
     int maxLevelNumber_;
+    int maxMHDLevel_;
     double dt_;
     int timeStepNbr_           = 0;
     double startTime_          = 0;
@@ -183,6 +188,7 @@ private:
     double restarts_init(initializer::PHAREDict const&);
     void diagnostics_init(initializer::PHAREDict const&);
     void hybrid_init(initializer::PHAREDict const&);
+    void mhd_init(initializer::PHAREDict const&);
 };
 
 
@@ -207,8 +213,10 @@ namespace
 //                           Definitions
 //-----------------------------------------------------------------------------
 
-template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
-double Simulator<dim, _interp, nbRefinedPart>::restarts_init(initializer::PHAREDict const& dict)
+template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+double Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::restarts_init(
+    initializer::PHAREDict const& dict)
 {
     rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *hybridModel_, dict);
 
@@ -224,8 +232,10 @@ double Simulator<dim, _interp, nbRefinedPart>::restarts_init(initializer::PHARED
 
 
 
-template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
-void Simulator<dim, _interp, nbRefinedPart>::diagnostics_init(initializer::PHAREDict const& dict)
+template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::diagnostics_init(
+    initializer::PHAREDict const& dict)
 {
     dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(*hierarchy_, *hybridModel_,
                                                                       dict);
@@ -250,8 +260,10 @@ void Simulator<dim, _interp, nbRefinedPart>::diagnostics_init(initializer::PHARE
 
 
 
-template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart>
-void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict const& dict)
+template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::hybrid_init(
+    initializer::PHAREDict const& dict)
 {
     hybridModel_ = std::make_shared<HybridModel>(
         dict["simulation"], std::make_shared<typename HybridModel::resources_manager_type>());
@@ -261,9 +273,9 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
 
     // we register the hybrid model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
-    multiphysInteg_->registerModel(0, maxLevelNumber_ - 1, hybridModel_);
+    multiphysInteg_->registerModel(maxMHDLevel_, maxLevelNumber_ - 1, hybridModel_);
 
-    multiphysInteg_->registerAndInitSolver(0, maxLevelNumber_ - 1,
+    multiphysInteg_->registerAndInitSolver(maxMHDLevel_, maxLevelNumber_ - 1,
                                            std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
 
     multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
@@ -274,9 +286,10 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
         if (dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
             != "none")
         {
-            auto hybridTagger_ = amr::TaggerFactory<PHARETypes>::make(
+            auto hybridTagger_ = amr::TaggerFactory<HybridModel>::make(
                 dict["simulation"]["AMR"]["refinement"]["tagging"]);
-            multiphysInteg_->registerTagger(0, maxLevelNumber_ - 1, std::move(hybridTagger_));
+            multiphysInteg_->registerTagger(maxMHDLevel_, maxLevelNumber_ - 1,
+                                            std::move(hybridTagger_));
         }
     }
 
@@ -301,7 +314,80 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
           P=0000000:supporting RefineSchedules with the source level finer
           P=0000000:than the destination level
         */
-        lbm_->addLoadBalancerEstimator(0, maxLevelNumber_ - 1, std::move(lbe_));
+        lbm_->addLoadBalancerEstimator(maxMHDLevel_, maxLevelNumber_ - 1, std::move(lbe_));
+        lbm_->setLoadBalancer(loadBalancer);
+    }
+
+    auto lbm_id = lbm_->getId(); // moved on next line
+    multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
+
+    if (dict["simulation"].contains("restarts"))
+        startTime_ = restarts_init(dict["simulation"]["restarts"]);
+
+    integrator_
+        = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
+                                       loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
+
+    timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
+
+    if (dict["simulation"].contains("diagnostics"))
+        diagnostics_init(dict["simulation"]["diagnostics"]);
+}
+
+
+template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::mhd_init(
+    initializer::PHAREDict const& dict)
+{
+    mhdModel_ = std::make_shared<MHDModel>(
+        dict["simulation"], std::make_shared<typename MHDModel::resources_manager_type>());
+
+
+    mhdModel_->resourcesManager->registerResources(mhdModel_->state);
+
+    // we register the mhd model for all possible levels in the hierarchy
+    // since for now it is the only model available, same for the solver
+    multiphysInteg_->registerModel(0, maxMHDLevel_ - 1, mhdModel_);
+
+    multiphysInteg_->registerAndInitSolver(0, maxMHDLevel_ - 1,
+                                           std::make_unique<SolverMHD>(dict["simulation"]["algo"]));
+
+    multiphysInteg_->registerAndSetupMessengers(messengerFactory_);
+
+    if (dict["simulation"]["AMR"]["refinement"].contains("tagging"))
+    {
+        if (dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
+            != "none")
+        {
+            auto mhdTagger_ = amr::TaggerFactory<MHDModel>::make(
+                dict["simulation"]["AMR"]["refinement"]["tagging"]);
+            multiphysInteg_->registerTagger(0, maxMHDLevel_ - 1, std::move(mhdTagger_));
+        }
+    }
+
+    amr::LoadBalancerDetails lb_info
+        = amr::LoadBalancerDetails::FROM(dict["simulation"]["AMR"]["loadbalancing"]);
+
+    auto lbm_ = std::make_unique<amr::LoadBalancerManager<dim>>(dict);
+    auto lbe_
+        = std::make_shared<amr::LoadBalancerEstimatorMHD<PHARETypes>>(lb_info.mode, lbm_->getId());
+
+    auto loadBalancer_db = std::make_shared<SAMRAI::tbox::MemoryDatabase>("LoadBalancerDB");
+    loadBalancer_db->putDouble("flexible_load_tolerance", lb_info.tolerance);
+    auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
+        SAMRAI::tbox::Dimension{dimension}, "LoadBalancer", loadBalancer_db);
+
+    if (dict["simulation"]["AMR"]["refinement"].contains("tagging"))
+    { // Load balancers break with refinement boxes - only tagging supported
+        /*
+          P=0000000:Program abort called in file ``/.../SAMRAI/xfer/RefineSchedule.cpp'' at line 369
+          P=0000000:ERROR MESSAGE:
+          P=0000000:RefineSchedule:RefineSchedule error: We are not currently
+          P=0000000:supporting RefineSchedules with the source level finer
+          P=0000000:than the destination level
+        */
+        lbm_->addLoadBalancerEstimator(0, maxMHDLevel_ - 1, std::move(lbe_));
         lbm_->setLoadBalancer(loadBalancer);
     }
 
@@ -323,8 +409,9 @@ void Simulator<dim, _interp, nbRefinedPart>::hybrid_init(initializer::PHAREDict 
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
-Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::Simulator(
     PHARE::initializer::PHAREDict const& dict,
     std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
     : coutbuf{logging(log_out)}
@@ -333,6 +420,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
     , messengerFactory_{descriptors_}
     , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
+    , maxMHDLevel_{dict["simulation"]["AMR"]["max_mhd_level"].template to<int>()}
     , dt_{dict["simulation"]["time_step"].template to<double>()}
     , timeStepNbr_{dict["simulation"]["time_step_nbr"].template to<int>()}
     , finalTime_{dt_ * timeStepNbr_}
@@ -347,8 +435,9 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
-std::string Simulator<_dimension, _interp_order, _nbRefinedPart>::to_str()
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+std::string Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::to_str()
 {
     std::stringstream ss;
     ss << "PHARE SIMULATOR\n";
@@ -364,8 +453,9 @@ std::string Simulator<_dimension, _interp_order, _nbRefinedPart>::to_str()
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
-void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+void Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::initialize()
 {
     PHARE_LOG_SCOPE(1, "Simulator::initialize");
 
@@ -405,8 +495,9 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
-double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+double Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::advance(double dt)
 {
     PHARE_LOG_SCOPE(1, "Simulator::advance");
     double dt_new = 0;
@@ -442,8 +533,10 @@ double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
-auto Simulator<_dimension, _interp_order, _nbRefinedPart>::find_model(std::string name)
+template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+auto Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::find_model(
+    std::string name)
 {
     return std::find(std::begin(modelNames_), std::end(modelNames_), name) != std::end(modelNames_);
 }
@@ -452,6 +545,9 @@ auto Simulator<_dimension, _interp_order, _nbRefinedPart>::find_model(std::strin
 
 struct SimulatorMaker
 {
+    template<typename Model>
+    using MHDTimeStepper = typename DefaultMHDTimeStepper<Model>::type;
+
     SimulatorMaker(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
         : hierarchy_{hierarchy}
     {
@@ -473,7 +569,7 @@ struct SimulatorMaker
 
             PHARE::initializer::PHAREDict& theDict
                 = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-            return std::make_unique<Simulator<d, io, nb>>(theDict, hierarchy_);
+            return std::make_unique<Simulator<d, io, nb, MHDTimeStepper>>(theDict, hierarchy_);
         }
         else
         {
@@ -483,11 +579,15 @@ struct SimulatorMaker
 };
 
 
-template<std::size_t dim, std::size_t interp, size_t nbRefinedPart>
-std::unique_ptr<Simulator<dim, interp, nbRefinedPart>>
+std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
+
+
+template<std::size_t dim, std::size_t interp, std::size_t nbRefinedPart,
+         template<typename> typename MHDTimeStepper>
+std::unique_ptr<Simulator<dim, interp, nbRefinedPart, MHDTimeStepper>>
 makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
 {
-    return std::make_unique<Simulator<dim, interp, nbRefinedPart>>(
+    return std::make_unique<Simulator<dim, interp, nbRefinedPart, MHDTimeStepper>>(
         initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
 }
 
