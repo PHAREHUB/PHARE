@@ -359,16 +359,16 @@ def _get_rank(patchdatas, patch_id, **kwargs):
     layout = reference_pd.layout
     centering = "dual"
     nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
-    shape = grow(reference_pd.box, [nbrGhosts] * 2).shape
+    shape = grow(reference_pd.box, [nbrGhosts] * ndim).shape
 
     if ndim == 1:
-        pass
+        raise RuntimeError("Not used in 1D")
 
     elif ndim == 2:
         data = np.zeros(shape) + int(patch_id.strip("p").split("#")[0])
-        return ({"name": "rank", "data": data, "centering": [centering] * 2},)
+        return ({"name": "rank", "data": data, "centering": [centering] * ndim},)
     else:
-        raise RuntimeError("Not Implemented yet")
+        raise RuntimeError("Not Implemented - not sure it is useful")
 
 
 def _compute_pressure(patch_datas, **kwargs):
