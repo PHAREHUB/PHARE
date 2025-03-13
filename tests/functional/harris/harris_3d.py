@@ -41,7 +41,7 @@ def config():
         dl=dl,
         cells=cells,
         refinement="tagging",
-        max_nbr_levels=1,
+        max_nbr_levels=2,
         hyper_resistivity=0.001,
         resistivity=0.001,
         diag_options={
