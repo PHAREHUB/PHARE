@@ -19,7 +19,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
 find_program(Git git)
-find_package(Python 3.8 COMPONENTS Interpreter Development.Module REQUIRED)
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
@@ -27,9 +26,9 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 include_directories(${PHARE_PROJECT_DIR}/src)
 
 include("${PHARE_PROJECT_DIR}/res/cmake/options.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/def.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
-include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
 
 set(CMAKE_CXX_STANDARD 20)
