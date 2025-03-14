@@ -19,11 +19,13 @@
 
 using namespace PHARE::amr;
 
+template<typename Model>
+using MHDTimeStepper = typename PHARE::DefaultMHDTimeStepper<Model>::type;
 
 
 TEST(test_tagger, fromFactoryValid)
 {
-    using phare_types = PHARE::PHARE_Types<1, 1, 2>;
+    using phare_types = PHARE::PHARE_Types<1, 1, 2, MHDTimeStepper>;
     PHARE::initializer::PHAREDict dict;
     dict["model"]     = std::string{"HybridModel"};
     dict["method"]    = std::string{"default"};
@@ -34,7 +36,7 @@ TEST(test_tagger, fromFactoryValid)
 
 TEST(test_tagger, fromFactoryInvalid)
 {
-    using phare_types = PHARE::PHARE_Types<1, 1, 2>;
+    using phare_types = PHARE::PHARE_Types<1, 1, 2, MHDTimeStepper>;
     PHARE::initializer::PHAREDict dict;
     dict["model"]     = std::string{"invalidModel"};
     dict["method"]    = std::string{"invalidStrat"};
@@ -169,7 +171,7 @@ struct TestTagger : public ::testing::Test
     auto static constexpr interp_order   = TaggingTestInfo_t::interp;
     auto static constexpr refinedPartNbr = TaggingTestInfo_t::refinedPartNbr;
 
-    using phare_types = PHARE::PHARE_Types<dim, interp_order, refinedPartNbr>;
+    using phare_types = PHARE::PHARE_Types<dim, interp_order, refinedPartNbr, MHDTimeStepper>;
     using Electromag  = typename phare_types::Electromag_t;
     using Ions        = typename phare_types::Ions_t;
     using Electrons   = typename phare_types::Electrons_t;

@@ -17,7 +17,7 @@ namespace core
     struct dummy
     {
         using type              = int;
-        static const type value = 0;
+        static type const value = 0;
     };
 
 
@@ -72,13 +72,13 @@ namespace core
     constexpr decltype(auto) possibleSimulators()
     {
         // inner tuple = dim, interp, list[possible nbrParticles for dim/interp]
-        return std::tuple<SimulatorOption<DimConst<1>, InterpConst<1>, 2, 3>,
+        return std::tuple<SimulatorOption<DimConst<1>, InterpConst<1>, 2, 3>/*,
                           SimulatorOption<DimConst<1>, InterpConst<2>, 2, 3, 4>,
                           SimulatorOption<DimConst<1>, InterpConst<3>, 2, 3, 4, 5>,
 
                           SimulatorOption<DimConst<2>, InterpConst<1>, 4, 5, 8, 9>,
                           SimulatorOption<DimConst<2>, InterpConst<2>, 4, 5, 8, 9, 16>,
-                          SimulatorOption<DimConst<2>, InterpConst<3>, 4, 5, 8, 9, 25>>{};
+                          SimulatorOption<DimConst<2>, InterpConst<3>, 4, 5, 8, 9, 25>*/>{};
     }
 
 

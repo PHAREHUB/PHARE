@@ -36,8 +36,6 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     auto& By = model.state.electromag.B.getComponent(PHARE::core::Component::Y);
     auto& Bz = model.state.electromag.B.getComponent(PHARE::core::Component::Z);
 
-    auto& N = model.state.ions.density();
-
     // we loop on cell indexes for all qties regardless of their centering
     auto const& [start_x, _]
         = layout.physicalStartToEnd(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
