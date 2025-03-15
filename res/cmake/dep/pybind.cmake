@@ -11,7 +11,7 @@ function(get_pybind)
 
   message("downloading subproject pybind11")
   set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
-  set(PYBIND11_VERSION master)
+  set(PYBIND11_VERSION v2.13.6) # github.com/pybind/pybind11/pull/5553 broke master
 
   phare_github_get_or_update(pybind11 ${PYBIND11_SRCDIR} pybind/pybind11 ${PYBIND11_VERSION})
 
