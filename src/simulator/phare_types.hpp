@@ -29,15 +29,14 @@ struct PHARE_Types
     using MaxwellianParticleInitializer_t = typename core_types::MaxwellianParticleInitializer_t;
     using IonPopulation_t                 = typename core_types::IonPopulation_t;
     using Electrons_t                     = typename core_types::Electrons_t;
-    using ParticleInitializerFactory      = typename core_types::ParticleInitializerFactory;
 
-
+    using ParticleInitializerFactory
+        = amr::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
 
     using amr_types        = PHARE::amr::PHARE_Types<dimension, interp_order, nbRefinedPart>;
     using hierarchy_t      = typename amr_types::hierarchy_t;
     using Splitter         = typename amr_types::Splitter_t;
     using RefinementParams = typename amr_types::RefinementParams;
-
 
 
 

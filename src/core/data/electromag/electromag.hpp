@@ -4,10 +4,10 @@
 #include <string>
 #include <tuple>
 
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_initializer.hpp"
-#include "initializer/data_provider.hpp"
 #include "core/def.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+
+#include "initializer/data_provider.hpp"
 
 
 namespace PHARE
@@ -17,15 +17,18 @@ namespace core
     template<typename VecFieldT>
     class Electromag
     {
+        using This = Electromag<VecFieldT>;
+
     public:
-        static constexpr std::size_t dimension = VecFieldT::dimension;
+        using vecfield_type             = VecFieldT;
+        auto static constexpr dimension = VecFieldT::dimension;
 
         explicit Electromag(std::string name)
             : E{name + "_E", HybridQuantity::Vector::E}
             , B{name + "_B", HybridQuantity::Vector::B}
-            , Binit_{}
         {
         }
+
 
         explicit Electromag(initializer::PHAREDict const& dict)
             : E{dict["name"].template to<std::string>() + "_"
@@ -34,18 +37,9 @@ namespace core
             , B{dict["name"].template to<std::string>() + "_"
                     + dict["magnetic"]["name"].template to<std::string>(),
                 HybridQuantity::Vector::B}
-            , Binit_{dict["magnetic"]["initializer"]}
         {
         }
 
-        using vecfield_type = VecFieldT;
-
-
-        template<typename GridLayout>
-        void initialize(GridLayout const& layout)
-        {
-            Binit_.initialize(B, layout);
-        }
 
 
         //-------------------------------------------------------------------------
@@ -76,10 +70,13 @@ namespace core
 
         VecFieldT E;
         VecFieldT B;
-
-    private:
-        VecFieldInitializer<dimension> Binit_;
     };
+
+
 } // namespace core
 } // namespace PHARE
+
+
+
+
 #endif
