@@ -18,6 +18,11 @@ if(HighFive)
     phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} advance-2d-fields     test_fields_advance_2d.py     ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} advance-2d-particles  test_particles_advance_2d.py  ${CMAKE_CURRENT_BINARY_DIR})
 
+    if(highResourceTests) # off by default as it's quite intensive
+        phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} advance-3d-fields     test_fields_advance_3d.py     ${CMAKE_CURRENT_BINARY_DIR})
+        phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} advance-3d-particles  test_particles_advance_3d.py  ${CMAKE_CURRENT_BINARY_DIR})
+    endif(highResourceTests)
+
   endif()
 
 endif()
