@@ -28,7 +28,7 @@ endif (CMAKE_BUILD_TYPE STREQUAL "Debug")
 
 pybind11_add_module(cpp_etc cpp_etc.cpp)
 target_compile_options(cpp_etc PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
-target_link_libraries(cpp_etc PUBLIC phare_amr) # gives us samrai header includes
+target_link_libraries(cpp_etc PUBLIC phare_amr phare_diagnostic)
 set_target_properties(cpp_etc
     PROPERTIES
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"

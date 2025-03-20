@@ -2,6 +2,7 @@
 
 function(phare_git_get_or_update name dir url branch)
   if (NOT EXISTS ${dir})
+    message("cloning ${url} ${branch}" )
     execute_process(
       COMMAND ${Git} clone ${url} ${dir} -b ${branch} --recursive --depth 1 --shallow-submodules
     )
