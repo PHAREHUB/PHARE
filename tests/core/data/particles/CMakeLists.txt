@@ -20,5 +20,5 @@ endfunction(_particles_test)
 
 _particles_test(test_main.cpp test-particles)
 _particles_test(test_interop.cpp test-particles-interop)
-_particles_test(test_particle_array_operators.cpp test-particles-operators)
+_particles_test(test_particle_array_consistency.cpp test-particles-consistency)
 

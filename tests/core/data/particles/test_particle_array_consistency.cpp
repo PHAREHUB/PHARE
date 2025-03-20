@@ -34,12 +34,10 @@ void add_particles_in(ParticleArray_t& particles, Box_t const& box)
             particles.emplace_back(particle<ParticleArray_t::dimension>(*bix));
 }
 
-struct AParticleArrayConstructionTest : public ::testing::Test
-{
-};
+
 
 template<typename ParticleArray_>
-struct ParticleArrayConstructionTest : public AParticleArrayConstructionTest
+struct ParticleArrayConsistencyTest : public ::testing::Test
 {
     auto constexpr static dim    = ParticleArray_::dimension;
     auto constexpr static interp = 1;
@@ -55,11 +53,11 @@ struct ParticleArrayConstructionTest : public AParticleArrayConstructionTest
 using Permutations_t = testing::Types<ParticleArray<1>>;
 
 
-TYPED_TEST_SUITE(ParticleArrayConstructionTest, Permutations_t, );
+TYPED_TEST_SUITE(ParticleArrayConsistencyTest, Permutations_t, );
 
 
 
-TYPED_TEST(ParticleArrayConstructionTest, test_move_swap_etc)
+TYPED_TEST(ParticleArrayConsistencyTest, test_is_consistent_after_swap_copy)
 {
     using ParticleArray_t     = TestFixture::ParticleArray_t;
     auto static constexpr dim = ParticleArray_t::dimension;
