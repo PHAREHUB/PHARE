@@ -50,9 +50,9 @@ set( SOURCES_INC
      wrappers/integrator.hpp
      tagging/tagger.hpp
      tagging/tagger_factory.hpp
-     tagging/hybrid_tagger.hpp
-     tagging/hybrid_tagger_strategy.hpp
-     tagging/default_hybrid_tagger_strategy.hpp
+     tagging/concrete_tagger.hpp
+     tagging/tagger_strategy.hpp
+     tagging/default_tagger_strategy.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
      solvers/solver_mhd.hpp
