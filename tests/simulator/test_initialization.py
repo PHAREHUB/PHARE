@@ -170,7 +170,7 @@ class InitializationTest(SimulatorTest):
                 quantity=quantity, write_timestamps=np.zeros(time_step_nbr)
             )
 
-        for quantity in ["density", "bulkVelocity"]:
+        for quantity in ["charge_density", "bulkVelocity"]:
             FluidDiagnostics(
                 quantity=quantity, write_timestamps=np.zeros(time_step_nbr)
             )
@@ -232,7 +232,7 @@ class InitializationTest(SimulatorTest):
             return particle_hier
 
         if qty == "moments":
-            mom_hier = hierarchy_from(h5_filename=diag_outputs + "/ions_density.h5")
+            mom_hier = hierarchy_from(h5_filename=diag_outputs + "/ions_charge_density.h5")
             mom_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
             )
@@ -472,6 +472,7 @@ class InitializationTest(SimulatorTest):
                 print("patch {}".format(ip))
 
                 ion_density = patch.patch_datas["rho"].dataset[:]
+                # print(patch.patch_datas.items())
                 proton_density = patch.patch_datas["protons_rho"].dataset[:]
                 beam_density = patch.patch_datas["beam_rho"].dataset[:]
                 x = patch.patch_datas["rho"].x
