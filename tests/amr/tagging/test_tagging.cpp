@@ -1,21 +1,16 @@
 
-#include <cmath>
-#include <algorithm>
 
-#include "phare/phare.hpp"
-#include "amr/tagging/tagger.hpp"
-#include "amr/tagging/tagger_factory.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
-
-#include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/models/hybrid_state.hpp"
-#include "core/utilities/span.hpp"
+#include "simulator/simulator.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+
+
+#include <cmath>
+#include <algorithm>
 
 using namespace PHARE::amr;
 
@@ -25,9 +20,9 @@ TEST(test_tagger, fromFactoryValid)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"HybridModel"};
-    dict["method"]  = std::string{"default"};
-    dict["threshold"]  = 0.2;
+    dict["model"]     = std::string{"HybridModel"};
+    dict["method"]    = std::string{"default"};
+    dict["threshold"] = 0.2;
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
 }
@@ -36,10 +31,10 @@ TEST(test_tagger, fromFactoryInvalid)
 {
     using phare_types = PHARE::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"invalidModel"};
-    dict["method"]  = std::string{"invalidStrat"};
+    dict["model"]     = std::string{"invalidModel"};
+    dict["method"]    = std::string{"invalidStrat"};
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
-    auto badTagger = TaggerFactory<phare_types>::make(dict);
+    auto badTagger    = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(badTagger == nullptr);
 }
 

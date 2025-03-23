@@ -2,10 +2,6 @@
 #
 # formatted with black
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
-
 import unittest
 
 from ddt import data, ddt

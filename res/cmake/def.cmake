@@ -314,3 +314,5 @@ function(phare_print_all_vars)
   endforeach()
 endfunction(phare_print_all_vars)
 
+
+# phare_print_all_vars()

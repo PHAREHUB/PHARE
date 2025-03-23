@@ -16,7 +16,6 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
-    container: ghcr.io/pharchive/phare_dep/ubuntu:22.04
     permissions:
       actions: read
       contents: read
@@ -33,9 +32,26 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Install system deps (openmpi, hdf5, ccache,...)
+        if: ${{ matrix.language == 'cpp' }}
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+
+      - name: Configure CMake
+        if: ${{ matrix.language == 'cpp' }}
+        run: |
+          mkdir build; cd build; cmake ..; cd ..; rm -rf build
+          cd subprojects/samrai && mkdir build && cd build
+          cmake .. -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          make -j2 && sudo make install && cd ../.. && rm -rf samrai
+
       - name: Configure (cpp)
         if: ${{ matrix.language == 'cpp' }}
-        run: mkdir build; cd build; cmake .. -Dphare_configurator=ON
+        run: mkdir build; cd build; cmake .. -DCMAKE_BUILD_TYPE=Debug
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3

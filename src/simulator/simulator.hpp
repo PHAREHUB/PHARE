@@ -484,10 +484,9 @@ struct SimulatorMaker
 
 
 template<std::size_t dim, std::size_t interp, size_t nbRefinedPart>
-std::unique_ptr<Simulator<dim, interp, nbRefinedPart>>
-makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
+auto makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
 {
-    return std::make_unique<Simulator<dim, interp, nbRefinedPart>>(
+    return std::make_shared<Simulator<dim, interp, nbRefinedPart>>(
         initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
 }
 

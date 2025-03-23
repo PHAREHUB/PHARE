@@ -6,7 +6,7 @@ import matplotlib as mpl
 from pathlib import Path
 
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
+from pyphare import cpp
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
@@ -18,7 +18,7 @@ mpl.use("Agg")
 SCOPE_TIMING = os.getenv("PHARE_SCOPE_TIMING", "True").lower() in ("true", "1", "t")
 LOAD_BALANCE = os.getenv("LOAD_BALANCE", "True").lower() in ("true", "1", "t")
 
-cpp = cpp_lib()
+
 startMPI()
 
 cells = (800, 800)

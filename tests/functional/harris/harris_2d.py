@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
+from pyphare import cpp
 from pyphare.simulator.simulator import Simulator
 from pyphare.simulator.simulator import startMPI
 
@@ -11,7 +11,7 @@ os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 """
   For scope timings to work
   The env var PHARE_SCOPE_TIMING must be == "1" (or "true")
-    See src/phare/phare.hpp
+    See src/amr/samrai.hpp
   CMake must be configured with: -DwithPhlop=ON
   And a LOG_LEVEL must be defined via compile args: -DPHARE_LOG_LEVEL=1
   Or change the default value in src/core/logger.hpp
@@ -21,7 +21,7 @@ os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 
 
 ph.NO_GUI()
-cpp = cpp_lib()
+
 startMPI()
 
 diag_outputs = "phare_outputs/test/harris/2d"

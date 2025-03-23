@@ -13,12 +13,10 @@ from tests.simulator import SimulatorTest
 
 import numpy as np
 import matplotlib as mpl
+from pyphare import cpp
 
 mpl.use("Agg")
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
 startMPI()
 
 ndim = 2

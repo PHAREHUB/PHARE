@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
 import os
 import unittest
 
+from pyphare import cpp
 import h5py
 import numpy as np
 import pyphare.pharein as ph

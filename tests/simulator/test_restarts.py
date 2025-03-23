@@ -9,9 +9,7 @@ from datetime import timedelta
 
 from ddt import ddt, data, unpack
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
+from pyphare import cpp
 
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run

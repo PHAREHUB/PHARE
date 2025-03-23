@@ -2,9 +2,7 @@
 #
 # formatted with black
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
+from pyphare import cpp
 
 import os
 import sys

@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 project(phare_amr)
 
 set( SOURCES_INC
@@ -72,32 +72,32 @@ set( SOURCES_INC
      load_balancing/load_balancer_hybrid_strategy.hpp
      load_balancing/concrete_load_balancer_hybrid_strategy_homogeneous.hpp
      load_balancing/concrete_load_balancer_hybrid_strategy_nppc.hpp
+     samrai.hpp
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp
      resources_manager/amr_utils.cpp
      data/field/coarsening/field_coarsen.cpp
      messengers/messenger_factory.cpp
+     samrai.cpp
    )
 
-add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
+# single source of entry for static SAMRAI things
+add_library(${PROJECT_NAME} SHARED ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
 target_link_directories(${PROJECT_NAME} PUBLIC ${MPI_LIBRARY_PATH})
+
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_core
-  SAMRAI_algs
-  SAMRAI_appu
-  SAMRAI_geom
-  SAMRAI_hier
-  SAMRAI_math
-  SAMRAI_mesh
-  SAMRAI_pdat
-  SAMRAI_solv
-  SAMRAI_tbox
-  SAMRAI_xfer
+  ${CMAKE_Fortran_IMPLICIT_LINK_LIBRARIES}
+  SAMRAI_hier SAMRAI_math SAMRAI_pdat SAMRAI_tbox SAMRAI_xfer
   MPI::MPI_C
-  )
-set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
+)
+
+target_link_libraries(${PROJECT_NAME} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,SAMRAI_algs,SAMRAI_appu,SAMRAI_geom>" )
+target_link_libraries(${PROJECT_NAME} PRIVATE "$<LINK_LIBRARY:WHOLE_ARCHIVE,SAMRAI_mesh,SAMRAI_solv>" )
+
+set(PHARE_AMR_LIBS  CACHE STRING "" FORCE)
 

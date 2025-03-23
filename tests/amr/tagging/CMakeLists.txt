@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 
 project(test-tagging)
 
@@ -18,7 +18,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-  phare_amr
+  phare_amr phare_diagnostic
+  ${PHARE_AMR_LIBS}
   ${GTEST_LIBS})
 
 

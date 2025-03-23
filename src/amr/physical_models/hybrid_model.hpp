@@ -43,7 +43,7 @@ public:
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
-    static const inline std::string model_name = "HybridModel";
+    static inline std::string const model_name = "HybridModel";
 
 
     core::HybridState<Electromag, Ions, Electrons> state;
@@ -88,7 +88,7 @@ public:
     }
 
 
-    virtual ~HybridModel() override {}
+    virtual ~HybridModel() override { resourcesManager->unRegisterForRestarts(*this); }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface

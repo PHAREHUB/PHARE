@@ -8,6 +8,8 @@
 #include <utility>
 #include "phare_solver.hpp"
 
+#include "python3/patch_data.hpp"
+
 
 namespace PHARE::pydata
 {

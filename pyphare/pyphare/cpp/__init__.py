@@ -4,26 +4,25 @@
 
 
 import json
+import importlib
+from pyphare.cpp import validate
 
-# continue to use override if set
-_cpp_lib_override = None
+__all__ = ["validate"]
+
+_libs = {}
 
 
-def cpp_lib(override=None):
-    import importlib
+def cpp_lib(sim_str, override=None):
+    global _libs
+    if sim_str in _libs:
+        return _libs[sim_str]
 
-    global _cpp_lib_override
-    if override is not None:
-        _cpp_lib_override = override
-    if _cpp_lib_override is not None:
-        return importlib.import_module(_cpp_lib_override)
+    _libs[sim_str] = importlib.import_module(f"pybindlibs.cpp_{sim_str}")
+    return _libs[sim_str]
 
-    if not __debug__:
-        return importlib.import_module("pybindlibs.cpp")
-    try:
-        return importlib.import_module("pybindlibs.cpp_dbg")
-    except ImportError:
-        return importlib.import_module("pybindlibs.cpp")
+
+def simulator_id(dim, interp, nbrRefinedPart):
+    return f"{dim}_{interp}_{nbrRefinedPart}"
 
 
 def cpp_etc_lib():
@@ -40,13 +39,27 @@ def build_config_as_json():
     return json.dumps(build_config())
 
 
-def splitter_type(dim, interp, n_particles):
-    return getattr(cpp_lib(), f"Splitter_{dim}_{interp}_{n_particles}")
+def splitter_type(dim, interp, nbrRefinedPart):
+    return getattr(cpp_lib(simulator_id(dim, interp, nbrRefinedPart)), "Splitter")
 
 
-def create_splitter(dim, interp, n_particles):
-    return splitter_type(dim, interp, n_particles)()
+def create_splitter(dim, interp, nbrRefinedPart):
+    return splitter_type(dim, interp, nbrRefinedPart)()
 
 
-def split_pyarrays_fn(dim, interp, n_particles):
-    return getattr(cpp_lib(), f"split_pyarray_particles_{dim}_{interp}_{n_particles}")
+def split_pyarrays_fn(dim, interp, nbrRefinedPart):
+    return getattr(
+        cpp_lib(simulator_id(dim, interp, nbrRefinedPart)), "split_pyarray_particles"
+    )
+
+
+def mpi_rank():
+    return getattr(cpp_etc_lib(), "mpi_rank")()
+
+
+def mpi_size():
+    return getattr(cpp_etc_lib(), "mpi_size")()
+
+
+def mpi_barrier():
+    return getattr(cpp_etc_lib(), "mpi_barrier")()

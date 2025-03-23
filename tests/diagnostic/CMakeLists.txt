@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 
 project(test-diagnostics)
 
@@ -24,6 +24,7 @@ if(HighFive)
       phare_simulator
       pybind11::embed
       ${GTEST_LIBS}
+      ${PHARE_AMR_LIBS}
       ${HDF5_LIBRARIES})
 
     add_dependencies(${src_name} cpp_etc)

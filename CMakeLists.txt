@@ -1,6 +1,6 @@
-cmake_minimum_required (VERSION 3.20.1) # released April 8, 2021 - https://www.kitware.com/cmake-3-20-1-available-for-download/
+cmake_minimum_required (VERSION 3.24.1) # released August, 2022
 
-project(PHARE VERSION 0.1 LANGUAGES CXX C)
+project(PHARE VERSION 0.1 LANGUAGES CXX C Fortran)
 
 # Release mode default
 if(NOT CMAKE_BUILD_TYPE)
