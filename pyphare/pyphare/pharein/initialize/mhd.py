@@ -21,7 +21,7 @@ def populateDict(sim):
 
     add_string("simulation/mhd_state/name", "mhd_state")
 
-    init_model = sim.model
+    init_model = sim.mhd_model
     modelDict = init_model.model_dict
 
     addInitFunction(

@@ -1,12 +1,12 @@
 #ifndef PHARE_PY_MHD_HPP
 #define PHARE_PY_MHD_HPP
 
+#include <cstdint>
 #include <pybind11/operators.h>
 #include <pybind11/stl.h>
 #include <pybind11/functional.h>
 #include <pybind11/numpy.h>
 #include <pybind11/pybind11.h>
-#include <pybind11/stl.h>
 
 #include <utility>
 
@@ -52,10 +52,10 @@ namespace py = pybind11;
 using namespace core;
 using namespace solver;
 
-enum class TimeIntegratorType { Euler, TVDRK2, TVDRK3, count };
-enum class ReconstructionType { Constant, Linear, WENO3, WENOZ, count };
-enum class SlopeLimiterType { VanLeer, MinMod, count };
-enum class RiemannSolverType { Rusanov, HLL, count };
+enum class TimeIntegratorType : uint8_t { Euler, TVDRK2, TVDRK3, count };
+enum class ReconstructionType : uint8_t { Constant, Linear, WENO3, WENOZ, count };
+enum class SlopeLimiterType : uint8_t { VanLeer, MinMod, count };
+enum class RiemannSolverType : uint8_t { Rusanov, HLL, count };
 
 template<TimeIntegratorType T>
 struct TimeIntegratorSelector;
@@ -176,17 +176,13 @@ class RegistererSelector
 public:
     static constexpr void declare_etc(py::module& m, std::string const& type_string)
     {
-        if constexpr (unwanted_simulators_())
-            return;
-        else
+        if constexpr (!unwanted_simulators_())
             Registerer_t::declare_etc(m, type_string);
     }
 
     static constexpr void declare_sim(py::module& m, std::string const& type_string)
     {
-        if constexpr (unwanted_simulators_())
-            return;
-        else
+        if constexpr (!unwanted_simulators_())
             Registerer_t::declare_sim(m, type_string);
     }
 
@@ -283,7 +279,6 @@ constexpr void declare_all_mhd_params(py::module& m)
      * sl,*/
     /*                                           rs, hall, res, hyper_res>::declare_sim(m,
      * full_type);*/
-    /**/
     /*                                Registerer<Dimension, InterpOrder, NbRefinedParts, ti, rc,
      * sl,*/
     /*                                           rs, hall, res, hyper_res>::declare_etc(m,

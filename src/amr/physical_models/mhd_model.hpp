@@ -24,11 +24,13 @@ class MHDModel : public IPhysicalModel<AMR_Types>
 public:
     static constexpr auto dimension = GridLayoutT::dimension;
 
-    using patch_t   = typename AMR_Types::patch_t;
-    using level_t   = typename AMR_Types::level_t;
+    using amr_types = AMR_Types;
+    using patch_t   = amr_types::patch_t;
+    using level_t   = amr_types::level_t;
     using Interface = IPhysicalModel<AMR_Types>;
 
-    using field_type             = typename VecFieldT::field_type;
+    using vecfield_type          = VecFieldT;
+    using field_type             = vecfield_type::field_type;
     using gridlayout_type        = GridLayoutT;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
 
@@ -37,15 +39,15 @@ public:
     core::MHDState<VecFieldT> state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
-    virtual void initialize(level_t& level) override;
+    void initialize(level_t& level) override;
 
 
-    virtual void allocate(patch_t& patch, double const allocateTime) override
+    void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
     }
 
-    virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
+    void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
     NO_DISCARD auto setOnPatch(patch_t& patch)
     {
@@ -60,11 +62,11 @@ public:
     {
     }
 
-    virtual ~MHDModel() override = default;
+    ~MHDModel() override = default;
 
-    auto& get_B() { return state.B; }
+    auto get_B() -> auto& { return state.B; }
 
-    auto& get_B() const { return state.B; }
+    auto get_B() const -> auto& { return state.B; }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -109,7 +111,7 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
     MHDInfo.modelVelocity    = core::VecFieldNames{state.V};
     MHDInfo.modelPressure    = state.P.name();
     MHDInfo.modelMomentum    = core::VecFieldNames{state.rhoV};
-    MHDInfo.modelTotalEnergy = core::VecFieldNames{state.Etot};
+    MHDInfo.modelTotalEnergy = state.Etot.name();
     MHDInfo.modelElectric    = core::VecFieldNames{state.E};
     MHDInfo.modelCurrent     = core::VecFieldNames{state.J};
 

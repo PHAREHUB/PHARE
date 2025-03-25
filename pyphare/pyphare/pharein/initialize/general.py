@@ -1,12 +1,11 @@
 import os
 
 import numpy as np
+import pybindlibs.dictator as pp
 from pyphare.core.phare_utilities import is_scalar
 from pyphare.pharein.load_balancer import LoadBalancer
 from pyphare.pharein.simulation import deserialize as deserialize_sim
 from pyphare.pharein.simulation import serialize as serialize_sim
-
-import pybindlibs.dictator as pp
 
 
 def _patch_data_ids(restart_file_dir):

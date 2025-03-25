@@ -1,11 +1,20 @@
 #ifndef PHARE_MHD_DEFAULTS_HPP
 #define PHARE_MHD_DEFAULTS_HPP
 
+#include "initializer/data_provider.hpp"
+
 namespace PHARE
 {
 template<template<typename> typename FVmethod, typename MHDModel>
 struct DefaultTimeIntegrator
 {
+    DefaultTimeIntegrator(PHARE::initializer::PHAREDict const& /*dict*/) {}
+
+    void registerResources(MHDModel& /*model*/) {}
+
+    void allocate(MHDModel& /*model*/, auto& /*patch*/, double const /*allocateTime*/) const {}
+
+    void fillMessengerInfo(auto& /*info*/) const {}
 };
 
 template<typename GridLayout, typename SlopeLimiter>

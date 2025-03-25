@@ -21,7 +21,7 @@ namespace amr
         std::string modelPressure;
 
         VecFieldNames modelMomentum;
-        VecFieldNames modelTotalEnergy;
+        std::string modelTotalEnergy;
 
         VecFieldNames modelElectric;
         VecFieldNames modelCurrent;

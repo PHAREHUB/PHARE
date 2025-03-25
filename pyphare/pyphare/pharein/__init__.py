@@ -54,6 +54,12 @@ if venv_path is not None:
     sys.path = sys.path + pythonpath
 
 
+def add_vector_string(path, val):
+    import pybindlibs.dictator as pp
+
+    pp.add_vector_string(path, list(val))
+
+
 def NO_GUI():
     """prevents issues when command line only and no desktop etc"""
     import matplotlib as mpl
@@ -76,13 +82,15 @@ def populateDict():
 
     initialize.general.populateDict(sim)
 
-    if not sim.init_options:
-        sim.init_options = ["hybrid"]
+    if not sim.model_options:
+        sim.model_options = ["HybridModel"]
 
-    if "hybrid" in sim.init_options:
+    if "HybridModel" in sim.model_options:
         initialize.hybrid.populateDict(sim)
-    if "mhd" in sim.init_options:
+    if "MHDModel" in sim.model_options:
         initialize.mhd.populateDict(sim)
 
-    if not ("hybrid" in sim.init_options or "mhd" in sim.init_options):
+    if not ("HybridModel" in sim.model_options or "MHDModel" in sim.model_options):
         raise ValueError("Unknown simulation type")
+
+    add_vector_string("simulation/models", sim.model_options)

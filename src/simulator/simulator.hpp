@@ -416,7 +416,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::Simulator(
     std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
     : coutbuf{logging(log_out)}
     , hierarchy_{hierarchy}
-    , modelNames_{"HybridModel"}
+    , modelNames_{dict["simulation"]["models"].template to<std::vector<std::string>>()}
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
     , messengerFactory_{descriptors_}
     , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
@@ -427,9 +427,21 @@ Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::Simulator(
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
+    bool initialized = false;
+
     if (find_model("HybridModel"))
+    {
         hybrid_init(dict);
-    else
+        initialized = true;
+    }
+
+    if (find_model("MHDModel"))
+    {
+        /*mhd_init(dict);*/
+        initialized = true;
+    }
+
+    if (!initialized)
         throw std::runtime_error("unsupported model");
 }
 

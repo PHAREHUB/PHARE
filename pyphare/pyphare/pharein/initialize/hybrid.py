@@ -16,7 +16,7 @@ def populateDict(sim):
     add_double("simulation/algo/ohm/hyper_resistivity", sim.hyper_resistivity)
     add_string("simulation/algo/ohm/hyper_mode", sim.hyper_mode)
 
-    init_model = sim.model
+    init_model = sim.maxwellian_fluid_model
     modelDict = init_model.model_dict
 
     if init_model.nbr_populations() < 0:

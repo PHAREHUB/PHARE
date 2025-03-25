@@ -25,20 +25,28 @@ struct PHARE_Types
     static auto constexpr nbRefinedPart = nbRefinedPart_;
 
     // core deps
-    using core_types   = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using core_types = PHARE::core::PHARE_Types<dimension, interp_order>;
+
+    // Hybrid
     using VecField_t   = typename core_types::VecField_t;
     using Grid_t       = typename core_types::Grid_t;
     using Electromag_t = typename core_types::Electromag_t;
     using Ions_t       = typename core_types::Ions_t;
     using GridLayout_t = typename core_types::GridLayout_t;
     using Electrons_t  = typename core_types::Electrons_t;
+
+    // MHD
+    using Grid_MHD       = typename core_types::Grid_MHD;
+    using VecField_MHD   = typename core_types::VecField_MHD;
+    using GridLayout_MHD = typename core_types::GridLayout_MHD;
     // core deps
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
     using HybridModel_t  = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t,
                                                       Electrons_t, PHARE::amr::SAMRAI_Types, Grid_t>;
     using MHDModel_t
-        = PHARE::solver::MHDModel<GridLayout_t, VecField_t, PHARE::amr::SAMRAI_Types, Grid_t>;
+        = PHARE::solver::MHDModel<GridLayout_MHD, VecField_MHD, PHARE::amr::SAMRAI_Types, Grid_MHD>;
+
     using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types,
                                                  MHDTimeStepper<MHDModel_t>>;
