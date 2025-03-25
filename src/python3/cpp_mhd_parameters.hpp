@@ -195,8 +195,8 @@ private:
 
         bool constexpr compile_one
             = (TI == TimeIntegratorType::TVDRK3 && RC == ReconstructionType::WENOZ
-               && SL == SlopeLimiterType::count && RS == RiemannSolverType::Rusanov
-               && (Hall || !Hall) && !Resistivity && !HyperResistivity);
+               && SL == SlopeLimiterType::count && RS == RiemannSolverType::Rusanov && !Resistivity
+               && !HyperResistivity);
 
         return !compile_one;
     }

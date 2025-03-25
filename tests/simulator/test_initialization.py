@@ -9,15 +9,12 @@ from ddt import ddt
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
-from pyphare.pharein.diagnostics import (
-    ElectromagDiagnostics,
-    FluidDiagnostics,
-    ParticleDiagnostics,
-)
+from pyphare.pharein.diagnostics import (ElectromagDiagnostics,
+                                         FluidDiagnostics, ParticleDiagnostics)
 from pyphare.pharein.simulation import Simulation
 from pyphare.pharesee.geometry import level_ghost_boxes
-from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 from pyphare.simulator.simulator import Simulator
 
@@ -268,7 +265,7 @@ class InitializationTest(SimulatorTest):
 
         from pyphare.pharein import global_vars
 
-        model = global_vars.sim.model
+        model = global_vars.sim.maxwellian_fluid_model
 
         bx_fn = model.model_dict["bx"]
         by_fn = model.model_dict["by"]
@@ -334,7 +331,7 @@ class InitializationTest(SimulatorTest):
 
         from pyphare.pharein import global_vars
 
-        model = global_vars.sim.model
+        model = global_vars.sim.maxwellian_fluid_model
         # protons and beam have same bulk vel here so take only proton func.
         vx_fn = model.model_dict["protons"]["vx"]
         vy_fn = model.model_dict["protons"]["vy"]
@@ -462,7 +459,7 @@ class InitializationTest(SimulatorTest):
 
         from pyphare.pharein import global_vars
 
-        model = global_vars.sim.model
+        model = global_vars.sim.maxwellian_fluid_model
         proton_density_fn = model.model_dict["protons"]["density"]
         beam_density_fn = model.model_dict["beam"]["density"]
 
@@ -551,7 +548,7 @@ class InitializationTest(SimulatorTest):
 
             from pyphare.pharein import global_vars
 
-            model = global_vars.sim.model
+            model = global_vars.sim.maxwellian_fluid_model
             density_fn = model.model_dict["protons"]["density"]
 
             patch = hier.level(0).patches[0]

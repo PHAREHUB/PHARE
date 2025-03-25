@@ -474,7 +474,7 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::initi
     try
     {
         if (isInitialized)
-            std::runtime_error("cannot initialize  - simulator already isInitialized");
+            throw std::runtime_error("cannot initialize  - simulator already isInitialized");
 
         if (integrator_ != nullptr)
             integrator_->initialize();
