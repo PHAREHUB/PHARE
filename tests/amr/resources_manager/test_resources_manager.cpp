@@ -10,6 +10,8 @@
 #include "core/data/tensorfield/tensorfield.hpp"
 
 
+#include <core/hybrid/hybrid_quantities.hpp>
+#include <core/utilities/types.hpp>
 #include <string>
 #include <utility>
 #include <vector>
@@ -218,7 +220,6 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
     IonPopulation1D_P pop;
     static_assert(is_particles_v<ParticlesPack<ParticleArray<1>>>);
 
-    auto s    = inputBase + std::string("/input/input_db_1d");
     hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
     hierarchy->init();
     resourcesManager.registerResources(pop.user);
@@ -250,6 +251,80 @@ typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DO
                          HybridState1DOnly>
     MyTypes;
 INSTANTIATE_TYPED_TEST_SUITE_P(testResourcesManager, aResourceUserCollection, MyTypes);
+
+
+
+
+struct Resource
+{
+    using field_type = Field<1, HybridQuantity::Scalar>;
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(rho); }
+
+    std::array<std::uint32_t, 1> cells{5};
+    field_type rho{"name", HybridQuantity::Scalar::rho, nullptr, cells};
+};
+
+
+struct ResourceUser
+{
+    using Resources = std::variant<Resource>;
+
+    ResourceUser() { resources.resize(2, Resource{}); }
+
+    NO_DISCARD std::vector<Resources>& getRunTimeResourcesViewList() { return resources; }
+
+    auto get()
+    {
+        return for_N<2, for_N_R_mode::make_array>(
+            [&](auto i) { return std::visit([&](Resource& val) { return &val; }, resources[i]); });
+    }
+
+    std::vector<Resources> resources;
+};
+
+
+
+TEST(usingResourcesManager, test_variants)
+{
+    ResourceUser resourceUser;
+
+    std::unique_ptr<BasicHierarchy> bhierarchy;
+    ResourcesManager<GridLayout<GridLayoutImplYee<1, 1>>, Grid1D> resourcesManager;
+
+    bhierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
+    bhierarchy->init();
+    resourcesManager.registerResources(resourceUser);
+    auto& hierarchy = bhierarchy->hierarchy;
+
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+            resourcesManager.allocate(resourceUser, *patch, 0);
+
+    std::size_t patches = 0, checks = 0;
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+        {
+            auto dataOnPatch            = resourcesManager.setOnPatch(*patch, resourceUser);
+            auto resources              = resourceUser.get();
+            resources[1]->rho.data()[4] = 5;
+            ++patches;
+        }
+
+
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+        {
+            auto dataOnPatch = resourcesManager.setOnPatch(*patch, resourceUser);
+            auto resources   = resourceUser.get();
+            EXPECT_EQ(resources[1]->rho.data()[4], 5);
+            ++checks;
+        }
+
+    EXPECT_GE(patches, 1);
+    EXPECT_EQ(checks, patches);
+}
+
 
 
 
