@@ -150,12 +150,11 @@ def _pdd_to_ppp_domain_slicing(**kwargs):
     ndim = kwargs["ndim"]
 
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+    inner_all = tuple([inner] * ndim)
 
     if ndim == 1:
-        inner_all = tuple([inner] * ndim)
         return inner_all, (inner_all,)
     elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
         return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
     else:
         raise RuntimeError("dimension not yet implemented")

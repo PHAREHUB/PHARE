@@ -26,7 +26,7 @@ class box_iterator;
 template<typename Type, std::size_t dim>
 struct Box
 {
-    static const size_t dimension = dim;
+    static size_t const dimension = dim;
 
 
     Point<Type, dim> lower;
@@ -236,16 +236,16 @@ bool isIn(Point const& point, BoxContainer const& boxes)
 /** This overload of isIn does the same as the one above but takes only
  * one box.
  */
-template<typename Point>
-NO_DISCARD bool isIn(Point const& point,
-                     Box<typename Point::value_type, Point::dimension> const& box)
+template<template<typename, std::size_t> typename Point, typename Type, std::size_t SIZE>
+NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
 {
-    auto isIn1D = [](typename Point::value_type pos, typename Point::value_type lower,
-                     typename Point::value_type upper) { return pos >= lower && pos <= upper; };
+    auto isIn1D = [](auto const pos, auto const lower, auto const upper) {
+        return pos >= lower && pos <= upper;
+    };
 
     bool pointInBox = true;
 
-    for (auto iDim = 0u; iDim < Point::dimension; ++iDim)
+    for (auto iDim = 0u; iDim < SIZE; ++iDim)
     {
         pointInBox = pointInBox && isIn1D(point[iDim], box.lower[iDim], box.upper[iDim]);
     }
@@ -254,6 +254,13 @@ NO_DISCARD bool isIn(Point const& point,
 
     return false;
 }
+
+template<typename Particle, typename Type>
+NO_DISCARD bool isIn(Particle const& particle, Box<Type, Particle::dimension> const& box)
+{
+    return isIn(particle.iCell, box);
+}
+
 
 
 template<typename Type, std::size_t dim, typename OType>

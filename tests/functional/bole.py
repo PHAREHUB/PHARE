@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import os
+import sys
 import numpy as np
 from pathlib import Path
 
@@ -9,6 +10,8 @@ from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 from pyphare.simulator.simulator import startMPI
 
+np.set_printoptions(threshold=sys.maxsize)
+
 os.environ["PHARE_SCOPE_TIMING"] = "0"  # turn on scope timing
 
 
@@ -16,20 +19,23 @@ ph.NO_GUI()
 cpp = cpp_lib()
 startMPI()
 
-cells = (50, 50, 50)
-dl = (0.2, 0.2, 0.2)
+cells = (100, 100, 100)
+dl = (0.1, 0.1, 0.1)
 
-diag_outputs = "phare_outputs/test/harris/3d"
-time_step_nbr = 1000
+
+name = "bowler"
+diag_outputs = f"phare_outputs/test/{name}"
+time_step_nbr = 1
 time_step = 0.001
 final_time = time_step * time_step_nbr
 
 timestamps = [0, final_time]
-if time_step_nbr > 100:
-    dt = 100 * time_step
-    nt = final_time / dt + 1
-    timestamps = dt * np.arange(nt)
+if time_step_nbr > 50:
+    dump_step = 1
+    nbr_dump_step = final_time / dump_step
+    timestamps = dump_step * np.arange(nbr_dump_step + 1)
 
+print("timestamps=", timestamps)
 plot_dir = Path(f"{diag_outputs}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
 
@@ -41,77 +47,73 @@ def config():
         dl=dl,
         cells=cells,
         refinement="tagging",
-        max_nbr_levels=2,
+        max_nbr_levels=1,
         hyper_resistivity=0.001,
         resistivity=0.001,
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_outputs, "mode": "overwrite"},
         },
-        # strict=True,
     )
 
     def density(x, y, z):
-        L = sim.simulation_domain()[1]
-        return (
-            0.2
-            + 1.0 / np.cosh((y - L * 0.3) / 0.5) ** 2
-            + 1.0 / np.cosh((y - L * 0.7) / 0.5) ** 2
-        )
+        # L = sim.simulation_domain()[1]
+        return 0.5
 
-    def S(y, y0, l):
-        return 0.5 * (1.0 + np.tanh((y - y0) / l))
+    def b(x, y, z, lx, ly, lz):
+        L = sim.simulation_domain()[0]
+        mid = L / 2
 
-    def by(x, y, z):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
-        w1 = 0.2
-        w2 = 1.0
-        x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
-        w3 = np.exp(-(x0 * x0 + y1 * y1) / (w2 * w2))
-        w4 = np.exp(-(x0 * x0 + y2 * y2) / (w2 * w2))
-        w5 = 2.0 * w1 / w2
-        return (w5 * x0 * w3) + (-w5 * x0 * w4)
+        X = (x - mid).reshape(lx, ly, lz)
+        Y = (y - mid).reshape(lx, ly, lz)
+        Z = (z - mid).reshape(lx, ly, lz)
+
+        U, V, W = -X, -Y, -Z
+
+        # Normalize vectors to unit length
+        magnitude = np.sqrt(U**2 + V**2 + W**2) + 1e-5  # Avoid division by zero
+
+        # Normalize vectors (unit length)
+        U /= magnitude
+        V /= magnitude
+        W /= magnitude
+
+        # Define circular mask (radius = 25)
+        radius = L * 0.4
+        diff = 0.2
+
+        # outer mask
+        mask = X**2 + Y**2 + Z**2 <= (radius + diff) ** 2
+        U[~mask] = 0
+        V[~mask] = 0
+        W[~mask] = 0
+
+        # inner mask
+        mask = X**2 + Y**2 + Z**2 >= (radius - diff) ** 2
+        U[~mask] = 0
+        V[~mask] = 0
+        W[~mask] = 0
+
+        U *= 0.001
+        V *= 0.001
+        W *= 0.001
+
+        return U, V, W
 
     def bx(x, y, z):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
-        w1 = 0.2
-        w2 = 1.0
-        x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
-        w3 = np.exp(-(x0 * x0 + y1 * y1) / (w2 * w2))
-        w4 = np.exp(-(x0 * x0 + y2 * y2) / (w2 * w2))
-        w5 = 2.0 * w1 / w2
-        v1 = -1
-        v2 = 1.0
-        return (
-            v1
-            + (v2 - v1) * (S(y, Ly * 0.3, 0.5) - S(y, Ly * 0.7, 0.5))
-            + (-w5 * y1 * w3)
-            + (+w5 * y2 * w4)
-        )
+        return b(x, y, z, cells[0] + 5, cells[0] + 4, cells[0] + 4)
+
+    def by(x, y, z):
+        return b(x, y, z, cells[0] + 4, cells[0] + 5, cells[0] + 4)
 
     def bz(x, y, z):
-        return 0.1
-
-    def b2(x, y, z):
-        return bx(x, y, z) ** 2 + by(x, y, z) ** 2 + bz(x, y, z) ** 2
-
-    def T(x, y, z):
-        K = 1
-        temp = 1.0 / density(x, y, z) * (K - b2(x, y, z) * 0.5)
-        assert np.all(temp > 0)
-        return temp
+        return b(x, y, z, cells[0] + 4, cells[0] + 4, cells[0] + 5)
 
     def vxyz(x, y, z):
         return 0.0
 
     def vthxyz(x, y, z):
-        return np.sqrt(T(x, y, z))
+        return 0.00001
 
     C = "xyz"
     vvv = {
@@ -119,7 +121,13 @@ def config():
         **{f"vth{c}": vthxyz for c in C},
         "nbr_part_per_cell": 50,
     }
-    protons = {"charge": 1, "density": density, **vvv, "init": {"seed": 12334}}
+    protons = {
+        "charge": 1,
+        "mass": 1,
+        "density": density,
+        **vvv,
+        "init": {"seed": 12334},
+    }
     ph.MaxwellianFluidModel(bx=bx, by=by, bz=bz, protons=protons)
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
@@ -136,7 +144,7 @@ def config():
 
 
 def plot_file_for_qty(qty, time):
-    return f"{plot_dir}/harris_{qty}_t{time}.png"
+    return f"{plot_dir}/{name}_{qty}_t{time}.png"
 
 
 def plot(diag_dir):
@@ -157,7 +165,7 @@ def plot(diag_dir):
             plot_patches=True,
         )
         for c in ["x", "y", "z"]:
-            run.GetB(time).plot(
+            run.GetB(time, all_primal=False).plot(
                 filename=plot_file_for_qty(f"b{c}", time),
                 qty=f"B{c}",
                 plot_patches=True,
@@ -174,17 +182,8 @@ def plot(diag_dir):
 def main():
     Simulator(config()).run()
 
-    # TODO3D nico : I removed the plot because the hierarchy plot3d has been removed
-    # TODO3D we need to find a way to plot the data
-
-    # if cpp.mpi_rank() == 0:
-    #     plot(diag_outputs)
-    # try:
-    #     from tools.python3 import plotting as m_plotting
-
-    #     m_plotting.plot_run_timer_data(diag_outputs, cpp.mpi_rank())
-    # except ImportError:
-    #     print("Phlop not found - install with: `pip install phlop`")
+    if cpp.mpi_rank() == 0:
+        plot(diag_outputs)
     cpp.mpi_barrier()
 
 

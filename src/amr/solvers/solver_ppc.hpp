@@ -14,6 +14,7 @@
 #include "amr/solvers/solver_ppc_model_view.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/ion_updater/new_updater.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/ohm/ohm.hpp"
@@ -58,7 +59,7 @@ private:
     Ampere_t ampere_;
     Ohm_t ohm_;
 
-    PHARE::core::IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
+    PHARE::core::other::IonUpdater<Ions, Electromag, GridLayout> ionUpdater_;
 
 
 public:
