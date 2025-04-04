@@ -50,7 +50,8 @@ struct PHARE_Types
     using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
     using SolverMHD_t = PHARE::solver::SolverMHD<MHDModel_t, PHARE::amr::SAMRAI_Types,
                                                  MHDTimeStepper<MHDModel_t>>;
-    using LevelInitializerFactory_t = PHARE::solver::LevelInitializerFactory<HybridModel_t>;
+    using LevelInitializerFactory_t
+        = PHARE::solver::LevelInitializerFactory<HybridModel_t, MHDModel_t>;
 
     // amr deps
     using amr_types        = PHARE::amr::PHARE_Types<dimension, interp_order, nbRefinedPart>;

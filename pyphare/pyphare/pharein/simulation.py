@@ -622,6 +622,45 @@ def check_clustering(**kwargs):
     return clustering
 
 
+def check_max_mhd_level(**kwargs):
+    max_mhd_level = kwargs.get("max_mhd_level", 0)
+
+    if max_mhd_level > kwargs["max_nbr_levels"]:
+        raise ValueError(
+            f"Error: max_mhd_level({max_mhd_level}) should be less or equal to max_nbr_levels({kwargs['max_nbr_levels']})"
+        )
+
+    return max_mhd_level
+
+def check_model_options(**kwargs):
+    model_options = kwargs.get("model_options", None)
+
+    if model_options is None:
+        return None
+
+    valid_options = {"MHDModel", "HybridModel"}
+
+    if not set(model_options).issubset(valid_options):
+        raise ValueError(f"Invalid model options: {model_options}. Allowed values are {valid_options}.")
+
+    return model_options
+
+def check_mhd_constants(**kwargs):
+    gamma = kwargs.get("gamma", 5.0 / 3.0)
+    eta = kwargs.get("eta", 0.0)
+    nu = kwargs.get("nu", 0.0)
+
+    return gamma, eta, nu
+
+def check_mhd_parameters(**kwargs):
+    reconstruction = kwargs.get("reconstruction", "")
+    limiter = kwargs.get("limiter", "")
+    riemann = kwargs.get("riemann", "")
+    mhd_timestepper = kwargs.get("mhd_timestepper", "")
+
+    return reconstruction, limiter, riemann, mhd_timestepper
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -659,6 +698,16 @@ def checker(func):
             "description",
             "dry_run",
             "write_reports",
+
+            "max_mhd_level",
+            "model_options",
+            "gamma",
+            "eta",
+            "nu",
+            "reconstruction",
+            "limiter",
+            "riemann",
+            "mhd_timestepper",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -734,6 +783,21 @@ def checker(func):
         kwargs["write_reports"] = kwargs.get(  # on by default except for tests
             "write_reports", os.environ.get("PHARE_TESTING", "0") != "1"
         )
+
+        kwargs["max_mhd_level"] = check_max_mhd_level(**kwargs)
+
+        kwargs["model_options"] = check_model_options(**kwargs)
+
+        gamma, eta, nu = check_mhd_constants(**kwargs)
+        kwargs["gamma"] = gamma
+        kwargs["eta"] = eta
+        kwargs["nu"] = nu
+
+        reconstruction, limiter, riemann, mhd_timestepper = check_mhd_parameters(**kwargs)
+        kwargs["reconstruction"] = reconstruction
+        kwargs["limiter"] = limiter
+        kwargs["riemann"] = riemann
+        kwargs["mhd_timestepper"] = mhd_timestepper
 
         return func(simulation_object, **kwargs)
 

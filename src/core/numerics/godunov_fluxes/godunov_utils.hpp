@@ -175,6 +175,18 @@ struct AllFluxes
             return rho_fz;
     }
 
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy, Etot_fy,
+                                     rho_fz, rhoV_fz, B_fz, Etot_fz);
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy, Etot_fy,
+                                     rho_fz, rhoV_fz, B_fz, Etot_fz);
+    }
+
     Field rho_fx;
     VecField rhoV_fx;
     VecField B_fx;

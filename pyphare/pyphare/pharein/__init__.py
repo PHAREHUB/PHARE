@@ -14,6 +14,7 @@ from .diagnostics import (
 )
 from .electron_model import ElectronModel
 from .maxwellian_fluid_model import MaxwellianFluidModel
+from .mhd_model import MHDModel
 from .simulation import Simulation
 from .uniform_model import UniformModel
 
@@ -22,6 +23,7 @@ __all__ = [
     "MaxwellianFluidModel",
     "ElectronModel",
     "FluidDiagnostics",
+    "MHDModel",
     "ElectromagDiagnostics",
     "ParticleDiagnostics",
     "MetaDiagnostics",

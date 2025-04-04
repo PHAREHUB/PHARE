@@ -120,9 +120,6 @@ def populateDict(sim):
 
     add_int("simulation/AMR/max_nbr_levels", sim.max_nbr_levels)
 
-    if not sim.max_mhd_level:
-        sim.max_mhd_level = 0
-
     add_int("simulation/AMR/max_mhd_level", sim.max_mhd_level)
 
     refinement_boxes = sim.refinement_boxes

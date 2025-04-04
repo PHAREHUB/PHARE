@@ -12,6 +12,10 @@ struct RKPair
 {
     Float weight;
     State state;
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
 };
 
 template<typename GridLayout>

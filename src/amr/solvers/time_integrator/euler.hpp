@@ -9,6 +9,7 @@ namespace PHARE::solver
 template<template<typename> typename FVMethodStrategy, typename MHDModel>
 class Euler
 {
+    using level_t       = typename MHDModel::level_t;
     using Layout        = typename MHDModel::gridlayout_type;
     using Dispatchers_t = Dispatchers<Layout>;
 
@@ -29,45 +30,45 @@ public:
     {
     }
 
-    void operator()(auto layouts, auto& state, auto& statenew, auto& fluxes, auto& bc, auto& level,
-                    double const currentTime, double const newTime)
+    void operator()(MHDModel& model, auto& state, auto& statenew, auto& fluxes, auto& bc,
+                    level_t& level, double const currentTime, double const newTime)
     {
         double const dt = newTime - currentTime;
 
-        to_primitive_(layouts, state);
+        to_primitive_(level, model, state);
 
-        bc.fillMomentsGhosts(state, level, newTime);
+        bc.fillMomentsGhosts(state, level.getLevelNumber(), newTime);
 
-        fvm_(layouts, state, fluxes);
+        fvm_(level, model, state, fluxes);
 
         // unecessary if we decide to store both primitive and conservative variables
-        to_conservative_(layouts, state);
+        to_conservative_(level, model, state);
 
-        fv_euler_(layouts, state, statenew, dt, fluxes);
+        fv_euler_(level, model, state, statenew, fluxes, dt);
 
         auto& B_fx = fluxes.B_fx;
 
-        bc.fillMagneticFluxGhosts(B_fx, level, newTime);
+        bc.fillMagneticFluxesXGhosts(B_fx, level.getLevelNumber(), newTime);
 
         if constexpr (MHDModel::dimension >= 2)
         {
             auto& B_fy = fluxes.B_fy;
 
-            bc.fillMagneticFluxGhosts(B_fy, level, newTime);
+            bc.fillMagneticFluxesYGhosts(B_fy, level.getLevelNumber(), newTime);
 
             if constexpr (MHDModel::dimension == 3)
             {
                 auto& B_fz = fluxes.B_fz;
 
-                bc.fillMagneticFluxGhosts(B_fz, level, newTime);
+                bc.fillMagneticFluxesZGhosts(B_fz, level.getLevelNumber(), newTime);
             }
         }
 
-        ct_(layouts, state, fluxes);
+        ct_(level, model, state, fluxes);
 
-        bc.fillElectricGhosts(state.E, level, newTime);
+        bc.fillElectricGhosts(state.E, level.getLevelNumber(), newTime);
 
-        faraday_(layouts, state, statenew, dt);
+        faraday_(level, model, state, statenew, dt);
     }
 
 private:

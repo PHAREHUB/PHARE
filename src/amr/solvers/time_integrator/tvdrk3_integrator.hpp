@@ -12,6 +12,7 @@ namespace PHARE::solver
 template<template<typename> typename FVMethodStrategy, typename MHDModel>
 class TVDRK3Integrator
 {
+    using level_t   = typename MHDModel::level_t;
     using VecFieldT = typename MHDModel::vecfield_type;
     using MHDStateT = typename MHDModel::state_type;
 
@@ -27,25 +28,25 @@ public:
     {
     }
 
-    void operator()(auto& layouts, auto& state, auto& fluxes, auto& bc, auto& level,
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
                     double const currentTime, double const newTime)
     {
         double const dt = newTime - currentTime;
 
         // U1 = Euler(Un)
-        euler_(layouts, state, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state1_, fluxes, bc, level, currentTime, newTime);
 
         // U1 = Euler(U1)
-        euler_(layouts, state1_, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state1_, state1_, fluxes, bc, level, currentTime, newTime);
 
         // U2 = 0.75*Un + 0.25*U1
-        tvdrk3_step_(layouts, state2_, RKPair_t{w00_, state}, RKPair_t{w01_, state1_});
+        tvdrk3_step_(level, model, state2_, RKPair_t{w00_, state}, RKPair_t{w01_, state1_});
 
         // U2 = Euler(U2)
-        euler_(layouts, state2_, state2_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state2_, state2_, fluxes, bc, level, currentTime, newTime);
 
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
-        tvdrk3_step_(layouts, state, RKPair_t{w10_, state}, RKPair_t{w11_, state2_});
+        tvdrk3_step_(level, model, state, RKPair_t{w10_, state}, RKPair_t{w11_, state2_});
     }
 
     void registerResources(MHDModel& model)

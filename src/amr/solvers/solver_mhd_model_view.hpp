@@ -1,6 +1,8 @@
 #ifndef PHARE_SOLVER_SOLVER_MHD_MODEL_VIEW_HPP
 #define PHARE_SOLVER_SOLVER_MHD_MODEL_VIEW_HPP
 
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver.hpp"
 #include "core/numerics/constrained_transport/constrained_transport.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
@@ -18,13 +20,15 @@ class ToConservativeTransformer
     using core_type = PHARE::core::ToConservativeConverter<GridLayout>;
 
 public:
-    template<typename Layouts, typename States>
-    void operator()(Layouts const& layouts, States& states)
+    template<typename MHDModel>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state)
     {
-        for (std::size_t i = 0; i < layouts.size(); ++i)
+        for (auto const& patch : level)
         {
-            auto _ = core::SetLayout(layouts[i], to_conservative_);
-            to_conservative_(states.rho, states.V, states.B, states.P, states.rhoV, states.Etot);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, state);
+            auto _sl    = core::SetLayout(&layout, to_conservative_);
+            to_conservative_(state.rho, state.V, state.B, state.P, state.rhoV, state.Etot);
         }
     }
 
@@ -37,13 +41,15 @@ class ToPrimitiveTransformer
     using core_type = PHARE::core::ToPrimitiveConverter<GridLayout>;
 
 public:
-    template<typename Layouts, typename States>
-    void operator()(Layouts const& layouts, States& states)
+    template<typename MHDModel>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state)
     {
-        for (std::size_t i = 0; i < layouts.size(); ++i)
+        for (auto const& patch : level)
         {
-            auto _ = core::SetLayout(layouts[i], to_primtitve_);
-            to_primtitve_(states.rho, states.rhoV, states.B, states.Etot, states.V, states.P);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, state);
+            auto _sl    = core::SetLayout(&layout, to_primtitve_);
+            to_primtitve_(state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
         }
     }
 
@@ -56,13 +62,16 @@ class FVMethodTransformer
     using core_type = FVMethod<GridLayout>;
 
 public:
-    template<typename Layouts, typename StateViews, typename Fluxes>
-    void operator()(Layouts const& layouts, StateViews& states, Fluxes& fluxes)
+    template<typename MHDModel>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state,
+                    auto& fluxes)
     {
-        for (std::size_t i = 0; i < layouts.size(); ++i)
+        for (auto const& patch : level)
         {
-            auto _ = core::SetLayout(layouts[i], fvm_);
-            fvm_(states, fluxes);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, state, fluxes);
+            auto _sl    = core::SetLayout(&layout, fvm_);
+            fvm_(state, fluxes);
         }
     }
 
@@ -76,14 +85,16 @@ class FiniteVolumeEulerTransformer
     using core_type = PHARE::core::FiniteVolumeEuler<GridLayout>;
 
 public:
-    template<typename Layouts, typename StateViews, typename Fluxes>
-    void operator()(Layouts const& layouts, StateViews const& states, StateViews statesnew,
-                    double const dt, Fluxes const& fluxes)
+    template<typename MHDModel>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state,
+                    MHDModel::state_type& statenew, auto& fluxes, double const dt)
     {
-        for (std::size_t i = 0; i < layouts.size(); ++i)
+        for (auto const& patch : level)
         {
-            auto _ = core::SetLayout(layouts[i], euler_);
-            euler_(states, statesnew, dt, fluxes);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, state, statenew, fluxes);
+            auto _sl    = core::SetLayout(&layout, euler_);
+            euler_(state, statenew, fluxes, dt);
         }
     }
 
@@ -96,13 +107,16 @@ class ConstrainedTransportTransformer
     using core_type = PHARE::core::ConstrainedTransport<GridLayout>;
 
 public:
-    template<typename Layout, typename StateViews, typename Fluxes>
-    void operator()(Layout const& layouts, StateViews& states, Fluxes const& fluxes)
+    template<typename MHDModel>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state,
+                    auto& fluxes)
     {
-        for (std::size_t i = 0; i < layouts.size(); ++i)
+        for (auto const& patch : level)
         {
-            auto _ = core::SetLayout(layouts[i], constrained_transport_);
-            constrained_transport_(states.E, fluxes);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, state, fluxes);
+            auto _sl    = core::SetLayout(&layout, constrained_transport_);
+            constrained_transport_(state.E, fluxes);
         }
     }
 
@@ -115,14 +129,16 @@ class FaradayMHDTransformer
     using core_type = PHARE::core::Faraday<GridLayout>;
 
 public:
-    template<typename GridLayouts, typename StateViews>
-    void operator()(GridLayouts const& layouts, StateViews const& states, StateViews& statesnew,
-                    double dt)
+    template<typename MHDModel>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state,
+                    MHDModel::state_type& statenew, double dt)
     {
-        for (std::size_t i = 0; i < layouts.size(); ++i)
+        for (auto const& patch : level)
         {
-            auto _ = core::SetLayout(layouts[i], faraday_);
-            faraday_(states.B, states.E, statesnew.B, dt);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, state, statenew);
+            auto _sl    = core::SetLayout(&layout, faraday_);
+            faraday_(state.B, state.E, statenew.B, dt);
         }
     }
 
@@ -135,12 +151,15 @@ class RKUtilsTransformer
     using core_type = PHARE::core::RKUtils<GridLayout>;
 
 public:
-    template<typename Layouts, typename ReturnState, typename... Pairs>
-    void operator()(Layouts const& layouts, ReturnState& res, Pairs... pairs)
+    template<typename MHDModel, typename... Pairs>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& res,
+                    Pairs... pairs)
     {
-        for (std::size_t i = 0; i < layouts.size(); ++i)
+        for (auto const& patch : level)
         {
-            auto _ = core::SetLayout(layouts[i], rkutils_);
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, res, pairs.state...);
+            auto _sl    = core::SetLayout(&layout, rkutils_);
             rkutils_(res, pairs...);
         }
     }
@@ -163,6 +182,26 @@ public:
     using ConstrainedTransport_t = ConstrainedTransportTransformer<GridLayout>;
     using Faraday_t              = FaradayMHDTransformer<GridLayout>;
     using RKUtils_t              = RKUtilsTransformer<GridLayout>;
+};
+
+// for now keep identical interface as hybrid for simplicity
+template<typename MHDModel_>
+class MHDModelView : public ISolverModelView
+{
+public:
+    using MHDModel_t       = MHDModel_;
+    using level_t          = typename MHDModel_t::level_t;
+    using IPhysicalModel_t = MHDModel_t::Interface;
+
+    MHDModelView(level_t& level, IPhysicalModel_t& model)
+        : model_{dynamic_cast<MHDModel_&>(model)}
+    {
+    }
+
+    auto& model() { return model_; }
+    auto& model() const { return model_; }
+
+    MHDModel_t& model_;
 };
 
 }; // namespace PHARE::solver

@@ -370,8 +370,7 @@ void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::mhd_init(
         = amr::LoadBalancerDetails::FROM(dict["simulation"]["AMR"]["loadbalancing"]);
 
     auto lbm_ = std::make_unique<amr::LoadBalancerManager<dim>>(dict);
-    auto lbe_
-        = std::make_shared<amr::LoadBalancerEstimatorMHD<PHARETypes>>(lb_info.mode, lbm_->getId());
+    auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorMHD<PHARETypes>>(lbm_->getId());
 
     auto loadBalancer_db = std::make_shared<SAMRAI::tbox::MemoryDatabase>("LoadBalancerDB");
     loadBalancer_db->putDouble("flexible_load_tolerance", lb_info.tolerance);
@@ -403,8 +402,9 @@ void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::mhd_init(
 
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
-    if (dict["simulation"].contains("diagnostics"))
-        diagnostics_init(dict["simulation"]["diagnostics"]);
+    // need to add actual diags for mhd
+    /*if (dict["simulation"].contains("diagnostics"))*/
+    /*    diagnostics_init(dict["simulation"]["diagnostics"]);*/
 }
 
 
@@ -437,7 +437,7 @@ Simulator<_dimension, _interp_order, _nbRefinedPart, MHDTimeStepper>::Simulator(
 
     if (find_model("MHDModel"))
     {
-        /*mhd_init(dict);*/
+        mhd_init(dict);
         initialized = true;
     }
 

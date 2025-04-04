@@ -12,14 +12,18 @@ def populateDict(sim):
     if sim.refinement == "tagging":
         add_string("simulation/AMR/refinement/tagging/mhd_method", "default")
 
-    add_double("simualtion/algo/fv_method/resistivity", sim.eta)
-    add_double("simualtion/algo/fv_method/hyper_resistivity", sim.nu)
-    add_double("simualtion/algo/fv_method/heat_capacity_ratio", sim.gamma)
-    add_double("simualtion/algo/fv_euler/heat_capacity_ratio", sim.gamma)
-    add_double("simualtion/algo/to_primitive/heat_capacity_ratio", sim.gamma)
-    add_double("simualtion/algo/to_conservative/heat_capacity_ratio", sim.gamma)
+    add_double("simulation/algo/fv_method/resistivity", sim.eta)
+    add_double("simulation/algo/fv_method/hyper_resistivity", sim.nu)
+    add_double("simulation/algo/fv_method/heat_capacity_ratio", sim.gamma)
+    add_double("simulation/algo/fv_euler/heat_capacity_ratio", sim.gamma)
+    add_double("simulation/algo/to_primitive/heat_capacity_ratio", sim.gamma)
+    add_double("simulation/algo/to_conservative/heat_capacity_ratio", sim.gamma)
 
     add_string("simulation/mhd_state/name", "mhd_state")
+
+    add_double(
+        "simulation/mhd_state/to_conservative_init/heat_capacity_ratio", sim.gamma
+    )
 
     init_model = sim.mhd_model
     modelDict = init_model.model_dict

@@ -134,8 +134,8 @@ namespace amr
                 dynamic_cast<HybridMessengerInfo*>(fromFinerInfo.release())};
 
             registerGhostComms_(hybridInfo);
-            registerInitComms(hybridInfo);
-            registerSyncComms(hybridInfo);
+            registerInitComms_(hybridInfo);
+            registerSyncComms_(hybridInfo);
         }
 
 
@@ -651,7 +651,7 @@ namespace amr
 
 
 
-        void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
+        void registerInitComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             auto makeKeys = [](auto const& descriptor) {
                 std::vector<std::string> keys;
@@ -688,7 +688,7 @@ namespace amr
 
 
 
-        void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
+        void registerSyncComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             magnetoSynchronizers_.add(info->modelMagnetic, magneticCoarseningOp_,
                                       info->modelMagnetic.vecName);

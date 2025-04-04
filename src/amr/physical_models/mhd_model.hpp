@@ -31,12 +31,14 @@ public:
 
     using vecfield_type          = VecFieldT;
     using field_type             = vecfield_type::field_type;
+    using state_type             = core::MHDState<vecfield_type>;
     using gridlayout_type        = GridLayoutT;
+    using grid_type              = Grid_t;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
 
     static inline std::string const model_name = "MHDModel";
 
-    core::MHDState<VecFieldT> state;
+    state_type state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
     void initialize(level_t& level) override;
@@ -57,7 +59,7 @@ public:
     explicit MHDModel(PHARE::initializer::PHAREDict const& dict,
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
-        , state{dict}
+        , state{dict["mhd_state"]}
         , resourcesManager{std::move(_resourcesManager)}
     {
     }
@@ -107,23 +109,27 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
     auto& MHDInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
 
     MHDInfo.modelDensity     = state.rho.name();
-    MHDInfo.modelMagnetic    = core::VecFieldNames{state.B};
     MHDInfo.modelVelocity    = core::VecFieldNames{state.V};
+    MHDInfo.modelMagnetic    = core::VecFieldNames{state.B};
     MHDInfo.modelPressure    = state.P.name();
     MHDInfo.modelMomentum    = core::VecFieldNames{state.rhoV};
     MHDInfo.modelTotalEnergy = state.Etot.name();
     MHDInfo.modelElectric    = core::VecFieldNames{state.E};
     MHDInfo.modelCurrent     = core::VecFieldNames{state.J};
 
-    MHDInfo.initDensity.push_back(state.rho.name());
-    MHDInfo.initVelocity.push_back(core::VecFieldNames{state.V});
-    MHDInfo.initMagnetic.push_back(core::VecFieldNames{state.B});
-    MHDInfo.initPressure.push_back(state.P.name());
+    MHDInfo.initDensity.push_back(MHDInfo.modelDensity);
+    MHDInfo.initMomentum.push_back(MHDInfo.modelMomentum);
+    MHDInfo.initMagnetic.push_back(MHDInfo.modelMagnetic);
+    MHDInfo.initTotalEnergy.push_back(MHDInfo.modelTotalEnergy);
 
-    MHDInfo.ghostDensity.push_back(state.rho.name());
-    MHDInfo.ghostVelocity.push_back(core::VecFieldNames{state.V});
-    MHDInfo.ghostPressure.push_back(state.P.name());
-    MHDInfo.ghostElectric.push_back(core::VecFieldNames{state.E});
+    MHDInfo.ghostDensity.push_back(MHDInfo.modelDensity);
+    MHDInfo.ghostVelocity.push_back(MHDInfo.modelVelocity);
+    MHDInfo.ghostMagnetic.push_back(MHDInfo.modelMagnetic);
+    MHDInfo.ghostPressure.push_back(MHDInfo.modelPressure);
+    MHDInfo.ghostMomentum.push_back(MHDInfo.modelMomentum);
+    MHDInfo.ghostTotalEnergy.push_back(MHDInfo.modelTotalEnergy);
+    MHDInfo.ghostElectric.push_back(MHDInfo.modelElectric);
+    MHDInfo.ghostCurrent.push_back(MHDInfo.modelCurrent);
 }
 
 } // namespace PHARE::solver

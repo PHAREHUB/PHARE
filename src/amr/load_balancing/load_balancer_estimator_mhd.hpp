@@ -24,7 +24,7 @@ class LoadBalancerEstimatorMHD : public LoadBalancerEstimator
 public:
     LoadBalancerEstimatorMHD(int const id)
         : LoadBalancerEstimator{id}
-        , strat_{ConcreteLoadBalancerStrategyHomogeneous<MHDModel>{id}}
+        , strat_{std::make_unique<ConcreteLoadBalancerStrategyHomogeneous<MHDModel>>(id)}
     {
     }
 

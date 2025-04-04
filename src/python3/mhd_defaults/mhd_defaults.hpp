@@ -10,6 +10,12 @@ struct DefaultTimeIntegrator
 {
     DefaultTimeIntegrator(PHARE::initializer::PHAREDict const& /*dict*/) {}
 
+    void operator()(MHDModel& /*model*/, MHDModel::state_type& /*state*/, auto& /*fluxes*/,
+                    auto& /*fromCoarser*/, auto& /*level*/, double const /*currentTime*/,
+                    double const /*newTime*/)
+    {
+    }
+
     void registerResources(MHDModel& /*model*/) {}
 
     void allocate(MHDModel& /*model*/, auto& /*patch*/, double const /*allocateTime*/) const {}

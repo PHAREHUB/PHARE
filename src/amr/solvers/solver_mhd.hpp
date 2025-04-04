@@ -25,7 +25,7 @@ namespace PHARE::solver
 {
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy,
          typename Messenger    = amr::MHDMessenger<MHDModel>,
-         typename ModelViews_t = Dispatchers<typename MHDModel::gridlayout_type>>
+         typename ModelViews_t = MHDModelView<MHDModel>>
 class SolverMHD : public ISolver<AMR_Types>
 {
 private:
@@ -88,8 +88,7 @@ public:
 
     std::shared_ptr<ISolverModelView> make_view(level_t& level, IPhysicalModel_t& model) override
     {
-        /*return std::make_shared<ModelViews_t>(level, dynamic_cast<MHDModel&>(model));*/
-        throw std::runtime_error("SolverMHD::make_view not implemented");
+        return std::make_shared<ModelViews_t>(level, dynamic_cast<MHDModel&>(model));
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
@@ -218,7 +217,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelView
     auto& fromCoarser = dynamic_cast<Messenger&>(fromCoarserMessenger);
     auto level        = hierarchy.getPatchLevel(levelNumber);
 
-    evolve_(modelView.layouts, modelView.model().state, fluxes_, fromCoarser, *level, currentTime,
+    evolve_(modelView.model(), modelView.model().state, fluxes_, fromCoarser, *level, currentTime,
             newTime);
 }
 
