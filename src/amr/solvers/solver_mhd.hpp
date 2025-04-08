@@ -8,6 +8,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/mhd/mhd_quantities.hpp"
@@ -190,15 +191,15 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
 {
     auto& mhdInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
 
-    mhdInfo.ghostMagneticFluxesX.emplace_back(core::VecFieldNames(fluxes_.B_fx));
+    mhdInfo.ghostMagneticFluxesX.emplace_back(core::VecFieldNames{fluxes_.B_fx});
 
     if constexpr (dimension >= 2)
     {
-        mhdInfo.ghostMagneticFluxesY.emplace_back(core::VecFieldNames(fluxes_.B_fy));
+        mhdInfo.ghostMagneticFluxesY.emplace_back(core::VecFieldNames{fluxes_.B_fy});
 
         if constexpr (dimension == 3)
         {
-            mhdInfo.ghostMagneticFluxesZ.emplace_back(core::VecFieldNames(fluxes_.B_fz));
+            mhdInfo.ghostMagneticFluxesZ.emplace_back(core::VecFieldNames{fluxes_.B_fz});
         }
     }
 

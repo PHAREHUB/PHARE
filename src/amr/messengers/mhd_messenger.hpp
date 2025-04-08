@@ -83,7 +83,7 @@ namespace amr
                            [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo) override
         {
             std::unique_ptr<MHDMessengerInfo> mhdInfo{
-                dynamic_cast<MHDMessengerInfo*>(fromCoarserInfo.release())};
+                dynamic_cast<MHDMessengerInfo*>(fromFinerInfo.release())};
 
             registerGhostComms_(mhdInfo);
             registerInitComms_(mhdInfo);
@@ -100,6 +100,7 @@ namespace amr
             magSharedNodesRefiners_.registerLevel(hierarchy, level);
             magPatchGhostsRefiners_.registerLevel(hierarchy, level);
             magGhostsRefiners_.registerLevel(hierarchy, level);
+            elecSharedNodesRefiners_.registerLevel(hierarchy, level);
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             currentGhostsRefiners_.registerLevel(hierarchy, level);
 
@@ -109,6 +110,10 @@ namespace amr
 
             momentumGhostsRefiners_.registerLevel(hierarchy, level);
             totalEnergyGhostsRefiners_.registerLevel(hierarchy, level);
+
+            magFluxesXSharedNodesRefiners_.registerLevel(hierarchy, level);
+            magFluxesYSharedNodesRefiners_.registerLevel(hierarchy, level);
+            magFluxesZSharedNodesRefiners_.registerLevel(hierarchy, level);
 
             magFluxesXGhostRefiners_.registerLevel(hierarchy, level);
             magFluxesYGhostRefiners_.registerLevel(hierarchy, level);
@@ -254,18 +259,21 @@ namespace amr
         void fillMagneticFluxesXGhosts(VecFieldT& Fx_B, int const levelNumber,
                                        double const fillTime)
         {
+            magFluxesXSharedNodesRefiners_.fill(Fx_B, levelNumber, fillTime);
             magFluxesXGhostRefiners_.fill(Fx_B, levelNumber, fillTime);
         }
 
         void fillMagneticFluxesYGhosts(VecFieldT& Fy_B, int const levelNumber,
                                        double const fillTime)
         {
+            magFluxesYSharedNodesRefiners_.fill(Fy_B, levelNumber, fillTime);
             magFluxesYGhostRefiners_.fill(Fy_B, levelNumber, fillTime);
         }
 
         void fillMagneticFluxesZGhosts(VecFieldT& Fz_B, int const levelNumber,
                                        double const fillTime)
         {
+            magFluxesZSharedNodesRefiners_.fill(Fz_B, levelNumber, fillTime);
             magFluxesZGhostRefiners_.fill(Fz_B, levelNumber, fillTime);
         }
 
@@ -328,13 +336,26 @@ namespace amr
                                                        info->modelTotalEnergy, EtotOld_.name(),
                                                        fieldRefineOp_, fieldTimeOp_);
 
-            magFluxesXGhostRefiners_.addStaticRefiners(info->ghostMagneticFluxesX, BfieldRefineOp_,
+
+            magFluxesXSharedNodesRefiners_.addStaticRefiners(info->ghostMagneticFluxesX,
+                                                             fieldNodeRefineOp_,
+                                                             makeKeys(info->ghostMagneticFluxesX));
+
+            magFluxesYSharedNodesRefiners_.addStaticRefiners(info->ghostMagneticFluxesY,
+                                                             fieldNodeRefineOp_,
+                                                             makeKeys(info->ghostMagneticFluxesY));
+
+            magFluxesZSharedNodesRefiners_.addStaticRefiners(info->ghostMagneticFluxesZ,
+                                                             fieldNodeRefineOp_,
+                                                             makeKeys(info->ghostMagneticFluxesZ));
+
+            magFluxesXGhostRefiners_.addStaticRefiners(info->ghostMagneticFluxesX, fieldRefineOp_,
                                                        makeKeys(info->ghostMagneticFluxesX));
 
-            magFluxesYGhostRefiners_.addStaticRefiners(info->ghostMagneticFluxesY, BfieldRefineOp_,
+            magFluxesYGhostRefiners_.addStaticRefiners(info->ghostMagneticFluxesY, fieldRefineOp_,
                                                        makeKeys(info->ghostMagneticFluxesY));
 
-            magFluxesZGhostRefiners_.addStaticRefiners(info->ghostMagneticFluxesZ, BfieldRefineOp_,
+            magFluxesZGhostRefiners_.addStaticRefiners(info->ghostMagneticFluxesZ, fieldRefineOp_,
                                                        makeKeys(info->ghostMagneticFluxesZ));
         }
 
@@ -636,6 +657,9 @@ namespace amr
         GhostRefinerPool pressureGhostsRefiners_{resourcesManager_};
         GhostRefinerPool momentumGhostsRefiners_{resourcesManager_};
         GhostRefinerPool totalEnergyGhostsRefiners_{resourcesManager_};
+        SharedNodeRefinerPool magFluxesXSharedNodesRefiners_{resourcesManager_};
+        SharedNodeRefinerPool magFluxesYSharedNodesRefiners_{resourcesManager_};
+        SharedNodeRefinerPool magFluxesZSharedNodesRefiners_{resourcesManager_};
         GhostRefinerPool magFluxesXGhostRefiners_{resourcesManager_};
         GhostRefinerPool magFluxesYGhostRefiners_{resourcesManager_};
         GhostRefinerPool magFluxesZGhostRefiners_{resourcesManager_};
@@ -671,6 +695,7 @@ namespace amr
         RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
         RefOp_ptr EfieldNodeRefineOp_{std::make_shared<ElectricFieldRefineOp>(/*node_only=*/true)};
         RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
+        RefOp_ptr fieldNodeRefineOp_{std::make_shared<DefaultFieldRefineOp>(/*node_only=*/true)};
         RefOp_ptr fieldRefineOp_{std::make_shared<DefaultFieldRefineOp>()};
 
         TimeOp_ptr fieldTimeOp_{std::make_shared<FieldTimeInterp>()};

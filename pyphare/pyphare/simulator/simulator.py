@@ -115,6 +115,7 @@ class Simulator:
         self.cpp_dw = None  # DRAGONS, i.e. use weakrefs if you have to ref these.
         self.post_advance = kwargs.get("post_advance", None)
 
+        self.initialized = False
         self.print_eol = "\n"
         if kwargs.get("print_one_line", True):
             self.print_eol = "\r"
@@ -181,11 +182,9 @@ class Simulator:
             raise ValueError("Error in Simulator.setup(), see previous error")
 
     def initialize(self):
-        if self.cpp_sim is not None:
-            raise ValueError(
-                "Simulator already initialized: requires reset to re-initialize"
-            )
         try:
+            if self.initialized:
+                return
             if self.cpp_hier is None:
                 self.setup()
 
@@ -193,6 +192,7 @@ class Simulator:
                 return self
 
             self.cpp_sim.initialize()
+            self.initialized = True
             self._auto_dump()  # first dump might be before first advance
 
             return self
@@ -330,7 +330,7 @@ class Simulator:
         return self.cpp_sim.interp_order  # constexpr static value
 
     def _check_init(self):
-        if self.cpp_sim is None:
+        if not self.initialized:
             self.initialize()
 
     def _log_to_file(self):

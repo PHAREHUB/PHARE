@@ -124,7 +124,8 @@ using value_type_t = typename get_value_type<T>::type;
 template<typename Field, typename VecField>
 struct AllFluxes
 {
-    using Float = typename Field::value_type;
+    using Float                     = typename Field::value_type;
+    static constexpr auto dimension = Field::dimension;
 
     AllFluxes<value_type_t<Field>, value_type_t<VecField>> operator[](std::size_t i)
         requires((ViewVector<Field>) && (ViewVector<VecField>))
@@ -177,14 +178,30 @@ struct AllFluxes
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy, Etot_fy,
-                                     rho_fz, rhoV_fz, B_fz, Etot_fz);
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy);
+        else if constexpr (dimension == 3)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy, rho_fz, rhoV_fz, B_fz, Etot_fz);
+        else
+            throw std::runtime_error("Error - AllFluxes - dimension not supported");
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy, Etot_fy,
-                                     rho_fz, rhoV_fz, B_fz, Etot_fz);
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy);
+        else if constexpr (dimension == 3)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy, rho_fz, rhoV_fz, B_fz, Etot_fz);
+        else
+            throw std::runtime_error("Error - AllFluxes - dimension not supported");
     }
 
     Field rho_fx;

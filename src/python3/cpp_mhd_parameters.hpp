@@ -189,16 +189,9 @@ public:
 private:
     static constexpr bool unwanted_simulators_()
     {
-        /*bool constexpr is_hyper_nohall = HyperResistivity && !Hall;*/
+        bool constexpr is_hyper_nohall = HyperResistivity && !Hall;
 
-        /*return is_hyper_nohall;*/
-
-        bool constexpr compile_one
-            = (TI == TimeIntegratorType::TVDRK3 && RC == ReconstructionType::WENOZ
-               && SL == SlopeLimiterType::count && RS == RiemannSolverType::Rusanov && !Resistivity
-               && !HyperResistivity);
-
-        return !compile_one;
+        return is_hyper_nohall;
     }
 };
 
@@ -213,15 +206,15 @@ constexpr void declare_all_mhd_params(py::module& m)
                             + std::to_string(InterpOrder{}()) + "_"
                             + std::to_string(NbRefinedParts{}());
 
-    std::string variant_name = "tvdrk3_wenoz_rusanov";
+    std::string variant_name = "tvdrk3_weno3_rusanov";
     std::string full_type    = type_name + "_" + variant_name;
 
     RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
-                       ReconstructionType::WENOZ, SlopeLimiterType::count,
+                       ReconstructionType::WENO3, SlopeLimiterType::count,
                        RiemannSolverType::Rusanov, false, false, false>::declare_sim(m, full_type);
 
     RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
-                       ReconstructionType::WENOZ, SlopeLimiterType::count,
+                       ReconstructionType::WENO3, SlopeLimiterType::count,
                        RiemannSolverType::Rusanov, false, false, false>::declare_etc(m, full_type);
 
     /*auto constexpr ti_tuple   = make_enum_tuple<TimeIntegratorType>();*/

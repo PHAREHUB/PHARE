@@ -46,21 +46,15 @@ public:
 
         fv_euler_(level, model, state, statenew, fluxes, dt);
 
-        auto& B_fx = fluxes.B_fx;
-
-        bc.fillMagneticFluxesXGhosts(B_fx, level.getLevelNumber(), newTime);
+        bc.fillMagneticFluxesXGhosts(fluxes.B_fx, level.getLevelNumber(), newTime);
 
         if constexpr (MHDModel::dimension >= 2)
         {
-            auto& B_fy = fluxes.B_fy;
-
-            bc.fillMagneticFluxesYGhosts(B_fy, level.getLevelNumber(), newTime);
+            bc.fillMagneticFluxesYGhosts(fluxes.B_fy, level.getLevelNumber(), newTime);
 
             if constexpr (MHDModel::dimension == 3)
             {
-                auto& B_fz = fluxes.B_fz;
-
-                bc.fillMagneticFluxesZGhosts(B_fz, level.getLevelNumber(), newTime);
+                bc.fillMagneticFluxesZGhosts(fluxes.B_fz, level.getLevelNumber(), newTime);
             }
         }
 
