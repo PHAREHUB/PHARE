@@ -1,8 +1,11 @@
 import os
 import unittest
+
+from copy import deepcopy
+
+
 from datetime import datetime
 import pyphare.pharein as ph, numpy as np
-from pyphare.pharein import ElectronModel
 
 
 def parse_cli_args(pop_from_sys=True):
@@ -31,31 +34,33 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
     from pyphare.pharein.simulation import valid_refined_particle_nbr
     from pyphare.pharein.simulation import check_patch_size
 
+    args = deepcopy(kwargs)
+
     cells = kwargs.get("cells", [20 for i in range(dim)])
     if not isinstance(cells, (list, tuple)):
         cells = [cells] * dim
 
     _, smallest_patch_size = check_patch_size(dim, interp_order=interp, cells=cells)
-    dl = [1.0 / v for v in cells]
-    b0 = [[3] * dim, [8] * dim]
+
     args = {
         "interp_order": interp,
         "smallest_patch_size": smallest_patch_size,
         "largest_patch_size": [20] * dim,
         "time_step_nbr": 1000,
-        "final_time": 1.0,
+        "time_step": 0.001,
         "boundary_types": ["periodic"] * dim,
         "cells": cells,
-        "dl": dl,
-        "refinement_boxes": {"L0": {"B0": b0}},
+        "dl": [1.0 / v for v in cells],
         "refined_particle_nbr": valid_refined_particle_nbr[dim][interp][0],
         "diag_options": {},
         "nesting_buffer": 0,
-        "strict": True,
+        # "strict": True,
     }
-    for k, v in kwargs.items():
-        if k in args:
-            args[k] = v
+    args.update(deepcopy(kwargs))
+
+    if "refinement" not in kwargs and "refinement_boxes" not in kwargs:
+        b0 = [[3] * dim, [8] * dim]
+        args["refinement_boxes"] = {"L0": {"B0": b0}}
 
     return args
 
@@ -140,20 +145,20 @@ def makeBasicModel(extra_pops={}):
     )
 
 
-def populate_simulation(dim, interp, **input):
+def populate_simulation(ndim=1, interp=1, model_fn=None, diags_fn=None, **simInput):
     ph.global_vars.sim = None
-    simulation = ph.Simulation(**basicSimulatorArgs(dim, interp, **input))
+    simulation = ph.Simulation(**basicSimulatorArgs(ndim, interp, **simInput))
     extra_pops = {}
-    if "populations" in input:
-        for pop, vals in input["populations"].items():
+    if "populations" in simInput:
+        for pop, vals in simInput["populations"].items():
             extra_pops[pop] = defaultPopulationSettings()
             extra_pops[pop].update(vals)
 
-    model = makeBasicModel(extra_pops)
-    if "diags_fn" in input:
-        input["diags_fn"](model)
+    model = model_fn() if model_fn else makeBasicModel(extra_pops)
+    if diags_fn:
+        diags_fn(model)
 
-    ElectronModel(closure="isothermal", Te=0.12)
+    ph.ElectronModel(closure="isothermal", Te=0.12)
 
     return simulation
 
@@ -308,3 +313,11 @@ class SimulatorTest(unittest.TestCase):
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
         cpp_lib().mpi_barrier()
+
+    def hierarchy_by_box(self, hier):
+        # comparing hierarchies by index isn't always right
+        box_hier = {i: {} for i in range(len(hier.levels()))}
+        for ilvl, patches in box_hier.items():
+            for patch in hier.level(ilvl).patches:
+                patches[str(patch.box)] = patch
+        return box_hier
