@@ -48,12 +48,12 @@ public:
         {
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto _sp    = model.resourcesManager->setOnPatch(*patch, state);
-            auto _sl    = core::SetLayout(&layout, to_primtitve_);
-            to_primtitve_(state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
+            auto _sl    = core::SetLayout(&layout, to_primitive_);
+            to_primitive_(state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
         }
     }
 
-    core_type to_primtitve_;
+    core_type to_primitive_;
 };
 
 template<typename GridLayout, template<typename> typename FVMethod>

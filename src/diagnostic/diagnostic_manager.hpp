@@ -3,9 +3,11 @@
 
 #include "core/def.hpp"
 #include "core/data/particles/particle_array.hpp"
+#include "diagnostic/diagnostic_model_view.hpp"
 #include "initializer/data_provider.hpp"
 #include "diagnostic_props.hpp"
 
+#include <type_traits>
 #include <utility>
 #include <cmath>
 #include <memory>
@@ -20,7 +22,16 @@ enum class Mode { LIGHT, FULL };
 template<typename DiagManager>
 void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsParams)
 {
-    std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle", "meta", "info"};
+    auto const diagTypes = []() {
+        if constexpr (std::is_same_v<typename DiagManager::Identifier, HybridIdentifier>)
+        {
+            return std::vector<std::string>{"fluid", "electromag", "particles", "meta", "info"};
+        }
+        else if constexpr (std::is_same_v<typename DiagManager::Identifier, MHDIdentifier>)
+        {
+            return std::vector<std::string>{"mhd", "meta"};
+        }
+    }();
 
     for (auto& diagType : diagTypes)
     {
@@ -31,7 +42,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
         while (diagsParams.contains(diagType)
                && diagsParams[diagType].contains(diagType + std::to_string(diagBlockID)))
         {
-            const std::string diagName = diagType + std::to_string(diagBlockID);
+            std::string const diagName = diagType + std::to_string(diagBlockID);
             dMan.addDiagDict(diagsParams[diagType][diagName]);
             ++diagBlockID;
         }
@@ -56,6 +67,8 @@ template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
+    using Identifier = typename Writer::Identifier;
+
     bool dump(double timeStamp, double timeStep) override;
 
 

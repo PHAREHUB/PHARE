@@ -24,6 +24,7 @@ class MHDModel : public IPhysicalModel<AMR_Types>
 public:
     static constexpr auto dimension = GridLayoutT::dimension;
 
+    using type_list = PHARE::core::type_list<GridLayoutT, VecFieldT, AMR_Types, Grid_t>;
     using amr_types = AMR_Types;
     using patch_t   = amr_types::patch_t;
     using level_t   = amr_types::level_t;
@@ -131,6 +132,18 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
     MHDInfo.ghostElectric.push_back(MHDInfo.modelElectric);
     MHDInfo.ghostCurrent.push_back(MHDInfo.modelCurrent);
 }
+
+template<typename... Args>
+MHDModel<Args...> mhd_model_from_type_list(core::type_list<Args...>);
+
+template<typename TypeList>
+struct type_list_to_mhd_model
+{
+    using type = decltype(mhd_model_from_type_list(std::declval<TypeList>()));
+};
+
+template<typename TypeList>
+using type_list_to_mhd_model_t = typename type_list_to_mhd_model<TypeList>::type;
 
 } // namespace PHARE::solver
 

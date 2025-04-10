@@ -7,6 +7,7 @@
 #include "core/utilities/types.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
+#include "diagnostic/diagnostic_model_view.hpp"
 #include "hdf5/detail/h5/h5_file.hpp"
 
 #include "diagnostic/detail/h5typewriter.hpp"
@@ -28,6 +29,8 @@ class ElectromagDiagnosticWriter;
 template<typename Writer>
 class FluidDiagnosticWriter;
 template<typename Writer>
+class MHDDiagnosticWriter;
+template<typename Writer>
 class ParticlesDiagnosticWriter;
 template<typename Writer>
 class MetaDiagnosticWriter;
@@ -48,6 +51,7 @@ public:
     using GridLayout = typename ModelView::GridLayout;
     using Attributes = typename ModelView::PatchProperties;
 
+    using Identifier                  = typename ModelView::Identifier;
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;
     static constexpr auto READ_WRITE  = HiFile::AccessMode::OpenOrCreate;
@@ -61,6 +65,19 @@ public:
         , filePath_{hifivePath}
         , modelView_{hier, model}
     {
+        if constexpr (std::is_same_v<Identifier, HybridIdentifier>)
+            typeWriters_ = {
+                {"info", make_writer<InfoDiagnosticWriter<This>>()},
+                {"meta", make_writer<MetaDiagnosticWriter<This>>()},
+                {"fluid", make_writer<FluidDiagnosticWriter<This>>()},
+                {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()},
+                {"particle", make_writer<ParticlesDiagnosticWriter<This>>()} //
+            };
+        else if constexpr (std::is_same_v<Identifier, MHDIdentifier>)
+            typeWriters_ = {
+                {"meta", make_writer<MetaDiagnosticWriter<This>>()},
+                {"mhd", make_writer<MHDDiagnosticWriter<This>>()} //
+            };
     }
 
     ~H5Writer() {}
@@ -180,13 +197,7 @@ private:
 
     std::unordered_map<std::string, HiFile::AccessMode> file_flags;
 
-    std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> typeWriters_{
-        {"info", make_writer<InfoDiagnosticWriter<This>>()},
-        {"meta", make_writer<MetaDiagnosticWriter<This>>()},
-        {"fluid", make_writer<FluidDiagnosticWriter<This>>()},
-        {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()},
-        {"particle", make_writer<ParticlesDiagnosticWriter<This>>()} //
-    };
+    std::unordered_map<std::string, std::shared_ptr<H5TypeWriter<This>>> typeWriters_;
 
     template<typename Writer>
     std::shared_ptr<H5TypeWriter<This>> make_writer()

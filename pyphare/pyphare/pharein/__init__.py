@@ -10,6 +10,7 @@ from .diagnostics import (
     FluidDiagnostics,
     InfoDiagnostics,
     MetaDiagnostics,
+    MHDDiagnostics,
     ParticleDiagnostics,
 )
 from .electron_model import ElectronModel
@@ -24,6 +25,7 @@ __all__ = [
     "ElectronModel",
     "FluidDiagnostics",
     "MHDModel",
+    "MHDDiagnostics",
     "ElectromagDiagnostics",
     "ParticleDiagnostics",
     "MetaDiagnostics",

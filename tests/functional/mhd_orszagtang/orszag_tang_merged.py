@@ -79,7 +79,8 @@ def config():
 
     ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
 
-    # diags
+    for quantity in ["rho", "V", "B", "P"]:
+        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 

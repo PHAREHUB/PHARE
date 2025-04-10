@@ -186,7 +186,7 @@ private:
 
 
     double restarts_init(initializer::PHAREDict const&);
-    void diagnostics_init(initializer::PHAREDict const&);
+    void diagnostics_init(initializer::PHAREDict const&, auto&);
     void hybrid_init(initializer::PHAREDict const&);
     void mhd_init(initializer::PHAREDict const&);
 };
@@ -235,10 +235,9 @@ double Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::restarts_init(
 template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart,
          template<typename> typename MHDTimeStepper>
 void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::diagnostics_init(
-    initializer::PHAREDict const& dict)
+    initializer::PHAREDict const& dict, auto& model)
 {
-    dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(*hierarchy_, *hybridModel_,
-                                                                      dict);
+    dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(*hierarchy_, model, dict);
 
     if (dict.contains("fine_dump_lvl_max"))
     {
@@ -331,7 +330,7 @@ void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::hybrid_init(
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
     if (dict["simulation"].contains("diagnostics"))
-        diagnostics_init(dict["simulation"]["diagnostics"]);
+        diagnostics_init(dict["simulation"]["diagnostics"], *hybridModel_);
 }
 
 
@@ -402,9 +401,8 @@ void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::mhd_init(
 
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
-    // need to add actual diags for mhd
-    /*if (dict["simulation"].contains("diagnostics"))*/
-    /*    diagnostics_init(dict["simulation"]["diagnostics"]);*/
+    if (dict["simulation"].contains("diagnostics"))
+        diagnostics_init(dict["simulation"]["diagnostics"], *mhdModel_);
 }
 
 

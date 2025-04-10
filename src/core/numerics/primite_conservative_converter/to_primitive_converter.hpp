@@ -48,6 +48,25 @@ public:
         ToPrimitiveConverter_ref<GridLayout>{*this->layout_, gamma_}(rho, rhoV, B, Etot, V, P);
     }
 
+    // used for diagnostics
+    template<typename Field, typename VecField>
+    void rhoVToV(Field const& rho, VecField const& rhoV, VecField& V) const
+    {
+        layout_.evalOnBox(rho, [&](auto&... args) mutable {
+            ToPrimitiveConverter_ref<GridLayout>::rhoVToV_(rho, rhoV, V, {args...});
+        });
+    }
+
+    template<typename Field, typename VecField>
+    void eosEtotToP(Field const& rho, VecField const& rhoV, VecField const& B, Field const& Etot,
+                    Field& P) const
+    {
+        layout_.evalOnBox(rho, [&](auto&... args) mutable {
+            ToPrimitiveConverter_ref<GridLayout>::eosEtotToP_(gamma_, rho, rhoV, B, Etot, P,
+                                                              {args...});
+        });
+    }
+
 private:
     double const gamma_;
 };
@@ -75,7 +94,6 @@ public:
         });
     }
 
-private:
     template<typename Field, typename VecField>
     static void rhoVToV_(Field const& rho, VecField const& rhoV, VecField& V,
                          MeshIndex<Field::dimension> index)
