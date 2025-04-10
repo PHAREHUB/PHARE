@@ -237,12 +237,13 @@ def compute_overlaps(patches, domain_box):
                             }
                         )
                         if offset != zero_offset:
+                            other_overlap = boxm.shift(gb_ref, -offset) * gb_cmp
                             overlaps.append(
                                 {
                                     "pdatas": (ref_pd, cmp_pd),
                                     "patches": (refPatch, cmpPatch),
-                                    "box": overlap,
-                                    "offset": (zero_offset, offset),
+                                    "box": other_overlap,
+                                    "offset": (-offset, zero_offset),
                                 }
                             )
 
