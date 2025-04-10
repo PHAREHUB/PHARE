@@ -149,6 +149,41 @@ def periodicity_shifts(domain_box):
     return shifts
 
 
+def possible_periodic_shifts(box, domain_box):
+    from pyphare.core.box import shift
+
+    boxes = []
+    dim = domain_box.ndim
+
+    if dim == 1:
+        for ishift in (-1, 0, 1):
+            ioffset = ishift * domain_box.shape[0]
+            offset = ioffset
+
+            shifted = shift(box, offset)
+            boxes += [(offset, shifted)]
+    if dim == 2:
+        for ishift in (-1, 0, 1):
+            ioffset = ishift * domain_box.shape[0]
+            for jshift in (-1, 0, 1):
+                joffset = jshift * domain_box.shape[1]
+                offset = [ioffset, joffset]
+                shifted = shift(box, offset)
+                boxes += [(offset, shifted)]
+    if dim == 3:
+        for ishift in (-1, 0, 1):
+            ioffset = ishift * domain_box.shape[0]
+            for jshift in (-1, 0, 1):
+                joffset = jshift * domain_box.shape[1]
+                for kshift in (-1, 0, 1):
+                    koffset = kshift * domain_box.shape[2]
+
+                    offset = [ioffset, joffset, koffset]
+                    shifted = shift(box, offset)
+                    boxes += [(offset, shifted)]
+    return boxes
+
+
 def compute_overlaps(patches, domain_box):
     """
     returns a list of overlaps for all patch datas in given patches
@@ -173,119 +208,43 @@ def compute_overlaps(patches, domain_box):
     - offset : tuple of two offsets by which the patchData ghost box is shifted
                to compute the overlap box.
     """
-
-    # sorting the patches per origin allows to
-    # consider first and last as possible periodic overlaps
-    dim = domain_box.ndim
-
-    if dim == 1:
-        patches = sorted(patches, key=lambda p: p.origin.all())
-
-    zero_offset = [0] * dim if dim > 1 else 0
-
     overlaps = []
+    zero_offset = [0] * domain_box.ndim if domain_box.ndim > 1 else 0
 
-    # first deal with intra domain overlaps
     for ip, refPatch in enumerate(patches):
-        for cmpPatch in patches[ip + 1 :]:
-            # for two patches, compare patch_datas of the same quantity
+        for cmpPatch in patches[ip:]:
+
             for ref_pdname, ref_pd in refPatch.patch_datas.items():
                 cmp_pd = cmpPatch.patch_datas[ref_pdname]
 
-                gb1 = ref_pd.ghost_box
-                gb2 = cmp_pd.ghost_box
-                overlap = gb1 * gb2
+                gb_ref = ref_pd.ghost_box
+                gb_cmp = cmp_pd.ghost_box
 
-                if overlap is not None:
-                    # boxes indexes represent cells
-                    # therefore for fields, we need to
-                    # adjust the box. This essentially
-                    # add 1 to upper in case field is on corners
-                    # because upper corner can only be grabbed
-                    # if box extends to upper+1 cell
-                    # particles don't need that as they are contained
-                    # in cells.
-                    if ref_pd.quantity == "field":
-                        overlap = toFieldBox(overlap, ref_pd)
+                for offset, shifted_cmp in possible_periodic_shifts(gb_cmp, domain_box):
+                    overlap = gb_ref * shifted_cmp
+                    if overlap is not None and not np.all(
+                        overlap.shape == gb_ref.shape
+                    ):
+                        if ref_pd.quantity == "field":
+                            overlap = toFieldBox(overlap, ref_pd)
 
-                    overlaps.append(
-                        {
-                            "pdatas": (ref_pd, cmp_pd),
-                            "patches": (refPatch, cmpPatch),
-                            "box": overlap,
-                            "offset": (zero_offset, zero_offset),
-                        }
-                    )
-
-    def append(ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
-        overlaps.append(
-            {
-                "pdatas": (ref_pd, cmp_pd),
-                "patches": (refPatch, cmpPatch),
-                "box": overlap,
-                "offset": offset_tuple,
-            }
-        )
-
-    def borders_per(patch):
-        return "".join(
-            [key for key, side in sides.items() if patch.box * side is not None]
-        )
-
-    sides = domain_border_ghost_boxes(domain_box, patches)
-    shifts = periodicity_shifts(domain_box)
-
-    # now dealing with border patches to see their patchdata overlap
-    if dim == 1 and len(patches) > 0:
-        patches = [patches[0], patches[-1]]
-
-    # filter out patches not near a border
-    borders_per_patch = {p: borders_per(p) for p in patches}
-    border_patches = [
-        p for p, in_sides in borders_per_patch.items() if len(in_sides) > 0
-    ]
-
-    for patch_i, ref_patch in enumerate(border_patches):
-        in_sides = borders_per_patch[ref_patch]
-        assert in_sides in shifts
-
-        for ref_pdname, ref_pd in ref_patch.patch_datas.items():
-            for shift in shifts[in_sides]:
-                for cmp_patch in border_patches[
-                    patch_i:
-                ]:  # patches can overlap with themselves
-                    for cmp_pdname, cmp_pd in cmp_patch.patch_datas.items():
-                        if cmp_pdname == ref_pdname:
-                            gb1 = ref_pd.ghost_box
-                            gb2 = cmp_pd.ghost_box
-
-                            offset = np.asarray(shift)
-                            overlap = gb1 * boxm.shift(gb2, -offset)
-
-                            if overlap is not None:
-                                other_ovrlp = boxm.shift(gb1, offset) * gb2
-                                assert other_ovrlp is not None
-
-                                if ref_pd.quantity == "field":
-                                    overlap = toFieldBox(overlap, ref_pd)
-                                    other_ovrlp = toFieldBox(other_ovrlp, ref_pd)
-
-                                append(
-                                    ref_pd,
-                                    cmp_pd,
-                                    ref_patch,
-                                    cmp_patch,
-                                    overlap,
-                                    (zero_offset, (-offset).tolist()),
-                                )
-                                append(
-                                    ref_pd,
-                                    cmp_pd,
-                                    ref_patch,
-                                    cmp_patch,
-                                    other_ovrlp,
-                                    (offset.tolist(), zero_offset),
-                                )
+                        overlaps.append(
+                            {
+                                "pdatas": (ref_pd, cmp_pd),
+                                "patches": (refPatch, cmpPatch),
+                                "box": overlap,
+                                "offset": (zero_offset, offset),
+                            }
+                        )
+                        if offset != zero_offset:
+                            overlaps.append(
+                                {
+                                    "pdatas": (ref_pd, cmp_pd),
+                                    "patches": (refPatch, cmpPatch),
+                                    "box": overlap,
+                                    "offset": (zero_offset, offset),
+                                }
+                            )
 
     return overlaps
 
