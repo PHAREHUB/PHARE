@@ -226,6 +226,8 @@ def possible_periodic_shifts(box, domain_box):
 
 
 def compute_overlaps(patches, domain_box):
+    from pyphare.core.phare_utilities import np_array_ify
+
     overlaps = []
     zero_offset = [0] * domain_box.ndim if domain_box.ndim > 1 else 0
 
@@ -251,17 +253,19 @@ def compute_overlaps(patches, domain_box):
                                 "pdatas": (ref_pd, cmp_pd),
                                 "patches": (refPatch, cmpPatch),
                                 "box": overlap,
-                                "offset": (zero_offset, offset),
+                                "offset": (zero_offset, np_array_ify(offset)),
                             }
                         )
                         if offset != zero_offset:
-                            other_overlap = boxm.shift(gb_ref, -offset) * gb_cmp
+                            other_overlap = (
+                                boxm.shift(gb_ref, -np_array_ify(offset)) * gb_cmp
+                            )
                             overlaps.append(
                                 {
                                     "pdatas": (ref_pd, cmp_pd),
                                     "patches": (refPatch, cmpPatch),
                                     "box": other_overlap,
-                                    "offset": (-offset, zero_offset),
+                                    "offset": (-np_array_ify(offset), zero_offset),
                                 }
                             )
 
