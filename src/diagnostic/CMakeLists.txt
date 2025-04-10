@@ -22,3 +22,7 @@ endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
 target_link_libraries(${PROJECT_NAME} INTERFACE phare_amr)
+
+if (HighFive)
+  target_link_libraries(${PROJECT_NAME} INTERFACE HighFive)
+endif()
