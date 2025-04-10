@@ -190,7 +190,85 @@ def periodicity_shifts(domain_box):
     return shifts
 
 
+def possible_periodic_shifts(box, domain_box):
+    from pyphare.core.box import shift
+
+    boxes = []
+    dim = domain_box.ndim
+
+    if dim == 1:
+        for ishift in (-1, 0, 1):
+            ioffset = ishift * domain_box.shape[0]
+            offset = ioffset
+
+            shifted = shift(box, offset)
+            boxes += [(offset, shifted)]
+    if dim == 2:
+        for ishift in (-1, 0, 1):
+            ioffset = ishift * domain_box.shape[0]
+            for jshift in (-1, 0, 1):
+                joffset = jshift * domain_box.shape[1]
+                offset = [ioffset, joffset]
+                shifted = shift(box, offset)
+                boxes += [(offset, shifted)]
+    if dim == 3:
+        for ishift in (-1, 0, 1):
+            ioffset = ishift * domain_box.shape[0]
+            for jshift in (-1, 0, 1):
+                joffset = jshift * domain_box.shape[1]
+                for kshift in (-1, 0, 1):
+                    koffset = kshift * domain_box.shape[2]
+
+                    offset = [ioffset, joffset, koffset]
+                    shifted = shift(box, offset)
+                    boxes += [(offset, shifted)]
+    return boxes
+
+
 def compute_overlaps(patches, domain_box):
+    overlaps = []
+    zero_offset = [0] * domain_box.ndim if domain_box.ndim > 1 else 0
+
+    for ip, refPatch in enumerate(patches):
+        for cmpPatch in patches[ip:]:
+
+            for ref_pdname, ref_pd in refPatch.patch_datas.items():
+                cmp_pd = cmpPatch.patch_datas[ref_pdname]
+
+                gb_ref = ref_pd.ghost_box
+                gb_cmp = cmp_pd.ghost_box
+
+                for offset, shifted_cmp in possible_periodic_shifts(gb_cmp, domain_box):
+                    overlap = gb_ref * shifted_cmp
+                    if overlap is not None and not np.all(
+                        overlap.shape == gb_ref.shape
+                    ):
+                        if ref_pd.quantity == "field":
+                            overlap = toFieldBox(overlap, ref_pd)
+
+                        overlaps.append(
+                            {
+                                "pdatas": (ref_pd, cmp_pd),
+                                "patches": (refPatch, cmpPatch),
+                                "box": overlap,
+                                "offset": (zero_offset, offset),
+                            }
+                        )
+                        if offset != zero_offset:
+                            other_overlap = boxm.shift(gb_ref, -offset) * gb_cmp
+                            overlaps.append(
+                                {
+                                    "pdatas": (ref_pd, cmp_pd),
+                                    "patches": (refPatch, cmpPatch),
+                                    "box": other_overlap,
+                                    "offset": (-offset, zero_offset),
+                                }
+                            )
+
+    return overlaps
+
+
+def compute_overlaps_(patches, domain_box):
     """
     returns a list of overlaps for all patch datas in given patches
     and for a domain box. An overlap is defined as an intersection of

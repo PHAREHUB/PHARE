@@ -114,15 +114,19 @@ class GeometryTest(AGeometryTest):
         )
 
         level_overlaps = hierarchy_overlaps(hierarchy)
+        tested_overlaps = {
+            ilvl: [
+                {"box": overlap["box"], "offset": overlap["offset"]}
+                for overlap in level_overlaps[ilvl]
+            ]
+            for ilvl in expected.keys()
+        }
         for ilvl, lvl in enumerate(hierarchy.levels().items()):
             if ilvl not in expected:
                 continue
             self.assertEqual(len(expected[ilvl]), len(level_overlaps[ilvl]))
-            for exp, actual in zip(expected[ilvl], level_overlaps[ilvl]):
-                self.assertEqual(actual["box"], exp["box"])
-                self.assertTrue(
-                    (np.asarray(actual["offset"]) == np.asarray(exp["offset"])).all()
-                )
+            for actual in tested_overlaps[ilvl]:
+                self.assertTrue(actual in expected[ilvl])
 
         if 1 in level_overlaps:
             fig = hierarchy.plot_2d_patches(
@@ -163,14 +167,16 @@ class GeometryTest(AGeometryTest):
         level_overlaps = hierarchy_overlaps(hierarchy)
         ilvl = 0
         overlap_boxes = []
+        tested_overlaps = {
+            0: [
+                {"box": overlap["box"], "offset": overlap["offset"]}
+                for overlap in level_overlaps[ilvl]
+            ]
+        }
 
-        self.assertEqual(len(expected), len(level_overlaps[ilvl]))
-        for exp, actual in zip(expected, level_overlaps[ilvl]):
-            self.assertEqual(actual["box"], exp["box"])
-            self.assertTrue(
-                (np.asarray(actual["offset"]) == np.asarray(exp["offset"])).all()
-            )
-            overlap_boxes += [actual["box"]]
+        self.assertEqual(len(expected), len(tested_overlaps[ilvl]))
+        for actual in tested_overlaps[ilvl]:
+            self.assertTrue(actual in expected)
 
         fig = hierarchy.plot_2d_patches(
             ilvl,
