@@ -161,8 +161,16 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     {
         std::string idx = std::to_string(i);
         std::string key = diagParams["attribute_" + idx + "_key"].template to<std::string>();
-        std::string val = diagParams["attribute_" + idx + "_value"].template to<std::string>();
-        diagProps.fileAttributes[key] = val;
+        if (key == "heat_capacity_ratio")
+        {
+            double val = diagParams["attribute_" + idx + "_value"].template to<double>();
+            diagProps.fileAttributes[key] = val;
+        }
+        else
+        {
+            std::string val = diagParams["attribute_" + idx + "_value"].template to<std::string>();
+            diagProps.fileAttributes[key] = val;
+        }
     }
 
     return *this;

@@ -205,10 +205,16 @@ def populateDict(sim):
         add_size_t(name_path + "/" + "n_attributes", len(diag.attributes))
         for attr_idx, attr_key in enumerate(diag.attributes):
             add_string(name_path + "/" + f"attribute_{attr_idx}_key", attr_key)
-            add_string(
-                name_path + "/" + f"attribute_{attr_idx}_value",
-                diag.attributes[attr_key],
-            )
+            if attr_key == "heat_capacity_ratio":
+                add_double(
+                    name_path + "/" + f"attribute_{attr_idx}_value",
+                    diag.attributes[attr_key],
+                )
+            else:
+                add_string(
+                    name_path + "/" + f"attribute_{attr_idx}_value",
+                    diag.attributes[attr_key],
+                )
 
     if len(sim.diagnostics) > 0:
         if sim.diag_options is not None and "options" in sim.diag_options:

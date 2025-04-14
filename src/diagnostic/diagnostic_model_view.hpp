@@ -196,7 +196,7 @@ public:
 
     NO_DISCARD VecField& getRhoV() const { return this->model_.state.rhoV; }
 
-    NO_DISCARD VecField& getEtot() const { return this->model_.state.Etot; }
+    NO_DISCARD Field& getEtot() const { return this->model_.state.Etot; }
 
     // What about E, J, etc. ? Those 2 in particular are physically relevant temporaries.
 };

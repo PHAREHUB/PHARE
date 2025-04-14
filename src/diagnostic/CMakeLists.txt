@@ -17,6 +17,7 @@ if (HighFive)
    ${PROJECT_SOURCE_DIR}/detail/types/electromag.hpp
    ${PROJECT_SOURCE_DIR}/detail/types/fluid.hpp
    ${PROJECT_SOURCE_DIR}/detail/types/meta.hpp
+   ${PROJECT_SOURCE_DIR}/detail/types/mhd.hpp
  )
 endif()
 

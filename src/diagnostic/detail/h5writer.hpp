@@ -219,6 +219,7 @@ private:
     //  block public access to internal state
     friend class FluidDiagnosticWriter<This>;
     friend class ElectromagDiagnosticWriter<This>;
+    friend class MHDDiagnosticWriter<This>;
     friend class ParticlesDiagnosticWriter<This>;
     friend class MetaDiagnosticWriter<This>;
     friend class InfoDiagnosticWriter<This>;

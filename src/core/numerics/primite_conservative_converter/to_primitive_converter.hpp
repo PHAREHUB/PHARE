@@ -45,26 +45,7 @@ public:
     void operator()(Field const& rho, VecField const& rhoV, VecField const& B, Field const& Etot,
                     VecField& V, Field& P) const
     {
-        ToPrimitiveConverter_ref<GridLayout>{*this->layout_, gamma_}(rho, rhoV, B, Etot, V, P);
-    }
-
-    // used for diagnostics
-    template<typename Field, typename VecField>
-    void rhoVToV(Field const& rho, VecField const& rhoV, VecField& V) const
-    {
-        layout_.evalOnBox(rho, [&](auto&... args) mutable {
-            ToPrimitiveConverter_ref<GridLayout>::rhoVToV_(rho, rhoV, V, {args...});
-        });
-    }
-
-    template<typename Field, typename VecField>
-    void eosEtotToP(Field const& rho, VecField const& rhoV, VecField const& B, Field const& Etot,
-                    Field& P) const
-    {
-        layout_.evalOnBox(rho, [&](auto&... args) mutable {
-            ToPrimitiveConverter_ref<GridLayout>::eosEtotToP_(gamma_, rho, rhoV, B, Etot, P,
-                                                              {args...});
-        });
+        ToPrimitiveConverter_ref<GridLayout>{*this->layout_}(gamma_, rho, rhoV, B, Etot, V, P);
     }
 
 private:
@@ -77,23 +58,37 @@ class ToPrimitiveConverter_ref
     constexpr static auto dimension = GridLayout::dimension;
 
 public:
-    ToPrimitiveConverter_ref(GridLayout const& layout, double const gamma)
+    ToPrimitiveConverter_ref(GridLayout const& layout)
         : layout_{layout}
-        , gamma_{gamma}
     {
     }
 
     template<typename Field, typename VecField>
-    void operator()(Field const& rho, VecField const& rhoV, VecField const& B, Field const& Etot,
-                    VecField& V, Field& P) const
+    void operator()(double const gamma, Field const& rho, VecField const& rhoV, VecField const& B,
+                    Field const& Etot, VecField& V, Field& P) const
+    {
+        rhoVToVOnBox(rho, rhoV, V);
+
+        eosEtotToPOnBox(gamma, rho, rhoV, B, Etot, P);
+    }
+
+    // used for diagnostics
+    template<typename Field, typename VecField>
+    void rhoVToVOnBox(Field const& rho, VecField const& rhoV, VecField& V) const
     {
         layout_.evalOnBox(rho, [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
+    }
 
+    template<typename Field, typename VecField>
+    void eosEtotToPOnBox(double const gamma, Field const& rho, VecField const& rhoV,
+                         VecField const& B, Field const& Etot, Field& P) const
+    {
         layout_.evalOnBox(rho, [&](auto&... args) mutable {
-            eosEtotToP_(gamma_, rho, rhoV, B, Etot, P, {args...});
+            eosEtotToP_(gamma, rho, rhoV, B, Etot, P, {args...});
         });
     }
 
+private:
     template<typename Field, typename VecField>
     static void rhoVToV_(Field const& rho, VecField const& rhoV, VecField& V,
                          MeshIndex<Field::dimension> index)
@@ -137,8 +132,6 @@ public:
 
 private:
     GridLayout layout_;
-
-    double const gamma_;
 };
 
 } // namespace PHARE::core

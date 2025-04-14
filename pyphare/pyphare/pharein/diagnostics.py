@@ -197,7 +197,9 @@ class MHDDiagnostics(Diagnostics):
             )
             raise ValueError(error_msg.format(kwargs["quantity"]))
         else:
-            self.quantity = "/" + kwargs["quantity"]
+            self.quantity = "/mhd/" + kwargs["quantity"]
+
+        self.attributes["heat_capacity_ratio"] = global_vars.sim.gamma
 
     def to_dict(self):
         return {

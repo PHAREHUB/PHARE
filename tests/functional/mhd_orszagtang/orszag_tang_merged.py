@@ -16,8 +16,7 @@ diag_outputs = "phare_outputs/test/orszag-tang/2d"
 time_step_nbr = 357
 time_step = 0.0014
 dt = 10 * time_step
-nt = time_step * time_step_nbr / (dt + 1)
-timestamps = dt * np.arange(nt)
+timestamps = dt * np.arange(int(time_step_nbr / 10) + 1)
 
 
 def config():
@@ -25,8 +24,8 @@ def config():
     dl = (1.0 / cells[0], 1.0 / cells[1])
 
     sim = ph.Simulation(
-        smallest_patch_size=128,
-        largest_patch_size=128,
+        smallest_patch_size=15,
+        largest_patch_size=25,
         time_step_nbr=time_step_nbr,
         time_step=time_step,
         cells=cells,

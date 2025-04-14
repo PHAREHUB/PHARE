@@ -67,15 +67,12 @@ template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
     std::string tree{"/mhd/"};
-    checkCreateFileFor_(diagnostic, fileData_, tree, "density", "velocity", "B", "pressure", "rhoV",
-                        "Etot");
+    checkCreateFileFor_(diagnostic, fileData_, tree, "rho", "V", "B", "P", "rhoV", "Etot");
 }
 
 template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
-    core::ToPrimitiveConverter<GridLayout> toPrim;
-
     auto& h5Writer  = this->h5Writer_;
     auto& modelView = h5Writer.modelView();
     auto minLvl     = h5Writer.minLevel;
@@ -89,19 +86,22 @@ void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     auto& Etot = modelView.getEtot();
 
     std::string tree{"/mhd/"};
-    if (isActiveDiag(diagnostic, tree, "velocity"))
+    if (isActiveDiag(diagnostic, tree, "V"))
     {
-        auto computeVelocity = [&](GridLayout& layout, std::string& patchID, std::size_t iLevel) {
-            auto _sl = core::SetLayout(&layout, toPrim);
-            toPrim.rhoVToV(rho, rhoV, V);
+        auto computeVelocity = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
+            core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
+            toPrim.rhoVToVOnBox(rho, rhoV, V);
         };
         modelView.visitHierarchy(computeVelocity, minLvl, maxLvl);
     }
-    if (isActiveDiag(diagnostic, tree, "pressure"))
+    if (isActiveDiag(diagnostic, tree, "P"))
     {
-        auto computePressure = [&](GridLayout& layout, std::string& patchID, std::size_t iLevel) {
-            auto _sl = core::SetLayout(&layout, toPrim);
-            toPrim.eosEtotToP(rho, rhoV, B, Etot, P);
+        auto computePressure = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
+            auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
+                                   .template to<double>(); // or FloatType if we want to expose that
+                                                           // to DiagnosticProperties
+            core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
+            toPrim.eosEtotToPOnBox(gamma, rho, rhoV, B, Etot, P);
         };
         modelView.visitHierarchy(computePressure, minLvl, maxLvl);
     }
@@ -143,18 +143,18 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
     };
 
     std::string tree{"/mhd/"};
-    if (isActiveDiag(diagnostic, tree, "density"))
-        infoDS(rho, "density", patchAttributes[lvlPatchID]);
-    if (isActiveDiag(diagnostic, tree, "velocity"))
-        infoVF(V, "velocity", patchAttributes[lvlPatchID]);
+    if (isActiveDiag(diagnostic, tree, "rho"))
+        infoDS(rho, "rho", patchAttributes[lvlPatchID]["mhd"]);
+    if (isActiveDiag(diagnostic, tree, "V"))
+        infoVF(V, "V", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "B"))
-        infoVF(B, "B", patchAttributes[lvlPatchID]);
-    if (isActiveDiag(diagnostic, tree, "pressure"))
-        infoDS(P, "pressure", patchAttributes[lvlPatchID]);
+        infoVF(B, "B", patchAttributes[lvlPatchID]["mhd"]);
+    if (isActiveDiag(diagnostic, tree, "P"))
+        infoDS(P, "P", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "rhoV"))
-        infoVF(rhoV, "rhoV", patchAttributes[lvlPatchID]);
+        infoVF(rhoV, "rhoV", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "Etot"))
-        infoDS(Etot, "Etot", patchAttributes[lvlPatchID]);
+        infoDS(Etot, "Etot", patchAttributes[lvlPatchID]["mhd"]);
 }
 
 template<typename H5Writer>
@@ -196,14 +196,14 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
         std::string tree{"/mhd/"};
-        if (isActiveDiag(diagnostic, tree, "density"))
-            initDS(path, attr["mhd"], "density", null);
-        if (isActiveDiag(diagnostic, tree, "velocity"))
-            initVF(path, attr["mhd"], "velocity", null);
+        if (isActiveDiag(diagnostic, tree, "rho"))
+            initDS(path, attr["mhd"], "rho", null);
+        if (isActiveDiag(diagnostic, tree, "V"))
+            initVF(path, attr["mhd"], "V", null);
         if (isActiveDiag(diagnostic, tree, "B"))
             initVF(path, attr["mhd"], "B", null);
-        if (isActiveDiag(diagnostic, tree, "pressure"))
-            initDS(path, attr["mhd"], "pressure", null);
+        if (isActiveDiag(diagnostic, tree, "P"))
+            initDS(path, attr["mhd"], "P", null);
         if (isActiveDiag(diagnostic, tree, "rhoV"))
             initVF(path, attr["mhd"], "rhoV", null);
         if (isActiveDiag(diagnostic, tree, "Etot"))
@@ -233,14 +233,14 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 
     std::string path = h5Writer.patchPath() + "/";
     std::string tree{"/mhd/"};
-    if (isActiveDiag(diagnostic, tree, "density"))
-        writeDS(path + "density", rho);
-    if (isActiveDiag(diagnostic, tree, "velocity"))
-        writeTF(path + "velocity", V);
+    if (isActiveDiag(diagnostic, tree, "rho"))
+        writeDS(path + "rho", rho);
+    if (isActiveDiag(diagnostic, tree, "V"))
+        writeTF(path + "V", V);
     if (isActiveDiag(diagnostic, tree, "B"))
         writeTF(path + "B", B);
-    if (isActiveDiag(diagnostic, tree, "pressure"))
-        writeDS(path + "pressure", P);
+    if (isActiveDiag(diagnostic, tree, "P"))
+        writeDS(path + "P", P);
     if (isActiveDiag(diagnostic, tree, "rhoV"))
         writeTF(path + "rhoV", rhoV);
     if (isActiveDiag(diagnostic, tree, "Etot"))

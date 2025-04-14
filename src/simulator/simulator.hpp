@@ -392,8 +392,8 @@ void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::mhd_init(
     auto lbm_id = lbm_->getId(); // moved on next line
     multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
 
-    if (dict["simulation"].contains("restarts"))
-        startTime_ = restarts_init(dict["simulation"]["restarts"]);
+    /*if (dict["simulation"].contains("restarts"))*/
+    /*    startTime_ = restarts_init(dict["simulation"]["restarts"]);*/
 
     integrator_
         = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
