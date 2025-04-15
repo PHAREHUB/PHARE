@@ -76,7 +76,8 @@ public:
         else if constexpr (std::is_same_v<Identifier, MHDIdentifier>)
             typeWriters_ = {
                 {"meta", make_writer<MetaDiagnosticWriter<This>>()},
-                {"mhd", make_writer<MHDDiagnosticWriter<This>>()} //
+                {"mhd", make_writer<MHDDiagnosticWriter<This>>()},
+                {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()} //
             };
     }
 

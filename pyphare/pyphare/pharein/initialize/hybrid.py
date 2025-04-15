@@ -49,8 +49,8 @@ def populateDict(sim):
 
     add_string("simulation/electromag/name", "EM")
     add_string("simulation/electromag/electric/name", "E")
-
     add_string("simulation/electromag/magnetic/name", "B")
+
     maginit_path = "simulation/electromag/magnetic/initializer/"
     addInitFunction(maginit_path + "x_component", fn_wrapper(modelDict["bx"]))
     addInitFunction(maginit_path + "y_component", fn_wrapper(modelDict["by"]))

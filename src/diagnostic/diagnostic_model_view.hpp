@@ -190,7 +190,11 @@ public:
 
     NO_DISCARD VecField& getV() const { return this->model_.state.V; }
 
-    NO_DISCARD VecField& getB() const { return this->model_.state.B; }
+    // compatibility with the electromag diagnostic writer
+    NO_DISCARD std::vector<VecField*> getElectromagFields() const
+    {
+        return {&this->model_.state.B};
+    }
 
     NO_DISCARD Field& getP() const { return this->model_.state.P; }
 

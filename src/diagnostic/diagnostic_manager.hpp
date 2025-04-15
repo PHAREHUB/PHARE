@@ -29,7 +29,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
         }
         else if constexpr (std::is_same_v<typename DiagManager::Identifier, MHDIdentifier>)
         {
-            return std::vector<std::string>{"mhd", "meta"};
+            return std::vector<std::string>{"mhd", "meta", "electromag"};
         }
     }();
 

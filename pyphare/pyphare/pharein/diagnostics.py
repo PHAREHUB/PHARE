@@ -196,6 +196,8 @@ class MHDDiagnostics(Diagnostics):
                 MHDDiagnostics.mhd_quantities
             )
             raise ValueError(error_msg.format(kwargs["quantity"]))
+        elif kwargs["quantity"] == "B":
+            self.quantity = "/EM_B"
         else:
             self.quantity = "/mhd/" + kwargs["quantity"]
 

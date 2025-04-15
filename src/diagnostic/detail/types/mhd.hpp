@@ -11,7 +11,6 @@ namespace PHARE::diagnostic::h5
 /* Possible outputs
  * /t#/pl#/p#/mhd/density
  * /t#/pl#/p#/mhd/velocity/(x,y,z)
- * /t#/pl#/p#/mhd/B/(x,y,z)
  * /t#/pl#/p#/mhd/pressure
  * /t#/pl#/p#/mhd/rhoV/(x,y,z)
  * /t#/pl#/p#/mhd/Etot
@@ -67,7 +66,7 @@ template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
     std::string tree{"/mhd/"};
-    checkCreateFileFor_(diagnostic, fileData_, tree, "rho", "V", "B", "P", "rhoV", "Etot");
+    checkCreateFileFor_(diagnostic, fileData_, tree, "rho", "V", "P", "rhoV", "Etot");
 }
 
 template<typename H5Writer>
@@ -80,7 +79,7 @@ void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 
     auto& rho  = modelView.getRho();
     auto& V    = modelView.getV();
-    auto& B    = modelView.getB();
+    auto& B    = *modelView.getElectromagFields()[0];
     auto& P    = modelView.getP();
     auto& rhoV = modelView.getRhoV();
     auto& Etot = modelView.getEtot();
@@ -115,7 +114,6 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
     auto& h5Writer         = this->h5Writer_;
     auto& rho              = h5Writer.modelView().getRho();
     auto& V                = h5Writer.modelView().getV();
-    auto& B                = h5Writer.modelView().getB();
     auto& P                = h5Writer.modelView().getP();
     auto& rhoV             = h5Writer.modelView().getRhoV();
     auto& Etot             = h5Writer.modelView().getEtot();
@@ -147,8 +145,6 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
         infoDS(rho, "rho", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "V"))
         infoVF(V, "V", patchAttributes[lvlPatchID]["mhd"]);
-    if (isActiveDiag(diagnostic, tree, "B"))
-        infoVF(B, "B", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "P"))
         infoDS(P, "P", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "rhoV"))
@@ -200,8 +196,6 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
             initDS(path, attr["mhd"], "rho", null);
         if (isActiveDiag(diagnostic, tree, "V"))
             initVF(path, attr["mhd"], "V", null);
-        if (isActiveDiag(diagnostic, tree, "B"))
-            initVF(path, attr["mhd"], "B", null);
         if (isActiveDiag(diagnostic, tree, "P"))
             initDS(path, attr["mhd"], "P", null);
         if (isActiveDiag(diagnostic, tree, "rhoV"))
@@ -219,7 +213,6 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     auto& h5Writer = this->h5Writer_;
     auto& rho      = h5Writer.modelView().getRho();
     auto& V        = h5Writer.modelView().getV();
-    auto& B        = h5Writer.modelView().getB();
     auto& P        = h5Writer.modelView().getP();
     auto& rhoV     = h5Writer.modelView().getRhoV();
     auto& Etot     = h5Writer.modelView().getEtot();
@@ -237,8 +230,6 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         writeDS(path + "rho", rho);
     if (isActiveDiag(diagnostic, tree, "V"))
         writeTF(path + "V", V);
-    if (isActiveDiag(diagnostic, tree, "B"))
-        writeTF(path + "B", B);
     if (isActiveDiag(diagnostic, tree, "P"))
         writeDS(path + "P", P);
     if (isActiveDiag(diagnostic, tree, "rhoV"))

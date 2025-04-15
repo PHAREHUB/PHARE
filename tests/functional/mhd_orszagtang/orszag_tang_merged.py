@@ -12,7 +12,7 @@ ph.NO_GUI()
 cpp = cpp_lib()
 startMPI()
 
-diag_outputs = "phare_outputs/test/orszag-tang/2d"
+diag_outputs = "phare_outputs"
 time_step_nbr = 357
 time_step = 0.0014
 dt = 10 * time_step
@@ -78,8 +78,10 @@ def config():
 
     ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
 
-    for quantity in ["rho", "V", "B", "P"]:
-        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
+    ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+
+    # for quantity in ["rho", "V", "B", "P"]:
+    #     ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 
