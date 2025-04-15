@@ -80,8 +80,8 @@ def config():
 
     ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
 
-    # for quantity in ["rho", "V", "B", "P"]:
-    #     ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
+    for quantity in ["rho", "V", "P"]:
+        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 

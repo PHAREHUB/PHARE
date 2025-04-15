@@ -69,7 +69,6 @@ public:
     }
 
 private:
-    GridLayout layout_;
     double const gamma_;
     double const eta_;
     double const nu_;

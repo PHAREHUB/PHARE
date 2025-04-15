@@ -180,7 +180,7 @@ class Diagnostics(object):
 
 # ------------------------------------------------------------------------------
 class MHDDiagnostics(Diagnostics):
-    mhd_quantities = ["rho", "V", "B", "P", "rhoV", "Etot"]
+    mhd_quantities = ["rho", "V", "P", "rhoV", "Etot"]
     type = "mhd"
 
     def __init__(self, **kwargs):
@@ -196,8 +196,6 @@ class MHDDiagnostics(Diagnostics):
                 MHDDiagnostics.mhd_quantities
             )
             raise ValueError(error_msg.format(kwargs["quantity"]))
-        elif kwargs["quantity"] == "B":
-            self.quantity = "/EM_B"
         else:
             self.quantity = "/mhd/" + kwargs["quantity"]
 

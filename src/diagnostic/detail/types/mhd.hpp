@@ -79,7 +79,7 @@ void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 
     auto& rho  = modelView.getRho();
     auto& V    = modelView.getV();
-    auto& B    = *modelView.getElectromagFields()[0];
+    auto& B    = modelView.getB();
     auto& P    = modelView.getP();
     auto& rhoV = modelView.getRhoV();
     auto& Etot = modelView.getEtot();

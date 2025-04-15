@@ -190,10 +190,11 @@ public:
 
     NO_DISCARD VecField& getV() const { return this->model_.state.V; }
 
-    // compatibility with the electromag diagnostic writer
-    NO_DISCARD std::vector<VecField*> getElectromagFields() const
+    NO_DISCARD VecField& getB() const { return this->model_.state.B; }
+
+    NO_DISCARD VecField& getE() const
     {
-        return {&this->model_.state.B};
+        throw std::runtime_error("E not currently available in MHD diagnostics");
     }
 
     NO_DISCARD Field& getP() const { return this->model_.state.P; }
