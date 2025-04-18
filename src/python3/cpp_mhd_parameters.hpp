@@ -217,6 +217,17 @@ constexpr void declare_all_mhd_params(py::module& m)
                        ReconstructionType::WENO3, SlopeLimiterType::count,
                        RiemannSolverType::Rusanov, false, false, false>::declare_etc(m, full_type);
 
+    variant_name = "tvdrk3_weno3_rusanov_hall";
+    full_type    = type_name + "_" + variant_name;
+
+    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
+                       ReconstructionType::WENO3, SlopeLimiterType::count,
+                       RiemannSolverType::Rusanov, true, false, false>::declare_sim(m, full_type);
+
+    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
+                       ReconstructionType::WENO3, SlopeLimiterType::count,
+                       RiemannSolverType::Rusanov, true, false, false>::declare_etc(m, full_type);
+
     /*auto constexpr ti_tuple   = make_enum_tuple<TimeIntegratorType>();*/
     /*auto constexpr rc_tuple   = make_enum_tuple<ReconstructionType>();*/
     /*auto constexpr sl_tuple   = make_enum_tuple<SlopeLimiterType>();*/

@@ -14,6 +14,19 @@
 
 namespace PHARE::solver
 {
+template<typename MHDModel>
+struct TimeSetter
+{
+    template<typename... QuantityAccessors>
+    void operator()(auto& patch, QuantityAccessors... accessors)
+    {
+        (model.resourcesManager->setTime(accessors(), patch, newTime), ...);
+    }
+
+    MHDModel& model;
+    double newTime;
+};
+
 template<typename GridLayout>
 class ToConservativeTransformer
 {
@@ -21,13 +34,22 @@ class ToConservativeTransformer
 
 public:
     template<typename MHDModel>
-    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state)
+    void operator()(MHDModel::level_t const& level, MHDModel& model, double const newTime,
+                    MHDModel::state_type& state)
     {
+        TimeSetter setTime{model, newTime};
+
         for (auto const& patch : level)
         {
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto _sp    = model.resourcesManager->setOnPatch(*patch, state);
             auto _sl    = core::SetLayout(&layout, to_conservative_);
+
+            setTime(
+                *patch, [&]() -> auto&& { return state.rho; }, [&]() -> auto&& { return state.V; },
+                [&]() -> auto&& { return state.P; }, [&]() -> auto&& { return state.rhoV; },
+                [&]() -> auto&& { return state.Etot; });
+
             to_conservative_(state.rho, state.V, state.B, state.P, state.rhoV, state.Etot);
         }
     }
@@ -42,13 +64,22 @@ class ToPrimitiveTransformer
 
 public:
     template<typename MHDModel>
-    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state)
+    void operator()(MHDModel::level_t const& level, MHDModel& model, double const newTime,
+                    MHDModel::state_type& state)
     {
+        TimeSetter setTime{model, newTime};
+
         for (auto const& patch : level)
         {
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto _sp    = model.resourcesManager->setOnPatch(*patch, state);
             auto _sl    = core::SetLayout(&layout, to_primitive_);
+
+            setTime(
+                *patch, [&]() -> auto&& { return state.rho; },
+                [&]() -> auto&& { return state.rhoV; }, [&]() -> auto&& { return state.Etot; },
+                [&]() -> auto&& { return state.V; }, [&]() -> auto&& { return state.P; });
+
             to_primitive_(state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
         }
     }
@@ -63,14 +94,21 @@ class FVMethodTransformer
 
 public:
     template<typename MHDModel>
-    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state,
-                    auto& fluxes)
+    void operator()(MHDModel::level_t const& level, MHDModel& model, double const newTime,
+                    MHDModel::state_type& state, auto& fluxes)
     {
+        TimeSetter setTime{model, newTime};
+
         for (auto const& patch : level)
         {
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto _sp    = model.resourcesManager->setOnPatch(*patch, state, fluxes);
             auto _sl    = core::SetLayout(&layout, fvm_);
+
+            setTime(
+                *patch, [&]() -> auto&& { return state.rho; }, [&]() -> auto&& { return state.V; },
+                [&]() -> auto&& { return state.P; }, [&]() -> auto&& { return state.J; });
+
             fvm_(state, fluxes);
         }
     }
@@ -86,14 +124,22 @@ class FiniteVolumeEulerTransformer
 
 public:
     template<typename MHDModel>
-    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state,
-                    MHDModel::state_type& statenew, auto& fluxes, double const dt)
+    void operator()(MHDModel::level_t const& level, MHDModel& model, double const newTime,
+                    MHDModel::state_type& state, MHDModel::state_type& statenew, auto& fluxes,
+                    double const dt)
     {
+        TimeSetter setTime{model, newTime};
+
         for (auto const& patch : level)
         {
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto _sp    = model.resourcesManager->setOnPatch(*patch, state, statenew, fluxes);
             auto _sl    = core::SetLayout(&layout, euler_);
+
+            setTime(
+                *patch, [&]() -> auto&& { return state.rho; },
+                [&]() -> auto&& { return state.rhoV; }, [&]() -> auto&& { return state.Etot; });
+
             euler_(state, statenew, fluxes, dt);
         }
     }
@@ -152,14 +198,21 @@ class RKUtilsTransformer
 
 public:
     template<typename MHDModel, typename... Pairs>
-    void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& res,
-                    Pairs... pairs)
+    void operator()(MHDModel::level_t const& level, MHDModel& model, double const newTime,
+                    MHDModel::state_type& res, Pairs... pairs)
     {
+        TimeSetter setTime{model, newTime};
+
         for (auto const& patch : level)
         {
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto _sp    = model.resourcesManager->setOnPatch(*patch, res, pairs.state...);
             auto _sl    = core::SetLayout(&layout, rkutils_);
+
+            setTime(
+                *patch, [&]() -> auto&& { return res.rho; }, [&]() -> auto&& { return res.rhoV; },
+                [&]() -> auto&& { return res.Etot; });
+
             rkutils_(res, pairs...);
         }
     }
