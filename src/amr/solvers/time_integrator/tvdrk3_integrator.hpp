@@ -40,13 +40,14 @@ public:
         euler_(model, state1_, state1_, fluxes, bc, level, currentTime, newTime);
 
         // U2 = 0.75*Un + 0.25*U1
-        tvdrk3_step_(level, model, state2_, RKPair_t{w00_, state}, RKPair_t{w01_, state1_});
+        tvdrk3_step_(level, model, newTime, state2_, RKPair_t{w00_, state},
+                     RKPair_t{w01_, state1_});
 
         // U2 = Euler(U2)
         euler_(model, state2_, state2_, fluxes, bc, level, currentTime, newTime);
 
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
-        tvdrk3_step_(level, model, state, RKPair_t{w10_, state}, RKPair_t{w11_, state2_});
+        tvdrk3_step_(level, model, newTime, state, RKPair_t{w10_, state}, RKPair_t{w11_, state2_});
     }
 
     void registerResources(MHDModel& model)
