@@ -139,8 +139,8 @@ namespace amr
                     std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                     IPhysicalModel& model, double const initDataTime) override
         {
-            auto& hybridModel = static_cast<MHDModel&>(model);
-            auto level        = hierarchy->getPatchLevel(levelNumber);
+            auto& mhdModel = static_cast<MHDModel&>(model);
+            auto level     = hierarchy->getPatchLevel(levelNumber);
 
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
@@ -151,7 +151,7 @@ namespace amr
 
             if (!isRegriddingL0)
             {
-                auto& B = hybridModel.state.B;
+                auto& B = mhdModel.state.B;
                 magGhostsRefiners_.fill(B, levelNumber, initDataTime);
 
                 fix_magnetic_divergence_(*hierarchy, levelNumber, B);

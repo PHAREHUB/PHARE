@@ -35,16 +35,16 @@ public:
     {
         double const dt = newTime - currentTime;
 
-        to_primitive_(level, model, state);
+        to_primitive_(level, model, newTime, state);
 
         bc.fillMomentsGhosts(state, level.getLevelNumber(), newTime);
 
-        fvm_(level, model, state, fluxes);
+        fvm_(level, model, newTime, state, fluxes);
 
         // unecessary if we decide to store both primitive and conservative variables
-        to_conservative_(level, model, state);
+        to_conservative_(level, model, newTime, state);
 
-        fv_euler_(level, model, state, statenew, fluxes, dt);
+        fv_euler_(level, model, newTime, state, statenew, fluxes, dt);
 
         bc.fillMagneticFluxesXGhosts(fluxes.B_fx, level.getLevelNumber(), newTime);
 

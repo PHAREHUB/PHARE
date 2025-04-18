@@ -1,28 +1,57 @@
+#!/usr/bin/env python3
+import os
+
 import numpy as np
-import pyphare.mock_mhd_simulator.mhd_model as m
-import pyphare.mock_mhd_simulator.simulation as s
-from pyphare.mock_mhd_simulator.simulator import MHDMockSimulator
+import pyphare.pharein as ph
+from pyphare.cpp import cpp_lib
+from pyphare.simulator.simulator import Simulator, startMPI
+
+os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
+
+ph.NO_GUI()
+cpp = cpp_lib()
+startMPI()
+
+diag_outputs = "phare_outputs/low"
+final_time = 0.03
+time_step = 0.0003
+time_step_nbr = int(final_time / time_step)
+
+dumpfrequency = 1
+dt = dumpfrequency * time_step
+timestamps = dt * np.arange(int(time_step_nbr / dumpfrequency) + 1)
 
 
 def config():
     cells = (100, 100)
     dl = (1.0 / cells[0], 1.0 / cells[1])
 
-    sim = s.Simulation(
-        ndim=2,
-        order=1,
-        timestep=0.0003,
-        final_time=0.15,
+    sim = ph.Simulation(
+        smallest_patch_size=15,
+        # largest_patch_size=25,
+        time_step_nbr=time_step_nbr,
+        time_step=time_step,
         cells=cells,
         dl=dl,
-        origin=(0.0, 0.0),
+        refinement="tagging",
+        max_mhd_level=2,
+        max_nbr_levels=2,
+        hyper_resistivity=0.0,
+        resistivity=0.0,
+        diag_options={
+            "format": "phareh5",
+            "options": {"dir": diag_outputs, "mode": "overwrite"},
+            "fine_dump_level_max": 10,
+        },
+        strict=True,
         eta=0.0,
         nu=0.0,
-        gamma=1.4,
-        reconstruction="constant",
+        gamma=5.0 / 3.0,
+        reconstruction="weno3",
         limiter="",
         riemann="rusanov",
-        time_integrator="euler",
+        mhd_timestepper="tvdrk3",
+        model_options=["MHDModel"],
     )
 
     B0 = 5 / (np.sqrt(4 * np.pi))
@@ -81,13 +110,18 @@ def config():
     def p(x, y):
         return 1.0
 
-    m.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
+    ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
+
+    ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+
+    for quantity in ["rho", "V", "P"]:
+        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 
 
 def main():
-    MHDMockSimulator(config()).run("rotor.h5", dumpfrequency=100)
+    Simulator(config()).run()
 
 
 if __name__ == "__main__":

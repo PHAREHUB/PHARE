@@ -1,57 +1,29 @@
-#!/usr/bin/env python3
-import os
-
 import numpy as np
-import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
-from pyphare.simulator.simulator import Simulator, startMPI
-
-os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
-
-ph.NO_GUI()
-cpp = cpp_lib()
-startMPI()
-
-diag_outputs = "phare_outputs/high"
-final_time = 10
-time_step = 0.0005
-time_step_nbr = int(final_time / time_step)
-
-dumpfrequency = 2000
-dt = dumpfrequency * time_step
-timestamps = dt * np.arange(int(time_step_nbr / dumpfrequency) + 1)
+import pyphare.mock_mhd_simulator.mhd_model as m
+import pyphare.mock_mhd_simulator.simulation as s
+from pyphare.mock_mhd_simulator.simulator import MHDMockSimulator
 
 
 def config():
-    cells = (500, 500)
-    dl = (0.05, 0.05)
+    cells = (250, 250)
+    dl = (0.1, 0.1)
 
-    sim = ph.Simulation(
-        smallest_patch_size=15,
-        # largest_patch_size=25,
-        time_step_nbr=time_step_nbr,
-        time_step=time_step,
+    sim = s.Simulation(
+        ndim=2,
+        order=2,
+        timestep=0.002,
+        final_time=10,
         cells=cells,
         dl=dl,
-        refinement="tagging",
-        max_mhd_level=1,
-        max_nbr_levels=1,
-        hyper_resistivity=0.0,
-        resistivity=0.0,
-        diag_options={
-            "format": "phareh5",
-            "options": {"dir": diag_outputs, "mode": "overwrite"},
-        },
-        strict=True,
+        origin=(0.0, 0.0),
         eta=0.0,
         nu=0.0,
         gamma=5.0 / 3.0,
-        reconstruction="weno3",
+        reconstruction="wenoz",
         limiter="",
         riemann="rusanov",
-        mhd_timestepper="tvdrk3",
+        time_integrator="tvdrk3",
         hall=True,
-        model_options=["MHDModel"],
     )
 
     Lx = cells[0] * dl[0]
@@ -111,18 +83,13 @@ def config():
     def p(x, y):
         return 1.0 - (bx(x, y) ** 2 + by(x, y) ** 2) / 2.0
 
-    ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
-
-    ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
-
-    for quantity in ["rho", "V", "P"]:
-        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
+    m.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
 
     return sim
 
 
 def main():
-    Simulator(config()).run()
+    MHDMockSimulator(config()).run("hall_harris.h5", dumpfrequency=500)
 
 
 if __name__ == "__main__":

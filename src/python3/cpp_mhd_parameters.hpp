@@ -206,112 +206,123 @@ constexpr void declare_all_mhd_params(py::module& m)
                             + std::to_string(InterpOrder{}()) + "_"
                             + std::to_string(NbRefinedParts{}());
 
-    std::string variant_name = "tvdrk3_weno3_rusanov";
-    std::string full_type    = type_name + "_" + variant_name;
+    // std::string variant_name = "tvdrk3_weno3_rusanov";
+    // std::string full_type    = type_name + "_" + variant_name;
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
+    //                    ReconstructionType::WENO3, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, false, false, false>::declare_sim(m,
+    //                    full_type);
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
+    //                    ReconstructionType::WENO3, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, false, false, false>::declare_etc(m,
+    //                    full_type);
+    //
+    // variant_name = "tvdrk3_weno3_rusanov_hall";
+    // full_type    = type_name + "_" + variant_name;
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
+    //                    ReconstructionType::WENO3, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, true, false, false>::declare_sim(m,
+    //                    full_type);
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
+    //                    ReconstructionType::WENO3, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, true, false, false>::declare_etc(m,
+    //                    full_type);
 
-    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
-                       ReconstructionType::WENO3, SlopeLimiterType::count,
-                       RiemannSolverType::Rusanov, false, false, false>::declare_sim(m, full_type);
+    auto constexpr ti_tuple   = make_enum_tuple<TimeIntegratorType>();
+    auto constexpr rc_tuple   = make_enum_tuple<ReconstructionType>();
+    auto constexpr sl_tuple   = make_enum_tuple<SlopeLimiterType>();
+    auto constexpr rs_tuple   = make_enum_tuple<RiemannSolverType>();
+    auto constexpr bool_tuple = std::make_tuple(false, true);
 
-    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
-                       ReconstructionType::WENO3, SlopeLimiterType::count,
-                       RiemannSolverType::Rusanov, false, false, false>::declare_etc(m, full_type);
+    auto constexpr ti_size   = std::tuple_size_v<std::decay_t<decltype(ti_tuple)>>;
+    auto constexpr rc_size   = std::tuple_size_v<std::decay_t<decltype(rc_tuple)>>;
+    auto constexpr sl_size   = std::tuple_size_v<std::decay_t<decltype(sl_tuple)>>;
+    auto constexpr rs_size   = std::tuple_size_v<std::decay_t<decltype(rs_tuple)>>;
+    auto constexpr bool_size = 2ull;
 
-    /*auto constexpr ti_tuple   = make_enum_tuple<TimeIntegratorType>();*/
-    /*auto constexpr rc_tuple   = make_enum_tuple<ReconstructionType>();*/
-    /*auto constexpr sl_tuple   = make_enum_tuple<SlopeLimiterType>();*/
-    /*auto constexpr rs_tuple   = make_enum_tuple<RiemannSolverType>();*/
-    /*auto constexpr bool_tuple = std::make_tuple(false, true);*/
-    /**/
-    /*auto constexpr ti_size   = std::tuple_size_v<std::decay_t<decltype(ti_tuple)>>;*/
-    /*auto constexpr rc_size   = std::tuple_size_v<std::decay_t<decltype(rc_tuple)>>;*/
-    /*auto constexpr sl_size   = std::tuple_size_v<std::decay_t<decltype(sl_tuple)>>;*/
-    /*auto constexpr rs_size   = std::tuple_size_v<std::decay_t<decltype(rs_tuple)>>;*/
-    /*auto constexpr bool_size = 2ull;*/
-    /**/
-    /*for_N<ti_size>([&](auto i_ti) {*/
-    /*    auto constexpr ti = std::get<i_ti>(ti_tuple);*/
-    /*    for_N<rc_size>([&](auto i_rc) {*/
-    /*        auto constexpr rc = std::get<i_rc>(rc_tuple);*/
-    /*        for_N<rs_size>([&](auto i_rs) {*/
-    /*            auto constexpr rs = std::get<i_rs>(rs_tuple);*/
-    /*            for_N<bool_size>([&](auto i_hall) {*/
-    /*                auto constexpr hall = std::get<i_hall>(bool_tuple);*/
-    /*                for_N<bool_size>([&](auto i_res) {*/
-    /*                    auto constexpr res = std::get<i_res>(bool_tuple);*/
-    /*                    for_N<bool_size>([&](auto i_hyper) {*/
-    /*                        auto constexpr hyper_res = std::get<i_hyper>(bool_tuple);*/
-    /**/
-    /*                        // Reconstructions using slope limiters*/
-    /*                        if constexpr (rc == ReconstructionType::Linear)*/
-    /*                        {*/
-    /*                            for_N<sl_size>([&](auto i_sl) {*/
-    /*                                auto constexpr sl = get<i_sl>(sl_tuple);*/
-    /*                                std::string variant_name*/
-    /*                                    = (ti == TimeIntegratorType::Euler    ? "euler"*/
-    /*                                       : ti == TimeIntegratorType::TVDRK2 ? "tvdrk2"*/
-    /*                                                                          : "tvdrk3")*/
-    /*                                      + std::string("_")*/
-    /*                                      + (rc == ReconstructionType::Constant ? "constant"*/
-    /*                                         : rc == ReconstructionType::Linear ? "linear"*/
-    /*                                         : rc == ReconstructionType::WENO3  ? "weno3"*/
-    /*                                                                            : "wenoz")*/
-    /*                                      + std::string("_")*/
-    /*                                      + (sl == SlopeLimiterType::VanLeer ? "vanleer" :
-     * "minmod")*/
-    /**/
-    /*                                      + std::string("_")*/
-    /*                                      + (rs == RiemannSolverType::Rusanov ? "rusanov" :
-     * "hll")*/
-    /*                                      + (hall ? "_hall" : "") + (res ? "_res" : "")*/
-    /*                                      + (hyper_res ? "_hyperres" : "");*/
-    /**/
-    /*                                std::string full_type = type_name + "_" + variant_name;*/
-    /**/
-    /*                                Registerer<Dimension, InterpOrder, NbRefinedParts, ti, rc,
-     * sl,*/
-    /*                                           rs, hall, res, hyper_res>::declare_sim(m,
-     * full_type);*/
-    /*                                Registerer<Dimension, InterpOrder, NbRefinedParts, ti, rc,
-     * sl,*/
-    /*                                           rs, hall, res, hyper_res>::declare_etc(m,
-     * full_type);*/
-    /*                            });*/
-    /*                        }*/
-    /*                        else*/
-    /*                        {*/
-    /*                            std::string variant_name*/
-    /*                                = (ti == TimeIntegratorType::Euler    ? "euler"*/
-    /*                                   : ti == TimeIntegratorType::TVDRK2 ? "tvdrk2"*/
-    /*                                                                      : "tvdrk3")*/
-    /*                                  + std::string("_")*/
-    /*                                  + (rc == ReconstructionType::Constant ? "constant"*/
-    /*                                     : rc == ReconstructionType::WENO3  ? "weno3"*/
-    /*                                                                        : "wenoz")*/
-    /*                                  + std::string("_")*/
-    /*                                  + (rs == RiemannSolverType::Rusanov ? "rusanov" : "hll")*/
-    /*                                  + (hall ? "_hall" : "") + (res ? "_res" : "")*/
-    /*                                  + (hyper_res ? "_hyperres" : "");*/
-    /**/
-    /*                            std::string full_type = type_name + "_" + variant_name;*/
-    /**/
-    /*                            auto constexpr nosl = SlopeLimiterType::count; // returns void*/
-    /**/
-    /**/
-    /*                            Registerer<Dimension, InterpOrder, NbRefinedParts, ti, rc, nosl,
-     * rs,*/
-    /*                                       hall, res, hyper_res>::declare_sim(m, full_type);*/
-    /**/
-    /*                            Registerer<Dimension, InterpOrder, NbRefinedParts, ti, rc, nosl,
-     * rs,*/
-    /*                                       hall, res, hyper_res>::declare_etc(m, full_type);*/
-    /*                        }*/
-    /*                    });*/
-    /*                });*/
-    /*            });*/
-    /*        });*/
-    /*    });*/
-    /*});*/
+    for_N<ti_size>([&](auto i_ti) {
+        auto constexpr ti = std::get<i_ti>(ti_tuple);
+        for_N<rc_size>([&](auto i_rc) {
+            auto constexpr rc = std::get<i_rc>(rc_tuple);
+            for_N<rs_size>([&](auto i_rs) {
+                auto constexpr rs = std::get<i_rs>(rs_tuple);
+                for_N<bool_size>([&](auto i_hall) {
+                    auto constexpr hall = std::get<i_hall>(bool_tuple);
+                    for_N<bool_size>([&](auto i_res) {
+                        auto constexpr res = std::get<i_res>(bool_tuple);
+                        for_N<bool_size>([&](auto i_hyper) {
+                            auto constexpr hyper_res = std::get<i_hyper>(bool_tuple);
+
+                            // Reconstructions using slope limiters
+                            if constexpr (rc == ReconstructionType::Linear)
+                            {
+                                for_N<sl_size>([&](auto i_sl) {
+                                    auto constexpr sl = get<i_sl>(sl_tuple);
+                                    std::string variant_name
+                                        = (ti == TimeIntegratorType::Euler    ? "euler"
+                                           : ti == TimeIntegratorType::TVDRK2 ? "tvdrk2"
+                                                                              : "tvdrk3")
+                                          + std::string("_")
+                                          + (rc == ReconstructionType::Constant ? "constant"
+                                             : rc == ReconstructionType::Linear ? "linear"
+                                             : rc == ReconstructionType::WENO3  ? "weno3"
+                                                                                : "wenoz")
+                                          + std::string("_")
+                                          + (sl == SlopeLimiterType::VanLeer ? "vanleer" : "minmod")
+
+                                          + std::string("_")
+                                          + (rs == RiemannSolverType::Rusanov ? "rusanov" : "hll")
+                                          + (hall ? "_hall" : "") + (res ? "_res" : "")
+                                          + (hyper_res ? "_hyperres" : "");
+
+                                    std::string full_type = type_name + "_" + variant_name;
+
+                                    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, ti,
+                                                       rc, sl, rs, hall, res,
+                                                       hyper_res>::declare_sim(m, full_type);
+                                    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, ti,
+                                                       rc, sl, rs, hall, res,
+                                                       hyper_res>::declare_etc(m, full_type);
+                                });
+                            }
+                            else
+                            {
+                                std::string variant_name
+                                    = (ti == TimeIntegratorType::Euler    ? "euler"
+                                       : ti == TimeIntegratorType::TVDRK2 ? "tvdrk2"
+                                                                          : "tvdrk3")
+                                      + std::string("_")
+                                      + (rc == ReconstructionType::Constant ? "constant"
+                                         : rc == ReconstructionType::WENO3  ? "weno3"
+                                                                            : "wenoz")
+                                      + std::string("_")
+                                      + (rs == RiemannSolverType::Rusanov ? "rusanov" : "hll")
+                                      + (hall ? "_hall" : "") + (res ? "_res" : "")
+                                      + (hyper_res ? "_hyperres" : "");
+
+                                std::string full_type = type_name + "_" + variant_name;
+
+                                auto constexpr nosl = SlopeLimiterType::count; // returns void
+
+
+                                RegistererSelector<Dimension, InterpOrder, NbRefinedParts, ti, rc,
+                                                   nosl, rs, hall, res,
+                                                   hyper_res>::declare_sim(m, full_type);
+
+                                RegistererSelector<Dimension, InterpOrder, NbRefinedParts, ti, rc,
+                                                   nosl, rs, hall, res,
+                                                   hyper_res>::declare_etc(m, full_type);
+                            }
+                        });
+                    });
+                });
+            });
+        });
+    });
 }
 
 } // namespace PHARE::pydata

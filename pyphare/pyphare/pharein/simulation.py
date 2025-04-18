@@ -652,6 +652,13 @@ def check_mhd_constants(**kwargs):
 
     return gamma, eta, nu
 
+def check_mhd_terms(**kwargs):
+    hall = kwargs.get("hall", False)
+    res = kwargs.get("res", False)
+    hyper_res = kwargs.get("hyper_res", False)
+
+    return hall, res, hyper_res
+
 def check_mhd_parameters(**kwargs):
     reconstruction = kwargs.get("reconstruction", "")
     limiter = kwargs.get("limiter", "")
@@ -704,6 +711,9 @@ def checker(func):
             "gamma",
             "eta",
             "nu",
+            "hall",
+            "res",
+            "hyper_res",
             "reconstruction",
             "limiter",
             "riemann",
@@ -792,6 +802,11 @@ def checker(func):
         kwargs["gamma"] = gamma
         kwargs["eta"] = eta
         kwargs["nu"] = nu
+
+        hall, res, hyper_res = check_mhd_terms(**kwargs)
+        kwargs["hall"] = hall
+        kwargs["res"] = res
+        kwargs["hyper_res"] = hyper_res
 
         reconstruction, limiter, riemann, mhd_timestepper = check_mhd_parameters(**kwargs)
         kwargs["reconstruction"] = reconstruction

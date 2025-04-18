@@ -40,7 +40,7 @@ public:
         euler_(model, state1_, state1_, fluxes, bc, level, currentTime, newTime);
 
         // Un+1 = 0.5*Un + 0.5*Euler(U1)
-        tvdrk2_step_(level, model, state, RKPair_t{w0_, state}, RKPair_t{w1_, state1_});
+        tvdrk2_step_(level, model, newTime, state, RKPair_t{w0_, state}, RKPair_t{w1_, state1_});
     }
 
     void registerResources(MHDModel& model) { model.resourcesManager->registerResources(state1_); }
