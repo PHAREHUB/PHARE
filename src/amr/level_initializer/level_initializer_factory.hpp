@@ -1,6 +1,7 @@
 #ifndef PHARE_LEVEL_INITIALIZER_FACTORY_HPP
 #define PHARE_LEVEL_INITIALIZER_FACTORY_HPP
 
+#include "mhd_level_initializer.hpp"
 #include "hybrid_level_initializer.hpp"
 #include "level_initializer.hpp"
 #include "initializer/data_provider.hpp"
@@ -13,7 +14,7 @@ namespace PHARE
 {
 namespace solver
 {
-    template<typename HybridModel>
+    template<typename HybridModel, typename MHDModel>
     class LevelInitializerFactory
     {
         using AMRTypes = typename HybridModel::amr_types;
@@ -25,6 +26,10 @@ namespace solver
             if (modelName == "HybridModel")
             {
                 return std::make_unique<HybridLevelInitializer<HybridModel>>(dict);
+            }
+            else if (modelName == "MHDModel")
+            {
+                return std::make_unique<MHDLevelInitializer<MHDModel>>();
             }
             return nullptr;
         }

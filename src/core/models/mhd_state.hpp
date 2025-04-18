@@ -1,6 +1,7 @@
 #ifndef PHARE_MHD_STATE_HPP
 #define PHARE_MHD_STATE_HPP
 
+#include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/data/field/initializers/field_user_initializer.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "core/def.hpp"
@@ -75,6 +76,7 @@ namespace core
             , Binit_{dict["magnetic"]["initializer"]}
             , Pinit_{dict["pressure"]["initializer"]
                          .template to<initializer::InitFunction<dimension>>()}
+            , gamma_{dict["to_conservative_init"]["heat_capacity_ratio"].template to<double>()}
         {
         }
 
@@ -91,6 +93,8 @@ namespace core
 
             , E{name + "_" + "E", MHDQuantity::Vector::E}
             , J{name + "_" + "J", MHDQuantity::Vector::J}
+
+            , gamma_{}
         {
         }
 
@@ -101,6 +105,10 @@ namespace core
             Vinit_.initialize(V, layout);
             Binit_.initialize(B, layout);
             FieldUserFunctionInitializer::initialize(P, layout, Pinit_);
+
+            ToConservativeConverter_ref{layout, gamma_}(
+                rho, V, B, P, rhoV, Etot); // initial to conservative conversion because we store
+                                           // conservative quantities on the grid
         }
 
         field_type rho;
@@ -119,6 +127,8 @@ namespace core
         VecFieldInitializer<dimension> Vinit_;
         VecFieldInitializer<dimension> Binit_;
         initializer::InitFunction<dimension> Pinit_;
+
+        double const gamma_;
     };
 } // namespace core
 } // namespace PHARE

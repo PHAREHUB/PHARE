@@ -22,34 +22,35 @@ template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename 
 class MHDModel : public IPhysicalModel<AMR_Types>
 {
 public:
-    using patch_t   = typename AMR_Types::patch_t;
-    using level_t   = typename AMR_Types::level_t;
+    static constexpr auto dimension = GridLayoutT::dimension;
+
+    using type_list = PHARE::core::type_list<GridLayoutT, VecFieldT, AMR_Types, Grid_t>;
+    using amr_types = AMR_Types;
+    using patch_t   = amr_types::patch_t;
+    using level_t   = amr_types::level_t;
     using Interface = IPhysicalModel<AMR_Types>;
 
-    using field_type      = typename VecFieldT::field_type;
-    using gridlayout_type = GridLayoutT;
+    using vecfield_type          = VecFieldT;
+    using field_type             = vecfield_type::field_type;
+    using state_type             = core::MHDState<vecfield_type>;
+    using gridlayout_type        = GridLayoutT;
+    using grid_type              = Grid_t;
+    using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
 
     static inline std::string const model_name = "MHDModel";
-    static constexpr auto dimension            = gridlayout_type::dimension;
-    using resources_manager_type               = amr::ResourcesManager<gridlayout_type, Grid_t>;
 
-    core::MHDState<VecFieldT> state;
+    state_type state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
-    virtual void initialize(level_t& level) override;
+    void initialize(level_t& level) override;
 
 
-    virtual void allocate(patch_t& patch, double const allocateTime) override
+    void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
     }
 
-
-
-    virtual void
-    fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& /*info*/) const override
-    {
-    }
+    void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
     NO_DISCARD auto setOnPatch(patch_t& patch)
     {
@@ -59,13 +60,16 @@ public:
     explicit MHDModel(PHARE::initializer::PHAREDict const& dict,
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
-        , state{dict}
+        , state{dict["mhd_state"]}
         , resourcesManager{std::move(_resourcesManager)}
     {
     }
 
-    virtual ~MHDModel() override = default;
+    ~MHDModel() override = default;
 
+    auto get_B() -> auto& { return state.B; }
+
+    auto get_B() const -> auto& { return state.B; }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -82,6 +86,8 @@ public:
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
+
+    std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
 };
 
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
@@ -96,6 +102,48 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
     }
     resourcesManager->registerForRestarts(*this);
 }
+
+template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
+void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
+    std::unique_ptr<amr::IMessengerInfo> const& info) const
+{
+    auto& MHDInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
+
+    MHDInfo.modelDensity     = state.rho.name();
+    MHDInfo.modelVelocity    = core::VecFieldNames{state.V};
+    MHDInfo.modelMagnetic    = core::VecFieldNames{state.B};
+    MHDInfo.modelPressure    = state.P.name();
+    MHDInfo.modelMomentum    = core::VecFieldNames{state.rhoV};
+    MHDInfo.modelTotalEnergy = state.Etot.name();
+    MHDInfo.modelElectric    = core::VecFieldNames{state.E};
+    MHDInfo.modelCurrent     = core::VecFieldNames{state.J};
+
+    MHDInfo.initDensity.push_back(MHDInfo.modelDensity);
+    MHDInfo.initMomentum.push_back(MHDInfo.modelMomentum);
+    MHDInfo.initMagnetic.push_back(MHDInfo.modelMagnetic);
+    MHDInfo.initTotalEnergy.push_back(MHDInfo.modelTotalEnergy);
+
+    MHDInfo.ghostDensity.push_back(MHDInfo.modelDensity);
+    MHDInfo.ghostVelocity.push_back(MHDInfo.modelVelocity);
+    MHDInfo.ghostMagnetic.push_back(MHDInfo.modelMagnetic);
+    MHDInfo.ghostPressure.push_back(MHDInfo.modelPressure);
+    MHDInfo.ghostMomentum.push_back(MHDInfo.modelMomentum);
+    MHDInfo.ghostTotalEnergy.push_back(MHDInfo.modelTotalEnergy);
+    MHDInfo.ghostElectric.push_back(MHDInfo.modelElectric);
+    MHDInfo.ghostCurrent.push_back(MHDInfo.modelCurrent);
+}
+
+template<typename... Args>
+MHDModel<Args...> mhd_model_from_type_list(core::type_list<Args...>);
+
+template<typename TypeList>
+struct type_list_to_mhd_model
+{
+    using type = decltype(mhd_model_from_type_list(std::declval<TypeList>()));
+};
+
+template<typename TypeList>
+using type_list_to_mhd_model_t = typename type_list_to_mhd_model<TypeList>::type;
 
 } // namespace PHARE::solver
 

@@ -12,6 +12,8 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/mhd/mhd_quantities.hpp"
+#include "core/data/grid/gridlayoutimplyee_mhd.hpp"
 #include "core/models/physical_state.hpp"
 #include "core/models/physical_state.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
@@ -34,8 +36,10 @@ struct PHARE_Types
     static auto constexpr dimension    = dimension_;
     static auto constexpr interp_order = interp_order_;
 
-    using Array_t          = PHARE::core::NdArrayVector<dimension>;
-    using ArrayView_t      = PHARE::core::NdArrayView<dimension>;
+    using Array_t     = PHARE::core::NdArrayVector<dimension>;
+    using ArrayView_t = PHARE::core::NdArrayView<dimension>;
+
+    // Hybrid
     using Grid_t           = PHARE::core::Grid<Array_t, PHARE::core::HybridQuantity::Scalar>;
     using Field_t          = PHARE::core::Field<dimension, PHARE::core::HybridQuantity::Scalar>;
     using VecField_t       = PHARE::core::VecField<Field_t, PHARE::core::HybridQuantity>;
@@ -58,6 +62,14 @@ struct PHARE_Types
 
     using ParticleInitializerFactory
         = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
+
+    // MHD
+    using Grid_MHD     = PHARE::core::Grid<Array_t, PHARE::core::MHDQuantity::Scalar>;
+    using Field_MHD    = PHARE::core::Field<dimension, PHARE::core::MHDQuantity::Scalar>;
+    using VecField_MHD = PHARE::core::VecField<Field_MHD, PHARE::core::MHDQuantity>;
+
+    using YeeLayout_MHD  = PHARE::core::GridLayoutImplYeeMHD<dimension, interp_order>;
+    using GridLayout_MHD = PHARE::core::GridLayout<YeeLayout_MHD>;
 };
 
 struct PHARE_Sim_Types

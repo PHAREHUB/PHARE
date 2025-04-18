@@ -39,9 +39,6 @@ struct PerIndex
 
     void to_conservative(auto const& gamma)
     {
-#ifndef NDEBUG
-        isConservative = true;
-#endif
         auto const [rhoVx, rhoVy, rhoVz] = vToRhoV(rho, V.x, V.y, V.z);
         Float Etot                       = eosPToEtot(gamma, rho, V.x, V.y, V.z, B.x, B.y, B.z, P);
 
@@ -65,29 +62,13 @@ struct PerIndex
         return *this;
     }
 
-    auto& rhoV()
-    {
-        assert(isConservative);
-        return V;
-    }
+    auto& rhoV() { return V; }
 
-    auto& rhoV() const
-    {
-        assert(isConservative);
-        return V;
-    }
+    auto& rhoV() const { return V; }
 
-    auto& Etot()
-    {
-        assert(isConservative);
-        return P;
-    }
+    auto& Etot() { return P; }
 
-    auto& Etot() const
-    {
-        assert(isConservative);
-        return P;
-    }
+    auto& Etot() const { return P; }
 
     Float rho;
     PerIndexVector<Float> V;
@@ -95,7 +76,9 @@ struct PerIndex
     Float P;
 
 #ifndef NDEBUG
-    bool isConservative{false};
+    bool isConservative{
+        true}; // does nothing, we need a better system if we want to enforce this (because the we
+               // also create already conservative versions of this structure)
 #endif
 };
 
@@ -141,7 +124,8 @@ using value_type_t = typename get_value_type<T>::type;
 template<typename Field, typename VecField>
 struct AllFluxes
 {
-    using Float = typename Field::value_type;
+    using Float                     = typename Field::value_type;
+    static constexpr auto dimension = Field::dimension;
 
     AllFluxes<value_type_t<Field>, value_type_t<VecField>> operator[](std::size_t i)
         requires((ViewVector<Field>) && (ViewVector<VecField>))
@@ -190,6 +174,34 @@ struct AllFluxes
             return rho_fy;
         else if constexpr (direction == Direction::Z)
             return rho_fz;
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy);
+        else if constexpr (dimension == 3)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy, rho_fz, rhoV_fz, B_fz, Etot_fz);
+        else
+            throw std::runtime_error("Error - AllFluxes - dimension not supported");
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy);
+        else if constexpr (dimension == 3)
+            return std::forward_as_tuple(rho_fx, rhoV_fx, B_fx, Etot_fx, rho_fy, rhoV_fy, B_fy,
+                                         Etot_fy, rho_fz, rhoV_fz, B_fz, Etot_fz);
+        else
+            throw std::runtime_error("Error - AllFluxes - dimension not supported");
     }
 
     Field rho_fx;
