@@ -64,7 +64,7 @@ public:
     TensorField()                                     = delete;
     TensorField(TensorField const& source)            = default;
     TensorField(TensorField&& source)                 = default;
-    TensorField& operator=(TensorField const& source) = delete;
+    TensorField& operator=(TensorField const& source) = default;
     TensorField& operator=(TensorField&& source)      = default;
 
     TensorField(std::string const& name, tensor_t physQty)
@@ -76,6 +76,11 @@ public:
     {
     }
 
+    void fill(auto v)
+    {
+        for (auto& c : components_)
+            c.fill(v);
+    }
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
@@ -196,9 +201,9 @@ public:
 
 
     NO_DISCARD auto begin() { return std::begin(components_); }
-    NO_DISCARD auto cbegin() const { return std::cbegin(components_); }
+    NO_DISCARD auto begin() const { return std::cbegin(components_); }
     NO_DISCARD auto end() { return std::end(components_); }
-    NO_DISCARD auto cend() const { return std::cend(components_); }
+    NO_DISCARD auto end() const { return std::cend(components_); }
 
     NO_DISCARD auto& componentNames() const { return componentNames_; }
 

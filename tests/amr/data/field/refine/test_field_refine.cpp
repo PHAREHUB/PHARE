@@ -7,11 +7,13 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
 
 #include "amr/data/field/refine/field_linear_refine.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
-#include "core/data/grid/gridlayout.hpp"
+
 
 #include "test_field_refinement_on_hierarchy.hpp"
 

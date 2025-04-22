@@ -36,20 +36,20 @@ private:
     static constexpr auto dimension    = HybridModel::dimension;
     static constexpr auto interp_order = HybridModel::gridlayout_type::interp_order;
 
-    using Electromag       = typename HybridModel::electromag_type;
-    using Ions             = typename HybridModel::ions_type;
-    using ParticleArray    = typename Ions::particle_array_type;
-    using VecFieldT        = typename HybridModel::vecfield_type;
-    using GridLayout       = typename HybridModel::gridlayout_type;
-    using ResourcesManager = typename HybridModel::resources_manager_type;
+    using Electromag       = HybridModel::electromag_type;
+    using Ions             = HybridModel::ions_type;
+    using ParticleArray    = Ions::particle_array_type;
+    using VecFieldT        = HybridModel::vecfield_type;
+    using GridLayout       = HybridModel::gridlayout_type;
+    using ResourcesManager = HybridModel::resources_manager_type;
     using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
     using ModelViews_t = HybridPPCModelView<HybridModel>;
-    using Faraday_t    = typename ModelViews_t::Faraday_t;
-    using Ampere_t     = typename ModelViews_t::Ampere_t;
-    using Ohm_t        = typename ModelViews_t::Ohm_t;
+    using Faraday_t    = ModelViews_t::Faraday_t;
+    using Ampere_t     = ModelViews_t::Ampere_t;
+    using Ohm_t        = ModelViews_t::Ohm_t;
 
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
@@ -62,9 +62,9 @@ private:
 
 
 public:
-    using patch_t     = typename AMR_Types::patch_t;
-    using level_t     = typename AMR_Types::level_t;
-    using hierarchy_t = typename AMR_Types::hierarchy_t;
+    using patch_t     = AMR_Types::patch_t;
+    using level_t     = AMR_Types::level_t;
+    using hierarchy_t = AMR_Types::hierarchy_t;
 
 
 
@@ -100,9 +100,10 @@ public:
     void onRegrid() override { ionUpdater_.reset(); }
 
 
-    std::shared_ptr<ISolverModelView> make_view(level_t& level, IPhysicalModel_t& model) override
+    std::shared_ptr<ISolverModelView> make_view(hierarchy_t const& hierarchy, level_t& level,
+                                                IPhysicalModel_t& model) override
     {
-        return std::make_shared<ModelViews_t>(level, dynamic_cast<HybridModel&>(model));
+        return std::make_shared<ModelViews_t>(hierarchy, level, dynamic_cast<HybridModel&>(model));
     }
 
 
@@ -148,27 +149,6 @@ private:
     };
 
 
-    // extend lifespan
-    std::unordered_map<std::string, ParticleArray> tmpDomain;
-    std::unordered_map<std::string, ParticleArray> patchGhost;
-
-    template<typename Map>
-    static void add_to(Map& map, std::string const& key, ParticleArray const& ps)
-    {
-        // vector copy drops the capacity (over allocation of the source)
-        // we want to keep the overallocation somewhat - how much to be assessed
-        ParticleArray empty{ps.box()};
-
-        if (!map.count(key))
-            map.emplace(key, empty);
-        else
-            map.at(key) = empty;
-
-        auto& v = map.at(key);
-        v.reserve(ps.capacity());
-        v.replace_from(ps);
-    }
-
 }; // end solverPPC
 
 
@@ -213,41 +193,6 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 }
 
 
-template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::saveState_(level_t& level, ModelViews_t& views)
-{
-    PHARE_LOG_SCOPE(1, "SolverPPC::saveState_");
-
-    for (auto& state : views)
-    {
-        std::stringstream ss;
-        ss << state.patch->getGlobalId();
-        for (auto& pop : state.ions)
-        {
-            std::string const key = ss.str() + "_" + pop.name();
-            add_to(tmpDomain, key, pop.domainParticles());
-            add_to(patchGhost, key, pop.patchGhostParticles());
-        }
-    }
-}
-
-template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::restoreState_(level_t& level, ModelViews_t& views)
-{
-    PHARE_LOG_SCOPE(1, "SolverPPC::restoreState_");
-
-    for (auto& state : views)
-    {
-        std::stringstream ss;
-        ss << state.patch->getGlobalId();
-
-        for (auto& pop : state.ions)
-        {
-            pop.domainParticles()     = std::move(tmpDomain.at(ss.str() + "_" + pop.name()));
-            pop.patchGhostParticles() = std::move(patchGhost.at(ss.str() + "_" + pop.name()));
-        }
-    }
-}
 
 
 template<typename HybridModel, typename AMR_Types>
@@ -266,7 +211,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     average_(*level, modelView, fromCoarser, newTime);
 
-    saveState_(*level, modelView);
+    // saveState_(*level, modelView);
 
     moveIons_(*level, modelView, fromCoarser, currentTime, newTime, core::UpdaterMode::domain_only);
 
@@ -275,7 +220,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     average_(*level, modelView, fromCoarser, newTime);
 
-    restoreState_(*level, modelView);
+    // restoreState_(*level, modelView);
 
     moveIons_(*level, modelView, fromCoarser, currentTime, newTime, core::UpdaterMode::all);
 
@@ -464,6 +409,9 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     // this needs to be done before calling the messenger
     setTime([](auto& state) -> auto& { return state.ions; });
 
+
+    fromCoarser.fillFluxBorders(views.model().state.ions, level, newTime);
+    fromCoarser.fillDensityBorders(views.model().state.ions, level, newTime);
     fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
     fromCoarser.fillIonPopMomentGhosts(views.model().state.ions, level, newTime);
 

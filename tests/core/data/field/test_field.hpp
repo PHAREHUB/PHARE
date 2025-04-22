@@ -48,12 +48,14 @@ void test_fields(GridLayout const& layout, Field const& field0, T1 const& field1
     EXPECT_EQ(field0.shape(), field1.shape());
 
 
+
     for (std::size_t i = 0; i < field0.size(); ++i)
     {
         auto const& v0 = field0.data()[i];
         auto const& v1 = field1.data()[i];
         if (std::isnan(v0) || std::isnan(v1))
-            throw std::runtime_error("This 1dfield should not be NaN index " + std::to_string(i));
+            throw std::runtime_error(field0.name() + " should not be NaN index "
+                                     + std::to_string(i));
         EXPECT_FLOAT_EQ(v0, v1);
     }
 }

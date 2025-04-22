@@ -280,6 +280,25 @@ namespace amr
         }
 
 
+        auto getIDsList(auto&&... keys)
+        {
+            auto const Fn = [&](auto& key) {
+                if (auto const id = getID(key))
+                    return *id;
+                throw std::runtime_error("bad key");
+            };
+            return std::array{Fn(keys)...};
+        }
+
+        void print_resources() const
+        {
+            for (auto& [key, _] : nameToResourceInfo_)
+            {
+                PHARE_LOG_LINE_SS(key);
+            }
+        }
+
+
 
         ~ResourcesManager()
         {
@@ -438,7 +457,7 @@ namespace amr
                 ResourcesInfo info;
                 info.variable = ResourcesResolver_t::make_shared_variable(view);
                 info.id       = variableDatabase_->registerVariableAndContext(
-                          info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
+                    info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
                 nameToResourceInfo_.emplace(view.name(), info);
             }
