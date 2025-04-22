@@ -43,7 +43,7 @@ namespace core
         VecFieldNames() = default;
 
         template<typename VecFieldT>
-        explicit VecFieldNames(VecFieldT const& v)
+        VecFieldNames(VecFieldT const& v)
             : vecName{v.name()}
             , xName{v.getComponentName(core::Component::X)}
             , yName{v.getComponentName(core::Component::Y)}

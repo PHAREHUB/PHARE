@@ -35,7 +35,6 @@ public:
 
 
     Grid()                              = delete;
-    Grid(Grid const& source)            = delete;
     Grid(Grid&& source)                 = default;
     Grid& operator=(Grid&& source)      = delete;
     Grid& operator=(Grid const& source) = delete;
@@ -45,7 +44,6 @@ public:
         : Super{dims...}
         , name_{name}
         , qty_{qty}
-        , field_{name, qty, Super::data(), Super::shape()}
     {
         static_assert(sizeof...(Dims) == dimension, "Invalid dimension");
     }
@@ -55,7 +53,6 @@ public:
         : Super{dims}
         , name_{name}
         , qty_{qty}
-        , field_{name, qty, Super::data(), Super::shape()}
     {
     }
 
@@ -64,7 +61,13 @@ public:
         : Super{layout.allocSize(qty)}
         , name_{name}
         , qty_{qty}
-        , field_{name, qty, Super::data(), Super::shape()}
+    {
+    }
+
+    Grid(Grid const& source) // let field_ default
+        : Super{source.shape()}
+        , name_{source.name()}
+        , qty_{source.physicalQuantity()}
     {
     }
 
@@ -87,7 +90,7 @@ public:
 private:
     std::string name_{"No Name"};
     PhysicalQuantity qty_;
-    field_type field_;
+    field_type field_{name_, qty_, Super::data(), Super::shape()};
 };
 
 

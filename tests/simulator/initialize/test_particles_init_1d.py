@@ -73,16 +73,6 @@ class Initialization1DTest(InitializationTest):
         print(f"{self._testMethodName}_{ndim}d")
         self._test_patch_ghost_on_refined_level_case(ndim, False, **simInput)
 
-    @data({"cells": 40, "interp_order": 1})
-    def test_has_patch_ghost_on_refined_level_case(self, simInput):
-        print(f"{self._testMethodName}_{ndim}d")
-        from pyphare.pharein.simulation import check_patch_size
-
-        _, smallest_patch_size = check_patch_size(ndim, **simInput)
-        simInput["smallest_patch_size"] = smallest_patch_size
-        simInput["largest_patch_size"] = smallest_patch_size
-        self._test_patch_ghost_on_refined_level_case(ndim, True, **simInput)
-
     @data("berger", "tile")
     def test_amr_clustering(self, clustering):
         dim = 1

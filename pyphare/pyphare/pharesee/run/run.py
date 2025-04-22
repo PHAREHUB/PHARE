@@ -284,9 +284,19 @@ class Run:
             time = np.zeros(len(time_keys))
             for it, t in enumerate(time_keys):
                 time[it] = float(t)
-            ts[quantities_per_file[basename]] = time
+            if basename in quantities_per_file:
+                ts[quantities_per_file[basename]] = time
             ff.close()
         return ts
+
+    def all_pops(self):
+        pops = set()
+        for file in self.available_diags:
+            basename = os.path.basename(file).split(".")[0]
+            if basename.startswith("ions_pop_"):
+                if any([basename.endswith(k) for k in ["density", "flux", "domain"]]):
+                    pops.add(basename[9:].split("_")[0])
+        return list(pops)
 
     def times(self, qty):
         return self.all_times()[qty]

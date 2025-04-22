@@ -27,32 +27,57 @@ namespace amr
         using RefineOperator = SAMRAI::hier::RefineOperator;
 
     public:
-        /*@brief add a static communication between sources and destinations.
-         * This overload takes several sources/destinations/keys and add one refiner for each*/
-        template<typename Names>
-        void addStaticRefiners(Names const& destinations, Names const& sources,
-                               std::shared_ptr<RefineOperator> refineOp,
-                               std::vector<std::string> keys);
+        RefinerPool(std::shared_ptr<ResourcesManager> const& rm)
+            : rm_{rm}
+        {
+        }
 
-
-        /*@brief convenience overload of the above when source = destination, for VecField*/
-        template<typename Names>
-        void addStaticRefiners(Names const& src_dest, std::shared_ptr<RefineOperator> refineOp,
-                               std::vector<std::string> key);
+        virtual ~RefinerPool() {}
+        RefinerPool(RefinerPool const&) = delete;
+        RefinerPool(RefinerPool&&)      = default;
 
         /* @brief add a static communication between a single source and destination.*/
-        template<typename Name>
-        void addStaticRefiner(Name const& ghostName, Name const& src,
-                              std::shared_ptr<RefineOperator> const& refineOp,
-                              std::string const key);
+        template<typename Resource, typename Key>
+        void addStaticRefiner(Resource const& ghostName, Resource const& src,
+                              std::shared_ptr<RefineOperator> const& refineOp, Key const& key,
+                              std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
+                              = nullptr);
 
         /**
          * @brief convenience overload of above addStaticRefiner taking only one name
          * used for communications from a quantity to the same quantity.*/
-        template<typename Name>
-        void addStaticRefiner(Name const& src_dest, std::shared_ptr<RefineOperator> const& refineOp,
-                              std::string const key);
+        template<typename Resource, typename Key>
+        void addStaticRefiner(Resource const& src_dest,
+                              std::shared_ptr<RefineOperator> const& refineOp, Key const& key,
+                              std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
+                              = nullptr);
 
+
+        /*@brief add a static communication between sources and destinations.
+         * This overload takes several sources/destinations/keys and add one refiner for each*/
+        template<typename Resources, typename Keys>
+        void addStaticRefiners(Resources const& destinations, Resources const& sources,
+                               std::shared_ptr<RefineOperator> refineOp, Keys const& keys,
+                               std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
+                               = nullptr);
+
+
+        /*@brief convenience overload of the above when source = destination, for VecField*/
+        template<typename Srcs, typename Keys>
+        void addStaticRefiners(Srcs const& src_dest, std::shared_ptr<RefineOperator> refineOp,
+                               Keys const& key,
+                               std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
+                               = nullptr);
+
+
+
+
+        // this overload takes simple strings.
+        void addTimeRefiner(std::string const& ghost, std::string const& model,
+                            std::string const& oldModel,
+                            std::shared_ptr<RefineOperator> const& refineOp,
+                            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
+                            std::string key);
 
         /**
          * @brief fill the given pool of refiners with a new refiner per VecField
@@ -83,14 +108,6 @@ namespace amr
                             std::string key);
 
 
-        // this overload takes simple strings.
-        void addTimeRefiner(std::string const& ghost, std::string const& model,
-                            std::string const& oldModel,
-                            std::shared_ptr<RefineOperator> const& refineOp,
-                            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
-                            std::string key);
-
-
 
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
@@ -100,7 +117,6 @@ namespace amr
                 refiner.registerLevel(hierarchy, level);
             }
         }
-
 
 
         /** @brief this overload will execute communications for all quantities in the pool. */
@@ -119,14 +135,13 @@ namespace amr
             if (refiners_.count(vec.name()) == 0)
                 throw std::runtime_error("no refiner for " + vec.name());
 
-            refiners_.at(vec.name()).fill(vec, levelNumber, fillTime);
+            refiners_.at(vec.name()).fill(levelNumber, fillTime);
         }
-
 
 
         /** @brief executes a regridding for all quantities in the pool.*/
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
+                            int const levelNumber,
                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                             double const initDataTime)
         {
@@ -137,109 +152,108 @@ namespace amr
         }
 
 
-        RefinerPool(std::shared_ptr<ResourcesManager> const& rm)
-            : rm_{rm}
-        {
-        }
-
 
     private:
         using Qty = std::string;
-        std::map<Qty, Refiner<ResourcesManager, Type>> refiners_;
+        std::map<Qty, Refiner_t> refiners_;
         std::shared_ptr<ResourcesManager> rm_;
     };
 
 
-    template<typename ResourcesManager, RefinerType Type>
-    template<typename Names>
-    void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
-        Names const& destinations, Names const& sources, std::shared_ptr<RefineOperator> refineOp,
-        std::vector<std::string> keys)
-    {
-        assert(destinations.size() == sources.size());
-        auto key = std::begin(keys);
-        for (std::size_t i = 0; i < destinations.size(); ++i)
-        {
-            addStaticRefiner(destinations[i], sources[i], refineOp, *key++);
-        }
-    }
-
-
-    template<typename ResourcesManager, RefinerType Type>
-    template<typename Names>
-    void
-    RefinerPool<ResourcesManager, Type>::addStaticRefiners(Names const& src_dest,
-                                                           std::shared_ptr<RefineOperator> refineOp,
-                                                           std::vector<std::string> key)
-    {
-        addStaticRefiners(src_dest, src_dest, refineOp, key);
-    }
-
-
-
-
-    template<typename ResourcesManager, RefinerType Type>
-    template<typename Name>
-    void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
-        Name const& ghostName, Name const& src, std::shared_ptr<RefineOperator> const& refineOp,
-        std::string const key)
-    {
-        auto const [it, success]
-            = refiners_.insert({key, Refiner_t(ghostName, src, rm_, refineOp)});
-
-        if (!success)
-            throw std::runtime_error(key + " is already registered");
-    }
-
-
-
-    template<typename ResourcesManager, RefinerType Type>
-    template<typename Name>
-    void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
-        Name const& descriptor, std::shared_ptr<RefineOperator> const& refineOp,
-        std::string const key)
-    {
-        addStaticRefiner(descriptor, descriptor, refineOp, key);
-    }
-
-
-    template<typename ResourcesManager, RefinerType Type>
-    void RefinerPool<ResourcesManager, Type>::addTimeRefiners(
-        std::vector<core::VecFieldNames> const& ghostVecs, core::VecFieldNames const& modelVec,
-        core::VecFieldNames const& oldModelVec, std::shared_ptr<RefineOperator>& refineOp,
-        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp)
-    {
-        for (auto const& ghostVec : ghostVecs)
-        {
-            addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec.vecName);
-        }
-    }
-
-    template<typename ResourcesManager, RefinerType Type>
-    void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
-        core::VecFieldNames const& ghost, core::VecFieldNames const& model,
-        core::VecFieldNames const& oldModel, std::shared_ptr<RefineOperator> const& refineOp,
-        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
-    {
-        auto const [it, success]
-            = refiners_.insert({key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp)});
-        if (!success)
-            throw std::runtime_error(key + " is already registered");
-    }
-
-
-    template<typename ResourcesManager, RefinerType Type>
-    void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
-        std::string const& ghost, std::string const& model, std::string const& oldModel,
-        std::shared_ptr<RefineOperator> const& refineOp,
-        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
-    {
-        auto const [it, success]
-            = refiners_.insert({key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp)});
-        if (!success)
-            throw std::runtime_error(key + " is already registered");
-    }
 } // namespace amr
 } // namespace PHARE
+
+
+namespace PHARE::amr
+{
+
+
+template<typename ResourcesManager, RefinerType Type>
+template<typename Resource, typename Key>
+void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
+    Resource const& dst, Resource const& src, std::shared_ptr<RefineOperator> const& refineOp,
+    Key const& key, std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+{
+    auto const [it, success]
+        = refiners_.insert({key, Refiner_t(dst, src, rm_, refineOp, fillPattern)});
+
+    if (!success)
+        throw std::runtime_error(key + " is already registered");
+}
+
+
+template<typename ResourcesManager, RefinerType Type>
+template<typename Resource, typename Key>
+void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
+    Resource const& src_dst, std::shared_ptr<RefineOperator> const& refineOp, Key const& key,
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+{
+    addStaticRefiner(src_dst, src_dst, refineOp, key, fillPattern);
+}
+
+
+template<typename ResourcesManager, RefinerType Type>
+template<typename Resources, typename Keys>
+void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
+    Resources const& destinations, Resources const& sources,
+    std::shared_ptr<RefineOperator> refineOp, Keys const& keys,
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+{
+    assert(destinations.size() == sources.size());
+    assert(destinations.size() == keys.size());
+
+    for (std::size_t i = 0; i < destinations.size(); ++i)
+        addStaticRefiner(destinations[i], sources[i], refineOp, keys[i], fillPattern);
+}
+
+
+template<typename ResourcesManager, RefinerType Type>
+template<typename Srcs, typename Keys>
+void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
+    Srcs const& src_dest, std::shared_ptr<RefineOperator> refineOp, Keys const& keys,
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+{
+    addStaticRefiners(src_dest, src_dest, refineOp, keys, fillPattern);
+}
+
+
+
+template<typename ResourcesManager, RefinerType Type>
+void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
+    std::string const& ghost, std::string const& model, std::string const& oldModel,
+    std::shared_ptr<RefineOperator> const& refineOp,
+    std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
+{
+    auto const [it, success]
+        = refiners_.insert({key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp)});
+    if (!success)
+        throw std::runtime_error(key + " is already registered");
+}
+
+
+template<typename ResourcesManager, RefinerType Type>
+void RefinerPool<ResourcesManager, Type>::addTimeRefiners(
+    std::vector<core::VecFieldNames> const& ghostVecs, core::VecFieldNames const& modelVec,
+    core::VecFieldNames const& oldModelVec, std::shared_ptr<RefineOperator>& refineOp,
+    std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp)
+{
+    for (auto const& ghostVec : ghostVecs)
+        addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec.vecName);
+}
+
+template<typename ResourcesManager, RefinerType Type>
+void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
+    core::VecFieldNames const& ghost, core::VecFieldNames const& model,
+    core::VecFieldNames const& oldModel, std::shared_ptr<RefineOperator> const& refineOp,
+    std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string key)
+{
+    auto const [it, success]
+        = refiners_.insert({key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp)});
+    if (!success)
+        throw std::runtime_error(key + " is already registered");
+}
+
+
+} // namespace PHARE::amr
 
 #endif

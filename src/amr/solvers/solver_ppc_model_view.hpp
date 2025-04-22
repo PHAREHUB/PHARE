@@ -1,11 +1,12 @@
 #ifndef PHARE_SOLVER_SOLVER_PPC_MODEL_VIEW_HPP
 #define PHARE_SOLVER_SOLVER_PPC_MODEL_VIEW_HPP
 
+#include "core/numerics/ohm/ohm.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
-#include "core/numerics/ohm/ohm.hpp"
 
 #include "amr/solvers/solver.hpp"
+#include <amr/resources_manager/amr_utils.hpp>
 
 namespace PHARE::solver
 {
@@ -96,18 +97,19 @@ class HybridPPCModelView : public ISolverModelView
 public:
     using This             = HybridPPCModelView<HybridModel_>;
     using HybridModel_t    = HybridModel_;
-    using HybridModel_args = typename HybridModel_t::type_list::Tuple;
-    using IPhysicalModel_t = typename HybridModel_t::Interface;
-    using patch_t          = typename HybridModel_t::patch_t;
-    using Electrons        = typename HybridModel_t::electrons_t;
-    using level_t          = typename HybridModel_t::amr_types::level_t;
-    using Electromag       = typename HybridModel_t::electromag_type;
-    using Ions             = typename HybridModel_t::ions_type;
-    using ParticleArray_t  = typename Ions::particle_array_type;
-    using Particle_t       = typename ParticleArray_t::value_type;
-    using VecFieldT        = typename HybridModel_t::vecfield_type;
-    using FieldT           = typename HybridModel_t::field_type;
-    using GridLayout       = typename HybridModel_t::gridlayout_type;
+    using HybridModel_args = HybridModel_t::type_list::Tuple;
+    using IPhysicalModel_t = HybridModel_t::Interface;
+    using patch_t          = HybridModel_t::patch_t;
+    using Electrons        = HybridModel_t::electrons_t;
+    using hierarchy_t      = HybridModel_t::amr_types::hierarchy_t;
+    using level_t          = HybridModel_t::amr_types::level_t;
+    using Electromag       = HybridModel_t::electromag_type;
+    using Ions             = HybridModel_t::ions_type;
+    using ParticleArray_t  = Ions::particle_array_type;
+    using Particle_t       = ParticleArray_t::value_type;
+    using VecFieldT        = HybridModel_t::vecfield_type;
+    using FieldT           = HybridModel_t::field_type;
+    using GridLayout       = HybridModel_t::gridlayout_type;
     using Faraday_t        = FaradayTransformer<GridLayout>;
     using Ampere_t         = AmpereTransformer<GridLayout>;
     using Ohm_t            = OhmTransformer<GridLayout>;
@@ -119,13 +121,13 @@ public:
     template<bool isConst = false>
     struct iterator;
 
-    HybridPPCModelView(level_t& level, IPhysicalModel_t& model)
+    HybridPPCModelView(hierarchy_t const& hierarchy, level_t& level, IPhysicalModel_t& model)
         : model_{dynamic_cast<HybridModel_t&>(model)}
     {
-        onRegrid(level, model_);
+        onRegrid(hierarchy, level, model_);
     }
 
-    void onRegrid(level_t& level, HybridModel_t& hybridModel);
+    void onRegrid(hierarchy_t const& hierarchy, level_t& level, HybridModel_t& hybridModel);
 
     auto begin() { return iterator</*const=*/false>{*this}; }
     auto begin() const { return iterator</*const=*/true>{*this}; }
@@ -169,7 +171,8 @@ private:
 
 
 template<typename HybridModel>
-void HybridPPCModelView<HybridModel>::onRegrid(level_t& level, HybridModel_t& hybridModel)
+void HybridPPCModelView<HybridModel>::onRegrid(hierarchy_t const& hierarchy, level_t& level,
+                                               HybridModel_t& hybridModel)
 {
     auto& hybridState = hybridModel.state;
     auto& rm          = *hybridModel.resourcesManager;
@@ -180,15 +183,15 @@ void HybridPPCModelView<HybridModel>::onRegrid(level_t& level, HybridModel_t& hy
     {
         {
             auto _ = rm.setOnPatch(*patch, hybridState, electromagPred_, electromagAvg_);
-            states.emplace_back(                                 //
-                PHARE::amr::layoutFromPatch<GridLayout>(*patch), //
-                hybridState.ions,                                //
-                hybridState.J,                                   //
-                hybridState.electromag,                          //
-                electromagPred_,                                 //
-                electromagAvg_,                                  //
-                hybridState.electrons,                           //
-                patch                                            //
+            states.emplace_back(                                             //
+                PHARE::amr::layoutFromPatch<GridLayout>(*patch, &hierarchy), //
+                hybridState.ions,                                            //
+                hybridState.J,                                               //
+                hybridState.electromag,                                      //
+                electromagPred_,                                             //
+                electromagAvg_,                                              //
+                hybridState.electrons,                                       //
+                patch                                                        //
             );
         }
         assert(states.back().isUsable());

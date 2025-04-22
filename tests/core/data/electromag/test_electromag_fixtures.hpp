@@ -34,6 +34,15 @@ public:
         _set();
     }
 
+    template<typename GridLayout>
+    UsableElectromag(GridLayout const& layout, initializer::PHAREDict const& dict)
+        : Super{dict}
+        , E{"EM_E", layout, HybridQuantity::Vector::E}
+        , B{"EM_B", layout, HybridQuantity::Vector::B}
+    {
+        _set();
+    }
+
     UsableElectromag(UsableElectromag&& that)
         : Super{std::forward<Super>(that)}
         , E{std::move(that.E)}

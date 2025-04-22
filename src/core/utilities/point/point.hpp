@@ -86,6 +86,18 @@ namespace core
         NO_DISCARD bool operator!=(Point const& other) const { return !(*this == other); }
 
 
+        template<template<typename, std::size_t> typename Arr, typename T>
+        auto operator<(Arr<T, dim> const& arr) const
+        {
+            return for_N_all<dim>([&](auto iDim) { return r[iDim] < arr[iDim]; });
+        }
+        template<template<typename, std::size_t> typename Arr, typename T>
+        auto operator<=(Arr<T, dim> const& arr) const
+        {
+            return for_N_all<dim>([&](auto iDim) { return r[iDim] <= arr[iDim]; });
+        }
+
+
         template<typename DestType = Type>
         NO_DISCARD auto toArray() const
         {
@@ -131,40 +143,46 @@ namespace core
         }
 
 
+        auto& operator+=(Type const& value)
+        {
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                r[iDim] += value;
+            return *this;
+        }
+        auto& operator-=(Type const& value)
+        {
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                r[iDim] -= value;
+            return *this;
+        }
+        auto& operator+=(std::array<Type, dim> const& value)
+        {
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                r[iDim] += value[iDim];
+            return *this;
+        }
+        auto& operator-=(std::array<Type, dim> const& value)
+        {
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                r[iDim] -= value[iDim];
+            return *this;
+        }
 
-        auto operator+(Type const& value) const
-        {
-            auto copy = *this;
-            for (auto iDim = 0u; iDim < dim; ++iDim)
-                copy[iDim] += value;
-            return copy;
-        }
-        auto operator+(std::array<Type, dim> const& value) const
-        {
-            auto copy = *this;
-            for (auto iDim = 0u; iDim < dim; ++iDim)
-                copy[iDim] += value[iDim];
-            return copy;
-        }
+        auto operator+(Type const& value) const { return Point{r} += value; }
+        auto operator+(std::array<Type, dim> const& value) const { return Point{r} += value; }
         auto operator+(Point<Type, dim> const& value) const { return (*this) + value.r; }
 
-
-        auto operator-(Type const& value) const
-        {
-            auto copy = *this;
-            for (auto iDim = 0u; iDim < dim; ++iDim)
-                copy[iDim] -= value;
-            return copy;
-        }
-        auto operator-(std::array<Type, dim> const& value) const
-        {
-            auto copy = *this;
-            for (auto iDim = 0u; iDim < dim; ++iDim)
-                copy[iDim] -= value[iDim];
-            return copy;
-        }
+        auto operator-(Type const& value) const { return Point{r} -= value; }
+        auto operator-(std::array<Type, dim> const& value) const { return Point{r} -= value; }
         auto operator-(Point<Type, dim> const& value) const { return (*this) - value.r; }
 
+        auto operator*(Type const& value) const
+        {
+            auto copy = *this;
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                copy[iDim] *= value;
+            return copy;
+        }
 
         NO_DISCARD constexpr auto size() const { return dim; }
         NO_DISCARD auto begin() { return r.begin(); }
@@ -173,6 +191,24 @@ namespace core
         NO_DISCARD auto end() const { return r.end(); }
 
         NO_DISCARD auto& operator*() const { return r; }
+
+        auto as_unsigned() const
+        {
+            PHARE_DEBUG_DO({
+                for (auto iDim = 0u; iDim < dim; ++iDim)
+                    assert(r[iDim] >= 0);
+            })
+            if constexpr (sizeof(Type) == 4)
+                return Point<std::uint32_t, dim>{this->template toArray<std::uint32_t>()};
+            // else no return cause not yet handled
+        }
+        auto as_signed() const
+        {
+            if constexpr (sizeof(Type) == 4)
+                return Point<std::int32_t, dim>{this->template toArray<std::int32_t>()};
+            // else no return cause not yet handled
+        }
+
 
     private:
         std::array<Type, dim> r{};

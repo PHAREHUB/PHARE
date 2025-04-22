@@ -7,8 +7,8 @@
 #define PHARE_SCOPE_TIMER PHLOP_SCOPE_TIMER
 #endif // PHARE_WITH_PHLOP
 
-#ifndef PHARE_SCOPE_TIMER
-#define PHARE_SCOPE_TIMER(str) // nothing
+#ifndef PHARE_SCOPE_TIMER      // uncomment next line to activate
+#define PHARE_SCOPE_TIMER(str) // PHARE_LOG_LINE_STR(str);
 #endif                         // PHARE_SCOPE_TIMER
 
 
