@@ -3,6 +3,8 @@
 
 
 #include <cstddef>
+#include <cstdint>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -266,7 +268,7 @@ namespace core
         using container_t = std::conditional_t<OwnedState, std::vector<T>, Span<T>>;
 
         template<bool OS = OwnedState, typename = std::enable_if_t<OS>>
-        ContiguousParticles(std::size_t s)
+        ContiguousParticles(std::size_t s = 0)
             : iCell(s * dim)
             , delta(s * dim)
             , weight(s)
@@ -338,13 +340,48 @@ namespace core
             std::vector<ParticleView<dim>> views;
         };
 
-        NO_DISCARD auto as_tuple()
+
+        template<typename T>
+        using tuple_element_t = std::tuple<std::string, container_t<T>&>;
+
+        auto operator()()
         {
-            return std::forward_as_tuple(weight, charge, iCell, delta, v);
+            return std::make_tuple(
+                tuple_element_t<double>("weight", weight),
+                tuple_element_t<double>("charge", charge), tuple_element_t<int>("iCell", iCell),
+                tuple_element_t<double>("delta", delta), tuple_element_t<double>("v", v));
         }
-        NO_DISCARD auto as_tuple() const
+
+        template<typename T>
+        using tuple_element_ct = std::tuple<std::string, container_t<T> const&>;
+
+        auto operator()() const
         {
-            return std::forward_as_tuple(weight, charge, iCell, delta, v);
+            return std::make_tuple(
+                tuple_element_ct<double>("weight", weight),
+                tuple_element_ct<double>("charge", charge), tuple_element_ct<int>("iCell", iCell),
+                tuple_element_ct<double>("delta", delta), tuple_element_ct<double>("v", v));
+        }
+
+
+        void clear()
+        {
+            if constexpr (OwnedState)
+                core::double_apply((*this)(), [](auto& key, auto& vec) { vec.clear(); });
+        }
+
+        void push_back(auto const& particle)
+        {
+            weight.push_back(particle.weight);
+            charge.push_back(particle.charge);
+
+            for (std::uint16_t di = 0; di < dim; ++di)
+            {
+                iCell.push_back(particle.iCell[di]);
+                delta.push_back(particle.delta[di]);
+            }
+            for (std::uint16_t di = 0; di < 3; ++di)
+                v.push_back(particle.v[di]);
         }
 
         NO_DISCARD auto begin() { return iterator(this); }

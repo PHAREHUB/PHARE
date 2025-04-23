@@ -102,6 +102,16 @@ namespace core
         std::apply([&](auto&... args) { (func(args), ...); }, tuple);
     }
 
+
+    template<typename TupleOfTuples, typename Func>
+    void double_apply(TupleOfTuples&& tuples, Func&& func)
+    {
+        auto on_tuple
+            = [&](auto& tuple) { std::apply([&](auto&&... args) { func(args...); }, tuple); };
+
+        std::apply([&](auto&&... args) { (on_tuple(args), ...); }, tuples);
+    }
+
     template<typename Type, std::size_t Size> // std::array::fill is only constexpr in C++20 ffs
     constexpr void fill(Type value, std::array<Type, Size>& array)
     {
@@ -226,7 +236,7 @@ namespace core
 
     NO_DISCARD inline std::optional<std::string> get_env(std::string const& key)
     {
-        if (const char* val = std::getenv(key.c_str()))
+        if (char const* val = std::getenv(key.c_str()))
             return std::string{val};
         return std::nullopt;
     }

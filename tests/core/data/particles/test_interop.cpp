@@ -55,8 +55,10 @@ TYPED_TEST(ParticleListTest, SoAandAoSInterop)
     EXPECT_EQ(particleArray.size(), size);
     EXPECT_EQ(contiguous.size(), particleArray.size());
 
-    ContiguousParticles<dim> AoSFromSoA{particleArray.size()};
+    ContiguousParticles<dim> AoSFromSoA;
+    EXPECT_EQ(AoSFromSoA.size(), 0);
     ParticlePacker<dim>{particleArray}.pack(AoSFromSoA);
+    EXPECT_EQ(AoSFromSoA.size(), size);
 
     std::size_t i = 0;
     for (auto const& particle : AoSFromSoA)
