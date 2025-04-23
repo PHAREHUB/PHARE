@@ -2,20 +2,19 @@
 #define PHARE_ION_UPDATER_HPP
 
 
+#include "core/logger.hpp"
+// #include "core/data/ions/ions.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
 #include "core/numerics/pusher/pusher.hpp"
-#include "core/numerics/pusher/pusher_factory.hpp"
-#include "core/numerics/boundary_condition/boundary_condition.hpp"
 #include "core/numerics/moments/moments.hpp"
-#include "core/data/ions/ions.hpp"
+#include "core/numerics/pusher/pusher_factory.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/boundary_condition/boundary_condition.hpp"
 
 #include "initializer/data_provider.hpp"
 
-#include "core/logger.hpp"
 
-#include <cstddef>
 #include <memory>
 
 
@@ -57,7 +56,8 @@ public:
     {
     }
 
-    void updatePopulations(Ions& ions, Electromag const& em, GridLayout const& layout, double dt,
+    template<typename Boxing_t>
+    void updatePopulations(Ions& ions, Electromag const& em, Boxing_t const& boxing, double dt,
                            UpdaterMode = UpdaterMode::all);
 
 
@@ -72,9 +72,11 @@ public:
 
 
 private:
-    void updateAndDepositDomain_(Ions& ions, Electromag const& em, GridLayout const& layout);
+    template<typename Boxing_t>
+    void updateAndDepositDomain_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
 
-    void updateAndDepositAll_(Ions& ions, Electromag const& em, GridLayout const& layout);
+    template<typename Boxing_t>
+    void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
 
 
     // dealloced on regridding/load balancing coarsest
@@ -85,22 +87,23 @@ private:
 
 
 template<typename Ions, typename Electromag, typename GridLayout>
+template<typename Boxing_t>
 void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Electromag const& em,
-                                                                 GridLayout const& layout,
-                                                                 double dt, UpdaterMode mode)
+                                                                 Boxing_t const& boxing, double dt,
+                                                                 UpdaterMode mode)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updatePopulations");
 
     resetMoments(ions);
-    pusher_->setMeshAndTimeStep(layout.meshSize(), dt);
+    pusher_->setMeshAndTimeStep(boxing.layout.meshSize(), dt);
 
     if (mode == UpdaterMode::domain_only)
     {
-        updateAndDepositDomain_(ions, em, layout);
+        updateAndDepositDomain_(ions, em, boxing);
     }
     else
     {
-        updateAndDepositAll_(ions, em, layout);
+        updateAndDepositAll_(ions, em, boxing);
     }
 }
 
@@ -114,40 +117,43 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
 }
 
 template<typename IonUpdater_t, typename GridLayout>
-struct Boxing
+struct UpdaterSelectionBoxing
 {
     auto constexpr static partGhostWidth = GridLayout::nbrParticleGhosts();
+    using GridLayout_t                   = GridLayout;
     using Box_t                          = IonUpdater_t::Box;
     using Selector_t                     = IonUpdater_t::Pusher::ParticleSelector;
 
-    IonUpdater_t const& updater;
-    GridLayout const& layout;
+    GridLayout_t const layout;
+    Box_t const nonLevelGhostBox;
     Box_t const domainBox = layout.AMRBox();
     Box_t const ghostBox  = grow(domainBox, partGhostWidth);
 
     Selector_t const noop = [](auto& particleRange) { return particleRange; };
 
-    Selector_t const inDomainBox = [&](auto& particleRange) {
+    // lambda copy captures to detach from above references in case of class copy construct
+    Selector_t const inDomainBox = [domainBox = domainBox](auto& particleRange) {
         return particleRange.array().partition(
-            particleRange, [&](auto const& cell) { return core::isIn(cell, this->domainBox); });
+            particleRange, [&](auto const& cell) { return core::isIn(cell, domainBox); });
     };
 
-    Selector_t const inGhostBox = [&](auto& particleRange) {
+    Selector_t const inGhostBox = [ghostBox = ghostBox](auto& particleRange) {
         return particleRange.array().partition(
-            particleRange, [&](auto const& cell) { return isIn(cell, this->ghostBox); });
+            particleRange, [&](auto const& cell) { return isIn(cell, ghostBox); });
     };
 
-    Selector_t const inAllowedBox = [&](auto& particleRange) {
-        return particleRange.array().partition(particleRange, [&](auto const& cell) {
-            return isIn(cell, this->layout.particleGhostBoxMinusLevelGhostsCells());
-        });
-    };
+    Selector_t const inNonLevelGhostBox
+        = [nonLevelGhostBox = nonLevelGhostBox](auto& particleRange) {
+              return particleRange.array().partition(
+                  particleRange, [&](auto const& cell) { return isIn(cell, nonLevelGhostBox); });
+          };
 
-    Selector_t const inGhostLayer = [&](auto& particleRange) {
-        return particleRange.array().partition(particleRange, [&](auto const& cell) {
-            return isIn(cell, this->ghostBox) and !isIn(cell, this->domainBox);
-        });
-    };
+    Selector_t const inGhostLayer
+        = [ghostBox = ghostBox, domainBox = domainBox](auto& particleRange) {
+              return particleRange.array().partition(particleRange, [&](auto const& cell) {
+                  return isIn(cell, ghostBox) and !isIn(cell, domainBox);
+              });
+          };
 };
 
 /**
@@ -155,13 +161,14 @@ struct Boxing
    evolves moments from time n to n+1 without updating particles, which stay at time n
  */
 template<typename Ions, typename Electromag, typename GridLayout>
+template<typename Boxing_t>
 void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ions,
                                                                        Electromag const& em,
-                                                                       GridLayout const& layout)
+                                                                       Boxing_t const& boxing)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositDomain_");
 
-    Boxing<This, GridLayout> const boxing{*this, layout};
+    auto const& layout = boxing.layout;
 
     for (auto& pop : ions)
     {
@@ -171,7 +178,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         // accumulate those inNonLevelGhostBox
         auto outRange = makeIndexRange(domain);
         auto allowed = outRange = pusher_->move(outRange, outRange, em, pop.mass(), interpolator_,
-                                                layout, boxing.noop, boxing.inAllowedBox);
+                                                layout, boxing.noop, boxing.inNonLevelGhostBox);
 
         interpolator_(allowed, pop.density(), pop.flux(), layout);
 
@@ -212,13 +219,14 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
    evolves moments and particles from time n to n+1
  */
 template<typename Ions, typename Electromag, typename GridLayout>
+template<typename Boxing_t>
 void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                                                                     Electromag const& em,
-                                                                    GridLayout const& layout)
+                                                                    Boxing_t const& boxing)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositAll_");
 
-    Boxing<This, GridLayout> const boxing{*this, layout};
+    auto const& layout = boxing.layout;
 
     // push domain particles, erase from array those leaving domain
     // push level ghost particles that are in ghost area (==ghost box without domain)
@@ -233,7 +241,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
                                       interpolator_, layout, boxing.noop, boxing.inDomainBox);
 
         auto now_ghosts = makeRange(domainParticles, inDomain.iend(), domainParticles.size());
-        auto const not_level_ghosts = boxing.inAllowedBox(now_ghosts);
+        auto const not_level_ghosts = boxing.inNonLevelGhostBox(now_ghosts);
 
         // copy out new patch ghosts
         auto& patchGhost = pop.patchGhostParticles();

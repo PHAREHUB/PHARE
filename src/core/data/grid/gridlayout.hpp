@@ -112,8 +112,7 @@ namespace core
         GridLayout(std::array<double, dimension> const& meshSize,
                    std::array<std::uint32_t, dimension> const& nbrCells,
                    Point<double, dimension> const& origin,
-                   Box<int, dimension> AMRBox = Box<int, dimension>{}, int level_number = 0,
-                   Box<int, dimension> particleGhostBoxMinusLevelGhostsCells = {})
+                   Box<int, dimension> AMRBox = Box<int, dimension>{}, int level_number = 0)
             : meshSize_{meshSize}
             , origin_{origin}
             , nbrPhysicalCells_{nbrCells}
@@ -122,7 +121,6 @@ namespace core
             , ghostEndIndexTable_{initGhostEnd_()}
             , AMRBox_{AMRBox}
             , levelNumber_{level_number}
-            , particleGhostBoxMinusLevelGhostsCells_{particleGhostBoxMinusLevelGhostsCells}
         {
             if (AMRBox_.isEmpty())
             {
@@ -135,10 +133,6 @@ namespace core
                     throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
                 }
             }
-            // :(
-            if (particleGhostBoxMinusLevelGhostsCells_.isEmpty())
-                particleGhostBoxMinusLevelGhostsCells_ = grow(AMRBox_, nbrParticleGhosts());
-
 
             inverseMeshSize_[0] = 1. / meshSize_[0];
             if constexpr (dimension > 1)
@@ -196,11 +190,6 @@ namespace core
 
 
         NO_DISCARD auto const& AMRBox() const { return AMRBox_; }
-        NO_DISCARD auto const& particleGhostBoxMinusLevelGhostsCells() const
-        {
-            return particleGhostBoxMinusLevelGhostsCells_;
-        }
-
 
 
 
@@ -1574,7 +1563,6 @@ namespace core
         constexpr static std::array<int, 2> prevIndexTable_{{prevPrimal_(), prevDual_()}};
 
         int levelNumber_ = 0;
-        Box<int, dimension> particleGhostBoxMinusLevelGhostsCells_;
     };
 
 

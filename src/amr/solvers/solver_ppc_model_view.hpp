@@ -183,15 +183,15 @@ void HybridPPCModelView<HybridModel>::onRegrid(hierarchy_t const& hierarchy, lev
     {
         {
             auto _ = rm.setOnPatch(*patch, hybridState, electromagPred_, electromagAvg_);
-            states.emplace_back(                                             //
-                PHARE::amr::layoutFromPatch<GridLayout>(*patch, &hierarchy), //
-                hybridState.ions,                                            //
-                hybridState.J,                                               //
-                hybridState.electromag,                                      //
-                electromagPred_,                                             //
-                electromagAvg_,                                              //
-                hybridState.electrons,                                       //
-                patch                                                        //
+            states.emplace_back(                                 //
+                PHARE::amr::layoutFromPatch<GridLayout>(*patch), //
+                hybridState.ions,                                //
+                hybridState.J,                                   //
+                hybridState.electromag,                          //
+                electromagPred_,                                 //
+                electromagAvg_,                                  //
+                hybridState.electrons,                           //
+                patch                                            //
             );
         }
         assert(states.back().isUsable());

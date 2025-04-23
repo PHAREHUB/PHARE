@@ -134,8 +134,7 @@ namespace amr
 
 
     template<typename GridLayoutT>
-    NO_DISCARD GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch,
-                                           SAMRAI::hier::PatchHierarchy const* hierarchy = nullptr)
+    NO_DISCARD GridLayoutT layoutFromPatch(SAMRAI::hier::Patch const& patch)
     {
         auto constexpr dimension = GridLayoutT::dimension;
 
@@ -183,24 +182,28 @@ namespace amr
 
         auto const lvlNbr = patch.getPatchLevelNumber();
 
-        if (hierarchy) // make particleGhostBoxMinusLevelGhostsCells
-        {
-            SAMRAI::hier::HierarchyNeighbors const hier_nbrs{*hierarchy, lvlNbr, lvlNbr};
-
-            auto const domBox           = phare_box_from<dimension>(domain);
-            auto const particleGhostBox = grow(domBox, GridLayoutT::nbrParticleGhosts());
-            auto particleGhostBoxMinusLevelGhostsCells{domBox};
-
-            for (auto const& neighbox : hier_nbrs.getSameLevelNeighbors(domain, lvlNbr))
-                particleGhostBoxMinusLevelGhostsCells = particleGhostBoxMinusLevelGhostsCells.merge(
-                    *(particleGhostBox * phare_box_from<dimension>(neighbox)));
-
-            return GridLayoutT{dl,     nbrCell,
-                               origin, amr::Box<int, dimension>{domain},
-                               lvlNbr, particleGhostBoxMinusLevelGhostsCells};
-        }
-
         return GridLayoutT{dl, nbrCell, origin, amr::Box<int, dimension>{domain}, lvlNbr};
+    }
+
+    template<typename GridLayoutT>
+    NO_DISCARD auto makeNonLevelGhostBoxFor(SAMRAI::hier::Patch const& patch,
+                                            SAMRAI::hier::PatchHierarchy const& hierarchy)
+    {
+        auto constexpr dimension = GridLayoutT::dimension;
+        auto const lvlNbr        = patch.getPatchLevelNumber();
+        SAMRAI::hier::HierarchyNeighbors const hier_nbrs{hierarchy, lvlNbr, lvlNbr};
+
+
+        SAMRAI::hier::Box const domain = patch.getBox();
+        auto const domBox              = phare_box_from<dimension>(domain);
+        auto const particleGhostBox    = grow(domBox, GridLayoutT::nbrParticleGhosts());
+        auto particleGhostBoxMinusLevelGhostsCells{domBox};
+
+        for (auto const& neighbox : hier_nbrs.getSameLevelNeighbors(domain, lvlNbr))
+            particleGhostBoxMinusLevelGhostsCells = particleGhostBoxMinusLevelGhostsCells.merge(
+                *(particleGhostBox * phare_box_from<dimension>(neighbox)));
+
+        return particleGhostBoxMinusLevelGhostsCells;
     }
 
     inline auto to_string(SAMRAI::hier::GlobalId const& id)

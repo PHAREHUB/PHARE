@@ -177,6 +177,7 @@ struct IonUpdaterTest : public ::testing::Test
     using ParticleInitializerFactory = PHARETypes::ParticleInitializerFactory;
     using UsableVecFieldND           = UsableVecField<dim>;
     using IonUpdater                 = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using Boxing_t                   = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout>;
 
 
     double const dt{0.01};
@@ -184,6 +185,9 @@ struct IonUpdaterTest : public ::testing::Test
     // grid configuration
     std::array<int, dim> const ncells = ConstArray<int, dim>(100);
     GridLayout const layout{{0.1}, {100u}, {{0.}}};
+
+    // assumes no level ghost cells
+    Boxing_t const boxing{layout, grow(layout.AMRBox(), GridLayout::nbrParticleGhosts())};
 
     UsableElectromag<dim> EM{layout, init_dict["electromag"]};
 
@@ -534,7 +538,8 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
     auto ionsBufferCpy = this->ions;
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
                                  UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
@@ -580,7 +585,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 //
 //    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 //
-//    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+//    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
 //                                 UpdaterMode::particles_and_moments);
 //
 //    this->fillIonsMomentsGhosts();
@@ -607,7 +612,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     assert(ionsBufferCpy.density().data() != this->ions.density().data());
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt, UpdaterMode::all);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt, UpdaterMode::all);
 
     this->fillIonsMomentsGhosts();
 
@@ -629,7 +634,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
     assert(ionsBufferCpy.density().data() != this->ions.density().data());
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
                                  UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
@@ -647,7 +652,7 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
                                  UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
