@@ -7,10 +7,11 @@ from pyphare.cpp import cpp_lib
 from pyphare.simulator.simulator import Simulator
 from pyphare.simulator.simulator import startMPI
 
+from tests.simulator import SimulatorTest
+
 
 ph.NO_GUI()
 cpp = cpp_lib()
-
 
 
 diag_outputs = "phare_outputs/test/harris/2d"
@@ -23,6 +24,7 @@ def default_timestamps():
     dt = 10 * time_step
     nt = final_time / dt + 1
     timestamps = dt * np.arange(nt)
+    return timestamps
 
 
 def default_setup():
@@ -48,7 +50,7 @@ def default_setup():
     )
 
 
-def config(sim = None, timestamps = None, seed = 12334):
+def config(sim=None, timestamps=None, seed=12334):
     if sim is None:
         sim = default_setup()
     if timestamps is None:
@@ -154,10 +156,70 @@ def config(sim = None, timestamps = None, seed = 12334):
     return sim
 
 
-def main():
-    Simulator(config()).run()
+def plot_file_for_qty(plot_dir, qty, time):
+    return f"{plot_dir}/harris_{qty}_t{time}.png"
 
+
+class HarrisTest(SimulatorTest):
+    def __init__(self, *args, **kwargs):
+        super(HarrisTest, self).__init__(*args, **kwargs)
+        self.simulator = None
+
+    def tearDown(self):
+        super(HarrisTest, self).tearDown()
+        if self.simulator is not None:
+            self.simulator.reset()
+        self.simulator = None
+        ph.global_vars.sim = None
+
+    def test_run(self, diag_dir=None, sim=None):
+        diag_dir = diag_dir if diag_dir else diag_outputs
+        sim = sim if sim else config()
+        self.register_diag_dir_for_cleanup(diag_dir)
+        Simulator(sim).run().reset()
+        return self
+
+    def plot(self, timestamps, diag_dir, plot_dir):
+        run = self.run(diag_dir)
+        for time in timestamps:
+            run.GetDivB(time).plot(
+                filename=plot_file_for_qty(plot_dir, "divb", time),
+                plot_patches=True,
+                vmin=1e-11,
+                vmax=2e-10,
+            )
+            run.GetRanks(time).plot(
+                filename=plot_file_for_qty(plot_dir, "Ranks", time),
+                plot_patches=True,
+            )
+            run.GetN(time, pop_name="protons").plot(
+                filename=plot_file_for_qty(plot_dir, "N", time),
+                plot_patches=True,
+            )
+            for c in ["x", "y", "z"]:
+                run.GetB(time).plot(
+                    filename=plot_file_for_qty(plot_dir, f"b{c}", time),
+                    qty=f"{c}",
+                    plot_patches=True,
+                )
+            run.GetJ(time).plot(
+                filename=plot_file_for_qty(plot_dir, "jz", time),
+                qty="z",
+                plot_patches=True,
+                vmin=-2,
+                vmax=2,
+            )
+
+    def scope_timing(self, diag_dir):
+        try:
+            from tools.python3 import plotting as m_plotting
+
+            m_plotting.plot_run_timer_data(diag_dir, cpp.mpi_rank())
+        except ImportError:
+            print("Phlop not found - install with: `pip install phlop`")
+        except FileNotFoundError:
+            print("Phlop installed but not active")
 
 
 if __name__ == "__main__":
-    main()
+    HarrisTest().test_run().tearDown()

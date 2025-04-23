@@ -1,8 +1,12 @@
 import os
 import unittest
+import numpy as np
+import pyphare.pharein as ph
+
+from functools import wraps
 from datetime import datetime
-import pyphare.pharein as ph, numpy as np
 from pyphare.pharein import ElectronModel
+from pyphare.pharesee import run
 
 
 def parse_cli_args(pop_from_sys=True):
@@ -192,53 +196,34 @@ def diff_boxes(slice1, slice2, box, atol=None):
     return boxes
 
 
-#
-#
+class SimulatorTestRunInterop(run.Run):
+    """
+    Intercept calls to Run and catch FileNotFound errors for when
+     diags are not active/etc
+    """
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.dummies = {}
 
-def caliper_func_times_json(data_dir, mpi_rank=0):
-    return f"{os.path.join(data_dir, f'func_times.{mpi_rank}.json')}"
+    @staticmethod
+    def _wrapper(func, func_name):
+        @wraps(func)
+        def wrapped(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except FileNotFoundError:
+                print("File not found, maybe diagnostic is not active")
 
+        return wrapped
 
-def caliper_recorder_cali(data_dir, mpi_rank=0):
-    return f"{os.path.join(data_dir, f'recorder.{mpi_rank}.cali')}"
+    def __getattribute__(self, name):
+        import types
 
-
-CALIPER_MODES = [
-    # "callpath:event:recorder:trace",
-    "report,event,trace,timestamp,recorder",  # light
-    "alloc,aggregate,cpuinfo,memusage,debug,env,event,loop_monitor,region_monitor,textlog,io,pthread,sysalloc,recorder,report,timestamp,statistics,spot,trace,validator,mpi,mpireport,mpiflush",  # heavy
-]
-
-
-def activate_caliper(data_dir, mode_idx=0):
-    from pyphare.cpp import cpp_lib
-
-    rank = cpp_lib().mpi_rank()
-    env = os.environ
-
-    # env["CALI_SERVICES_ENABLE"] = "event,trace,timer,report"
-    # env["CALI_REPORT_CONFIG"] = "format json"
-    # env["CALI_REPORT_FILENAME"] = "trace.json"
-
-    # env[
-    #     "CALI_CONFIG"
-    # ] = "hatchet-region-profile,topdown-counters.all,output.format=json"
-
-    # # env["CALI_CONFIG_PROFILE"] = "callstack-trace"
-    # env["CALI_SERVICES_ENABLE"] = CALIPER_MODES[mode_idx]
-
-    # env["CALI_CONFIG"] = "hatchet-region-profile"
-
-    # # env["CALI_CALLPATH_USE_NAME"] = "true"
-
-    # env["CALI_REPORT_FILENAME"] = caliper_func_times_json(data_dir, rank)
-    # env[
-    #     "CALI_REPORT_CONFIG"
-    # ] = "SELECT function,time.duration ORDER BY time.duration FORMAT json"
-    # env["CALI_RECORDER_FILENAME"] = caliper_recorder_cali(data_dir, rank)
-
-    # print("os.environ", os.environ)
+        attr = super(SimulatorTestRunInterop, self).__getattribute__(name)
+        if isinstance(attr, types.MethodType) and not name.startswith("_"):
+            attr = SimulatorTestRunInterop._wrapper(attr, name)
+        return attr
 
 
 class SimulatorTest(unittest.TestCase):
@@ -308,3 +293,6 @@ class SimulatorTest(unittest.TestCase):
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
         cpp_lib().mpi_barrier()
+
+    def run(self, diag_dir):
+        return SimulatorTestRunInterop(diag_dir)
