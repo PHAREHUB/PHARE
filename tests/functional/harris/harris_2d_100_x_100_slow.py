@@ -47,8 +47,6 @@ def config():
         final_time=final_time,
         cells=cells,
         dl=(0.40, 0.40),
-        # refinement="tagging",
-        # max_nbr_levels=1,
         nesting_buffer=1,
         clustering="tile",
         tag_buffer="1",

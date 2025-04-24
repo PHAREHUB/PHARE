@@ -204,7 +204,6 @@ class SimulatorTestRunInterop(run.Run):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.dummies = {}
 
     @staticmethod
     def _wrapper(func, func_name):
@@ -213,7 +212,7 @@ class SimulatorTestRunInterop(run.Run):
             try:
                 return func(*args, **kwargs)
             except FileNotFoundError:
-                print("File not found, maybe diagnostic is not active")
+                print(f"{func_name} : file not found, maybe diagnostic is not active")
 
         return wrapped
 
@@ -271,7 +270,7 @@ class SimulatorTest(unittest.TestCase):
         self.diag_dirs = []  # cleanup after tests
         self.success = True
 
-    def run(self, result=None):
+    def run(self, result=None):  # override superclass function
         self._outcome = result
         super().run(result)
 
@@ -294,5 +293,5 @@ class SimulatorTest(unittest.TestCase):
                     shutil.rmtree(diag_dir)
         cpp_lib().mpi_barrier()
 
-    def run(self, diag_dir):
+    def getRun(self, diag_dir):
         return SimulatorTestRunInterop(diag_dir)

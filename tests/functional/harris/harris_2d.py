@@ -180,7 +180,7 @@ class HarrisTest(SimulatorTest):
         return self
 
     def plot(self, timestamps, diag_dir, plot_dir):
-        run = self.run(diag_dir)
+        run = self.getRun(diag_dir)
         for time in timestamps:
             run.GetDivB(time).plot(
                 filename=plot_file_for_qty(plot_dir, "divb", time),
