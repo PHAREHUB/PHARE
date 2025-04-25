@@ -9,9 +9,8 @@ function(get_pybind)
     set (PHARE_FLAGS ${PHARE_FLAGS} -fsized-deallocation)
   endif()
 
-  set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
   if(NOT DEFINED PHARE_PYBIND11_VERSION)
-    SET(PHARE_PYBIND11_VERSION "v2.13.6") # github.com/pybind/pybind11/pull/5553 broke master
+    SET(PHARE_PYBIND11_VERSION "master")
   endif()
 
   set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
