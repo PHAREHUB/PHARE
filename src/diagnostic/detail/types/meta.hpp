@@ -121,7 +121,7 @@ void MetaDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         if (tags.count(path) > 0)
         {
             auto& h5 = *fileData_.at(diagnostic.quantity);
-            h5.template write_data_set_flat<GridLayout::dimension>(path + "/tags", tags[path]);
+            h5.write_data_set_flat(path + "/tags", tags[path]);
             tags.erase(path);
         }
     }
