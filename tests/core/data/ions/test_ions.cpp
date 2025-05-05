@@ -154,7 +154,7 @@ TEST_F(theIons, areSettableUponConstruction)
 #ifndef NDEBUG // no throw in release mode! JUST SEGFAULTS! :D
 TEST_F(theIons, throwIfAccessingDensityWhileNotUsable)
 {
-    EXPECT_ANY_THROW(auto& n = ions.density()(0));
+    EXPECT_ANY_THROW(auto& n = ions.chargeDensity()(0));
 }
 #endif
 
