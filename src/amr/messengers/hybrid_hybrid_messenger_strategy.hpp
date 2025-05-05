@@ -319,7 +319,7 @@ namespace amr
         void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectricGhosts");
-            elecSharedNodesRefiners_.fill(E, levelNumber, fillTime);
+            // elecSharedNodesRefiners_.fill(E, levelNumber, fillTime);
             elecGhostsRefiners_.fill(E, levelNumber, fillTime);
         }
 
@@ -329,7 +329,7 @@ namespace amr
         void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillCurrentGhosts");
-            currentSharedNodesRefiners_.fill(J, levelNumber, fillTime);
+            // currentSharedNodesRefiners_.fill(J, levelNumber, fillTime);
             currentGhostsRefiners_.fill(J, levelNumber, fillTime);
         }
 
@@ -603,8 +603,8 @@ namespace amr
 
             auto& hybridModel = static_cast<HybridModel&>(model);
 
-            elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber,
-                                          initDataTime);
+            // elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber,
+            //                               initDataTime);
 
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
 
@@ -654,8 +654,8 @@ namespace amr
 
             PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber))
 
-            magSharedNodesRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
-            elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
+            // magSharedNodesRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            // elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
             // we fill magnetic field ghosts only on patch ghost nodes and not on level
             // ghosts the reason is that 1/ filling ghosts is necessary to prevent mismatch
