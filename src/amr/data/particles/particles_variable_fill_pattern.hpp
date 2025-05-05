@@ -31,10 +31,10 @@ public:
 
 
 
-template<std::size_t dimension>
+template<typename GridLayout_t>
 class ParticleDomainFromGhostFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
-    std::size_t constexpr static dim         = dimension;
+    std::size_t constexpr static dim         = GridLayout_t::dimension;
     bool constexpr static overwrite_interior = false;
 
 public:
@@ -63,7 +63,8 @@ public:
         SAMRAI::hier::BoxContainer boxes;
         for (auto const& box : cell_overlap.getDestinationBoxContainer())
         {
-            auto const ghost_overlap  = grow(phare_box_from<dim>(box), 1);
+            auto const ghost_overlap
+                = grow(phare_box_from<dim>(box), GridLayout_t::nbrParticleGhosts());
             auto const domain_overlap = ghost_overlap * phare_box_from<dim>(dst_patch_box);
             boxes.pushBack(samrai_box_from(*domain_overlap));
         }

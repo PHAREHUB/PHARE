@@ -1,6 +1,8 @@
 
 #include "phare_core.hpp"
 #include "phare/phare.hpp"
+#include <core/utilities/types.hpp>
+#include <core/utilities/box/box.hpp>
 #include "core/utilities/meta/meta_utilities.hpp"
 #include <amr/utilities/box/amr_box.hpp>
 
@@ -12,20 +14,18 @@
 
 #include <SAMRAI/pdat/CellGeometry.h>
 #include <SAMRAI/hier/HierarchyNeighbors.h>
-#include <core/utilities/box/box.hpp>
-#include <core/utilities/types.hpp>
 
-static constexpr std::size_t interp = 1;
-static constexpr std::size_t ppc    = 100;
+static constexpr std::size_t ppc = 10;
 
-template<std::size_t _dim>
+template<std::size_t _dim, std::size_t _interp>
 struct TestParam
 {
-    auto constexpr static dim = _dim;
-    using PhareTypes          = PHARE::core::PHARE_Types<dim, interp>;
-    using GridLayout_t        = TestGridLayout<typename PhareTypes::GridLayout_t>;
-    using Box_t               = PHARE::core::Box<int, dim>;
-    using ParticleArray_t     = PHARE::core::ParticleArray<dim>;
+    auto constexpr static dim    = _dim;
+    auto constexpr static interp = _interp;
+    using PhareTypes             = PHARE::core::PHARE_Types<dim, interp>;
+    using GridLayout_t           = TestGridLayout<typename PhareTypes::GridLayout_t>;
+    using Box_t                  = PHARE::core::Box<int, dim>;
+    using ParticleArray_t        = PHARE::core::ParticleArray<dim>;
 
     using Hierarchy_t
         = AfullHybridBasicHierarchy<dim, interp, defaultNbrRefinedParts<dim, interp>()>;
@@ -45,7 +45,8 @@ struct ParticleScheduleHierarchyTest : public ::testing::Test
     Hierarchy_t hierarchy{configFile};
 };
 
-using ParticlesDatas = testing::Types<TestParam<1>, TestParam<2> /*,TestParam<3>*/>;
+using ParticlesDatas = testing::Types<TestParam<1, 1>, TestParam<1, 2>, TestParam<1, 3>,
+                                      TestParam<2, 1>, TestParam<2, 2>, TestParam<2, 3>>;
 
 
 TYPED_TEST_SUITE(ParticleScheduleHierarchyTest, ParticlesDatas);
@@ -78,8 +79,6 @@ TYPED_TEST(ParticleScheduleHierarchyTest, testing_inject_ghost_layer)
         }
         rm.setTime(ions, *patch, 1);
     }
-
-    // domainGhostPartRefiners.fill(0, 0);
 
     this->hierarchy.messenger->fillIonGhostParticles(ions, *lvl0, 0);
 

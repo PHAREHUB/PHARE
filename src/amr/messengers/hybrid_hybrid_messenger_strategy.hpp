@@ -742,7 +742,7 @@ namespace amr
 
             domainGhostPartRefiners_.addStaticRefiners(
                 info->patchGhostParticles, nullptr, info->patchGhostParticles,
-                std::make_shared<ParticleDomainFromGhostFillPattern<dimension>>());
+                std::make_shared<ParticleDomainFromGhostFillPattern<GridLayoutT>>());
 
 
             for (auto const& vecfield : info->ghostFlux)

@@ -2,13 +2,11 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 
 
-#include "amr/data/field/field_geometry.hpp"
 #include "core/def/phare_mpi.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/mpi_utils.hpp"
 #include <core/hybrid/hybrid_quantities.hpp>
 
 #include <amr/utilities/box/amr_box.hpp>
+#include "amr/data/field/field_geometry.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 
 #include <SAMRAI/pdat/CellOverlap.h>
