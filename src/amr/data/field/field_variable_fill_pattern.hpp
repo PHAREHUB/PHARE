@@ -7,7 +7,6 @@
 
 #include <amr/utilities/box/amr_box.hpp>
 #include "amr/data/field/field_geometry.hpp"
-#include "amr/data/field/refine/field_refine_operator.hpp"
 
 #include <SAMRAI/pdat/CellOverlap.h>
 #include "SAMRAI/xfer/VariableFillPattern.h"
@@ -49,19 +48,9 @@ class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern
     constexpr static std::size_t dim = dimension;
 
 public:
-    FieldFillPattern(std::optional<bool> overwrite_interior)
+    FieldFillPattern(std::optional<bool> overwrite_interior = false)
         : opt_overwrite_interior_{overwrite_interior}
     {
-    }
-
-    static auto make_shared(std::shared_ptr<SAMRAI::hier::RefineOperator> const& samrai_op)
-    {
-        auto const& op = dynamic_cast<AFieldRefineOperator const&>(*samrai_op);
-
-        if (op.node_only)
-            return std::make_shared<FieldFillPattern<dim>>(std::nullopt);
-
-        return std::make_shared<FieldFillPattern<dim>>(false);
     }
 
 
@@ -86,29 +75,7 @@ public:
         {
             // this sets overwrite_interior to false
             overwrite_interior = *opt_overwrite_interior_;
-        }
-
-        // opt_overwrite_interior_ is nullopt : assume primal node shared border schedule
-        else
-        {
-            // cast into the Base class to get the pureInteriorFieldBox method
-            // see field_geometry.hpp for more explanations about why this base class exists
-            auto& dst_cast = dynamic_cast<FieldGeometryBase<dimension> const&>(dst_geometry);
-            auto& src_cast = dynamic_cast<FieldGeometryBase<dimension> const&>(src_geometry);
-
-            if (src_cast.patchBox.getGlobalId().getOwnerRank()
-                != dst_cast.patchBox.getGlobalId().getOwnerRank())
-                overwrite_interior
-                    = src_cast.patchBox.getGlobalId() > dst_cast.patchBox.getGlobalId();
-
-            auto basic_overlap = dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box,
-                                                               overwrite_interior, transformation);
-            auto& overlap      = dynamic_cast<FieldOverlap const&>(*basic_overlap);
-
-            auto destinationBoxes = overlap.getDestinationBoxContainer();
-            destinationBoxes.removeIntersections(src_cast.pureInteriorFieldBox());
-
-            return std::make_shared<FieldOverlap>(destinationBoxes, overlap.getTransformation());
+            assert(overwrite_interior == false); // never true
         }
 
         // overwrite_interior is always false here

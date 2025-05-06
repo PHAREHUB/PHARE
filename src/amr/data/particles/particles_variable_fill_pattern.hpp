@@ -1,6 +1,7 @@
 #ifndef PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 
+#include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
 #include <amr/utilities/box/amr_box.hpp>
 

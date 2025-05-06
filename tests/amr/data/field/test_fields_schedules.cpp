@@ -46,8 +46,8 @@ struct FieldScheduleHierarchyTest : public ::testing::Test
     Hierarchy_t hierarchy{configFile};
 };
 
-using FieldDatas = testing::Types</*TestParam<1, 1>, TestParam<1, 2>, TestParam<1, 3>,*/
-                                  TestParam<2, 1> /*, TestParam<2, 2>, TestParam<2, 3>*/>;
+using FieldDatas = testing::Types<TestParam<1, 1>, TestParam<1, 2>, TestParam<1, 3>,
+                                  TestParam<2, 1>, TestParam<2, 2>, TestParam<2, 3>>;
 
 
 TYPED_TEST_SUITE(FieldScheduleHierarchyTest, FieldDatas);
@@ -75,9 +75,8 @@ TYPED_TEST(FieldScheduleHierarchyTest, testing_hyhy_schedules)
         auto dataOnPatch = rm.setOnPatch(*patch, ions);
         for (auto& pop : ions)
         {
-            auto const domGhostBox      = layout.AMRGhostBoxFor(pop.flux()[0].physicalQuantity());
-            auto const primal_box       = shrink(domGhostBox, ghost_cells);
-            auto const inner_primal_box = shrink(primal_box, 1);
+            auto const domGhostBox = layout.AMRGhostBoxFor(pop.flux()[0].physicalQuantity());
+            auto const primal_box  = shrink(domGhostBox, ghost_cells);
 
             for (auto const& bix : layout.AMRToLocal(primal_box))
             {

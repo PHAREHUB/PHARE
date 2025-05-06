@@ -5,7 +5,6 @@
 #include "core/data/vecfield/vecfield.hpp"
 
 #include "amr/messengers/field_sum_transaction.hpp"
-#include "amr/data/field/field_variable_fill_pattern.hpp"
 
 #include <tuple>
 #include <stdexcept>
@@ -21,7 +20,7 @@ enum class RefinerType {
     InitInteriorPart,
     LevelBorderParticles,
     InteriorGhostParticles,
-    SharedBorder,
+    SharedBorder, // deprecated?
     PatchFieldBorderSum,
     ExteriorGhostParticles
 };
@@ -31,7 +30,10 @@ enum class RefinerType {
 template<typename ResourcesManager, RefinerType Type>
 class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
 {
-    using FieldData_t = typename ResourcesManager::UserField_t::patch_data_type;
+    using FieldData_t             = typename ResourcesManager::UserField_t::patch_data_type;
+    using TimeInterpOp_ptr        = std ::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>;
+    using RefineOperator_ptr      = std ::shared_ptr<SAMRAI::hier::RefineOperator>;
+    using VariableFillPattern_ptr = std ::shared_ptr<SAMRAI::xfer::VariableFillPattern>;
 
 public:
     void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -204,15 +206,13 @@ public:
      */
     Refiner(core::VecFieldNames const& ghost, core::VecFieldNames const& model,
             core::VecFieldNames const& oldModel, std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr)
+            RefineOperator_ptr refineOp, TimeInterpOp_ptr timeOp,
+            VariableFillPattern_ptr variableFillPattern = nullptr)
     {
         constexpr auto dimension = ResourcesManager::dimension;
 
-        register_time_interpolated_vector_field_refiner(
-            rm, ghost, ghost, oldModel, model, refineOp, timeOp,
-            try_make_field_variable_fill_pattern(refineOp, variableFillPattern));
+        register_time_interpolated_vector_field_refiner(rm, ghost, ghost, oldModel, model, refineOp,
+                                                        timeOp, variableFillPattern);
     }
 
 
@@ -221,16 +221,13 @@ public:
      * @brief creates a Refiner for a scalar quantity with time refinement
      */
     Refiner(std::string const& ghost, std::string const& model, std::string const& oldModel,
-            std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr)
+            std::shared_ptr<ResourcesManager> const& rm, RefineOperator_ptr refineOp,
+            TimeInterpOp_ptr timeOp, VariableFillPattern_ptr variableFillPattern = nullptr)
     {
         constexpr auto dimension = ResourcesManager::dimension;
 
-        register_interpolated_resource(
-            rm, ghost, ghost, oldModel, model, refineOp, timeOp,
-            try_make_field_variable_fill_pattern(refineOp, variableFillPattern));
+        register_interpolated_resource(rm, ghost, ghost, oldModel, model, refineOp, timeOp,
+                                       variableFillPattern);
     }
 
 
@@ -239,34 +236,28 @@ public:
      * and from one quantity to the same quantity. It is typically used for initialization.
      */
     Refiner(core::VecFieldNames const& src_dest, std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
+            RefineOperator_ptr refineOp)
         : Refiner(src_dest, src_dest, rm, refineOp)
     {
     }
+
 
     /**
      * @brief this overload creates a Refiner for communication without time interpolation
      * and from one quantity to another quantity.
      */
     Refiner(core::VecFieldNames const& dst, core::VecFieldNames const& src,
-            std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr)
+            std::shared_ptr<ResourcesManager> const& rm, RefineOperator_ptr refineOp,
+            VariableFillPattern_ptr variableFillPattern = nullptr)
     {
-        if constexpr (Type == RefinerType::GhostField or Type == RefinerType::PatchGhostField
-                      or Type == RefinerType::SharedBorder)
-            variableFillPattern
-                = try_make_field_variable_fill_pattern(refineOp, variableFillPattern);
-
         register_vector_field(rm, dst, src, refineOp, variableFillPattern);
     }
 
 
 
     Refiner(std::string const& dst, std::string const& src,
-            std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr)
+            std::shared_ptr<ResourcesManager> const& rm, RefineOperator_ptr refineOp,
+            VariableFillPattern_ptr fillPattern = nullptr)
     {
         auto&& [idDst, idSrc] = rm->getIDsList(dst, src);
         this->add_algorithm()->registerRefine(idDst, idSrc, idDst, refineOp, fillPattern);
@@ -280,43 +271,25 @@ public:
      * scalar quantity to itself without time interpolation.
      */
     Refiner(std::string const& name, std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
+            RefineOperator_ptr refineOp)
         : Refiner{name, name, rm, refineOp}
     {
     }
 
 
-    Refiner static make_vector_field(auto&&... args)
-    {
-        return Refiner{}.register_vector_field(args...);
-    }
-
-    Refiner static make_time_interpolated_vector_field_refiner(auto&&... args)
-    {
-        return Refiner{}.register_time_interpolated_vector_field_refiner(args...);
-    }
-
-    auto static try_make_field_variable_fill_pattern(
-        auto const& refOp, std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr)
-    {
-        if (!fillPattern and refOp and dynamic_cast<AFieldRefineOperator const*>(refOp.get()))
-            fillPattern = FieldFillPattern<ResourcesManager::dimension>::make_shared(refOp);
-        return fillPattern;
-    }
 
 
     auto& register_resource(auto& rm, auto& dst, auto& src, auto& scratch, auto&&... args)
     {
-        // PHARE_LOG_LINE_SS(dst << " " << src << " " << scratch);
         auto&& [idDst, idSrc, idScrtch] = rm->getIDsList(dst, src, scratch);
         this->add_algorithm()->registerRefine(idDst, idSrc, idScrtch, args...);
         return *this;
     }
 
+
     auto& register_interpolated_resource(auto& rm, auto& dst, auto& src, auto& told, auto& tnew,
                                          auto&&... args)
     {
-        // PHARE_LOG_LINE_SS(dst << " " << src << " " << told << " " << tnew);
         auto&& [idDst, idSrc, idTold, idTnew] = rm->getIDsList(dst, src, told, tnew);
         this->add_algorithm()->registerRefine(idDst, idSrc, idTold, idTnew, idDst, args...);
         return *this;
@@ -328,11 +301,10 @@ public:
         auto const tuple = std::forward_as_tuple(args...);
         using Tuple      = decltype(tuple);
 
-        static_assert(std::tuple_size_v<Tuple> > 3 and std::tuple_size_v<Tuple> < 6);
+        static_assert(std::tuple_size_v<Tuple> == 4 or std::tuple_size_v<Tuple> == 5);
         if constexpr (std::tuple_size_v<Tuple> == 4)
         {
-            return register_vector_field(args...,
-                                         try_make_field_variable_fill_pattern(std::get<3>(tuple)));
+            return register_vector_field(args..., nullptr);
         }
         else
         { ////      0   1    2    3      4
@@ -349,12 +321,11 @@ public:
         auto const tuple = std::forward_as_tuple(args...);
         using Tuple      = decltype(tuple);
 
-        static_assert(std::tuple_size_v<Tuple> > 5 and std::tuple_size_v<Tuple> < 9);
+        static_assert(std::tuple_size_v<Tuple> == 7 or std::tuple_size_v<Tuple> == 8);
 
         if constexpr (std::tuple_size_v<Tuple> == 7)
         {
-            return register_time_interpolated_vector_field(
-                args..., try_make_field_variable_fill_pattern(std::get<5>(tuple)));
+            return register_time_interpolated_vector_field(args..., nullptr);
         }
         else
         { ////      0   1    2    3     4     5      6       7

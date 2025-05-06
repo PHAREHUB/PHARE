@@ -160,17 +160,14 @@ namespace amr
 
             auto const register_vecs = [&](auto&... vecs) { (register_vec(vecs), ...); };
 
-            register_refiners(               //
-                magSharedNodesRefiners_,     //
-                elecSharedNodesRefiners_,    //
-                currentSharedNodesRefiners_, //
-                magPatchGhostsRefiners_,     //
-                magGhostsRefiners_,          //
-                elecGhostsRefiners_,         //
-                currentGhostsRefiners_,      //
-                rhoGhostsRefiners_,          //
-                velGhostsRefiners_,          //
-                domainGhostPartRefiners_     //
+            register_refiners(           //
+                magPatchGhostsRefiners_, //
+                magGhostsRefiners_,      //
+                elecGhostsRefiners_,     //
+                currentGhostsRefiners_,  //
+                rhoGhostsRefiners_,      //
+                velGhostsRefiners_,      //
+                domainGhostPartRefiners_ //
             );
 
             register_vecs(popFluxBorderSumRefiners_, popDensityBorderSumRefiners_);
@@ -231,9 +228,7 @@ namespace amr
             {
                 auto& B = hybridModel.state.electromag.B;
                 auto& E = hybridModel.state.electromag.E;
-                // magSharedNodesRefiners_.fill(B, levelNumber, initDataTime);
                 magGhostsRefiners_.fill(B, levelNumber, initDataTime);
-                // elecSharedNodesRefiners_.fill(E, levelNumber, initDataTime);
                 elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
 
                 fix_magnetic_divergence_(*hierarchy, levelNumber, B);
@@ -319,7 +314,6 @@ namespace amr
         void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectricGhosts");
-            // elecSharedNodesRefiners_.fill(E, levelNumber, fillTime);
             elecGhostsRefiners_.fill(E, levelNumber, fillTime);
         }
 
@@ -329,7 +323,6 @@ namespace amr
         void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillCurrentGhosts");
-            // currentSharedNodesRefiners_.fill(J, levelNumber, fillTime);
             currentGhostsRefiners_.fill(J, levelNumber, fillTime);
         }
 
@@ -603,9 +596,6 @@ namespace amr
 
             auto& hybridModel = static_cast<HybridModel&>(model);
 
-            // elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber,
-            //                               initDataTime);
-
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, initDataTime);
 
             // at some point in the future levelGhostParticles could be filled with injected
@@ -654,8 +644,6 @@ namespace amr
 
             PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber))
 
-            // magSharedNodesRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
-            // elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
             // we fill magnetic field ghosts only on patch ghost nodes and not on level
             // ghosts the reason is that 1/ filling ghosts is necessary to prevent mismatch
@@ -681,37 +669,29 @@ namespace amr
 
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            magSharedNodesRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldNodeRefineOp_,
-                                                      makeKeys(info->ghostMagnetic));
-
             magGhostsRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldRefineOp_,
-                                                 makeKeys(info->ghostMagnetic));
+                                                 makeKeys(info->ghostMagnetic),
+                                                 defaultFieldFillPattern);
 
             magPatchGhostsRefiners_.addStaticRefiner(info->modelMagnetic, BfieldRefineOp_,
                                                      info->modelMagnetic.vecName);
 
-            elecSharedNodesRefiners_.addStaticRefiners(info->ghostElectric, EfieldNodeRefineOp_,
-                                                       makeKeys(info->ghostElectric));
-
             elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
-                                                  makeKeys(info->ghostElectric));
-
-            currentSharedNodesRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
-                                                        core::VecFieldNames{Jold_},
-                                                        EfieldNodeRefineOp_, fieldTimeOp_);
+                                                  makeKeys(info->ghostElectric),
+                                                  defaultFieldFillPattern);
 
             currentGhostsRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
                                                    core::VecFieldNames{Jold_}, EfieldRefineOp_,
-                                                   fieldTimeOp_);
+                                                   fieldTimeOp_, defaultFieldFillPattern);
 
             rhoGhostsRefiners_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
                                               NiOld_.name(), fieldRefineOp_, fieldTimeOp_,
-                                              info->modelIonDensity);
+                                              info->modelIonDensity, defaultFieldFillPattern);
 
 
             velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
                                                core::VecFieldNames{ViOld_}, fieldRefineOp_,
-                                               fieldTimeOp_);
+                                               fieldTimeOp_, defaultFieldFillPattern);
         }
 
 
@@ -720,10 +700,12 @@ namespace amr
         void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             magneticInitRefiners_.addStaticRefiners(info->initMagnetic, BfieldRefineOp_,
-                                                    makeKeys(info->initMagnetic));
+                                                    makeKeys(info->initMagnetic),
+                                                    defaultFieldFillPattern);
 
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
-                                                    makeKeys(info->initElectric));
+                                                    makeKeys(info->initElectric),
+                                                    defaultFieldFillPattern);
 
 
             domainParticlesRefiners_.addStaticRefiners(
@@ -1056,13 +1038,13 @@ namespace amr
         // these refiners are used to initialize electromagnetic fields when creating
         // a new level (initLevel) or regridding (regrid)
         using InitRefinerPool            = RefinerPool<rm_t, RefinerType::InitField>;
-        using SharedNodeRefinerPool      = RefinerPool<rm_t, RefinerType::SharedBorder>;
         using GhostRefinerPool           = RefinerPool<rm_t, RefinerType::GhostField>;
         using PatchGhostRefinerPool      = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using InitDomPartRefinerPool     = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
         using PatchGhostPartRefinerPool  = RefinerPool<rm_t, RefinerType::InteriorGhostParticles>;
         using DomainGhostPartRefinerPool = RefinerPool<rm_t, RefinerType::ExteriorGhostParticles>;
         using FieldGhostSumRefinerPool   = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
+        using FieldFillPattern_t         = FieldFillPattern<dimension>;
 
         std::vector<FieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
@@ -1071,16 +1053,13 @@ namespace amr
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 
         //! store communicators for magnetic fields that need ghosts to be filled
-        SharedNodeRefinerPool magSharedNodesRefiners_{resourcesManager_};
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
         PatchGhostRefinerPool magPatchGhostsRefiners_{resourcesManager_};
 
 
         //! store refiners for electric fields that need ghosts to be filled
-        SharedNodeRefinerPool elecSharedNodesRefiners_{resourcesManager_};
         GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
 
-        GhostRefinerPool currentSharedNodesRefiners_{resourcesManager_};
         GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
 
         // moment ghosts
@@ -1122,10 +1101,10 @@ namespace amr
         // see field_variable_fill_pattern.hpp for explanation about this "node_only" flag
         // note that refinement operator, via the boolean argument, serve as a relay for the
         // the refinealgorithm to get the correct variablefillpattern
-        RefOp_ptr BfieldNodeRefineOp_{std::make_shared<MagneticFieldRefineOp>(/*node_only=*/true)};
         RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
-        RefOp_ptr EfieldNodeRefineOp_{std::make_shared<ElectricFieldRefineOp>(/*node_only=*/true)};
         RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
+        std::shared_ptr<FieldFillPattern_t> defaultFieldFillPattern
+            = std::make_shared<FieldFillPattern<dimension>>(); // stateless (mostly)
 
         std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
 
