@@ -5,6 +5,7 @@
 
 #include <array>
 #include <tuple>
+#include <cstdint>
 #include <stdexcept>
 
 
@@ -13,8 +14,8 @@ namespace PHARE::core
 class HybridQuantity
 {
 public:
-    enum class Scalar {
-        Bx, // magnetic field components
+    enum class Scalar : std::uint16_t {
+        Bx = 0, // magnetic field components
         By,
         Bz,
         Ex, // electric field components

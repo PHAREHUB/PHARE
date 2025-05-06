@@ -2,15 +2,12 @@
 #define PHARE_HYBRID_MESSENGER_HPP
 
 
+#include "core/def.hpp"
+#include <core/logger.hpp>
 
-
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
-#include "amr/messengers/mhd_messenger.hpp"
-#include "core/def.hpp"
-
+#include "amr/messengers/hybrid_messenger_strategy.hpp"
 
 
 
@@ -334,6 +331,15 @@ namespace amr
         void syncIonMoments(IonsT& ions) { strat_->syncIonMoments(ions); }
 
 
+        void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
+        {
+            strat_->fillFluxBorders(ions, level, fillTime);
+        }
+
+        void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
+        {
+            strat_->fillDensityBorders(ions, level, fillTime);
+        }
 
         /* -------------------------------------------------------------------------
                             End HybridMessenger Interface
@@ -341,11 +347,11 @@ namespace amr
 
 
 
-
         virtual ~HybridMessenger() = default;
 
+
     private:
-        const std::unique_ptr<stratT> strat_;
+        std::unique_ptr<stratT> const strat_;
     };
 
 

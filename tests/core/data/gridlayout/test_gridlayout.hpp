@@ -1,9 +1,11 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_TEST_GRIDLAYOUT_HPP
 #define TESTS_CORE_DATA_GRIDLAYOUT_TEST_GRIDLAYOUT_HPP
 
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
-#include "core/utilities/types.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include <cstdint>
+#include <type_traits>
 
 
 template<typename GridLayout>
@@ -14,14 +16,30 @@ public:
 
     TestGridLayout() = default;
 
-    TestGridLayout(std::uint32_t cells)
+    TestGridLayout(std::uint32_t const& cells)
         : GridLayout{PHARE::core::ConstArray<double, dim>(1.0 / cells),
                      PHARE::core::ConstArray<std::uint32_t, dim>(cells),
                      PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)}}
     {
     }
 
-    auto static make(std::uint32_t cells) { return TestGridLayout{cells}; }
+
+    TestGridLayout(PHARE::core::Box<int, dim> const& amrbox)
+        : GridLayout{PHARE::core::ConstArray<double, dim>(.1),
+                     amrbox.shape().template toArray<std::uint32_t>(),
+                     PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)},
+                     amrbox}
+    {
+    }
+
+    template<typename... Args>
+    TestGridLayout(Args&&... args)
+        requires(std::is_constructible_v<GridLayout, Args...>)
+        : GridLayout{args...}
+    {
+    }
+
+    auto static make(auto const& cells) { return TestGridLayout{cells}; }
 };
 
 #endif /*TESTS_CORE_DATA_GRIDLAYOUT_TEST_GRIDLAYOUT_HPP*/

@@ -1,12 +1,6 @@
 #ifndef PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 #define PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 
-#include <iterator>
-#include <cstddef>
-#include <numeric>
-#include <stdexcept>
-#include <vector>
-
 #include "core/def/phare_mpi.hpp"
 
 
@@ -25,55 +19,20 @@
 #include "core/data/particles/particle_packer.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
-#include "core/utilities/point/point.hpp"
 
-#include "core/logger.hpp"
 
+#include <amr/data/particles/particles_variable_fill_pattern.hpp>
+#include <tuple>
+#include <typeinfo>
+#include <vector>
+#include <cstddef>
+#include <stdexcept>
 
 
 namespace PHARE
 {
 namespace amr
 {
-
-
-    template<typename Particle>
-    NO_DISCARD inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
-    {
-        constexpr auto dim = Particle::dimension;
-
-        auto const& iCell = particle.iCell;
-
-        auto const& lower = box.lower();
-        auto const& upper = box.upper();
-
-
-        if (iCell[0] >= lower(0) && iCell[0] <= upper(0))
-        {
-            if constexpr (dim > 1)
-            {
-                if (iCell[1] >= lower(1) && iCell[1] <= upper(1))
-                {
-                    if constexpr (dim > 2)
-                    {
-                        if (iCell[2] >= lower(2) && iCell[2] <= upper(2))
-                        {
-                            return true;
-                        }
-                    }
-                    else
-                    {
-                        return true;
-                    }
-                }
-            }
-            else
-            {
-                return true;
-            }
-        }
-        return false;
-    }
 
 
     /** @brief ParticlesData is a concrete SAMRAI::hier::PatchData subclass to store Particle data
@@ -170,7 +129,6 @@ namespace amr
             };
 
             putParticles("domainParticles", domainParticles);
-            putParticles("patchGhostParticles", patchGhostParticles);
             putParticles("levelGhostParticles", levelGhostParticles);
             putParticles("levelGhostParticlesNew", levelGhostParticlesNew);
             putParticles("levelGhostParticlesOld", levelGhostParticlesOld);
@@ -215,7 +173,6 @@ namespace amr
             };
 
             getParticles("domainParticles", domainParticles);
-            getParticles("patchGhostParticles", patchGhostParticles);
             getParticles("levelGhostParticles", levelGhostParticles);
             getParticles("levelGhostParticlesNew", levelGhostParticlesNew);
             getParticles("levelGhostParticlesOld", levelGhostParticlesOld);
@@ -270,13 +227,26 @@ namespace amr
          * the copy must account for the intersection with the boxes within the overlap
          * The copy is done between the source patch data and myself
          */
+
+        template<typename... Args>
+        void copy_from_ghost(Args&&... args);
+
+
         void copy(SAMRAI::hier::PatchData const& source,
                   SAMRAI::hier::BoxOverlap const& overlap) override
         {
             PHARE_LOG_SCOPE(3, "ParticlesData::copy with overlap");
 
             // casts throw on failure
-            auto& pSource  = dynamic_cast<ParticlesData const&>(source);
+            auto& pSource = dynamic_cast<ParticlesData const&>(source);
+
+            if (auto casted = dynamic_cast<ParticlesDomainOverlap const*>(&overlap))
+            {
+                copy_from_ghost(pSource, *casted);
+                return;
+            }
+            // else
+
             auto& pOverlap = dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap);
 
             SAMRAI::hier::Transformation const& transformation = pOverlap.getTransformation();
@@ -303,9 +273,23 @@ namespace amr
 
         std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const override
         {
+            if (auto casted = dynamic_cast<ParticlesDomainOverlap const*>(&overlap))
+            {
+                auto& pOverlap              = *casted;
+                auto& transformation        = pOverlap.getTransformation();
+                auto const& offset          = as_point<dim>(transformation);
+                auto const& noffset         = offset * -1;
+                std::size_t numberParticles = 0;
+                for (auto const& overlapBox : pOverlap.getDestinationBoxContainer())
+                    numberParticles += patchGhostParticles.nbr_particles_in(
+                        shift(phare_box_from<dim>(overlapBox), noffset));
+                return sizeof(std::size_t) + numberParticles * sizeof(Particle_t);
+            }
+            // else
+
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
-            return countNumberParticlesIn_(pOverlap) * sizeof(Particle_t);
+            return sizeof(std::size_t) + countNumberParticlesIn_(pOverlap) * sizeof(Particle_t);
         }
 
 
@@ -316,21 +300,32 @@ namespace amr
          * that lie in the boxes of the given overlap, and pack them to a stream.
          *
          * Streaming particles means that we have to take particles with iCell on a local source
-         * index space , communicate them, and load them at destination with iCell on a destination
-         * local index space. To do that we need to:
+         * index space , communicate them, and load them at destination with iCell on a
+         * destination local index space. To do that we need to:
          *
          * 1- translate source iCell to source AMR index space
          * 2- Apply the offset to shift this AMR index on top of the destination cells
          * 3- pack and communicate particles
-         * 4- move back iCell from the shifted AMR index space to the local destination index space
+         * 4- move back iCell from the shifted AMR index space to the local destination index
+         * space
          *
          * Note that step 2 could be done upon reception of the pack, we chose to do it before.
          *
          */
+
+        template<typename... Args>
+        void pack_from_ghost(Args&&... args) const;
+
         void packStream(SAMRAI::tbox::MessageStream& stream,
                         SAMRAI::hier::BoxOverlap const& overlap) const override
         {
             PHARE_LOG_SCOPE(3, "ParticleData::packStream");
+
+            if (auto casted = dynamic_cast<ParticlesDomainOverlap const*>(&overlap))
+            {
+                pack_from_ghost(stream, *casted);
+                return;
+            }
 
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
@@ -356,21 +351,31 @@ namespace amr
 
 
         /**
-         * @brief unpackStream is the function that unpacks a stream of particles to our particle
-         * arrays.
+         * @brief unpackStream is the function that unpacks a stream of particles to our
+         * particle arrays.
          *
          * We get a stream and an overlap. The overlap contains boxes where to put particles and
          * transformation from source to destination AMR indexes.
          *
-         * By convention chosen in patckStream, packed particles have their iCell in our AMR index
-         * space. This means that before putting them into our local arrays, we need to apply
-         * AMRToLocal() to get the proper shift to apply to them
+         * By convention chosen in patckStream, packed particles have their iCell in our AMR
+         * index space. This means that before putting them into our local arrays, we need to
+         * apply AMRToLocal() to get the proper shift to apply to them
          *
          */
+
+        template<typename... Args>
+        void unpack_from_ghost(Args&&... args);
+
         void unpackStream(SAMRAI::tbox::MessageStream& stream,
                           SAMRAI::hier::BoxOverlap const& overlap) override
         {
             PHARE_LOG_SCOPE(3, "ParticleData::unpackStream");
+
+            if (auto casted = dynamic_cast<ParticlesDomainOverlap const*>(&overlap))
+            {
+                unpack_from_ghost(stream, *casted);
+                return;
+            }
 
             auto const& pOverlap{dynamic_cast<SAMRAI::pdat::CellOverlap const&>(overlap)};
 
@@ -402,8 +407,8 @@ namespace amr
                     {
                         // our goal here is :
                         // 1/ to check if each particle is in the intersect of the overlap boxes
-                        // and our ghostBox 2/ if yes, check if these particles should go within the
-                        // interior array or ghost array
+                        // and our ghostBox 2/ if yes, check if these particles should go within
+                        // the interior array or ghost array
                         auto const intersect = getGhostBox() * overlapBox;
 
                         for (auto const& particle : particleArray)
@@ -446,9 +451,9 @@ namespace amr
 
 
     private:
-        //! interiorLocalBox_ is the box, in local index space, that goes from the first to the last
-        //! cell in our patch physical domain, i.e. "from dual physical start index to dual physical
-        //! end index"
+        //! interiorLocalBox_ is the box, in local index space, that goes from the first to the
+        //! last cell in our patch physical domain, i.e. "from dual physical start index to dual
+        //! physical end index"
         SAMRAI::hier::Box interiorLocalBox_;
         std::string name_;
 
@@ -671,8 +676,93 @@ namespace amr
             }
         }
     };
-} // namespace amr
 
+
+} // namespace amr
 } // namespace PHARE
+
+
+namespace PHARE::amr
+{
+
+template<typename ParticleArray_t>
+template<typename... Args>
+void ParticlesData<ParticleArray_t>::copy_from_ghost(Args&&... args)
+{
+    PHARE_LOG_SCOPE(3, "ParticlesData::copy_from_ghost");
+
+    auto&& [pSource, pOverlap] = std::forward_as_tuple(args...);
+    auto& src_particles        = pSource.patchGhostParticles;
+    auto& dst_particles        = domainParticles;
+    auto const& offset         = as_point<dim>(pOverlap.getTransformation());
+    auto const& noffset        = offset * -1;
+
+    auto const offseter = [&](auto const& particle) {
+        auto shiftedParticle{particle};
+        for (std::size_t idir = 0; idir < dim; ++idir)
+            shiftedParticle.iCell[idir] += offset[idir];
+        return shiftedParticle;
+    };
+    for (auto const& overlapBox : pOverlap.getDestinationBoxContainer())
+        src_particles.export_particles(shift(phare_box_from<dim>(overlapBox), noffset),
+                                       dst_particles, offseter);
+}
+
+
+
+template<typename ParticleArray_t>
+template<typename... Args>
+void ParticlesData<ParticleArray_t>::pack_from_ghost(Args&&... args) const
+{
+    PHARE_LOG_SCOPE(3, "ParticlesData::pack_from_ghost");
+
+    auto&& [stream, pOverlap] = std::forward_as_tuple(args...);
+
+    if (pOverlap.isOverlapEmpty())
+    {
+        constexpr std::size_t zero = 0;
+        stream << zero;
+        return;
+    }
+
+    std::vector<Particle_t> outBuffer;
+    auto& src_particles = patchGhostParticles;
+    auto const& offset  = as_point<dim>(pOverlap.getTransformation());
+    auto const& noffset = offset * -1;
+
+    auto const offseter = [&](auto const& particle) {
+        auto shiftedParticle{particle};
+        for (std::size_t idir = 0; idir < dim; ++idir)
+            shiftedParticle.iCell[idir] += offset[idir];
+        return shiftedParticle;
+    };
+
+    for (auto const& overlapBox : pOverlap.getDestinationBoxContainer())
+        src_particles.export_particles(shift(phare_box_from<dim>(overlapBox), noffset), outBuffer,
+                                       offseter);
+
+    stream << outBuffer.size();
+    stream.growBufferAsNeeded();
+    stream.pack(outBuffer.data(), outBuffer.size());
+}
+
+
+template<typename ParticleArray_t>
+template<typename... Args>
+void ParticlesData<ParticleArray_t>::unpack_from_ghost(Args&&... args)
+{
+    PHARE_LOG_SCOPE(3, "ParticlesData::unpack_from_ghost");
+
+    auto&& [stream, pOverlap]   = std::forward_as_tuple(args...);
+    std::size_t numberParticles = 0;
+    stream >> numberParticles;
+    std::vector<Particle_t> particleArray(numberParticles);
+    stream.unpack(particleArray.data(), numberParticles);
+
+    for (auto const& p : particleArray)
+        domainParticles.push_back(p);
+}
+
+} // namespace PHARE::amr
 
 #endif

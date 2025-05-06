@@ -4,6 +4,7 @@
 #include <string>
 #include <tuple>
 
+#include "core/data/vecfield/vecfield.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "initializer/data_provider.hpp"
@@ -80,6 +81,10 @@ namespace core
     private:
         VecFieldInitializer<dimension> Binit_;
     };
+
+
 } // namespace core
 } // namespace PHARE
+
+
 #endif

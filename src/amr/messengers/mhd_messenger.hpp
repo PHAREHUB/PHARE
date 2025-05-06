@@ -48,7 +48,7 @@ namespace amr
         }
 
 
-        static const std::string stratName;
+        static std::string const stratName;
 
         std::string fineModelName() const override { return MHDModel::model_name; }
 
@@ -77,7 +77,7 @@ namespace amr
 
 
         void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                    const int /*levelNumber*/,
+                    int const /*levelNumber*/,
                     std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
                     IPhysicalModel& /*model*/, double const /*initDataTime*/) override
         {
@@ -85,7 +85,7 @@ namespace amr
 
 
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
                        double const /*currentTime*/, double const /*prevCoarserTIme*/,
                        double const /*newCoarserTime*/) final
         {
@@ -104,7 +104,6 @@ namespace amr
                             double const /*initDataTime*/) final
         {
         }
-
 
 
         void synchronize(SAMRAI::hier::PatchLevel& /*level*/) final
@@ -130,7 +129,7 @@ namespace amr
 
 
     template<typename MHDModel>
-    const std::string MHDMessenger<MHDModel>::stratName = "MHDModel-MHDModel";
+    std::string const MHDMessenger<MHDModel>::stratName = "MHDModel-MHDModel";
 } // namespace amr
 } // namespace PHARE
 #endif

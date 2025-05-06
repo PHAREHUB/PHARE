@@ -43,7 +43,11 @@ namespace core
         NO_DISCARD std::string const& name() const { return name_; }
 
 
-        NO_DISCARD auto const& particleInitializerInfo() const { return particleInitializerInfo_; }
+        NO_DISCARD auto const& particleInitializerInfo() const
+        {
+            assert(particleInitializerInfo_.contains("density"));
+            return particleInitializerInfo_;
+        }
 
 
 

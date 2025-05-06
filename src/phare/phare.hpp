@@ -4,9 +4,12 @@
 
 #include "core/def/phlop.hpp" // scope timing
 
-#include "simulator/simulator.hpp"
-#include "core/utilities/algorithm.hpp"
+#include "amr/wrappers/integrator.hpp"
 #include "core/utilities/mpi_utils.hpp"
+
+#include <SAMRAI/hier/VariableDatabase.h>
+#include <SAMRAI/tbox/RestartManager.h>
+#include <SAMRAI/hier/PatchDataRestartManager.h>
 
 #include <memory>
 #include <iostream>
@@ -17,7 +20,7 @@ class StreamAppender : public SAMRAI::tbox::Logger::Appender
 {
 public:
     StreamAppender(std::ostream* stream) { d_stream = stream; }
-    void logMessage(std::string const& message, std::string const& filename, const int line)
+    void logMessage(std::string const& message, std::string const& filename, int const line)
     {
         (*d_stream) << "At :" << filename << " line :" << line << " message: " << message
                     << std::endl;

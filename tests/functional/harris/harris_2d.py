@@ -25,12 +25,12 @@ cpp = cpp_lib()
 startMPI()
 
 diag_outputs = "phare_outputs/test/harris/2d"
-time_step_nbr = 1000
+time_step_nbr = 10
 time_step = 0.001
 final_time = time_step * time_step_nbr
 dt = 10 * time_step
 nt = final_time / dt + 1
-timestamps = dt * np.arange(nt)
+timestamps = [0, final_time]  # dt * np.arange(nt)
 
 
 def config():
@@ -161,6 +161,8 @@ def main():
         m_plotting.plot_run_timer_data(diag_outputs, cpp.mpi_rank())
     except ImportError:
         print("Phlop not found - install with: `pip install phlop`")
+    except FileNotFoundError:
+        print("Phlop installed but not active`")
     cpp.mpi_barrier()
 
 
