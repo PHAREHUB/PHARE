@@ -674,7 +674,8 @@ namespace amr
                                                  defaultFieldFillPattern);
 
             magPatchGhostsRefiners_.addStaticRefiner(info->modelMagnetic, BfieldRefineOp_,
-                                                     info->modelMagnetic.vecName);
+                                                     info->modelMagnetic.vecName,
+                                                     defaultFieldFillPattern);
 
             elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
                                                   makeKeys(info->ghostElectric),
@@ -700,12 +701,10 @@ namespace amr
         void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             magneticInitRefiners_.addStaticRefiners(info->initMagnetic, BfieldRefineOp_,
-                                                    makeKeys(info->initMagnetic),
-                                                    defaultFieldFillPattern);
+                                                    makeKeys(info->initMagnetic));
 
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
-                                                    makeKeys(info->initElectric),
-                                                    defaultFieldFillPattern);
+                                                    makeKeys(info->initElectric));
 
 
             domainParticlesRefiners_.addStaticRefiners(
