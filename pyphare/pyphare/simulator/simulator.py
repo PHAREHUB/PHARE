@@ -2,15 +2,16 @@
 #
 #
 
-import os
-import datetime
 import atexit
+import datetime
+import os
 import time as timem
+from pathlib import Path
+
 import numpy as np
 import pyphare.pharein as ph
-from pathlib import Path
-from . import monitoring as mon
 
+from . import monitoring as mon
 
 life_cycles = {}
 SIM_MONITOR = os.getenv("PHARE_SIM_MON", "False").lower() in ("true", "1", "t")
@@ -26,13 +27,35 @@ def simulator_shutdown():
     life_cycles.clear()
 
 
-def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
+def make_cpp_simulator(
+    hier,
+    dim,
+    interp,
+    nbrRefinedPart,
+    mhd_timestepper,
+    reconstruction,
+    limiter,
+    riemann,
+    hall,
+    res,
+    hyper_res,
+):
     from pyphare.cpp import cpp_lib
 
     if SCOPE_TIMING:
         mon.timing_setup(cpp_lib())
 
-    make_sim = f"make_simulator_{dim}_{interp}_{nbrRefinedPart}"
+    nbrRefinedPart_suffix = f"_{nbrRefinedPart}" if nbrRefinedPart else ""
+    mhd_timestepper_suffix = f"_{mhd_timestepper}" if mhd_timestepper else ""
+    reconstruction_suffix = f"_{reconstruction}" if reconstruction else ""
+    limiter_suffix = f"_{limiter}" if limiter else ""
+    riemann_suffix = f"_{riemann}" if riemann else ""
+    hall_suffix = "_hall" if hall else ""
+    res_suffix = "_res" if res else ""
+    hyper_res_suffix = "_hyper_res" if hyper_res else ""
+
+    make_sim = f"make_simulator_{dim}_{interp}{nbrRefinedPart_suffix}{mhd_timestepper_suffix}{reconstruction_suffix}{limiter_suffix}{riemann_suffix}{hall_suffix}{res_suffix}{hyper_res_suffix}"
+
     return getattr(cpp_lib(), make_sim)(hier)
 
 
@@ -92,6 +115,7 @@ class Simulator:
         self.cpp_dw = None  # DRAGONS, i.e. use weakrefs if you have to ref these.
         self.post_advance = kwargs.get("post_advance", None)
 
+        self.initialized = False
         self.print_eol = "\n"
         if kwargs.get("print_one_line", True):
             self.print_eol = "\r"
@@ -109,8 +133,8 @@ class Simulator:
     def setup(self):
         # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
         try:
-            from pyphare.cpp import cpp_lib
             import pyphare.cpp.validate as validate_cpp
+            from pyphare.cpp import cpp_lib
 
             startMPI()
 
@@ -124,11 +148,29 @@ class Simulator:
             ph.populateDict()
             self.cpp_hier = cpp_lib().make_hierarchy()
 
+            refined_particle_nbr = getattr(
+                self.simulation, "refined_particle_nbr", False
+            )
+            mhd_timestepper = getattr(self.simulation, "mhd_timestepper", False)
+            reconstruction = getattr(self.simulation, "reconstruction", False)
+            limiter = getattr(self.simulation, "limiter", False)
+            riemann = getattr(self.simulation, "riemann", False)
+            hall = getattr(self.simulation, "hall", False)
+            res = getattr(self.simulation, "res", False)
+            hyper_res = getattr(self.simulation, "hyper_res", False)
+
             self.cpp_sim = make_cpp_simulator(
+                self.cpp_hier,
                 self.simulation.ndim,
                 self.simulation.interp_order,
-                self.simulation.refined_particle_nbr,
-                self.cpp_hier,
+                refined_particle_nbr,
+                mhd_timestepper,
+                reconstruction,
+                limiter,
+                riemann,
+                hall,
+                res,
+                hyper_res,
             )
             return self
         except Exception:
@@ -140,11 +182,9 @@ class Simulator:
             raise ValueError("Error in Simulator.setup(), see previous error")
 
     def initialize(self):
-        if self.cpp_sim is not None:
-            raise ValueError(
-                "Simulator already initialized: requires reset to re-initialize"
-            )
         try:
+            if self.initialized:
+                return
             if self.cpp_hier is None:
                 self.setup()
 
@@ -152,6 +192,7 @@ class Simulator:
                 return self
 
             self.cpp_sim.initialize()
+            self.initialized = True
             self._auto_dump()  # first dump might be before first advance
 
             return self
@@ -289,7 +330,7 @@ class Simulator:
         return self.cpp_sim.interp_order  # constexpr static value
 
     def _check_init(self):
-        if self.cpp_sim is None:
+        if not self.initialized:
             self.initialize()
 
     def _log_to_file(self):

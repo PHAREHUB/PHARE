@@ -15,11 +15,17 @@ public:
     {
     }
 
-    void operator()(auto layouts, auto& state, auto& fluxes, auto& bc, auto& level,
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, auto& level,
                     double const currentTime, double const newTime)
     {
-        euler_(layouts, state, state, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state, fluxes, bc, level, currentTime, newTime);
     }
+
+    void registerResources(MHDModel& model) {}
+
+    void allocate(MHDModel& model, auto& patch, double const allocateTime) const {}
+
+    void fillMessengerInfo(auto& info) const {}
 
 private:
     Euler<FVMethodStrategy, MHDModel> euler_;
