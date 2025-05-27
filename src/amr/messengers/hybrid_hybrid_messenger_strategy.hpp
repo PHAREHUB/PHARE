@@ -6,6 +6,7 @@
 
 #include "SAMRAI/hier/CoarseFineBoundary.h"
 #include "SAMRAI/hier/IntVector.h"
+#include "core/utilities/index/index.hpp"
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
@@ -251,10 +252,122 @@ namespace amr
 
             // here we create the schedule on the fly because it is the only moment where we have
             // both the old and current level
-            auto magSchedule
-                = Balgo.createSchedule(level, oldLevel, level->getNextCoarserHierarchyLevelNumber(),
-                                       hierarchy, &magneticRefinePatchStrategy_);
+
+            for (auto& patch : *level)
+            {
+                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
+                auto _  = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
+                auto& B = hybridModel.state.electromag.B;
+                auto setToNaN = [&](auto& B, core::MeshIndex<dimension> idx) {
+                    B(idx) = std::numeric_limits<double>::quiet_NaN();
+                };
+
+                layout.evalOnGhostBox(B(core::Component::X), [&](auto&... args) mutable {
+                    setToNaN(B(core::Component::X), {args...});
+                });
+                layout.evalOnGhostBox(B(core::Component::Y), [&](auto&... args) mutable {
+                    setToNaN(B(core::Component::Y), {args...});
+                });
+                layout.evalOnGhostBox(B(core::Component::Z), [&](auto&... args) mutable {
+                    setToNaN(B(core::Component::Z), {args...});
+                });
+            }
+
+            auto magSchedule = Balgo.createSchedule(
+                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
             magSchedule->fillData(initDataTime);
+
+            for (auto& patch : *level)
+            {
+                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
+                auto _   = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
+                auto& B  = hybridModel.state.electromag.B;
+                auto& bx = B(core::Component::X);
+                auto& by = B(core::Component::Y);
+
+                auto p_plus  = [](auto const i, auto const offset) { return i + 2 - offset; };
+                auto p_minus = [](auto const i, auto const offset) { return i - offset; };
+
+                auto d_plus  = [](auto const i, auto const offset) { return i + 1 - offset; };
+                auto d_minus = [](auto const i, auto const offset) { return i - offset; };
+
+                if constexpr (dimension == 1)
+                {
+                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        if (std::isnan(bx(ix)))
+                        {
+                            if (ix % 2 == 1)
+                            {
+                                bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
+                            }
+                        }
+                    };
+
+                    layout.evalOnGhostBox(B(core::Component::X),
+                                          [&](auto&... args) mutable { postprocessBx({args...}); });
+                }
+                else if constexpr (dimension == 2)
+                {
+                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        auto iy = idx[dirY];
+                        //                            | <- here with offset = 1
+                        //                          -- --
+                        //                            | <- or here with offset = 0
+                        if (std::isnan(bx(ix, iy)))
+                        {
+                            if (ix % 2 == 1)
+                            {
+                                // If dual no offset, ie primal for the field we are actually
+                                // modifying, but dual for the field we are indexing to compute
+                                // second and third order terms, then the formula reduces to
+                                // offset = 1
+                                int xoffset = 1;
+                                int yoffset = (iy % 2 == 0) ? 0 : 1;
+
+                                bx(ix, iy)
+                                    = 0.5 * (bx(ix - 1, iy) + bx(ix + 1, iy))
+                                      + 0.25
+                                            * (by(d_minus(ix, xoffset), p_minus(iy, yoffset))
+                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset))
+                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset))
+                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset)));
+                            }
+                        }
+                    };
+
+                    auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        auto iy = idx[dirY];
+                        //                            |
+                        //  here with offset = 0 -> -- -- <- or here with offset = 1
+                        //                            |
+                        if (std::isnan(by(ix, iy)))
+                        {
+                            if (iy % 2 == 1)
+                            {
+                                int xoffset = (ix % 2 == 0) ? 0 : 1;
+                                int yoffset = 1;
+
+                                by(ix, iy)
+                                    = 0.5 * (by(ix, iy - 1) + by(ix, iy + 1))
+                                      + 0.25
+                                            * (bx(p_minus(ix, xoffset), d_minus(iy, yoffset))
+                                               - bx(p_plus(ix, xoffset), d_minus(iy, yoffset))
+                                               - bx(p_minus(ix, xoffset), d_plus(iy, yoffset))
+                                               + bx(p_plus(ix, xoffset), d_plus(iy, yoffset)));
+                            }
+                        }
+                    };
+
+                    layout.evalOnGhostBox(B(core::Component::X),
+                                          [&](auto&... args) mutable { postprocessBx({args...}); });
+
+                    layout.evalOnGhostBox(B(core::Component::Y),
+                                          [&](auto&... args) mutable { postprocessBy({args...}); });
+                }
+            }
             // magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -275,7 +388,6 @@ namespace amr
                 auto& B = hybridModel.state.electromag.B;
                 auto& E = hybridModel.state.electromag.E;
                 // magSharedNodesRefiners_.fill(B, levelNumber, initDataTime);
-                magGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
                 // magGhostsRefiners_.fill(B, levelNumber, initDataTime);
                 // elecSharedNodesRefiners_.fill(E, levelNumber, initDataTime);
                 elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
@@ -674,7 +786,8 @@ namespace amr
                                std::back_inserter(keys), [](auto const& d) { return d.vecName; });
                 return keys;
             };
-            // magSharedNodesRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldNodeRefineOp_,
+            // magSharedNodesRefiners_.addStaticRefiners(info->ghostMagnetic,
+            // BfieldNodeRefineOp_,
             //                                           makeKeys(info->ghostMagnetic));
             //
             // magGhostsRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldRefineOp_,

@@ -147,13 +147,6 @@ public:
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
                         = coarseField(ix, iy, iz);
                 }
-                else
-                {
-                    // we're on a fine X face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix + 1, iy, iz));
-                }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
                      and centerings_[dirY] == core::QtyCentering::primal
@@ -167,13 +160,6 @@ public:
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
                         = coarseField(ix, iy, iz);
                 }
-                else
-                {
-                    // we're on a fine Y face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy + 1, iz));
-                }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
                      and centerings_[dirY] == core::QtyCentering::dual
@@ -186,13 +172,6 @@ public:
                     // take the coarse face value
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
                         = coarseField(ix, iy, iz);
-                }
-                else
-                {
-                    // we're on a fine Z face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy, iz + 1));
                 }
             }
         }

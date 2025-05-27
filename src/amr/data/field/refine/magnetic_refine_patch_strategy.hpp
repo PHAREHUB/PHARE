@@ -1,9 +1,11 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
-#include "SAMRAI/xfer/RefinePatchStrategy.h"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "SAMRAI/xfer/RefinePatchStrategy.h"
 #include "core/utilities/constants.hpp"
+
+#include <iostream>
 
 namespace PHARE::amr
 {
@@ -52,10 +54,15 @@ public:
         int iStartX = fine_box.lower(dirX);
         int iEndX   = fine_box.upper(dirX);
 
+        auto layout = PHARE::amr::layoutFromPatch<typename FieldDataT::gridlayout_type>(fine);
+
         if constexpr (FieldDataT::dimension == 1)
         {
-            for (int ix = iStartX; ix <= iEndX; ++ix)
+            for (int amrix = iStartX; amrix <= iEndX; ++amrix)
             {
+                auto i  = layout.AMRToLocal(core::Point{amrix});
+                auto ix = i[dirX];
+
                 if (ix % 2 == 1)
                     bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
             }
@@ -74,10 +81,13 @@ public:
 
             if constexpr (FieldDataT::dimension == 2)
             {
-                for (int ix = iStartX; ix <= iEndX; ++ix)
+                for (int amrix = iStartX; amrix <= iEndX; ++amrix)
                 {
-                    for (int iy = iStartY; iy <= iEndY; ++iy)
+                    for (int amriy = iStartY; amriy <= iEndY; ++amriy)
                     {
+                        auto i  = layout.AMRToLocal(core::Point{amrix, amriy});
+                        auto ix = i[dirX];
+                        auto iy = i[dirY];
                         //                            | <- here with offset = 1
                         //                          -- --
                         //                            | <- or here with offset = 0
@@ -120,18 +130,21 @@ public:
                 int iStartZ = fine_box.lower(dirZ);
                 int iEndZ   = fine_box.upper(dirZ);
 
-                auto layout = PHARE::amr::layoutFromPatch<FieldDataT::gridlayout_type>(fine);
-
                 auto Dx = layout.meshSize()[dirX];
                 auto Dy = layout.meshSize()[dirY];
                 auto Dz = layout.meshSize()[dirZ];
 
-                for (int ix = iStartX; ix <= iEndX; ++ix)
+                for (int amrix = iStartX; amrix <= iEndX; ++amrix)
                 {
-                    for (int iy = iStartY; iy <= iEndY; ++iy)
+                    for (int amriy = iStartY; amriy <= iEndY; ++amriy)
                     {
-                        for (int iz = iStartZ; iz <= iEndZ; ++iz)
+                        for (int amriz = iStartZ; amriz <= iEndZ; ++amriz)
                         {
+                            auto i  = layout.AMRToLocal(core::Point{amrix, amriy, amriz});
+                            auto ix = i[dirX];
+                            auto iy = i[dirY];
+                            auto iz = i[dirZ];
+
                             // Toth and Roe (2002) use a formulation we the indexing is centered
                             // on the coarse cell. Since this is not our case, we need to have a
                             // different offset for indexing and applying the +-1 factor to the
@@ -144,7 +157,6 @@ public:
                                 int xoffset = 1;
                                 int yoffset = (iy % 2 == 0) ? 0 : 1;
                                 int zoffset = (iz % 2 == 0) ? 0 : 1;
-
 
                                 bx(ix, iy, iz)
                                     = 0.5 * (bx(ix - 1, iy, iz) + bx(ix + 1, iy, iz))
@@ -307,7 +319,7 @@ public:
                                 int zoffset = 1;
 
                                 bz(ix, iy, iz)
-                                    = 0.5 * (bz(ix, iy, iz - 1) + bz(ix, iy, iz - 1))
+                                    = 0.5 * (bz(ix, iy, iz - 1) + bz(ix, iy, iz + 1))
                                       + 0.125
                                             * (bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
                                                   d_minus(iz, zoffset))
