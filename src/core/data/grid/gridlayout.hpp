@@ -1323,7 +1323,14 @@ namespace core
          */
         NO_DISCARD std::uint32_t constexpr static nbrDualGhosts_()
         {
-            return (interp_order + 1) / 2 + nbrParticleGhosts();
+            if constexpr (((interp_order + 1) / 2 + nbrParticleGhosts()) % 2 != 0)
+            {
+                return (interp_order + 1) / 2 + nbrParticleGhosts() + 1;
+            }
+            else
+            {
+                return (interp_order + 1) / 2 + nbrParticleGhosts();
+            }
         }
 
 
