@@ -628,7 +628,7 @@ namespace core
          * on the dimensionality of the GridLayout.
          */
         template<auto direction, typename Field>
-        NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index)
+        NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index) const
         {
             auto fieldCentering = centering(operand.physicalQuantity());
             using PHARE::core::dirX;
@@ -695,7 +695,7 @@ namespace core
          * on the dimensionality of the GridLayout.
          */
         template<typename Field>
-        NO_DISCARD auto laplacian(Field const& operand, MeshIndex<Field::dimension> index)
+        NO_DISCARD auto laplacian(Field const& operand, MeshIndex<Field::dimension> index) const
         {
             static_assert(Field::dimension == dimension,
                           "field dimension must be equal to gridlayout dimension");
