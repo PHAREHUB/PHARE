@@ -12,8 +12,8 @@
 
 namespace PHARE::core
 {
-std::size_t static constexpr cells = 3;
-std::size_t static constexpr ppc   = 10;
+std::uint32_t static constexpr cells = 3;
+std::size_t static constexpr ppc     = 10;
 
 
 template<std::size_t dim, typename ICell>

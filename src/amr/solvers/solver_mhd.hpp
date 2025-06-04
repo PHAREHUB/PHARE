@@ -45,11 +45,12 @@ namespace solver
         void advanceLevel(hierarchy_t const& /*hierarchy*/, int const /*levelNumber*/,
                           ISolverModelView& /*view*/,
                           amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
-                          const double /*currentTime*/, const double /*newTime*/) override
+                          double const /*currentTime*/, double const /*newTime*/) override
         {
         }
 
-        std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&) override
+        std::shared_ptr<ISolverModelView> make_view(hierarchy_t const& hierarchy, level_t&,
+                                                    IPhysicalModel<AMR_Types>&) override
         {
             throw std::runtime_error("Not implemented in mhd solver");
             return nullptr;

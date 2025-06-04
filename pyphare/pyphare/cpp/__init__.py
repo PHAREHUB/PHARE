@@ -22,7 +22,7 @@ def cpp_lib(override=None):
         return importlib.import_module("pybindlibs.cpp")
     try:
         return importlib.import_module("pybindlibs.cpp_dbg")
-    except ImportError:
+    except (ImportError, ModuleNotFoundError):
         return importlib.import_module("pybindlibs.cpp")
 
 

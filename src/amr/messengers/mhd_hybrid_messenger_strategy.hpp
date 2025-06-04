@@ -19,7 +19,7 @@ namespace amr
         using IPhysicalModel = typename HybridModel::Interface;
 
     public:
-        static const std::string stratName;
+        static std::string const stratName;
 
         MHDHybridMessengerStrategy(
             std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager,
@@ -66,7 +66,7 @@ namespace amr
         }
 
         void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                    const int /*levelNumber*/,
+                    int const /*levelNumber*/,
                     std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
                     IPhysicalModel& /*model*/, double const /*initDataTime*/) override
         {
@@ -108,8 +108,20 @@ namespace amr
         {
         }
 
+
+        void fillFluxBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                             double const /*fillTime*/) override
+        {
+            // strat_->fillFluxBorders(ions, level, fillTime);
+        }
+        void fillDensityBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                                double const /*fillTime*/) override
+        {
+            // strat_->fillDensityBorders(ions, level, fillTime);
+        }
+
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
                        double const /*currentTime*/, double const /*prevCoarserTime*/,
                        double const /*newCoarserTime*/) override
         {
@@ -147,7 +159,7 @@ namespace amr
     };
 
     template<typename MHDModel, typename HybridModel>
-    const std::string MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName
+    std::string const MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName
         = "MHDModel-HybridModel";
 
 } // namespace amr

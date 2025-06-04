@@ -393,7 +393,7 @@ protected:
                 return std::forward_as_tuple(primal_startIndex_, primal_weights_);
         }();
 
-        auto iCell = layout.AMRToLocal(Point{iCell_});
+        auto const iCell = layout.AMRToLocal(Point{iCell_});
         for (auto iDim = 0u; iDim < dimension; ++iDim)
         {
             startIndex_[iDim]

@@ -79,8 +79,7 @@ namespace solver
                 }
             }
 
-            // now all particles are here
-            // we must compute moments.
+            // now all particles are here, we must compute moments.
 
             for (auto& patch : level)
             {
@@ -91,7 +90,18 @@ namespace solver
 
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
-                core::depositParticles(ions, layout, interpolate_, core::PatchGhostDeposit{});
+            }
+
+            hybMessenger.fillFluxBorders(hybridModel.state.ions, level, initDataTime);
+            hybMessenger.fillDensityBorders(hybridModel.state.ions, level, initDataTime);
+
+
+            for (auto& patch : level)
+            {
+                auto& ions             = hybridModel.state.ions;
+                auto& resourcesManager = hybridModel.resourcesManager;
+                auto dataOnPatch       = resourcesManager->setOnPatch(*patch, ions);
+                auto layout            = amr::layoutFromPatch<GridLayoutT>(*patch);
 
                 if (!isRootLevel(levelNumber))
                 {

@@ -20,9 +20,10 @@ namespace core
     protected:
         static auto constexpr dimension = GridLayout::dimension;
 
-        using ParticleSelector = std::function<ParticleRange(ParticleRange&)>;
 
     public:
+        using ParticleSelector = std::function<ParticleRange(ParticleRange&)>;
+
         // TODO : to really be independant on boris which has 2 push steps
         // we should have an arbitrary number of selectors, 1 per push step
         virtual ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,

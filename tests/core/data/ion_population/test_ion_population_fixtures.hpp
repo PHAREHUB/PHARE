@@ -37,23 +37,29 @@ public:
     using IonPopulation_t = IonPopulation<ParticleArray_t, VecField_t, TensorField_t>;
 };
 
+auto inline pop_dict(std::string const& name, std::size_t const ppc = 0)
+{
+    initializer::PHAREDict popdict;
+    popdict["name"]                           = name;
+    popdict["mass"]                           = 1.0;
+    auto particle_initializer                 = initializer::PHAREDict{};
+    particle_initializer["nbr_part_per_cell"] = static_cast<int>(ppc);
+    particle_initializer["charge"]            = 1.;
+    particle_initializer["basis"]             = std::string{"cartesian"};
+    popdict["particle_initializer"]           = particle_initializer;
+    return popdict;
+}
 
 template<typename _defaults>
 class UsableIonsPopulation : public _defaults::IonPopulation_t
 {
-    using GridLayout_t    = typename _defaults::GridLayout_t;
-    using VecField_t      = typename _defaults::VecField_t;
-    using TensorField_t   = typename _defaults::TensorField_t;
-    using ParticleArray_t = typename _defaults::ParticleArray_t;
+    using GridLayout_t    = _defaults::GridLayout_t;
+    using VecField_t      = _defaults::VecField_t;
+    using TensorField_t   = _defaults::TensorField_t;
+    using ParticleArray_t = _defaults::ParticleArray_t;
     using Super           = IonPopulation<ParticleArray_t, VecField_t, TensorField_t>;
 
-public:
-    UsableIonsPopulation(initializer::PHAREDict const& dict, GridLayout_t const& layout)
-        : Super{dict}
-        , rho{this->name() + "_rho", layout, HybridQuantity::Scalar::rho}
-        , F{this->name() + "_flux", layout, HybridQuantity::Vector::V}
-        , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , particles{this->name(), layout.AMRBox()}
+    void set()
     {
         auto&& [_F, _M, _d, _particles] = Super::getCompileTimeResourcesViewList();
         F.set_on(_F);
@@ -62,15 +68,36 @@ public:
         _particles.setBuffer(&particles.pack());
     }
 
+public:
+    UsableIonsPopulation(initializer::PHAREDict const& dict, GridLayout_t const& layout)
+        : Super{dict}
+        , rho{this->name() + "_rho", layout, HybridQuantity::Scalar::rho}
+        , F{this->name() + "_flux", layout, HybridQuantity::Vector::V}
+        , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
+        , particles{this->name(), grow(layout.AMRBox(), GridLayout_t::nbrParticleGhosts() + 1)}
+    {
+        set();
+    }
+
+    UsableIonsPopulation(UsableIonsPopulation const& that)
+        : Super{pop_dict(that.name())}
+        , rho{that.rho}
+        , F{that.F}
+        , M{that.M}
+        , particles{that.particles}
+    {
+        set();
+    }
+
 
     Super& view() { return *this; }
     Super const& view() const { return *this; }
     auto& operator*() { return view(); }
     auto& operator*() const { return view(); }
 
-    typename _defaults::Grid_t rho;
-    typename _defaults::UsableVecField_t F;
-    typename _defaults::UsableTensorField_t M;
+    _defaults::Grid_t rho;
+    _defaults::UsableVecField_t F;
+    _defaults::UsableTensorField_t M;
     UsableParticlesPopulation<ParticleArray_t> particles;
 };
 
@@ -79,50 +106,77 @@ template<typename _defaults>
 class UsableIons
     : public Ions<typename _defaults::IonPopulation_t, typename _defaults::GridLayout_t>
 {
-    using GridLayout_t = typename _defaults::GridLayout_t;
+    using GridLayout_t = _defaults::GridLayout_t;
     using Super        = Ions<typename _defaults::IonPopulation_t, GridLayout_t>;
 
-    auto static pop_dict(std::string name)
-    {
-        initializer::PHAREDict popdict;
-        popdict["name"]                 = name;
-        popdict["mass"]                 = 1.0;
-        popdict["particle_initializer"] = initializer::PHAREDict{};
-        return popdict;
-    }
+
 
     template<typename PopNames>
-    auto static super(PopNames const& pop_names)
+    auto static super(PopNames const& pop_names, std::size_t const ppc)
     {
         initializer::PHAREDict dict;
         dict["nbrPopulations"] = pop_names.size();
         for (std::size_t i = 0; i < pop_names.size(); ++i)
-            dict["pop" + std::to_string(i)] = pop_dict(pop_names[i]);
+            dict["pop" + std::to_string(i)] = pop_dict(pop_names[i], ppc);
         return dict;
     }
 
-public:
-    UsableIons(GridLayout_t const& layout, std::vector<std::string> const& pop_names)
-        : Super{super(pop_names)}
-        , rho{"rho", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)}
-        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
+
+    auto static super(Super const supe)
+    {
+        initializer::PHAREDict dict;
+        dict["nbrPopulations"] = supe.size();
+        for (std::size_t i = 0; i < supe.size(); ++i)
+            dict["pop" + std::to_string(i)] = pop_dict(supe[i].name());
+        return dict;
+    }
+
+    void set()
     {
         auto&& [_bV, _M, _d, _md] = Super::getCompileTimeResourcesViewList();
         Vi.set_on(_bV);
         M.set_on(_M);
         _d.setBuffer(&rho);
 
-        for (std::size_t i = 0; i < pop_names.size(); ++i)
-            populations.emplace_back(pop_dict(pop_names[i]), layout);
-        Super::getRunTimeResourcesViewList().clear();
+        auto& super_pops = Super::getRunTimeResourcesViewList();
+        super_pops.clear();
         for (auto& pop : populations)
-            Super::getRunTimeResourcesViewList().emplace_back(*pop);
+            super_pops.emplace_back(*pop);
     }
 
-    UsableIons(GridLayout_t const& layout, std::string const& pop_name)
-        : UsableIons{layout, std::vector<std::string>{pop_name}}
+public:
+    UsableIons(GridLayout_t const& layout, initializer::PHAREDict const& dict)
+        : Super{dict}
+        , rho{"rho", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)}
+        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
     {
+        auto& super_pops = Super::getRunTimeResourcesViewList();
+        populations.reserve(super_pops.size());
+        for (std::size_t i = 0; i < super_pops.size(); ++i)
+            populations.emplace_back(dict["pop" + std::to_string(i)], layout);
+        set();
+    }
+
+    UsableIons(GridLayout_t const& layout, std::vector<std::string> const& pop_names,
+               std::size_t const ppc = 0)
+        : UsableIons{layout, super(pop_names, ppc)}
+    {
+    }
+
+    UsableIons(GridLayout_t const& layout, std::string const& pop_name, std::size_t const ppc = 0)
+        : UsableIons{layout, std::vector<std::string>{pop_name}, ppc}
+    {
+    }
+
+    UsableIons(UsableIons const& that)
+        : Super(super(*that))
+        , rho{that.rho}
+        , Vi{that.Vi}
+        , M{that.M}
+        , populations{that.populations}
+    {
+        set();
     }
 
     Super& view() { return *this; }
@@ -130,9 +184,9 @@ public:
     auto& operator*() { return view(); }
     auto& operator*() const { return view(); }
 
-    typename _defaults::Grid_t rho;
-    typename _defaults::UsableVecField_t Vi;
-    typename _defaults::UsableTensorField_t M;
+    _defaults::Grid_t rho;
+    _defaults::UsableVecField_t Vi;
+    _defaults::UsableTensorField_t M;
     std::vector<UsableIonsPopulation<_defaults>> populations;
 };
 

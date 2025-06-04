@@ -6,30 +6,23 @@
 
 #include "core/def.hpp"
 #include "amr/data/field/field_data.hpp"
-#include "amr/data/field/field_geometry.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "field_linear_refine.hpp"
-#include "field_refiner.hpp"
 
-#include <SAMRAI/hier/RefineOperator.h>
+#include "field_linear_refine.hpp"
+
 #include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/hier/RefineOperator.h>
+
 
 #include <cstddef>
-#include <string>
 
 
 namespace PHARE::amr
 {
-class AFieldRefineOperator
+class AFieldRefineOperator // castable templateless identifier
 {
 public:
-    AFieldRefineOperator(bool b)
-        : node_only{b}
-    {
-    }
+    AFieldRefineOperator() {}
     virtual ~AFieldRefineOperator() {}
-
-    bool const node_only = false;
 };
 
 
@@ -48,7 +41,7 @@ public:
 
     FieldRefineOperator(bool node_only = false)
         : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
-        , AFieldRefineOperator{node_only}
+        , AFieldRefineOperator{}
     {
     }
 
