@@ -73,6 +73,7 @@ namespace amr
         using VecFieldT         = typename HybridModel::vecfield_type;
         using GridLayoutT       = typename HybridModel::gridlayout_type;
         using FieldT            = typename VecFieldT::field_type;
+        using FieldDataT        = FieldData<GridLayoutT, GridT>;
         using ResourcesManagerT = typename HybridModel::resources_manager_type;
         using IPhysicalModel    = typename HybridModel::Interface;
 
@@ -189,13 +190,13 @@ namespace amr
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
             magSharedNodeRefineSchedules[levelNumber]
-                = BalgoNode.createSchedule(level, &magneticRefinePatchStrategy_);
+                = BalgoNode.createSchedule(level, &magneticRefinePatchStrategy);
 
             magPatchGhostsRefineSchedules[levelNumber]
-                = Balgo.createSchedule(level, &magneticRefinePatchStrategy_);
+                = Balgo.createSchedule(level, &magneticRefinePatchStrategy);
 
             magGhostsRefineSchedules[levelNumber] = Balgo.createSchedule(
-                level, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
+                level, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy);
 
             // magSharedNodesRefiners_.registerLevel(hierarchy, level);
             elecSharedNodesRefiners_.registerLevel(hierarchy, level);
@@ -218,7 +219,7 @@ namespace amr
             if (levelNumber != rootLevelNumber)
             {
                 magInitRefineSchedules[levelNumber] = Balgo.createSchedule(
-                    level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
+                    level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy);
                 // those are for refinement
                 // magneticInitRefiners_.registerLevel(hierarchy, level);
                 electricInitRefiners_.registerLevel(hierarchy, level);
@@ -250,7 +251,14 @@ namespace amr
 
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
-            magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
+            MagneticRefinePatchStrategy<ResourcesManagerT, FieldDataT> magneticRegridPatchStrategy{
+                *resourcesManager_, make_optional(oldLevel)};
+
+            auto magSchedule
+                = Balgo.createSchedule(level, oldLevel, level->getNextCoarserHierarchyLevelNumber(),
+                                       hierarchy, &magneticRegridPatchStrategy);
+            magSchedule->fillData(initDataTime);
+
             // magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -322,6 +330,7 @@ namespace amr
                        double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
+
 
             magInitRefineSchedules[levelNumber]->fillData(initDataTime);
             // magneticInitRefiners_.fill(levelNumber, initDataTime);
@@ -790,421 +799,6 @@ namespace amr
 
 
 
-        void magneticRegriding_(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
-                                std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                                HybridModel& hybridModel, double const initDataTime)
-        {
-            // first we set all B ghost nodes to NaN so that we can later
-            // postprocess them and fill them with the correct value
-            for (auto& patch : *level)
-            {
-                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
-                auto _  = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
-                auto& B = hybridModel.state.electromag.B;
-                auto setToNaN = [&](auto& B, core::MeshIndex<dimension> idx) {
-                    B(idx) = std::numeric_limits<double>::quiet_NaN();
-                };
-
-                layout.evalOnGhostBox(B(core::Component::X), [&](auto&... args) mutable {
-                    setToNaN(B(core::Component::X), {args...});
-                });
-                layout.evalOnGhostBox(B(core::Component::Y), [&](auto&... args) mutable {
-                    setToNaN(B(core::Component::Y), {args...});
-                });
-                layout.evalOnGhostBox(B(core::Component::Z), [&](auto&... args) mutable {
-                    setToNaN(B(core::Component::Z), {args...});
-                });
-            }
-
-            // here we create the schedule on the fly because it is the only moment where we
-            // have both the old and current level
-
-            auto magSchedule = Balgo.createSchedule(
-                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
-            magSchedule->fillData(initDataTime);
-
-            // we set the new fine faces using the toth and roe (2002) formulas. This requires
-            // an even number of ghost cells as we set the new fine faces using the values of
-            // the fine faces shared with the corresponding coarse faces of the coarse cell.
-            for (auto& patch : *level)
-            {
-                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
-                auto _   = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
-                auto& B  = hybridModel.state.electromag.B;
-                auto& bx = B(core::Component::X);
-                auto& by = B(core::Component::Y);
-
-                auto p_plus  = [](auto const i, auto const offset) { return i + 2 - offset; };
-                auto p_minus = [](auto const i, auto const offset) { return i - offset; };
-
-                auto d_plus  = [](auto const i, auto const offset) { return i + 1 - offset; };
-                auto d_minus = [](auto const i, auto const offset) { return i - offset; };
-
-                if constexpr (dimension == 1)
-                {
-                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        if (std::isnan(bx(ix)))
-                        {
-                            if (ix % 2 == 1)
-                            {
-                                bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
-                            }
-                        }
-                    };
-
-                    layout.evalOnGhostBox(B(core::Component::X),
-                                          [&](auto&... args) mutable { postprocessBx({args...}); });
-                }
-                else if constexpr (dimension == 2)
-                {
-                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        //                            | <- here with offset = 1
-                        //                          -- --
-                        //                            | <- or here with offset = 0
-                        if (std::isnan(bx(ix, iy)))
-                        {
-                            if (ix % 2 == 1)
-                            {
-                                // If dual no offset, ie primal for the field we are actually
-                                // modifying, but dual for the field we are indexing to compute
-                                // second and third order terms, then the formula reduces to
-                                // offset = 1
-                                int xoffset = 1;
-                                int yoffset = (iy % 2 == 0) ? 0 : 1;
-
-                                bx(ix, iy)
-                                    = 0.5 * (bx(ix - 1, iy) + bx(ix + 1, iy))
-                                      + 0.25
-                                            * (by(d_minus(ix, xoffset), p_minus(iy, yoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset)));
-                            }
-                        }
-                    };
-
-                    auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        //                            |
-                        //  here with offset = 0 -> -- -- <- or here with offset = 1
-                        //                            |
-                        if (std::isnan(by(ix, iy)))
-                        {
-                            if (iy % 2 == 1)
-                            {
-                                int xoffset = (ix % 2 == 0) ? 0 : 1;
-                                int yoffset = 1;
-
-                                by(ix, iy)
-                                    = 0.5 * (by(ix, iy - 1) + by(ix, iy + 1))
-                                      + 0.25
-                                            * (bx(p_minus(ix, xoffset), d_minus(iy, yoffset))
-                                               - bx(p_plus(ix, xoffset), d_minus(iy, yoffset))
-                                               - bx(p_minus(ix, xoffset), d_plus(iy, yoffset))
-                                               + bx(p_plus(ix, xoffset), d_plus(iy, yoffset)));
-                            }
-                        }
-                    };
-
-                    layout.evalOnGhostBox(B(core::Component::X),
-                                          [&](auto&... args) mutable { postprocessBx({args...}); });
-
-                    layout.evalOnGhostBox(B(core::Component::Y),
-                                          [&](auto&... args) mutable { postprocessBy({args...}); });
-                }
-                else if constexpr (dimension == 3)
-                {
-                    auto Dx = layout.meshSize()[dirX];
-                    auto Dy = layout.meshSize()[dirY];
-                    auto Dz = layout.meshSize()[dirZ];
-
-                    auto ijk_factor = [](auto const offset) { return offset == 0 ? -1 : 1; };
-
-                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        auto iz = idx[dirZ];
-
-                        if (std::isnan(bx(ix, iy, iz)))
-                        {
-                            if (ix % 2 == 1)
-                            {
-                                int xoffset = 1;
-                                int yoffset = (iy % 2 == 0) ? 0 : 1;
-                                int zoffset = (iz % 2 == 0) ? 0 : 1;
-
-                                bx(ix, iy, iz)
-                                    = 0.5 * (bx(ix - 1, iy, iz) + bx(ix + 1, iy, iz))
-                                      + 0.125
-                                            * (by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + 0.125
-                                            * (bz(d_minus(ix, xoffset), d_minus(iy, yoffset),
-                                                  p_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_minus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), d_minus(iy, yoffset),
-                                                    p_minus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_minus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), d_minus(iy, yoffset),
-                                                    p_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_plus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), d_minus(iy, yoffset),
-                                                    p_plus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_plus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(zoffset) * Dz * Dz
-                                         / (Dx * Dx + Dz * Dz))
-                                            * (by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(yoffset) * Dy * Dy
-                                         / (Dx * Dx + Dy * Dy))
-                                            * (bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)));
-                            }
-                        }
-                    };
-
-                    auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        auto iz = idx[dirZ];
-
-                        if (std::isnan(by(ix, iy, iz)))
-                        {
-                            if (iy % 2 == 1)
-                            {
-                                int xoffset = (ix % 2 == 0) ? 0 : 1;
-                                int yoffset = 1;
-                                int zoffset = (iz % 2 == 0) ? 0 : 1;
-
-                                by(ix, iy, iz)
-                                    = 0.5 * (by(ix, iy - 1, iz) + by(ix, iy + 1, iz))
-                                      + 0.125
-                                            * (bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + 0.125
-                                            * (bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(xoffset) * Dx * Dx
-                                         / (Dx * Dx + Dy * Dy))
-                                            * (bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(zoffset) * Dz * Dz
-                                         / (Dy * Dy + Dz * Dz))
-                                            * (bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)));
-                            }
-                        }
-                    };
-
-                    auto postprocessBz = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        auto iz = idx[dirZ];
-
-                        if (std::isnan(bz(ix, iy, iz)))
-                        {
-                            if (iz % 2 == 1)
-                            {
-                                int xoffset = (ix % 2 == 0) ? 0 : 1;
-                                int yoffset = (iy % 2 == 0) ? 0 : 1;
-                                int zoffset = 1;
-
-                                bz(ix, iy, iz)
-                                    = 0.5 * (bz(ix, iy, iz - 1) + bz(ix, iy, iz + 1))
-                                      + 0.125
-                                            * (bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + 0.125
-                                            * (by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(yoffset) * Dy * Dy
-                                         / (Dy * Dy + Dz * Dz))
-                                            * (bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(xoffset) * Dx * Dx
-                                         / (Dx * Dx + Dz * Dz))
-                                            * (by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)));
-                            }
-                        }
-                    };
-
-                    layout.evalOnGhostBox(B(core::Component::X),
-                                          [&](auto&... args) mutable { postprocessBx({args...}); });
-
-                    layout.evalOnGhostBox(B(core::Component::Y),
-                                          [&](auto&... args) mutable { postprocessBy({args...}); });
-
-                    layout.evalOnGhostBox(B(core::Component::Z),
-                                          [&](auto&... args) mutable { postprocessBz({args...}); });
-                }
-            }
-        }
-
-
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
@@ -1307,8 +901,7 @@ namespace amr
         CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
         CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
 
-        using FieldDataT = FieldData<GridLayoutT, GridT>;
-        MagneticRefinePatchStrategy<rm_t, FieldDataT> magneticRefinePatchStrategy_{
+        MagneticRefinePatchStrategy<ResourcesManagerT, FieldDataT> magneticRefinePatchStrategy{
             *resourcesManager_};
     };
 
