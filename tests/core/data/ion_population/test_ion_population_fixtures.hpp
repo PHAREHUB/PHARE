@@ -50,7 +50,7 @@ class UsableIonsPopulation : public _defaults::IonPopulation_t
 public:
     UsableIonsPopulation(initializer::PHAREDict const& dict, GridLayout_t const& layout)
         : Super{dict}
-        , rho{this->name() + "_rho", layout, HybridQuantity::Scalar::rho}
+        , rho{this->name() + "_particleDensity", layout, HybridQuantity::Scalar::rho}
         , F{this->name() + "_flux", layout, HybridQuantity::Vector::V}
         , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
         , particles{this->name(), layout.AMRBox()}
