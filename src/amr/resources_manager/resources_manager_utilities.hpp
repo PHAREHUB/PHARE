@@ -140,17 +140,6 @@ namespace amr
     template<typename ResourceView>
     bool constexpr static has_sub_resources_v = has_sub_resources<ResourceView>::value;
 
-    /** UseResourcePtr is used to select the resources patch data */
-    struct UseResourcePtr
-    {
-    };
-
-
-    /** UseNullPtr is used to select a nullptr with the correct type */
-    struct UseNullPtr
-    {
-    };
-
 
 
     /** extractNames of direct Field and Particle Resources of the given ResourceView
