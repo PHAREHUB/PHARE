@@ -125,7 +125,7 @@ public:
 
 
     void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                const int levelNumber, std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                int const levelNumber, std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                 double const initDataTime)
     {
         for (auto& algo : this->algos)

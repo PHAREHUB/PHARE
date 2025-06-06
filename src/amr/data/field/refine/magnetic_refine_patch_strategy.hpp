@@ -33,6 +33,16 @@ public:
     {
     }
 
+    void registerIDs(std::optional<int> bx_id, std::optional<int> by_id, std::optional<int> bz_id)
+    {
+        if (bx_id)
+            bx_id_ = bx_id;
+        if (by_id)
+            by_id_ = by_id;
+        if (bz_id)
+            bz_id_ = bz_id;
+    }
+
     void setPhysicalBoundaryConditions(SAMRAI::hier::Patch& patch, double const fill_time,
                                        const SAMRAI::hier::IntVector& ghost_width_to_fill)
     {
@@ -54,13 +64,9 @@ public:
     void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
                            SAMRAI::hier::Box const& fine_box, SAMRAI::hier::IntVector const& ratio)
     {
-        auto bx_id = rm_.getID("EM_B_x");
-        auto by_id = rm_.getID("EM_B_y");
-        auto bz_id = rm_.getID("EM_B_z");
-
-        auto& bx = FieldDataT::getField(fine, *bx_id);
-        auto& by = FieldDataT::getField(fine, *by_id);
-        auto& bz = FieldDataT::getField(fine, *bz_id);
+        auto& bx = FieldDataT::getField(fine, *bx_id_);
+        auto& by = FieldDataT::getField(fine, *by_id_);
+        auto& bz = FieldDataT::getField(fine, *bz_id_);
 
         auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
         auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
@@ -74,6 +80,27 @@ public:
 
         if (oldLevel_)
         {
+            // if our optional oldLevel_ is set, then we are regridding. Since SAMRAI does copies
+            // the from the old level onto the new level after refinement, that means that to apply
+            // the Toth and Roe (2002) formulas, we need to manually copy the old coarse fine
+            // interface faces that will later be copied by the schedule. The reason is the the
+            // formulas require these coarse fine interface faces to compute the new fine faces in
+            // the same coarse cell.
+            //                    refined
+            //                |--1---|---2--|
+            // faces we copy--a      A      3
+            //              \ |---D--|--B---| refined
+            //               \b      C      4
+            //                |---6--|---5--|
+            //                    refined
+            // in the above figure, the faces we need to compute in this postprocessRefine function
+            // are the 4 faces inside the old coarse cell (A, B, C, D), (1, 2, 3, 4, 5, 6) are
+            // obtained directly from refinement, but the last 2 faces (a, b) need to be obtained
+            // through copy from the old level if we want to be consistent at this boundary. If we
+            // were not to do this copy, then the new fine faces (A, B, C, D) would be obtained from
+            // the refinement everywhere, and the following copy operated by SAMRAI would screw up
+            // divB in the 2 border cells a1AD and bDC6.
+
             SAMRAI::hier::BoxContainer oldBoxes = (*oldLevel_)->getBoxes();
 
             SAMRAI::hier::BoxContainer oldCoarseFineIntersectionX
@@ -95,13 +122,6 @@ public:
                     auto oldPatch  = (*oldLevel_)->getPatch(box.getBoxId());
                     auto& bOld     = FieldDataT::getField(*oldPatch, id);
                     auto layoutOld = PHARE::amr::layoutFromPatch<gridlayout_type>(*oldPatch);
-
-                    // find the old box so that we can get the local index for it
-                    // maybe doable with just the layout?
-                    // SAMRAI::hier::BoxContainer old_overlap_boxes;
-                    // oldBoxes.findOverlapBoxes(old_overlap_boxes, box);
-                    // assert(old_overlap_boxes.size() == 1);
-                    // SAMRAI::hier::Box old_box = old_overlap_boxes.front();
 
                     int iStartX = box.lower(dirX);
                     int iEndX   = box.upper(dirX);
@@ -168,9 +188,9 @@ public:
                 }
             };
 
-            imposeCopiedOldCoarseFine(bx, *bx_id, oldCoarseFineIntersectionX);
-            imposeCopiedOldCoarseFine(by, *by_id, oldCoarseFineIntersectionY);
-            imposeCopiedOldCoarseFine(bz, *bz_id, oldCoarseFineIntersectionZ);
+            imposeCopiedOldCoarseFine(bx, *bx_id_, oldCoarseFineIntersectionX);
+            imposeCopiedOldCoarseFine(by, *by_id_, oldCoarseFineIntersectionY);
+            imposeCopiedOldCoarseFine(bz, *bz_id_, oldCoarseFineIntersectionZ);
         }
 
         int ixStartX = fine_box_x.lower(dirX);
@@ -571,6 +591,10 @@ public:
 private:
     ResMan& rm_;
     std::optional<std::shared_ptr<SAMRAI::hier::PatchLevel>> oldLevel_;
+
+    std::optional<int> bx_id_;
+    std::optional<int> by_id_;
+    std::optional<int> bz_id_;
 };
 
 } // namespace PHARE::amr
