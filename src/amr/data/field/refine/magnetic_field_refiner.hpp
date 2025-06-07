@@ -73,12 +73,6 @@ public:
                 {
                     fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
                 }
-                else
-                {
-                    fineField(locFineIdx[dirX])
-                        = 0.5
-                          * (coarseField(locCoarseIdx[dirX]) + coarseField(locCoarseIdx[dirX] + 1));
-                }
             }
             // dual case, By, Bz
             //          49           50             51
@@ -110,15 +104,6 @@ public:
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
                 }
-                else
-                {
-                    // we're on a fine X face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = 0.5
-                          * (coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
-                             + coarseField(locCoarseIdx[dirX] + 1, locCoarseIdx[dirY]));
-                }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
                      and centerings_[dirY] == core::QtyCentering::primal)
@@ -130,15 +115,6 @@ public:
                     // take the coarse face value
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
-                }
-                else
-                {
-                    // we're on a fine Y face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = 0.5
-                          * (coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
-                             + coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY] + 1));
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -171,13 +147,6 @@ public:
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
                         = coarseField(ix, iy, iz);
                 }
-                else
-                {
-                    // we're on a fine X face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix + 1, iy, iz));
-                }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
                      and centerings_[dirY] == core::QtyCentering::primal
@@ -191,13 +160,6 @@ public:
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
                         = coarseField(ix, iy, iz);
                 }
-                else
-                {
-                    // we're on a fine Y face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy + 1, iz));
-                }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
                      and centerings_[dirY] == core::QtyCentering::dual
@@ -210,13 +172,6 @@ public:
                     // take the coarse face value
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
                         = coarseField(ix, iy, iz);
-                }
-                else
-                {
-                    // we're on a fine Z face, take the average of the coarse value
-                    // between the two surrounding faces
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = 0.5 * (coarseField(ix, iy, iz) + coarseField(ix, iy, iz + 1));
                 }
             }
         }
