@@ -123,16 +123,14 @@ namespace amr
             TBOX_ASSERT(quantity_ == fieldSource.quantity_);
             // First step is to translate the AMR box into proper index space of the given
             // quantity_ using the source gridlayout to accomplish that we get the interior box,
-            // from the FieldData. and we call toFieldBox (with the default parameter withGhost
-            // = true). note that we could have stored the ghost box of the field data at
-            // creation
+            // from the FieldData.
 
-            SAMRAI::hier::Box sourceBox
-                = Geometry::toFieldBox(fieldSource.getBox(), quantity_, fieldSource.gridLayout);
+            SAMRAI::hier::Box sourceBox = Geometry::toFieldBox(fieldSource.getGhostBox(), quantity_,
+                                                               fieldSource.gridLayout);
 
 
             SAMRAI::hier::Box destinationBox
-                = Geometry::toFieldBox(this->getBox(), quantity_, this->gridLayout);
+                = Geometry::toFieldBox(this->getGhostBox(), quantity_, this->gridLayout);
 
             // Given the two boxes in correct space we just have to intersect them
             SAMRAI::hier::Box intersectionBox = sourceBox * destinationBox;
@@ -240,7 +238,7 @@ namespace amr
                 {
                     auto const& source = field;
                     SAMRAI::hier::Box sourceBox
-                        = Geometry::toFieldBox(getBox(), quantity_, gridLayout);
+                        = Geometry::toFieldBox(getGhostBox(), quantity_, gridLayout);
 
                     SAMRAI::hier::Box packBox{box};
 
@@ -298,7 +296,7 @@ namespace amr
 
                     auto& source = field;
                     SAMRAI::hier::Box destination
-                        = Geometry::toFieldBox(getBox(), quantity_, gridLayout);
+                        = Geometry::toFieldBox(getGhostBox(), quantity_, gridLayout);
 
 
                     SAMRAI::hier::Box packBox{box * destination};
@@ -396,12 +394,12 @@ namespace amr
                 {
                     for (auto const& box : boxList)
                     {
-                        SAMRAI::hier::Box sourceBox
-                            = Geometry::toFieldBox(source.getBox(), quantity_, source.gridLayout);
+                        SAMRAI::hier::Box sourceBox = Geometry::toFieldBox(
+                            source.getGhostBox(), quantity_, source.gridLayout);
 
 
-                        SAMRAI::hier::Box destinationBox
-                            = Geometry::toFieldBox(this->getBox(), quantity_, this->gridLayout);
+                        SAMRAI::hier::Box destinationBox = Geometry::toFieldBox(
+                            this->getGhostBox(), quantity_, this->gridLayout);
 
 
                         SAMRAI::hier::Box transformedSource{sourceBox};

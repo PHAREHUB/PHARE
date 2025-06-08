@@ -1,4 +1,3 @@
-
 #include <type_traits>
 
 #include "core/def/phare_mpi.hpp"
@@ -192,7 +191,6 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
 
-    bool const withGhost{true};
 
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
@@ -200,10 +198,12 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
     auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
-                                                                          layout, !withGhost);
+                                                                          layout);
 
-    auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(
-        this->domain, this->qty, layout, withGhost);
+    auto ghostDomain{this->domain};
+    ghostDomain.grow(this->ghost);
+    auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostDomain,
+                                                                               this->qty, layout);
 
     auto localBox = AMRToLocal(static_cast<std::add_const_t<decltype(box)>>(box), ghostBox);
 
@@ -273,7 +273,6 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
 
-    bool const withGhost{true};
 
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
@@ -281,10 +280,12 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
     auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
-                                                                          layout, !withGhost);
+                                                                          layout);
 
-    auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(
-        this->domain, this->qty, layout, withGhost);
+    auto ghostDomain{this->domain};
+    ghostDomain.grow(this->ghost);
+    auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostDomain,
+                                                                               this->qty, layout);
 
     auto localBox = AMRToLocal(static_cast<std::add_const_t<decltype(box)>>(box), ghostBox);
 
@@ -352,7 +353,6 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
 
-    bool const withGhost{true};
 
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
@@ -360,10 +360,12 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
 
     auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
-                                                                          layout, !withGhost);
+                                                                          layout);
 
-    auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(
-        this->domain, this->qty, layout, withGhost);
+    auto ghostDomain{this->domain};
+    ghostDomain.grow(this->ghost);
+    auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostDomain,
+                                                                               this->qty, layout);
 
     auto localBox = AMRToLocal(static_cast<std::add_const_t<decltype(box)>>(box), ghostBox);
 

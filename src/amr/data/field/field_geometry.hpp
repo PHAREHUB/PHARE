@@ -88,8 +88,12 @@ namespace amr
          */
         FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT const& layout,
                       PhysicalQuantity const qty)
-            : Super(box, toFieldBox(box, qty, layout),
-                    toFieldBox(box, qty, layout, /*withGhost=*/false), GridLayoutT::centering(qty))
+            : Super(box,
+                    toFieldBox(SAMRAI::hier::Box::grow(
+                                   box, SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
+                                                                GridLayoutT::nbrGhosts()}),
+                               qty, layout),
+                    toFieldBox(box, qty, layout), GridLayoutT::centering(qty))
             , layout_{layout}
             , quantity_{qty}
         {
@@ -133,7 +137,7 @@ namespace amr
             for (auto& box : boxes)
             {
                 core::GridLayout layout = layoutFromBox(box, layout_);
-                SAMRAI::hier::Box fieldBox(toFieldBox(box, quantity_, layout, false));
+                SAMRAI::hier::Box fieldBox(toFieldBox(box, quantity_, layout));
                 destinationBox.push_back(fieldBox);
             }
 
@@ -153,9 +157,10 @@ namespace amr
          *  to the nbr of cells of the box.
          */
         static SAMRAI::hier::Box toFieldBox(SAMRAI::hier::Box box, PhysicalQuantity qty,
-                                            GridLayoutT const& layout, bool withGhost = true)
+                                            GridLayoutT const& layout)
         {
             SAMRAI::hier::IntVector lower = box.lower();
+            SAMRAI::hier::IntVector upper = box.upper();
             using PHARE::core::dirX;
             using PHARE::core::dirY;
             using PHARE::core::dirZ;
@@ -184,74 +189,19 @@ namespace amr
             // box.upper is still box.lower + end-start, end &start of ghosts
 
 
-            if (!withGhost)
+
+            box.setLower(dirX, lower[dirX]);
+            box.setUpper(dirX, upper[dirX] + layout.isPrimal(qty, core::Direction::X));
+
+            if (dimension > 1)
             {
-                std::int32_t xStart = layout.physicalStartIndex(qty, core::Direction::X);
-                std::int32_t xEnd   = layout.physicalEndIndex(qty, core::Direction::X);
-
-                box.setLower(dirX, lower[dirX]);
-                box.setUpper(dirX, xEnd - xStart + lower[dirX]);
-
-                if (dimension > 1)
-                {
-                    std::int32_t yStart = layout.physicalStartIndex(qty, core::Direction::Y);
-                    std::int32_t yEnd   = layout.physicalEndIndex(qty, core::Direction::Y);
-
-                    box.setLower(dirY, lower[dirY]);
-                    box.setUpper(dirY, yEnd - yStart + lower[dirY]);
-                }
-                if (dimension > 2)
-                {
-                    std::int32_t zStart = layout.physicalStartIndex(qty, core::Direction::Z);
-                    std::int32_t zEnd   = layout.physicalEndIndex(qty, core::Direction::Z);
-
-                    box.setLower(dirZ, lower[dirZ]);
-                    box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
-                }
-            } // end withoutGhosts
-
-
-
-            else
+                box.setLower(dirY, lower[dirY]);
+                box.setUpper(dirY, upper[dirY] + layout.isPrimal(qty, core::Direction::Y));
+            }
+            if (dimension > 2)
             {
-                auto const& centering = GridLayoutT::centering(qty);
-
-                SAMRAI::hier::IntVector shift(box.getDim());
-                shift[dirX] = layout.nbrGhosts(centering[dirX]);
-
-                if (dimension > 1)
-                {
-                    shift[dirY] = layout.nbrGhosts(centering[dirY]);
-                }
-                if (dimension > 2)
-                {
-                    shift[dirZ] = layout.nbrGhosts(centering[dirZ]);
-                }
-
-                lower = lower - shift;
-
-                std::int32_t xStart = layout.ghostStartIndex(qty, core::Direction::X);
-                std::int32_t xEnd   = layout.ghostEndIndex(qty, core::Direction::X);
-
-                box.setLower(dirX, lower[dirX]);
-                box.setUpper(dirX, xEnd - xStart + lower[dirX]);
-
-                if (dimension > 1)
-                {
-                    std::int32_t yStart = layout.ghostStartIndex(qty, core::Direction::Y);
-                    std::int32_t yEnd   = layout.ghostEndIndex(qty, core::Direction::Y);
-
-                    box.setLower(dirY, lower[dirY]);
-                    box.setUpper(dirY, yEnd - yStart + lower[dirY]);
-                }
-                if (dimension > 2)
-                {
-                    std::int32_t zStart = layout.ghostStartIndex(qty, core::Direction::Z);
-                    std::int32_t zEnd   = layout.ghostEndIndex(qty, core::Direction::Z);
-
-                    box.setLower(dirZ, lower[dirZ]);
-                    box.setUpper(dirZ, zEnd - zStart + lower[dirZ]);
-                }
+                box.setLower(dirZ, lower[dirZ]);
+                box.setUpper(dirZ, upper[dirZ] + layout.isPrimal(qty, core::Direction::Z));
             }
 
             return box;
@@ -333,10 +283,9 @@ namespace amr
             auto const& destinationBox = this->ghostFieldBox_;
 
             SAMRAI::hier::Box const sourceBox{
-                toFieldBox(sourceShift, quantity_, sourceShiftLayout, !withGhosts)};
+                toFieldBox(sourceShift, quantity_, sourceShiftLayout)};
 
-            SAMRAI::hier::Box const fillField{
-                toFieldBox(fillBox, quantity_, fillBoxLayout, !withGhosts)};
+            SAMRAI::hier::Box const fillField{toFieldBox(fillBox, quantity_, fillBoxLayout)};
 
 
             // now we have all boxes shifted and translated to field boxes
@@ -367,7 +316,7 @@ namespace amr
                      box != destinationRestrictBoxes.end(); ++box)
                 {
                     restrictBoxes.push_back(
-                        toFieldBox(*box, quantity_, layoutFromBox(*box, layout_), !withGhosts));
+                        toFieldBox(*box, quantity_, layoutFromBox(*box, layout_)));
                 }
 
                 // will only keep of together the boxes that interesect the restrictions

@@ -90,10 +90,10 @@ public:
 
         auto const& overlapBoxes = destinationFieldOverlap.getDestinationBoxContainer();
 
-        auto& destinationField        = FieldDataT::getField(destination, destinationId);
-        auto const& destinationLayout = FieldDataT::getLayout(destination, destinationId);
-        auto const& sourceField       = FieldDataT::getField(source, sourceId);
-        auto const& sourceLayout      = FieldDataT::getLayout(source, sourceId);
+        auto& destinationField  = FieldDataT::getField(destination, destinationId);
+        auto const& destLayout  = FieldDataT::getLayout(destination, destinationId);
+        auto const& sourceField = FieldDataT::getField(source, sourceId);
+        auto const& srcLayout   = FieldDataT::getLayout(source, sourceId);
 
 
         // We assume that quantity are all the same.
@@ -101,21 +101,15 @@ public:
         // in refineIt operator
         auto const& qty = destinationField.physicalQuantity();
 
-        bool const withGhost{true};
 
-        auto destinationFieldBox
-            = FieldGeometry::toFieldBox(destination.getBox(), qty, destinationLayout, withGhost);
+        auto destData = destination.getPatchData(destinationId);
+        auto srcData  = source.getPatchData(sourceId);
 
-
-        auto sourceFieldBox
-            = FieldGeometry::toFieldBox(source.getBox(), qty, sourceLayout, withGhost);
+        auto destFieldBox   = FieldGeometry::toFieldBox(destData->getGhostBox(), qty, destLayout);
+        auto sourceFieldBox = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
 
-
-
-        FieldRefinerPolicy refiner{destinationLayout.centering(qty), destinationFieldBox,
-                                   sourceFieldBox, ratio};
-
+        FieldRefinerPolicy refiner{destLayout.centering(qty), destFieldBox, sourceFieldBox, ratio};
 
 
         for (auto const& box : overlapBoxes)
@@ -123,7 +117,7 @@ public:
             // we compute the intersection with the destination,
             // and then we apply the refine operation on each fine
             // index.
-            auto intersectionBox = destinationFieldBox * box;
+            auto intersectionBox = destFieldBox * box;
 
 
 
