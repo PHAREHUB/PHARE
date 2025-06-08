@@ -40,7 +40,7 @@ template<size_t dim>
 struct Particle
 {
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
-    static const size_t dimension = dim;
+    static size_t const dimension = dim;
 
     Particle(double a_weight, double a_charge, std::array<int, dim> cell,
              std::array<double, dim> a_delta, std::array<double, 3> a_v)
@@ -57,9 +57,10 @@ struct Particle
     double weight = 0;
     double charge = 0;
 
-    std::array<int, dim> iCell    = ConstArray<int, dim>();
-    std::array<double, dim> delta = ConstArray<double, dim>();
-    std::array<double, 3> v       = ConstArray<double, 3>();
+    // {} zero initialization
+    std::array<int, dim> iCell{};
+    std::array<double, dim> delta{};
+    std::array<double, 3> v{};
 
     NO_DISCARD bool operator==(Particle<dim> const& that) const
     {
@@ -121,9 +122,9 @@ inline constexpr auto is_phare_particle_type
 
 template<std::size_t dim, template<std::size_t> typename ParticleA,
          template<std::size_t> typename ParticleB>
-NO_DISCARD typename std::enable_if_t<
-    is_phare_particle_type<dim, ParticleA<dim>> and is_phare_particle_type<dim, ParticleB<dim>>,
-    bool>
+NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
+                                         and is_phare_particle_type<dim, ParticleB<dim>>,
+                                     bool>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //

@@ -7,6 +7,7 @@
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/def.hpp"
 
+#include <vector>
 #include <cstddef>
 #include <algorithm>
 #include <optional>
