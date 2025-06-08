@@ -64,7 +64,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
                              SAMRAI::tbox::SAMRAI_MPI::getSAMRAIWorld().getRank()};
 
     std::string const fieldName{"Bx"};
-    SAMRAI::hier::IntVector ghost{dimension, 5};
+    SAMRAI::hier::IntVector ghost{dimension, GridYee::nbrGhosts()};
     static auto constexpr dl = ConstArray<double, dim>(0.01);
 
     static constexpr auto nbrCells = ConstArray<std::uint32_t, dim>(upper - lower + 1);
@@ -201,10 +201,12 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
                                                                           layout);
 
     auto ghostDomain{this->domain};
-    ghostDomain.grow(this->ghost);
+    ghostDomain.grow(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
+                                             static_cast<int>(GridYee::nbrGhosts())});
     auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostDomain,
                                                                                this->qty, layout);
 
+    std::cout << "box: " << box << " ghostBox: " << ghostBox << std::endl;
     auto localBox = AMRToLocal(static_cast<std::add_const_t<decltype(box)>>(box), ghostBox);
 
 
@@ -283,7 +285,8 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
                                                                           layout);
 
     auto ghostDomain{this->domain};
-    ghostDomain.grow(this->ghost);
+    ghostDomain.grow(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
+                                             static_cast<int>(GridYee::nbrGhosts())});
     auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostDomain,
                                                                                this->qty, layout);
 
@@ -363,7 +366,8 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
                                                                           layout);
 
     auto ghostDomain{this->domain};
-    ghostDomain.grow(this->ghost);
+    ghostDomain.grow(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
+                                             static_cast<int>(GridYee::nbrGhosts())});
     auto ghostBox = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostDomain,
                                                                                this->qty, layout);
 

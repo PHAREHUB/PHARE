@@ -44,6 +44,7 @@ namespace amr
             , centerings_{centerings}
             , pureInteriorFieldBox_{pureInteriorBox_(interiorFieldBox, centerings)}
         {
+            std::cout << "POUET : " << ghostFieldBox_ << "\n";
         }
 
         auto const& pureInteriorFieldBox() const { return pureInteriorFieldBox_; }
