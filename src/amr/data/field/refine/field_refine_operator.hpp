@@ -102,11 +102,13 @@ public:
         auto const& qty = destinationField.physicalQuantity();
 
 
-        auto destData = destination.getPatchData(destinationId);
-        auto srcData  = source.getPatchData(sourceId);
+        auto const destData = destination.getPatchData(destinationId);
+        auto const srcData  = source.getPatchData(sourceId);
 
-        auto destFieldBox   = FieldGeometry::toFieldBox(destData->getGhostBox(), qty, destLayout);
-        auto sourceFieldBox = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
+        auto const destFieldBox
+            = FieldGeometry::toFieldBox(destData->getGhostBox(), qty, destLayout);
+        auto const sourceFieldBox
+            = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
 
         FieldRefinerPolicy refiner{destLayout.centering(qty), destFieldBox, sourceFieldBox, ratio};

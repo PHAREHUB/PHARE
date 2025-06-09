@@ -119,8 +119,7 @@ namespace amr
             auto coarseLayout   = FieldGeometryT::layoutFromBox(coarseBox, destLayout);
             auto coarseFieldBox = FieldGeometryT::toFieldBox(coarseBox, qty, coarseLayout);
 
-            // finnaly we compute the intersection
-            auto intersectionBox = destGBox * coarseFieldBox;
+            auto const intersectionBox = destGBox * coarseFieldBox;
 
 
             // We can now create the coarsening operator

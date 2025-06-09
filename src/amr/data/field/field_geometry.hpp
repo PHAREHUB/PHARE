@@ -44,7 +44,6 @@ namespace amr
             , centerings_{centerings}
             , pureInteriorFieldBox_{pureInteriorBox_(interiorFieldBox, centerings)}
         {
-            std::cout << "POUET : " << ghostFieldBox_ << "\n";
         }
 
         auto const& pureInteriorFieldBox() const { return pureInteriorFieldBox_; }
@@ -133,16 +132,15 @@ namespace amr
         setUpOverlap(SAMRAI::hier::BoxContainer const& boxes,
                      SAMRAI::hier::Transformation const& offset) const final
         {
-            SAMRAI::hier::BoxContainer destinationBox;
+            SAMRAI::hier::BoxContainer destinationBoxes;
 
             for (auto& box : boxes)
             {
-                core::GridLayout layout = layoutFromBox(box, layout_);
-                SAMRAI::hier::Box fieldBox(toFieldBox(box, quantity_, layout));
-                destinationBox.push_back(fieldBox);
+                core::GridLayout const layout = layoutFromBox(box, layout_);
+                destinationBoxes.push_back(toFieldBox(box, quantity_, layout));
             }
 
-            return std::make_shared<FieldOverlap>(destinationBox, offset);
+            return std::make_shared<FieldOverlap>(destinationBoxes, offset);
         }
 
 
