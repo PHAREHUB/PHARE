@@ -338,14 +338,6 @@ namespace core
         }
 
 
-        NO_DISCARD constexpr static auto isPrimal(HybridQuantity::Scalar hybridQuantity,
-                                                  Direction direction)
-        {
-            std::uint32_t iQty = static_cast<std::uint32_t>(hybridQuantity);
-            std::uint32_t iDir = static_cast<std::uint32_t>(direction);
-            return hybridQtyCentering_[iQty][iDir] == QtyCentering::primal;
-        }
-
 
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dim>, 3>
         centering(HybridQuantity::Vector hybridQuantity)

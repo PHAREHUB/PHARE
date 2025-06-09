@@ -193,13 +193,6 @@ namespace core
         NO_DISCARD auto const& AMRBox() const { return AMRBox_; }
 
 
-        NO_DISCARD constexpr static auto isPrimal(HybridQuantity::Scalar const& qty,
-                                                  Direction direction)
-        {
-            return GridLayoutImpl::isPrimal(qty, direction);
-        }
-
-
         NO_DISCARD static std::size_t constexpr nbrParticleGhosts()
         {
             return ghostWidthForParticles<interp_order>();

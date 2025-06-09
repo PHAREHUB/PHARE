@@ -10,6 +10,7 @@
 #include "SAMRAI/hier/IntVector.h"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/grid/gridlayout.hpp"
+#include "core/utilities/types.hpp"
 
 #include "field_overlap.hpp"
 
@@ -187,21 +188,15 @@ namespace amr
             // box.lower must be shifted left to move to the first ghost node
             // box.upper is still box.lower + end-start, end &start of ghosts
 
+            auto const centerings = layout.centering(qty);
+            core::for_N<dimension>( //
+                [&](auto i) {
+                    box.setLower(i, lower[i]);
+                    auto const is_primal = (centerings[i] == core::QtyCentering::primal) ? 1 : 0;
+                    box.setUpper(i, upper[i] + is_primal);
+                } //
+            );
 
-
-            box.setLower(dirX, lower[dirX]);
-            box.setUpper(dirX, upper[dirX] + layout.isPrimal(qty, core::Direction::X));
-
-            if (dimension > 1)
-            {
-                box.setLower(dirY, lower[dirY]);
-                box.setUpper(dirY, upper[dirY] + layout.isPrimal(qty, core::Direction::Y));
-            }
-            if (dimension > 2)
-            {
-                box.setLower(dirZ, lower[dirZ]);
-                box.setUpper(dirZ, upper[dirZ] + layout.isPrimal(qty, core::Direction::Z));
-            }
 
             return box;
         }
