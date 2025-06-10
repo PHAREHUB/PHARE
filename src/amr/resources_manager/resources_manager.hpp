@@ -340,7 +340,6 @@ namespace amr
 
             struct Iterator
             {
-                using Super = SAMRAI::hier::PatchLevel::Iterator;
                 void operator++() { ++raw; }
                 bool operator==(Iterator const& that) { return raw == that.raw; }
                 bool operator!=(Iterator const& that) { return raw != that.raw; }
