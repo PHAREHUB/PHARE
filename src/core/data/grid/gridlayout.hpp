@@ -193,7 +193,6 @@ namespace core
         NO_DISCARD auto const& AMRBox() const { return AMRBox_; }
 
 
-
         NO_DISCARD static std::size_t constexpr nbrParticleGhosts()
         {
             return ghostWidthForParticles<interp_order>();

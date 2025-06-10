@@ -95,10 +95,11 @@ namespace amr
                      SAMRAI::hier::Box const& coarseBox,
                      SAMRAI::hier::IntVector const& ratio) const override
         {
-            auto& destinationField        = FieldDataT::getField(destinationPatch, destinationId);
-            auto const& sourceField       = FieldDataT::getField(sourcePatch, sourceId);
-            auto const& sourceLayout      = FieldDataT::getLayout(sourcePatch, sourceId);
-            auto const& destinationLayout = FieldDataT::getLayout(destinationPatch, destinationId);
+            auto& destinationField   = FieldDataT::getField(destinationPatch, destinationId);
+            auto const& sourceField  = FieldDataT::getField(sourcePatch, sourceId);
+            auto const& sourceLayout = FieldDataT::getLayout(sourcePatch, sourceId);
+            auto const& destLayout   = FieldDataT::getLayout(destinationPatch, destinationId);
+            using FieldGeometryT     = FieldGeometry<GridLayoutT, PhysicalQuantity>;
 
             // we assume that quantity are the same
             // note that an assertion will be raised
@@ -106,31 +107,23 @@ namespace amr
             auto const& qty = destinationField.physicalQuantity();
 
 
-            bool const withGhost{true};
 
             // We get different boxes : destination , source, restrictBoxes
             // and transform them in the correct indexing.
-            auto destinationBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                destinationPatch.getBox(), qty, destinationLayout, withGhost);
+            auto destPData = destinationPatch.getPatchData(destinationId);
+            auto srcPData  = sourcePatch.getPatchData(sourceId);
 
-            auto sourceBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                sourcePatch.getBox(), qty, sourceLayout, withGhost);
+            auto destGBox = FieldGeometryT::toFieldBox(destPData->getGhostBox(), qty, destLayout);
+            auto srcGBox  = FieldGeometryT::toFieldBox(srcPData->getGhostBox(), qty, sourceLayout);
 
-            auto coarseLayout = FieldGeometry<GridLayoutT, PhysicalQuantity>::layoutFromBox(
-                coarseBox, destinationLayout);
+            auto coarseLayout   = FieldGeometryT::layoutFromBox(coarseBox, destLayout);
+            auto coarseFieldBox = FieldGeometryT::toFieldBox(coarseBox, qty, coarseLayout);
 
-            auto coarseFieldBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-                coarseBox, qty, coarseLayout, !withGhost);
-
-            // finnaly we compute the intersection
-            auto intersectionBox = destinationBox * coarseFieldBox;
-
-
+            auto const intersectionBox = destGBox * coarseFieldBox;
 
 
             // We can now create the coarsening operator
-            FieldCoarsenerPolicy coarsener{destinationLayout.centering(qty), sourceBox,
-                                           destinationBox, ratio};
+            FieldCoarsenerPolicy coarsener{destLayout.centering(qty), srcGBox, destGBox, ratio};
 
             // now we can loop over the intersection box
 

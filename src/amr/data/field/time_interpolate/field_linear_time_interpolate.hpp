@@ -65,18 +65,17 @@ public:
         auto const whereLayout
             = FieldGeometry<GridLayoutT, PhysicalQuantity>::layoutFromBox(where, layout);
 
-        bool const withGhost{true};
-        auto qty                  = fieldDest.physicalQuantity();
-        auto const interpolateBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-            where, qty, whereLayout, !withGhost);
+        auto qty = fieldDest.physicalQuantity();
+        auto const interpolateBox
+            = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(where, qty, whereLayout);
 
         auto const ghostBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-            fieldDataDest.getBox(), qty, layout, withGhost);
+            fieldDataDest.getGhostBox(), qty, layout);
 
         auto const finalBox = interpolateBox * ghostBox;
 
         auto srcGhostBox = FieldGeometry<GridLayoutT, PhysicalQuantity>::toFieldBox(
-            fieldDataSrcNew.getBox(), qty, fieldDataSrcNew.gridLayout, withGhost);
+            fieldDataSrcNew.getGhostBox(), qty, fieldDataSrcNew.gridLayout);
 
         auto const localDestBox = AMRToLocal(finalBox, ghostBox);
         auto const localSrcBox  = AMRToLocal(finalBox, srcGhostBox);
