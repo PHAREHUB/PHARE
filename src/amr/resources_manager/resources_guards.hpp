@@ -43,9 +43,7 @@ namespace amr
             , resourcesManager_{resourcesManager}
         {
             std::apply(
-                [this](auto&... user) {
-                    ((resourcesManager_.setResources_(user, UseResourcePtr{}, patch_)), ...);
-                },
+                [this](auto&... user) { ((resourcesManager_.setResources_(user, patch_)), ...); },
                 resourcesUsers_);
         }
 
@@ -55,11 +53,8 @@ namespace amr
         ~ResourcesGuard()
         {
             // set nullptr to all users in resourcesUsers_
-            std::apply(
-                [this](auto&... user) {
-                    ((resourcesManager_.setResources_(user, UseNullPtr{}, patch_)), ...);
-                },
-                resourcesUsers_);
+            std::apply([this](auto&... user) { ((resourcesManager_.unsetResources_(user)), ...); },
+                       resourcesUsers_);
         }
 
 
