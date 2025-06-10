@@ -1,14 +1,12 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
-#include "SAMRAI/hier/BoxContainer.h"
 #include "SAMRAI/hier/PatchLevel.h"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
 #include "core/utilities/constants.hpp"
 
 #include <cassert>
-#include <iostream>
 
 namespace PHARE::amr
 {
@@ -29,7 +27,6 @@ public:
                                 std::optional<std::shared_ptr<SAMRAI::hier::PatchLevel>> old_level
                                 = std::nullopt)
         : rm_{resourcesManager}
-        , oldLevel_{std::move(old_level)}
     {
     }
 
@@ -77,121 +74,6 @@ public:
             = Geometry::toFieldBox(fine_box, by.physicalQuantity(), fineBoxLayout, false);
         SAMRAI::hier::Box fine_box_z
             = Geometry::toFieldBox(fine_box, bz.physicalQuantity(), fineBoxLayout, false);
-
-        if (oldLevel_)
-        {
-            // if our optional oldLevel_ is set, then we are regridding. Since SAMRAI does copies
-            // the from the old level onto the new level after refinement, that means that to apply
-            // the Toth and Roe (2002) formulas, we need to manually copy the old coarse fine
-            // interface faces that will later be copied by the schedule. The reason is the the
-            // formulas require these coarse fine interface faces to compute the new fine faces in
-            // the same coarse cell.
-            //                    refined
-            //                |--1---|---2--|
-            // faces we copy--a      A      3
-            //              \ |---D--|--B---| refined
-            //               \b      C      4
-            //                |---6--|---5--|
-            //                    refined
-            // in the above figure, the faces we need to compute in this postprocessRefine function
-            // are the 4 faces inside the old coarse cell (A, B, C, D), (1, 2, 3, 4, 5, 6) are
-            // obtained directly from refinement, but the last 2 faces (a, b) need to be obtained
-            // through copy from the old level if we want to be consistent at this boundary. If we
-            // were not to do this copy, then the new fine faces (A, B, C, D) would be obtained from
-            // the refinement everywhere, and the following copy operated by SAMRAI would screw up
-            // divB in the 2 border cells a1AD and bDC6.
-
-            SAMRAI::hier::BoxContainer oldBoxes = (*oldLevel_)->getBoxes();
-
-            SAMRAI::hier::BoxContainer oldCoarseFineIntersectionX
-                = Geometry::toFieldBoxes(oldBoxes, bx.physicalQuantity(), layout, false);
-            oldCoarseFineIntersectionX.intersectBoxes(fine_box_x);
-
-            SAMRAI::hier::BoxContainer oldCoarseFineIntersectionY
-                = Geometry::toFieldBoxes(oldBoxes, by.physicalQuantity(), layout, false);
-            oldCoarseFineIntersectionY.intersectBoxes(fine_box_y);
-
-            SAMRAI::hier::BoxContainer oldCoarseFineIntersectionZ
-                = Geometry::toFieldBoxes(oldBoxes, bz.physicalQuantity(), layout, false);
-            oldCoarseFineIntersectionZ.intersectBoxes(fine_box_z);
-
-            auto imposeCopiedOldCoarseFine = [&](auto& b, auto const& id,
-                                                 auto const& oldCFintersection) {
-                for (auto const& box : oldCFintersection)
-                {
-                    auto oldPatch  = (*oldLevel_)->getPatch(box.getBoxId());
-                    auto& bOld     = FieldDataT::getField(*oldPatch, id);
-                    auto layoutOld = PHARE::amr::layoutFromPatch<gridlayout_type>(*oldPatch);
-
-                    int iStartX = box.lower(dirX);
-                    int iEndX   = box.upper(dirX);
-
-                    if constexpr (dimension == 1)
-                    {
-                        for (int amrix = iStartX; amrix <= iEndX; ++amrix)
-                        {
-                            auto idxf   = layout.AMRToLocal(core::Point{amrix});
-                            auto idxold = layoutOld.AMRToLocal(core::Point{amrix});
-                            auto ixf    = idxf[dirX];
-                            auto ixold  = idxold[dirX];
-                            b(ixf)      = bOld(ixold);
-                        }
-                    }
-                    else if constexpr (dimension >= 2)
-                    {
-                        int iStartY = box.lower(dirY);
-                        int iEndY   = box.upper(dirY);
-
-                        if constexpr (dimension == 2)
-                        {
-                            for (int amrix = iStartX; amrix <= iEndX; ++amrix)
-                            {
-                                for (int amriy = iStartY; amriy <= iEndY; ++amriy)
-                                {
-                                    auto idxf   = layout.AMRToLocal(core::Point{amrix, amriy});
-                                    auto idxold = layoutOld.AMRToLocal(core::Point{amrix, amriy});
-                                    auto ixf    = idxf[dirX];
-                                    auto iyf    = idxf[dirY];
-                                    auto ixold  = idxold[dirX];
-                                    auto iyold  = idxold[dirY];
-                                    b(ixf, iyf) = bOld(ixold, iyold);
-                                }
-                            }
-                        }
-                        else if constexpr (dimension == 3)
-                        {
-                            int iStartZ = box.lower(dirZ);
-                            int iEndZ   = box.upper(dirZ);
-
-                            for (int amriz = iStartZ; amriz <= iEndZ; ++amriz)
-                            {
-                                for (int amriy = iStartY; amriy <= iEndY; ++amriy)
-                                {
-                                    for (int amrix = iStartX; amrix <= iEndX; ++amrix)
-                                    {
-                                        auto idxf
-                                            = layout.AMRToLocal(core::Point{amrix, amriy, amriz});
-                                        auto idxold = layoutOld.AMRToLocal(
-                                            core::Point{amrix, amriy, amriz});
-                                        auto ixf         = idxf[dirX];
-                                        auto iyf         = idxf[dirY];
-                                        auto izf         = idxf[dirZ];
-                                        auto ixold       = idxold[dirX];
-                                        auto iyold       = idxold[dirY];
-                                        auto izold       = idxold[dirZ];
-                                        b(ixf, iyf, izf) = bOld(ixold, iyold, izold);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            };
-
-            imposeCopiedOldCoarseFine(bx, *bx_id_, oldCoarseFineIntersectionX);
-            imposeCopiedOldCoarseFine(by, *by_id_, oldCoarseFineIntersectionY);
-            imposeCopiedOldCoarseFine(bz, *bz_id_, oldCoarseFineIntersectionZ);
-        }
 
         int ixStartX = fine_box_x.lower(dirX);
         int ixEndX   = fine_box_x.upper(dirX);
@@ -590,8 +472,6 @@ public:
 
 private:
     ResMan& rm_;
-    std::optional<std::shared_ptr<SAMRAI::hier::PatchLevel>> oldLevel_;
-
     std::optional<int> bx_id_;
     std::optional<int> by_id_;
     std::optional<int> bz_id_;

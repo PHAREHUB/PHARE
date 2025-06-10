@@ -20,6 +20,14 @@ using core::dirX;
 using core::dirY;
 using core::dirZ;
 
+/** \brief Refines the magnetic components from a coarse mesh to fine faces shared with the coarse
+ * ones.
+ *
+ * This refinement operator works for magnetic field components dispatched following the Yee layout.
+ * It sets the values of fine components only on faces shared with coarse faces.
+ * The fine faces values are set equal to that of the coarse shared one (order 0 interpolation).
+ * inner fine faces are set by the MagneticRefinePatchStrategy
+ */
 template<std::size_t dimension>
 class MagneticFieldRefiner
 {
