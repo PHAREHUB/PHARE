@@ -21,7 +21,7 @@ from pyphare.core.phare_utilities import listify
 
 
 h5_time_grp_key = "t"
-particle_files_patterns = ("domain", "patchGhost", "levelGhost")
+particle_files_patterns = ("domain", "levelGhost")
 
 
 def get_all_available_quantities_from_h5(filepath, time=0, exclude=["tags"], hier=None):

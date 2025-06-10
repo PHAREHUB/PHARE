@@ -54,7 +54,7 @@ namespace amr
             = 0;
 
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
+                            int const levelNumber,
                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                             IPhysicalModel& model, double const initDataTime)
             = 0;
@@ -117,6 +117,13 @@ namespace amr
 
         virtual void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                      double const time)
+            = 0;
+
+        virtual void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                     double const fillTime)
+            = 0;
+        virtual void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                        double const fillTime)
             = 0;
 
 

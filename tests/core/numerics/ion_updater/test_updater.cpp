@@ -355,6 +355,7 @@ struct IonUpdaterTest : public ::testing::Test
     using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
 
     using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using Boxing_t   = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout>;
 
 
     double dt{0.01};
@@ -362,6 +363,8 @@ struct IonUpdaterTest : public ::testing::Test
     // grid configuration
     std::array<int, dim> ncells;
     GridLayout layout;
+    // assumes no level ghost cells
+    Boxing_t const boxing{layout, grow(layout.AMRBox(), GridLayout::nbrParticleGhosts())};
 
 
     // data for electromagnetic fields
@@ -479,7 +482,6 @@ struct IonUpdaterTest : public ::testing::Test
                 }
 
 
-
                 std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
                           std::back_inserter(levelGhostPartNew));
 
@@ -488,39 +490,15 @@ struct IonUpdaterTest : public ::testing::Test
                           std::back_inserter(levelGhostPart));
 
 
-                // now let's create patchGhostParticles on the right of the domain
-                // by copying those on the last cell
-
-
-                for (auto const& part : domainPart)
-                {
-                    if constexpr (interp_order == 2 or interp_order == 3)
-                    {
-                        if (part.iCell[0] == lastAMRCell[0] or part.iCell[0] == lastAMRCell[0] - 1)
-                        {
-                            auto p{part};
-                            p.iCell[0] += 2;
-                            patchGhostPart.push_back(p);
-                        }
-                    }
-                    else if constexpr (interp_order == 1)
-                    {
-                        if (part.iCell[0] == lastAMRCell[0])
-                        {
-                            auto p{part};
-                            p.iCell[0] += 1;
-                            patchGhostPart.push_back(p);
-                        }
-                    }
-                }
+                EXPECT_GT(pop.domainParticles().size(), 0ull);
+                EXPECT_GT(levelGhostPartOld.size(), 0ull);
+                EXPECT_EQ(patchGhostPart.size(), 0);
 
             } // end 1D
-        }     // end pop loop
+        } // end pop loop
         PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
                                       PHARE::core::DomainDeposit{});
 
-        PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
-                                      PHARE::core::PatchGhostDeposit{});
 
         PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
                                       PHARE::core::LevelGhostDeposit{});
@@ -539,9 +517,6 @@ struct IonUpdaterTest : public ::testing::Test
 
         for (auto& pop : this->ions)
         {
-            interpolate(makeIndexRange(pop.patchGhostParticles()), pop.density(), pop.flux(),
-                        layout);
-
             double alpha = 0.5;
             interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.density(), pop.flux(),
                         layout,
@@ -683,7 +658,7 @@ TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
 {
     auto check = [this](std::size_t nbrGhostCells, auto& pop) {
         EXPECT_EQ(this->layout.nbrCells()[0] * nbrPartPerCell, pop.domainParticles().size());
-        EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.patchGhostParticles().size());
+        EXPECT_EQ(0, pop.patchGhostParticles().size());
         EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticlesOld().size());
         EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticlesNew().size());
         EXPECT_EQ(nbrGhostCells * nbrPartPerCell, pop.levelGhostParticles().size());
@@ -701,39 +676,6 @@ TYPED_TEST(IonUpdaterTest, loadsDomainPatchAndLevelGhostParticles)
             else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
             {
                 check(2, pop);
-            }
-        }
-    }
-}
-
-
-
-
-TYPED_TEST(IonUpdaterTest, loadsPatchGhostParticlesOnRightGhostArea)
-{
-    int lastPhysCell = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    auto lastAMRCell = this->layout.localToAMR(Point{lastPhysCell});
-
-    if constexpr (TypeParam::dimension == 1)
-    {
-        for (auto& pop : this->ions)
-        {
-            if constexpr (TypeParam::interp_order == 1)
-            {
-                for (auto const& part : pop.patchGhostParticles())
-                {
-                    EXPECT_EQ(lastAMRCell[0] + 1, part.iCell[0]);
-                }
-            }
-            else if constexpr (TypeParam::interp_order == 2 or TypeParam::interp_order == 3)
-            {
-                typename IonUpdaterTest<TypeParam>::ParticleArray copy{pop.patchGhostParticles()};
-                auto firstInOuterMostCell = std::partition(
-                    std::begin(copy), std::end(copy), [&lastAMRCell](auto const& particle) {
-                        return particle.iCell[0] == lastAMRCell[0] + 1;
-                    });
-                EXPECT_EQ(nbrPartPerCell, std::distance(std::begin(copy), firstInOuterMostCell));
-                EXPECT_EQ(nbrPartPerCell, std::distance(firstInOuterMostCell, std::end(copy)));
             }
         }
     }
@@ -786,7 +728,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
                                  UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
@@ -832,7 +774,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 //
 //    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 //
-//    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+//    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
 //                                 UpdaterMode::particles_and_moments);
 //
 //    this->fillIonsMomentsGhosts();
@@ -857,7 +799,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt, UpdaterMode::all);
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt, UpdaterMode::all);
 
     this->fillIonsMomentsGhosts();
 
@@ -877,7 +819,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
                                  UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();
@@ -895,7 +837,7 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
     typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->layout, this->dt,
+    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
                                  UpdaterMode::domain_only);
 
     this->fillIonsMomentsGhosts();

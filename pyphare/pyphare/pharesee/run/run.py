@@ -202,7 +202,7 @@ class Run:
         return c
 
     def GetMass(self, pop_name, **kwargs):
-        list_of_qty = ["density", "flux", "domain", "levelGhost", "patchGhost"]
+        list_of_qty = ["density", "flux", "domain", "levelGhost"]
         list_of_mass = []
 
         import h5py
