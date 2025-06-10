@@ -111,7 +111,7 @@ in the overlaped region, that is assumed of better quality.
 
 ### Hybrid to Hybrid coarsening
 
-When coarsening data between two hybrid PIC levels, PHAR three types of fields:
+When coarsening data between two hybrid PIC levels, PHARE three types of fields:
 
 - the electric field
 - the ion total density and bulk velocity
