@@ -780,6 +780,7 @@ namespace amr
                 auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
                 auto _  = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
                 auto& B = hybridModel.state.electromag.B;
+
                 auto setToNaN = [&](auto& B, core::MeshIndex<dimension> idx) {
                     B(idx) = std::numeric_limits<double>::quiet_NaN();
                 };
@@ -812,23 +813,17 @@ namespace amr
                 auto& B  = hybridModel.state.electromag.B;
                 auto& bx = B(core::Component::X);
                 auto& by = B(core::Component::Y);
-
-                auto p_plus  = [](auto const i, auto const offset) { return i + 2 - offset; };
-                auto p_minus = [](auto const i, auto const offset) { return i - offset; };
-
-                auto d_plus  = [](auto const i, auto const offset) { return i + 1 - offset; };
-                auto d_minus = [](auto const i, auto const offset) { return i - offset; };
+                auto& bz = B(core::Component::Y);
 
                 if constexpr (dimension == 1)
                 {
                     auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
                         auto ix = idx[dirX];
+
                         if (std::isnan(bx(ix)))
                         {
-                            if (ix % 2 == 1)
-                            {
-                                bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
-                            }
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBx1d(bx, idx);
                         }
                     };
 
@@ -840,27 +835,14 @@ namespace amr
                     auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
                         auto ix = idx[dirX];
                         auto iy = idx[dirY];
-                        //                            | <- here with offset = 1
-                        //                          -- --
-                        //                            | <- or here with offset = 0
+
                         if (std::isnan(bx(ix, iy)))
                         {
                             if (ix % 2 == 1)
                             {
-                                // If dual no offset, ie primal for the field we are actually
-                                // modifying, but dual for the field we are indexing to compute
-                                // second and third order terms, then the formula reduces to
-                                // offset = 1
-                                int xoffset = 1;
-                                int yoffset = (iy % 2 == 0) ? 0 : 1;
-
-                                bx(ix, iy)
-                                    = 0.5 * (bx(ix - 1, iy) + bx(ix + 1, iy))
-                                      + 0.25
-                                            * (by(d_minus(ix, xoffset), p_minus(iy, yoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset)));
+                                MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                            FieldDataT>::postprocessBx2d(bx, by,
+                                                                                         idx);
                             }
                         }
                     };
@@ -868,23 +850,14 @@ namespace amr
                     auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
                         auto ix = idx[dirX];
                         auto iy = idx[dirY];
-                        //                            |
-                        //  here with offset = 0 -> -- -- <- or here with offset = 1
-                        //                            |
+
                         if (std::isnan(by(ix, iy)))
                         {
                             if (iy % 2 == 1)
                             {
-                                int xoffset = (ix % 2 == 0) ? 0 : 1;
-                                int yoffset = 1;
-
-                                by(ix, iy)
-                                    = 0.5 * (by(ix, iy - 1) + by(ix, iy + 1))
-                                      + 0.25
-                                            * (bx(p_minus(ix, xoffset), d_minus(iy, yoffset))
-                                               - bx(p_plus(ix, xoffset), d_minus(iy, yoffset))
-                                               - bx(p_minus(ix, xoffset), d_plus(iy, yoffset))
-                                               + bx(p_plus(ix, xoffset), d_plus(iy, yoffset)));
+                                MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                            FieldDataT>::postprocessBy2d(bx, by,
+                                                                                         idx);
                             }
                         }
                     };
@@ -897,11 +870,7 @@ namespace amr
                 }
                 else if constexpr (dimension == 3)
                 {
-                    auto Dx = layout.meshSize()[dirX];
-                    auto Dy = layout.meshSize()[dirY];
-                    auto Dz = layout.meshSize()[dirZ];
-
-                    auto ijk_factor = [](auto const offset) { return offset == 0 ? -1 : 1; };
+                    auto meshSize = layout.meshSize();
 
                     auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
                         auto ix = idx[dirX];
@@ -912,82 +881,10 @@ namespace amr
                         {
                             if (ix % 2 == 1)
                             {
-                                int xoffset = 1;
-                                int yoffset = (iy % 2 == 0) ? 0 : 1;
-                                int zoffset = (iz % 2 == 0) ? 0 : 1;
-
-                                bx(ix, iy, iz)
-                                    = 0.5 * (bx(ix - 1, iy, iz) + bx(ix + 1, iy, iz))
-                                      + 0.125
-                                            * (by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + 0.125
-                                            * (bz(d_minus(ix, xoffset), d_minus(iy, yoffset),
-                                                  p_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_minus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), d_minus(iy, yoffset),
-                                                    p_minus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_minus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), d_minus(iy, yoffset),
-                                                    p_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_plus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), d_minus(iy, yoffset),
-                                                    p_plus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), d_plus(iy, yoffset),
-                                                    p_plus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(zoffset) * Dz * Dz
-                                         / (Dx * Dx + Dz * Dz))
-                                            * (by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(yoffset) * Dy * Dy
-                                         / (Dx * Dx + Dy * Dy))
-                                            * (bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)));
+                                MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                            FieldDataT>::postprocessBx3d(bx, by, bz,
+                                                                                         meshSize,
+                                                                                         idx);
                             }
                         }
                     };
@@ -1001,82 +898,10 @@ namespace amr
                         {
                             if (iy % 2 == 1)
                             {
-                                int xoffset = (ix % 2 == 0) ? 0 : 1;
-                                int yoffset = 1;
-                                int zoffset = (iz % 2 == 0) ? 0 : 1;
-
-                                by(ix, iy, iz)
-                                    = 0.5 * (by(ix, iy - 1, iz) + by(ix, iy + 1, iz))
-                                      + 0.125
-                                            * (bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + 0.125
-                                            * (bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(xoffset) * Dx * Dx
-                                         / (Dx * Dx + Dy * Dy))
-                                            * (bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bz(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(zoffset) * Dz * Dz
-                                         / (Dy * Dy + Dz * Dz))
-                                            * (bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)));
+                                MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                            FieldDataT>::postprocessBy3d(bx, by, bz,
+                                                                                         meshSize,
+                                                                                         idx);
                             }
                         }
                     };
@@ -1090,82 +915,10 @@ namespace amr
                         {
                             if (iz % 2 == 1)
                             {
-                                int xoffset = (ix % 2 == 0) ? 0 : 1;
-                                int yoffset = (iy % 2 == 0) ? 0 : 1;
-                                int zoffset = 1;
-
-                                bz(ix, iy, iz)
-                                    = 0.5 * (bz(ix, iy, iz - 1) + bz(ix, iy, iz + 1))
-                                      + 0.125
-                                            * (bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + 0.125
-                                            * (by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                  d_minus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(yoffset) * Dy * Dy
-                                         / (Dy * Dy + Dz * Dz))
-                                            * (bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - bx(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)))
-                                      + (0.125 * ijk_factor(xoffset) * Dx * Dx
-                                         / (Dx * Dx + Dz * Dz))
-                                            * (by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                  d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_plus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_plus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_plus(iy, yoffset),
-                                                    d_minus(iz, zoffset))
-                                               + by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_plus(iz, zoffset))
-                                               - by(d_minus(ix, xoffset), p_minus(iy, yoffset),
-                                                    d_minus(iz, zoffset)));
+                                MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                            FieldDataT>::postprocessBz3d(bx, by, bz,
+                                                                                         meshSize,
+                                                                                         idx);
                             }
                         }
                     };
