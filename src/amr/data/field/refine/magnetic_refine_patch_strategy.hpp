@@ -64,31 +64,109 @@ public:
         auto& by = FieldDataT::getField(fine, *by_id_);
         auto& bz = FieldDataT::getField(fine, *bz_id_);
 
-        auto layout = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
+        auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
+        auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
+
+        SAMRAI::hier::Box fine_box_x
+            = Geometry::toFieldBox(fine_box, bx.physicalQuantity(), fineBoxLayout);
+        SAMRAI::hier::Box fine_box_y
+            = Geometry::toFieldBox(fine_box, by.physicalQuantity(), fineBoxLayout);
+        SAMRAI::hier::Box fine_box_z
+            = Geometry::toFieldBox(fine_box, bz.physicalQuantity(), fineBoxLayout);
+
+        int ixStartX = fine_box_x.lower(dirX);
+        int ixEndX   = fine_box_x.upper(dirX);
 
         if constexpr (dimension == 1)
         {
-            layout.evalOnGhostBox(bx,
-                                  [&](auto&... args) mutable { postprocessBx1d(bx, {args...}); });
+            for (int amrix = ixStartX; amrix <= ixEndX; ++amrix)
+            {
+                auto i = layout.AMRToLocal(core::Point{amrix});
+                postprocessBx1d(bx, i);
+            }
         }
 
-        else if constexpr (dimension == 2)
+        else if constexpr (dimension >= 2)
         {
-            layout.evalOnGhostBox(
-                bx, [&](auto&... args) mutable { postprocessBx2d(bx, by, {args...}); });
-            layout.evalOnGhostBox(
-                by, [&](auto&... args) mutable { postprocessBy2d(bx, by, {args...}); });
-        }
+            int iyStartX = fine_box_x.lower(dirY);
+            int iyEndX   = fine_box_x.upper(dirY);
+            int ixStartY = fine_box_y.lower(dirX);
+            int ixEndY   = fine_box_y.upper(dirX);
+            int iyStartY = fine_box_y.lower(dirY);
+            int iyEndY   = fine_box_y.upper(dirY);
 
-        else if constexpr (dimension == 3)
-        {
-            auto meshSize = layout.meshSize();
-            layout.evalOnGhostBox(
-                bx, [&](auto&... args) mutable { postprocessBx(bx, by, bz, meshSize, {args...}); });
-            layout.evalOnGhostBox(
-                by, [&](auto&... args) mutable { postprocessBy(bx, by, bz, meshSize, {args...}); });
-            layout.evalOnGhostBox(
-                bz, [&](auto&... args) mutable { postprocessBz(bx, by, bz, meshSize, {args...}); });
+            if constexpr (dimension == 2)
+            {
+                for (int amrix = ixStartX; amrix <= ixEndX; ++amrix)
+                {
+                    for (int amriy = iyStartX; amriy <= iyEndX; ++amriy)
+                    {
+                        auto i = layout.AMRToLocal(core::Point{amrix, amriy});
+                        postprocessBx2d(bx, by, i);
+                    }
+                }
+
+                for (int amrix = ixStartY; amrix <= ixEndY; ++amrix)
+                {
+                    for (int amriy = iyStartY; amriy <= iyEndY; ++amriy)
+                    {
+                        auto i = layout.AMRToLocal(core::Point{amrix, amriy});
+                        postprocessBy2d(bx, by, i);
+                    }
+                }
+            }
+
+            else if constexpr (dimension == 3)
+            {
+                int izStartX = fine_box_x.lower(dirZ);
+                int izEndX   = fine_box_x.upper(dirZ);
+                int izStartY = fine_box_y.lower(dirZ);
+                int izEndY   = fine_box_y.upper(dirZ);
+                int ixStartZ = fine_box_z.lower(dirX);
+                int ixEndZ   = fine_box_z.upper(dirX);
+                int iyStartZ = fine_box_z.lower(dirY);
+                int iyEndZ   = fine_box_z.upper(dirY);
+                int izStartZ = fine_box_z.lower(dirZ);
+                int izEndZ   = fine_box_z.upper(dirZ);
+
+                auto meshSize = layout.meshSize();
+
+                for (int amrix = ixStartX; amrix <= ixEndX; ++amrix)
+                {
+                    for (int amriy = iyStartX; amriy <= iyEndX; ++amriy)
+                    {
+                        for (int amriz = izStartX; amriz <= izEndX; ++amriz)
+                        {
+                            auto i = layout.AMRToLocal(core::Point{amrix, amriy, amriz});
+                            postprocessBx3d(bx, by, bz, meshSize, i);
+                        }
+                    }
+                }
+
+                for (int amrix = ixStartY; amrix <= ixEndY; ++amrix)
+                {
+                    for (int amriy = iyStartY; amriy <= iyEndY; ++amriy)
+                    {
+                        for (int amriz = izStartY; amriz <= izEndY; ++amriz)
+                        {
+                            auto i = layout.AMRToLocal(core::Point{amrix, amriy, amriz});
+                            postprocessBy3d(bx, by, bz, meshSize, i);
+                        }
+                    }
+                }
+
+                for (int amrix = ixStartZ; amrix <= ixEndZ; ++amrix)
+                {
+                    for (int amriy = iyStartZ; amriy <= iyEndZ; ++amriy)
+                    {
+                        for (int amriz = izStartZ; amriz <= izEndZ; ++amriz)
+                        {
+                            auto i = layout.AMRToLocal(core::Point{amrix, amriy, amriz});
+                            postprocessBz3d(bx, by, bz, meshSize, i);
+                        }
+                    }
+                }
+            }
         }
     }
 

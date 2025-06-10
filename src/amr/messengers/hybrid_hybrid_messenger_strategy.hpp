@@ -813,7 +813,7 @@ namespace amr
                 auto& B  = hybridModel.state.electromag.B;
                 auto& bx = B(core::Component::X);
                 auto& by = B(core::Component::Y);
-                auto& bz = B(core::Component::Y);
+                auto& bz = B(core::Component::Z);
 
                 if constexpr (dimension == 1)
                 {
