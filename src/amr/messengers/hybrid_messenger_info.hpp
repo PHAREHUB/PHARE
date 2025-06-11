@@ -67,6 +67,10 @@ namespace amr
         std::vector<VecFieldNames> ghostCurrent;
         std::vector<VecFieldNames> ghostBulkVelocity;
 
+        // below are the descriptions of the electric field that we use in the refluxing
+        VecFieldNames refluxElectric;
+        VecFieldNames fluxSumElectric;
+
         virtual ~HybridMessengerInfo() = default;
     };
 
