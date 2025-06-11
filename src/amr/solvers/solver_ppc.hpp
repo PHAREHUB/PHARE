@@ -1,6 +1,12 @@
 #ifndef PHARE_SOLVER_PPC_HPP
 #define PHARE_SOLVER_PPC_HPP
 
+#include <tuple>
+#include <iomanip>
+#include <sstream>
+
+#include "SAMRAI/hier/PatchLevel.h"
+#include "amr/physical_models/physical_model.hpp"
 #include "core/def/phare_mpi.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
@@ -53,6 +59,10 @@ private:
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
 
+    VecFieldT Bold_{this->name() + "_Bold", core::HybridQuantity::Vector::B};
+    VecFieldT fluxSumE_{this->name() + "_fluxSumE", core::HybridQuantity::Vector::E};
+    std::unordered_map<std::size_t, double> oldTime_;
+
     Faraday_t faraday_;
     Ampere_t ampere_;
     Ohm_t ohm_;
@@ -89,7 +99,16 @@ public:
     void allocate(IPhysicalModel_t& model, SAMRAI::hier::Patch& patch,
                   double const allocateTime) const override;
 
+    void prepareStep(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+                     double const currentTime) override;
 
+    void accumulateFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+                           double const coef) override;
+
+    void resetFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level) override;
+
+    void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+                double const time) override;
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, ISolverModelView& views,
                       IMessenger& fromCoarserMessenger, double const currentTime,
@@ -106,6 +125,16 @@ public:
     std::shared_ptr<ISolverModelView> make_view(level_t& level, IPhysicalModel_t& model) override
     {
         return std::make_shared<ModelViews_t>(level, dynamic_cast<HybridModel&>(model));
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
     }
 
 
@@ -133,10 +162,6 @@ private:
                    double const currentTime, double const newTime, core::UpdaterMode mode);
 
 
-    void saveState_(level_t& level, ModelViews_t& views);
-    void restoreState_(level_t& level, ModelViews_t& views);
-
-
     struct TimeSetter
     {
         template<typename QuantityAccessor>
@@ -149,6 +174,7 @@ private:
         ModelViews_t& views;
         double newTime;
     };
+
 
     void make_boxes(hierarchy_t const& hierarchy, level_t& level)
     {
@@ -186,12 +212,17 @@ private:
 
 // -----------------------------------------------------------------------------
 
+
+
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel_t& model)
 {
     auto& hmodel = dynamic_cast<HybridModel&>(model);
     hmodel.resourcesManager->registerResources(electromagPred_);
     hmodel.resourcesManager->registerResources(electromagAvg_);
+
+    hmodel.resourcesManager->registerResources(Bold_);
+    hmodel.resourcesManager->registerResources(fluxSumE_);
 }
 
 
@@ -205,6 +236,9 @@ void SolverPPC<HybridModel, AMR_Types>::allocate(IPhysicalModel_t& model,
     auto& hmodel = dynamic_cast<HybridModel&>(model);
     hmodel.resourcesManager->allocate(electromagPred_, patch, allocateTime);
     hmodel.resourcesManager->allocate(electromagAvg_, patch, allocateTime);
+
+    hmodel.resourcesManager->allocate(Bold_, patch, allocateTime);
+    hmodel.resourcesManager->allocate(fluxSumE_, patch, allocateTime);
 }
 
 
@@ -219,10 +253,100 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     auto const& Eavg  = electromagAvg_.E;
     auto const& Bpred = electromagPred_.B;
 
-    hybridInfo.ghostElectric.emplace_back(core::VecFieldNames{Eavg});
-    hybridInfo.initMagnetic.emplace_back(core::VecFieldNames{Bpred});
+    hybridInfo.ghostElectric.emplace_back(Eavg.name());
+    hybridInfo.initMagnetic.emplace_back(Bpred.name());
+    hybridInfo.refluxElectric  = Eavg.name();
+    hybridInfo.fluxSumElectric = fluxSumE_.name();
 }
 
+
+template<typename HybridModel, typename AMR_Types>
+void SolverPPC<HybridModel, AMR_Types>::prepareStep(IPhysicalModel_t& model,
+                                                    SAMRAI::hier::PatchLevel& level,
+                                                    double const currentTime)
+{
+    oldTime_[level.getLevelNumber()] = currentTime;
+
+    auto& hybridModel = dynamic_cast<HybridModel&>(model);
+    auto& B           = hybridModel.state.electromag.B;
+
+    for (auto& patch : level)
+    {
+        auto dataOnPatch = hybridModel.resourcesManager->setOnPatch(*patch, B, Bold_);
+
+        hybridModel.resourcesManager->setTime(Bold_, *patch, currentTime);
+
+        Bold_.copyData(B);
+    }
+}
+
+
+template<typename HybridModel, typename AMR_Types>
+void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& model,
+                                                          SAMRAI::hier::PatchLevel& level,
+                                                          double const coef)
+{
+    PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
+
+    auto& hybridModel = dynamic_cast<HybridModel&>(model);
+
+    for (auto& patch : level)
+    {
+        auto& Eavg         = electromagAvg_.E;
+        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto _             = hybridModel.resourcesManager->setOnPatch(*patch, fluxSumE_, Eavg);
+
+        layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
+            fluxSumE_(core::Component::X)(args...) += Eavg(core::Component::X)(args...) * coef;
+        });
+
+        layout.evalOnGhostBox(fluxSumE_(core::Component::Y), [&](auto const&... args) mutable {
+            fluxSumE_(core::Component::Y)(args...) += Eavg(core::Component::Y)(args...) * coef;
+        });
+
+        layout.evalOnGhostBox(fluxSumE_(core::Component::Z), [&](auto const&... args) mutable {
+            fluxSumE_(core::Component::Z)(args...) += Eavg(core::Component::Z)(args...) * coef;
+        });
+    }
+}
+
+
+template<typename HybridModel, typename AMR_Types>
+void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
+                                                     SAMRAI::hier::PatchLevel& level)
+{
+    PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
+
+    auto& hybridModel = dynamic_cast<HybridModel&>(model);
+
+    for (auto& patch : level)
+    {
+        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto _             = hybridModel.resourcesManager->setOnPatch(*patch, fluxSumE_);
+
+        fluxSumE_.zero();
+    }
+}
+
+
+template<typename HybridModel, typename AMR_Types>
+void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
+                                               SAMRAI::hier::PatchLevel& level, double const time)
+{
+    auto& hybridModel = dynamic_cast<HybridModel&>(model);
+    auto& Eavg        = electromagAvg_.E;
+    auto& B           = hybridModel.state.electromag.B;
+
+    for (auto& patch : level)
+    {
+        core::Faraday<GridLayout> faraday;
+        auto layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto _sp    = hybridModel.resourcesManager->setOnPatch(*patch, Bold_, Eavg, B);
+        auto _sl    = core::SetLayout(&layout, faraday);
+        auto dt     = time - oldTime_[level.getLevelNumber()];
+        faraday(Bold_, Eavg, B, dt);
+    };
+}
 
 
 
@@ -277,7 +401,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level.getLevelNumber(), newTime);
+        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
@@ -312,7 +436,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level.getLevelNumber(), newTime);
+        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
@@ -349,7 +473,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere");
         ampere_(views.layouts, views.electromag_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, levelNumber, newTime);
+        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
@@ -360,7 +484,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
              views.electromag_E);
         setTime([](auto& state) -> auto& { return state.electromag.E; });
 
-        fromCoarser.fillElectricGhosts(views.model().state.electromag.E, levelNumber, newTime);
+        fromCoarser.fillElectricGhosts(views.model().state.electromag.E, level, newTime);
     }
 }
 
@@ -372,16 +496,21 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, ModelViews_t& v
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::average_");
 
+    TimeSetter setTime{views, newTime};
+
     for (auto& state : views)
     {
         PHARE::core::average(state.electromag.B, state.electromagPred.B, state.electromagAvg.B);
         PHARE::core::average(state.electromag.E, state.electromagPred.E, state.electromagAvg.E);
     }
 
+    setTime([](auto& state) -> auto& { return state.electromagAvg.B; });
+    setTime([](auto& state) -> auto& { return state.electromagAvg.E; });
+
     // the following will fill E on all edges of all ghost cells, including those
     // on domain border. For level ghosts, electric field will be obtained from
     // next coarser level E average
-    fromCoarser.fillElectricGhosts(electromagAvg_.E, level.getLevelNumber(), newTime);
+    fromCoarser.fillElectricGhosts(electromagAvg_.E, level, newTime);
 }
 
 

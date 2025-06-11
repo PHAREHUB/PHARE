@@ -187,6 +187,14 @@ namespace amr
 
         void synchronize(SAMRAI::hier::PatchLevel& level) override { strat_->synchronize(level); }
 
+
+        void reflux(int const coarserLevelNumber, int const fineLevelNumber,
+                    double const syncTime) override
+        {
+            strat_->reflux(coarserLevelNumber, fineLevelNumber, syncTime);
+        }
+
+
         void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                              double const time) override
         {
@@ -267,9 +275,10 @@ namespace amr
          * @param levelNumber
          * @param fillTime
          */
-        void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime)
+        void fillElectricGhosts(VecFieldT& E, SAMRAI::hier::PatchLevel const& level,
+                                double const fillTime)
         {
-            strat_->fillElectricGhosts(E, levelNumber, fillTime);
+            strat_->fillElectricGhosts(E, level, fillTime);
         }
 
 
@@ -278,12 +287,13 @@ namespace amr
          * @brief fillCurrentGhosts is called by a ISolver solving a hybrid equatons to fill
          * the ghost nodes of the electric current density field
          * @param J is the electric current densityfor which ghost nodes will be filled
-         * @param levelNumber
+         * @param level
          * @param fillTime
          */
-        void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime)
+        void fillCurrentGhosts(VecFieldT& J, SAMRAI::hier::PatchLevel const& level,
+                               double const fillTime)
         {
-            strat_->fillCurrentGhosts(J, levelNumber, fillTime);
+            strat_->fillCurrentGhosts(J, level, fillTime);
         }
 
 

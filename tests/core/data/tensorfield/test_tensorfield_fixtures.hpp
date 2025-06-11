@@ -14,6 +14,10 @@ namespace PHARE::core
 /*
 A UsableTensorField is an extension of the TensorField view that owns memory for components and sets
 the view pointers. It is useful for tests to easily declare usable (== set views) tensors
+
+Note: UsableTensorFields hold Grids that are default initialized to zero for convenience rather
+than NaN (default grid init value)
+
 */
 template<std::size_t dim, std::size_t rank_ = 2>
 class UsableTensorField : public TensorField<Field_t<dim>, HybridQuantity, rank_>
@@ -50,9 +54,8 @@ protected:
     auto static make_grids(ComponentNames const& compNames, GridLayout const& layout, tensor_t qty)
     {
         auto qts = HybridQuantity::componentsQuantities(qty);
-        return for_N<N_elements, for_N_R_mode::make_array>([&](auto i) {
-            return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i])};
-        });
+        return for_N<N_elements, for_N_R_mode::make_array>(
+            [&](auto i) { return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i]), 0.}; });
     }
 
     std::array<Grid_t, N_elements> xyz;
