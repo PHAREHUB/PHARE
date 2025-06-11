@@ -4,6 +4,7 @@
 #include <cassert>
 #include <iostream>
 
+#include "SAMRAI/hier/BoxContainer.h"
 #include "core/def/phare_mpi.hpp"
 
 
@@ -200,6 +201,9 @@ namespace amr
 
             return box;
         }
+
+
+
 
         /**
          * @brief The origin of the returned layout should NOT be used
