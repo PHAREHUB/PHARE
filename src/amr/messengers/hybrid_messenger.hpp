@@ -187,6 +187,14 @@ namespace amr
 
         void synchronize(SAMRAI::hier::PatchLevel& level) override { strat_->synchronize(level); }
 
+
+        void reflux(int const coarserLevelNumber, int const fineLevelNumber,
+                    double const syncTime) override
+        {
+            strat_->reflux(coarserLevelNumber, fineLevelNumber, syncTime);
+        }
+
+
         void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                              double const time) override
         {

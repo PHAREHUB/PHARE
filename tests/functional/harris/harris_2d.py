@@ -1,53 +1,65 @@
 #!/usr/bin/env python3
 
-
+import os
 import numpy as np
-from pathlib import Path
 
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
-from pyphare.pharesee.run import Run
-from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.simulator.simulator import Simulator
+from pyphare.simulator.simulator import startMPI
 
-from tests.simulator import SimulatorTest
+os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
+"""
+  For scope timings to work
+  The env var PHARE_SCOPE_TIMING must be == "1" (or "true")
+    See src/phare/phare.hpp
+  CMake must be configured with: -DwithPhlop=ON
+  And a LOG_LEVEL must be defined via compile args: -DPHARE_LOG_LEVEL=1
+  Or change the default value in src/core/logger.hpp
+  And phlop must be available on PYTHONPATH either from subprojects
+   or install phlop via pip
+"""
+
 
 ph.NO_GUI()
-
 cpp = cpp_lib()
+startMPI()
 
-
-cells = (200, 100)
-time_step = 0.005
-final_time = 50
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
-diag_dir = "phare_outputs/harris"
+diag_outputs = "phare_outputs/test/harris/2d"
+time_step_nbr = 1000
+time_step = 0.001
+final_time = time_step * time_step_nbr
+dt = 10 * time_step
+nt = final_time / dt + 1
+timestamps = dt * np.arange(nt)
 
 
 def config():
-    L = 0.5
-
     sim = ph.Simulation(
+        smallest_patch_size=15,
+        largest_patch_size=25,
+        time_step_nbr=time_step_nbr,
         time_step=time_step,
-        final_time=final_time,
-        cells=cells,
-        dl=(0.40, 0.40),
+        # boundary_types="periodic",
+        cells=(200, 400),
+        dl=(0.2, 0.2),
         refinement="tagging",
-        max_nbr_levels=2,
-        hyper_resistivity=0.002,
+        max_nbr_levels=1,
+        hyper_resistivity=0.001,
         resistivity=0.001,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
+            "options": {"dir": diag_outputs, "mode": "overwrite"},
         },
         strict=True,
     )
 
     def density(x, y):
-        Ly = sim.simulation_domain()[1]
+        L = sim.simulation_domain()[1]
         return (
-            0.4
-            + 1.0 / np.cosh((y - Ly * 0.3) / L) ** 2
-            + 1.0 / np.cosh((y - Ly * 0.7) / L) ** 2
+            0.2
+            + 1.0 / np.cosh((y - L * 0.3) / 0.5) ** 2
+            + 1.0 / np.cosh((y - L * 0.7) / 0.5) ** 2
         )
 
     def S(y, y0, l):
@@ -56,34 +68,35 @@ def config():
     def by(x, y):
         Lx = sim.simulation_domain()[0]
         Ly = sim.simulation_domain()[1]
-        sigma = 1.0
-        dB = 0.1
-
+        w1 = 0.2
+        w2 = 1.0
         x0 = x - 0.5 * Lx
         y1 = y - 0.3 * Ly
         y2 = y - 0.7 * Ly
-
-        dBy1 = 2 * dB * x0 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
-        dBy2 = -2 * dB * x0 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
-
-        return dBy1 + dBy2
+        w3 = np.exp(-(x0 * x0 + y1 * y1) / (w2 * w2))
+        w4 = np.exp(-(x0 * x0 + y2 * y2) / (w2 * w2))
+        w5 = 2.0 * w1 / w2
+        return (w5 * x0 * w3) + (-w5 * x0 * w4)
 
     def bx(x, y):
         Lx = sim.simulation_domain()[0]
         Ly = sim.simulation_domain()[1]
-        sigma = 1.0
-        dB = 0.1
-
+        w1 = 0.2
+        w2 = 1.0
         x0 = x - 0.5 * Lx
         y1 = y - 0.3 * Ly
         y2 = y - 0.7 * Ly
-
-        dBx1 = -2 * dB * y1 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
-        dBx2 = 2 * dB * y2 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
-
+        w3 = np.exp(-(x0 * x0 + y1 * y1) / (w2 * w2))
+        w4 = np.exp(-(x0 * x0 + y2 * y2) / (w2 * w2))
+        w5 = 2.0 * w1 / w2
         v1 = -1
         v2 = 1.0
-        return v1 + (v2 - v1) * (S(y, Ly * 0.3, L) - S(y, Ly * 0.7, L)) + dBx1 + dBx2
+        return (
+            v1
+            + (v2 - v1) * (S(y, Ly * 0.3, 0.5) - S(y, Ly * 0.7, 0.5))
+            + (-w5 * y1 * w3)
+            + (+w5 * y2 * w4)
+        )
 
     def bz(x, y):
         return 0.0
@@ -92,7 +105,7 @@ def config():
         return bx(x, y) ** 2 + by(x, y) ** 2 + bz(x, y) ** 2
 
     def T(x, y):
-        K = 0.7
+        K = 1
         temp = 1.0 / density(x, y) * (K - b2(x, y) * 0.5)
         assert np.all(temp > 0)
         return temp
@@ -131,6 +144,7 @@ def config():
         bz=bz,
         protons={"charge": 1, "density": density, **vvv, "init": {"seed": 12334}},
     )
+
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
     for quantity in ["E", "B"]:
@@ -150,78 +164,16 @@ def config():
     return sim
 
 
-def plot_file_for_qty(plot_dir, qty, time):
-    return f"{plot_dir}/harris_{qty}_t{time}.png"
+def main():
+    Simulator(config()).run()
+    try:
+        from tools.python3 import plotting as m_plotting
 
-
-def plot(diag_dir, plot_dir):
-    run = Run(diag_dir)
-    pop_name = "protons"
-    for time in timestamps:
-        run.GetDivB(time).plot(
-            filename=plot_file_for_qty(plot_dir, "divb", time),
-            plot_patches=True,
-            vmin=1e-11,
-            vmax=2e-10,
-        )
-        run.GetRanks(time).plot(
-            filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
-        )
-        run.GetN(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
-        )
-        for c in ["x", "y", "z"]:
-            run.GetB(time).plot(
-                filename=plot_file_for_qty(plot_dir, f"b{c}", time),
-                plot_patches=True,
-                qty=f"{c}",
-            )
-        run.GetJ(time).plot(
-            filename=plot_file_for_qty(plot_dir, "jz", time),
-            qty="z",
-            plot_patches=True,
-            vmin=-2,
-            vmax=2,
-        )
-        run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(plot_dir, "Pxx", time),
-            qty=pop_name + "_Pxx",
-            plot_patches=True,
-            vmin=0,
-            vmax=2.7,
-        )
-        run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(plot_dir, "Pzz", time),
-            qty=pop_name + "_Pzz",
-            plot_patches=True,
-            vmin=0,
-            vmax=1.5,
-        )
-
-
-class HarrisTest(SimulatorTest):
-    def __init__(self, *args, **kwargs):
-        super(HarrisTest, self).__init__(*args, **kwargs)
-        self.simulator = None
-        self.plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
-        self.plot_dir.mkdir(parents=True, exist_ok=True)
-
-    def tearDown(self):
-        super(HarrisTest, self).tearDown()
-        if self.simulator is not None:
-            self.simulator.reset()
-        self.simulator = None
-        ph.global_vars.sim = None
-
-    def test_run(self):
-        self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(config()).run().reset()
-        if cpp.mpi_rank() == 0:
-            plot(diag_dir, self.plot_dir)
-        cpp.mpi_barrier()
-        return self
+        m_plotting.plot_run_timer_data(diag_outputs, cpp.mpi_rank())
+    except ImportError:
+        print("Phlop not found - install with: `pip install phlop`")
+    cpp.mpi_barrier()
 
 
 if __name__ == "__main__":
-    startMPI()
-    HarrisTest().test_run().tearDown()
+    main()

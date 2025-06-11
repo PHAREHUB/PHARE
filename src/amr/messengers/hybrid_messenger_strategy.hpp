@@ -115,6 +115,10 @@ namespace amr
 
         virtual void synchronize(SAMRAI::hier::PatchLevel& level) = 0;
 
+        virtual void reflux(int const coarserLevelNumber, int const fineLevelNumber,
+                            double const syncTime)
+            = 0;
+
         virtual void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                      double const time)
             = 0;

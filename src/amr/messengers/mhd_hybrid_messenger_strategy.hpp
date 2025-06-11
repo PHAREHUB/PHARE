@@ -142,6 +142,11 @@ namespace amr
             // call coarsning schedules...
         }
 
+        void reflux(int const /*coarserLevelNumber*/, int const /*fineLevelNumber*/,
+                    double const /*syncTime*/) override
+        {
+        }
+
         void postSynchronize(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
                              double const /*time*/) override
         {

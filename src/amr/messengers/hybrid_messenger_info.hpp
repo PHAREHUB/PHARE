@@ -70,6 +70,10 @@ namespace amr
 
         std::vector<std::string> sumBorderFields;
 
+        // below are the descriptions of the electric field that we use in the refluxing
+        VecFieldNames refluxElectric;
+        VecFieldNames fluxSumElectric;
+
         virtual ~HybridMessengerInfo() = default;
     };
 
