@@ -1,6 +1,7 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
+#include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
 
@@ -49,6 +50,9 @@ namespace PHARE
 {
 namespace amr
 {
+    // when registering different components to the same algorithm in SAMRAI, as we want to do for
+    // vecfields, we need those components not to be considered as equivalent_classes by SAMRAI.
+    // Without this precaution SAMRAI will assume the same geometry for all.
     class XVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
     {
     };
@@ -162,7 +166,13 @@ namespace amr
             auto by_id = resourcesManager_->getID(hybridInfo->modelMagnetic.yName);
             auto bz_id = resourcesManager_->getID(hybridInfo->modelMagnetic.zName);
 
-            magneticRefinePatchStrategy_.registerIDs(bx_id, by_id, bz_id);
+            if (!bx_id or !by_id or !bz_id)
+            {
+                throw std::runtime_error(
+                    "HybridHybridMessengerStrategy: missing magnetic field variable IDs");
+            }
+
+            magneticRefinePatchStrategy_.registerIDs(*bx_id, *by_id, *bz_id);
 
             Balgo.registerRefine(*bx_id, *bx_id, *bx_id, BfieldRefineOp_, xVariableFillPattern);
             Balgo.registerRefine(*by_id, *by_id, *by_id, BfieldRefineOp_, yVariableFillPattern);
@@ -822,6 +832,7 @@ namespace amr
 
                         if (std::isnan(bx(ix)))
                         {
+                            assert(ix % 2 == 1);
                             MagneticRefinePatchStrategy<ResourcesManagerT,
                                                         FieldDataT>::postprocessBx1d(bx, idx);
                         }
@@ -838,12 +849,9 @@ namespace amr
 
                         if (std::isnan(bx(ix, iy)))
                         {
-                            if (ix % 2 == 1)
-                            {
-                                MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                            FieldDataT>::postprocessBx2d(bx, by,
-                                                                                         idx);
-                            }
+                            assert(ix % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBx2d(bx, by, idx);
                         }
                     };
 
@@ -853,12 +861,9 @@ namespace amr
 
                         if (std::isnan(by(ix, iy)))
                         {
-                            if (iy % 2 == 1)
-                            {
-                                MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                            FieldDataT>::postprocessBy2d(bx, by,
-                                                                                         idx);
-                            }
+                            assert(iy % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBy2d(bx, by, idx);
                         }
                     };
 
@@ -879,13 +884,10 @@ namespace amr
 
                         if (std::isnan(bx(ix, iy, iz)))
                         {
-                            if (ix % 2 == 1)
-                            {
-                                MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                            FieldDataT>::postprocessBx3d(bx, by, bz,
-                                                                                         meshSize,
-                                                                                         idx);
-                            }
+                            assert(ix % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBx3d(bx, by, bz,
+                                                                                     meshSize, idx);
                         }
                     };
 
@@ -896,13 +898,10 @@ namespace amr
 
                         if (std::isnan(by(ix, iy, iz)))
                         {
-                            if (iy % 2 == 1)
-                            {
-                                MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                            FieldDataT>::postprocessBy3d(bx, by, bz,
-                                                                                         meshSize,
-                                                                                         idx);
-                            }
+                            assert(iy % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBy3d(bx, by, bz,
+                                                                                     meshSize, idx);
                         }
                     };
 
@@ -913,13 +912,10 @@ namespace amr
 
                         if (std::isnan(bz(ix, iy, iz)))
                         {
-                            if (iz % 2 == 1)
-                            {
-                                MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                            FieldDataT>::postprocessBz3d(bx, by, bz,
-                                                                                         meshSize,
-                                                                                         idx);
-                            }
+                            assert(iz % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBz3d(bx, by, bz,
+                                                                                     meshSize, idx);
                         }
                     };
 
@@ -932,6 +928,46 @@ namespace amr
                     layout.evalOnGhostBox(B(core::Component::Z),
                                           [&](auto&... args) mutable { postprocessBz({args...}); });
                 }
+
+                auto notNan = [&](auto& b, core::MeshIndex<dimension> idx) {
+                    auto check = [&](auto&&... indices) {
+                        if (std::isnan(b(indices...)))
+                        {
+                            std::string index_str;
+                            ((index_str
+                              += (index_str.empty() ? "" : ", ") + std::to_string(indices)),
+                             ...);
+                            throw std::runtime_error("NaN found in magnetic field " + b.name()
+                                                     + " at index (" + index_str + ")");
+                        }
+                    };
+
+                    if constexpr (dimension == 1)
+                    {
+                        check(idx[dirX]);
+                    }
+                    else if constexpr (dimension == 2)
+                    {
+                        check(idx[dirX], idx[dirY]);
+                    }
+                    else if constexpr (dimension == 3)
+                    {
+                        check(idx[dirX], idx[dirY], idx[dirZ]);
+                    }
+                };
+
+                auto checkNoNaNsLeft = [&]() {
+                    auto checkComponent = [&](auto component) {
+                        layout.evalOnGhostBox(
+                            B(component), [&](auto&... args) { notNan(B(component), {args...}); });
+                    };
+
+                    checkComponent(core::Component::X);
+                    checkComponent(core::Component::Y);
+                    checkComponent(core::Component::Z);
+                };
+
+                PHARE_DEBUG_DO(checkNoNaNsLeft());
             }
         }
 
