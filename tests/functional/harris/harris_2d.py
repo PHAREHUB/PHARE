@@ -4,7 +4,8 @@ import os
 import numpy as np
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
-from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.simulator.simulator import Simulator
+from pyphare.simulator.simulator import startMPI
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 """

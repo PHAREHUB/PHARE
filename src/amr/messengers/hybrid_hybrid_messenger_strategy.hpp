@@ -162,7 +162,13 @@ namespace amr
             auto by_id = resourcesManager_->getID(hybridInfo->modelMagnetic.yName);
             auto bz_id = resourcesManager_->getID(hybridInfo->modelMagnetic.zName);
 
-            magneticRefinePatchStrategy_.registerIDs(bx_id, by_id, bz_id);
+            if (!bx_id or !by_id or !bz_id)
+            {
+                throw std::runtime_error(
+                    "HybridHybridMessengerStrategy: missing magnetic field variable IDs");
+            }
+
+            magneticRefinePatchStrategy_.registerIDs(*bx_id, *by_id, *bz_id);
 
             Balgo.registerRefine(*bx_id, *bx_id, *bx_id, BfieldRefineOp_, xVariableFillPattern);
             Balgo.registerRefine(*by_id, *by_id, *by_id, BfieldRefineOp_, yVariableFillPattern);

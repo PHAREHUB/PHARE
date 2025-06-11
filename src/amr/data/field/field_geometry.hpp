@@ -202,19 +202,8 @@ namespace amr
             return box;
         }
 
-        static SAMRAI::hier::BoxContainer toFieldBoxes(SAMRAI::hier::BoxContainer const& boxes,
-                                                       PhysicalQuantity qty,
-                                                       GridLayoutT const& layout,
-                                                       bool withGhost = true)
-        {
-            SAMRAI::hier::BoxContainer fieldBoxes;
-            for (auto const& box : boxes)
-            {
-                auto boxlayout = layoutFromBox(box, layout);
-                fieldBoxes.push_back(toFieldBox(box, qty, boxlayout, withGhost));
-            }
-            return fieldBoxes;
-        }
+
+
 
         /**
          * @brief The origin of the returned layout should NOT be used
