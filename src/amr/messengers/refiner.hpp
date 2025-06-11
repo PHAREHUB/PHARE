@@ -15,11 +15,14 @@ namespace PHARE::amr
 
 enum class RefinerType {
     GhostField,
-    PatchGhostField,
     InitField,
     InitInteriorPart,
+    LevelBorderField,
     LevelBorderParticles,
+    PatchGhostField,
     PatchFieldBorderSum,
+    PatchVecFieldBorderSum,
+    PatchTensorFieldBorderSum,
     ExteriorGhostParticles
 };
 
@@ -28,8 +31,13 @@ enum class RefinerType {
 template<typename ResourcesManager, RefinerType Type>
 class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
 {
-    using FieldData_t = typename ResourcesManager::UserField_t::patch_data_type;
+    using FieldData_t = ResourcesManager::UserField_t::patch_data_type;
 
+    // hard coded rank cause there's no real tensorfields that use this code yet
+    using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
+    using VecFieldData_t    = ResourcesManager::template UserTensorField_t<1>::patch_data_type;
+
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat_ = nullptr;
 
 public:
     void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -61,16 +69,15 @@ public:
             {
                 this->add(algo,
                           algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                               hierarchy),
+                                               hierarchy, patchStrat_.get()),
                           levelNumber);
             }
 
-            // the following schedule will only fill patch ghost nodes
-            // not level border ghosts
-            else if constexpr (Type == RefinerType::PatchGhostField)
+            if constexpr (Type == RefinerType::PatchGhostField)
             {
-                this->add(algo, algo->createSchedule(level), levelNumber);
+                this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
             }
+
 
             // schedule used to += density and flux for populations
             // on incomplete overlaped ghost box nodes
@@ -78,8 +85,28 @@ public:
             {
                 this->add(algo,
                           algo->createSchedule(
-                              level, 0,
+                              level, patchStrat_.get(),
                               std::make_shared<FieldBorderSumTransactionFactory<FieldData_t>>()),
+                          levelNumber);
+            }
+
+            else if constexpr (Type == RefinerType::PatchTensorFieldBorderSum)
+            {
+                this->add(
+                    algo,
+                    algo->createSchedule(
+                        level, patchStrat_.get(),
+                        std::make_shared<FieldBorderSumTransactionFactory<TensorFieldData_t>>()),
+                    levelNumber);
+            }
+
+
+            else if constexpr (Type == RefinerType::PatchVecFieldBorderSum)
+            {
+                this->add(algo,
+                          algo->createSchedule(
+                              level, patchStrat_.get(),
+                              std::make_shared<FieldBorderSumTransactionFactory<VecFieldData_t>>()),
                           levelNumber);
             }
 
@@ -91,7 +118,9 @@ public:
             // but there is nothing there.
             else if constexpr (Type == RefinerType::InitField)
             {
-                this->add(algo, algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                this->add(algo,
+                          algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy,
+                                               patchStrat_.get()),
                           levelNumber);
             }
 
@@ -109,9 +138,21 @@ public:
                 this->add(algo,
                           algo->createSchedule(
                               std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
-                              level, nullptr, levelNumber - 1, hierarchy),
+                              level, nullptr, levelNumber - 1, hierarchy, patchStrat_.get()),
                           levelNumber);
             }
+
+
+            else if constexpr (Type == RefinerType::LevelBorderField)
+            {
+                this->add(algo,
+                          algo->createSchedule(
+                              std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
+                              level->getNextCoarserHierarchyLevelNumber(), hierarchy,
+                              patchStrat_.get()),
+                          levelNumber);
+            }
+
 
             // here we create a schedule that will refine particles from coarser level and
             // put them into the level coarse to fine boundary. These are the
@@ -122,14 +163,14 @@ public:
                 this->add(algo,
                           algo->createSchedule(
                               std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
-                              nullptr, levelNumber - 1, hierarchy),
+                              nullptr, levelNumber - 1, hierarchy, patchStrat_.get()),
                           levelNumber);
             }
 
 
             else if constexpr (Type == RefinerType::ExteriorGhostParticles)
             {
-                this->add(algo, algo->createSchedule(level), levelNumber);
+                this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
             }
         }
     }
@@ -148,13 +189,15 @@ public:
             {
                 auto schedule = algo->createSchedule(
                     std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
-                    oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                    oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
+                    patchStrat_.get());
                 schedule->fillData(initDataTime);
             }
             else
             {
-                auto schedule = algo->createSchedule(
-                    level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                auto schedule = algo->createSchedule(level, oldLevel,
+                                                     level->getNextCoarserHierarchyLevelNumber(),
+                                                     hierarchy, patchStrat_.get());
                 schedule->fillData(initDataTime);
             }
         }
@@ -178,35 +221,6 @@ public:
     }
 
 
-    /**
-     * @Brief This overload creates a Refiner for communication with both spatial and
-     * time interpolation. Data is communicated from the model vector field defined at
-     * time t=n+1 and its version at time t=n (oldModel), onto the `ghost` vector field.
-     *
-     *
-     * @param ghost represents the VecField that needs its ghost nodes filled
-     * @param model represents the VecField from which data is taken (at
-     * time t_coarse+dt_coarse)
-     * @param oldModel represents the model VecField from which data is taken
-     * at time t_coarse
-     * @param rm is the ResourcesManager
-     * @param refineOp is the spatial refinement operator
-     * @param timeOp is the time interpolator
-     *
-     * @return the function returns a Refiner
-     */
-    Refiner(core::VecFieldNames const& ghost, core::VecFieldNames const& model,
-            core::VecFieldNames const& oldModel, std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std ::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr)
-    {
-        constexpr auto dimension = ResourcesManager::dimension;
-
-        register_time_interpolated_vector_field( //
-            rm, ghost, ghost, oldModel, model, refineOp, timeOp, variableFillPattern);
-    }
-
 
 
     /**
@@ -216,45 +230,28 @@ public:
             std::shared_ptr<ResourcesManager> const& rm,
             std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
             std ::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr)
+            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr,
+            std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat          = nullptr)
     {
         constexpr auto dimension = ResourcesManager::dimension;
+
+        patchStrat_ = patchStrat;
 
         register_time_interpolated_resource( //
             rm, ghost, ghost, oldModel, model, refineOp, timeOp, variableFillPattern);
     }
 
 
-    /**
-     * @brief this overload creates a Refiner for communication without time interpolation
-     * and from one quantity to the same quantity. It is typically used for initialization.
-     */
-    Refiner(core::VecFieldNames const& src_dest, std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
-        : Refiner(src_dest, src_dest, rm, refineOp)
-    {
-    }
-
-
-    /**
-     * @brief this overload creates a Refiner for communication without time interpolation
-     * and from one quantity to another quantity.
-     */
-    Refiner(core::VecFieldNames const& dst, core::VecFieldNames const& src,
-            std::shared_ptr<ResourcesManager> const& rm,
-            std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr)
-    {
-        register_vector_field(rm, dst, src, refineOp, variableFillPattern);
-    }
-
 
 
     Refiner(std::string const& dst, std::string const& src,
             std::shared_ptr<ResourcesManager> const& rm,
             std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr)
+            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+            std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr)
     {
+        patchStrat_ = patchStrat;
+
         auto&& [idDst, idSrc] = rm->getIDsList(dst, src);
         this->add_algorithm()->registerRefine(idDst, idSrc, idDst, refineOp, fillPattern);
     }

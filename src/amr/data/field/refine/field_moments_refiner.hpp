@@ -1,5 +1,5 @@
-#ifndef PHARE_FIELD_REFINER_HPP
-#define PHARE_FIELD_REFINER_HPP
+#ifndef PHARE_FIELD_MOMENTS_REFINER_HPP
+#define PHARE_FIELD_MOMENTS_REFINER_HPP
 
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
@@ -21,18 +21,21 @@ namespace PHARE
 {
 namespace amr
 {
-    /**@brief a FieldRefiner is an object that is used to get the value of a field at a fine AMR
-     * index from coarse data
+    /** FieldMomentsRefiner is a FieldRefiner that refines from coarse to fine
+     * nodes regardless of the fine nodes being NaNs or not.
+     * This is used for getting moments on ghost nodes that are incomplete
+     * because they only recieved possible domain deposit and level ghost particle deposits
+     * but nothing from outside the ghost box.
      *
-     * The FieldRefiner is created each time a refinement is needed by the FieldRefinementOperator
-     * and its operator() is used for each fine index onto which we want to get the value from the
-     * coarse field.
-     */
+     * TODO at some point this might potentially be refactored with the FieldRefiner
+       because most of the code is the same the difference being checking for NaNs or not.
+       like a template NaNPolicy with if the nan check in if constexpr
+    */
     template<std::size_t dimension>
-    class DefaultFieldRefiner
+    class FieldMomentsRefiner
     {
     public:
-        DefaultFieldRefiner(std::array<core::QtyCentering, dimension> const& centering,
+        FieldMomentsRefiner(std::array<core::QtyCentering, dimension> const& centering,
                             SAMRAI::hier::Box const& destinationGhostBox,
                             SAMRAI::hier::Box const& sourceGhostBox,
                             SAMRAI::hier::IntVector const& ratio)
@@ -91,8 +94,7 @@ namespace amr
                 {
                     fieldValue += sourceField(xStartIndex + iShiftX) * leftRightWeights[iShiftX];
                 }
-                if (std::isnan(destinationField(fineIndex[dirX])))
-                    destinationField(fineIndex[dirX]) = fieldValue;
+                destinationField(fineIndex[dirX]) = fieldValue;
             }
 
 
@@ -120,8 +122,7 @@ namespace amr
                     fieldValue += Yinterp * xLeftRightWeights[iShiftX];
                 }
 
-                if (std::isnan(destinationField(fineIndex[dirX], fineIndex[dirY])))
-                    destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
+                destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
             }
 
 
@@ -159,9 +160,7 @@ namespace amr
                     fieldValue += Yinterp * xLeftRightWeights[iShiftX];
                 }
 
-                if (std::isnan(destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ])))
-                    destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ])
-                        = fieldValue;
+                destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ]) = fieldValue;
             }
         }
 

@@ -328,6 +328,23 @@ NO_DISCARD auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
     return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
 }
 
+template<typename T>
+auto constexpr all_are(auto&&... ts)
+{
+    return ((std::is_same_v<T, std::decay_t<decltype(ts)>>) && ...);
+}
+
+NO_DISCARD auto constexpr any(auto... bools)
+    requires(all_are<bool>(bools...))
+{
+    return (bools || ...);
+}
+
+NO_DISCARD auto constexpr all(auto... bools)
+    requires(all_are<bool>(bools...))
+{
+    return (bools && ...);
+}
 
 // calls operator bool() or copies bool
 auto constexpr static to_bool = [](auto const& v) { return bool{v}; };
@@ -344,6 +361,9 @@ NO_DISCARD auto constexpr any(Container const& container, Fn fn = to_bool)
 {
     return std::any_of(container.begin(), container.end(), fn);
 }
+
+
+
 
 template<typename Container, typename Fn = decltype(to_bool)>
 NO_DISCARD auto constexpr none(Container const& container, Fn fn = to_bool)
@@ -459,6 +479,12 @@ template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
 constexpr auto for_N(Fn&& fn)
 {
     return for_N<N, M>(fn);
+}
+
+template<std::uint16_t N, typename Fn>
+constexpr auto for_N_make_array(Fn&& fn)
+{
+    return for_N<N, for_N_R_mode::make_array>(fn);
 }
 
 template<std::uint16_t N, typename Fn>

@@ -1,6 +1,6 @@
 """
-  This file exists independently from test_advance.py to isolate dimension
-    test cases and allow each to be overridden in some way if required.
+This file exists independently from test_advance.py to isolate dimension
+  test cases and allow each to be overridden in some way if required.
 """
 
 import unittest
@@ -39,7 +39,7 @@ class AdvanceTest(AdvanceTestBase):
             ndim,
             interp_order,
             refinement_boxes,
-            "fields",
+            "eb",
             time_step=time_step,
             time_step_nbr=time_step_nbr,
             nbr_part_per_cell=ppc,

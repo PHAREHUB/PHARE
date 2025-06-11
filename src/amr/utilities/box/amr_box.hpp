@@ -2,7 +2,7 @@
 #define PHARE_AMR_UTILITIES_BOX_BOX_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include "SAMRAI/hier/Box.h"
