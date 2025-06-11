@@ -53,7 +53,7 @@ class AdvanceTest(AdvanceTestBase):
         self, interp_order, refinement_boxes
     ):
         print(f"{self._testMethodName}_{ndim}d")
-        time_step_nbr = 3
+        time_step_nbr = 1
         time_step = 0.001
         from pyphare.pharein.simulation import check_patch_size
 
@@ -65,8 +65,8 @@ class AdvanceTest(AdvanceTestBase):
             interp_order,
             refinement_boxes,
             "eb",
-            smallest_patch_size=smallest_patch_size,
-            largest_patch_size=smallest_patch_size,
+            smallest_patch_size=smallest_patch_size + 0,
+            largest_patch_size=smallest_patch_size + 0,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
         )

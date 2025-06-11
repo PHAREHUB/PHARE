@@ -35,21 +35,21 @@ namespace amr
 
     class HybridMessengerInfo : public IMessengerInfo
     {
-        using VecFieldNames = core::VecFieldNames;
+        // using std::string = core::std::string;
 
     public:
         // store names of field and vector fields known to be part of the model
         // i.e. that constitute the state of the model between two time steps.
-        VecFieldNames modelMagnetic;
-        VecFieldNames modelElectric;
-        VecFieldNames modelCurrent;
-        VecFieldNames modelIonBulkVelocity;
+        std::string modelMagnetic;
+        std::string modelElectric;
+        std::string modelCurrent;
+        std::string modelIonBulkVelocity;
         std::string modelIonDensity;
 
         // store names of vector fields that need to be initialized by refinement
         // moments are initialized by particles so only EM fields need to be init.
-        std::vector<VecFieldNames> initMagnetic;
-        std::vector<VecFieldNames> initElectric;
+        std::vector<std::string> initMagnetic;
+        std::vector<std::string> initElectric;
 
         // below are the names of the populations that need to be communicated
         // this is for initialization
@@ -62,13 +62,16 @@ namespace amr
 
         // below are the descriptions of the vector fields that for which
         // ghosts need to be filled at some point.
-        std::vector<VecFieldNames> ghostMagnetic;
-        std::vector<VecFieldNames> ghostElectric;
-        std::vector<VecFieldNames> ghostCurrent;
-        std::vector<VecFieldNames> ghostBulkVelocity;
-        std::vector<VecFieldNames> ghostFlux;
-
+        std::vector<std::string> ghostFlux;
         std::vector<std::string> sumBorderFields;
+        std::vector<std::string> ghostMagnetic;
+        std::vector<std::string> ghostElectric;
+        std::vector<std::string> ghostCurrent;
+        std::vector<std::string> ghostBulkVelocity;
+
+        // below are the descriptions of the electric field that we use in the refluxing
+        std::string refluxElectric;
+        std::string fluxSumElectric;
 
         virtual ~HybridMessengerInfo() = default;
     };

@@ -84,12 +84,12 @@ namespace amr
 
         virtual ~MHDHybridMessengerStrategy() = default;
 
-        void fillElectricGhosts(VecFieldT& /*E*/, int const /*levelNumber*/,
+        void fillElectricGhosts(VecFieldT& /*E*/, SAMRAI::hier::PatchLevel const& /*level*/,
                                 double const /*fillTime*/) override
         {
         }
 
-        void fillCurrentGhosts(VecFieldT& /*J*/, int const /*levelNumber*/,
+        void fillCurrentGhosts(VecFieldT& /*J*/, SAMRAI::hier::PatchLevel const& /*level*/,
                                double const /*fillTime*/) override
         {
         }
@@ -140,6 +140,11 @@ namespace amr
         void synchronize(SAMRAI::hier::PatchLevel& /*level*/) final
         {
             // call coarsning schedules...
+        }
+
+        void reflux(int const /*coarserLevelNumber*/, int const /*fineLevelNumber*/,
+                    double const /*syncTime*/) override
+        {
         }
 
         void postSynchronize(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,

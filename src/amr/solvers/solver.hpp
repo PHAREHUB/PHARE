@@ -81,7 +81,37 @@ namespace solver
         virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
 
 
+        /**
+         * @brief prepareStep is used to prepare internal variable needed for the reflux. It is
+         * called before the advanceLevel() method.
+         *
+         */
+        virtual void prepareStep(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+                                 double const currentTime)
+            = 0;
 
+        /**
+         * @brief accumulateFluxSum accumulates the flux sum(s) on the given PatchLevel for
+         * refluxing later.
+         */
+        virtual void accumulateFluxSum(IPhysicalModel<AMR_Types>& model,
+                                       SAMRAI::hier::PatchLevel& level, double const coef)
+            = 0;
+
+
+        /**
+         * @brief resetFluxSum resets the flux sum(s) on the given PatchLevel to zero.
+         */
+        virtual void resetFluxSum(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level)
+            = 0;
+
+
+        /**
+         * @brief implements the reflux operations needed for a given solver.
+         */
+        virtual void reflux(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+                            double const time)
+            = 0;
 
         /**
          * @brief advanceLevel advances the given level from t to t+dt
@@ -89,7 +119,7 @@ namespace solver
         virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
                                   ISolverModelView& view,
                                   amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarser,
-                                  const double currentTime, const double newTime)
+                                  double const currentTime, double const newTime)
             = 0;
 
 
@@ -100,7 +130,8 @@ namespace solver
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
         virtual void allocate(IPhysicalModel<AMR_Types>& model, patch_t& patch,
-                              double const allocateTime) const = 0;
+                              double const allocateTime) const
+            = 0;
 
 
 
