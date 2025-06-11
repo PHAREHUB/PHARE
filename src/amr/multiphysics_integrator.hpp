@@ -436,7 +436,7 @@ namespace solver
 
 
         void initializeLevelIntegrator(
-            const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& /*griddingAlg*/)
+            std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy> const& /*griddingAlg*/)
             override
         {
         }
@@ -529,6 +529,7 @@ namespace solver
                                       subcycleEndTimes_[iLevel - 1]);
             }
 
+            solver.prepareStep(model, *level, currentTime);
             fromCoarser.prepareStep(model, *level, currentTime);
 
             solver.advanceLevel(*hierarchy, iLevel, getModelView_(iLevel), fromCoarser, currentTime,
@@ -545,6 +546,13 @@ namespace solver
                 dump_(iLevel);
             }
 
+            if (iLevel != 0)
+            {
+                auto ratio = (level->getRatioToCoarserLevel()).max();
+                auto coef  = 1. / (ratio * ratio);
+                solver.accumulateFluxSum(model, *level, coef);
+            }
+
             load_balancer_manager_->estimate(*level, model);
 
             return newTime;
@@ -557,7 +565,7 @@ namespace solver
         standardLevelSynchronization(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                      int const coarsestLevel, int const finestLevel,
                                      double const syncTime,
-                                     const std::vector<double>& /*oldTimes*/) override
+                                     std::vector<double> const& /*oldTimes*/) override
         {
             // TODO use messengers to sync with coarser
             for (auto ilvl = finestLevel; ilvl > coarsestLevel; --ilvl)
@@ -566,10 +574,17 @@ namespace solver
                 auto& fineLevel = *hierarchy->getPatchLevel(ilvl);
                 toCoarser.synchronize(fineLevel);
 
+                // refluxing
+                auto iCoarseLevel  = ilvl - 1;
+                auto& coarseLevel  = *hierarchy->getPatchLevel(iCoarseLevel);
+                auto& coarseSolver = getSolver_(iCoarseLevel);
+                auto& coarseModel  = getModel_(iCoarseLevel);
+
+                toCoarser.reflux(iCoarseLevel, ilvl, syncTime);
+                coarseSolver.reflux(coarseModel, coarseLevel, syncTime);
+                coarseSolver.resetFluxSum(coarseModel, fineLevel);
+
                 // recopy (patch) ghosts
-                auto iCoarseLevel = ilvl - 1;
-                auto& coarseModel = getModel_(iCoarseLevel);
-                auto& coarseLevel = *hierarchy->getPatchLevel(iCoarseLevel);
                 toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);
 
                 // advancing all but the finest includes synchronization of the finer

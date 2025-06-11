@@ -1,12 +1,9 @@
-#ifndef PHARE_MAGNETIC_FIELD_COARSENER
-#define PHARE_MAGNETIC_FIELD_COARSENER
-
-
-#include "core/def/phare_mpi.hpp"
+#ifndef PHARE_FLUX_SUM_COARSENER
+#define PHARE_FLUX_SUM_COARSENER
 
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
 #include "core/utilities/constants.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 
 #include <SAMRAI/hier/Box.h>
@@ -32,10 +29,10 @@ using core::dirZ;
  *
  */
 template<std::size_t dimension>
-class MagneticFieldCoarsener
+class ElectricFieldCoarsener
 {
 public:
-    MagneticFieldCoarsener(std::array<core::QtyCentering, dimension> const centering,
+    ElectricFieldCoarsener(std::array<core::QtyCentering, dimension> const centering,
                            SAMRAI::hier::Box const& sourceBox,
                            SAMRAI::hier::Box const& destinationBox,
                            SAMRAI::hier::IntVector const& ratio)
@@ -69,64 +66,84 @@ public:
         fineStartIndex = AMRToLocal(fineStartIndex, sourceBox_);
         coarseIndex    = AMRToLocal(coarseIndex, destinationBox_);
 
-        // the following kinda assumes where B is, i.e. Yee layout centering
-        // as it only does faces primal-dual, dual-primal and dual-dual
-
         if constexpr (dimension == 1)
         {
-            // in 1D div(B) is automatically satisfied so using this coarsening
-            // opertor is probably not better than the default one, but we do that
-            // for a kind of consistency...
-            // coarse flux is equal to fine flux and we're 1D so there is flux partitioned
-            // only for By and Bz, Bx is equal to the fine value
-
-            if (centering_[dirX] == core::QtyCentering::primal) // bx
-            {
-                coarseField(coarseIndex[dirX]) = fineField(fineStartIndex[dirX]);
-            }
-            else if (centering_[dirX] == core::QtyCentering::dual) // by and bz
+            if (centering_[dirX] == core::QtyCentering::dual) // ex
             {
                 coarseField(coarseIndex[dirX])
                     = 0.5 * (fineField(fineStartIndex[dirX] + 1) + fineField(fineStartIndex[dirX]));
+            }
+            else if (centering_[dirX] == core::QtyCentering::primal) // ey, ez
+            {
+                coarseField(coarseIndex[dirX]) = fineField(fineStartIndex[dirX]);
             }
         }
 
         if constexpr (dimension == 2)
         {
-            if (centering_[dirX] == core::QtyCentering::primal
-                and centering_[dirY] == core::QtyCentering::dual)
-            {
-                coarseField(coarseIndex[dirX], coarseIndex[dirY])
-                    = 0.5
-                      * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
-                         + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1));
-            }
-            else if (centering_[dirX] == core::QtyCentering::dual
-                     and centering_[dirY] == core::QtyCentering::primal)
+            if (centering_[dirX] == core::QtyCentering::dual
+                and centering_[dirY] == core::QtyCentering::primal) // ex
             {
                 coarseField(coarseIndex[dirX], coarseIndex[dirY])
                     = 0.5
                       * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
                          + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY]));
             }
-            else if (centering_[dirX] == core::QtyCentering::dual
-                     and centering_[dirY] == core::QtyCentering::dual)
+            else if (centering_[dirX] == core::QtyCentering::primal
+                     and centering_[dirY] == core::QtyCentering::dual) // ey
             {
                 coarseField(coarseIndex[dirX], coarseIndex[dirY])
-                    = 0.25
+                    = 0.5
                       * (fineField(fineStartIndex[dirX], fineStartIndex[dirY])
-                         + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY])
-                         + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1)
-                         + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY] + 1));
+                         + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1));
+            }
+            else if (centering_[dirX] == core::QtyCentering::primal
+                     and centering_[dirY] == core::QtyCentering::primal) // ez
+            {
+                coarseField(coarseIndex[dirX], coarseIndex[dirY])
+                    = fineField(fineStartIndex[dirX], fineStartIndex[dirY]);
             }
             else
             {
-                throw std::runtime_error("no magnetic field should end up here");
+                throw std::runtime_error("no electric field should end up here");
             }
         }
         else if constexpr (dimension == 3)
         {
-            throw std::runtime_error("Not Implemented yet");
+            if (centering_[dirX] == core::QtyCentering::dual
+                and centering_[dirY] == core::QtyCentering::primal
+                and centering_[dirZ] == core::QtyCentering::primal) // ex
+            {
+                coarseField(coarseIndex[dirX], coarseIndex[dirY], coarseIndex[dirZ])
+                    = 0.5
+                      * (fineField(fineStartIndex[dirX], fineStartIndex[dirY], fineStartIndex[dirZ])
+                         + fineField(fineStartIndex[dirX] + 1, fineStartIndex[dirY],
+                                     fineStartIndex[dirZ]));
+            }
+            else if (centering_[dirX] == core::QtyCentering::primal
+                     and centering_[dirY] == core::QtyCentering::dual
+                     and centering_[dirZ] == core::QtyCentering::primal) // ey
+            {
+                coarseField(coarseIndex[dirX], coarseIndex[dirY], coarseIndex[dirZ])
+                    = 0.5
+                      * (fineField(fineStartIndex[dirX], fineStartIndex[dirY], fineStartIndex[dirZ])
+                         + fineField(fineStartIndex[dirX], fineStartIndex[dirY] + 1,
+                                     fineStartIndex[dirZ]));
+            }
+            else if (centering_[dirX] == core::QtyCentering::primal
+                     and centering_[dirY] == core::QtyCentering::primal
+                     and centering_[dirZ] == core::QtyCentering::dual) // ez
+            {
+                coarseField(coarseIndex[dirX], coarseIndex[dirY], coarseIndex[dirZ])
+                    = 0.5
+                      * (fineField(fineStartIndex[dirX], fineStartIndex[dirY], fineStartIndex[dirZ])
+                         + fineField(fineStartIndex[dirX], fineStartIndex[dirY],
+                                     fineStartIndex[dirZ] + 1));
+            }
+            else
+            {
+                throw std::runtime_error("no electric field should end up here");
+            }
         }
     }
 
@@ -136,5 +153,7 @@ private:
     SAMRAI::hier::Box const destinationBox_;
     static int constexpr ratio_ = 2;
 };
+
 } // namespace PHARE::amr
+
 #endif
