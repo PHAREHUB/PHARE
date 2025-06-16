@@ -119,7 +119,7 @@ private:
     FieldFillPattern(FieldFillPattern const&)            = delete;
     FieldFillPattern& operator=(FieldFillPattern const&) = delete;
 
-    static const inline std::string s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
+    static inline std::string const s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
 
     SAMRAI::hier::IntVector const& getStencilWidth()
     {

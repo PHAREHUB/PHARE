@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
-import numpy as np
 
+import numpy as np
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
 from pyphare.simulator.simulator import Simulator
