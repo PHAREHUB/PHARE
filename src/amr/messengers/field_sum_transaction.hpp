@@ -14,6 +14,22 @@ namespace PHARE::amr
 {
 
 
+/** * @brief FieldBorderSumTransaction is used to += pop density and flux on ghost box overlaps
+ *
+ * A FieldBorderSumTransaction is a SAMRAI Transaction created by the
+ * FieldBorderSumTransactionFactory provided (via createShedule) to schedules that accumulate
+ * incomplete density and flux on ghost box overlaps.
+ *
+ * Due to the lack of neighbor particle contributions, some domain nodes and ghost nodes
+ * have incomplete moments after deposition. The complement of these nodes is what has
+ * been deposited on (also incomplete) neighbor nodes.
+ *
+ * Default SAMRAI transaction calls PatchData::copy and PatchData::packStream
+ * This transaction defines these override to these methods to call specific methods
+ * of FieldData to perform the += instead of =.
+ * These methods are copyAndSum and unpackStreamAndSum.
+ *
+ */
 template<typename FieldData_t>
 class FieldBorderSumTransaction : public SAMRAI::tbox::Transaction
 {

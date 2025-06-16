@@ -16,10 +16,11 @@
 namespace PHARE::amr
 {
 
-// We use this class as a signal in particles_data.hpp
-//  that we are performing an export from the patch ghost layer
-//  of one patch, to the domain of adjacent patch which is the analogue
-//  of the original patch ghost layer
+/** ParticlesDomainOverlap is used as a signal in particles_data.hpp
+  that we are performing an export from the patch ghost layer
+  of one patch, to the domain of adjacent patch which is the analogue
+  of the original patch ghost layer
+  */
 class ParticlesDomainOverlap : public SAMRAI::pdat::CellOverlap
 {
     using Super = SAMRAI::pdat::CellOverlap;
@@ -36,6 +37,29 @@ public:
 
 
 
+/**
+ * \brief VariableFillPattern that is used to grab particles leaving neighboring patches
+ *
+ * This pattern is only use to grab incoming particles and not in refinement operations.
+ * Thus, only calculateOverlap is implemented. computeFillBoxesOverlap, only used in refinement
+ * is not to be used.
+ *
+ * Leaving neighbor particles will be searched in a layer around neighbor patch domain.
+ * Typically, because a particle should not travel more than one cell in one time step
+ * this layer should be one cell wide.
+ *
+ * Here, we compute the overlap using the particle data geometry, which is the CellGeometry
+ * This overlap will be the intersection of the source box with the destination ghost box.
+ *
+ * What we want is the opposite, we want to take leaving particles from the source GHOST box
+ * that are found in the destination box.
+ *
+ * We thus grow the overlap by some amount to extend beyond the source box
+ * and then we intersect with the destination box, to exclude the destination ghost layer.
+ *
+ * As explained above, the overlap could probably be grown by only one cell.
+ * Here we use the particle ghost width defined in the GridLayout_t.
+ */
 template<typename GridLayout_t>
 class ParticleDomainFromGhostFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
@@ -84,7 +108,7 @@ private:
     ParticleDomainFromGhostFillPattern& operator=(ParticleDomainFromGhostFillPattern const&)
         = delete;
 
-    static inline std::string const s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
+    static inline std::string const s_name_id = "ParticleDomainFromGhostFillPattern";
 
     SAMRAI::hier::IntVector const& getStencilWidth() override
     {

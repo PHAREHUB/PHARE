@@ -72,6 +72,8 @@ public:
                 this->add(algo, algo->createSchedule(level), levelNumber);
             }
 
+            // schedule used to += density and flux for populations
+            // on incomplete overlaped ghost box nodes
             else if constexpr (Type == RefinerType::PatchFieldBorderSum)
             {
                 this->add(algo,

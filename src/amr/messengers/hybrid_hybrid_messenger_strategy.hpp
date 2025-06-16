@@ -427,12 +427,18 @@ namespace amr
             auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
             using value_type = FieldT::value_type;
 
+
+            // we cannot have the schedule doign the += in place in the flux array
+            // because some overlaps could be counted several times.
+            // we therefore first copy flux into a sumVec buffer and then
+            // execute the schedule onto that before copying it back onto the flux array
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
                 for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
                     for (std::uint8_t c = 0; c < N; ++c)
                         std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
                                     ions[i].flux()[c].size() * sizeof(value_type));
+
 
                 popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
 
@@ -455,6 +461,7 @@ namespace amr
                 for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
                     std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
                                 ions[i].particleDensity().size() * sizeof(value_type));
+
 
                 popDensityBorderSumRefiners_[i * fieldsPerPop].fill(level.getLevelNumber(),
                                                                     fillTime);
@@ -1078,7 +1085,9 @@ namespace amr
         using FieldGhostSumRefinerPool   = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using FieldFillPattern_t         = FieldFillPattern<dimension>;
 
+        //! += flux on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
+        //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
@@ -1123,6 +1132,7 @@ namespace amr
         RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
 
 
+        //! to grab particle leaving neighboring patches and inject into domain
         DomainGhostPartRefinerPool domainGhostPartRefiners_{resourcesManager_};
 
         SynchronizerPool<rm_t> densitySynchronizers_{resourcesManager_};
