@@ -1,17 +1,15 @@
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_BASE_HPP
 #define PHARE_CORE_DATA_FIELD_FIELD_BASE_HPP
 
-#include <array>
-#include <cstddef>
-#include <string>
-#include <utility>
-#include <vector>
-#include <algorithm>
 
 #include "core/def.hpp"
-#include "core/logger.hpp"
-
 #include "core/data/ndarray/ndarray_vector.hpp"
+
+
+#include <array>
+#include <string>
+#include <cstddef>
+#include <utility>
 
 
 namespace PHARE::core
@@ -71,7 +69,7 @@ public:
 
     bool isUsable() const { return Super::data() != nullptr; }
     bool isSettable() const { return !isUsable(); }
-    
+
 
     template<typename... Args>
     NO_DISCARD auto& operator()(Args&&... args)
@@ -103,11 +101,12 @@ void average(Field<dim, PhysicalQuantity, Data_t> const& f1,
              Field<dim, PhysicalQuantity, Data_t> const& f2,
              Field<dim, PhysicalQuantity, Data_t>& avg)
 {
-    std::transform(std::begin(f1), std::end(f1), std::begin(f2), std::begin(avg),
-                   std::plus<double>());
-
-    std::transform(std::begin(avg), std::end(avg), std::begin(avg),
-                   [](double x) { return x * 0.5; });
+    auto const size = f1.size();
+    auto const d1   = f1.data();
+    auto const d2   = f2.data();
+    auto av         = avg.data();
+    for (std::size_t i = 0; i < size; ++i)
+        av[i] = (d1[i] + d2[i]) * .5;
 }
 
 

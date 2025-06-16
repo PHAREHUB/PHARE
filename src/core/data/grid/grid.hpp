@@ -1,16 +1,15 @@
 #ifndef PHARE_CORE_DATA_GRID_GRID_BASE_HPP
 #define PHARE_CORE_DATA_GRID_GRID_BASE_HPP
 
-#include <array>
-#include <cstddef>
-#include <cassert>
-#include <string>
-#include <utility>
-#include <vector>
-#include <algorithm>
 
 #include "core/def.hpp"
 #include "core/data/field/field.hpp"
+
+
+#include <array>
+#include <string>
+#include <cstddef>
+#include <cassert>
 
 namespace PHARE::core
 {
@@ -98,11 +97,7 @@ void average(Grid<NdArrayImpl, PhysicalQuantity> const& f1,
              Grid<NdArrayImpl, PhysicalQuantity> const& f2,
              Grid<NdArrayImpl, PhysicalQuantity>& avg)
 {
-    std::transform(std::begin(f1), std::end(f1), std::begin(f2), std::begin(avg),
-                   std::plus<double>());
-
-    std::transform(std::begin(avg), std::end(avg), std::begin(avg),
-                   [](double x) { return x * 0.5; });
+    average(*&f1, *&f2, *&avg);
 }
 
 
