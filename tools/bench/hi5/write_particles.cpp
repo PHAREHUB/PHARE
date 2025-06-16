@@ -1,18 +1,15 @@
 
-#include "benchmark/benchmark.h"
+#include "phare/phare.hpp"
 
-#include "diagnostic/detail/h5writer.hpp"
-#include "diagnostic/diagnostic_manager.hpp"
-#include "hdf5/detail/hdf5_utils.hpp"
-#include "hdf5/detail/h5/h5_file.hpp"
-
-#include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
 
-#include "phare/phare.hpp"
+#include "hdf5/detail/hdf5_utils.hpp"
+#include "hdf5/detail/h5/h5_file.hpp"
 
 #include "tools/bench/core/bench.hpp"
+
+#include "benchmark/benchmark.h"
 
 constexpr std::size_t dim = 1;
 
