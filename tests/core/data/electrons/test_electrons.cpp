@@ -126,9 +126,8 @@ public:
 template<typename TypeInfo /*= std::pair<DimConst<1>, InterpConst<1>>*/>
 struct ElectronsTest : public ::testing::Test
 {
-    static constexpr auto dim         = typename TypeInfo::first_type{}();
-    static constexpr auto interp      = typename TypeInfo::second_type{}();
-    static constexpr auto densityName = std::string_view{"rho"};
+    static constexpr auto dim    = typename TypeInfo::first_type{}();
+    static constexpr auto interp = typename TypeInfo::second_type{}();
 
 
     using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
@@ -149,9 +148,9 @@ struct ElectronsTest : public ::testing::Test
     Electromag<VecFieldND> electromag;
 
     UsableVecField<dim> J, F, Ve, Vi;
-    UsableTensorField<dim> M, protons_M;
+    UsableTensorField<dim> ionTensor, protonTensor;
 
-    GridND Nibuffer, NiProtons, Pe;
+    GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
 
     ParticleArray_t domainParticles{layout.AMRBox()};
     ParticleArray_t patchGhostParticles = domainParticles;
@@ -164,22 +163,25 @@ struct ElectronsTest : public ::testing::Test
     template<typename... Args>
     auto static _ions(Args&... args)
     {
-        auto const& [Fi, Nibuffer, NiProtons, Vi, M, protons_M, pack]
+        auto const& [ionFlux, ionChargeDensity, ionMassDensity, protonParticleDensity,
+                     protonChargeDensity, Vi, ionTensor, protonTensor, pack]
             = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
-            auto const& [V, m, d, md] = ions.getCompileTimeResourcesViewList();
-            d.setBuffer(&Nibuffer);
+            auto const& [V, m, d_c, d_m] = ions.getCompileTimeResourcesViewList();
+            d_c.setBuffer(&ionChargeDensity);
+            d_m.setBuffer(&ionMassDensity);
             Vi.set_on(V);
-            M.set_on(m);
+            ionTensor.set_on(m);
         }
         auto& pops = ions.getRunTimeResourcesViewList();
         assert(pops.size() == 1);
 
-        auto const& [F, m, d, poppack] = pops[0].getCompileTimeResourcesViewList();
-        d.setBuffer(&NiProtons);
-        Fi.set_on(F);
-        protons_M.set_on(m);
+        auto const& [F, m, Np, Nc, poppack] = pops[0].getCompileTimeResourcesViewList();
+        Np.setBuffer(&protonParticleDensity);
+        Nc.setBuffer(&protonChargeDensity);
+        ionFlux.set_on(F);
+        protonTensor.set_on(m);
         poppack.setBuffer(&pack);
         return ions;
     }
@@ -191,14 +193,19 @@ struct ElectronsTest : public ::testing::Test
         , F{"protons_flux", layout, HybridQuantity::Vector::V}
         , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , Nibuffer{std::string{densityName}, HybridQuantity::Scalar::rho,
-                   layout.allocSize(HybridQuantity::Scalar::rho)}
-        , NiProtons{"protons_rho", HybridQuantity::Scalar::rho,
-                    layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
+        , protonTensor{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
+        , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
+                           layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
+                         layout.allocSize(HybridQuantity::Scalar::rho)}
+        , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
+                                layout.allocSize(HybridQuantity::Scalar::rho)}
+        , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
+                              layout.allocSize(HybridQuantity::Scalar::rho)}
         , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
-        , ions{_ions(F, Nibuffer, NiProtons, Vi, M, protons_M, pack)}
+        , ions{_ions(F, ionChargeDensity, ionMassDensity, protonParticleDensity,
+                     protonChargeDensity, Vi, ionTensor, protonTensor, pack)}
         , electrons{createDict<dim>()["electrons"], ions, J}
     {
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
@@ -237,7 +244,7 @@ struct ElectronsTest : public ::testing::Test
             fill(Jy, [](double x) { return std::sinh(0.3 * x); });
             fill(Jz, [](double x) { return std::sinh(0.4 * x); });
 
-            fill(Nibuffer, [](double x) { return std::cosh(0.1 * x); });
+            fill(ionChargeDensity, [](double x) { return std::cosh(0.1 * x); });
         }
         else if constexpr (dim == 2)
         {
@@ -266,7 +273,7 @@ struct ElectronsTest : public ::testing::Test
             fill(Jy, [](double x, double y) { return std::sinh(0.3 * x) * std::sinh(0.3 * y); });
             fill(Jz, [](double x, double y) { return std::sinh(0.4 * x) * std::sinh(0.4 * y); });
 
-            fill(Nibuffer,
+            fill(ionChargeDensity,
                  [](double x, double y) { return std::cosh(0.1 * x) * std::cosh(0.1 * y); });
         }
         else if constexpr (dim == 3)
@@ -313,7 +320,7 @@ struct ElectronsTest : public ::testing::Test
                 return std::sinh(0.4 * x) * std::sinh(0.4 * y) * std::sinh(0.4 * z);
             });
 
-            fill(Nibuffer, [](double x, double y, double z) {
+            fill(ionChargeDensity, [](double x, double y, double z) {
                 return std::cosh(0.1 * x) * std::cosh(0.1 * y) * std::cosh(0.1 * z);
             });
         }
@@ -363,7 +370,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsDensityEqualIonDensity)
     electrons.update(layout);
 
     auto& Ne = electrons.density();
-    auto& Ni = ions.density();
+    auto& Ni = ions.chargeDensity();
 
     if constexpr (dim == 1)
     {

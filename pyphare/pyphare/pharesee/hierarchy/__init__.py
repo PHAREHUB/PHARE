@@ -11,10 +11,11 @@ __all__ = [
 
 
 def hierarchy_from(
-    simulator=None, qty=None, pop="", h5_filename=None, times=None, hier=None, **kwargs
+    simulator=None, qty=None, pop="", h5_filename=None, times=None, hier=None, func=None, **kwargs
 ):
     from .fromh5 import hierarchy_fromh5
     from .fromsim import hierarchy_from_sim
+    from .fromfunc import hierarchy_from_func
 
     """
     this function reads an HDF5 PHARE file and returns a PatchHierarchy from
@@ -38,5 +39,8 @@ def hierarchy_from(
 
     if simulator is not None and qty is not None:
         return hierarchy_from_sim(simulator, qty, pop=pop)
+
+    if func is not None and hier is not None:
+        return hierarchy_from_func(func, hier, **kwargs)
 
     raise ValueError("can't make hierarchy")
