@@ -22,13 +22,10 @@ time_step = 0.005
 final_time = 50
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
 diag_dir = "phare_outputs/harris"
-plot_dir = Path(f"{diag_dir}_plots")
-plot_dir.mkdir(parents=True, exist_ok=True)
 
 
 def config():
     L = 0.5
-    startMPI()
 
     sim = ph.Simulation(
         time_step=time_step,
@@ -152,35 +149,33 @@ def config():
     return sim
 
 
-def plot_file_for_qty(qty, time):
+def plot_file_for_qty(plot_dir, qty, time):
     return f"{plot_dir}/harris_{qty}_t{time}.png"
 
 
-def plot(diag_dir):
+def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
     for time in timestamps:
         run.GetDivB(time).plot(
-            filename=plot_file_for_qty("divb", time),
+            filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
             vmin=1e-11,
             vmax=2e-10,
         )
         run.GetRanks(time).plot(
-            filename=plot_file_for_qty("Ranks", time),
-            plot_patches=True,
+            filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
         )
         run.GetN(time, pop_name="protons").plot(
-            filename=plot_file_for_qty("N", time),
-            plot_patches=True,
+            filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
         )
         for c in ["x", "y", "z"]:
             run.GetB(time).plot(
-                filename=plot_file_for_qty(f"b{c}", time),
-                qty=f"{c}",
+                filename=plot_file_for_qty(plot_dir, f"b{c}", time),
                 plot_patches=True,
+                qty=f"{c}",
             )
         run.GetJ(time).plot(
-            filename=plot_file_for_qty("jz", time),
+            filename=plot_file_for_qty(plot_dir, "jz", time),
             qty="z",
             plot_patches=True,
             vmin=-2,
@@ -192,6 +187,8 @@ class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super(HarrisTest, self).__init__(*args, **kwargs)
         self.simulator = None
+        self.plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
+        self.plot_dir.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
         super(HarrisTest, self).tearDown()
@@ -204,10 +201,11 @@ class HarrisTest(SimulatorTest):
         self.register_diag_dir_for_cleanup(diag_dir)
         Simulator(config()).run().reset()
         if cpp.mpi_rank() == 0:
-            plot(diag_dir)
+            plot(diag_dir, self.plot_dir)
         cpp.mpi_barrier()
         return self
 
 
 if __name__ == "__main__":
+    startMPI()
     HarrisTest().test_run().tearDown()
