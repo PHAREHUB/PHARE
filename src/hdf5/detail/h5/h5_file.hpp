@@ -72,8 +72,8 @@ public:
     NO_DISCARD HiFile& file() { return h5file_; }
 
 
-    template<typename T, std::size_t dim = 1>
-    NO_DISCARD auto read_data_set_flat(std::string path) const
+    template<typename T>
+    NO_DISCARD auto read_data_set_flat(std::string const& path) const
     {
         std::vector<T> data(H5Easy::getSize(h5file_, path));
         h5file_.getDataSet(path).read_raw(data.data());
@@ -81,7 +81,7 @@ public:
     }
 
     template<typename T, std::size_t dim = 1>
-    NO_DISCARD auto read_data_set(std::string path) const
+    NO_DISCARD auto read_data_set(std::string const& path) const
     {
         auto data = vector_for_dim<T, dim>();
         h5file_.getDataSet(path).read(data);
@@ -89,15 +89,15 @@ public:
     }
 
 
-    template<std::size_t dim = 1, typename Data>
-    auto& write_data_set(std::string path, Data const& data)
+    template<typename Data>
+    auto& write_data_set(std::string const& path, Data const& data)
     {
         h5file_.getDataSet(path).write(data);
         return *this;
     }
 
-    template<std::size_t dim = 1, typename Data>
-    auto& write_data_set_flat(std::string path, Data const& data)
+    template<typename Data>
+    auto& write_data_set_flat(std::string const& path, Data const& data)
     {
         h5file_.getDataSet(path).write_raw(data);
         return *this;
@@ -188,7 +188,7 @@ public:
      * the same
      */
     template<typename Data>
-    void write_attributes_per_mpi(std::string path, std::string key, Data const& data)
+    void write_attributes_per_mpi(std::string const& path, std::string key, Data const& data)
     {
         constexpr bool data_is_vector = core::is_std_vector_v<Data>;
 
@@ -245,10 +245,10 @@ public:
     }
 
 
-    HighFiveFile(const HighFiveFile&)             = delete;
-    HighFiveFile(const HighFiveFile&&)            = delete;
-    HighFiveFile& operator=(const HighFiveFile&)  = delete;
-    HighFiveFile& operator=(const HighFiveFile&&) = delete;
+    HighFiveFile(HighFiveFile const&)             = delete;
+    HighFiveFile(HighFiveFile const&&)            = delete;
+    HighFiveFile& operator=(HighFiveFile const&)  = delete;
+    HighFiveFile& operator=(HighFiveFile const&&) = delete;
 
 private:
     HighFive::FileAccessProps fapl_;
