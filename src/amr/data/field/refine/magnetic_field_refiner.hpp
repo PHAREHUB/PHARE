@@ -54,10 +54,8 @@ public:
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
-        auto locFineIdx = AMRToLocal(fineIndex, fineBox_);
-        auto coarseIdx{fineIndex};
-        for (auto& idx : coarseIdx)
-            idx = idx / 2;
+        auto locFineIdx   = AMRToLocal(fineIndex, fineBox_);
+        auto coarseIdx    = toCoarseIndex(fineIndex);
         auto locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
 
