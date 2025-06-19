@@ -91,17 +91,6 @@ private:
 
 
 
-
-template<typename NdArrayImpl, typename PhysicalQuantity>
-void average(Grid<NdArrayImpl, PhysicalQuantity> const& f1,
-             Grid<NdArrayImpl, PhysicalQuantity> const& f2,
-             Grid<NdArrayImpl, PhysicalQuantity>& avg)
-{
-    average(*&f1, *&f2, *&avg);
-}
-
-
-
 } // namespace PHARE::core
 
 #endif

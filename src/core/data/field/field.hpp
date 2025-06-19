@@ -96,20 +96,6 @@ private:
 
 
 
-template<std::size_t dim, typename PhysicalQuantity, typename Data_t>
-void average(Field<dim, PhysicalQuantity, Data_t> const& f1,
-             Field<dim, PhysicalQuantity, Data_t> const& f2,
-             Field<dim, PhysicalQuantity, Data_t>& avg)
-{
-    auto const size = f1.size();
-    auto const d1   = f1.data();
-    auto const d2   = f2.data();
-    auto av         = avg.data();
-    for (std::size_t i = 0; i < size; ++i)
-        av[i] = (d1[i] + d2[i]) * .5;
-}
-
-
 } // namespace PHARE::core
 
 
