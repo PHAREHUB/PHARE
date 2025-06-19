@@ -149,7 +149,6 @@ namespace amr
             // temporary restriction "source" patchData
             // therefore we need references to the domain and ghost particle arrays
             auto const& srcInteriorParticles = srcParticlesData.domainParticles;
-            auto const& srcGhostParticles    = srcParticlesData.patchGhostParticles;
 
             // the particle refine operator's job is to fill either domain (during initialization of
             // new patches) or coarse to fine boundaries (during advance), so we need references to
@@ -173,79 +172,72 @@ namespace amr
             // in case of interior, this will be just one box usually
             for (auto const& destinationBox : destBoxes)
             {
-                std::array particlesArrays{&srcInteriorParticles, &srcGhostParticles};
-                auto splitBox = getSplitBox(destinationBox);
+                auto const splitBox = getSplitBox(destinationBox);
 
-                auto isInDest = [&destinationBox](auto const& particle) //
-                { return isInBox(destinationBox, particle); };
+                auto const isInDest = [&destinationBox](auto const& particle) {
+                    return isInBox(destinationBox, particle);
+                };
 
 
-                for (auto const& sourceParticlesArray : particlesArrays)
+                for (auto const& particle : srcInteriorParticles)
                 {
-                    for (auto const& particle : *sourceParticlesArray)
+                    std::array<typename ParticleArray::value_type, nbRefinedPart> refinedParticles;
+                    auto particleRefinedPos = toFineGrid<interpOrder>(particle);
+
+                    if (isInBox(splitBox, particleRefinedPos))
                     {
-                        std::array<typename ParticleArray::value_type, nbRefinedPart>
-                            refinedParticles;
-                        auto particleRefinedPos = toFineGrid<interpOrder>(particle);
+                        split(particleRefinedPos, refinedParticles);
 
-                        if (isInBox(splitBox, particleRefinedPos))
+
+                        // we need to know in which of interior or levelGhostParticlesXXXX
+                        // arrays we must put particles
+
+                        bool constexpr putParticlesInCoarseBoundary
+                            = splitType == ParticlesDataSplitType::coarseBoundary
+                              || splitType == ParticlesDataSplitType::coarseBoundaryOld
+                              || splitType == ParticlesDataSplitType::coarseBoundaryNew;
+
+
+
+                        if constexpr (putParticlesInCoarseBoundary)
                         {
-                            split(particleRefinedPos, refinedParticles);
-
-
-                            // we need to know in which of interior or levelGhostParticlesXXXX
-                            // arrays we must put particles
-
-                            bool constexpr putParticlesInCoarseBoundary
-                                = splitType == ParticlesDataSplitType::coarseBoundary
-                                  || splitType == ParticlesDataSplitType::coarseBoundaryOld
-                                  || splitType == ParticlesDataSplitType::coarseBoundaryNew;
-
-
-
-                            if constexpr (putParticlesInCoarseBoundary)
-                            {
-                                if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
-                                {
-                                    /*std::cout << "copying " << refinedParticles.size()
-                                              << " particles into levelGhost\n";*/
-                                    std::copy_if(
-                                        std::begin(refinedParticles), std::end(refinedParticles),
-                                        std::back_inserter(destCoarseBoundaryParticles), isInDest);
-                                }
-                                else if constexpr (splitType
-                                                   == ParticlesDataSplitType::coarseBoundaryOld)
-                                {
-                                    /*std::cout << "copying " << refinedParticles.size()
-                                              << " particles into levelGhostOld\n";*/
-                                    std::copy_if(std::begin(refinedParticles),
-                                                 std::end(refinedParticles),
-                                                 std::back_inserter(destCoarseBoundaryOldParticles),
-                                                 isInDest);
-                                }
-                                else //  splitType is coarseBoundaryNew
-                                {
-                                    /*std::cout << "copying " << refinedParticles.size()
-                                              << " particles into levelGhostNew\n";*/
-                                    std::copy_if(std::begin(refinedParticles),
-                                                 std::end(refinedParticles),
-                                                 std::back_inserter(destCoarseBoundaryNewParticles),
-                                                 isInDest);
-                                }
-                            }
-
-                            else
+                            if constexpr (splitType == ParticlesDataSplitType::coarseBoundary)
                             {
                                 /*std::cout << "copying " << refinedParticles.size()
-                                          << " particles into domain\n";*/
-                                std::copy_if(std::begin(refinedParticles),
-                                             std::end(refinedParticles),
-                                             std::back_inserter(destDomainParticles), isInDest);
+                                          << " particles into levelGhost\n";*/
+                                std::copy_if(
+                                    std::begin(refinedParticles), std::end(refinedParticles),
+                                    std::back_inserter(destCoarseBoundaryParticles), isInDest);
                             }
-                        } // end is candidate for split
-                    }     // end loop on particles
-                }         // end loop on source particle arrays
-            }             // loop on destination box
+                            else if constexpr (splitType
+                                               == ParticlesDataSplitType::coarseBoundaryOld)
+                            {
+                                /*std::cout << "copying " << refinedParticles.size()
+                                          << " particles into levelGhostOld\n";*/
+                                std::copy_if(
+                                    std::begin(refinedParticles), std::end(refinedParticles),
+                                    std::back_inserter(destCoarseBoundaryOldParticles), isInDest);
+                            }
+                            else //  splitType is coarseBoundaryNew
+                            {
+                                /*std::cout << "copying " << refinedParticles.size()
+                                          << " particles into levelGhostNew\n";*/
+                                std::copy_if(
+                                    std::begin(refinedParticles), std::end(refinedParticles),
+                                    std::back_inserter(destCoarseBoundaryNewParticles), isInDest);
+                            }
+                        }
+
+                        else
+                        {
+                            /*std::cout << "copying " << refinedParticles.size()
+                                      << " particles into domain\n";*/
+                            std::copy_if(std::begin(refinedParticles), std::end(refinedParticles),
+                                         std::back_inserter(destDomainParticles), isInDest);
+                        }
+                    } // end is candidate for split
+                } // end loop on source particle arrays
+            } // loop on destination box
         }
 
 

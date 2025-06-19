@@ -6,39 +6,25 @@
 
 #include "core/def.hpp"
 #include "amr/data/field/field_data.hpp"
-#include "amr/data/field/field_geometry.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "field_linear_refine.hpp"
-#include "field_refiner.hpp"
 
-#include <SAMRAI/hier/RefineOperator.h>
+#include "field_linear_refine.hpp"
+
 #include <SAMRAI/tbox/Dimension.h>
+#include <SAMRAI/hier/RefineOperator.h>
+
 
 #include <cstddef>
-#include <string>
 
 
 namespace PHARE::amr
 {
-class AFieldRefineOperator
-{
-public:
-    AFieldRefineOperator(bool b)
-        : node_only{b}
-    {
-    }
-    virtual ~AFieldRefineOperator() {}
-
-    bool const node_only = false;
-};
-
 
 using core::dirX;
 using core::dirY;
 using core::dirZ;
 
 template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
-class FieldRefineOperator : public SAMRAI::hier::RefineOperator, public AFieldRefineOperator
+class FieldRefineOperator : public SAMRAI::hier::RefineOperator
 {
 public:
     static constexpr std::size_t dimension = GridLayoutT::dimension;
@@ -48,7 +34,7 @@ public:
 
     FieldRefineOperator(bool node_only = false)
         : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
-        , AFieldRefineOperator{node_only}
+
     {
     }
 

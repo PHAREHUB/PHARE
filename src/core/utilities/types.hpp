@@ -226,7 +226,7 @@ namespace core
 
     NO_DISCARD inline std::optional<std::string> get_env(std::string const& key)
     {
-        if (const char* val = std::getenv(key.c_str()))
+        if (char const* val = std::getenv(key.c_str()))
             return std::string{val};
         return std::nullopt;
     }
@@ -496,6 +496,22 @@ auto make_named_tuple(Pairs&&... pairs)
 {
     return std::make_tuple(pairs...);
 }
+
+
+
+template<typename D>
+struct Equals
+{
+    void operator()(auto& d0) { d = d0; }
+    D& d;
+};
+
+template<typename D>
+struct PlusEquals
+{
+    void operator()(auto& d0) { d += d0; }
+    D& d;
+};
 
 } // namespace PHARE::core
 

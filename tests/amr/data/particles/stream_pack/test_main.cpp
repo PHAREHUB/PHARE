@@ -119,8 +119,8 @@ TYPED_TEST(StreamPackTest, PreserveVelocityWhenPackStreamWithPeriodics)
 
     destData.unpackStream(particlesReadStream, *cellOverlap);
 
-    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
-    ASSERT_THAT(destData.patchGhostParticles[0].v, Eq(particle.v));
+    ASSERT_THAT(destData.domainParticles.size(), Eq(1));
+    ASSERT_THAT(destData.domainParticles[0].v, Eq(particle.v));
 }
 
 
@@ -156,8 +156,8 @@ TYPED_TEST(StreamPackTest, ShiftTheiCellWhenPackStreamWithPeriodics)
     auto expectediCell = ConstArray<int, dim>(-1);
 
 
-    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
-    ASSERT_THAT(destData.patchGhostParticles[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destData.domainParticles.size(), Eq(1));
+    ASSERT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
 }
 
 
@@ -189,8 +189,8 @@ TYPED_TEST(StreamPackTest, PackInTheCorrectBufferWithPeriodics)
 
     auto expectediCell = ConstArray<int, dim>(-1);
 
-    ASSERT_THAT(destData.patchGhostParticles.size(), Eq(1));
-    ASSERT_THAT(destData.patchGhostParticles[0].iCell, Eq(expectediCell));
+    ASSERT_THAT(destData.domainParticles.size(), Eq(1));
+    ASSERT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
 }
 
 
@@ -260,11 +260,11 @@ TYPED_TEST(StreamPackTest,
 
     auto expectediCell = ConstArray<int, dim>(-1);
 
-    EXPECT_THAT(destData.patchGhostParticles[0].v, Eq(particle.v));
-    EXPECT_THAT(destData.patchGhostParticles[0].iCell, Eq(expectediCell));
-    EXPECT_THAT(destData.patchGhostParticles[0].delta, Eq(particle.delta));
-    EXPECT_THAT(destData.patchGhostParticles[0].weight, Eq(particle.weight));
-    EXPECT_THAT(destData.patchGhostParticles[0].charge, Eq(particle.charge));
+    EXPECT_THAT(destData.domainParticles[0].v, Eq(particle.v));
+    EXPECT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
+    EXPECT_THAT(destData.domainParticles[0].delta, Eq(particle.delta));
+    EXPECT_THAT(destData.domainParticles[0].weight, Eq(particle.weight));
+    EXPECT_THAT(destData.domainParticles[0].charge, Eq(particle.charge));
 }
 
 

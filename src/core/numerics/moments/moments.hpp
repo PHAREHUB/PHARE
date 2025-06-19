@@ -2,6 +2,7 @@
 #define MOMENTS_HPP
 
 #include <iterator>
+#include <stdexcept>
 
 #include "core/numerics/interpolator/interpolator.hpp"
 
@@ -25,9 +26,6 @@ namespace core
     {
     };
 
-    struct PatchGhostDeposit
-    {
-    };
     struct LevelGhostDeposit
     {
     };
@@ -48,16 +46,13 @@ namespace core
                 auto& partArray = pop.domainParticles();
                 interpolate(partArray, density, flux, layout);
             }
-            else if constexpr (std::is_same_v<DepositTag, PatchGhostDeposit>)
-            {
-                auto& partArray = pop.patchGhostParticles();
-                interpolate(partArray, density, flux, layout);
-            }
             else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
             {
                 auto& partArray = pop.levelGhostParticlesOld();
                 interpolate(partArray, density, flux, layout);
             }
+            else
+                throw std::runtime_error("unknown deposit tag");
         }
     }
 
