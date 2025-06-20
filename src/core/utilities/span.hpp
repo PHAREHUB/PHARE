@@ -11,6 +11,14 @@
 
 namespace PHARE::core
 {
+
+template<typename T>
+concept Spannable = requires(T t) {
+    { t.size() };
+    { t.data() };
+};
+
+
 template<typename T, typename SIZE = size_t>
 struct Span
 {

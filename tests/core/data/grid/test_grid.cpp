@@ -1,13 +1,16 @@
 
-#include <ctype.h>
-#include <string>
 
 #include "core/data/grid/grid.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
+#include <core/utilities/algorithm.hpp>
 #include "core/hybrid/hybrid_quantities.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 
-#include "gmock/gmock.h"
+
 #include "gtest/gtest.h"
+
+
+#include <string>
+
 
 using namespace PHARE::core;
 
@@ -22,7 +25,7 @@ public:
     }
 
 protected:
-    const std::uint32_t nx = 10;
+    std::uint32_t const nx = 10;
     Grid<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
@@ -37,8 +40,8 @@ public:
     }
 
 protected:
-    const std::uint32_t nx = 10u;
-    const std::uint32_t ny = 12u;
+    std::uint32_t const nx = 10u;
+    std::uint32_t const ny = 12u;
     Grid<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
@@ -53,9 +56,9 @@ public:
     }
 
 protected:
-    const std::uint32_t nx = 10;
-    const std::uint32_t ny = 12;
-    const std::uint32_t nz = 12;
+    std::uint32_t const nx = 10;
+    std::uint32_t const ny = 12;
+    std::uint32_t const nz = 12;
     Grid<NdArrayImpl, HybridQuantity::Scalar> f;
 };
 
