@@ -379,7 +379,7 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
         else
             throw std::runtime_error("Error - Simulator has no integrator");
     }
-    catch (const std::runtime_error& e)
+    catch (std::runtime_error const& e)
     {
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
         std::rethrow_exception(std::current_exception());
@@ -481,9 +481,6 @@ struct SimulatorMaker
         }
     }
 };
-
-
-std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy);
 
 
 template<std::size_t dim, std::size_t interp, size_t nbRefinedPart>

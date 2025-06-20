@@ -144,7 +144,7 @@ public:
         cellMap_.add(particles_, particles_.size() - 1);
     }
 
-    void swap(ParticleArray<dim>& that) { std::swap(this->particles_, that.particles_); }
+
 
     void map_particles() const { cellMap_.add(particles_); }
     void empty_map() { cellMap_.empty(); }
@@ -208,24 +208,15 @@ public:
     }
 
 
-    NO_DISCARD bool is_mapped() const
+    NO_DISCARD bool is_consistent() const
     {
-        bool ok = true;
         if (particles_.size() != cellMap_.size())
-        {
-            throw std::runtime_error("particle array not mapped, map.size() != array.size()");
-        }
+            return false;
+
         for (std::size_t pidx = 0; pidx < particles_.size(); ++pidx)
-        {
-            auto const& p = particles_[pidx];
-            auto& icell   = p.iCell;
-            auto l        = cellMap_.list_at(icell);
-            if (!l)
-                throw std::runtime_error("particle cell not mapped");
-            auto& ll = l->get();
-            if (!ll.is_indexed(pidx))
-                throw std::runtime_error("particle not indexed");
-        }
+            if (!cellMap_(particles_[pidx].iCell).is_indexed(pidx))
+                return false;
+
         return true;
     }
 
@@ -262,17 +253,6 @@ namespace PHARE
 {
 namespace core
 {
-    template<std::size_t dim>
-    void empty(ParticleArray<dim>& array)
-    {
-        array.clear();
-    }
-
-    template<std::size_t dim>
-    void swap(ParticleArray<dim>& array1, ParticleArray<dim>& array2)
-    {
-        array1.swap(array2);
-    }
 
 
     template<std::size_t dim, bool OwnedState = true>

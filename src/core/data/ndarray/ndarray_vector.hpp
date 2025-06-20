@@ -136,7 +136,7 @@ class NdArrayView
 {
 public:
     static constexpr bool is_contiguous = 1;
-    static const std::size_t dimension  = dim;
+    static std::size_t const dimension  = dim;
     using type                          = DataType;
     using pointer_type                  = DataType*;
     using viewer                        = NdArrayViewer<dim, c_ordering, DataType>;
@@ -180,7 +180,8 @@ public:
     NO_DISCARD auto data() const { return ptr_; }
     NO_DISCARD auto size() const
     {
-        return std::accumulate(nCells_.begin(), nCells_.end(), 1, std::multiplies<std::size_t>());
+        return std::accumulate(nCells_.begin(), nCells_.end(), std::size_t{1},
+                               std::multiplies<std::size_t>());
     }
     NO_DISCARD auto shape() const { return nCells_; }
 
@@ -231,7 +232,7 @@ class NdArrayVector
 {
 public:
     static constexpr bool is_contiguous = 1;
-    static const std::size_t dimension  = dim;
+    static std::size_t const dimension  = dim;
     using type                          = DataType;
 
     NdArrayVector() = delete;

@@ -10,11 +10,15 @@ if (NOT SAMRAI_FOUND)
   if(DEFINED SAMRAI_ROOT)
     find_package(SAMRAI PATHS ${SAMRAI_ROOT} REQUIRED)
   else()
-    set(SAMRAI_VERSION develop)
+
+    if(NOT DEFINED PHARE_SAMRAI_VERSION)
+      SET(PHARE_SAMRAI_VERSION "develop")
+    endif()
+
     set(SAMRAI_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/samrai)
     set(SAMRAI_BIN ${CMAKE_CURRENT_BINARY_DIR}/subprojects/samrai)
 
-    phare_github_get_or_update(SAMRAI ${SAMRAI_SRCDIR} LLNL/SAMRAI ${SAMRAI_VERSION})
+    phare_github_get_or_update(SAMRAI ${SAMRAI_SRCDIR} LLNL/SAMRAI ${PHARE_SAMRAI_VERSION})
 
     if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
       # enable samrai assertions if not in release mode

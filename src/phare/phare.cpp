@@ -5,11 +5,9 @@
 #include "amr/wrappers/hierarchy.hpp"
 #include "initializer/python_data_provider.hpp"
 
-#include "core/logger.hpp"
-
-#include <algorithm>
-#include <csignal>
 #include <atomic>
+#include <csignal>
+#include <algorithm>
 
 namespace
 {
@@ -21,10 +19,26 @@ void signal_handler(int signal)
     gSignalStatus = signal;
 }
 
+namespace PHARE
+{
+
+std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
+{
+    PHARE::initializer::PHAREDict const& theDict
+        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
+    auto dim           = theDict["simulation"]["dimension"].template to<int>();
+    auto interpOrder   = theDict["simulation"]["interp_order"].template to<int>();
+    auto nbRefinedPart = theDict["simulation"]["refined_particle_nbr"].template to<int>();
+
+    return core::makeAtRuntime<SimulatorMaker>(dim, interpOrder, nbRefinedPart,
+                                               SimulatorMaker{hierarchy});
+}
+
+} // namespace PHARE
+
+
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
 {
-    using dataProvider [[maybe_unused]] = std::unique_ptr<PHARE::initializer::DataProvider>;
-
     switch (argc)
     {
         case 1: return nullptr;
@@ -45,10 +59,12 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
 
 int main(int argc, char** argv)
 {
-    if (std::signal(SIGINT, signal_handler) == SIG_ERR) {
+    if (std::signal(SIGINT, signal_handler) == SIG_ERR)
+    {
         throw std::runtime_error("PHARE Error: Failed to register SIGINT signal handler");
     }
-    if (std::signal(SIGABRT, signal_handler) == SIG_ERR) {
+    if (std::signal(SIGABRT, signal_handler) == SIG_ERR)
+    {
         throw std::runtime_error("PHARE Error: Failed to register SIGABRT signal handler");
     }
 

@@ -19,24 +19,24 @@ using namespace PHARE::diagnostic::h5;
 constexpr auto NEW_HI5_FILE = HighFive::File::AccessMode::Overwrite;
 
 
-template<typename GridLayout, typename Field, typename FieldFilter = PHARE::FieldNullFilter>
+template<typename GridLayout, typename Field>
 auto checkField(HighFiveFile const& hifile, GridLayout const& layout, Field const& field,
-                std::string const path, FieldFilter const ff = FieldFilter{})
+                std::string const path)
 {
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
     auto fieldV = hifile.read_data_set_flat<float, dim>(path);
-    PHARE::core::test(layout, field, fieldV, ff);
+    PHARE::core::test(layout, field, fieldV);
     return fieldV; // possibly unused
 }
 
-template<typename GridLayout, typename VecField, typename FieldFilter = PHARE::FieldNullFilter>
+template<typename GridLayout, typename VecField>
 void checkVecField(HighFiveFile const& file, GridLayout const& layout, VecField const& vecField,
-                   std::string const path, FieldFilter const ff = FieldFilter{})
+                   std::string const path)
 {
     for (auto& [id, type] : core::Components::componentMap())
-        checkField(file, layout, vecField.getComponent(type), path + "_" + id, ff);
+        checkField(file, layout, vecField.getComponent(type), path + "_" + id);
 }
 
 
@@ -109,12 +109,12 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 
     auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& field) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
-        auto&& data = checkField(*hifile, layout, field, path + name, FieldDomainFilter{});
+        auto&& data = checkField(*hifile, layout, field, path + name);
     };
 
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
-        checkVecField(*hifile, layout, val, path + name, FieldDomainFilter{});
+        checkVecField(*hifile, layout, val, path + name);
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
@@ -129,7 +129,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 
         std::string tree{"/ions"}, var{"/bulkVelocity"};
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + var), hi5.flags_);
-        checkVecField(*hifile, layout, ions.velocity(), path + var, FieldDomainFilter{});
+        checkVecField(*hifile, layout, ions.velocity(), path + var);
     };
 
     PHARE::amr::visitHierarchy<GridLayout>(*sim.hierarchy, *hybridModel.resourcesManager, visit, 0,

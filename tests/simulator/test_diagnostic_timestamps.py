@@ -117,7 +117,7 @@ class DiagnosticsTest(unittest.TestCase):
             ElectromagDiagnostics(
                 quantity=quantity,
                 write_timestamps=timestamps,
-                flush_every=ElectromagDiagnostics.h5_flush_never,
+                flush_every=10000,  # issues seen at t=46.42300 in mpirun -n 2
             )
 
         Simulator(simulation).run()
@@ -161,7 +161,7 @@ class DiagnosticsTest(unittest.TestCase):
                     ElectromagDiagnostics(
                         quantity=quantity,
                         write_timestamps=timestamps,
-                        flush_every=ElectromagDiagnostics.h5_flush_never,
+                        flush_every=10000,  # issues seen at t=46.42300 in mpirun -n 2
                     )
 
                 Simulator(simulation).run()

@@ -437,7 +437,7 @@ class AdvanceTestBase(SimulatorTest):
 
         from pyphare.pharein import global_vars
 
-        from tests.amr.data.field.coarsening.test_coarsen_field import coarsen
+        from .utilities.field_coarsening import coarsen
 
         time_step_nbr = 3
 
@@ -558,6 +558,10 @@ class AdvanceTestBase(SimulatorTest):
     def base_test_field_level_ghosts_via_subcycles_and_coarser_interpolation(
         self, L0_datahier, L0L1_datahier, quantities=None
     ):
+        """
+        extracted from _test_field_level_ghosts_via_subcycles_and_coarser_interpolation
+        because also used in test_2d_2_core.py and test_2d_10_core.py
+        """
         if quantities is None:
             quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
@@ -608,6 +612,7 @@ class AdvanceTestBase(SimulatorTest):
                 L0L1_datahier, quantities, fine_ilvl, fine_subcycle_time
             )
             for qty in quantities:
+                print("ZOB", qty)
                 for fine_level_ghost_box_data in fine_level_qty_ghost_boxes[qty]:
                     fine_subcycle_pd = fine_level_ghost_box_data["pdata"]
 
@@ -706,14 +711,34 @@ class AdvanceTestBase(SimulatorTest):
         self, ndim, interp_order, refinement_boxes
     ):
         """
+        This test intends to check that level ghost field values during substeps
+        are indeed the result of the space and time interpolation of the coarser level values.
+
+        This requires:
+        - to dump diagnostics at substeps
+        - refine spatially and temporally L0 values and compare them to L1 level ghost values
+
+        The time interpolation needs both t and t+dt coarse values.
+        However, L0 values at t+dt are not available in diags since they are written after
+        L0 receives coarser values from L1, while the L0 values at t+dt used in the simulation
+        to do the time interpolation are the one **before** the coarsening correction.
+
+        To achieve the test, we thus also run a L0-only simulation witht the same exact initial
+        setup, and use the t0 and t0+dt diagnostics of the L0-only run to perform the
+        space and time interpolation values to compare to L1 level ghosts of the former simulation.
+
         This test runs two virtually identical simulations for one step.
           L0_datahier has no refined levels
           L0L1_datahier has one refined level
 
-        This is done to compare L0 values that haven't received the coarsened values of L1 because there is no L1,
-          to the level field ghost of L1 of L0L1_datahier
-
         The simulations are no longer comparable after the first advance, so this test cannot work beyond that.
+
+
+        WARNING: this test is now skipped in nD test field advance because it is
+        as it is now, working on E and B, which, since the divB correction, are not
+        time refined anymore. Only n, Vi and J are time refined and the test should
+        thus be changed accordingly.
+
         """
         print(
             "test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(
@@ -730,7 +755,7 @@ class AdvanceTestBase(SimulatorTest):
                 ndim,
                 interp_order,
                 boxes,
-                "moments",
+                "moments",  # only N, Vi and J are space/time interpolated, only test moments
                 cells=30,
                 time_step_nbr=1,
                 largest_patch_size=15,

@@ -19,10 +19,14 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
 find_program(Git git)
-find_package(Python 3.8 COMPONENTS Interpreter Development.Module REQUIRED)
+find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+
+if(EXISTS "${PHARE_PROJECT_DIR}/release.ver.txt") # delete file to use newer deps
+  include("${PHARE_PROJECT_DIR}/res/cmake/release.cmake")
+endif()
 
 include_directories(${PHARE_PROJECT_DIR}/src)
 

@@ -15,6 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest]
+        cc: [gcc, clang]
 
     steps:
     - name: Build Info
@@ -25,14 +26,14 @@ jobs:
 
     - name: CCache
       id: cache
-      uses: actions/cache@v2
+      uses: actions/cache@v4
       with:
         path: ~/.ccache
         key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
         restore-keys: ${{ runner.os }}-ccache-
 
     - name: Cache PIP (Linux)
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/pip
         key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
@@ -40,7 +41,7 @@ jobs:
           ${{ runner.os }}-pip-
 
     - name: Clone PHARE
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
       with:
         submodules: 'recursive'
 
@@ -68,10 +69,11 @@ jobs:
       run: cmake -E make_directory ${{runner.workspace}}/build
 
     - name: Configure CMake
-      # builds samrai with 2 threads as it does not OOM (yet)
       working-directory: ${{runner.workspace}}/build
       run: |
         set -ex
+        export CC=gcc CXX=g++
+        [ "${{ matrix.cc }}" = "clang" ] && export CC=clang CXX=clang++
         cmake $GITHUB_WORKSPACE
         cd ${{runner.workspace}}/PHARE/subprojects/samrai && mkdir build && cd build
         cmake .. -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo
@@ -86,8 +88,7 @@ jobs:
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
-      run: |
-        cmake --build . # OOM if more threads
+      run: cmake --build . -j 1
 
     - name: Test
       working-directory: ${{runner.workspace}}/build

@@ -2,7 +2,7 @@
 #include <cmath>
 #include <algorithm>
 
-#include "phare/phare.hpp"
+#include "phare_solver.hpp"
 #include "amr/tagging/tagger.hpp"
 #include "amr/tagging/tagger_factory.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
@@ -23,23 +23,23 @@ using namespace PHARE::amr;
 
 TEST(test_tagger, fromFactoryValid)
 {
-    using phare_types = PHARE::PHARE_Types<1, 1, 2>;
+    using phare_types = PHARE::solver::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"HybridModel"};
-    dict["method"]  = std::string{"default"};
-    dict["threshold"]  = 0.2;
+    dict["model"]     = std::string{"HybridModel"};
+    dict["method"]    = std::string{"default"};
+    dict["threshold"] = 0.2;
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
 }
 
 TEST(test_tagger, fromFactoryInvalid)
 {
-    using phare_types = PHARE::PHARE_Types<1, 1, 2>;
+    using phare_types = PHARE::solver::PHARE_Types<1, 1, 2>;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]  = std::string{"invalidModel"};
-    dict["method"]  = std::string{"invalidStrat"};
+    dict["model"]     = std::string{"invalidModel"};
+    dict["method"]    = std::string{"invalidStrat"};
     auto hybridTagger = TaggerFactory<phare_types>::make(dict);
-    auto badTagger = TaggerFactory<phare_types>::make(dict);
+    auto badTagger    = TaggerFactory<phare_types>::make(dict);
     EXPECT_TRUE(badTagger == nullptr);
 }
 
@@ -169,7 +169,7 @@ struct TestTagger : public ::testing::Test
     auto static constexpr interp_order   = TaggingTestInfo_t::interp;
     auto static constexpr refinedPartNbr = TaggingTestInfo_t::refinedPartNbr;
 
-    using phare_types = PHARE::PHARE_Types<dim, interp_order, refinedPartNbr>;
+    using phare_types = PHARE::solver::PHARE_Types<dim, interp_order, refinedPartNbr>;
     using Electromag  = typename phare_types::Electromag_t;
     using Ions        = typename phare_types::Ions_t;
     using Electrons   = typename phare_types::Electrons_t;

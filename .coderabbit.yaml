@@ -16,7 +16,7 @@ chat:
 reviews:
   profile: chill
   request_changes_workflow: false
-  high_level_summary: true
+  high_level_summary: false
   high_level_summary_placeholder: '@coderabbitai summary'
   poem: false
   review_status: true
