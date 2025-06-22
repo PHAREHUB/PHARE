@@ -22,6 +22,7 @@ struct GodValue
     std::vector<double> coords;
     std::vector<int> loc_index;
     std::vector<int> amr_index;
+    double value;
     int rank;
     int patchID;
 
@@ -44,11 +45,6 @@ public:
         hierarchy_ = hier;
     }
 
-    void setup(PHARE::initializer::PHAREDict const& gridict)
-    {
-        mesh_size_ = parseDimXYZType<double, dim>(gridict, "meshsize");
-    }
-
     NO_DISCARD auto inspect(std::string name, Point_t& lower, Point_t& upper) const
     {
         GodExtract god_values;
@@ -62,18 +58,55 @@ public:
                 if (!is_local(patch))
                     continue;
 
-                auto extract_box     = Box{lower, upper};
-                auto intersected_box = getPatchData(patch, name)->getGhostBox() * extract_box;
+                auto extract_box = Box<double, dim>{lower, upper};
+                auto intersected_box
+                    = phare_box_from<dim, double>(getPatchData(patch, name)->getGhostBox())
+                      * extract_box;
 
                 if (intersected_box.isEmpty())
                     continue;
 
                 auto& field = getField(patch, name);
+                auto layout = getLayoutFromPatch(patch, field->physicalQuantity());
+
                 // loop on nodes
-                for ()
+                // given the mesh_size_ on root level
+                // it is easy to get the level mesh size
+                // and given the lower/upper bounds of the coordinates
+                // it's easy to iterate over all nodes
+                // these if constexpr may be removable
+                // with the FieldBox object maybe....
+
+                if constexpr (dim == 1)
                 {
-                    GodValue gval;
-                    gval.coords = {node[0], node[1], node[2]};
+                    //
+                }
+
+                else if constexpr (dim == 2)
+                {
+                    auto& dl     = layout.meshSize();
+                    auto ixStart = intersected_box.lower(0) / dl[0] - layout.origin()[0];
+                    auto ixEnd   = intersected_box.upper(0) / dl[0] - layout.origin()[0];
+
+                    auto iyStart = intersected_box.lower(1) / dl[1] - layout.origin()[1];
+                    auto iyEnd   = intersected_box.upper(1) / dl[1] - layout.origin()[1];
+
+                    for (auto ix = ixStart; ix <= ixEnd; ++ix)
+                    {
+                        for (auto iy = iyStart; iy <= iyEnd; ++iy)
+                        {
+                            GodValue gval;
+                            gval.coords = {node[0], node[1], node[2]};
+                            gval.value  = field(ix, iy);
+                            god_values[ilvl].push_back(gval);
+                        }
+                    }
+                }
+                else if constexpr (dim == 3)
+                {
+                    // for (auto& node : intersected_box)
+                    // {
+                    // }
                 }
             }
         }
@@ -90,6 +123,8 @@ public:
 
 
 
+    // TODO could be a NdArray instead of a raw vector
+    // so it could be accessed with dimension indexes etc
     void print(std::vector<GodValue> const& god_values)
     {
         for (auto& [ilvl, values] : god_values)
@@ -144,7 +179,6 @@ private:
     DEBUGOD() {}
     std::unique_ptr<DEBUGOD> god_;
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy_;
-    std::array<double, dim> mesh_size_;
 };
 }; // namespace PHARE::amr
 
