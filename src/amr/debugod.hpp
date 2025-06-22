@@ -5,6 +5,7 @@
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "amr/wrappers/hierarchy.hpp"
+#include "core/utilities/box/box.hpp"
 
 #include <SAMRAI/hier/PatchHierarchy.h>
 
@@ -17,23 +18,24 @@
 namespace PHARE::amr
 {
 
-struct GodValue
-{
-    std::vector<double> coords;
-    std::vector<int> loc_index;
-    std::vector<int> amr_index;
-    double value;
-    int rank;
-    int patchID;
-
-    // Add other necessary fields and methods as needed
-};
 
 template<std::size_t dim>
 class DEBUGOD
 {
 public:
-    using Point_t    = PHARE::core::Point<double, dim>;
+    using Point_t = PHARE::core::Point<double, dim>;
+
+    struct GodValue
+    {
+        Point_t coords;
+        std::array<int, dim> loc_index;
+        std::array<int, dim> amr_index;
+        double value;
+        int rank;
+        int patchID;
+
+        // Add other necessary fields and methods as needed
+    };
     using GodExtract = std::unordered_map<std::uint32_t, std::vector<GodValue>>;
 
     NO_DISCARD static DEBUGOD& INSTANCE();
@@ -58,10 +60,11 @@ public:
                 if (!is_local(patch))
                     continue;
 
-                auto extract_box = Box<double, dim>{lower, upper};
-                auto intersected_box
-                    = phare_box_from<dim, double>(getPatchData(patch, name)->getGhostBox())
-                      * extract_box;
+                auto extract_box = PHARE::core::Box<double, dim>{lower, upper};
+                auto patch_ghost_box
+                    = phare_box_from<dim, double>(getPatchData(patch, name)->getGhostBox());
+
+                auto intersected_box = *extract_box;
 
                 if (intersected_box.isEmpty())
                     continue;
@@ -76,6 +79,8 @@ public:
                 // it's easy to iterate over all nodes
                 // these if constexpr may be removable
                 // with the FieldBox object maybe....
+
+                GodValue gval;
 
                 if constexpr (dim == 1)
                 {
@@ -95,10 +100,9 @@ public:
                     {
                         for (auto iy = iyStart; iy <= iyEnd; ++iy)
                         {
-                            GodValue gval;
-                            gval.coords = {node[0], node[1], node[2]};
-                            gval.value  = field(ix, iy);
-                            god_values[ilvl].push_back(gval);
+                            gval.coords
+                                = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
+                            gval.value = field(ix, iy);
                         }
                     }
                 }
@@ -108,6 +112,7 @@ public:
                     // {
                     // }
                 }
+                god_values[ilvl].push_back(gval);
             }
         }
 
@@ -122,10 +127,7 @@ public:
 
 
 
-
-    // TODO could be a NdArray instead of a raw vector
-    // so it could be accessed with dimension indexes etc
-    void print(std::vector<GodValue> const& god_values)
+    void print(GodExtract const& god_values)
     {
         for (auto& [ilvl, values] : god_values)
         {
@@ -134,7 +136,7 @@ public:
             {
                 auto& coords  = v.coords;
                 auto& loc_idx = v.loc_index;
-                auto& amr_idx v.loc_index;
+                auto& amr_idx = v.loc_index;
                 auto& rank    = v.rank;
                 auto& patchID = v.patchID;
 
@@ -175,6 +177,8 @@ private:
         // auto patchdata = patch.getPatchData(var_id, context);
         return FieldData::getPatchData(patch, var_id);
     }
+
+
 
     DEBUGOD() {}
     std::unique_ptr<DEBUGOD> god_;
