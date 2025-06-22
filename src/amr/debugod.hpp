@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/mpi_utils.hpp"
 
 #include <SAMRAI/hier/PatchHierarchy.h>
 
@@ -47,18 +48,26 @@ public:
 
     NO_DISCARD inspect(std::string name, Point_t& lower, Point_t& upper)
     {
-        // auto db = SAMRAI::hier::VariableDatabase::getDatabase();
-        // auto& field =
         GodExtract god_values;
         for (auto ilvl = 0u; ilvl < hierarchy_->getNumberOfLevels(); ++ilvl))
             {
                 auto level       = hierarchy_->getPatchLevel(ilvl);
                 god_values[ilvl] = std::vector<GodValue>{};
+
                 for (auto& patch : *level)
                 {
-                    auto patch_rank = patch->getBox().getBoxID().getOwnerRank();
-                    if (patch_rank != SAMRAI::tbox::MPI::getRank())
+                    if (!is_local(patch))
                         continue;
+
+
+                    auto& field      = getField(patch, name);
+                    auto extract_box = Box{lower, upper};
+
+                    for (auto& node : extract_box)
+                    {
+                        GodValue gval;
+                        gval.coords = {node[0], node[1], node[2]};
+                    }
                 }
             }
 
@@ -103,6 +112,20 @@ public:
     // }
 
 private:
+    bool is_local(SAMRAI::hier::Patch const& patch) const
+    {
+        return patch.getBox().getBoxId().getOwnerRank() == PHARE::core::mpi::rank();
+    }
+
+    auto& getField(SAMRAI::hier::Patch const& patch, std::string const& name)
+    {
+        auto db     = SAMRAI::hier::VariableDatabase::getDatabase();
+        auto var_id = db->getVariable(name);
+        // auto context   = db->getContext("default");
+        // auto patchdata = patch.getPatchData(var_id, context);
+        return FieldData::getPatchData(patch, var_id);
+    }
+
     DEBUGOD() {}
     std::unique_ptr<DEBUGOD> god_;
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy_;

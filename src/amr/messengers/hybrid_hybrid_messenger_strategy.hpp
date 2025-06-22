@@ -652,10 +652,6 @@ namespace amr
             {
                 auto bx_dbg = god.inpect("EM_B_x", {12.2, 13.5});
                 god.print(bx_dbg);
-                for (auto& [ilvl, value] : bx_dbg)
-                {
-                    god.print(value)
-                }
                 auto bx_dbg_rge = god.inpect("EM_B_x", {12.2, 8.0}, {12.6, 9.});
             }
 
