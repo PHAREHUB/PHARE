@@ -647,6 +647,18 @@ namespace amr
             magSharedNodeRefineSchedules[levelNumber]->fillData(time);
             elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
+            auto& god = DEBUGOD::INSTANCE();
+            if (god.time_is("EM_B_x", 0.225))
+            {
+                auto bx_dbg = god.inpect("EM_B_x", {12.2, 13.5});
+                god.print(bx_dbg);
+                for (auto& [ilvl, value] : bx_dbg)
+                {
+                    god.print(value)
+                }
+                auto bx_dbg_rge = god.inpect("EM_B_x", {12.2, 8.0}, {12.6, 9.});
+            }
+
             // we fill magnetic field ghosts only on patch ghost nodes and not on level
             // ghosts the reason is that 1/ filling ghosts is necessary to prevent mismatch
             // between ghost and overlaped neighboring patch domain nodes resulting from
