@@ -4,6 +4,7 @@
 #include "core/def.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/mpi_utils.hpp"
+#include "amr/wrappers/hierarchy.hpp"
 
 #include <SAMRAI/hier/PatchHierarchy.h>
 
@@ -36,42 +37,48 @@ public:
 
     NO_DISCARD static DEBUGOD& INSTANCE();
 
-    void init(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hier)
-    {
-        god_ = std::make_unique<DEBUGOD>(hier);
-    }
+    void init() { god_ = std::make_unique<DEBUGOD>(); }
 
     void setHierarchy(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hier)
     {
         hierarchy_ = hier;
     }
 
-    NO_DISCARD inspect(std::string name, Point_t& lower, Point_t& upper)
+    void setup(PHARE::initializer::PHAREDict const& gridict)
+    {
+        mesh_size_ = parseDimXYZType<double, dim>(gridict, "meshsize");
+    }
+
+    NO_DISCARD auto inspect(std::string name, Point_t& lower, Point_t& upper) const
     {
         GodExtract god_values;
-        for (auto ilvl = 0u; ilvl < hierarchy_->getNumberOfLevels(); ++ilvl))
+        for (auto ilvl = 0u; ilvl < hierarchy_->getNumberOfLevels(); ++ilvl)
+        {
+            auto level       = hierarchy_->getPatchLevel(ilvl);
+            god_values[ilvl] = std::vector<GodValue>{};
+
+            for (auto& patch : *level)
             {
-                auto level       = hierarchy_->getPatchLevel(ilvl);
-                god_values[ilvl] = std::vector<GodValue>{};
+                if (!is_local(patch))
+                    continue;
 
-                for (auto& patch : *level)
+                auto extract_box     = Box{lower, upper};
+                auto intersected_box = getPatchData(patch, name)->getGhostBox() * extract_box;
+
+                if (intersected_box.isEmpty())
+                    continue;
+
+                auto& field = getField(patch, name);
+                // loop on nodes
+                for ()
                 {
-                    if (!is_local(patch))
-                        continue;
-
-
-                    auto& field      = getField(patch, name);
-                    auto extract_box = Box{lower, upper};
-
-                    for (auto& node : extract_box)
-                    {
-                        GodValue gval;
-                        gval.coords = {node[0], node[1], node[2]};
-                    }
+                    GodValue gval;
+                    gval.coords = {node[0], node[1], node[2]};
                 }
             }
+        }
 
-        return GodExtract{};
+        return god_values;
     }
 
 
@@ -117,6 +124,14 @@ private:
         return patch.getBox().getBoxId().getOwnerRank() == PHARE::core::mpi::rank();
     }
 
+    auto& getPatchData(SAMRAI::hier::Patch const& patch, std::string const& name)
+    {
+        auto db      = SAMRAI::hier::VariableDatabase::getDatabase();
+        auto var_id  = db->getVariable(name);
+        auto context = db->getContext("default");
+        return patch.getPatchData(var_id, context);
+    }
+
     auto& getField(SAMRAI::hier::Patch const& patch, std::string const& name)
     {
         auto db     = SAMRAI::hier::VariableDatabase::getDatabase();
@@ -129,6 +144,7 @@ private:
     DEBUGOD() {}
     std::unique_ptr<DEBUGOD> god_;
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy_;
+    std::array<double, dim> mesh_size_;
 };
 }; // namespace PHARE::amr
 
