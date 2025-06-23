@@ -132,9 +132,10 @@ public:
                         {
                             gval.coords
                                 = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
-                            gval.value   = field(ix, iy);
-                            gval.patchID = to_string(patch->getGlobalId());
-                            gval.rank    = get_rank(*patch);
+                            gval.value     = field(ix, iy);
+                            gval.patchID   = to_string(patch->getGlobalId());
+                            gval.rank      = get_rank(*patch);
+                            gval.loc_index = {ix, iy};
                         }
                     }
                 }
