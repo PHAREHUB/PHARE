@@ -24,10 +24,12 @@ NO_DISCARD auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samr
 template<std::size_t dim, typename Type = int>
 NO_DISCARD auto phare_box_from(SAMRAI::hier::Box const& box)
 {
-    std::array<Type, dim> lower = *reinterpret_cast<std::array<int, dim> const*>(&box.lower()[0]);
-    std::array<Type, dim> upper = *reinterpret_cast<std::array<int, dim> const*>(&box.upper()[0]);
+    std::array<int, dim> lower = *reinterpret_cast<std::array<int, dim> const*>(&box.lower()[0]);
+    std::array<int, dim> upper = *reinterpret_cast<std::array<int, dim> const*>(&box.upper()[0]);
 
-    return PHARE::core::Box<Type, dim>{core::Point{lower}, core::Point{upper}};
+    auto gen = [](auto v) { return static_cast<Type>(v); };
+    return PHARE::core::Box<Type, dim>{core::Point{core::generate(gen, lower)},
+                                       core::Point{core::generate(gen, upper)}};
 }
 
 NO_DISCARD inline bool operator==(SAMRAI::hier::Box const& b1, SAMRAI::hier::Box const& b2)

@@ -16,6 +16,7 @@
 #include "amr/load_balancing/load_balancer_details.hpp"
 #include "amr/load_balancing/load_balancer_manager.hpp"
 #include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
+#include "amr/debugod.hpp"
 
 namespace PHARE
 {
@@ -339,6 +340,8 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
+    PHARE::amr::DEBUGOD<core::PHARE_Types<_dimension, _interp_order>>::INSTANCE().setHierarchy(
+        hierarchy_);
     if (find_model("HybridModel"))
         hybrid_init(dict);
     else
