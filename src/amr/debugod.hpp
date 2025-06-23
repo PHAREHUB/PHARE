@@ -40,7 +40,7 @@ public:
         std::array<int, dimension> amr_index;
         double value;
         int rank;
-        int patchID;
+        std::string patchID;
 
         // Add other necessary fields and methods as needed
     };
@@ -132,7 +132,9 @@ public:
                         {
                             gval.coords
                                 = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
-                            gval.value = field(ix, iy);
+                            gval.value   = field(ix, iy);
+                            gval.patchID = to_string(patch->getGlobalId());
+                            gval.rank    = get_rank(*patch);
                         }
                     }
                 }
@@ -186,9 +188,15 @@ public:
     // }
 
 private:
+    auto get_rank(SAMRAI::hier::Patch const& patch) const
+    {
+        return patch.getBox().getBoxId().getOwnerRank();
+    }
+
+
     bool is_local(SAMRAI::hier::Patch const& patch) const
     {
-        return patch.getBox().getBoxId().getOwnerRank() == PHARE::core::mpi::rank();
+        return get_rank(patch) == PHARE::core::mpi::rank();
     }
 
     auto getPatchData(SAMRAI::hier::Patch const& patch, std::string const& name) const
