@@ -340,7 +340,8 @@ Simulator<_dimension, _interp_order, _nbRefinedPart>::Simulator(
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
-    PHARE::amr::DEBUGOD<_dimension>::INSTANCE().setHierarchy(hierarchy_);
+    PHARE::amr::DEBUGOD<core::PHARE_Types<_dimension, _interp_order>>::INSTANCE().setHierarchy(
+        hierarchy_);
     if (find_model("HybridModel"))
         hybrid_init(dict);
     else

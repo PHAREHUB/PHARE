@@ -2,10 +2,12 @@
 #define PHARE_DEBUGOD_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "amr/wrappers/hierarchy.hpp"
-#include "core/utilities/box/box.hpp"
+#include "amr/data/field/field_data.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/hier/PatchHierarchy.h>
 
@@ -19,17 +21,23 @@ namespace PHARE::amr
 {
 
 
-template<std::size_t dim>
+template<typename PHARE_TYPES>
 class DEBUGOD
 {
 public:
-    using Point_t = PHARE::core::Point<double, dim>;
+    static constexpr auto dimension    = PHARE_TYPES::dimension;
+    static constexpr auto interp_order = PHARE_TYPES::interp_order;
+    using Grid_t                       = PHARE_TYPES::Grid_t;
+    using GridLayout_t                 = PHARE_TYPES::GridLayout_t;
+    using FieldData_t                  = PHARE::amr::FieldData<GridLayout_t, Grid_t>;
+
+    using Point_t = PHARE::core::Point<double, dimension>;
 
     struct GodValue
     {
         Point_t coords;
-        std::array<int, dim> loc_index;
-        std::array<int, dim> amr_index;
+        std::array<int, dimension> loc_index;
+        std::array<int, dimension> amr_index;
         double value;
         int rank;
         int patchID;
@@ -40,14 +48,25 @@ public:
 
     NO_DISCARD static DEBUGOD& INSTANCE();
 
-    void init() { god_ = std::make_unique<DEBUGOD>(); }
 
     void setHierarchy(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hier)
     {
         hierarchy_ = hier;
     }
 
-    NO_DISCARD auto inspect(std::string name, Point_t& lower, Point_t& upper) const
+    bool isActive() const { return hierarchy_ != nullptr; }
+
+    NO_DISCARD auto time_is(std::string name, double time) const
+    {
+        // take first patch of first level
+        // it should be enought to get time
+        // this limits to looking at times at coarser time steps for now
+        auto patch = *(hierarchy_->getPatchLevel(0)->begin());
+        auto pdata = getPatchData(*patch, name);
+        return time == pdata->getTime();
+    }
+
+    NO_DISCARD auto inspect(std::string name, Point_t const& lower, Point_t const& upper) const
     {
         GodExtract god_values;
         for (auto ilvl = 0u; ilvl < hierarchy_->getNumberOfLevels(); ++ilvl)
@@ -57,20 +76,31 @@ public:
 
             for (auto& patch : *level)
             {
-                if (!is_local(patch))
+                if (!is_local(*patch))
                     continue;
 
-                auto extract_box = PHARE::core::Box<double, dim>{lower, upper};
+                auto extract_box = PHARE::core::Box<double, dimension>{lower, upper};
                 auto patch_ghost_box
-                    = phare_box_from<dim, double>(getPatchData(patch, name)->getGhostBox());
+                    = phare_box_from<dimension, double>(getPatchData(*patch, name)->getGhostBox());
 
-                auto intersected_box = *extract_box;
+                auto& field    = getField(*patch, name);
+                auto layout    = layoutFromPatch<GridLayout_t>(*patch);
+                auto centering = GridLayout_t::centering(field.physicalQuantity());
 
-                if (intersected_box.isEmpty())
+                for (auto i = 0u; i < dimension; ++i)
+                {
+                    if (centering[i] == PHARE::core::QtyCentering::primal)
+                    {
+                        extract_box.upper[i] += 1;
+                    }
+                }
+
+                auto intersected_box = patch_ghost_box * extract_box;
+
+                if (!intersected_box)
                     continue;
 
-                auto& field = getField(patch, name);
-                auto layout = getLayoutFromPatch(patch, field->physicalQuantity());
+
 
                 // loop on nodes
                 // given the mesh_size_ on root level
@@ -81,20 +111,20 @@ public:
                 // with the FieldBox object maybe....
 
                 GodValue gval;
+                auto box = *intersected_box;
 
-                if constexpr (dim == 1)
+                if constexpr (dimension == 1)
                 {
                     //
                 }
 
-                else if constexpr (dim == 2)
+                else if constexpr (dimension == 2)
                 {
                     auto& dl     = layout.meshSize();
-                    auto ixStart = intersected_box.lower(0) / dl[0] - layout.origin()[0];
-                    auto ixEnd   = intersected_box.upper(0) / dl[0] - layout.origin()[0];
-
-                    auto iyStart = intersected_box.lower(1) / dl[1] - layout.origin()[1];
-                    auto iyEnd   = intersected_box.upper(1) / dl[1] - layout.origin()[1];
+                    auto ixStart = static_cast<int>((box.lower[0] - layout.origin()[0]) / dl[0]);
+                    auto ixEnd   = static_cast<int>((box.upper[0] - layout.origin()[0]) / dl[0]);
+                    auto iyStart = static_cast<int>((box.lower[1] - layout.origin()[1]) / dl[1]);
+                    auto iyEnd   = static_cast<int>((box.upper[1] - layout.origin()[1]) / dl[1]);
 
                     for (auto ix = ixStart; ix <= ixEnd; ++ix)
                     {
@@ -106,7 +136,7 @@ public:
                         }
                     }
                 }
-                else if constexpr (dim == 3)
+                else if constexpr (dimension == 3)
                 {
                     // for (auto& node : intersected_box)
                     // {
@@ -120,7 +150,7 @@ public:
     }
 
 
-    NO_DISCARD auto inspect(std::string name, Point_t& coord)
+    NO_DISCARD auto inspect(std::string name, Point_t const& coord)
     {
         return inspect(name, coord, coord);
     }
@@ -161,7 +191,7 @@ private:
         return patch.getBox().getBoxId().getOwnerRank() == PHARE::core::mpi::rank();
     }
 
-    auto& getPatchData(SAMRAI::hier::Patch const& patch, std::string const& name)
+    auto getPatchData(SAMRAI::hier::Patch const& patch, std::string const& name) const
     {
         auto db      = SAMRAI::hier::VariableDatabase::getDatabase();
         auto var_id  = db->getVariable(name);
@@ -169,19 +199,16 @@ private:
         return patch.getPatchData(var_id, context);
     }
 
-    auto& getField(SAMRAI::hier::Patch const& patch, std::string const& name)
+    auto& getField(SAMRAI::hier::Patch const& patch, std::string const& name) const
     {
-        auto db     = SAMRAI::hier::VariableDatabase::getDatabase();
-        auto var_id = db->getVariable(name);
-        // auto context   = db->getContext("default");
-        // auto patchdata = patch.getPatchData(var_id, context);
-        return FieldData::getPatchData(patch, var_id);
+        auto pdata            = getPatchData(patch, name);
+        auto const& fielddata = std::dynamic_pointer_cast<FieldData_t>(pdata);
+        return fielddata->field;
     }
 
 
 
     DEBUGOD() {}
-    std::unique_ptr<DEBUGOD> god_;
     std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy_;
 };
 }; // namespace PHARE::amr

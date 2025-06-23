@@ -3,7 +3,8 @@
 
 namespace PHARE::amr
 {
-DEBUGOD& DEBUGOD::INSTANCE()
+template<typename PHARE_TYPES>
+DEBUGOD<PHARE_TYPES>& DEBUGOD<PHARE_TYPES>::INSTANCE()
 {
     static DEBUGOD instance;
     return instance;

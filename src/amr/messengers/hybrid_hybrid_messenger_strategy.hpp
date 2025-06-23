@@ -24,6 +24,9 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 
+#include "amr/debugod.hpp"
+#include "phare_core.hpp"
+
 #include "core/numerics/interpolator/interpolator.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/particles/particle_array.hpp"
@@ -647,14 +650,17 @@ namespace amr
             magSharedNodeRefineSchedules[levelNumber]->fillData(time);
             elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
-            auto& god = DEBUGOD::INSTANCE();
-            if (god.time_is("EM_B_x", 0.225))
-            {
-                auto bx_dbg = god.inpect("EM_B_x", {12.2, 13.5});
-                god.print(bx_dbg);
-                auto bx_dbg_rge = god.inpect("EM_B_x", {12.2, 8.0}, {12.6, 9.});
-            }
 
+            auto& god = DEBUGOD<PHARE::core::PHARE_Types<2, 1>>::INSTANCE();
+            if (god.isActive())
+            {
+                if (god.time_is("EM_B_x", 0.225))
+                {
+                    auto bx_dbg = god.inspect("EM_B_x", {12.2, 13.5});
+                    god.print(bx_dbg);
+                    auto bx_dbg_rge = god.inspect("EM_B_x", {12.2, 8.0}, {12.6, 9.});
+                }
+            }
             // we fill magnetic field ghosts only on patch ghost nodes and not on level
             // ghosts the reason is that 1/ filling ghosts is necessary to prevent mismatch
             // between ghost and overlaped neighboring patch domain nodes resulting from
