@@ -219,10 +219,13 @@ namespace amr
         SAMRAI::hier::Box const domain = patch.getBox();
         auto const domBox              = phare_box_from<dimension>(domain);
         auto const particleGhostBox    = grow(domBox, GridLayoutT::nbrParticleGhosts());
-#
+
         SAMRAI::hier::HierarchyNeighbors const hier_nbrs{hierarchy, lvlNbr, lvlNbr};
-        std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes{domBox};
-        for (auto const& neighbox : hier_nbrs.getSameLevelNeighbors(domain, lvlNbr))
+        auto const neighbors = hier_nbrs.getSameLevelNeighbors(domain, lvlNbr);
+        std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
+        patchGhostLayerBoxes.reserve(neighbors.size() + 1);
+        patchGhostLayerBoxes.emplace_back(domBox);
+        for (auto const& neighbox : neighbors)
             patchGhostLayerBoxes.emplace_back(
                 *(particleGhostBox * phare_box_from<dimension>(neighbox)));
 
