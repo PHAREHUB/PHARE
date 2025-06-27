@@ -92,16 +92,15 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
                       std::string tree{"/ions/pop/" + pop.name() + "/"};
                       auto& pop_momentum_tensor = pop.momentumTensor();
                       pop_momentum_tensor.zero();
-                      auto domainParts     = core::makeIndexRange(pop.domainParticles());
-                      auto patchGhostParts = core::makeIndexRange(pop.patchGhostParticles());
 
                       // dumps occur after the last substep but before the next first substep
                       // at this time, levelGhostPartsNew is emptied and not yet filled
                       // and the former levelGhostPartsNew has been moved to levelGhostPartsOld
+
+                      auto domainParts     = core::makeIndexRange(pop.domainParticles());
                       auto levelGhostParts = core::makeIndexRange(pop.levelGhostParticlesOld());
 
                       interpolator(domainParts, pop_momentum_tensor, layout, pop.mass());
-                      interpolator(patchGhostParts, pop_momentum_tensor, layout, pop.mass());
                       interpolator(levelGhostParts, pop_momentum_tensor, layout, pop.mass());
                   }
                   ions.computeFullMomentumTensor();
@@ -118,16 +117,15 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
                 = [&](GridLayout& layout, std::string patchID, std::size_t iLvel) {
                       auto& pop_momentum_tensor = pop.momentumTensor();
                       pop_momentum_tensor.zero();
-                      auto domainParts     = core::makeIndexRange(pop.domainParticles());
-                      auto patchGhostParts = core::makeIndexRange(pop.patchGhostParticles());
 
                       // dumps occur after the last substep but before the next first substep
                       // at this time, levelGhostPartsNew is emptied and not yet filled
                       // and the former levelGhostPartsNew has been moved to levelGhostPartsOld
+
+                      auto domainParts     = core::makeIndexRange(pop.domainParticles());
                       auto levelGhostParts = core::makeIndexRange(pop.levelGhostParticlesOld());
 
                       interpolator(domainParts, pop_momentum_tensor, layout, pop.mass());
-                      interpolator(patchGhostParts, pop_momentum_tensor, layout, pop.mass());
                       interpolator(levelGhostParts, pop_momentum_tensor, layout, pop.mass());
                   };
             if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
