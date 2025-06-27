@@ -1,13 +1,11 @@
 #!/usr/bin/env python3
 
-import os
 import numpy as np
 import matplotlib as mpl
 from pathlib import Path
 
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
-from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
 from tests.simulator import SimulatorTest
