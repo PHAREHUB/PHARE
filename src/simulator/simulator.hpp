@@ -483,7 +483,7 @@ struct SimulatorMaker
 };
 
 
-template<std::size_t dim, std::size_t interp, size_t nbRefinedPart>
+template<std::size_t dim, std::size_t interp, std::size_t nbRefinedPart>
 std::unique_ptr<Simulator<dim, interp, nbRefinedPart>>
 makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
 {

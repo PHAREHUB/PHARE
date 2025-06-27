@@ -43,17 +43,17 @@ public:
 
     template<typename Particle, typename Particles>
     inline void operator()(Particle const& coarsePartOnRefinedGrid, Particles& refinedParticles,
-                           size_t idx = 0) const
+                           std::size_t idx = 0) const
     {
         dispatch(coarsePartOnRefinedGrid, refinedParticles, idx);
     }
 
     std::tuple<Patterns...> patterns{};
-    size_t nbRefinedParts{0};
+    std::size_t nbRefinedParts{0};
 
 private:
     template<typename Particle, typename Particles>
-    void dispatch(Particle const& particle, Particles& particles, size_t idx) const
+    void dispatch(Particle const& particle, Particles& particles, std::size_t idx) const
     {
         using Weight_t = std::decay_t<decltype(particle.weight)>;
         using Delta_t  = std::decay_t<decltype(particle.delta[0])>;
