@@ -9,6 +9,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
 #include "core/data/ions/ions.hpp"
+#include "core/debug.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 #include "core/numerics/moments/moments.hpp"
@@ -48,6 +49,11 @@ namespace solver
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
                                 bool isRegridding) override
         {
+            PHARE_DEBUG_SET(levelNumber, levelNumber,
+                            std::dynamic_pointer_cast<amr::Hierarchy>(hierarchy));
+            PHARE_DEBUG_SCOPE("HybridLevelInitializer/initialize/" + std::to_string(levelNumber)
+                              + "/");
+
             core::Interpolator<dimension, interp_order> interpolate_;
             auto& hybridModel = static_cast<HybridModel&>(model);
             auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
@@ -79,24 +85,18 @@ namespace solver
                 }
             }
 
-            // now all particles are here
-            // we must compute moments.
-
-            for (auto& patch : level)
+            // now all particles are here, we must compute moments.
+            auto& rm   = *hybridModel.resourcesManager;
+            auto& ions = hybridModel.state.ions;
+            for (auto& patch : rm.enumerate(level, ions))
             {
-                auto& ions             = hybridModel.state.ions;
-                auto& resourcesManager = hybridModel.resourcesManager;
-                auto dataOnPatch       = resourcesManager->setOnPatch(*patch, ions);
-                auto layout            = amr::layoutFromPatch<GridLayoutT>(*patch);
+                auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
 
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
                 core::depositParticles(ions, layout, interpolate_, core::PatchGhostDeposit{});
-
                 if (!isRootLevel(levelNumber))
-                {
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
-                }
 
                 ions.computeDensity();
                 ions.computeBulkVelocity();
@@ -110,7 +110,7 @@ namespace solver
             // is not needed. But is still seems to use the messenger temporaries like
             // NiOld etc. so prepareStep() must be called, see end of the function.
             // - TODO more better comment(s)
-            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
+            hybMessenger.fillIonMomentGhosts(ions, level, initDataTime);
 
 
             // now moments are known everywhere, compute J and E
@@ -126,12 +126,12 @@ namespace solver
 
                     for (auto& patch : level)
                     {
-                        auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, J);
+                        auto _      = rm.setOnPatch(*patch, B, J);
                         auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
                         auto __     = core::SetLayout(&layout, ampere_);
                         ampere_(B, J);
 
-                        hybridModel.resourcesManager->setTime(J, *patch, 0.);
+                        rm.setTime(J, *patch, 0.);
                     }
                     hybMessenger.fillCurrentGhosts(J, levelNumber, 0.);
 
@@ -141,15 +141,14 @@ namespace solver
                     for (auto& patch : level)
                     {
                         auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                        auto _
-                            = hybridModel.resourcesManager->setOnPatch(*patch, B, E, J, electrons);
+                        auto _      = rm.setOnPatch(*patch, B, E, J, electrons);
                         electrons.update(layout);
                         auto& Ve = electrons.velocity();
                         auto& Ne = electrons.density();
                         auto& Pe = electrons.pressure();
                         auto __  = core::SetLayout(&layout, ohm_);
                         ohm_(Ne, Ve, Pe, B, J, E);
-                        hybridModel.resourcesManager->setTime(E, *patch, 0.);
+                        rm.setTime(E, *patch, 0.);
                     }
 
                     hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
@@ -161,6 +160,8 @@ namespace solver
             // in "old" messenger temporaries.
             // NOTE :  this may probably be skipped for finest level since, TBC at some point
             hybMessenger.prepareStep(hybridModel, level, initDataTime);
+
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, rm, level);
         }
     };
 } // namespace solver

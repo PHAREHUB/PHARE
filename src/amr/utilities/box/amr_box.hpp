@@ -85,6 +85,43 @@ struct Box : public PHARE::core::Box<Type, dim>
     }
 };
 
+
+template<typename Particle>
+NO_DISCARD inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
+{
+    constexpr auto dim = Particle::dimension;
+    auto const& iCell  = particle.iCell;
+    auto const& lower  = box.lower();
+    auto const& upper  = box.upper();
+    for (std::size_t i = 0; i < dim; ++i)
+        if (iCell[i] < lower(i) || iCell[i] > upper(i))
+            return false;
+    return true;
+}
+
+
+template<std::size_t dim>
+auto as_point(SAMRAI::hier::IntVector const& vec)
+{
+    return core::Point{
+        core::for_N<dim, core::for_N_R_mode::make_array>([&](auto i) { return vec[i]; })};
+}
+
+
+template<std::size_t dim>
+auto as_point(SAMRAI::hier::Transformation const& tform)
+{
+    return as_point<dim>(tform.getOffset());
+}
+
+
+template<typename Type, std::size_t dim>
+NO_DISCARD core::Box<Type, dim> shift(core::Box<Type, dim> const& box,
+                                      SAMRAI::hier::Transformation const& tform)
+{
+    return core::shift(box, as_point<dim>(tform));
+}
+
 } // namespace PHARE::amr
 
 #endif

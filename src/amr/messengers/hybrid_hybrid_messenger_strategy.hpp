@@ -1,49 +1,49 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
-#include "core/def.hpp"
-#include "core/logger.hpp"
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include "SAMRAI/hier/CoarseFineBoundary.h"
-#include "SAMRAI/hier/IntVector.h"
-#include "core/utilities/index/index.hpp"
+#include "core/def.hpp"
+#include "core/debug.hpp"
+#include "core/logger.hpp"
+
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
-#include "amr/data/field/coarsening/default_field_coarsener.hpp"
-#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
-#include "amr/data/field/refine/field_refiner.hpp"
-#include "amr/data/field/refine/magnetic_field_refiner.hpp"
-#include "amr/data/field/refine/electric_field_refiner.hpp"
-#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
-#include "amr/data/field/refine/field_refine_operator.hpp"
-#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/messengers/messenger_info.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 
-#include "core/numerics/interpolator/interpolator.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/utilities/point/point.hpp"
+#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/electric_field_refiner.hpp"
+#include "amr/data/field/refine/magnetic_field_refiner.hpp"
+#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
+#include "amr/data/field/coarsening/default_field_coarsener.hpp"
+#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
+#include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 
 
+#include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/VariableDatabase.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
+#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/hier/CoarseFineBoundary.h>
+#include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
-#include "SAMRAI/xfer/RefineAlgorithm.h"
-#include "SAMRAI/xfer/RefineSchedule.h"
-#include "SAMRAI/xfer/BoxGeometryVariableFillPattern.h"
-
-
-#include <iterator>
-#include <optional>
+#include <memory>
+#include <string>
 #include <utility>
 #include <iomanip>
 #include <iostream>
-#include <string>
+#include <iterator>
+
 
 
 namespace PHARE
@@ -299,6 +299,11 @@ namespace amr
 
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
+
+
+            PHARE_DEBUG_SCOPE("HyHyMessStrat/regrid/");
+
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, *resourcesManager_, *level);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
@@ -467,6 +472,7 @@ namespace amr
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                          double const afterPushTime) override
         {
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
             rhoGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
             velGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
         }
@@ -627,6 +633,9 @@ namespace amr
             electroSynchronizers_.sync(levelNumber);
             densitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
+
+            PHARE_DEBUG_SCOPE("HyHyMessStrat/after_sync/");
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, *resourcesManager_, level);
         }
 
         // after coarsening, domain nodes have been updated and therefore patch ghost nodes
@@ -658,6 +667,9 @@ namespace amr
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
             rhoGhostsRefiners_.fill(levelNumber, time);
             velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
+
+            PHARE_DEBUG_SCOPE("HyHyMessStrat/post_sync/after/");
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, *resourcesManager_, level);
         }
 
     private:

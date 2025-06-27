@@ -8,6 +8,7 @@
 #include "phare_types.hpp"
 
 #include "core/def.hpp"
+#include "core/debug.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
@@ -367,6 +368,7 @@ std::string Simulator<_dimension, _interp_order, _nbRefinedPart>::to_str()
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
 {
+    PHARE_DEBUG_SCOPE("Simulator/initialize/");
     PHARE_LOG_SCOPE(1, "Simulator::initialize");
 
     try
@@ -408,6 +410,7 @@ void Simulator<_dimension, _interp_order, _nbRefinedPart>::initialize()
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
 double Simulator<_dimension, _interp_order, _nbRefinedPart>::advance(double dt)
 {
+    PHARE_DEBUG_SCOPE("Simulator/advance/");
     PHARE_LOG_SCOPE(1, "Simulator::advance");
     double dt_new = 0;
 
