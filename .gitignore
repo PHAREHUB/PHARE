@@ -22,3 +22,5 @@ perf.*
 .vscode
 .phare*
 PHARE_REPORT.zip
+.cache
+.gdbinit
