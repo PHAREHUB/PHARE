@@ -110,6 +110,26 @@ namespace amr
     }
 
     /**
+     * @brief toCoarseIndex returns a coarse index from a fine index assuming a ratio of 2 in AMR
+     * index
+     *
+     * For positive indices, it is simply index / 2. For negative indices, index / 2 doesnt work
+     * because of integer division. For example, -3 / 2 = -1, but we want it to be -2, while for
+     * even negative integers e.g. -2 / 2 = -1, this is correct. We thus end up with the following
+     * formula for negative indices: index / 2 + index % 2 (remember that in C++ the % is signed)
+     * For example, -3 % 2 = -1, so we have -3 / 2 + -1 = -2.
+     *
+     */
+    template<std::size_t dimension, template<typename, std::size_t> typename Index>
+    NO_DISCARD Index<int, dimension> toCoarseIndex(Index<int, dimension> fineIndex)
+    {
+        auto coarseIdx{fineIndex};
+        for (auto& idx : coarseIdx)
+            idx = (idx >= 0) ? idx / 2 : idx / 2 + idx % 2;
+        return coarseIdx;
+    }
+
+    /**
      * @brief refinedPosition returns an index refined index with the given ratio
      * bound
      *

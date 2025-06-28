@@ -1,11 +1,11 @@
 
-#include "tools/bench/core/bench.hpp"
+#include "phare/phare.hpp" // samrai lifecycle
 
 #include "amr/data/particles/particles_data.hpp"
 
-#include "amr/utilities/box/amr_box.hpp"
+#include "tools/bench/core/bench.hpp"
 
-#include "phare/phare.hpp" // samrai lifecycle
+#include <cassert>
 
 namespace PHARE::amr::bench
 {
@@ -25,7 +25,6 @@ public:
         data = std::make_unique<_DATA_>();
 
         assert(sourceBox == data->sourceDomain);
-        assert(sourceBox == (PHARE::amr::Box<int, dim>{data->sourceDomain}));
 
         data->sourceData.domainParticles = PHARE::core::bench::make_particles<dim>(ppc, sourceBox);
         assert(data->sourceData.domainParticles.size() == ppc * sourceBox.size());

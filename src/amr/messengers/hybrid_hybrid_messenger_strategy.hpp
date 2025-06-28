@@ -1,11 +1,13 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
+#include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
 
 #include "SAMRAI/hier/CoarseFineBoundary.h"
 #include "SAMRAI/hier/IntVector.h"
+#include "core/utilities/index/index.hpp"
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
@@ -20,6 +22,7 @@
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 
 #include "core/numerics/interpolator/interpolator.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
@@ -30,8 +33,9 @@
 
 
 
-#include <SAMRAI/xfer/RefineAlgorithm.h>
-#include <SAMRAI/xfer/RefineSchedule.h>
+#include "SAMRAI/xfer/RefineAlgorithm.h"
+#include "SAMRAI/xfer/RefineSchedule.h"
+#include "SAMRAI/xfer/BoxGeometryVariableFillPattern.h"
 
 
 #include <iterator>
@@ -46,6 +50,20 @@ namespace PHARE
 {
 namespace amr
 {
+    // when registering different components to the same algorithm in SAMRAI, as we want to do for
+    // vecfields, we need those components not to be considered as equivalent_classes by SAMRAI.
+    // Without this precaution SAMRAI will assume the same geometry for all.
+    class XVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
+    {
+    };
+
+    class YVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
+    {
+    };
+
+    class ZVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
+    {
+    };
 
     /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid
      * to hybrid data communications.
@@ -59,6 +77,7 @@ namespace amr
         using VecFieldT         = typename HybridModel::vecfield_type;
         using GridLayoutT       = typename HybridModel::gridlayout_type;
         using FieldT            = typename VecFieldT::field_type;
+        using FieldDataT        = FieldData<GridLayoutT, GridT>;
         using ResourcesManagerT = typename HybridModel::resources_manager_type;
         using IPhysicalModel    = typename HybridModel::Interface;
 
@@ -133,6 +152,39 @@ namespace amr
             std::unique_ptr<HybridMessengerInfo> hybridInfo{
                 dynamic_cast<HybridMessengerInfo*>(fromFinerInfo.release())};
 
+
+            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
+                = std::make_shared<XVariableFillPattern>();
+
+            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
+                = std::make_shared<YVariableFillPattern>();
+
+            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
+                = std::make_shared<ZVariableFillPattern>();
+
+            auto bx_id = resourcesManager_->getID(hybridInfo->modelMagnetic.xName);
+            auto by_id = resourcesManager_->getID(hybridInfo->modelMagnetic.yName);
+            auto bz_id = resourcesManager_->getID(hybridInfo->modelMagnetic.zName);
+
+            if (!bx_id or !by_id or !bz_id)
+            {
+                throw std::runtime_error(
+                    "HybridHybridMessengerStrategy: missing magnetic field variable IDs");
+            }
+
+            magneticRefinePatchStrategy_.registerIDs(*bx_id, *by_id, *bz_id);
+
+            Balgo.registerRefine(*bx_id, *bx_id, *bx_id, BfieldRefineOp_, xVariableFillPattern);
+            Balgo.registerRefine(*by_id, *by_id, *by_id, BfieldRefineOp_, yVariableFillPattern);
+            Balgo.registerRefine(*bz_id, *bz_id, *bz_id, BfieldRefineOp_, zVariableFillPattern);
+
+            BalgoNode.registerRefine(*bx_id, *bx_id, *bx_id, BfieldNodeRefineOp_,
+                                     xVariableFillPattern);
+            BalgoNode.registerRefine(*by_id, *by_id, *by_id, BfieldNodeRefineOp_,
+                                     yVariableFillPattern);
+            BalgoNode.registerRefine(*bz_id, *bz_id, *bz_id, BfieldNodeRefineOp_,
+                                     zVariableFillPattern);
+
             registerGhostComms_(hybridInfo);
             registerInitComms(hybridInfo);
             registerSyncComms(hybridInfo);
@@ -149,12 +201,18 @@ namespace amr
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
-            magSharedNodesRefiners_.registerLevel(hierarchy, level);
+            magSharedNodeRefineSchedules[levelNumber]
+                = BalgoNode.createSchedule(level, &magneticRefinePatchStrategy_);
+
+            magPatchGhostsRefineSchedules[levelNumber]
+                = Balgo.createSchedule(level, &magneticRefinePatchStrategy_);
+
+            magGhostsRefineSchedules[levelNumber] = Balgo.createSchedule(
+                level, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
+
             elecSharedNodesRefiners_.registerLevel(hierarchy, level);
             currentSharedNodesRefiners_.registerLevel(hierarchy, level);
 
-            magPatchGhostsRefiners_.registerLevel(hierarchy, level);
-            magGhostsRefiners_.registerLevel(hierarchy, level);
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             currentGhostsRefiners_.registerLevel(hierarchy, level);
 
@@ -170,7 +228,8 @@ namespace amr
             if (levelNumber != rootLevelNumber)
             {
                 // those are for refinement
-                magneticInitRefiners_.registerLevel(hierarchy, level);
+                magInitRefineSchedules[levelNumber] = Balgo.createSchedule(
+                    level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
                 electricInitRefiners_.registerLevel(hierarchy, level);
                 domainParticlesRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
@@ -200,7 +259,7 @@ namespace amr
 
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
-            magneticInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+            magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             patchGhostPartRefiners_.fill(levelNumber, initDataTime);
@@ -217,14 +276,8 @@ namespace amr
 
             if (!isRegriddingL0)
             {
-                auto& B = hybridModel.state.electromag.B;
                 auto& E = hybridModel.state.electromag.E;
-                // magSharedNodesRefiners_.fill(B, levelNumber, initDataTime);
-                magGhostsRefiners_.fill(B, levelNumber, initDataTime);
-                // elecSharedNodesRefiners_.fill(E, levelNumber, initDataTime);
                 elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
-
-                fix_magnetic_divergence_(*hierarchy, levelNumber, B);
             }
 
             // we now call only levelGhostParticlesOld.fill() and not .regrid()
@@ -243,9 +296,10 @@ namespace amr
                 copyLevelGhostOldToPushable_(*level, model);
             }
 
-
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
+
+            magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
@@ -272,7 +326,8 @@ namespace amr
         {
             auto levelNumber = level.getLevelNumber();
 
-            magneticInitRefiners_.fill(levelNumber, initDataTime);
+
+            magInitRefineSchedules[levelNumber]->fillData(initDataTime);
             electricInitRefiners_.fill(levelNumber, initDataTime);
 
             // no need to call these :
@@ -590,7 +645,7 @@ namespace amr
 
             PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber))
 
-            magSharedNodesRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            magSharedNodeRefineSchedules[levelNumber]->fillData(time);
             elecSharedNodesRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
             // we fill magnetic field ghosts only on patch ghost nodes and not on level
@@ -600,7 +655,7 @@ namespace amr
             // level border with next coarser model B would invalidate divB on the first
             // fine domain cell since its border face only received a fraction of the
             // induction that has occured on the shared coarse face.
-            magPatchGhostsRefiners_.fill(hybridModel.state.electromag.B, levelNumber, time);
+            magPatchGhostsRefineSchedules[levelNumber]->fillData(time);
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
             rhoGhostsRefiners_.fill(levelNumber, time);
             velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
@@ -615,14 +670,6 @@ namespace amr
                                std::back_inserter(keys), [](auto const& d) { return d.vecName; });
                 return keys;
             };
-            magSharedNodesRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldNodeRefineOp_,
-                                                      makeKeys(info->ghostMagnetic));
-
-            magGhostsRefiners_.addStaticRefiners(info->ghostMagnetic, BfieldRefineOp_,
-                                                 makeKeys(info->ghostMagnetic));
-
-            magPatchGhostsRefiners_.addStaticRefiner(info->modelMagnetic, BfieldRefineOp_,
-                                                     info->modelMagnetic.vecName);
 
             elecSharedNodesRefiners_.addStaticRefiners(info->ghostElectric, EfieldNodeRefineOp_,
                                                        makeKeys(info->ghostElectric));
@@ -659,9 +706,6 @@ namespace amr
                                std::back_inserter(keys), [](auto const& d) { return d.vecName; });
                 return keys;
             };
-
-            magneticInitRefiners_.addStaticRefiners(info->initMagnetic, BfieldRefineOp_,
-                                                    makeKeys(info->initMagnetic));
 
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
                                                     makeKeys(info->initElectric));
@@ -733,226 +777,202 @@ namespace amr
         }
 
 
-        void debug_print(VecFieldT const& B, GridLayoutT const& layout, int loc, int ix, int iy,
-                         std::string const& aftbef)
+
+
+        void magneticRegriding_(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                                std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
+                                HybridModel& hybridModel, double const initDataTime)
         {
-            auto& Bx       = B(core::Component::X);
-            auto& By       = B(core::Component::Y);
-            auto& Bz       = B(core::Component::Z);
-            auto const& dx = layout.meshSize()[0];
-            auto const& dy = layout.meshSize()[1];
-
-            if (loc == 3) // w hi, y hi
+            // first we set all B ghost nodes to NaN so that we can later
+            // postprocess them and fill them with the correct value
+            for (auto& patch : *level)
             {
-                std::cout << aftbef << "\n";
-                std::cout << "cell 4 : "
-                          << (Bx(ix, iy) - Bx(ix - 1, iy)) / dx
-                                 + (By(ix - 1, iy + 1) - By(ix - 1, iy)) / dy
-                          << "\n";
+                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
+                auto _  = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
+                auto& B = hybridModel.state.electromag.B;
 
-                std::cout << "cell 2 : "
-                          << (Bx(ix + 1, iy - 1) - Bx(ix, iy - 1)) / dx
-                                 + (By(ix, iy) - By(ix, iy - 1)) / dy
-                          << "\n";
+                auto setToNaN = [&](auto& B, core::MeshIndex<dimension> idx) {
+                    B(idx) = std::numeric_limits<double>::quiet_NaN();
+                };
 
-                std::cout << "cell 1 : "
-                          << (Bx(ix + 1, iy) - Bx(ix, iy)) / dx + (By(ix, iy + 1) - By(ix, iy)) / dy
-                          << "\n";
+                layout.evalOnGhostBox(B(core::Component::X), [&](auto&... args) mutable {
+                    setToNaN(B(core::Component::X), {args...});
+                });
+                layout.evalOnGhostBox(B(core::Component::Y), [&](auto&... args) mutable {
+                    setToNaN(B(core::Component::Y), {args...});
+                });
+                layout.evalOnGhostBox(B(core::Component::Z), [&](auto&... args) mutable {
+                    setToNaN(B(core::Component::Z), {args...});
+                });
+            }
 
-                std::cout << "cell 3 : "
-                          << (Bx(ix, iy - 1) - Bx(ix - 1, iy - 1)) / dx
-                                 + (By(ix - 1, iy) - By(ix - 1, iy - 1)) / dy
-                          << "\n";
+            // here we create the schedule on the fly because it is the only moment where we
+            // have both the old and current level
+
+            auto magSchedule = Balgo.createSchedule(
+                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+            magSchedule->fillData(initDataTime);
+
+            // we set the new fine faces using the toth and roe (2002) formulas. This requires
+            // an even number of ghost cells as we set the new fine faces using the values of
+            // the fine faces shared with the corresponding coarse faces of the coarse cell.
+            for (auto& patch : *level)
+            {
+                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
+                auto _   = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
+                auto& B  = hybridModel.state.electromag.B;
+                auto& bx = B(core::Component::X);
+                auto& by = B(core::Component::Y);
+                auto& bz = B(core::Component::Z);
+
+                if constexpr (dimension == 1)
+                {
+                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+
+                        if (std::isnan(bx(ix)))
+                        {
+                            assert(ix % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBx1d(bx, idx);
+                        }
+                    };
+
+                    layout.evalOnGhostBox(B(core::Component::X),
+                                          [&](auto&... args) mutable { postprocessBx({args...}); });
+                }
+                else if constexpr (dimension == 2)
+                {
+                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        auto iy = idx[dirY];
+
+                        if (std::isnan(bx(ix, iy)))
+                        {
+                            assert(ix % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBx2d(bx, by, idx);
+                        }
+                    };
+
+                    auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        auto iy = idx[dirY];
+
+                        if (std::isnan(by(ix, iy)))
+                        {
+                            assert(iy % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBy2d(bx, by, idx);
+                        }
+                    };
+
+                    layout.evalOnGhostBox(B(core::Component::X),
+                                          [&](auto&... args) mutable { postprocessBx({args...}); });
+
+                    layout.evalOnGhostBox(B(core::Component::Y),
+                                          [&](auto&... args) mutable { postprocessBy({args...}); });
+                }
+                else if constexpr (dimension == 3)
+                {
+                    auto meshSize = layout.meshSize();
+
+                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        auto iy = idx[dirY];
+                        auto iz = idx[dirZ];
+
+                        if (std::isnan(bx(ix, iy, iz)))
+                        {
+                            assert(ix % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBx3d(bx, by, bz,
+                                                                                     meshSize, idx);
+                        }
+                    };
+
+                    auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        auto iy = idx[dirY];
+                        auto iz = idx[dirZ];
+
+                        if (std::isnan(by(ix, iy, iz)))
+                        {
+                            assert(iy % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBy3d(bx, by, bz,
+                                                                                     meshSize, idx);
+                        }
+                    };
+
+                    auto postprocessBz = [&](core::MeshIndex<dimension> idx) {
+                        auto ix = idx[dirX];
+                        auto iy = idx[dirY];
+                        auto iz = idx[dirZ];
+
+                        if (std::isnan(bz(ix, iy, iz)))
+                        {
+                            assert(iz % 2 == 1);
+                            MagneticRefinePatchStrategy<ResourcesManagerT,
+                                                        FieldDataT>::postprocessBz3d(bx, by, bz,
+                                                                                     meshSize, idx);
+                        }
+                    };
+
+                    layout.evalOnGhostBox(B(core::Component::X),
+                                          [&](auto&... args) mutable { postprocessBx({args...}); });
+
+                    layout.evalOnGhostBox(B(core::Component::Y),
+                                          [&](auto&... args) mutable { postprocessBy({args...}); });
+
+                    layout.evalOnGhostBox(B(core::Component::Z),
+                                          [&](auto&... args) mutable { postprocessBz({args...}); });
+                }
+
+                auto notNan = [&](auto& b, core::MeshIndex<dimension> idx) {
+                    auto check = [&](auto&&... indices) {
+                        if (std::isnan(b(indices...)))
+                        {
+                            std::string index_str;
+                            ((index_str
+                              += (index_str.empty() ? "" : ", ") + std::to_string(indices)),
+                             ...);
+                            throw std::runtime_error("NaN found in magnetic field " + b.name()
+                                                     + " at index (" + index_str + ")");
+                        }
+                    };
+
+                    if constexpr (dimension == 1)
+                    {
+                        check(idx[dirX]);
+                    }
+                    else if constexpr (dimension == 2)
+                    {
+                        check(idx[dirX], idx[dirY]);
+                    }
+                    else if constexpr (dimension == 3)
+                    {
+                        check(idx[dirX], idx[dirY], idx[dirZ]);
+                    }
+                };
+
+                auto checkNoNaNsLeft = [&]() {
+                    auto checkComponent = [&](auto component) {
+                        layout.evalOnGhostBox(
+                            B(component), [&](auto&... args) { notNan(B(component), {args...}); });
+                    };
+
+                    checkComponent(core::Component::X);
+                    checkComponent(core::Component::Y);
+                    checkComponent(core::Component::Z);
+                };
+
+                PHARE_DEBUG_DO(checkNoNaNsLeft());
             }
         }
 
-        /*
-         *
-         * */
-        void fix_magnetic_divergence_(SAMRAI::hier::PatchHierarchy const& hierarchy,
-                                      int levelNumber, VecFieldT& B)
-        {
-            auto lvlBoundary = SAMRAI::hier::CoarseFineBoundary(
-                hierarchy, levelNumber,
-                SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension}, 0});
 
-            for (auto& patch : *hierarchy.getPatchLevel(levelNumber))
-            {
-                if constexpr (dimension == 2)
-                {
-                    auto _         = resourcesManager_->setOnPatch(*patch, B);
-                    auto layout    = layoutFromPatch<GridLayoutT>(*patch);
-                    auto& Bx       = B(core::Component::X);
-                    auto& By       = B(core::Component::Y);
-                    auto& Bz       = B(core::Component::Z);
-                    auto const& dx = layout.meshSize()[0];
-                    auto const& dy = layout.meshSize()[1];
-
-                    auto boundaries = lvlBoundary.getEdgeBoundaries(patch->getGlobalId());
-                    for (auto& boundary : boundaries)
-                    {
-                        int loc         = boundary.getLocationIndex();
-                        auto const& box = boundary.getBox();
-
-                        if (loc == 0) // x_lo
-                        {
-                            // we're on the left side border outside the domain
-                            // we need to get to the first domain cell
-                            auto ixAMR = box.lower()[0] + 1;
-
-                            // this is a X edge we need to fix By
-                            for (int iyAMR = box.lower()[1]; iyAMR <= box.upper()[1]; ++iyAMR)
-                            {
-                                // we want to change By only at fine faces not shared with
-                                // coarse faces.
-                                if (!(iyAMR % 2 == 0))
-                                {
-                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
-                                    auto ix       = localIdx[0];
-                                    auto iy       = localIdx[1];
-                                    By(ix, iy)
-                                        = By(ix, iy + 1) + dy / dx * (Bx(ix + 1, iy) - Bx(ix, iy));
-                                }
-                            }
-                        }
-                        else if (loc == 1) // x_hi
-                        {
-                            // we're on the right side border outside the domain
-                            // we need to get to the last domain cell
-                            auto ixAMR = box.upper()[0] - 1;
-
-                            // this is a X edge we need to fix By
-                            for (int iyAMR = box.lower()[1]; iyAMR <= box.upper()[1]; ++iyAMR)
-                            {
-                                // we want to change By only at fine faces not shared with
-                                // coarse faces.
-                                if (!(iyAMR % 2 == 0))
-                                {
-                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
-                                    auto ix       = localIdx[0];
-                                    auto iy       = localIdx[1];
-                                    By(ix, iy)
-                                        = By(ix, iy + 1) + dy / dx * (Bx(ix + 1, iy) - Bx(ix, iy));
-                                }
-                            }
-                        }
-                        else if (loc == 2) // y_lo
-                        {
-                            // we're on the bottom edge, we need the first domain cell
-                            auto iyAMR = box.lower()[1] + 1;
-
-                            // this is a Y edge we need to fix Bx
-                            for (int ixAMR = box.lower()[0]; ixAMR <= box.upper()[0]; ++ixAMR)
-                            {
-                                // we want to change By only at fine faces not shared with
-                                // coarse faces.
-                                if (!(ixAMR % 2 == 0))
-                                {
-                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
-                                    auto ix       = localIdx[0];
-                                    auto iy       = localIdx[1];
-                                    Bx(ix, iy)
-                                        = Bx(ix + 1, iy) + dx / dy * (By(ix, iy + 1) - By(ix, iy));
-                                }
-                            }
-                        }
-                        else if (loc == 3) // y_hi
-                        {
-                            // we're on the top edge, we need the last domain cell
-                            auto iyAMR = box.upper()[1] - 1;
-
-                            // this is a Y edge we need to fix Bx
-                            for (int ixAMR = box.lower()[0]; ixAMR <= box.upper()[0]; ++ixAMR)
-                            {
-                                // we want to change By only at fine faces not shared with
-                                // coarse faces.
-                                if (!(ixAMR % 2 == 0))
-                                {
-                                    auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
-                                    auto ix       = localIdx[0];
-                                    auto iy       = localIdx[1];
-                                    Bx(ix, iy)
-                                        = Bx(ix + 1, iy) + dx / dy * (By(ix, iy + 1) - By(ix, iy));
-                                }
-                            }
-                        }
-                    } // end boundary loop
-
-                    // above we have treated boundaries as 1D lines
-                    // this is not treating corners well and we need to deal with them separatly
-                    //
-                    //__________________
-                    //      |    |     |
-                    //      | 4  BX 1  |
-                    //      |    |     |
-                    //      |_By_|_BY___
-                    //      |    |     |
-                    //      | 3 Bx  2  |
-                    //      |    |     |
-                    //      |____|_____
-                    //                 |
-                    //                 |
-                    //                 |
-                    //
-                    // above are the 4 fine top right corner cells and
-                    // above code have changed BX and BY but not Bx and By
-                    // faces. But these cells are not independant.
-                    // To fix divB in these 4 cells we will re-assigne the four
-                    // fine faces.
-                    // The idea is to give them the same values they would have had
-                    // if refined. By and BY would have the same value, equal to the
-                    // average of the coarse By on top and bottom faces of the coarse cell
-                    // we do not have access to the coarse cell here but we know that because
-                    // of the previous coarsening, these coarse faces have the same flux
-                    // as the average of the 2 shared fine faces
-                    // So By and BY will be 1/4 * sum of top and bottom fine By
-                    // Similarly, BX and Bx will take 1/4 the four fine Bx faces share with the
-                    // coarse ones
-                    //
-                    auto corners = lvlBoundary.getNodeBoundaries(patch->getGlobalId());
-                    for (auto& corner : corners)
-                    {
-                        int loc = corner.getLocationIndex();
-
-                        // the box we get should consist of just 1 cell
-                        // i.e. with lower==upper so it should not matter which
-                        // one we take in the following.
-                        auto const& box = corner.getBox();
-
-                        //* x_lo, y_lo: 0
-                        //* x_hi, y_lo: 1
-                        //* x_lo, y_hi: 2
-                        // * x_hi, y_hi: 3
-
-                        if (loc == 3) // x_hi, y_hi
-                        {
-                            // we're on the top right corner
-                            // and we want the domain cell
-                            // that is labeled cell 1 in above drawing
-                            // we fix BX and BY
-                            auto ixAMR    = box.lower()[0] - 1;
-                            auto iyAMR    = box.lower()[1] - 1;
-                            auto localIdx = layout.AMRToLocal(core::Point{ixAMR, iyAMR});
-                            auto ix       = localIdx[0];
-                            auto iy       = localIdx[1];
-
-                            // maybe we should keep these for some time
-                            // as comments in case they are useful again
-                            PHARE_DEBUG_DO(std::string const before = "BEFORE";
-                                           debug_print(B, layout, loc, ix, iy, before);)
-                            Bx(ix, iy - 1)
-                                = Bx(ix + 1, iy - 1) + dx / dy * (By(ix, iy) - By(ix, iy - 1));
-
-                            By(ix - 1, iy)
-                                = By(ix - 1, iy + 1) + dy / dx * (Bx(ix, iy) - Bx(ix - 1, iy));
-
-                            PHARE_DEBUG_DO(std::string const after = "AFTER";
-                                           debug_print(B, layout, loc, ix, iy, after);)
-                        }
-                    } // end corner loops
-                } // end if 2D
-            } // end patch loop
-        }
 
 
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
@@ -983,13 +1003,14 @@ namespace amr
         using InitDomPartRefinerPool    = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
         using PatchGhostPartRefinerPool = RefinerPool<rm_t, RefinerType::InteriorGhostParticles>;
 
-        InitRefinerPool magneticInitRefiners_{resourcesManager_};
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 
-        //! store communicators for magnetic fields that need ghosts to be filled
-        SharedNodeRefinerPool magSharedNodesRefiners_{resourcesManager_};
-        GhostRefinerPool magGhostsRefiners_{resourcesManager_};
-        PatchGhostRefinerPool magPatchGhostsRefiners_{resourcesManager_};
+        SAMRAI::xfer::RefineAlgorithm Balgo;
+        SAMRAI::xfer::RefineAlgorithm BalgoNode;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magPatchGhostsRefineSchedules;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magSharedNodeRefineSchedules;
 
 
         //! store refiners for electric fields that need ghosts to be filled
@@ -1049,6 +1070,9 @@ namespace amr
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
         CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
         CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
+
+        MagneticRefinePatchStrategy<ResourcesManagerT, FieldDataT> magneticRefinePatchStrategy_{
+            *resourcesManager_};
     };
 
 

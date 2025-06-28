@@ -43,11 +43,8 @@ public:
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
-        auto const locFineIdx          = AMRToLocal(fineIndex, fineBox_);
-        auto constexpr refinementRatio = 2;
-        auto coarseIdx{fineIndex};
-        for (auto& idx : coarseIdx)
-            idx = idx / refinementRatio;
+        auto const locFineIdx   = AMRToLocal(fineIndex, fineBox_);
+        auto const coarseIdx    = toCoarseIndex(fineIndex);
         auto const locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
         if constexpr (dimension == 1)
