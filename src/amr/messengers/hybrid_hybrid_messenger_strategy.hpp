@@ -296,9 +296,10 @@ namespace amr
                 copyLevelGhostOldToPushable_(*level, model);
             }
 
-
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
+
+            magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
