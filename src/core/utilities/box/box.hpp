@@ -25,7 +25,7 @@ class box_iterator;
 template<typename Type, std::size_t dim>
 struct Box
 {
-    static const size_t dimension = dim;
+    static constexpr std::size_t dimension = dim;
 
 
     Point<Type, dim> lower;
