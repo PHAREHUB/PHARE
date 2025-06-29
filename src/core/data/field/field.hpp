@@ -1,17 +1,15 @@
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_BASE_HPP
 #define PHARE_CORE_DATA_FIELD_FIELD_BASE_HPP
 
-#include <array>
-#include <cstddef>
-#include <string>
-#include <utility>
-#include <vector>
-#include <algorithm>
 
 #include "core/def.hpp"
-#include "core/logger.hpp"
-
 #include "core/data/ndarray/ndarray_vector.hpp"
+
+
+#include <array>
+#include <string>
+#include <cstddef>
+#include <utility>
 
 
 namespace PHARE::core
@@ -96,19 +94,6 @@ private:
     Super const& super() const { return *this; }
 };
 
-
-
-template<std::size_t dim, typename PhysicalQuantity, typename Data_t>
-void average(Field<dim, PhysicalQuantity, Data_t> const& f1,
-             Field<dim, PhysicalQuantity, Data_t> const& f2,
-             Field<dim, PhysicalQuantity, Data_t>& avg)
-{
-    std::transform(std::begin(f1), std::end(f1), std::begin(f2), std::begin(avg),
-                   std::plus<double>());
-
-    std::transform(std::begin(avg), std::end(avg), std::begin(avg),
-                   [](double x) { return x * 0.5; });
-}
 
 
 } // namespace PHARE::core
