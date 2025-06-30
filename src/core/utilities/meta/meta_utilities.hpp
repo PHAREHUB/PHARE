@@ -2,6 +2,7 @@
 #define PHARE_CORE_UTILITIES_META_META_UTILITIES_HPP
 
 #include <iterator>
+#include <tuple>
 #include <type_traits>
 
 #include "core/utilities/types.hpp"
@@ -17,7 +18,7 @@ namespace core
     struct dummy
     {
         using type              = int;
-        static const type value = 0;
+        static type const value = 0;
     };
 
 
@@ -69,6 +70,7 @@ namespace core
     using SimulatorOption = std::tuple<DimConstant, InterpConstant,
                                        std::integral_constant<std::size_t, ValidNbrParticles>...>;
 
+
     constexpr decltype(auto) possibleSimulators()
     {
         // inner tuple = dim, interp, list[possible nbrParticles for dim/interp]
@@ -81,6 +83,43 @@ namespace core
                           SimulatorOption<DimConst<2>, InterpConst<3>, 4, 5, 8, 9, 25>>{};
     }
 
+    constexpr static auto n_possibleSimulators()
+    {
+        return std::tuple_size_v<decltype(possibleSimulators())>;
+    }
+
+    template<typename Dimension, typename InterpOrder, typename... NbRefinedParts>
+    auto static constexpr validNbrParticlesFor(
+        std::tuple<Dimension, InterpOrder, NbRefinedParts...> const&)
+    {
+        return std::tuple<NbRefinedParts...>{};
+    }
+
+    template<std::size_t dim, std::size_t interp /*, etc*/>
+    auto static constexpr simulatorTupleIndex()
+    {
+        std::int64_t idx               = -1;
+        auto constexpr simulators_list = possibleSimulators();
+        auto constexpr predicate       = [](auto i, auto& idx) constexpr -> void {
+            using SimuType = std::decay_t<decltype(std::get<i>(simulators_list))>;
+            constexpr std::tuple_element_t<0, SimuType> _dim{};
+            constexpr std::tuple_element_t<1, SimuType> _interp{};
+            if constexpr (dim == _dim() and interp == _interp())
+                idx = i;
+        };
+
+        for_N<n_possibleSimulators()>(predicate, idx);
+
+        assert(idx >= 0);
+        return static_cast<std::size_t>(idx);
+    }
+
+    template<std::size_t dim, std::size_t interp>
+    auto static constexpr validNbrParticlesFor()
+    {
+        return validNbrParticlesFor(
+            std::get<simulatorTupleIndex<dim, interp>()>(possibleSimulators()));
+    }
 
     template<typename Maker> // used from PHARE::amr::Hierarchy
     auto makeAtRuntime(std::size_t dim, Maker&& maker)
@@ -90,7 +129,7 @@ namespace core
 
         core::apply(possibleSimulators(), [&](auto const& simType) {
             using SimuType = std::decay_t<decltype(simType)>;
-            using _dim     = typename std::tuple_element<0, SimuType>::type;
+            using _dim     = std::tuple_element_t<0, SimuType>;
 
             if (!p)
                 p = maker(dim, _dim{});
