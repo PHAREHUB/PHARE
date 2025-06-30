@@ -2,12 +2,11 @@
 #define PHARE_CORE_DATA_PARTICLE_PACKER_HPP
 
 
-#include <cstddef>
-#include <vector>
-
+#include "core/def.hpp"
 #include "particle.hpp"
 #include "particle_array.hpp"
-#include "core/def.hpp"
+
+#include <cstddef>
 
 namespace PHARE::core
 {
@@ -24,7 +23,7 @@ public:
     {
     }
 
-    NO_DISCARD static auto get(Particle<dim> const& particle)
+    NO_DISCARD static constexpr auto get(Particle<dim> const& particle)
     {
         return std::forward_as_tuple(particle.weight, particle.charge, particle.iCell,
                                      particle.delta, particle.v);
@@ -42,21 +41,34 @@ public:
     NO_DISCARD bool hasNext() const { return it_ < particles_.size(); }
     NO_DISCARD auto next() { return get(it_++); }
 
-    void pack(ContiguousParticles<dim>& copy)
+    void pack(ContiguousParticles<dim>& soa) const
     {
-        auto copyTo = [](auto& a, auto& idx, auto size, auto& v) {
-            std::copy(a.begin(), a.begin() + size, v.begin() + (idx * size));
-        };
-        std::size_t idx = 0;
-        while (this->hasNext())
+        for (auto const& particle : particles_)
+            soa.push_back(particle);
+    }
+
+    template<typename Fn>
+    void pack_ranges_into(Fn const fn, std::size_t const S = 2048) const
+    {
+        ContiguousParticles<dim> soa{S};
+        soa.clear(); // reserved but 0 size
+
+        std::size_t i = 0;
+        for (; i < particles_.size() / S; ++i)
         {
-            auto next        = this->next();
-            copy.weight[idx] = std::get<0>(next);
-            copy.charge[idx] = std::get<1>(next);
-            copyTo(std::get<2>(next), idx, dim, copy.iCell);
-            copyTo(std::get<3>(next), idx, dim, copy.delta);
-            copyTo(std::get<4>(next), idx, 3, copy.v);
-            idx++;
+            std::size_t const pi = i * S;
+            for (std::size_t bi = 0; bi < S; ++bi)
+                soa.push_back(particles_[pi + bi]);
+            fn(soa, pi);
+            soa.clear();
+        }
+
+        if (auto const remaining = particles_.size() % S)
+        {
+            std::size_t const pi = i * S;
+            for (std::size_t bi = 0; bi < remaining; ++bi)
+                soa.push_back(particles_[pi + bi]);
+            fn(soa, pi);
         }
     }
 

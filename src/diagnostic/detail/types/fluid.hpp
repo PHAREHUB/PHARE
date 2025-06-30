@@ -296,9 +296,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     auto& ions     = h5Writer.modelView().getIons();
     auto& h5file   = *fileData_.at(diagnostic.quantity);
 
-    auto writeDS = [&](auto path, auto& field) {
-        h5file.template write_data_set_flat<GridLayout::dimension>(path, field.data());
-    };
+    auto writeDS = [&](auto path, auto& field) { h5file.write_data_set_flat(path, field.data()); };
     auto writeTF
         = [&](auto path, auto& vecF) { h5Writer.writeTensorFieldAsDataset(h5file, path, vecF); };
 

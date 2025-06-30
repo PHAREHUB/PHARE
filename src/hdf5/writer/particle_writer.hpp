@@ -1,15 +1,14 @@
 #ifndef PHARE_HDF5_PARTICLE_WRITER_HPP
 #define PHARE_HDF5_PARTICLE_WRITER_HPP
 
-#include <array>
-#include <vector>
-
-#include "hdf5/detail/hdf5_utils.hpp"
-#include "hdf5/detail/h5/h5_file.hpp"
 
 #include "core/def.hpp"
 #include "core/data/particles/particle_packer.hpp"
 
+#include "hdf5/detail/hdf5_utils.hpp"
+#include "hdf5/detail/h5/h5_file.hpp"
+
+#include <vector>
 
 namespace PHARE::hdf5
 {
@@ -19,20 +18,26 @@ public:
     template<typename H5File, typename Particles>
     static void write(H5File& h5file, Particles const& particles, std::string const& path)
     {
-        auto constexpr dim = Particles::dimension;
-        using Packer       = core::ParticlePacker<dim>;
+        constexpr auto dim              = Particles::dimension;
+        using Packer                    = core::ParticlePacker<dim>;
+        constexpr auto particle_members = Packer::empty();
+        static auto& keys               = Packer::keys();
 
-        Packer packer(particles);
-        core::ContiguousParticles<dim> copy{particles.size()};
-        packer.pack(copy);
 
-        std::size_t part_idx = 0;
-        core::apply(copy.as_tuple(), [&](auto const& arg) {
-            auto data_path = path + packer.keys()[part_idx++];
-            h5file.template write_data_set_flat<2>(data_path, arg.data());
+        Packer{particles}.pack_ranges_into([&](auto const& arr, auto const from) {
+            auto const soa_members = arr();
+
+            core::for_N<Packer::n_keys>([&](auto ki) {
+                auto const [key, member] = std::get<ki>(soa_members);
+                auto const actual        = std::get<ki>(particle_members);
+
+                h5file.file()
+                    .getDataSet(path + keys[ki])
+                    .select({from, 0ul}, size_for<dim>(actual, arr.size()))
+                    .write_raw(member.data());
+            });
         });
     }
-
 
 
 

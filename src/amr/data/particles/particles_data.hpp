@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <numeric>
 #include <stdexcept>
+#include <tuple>
 #include <vector>
 
 #include "core/def/phare_mpi.hpp"
@@ -159,14 +160,13 @@ namespace amr
 
                 particles.sortMapping();
 
-                Packer packer(particles);
-                core::ContiguousParticles<dim> soa{particles.size()};
-                packer.pack(soa);
-
-                std::size_t part_idx = 0;
-                core::apply(soa.as_tuple(), [&](auto const& arg) {
-                    restart_db->putVector(name + "_" + packer.keys()[part_idx++], arg);
-                });
+                Packer{particles}.pack_ranges_into(
+                    [&](auto const& arr, auto const...) {
+                        core::double_apply(arr(), [&](auto const& key, auto const& arg) {
+                            restart_db->putVector(name + "_" + key, arg);
+                        });
+                    },
+                    particles.size()); // no means from samrai to write in chunks
             };
 
             putParticles("domainParticles", domainParticles);
@@ -201,12 +201,9 @@ namespace amr
                     = restart_db->getArraySize(name + "_" + Packer::arbitrarySingleValueKey());
                 core::ContiguousParticles<dim> soa{n_particles};
 
-                {
-                    std::size_t part_idx = 0;
-                    core::apply(soa.as_tuple(), [&](auto& arg) {
-                        restart_db->getVector(name + "_" + Packer::keys()[part_idx++], arg);
-                    });
-                }
+                core::double_apply(soa(), [&](auto const& key, auto& arg) {
+                    restart_db->getVector(name + "_" + key, arg);
+                });
 
                 assert(particles.size() == 0);
                 particles.reserve(n_particles);
