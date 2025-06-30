@@ -1,6 +1,8 @@
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
+#include "core/debug.hpp"
+
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/messenger.hpp"
@@ -48,6 +50,11 @@ namespace solver
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
                                 bool isRegridding) override
         {
+            PHARE_DEBUG_SET(levelNumber, levelNumber,
+                            std::dynamic_pointer_cast<amr::Hierarchy>(hierarchy));
+            PHARE_DEBUG_SCOPE("HybridLevelInitializer/initialize/" + std::to_string(levelNumber)
+                              + "/");
+
             core::Interpolator<dimension, interp_order> interpolate_;
             auto& hybridModel = static_cast<HybridModel&>(model);
             auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
@@ -161,6 +168,8 @@ namespace solver
             // in "old" messenger temporaries.
             // NOTE :  this may probably be skipped for finest level since, TBC at some point
             hybMessenger.prepareStep(hybridModel, level, initDataTime);
+
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, rm, level);
         }
     };
 } // namespace solver

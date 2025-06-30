@@ -2,6 +2,7 @@
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
 #include "core/def.hpp"
+#include "core/debug.hpp"
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
 
@@ -300,6 +301,9 @@ namespace amr
             // levelGhostNew will be refined in next firstStep
 
             magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+
+            PHARE_DEBUG_SCOPE("HyHyMessStrat/regrid/");
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, *resourcesManager_, *level);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
@@ -468,6 +472,7 @@ namespace amr
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                          double const afterPushTime) override
         {
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
             rhoGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
             velGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
         }
@@ -628,6 +633,9 @@ namespace amr
             electroSynchronizers_.sync(levelNumber);
             densitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
+
+            PHARE_DEBUG_SCOPE("HyHyMessStrat/after_sync/");
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, *resourcesManager_, level);
         }
 
         // after coarsening, domain nodes have been updated and therefore patch ghost nodes
@@ -659,6 +667,9 @@ namespace amr
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
             rhoGhostsRefiners_.fill(levelNumber, time);
             velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
+
+            PHARE_DEBUG_SCOPE("HyHyMessStrat/post_sync/after/");
+            PHARE_DEBUG_CHECK_LEVEL(GridLayoutT, *resourcesManager_, level);
         }
 
     private:
