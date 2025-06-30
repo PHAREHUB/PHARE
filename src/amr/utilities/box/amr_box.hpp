@@ -85,6 +85,30 @@ struct Box : public PHARE::core::Box<Type, dim>
     }
 };
 
+
+
+template<std::size_t dim>
+auto as_point(SAMRAI::hier::IntVector const& vec)
+{
+    return core::Point{
+        core::for_N<dim, core::for_N_R_mode::make_array>([&](auto i) { return vec[i]; })};
+}
+
+
+template<std::size_t dim>
+auto as_point(SAMRAI::hier::Transformation const& tform)
+{
+    return as_point<dim>(tform.getOffset());
+}
+
+
+template<typename Type, std::size_t dim>
+NO_DISCARD core::Box<Type, dim> shift(core::Box<Type, dim> const& box,
+                                      SAMRAI::hier::Transformation const& tform)
+{
+    return core::shift(box, as_point<dim>(tform));
+}
+
 } // namespace PHARE::amr
 
 #endif
