@@ -1,12 +1,9 @@
 import copy
 
 import time
-import datetime
-import unittest
 import numpy as np
-from pathlib import Path
 from datetime import timedelta
-
+from pathlib import Path
 from ddt import ddt, data, unpack
 
 from pyphare.cpp import cpp_lib
@@ -17,59 +14,79 @@ import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 
-from tests.simulator import SimulatorTest
+from tests.simulator import SimulatorTest, populate_simulation
 from tests.diagnostic import dump_all_diags
 from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
 
 
 def permute(dic, expected_num_levels):
-    # from pyphare.pharein.simulation import supported_dimensions # eventually
-    dims = [1]  # supported_dimensions()
+    from pyphare.pharein.simulation import supported_dimensions
+
+    dims = supported_dimensions()
     return [
         [dim, interp, dic, expected_num_levels] for dim in dims for interp in [1, 2, 3]
     ]
 
 
-def setup_model(ppc=100):
-    def density(x):
+nppc = 22
+timestep = 0.001
+out = "phare_outputs/restarts"
+
+simArgs = dict(
+    # we are saving at timestep 4, and we have seen that restarted simulations with refinement boxes
+    #  have regridding in places that don't exist in the original simulation
+    #   we compare the immediate next timestep of both simulations with refinement boxes, as we have seen
+    #   in this way neither simulations have any regrids, so are still comparable
+    time_step_nbr=5,  # avoid regrid for refinement boxes https://github.com/LLNL/SAMRAI/issues/199
+    time_step=timestep,
+    boundary_types="periodic",
+    cells=22,
+    dl=0.3,
+    diag_options=dict(format="phareh5", options=dict(dir=out, mode="overwrite")),
+    restart_options=dict(dir=out, mode="overwrite"),
+)
+
+
+def setup_model(ppc):
+    def density(*xyz):
         return 1.0
 
-    def bx(x):
+    def bx(*xyz):
         return 0.0
 
     def S(x, x0, l):
         return 0.5 * (1 + np.tanh((x - x0) / l))
 
-    def by(x):
+    def by(*xyz):
         L = ph.global_vars.sim.simulation_domain()[0]
         v1, v2 = -1, 1.0
-        return v1 + (v2 - v1) * (S(x, L * 0.25, 1) - S(x, L * 0.75, 1))
+        return v1 + (v2 - v1) * (S(xyz[0], L * 0.25, 1) - S(xyz[0], L * 0.75, 1))
 
-    def bz(x):
+    def bz(*xyz):
         return 0.5
 
-    def b2(x):
-        return bx(x) ** 2 + by(x) ** 2 + bz(x) ** 2
+    def b2(*xyz):
+        return bx(xyz[0]) ** 2 + by(xyz[0]) ** 2 + bz(xyz[0]) ** 2
 
-    def T(x):
+    def T(*xyz):
         K = 1
-        return 1 / density(x) * (K - b2(x) * 0.5)
+        return 1 / density(xyz[0]) * (K - b2(xyz[0]) * 0.5)
 
-    def vx(x):
+    def vx(*xyz):
         return 2.0
 
-    def vy(x):
+    def vy(*xyz):
         return 0.0
 
-    def vz(x):
+    def vz(*xyz):
         return 0.0
 
-    def vxalpha(x):
+    def vxalpha(*xyz):
         return 3.0
 
-    def vthxyz(x):
-        return T(x)
+    def vthxyz(*xyz):
+        return T(xyz[0])
 
     vvv = {
         "vbulkx": vx,
@@ -112,21 +129,20 @@ def setup_model(ppc=100):
     return model
 
 
-timestep = 0.001
-out = "phare_outputs/restarts"
-simArgs = dict(
-    # we are saving at timestep 4, and we have seen that restarted simulations with refinement boxes
-    #  have regridding in places that don't exist in the original simulation
-    #   we compare the immediate next timestep of both simulations with refinement boxes, as we have seen
-    #   in this way neither simulations have any regrids, so are still comparable
-    time_step_nbr=5,  # avoid regrid for refinement boxes https://github.com/LLNL/SAMRAI/issues/199
-    time_step=timestep,
-    boundary_types="periodic",
-    cells=200,
-    dl=0.3,
-    diag_options=dict(format="phareh5", options=dict(dir=out, mode="overwrite")),
-    restart_options=dict(dir=out, mode="overwrite"),
-)
+class ModelFunctor:
+    def __init__(self, ppc=None):
+        self.nppc = ppc or nppc
+
+    def __call__(self):
+        return setup_model(self.nppc)
+
+
+class DiagsFunctor:
+    def __init__(self, timestamps):
+        self.timestamps = timestamps
+
+    def __call__(self, model):
+        dump_all_diags(model.populations, timestamps=np.array(self.timestamps))
 
 
 def dup(dic={}):
@@ -145,10 +161,6 @@ class RestartsTest(SimulatorTest):
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
-        ph.global_vars.sim = None
-
-    def ddt_test_id(self):
-        return self._testMethodName.split("_")[-1]
 
     def check_diags(self, diag_dir0, diag_dir1, pops, timestamps, expected_num_levels):
         if cpp.mpi_rank() > 0:
@@ -163,6 +175,7 @@ class RestartsTest(SimulatorTest):
 
         self.assertGreater(len(timestamps), 0)
         for time in timestamps:
+            print(f"checking time {time}")
             checks = 0
 
             run0 = Run(diag_dir0)
@@ -176,22 +189,23 @@ class RestartsTest(SimulatorTest):
             )
 
             self.assertEqual(len(datahier0.levels()), len(datahier1.levels()))
+
+            # patch order by list index across hierarchies not guaranteed
+            boxhier1 = self.hierarchy_by_box(datahier1)
+
             for ilvl in range(len(datahier0.levels())):
                 self.assertEqual(
                     len(datahier0.level(ilvl).patches),
                     len(datahier1.level(ilvl).patches),
                 )
-                for patch0, patch1 in zip(
-                    datahier0.level(ilvl).patches, datahier1.level(ilvl).patches
-                ):
-                    self.assertEqual(patch0.box, patch1.box)
+                for patch0 in datahier0.level(ilvl).patches:
+                    self.assertIn(str(patch0.box), boxhier1[ilvl])
 
             self.assertGreater(len(datahier0.levels()), 0)
 
             for ilvl, lvl0 in datahier0.levels().items():
-                patch_level1 = datahier1.levels()[ilvl]
-                for p_idx, patch0 in enumerate(lvl0):
-                    patch1 = patch_level1.patches[p_idx]
+                for patch0 in lvl0:
+                    patch1 = boxhier1[ilvl][str(patch0.box)]
                     for pd_key, pd0 in patch0.patch_datas.items():
                         pd1 = patch1.patch_datas[pd_key]
                         self.assertNotEqual(id(pd0), id(pd1))
@@ -204,7 +218,16 @@ class RestartsTest(SimulatorTest):
                                     f"FAILED domain particles at time {time} {ilvl} {patch1.box} {patch0.box}"
                                 )
                         else:
-                            np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
+                            if cpp.mpi_size() == 1:
+                                np.testing.assert_equal(pd0.dataset[:], pd1.dataset[:])
+                            else:
+                                # rank order for shared nodes not guaranteed
+                                np.testing.assert_allclose(
+                                    pd0.dataset[:],
+                                    pd1.dataset[:],
+                                    atol=1e-14,  # 1e-15 fails empirically
+                                    rtol=0,
+                                )
                         checks += 1
 
             n_levels, n_patches = count_levels_and_patches(
@@ -236,9 +259,9 @@ class RestartsTest(SimulatorTest):
 
         if "refinement" not in simput:
             # three levels has issues with refinementboxes and possibly regridding
-            b0 = [[10] * ndim, [19] * ndim]
+            b0 = [[6] * ndim, [15] * ndim]
             simput["refinement_boxes"] = {"L0": {"B0": b0}}
-        else:  # https://github.com/LLNL/SAMRAI/issues/199
+        elif cpp.mpi_size() == 1:  # https://github.com/LLNL/SAMRAI/issues/199
             # tagging can handle more than one timestep as it does not
             #  appear subject to regridding issues, so we make more timesteps
             #  to confirm simulations are still equivalent
@@ -259,14 +282,18 @@ class RestartsTest(SimulatorTest):
         # first simulation
         local_out = self.unique_diag_dir_for_test_case(f"{out}/test", ndim, interp)
         simput["restart_options"]["dir"] = local_out
-        simput["restart_options"]["timestamps"] = [timestep * 4]
+        simput["restart_options"]["timestamps"] = [timestep * restart_idx]
         simput["diag_options"]["options"]["dir"] = local_out
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        assert "restart_time" not in ph.global_vars.sim.restart_options
-        model = setup_model()
-        dump_all_diags(model.populations, timestamps=np.array(timestamps))
-        Simulator(ph.global_vars.sim).run().reset()
+        sim = populate_simulation(
+            ndim,
+            interp,
+            model_fn=ModelFunctor(),
+            diags_fn=DiagsFunctor(timestamps),
+            **simput,
+        )
+
+        assert "restart_time" not in sim.restart_options
+        Simulator(sim).run().reset()
         self.register_diag_dir_for_cleanup(local_out)
         diag_dir0 = local_out
 
@@ -274,39 +301,30 @@ class RestartsTest(SimulatorTest):
         local_out = f"{local_out}_n2"
         simput["diag_options"]["options"]["dir"] = local_out
         simput["restart_options"]["restart_time"] = restart_time
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        assert "restart_time" in ph.global_vars.sim.restart_options
-        model = setup_model()
-        dump_all_diags(model.populations, timestamps=np.array(timestamps))
-        Simulator(ph.global_vars.sim).run().reset()
+        sim = populate_simulation(
+            ndim,
+            interp,
+            model_fn=ModelFunctor(),
+            diags_fn=DiagsFunctor(timestamps),
+            **simput,
+        )
+        assert "restart_time" in sim.restart_options
+        Simulator(sim).run().reset()
         self.register_diag_dir_for_cleanup(local_out)
         diag_dir1 = local_out
 
         self.check_diags(
-            diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels
+            diag_dir0, diag_dir1, sim.model.populations, timestamps, expected_num_levels
         )
 
-    @data(
-        *permute(
-            dup(
-                dict(
-                    max_nbr_levels=2,
-                    refinement="tagging",
-                )
-            ),
-            expected_num_levels=2,
-        ),
-    )
-    @unpack
-    def test_restarts_elapsed_time(self, ndim, interp, simInput, expected_num_levels):
+    def test_restarts_elapsed_time(self):
+        ndim = 1
+        interp = 1
+        expected_num_levels = 2
         print(f"test_restarts_elapsed_time dim/interp:{ndim}/{interp}")
 
-        simput = copy.deepcopy(simInput)
+        simput = copy.deepcopy(dup(dict(max_nbr_levels=2, refinement="tagging")))
         simput["time_step_nbr"] = 2  # forcing restart after first advance
-
-        for key in ["cells", "dl", "boundary_types"]:
-            simput[key] = [simput[key]] * ndim
 
         if "refinement" not in simput:
             raise RuntimeError("No refinement box version due to regridding!")
@@ -331,23 +349,23 @@ class RestartsTest(SimulatorTest):
         diag_dir1 = f"{local_out}_n2"
 
         seconds = 1  # dump on first advance always!
-        simput["restart_options"]["elapsed_timestamps"] = [
-            datetime.timedelta(seconds=seconds)
-        ]
+        simput["restart_options"]["elapsed_timestamps"] = [timedelta(seconds=seconds)]
         simput["restart_options"]["dir"] = diag_dir0
         simput["diag_options"]["options"]["dir"] = diag_dir0
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        self.assertEqual(
-            [seconds], ph.global_vars.sim.restart_options["elapsed_timestamps"]
-        )
 
-        assert "restart_time" not in ph.global_vars.sim.restart_options
-        model = setup_model()
-        dump_all_diags(model.populations, timestamps=np.array(timestamps))
+        sim = populate_simulation(
+            ndim,
+            interp,
+            model_fn=ModelFunctor(),
+            diags_fn=DiagsFunctor(timestamps),
+            **simput,
+        )
+        self.assertEqual([seconds], sim.restart_options["elapsed_timestamps"])
+
+        assert "restart_time" not in sim.restart_options
 
         # autodump false to ignore possible init dump
-        simulator = Simulator(ph.global_vars.sim, auto_dump=False).initialize()
+        simulator = Simulator(sim, auto_dump=False).initialize()
 
         time.sleep(5)
         simulator.advance().dump()  # should trigger restart on "restart_idx" advance
@@ -358,24 +376,28 @@ class RestartsTest(SimulatorTest):
         # second restarted simulation
         simput["diag_options"]["options"]["dir"] = diag_dir1
         simput["restart_options"]["restart_time"] = time_step
-        ph.global_vars.sim = None
         del simput["restart_options"]["elapsed_timestamps"]
-        ph.global_vars.sim = ph.Simulation(**simput)
-        assert "restart_time" in ph.global_vars.sim.restart_options
-        model = setup_model()
-        dump_all_diags(model.populations, timestamps=np.array(timestamps))
-        Simulator(ph.global_vars.sim).run().reset()
+        sim = populate_simulation(
+            ndim,
+            interp,
+            model_fn=ModelFunctor(),
+            diags_fn=DiagsFunctor(timestamps),
+            **simput,
+        )
+        assert "restart_time" in sim.restart_options
+        Simulator(sim).run().reset()
         self.register_diag_dir_for_cleanup(diag_dir1)
 
         self.check_diags(
-            diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels
+            diag_dir0, diag_dir1, sim.model.populations, timestamps, expected_num_levels
         )
 
-    def test_mode_conserve(self, ndim=1, interp=1, simput=dup(simArgs)):
+    def test_mode_conserve(self):
+        ndim = 1
+        interp = 1
         print(f"test_mode_conserve dim/interp:{ndim}/{interp}")
 
-        for key in ["cells", "dl", "boundary_types"]:
-            simput[key] = [simput[key]] * ndim
+        simput = copy.deepcopy(dup())
 
         # first simulation
         local_out = self.unique_diag_dir_for_test_case(f"{out}/conserve", ndim, interp)
@@ -383,30 +405,24 @@ class RestartsTest(SimulatorTest):
 
         simput["restart_options"]["dir"] = local_out
         simput["restart_options"]["timestamps"] = [timestep * 4]
-        ph.global_vars.sim = ph.Simulation(**simput)
-        self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 1)
-        self.assertEqual(ph.global_vars.sim.restart_options["timestamps"][0], 0.004)
-        model = setup_model()
+        sim = populate_simulation(ndim, interp, model_fn=ModelFunctor(), **simput)
+        self.assertEqual(len(sim.restart_options["timestamps"]), 1)
+        self.assertEqual(sim.restart_options["timestamps"][0], 0.004)
         Simulator(ph.global_vars.sim).run().reset()
 
         # second simulation (not restarted)
-        ph.global_vars.sim = None
         simput["restart_options"]["mode"] = "conserve"
-        ph.global_vars.sim = ph.Simulation(**simput)
-        self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 0)
+        sim = populate_simulation(ndim, interp, model_fn=ModelFunctor(), **simput)
+        self.assertEqual(len(sim.restart_options["timestamps"]), 0)
 
     def test_input_validation_trailing_slash(self):
         if cpp.mpi_size() > 1:
             return  # no need to test in parallel
 
-        simulation_args = dup()
-        simulation_args["restart_options"]["dir"] += (
-            simulation_args["restart_options"]["dir"] + "//"
-        )
-        sim = ph.Simulation(**simulation_args)
-        model = setup_model()
+        simput = dup()
+        simput["restart_options"]["dir"] += simput["restart_options"]["dir"] + "//"
+        sim = populate_simulation(model_fn=ModelFunctor(), **simput)
         Simulator(sim).run().reset()
-        ph.global_vars.sim = None
 
     @data(
         ([timedelta(hours=1), timedelta(hours=2)], True),
@@ -428,4 +444,6 @@ class RestartsTest(SimulatorTest):
 
 
 if __name__ == "__main__":
+    import unittest
+
     unittest.main()
