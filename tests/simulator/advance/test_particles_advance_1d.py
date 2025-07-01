@@ -23,19 +23,6 @@ def per_interp(dic):
 
 @ddt
 class AdvanceTest(AdvanceTestBase):
-    @data(
-        *per_interp({}),
-        *per_interp({"L0": [Box1D(10, 20)]}),
-        *per_interp({"L0": [Box1D(2, 12), Box1D(13, 25)]}),
-    )
-    @unpack
-    def test_overlapped_particledatas_have_identical_particles(
-        self, interp_order, refinement_boxes
-    ):
-        self._test_overlapped_particledatas_have_identical_particles(
-            ndim, interp_order, refinement_boxes
-        )
-
     @data(*interp_orders)
     def test_L0_particle_number_conservation(self, interp):
         self._test_L0_particle_number_conservation(ndim, interp)

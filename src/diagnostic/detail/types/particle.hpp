@@ -22,7 +22,6 @@ namespace PHARE::diagnostic::h5
  *
  * /t#/pl#/p#/ions/pop_(1,2,...)/domain/(weight, charge, iCell, delta, v)
  * /t#/pl#/p#/ions/pop_(1,2,...)/levelGhost/(weight, charge, iCell, delta, v)
- * /t#/pl#/p#/ions/pop_(1,2,...)/patchGhost/(weight, charge, iCell, delta, v)
  */
 template<typename H5Writer>
 class ParticlesDiagnosticWriter : public H5TypeWriter<H5Writer>
@@ -71,7 +70,7 @@ void ParticlesDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diag
     for (auto const& pop : this->h5Writer_.modelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
-        checkCreateFileFor_(diagnostic, fileData_, tree, "domain", "levelGhost", "patchGhost");
+        checkCreateFileFor_(diagnostic, fileData_, tree, "domain", "levelGhost");
     }
 }
 
@@ -102,7 +101,6 @@ void ParticlesDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& d
         auto& popAttr = patchAttributes[lvlPatchID][pop.name()];
         checkInfo(tree, "domain", popAttr, pop.domainParticles());
         checkInfo(tree, "levelGhost", popAttr, pop.levelGhostParticles());
-        checkInfo(tree, "patchGhost", popAttr, pop.patchGhostParticles());
     }
 }
 
@@ -155,7 +153,6 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
             std::string tree{"/ions/pop/" + pop.name() + "/"};
             initIfActive(lvl, tree, attr, pop.name(), patchID, "domain");
             initIfActive(lvl, tree, attr, pop.name(), patchID, "levelGhost");
-            initIfActive(lvl, tree, attr, pop.name(), patchID, "patchGhost");
         }
     };
 
@@ -180,7 +177,6 @@ void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         checkWrite(tree, "domain", pop.domainParticles());
         checkWrite(tree, "levelGhost", pop.levelGhostParticles());
-        checkWrite(tree, "patchGhost", pop.patchGhostParticles());
     }
 }
 
@@ -205,7 +201,6 @@ void ParticlesDiagnosticWriter<H5Writer>::writeAttributes(
         std::string tree = "/ions/pop/" + pop.name() + "/";
         checkWrite(tree, "domain", pop);
         checkWrite(tree, "levelGhost", pop);
-        checkWrite(tree, "patchGhost", pop);
     }
 
     writeAttributes_(diagnostic, h5file, fileAttributes, patchAttributes, maxLevel);

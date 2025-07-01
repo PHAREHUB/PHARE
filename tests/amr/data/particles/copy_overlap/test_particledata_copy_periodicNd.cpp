@@ -111,8 +111,8 @@ TYPED_TEST(twoParticlesDataNDTouchingPeriodicBorders,
     this->sourcePdat.domainParticles.push_back(this->particle);
     this->destPdat.copy(this->sourcePdat, *(this->cellOverlap));
 
-    EXPECT_THAT(this->destPdat.patchGhostParticles.size(), Eq(1));
-    EXPECT_EQ(leftDestGhostCell, this->destPdat.patchGhostParticles[0].iCell[0]);
+    EXPECT_THAT(this->destPdat.domainParticles.size(), Eq(1));
+    EXPECT_EQ(leftDestGhostCell, this->destPdat.domainParticles[0].iCell[0]);
 }
 
 
@@ -125,20 +125,20 @@ TYPED_TEST(twoParticlesDataNDTouchingPeriodicBorders, preserveParticleAttributes
     this->sourcePdat.domainParticles.push_back(this->particle);
     this->destPdat.copy(this->sourcePdat, *(this->cellOverlap));
 
-    EXPECT_THAT(this->destPdat.patchGhostParticles.size(), Eq(1));
-    EXPECT_THAT(this->destPdat.patchGhostParticles[0].v, Eq(this->particle.v));
-    EXPECT_THAT(this->destPdat.patchGhostParticles[0].iCell[0], Eq(-1));
+    EXPECT_THAT(this->destPdat.domainParticles.size(), Eq(1));
+    EXPECT_THAT(this->destPdat.domainParticles[0].v, Eq(this->particle.v));
+    EXPECT_THAT(this->destPdat.domainParticles[0].iCell[0], Eq(-1));
     if constexpr (dim > 1)
     {
-        EXPECT_THAT(this->destPdat.patchGhostParticles[0].iCell[1], Eq(-1));
+        EXPECT_THAT(this->destPdat.domainParticles[0].iCell[1], Eq(-1));
     }
     if constexpr (dim > 2)
     {
-        EXPECT_THAT(this->destPdat.patchGhostParticles[0].iCell[2], Eq(-1));
+        EXPECT_THAT(this->destPdat.domainParticles[0].iCell[2], Eq(-1));
     }
-    EXPECT_THAT(this->destPdat.patchGhostParticles[0].delta, Eq(this->particle.delta));
-    EXPECT_THAT(this->destPdat.patchGhostParticles[0].weight, Eq(this->particle.weight));
-    EXPECT_THAT(this->destPdat.patchGhostParticles[0].charge, Eq(this->particle.charge));
+    EXPECT_THAT(this->destPdat.domainParticles[0].delta, Eq(this->particle.delta));
+    EXPECT_THAT(this->destPdat.domainParticles[0].weight, Eq(this->particle.weight));
+    EXPECT_THAT(this->destPdat.domainParticles[0].charge, Eq(this->particle.charge));
 }
 
 
