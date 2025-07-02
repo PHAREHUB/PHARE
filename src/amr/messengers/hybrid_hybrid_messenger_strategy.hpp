@@ -185,6 +185,20 @@ namespace amr
             BalgoNode.registerRefine(*bz_id, *bz_id, *bz_id, BfieldNodeRefineOp_,
                                      zVariableFillPattern);
 
+            auto ex_id = resourcesManager_->getID(hybridInfo->modelElectric.xName);
+            auto ey_id = resourcesManager_->getID(hybridInfo->modelElectric.yName);
+            auto ez_id = resourcesManager_->getID(hybridInfo->modelElectric.zName);
+
+            if (!ex_id or !ey_id or !ez_id)
+            {
+                throw std::runtime_error(
+                    "HybridHybridMessengerStrategy: missing electric field variable IDs");
+            }
+
+            Ealgo.registerRefine(*ex_id, *ex_id, *ex_id, EfieldRefineOp_, xVariableFillPattern);
+            Ealgo.registerRefine(*ey_id, *ey_id, *ey_id, EfieldRefineOp_, yVariableFillPattern);
+            Ealgo.registerRefine(*ez_id, *ez_id, *ez_id, EfieldRefineOp_, zVariableFillPattern);
+
             registerGhostComms_(hybridInfo);
             registerInitComms(hybridInfo);
             registerSyncComms(hybridInfo);
@@ -206,6 +220,8 @@ namespace amr
 
             magPatchGhostsRefineSchedules[levelNumber]
                 = Balgo.createSchedule(level, &magneticRefinePatchStrategy_);
+
+            elecPatchGhostsRefineSchedules[levelNumber] = Ealgo.createSchedule(level);
 
             magGhostsRefineSchedules[levelNumber] = Balgo.createSchedule(
                 level, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
@@ -299,7 +315,12 @@ namespace amr
             // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
 
+            // after filling the new level with the regrid schedule, some
+            // nodes may not have been copied correctly, due to a bug in SAMRAI
+            // it seems these nodes are only on ghost box border if that border
+            // overlaps an old level patch border. See https://github.com/LLNL/SAMRAI/pull/293
             magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+            elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
@@ -1006,10 +1027,12 @@ namespace amr
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 
         SAMRAI::xfer::RefineAlgorithm Balgo;
+        SAMRAI::xfer::RefineAlgorithm Ealgo;
         SAMRAI::xfer::RefineAlgorithm BalgoNode;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magPatchGhostsRefineSchedules;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> elecPatchGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magSharedNodeRefineSchedules;
 
 
