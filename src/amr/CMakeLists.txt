@@ -12,6 +12,7 @@ set( SOURCES_INC
      data/field/coarsening/coarsen_weighter.hpp
      data/field/coarsening/default_field_coarsener.hpp
      data/field/coarsening/magnetic_field_coarsener.hpp
+     data/field/coarsening/electric_field_coarsener.hpp
      data/field/field_data.hpp
      data/field/field_data_factory.hpp
      data/field/field_geometry.hpp
