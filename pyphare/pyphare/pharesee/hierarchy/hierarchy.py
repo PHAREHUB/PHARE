@@ -403,58 +403,126 @@ class PatchHierarchy(object):
         return fig
 
     def plot1d(self, **kwargs):
-        """
-        plot
-        """
-        usr_lvls = kwargs.get("levels", (0,))
-        qty = kwargs.get("qty", None)
-        time = kwargs.get("time", self.times()[0])
+        from matplotlib.patches import Rectangle
+        from mpl_toolkits.axes_grid1 import make_axes_locatable
+
+        time = kwargs.get("time", self._default_time())
+        usr_lvls = kwargs.get("levels", self.levelNbrs(time))
+
+        default_qty = None
+        if len(self.quantities()) == 1:
+            default_qty = self.quantities()[0]
+        qty = kwargs.get("qty", default_qty)
 
         if "ax" not in kwargs:
             fig, ax = plt.subplots()
         else:
             ax = kwargs["ax"]
             fig = ax.figure
-        for lvl_nbr, level in self.levels(time).items():
+
+        glob_min = self.global_min(qty)
+        glob_max = self.global_max(qty)
+
+        colors = {ilvl: f"C{ilvl}" for ilvl in usr_lvls}
+        colors = kwargs.get("colors", colors)
+        if not isinstance(colors, dict):
+            colors = dict(zip(usr_lvls, colors))
+
+        linewidths = {ilvl: 1 for ilvl in usr_lvls}
+        linewidths = kwargs.get("lw", linewidths)
+        if not isinstance(linewidths, dict):
+            linewidths = dict(zip(usr_lvls, linewidths))
+
+        linestyles = {ilvl: "-" for ilvl in usr_lvls}
+        linestyles = kwargs.get("ls", linestyles)
+        if not isinstance(linestyles, dict):
+            linestyles = dict(zip(usr_lvls, linestyles))
+
+        alphas = {ilvl: 0.7 for ilvl in usr_lvls}
+        alphas = kwargs.get("alpha", alphas)
+        if not isinstance(alphas, dict):
+            alphas = dict(zip(usr_lvls, alphas))
+
+        for lvl_nbr, lvl in self.levels(time).items():
             if lvl_nbr not in usr_lvls:
                 continue
-            for ip, patch in enumerate(level.patches):
-                pdata_nbr = len(patch.patch_datas)
-                pdata_names = list(patch.patch_datas.keys())
-                if qty is None and pdata_nbr != 1:
-                    multiple = "multiple quantities in patch, "
-                    err = (
-                        multiple
-                        + "please specify a quantity in "
-                        + " ".join(pdata_names)
-                    )
-                    raise ValueError(err)
-                if qty is None:
-                    qty = pdata_names[0]
 
-                layout = patch.patch_datas[qty].layout
-                nbrGhosts = layout.nbrGhostFor(qty)
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
-                label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
-                marker = kwargs.get("marker", "")
-                ls = kwargs.get("ls", "--")
-                color = kwargs.get("color", "k")
-                ax.plot(x, val, label=label, marker=marker, ls=ls, color=color)
+            for patch in self.level(lvl_nbr, time).patches:
+                pdat = patch.patch_datas[qty]
+                data = pdat.dataset[:]
+                nbrGhosts = pdat.ghosts_nbr
+                x = pdat.x
+
+                if np.all(nbrGhosts == np.zeros_like(nbrGhosts)):
+                    x = np.copy(x)
+                    data = np.copy(data)
+                else:
+                    data = pdat[patch.box]
+                    x = np.copy(x[nbrGhosts[0] : -nbrGhosts[0]])
+
+                ax.plot(
+                    x,
+                    data,
+                    color=colors[lvl_nbr],
+                    linewidth=linewidths[lvl_nbr],
+                    linestyle=linestyles[lvl_nbr],
+                    alpha=alphas[lvl_nbr],
+                )
+
+                if kwargs.get("plot_patches", False):
+                    dx = pdat.layout.dl[0]
+                    patch_start = patch.box.lower[0] * dx
+                    patch_end = (patch.box.lower[0] + patch.box.shape[0]) * dx
+
+                    ax.axvline(
+                        patch_start,
+                        color=colors[lvl_nbr],
+                        linestyle="--",
+                        alpha=0.5,
+                        linewidth=1,
+                    )
+                    ax.axvline(
+                        patch_end,
+                        color=colors[lvl_nbr],
+                        linestyle="--",
+                        alpha=0.5,
+                        linewidth=1,
+                    )
+
+                    if kwargs.get("highlight_patches", False):
+                        y_range = glob_max - glob_min
+                        rect = Rectangle(
+                            (patch_start, glob_min - 0.1 * y_range),
+                            patch_end - patch_start,
+                            1.2 * y_range,
+                            fc=colors[lvl_nbr],
+                            alpha=0.1,
+                            ec="none",
+                        )
+                        ax.add_patch(rect)
 
         ax.set_title(kwargs.get("title", ""))
         ax.set_xlabel(kwargs.get("xlabel", "x"))
-        ax.set_ylabel(kwargs.get("ylabel", qty))
+        ax.set_ylabel(kwargs.get("ylabel", qty if qty else "value"))
+
         if "xlim" in kwargs:
             ax.set_xlim(kwargs["xlim"])
         if "ylim" in kwargs:
             ax.set_ylim(kwargs["ylim"])
+        else:
+            y_range = glob_max - glob_min
+            ax.set_ylim(glob_min - 0.05 * y_range, glob_max + 0.05 * y_range)
 
-        if kwargs.get("legend", None) is not None:
+        if kwargs.get("grid", False):
+            ax.grid(True, alpha=0.3)
+
+        if kwargs.get("legend", False):
             ax.legend()
 
         if "filename" in kwargs:
-            fig.savefig(kwargs["filename"])
+            fig.savefig(kwargs["filename"], dpi=kwargs.get("dpi", 200))
+
+        return fig, ax
 
     def plot2d(self, **kwargs):
         from matplotlib.patches import Rectangle
