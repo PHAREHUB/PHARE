@@ -19,7 +19,7 @@ mpl.use("Agg")
 from pyphare.cpp import cpp_lib
 
 cpp = cpp_lib()
-startMPI()
+
 
 ndim = 2
 interp = 1
@@ -211,7 +211,7 @@ class LoadBalancingTest(SimulatorTest):
             return
 
         with self.assertRaises(RuntimeError):
-            diag_dir = self.run_sim(
+            self.run_sim(
                 self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
                 dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
             )
@@ -282,4 +282,5 @@ class LoadBalancingTest(SimulatorTest):
 
 
 if __name__ == "__main__":
+    startMPI()
     unittest.main()

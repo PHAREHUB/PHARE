@@ -13,7 +13,7 @@ def all_timestamps(sim):
 
 
 def dump_all_diags(pops=[], flush_every=100, timestamps=None):
-    import pyphare.pharein as ph, numpy as np
+    import pyphare.pharein as ph
 
     sim = ph.global_vars.sim
 

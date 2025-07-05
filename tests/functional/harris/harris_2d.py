@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 
-import os
+
 import numpy as np
-import matplotlib as mpl
 from pathlib import Path
 
 import pyphare.pharein as ph
@@ -12,7 +11,7 @@ from pyphare.simulator.simulator import Simulator, startMPI
 
 from tests.simulator import SimulatorTest
 
-mpl.use("Agg")
+ph.NO_GUI()
 
 cpp = cpp_lib()
 

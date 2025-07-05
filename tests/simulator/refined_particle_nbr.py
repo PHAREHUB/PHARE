@@ -2,21 +2,21 @@
 #
 # formatted with black
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
 
 import os
 import sys
-import unittest
-
-import numpy as np
 import yaml
+import unittest
+import numpy as np
+
+from pyphare.cpp import cpp_lib
 from pyphare.cpp import splitter_type
 from pyphare.simulator.simulator import Simulator
 
 from tests.simulator import NoOverwriteDict, populate_simulation
 from tests.simulator.config import project_root
+
+cpp = cpp_lib()
 
 
 class SimulatorRefinedParticleNbr(unittest.TestCase):

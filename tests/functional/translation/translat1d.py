@@ -1,16 +1,12 @@
 #!/usr/bin/env python3
 
+import numpy as np
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
 
-import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-
-mpl.use("Agg")
-
-
 from tests.diagnostic import all_timestamps
+
+ph.NO_GUI()
 
 
 def config_uni(**kwargs):

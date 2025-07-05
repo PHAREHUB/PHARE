@@ -1,23 +1,22 @@
 #!/usr/bin/env python3
 
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
-
 import os
-import unittest
-
 import h5py
+import unittest
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt
+
+import pyphare.pharein as ph
+from pyphare.cpp import cpp_lib
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import dump_all_diags
+
+cpp = cpp_lib()
 
 
 def setup_model(ppc=100):
