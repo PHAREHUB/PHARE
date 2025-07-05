@@ -1,19 +1,17 @@
 import os
 
+import numpy as np
 import pyphare.pharein as ph
+import matplotlib.pyplot as plt
+
+from pyphare.cpp import cpp_lib
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
 
+ph.NO_GUI()
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import numpy as np
-from scipy.optimize import curve_fit
-from scipy.signal import find_peaks
-
-
-mpl.use("Agg")
+cpp = cpp_lib()
 
 
 def config():
@@ -108,6 +106,9 @@ def yaebx(x, a, b):
 
 
 def growth_b_right_hand(run_path, time_offset):
+    from scipy.optimize import curve_fit
+    from scipy.signal import find_peaks
+
     file = os.path.join(run_path, "EM_B.h5")
     times = get_times_from_h5(file)
     dt = times[1] - times[0]
@@ -163,7 +164,7 @@ def growth_b_right_hand(run_path, time_offset):
 
 
 def main():
-    from pybindlibs.cpp import mpi_rank
+    from scipy.signal import find_peaks
 
     time_offset = 10.0
     # this is an offset so the exponential fit associated to the linear phase is not performed
@@ -172,7 +173,7 @@ def main():
 
     Simulator(config()).run()
 
-    if mpi_rank() == 0:
+    if cpp.mpi_rank() == 0:
         times, first_mode, ampl, gamma, damped_mode, omega = growth_b_right_hand(
             os.path.join(os.curdir, "ion_ion_beam1d"), time_offset
         )

@@ -19,11 +19,10 @@ mpl.use("Agg")
 from pyphare.cpp import cpp_lib
 
 cpp = cpp_lib()
-startMPI()
+
 
 ndim = 2
 interp = 1
-mpi_size = cpp.mpi_size()
 time_step_nbr = 3
 time_step = 0.001
 cells = (100, 100)
@@ -180,7 +179,7 @@ def get_particles(diag_dir, time=0):
 def time_info(diag_dir, time=0):
     hier = get_particles(diag_dir, time)
 
-    per_rank = {f"p{rank}": 0 for rank in range(mpi_size)}
+    per_rank = {f"p{rank}": 0 for rank in range(cpp.mpi_size())}
 
     def _parse_rank(patch_id):
         return patch_id.split("#")[0]
@@ -207,11 +206,11 @@ class LoadBalancingTest(SimulatorTest):
     @data(dict(auto=True, every=1))
     @unpack
     def test_raises(self, **lbkwargs):
-        if mpi_size == 1:  # doesn't make sense
+        if cpp.mpi_size() == 1:  # doesn't make sense
             return
 
         with self.assertRaises(RuntimeError):
-            diag_dir = self.run_sim(
+            self.run_sim(
                 self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
                 dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
             )
@@ -227,7 +226,7 @@ class LoadBalancingTest(SimulatorTest):
     )
     @unpack
     def test_has_balanced(self, **lbkwargs):
-        if mpi_size == 1:  # doesn't make sense
+        if cpp.mpi_size() == 1:  # doesn't make sense
             return
 
         diag_dir = self.run_sim(
@@ -242,7 +241,7 @@ class LoadBalancingTest(SimulatorTest):
 
     @unittest.skip("should change with moments")
     def test_has_not_balanced_as_defaults(self):
-        if mpi_size == 1:  # doesn't make sense
+        if cpp.mpi_size() == 1:  # doesn't make sense
             return
 
         diag_dir = self.run_sim(
@@ -256,7 +255,7 @@ class LoadBalancingTest(SimulatorTest):
 
     @unittest.skip("should change with moments")
     def test_compare_is_and_is_not_balanced(self):
-        if mpi_size == 1:  # doesn't make sense
+        if cpp.mpi_size() == 1:  # doesn't make sense
             return
 
         check_time = 0.001
@@ -282,4 +281,5 @@ class LoadBalancingTest(SimulatorTest):
 
 
 if __name__ == "__main__":
+    startMPI()
     unittest.main()

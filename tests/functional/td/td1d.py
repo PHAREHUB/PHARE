@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
+import numpy as np
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
 
-
-import matplotlib.pyplot as plt
-import matplotlib as mpl
-import numpy as np
-
-mpl.use("Agg")
+ph.NO_GUI()
 
 
 def config():

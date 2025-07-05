@@ -13,7 +13,7 @@ from tests.simulator import SimulatorTest
 mpl.use("Agg")
 
 cpp = cpp_lib()
-startMPI()
+
 
 time_step = 0.005
 final_time = 0.05
@@ -246,4 +246,5 @@ class RunTest(SimulatorTest):
 if __name__ == "__main__":
     import unittest
 
+    startMPI()
     unittest.main()

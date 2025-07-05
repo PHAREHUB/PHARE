@@ -6,14 +6,13 @@ for physical/ghostStart/EndIndexes in directions X, Y and Z for all hybrid
 quantities and for all interpolation orders (1,2,3,4), in 1D, 2D and 3D.
 """
 
-import numpy as np
 
-import sys
-
-from pyphare.core import gridlayout
 import os
+import sys
 import utilities
 import gridparams
+
+from pyphare.core import gridlayout
 
 
 class IndexingParams(gridparams.GridParams):
@@ -94,7 +93,6 @@ def main(path="./"):
 
     gl = gridlayout.GridLayout()
 
-    directions = gl.directions
     quantities = [
         "Bx",
         "By",
@@ -121,8 +119,6 @@ def main(path="./"):
     dxList = [0.1, 0.1, 0.1]  # 1D, 2D and 3D cases
     dyList = [0.0, 0.1, 0.1]
     dzList = [0.0, 0.0, 0.1]
-
-    maxNbrDim = 3
 
     baseName = "gridIndexing"
 
