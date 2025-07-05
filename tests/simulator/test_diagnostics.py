@@ -2,17 +2,17 @@
 
 
 import os
-import h5py
 import unittest
 import numpy as np
 from ddt import data, ddt
 
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
+from pyphare.simulator.simulator import startMPI
+from pyphare.simulator.simulator import Simulator
+from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
-from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import dump_all_diags
 
@@ -131,11 +131,6 @@ class DiagnosticsTest(unittest.TestCase):
         super(DiagnosticsTest, self).__init__(*args, **kwargs)
         self.simulator = None
 
-    def setUp(self):
-        from pyphare.simulator.simulator import startMPI
-
-        startMPI()
-
     def tearDown(self):
         if self.simulator is not None:
             self.simulator.reset()
@@ -150,6 +145,8 @@ class DiagnosticsTest(unittest.TestCase):
             self._test_dump_diags(ndim, **simInput)
 
     def _test_dump_diags(self, dim, **simInput):
+        import h5py  # must be after phare cpp imports!
+
         test_id = self.ddt_test_id()
 
         # configure simulation dim sized values
@@ -250,4 +247,5 @@ class DiagnosticsTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
+    startMPI()
     unittest.main()
