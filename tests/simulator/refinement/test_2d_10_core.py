@@ -9,13 +9,12 @@
 """
 
 
-import matplotlib as mpl
 import numpy as np
-import pyphare.core.box as boxm
 import pyphare.pharein as ph
+import pyphare.core.box as boxm
 from pyphare.simulator.simulator import Simulator, startMPI
 
-mpl.use("Agg")
+ph.NO_GUI()
 
 
 def config(diag_outputs, model_init={}, refinement_boxes=None):

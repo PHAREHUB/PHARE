@@ -1,21 +1,22 @@
 #!/usr/bin/env python3
 
-from pyphare.cpp import cpp_lib
 
-cpp = cpp_lib()
 import os
-import unittest
-
 import h5py
+import unittest
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt
+
+import pyphare.pharein as ph
+from pyphare.cpp import cpp_lib
 from pyphare.core.box import Box1D
 from pyphare.pharein import ElectromagDiagnostics, ElectronModel
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
 from pyphare.simulator.simulator import Simulator
+
+cpp = cpp_lib()
 
 
 def setup_model(ppc):

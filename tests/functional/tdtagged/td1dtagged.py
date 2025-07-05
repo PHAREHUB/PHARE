@@ -198,7 +198,6 @@ def make_figure():
     # draw level patches
     for ilvl, level in BH.levels().items():
         for patch in level.patches:
-            dx = patch.layout.dl[0]
             x0 = patch.origin[0]
             x1 = (patch.box.upper[0] + 1) * patch.layout.dl[0]
             for ax in (ax1, ax2, ax0):
