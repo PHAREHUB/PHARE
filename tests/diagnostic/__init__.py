@@ -35,9 +35,7 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
         "pressure_tensor",
     ]:
         ph.FluidDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            flush_every=flush_every,
+            quantity=quantity, write_timestamps=timestamps, flush_every=flush_every
         )
 
     for pop in pops:
@@ -59,7 +57,5 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(
-            quantity=quantity,
-            write_timestamps=timestamps,
-            flush_every=flush_every,
+            quantity=quantity, write_timestamps=timestamps, flush_every=flush_every
         )
