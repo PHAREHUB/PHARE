@@ -433,7 +433,7 @@ class PatchHierarchy(object):
                     qty = pdata_names[0]
 
                 layout = patch.patch_datas[qty].layout
-                nbrGhosts = layout.nbrGhostFor(qty)
+                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
                 val = patch.patch_datas[qty][patch.box]
                 x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)

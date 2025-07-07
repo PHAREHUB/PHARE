@@ -514,16 +514,23 @@ public:
     ParticleArray_t particles;
 
     Grid_t rho;
+    Grid_t rho_c;
 
     UsableVecFieldND v;
     std::array<double, nbrPointsSupport(Interpolator::interp_order)> weights;
 
 
+    // For the set of particles herebelow, whatever the interp_order,
+    // we have a set of particles around idx=20, so that their particle
+    // density is 1, their charge density is 2 and velocity is (2, -1, 1)
+    // depending on the interp order, iCell, delta, weight, charge and v
+    // are then correctly tuned
 
     ACollectionOfParticles_1d()
         : part{}
         , particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx}
+        , rho_c{"field", HybridQuantity::Scalar::rho, nx}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
         if constexpr (Interpolator::interp_order == 1)
@@ -531,6 +538,7 @@ public:
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 1.0;
+            part.charge   = 2.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -539,6 +547,7 @@ public:
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 0.4;
+            part.charge   = 1.85;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -547,6 +556,7 @@ public:
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 0.6;
+            part.charge   = 2.1;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -558,6 +568,7 @@ public:
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.0;
             part.weight   = 1.0;
+            part.charge   = 2.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -566,6 +577,7 @@ public:
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0;
             part.weight   = 0.2;
+            part.charge   = 3.2;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -574,6 +586,7 @@ public:
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.0;
             part.weight   = 0.8;
+            part.charge   = 1.7;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -582,6 +595,7 @@ public:
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.0;
             part.weight   = 1.0;
+            part.charge   = 2.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -593,6 +607,7 @@ public:
             part.iCell[0] = 18; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 1.0;
+            part.charge   = 2.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -601,6 +616,7 @@ public:
             part.iCell[0] = 19; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 1.0;
+            part.charge   = 2.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -609,6 +625,7 @@ public:
             part.iCell[0] = 20; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 1.0;
+            part.charge   = 2.0;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -617,6 +634,7 @@ public:
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 0.1;
+            part.charge   = 3.35;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
@@ -625,12 +643,13 @@ public:
             part.iCell[0] = 21; // AMR index
             part.delta[0] = 0.5;
             part.weight   = 0.9;
+            part.charge   = 1.85;
             part.v[0]     = +2.;
             part.v[1]     = -1.;
             part.v[2]     = +1.;
             particles.push_back(part);
         }
-        interpolator(makeIndexRange(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, rho_c, v, layout);
     }
 
 
@@ -648,6 +667,7 @@ TYPED_TEST_P(ACollectionOfParticles_1d, DepositCorrectlyTheirWeight_1d)
 
     auto const& [vx, vy, vz] = this->v();
     EXPECT_DOUBLE_EQ(this->rho(idx), 1.0);
+    EXPECT_DOUBLE_EQ(this->rho_c(idx), 2.0);
     EXPECT_DOUBLE_EQ(vx(idx), 2.0);
     EXPECT_DOUBLE_EQ(vy(idx), -1.0);
     EXPECT_DOUBLE_EQ(vz(idx), 1.0);
@@ -676,12 +696,14 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
     ParticleArray_t particles;
     Grid_t rho;
+    Grid_t rho_c;
     UsableVecFieldND v;
     Interpolator interpolator;
 
     ACollectionOfParticles_2d()
         : particles{grow(layout.AMRBox(), safeLayer)}
         , rho{"field", HybridQuantity::Scalar::rho, nx, ny}
+        , rho_c{"field", HybridQuantity::Scalar::rho, nx, ny}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
         for (int i = start; i < end; i++)
@@ -695,7 +717,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
                 part.v[1]   = -1.;
                 part.v[2]   = +1.;
             }
-        interpolator(makeIndexRange(particles), rho, v, layout);
+        interpolator(makeIndexRange(particles), rho, rho_c, v, layout);
     }
 };
 TYPED_TEST_SUITE_P(ACollectionOfParticles_2d);
