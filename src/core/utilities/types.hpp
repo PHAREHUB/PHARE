@@ -62,11 +62,8 @@ namespace core
         }
     };
 
-    template<typename... Args> // this is so we can specialize
-    struct type_list           // templates with only the outter most type
-    {
-        using Tuple = std::tuple<Args...>; //
-    };
+
+
 
     template<typename T>
     struct is_std_vector : std::false_type
@@ -226,7 +223,7 @@ namespace core
 
     NO_DISCARD inline std::optional<std::string> get_env(std::string const& key)
     {
-        if (const char* val = std::getenv(key.c_str()))
+        if (char const* val = std::getenv(key.c_str()))
             return std::string{val};
         return std::nullopt;
     }
