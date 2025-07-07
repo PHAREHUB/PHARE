@@ -1,14 +1,10 @@
 #ifndef RESTART_MODEL_VIEW_HPP
 #define RESTART_MODEL_VIEW_HPP
 
-#include "cppdict/include/dict.hpp"
-
 
 #include "core/def.hpp"
-#include "core/utilities/mpi_utils.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-#include "hdf5/phare_hdf5.hpp"
 
+#include <string>
 
 namespace PHARE::restarts
 {
@@ -20,12 +16,8 @@ public:
 IModelView::~IModelView() {}
 
 
-template<typename Model>
-bool constexpr is_hybrid_model
-    = std::is_same_v<solver::type_list_to_hybrid_model_t<typename Model::type_list>, Model>;
 
-
-template<typename Hierarchy, typename Model, std::enable_if_t<is_hybrid_model<Model>, int> = 0>
+template<typename Hierarchy, typename Model>
 class ModelView : public IModelView
 {
 public:

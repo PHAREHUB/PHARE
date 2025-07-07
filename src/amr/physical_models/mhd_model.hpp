@@ -1,19 +1,18 @@
 #ifndef PHARE_MHD_MODEL_HPP
 #define PHARE_MHD_MODEL_HPP
 
-#include <string>
-
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp"
+#include "core/models/mhd_state.hpp"
 
+#include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
 #include <SAMRAI/hier/PatchLevel.h>
 
-#include "amr/messengers/mhd_messenger_info.hpp"
-#include "core/models/mhd_state.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
-#include "core/def.hpp"
-
+#include <string>
+#include <string_view>
 
 
 namespace PHARE
@@ -28,9 +27,11 @@ namespace solver
         using level_t   = typename AMR_Types::level_t;
         using Interface = IPhysicalModel<AMR_Types>;
 
-        static const inline std::string model_name = "MHDModel";
-        static constexpr auto dimension            = GridLayoutT::dimension;
-        using resources_manager_type               = amr::ResourcesManager<GridLayoutT, Grid_t>;
+        static constexpr std::string_view model_type_name = "MHDModel";
+        static inline std::string const model_name{model_type_name};
+
+        static constexpr auto dimension = GridLayoutT::dimension;
+        using resources_manager_type    = amr::ResourcesManager<GridLayoutT, Grid_t>;
 
 
         explicit MHDModel(std::shared_ptr<resources_manager_type> const& _resourcesManager)
@@ -71,5 +72,27 @@ namespace solver
 
 } // namespace solver
 } // namespace PHARE
+
+
+namespace PHARE::solver
+{
+
+template<typename Model>
+auto constexpr is_mhd_model(Model* m) -> decltype(m->model_type_name, bool())
+{
+    return Model::model_type_name == "MHDModel";
+}
+
+template<typename... Args>
+auto constexpr is_mhd_model(Args...)
+{
+    return false;
+}
+
+template<typename Model>
+auto constexpr is_mhd_model_v = is_mhd_model(static_cast<Model*>(nullptr));
+
+
+} // namespace PHARE::solver
 
 #endif

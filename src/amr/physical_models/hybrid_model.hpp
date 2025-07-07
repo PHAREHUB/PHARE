@@ -25,8 +25,6 @@ class HybridModel : public IPhysicalModel<AMR_Types>
 public:
     static constexpr auto dimension = GridLayoutT::dimension;
 
-    using type_list
-        = PHARE::core::type_list<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>;
     using Interface              = IPhysicalModel<AMR_Types>;
     using amr_types              = AMR_Types;
     using electrons_t            = Electrons;
@@ -43,7 +41,8 @@ public:
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
-    static const inline std::string model_name = "HybridModel";
+    static constexpr std::string_view model_type_name = "HybridModel";
+    static inline std::string const model_name{model_type_name};
 
 
     core::HybridState<Electromag, Ions, Electrons> state;
@@ -179,17 +178,23 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
 
 
 
-template<typename... Args>
-HybridModel<Args...> hybrid_model_from_type_list(core::type_list<Args...>);
 
-template<typename TypeList>
-struct type_list_to_hybrid_model
+template<typename Model>
+auto constexpr is_hybrid_model(Model* m) -> decltype(m->model_type_name, bool())
 {
-    using type = decltype(hybrid_model_from_type_list(std::declval<TypeList>()));
-};
+    return Model::model_type_name == "HybridModel";
+}
 
-template<typename TypeList>
-using type_list_to_hybrid_model_t = typename type_list_to_hybrid_model<TypeList>::type;
+template<typename... Args>
+auto constexpr is_hybrid_model(Args...)
+{
+    return false;
+}
+
+template<typename Model>
+auto constexpr is_hybrid_model_v = is_hybrid_model(static_cast<Model*>(nullptr));
+
+
 
 } // namespace PHARE::solver
 
