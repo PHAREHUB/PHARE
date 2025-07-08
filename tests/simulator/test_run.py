@@ -142,7 +142,7 @@ def config():
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
-    for quantity in ["charge_density", "bulkVelocity"]:
+    for quantity in ["mass_density", "charge_density", "bulkVelocity"]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     pop = "protons"
@@ -153,6 +153,9 @@ def config():
     )
     ph.FluidDiagnostics(
         quantity="density", write_timestamps=timestamps, population_name=pop
+    )
+    ph.FluidDiagnostics(
+        quantity="charge_density", write_timestamps=timestamps, population_name=pop
     )
 
     return sim
