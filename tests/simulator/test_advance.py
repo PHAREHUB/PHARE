@@ -152,7 +152,7 @@ class AdvanceTestBase(SimulatorTest):
         for quantity in ["E", "B"]:
             ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-        for quantity in ["density", "bulkVelocity"]:
+        for quantity in ["charge_density", "bulkVelocity"]:
             FluidDiagnostics(
                 quantity=quantity,
                 write_timestamps=timestamps,
@@ -222,7 +222,7 @@ class AdvanceTestBase(SimulatorTest):
                 h5_filename=diag_outputs + "/EM_B.h5", hier=eb_hier
             )
             mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_density.h5", hier=eb_hier
+                h5_filename=diag_outputs + "/ions_charge_density.h5", hier=eb_hier
             )
             mom_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
@@ -231,7 +231,7 @@ class AdvanceTestBase(SimulatorTest):
 
         if qty == "moments" or qty == "fields":
             mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_density.h5", hier=eb_hier
+                h5_filename=diag_outputs + "/ions_charge_density.h5", hier=eb_hier
             )
             mom_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier

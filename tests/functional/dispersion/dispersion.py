@@ -171,7 +171,7 @@ def prescribedModes():
             quantity=quantity, write_timestamps=timestamps, flush_every=0
         )
 
-    for quantity in ["density", "bulkVelocity"]:
+    for quantity in ["charge_density", "bulkVelocity"]:
         ph.FluidDiagnostics(
             quantity=quantity, write_timestamps=timestamps, flush_every=0
         )

@@ -37,7 +37,7 @@ public:
         auto& ions = model_.state.ions;
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            setPatchDataFromField(patchDatas.emplace_back(), ions.density(), grid, patchID);
+            setPatchDataFromField(patchDatas.emplace_back(), ions.chargeDensity(), grid, patchID);
         };
 
         PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
@@ -59,7 +59,7 @@ public:
                 if (!pop_data.count(pop.name()))
                     pop_data.emplace(pop.name(), Inner());
 
-                setPatchDataFromField(pop_data.at(pop.name()).emplace_back(), pop.density(), grid,
+                setPatchDataFromField(pop_data.at(pop.name()).emplace_back(), pop.chargeDensity(), grid,
                                       patchID);
             }
         };

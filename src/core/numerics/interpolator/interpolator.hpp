@@ -469,8 +469,9 @@ public:
      * onto the particle.
      */
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(ParticleRange& particleRange, Field& density, VecField& flux,
-                           GridLayout const& layout, double coef = 1.)
+    inline void operator()(ParticleRange& particleRange, Field& particleDensity,
+                           Field& chargeDensity, VecField& flux, GridLayout const& layout,
+                           double coef = 1.)
     {
         auto begin                        = particleRange.begin();
         auto end                          = particleRange.end();
@@ -487,8 +488,11 @@ public:
                                                                  currPart->delta);
 
             particleToMesh_(
-                density, *currPart, [](auto const& part) { return 1.; }, startIndex_, weights_,
-                coef);
+                particleDensity, *currPart, [](auto const& part) { return 1.; }, startIndex_,
+                weights_, coef);
+            particleToMesh_(
+                chargeDensity, *currPart, [](auto const& part) { return part.charge; }, startIndex_,
+                weights_, coef);
             particleToMesh_(
                 xFlux, *currPart, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
                 coef);
@@ -502,10 +506,10 @@ public:
         PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
     }
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
-    inline void operator()(ParticleRange&& range, Field& density, VecField& flux,
-                           GridLayout const& layout, double coef = 1.)
+    inline void operator()(ParticleRange&& range, Field& particleDensity, Field& chargeDensity,
+                           VecField& flux, GridLayout const& layout, double coef = 1.)
     {
-        (*this)(range, density, flux, layout, coef);
+        (*this)(range, particleDensity, chargeDensity, flux, layout, coef);
     }
 
 
