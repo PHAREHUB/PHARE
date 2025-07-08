@@ -244,6 +244,9 @@ class FluidDiagnostics_(Diagnostics):
         elif "population_name" in kwargs:
             self.population_name = kwargs["population_name"]
 
+        if "population_name" not in kwargs and kwargs["quantity"] == "density":
+            raise ValueError("Error: cannot use density without population name")
+
         if kwargs["quantity"] not in FluidDiagnostics_.fluid_quantities:
             error_msg = "Error: '{}' not a valid fluid diagnostics : " + ", ".join(
                 FluidDiagnostics_.fluid_quantities
