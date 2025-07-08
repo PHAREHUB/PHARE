@@ -498,7 +498,7 @@ def check_diag_options(**kwargs):
                 diag_options["options"]["dir"], "diagnostics"
             )
         valid_modes = ["overwrite"]
-        if "mode" in diag_options["options"]:
+        if "options" in diag_options and "mode" in diag_options["options"]:
             mode = diag_options["options"]["mode"]
             if mode not in valid_modes:
                 raise ValueError(
