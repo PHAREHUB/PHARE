@@ -1,7 +1,6 @@
 #ifndef _PHARE_AMR_DATA_PARTICLE_INITIAZILIZERS_SAMRAI_HDF5_INITIALIZER_HPP_
 #define _PHARE_AMR_DATA_PARTICLE_INITIAZILIZERS_SAMRAI_HDF5_INITIALIZER_HPP_
 
-#include <cassert>
 
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
@@ -9,8 +8,12 @@
 #include "core/data/ions/particle_initializers/particle_initializer.hpp"
 
 #include "core/data/particles/particle_packer.hpp"
-#include "amr/data/initializers/samrai_hdf5_initializer.hpp"
 
+#if !PHARE_HAS_HIGHFIVE
+#error // HIGHFIVE REQUIRED!
+#endif // PHARE_HAS_HIGHFIVE
+
+#include <cassert>
 
 namespace PHARE::amr
 {

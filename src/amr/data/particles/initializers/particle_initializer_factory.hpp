@@ -9,8 +9,11 @@
 #include "core/data/ions/particle_initializers/particle_initializer.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
-#include "samrai_hdf5_particle_initializer.hpp"
+
+#if PHARE_HAS_HIGHFIVE
 #include "amr/data/initializers/samrai_hdf5_initializer.hpp"
+#include "samrai_hdf5_particle_initializer.hpp"
+#endif // PHARE_HAS_HIGHFIVE
 
 #include <memory>
 
@@ -87,6 +90,7 @@ namespace amr
                 }
             }
 
+#if PHARE_HAS_HIGHFIVE
             if (initializerName == "samraih5")
             {
                 auto const dir     = dict["filepath"].template to<std::string>();
@@ -98,7 +102,7 @@ namespace amr
 
                 return std::make_unique<SamraiHDF5ParticleInitializer<ParticleArray, GridLayout>>();
             }
-
+#endif // PHARE_HAS_HIGHFIVE
 
             throw std::runtime_error("No Particle Initializer chosen!");
         }
