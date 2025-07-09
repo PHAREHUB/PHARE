@@ -26,7 +26,7 @@ auto checkField(HighFiveFile const& hifile, GridLayout const& layout, Field cons
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    auto fieldV = hifile.read_data_set_flat<float, dim>(path);
+    auto fieldV = hifile.read_data_set_flat<float>(path);
     PHARE::core::test(layout, field, fieldV);
     return fieldV; // possibly unused
 }
@@ -171,11 +171,11 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
     auto checkParticles = [&](auto& hifile, auto& particles, auto path) {
         if (!particles.size())
             return;
-        auto weightV = hifile.template read_data_set_flat<float, 2>(path + "weight");
-        auto chargeV = hifile.template read_data_set_flat<float, 2>(path + "charge");
-        auto vV      = hifile.template read_data_set_flat<float, 2>(path + "v");
-        auto iCellV  = hifile.template read_data_set_flat<float, 2>(path + "iCell");
-        auto deltaV  = hifile.template read_data_set_flat<float, 2>(path + "delta");
+        auto weightV = hifile.template read_data_set_flat<float>(path + "weight");
+        auto chargeV = hifile.template read_data_set_flat<float>(path + "charge");
+        auto vV      = hifile.template read_data_set_flat<float>(path + "v");
+        auto iCellV  = hifile.template read_data_set_flat<float>(path + "iCell");
+        auto deltaV  = hifile.template read_data_set_flat<float>(path + "delta");
 
         core::ParticlePacker packer{particles};
 

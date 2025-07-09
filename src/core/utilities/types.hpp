@@ -99,6 +99,16 @@ namespace core
         std::apply([&](auto&... args) { (func(args), ...); }, tuple);
     }
 
+
+    template<typename TupleOfTuples, typename Func>
+    void double_apply(TupleOfTuples&& tuples, Func&& func)
+    {
+        auto on_tuple
+            = [&](auto& tuple) { std::apply([&](auto&&... args) { func(args...); }, tuple); };
+
+        std::apply([&](auto&&... args) { (on_tuple(args), ...); }, tuples);
+    }
+
     template<typename Type, std::size_t Size> // std::array::fill is only constexpr in C++20 ffs
     constexpr void fill(Type value, std::array<Type, Size>& array)
     {
