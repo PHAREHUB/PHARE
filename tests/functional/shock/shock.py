@@ -12,7 +12,6 @@ mpl.use("Agg")
 from pyphare.cpp import cpp_lib
 
 cpp = cpp_lib()
-startMPI()
 
 
 def config(interp_order):
@@ -176,4 +175,5 @@ def main():
 
 
 if __name__ == "__main__":
+    startMPI()
     main()

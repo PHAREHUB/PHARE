@@ -5,8 +5,6 @@ import unittest
 import numpy as np
 import pyphare.pharein as ph
 
-from pyphare.simulator.simulator import Simulator
-
 from copy import deepcopy
 from tests.simulator import SimulatorTest
 
@@ -34,7 +32,6 @@ class SimulatorValidation(SimulatorTest):
         import dill
         import codecs
 
-        simput = deepcopy(simArgs)
         sim = ph.Simulation(**deepcopy(simArgs))
 
         # check is np array before serialization

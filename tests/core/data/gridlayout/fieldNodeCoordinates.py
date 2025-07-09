@@ -1,17 +1,14 @@
 #!/usr/bin/env python
 #!coding: utf-8
 
-import numpy as np
 
-# import math
-
+import os
 import sys
+import utilities
+import numpy as np
+import cellCenteredCoordinates
 
 from pyphare.core import gridlayout
-import os
-import gridparams
-import cellCenteredCoordinates
-import utilities
 
 # TODO : FieldNode coords is general case of cellCenteredCoord
 #        Which means this has to be fully refactor

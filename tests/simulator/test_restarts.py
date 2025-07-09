@@ -1,19 +1,18 @@
-import copy
+#
+#
 
+import copy
 import time
 import datetime
 import unittest
 import numpy as np
-from pathlib import Path
-from datetime import timedelta
 
+from datetime import timedelta
 from ddt import ddt, data, unpack
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
-
 import pyphare.pharein as ph
+
+from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 
@@ -21,6 +20,8 @@ from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
 from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
+
+cpp = cpp_lib()
 
 
 def permute(dic, expected_num_levels):
@@ -318,9 +319,6 @@ class RestartsTest(SimulatorTest):
         simput["interp_order"] = interp
         time_step = simput["time_step"]
         time_step_nbr = simput["time_step_nbr"]
-
-        restart_idx = 1
-        restart_time = time_step * restart_idx
         timestamps = [time_step * time_step_nbr]
 
         # first simulation
@@ -386,7 +384,7 @@ class RestartsTest(SimulatorTest):
         ph.global_vars.sim = ph.Simulation(**simput)
         self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 1)
         self.assertEqual(ph.global_vars.sim.restart_options["timestamps"][0], 0.004)
-        model = setup_model()
+        setup_model()
         Simulator(ph.global_vars.sim).run().reset()
 
         # second simulation (not restarted)
@@ -404,7 +402,7 @@ class RestartsTest(SimulatorTest):
             simulation_args["restart_options"]["dir"] + "//"
         )
         sim = ph.Simulation(**simulation_args)
-        model = setup_model()
+        setup_model()
         Simulator(sim).run().reset()
         ph.global_vars.sim = None
 
@@ -423,7 +421,7 @@ class RestartsTest(SimulatorTest):
             ph.global_vars.sim = None
             ph.Simulation(**simput.copy())
             self.assertTrue(valid)
-        except:
+        except Exception:
             self.assertTrue(not valid)
 
 

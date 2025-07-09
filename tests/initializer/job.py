@@ -1,14 +1,10 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics
-from pyphare.pharein import ElectronModel
+import pyphare.pharein as ph
 
 # configure the simulation
 
-Simulation(
+ph.Simulation(
     smallest_patch_size=10,
     largest_patch_size=64,
     time_step_nbr=1000,  # number of time steps (not specified if time_step and final_time provided)
@@ -40,7 +36,7 @@ vvv = {
     "vthz": vthz,
 }
 
-MaxwellianFluidModel(
+ph.MaxwellianFluidModel(
     bx=bx,
     by=by,
     bz=bz,
@@ -48,4 +44,4 @@ MaxwellianFluidModel(
     alpha={"charge": 1, "density": density, **vvv, "init": {"seed": 2}},
 )
 
-ElectronModel(closure="isothermal", Te=0.12)
+ph.ElectronModel(closure="isothermal", Te=0.12)

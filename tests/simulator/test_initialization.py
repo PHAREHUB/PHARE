@@ -1,11 +1,11 @@
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
+#
+#
 
 import unittest
-
 import numpy as np
 from ddt import ddt
+
+from pyphare.cpp import cpp_lib
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
@@ -22,6 +22,9 @@ from pyphare.pharesee.particles import aggregate as aggregate_particles
 from pyphare.simulator.simulator import Simulator
 
 from tests.simulator import SimulatorTest
+
+
+cpp = cpp_lib()
 
 
 @ddt
@@ -696,7 +699,6 @@ class InitializationTest(SimulatorTest):
     def _test_patch_ghost_on_refined_level_case(self, dim, has_patch_ghost, **kwargs):
         import pyphare.pharein as ph
 
-        out = "phare_outputs"
         refinement_boxes = {"L0": [nDBox(dim, 10, 19)]}
         kwargs["interp_order"] = kwargs.get("interp_order", 1)
         kwargs["diag_outputs"] = f"{has_patch_ghost}"

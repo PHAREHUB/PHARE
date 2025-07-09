@@ -9,10 +9,9 @@ and the quantity.
 
 import os
 import sys
-
-print(sys.path)
-import gridparams
 import utilities
+import gridparams
+
 from pyphare.core import gridlayout
 
 
@@ -69,7 +68,6 @@ def main(path="./"):
 
     gl = gridlayout.GridLayout()
 
-    directions = gl.directions
     quantities = [
         "Bx",
         "By",
@@ -96,8 +94,6 @@ def main(path="./"):
     dxList = [0.1, 0.1, 0.1]  # 1D, 2D, 3D cases
     dyList = [0.0, 0.1, 0.1]
     dzList = [0.0, 0.0, 0.1]
-
-    maxNbrDim = 3
 
     baseName = "allocSizes"
 
