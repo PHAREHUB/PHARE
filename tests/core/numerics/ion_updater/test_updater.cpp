@@ -3,6 +3,8 @@
 #include "phare_core.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "amr/data/electromag/electromag_initializer.hpp"
+#include "amr/data/particles/initializers/particle_initializer_factory.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
@@ -203,13 +205,14 @@ struct ElectromagBuffers
 template<std::size_t dim, std::size_t interp_order>
 struct IonsBuffers
 {
-    using PHARETypes                 = PHARE::core::PHARE_Types<dim, interp_order>;
-    using UsableVecFieldND           = UsableVecField<dim>;
-    using Grid                       = typename PHARETypes::Grid_t;
-    using GridLayout                 = typename PHARETypes::GridLayout_t;
-    using Ions                       = typename PHARETypes::Ions_t;
-    using ParticleArray              = typename PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
+    using PHARETypes       = PHARE::core::PHARE_Types<dim, interp_order>;
+    using UsableVecFieldND = UsableVecField<dim>;
+    using Grid             = typename PHARETypes::Grid_t;
+    using GridLayout       = typename PHARETypes::GridLayout_t;
+    using Ions             = typename PHARETypes::Ions_t;
+    using ParticleArray    = typename PHARETypes::ParticleArray_t;
+    using ParticleInitializerFactory
+        = PHARE::amr::ParticleInitializerFactory<ParticleArray, GridLayout>;
 
     Grid ionChargeDensity;
     Grid ionMassDensity;
@@ -366,8 +369,10 @@ struct IonUpdaterTest : public ::testing::Test
     using Electromag                   = typename PHARETypes::Electromag_t;
     using GridLayout    = typename PHARE::core::GridLayout<GridLayoutImplYee<dim, interp_order>>;
     using ParticleArray = typename PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory;
+    using ParticleInitializerFactory
+        = PHARE::amr::ParticleInitializerFactory<ParticleArray, GridLayout>;
 
+    using ElectromagInitializerFactory_t = PHARE::amr::ElectromagInitializerFactory;
     using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
 
@@ -405,13 +410,13 @@ struct IonUpdaterTest : public ::testing::Test
         // now let's initialize Electromag fields to user input functions
         // and ion population particles to user supplied moments
 
-
-        EM.initialize(layout);
+        ElectromagInitializerFactory_t::create<Electromag, GridLayout>(init_dict["electromag"])
+            ->init(EM, layout);
         for (auto& pop : ions)
         {
             auto const& info         = pop.particleInitializerInfo();
             auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout);
+            particleInitializer->loadParticles(pop.domainParticles(), layout, pop.name());
         }
 
 
