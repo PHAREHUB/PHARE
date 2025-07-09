@@ -7,6 +7,7 @@
 
 
 #include <SAMRAI/hier/Box.h>
+#include <cstddef>
 #include <stdexcept>
 
 namespace PHARE::amr
@@ -35,7 +36,7 @@ public:
     ElectricFieldCoarsener(std::array<core::QtyCentering, dimension> const centering,
                            SAMRAI::hier::Box const& sourceBox,
                            SAMRAI::hier::Box const& destinationBox,
-                           SAMRAI::hier::IntVector const& ratio)
+                           SAMRAI::hier::IntVector const& /*ratio*/)
         : centering_{centering}
         , sourceBox_{sourceBox}
         , destinationBox_{destinationBox}
@@ -52,15 +53,9 @@ public:
 
         core::Point<int, dimension> fineStartIndex;
 
-        fineStartIndex[dirX] = coarseIndex[dirX] * this->ratio_;
-
-        if constexpr (dimension > 1)
+        for (auto i = std::size_t{0}; i < dimension; ++i)
         {
-            fineStartIndex[dirY] = coarseIndex[dirY] * this->ratio_;
-            if constexpr (dimension > 2)
-            {
-                fineStartIndex[dirZ] = coarseIndex[dirZ] * this->ratio_;
-            }
+            fineStartIndex[i] = coarseIndex[i] * this->ratio_;
         }
 
         fineStartIndex = AMRToLocal(fineStartIndex, sourceBox_);

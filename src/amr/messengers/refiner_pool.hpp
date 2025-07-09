@@ -66,6 +66,11 @@ namespace amr
                              std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp);
 
 
+        void addTimeRefiners(std::vector<core::VecFieldNames> const& destinations,
+                             std::vector<core::VecFieldNames> const& sources,
+                             core::VecFieldNames const& oldSource,
+                             std::shared_ptr<RefineOperator>& refineOp,
+                             std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp);
 
         /**
          * add a refiner that will use time and spatial interpolation.
@@ -126,7 +131,7 @@ namespace amr
 
         /** @brief executes a regridding for all quantities in the pool.*/
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
+                            int const levelNumber,
                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                             double const initDataTime)
         {
@@ -212,6 +217,20 @@ namespace amr
         for (auto const& ghostVec : ghostVecs)
         {
             addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec.vecName);
+        }
+    }
+
+    template<typename ResourcesManager, RefinerType Type>
+    void RefinerPool<ResourcesManager, Type>::addTimeRefiners(
+        std::vector<core::VecFieldNames> const& destinations,
+        std::vector<core::VecFieldNames> const& sources, core::VecFieldNames const& oldSource,
+        std::shared_ptr<RefineOperator>& refineOp,
+        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp)
+    {
+        for (std::size_t i = 0; i < destinations.size(); ++i)
+        {
+            addTimeRefiner(destinations[i], sources[i], oldSource, refineOp, timeOp,
+                           destinations[i].vecName);
         }
     }
 

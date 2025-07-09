@@ -12,7 +12,6 @@
 #include "synchronizer_pool.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
-#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
@@ -100,7 +99,6 @@ namespace amr
 
         template<typename Policy>
         using BaseCoarsenOp          = FieldCoarsenOperator<GridLayoutT, GridT, Policy>;
-        using MagneticCoarsenOp      = BaseCoarsenOp<MagneticFieldCoarsener<dimension>>;
         using DefaultCoarsenOp       = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
         using ElectricFieldCoarsenOp = BaseCoarsenOp<ElectricFieldCoarsener<dimension>>;
 
@@ -118,6 +116,7 @@ namespace amr
             resourcesManager_->registerResources(Jold_);
             resourcesManager_->registerResources(NiOld_);
             resourcesManager_->registerResources(ViOld_);
+            resourcesManager_->registerResources(Eold_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -138,6 +137,7 @@ namespace amr
             resourcesManager_->allocate(Jold_, patch, allocateTime);
             resourcesManager_->allocate(NiOld_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
+            resourcesManager_->allocate(Eold_, patch, allocateTime);
         }
 
 
@@ -327,21 +327,6 @@ namespace amr
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             patchGhostPartRefiners_.fill(levelNumber, initDataTime);
 
-
-            // regriding will fill the new level wherever it has points that overlap
-            // old level. This will include its level border points.
-            // These new level border points will thus take values that where previous
-            // domain values. Magnetic flux is thus not necessarily consistent with
-            // the Loring et al. method to sync the induction between coarse and fine faces.
-            // Specifically, we need all fine faces to have equal magnetic field and also
-            // equal to that of the shared coarse face.
-            // This means that we now need to fill ghosts and border included
-
-            if (!isRegriddingL0)
-            {
-                auto& E = hybridModel.state.electromag.E;
-                elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
-            }
 
             // we now call only levelGhostParticlesOld.fill() and not .regrid()
             // regrid() would refine from next coarser in regions of level not overlaping
@@ -638,19 +623,23 @@ namespace amr
             for (auto& patch : level)
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
-                    *patch, hybridModel.state.J, hybridModel.state.ions, Jold_, NiOld_, ViOld_);
+                    *patch, hybridModel.state.electromag, hybridModel.state.J,
+                    hybridModel.state.ions, Jold_, NiOld_, ViOld_, Eold_);
 
                 resourcesManager_->setTime(Jold_, *patch, currentTime);
                 resourcesManager_->setTime(NiOld_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
+                resourcesManager_->setTime(Eold_, *patch, currentTime);
 
                 auto& J  = hybridModel.state.J;
                 auto& Vi = hybridModel.state.ions.velocity();
                 auto& Ni = hybridModel.state.ions.chargeDensity();
+                auto& E  = hybridModel.state.electromag.E;
 
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);
                 NiOld_.copyData(Ni);
+                Eold_.copyData(E);
             }
         }
 
@@ -707,7 +696,7 @@ namespace amr
                     double const syncTime) override
         {
             refluxSchedules[fineLevelNumber]->coarsenData();
-            ghostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
+            patchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
         }
 
         // after coarsening, domain nodes have been updated and therefore patch ghost nodes
@@ -751,11 +740,13 @@ namespace amr
                 return keys;
             };
 
-            elecSharedNodesRefiners_.addStaticRefiners(info->ghostElectric, EfieldNodeRefineOp_,
-                                                       makeKeys(info->ghostElectric));
+            elecSharedNodesRefiners_.addTimeRefiners(info->ghostElectric, info->ghostElectric,
+                                                     core::VecFieldNames{Eold_},
+                                                     EfieldNodeRefineOp_, fieldTimeOp_);
 
-            elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
-                                                  makeKeys(info->ghostElectric));
+            elecGhostsRefiners_.addTimeRefiners(info->ghostElectric, info->ghostElectric,
+                                                core::VecFieldNames{Eold_}, EfieldRefineOp_,
+                                                fieldTimeOp_);
 
             currentSharedNodesRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
                                                         core::VecFieldNames{Jold_},
@@ -814,9 +805,6 @@ namespace amr
 
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            magnetoSynchronizers_.add(info->modelMagnetic, magneticCoarseningOp_,
-                                      info->modelMagnetic.vecName);
-
             electroSynchronizers_.add(info->modelElectric, electricFieldCoarseningOp_,
                                       info->modelElectric.vecName);
 
@@ -1057,6 +1045,7 @@ namespace amr
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
+        VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
 
 
         //! ResourceManager shared with other objects (like the HybridModel)
@@ -1154,7 +1143,6 @@ namespace amr
 
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
         CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
-        CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
         CoarsenOperator_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
         MagneticRefinePatchStrategy<ResourcesManagerT, FieldDataT> magneticRefinePatchStrategy_{

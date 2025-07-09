@@ -535,11 +535,16 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, ModelViews_t& v
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::average_");
 
+    TimeSetter setTime{views, newTime};
+
     for (auto& state : views)
     {
         PHARE::core::average(state.electromag.B, state.electromagPred.B, state.electromagAvg.B);
         PHARE::core::average(state.electromag.E, state.electromagPred.E, state.electromagAvg.E);
     }
+
+    setTime([](auto& state) -> auto& { return state.electromagAvg.B; });
+    setTime([](auto& state) -> auto& { return state.electromagAvg.E; });
 
     // the following will fill E on all edges of all ghost cells, including those
     // on domain border. For level ghosts, electric field will be obtained from
