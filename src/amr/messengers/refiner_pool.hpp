@@ -97,7 +97,6 @@ namespace amr
                         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr);
 
 
-
         /**
          * add a refiner that will use time and spatial interpolation.
          * time interpolation will be done between data represented by model and oldModel
