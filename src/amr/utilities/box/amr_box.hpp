@@ -30,6 +30,16 @@ NO_DISCARD auto phare_box_from(SAMRAI::hier::Box const& box)
     return PHARE::core::Box<Type, dim>{core::Point{lower}, core::Point{upper}};
 }
 
+template<std::size_t dim>
+NO_DISCARD auto as_unsigned_phare_box(SAMRAI::hier::Box const& box)
+{
+    auto const& amr_box = phare_box_from<dim>(box);
+    if (amr_box.lower < 0 or amr_box.upper < 0)
+        throw std::runtime_error("Cannot make unsigned box from negative values");
+    return PHARE::core::Box<std::uint32_t, dim>{core::Point{amr_box.lower}.as_unsigned(),
+                                                core::Point{amr_box.upper}.as_unsigned()};
+}
+
 NO_DISCARD inline bool operator==(SAMRAI::hier::Box const& b1, SAMRAI::hier::Box const& b2)
 {
     auto dim1 = b1.getDim().getValue();
@@ -84,6 +94,43 @@ struct Box : public PHARE::core::Box<Type, dim>
         return eq;
     }
 };
+
+
+template<typename Particle>
+NO_DISCARD inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& particle)
+{
+    constexpr auto dim = Particle::dimension;
+    auto const& iCell  = particle.iCell;
+    auto const& lower  = box.lower();
+    auto const& upper  = box.upper();
+    for (std::size_t i = 0; i < dim; ++i)
+        if (iCell[i] < lower(i) || iCell[i] > upper(i))
+            return false;
+    return true;
+}
+
+
+template<std::size_t dim>
+auto as_point(SAMRAI::hier::IntVector const& vec)
+{
+    return core::Point{
+        core::for_N<dim, core::for_N_R_mode::make_array>([&](auto i) { return vec[i]; })};
+}
+
+
+template<std::size_t dim>
+auto as_point(SAMRAI::hier::Transformation const& tform)
+{
+    return as_point<dim>(tform.getOffset());
+}
+
+
+template<typename Type, std::size_t dim>
+NO_DISCARD core::Box<Type, dim> shift(core::Box<Type, dim> const& box,
+                                      SAMRAI::hier::Transformation const& tform)
+{
+    return core::shift(box, as_point<dim>(tform));
+}
 
 } // namespace PHARE::amr
 

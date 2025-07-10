@@ -226,7 +226,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     using GridLayout                           = typename Simulator::PHARETypes::GridLayout_t;
     constexpr auto dimension                   = Simulator::dimension;
     constexpr std::size_t expectedPopNbr       = 2;
-    constexpr std::size_t expectedPopAttrFiles = 6;
+    constexpr std::size_t expectedPopAttrFiles = 5;
 
     std::string const ionsPopPath = "/ions/pop/";
 
@@ -246,7 +246,6 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
 
         h5FileTypes.emplace_back(ionsPopPath + popName + "/domain");
         h5FileTypes.emplace_back(ionsPopPath + popName + "/levelGhost");
-        h5FileTypes.emplace_back(ionsPopPath + popName + "/patchGhost");
         h5FileTypes.emplace_back(ionsPopPath + popName + "/density");
         h5FileTypes.emplace_back(ionsPopPath + popName + "/charge_density");
         h5FileTypes.emplace_back(ionsPopPath + popName + "/flux");

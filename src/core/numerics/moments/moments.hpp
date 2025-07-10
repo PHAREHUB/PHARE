@@ -1,9 +1,10 @@
 #ifndef MOMENTS_HPP
 #define MOMENTS_HPP
 
-#include <iterator>
 
 #include "core/numerics/interpolator/interpolator.hpp"
+
+#include <stdexcept>
 
 
 namespace PHARE
@@ -26,9 +27,6 @@ namespace core
     {
     };
 
-    struct PatchGhostDeposit
-    {
-    };
     struct LevelGhostDeposit
     {
     };
@@ -50,16 +48,13 @@ namespace core
                 auto& partArray = pop.domainParticles();
                 interpolate(partArray, particleDensity, chargeDensity, flux, layout);
             }
-            else if constexpr (std::is_same_v<DepositTag, PatchGhostDeposit>)
-            {
-                auto& partArray = pop.patchGhostParticles();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
-            }
             else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
             {
                 auto& partArray = pop.levelGhostParticlesOld();
                 interpolate(partArray, particleDensity, chargeDensity, flux, layout);
             }
+            else
+                throw std::runtime_error("unknown deposit tag");
         }
     }
 

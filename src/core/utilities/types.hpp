@@ -494,6 +494,22 @@ auto make_named_tuple(Pairs&&... pairs)
     return std::make_tuple(pairs...);
 }
 
+
+
+template<typename D>
+struct Equals
+{
+    void operator()(auto& d0) { d = d0; }
+    D& d;
+};
+
+template<typename D>
+struct PlusEquals
+{
+    void operator()(auto& d0) { d += d0; }
+    D& d;
+};
+
 } // namespace PHARE::core
 
 

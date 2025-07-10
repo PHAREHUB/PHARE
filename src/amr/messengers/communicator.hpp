@@ -52,6 +52,11 @@ namespace amr
 
 
     public:
+        Communicator() {}
+        virtual ~Communicator() {}
+        Communicator(Communicator const&) = delete;
+        Communicator(Communicator&&)      = default;
+
         // we have an algorithm for each quantity, like Bx, By, Bz
         // even if they are to be refined/synced together.
         // the reason is that SAMRAI assumes that all Variables registered

@@ -166,6 +166,7 @@ public:
     }
 
     auto& modelView() { return modelView_; }
+    auto timestamp() const { return timestamp_; }
 
     std::size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
     HiFile::AccessMode flags;
