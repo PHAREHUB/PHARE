@@ -79,22 +79,25 @@ namespace solver
                 }
             }
 
-            // now all particles are here
-            // we must compute moments.
+            // now all particles are here, we must compute moments.
+            auto& ions = hybridModel.state.ions;
+            auto& rm   = *hybridModel.resourcesManager;
 
-            for (auto& patch : level)
+            for (auto& patch : rm.enumerate(level, ions))
             {
-                auto& ions             = hybridModel.state.ions;
-                auto& resourcesManager = hybridModel.resourcesManager;
-                auto dataOnPatch       = resourcesManager->setOnPatch(*patch, ions);
-                auto layout            = amr::layoutFromPatch<GridLayoutT>(*patch);
-
+                auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
-                core::depositParticles(ions, layout, interpolate_, core::PatchGhostDeposit{});
+            }
 
+            hybMessenger.fillFluxBorders(ions, level, initDataTime);
+            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+
+            for (auto& patch : rm.enumerate(level, ions))
+            {
                 if (!isRootLevel(levelNumber))
                 {
+                    auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
@@ -110,7 +113,7 @@ namespace solver
             // is not needed. But is still seems to use the messenger temporaries like
             // NiOld etc. so prepareStep() must be called, see end of the function.
             // - TODO more better comment(s)
-            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
+            hybMessenger.fillIonMomentGhosts(ions, level, initDataTime);
 
 
             // now moments are known everywhere, compute J and E

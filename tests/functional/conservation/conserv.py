@@ -84,7 +84,7 @@ def uniform(vth, dl, cells, nbr_steps):
     for quantity in ["B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-    for name in ["domain", "levelGhost", "patchGhost"]:
+    for name in ["domain", "levelGhost"]:
         ph.ParticleDiagnostics(
             quantity=name,
             write_timestamps=timestamps,

@@ -17,10 +17,13 @@ void updater_routine(benchmark::State& state)
     using ParticleArray = typename PHARE_Types::ParticleArray_t;
     using Particle_t    = typename ParticleArray::value_type;
     using Ions          = PHARE::core::UsableIons_t<ParticleArray, interp>;
+    using IonUpdater    = core::IonUpdater<Ions, Electromag_t, GridLayout_t>;
+    using Boxing_t      = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout_t>;
 
     GridLayout_t layout{cells};
     Electromag_t em{layout};
     Ions ions{layout, "protons"};
+    Boxing_t const boxing{layout, grow(layout.AMRBox(), GridLayout_t::nbrParticleGhosts())};
 
     auto& patch_particles = ions.populations[0].particles;
     patch_particles.domain_particles.vector()
@@ -31,14 +34,14 @@ void updater_routine(benchmark::State& state)
 
     initializer::PHAREDict dict;
     dict["pusher"]["name"] = std::string{"modified_boris"};
-    core::IonUpdater<Ions, Electromag_t, GridLayout_t> ionUpdater_{dict};
+    IonUpdater ionUpdater_{dict};
 
     double current_time = 1.0;
     double new_time     = 1.005;
     auto dt             = new_time - current_time;
     while (state.KeepRunningBatch(1)) // while (state.KeepRunning())
     {
-        ionUpdater_.updatePopulations(ions, em, layout, dt, core::UpdaterMode::domain_only);
+        ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::domain_only);
         ionUpdater_.updateIons(ions);
 
         patch_particles.domain_particles = particles_copy;
@@ -46,7 +49,7 @@ void updater_routine(benchmark::State& state)
             = std::get<3>(ions.getRunTimeResourcesViewList()[0].getCompileTimeResourcesViewList());
         pack.setBuffer(&patch_particles.pack());
 
-        ionUpdater_.updatePopulations(ions, em, layout, dt, core::UpdaterMode::all);
+        ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::all);
         ionUpdater_.updateIons(ions);
     }
 }

@@ -25,7 +25,7 @@ class box_iterator;
 template<typename Type, std::size_t dim>
 struct Box
 {
-    static constexpr std::size_t dimension = dim;
+    static constexpr auto dimension = dim;
 
 
     Point<Type, dim> lower;
@@ -74,7 +74,6 @@ struct Box
 
     void grow(Type const& size)
     {
-        assert(size >= 0);
         for (auto& c : lower)
         {
             c -= size;
@@ -83,6 +82,14 @@ struct Box
         {
             c += size;
         }
+    }
+
+    template<typename Size>
+    auto& grow(std::array<Size, dim> const& size)
+    {
+        lower -= size;
+        upper += size;
+        return *this;
     }
 
     NO_DISCARD auto shape() const { return upper - lower + 1; }
@@ -232,22 +239,27 @@ bool isIn(Point const& point, BoxContainer const& boxes)
     return false;
 }
 
+template<typename Particle, typename Type>
+NO_DISCARD auto isIn(Particle const& particle, Box<Type, Particle::dimension> const& box)
+    -> decltype(isIn(particle.iCell, box), bool())
+{
+    return isIn(particle.iCell, box);
+}
+
 /** This overload of isIn does the same as the one above but takes only
  * one box.
  */
-template<typename Point>
-NO_DISCARD bool isIn(Point const& point,
-                     Box<typename Point::value_type, Point::dimension> const& box)
+template<template<typename, std::size_t> typename Point, typename Type, std::size_t SIZE>
+NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
 {
-    auto isIn1D = [](typename Point::value_type pos, typename Point::value_type lower,
-                     typename Point::value_type upper) { return pos >= lower && pos <= upper; };
+    auto isIn1D = [](auto const pos, auto const lower, auto const upper) {
+        return pos >= lower && pos <= upper;
+    };
 
     bool pointInBox = true;
 
-    for (auto iDim = 0u; iDim < Point::dimension; ++iDim)
-    {
+    for (auto iDim = 0u; iDim < SIZE; ++iDim)
         pointInBox = pointInBox && isIn1D(point[iDim], box.lower[iDim], box.upper[iDim]);
-    }
     if (pointInBox)
         return pointInBox;
 
@@ -255,11 +267,21 @@ NO_DISCARD bool isIn(Point const& point,
 }
 
 
+
 template<typename Type, std::size_t dim, typename OType>
 Box<Type, dim> grow(Box<Type, dim> const& box, OType const& size)
 {
     auto copy{box};
     copy.grow(size);
+    return copy;
+}
+
+template<typename Type, std::size_t dim, typename Shifter>
+NO_DISCARD Box<Type, dim> shift(Box<Type, dim> const& box, Shifter const& offset)
+{
+    auto copy{box};
+    copy.lower += offset;
+    copy.upper += offset;
     return copy;
 }
 
@@ -281,7 +303,6 @@ auto& operator<<(std::ostream& os, Box<Type, dim> const& box)
     os << ")";
     return os;
 }
-
 
 
 } // namespace PHARE::core

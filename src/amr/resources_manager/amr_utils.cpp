@@ -31,10 +31,12 @@ namespace amr
     /**
      * @brief AMRToLocal sets the AMRBox to local indexing relative to the referenceAMRBox
      */
-    void AMRToLocal(SAMRAI::hier::Box& AMRBox, SAMRAI::hier::Box const& referenceAMRBox)
+    SAMRAI::hier::Box& AMRToLocal(SAMRAI::hier::Box& AMRBox,
+                                  SAMRAI::hier::Box const& referenceAMRBox)
     {
         AMRBox.setLower(AMRBox.lower() - referenceAMRBox.lower());
         AMRBox.setUpper(AMRBox.upper() - referenceAMRBox.lower());
+        return AMRBox;
     }
 
 

@@ -260,15 +260,11 @@ public:
         auto hybridModel = std::make_unique<HybridModelT>(createDict(), resourcesManagerHybrid);
         auto mhdModel    = std::make_unique<MHDModelT>(resourcesManagerMHD);
 
-        hybridModel->resourcesManager->registerResources(hybridModel->state.electromag);
-        hybridModel->resourcesManager->registerResources(hybridModel->state.ions);
-
-        mhdModel->resourcesManager->registerResources(mhdModel->state.B);
-        mhdModel->resourcesManager->registerResources(mhdModel->state.V);
+        hybridModel->resourcesManager->registerResources(hybridModel->state);
+        mhdModel->resourcesManager->registerResources(mhdModel->state);
 
         models.push_back(std::move(mhdModel));
         models.push_back(std::move(hybridModel));
-
 
         auto mhdmhdMessenger{
             messengerFactory.create("MHDModel-MHDModel", *models[0], *models[0], 0)};
@@ -308,6 +304,7 @@ TEST_F(HybridMessengers, receiveQuantitiesFromHybridModelsOnlyAndHybridSolver)
 {
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
         createDict()["simulation"]["algo"]);
+    hybridSolver->registerResources(*models[1]);
     MessengerRegistration::registerQuantities(*messengers[2], *models[1], *models[1],
                                               *hybridSolver);
 }
@@ -477,7 +474,6 @@ struct AfullHybridBasicHierarchy
         std::make_shared<HybridMessenger<HybridModelT>>(std::move(hybhybStrat))};
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
-
         std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(
             createDict()["simulation"]["algo"])};
 

@@ -319,6 +319,18 @@ namespace amr
             return ids;
         }
 
+
+        auto getIDsList(auto&&... keys) const
+        {
+            auto const Fn = [&](auto& key) {
+                if (auto const id = getID(key))
+                    return *id;
+                throw std::runtime_error("bad key");
+            };
+            return std::array{Fn(keys)...};
+        }
+
+
         // iterate per patch and set args on patch
         template<typename... Args>
         auto inline enumerate(SAMRAI::hier::PatchLevel& level, Args&&... args)
