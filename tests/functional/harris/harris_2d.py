@@ -139,9 +139,11 @@ def config():
     for quantity in ["mass_density", "bulkVelocity"]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-    ph.FluidDiagnostics(
-        quantity="density", write_timestamps=timestamps, population_name="protons"
-    )
+    for quantity in ["density", "pressure_tensor"]:
+        ph.FluidDiagnostics(
+            quantity=quantity, write_timestamps=timestamps, population_name="protons"
+        )
+
     ph.InfoDiagnostics(quantity="particle_count")
 
     ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
@@ -155,6 +157,7 @@ def plot_file_for_qty(plot_dir, qty, time):
 
 def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
+    pop_name = "protons"
     for time in timestamps:
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
@@ -165,7 +168,7 @@ def plot(diag_dir, plot_dir):
         run.GetRanks(time).plot(
             filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
         )
-        run.GetN(time, pop_name="protons").plot(
+        run.GetN(time, pop_name=pop_name).plot(
             filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
         )
         for c in ["x", "y", "z"]:
@@ -180,6 +183,16 @@ def plot(diag_dir, plot_dir):
             plot_patches=True,
             vmin=-2,
             vmax=2,
+        )
+        run.GetPressure(time, pop_name=pop_name).plot(
+            filename=plot_file_for_qty(plot_dir, "Pxx", time),
+            qty=pop_name + "_Pxx",
+            plot_patches=True,
+        )
+        run.GetPressure(time, pop_name=pop_name).plot(
+            filename=plot_file_for_qty(plot_dir, "Pzz", time),
+            qty=pop_name + "_Pzz",
+            plot_patches=True,
         )
 
 
