@@ -142,6 +142,15 @@ protected:
     }
 
 
+    auto& h5FileForQuantity(DiagnosticProperties& diagnostic)
+    {
+        if (!fileData_.count(diagnostic.quantity))
+            throw std::runtime_error("Unknown Diagnostic Quantity: " + diagnostic.quantity);
+
+        return *fileData_.at(diagnostic.quantity);
+    }
+
+
     Writer& h5Writer_;
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData_;
 };

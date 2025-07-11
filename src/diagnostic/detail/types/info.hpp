@@ -113,7 +113,7 @@ void InfoDiagnosticWriter<H5Writer>::writeAttributes(
         defaultPatchAttributes["particle_count"] = std::size_t{0};
     }
 
-    writeAttributes_(diagnostic, *fileData_.at(diagnostic.quantity), fileAttributes,
+    writeAttributes_(diagnostic, Super::h5FileForQuantity(diagnostic), fileAttributes,
                      patchAttributes, maxLevel, defaultPatchAttributes);
 }
 

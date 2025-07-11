@@ -378,7 +378,7 @@ def _compute_pressure(patch_datas, **kwargs):
     Myy = patch_datas["Myy"].dataset[:]
     Myz = patch_datas["Myz"].dataset[:]
     Mzz = patch_datas["Mzz"].dataset[:]
-    massDensity = patch_datas["rho"].dataset[:]
+    massDensity = patch_datas["value"].dataset[:]
     Vix = patch_datas["Vx"].dataset[:]
     Viy = patch_datas["Vy"].dataset[:]
     Viz = patch_datas["Vz"].dataset[:]
@@ -417,10 +417,10 @@ def _compute_pop_pressure(patch_datas, **kwargs):
     Myy = patch_datas[popname + "_Myy"].dataset[:]
     Myz = patch_datas[popname + "_Myz"].dataset[:]
     Mzz = patch_datas[popname + "_Mzz"].dataset[:]
-    Fx = patch_datas[popname + "_Fx"].dataset[:]
-    Fy = patch_datas[popname + "_Fy"].dataset[:]
-    Fz = patch_datas[popname + "_Fz"].dataset[:]
-    N = patch_datas[popname + "_rho"].dataset[:]
+    Fx = patch_datas["x"].dataset[:]
+    Fy = patch_datas["y"].dataset[:]
+    Fz = patch_datas["z"].dataset[:]
+    N = patch_datas["value"].dataset[:]
 
     mass = kwargs["mass"]
 
