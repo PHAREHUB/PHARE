@@ -230,7 +230,7 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
 {
     auto& h5Writer = this->h5Writer_;
     auto& ions     = h5Writer.modelView().getIons();
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    auto& h5file   = Super::h5FileForQuantity(diagnostic);
 
     auto writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
         this->writeGhostsAttr_(h5file, path,
@@ -299,7 +299,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
     auto& ions     = h5Writer.modelView().getIons();
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    auto& h5file   = Super::h5FileForQuantity(diagnostic);
 
     auto writeDS = [&](auto path, auto& field) {
         h5file.template write_data_set_flat<GridLayout::dimension>(path, field.data());
@@ -341,7 +341,7 @@ void FluidDiagnosticWriter<H5Writer>::writeAttributes(
     std::size_t maxLevel)
 {
     auto& h5Writer = this->h5Writer_;
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    auto& h5file   = Super::h5FileForQuantity(diagnostic);
 
     auto checkWrite = [&](auto& tree, std::string qty, auto const& pop) {
         if (diagnostic.quantity == tree + qty)

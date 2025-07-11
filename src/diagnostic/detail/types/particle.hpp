@@ -114,7 +114,7 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
     Attributes& patchAttributes, std::size_t maxLevel)
 {
     auto& h5Writer = this->h5Writer_;
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    auto& h5file   = Super::h5FileForQuantity(diagnostic);
 
     auto createDataSet = [&](auto&& path, auto& attr, auto& key, auto& value, auto null) {
         using ValueType = std::decay_t<decltype(value)>;
@@ -171,7 +171,7 @@ void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
         std::string active{tree + pType};
         if (diagnostic.quantity == active && ps.size() > 0)
-            hdf5::ParticleWriter::write(*fileData_.at(diagnostic.quantity), ps,
+            hdf5::ParticleWriter::write(this->h5FileForQuantity(diagnostic), ps,
                                         h5Writer.patchPath() + "/");
     };
 
@@ -193,7 +193,7 @@ void ParticlesDiagnosticWriter<H5Writer>::writeAttributes(
     std::size_t maxLevel)
 {
     auto& h5Writer = this->h5Writer_;
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    auto& h5file   = Super::h5FileForQuantity(diagnostic);
 
     auto checkWrite = [&](auto& tree, std::string pType, auto const& pop) {
         if (diagnostic.quantity == tree + pType)
