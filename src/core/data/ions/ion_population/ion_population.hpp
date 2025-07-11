@@ -43,16 +43,25 @@ namespace core
 
         NO_DISCARD std::string const& name() const { return name_; }
 
-        NO_DISCARD auto const& particleInitializerInfo() const { return particleInitializerInfo_; }
+
+
+        NO_DISCARD auto const& particleInitializerInfo() const
+        {
+            assert(particleInitializerInfo_.contains("density"));
+            return particleInitializerInfo_;
+        }
+
 
         NO_DISCARD bool isUsable() const
         {
-            return core::isUsable(particles_, particleDensity_, chargeDensity_, flux_, momentumTensor_);
+            return core::isUsable(particles_, particleDensity_, chargeDensity_, flux_,
+                                  momentumTensor_);
         }
 
         NO_DISCARD bool isSettable() const
         {
-            return core::isSettable(particles_, particleDensity_, chargeDensity_, flux_, momentumTensor_);
+            return core::isSettable(particles_, particleDensity_, chargeDensity_, flux_,
+                                    momentumTensor_);
         }
 
         NO_DISCARD auto& domainParticles() const { return particles_.domainParticles(); }

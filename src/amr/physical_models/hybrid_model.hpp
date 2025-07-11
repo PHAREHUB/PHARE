@@ -49,7 +49,7 @@ public:
     std::shared_ptr<resources_manager_type> resourcesManager;
 
 
-    virtual void initialize(level_t& level) override;
+    void initialize(level_t& level) override;
 
 
     /**
@@ -69,7 +69,7 @@ public:
      * @brief fillMessengerInfo describes which variables of the model are to be initialized or
      * filled at ghost nodes.
      */
-    virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
+    void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
 
     NO_DISCARD auto setOnPatch(patch_t& patch)
@@ -165,7 +165,6 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
     hybridInfo.ghostCurrent.push_back(core::VecFieldNames{state.J});
     hybridInfo.ghostBulkVelocity.push_back(hybridInfo.modelIonBulkVelocity);
 
-
     auto transform_ = [](auto& ions, auto& inserter) {
         std::transform(std::begin(ions), std::end(ions), std::back_inserter(inserter),
                        [](auto const& pop) { return pop.name(); });
@@ -174,6 +173,13 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
     transform_(state.ions, hybridInfo.levelGhostParticlesOld);
     transform_(state.ions, hybridInfo.levelGhostParticlesNew);
     transform_(state.ions, hybridInfo.patchGhostParticles);
+
+    for (auto const& pop : state.ions)
+    {
+        hybridInfo.ghostFlux.emplace_back(pop.flux());
+        hybridInfo.sumBorderFields.emplace_back(pop.particleDensity().name());
+        hybridInfo.sumBorderFields.emplace_back(pop.chargeDensity().name());
+    }
 }
 
 

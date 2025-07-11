@@ -90,7 +90,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             # domain... while looping on the patchGhost items, we need to search in
             # the already created patches which one to which add the patchGhost particles
 
-            for ghostParticles in ["patchGhost", "levelGhost"]:
+            for ghostParticles in ["levelGhost"]:
                 if ghostParticles in populationdict:
                     for dwpatch in populationdict[ghostParticles]:
                         v = np.asarray(dwpatch.data.v)

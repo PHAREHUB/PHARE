@@ -286,7 +286,6 @@ public:
                     auto& inner = pop_particles.at(pop.name());
 
                     getParticleData(inner, grid, patchID, "domain", pop.domainParticles());
-                    getParticleData(inner, grid, patchID, "patchGhost", pop.patchGhostParticles());
                     getParticleData(inner, grid, patchID, "levelGhost", pop.levelGhostParticles());
                 }
             }

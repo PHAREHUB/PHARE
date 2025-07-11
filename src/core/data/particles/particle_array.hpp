@@ -95,12 +95,8 @@ public:
     NO_DISCARD auto back() { return particles_.back(); }
     NO_DISCARD auto front() { return particles_.front(); }
 
-    auto erase(IndexRange_& range) { cellMap_.erase(particles_, range); }
-    auto erase(IndexRange_&& range)
-    {
-        // TODO move ctor for range?
-        cellMap_.erase(std::forward<IndexRange_>(range));
-    }
+
+    auto erase(IndexRange_ range) { cellMap_.erase(range); }
 
     iterator erase(iterator first, iterator last)
     {
@@ -201,6 +197,14 @@ public:
         return cellMap_.partition(makeIndexRange(*this), std::forward<Predicate>(pred));
     }
 
+    template<typename Range_t, typename Predicate>
+    auto partition(Range_t&& range, Predicate&& pred)
+    {
+        auto const ret = cellMap_.partition(range, std::forward<Predicate>(pred));
+        assert(ret.size() <= range.size());
+        return ret;
+    }
+
     template<typename CellIndex>
     void print(CellIndex const& cell) const
     {
@@ -226,18 +230,6 @@ public:
     NO_DISCARD auto& vector() const { return particles_; }
 
     auto& box() const { return box_; }
-
-
-    auto& replace_from(ParticleArray const& that)
-    {
-        if (this == &that) // just in case
-            return *this;
-        this->resize(that.size());
-        std::copy(that.begin(), that.end(), this->begin());
-        this->box_     = that.box_;
-        this->cellMap_ = that.cellMap_;
-        return *this;
-    }
 
 
 private:

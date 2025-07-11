@@ -234,6 +234,9 @@ namespace core
         }
 
 
+        auto& operator[](std::size_t const i) const { return populations_[i]; }
+        auto& operator[](std::size_t const i) { return populations_[i]; }
+
     private:
         field_type massDensity_;
         field_type chargeDensity_;
@@ -241,7 +244,10 @@ namespace core
         std::vector<IonPopulation> populations_;
         tensorfield_type momentumTensor_;
     };
+
 } // namespace core
 } // namespace PHARE
+
+
 
 #endif

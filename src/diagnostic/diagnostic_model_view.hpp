@@ -4,10 +4,14 @@
 #include "core/def.hpp"
 #include "core/utilities/mpi_utils.hpp"
 
-#include "amr/physical_models/hybrid_model.hpp"
 #include "amr/physical_models/mhd_model.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/messengers/field_sum_transaction.hpp"
+#include "amr/data/field/field_variable_fill_pattern.hpp"
 
 #include "cppdict/include/dict.hpp"
+
+#include <SAMRAI/xfer/RefineAlgorithm.h>
 
 #include <type_traits>
 
@@ -26,8 +30,16 @@ template<typename Hierarchy, typename Model>
 class BaseModelView : public IModelView
 {
 public:
-    using GridLayout = Model::gridlayout_type;
-    using VecField   = Model::vecfield_type;
+    using GridLayout                = Model::gridlayout_type;
+    using VecField                  = Model::vecfield_type;
+    using TensorFieldT              = Model::ions_type::tensorfield_type;
+    using GridLayoutT               = Model::gridlayout_type;
+    using ResMan                    = Model::resources_manager_type;
+    using FieldData_t               = ResMan::UserField_t::patch_data_type;
+    static constexpr auto dimension = Model::dimension;
+
+
+public:
     using PatchProperties
         = cppdict::Dict<float, double, std::size_t, std::vector<int>, std::vector<std::uint32_t>,
                         std::vector<double>, std::vector<std::size_t>, std::string,
@@ -37,7 +49,46 @@ public:
         : model_{model}
         , hierarchy_{hierarchy}
     {
+        declareMomentumTensorAlgos();
     }
+
+    NO_DISCARD std::vector<VecField*> getElectromagFields() const
+    {
+        return {&model_.state.electromag.B, &model_.state.electromag.E};
+    }
+
+    NO_DISCARD auto& getIons() const { return model_.state.ions; }
+
+    void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
+    {
+        using value_type = TensorFieldT::value_type;
+        auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
+
+        auto& rm   = *model_.resourcesManager;
+        auto& ions = model_.state.ions;
+
+        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+            for (std::uint8_t c = 0; c < N; ++c)
+                std::memcpy(sumTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
+                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+
+        MTAlgos[popidx].getOrCreateSchedule(hierarchy_, lvl.getLevelNumber()).fillData(time);
+
+        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+            for (std::uint8_t c = 0; c < N; ++c)
+                std::memcpy(ions[popidx].momentumTensor()[c].data(), sumTensor_[c].data(),
+                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+    }
+
+
+    template<typename Action>
+    void onLevels(Action&& action, int minlvl = 0, int maxlvl = 0)
+    {
+        for (int ilvl = minlvl; ilvl < hierarchy_.getNumberOfLevels() && ilvl <= maxlvl; ++ilvl)
+            if (auto lvl = hierarchy_.getPatchLevel(ilvl))
+                action(*lvl);
+    }
+
 
     template<typename Action>
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
@@ -93,6 +144,50 @@ public:
 protected:
     Model& model_;
     Hierarchy& hierarchy_;
+
+    void declareMomentumTensorAlgos()
+    {
+        auto& rm = *model_.resourcesManager;
+
+        auto const dst_names = sumTensor_.componentNames();
+
+        for (auto& pop : model_.state.ions)
+        {
+            auto& MTAlgo         = MTAlgos.emplace_back();
+            auto const src_names = pop.momentumTensor().componentNames();
+
+            for (std::size_t i = 0; i < dst_names.size(); ++i)
+            {
+                auto&& [idDst, idSrc] = rm.getIDsList(dst_names[i], src_names[i]);
+                MTAlgo.MTalgo->registerRefine(
+                    idDst, idSrc, idDst, nullptr,
+                    std::make_shared<amr::FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+            }
+        }
+
+        // can't create schedules here as the hierarchy has no levels yet
+    }
+
+    struct MTAlgo
+    {
+        auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
+        {
+            if (not MTschedules.count(ilvl))
+                MTschedules.try_emplace(
+                    ilvl,
+                    MTalgo->createSchedule(
+                        hierarchy.getPatchLevel(ilvl), 0,
+                        std::make_shared<amr::FieldBorderSumTransactionFactory<FieldData_t>>()));
+            return *MTschedules[ilvl];
+        }
+
+        std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> MTalgo
+            = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> MTschedules;
+    };
+
+    std::vector<MTAlgo> MTAlgos;
+    TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
 };
 
 
