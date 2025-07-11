@@ -19,6 +19,7 @@
 
 #include <map>
 #include <optional>
+#include <tuple>
 
 
 namespace PHARE
@@ -123,6 +124,36 @@ namespace amr
          * we ask for them in a tuple, and recursively call registerResources() for all of the
          * unpacked elements
          */
+
+        void static handle_sub_resources(auto fn, auto& obj, auto&&... args)
+        {
+            using ResourcesView = decltype(obj);
+
+            if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
+            {
+                for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
+                {
+                    using RuntimeResource = decltype(runtimeResource);
+                    if constexpr (has_sub_resources_v<RuntimeResource>)
+                    {
+                        fn(runtimeResource, args...);
+                    }
+                    else
+                    {
+                        std::visit([&](auto&& val) { fn(val, args...); }, runtimeResource);
+                    }
+                }
+            }
+
+            if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+            {
+                // unpack the tuple subResources and apply for each element registerResources()
+                // (recursively)
+                std::apply([&](auto&... subResource) { (fn(subResource, args...), ...); },
+                           obj.getCompileTimeResourcesViewList());
+            }
+        }
+
         template<typename ResourcesView>
         void registerResources(ResourcesView& obj)
         {
@@ -134,24 +165,8 @@ namespace amr
             {
                 static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        this->registerResources(resourcesUser);
-                    }
-                }
-
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element registerResources()
-                    // (recursively)
-                    std::apply(
-                        [this](auto&... subResource) {
-                            (this->registerResources(subResource), ...);
-                        },
-                        obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources( //
+                    [&](auto&&... args) { this->registerResources(args...); }, obj);
             }
         }
 
@@ -176,21 +191,8 @@ namespace amr
             {
                 static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        this->allocate(resourcesUser, patch, allocateTime);
-                    }
-                }
-
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element registerResources()
-                    std::apply([this, &patch, allocateTime](auto&... subResource) //
-                               { (this->allocate(subResource, patch, allocateTime), ...); },
-                               obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources( //
+                    [&](auto&&... args) { this->allocate(args...); }, obj, patch, allocateTime);
             }
         }
 
@@ -389,24 +391,7 @@ namespace amr
             {
                 static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        //
-                        this->getIDs_(resourcesUser, IDs);
-                    }
-                }
-
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element registerResources()
-                    std::apply(
-                        [this, &IDs](auto&... subResource) {
-                            (this->getIDs_(subResource, IDs), ...);
-                        },
-                        obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources([&](auto&&... args) { this->getIDs_(args...); }, obj, IDs);
             }
         }
 
@@ -449,21 +434,6 @@ namespace amr
             return static_cast<PointerType>(nullptr);
         }
 
-
-        void static handle_sub_resources(auto fn, auto& obj, auto&&... args)
-        {
-            using ResourcesView = decltype(obj);
-
-            if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
-                    fn(runtimeResource, args...);
-
-            // unpack the tuple subResources and apply for each element registerResources()
-            //  (recursively)
-            if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                std::apply([&](auto&... subResource) { (fn(subResource, args...), ...); },
-                           obj.getCompileTimeResourcesViewList());
-        }
 
 
         template<typename ResourcesView>
