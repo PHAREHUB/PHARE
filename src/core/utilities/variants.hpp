@@ -3,6 +3,8 @@
 
 #include "core/utilities/types.hpp"
 
+#include <core/logger.hpp>
+#include <tuple>
 #include <variant>
 #include <stdexcept>
 
@@ -98,6 +100,32 @@ auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
     return for_N<tuple_size, for_N_R_mode::forward_tuple>(
         [&](auto i) -> auto& { return *std::get<i>(pointer_tuple); });
 }
+
+template<typename Type>
+auto& get_from_variants(auto& variants, Type& arg)
+{
+    std::size_t start = 0;
+
+    while (start < variants.size())
+    {
+        if (auto& res = get_as_ref_or_throw<Type>(variants, start); res.name() == arg.name())
+            return res;
+        ++start;
+    }
+
+    if (start == variants.size())
+        std::runtime_error("Required name not found in variants: " + arg.name());
+}
+
+
+template<typename... Args>
+auto get_from_variants(auto& variants, Args&... args)
+    requires(sizeof...(Args) > 1)
+{
+    return std::forward_as_tuple(get_from_variants(variants, args)...);
+}
+
+
 
 
 } // namespace PHARE::core

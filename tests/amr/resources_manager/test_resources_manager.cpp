@@ -324,6 +324,30 @@ TEST(usingResources, test_variants_helpers)
     }
 }
 
+
+TEST(usingResources, test_variants_resource_helpers)
+{
+    using Resources = std::variant<Field1D, VecField1D>;
+
+    std::array<std::uint32_t, 1> cells{5};
+    Field1D moe_{"moe", HybridQuantity::Scalar::rho, nullptr, cells};
+    VecField1D B_{"B", HybridQuantity::Vector::B};
+    Field1D rho_{"rho", HybridQuantity::Scalar::rho, nullptr, cells};
+    VecField1D E_{"E", HybridQuantity::Vector::E};
+
+    std::vector<Resources> resources{rho_, moe_, B_, E_};
+    {
+        auto const& rho = get_from_variants(resources, rho_);
+        EXPECT_EQ(rho.name(), "rho");
+
+        auto const& B = get_from_variants(resources, B_);
+        EXPECT_EQ(B.name(), "EM_B");
+    }
+    auto [rho, B] = get_from_variants(resources, rho_, B_);
+    EXPECT_EQ(rho.name(), "rho");
+    EXPECT_EQ(B.name(), "EM_B");
+}
+
 TEST(usingResourcesManager, test_variants)
 {
     ResourceUser resourceUser;
