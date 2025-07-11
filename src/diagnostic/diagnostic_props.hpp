@@ -14,7 +14,7 @@ struct DiagnosticProperties
 {
     // Types limited to actual need, no harm to modify
     using Params         = cppdict::Dict<std::size_t>;
-    using FileAttributes = cppdict::Dict<std::string>;
+    using FileAttributes = cppdict::Dict<std::string, double>;
 
     std::vector<double> writeTimestamps, computeTimestamps;
     std::string type, quantity;

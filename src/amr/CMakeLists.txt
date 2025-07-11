@@ -50,9 +50,9 @@ set( SOURCES_INC
      wrappers/integrator.hpp
      tagging/tagger.hpp
      tagging/tagger_factory.hpp
-     tagging/hybrid_tagger.hpp
-     tagging/hybrid_tagger_strategy.hpp
-     tagging/default_hybrid_tagger_strategy.hpp
+     tagging/concrete_tagger.hpp
+     tagging/tagger_strategy.hpp
+     tagging/default_tagger_strategy.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
      solvers/solver_mhd.hpp
@@ -68,10 +68,11 @@ set( SOURCES_INC
      load_balancing/load_balancer_manager.hpp
      load_balancing/load_balancer_estimator.hpp
      load_balancing/load_balancer_estimator_hybrid.hpp
+     load_balancing/load_balancer_estimator_mhd.hpp
      load_balancing/load_balancer_hybrid_strategy_factory.hpp
-     load_balancing/load_balancer_hybrid_strategy.hpp
-     load_balancing/concrete_load_balancer_hybrid_strategy_homogeneous.hpp
-     load_balancing/concrete_load_balancer_hybrid_strategy_nppc.hpp
+     load_balancing/load_balancer_strategy.hpp
+     load_balancing/concrete_load_balancer_strategy_homogeneous.hpp
+     load_balancing/concrete_load_balancer_strategy_nppc.hpp
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

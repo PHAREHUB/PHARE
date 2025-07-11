@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_NUMERICS_TVDRK2_INTEGRATOR_HPP
 #define PHARE_CORE_NUMERICS_TVDRK2_INTEGRATOR_HPP
 
+#include "core/data/vecfield/vecfield.hpp"
 #include "initializer/data_provider.hpp"
 #include "amr/solvers/solver_mhd_model_view.hpp"
 #include "amr/solvers/time_integrator/euler.hpp"
@@ -11,6 +12,7 @@ namespace PHARE::solver
 template<template<typename> typename FVMethodStrategy, typename MHDModel>
 class TVDRK2Integrator
 {
+    using level_t   = typename MHDModel::level_t;
     using VecFieldT = typename MHDModel::vecfield_type;
     using MHDStateT = typename MHDModel::state_type;
 
@@ -26,19 +28,34 @@ public:
     {
     }
 
-    void operator()(auto& layouts, MHDStateT& state, auto& fluxes, auto& bc, auto& level,
+    void operator()(MHDModel& model, MHDStateT& state, auto& fluxes, auto& bc, level_t& level,
                     double const currentTime, double const newTime)
     {
         double const dt = newTime - currentTime;
 
         // U1 = Euler(Un)
-        euler_(layouts, state, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state1_, fluxes, bc, level, currentTime, newTime);
 
         // U1 = Euler(U1)
-        euler_(layouts, state1_, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state1_, state1_, fluxes, bc, level, currentTime, newTime);
 
         // Un+1 = 0.5*Un + 0.5*Euler(U1)
-        tvdrk2_step_(layouts, state, RKPair_t{w0_, state}, RKPair_t{w1_, state1_});
+        tvdrk2_step_(level, model, newTime, state, RKPair_t{w0_, state}, RKPair_t{w1_, state1_});
+    }
+
+    void registerResources(MHDModel& model) { model.resourcesManager->registerResources(state1_); }
+
+    void allocate(MHDModel& model, auto& patch, double const allocateTime) const
+    {
+        model.resourcesManager->allocate(state1_, patch, allocateTime);
+    }
+
+    void fillMessengerInfo(auto& info) const
+    {
+        info.ghostDensity.push_back(state1_.rho.name());
+        info.ghostVelocity.push_back(core::VecFieldNames{state1_.V});
+        info.ghostPressure.push_back(state1_.P.name());
+        info.ghostElectric.push_back(core::VecFieldNames{state1_.E});
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state1_); }

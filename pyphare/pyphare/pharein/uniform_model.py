@@ -11,7 +11,7 @@ class UniformModel(object):
         if global_vars.sim.model is not None:
             raise RuntimeError("A model is already created")
 
-        global_vars.sim.set_model(self)
+        global_vars.sim.set_uniform_model(self)
 
         if len(b) != 3 or (not isinstance(b, tuple) and not isinstance(b, list)):
             raise ValueError("invalid B")

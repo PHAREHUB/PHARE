@@ -11,7 +11,7 @@ template<typename Float, typename State>
 struct RKPair
 {
     Float weight;
-    State state;
+    State& state;
 };
 
 template<typename GridLayout>
