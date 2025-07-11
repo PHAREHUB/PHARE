@@ -74,7 +74,7 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
             // highfive doesn't accept uint32 which ndarray.shape() is
             auto const& array_shape = vecF.getComponent(type).shape();
             attr[name][id]          = std::vector<std::size_t>(array_shape.data(),
-                                                      array_shape.data() + array_shape.size());
+                                                               array_shape.data() + array_shape.size());
             auto ghosts = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
             attr[name][id + "_ghosts_x"] = static_cast<std::size_t>(ghosts[0]);
             if constexpr (GridLayout::dimension > 1)
@@ -100,7 +100,7 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
     Attributes& patchAttributes, std::size_t maxLevel)
 {
     auto& h5Writer = this->h5Writer_;
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    auto& h5file   = Super::h5FileForQuantity(diagnostic);
     auto vecFields = h5Writer.modelView().getElectromagFields();
 
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
@@ -151,7 +151,7 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
 
     for (auto* vecField : h5Writer.modelView().getElectromagFields())
         if (diagnostic.quantity == "/" + vecField->name())
-            h5Writer.writeTensorFieldAsDataset(*fileData_.at(diagnostic.quantity),
+            h5Writer.writeTensorFieldAsDataset(Super::h5FileForQuantity(diagnostic),
                                                h5Writer.patchPath() + "/" + vecField->name(),
                                                *vecField);
 }
@@ -165,7 +165,7 @@ void ElectromagDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    writeAttributes_(diagnostic, *fileData_.at(diagnostic.quantity), fileAttributes,
+    writeAttributes_(diagnostic, Super::h5FileForQuantity(diagnostic), fileAttributes,
                      patchAttributes, maxLevel);
 }
 

@@ -142,22 +142,24 @@ def config():
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
-    for quantity in ["mass_density", "charge_density", "bulkVelocity"]:
+
+    for quantity in [
+        "mass_density",
+        "charge_density",
+        "bulkVelocity",
+        "pressure_tensor",
+    ]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     pop = "protons"
     ph.ParticleDiagnostics(
-        quantity="domain",
-        write_timestamps=timestamps,
-        population_name=pop,
-    )
-    ph.FluidDiagnostics(
-        quantity="density", write_timestamps=timestamps, population_name=pop
-    )
-    ph.FluidDiagnostics(
-        quantity="charge_density", write_timestamps=timestamps, population_name=pop
+        quantity="domain", write_timestamps=timestamps, population_name=pop
     )
 
+    for quantity in ["density", "charge_density", "pressure_tensor"]:
+        ph.FluidDiagnostics(
+            quantity=quantity, write_timestamps=timestamps, population_name=pop
+        )
     return sim
 
 
@@ -167,6 +169,7 @@ def plot_file_for_qty(qty, time):
 
 def plot(diag_dir):
     run = Run(diag_dir)
+    pop_name = "protons"
     for time in timestamps:
         run.GetDivB(time).plot(
             filename=plot_file_for_qty("divb", time),
@@ -177,7 +180,7 @@ def plot(diag_dir):
         run.GetRanks(time).plot(
             filename=plot_file_for_qty("Ranks", time), plot_patches=True
         )
-        run.GetN(time, pop_name="protons").plot(
+        run.GetN(time, pop_name=pop_name).plot(
             filename=plot_file_for_qty("N", time), plot_patches=True
         )
         for c in ["x", "y", "z"]:
@@ -193,6 +196,26 @@ def plot(diag_dir):
             plot_patches=True,
             vmin=-2,
             vmax=2,
+        )
+        run.GetPressure(time, pop_name=pop_name).plot(
+            filename=plot_file_for_qty(f"{pop_name}_Pxx", time),
+            qty=pop_name + "_Pxx",
+            plot_patches=True,
+        )
+        run.GetPressure(time, pop_name=pop_name).plot(
+            filename=plot_file_for_qty(f"{pop_name}_Pzz", time),
+            qty=pop_name + "_Pzz",
+            plot_patches=True,
+        )
+        run.GetPi(time).plot(
+            filename=plot_file_for_qty("Pxx", time),
+            qty="Pxx",
+            plot_patches=True,
+        )
+        run.GetPi(time).plot(
+            filename=plot_file_for_qty("Pzz", time),
+            qty="Pzz",
+            plot_patches=True,
         )
 
 
