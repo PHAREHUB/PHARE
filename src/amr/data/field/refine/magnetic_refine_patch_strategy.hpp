@@ -67,8 +67,8 @@ public:
     {
     }
 
-    // We compute the values of the new fine magnetic faces using what was already refined, ie the
-    // values on the old coarse faces.
+    // We compute the values of the new fine magnetic faces using what was already refined, ie
+    // the values on the old coarse faces.
     void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
                            SAMRAI::hier::Box const& fine_box,
                            SAMRAI::hier::IntVector const& ratio) override
