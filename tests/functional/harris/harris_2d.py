@@ -188,11 +188,15 @@ def plot(diag_dir, plot_dir):
             filename=plot_file_for_qty(plot_dir, "Pxx", time),
             qty=pop_name + "_Pxx",
             plot_patches=True,
+            vmin=0,
+            vmax=2.7,
         )
         run.GetPressure(time, pop_name=pop_name).plot(
             filename=plot_file_for_qty(plot_dir, "Pzz", time),
             qty=pop_name + "_Pzz",
             plot_patches=True,
+            vmin=0,
+            vmax=1.5,
         )
 
 
