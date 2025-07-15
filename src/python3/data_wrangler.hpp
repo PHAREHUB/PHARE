@@ -58,7 +58,7 @@ private:
 
 
 template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
-class DataWrangler
+class __attribute__((visibility("hidden"))) DataWrangler
 {
 public:
     static constexpr std::size_t dimension     = _dimension;
@@ -88,7 +88,7 @@ public:
     auto sort_merge_1d(std::vector<PatchData<std::vector<double>, dimension>> const&& input,
                        bool shared_patch_border = false)
     {
-        std::vector<std::pair<double, const PatchData<std::vector<double>, dimension>*>> sorted;
+        std::vector<std::pair<double, PatchData<std::vector<double>, dimension> const*>> sorted;
         for (auto const& data : input)
             sorted.emplace_back(core::Point<double, 1>::fromString(data.origin)[0], &data);
         std::sort(sorted.begin(), sorted.end(), [](auto& a, auto& b) { return a.first < b.first; });

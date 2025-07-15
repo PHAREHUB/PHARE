@@ -1,15 +1,15 @@
 #ifndef PHARE_PYTHON_PARTICLES_HPP
 #define PHARE_PYTHON_PARTICLES_HPP
 
-#include <cassert>
-#include <cstddef>
-#include <tuple>
+
 #include "amr/data/particles/refine/particles_data_split.hpp"
-#include "core/data/particles/particle_packer.hpp"
-#include "core/data/particles/particle.hpp"
-#include "core/utilities/types.hpp"
 
 #include "python3/pybind_def.hpp"
+
+#include <tuple>
+#include <cassert>
+#include <cstddef>
+
 
 namespace PHARE::pydata
 {
