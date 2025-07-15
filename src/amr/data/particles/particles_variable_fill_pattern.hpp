@@ -108,7 +108,7 @@ private:
     ParticleDomainFromGhostFillPattern& operator=(ParticleDomainFromGhostFillPattern const&)
         = delete;
 
-    static inline std::string const s_name_id = "ParticleDomainFromGhostFillPattern";
+    static inline std::string const s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
 
     SAMRAI::hier::IntVector const& getStencilWidth() override
     {
