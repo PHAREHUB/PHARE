@@ -17,5 +17,6 @@ if(HighFive)
   endif(testMPI)
 
   phare_python3_exec(9 simple_2d_refinement test_2d_2_core.py  ${CMAKE_CURRENT_BINARY_DIR})
+  phare_python3_exec(9  test_2d_overlaps test_2d_overlaps.py  ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()
