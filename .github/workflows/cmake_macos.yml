@@ -87,7 +87,4 @@ jobs:
     - name: Test
       working-directory: ${{runner.workspace}}
       run: |
-        PYTHONPATH=$PWD:$PWD/build:$PWD/pyphare python3 -m phlop.run.test_cases --cmake -i build -c 2 --logging 2 || echo failed
-        cat .phlop/build/tests/simulator/advance/test_particles_advance_1d/test_L0_particle_number_conservation_2_2.stdout
-        cat .phlop/build/tests/simulator/advance/test_particles_advance_1d/test_L0_particle_number_conservation_2_2.stderr
-
+        PYTHONPATH=$PWD:$PWD/build:$PWD/pyphare python3 -m phlop.run.test_cases --cmake -i build -c 2
