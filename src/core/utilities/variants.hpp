@@ -11,7 +11,7 @@
 namespace PHARE::core
 {
 template<typename T>
-auto ptr_or_null_for_type()
+auto decay_to_ptr()
 {
     return [](T& arg) mutable -> void* { return const_cast<std::decay_t<T>*>(&arg); };
 }
@@ -29,9 +29,8 @@ varient_visitor_overloads(Ts&&...) -> varient_visitor_overloads<std::decay_t<Ts>
 template<typename... Args>
 auto constexpr _visit_ptr_overloads(std::tuple<Args...>*)
 {
-    return varient_visitor_overloads{ptr_or_null_for_type<Args>()...,
-                                     [](auto&) mutable -> void* { return nullptr; },
-                                     [](auto const&) mutable -> void* { return nullptr; }};
+    return varient_visitor_overloads{decay_to_ptr<Args>()...,
+                                     [](auto&) mutable -> void* { return nullptr; }};
 }
 
 

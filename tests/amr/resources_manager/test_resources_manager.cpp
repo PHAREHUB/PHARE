@@ -341,11 +341,11 @@ TEST(usingResources, test_variants_resource_helpers)
         EXPECT_EQ(rho.name(), "rho");
 
         auto const& B = get_from_variants(resources, B_);
-        EXPECT_EQ(B.name(), "EM_B");
+        EXPECT_EQ(B.name(), "B");
     }
     auto [rho, B] = get_from_variants(resources, rho_, B_);
     EXPECT_EQ(rho.name(), "rho");
-    EXPECT_EQ(B.name(), "EM_B");
+    EXPECT_EQ(B.name(), "B");
 }
 
 TEST(usingResourcesManager, test_variants)
