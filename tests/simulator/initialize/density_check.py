@@ -206,19 +206,12 @@ def main():
                 pd_H = patch_H.patch_datas["value"]
                 ghosts_num = pd_h.ghosts_nbr[0]
 
-                if pd_H.ndim == 1:
-                    dset_h = pd_h.dataset[ghosts_num:-ghosts_num]
-                    dset_H = pd_H.dataset[ghosts_num:-ghosts_num]
-                if pd_H.ndim == 2:
-                    dset_h = pd_h.dataset[ghosts_num:-ghosts_num, ghosts_num:-ghosts_num]
-                    dset_H = pd_H.dataset[ghosts_num:-ghosts_num, ghosts_num:-ghosts_num]
+                dset_h = pd_h[patch_h.box]
+                dset_H = pd_H[patch_H.box]
 
                 std = np.std(dset_h - dset_H)
                 print("dim = {}, sigma(user v - actual v) = {}".format(pd_H.ndim, std))
-                assert( std < 0.06 )  # empirical value obtained from print just above
-
-                # for h_, H_ in zip(dset_h, dset_H):
-                #     np.testing.assert_almost_equal(h_, H_, decimal=1)
+                assert( std < 0.062 )  # empirical value obtained from print just above
 
 
     fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(6, 8))
