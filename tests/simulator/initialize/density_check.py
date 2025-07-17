@@ -228,7 +228,6 @@ def main():
             for patch_h, patch_H in zip(lvl_h.patches, lvl_H.patches):
                 pd_h = patch_h.patch_datas["value"]
                 pd_H = patch_H.patch_datas["value"]
-                ghosts_num = pd_h.ghosts_nbr[0]
 
                 dset_h = pd_h[patch_h.box]
                 dset_H = pd_H[patch_H.box]
@@ -307,8 +306,6 @@ def main():
 
     plt.tight_layout()
     plt.savefig("nCheck.pdf", dpi=300)
-
-    # /home/smets/codes/far/PHARE/tests/simulator/initialize
 
 
 if __name__ == "__main__":
