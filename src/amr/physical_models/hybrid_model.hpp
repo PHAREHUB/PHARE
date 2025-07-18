@@ -87,7 +87,7 @@ public:
     }
 
 
-    virtual ~HybridModel() override {}
+    virtual ~HybridModel() override { resourcesManager->unRegisterForRestarts(*this); }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface

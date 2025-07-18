@@ -384,8 +384,7 @@ namespace solver
             // handle samrai restarts / schedule creation
             // allocation of patch datas which may not want to be saved to restart files will
             // likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
-            if (!restartInitialized_
-                and SAMRAI::tbox::RestartManager::getManager()->isFromRestart())
+            if (!restartInitialized_ and SamraiLifeCycle::getRestartManager()->isFromRestart())
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
@@ -436,7 +435,7 @@ namespace solver
 
 
         void initializeLevelIntegrator(
-            const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& /*griddingAlg*/)
+            std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy> const& /*griddingAlg*/)
             override
         {
         }
@@ -557,7 +556,7 @@ namespace solver
         standardLevelSynchronization(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                      int const coarsestLevel, int const finestLevel,
                                      double const syncTime,
-                                     const std::vector<double>& /*oldTimes*/) override
+                                     std::vector<double> const& /*oldTimes*/) override
         {
             // TODO use messengers to sync with coarser
             for (auto ilvl = finestLevel; ilvl > coarsestLevel; --ilvl)

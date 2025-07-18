@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1) # released April 8, 2021 - https://www.kitware.com/cmake-3-20-1-available-for-download/
+cmake_minimum_required (VERSION 3.24.1) # released August, 2022
 
 project(PHARE VERSION 0.1 LANGUAGES CXX C)
 
@@ -18,7 +18,7 @@ endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
-find_program(Git git)
+find_program(Git git REQUIRED)
 find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})

@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 
 project(test-particles-data-copy-with-overlap)
 
@@ -19,8 +19,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   )
 
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_amr
+  phare_initializer
   ${GTEST_LIBS})
 
 

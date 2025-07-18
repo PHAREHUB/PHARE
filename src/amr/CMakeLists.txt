@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 project(phare_amr)
 
 set( SOURCES_INC
@@ -72,15 +72,18 @@ set( SOURCES_INC
      load_balancing/load_balancer_hybrid_strategy.hpp
      load_balancing/concrete_load_balancer_hybrid_strategy_homogeneous.hpp
      load_balancing/concrete_load_balancer_hybrid_strategy_nppc.hpp
+     samrai.hpp
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp
      resources_manager/amr_utils.cpp
      data/field/coarsening/field_coarsen.cpp
      messengers/messenger_factory.cpp
+     samrai.cpp
    )
 
-add_library(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})
+# single source of entry for static SAMRAI things
+add_library(${PROJECT_NAME} SHARED ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 
@@ -98,6 +101,14 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   SAMRAI_tbox
   SAMRAI_xfer
   MPI::MPI_C
-  )
-set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
+)
 
+if (HighFive) # SAMRAI USES HDF5 so we need this here
+  target_link_libraries(${PROJECT_NAME} PUBLIC HDF5::HDF5)
+endif()
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
+  phare_initializer
+)
+
+set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")

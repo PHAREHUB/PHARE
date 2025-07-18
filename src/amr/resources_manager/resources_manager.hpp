@@ -3,6 +3,7 @@
 
 #include "core/def/phare_mpi.hpp"
 
+#include "amr/samrai.hpp"
 #include "core/logger.hpp"
 
 #include "field_resource.hpp"
@@ -19,6 +20,7 @@
 
 #include <map>
 #include <optional>
+#include <unordered_map>
 
 
 namespace PHARE
@@ -97,7 +99,7 @@ namespace amr
 
 
         ResourcesManager()
-            : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
+            : variableDatabase_{SamraiLifeCycle::getDatabase()}
             , context_{variableDatabase_->getContext(contextName_)}
             , dimension_{SAMRAI::tbox::Dimension{dimension}}
         {
@@ -293,11 +295,22 @@ namespace amr
         template<typename ResourcesView>
         void registerForRestarts(ResourcesView const& view) const
         {
-            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
+            auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
 
             for (auto const& id : restart_patch_data_ids(view))
                 pdrm->registerPatchDataForRestart(id);
         }
+
+
+        template<typename ResourcesView>
+        void unRegisterForRestarts(ResourcesView const& view) const
+        {
+            auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
+
+            for (auto const& id : restart_patch_data_ids(view))
+                pdrm->unregisterPatchDataForRestart(id);
+        }
+
 
         template<typename ResourcesView>
         NO_DISCARD auto restart_patch_data_ids(ResourcesView const& view) const

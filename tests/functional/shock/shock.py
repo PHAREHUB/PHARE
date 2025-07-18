@@ -3,15 +3,14 @@
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.run import Run
+from pyphare import cpp
 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
 mpl.use("Agg")
-from pyphare.cpp import cpp_lib
 
-cpp = cpp_lib()
 startMPI()
 
 

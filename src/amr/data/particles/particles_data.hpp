@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "core/def/phare_mpi.hpp"
+#include "amr/samrai.hpp"
 
 
 #include <SAMRAI/hier/BoxOverlap.h>
@@ -15,7 +16,6 @@
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/pdat/CellOverlap.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
-#include <SAMRAI/tbox/RestartManager.h>
 #include "SAMRAI/hier/Transformation.h"
 
 

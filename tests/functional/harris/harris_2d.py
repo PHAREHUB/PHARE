@@ -2,19 +2,18 @@
 
 import os
 import numpy as np
-import matplotlib as mpl
 from pathlib import Path
 
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
-from pyphare.pharesee.run import Run
-from pyphare.simulator.simulator import Simulator, startMPI
+
+from pyphare import cpp
+from pyphare.simulator.simulator import Simulator
+from pyphare.simulator.simulator import startMPI
 
 from tests.simulator import SimulatorTest
 
-mpl.use("Agg")
 
-cpp = cpp_lib()
+ph.NO_GUI()
 
 
 cells = (200, 100)

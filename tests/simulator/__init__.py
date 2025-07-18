@@ -212,9 +212,9 @@ CALIPER_MODES = [
 
 
 def activate_caliper(data_dir, mode_idx=0):
-    from pyphare.cpp import cpp_lib
+    from pyphare import cpp
 
-    rank = cpp_lib().mpi_rank()
+    rank = cpp.mpi_rank()
     env = os.environ
 
     # env["CALI_SERVICES_ENABLE"] = "event,trace,timer,report"
@@ -291,20 +291,19 @@ class SimulatorTest(unittest.TestCase):
         super().run(result)
 
     def unique_diag_dir_for_test_case(self, base_path, ndim, interp, post_path=""):
-        from pyphare.cpp import cpp_lib
+        from pyphare import cpp
 
-        cpp = cpp_lib()
         return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}/{post_path}"
 
     def clean_up_diags_dirs(self):
-        from pyphare.cpp import cpp_lib
+        from pyphare import cpp
 
-        cpp_lib().mpi_barrier()
-        if cpp_lib().mpi_rank() == 0 and self.success:
+        cpp.mpi_barrier()
+        if cpp.mpi_rank() == 0 and self.success:
             import os
             import shutil
 
             for diag_dir in self.diag_dirs:
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
-        cpp_lib().mpi_barrier()
+        cpp.mpi_barrier()

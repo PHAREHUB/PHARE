@@ -3,6 +3,12 @@
 set (PHARE_HAS_HIGHFIVE "0")
 if(HighFive)
 
+  if(DEFINED HDF5_ROOT)
+    find_package(HDF5 PATHS ${HDF5_ROOT} REQUIRED)
+  else()
+    find_package(HDF5 REQUIRED)
+  endif()
+
   if(NOT DEFINED PHARE_HIGHFIVE_VERSION)
     SET(PHARE_HIGHFIVE_VERSION "main")
   endif()
@@ -18,12 +24,6 @@ if(HighFive)
   add_subdirectory(${HIGHFIVE_SRC})
 
   message("HighFive enabled - checking HDF5")
-
-  if(DEFINED HDF5_ROOT)
-    find_package(HDF5 PATHS ${HDF5_ROOT} REQUIRED)
-  else()
-    find_package(HDF5 REQUIRED)
-  endif()
 
   if(DEFINED HDF5_ENABLE_PARALLEL AND "${HDF5_ENABLE_PARALLEL}" STREQUAL "ON")
     set (HDF5_IS_PARALLEL TRUE) # this flag is needed if hdf5 is built from source.

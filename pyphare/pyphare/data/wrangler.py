@@ -4,13 +4,15 @@ from pyphare.core import gridlayout
 class DataWrangler:
     def __init__(self, simulator):
         from .. import pharein as ph
-        from pyphare.cpp import cpp_lib
+        from pyphare import cpp
 
         self.dim = ph.global_vars.sim.ndim
         self.interp = ph.global_vars.sim.interp_order
         self.refined_particle_nbr = ph.global_vars.sim.refined_particle_nbr
         self.cpp = getattr(
-            cpp_lib(),
+            cpp.cpp_lib(
+                cpp.simulator_id(self.dim, self.interp, self.refined_particle_nbr)
+            ),
             f"DataWrangler_{self.dim}_{self.interp}_{self.refined_particle_nbr}",
         )(simulator.cpp_sim, simulator.cpp_hier)
 

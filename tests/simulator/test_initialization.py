@@ -1,11 +1,8 @@
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
-
 import unittest
 
 import numpy as np
 from ddt import ddt
+from pyphare import cpp
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel

@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 
 project(test-field-refine)
 
@@ -24,7 +24,11 @@ function(_setup_amr_field_refine_test src_name)
     ${GTEST_INCLUDE_DIRS}
   )
 
-  target_link_libraries(${src_name} PRIVATE phare_amr ${GTEST_LIBS})
+  target_link_libraries(${src_name} PRIVATE
+      phare_amr
+      phare_initializer
+      ${GTEST_LIBS}
+  )
 
   target_include_directories(${src_name} PRIVATE
     $<BUILD_INTERFACE:${SAMRAI_INCLUDE_DIRS}>)

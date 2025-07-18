@@ -136,9 +136,7 @@ def phase_speed(run_path, ampl, xmax):
 
 
 def main():
-    from pyphare.cpp import cpp_lib
-
-    cpp = cpp_lib()
+    from pyphare import cpp
 
     from pyphare.pharesee.run import Run
 
