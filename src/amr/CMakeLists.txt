@@ -104,4 +104,8 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   MPI::MPI_C
 )
 
+if (HighFive) # SAMRAI USES HDF5 so we need this here
+  target_link_libraries(${PROJECT_NAME} INTERFACE HighFive)
+endif()
+
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
