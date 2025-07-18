@@ -73,18 +73,17 @@ jobs:
 
     - name: Configure CMake
       working-directory: ${{runner.workspace}}/build
-      run: | # SAMRAI_BUILD_SHARED_LIBS=OFF == https://github.com/LLNL/SAMRAI/pull/294
+      run: |
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
               -DCMAKE_BUILD_TYPE=Release \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
-              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1" -DSAMRAI_BUILD_SHARED_LIBS=OFF
+              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1"
 
     - name: Build
       working-directory: ${{runner.workspace}}/build
       run: make VERBOSE=1
 
     - name: Test
-      working-directory: ${{runner.workspace}}
-      run: |
-        PYTHONPATH=$PWD:$PWD/build:$PWD/pyphare python3 -m phlop.run.test_cases --cmake -i build -c 2
+      working-directory: ${{runner.workspace}}/build
+      run: ctest -j 2 --output-on-failure

@@ -27,8 +27,6 @@ def simulator_id(dim, interp, nbrRefinedPart):
 
 
 def cpp_etc_lib():
-    import importlib
-
     return importlib.import_module("pybindlibs.cpp_etc")
 
 
