@@ -90,7 +90,6 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHAR
 target_link_directories(${PROJECT_NAME} PUBLIC ${MPI_LIBRARY_PATH})
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_core
-  phare_initializer
   SAMRAI_algs
   SAMRAI_appu
   SAMRAI_geom
@@ -105,7 +104,11 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
 )
 
 if (HighFive) # SAMRAI USES HDF5 so we need this here
-  target_link_libraries(${PROJECT_NAME} INTERFACE HighFive)
+  target_link_libraries(${PROJECT_NAME} PUBLIC HDF5::HDF5)
 endif()
+
+target_link_libraries(${PROJECT_NAME} PUBLIC
+  phare_initializer
+)
 
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
