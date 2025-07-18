@@ -4,7 +4,7 @@ import os
 import unittest
 
 from pyphare import cpp
-import h5py
+
 import numpy as np
 import pyphare.pharein as ph
 from ddt import data, ddt
@@ -100,6 +100,8 @@ class DiagnosticsTest(unittest.TestCase):
         return self._testMethodName.split("_")[-1]
 
     def test_dump_diags_timestamps(self):
+        import h5py
+
         print("test_dump_diags dim/interp:{}/{}".format(1, 1))
 
         simulation = ph.Simulation(**simArgs.copy())
