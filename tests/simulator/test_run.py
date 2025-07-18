@@ -2,17 +2,15 @@
 
 import numpy as np
 from pathlib import Path
-import matplotlib as mpl
 
-import pyphare.pharein as ph
 from pyphare import cpp
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.run import Run
 from tests.simulator import SimulatorTest
 
-mpl.use("Agg")
+ph.NO_GUI()
 
-startMPI()
 
 time_step = 0.005
 final_time = 0.05
@@ -271,4 +269,5 @@ class RunTest(SimulatorTest):
 if __name__ == "__main__":
     import unittest
 
+    startMPI()
     unittest.main()

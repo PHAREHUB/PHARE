@@ -55,6 +55,7 @@ jobs:
       run: |
         brew reinstall gcc
         brew install open-mpi hdf5-mpi ccache
+        brew uninstall hdf5
         echo "/usr/local/opt/ccache/libexec" >> $GITHUB_PATH
 
     - name: Ensure ccache uses ~/.ccache
