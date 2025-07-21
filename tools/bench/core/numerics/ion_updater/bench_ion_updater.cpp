@@ -10,12 +10,13 @@ void updater_routine(benchmark::State& state)
 {
     constexpr std::uint32_t cells   = 30;
     constexpr std::uint32_t n_parts = 1e7;
+    auto static constexpr opts      = PHARE::SimOpts{dim, interp};
 
-    using PHARE_Types   = core::PHARE_Types<dim, interp>;
+    using PHARE_Types   = core::PHARE_Types<opts>;
     using GridLayout_t  = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using Electromag_t  = core::UsableElectromag<dim>;
-    using ParticleArray = typename PHARE_Types::ParticleArray_t;
-    using Particle_t    = typename ParticleArray::value_type;
+    using ParticleArray = PHARE_Types::ParticleArray_t;
+    using Particle_t    = ParticleArray::value_type;
     using Ions          = PHARE::core::UsableIons_t<ParticleArray, interp>;
     using IonUpdater    = core::IonUpdater<Ions, Electromag_t, GridLayout_t>;
     using Boxing_t      = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout_t>;
@@ -46,7 +47,7 @@ void updater_routine(benchmark::State& state)
 
         patch_particles.domain_particles = particles_copy;
         auto& pack
-            = std::get<3>(ions.getRunTimeResourcesViewList()[0].getCompileTimeResourcesViewList());
+            = std::get<4>(ions.getRunTimeResourcesViewList()[0].getCompileTimeResourcesViewList());
         pack.setBuffer(&patch_particles.pack());
 
         ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::all);

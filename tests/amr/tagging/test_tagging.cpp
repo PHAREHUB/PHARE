@@ -23,7 +23,8 @@ using namespace PHARE::amr;
 
 TEST(test_tagger, fromFactoryValid)
 {
-    using phare_types = PHARE::solver::PHARE_Types<1, 1, 2>;
+    auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
+    using phare_types          = PHARE::solver::PHARE_Types<opts>;
     PHARE::initializer::PHAREDict dict;
     dict["model"]     = std::string{"HybridModel"};
     dict["method"]    = std::string{"default"};
@@ -34,7 +35,8 @@ TEST(test_tagger, fromFactoryValid)
 
 TEST(test_tagger, fromFactoryInvalid)
 {
-    using phare_types = PHARE::solver::PHARE_Types<1, 1, 2>;
+    auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
+    using phare_types          = PHARE::solver::PHARE_Types<opts>;
     PHARE::initializer::PHAREDict dict;
     dict["model"]     = std::string{"invalidModel"};
     dict["method"]    = std::string{"invalidStrat"};
@@ -168,11 +170,12 @@ struct TestTagger : public ::testing::Test
     auto static constexpr dim            = TaggingTestInfo_t::dim;
     auto static constexpr interp_order   = TaggingTestInfo_t::interp;
     auto static constexpr refinedPartNbr = TaggingTestInfo_t::refinedPartNbr;
+    auto static constexpr opts           = PHARE::SimOpts{dim, interp_order, refinedPartNbr};
 
-    using phare_types = PHARE::solver::PHARE_Types<dim, interp_order, refinedPartNbr>;
-    using Electromag  = typename phare_types::Electromag_t;
-    using Ions        = typename phare_types::Ions_t;
-    using Electrons   = typename phare_types::Electrons_t;
+    using phare_types = PHARE::solver::PHARE_Types<opts>;
+    using Electromag  = phare_types::Electromag_t;
+    using Ions        = phare_types::Ions_t;
+    using Electrons   = phare_types::Electrons_t;
     using GridLayoutT = GridLayout<GridLayoutImplYee<dim, interp_order>>;
 
     struct SinglePatchHybridModel

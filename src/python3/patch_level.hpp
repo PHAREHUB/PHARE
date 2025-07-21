@@ -1,28 +1,25 @@
 #ifndef PHARE_PYTHON_PATCH_LEVEL_HPP
 #define PHARE_PYTHON_PATCH_LEVEL_HPP
 
-#include <array>
+#include "patch_data.hpp"
+#include "phare_solver.hpp"
+
+#include <string>
 #include <cstring>
 #include <cstddef>
-#include <string>
-#include <utility>
-#include "phare_solver.hpp"
 
 
 namespace PHARE::pydata
 {
-template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart>
+template<auto opts>
 class __attribute__((visibility("hidden"))) PatchLevel
 {
 public:
-    static constexpr std::size_t dimension     = dim;
-    static constexpr std::size_t interp_order  = interpOrder;
-    static constexpr std::size_t nbRefinedPart = nbrRefPart;
+    static constexpr std::size_t dimension = opts.dimension;
 
-    using PHARESolverTypes = solver::PHARE_Types<dimension, interp_order, nbRefinedPart>;
-    using HybridModel      = typename PHARESolverTypes::HybridModel_t;
-
-    using GridLayout = typename HybridModel::gridlayout_type;
+    using PHARESolverTypes = solver::PHARE_Types<opts>;
+    using HybridModel      = PHARESolverTypes::HybridModel_t;
+    using GridLayout       = HybridModel::gridlayout_type;
 
     PatchLevel(amr::Hierarchy& hierarchy, HybridModel& model, std::size_t lvl)
         : lvl_(lvl)
