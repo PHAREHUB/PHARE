@@ -219,13 +219,14 @@ class A1DInterpolator : public ::testing::Test
 public:
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
+    constexpr static PHARE::SimOpts opts{dimension, interp_order};
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
-    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
-    using Electromag_t     = typename PHARE_TYPES::Electromag_t;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
+    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
+    using Electromag_t     = PHARE_TYPES::Electromag_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
     Electromag_t em;
@@ -305,14 +306,15 @@ class A2DInterpolator : public ::testing::Test
 public:
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
+    constexpr static PHARE::SimOpts opts{dimension, interp_order};
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
     static constexpr std::uint32_t ny = 50;
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
     using GridLayoutImpl   = GridLayoutImplYee<dimension, interp_order>;
-    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
-    using Electromag_t     = typename PHARE_TYPES::Electromag_t;
+    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
+    using Electromag_t     = PHARE_TYPES::Electromag_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
     Electromag_t em;
@@ -395,15 +397,16 @@ class A3DInterpolator : public ::testing::Test
 public:
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
+    constexpr static PHARE::SimOpts opts{dimension, interp_order};
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
     static constexpr std::uint32_t ny = 50;
     static constexpr std::uint32_t nz = 50;
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
-    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
-    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
-    using Electromag_t     = typename PHARE_TYPES::Electromag_t;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
+    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
+    using Electromag_t     = PHARE_TYPES::Electromag_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
     Electromag_t em;
@@ -494,8 +497,9 @@ class ACollectionOfParticles_1d : public ::testing::Test
 {
     static constexpr auto dimension    = Interpolator::dimension;
     static constexpr auto interp_order = Interpolator::interp_order;
+    constexpr static PHARE::SimOpts opts{dimension, interp_order};
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<dimension, interp_order>;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
     using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
     using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
     using Grid_t           = typename PHARE_TYPES::Grid_t;
@@ -686,11 +690,12 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
     static constexpr auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
+    constexpr static PHARE::SimOpts opts{dim, interp_order};
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<dim, interp_order>;
-    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
-    using Grid_t           = typename PHARE_TYPES::Grid_t;
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
+    using Grid_t           = PHARE_TYPES::Grid_t;
     using UsableVecFieldND = UsableVecField<dim>;
 
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};

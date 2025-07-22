@@ -12,10 +12,11 @@ namespace PHARE::amr::bench
 template<std::size_t dim, std::size_t interp, std::size_t op>
 class ParticleDataCopy : public benchmark::Fixture
 {
-    using PHARE_Types   = PHARE::core::PHARE_Types<dim, interp>;
-    using GridLayout_t  = typename PHARE_Types::GridLayout_t;
-    using ParticleArray = typename PHARE_Types::ParticleArray_t;
-    using ParticlesData = PHARE::amr::ParticlesData<ParticleArray>;
+    auto static constexpr opts = PHARE::SimOpts{dim, interp};
+    using PHARE_Types          = PHARE::core::PHARE_Types<opts>;
+    using GridLayout_t         = PHARE_Types::GridLayout_t;
+    using ParticleArray        = PHARE_Types::ParticleArray_t;
+    using ParticlesData        = PHARE::amr::ParticlesData<ParticleArray>;
 
 public:
     void SetUp(::benchmark::State const& state) override

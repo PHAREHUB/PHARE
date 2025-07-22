@@ -3,17 +3,18 @@
 template<std::size_t dim, std::size_t interp>
 void push(benchmark::State& state)
 {
+    auto static constexpr opts      = PHARE::SimOpts{dim, interp};
     constexpr std::uint32_t cells   = 65;
     constexpr std::uint32_t n_parts = 1e7;
 
-    using PHARE_Types       = PHARE::core::PHARE_Types<dim, interp>;
+    using PHARE_Types       = PHARE::core::PHARE_Types<opts>;
     using GridLayout_t      = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using Interpolator      = PHARE::core::Interpolator<dim, interp>;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dim, interp>;
     using Electromag_t      = PHARE::core::UsableElectromag<dim>;
-    using Ions_t            = typename PHARE_Types::Ions_t;
-    using ParticleArray     = typename Ions_t::particle_array_type;
-    using Particle_t        = typename ParticleArray::value_type;
+    using Ions_t            = PHARE_Types::Ions_t;
+    using ParticleArray     = Ions_t::particle_array_type;
+    using Particle_t        = ParticleArray::value_type;
     using ParticleRange     = PHARE::core::IndexRange<ParticleArray>;
 
     using BorisPusher_t = PHARE::core::BorisPusher<dim, ParticleRange, Electromag_t, Interpolator,
