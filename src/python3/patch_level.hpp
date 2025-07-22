@@ -12,7 +12,7 @@
 namespace PHARE::pydata
 {
 template<std::size_t dim, std::size_t interpOrder, std::size_t nbrRefPart>
-class PatchLevel
+class __attribute__((visibility("hidden"))) PatchLevel
 {
 public:
     static constexpr std::size_t dimension     = dim;
@@ -59,8 +59,8 @@ public:
                 if (!pop_data.count(pop.name()))
                     pop_data.emplace(pop.name(), Inner());
 
-                setPatchDataFromField(pop_data.at(pop.name()).emplace_back(), pop.chargeDensity(), grid,
-                                      patchID);
+                setPatchDataFromField(pop_data.at(pop.name()).emplace_back(), pop.chargeDensity(),
+                                      grid, patchID);
             }
         };
 

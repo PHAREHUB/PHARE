@@ -1,17 +1,17 @@
 #ifndef PHARE_PYTHON_PATCH_DATA_HPP
 #define PHARE_PYTHON_PATCH_DATA_HPP
 
-#include <array>
+#include "pybind_def.hpp"
+
 #include <string>
 #include <cstring>
 #include <utility>
 
-#include "pybind_def.hpp"
 
 namespace PHARE::pydata
 {
 template<typename Data, std::size_t dim>
-struct PatchData
+struct __attribute__((visibility("hidden"))) PatchData
 {
     static auto constexpr dimension = dim;
     std::string patchID;
