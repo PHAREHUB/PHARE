@@ -69,10 +69,10 @@ jobs:
         python -m pip install -r requirements.txt
 
     - name: Create Build Environment
-      run: cmake -E make_directory ${{runner.workspace}}/build
+      run: cmake -E make_directory ${{github.workspace}}/build
 
     - name: Configure CMake
-      working-directory: ${{runner.workspace}}/build
+      working-directory: ${{github.workspace}}/build
       run: |
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
@@ -81,10 +81,10 @@ jobs:
               -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 "
 
     - name: Build
-      working-directory: ${{runner.workspace}}/build
+      working-directory: ${{github.workspace}}/build
       run: cmake --build . -j 2
 
     - name: Test
-      working-directory: ${{runner.workspace}}/build
+      working-directory: ${{github.workspace}}/build
       run: ctest -j 2 --output-on-failure
 

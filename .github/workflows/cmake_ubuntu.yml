@@ -66,19 +66,19 @@ jobs:
         python -m pip install -r requirements.txt
 
     - name: Create Build Environment
-      run: cmake -E make_directory ${{runner.workspace}}/build
+      run: cmake -E make_directory ${{github.workspace}}/build
 
     - name: Configure CMake
-      working-directory: ${{runner.workspace}}/build
+      working-directory: ${{github.workspace}}/build
       run: |
         set -ex
         export CC=gcc CXX=g++
         [ "${{ matrix.cc }}" = "clang" ] && export CC=clang CXX=clang++
         cmake $GITHUB_WORKSPACE
-        cd ${{runner.workspace}}/PHARE/subprojects/samrai && mkdir build && cd build
+        cd ${{github.workspace}}/subprojects/samrai && mkdir build && cd build
         cmake .. -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo
         make -j2 && sudo make install && cd ../.. && rm -rf samrai
-        cd ${{runner.workspace}}/build && rm -rf *
+        cd ${{github.workspace}}/build && rm -rf *
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
               -DCMAKE_BUILD_TYPE=Debug -Dasan=OFF \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
@@ -87,9 +87,9 @@ jobs:
               -DCMAKE_CXX_FLAGS="-O3 -DPHARE_DIAG_DOUBLES=1 " -Dphare_configurator=ON
 
     - name: Build
-      working-directory: ${{runner.workspace}}/build
+      working-directory: ${{github.workspace}}/build
       run: cmake --build . -j 1
 
     - name: Test
-      working-directory: ${{runner.workspace}}/build
+      working-directory: ${{github.workspace}}/build
       run: ctest -j 2 --output-on-failure
