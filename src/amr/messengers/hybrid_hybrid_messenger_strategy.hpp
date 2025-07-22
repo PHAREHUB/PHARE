@@ -10,14 +10,14 @@
 #include "core/utilities/index/index.hpp"
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
+#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
-#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
+#include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
 #include "amr/data/field/refine/electric_field_refiner.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
-#include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
@@ -35,6 +35,8 @@
 
 #include "SAMRAI/xfer/RefineAlgorithm.h"
 #include "SAMRAI/xfer/RefineSchedule.h"
+#include "SAMRAI/xfer/CoarsenAlgorithm.h"
+#include "SAMRAI/xfer/CoarsenSchedule.h"
 #include "SAMRAI/xfer/BoxGeometryVariableFillPattern.h"
 
 
@@ -96,9 +98,9 @@ namespace amr
         using FieldTimeInterp       = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
 
         template<typename Policy>
-        using BaseCoarsenOp     = FieldCoarsenOperator<GridLayoutT, GridT, Policy>;
-        using MagneticCoarsenOp = BaseCoarsenOp<MagneticFieldCoarsener<dimension>>;
-        using DefaultCoarsenOp  = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
+        using BaseCoarsenOp          = FieldCoarsenOperator<GridLayoutT, GridT, Policy>;
+        using DefaultCoarsenOp       = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
+        using ElectricFieldCoarsenOp = BaseCoarsenOp<ElectricFieldCoarsener<dimension>>;
 
     public:
         static inline std::string const stratName    = "HybridModel-HybridModel";
@@ -114,6 +116,7 @@ namespace amr
             resourcesManager_->registerResources(Jold_);
             resourcesManager_->registerResources(NiOld_);
             resourcesManager_->registerResources(ViOld_);
+            resourcesManager_->registerResources(Eold_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -134,6 +137,7 @@ namespace amr
             resourcesManager_->allocate(Jold_, patch, allocateTime);
             resourcesManager_->allocate(NiOld_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
+            resourcesManager_->allocate(Eold_, patch, allocateTime);
         }
 
 
@@ -194,10 +198,45 @@ namespace amr
                 throw std::runtime_error(
                     "HybridHybridMessengerStrategy: missing electric field variable IDs");
             }
+            // refluxing
+            // we first want to coarsen the flux sum onto the coarser level
+            auto ex_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric.xName);
+            auto ey_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric.yName);
+            auto ez_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric.zName);
+
+            auto ex_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric.xName);
+            auto ey_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric.yName);
+            auto ez_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric.zName);
+
+            if (!ex_reflux_id or !ey_reflux_id or !ez_reflux_id or !ex_fluxsum_id or !ey_fluxsum_id
+                or !ez_fluxsum_id)
+            {
+                throw std::runtime_error(
+                    "HybridHybridMessengerStrategy: missing electric refluxing field variable IDs");
+            }
 
             Ealgo.registerRefine(*ex_id, *ex_id, *ex_id, EfieldRefineOp_, xVariableFillPattern);
             Ealgo.registerRefine(*ey_id, *ey_id, *ey_id, EfieldRefineOp_, yVariableFillPattern);
             Ealgo.registerRefine(*ez_id, *ez_id, *ez_id, EfieldRefineOp_, zVariableFillPattern);
+
+            RefluxAlgo.registerCoarsen(*ex_reflux_id, *ex_fluxsum_id, electricFieldCoarseningOp_,
+                                       xVariableFillPattern);
+            RefluxAlgo.registerCoarsen(*ey_reflux_id, *ey_fluxsum_id, electricFieldCoarseningOp_,
+                                       yVariableFillPattern);
+            RefluxAlgo.registerCoarsen(*ez_reflux_id, *ez_fluxsum_id, electricFieldCoarseningOp_,
+                                       zVariableFillPattern);
+
+            // we then need to refill the ghosts so that they agree with the newly refluxed cells
+
+            PatchGhostRefluxedAlgo.registerRefine(*ex_reflux_id, *ex_reflux_id, *ex_reflux_id,
+                                                  EfieldRefineOp_, xVariableFillPattern);
+
+            PatchGhostRefluxedAlgo.registerRefine(*ey_reflux_id, *ey_reflux_id, *ey_reflux_id,
+                                                  EfieldRefineOp_, yVariableFillPattern);
+
+            PatchGhostRefluxedAlgo.registerRefine(*ez_reflux_id, *ez_reflux_id, *ez_reflux_id,
+                                                  EfieldRefineOp_, zVariableFillPattern);
+
 
             registerGhostComms_(hybridInfo);
             registerInitComms(hybridInfo);
@@ -226,6 +265,9 @@ namespace amr
             magGhostsRefineSchedules[levelNumber] = Balgo.createSchedule(
                 level, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
 
+            // technically not needed for finest
+            patchGhostRefluxedSchedules[levelNumber] = PatchGhostRefluxedAlgo.createSchedule(level);
+
             elecSharedNodesRefiners_.registerLevel(hierarchy, level);
             currentSharedNodesRefiners_.registerLevel(hierarchy, level);
 
@@ -243,9 +285,14 @@ namespace amr
             // TODO this 'if' may not be OK if L0 is regrided
             if (levelNumber != rootLevelNumber)
             {
+                // refluxing
+                auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
+                refluxSchedules[levelNumber] = RefluxAlgo.createSchedule(coarseLevel, level);
+
                 // those are for refinement
                 magInitRefineSchedules[levelNumber] = Balgo.createSchedule(
                     level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
+
                 electricInitRefiners_.registerLevel(hierarchy, level);
                 domainParticlesRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
@@ -280,21 +327,6 @@ namespace amr
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             patchGhostPartRefiners_.fill(levelNumber, initDataTime);
 
-
-            // regriding will fill the new level wherever it has points that overlap
-            // old level. This will include its level border points.
-            // These new level border points will thus take values that where previous
-            // domain values. Magnetic flux is thus not necessarily consistent with
-            // the Loring et al. method to sync the induction between coarse and fine faces.
-            // Specifically, we need all fine faces to have equal magnetic field and also
-            // equal to that of the shared coarse face.
-            // This means that we now need to fill ghosts and border included
-
-            if (!isRegriddingL0)
-            {
-                auto& E = hybridModel.state.electromag.E;
-                elecGhostsRefiners_.fill(E, levelNumber, initDataTime);
-            }
 
             // we now call only levelGhostParticlesOld.fill() and not .regrid()
             // regrid() would refine from next coarser in regions of level not overlaping
@@ -460,22 +492,25 @@ namespace amr
                 for (auto& pop : ions)
                 {
                     // first thing to do is to project patchGhostParitcles moments
-                    auto& patchGhosts = pop.patchGhostParticles();
-                    auto& particleDensity     = pop.particleDensity();
-                    auto& chargeDensity     = pop.chargeDensity();
-                    auto& flux        = pop.flux();
+                    auto& patchGhosts     = pop.patchGhostParticles();
+                    auto& particleDensity = pop.particleDensity();
+                    auto& chargeDensity   = pop.chargeDensity();
+                    auto& flux            = pop.flux();
 
-                    interpolate_(makeRange(patchGhosts), particleDensity, chargeDensity, flux, layout);
+                    interpolate_(makeRange(patchGhosts), particleDensity, chargeDensity, flux,
+                                 layout);
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
                         // then grab levelGhostParticlesOld and levelGhostParticlesNew
                         // and project them with alpha and (1-alpha) coefs, respectively
                         auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux, layout, 1. - alpha);
+                        interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux,
+                                     layout, 1. - alpha);
 
                         auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), particleDensity, chargeDensity, flux, layout, alpha);
+                        interpolate_(makeRange(levelGhostNew), particleDensity, chargeDensity, flux,
+                                     layout, alpha);
                     }
                 }
             }
@@ -567,6 +602,7 @@ namespace amr
 
 
 
+
         /**
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
@@ -588,19 +624,22 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Jold_, NiOld_, ViOld_);
+                    hybridModel.state.ions, Jold_, NiOld_, ViOld_, Eold_);
 
                 resourcesManager_->setTime(Jold_, *patch, currentTime);
                 resourcesManager_->setTime(NiOld_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
+                resourcesManager_->setTime(Eold_, *patch, currentTime);
 
                 auto& J  = hybridModel.state.J;
                 auto& Vi = hybridModel.state.ions.velocity();
                 auto& Ni = hybridModel.state.ions.chargeDensity();
+                auto& E  = hybridModel.state.electromag.E;
 
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);
                 NiOld_.copyData(Ni);
+                Eold_.copyData(E);
             }
         }
 
@@ -646,10 +685,18 @@ namespace amr
             PHARE_LOG_LINE_STR("synchronizing level " + std::to_string(levelNumber));
 
             // call coarsning schedules...
-            magnetoSynchronizers_.sync(levelNumber);
+            // magnetoSynchronizers_.sync(levelNumber);
             electroSynchronizers_.sync(levelNumber);
             densitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
+        }
+
+
+        void reflux(int const coarserLevelNumber, int const fineLevelNumber,
+                    double const syncTime) override
+        {
+            refluxSchedules[fineLevelNumber]->coarsenData();
+            patchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
         }
 
         // after coarsening, domain nodes have been updated and therefore patch ghost nodes
@@ -677,7 +724,7 @@ namespace amr
             // level border with next coarser model B would invalidate divB on the first
             // fine domain cell since its border face only received a fraction of the
             // induction that has occured on the shared coarse face.
-            magPatchGhostsRefineSchedules[levelNumber]->fillData(time);
+            // magPatchGhostsRefineSchedules[levelNumber]->fillData(time);
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
             rhoGhostsRefiners_.fill(levelNumber, time);
             velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
@@ -693,11 +740,13 @@ namespace amr
                 return keys;
             };
 
-            elecSharedNodesRefiners_.addStaticRefiners(info->ghostElectric, EfieldNodeRefineOp_,
-                                                       makeKeys(info->ghostElectric));
+            elecSharedNodesRefiners_.addTimeRefiners(info->ghostElectric, info->ghostElectric,
+                                                     core::VecFieldNames{Eold_},
+                                                     EfieldNodeRefineOp_, fieldTimeOp_);
 
-            elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
-                                                  makeKeys(info->ghostElectric));
+            elecGhostsRefiners_.addTimeRefiners(info->ghostElectric, info->ghostElectric,
+                                                core::VecFieldNames{Eold_}, EfieldRefineOp_,
+                                                fieldTimeOp_);
 
             currentSharedNodesRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
                                                         core::VecFieldNames{Jold_},
@@ -756,10 +805,7 @@ namespace amr
 
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            magnetoSynchronizers_.add(info->modelMagnetic, magneticCoarseningOp_,
-                                      info->modelMagnetic.vecName);
-
-            electroSynchronizers_.add(info->modelElectric, fieldCoarseningOp_,
+            electroSynchronizers_.add(info->modelElectric, electricFieldCoarseningOp_,
                                       info->modelElectric.vecName);
 
             ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, fieldCoarseningOp_,
@@ -996,10 +1042,10 @@ namespace amr
 
 
 
-
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
+        VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
 
 
         //! ResourceManager shared with other objects (like the HybridModel)
@@ -1036,6 +1082,10 @@ namespace amr
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> elecPatchGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magSharedNodeRefineSchedules;
 
+        SAMRAI::xfer::CoarsenAlgorithm RefluxAlgo{SAMRAI::tbox::Dimension{dimension}};
+        SAMRAI::xfer::RefineAlgorithm PatchGhostRefluxedAlgo;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::CoarsenSchedule>> refluxSchedules;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> patchGhostRefluxedSchedules;
 
         //! store refiners for electric fields that need ghosts to be filled
         SharedNodeRefinerPool elecSharedNodesRefiners_{resourcesManager_};
@@ -1093,7 +1143,7 @@ namespace amr
 
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
         CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
-        CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
+        CoarsenOperator_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
         MagneticRefinePatchStrategy<ResourcesManagerT, FieldDataT> magneticRefinePatchStrategy_{
             *resourcesManager_};
