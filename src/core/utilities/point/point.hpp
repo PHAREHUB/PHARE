@@ -85,15 +85,6 @@ namespace core
 
         NO_DISCARD bool operator!=(Point const& other) const { return !(*this == other); }
 
-        template<template<typename, std::size_t> typename Arr, typename T>
-        auto operator<(Arr<T, dim> const& arr) const
-        {
-            return for_N_all<dim>([&](auto iDim) { return r[iDim] < arr[iDim]; });
-        }
-        auto operator<(auto const& v) const
-        {
-            return for_N_all<dim>([&](auto iDim) { return r[iDim] < v; });
-        }
 
         template<typename DestType = Type>
         NO_DISCARD auto toArray() const
@@ -227,10 +218,10 @@ namespace core
 
         auto as_unsigned() const
         {
-            PHARE_DEBUG_DO({
-                for (auto iDim = 0u; iDim < dim; ++iDim)
-                    assert(r[iDim] >= 0);
-            })
+            for (auto iDim = 0u; iDim < dim; ++iDim)
+                if (r[iDim] < 0)
+                    throw std::runtime_error("Cannot make unsigned from negative values");
+
             if constexpr (sizeof(Type) == 4)
                 return Point<std::uint32_t, dim>{this->template toArray<std::uint32_t>()};
             // else no return cause not yet handled
