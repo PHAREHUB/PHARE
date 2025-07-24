@@ -145,7 +145,7 @@ class DiagnosticsTest(unittest.TestCase):
             self._test_dump_diags(ndim, **simInput)
 
     def _test_dump_diags(self, dim, **simInput):
-        import h5py  # must be after phare cpp imports!
+        import h5py  # see doc/conventions.md section 2.1.1
 
         test_id = self.ddt_test_id()
 

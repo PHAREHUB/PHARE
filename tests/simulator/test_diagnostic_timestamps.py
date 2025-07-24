@@ -2,7 +2,6 @@
 
 
 import os
-import h5py
 import unittest
 import numpy as np
 from ddt import data, ddt
@@ -103,6 +102,8 @@ class DiagnosticsTest(unittest.TestCase):
         return self._testMethodName.split("_")[-1]
 
     def test_dump_diags_timestamps(self):
+        import h5py  # see doc/conventions.md section 2.1.1
+
         print("test_dump_diags dim/interp:{}/{}".format(1, 1))
 
         simulation = ph.Simulation(**simArgs.copy())
