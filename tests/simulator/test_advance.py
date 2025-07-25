@@ -1,12 +1,13 @@
-from pyphare.cpp import cpp_lib
+#
+#
 
-cpp = cpp_lib()
 
 import unittest
-
 import numpy as np
-import pyphare.core.box as boxm
 from ddt import ddt
+import pyphare.core.box as boxm
+
+from pyphare.cpp import cpp_lib
 from pyphare.core.box import Box
 from pyphare.core.phare_utilities import assert_fp_any_all_close, np_array_ify
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
@@ -24,6 +25,8 @@ from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import all_timestamps
 from tests.simulator import SimulatorTest, diff_boxes
+
+cpp = cpp_lib()
 
 
 @ddt
@@ -748,8 +751,8 @@ class AdvanceTestBase(SimulatorTest):
                 diag_outputs=diag_dir,
             )
 
-        L0_datahier = _getHier(f"L0_diags")
-        L0L1_datahier = _getHier(f"L0L1_diags", refinement_boxes)
+        L0_datahier = _getHier("L0_diags")
+        L0L1_datahier = _getHier("L0L1_diags", refinement_boxes)
 
         quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
         checks = (
@@ -777,12 +780,8 @@ class AdvanceTestBase(SimulatorTest):
     def _test_domain_particles_on_refined_level(
         self, ndim, interp_order, refinement_boxes, **kwargs
     ):
-        import pyphare.pharein as ph
-
         time_step_nbr = 5
         time_step = 0.001
-
-        out = "domain_particles"
 
         self.base_test_domain_particles_on_refined_level(
             self.getHierarchy(

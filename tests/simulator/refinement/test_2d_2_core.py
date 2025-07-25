@@ -9,13 +9,16 @@
 """
 
 
-import matplotlib as mpl
 import numpy as np
-import pyphare.core.box as boxm
+
 import pyphare.pharein as ph
+from pyphare.cpp import cpp_lib
+import pyphare.core.box as boxm
 from pyphare.simulator.simulator import Simulator, startMPI
 
-mpl.use("Agg")
+from tests.simulator.test_advance import AdvanceTestBase
+
+ph.NO_GUI()
 
 
 def config(diag_outputs, model_init={}, refinement_boxes=None):
@@ -143,10 +146,6 @@ def get_time(path, time=None, datahier=None):
 def get_hier(path):
     return get_time(path)
 
-
-from pyphare.cpp import cpp_lib
-
-from tests.simulator.test_advance import AdvanceTestBase
 
 cpp = cpp_lib()
 test = AdvanceTestBase(rethrow=True)  # change to False for debugging images

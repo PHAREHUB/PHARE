@@ -6,13 +6,11 @@ from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
 
 
-from tests.diagnostic import all_timestamps
-
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import numpy as np
+import matplotlib.pyplot as plt
 
-mpl.use("Agg")
+
+ph.NO_GUI()
 
 
 ####################################################################

@@ -3,13 +3,16 @@
 # formatted with black
 
 
+import unittest
+import numpy as np
+
 from pyphare.cpp import cpp_lib
+from pyphare.simulator.simulator import Simulator
+
+from tests.simulator import populate_simulation
 
 cpp = cpp_lib()
-from tests.simulator import populate_simulation
-import numpy as np
-from pyphare.simulator.simulator import Simulator
-import unittest
+
 
 # TODO - validate data from somewhere!
 

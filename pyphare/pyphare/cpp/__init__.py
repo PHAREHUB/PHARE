@@ -3,27 +3,10 @@
 #
 
 
-import json
-
-# continue to use override if set
-_cpp_lib_override = None
-
-
 def cpp_lib(override=None):
     import importlib
 
-    global _cpp_lib_override
-    if override is not None:
-        _cpp_lib_override = override
-    if _cpp_lib_override is not None:
-        return importlib.import_module(_cpp_lib_override)
-
-    if not __debug__:
-        return importlib.import_module("pybindlibs.cpp")
-    try:
-        return importlib.import_module("pybindlibs.cpp_dbg")
-    except ImportError:
-        return importlib.import_module("pybindlibs.cpp")
+    return importlib.import_module("pybindlibs.cpp")
 
 
 def cpp_etc_lib():
@@ -37,6 +20,8 @@ def build_config():
 
 
 def build_config_as_json():
+    import json
+
     return json.dumps(build_config())
 
 

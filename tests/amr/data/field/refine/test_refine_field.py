@@ -5,8 +5,6 @@ from pyphare.core.gridlayout import GridLayout
 from pyphare.core.phare_utilities import refinement_ratio
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 
-# in this module, we assume the refinement ratio is 2
-refinement_ratio = 2
 
 # below is a drawing  representing a 1D coarse FieldData, its ghost box and the
 # associated refined  FieldData this module aims at creating.
