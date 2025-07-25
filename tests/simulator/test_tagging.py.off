@@ -9,7 +9,7 @@ cpp = cpp_lib()
 import os
 import unittest
 
-import h5py
+
 import numpy as np
 import pyphare.pharein as ph
 from ddt import data, ddt
@@ -154,6 +154,8 @@ class TaggingTest(unittest.TestCase):
             self._test_dump_diags(ndim, **simInput)
 
     def _test_dump_diags(self, dim, **simInput):
+        import h5py  # see doc/conventions.md section 2.1.1
+
         test_id = self.ddt_test_id()
         for key in ["cells", "dl", "boundary_types"]:
             simInput[key] = [simInput[key] for d in range(dim)]

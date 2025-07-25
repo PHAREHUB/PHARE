@@ -1,21 +1,21 @@
 #!/usr/bin/env python3
 
-from pyphare.cpp import cpp_lib
 
-cpp = cpp_lib()
 import os
 import unittest
-
-import h5py
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt
+
+import pyphare.pharein as ph
+from pyphare.cpp import cpp_lib
 from pyphare.core.box import Box1D
 from pyphare.pharein import ElectromagDiagnostics, ElectronModel
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
 from pyphare.simulator.simulator import Simulator
+
+cpp = cpp_lib()
 
 
 def setup_model(ppc):
@@ -102,6 +102,8 @@ class DiagnosticsTest(unittest.TestCase):
         return self._testMethodName.split("_")[-1]
 
     def test_dump_diags_timestamps(self):
+        import h5py  # see doc/conventions.md section 2.1.1
+
         print("test_dump_diags dim/interp:{}/{}".format(1, 1))
 
         simulation = ph.Simulation(**simArgs.copy())

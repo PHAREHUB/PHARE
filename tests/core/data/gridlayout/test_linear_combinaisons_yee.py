@@ -1,10 +1,10 @@
 #!/usr/bin/env pyhton
 #!coding: utf-8
 
-import numpy as np
-import utilities
+
 import os
 import sys
+
 
 # this script writes the following file
 # in 1D, in 2D and in 3D :

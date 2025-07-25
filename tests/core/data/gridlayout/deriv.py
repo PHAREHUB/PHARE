@@ -1,18 +1,17 @@
 #!/usr/bin/env python
 #!coding: utf-8
 
-import numpy as np
+import os
+import sys
 import math
 import scipy.misc
-
-import sys
+import numpy as np
 
 from pyphare.core import gridlayout
-import os
-import gridparams
-import cellCenteredCoordinates
+
 import utilities
 import fieldNodeCoordinates
+import cellCenteredCoordinates
 
 
 class DerivParams(cellCenteredCoordinates.CenteredCoordParams):
