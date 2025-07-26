@@ -64,10 +64,8 @@ void particles_test(Simulator&& sim, std::string out_dir)
         Hi5Diagnostic<Hierarchy, HybridModel> hi5{hierarchy, hybridModel, out_dir, NEW_HI5_FILE};
         hi5.dMan.addDiagDict(hi5.particles("/ions/pop/alpha/domain"))
             .addDiagDict(hi5.particles("/ions/pop/alpha/levelGhost"))
-            .addDiagDict(hi5.particles("/ions/pop/alpha/patchGhost"))
             .addDiagDict(hi5.particles("/ions/pop/protons/domain"))
-            .addDiagDict(hi5.particles("/ions/pop/protons/levelGhost"))
-            .addDiagDict(hi5.particles("/ions/pop/protons/patchGhost"));
+            .addDiagDict(hi5.particles("/ions/pop/protons/levelGhost"));
         hi5.dump();
     }
 

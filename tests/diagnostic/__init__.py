@@ -47,7 +47,7 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
                 population_name=pop,
             )
 
-        for quantity in ["domain", "levelGhost", "patchGhost"]:
+        for quantity in ["domain", "levelGhost"]:
             ph.ParticleDiagnostics(
                 quantity=quantity,
                 write_timestamps=timestamps,

@@ -79,25 +79,37 @@ namespace solver
                 }
             }
 
-            // now all particles are here
-            // we must compute moments.
+            // now all particles are here, we must compute moments.
+            auto& ions = hybridModel.state.ions;
+            auto& rm   = *hybridModel.resourcesManager;
 
-            for (auto& patch : level)
+            for (auto& patch : rm.enumerate(level, ions))
             {
-                auto& ions             = hybridModel.state.ions;
-                auto& resourcesManager = hybridModel.resourcesManager;
-                auto dataOnPatch       = resourcesManager->setOnPatch(*patch, ions);
-                auto layout            = amr::layoutFromPatch<GridLayoutT>(*patch);
-
+                auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
-                core::depositParticles(ions, layout, interpolate_, core::PatchGhostDeposit{});
+            }
 
+            // at this point flux and density is computed for all pops
+            // but nodes on ghost box overlaps are not complete because they lack
+            // contribution of neighbor particles.
+            // The following two calls will += flux and density on these overlaps.
+            hybMessenger.fillFluxBorders(ions, level, initDataTime);
+            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+
+            // the only remaning incomplete nodes are those next to and on level ghost layers
+            // we now complete them by depositing levelghost particles
+            for (auto& patch : rm.enumerate(level, ions))
+            {
                 if (!isRootLevel(levelNumber))
                 {
+                    auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
+
+                // now all nodes are complete, the total ion moments
+                // can safely be computed.
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
             }
@@ -110,7 +122,7 @@ namespace solver
             // is not needed. But is still seems to use the messenger temporaries like
             // NiOld etc. so prepareStep() must be called, see end of the function.
             // - TODO more better comment(s)
-            hybMessenger.fillIonMomentGhosts(hybridModel.state.ions, level, initDataTime);
+            hybMessenger.fillIonMomentGhosts(ions, level, initDataTime);
 
 
             // now moments are known everywhere, compute J and E

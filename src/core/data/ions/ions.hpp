@@ -167,6 +167,19 @@ namespace core
         NO_DISCARD auto begin() const { return std::begin(populations_); }
         NO_DISCARD auto end() const { return std::end(populations_); }
 
+        NO_DISCARD auto& population(std::size_t const i)
+        {
+            if (i >= populations_.size())
+                throw std::out_of_range("Ions population index out of range");
+            return populations_[i];
+        }
+
+        NO_DISCARD auto const& population(std::size_t const i) const
+        {
+            if (i >= populations_.size())
+                throw std::out_of_range("Ions population index out of range");
+            return populations_[i];
+        }
 
         // in the following isUsable and isSettable the massDensity_ is not checked
         // because it is for internal use only so no object will ever need to access it.
@@ -234,6 +247,9 @@ namespace core
         }
 
 
+        auto& operator[](std::size_t const i) const { return populations_[i]; }
+        auto& operator[](std::size_t const i) { return populations_[i]; }
+
     private:
         field_type massDensity_;
         field_type chargeDensity_;
@@ -241,7 +257,10 @@ namespace core
         std::vector<IonPopulation> populations_;
         tensorfield_type momentumTensor_;
     };
+
 } // namespace core
 } // namespace PHARE
+
+
 
 #endif

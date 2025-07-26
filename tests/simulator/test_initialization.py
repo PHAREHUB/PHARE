@@ -187,7 +187,7 @@ class InitializationTest(SimulatorTest):
                     population_name=pop,
                 )
 
-            for quantity in ["domain", "levelGhost", "patchGhost"]:
+            for quantity in ["domain", "levelGhost"]:
                 ParticleDiagnostics(
                     quantity=quantity,
                     write_timestamps=np.zeros(time_step_nbr),
@@ -219,12 +219,6 @@ class InitializationTest(SimulatorTest):
             )
             particle_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
-                hier=particle_hier,
-            )
-
-        if is_particle_type:
-            particle_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_patchGhost.h5",
                 hier=particle_hier,
             )
 
@@ -695,33 +689,6 @@ class InitializationTest(SimulatorTest):
                     )  # drop ghosts
                     part2 = coarse_split_particles[pop_name].select(patch.box)
                     self.assertEqual(part1, part2)
-
-    def _test_patch_ghost_on_refined_level_case(self, dim, has_patch_ghost, **kwargs):
-        import pyphare.pharein as ph
-
-        refinement_boxes = {"L0": [nDBox(dim, 10, 19)]}
-        kwargs["interp_order"] = kwargs.get("interp_order", 1)
-        kwargs["diag_outputs"] = f"{has_patch_ghost}"
-        datahier = self.getHierarchy(
-            ndim=dim,
-            refinement_boxes=refinement_boxes,
-            qty="particles_patch_ghost",
-            **kwargs,
-        )
-
-        self.assertTrue(
-            any(
-                [
-                    diagInfo.quantity.endswith("patchGhost")
-                    for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
-                ]
-            )
-        )
-        nbrPatchGhostPatchDatasOnL1 = sum(
-            [len(p.patch_datas) for p in datahier.level(1).patches]
-        )
-
-        self.assertTrue((nbrPatchGhostPatchDatasOnL1 > 0) == has_patch_ghost)
 
     def _test_levelghostparticles_have_correct_split_from_coarser_particle(
         self, datahier

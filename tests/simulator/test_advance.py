@@ -170,11 +170,9 @@ class AdvanceTestBase(SimulatorTest):
                     population_name=pop,
                 )
 
-            for quantity in ["domain", "levelGhost", "patchGhost"]:
+            for quantity in ["domain", "levelGhost"]:
                 ParticleDiagnostics(
-                    quantity=quantity,
-                    write_timestamps=timestamps,
-                    population_name=pop,
+                    quantity=quantity, write_timestamps=timestamps, population_name=pop
                 )
 
         Simulator(global_vars.sim).run()
@@ -202,12 +200,6 @@ class AdvanceTestBase(SimulatorTest):
             )
             particle_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
-                hier=particle_hier,
-            )
-
-        if is_particle_type:
-            particle_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_patchGhost.h5",
                 hier=particle_hier,
             )
 
