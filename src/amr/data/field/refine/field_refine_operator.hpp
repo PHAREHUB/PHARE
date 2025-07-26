@@ -12,6 +12,7 @@
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "field_linear_refine.hpp"
+#include "field_refiner.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/RefineOperator.h>
@@ -66,7 +67,8 @@ public:
     NO_DISCARD SAMRAI::hier::IntVector
     getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
-        return SAMRAI::hier::IntVector::getOne(dim);
+        // return SAMRAI::hier::IntVector::getOne(dim);
+        return SAMRAI::hier::IntVector(dim, 1); // hard-coded 0th order base interpolation
     }
 
 
@@ -153,8 +155,6 @@ public:
     {
         return SAMRAI::hier::IntVector::getOne(dim);
     }
-
-
 
 
     /**

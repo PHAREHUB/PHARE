@@ -2,6 +2,7 @@
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
 #include "core/def.hpp"
+#include <cmath>
 #include <stdexcept>
 #include <array>
 #include <cstdint>
@@ -254,6 +255,7 @@ public:
         , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<int>()), value)
     {
     }
+
     template<typename... Nodes>
         requires(!FloatingPoint<DataType>)
     explicit NdArrayVector(Nodes... nodes)

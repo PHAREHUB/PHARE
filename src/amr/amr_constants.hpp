@@ -2,7 +2,8 @@
 #define AMR_CONSTANTS_HPP
 
 #include <cstddef>
-namespace PHARE::amr {
+namespace PHARE::amr
+{
 static std::size_t constexpr refinementRatio = 2;
 }
 

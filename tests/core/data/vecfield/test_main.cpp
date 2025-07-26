@@ -19,9 +19,9 @@ class VecFieldGeneric : public ::testing::Test
 {
 public:
     VecFieldGeneric()
-        : vf2{
-            vf2_name,
-            {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By, HybridQuantity::Scalar::Bz}}}
+        : vf2{vf2_name,
+              {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By,
+                HybridQuantity::Scalar::Bz}}}
     {
     }
 

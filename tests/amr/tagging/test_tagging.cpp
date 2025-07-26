@@ -16,30 +16,31 @@
 
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "python3/mhd_defaults/default_mhd_time_stepper.hpp"
 
 using namespace PHARE::amr;
 
+template<typename Model>
+using MHDTimeStepper = typename PHARE::DefaultMHDTimeStepper<Model>::type;
 
 
 TEST(test_tagger, fromFactoryValid)
 {
-    using phare_types = PHARE::solver::PHARE_Types<1, 1, 2>;
+    using hybrid_model = PHARE::PHARE_Types<1, 1, 2, MHDTimeStepper>::HybridModel_t;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]     = std::string{"HybridModel"};
-    dict["method"]    = std::string{"default"};
-    dict["threshold"] = 0.2;
-    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
+    dict["hybrid_method"] = std::string{"default"};
+    dict["threshold"]     = 0.2;
+    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
 }
 
 TEST(test_tagger, fromFactoryInvalid)
 {
-    using phare_types = PHARE::solver::PHARE_Types<1, 1, 2>;
+    using hybrid_model = PHARE::PHARE_Types<1, 1, 2, MHDTimeStepper>::HybridModel_t;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]     = std::string{"invalidModel"};
-    dict["method"]    = std::string{"invalidStrat"};
-    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
-    auto badTagger    = TaggerFactory<phare_types>::make(dict);
+    dict["hybrid_method"] = std::string{"invalidStrat"};
+    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
+    auto badTagger        = TaggerFactory<hybrid_model>::make(dict);
     EXPECT_TRUE(badTagger == nullptr);
 }
 
@@ -169,7 +170,7 @@ struct TestTagger : public ::testing::Test
     auto static constexpr interp_order   = TaggingTestInfo_t::interp;
     auto static constexpr refinedPartNbr = TaggingTestInfo_t::refinedPartNbr;
 
-    using phare_types = PHARE::solver::PHARE_Types<dim, interp_order, refinedPartNbr>;
+    using phare_types = PHARE::PHARE_Types<dim, interp_order, refinedPartNbr, MHDTimeStepper>;
     using Electromag  = typename phare_types::Electromag_t;
     using Ions        = typename phare_types::Ions_t;
     using Electrons   = typename phare_types::Electrons_t;

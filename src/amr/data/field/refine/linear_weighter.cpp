@@ -49,9 +49,8 @@ LinearWeighter::LinearWeighter(core::QtyCentering centering, std::size_t ratio)
 
 
     std::transform(std::begin(distFromLeftNode_), std::end(distFromLeftNode_),
-                   std::back_inserter(weights_), [](auto const& d) {
-                       return std::array<double, 2>{{1. - d, d}};
-                   });
+                   std::back_inserter(weights_),
+                   [](auto const& d) { return std::array<double, 2>{{1. - d, d}}; });
 }
 
 } // namespace PHARE::amr

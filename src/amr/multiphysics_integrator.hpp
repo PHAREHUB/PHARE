@@ -314,7 +314,8 @@ namespace solver
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
 
-            PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding);
+            PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding
+                                            << " and initial time = " << initialTime);
 
             PHARE_LOG_START(3, "initializeLevelData::allocate block");
             if (allocateData)

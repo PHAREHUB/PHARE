@@ -13,7 +13,7 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 
 #include "amr/types/amr_types.hpp"
-#include "amr/load_balancing/load_balancer_hybrid_strategy.hpp"
+#include "amr/load_balancing/load_balancer_strategy.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
@@ -22,17 +22,16 @@
 
 namespace PHARE::amr
 {
-template<typename PHARE_T>
-class ConcreteLoadBalancerHybridStrategyNPPC : public LoadBalancerHybridStrategy<PHARE_T>
+template<typename Model>
+class ConcreteLoadBalancerStrategyNPPC : public LoadBalancerStrategy<Model>
 {
 public:
-    using HybridModel     = typename PHARE_T::HybridModel_t;
-    using gridlayout_type = typename HybridModel::gridlayout_type;
-    using amr_types       = typename HybridModel::amr_types;
+    using gridlayout_type = typename Model::gridlayout_type;
+    using amr_types       = typename Model::amr_types;
     using level_t         = typename amr_types::level_t;
     using cell_data_t     = SAMRAI::pdat::CellData<double>;
 
-    ConcreteLoadBalancerHybridStrategyNPPC(int const id)
+    ConcreteLoadBalancerStrategyNPPC(int const id)
         : id_{id}
     {
     }
@@ -46,16 +45,16 @@ private:
 
 
 
-template<typename PHARE_T>
-void ConcreteLoadBalancerHybridStrategyNPPC<PHARE_T>::compute(
+template<typename Model>
+void ConcreteLoadBalancerStrategyNPPC<Model>::compute(
     level_t& level, PHARE::solver::IPhysicalModel<amr_types>& model)
 {
     bool static constexpr c_ordering = false;
-    auto static constexpr dimension  = HybridModel::dimension;
+    auto static constexpr dimension  = Model::dimension;
 
-    auto& hybridModel      = dynamic_cast<HybridModel&>(model);
-    auto& resourcesManager = hybridModel.resourcesManager;
-    auto& ions             = hybridModel.state.ions;
+    auto& concreteModel    = dynamic_cast<Model&>(model);
+    auto& resourcesManager = concreteModel.resourcesManager;
+    auto& ions             = concreteModel.state.ions;
 
     for (auto& patch : level)
     {

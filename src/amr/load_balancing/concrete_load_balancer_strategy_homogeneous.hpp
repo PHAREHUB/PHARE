@@ -7,7 +7,7 @@
 #include <SAMRAI/pdat/CellData.h>
 #include <string>
 
-#include "amr/load_balancing/load_balancer_hybrid_strategy.hpp"
+#include "amr/load_balancing/load_balancer_strategy.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/types/amr_types.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
@@ -17,17 +17,16 @@
 
 namespace PHARE::amr
 {
-template<typename PHARE_T>
-class ConcreteLoadBalancerHybridStrategyHomogeneous : public LoadBalancerHybridStrategy<PHARE_T>
+template<typename Model>
+class ConcreteLoadBalancerStrategyHomogeneous : public LoadBalancerStrategy<Model>
 {
 public:
-    using HybridModel     = typename PHARE_T::HybridModel_t;
-    using gridlayout_type = typename HybridModel::gridlayout_type;
-    using amr_types       = typename HybridModel::amr_types;
+    using gridlayout_type = typename Model::gridlayout_type;
+    using amr_types       = typename Model::amr_types;
     using level_t         = typename amr_types::level_t;
     using cell_data_t     = SAMRAI::pdat::CellData<double>;
 
-    ConcreteLoadBalancerHybridStrategyHomogeneous(int const id)
+    ConcreteLoadBalancerStrategyHomogeneous(int const id)
         : id_{id}
     {
     }
@@ -41,8 +40,8 @@ private:
 
 
 
-template<typename PHARE_T>
-void ConcreteLoadBalancerHybridStrategyHomogeneous<PHARE_T>::compute(
+template<typename Model>
+void ConcreteLoadBalancerStrategyHomogeneous<Model>::compute(
     level_t& level, PHARE::solver::IPhysicalModel<amr_types>& model)
 {
     for (auto& patch : level)

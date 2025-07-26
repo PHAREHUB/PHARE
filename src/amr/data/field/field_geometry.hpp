@@ -241,6 +241,18 @@ namespace amr
             // the sourceMask is a restriction of the sourceBox
             // so we need to intersect it with the sourceBox, then to apply a transformation
             // to account for the periodicity
+            if constexpr (std::is_same_v<PhysicalQuantity, core::MHDQuantity::Scalar>)
+            {
+                if (quantity_ == core::MHDQuantity::Scalar::Bx)
+                    std::cout << "computeDestinationBoxes_ : called for Bx" << "\n";
+
+                if (quantity_ == core::MHDQuantity::Scalar::By)
+                    std::cout << "computeDestinationBoxes_ : called for By" << "\n";
+
+                if (quantity_ == core::MHDQuantity::Scalar::Bz)
+                    std::cout << "computeDestinationBoxes_ : called for Bz" << "\n";
+            }
+
             SAMRAI::hier::Box sourceShift = sourceGeometry.ghostFieldBox_ * sourceMask;
             sourceOffset.transform(sourceShift);
 
