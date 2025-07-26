@@ -175,6 +175,7 @@ private:
         double newTime;
     };
 
+
     void make_boxes(hierarchy_t const& hierarchy, level_t& level)
     {
         int const lvlNbr = level.getLevelNumber();
@@ -410,7 +411,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level.getLevelNumber(), newTime);
+        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
@@ -445,7 +446,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level.getLevelNumber(), newTime);
+        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
@@ -482,7 +483,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere");
         ampere_(views.layouts, views.electromag_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, levelNumber, newTime);
+        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
@@ -493,7 +494,9 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
              views.electromag_E);
         setTime([](auto& state) -> auto& { return state.electromag.E; });
 
-        fromCoarser.fillElectricGhosts(views.model().state.electromag.E, levelNumber, newTime);
+        std::cout << "LEVEL NUMBER: " << levelNumber << "\n";
+        std::cout << "Filling electric ghosts in corrector\n";
+        fromCoarser.fillElectricGhosts(views.model().state.electromag.E, level, newTime);
     }
 }
 
@@ -519,7 +522,7 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, ModelViews_t& v
     // the following will fill E on all edges of all ghost cells, including those
     // on domain border. For level ghosts, electric field will be obtained from
     // next coarser level E average
-    fromCoarser.fillElectricGhosts(electromagAvg_.E, level.getLevelNumber(), newTime);
+    fromCoarser.fillElectricGhosts(electromagAvg_.E, level, newTime);
 }
 
 

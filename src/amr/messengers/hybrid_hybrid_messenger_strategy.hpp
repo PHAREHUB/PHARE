@@ -31,7 +31,7 @@
 #include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
-
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
@@ -45,6 +45,8 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <cmath>
+
 
 
 
@@ -319,8 +321,20 @@ namespace amr
             auto& hybridModel = dynamic_cast<HybridModel&>(model);
             auto level        = hierarchy->getPatchLevel(levelNumber);
 
+            std::cout << "I am fucking regriding level " << levelNumber << " with oldLevel "
+                      << (oldLevel ? std::to_string(oldLevel->getLevelNumber()) : "null")
+                      << " at time " << std::setprecision(16) << initDataTime << "\n";
             bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
 
+            // Jx not used in 1D ampere and construct-init to NaN
+            // therefore J needs to be set to 0 whenever SAMRAI may construct
+            // J patchdata. This occurs on level init (root or refined)
+            // and here in regriding as well.
+            for (auto& patch : *level)
+            {
+                auto _ = resourcesManager_->setOnPatch(*patch, hybridModel.state.J);
+                hybridModel.state.J.zero();
+            }
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -377,9 +391,15 @@ namespace amr
         {
             auto levelNumber = level.getLevelNumber();
 
+            auto& hybridModel = static_cast<HybridModel&>(model);
 
             magInitRefineSchedules[levelNumber]->fillData(initDataTime);
             electricInitRefiners_.fill(levelNumber, initDataTime);
+            for (auto& patch : level)
+            {
+                auto _ = resourcesManager_->setOnPatch(*patch, hybridModel.state.J);
+                hybridModel.state.J.zero();
+            }
 
             // no need to call these :
             // magGhostsRefiners_.fill(levelNumber, initDataTime);
@@ -410,19 +430,25 @@ namespace amr
 
 
 
-        void fillElectricGhosts(VecFieldT& E, int const levelNumber, double const fillTime) override
+        void fillElectricGhosts(VecFieldT& E, SAMRAI::hier::PatchLevel const& level,
+                                double const fillTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillElectricGhosts");
-            elecGhostsRefiners_.fill(E, levelNumber, fillTime);
+            std::cout << "FILLING ELECTRIC GHOSTS\n";
+
+            setNaNsOnVecfieldGhosts(E, level);
+            elecGhostsRefiners_.fill(E, level.getLevelNumber(), fillTime);
         }
 
 
 
 
-        void fillCurrentGhosts(VecFieldT& J, int const levelNumber, double const fillTime) override
+        void fillCurrentGhosts(VecFieldT& J, SAMRAI::hier::PatchLevel const& level,
+                               double const fillTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillCurrentGhosts");
-            currentGhostsRefiners_.fill(J, levelNumber, fillTime);
+            setNaNsOnVecfieldGhosts(J, level);
+            currentGhostsRefiners_.fill(J, level.getLevelNumber(), fillTime);
         }
 
 
@@ -572,6 +598,10 @@ namespace amr
                                          double const afterPushTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
+            auto& chargeDensity = ions.chargeDensity();
+            auto& velocity      = ions.velocity();
+            setNaNsOnFieldGhosts(chargeDensity, level);
+            setNaNsOnVecfieldGhosts(velocity, level);
             chargeDensityGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
             velGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
         }
@@ -1083,6 +1113,61 @@ namespace amr
             }
         }
 
+
+        /** * @brief setNaNsFieldOnGhosts sets NaNs on the ghost nodes of the field
+         *
+         * NaNs are set on all ghost nodes, patch ghost or level ghost nodes
+         * so that the refinement operators can know nodes at NaN have not been
+         * touched by schedule copy.
+         *
+         * This is needed when the schedule copy is done before refinement
+         * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
+         */
+        void setNaNsOnFieldGhosts(FieldT& field, SAMRAI::hier::PatchLevel const& level)
+        {
+            auto qty               = field.physicalQuantity();
+            using qty_t            = decltype(qty);
+            using field_geometry_t = FieldGeometry<GridLayoutT, qty_t>;
+
+            for (auto& patch : level)
+            {
+                auto box    = patch->getBox();
+                auto _      = resourcesManager_->setOnPatch(*patch, field);
+                auto layout = layoutFromPatch<GridLayoutT>(*patch);
+
+                // we need to remove the box from the ghost box
+                // to use SAMRAI::removeIntersections we do some conversions to
+                // samrai box.
+                // not gbox is a fieldBox (thanks to the layout)
+
+                auto gbox  = layout.AMRGhostBoxFor(field.physicalQuantity());
+                auto sgbox = samrai_box_from(gbox);
+                auto fbox  = field_geometry_t::toFieldBox(box, qty, layout);
+
+                // we have field samrai boxes so we can now remove one from the other
+                SAMRAI::hier::BoxContainer ghostLayerBoxes{};
+                ghostLayerBoxes.removeIntersections(sgbox, fbox);
+
+                // and now finally set the NaNs on the ghost boxes
+                for (auto& gb : ghostLayerBoxes)
+                {
+                    auto pgb = layout.AMRToLocal(phare_box_from<dimension>(gb));
+                    for (auto& index : pgb)
+                    {
+                        field(index)
+                            = std::numeric_limits<typename VecFieldT::value_type>::quiet_NaN();
+                    }
+                }
+            }
+        }
+
+        void setNaNsOnVecfieldGhosts(VecFieldT& vf, SAMRAI::hier::PatchLevel const& level)
+        {
+            for (auto& component : vf)
+            {
+                setNaNsOnFieldGhosts(component, level);
+            }
+        }
 
 
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
