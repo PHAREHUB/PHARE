@@ -290,56 +290,66 @@ class AdvanceTestBase(SimulatorTest):
                         import matplotlib.pyplot as plt
                         from matplotlib.patches import Rectangle
 
-                        def makerec(lower, upper, dl, fc="none", ec="g", lw=1, ls="-"):
-                            origin = (lower[0] * dl[0], lower[1] * dl[1])
-                            sizex, sizey = [
-                                (u - l) * d for u, l, d in zip(upper, lower, dl)
-                            ]
-                            return Rectangle(
-                                origin, sizex, sizey, fc=fc, ec=ec, ls=ls, lw=lw
+                        if box.ndim == 2:
+                            failed_i, failed_j = np.where(
+                                np.abs(slice1 - slice2) > 5.5e-15
                             )
 
-                        print(datahier)
-                        datahier.plot(
-                            qty=pd1.name,
-                            plot_patches=True,
-                            filename=pd1.name + ".png",
-                            patchcolors=["k", "blue"],
-                        )
-                        for level_idx in range(datahier.levelNbr()):
-                            fig, ax = datahier.plot(
+                            def makerec(
+                                lower, upper, dl, fc="none", ec="g", lw=1, ls="-"
+                            ):
+                                origin = (lower[0] * dl[0], lower[1] * dl[1])
+                                sizex, sizey = [
+                                    (u - l) * d for u, l, d in zip(upper, lower, dl)
+                                ]
+                                return Rectangle(
+                                    origin, sizex, sizey, fc=fc, ec=ec, ls=ls, lw=lw
+                                )
+
+                            datahier.plot(
                                 qty=pd1.name,
                                 plot_patches=True,
-                                title=f"{pd1.name} at level {level_idx}",
-                                levels=(level_idx,),
+                                filename=pd1.name + ".png",
+                                patchcolors=["k", "blue"],
                             )
-                            # add the overlap box only on the level
-                            # where the failing overlap is
-                            if level_idx == ilvl:
-                                ax.add_patch(
-                                    makerec(
-                                        box.lower,
-                                        box.upper,
-                                        pd1.layout.dl,
-                                        fc="none",
-                                        ec="r",
-                                    )
+                            for level_idx in range(datahier.levelNbr()):
+                                fig, ax = datahier.plot(
+                                    qty=pd1.name,
+                                    plot_patches=True,
+                                    title=f"{pd1.name} at level {level_idx}",
+                                    levels=(level_idx,),
                                 )
-                            fig.savefig(
-                                f"{pd1.name}_level_{level_idx}_box_lower{box.lower}_upper{box.upper}.png"
-                            )
+                                # add the overlap box only on the level
+                                # where the failing overlap is
+                                if level_idx == ilvl:
+                                    ax.add_patch(
+                                        makerec(
+                                            box.lower,
+                                            box.upper,
+                                            pd1.layout.dl,
+                                            fc="none",
+                                            ec="r",
+                                        )
+                                    )
+                                for i, j in zip(failed_i, failed_j):
+                                    x = i + pd1.ghost_box.lower[0]
+                                    x *= pd1.layout.dl[0]
+                                    y = j + pd1.ghost_box.lower[1]
+                                    y *= pd1.layout.dl[1]
+                                    ax.plot(x, y, marker="+", color="r")
+                                fig.savefig(
+                                    f"{pd1.name}_level_{level_idx}_box_lower{box.lower}_upper{box.upper}.png"
+                                )
                         print("AssertionError", pd1.name, e)
-                        print(pd1.box, pd2.box)
-                        print(pd1.x.mean())
-                        print(pd1.y.mean())
-                        print(pd2.x.mean())
-                        print(pd2.y.mean())
-                        print(loc_b1)
-                        print(loc_b2)
+                        print(
+                            f"pd1 ghost box {pd1.ghost_box} (shape {pd1.ghost_box.shape}) and box {pd1.box} (shape {pd1.box.shape})"
+                        )
+                        print(
+                            f"pd2 ghost box {pd2.ghost_box} (shape {pd2.ghost_box.shape}) and box {pd2.box} (shape {pd2.box.shape})"
+                        )
+                        print("interp_order: ", pd1.layout.interp_order)
+                        print(f"failing cells: {failed_i}, {failed_j}")
                         print(coarsest_time)
-                        print(slice1)
-                        print(slice2)
-                        print(data1[:])
                         # if self.rethrow_:
                         #     raise e
                         # return diff_boxes(slice1, slice2, box)
