@@ -10,27 +10,6 @@ template<typename ResourcesManager>
 class Synchronizer : private Communicator<SynchronizerTypes, ResourcesManager::dimension>
 {
 public:
-    /**
-     * @brief makeInitRefiner is similar to makeGhostRefiner except the registerRefine() that is
-     * called is the one that allows initialization of a vector field quantity.
-     */
-    Synchronizer(core::VecFieldNames const& descriptor, std::shared_ptr<ResourcesManager> const& rm,
-                 std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp)
-    {
-        auto registerCoarsen = [this, &rm, &coarsenOp](std::string name) {
-            auto id = rm->getID(name);
-            if (id)
-            {
-                this->add_algorithm()->registerCoarsen(*id, *id, coarsenOp);
-            }
-        };
-
-        registerCoarsen(descriptor.xName);
-        registerCoarsen(descriptor.yName);
-        registerCoarsen(descriptor.zName);
-    }
-
-
     Synchronizer(std::string const& name, std::shared_ptr<ResourcesManager> const& rm,
                  std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp)
     {
