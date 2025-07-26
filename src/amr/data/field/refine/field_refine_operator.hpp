@@ -108,6 +108,10 @@ public:
             auto intersectionBox = destFieldBox * box;
 
 
+            std::cout << "debug refine operator: "
+                      << "destinationFieldBox: " << destFieldBox
+                      << ", sourceFieldBox: " << sourceFieldBox << ", box: " << box
+                      << ", intersectionBox: " << intersectionBox << std::endl;
 
 
             if constexpr (dimension == 1)

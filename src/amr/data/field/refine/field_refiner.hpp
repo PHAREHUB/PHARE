@@ -91,7 +91,8 @@ namespace amr
                 {
                     fieldValue += sourceField(xStartIndex + iShiftX) * leftRightWeights[iShiftX];
                 }
-                destinationField(fineIndex[dirX]) = fieldValue;
+                if (std::isnan(destinationField(fineIndex[dirX])))
+                    destinationField(fineIndex[dirX]) = fieldValue;
             }
 
 
@@ -119,7 +120,8 @@ namespace amr
                     fieldValue += Yinterp * xLeftRightWeights[iShiftX];
                 }
 
-                destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
+                if (std::isnan(destinationField(fineIndex[dirX], fineIndex[dirY])))
+                    destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
             }
 
 
@@ -157,7 +159,9 @@ namespace amr
                     fieldValue += Yinterp * xLeftRightWeights[iShiftX];
                 }
 
-                destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ]) = fieldValue;
+                if (std::isnan(destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ])))
+                    destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ])
+                        = fieldValue;
             }
         }
 

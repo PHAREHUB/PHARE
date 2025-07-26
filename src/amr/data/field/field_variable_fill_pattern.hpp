@@ -95,6 +95,7 @@ private:
     {
         NULL_USE(node_fill_boxes);
 
+
         /*
          * For this (default) case, the overlap is simply the intersection of
          * fill_boxes and data_box.
@@ -104,7 +105,21 @@ private:
 
         SAMRAI::hier::BoxContainer overlap_boxes(fill_boxes);
         overlap_boxes.intersectBoxes(data_box);
-        return pdf.getBoxGeometry(patch_box)->setUpOverlap(overlap_boxes, transformation);
+
+        auto geom = pdf.getBoxGeometry(patch_box);
+        auto basic_overlap
+            = pdf.getBoxGeometry(patch_box)->setUpOverlap(overlap_boxes, transformation);
+
+        if (overwrite_interior_)
+            // if (true)
+            return basic_overlap;
+
+        auto& overlap         = dynamic_cast<FieldOverlap const&>(*basic_overlap);
+        auto destinationBoxes = overlap.getDestinationBoxContainer();
+        auto& casted          = dynamic_cast<FieldGeometryBase<dimension> const&>(*geom);
+        destinationBoxes.removeIntersections(casted.interiorFieldBox());
+
+        return std::make_shared<FieldOverlap>(destinationBoxes, overlap.getTransformation());
     }
 
     bool overwrite_interior_;

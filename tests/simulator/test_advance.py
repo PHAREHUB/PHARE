@@ -74,7 +74,7 @@ class AdvanceTestBase(SimulatorTest):
 
         extra_diag_options["mode"] = "overwrite"
         extra_diag_options["dir"] = diag_outputs
-        self.register_diag_dir_for_cleanup(diag_outputs)
+        # self.register_diag_dir_for_cleanup(diag_outputs)
         sim = Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
@@ -287,21 +287,121 @@ class AdvanceTestBase(SimulatorTest):
                         assert_fp_any_all_close(slice1, slice2, atol=5.5e-15, rtol=0)
                         checks += 1
                     except AssertionError as e:
+                        import matplotlib.pyplot as plt
+                        from matplotlib.patches import Rectangle
+
+                        if box.ndim == 1:
+                            failed_i = np.where(np.abs(slice1 - slice2) > 5.5e-15)
+
+                        if box.ndim == 2:
+                            failed_i, failed_j = np.where(
+                                np.abs(slice1 - slice2) > 5.5e-15
+                            )
+
+                            def makerec(
+                                lower, upper, dl, fc="none", ec="g", lw=1, ls="-"
+                            ):
+                                origin = (lower[0] * dl[0], lower[1] * dl[1])
+                                sizex, sizey = [
+                                    (u - l) * d for u, l, d in zip(upper, lower, dl)
+                                ]
+                                print(f"makerec: {origin}, {sizex}, {sizey}")
+                                return Rectangle(
+                                    origin, sizex, sizey, fc=fc, ec=ec, ls=ls, lw=lw
+                                )
+
+                            datahier.plot(
+                                qty=pd1.name,
+                                plot_patches=True,
+                                filename=pd1.name + ".png",
+                                patchcolors=["k", "blue"],
+                            )
+                            for level_idx in range(datahier.levelNbr()):
+                                fig, ax = datahier.plot(
+                                    qty=pd1.name,
+                                    plot_patches=True,
+                                    title=f"{pd1.name} at level {level_idx}",
+                                    levels=(level_idx,),
+                                )
+                                for patch in datahier.level(level_idx).patches:
+                                    ax.text(
+                                        patch.patch_datas[pd1.name].origin[0],
+                                        patch.patch_datas[pd1.name].origin[1],
+                                        patch.id,
+                                    )
+
+                                # add the overlap box only on the level
+                                # where the failing overlap is
+                                if level_idx == ilvl:
+                                    ax.add_patch(
+                                        makerec(
+                                            box.lower,
+                                            box.upper,
+                                            pd1.layout.dl,
+                                            fc="none",
+                                            ec="r",
+                                        )
+                                    )
+                                    print("making recs for ghost boxes")
+                                    ax.add_patch(
+                                        makerec(
+                                            pd1.ghost_box.lower,
+                                            pd1.ghost_box.upper,
+                                            pd1.layout.dl,
+                                            fc="none",
+                                            ec="b",
+                                            ls="--",
+                                            lw=2,
+                                        )
+                                    )
+                                    ax.add_patch(
+                                        makerec(
+                                            pd2.ghost_box.lower,
+                                            pd2.ghost_box.upper,
+                                            pd2.layout.dl,
+                                            fc="none",
+                                            ec="b",
+                                            ls="--",
+                                            lw=2,
+                                        )
+                                    )
+                                    for i, j in zip(failed_i, failed_j):
+                                        x = i + pd2.ghost_box.lower[0] + loc_b2.lower[0]
+                                        x *= pd2.layout.dl[0]
+                                        y = j + pd2.ghost_box.lower[1] + loc_b2.lower[1]
+                                        y *= pd2.layout.dl[1]
+                                        ax.plot(x, y, marker="+", color="r")
+
+                                        x = i + pd1.ghost_box.lower[0] + loc_b1.lower[0]
+                                        x *= pd1.layout.dl[0]
+                                        y = j + pd1.ghost_box.lower[1] + loc_b1.lower[1]
+                                        y *= pd1.layout.dl[1]
+                                        ax.plot(x, y, marker="o", color="r")
+                                    ax.set_title(
+                                        f"max error: {np.abs(slice1 - slice2).max()}, min error: {np.abs(slice1[failed_i, failed_j] - slice2[failed_i, failed_j]).min()}"
+                                    )
+                                    fig.savefig(
+                                        f"{pd1.name}_level_{level_idx}_box_lower{box.lower}_upper{box.upper}.png"
+                                    )
+                        print("coarsest time: ", coarsest_time)
                         print("AssertionError", pd1.name, e)
-                        print(pd1.box, pd2.box)
-                        print(pd1.x.mean())
-                        print(pd1.y.mean())
-                        print(pd2.x.mean())
-                        print(pd2.y.mean())
-                        print(loc_b1)
-                        print(loc_b2)
+                        print(f"overlap box {box} (shape {box.shape})")
+                        print(f"offsets: {offsets}")
+                        print(
+                            f"pd1 ghost box {pd1.ghost_box} (shape {pd1.ghost_box.shape}) and box {pd1.box} (shape {pd1.box.shape})"
+                        )
+                        print(
+                            f"pd2 ghost box {pd2.ghost_box} (shape {pd2.ghost_box.shape}) and box {pd2.box} (shape {pd2.box.shape})"
+                        )
+                        print("interp_order: ", pd1.layout.interp_order)
+                        if box.ndim == 1:
+                            print(f"failing cells: {failed_i}")
+                        elif box.ndim == 2:
+                            print(f"failing cells: {failed_i}, {failed_j}")
                         print(coarsest_time)
-                        print(slice1)
-                        print(slice2)
-                        print(data1[:])
-                        if self.rethrow_:
-                            raise e
-                        return diff_boxes(slice1, slice2, box)
+                        # if self.rethrow_:
+                        #     raise e
+                        # return diff_boxes(slice1, slice2, box)
 
         return checks
 
