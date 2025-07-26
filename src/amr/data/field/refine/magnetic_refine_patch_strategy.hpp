@@ -30,24 +30,16 @@ public:
 
     MagneticRefinePatchStrategy(ResMan& resourcesManager)
         : rm_{resourcesManager}
-        , bx_id_{-1}
-        , by_id_{-1}
-        , bz_id_{-1}
+        , b_id_{-1}
     {
     }
 
     void assertIDsSet() const
     {
-        assert(bx_id_ >= 0 && by_id_ >= 0 && bz_id_ >= 0
-               && "MagneticRefinePatchStrategy: IDs must be registered before use");
+        assert(b_id_ >= 0 && "MagneticRefinePatchStrategy: IDs must be registered before use");
     }
 
-    void registerIDs(int bx_id, int by_id, int bz_id)
-    {
-        bx_id_ = bx_id;
-        by_id_ = by_id;
-        bz_id_ = bz_id;
-    }
+    void registerIDs(int const b_id) { b_id_ = b_id; }
 
     void setPhysicalBoundaryConditions(SAMRAI::hier::Patch& patch, double const fill_time,
                                        const SAMRAI::hier::IntVector& ghost_width_to_fill) override
@@ -75,60 +67,58 @@ public:
     {
         assertIDsSet();
 
-        auto& bx = FieldDataT::getField(fine, bx_id_);
-        auto& by = FieldDataT::getField(fine, by_id_);
-        auto& bz = FieldDataT::getField(fine, bz_id_);
+        // auto& bx = FieldDataT::getField(fine, b_id_);
 
-        auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
-        auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
+        // auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
+        // auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
 
-        SAMRAI::hier::Box fine_box_x
-            = Geometry::toFieldBox(fine_box, bx.physicalQuantity(), fineBoxLayout);
-        SAMRAI::hier::Box fine_box_y
-            = Geometry::toFieldBox(fine_box, by.physicalQuantity(), fineBoxLayout);
-        SAMRAI::hier::Box fine_box_z
-            = Geometry::toFieldBox(fine_box, bz.physicalQuantity(), fineBoxLayout);
+        // SAMRAI::hier::Box fine_box_x
+        //     = Geometry::toFieldBox(fine_box, bx.physicalQuantity(), fineBoxLayout);
+        // SAMRAI::hier::Box fine_box_y
+        //     = Geometry::toFieldBox(fine_box, by.physicalQuantity(), fineBoxLayout);
+        // SAMRAI::hier::Box fine_box_z
+        //     = Geometry::toFieldBox(fine_box, bz.physicalQuantity(), fineBoxLayout);
 
-        if constexpr (dimension == 1)
-        {
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
-            {
-                postprocessBx1d(bx, i);
-            }
-        }
+        // if constexpr (dimension == 1)
+        // {
+        //     for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
+        //     {
+        //         postprocessBx1d(bx, i);
+        //     }
+        // }
 
-        else if constexpr (dimension == 2)
-        {
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
-            {
-                postprocessBx2d(bx, by, i);
-            }
+        // else if constexpr (dimension == 2)
+        // {
+        //     for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
+        //     {
+        //         postprocessBx2d(bx, by, i);
+        //     }
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_y)))
-            {
-                postprocessBy2d(bx, by, i);
-            }
-        }
+        //     for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_y)))
+        //     {
+        //         postprocessBy2d(bx, by, i);
+        //     }
+        // }
 
-        else if constexpr (dimension == 3)
-        {
-            auto meshSize = layout.meshSize();
+        // else if constexpr (dimension == 3)
+        // {
+        //     auto meshSize = layout.meshSize();
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
-            {
-                postprocessBx3d(bx, by, bz, meshSize, i);
-            }
+        //     for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
+        //     {
+        //         postprocessBx3d(bx, by, bz, meshSize, i);
+        //     }
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_y)))
-            {
-                postprocessBy3d(bx, by, bz, meshSize, i);
-            }
+        //     for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_y)))
+        //     {
+        //         postprocessBy3d(bx, by, bz, meshSize, i);
+        //     }
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_z)))
-            {
-                postprocessBz3d(bx, by, bz, meshSize, i);
-            }
-        }
+        //     for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_z)))
+        //     {
+        //         postprocessBz3d(bx, by, bz, meshSize, i);
+        //     }
+        // }
     }
 
 
@@ -375,9 +365,7 @@ private:
     static constexpr std::array<int, 2> ijk_factor_{-1, 1};
 
     ResMan& rm_;
-    int bx_id_;
-    int by_id_;
-    int bz_id_;
+    int b_id_;
 };
 
 } // namespace PHARE::amr

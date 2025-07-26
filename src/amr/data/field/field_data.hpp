@@ -1,22 +1,20 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/logger.hpp"
-#include "core/def/phare_mpi.hpp"
-#include <core/utilities/types.hpp>
-#include "core/data/field/field_box.hpp"
-
-#include <amr/utilities/box/amr_box.hpp>
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include "field_geometry.hpp"
+#include "core/data/field/field_box.hpp"
+
 
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
-
 #include <utility>
-
 
 namespace PHARE
 {
