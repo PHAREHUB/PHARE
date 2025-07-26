@@ -106,18 +106,10 @@ def coarsen(qty, coarseField, fineField, coarseBox, fineData, coarseData):
                         )
 
                 if not any(is_primal):
-                    if qty == "Bz":
-                        coarseData[coarseLocalIndexX, coarseLocalIndexY] = 0.25 * (
-                            fineData[fineIndexX, fineIndexY]
-                            + fineData[fineIndexX, fineIndexY + 1]
-                            + fineData[fineIndexX + 1, fineIndexY + 1]
-                            + fineData[fineIndexX + 1, fineIndexY]
-                        )
-                    else:
-                        left += fineData[fineIndexX][fineIndexY] * 0.5
-                        left += fineData[fineIndexX][fineIndexY + 1] * 0.5
-                        right += fineData[fineIndexX + 1][fineIndexY] * 0.5
-                        right += fineData[fineIndexX + 1][fineIndexY + 1] * 0.5
-                        coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
-                            left * 0.5 + right * 0.5
-                        )
+                    left += fineData[fineIndexX][fineIndexY] * 0.5
+                    left += fineData[fineIndexX][fineIndexY + 1] * 0.5
+                    right += fineData[fineIndexX + 1][fineIndexY] * 0.5
+                    right += fineData[fineIndexX + 1][fineIndexY + 1] * 0.5
+                    coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
+                        left * 0.5 + right * 0.5
+                    )

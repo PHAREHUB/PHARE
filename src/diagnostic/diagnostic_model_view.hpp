@@ -10,6 +10,7 @@
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
 #include "cppdict/include/dict.hpp"
+#include <type_traits>
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
@@ -38,8 +39,6 @@ public:
     using TensorFieldData_t = ResMan::template UserTensorField_t</*rank=*/2>::patch_data_type;
     static constexpr auto dimension = Model::dimension;
 
-
-public:
     using PatchProperties
         = cppdict::Dict<float, double, std::size_t, std::vector<int>, std::vector<std::uint32_t>,
                         std::vector<double>, std::vector<std::size_t>, std::string,
@@ -51,44 +50,6 @@ public:
     {
         declareMomentumTensorAlgos();
     }
-
-    NO_DISCARD std::vector<VecField*> getElectromagFields() const
-    {
-        return {&model_.state.electromag.B, &model_.state.electromag.E};
-    }
-
-    NO_DISCARD auto& getIons() const { return model_.state.ions; }
-
-    void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
-    {
-        using value_type = TensorFieldT::value_type;
-        auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
-
-        auto& rm   = *model_.resourcesManager;
-        auto& ions = model_.state.ions;
-
-        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
-            for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(sumTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
-
-        MTAlgos[popidx].getOrCreateSchedule(hierarchy_, lvl.getLevelNumber()).fillData(time);
-
-        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
-            for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), sumTensor_[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
-    }
-
-
-    template<typename Action>
-    void onLevels(Action&& action, int minlvl = 0, int maxlvl = 0)
-    {
-        for (int ilvl = minlvl; ilvl < hierarchy_.getNumberOfLevels() && ilvl <= maxlvl; ++ilvl)
-            if (auto lvl = hierarchy_.getPatchLevel(ilvl))
-                action(*lvl);
-    }
-
 
     template<typename Action>
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
@@ -200,13 +161,11 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Mod
     using VecField = typename Model::vecfield_type;
 
 public:
-    using Model_t = Model;
     using BaseModelView<Hierarchy, Model>::BaseModelView;
 
-    NO_DISCARD std::vector<VecField*> getElectromagFields() const
-    {
-        return {&this->model_.state.electromag.B, &this->model_.state.electromag.E};
-    }
+    NO_DISCARD VecField& getB() const { return this->model_.state.electromag.B; }
+
+    NO_DISCARD VecField& getE() const { return this->model_.state.electromag.E; }
 
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 };
@@ -220,8 +179,24 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>
     using VecField = typename Model::vecfield_type;
 
 public:
-    using Model_t = Model;
     using BaseModelView<Hierarchy, Model>::BaseModelView;
+
+    NO_DISCARD Field& getRho() const { return this->model_.state.rho; }
+
+    NO_DISCARD VecField& getV() const { return this->model_.state.V; }
+
+    NO_DISCARD VecField& getB() const { return this->model_.state.B; }
+
+    NO_DISCARD VecField& getE() const
+    {
+        throw std::runtime_error("E not currently available in MHD diagnostics");
+    }
+
+    NO_DISCARD Field& getP() const { return this->model_.state.P; }
+
+    NO_DISCARD VecField& getRhoV() const { return this->model_.state.rhoV; }
+
+    NO_DISCARD Field& getEtot() const { return this->model_.state.Etot; }
 };
 
 

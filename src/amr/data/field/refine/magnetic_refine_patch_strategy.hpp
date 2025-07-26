@@ -14,6 +14,7 @@
 
 #include <array>
 #include <cassert>
+#include <cmath>
 
 namespace PHARE::amr
 {
@@ -52,6 +53,7 @@ public:
     SAMRAI::hier::IntVector
     getRefineOpStencilWidth(const SAMRAI::tbox::Dimension& dim) const override
     {
+        // return SAMRAI::hier::IntVector(dim, 0); // hard-coded 0th order base interpolation
         return SAMRAI::hier::IntVector(dim, 1); // hard-coded 0th order base interpolation
     }
 

@@ -110,6 +110,10 @@ namespace solver
          * @brief implements the reflux operations needed for a given solver.
          */
         virtual void reflux(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+<<<<<<< HEAD
+=======
+                            amr::IMessenger<IPhysicalModel<AMR_Types>>& messenger,
+>>>>>>> 401baf77 (mhd + refluxing / w/o mhd tensorfields)
                             double const time)
             = 0;
 

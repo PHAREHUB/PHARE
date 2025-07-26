@@ -110,9 +110,29 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
+<<<<<<< HEAD
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
                 }
+=======
+                    std::cout << "Setting Bx at fine index (" << fineIndex[dirX] << ", "
+                              << fineIndex[dirY] << ") to coarse value (" << locCoarseIdx[dirX]
+                              << ", " << locCoarseIdx[dirY]
+                              << " fineField: " << fineField(locFineIdx[dirX], locFineIdx[dirY])
+                              << " coarseField: "
+                              << coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
+                              << " fine address: " << fineField.data()
+                              << " coarse address: " << coarseField.data() << ")\n";
+                    fineField(locFineIdx[dirX], locFineIdx[dirY])
+                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                }
+                else if (fineIndex[dirX] % 2 == 0)
+                {
+                    std::cout << "Not setting Bx at fine index (" << fineIndex[dirX] << ", "
+                              << fineIndex[dirY] << ") because it is already set to "
+                              << fineField(locFineIdx[dirX], locFineIdx[dirY]) << "\n";
+                }
+>>>>>>> 401baf77 (mhd + refluxing / w/o mhd tensorfields)
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
                      and centerings_[dirY] == core::QtyCentering::primal)

@@ -43,6 +43,18 @@ yee_centering = {
         "Pyy": "primal",
         "Pyz": "primal",
         "Pzz": "primal",
+
+        # finite volume mhd quantities are 3ple dual
+        "mhdRho": "dual",
+        "mhdVx": "dual",
+        "mhdVy": "dual",
+        "mhdVz": "dual",
+        "mhdP": "dual",
+        "mhdRhoVx": "dual",
+        "mhdRhoVy": "dual",
+        "mhdRhoVz": "dual",
+        "mhdEtot": "dual",
+
         "tags": "dual",
     },
     "y": {
@@ -78,6 +90,17 @@ yee_centering = {
         "Pyy": "primal",
         "Pyz": "primal",
         "Pzz": "primal",
+
+        "mhdRho": "dual",
+        "mhdVx": "dual",
+        "mhdVy": "dual",
+        "mhdVz": "dual",
+        "mhdP": "dual",
+        "mhdRhoVx": "dual",
+        "mhdRhoVy": "dual",
+        "mhdRhoVz": "dual",
+        "mhdEtot": "dual",
+
         "tags": "dual",
     },
     "z": {
@@ -113,6 +136,17 @@ yee_centering = {
         "Pyy": "primal",
         "Pyz": "primal",
         "Pzz": "primal",
+
+        "mhdRho": "dual",
+        "mhdVx": "dual",
+        "mhdVy": "dual",
+        "mhdVz": "dual",
+        "mhdP": "dual",
+        "mhdRhoVx": "dual",
+        "mhdRhoVy": "dual",
+        "mhdRhoVz": "dual",
+        "mhdEtot": "dual",
+
         "tags": "dual",
     },
 }

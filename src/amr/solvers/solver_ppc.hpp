@@ -6,9 +6,17 @@
 #include <sstream>
 
 #include "SAMRAI/hier/PatchLevel.h"
-#include "amr/physical_models/physical_model.hpp"
-#include "core/def/phare_mpi.hpp"
+#include "SAMRAI/hier/Patch.h"
 
+#include "amr/messengers/hybrid_messenger.hpp"
+#include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/solvers/solver.hpp"
+#include "amr/solvers/solver_ppc_model_view.hpp"
+
+#include "core/def/phare_mpi.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
@@ -16,18 +24,6 @@
 
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
-
-#include "amr/messengers/hybrid_messenger.hpp"
-#include "amr/messengers/hybrid_messenger_info.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-
-#include "amr/solvers/solver.hpp"
-#include "amr/solvers/solver_ppc_model_view.hpp"
-
-#include <SAMRAI/hier/Patch.h>
-
-#include <unordered_map>
-
 
 namespace PHARE::solver
 {

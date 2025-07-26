@@ -252,8 +252,8 @@ class APusherWithLeavingParticles : public ::testing::Test
 public:
     APusherWithLeavingParticles()
         : pusher{std::make_unique<
-            BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
-                        BoundaryCondition<1, 1>, DummyLayout<1>>>()}
+              BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
+                          BoundaryCondition<1, 1>, DummyLayout<1>>>()}
         , mass{1}
         , dt{0.001}
         , tstart{0}

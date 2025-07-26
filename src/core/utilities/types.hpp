@@ -63,6 +63,11 @@ namespace core
     };
 
 
+    template<typename... Args> // this is so we can specialize
+    struct type_list           // templates with only the outter most type
+    {
+        using Tuple = std::tuple<Args...>; //
+    };
 
 
     template<typename T>
