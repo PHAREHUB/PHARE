@@ -93,23 +93,13 @@ def merge_particles(hierarchy):
                     (pdname, pd) for pdname, pd in pdatas.items() if "domain" in pdname
                 ][0]
 
-                pghost_pdatas = [
-                    (pdname, pd)
-                    for pdname, pd in pdatas.items()
-                    if "patchGhost" in pdname
-                ]
                 lghost_pdatas = [
                     (pdname, pd)
                     for pdname, pd in pdatas.items()
                     if "levelGhost" in pdname
                 ]
 
-                pghost_pdata = pghost_pdatas[0] if pghost_pdatas else None
                 lghost_pdata = lghost_pdatas[0] if lghost_pdatas else None
-
-                if pghost_pdata is not None:
-                    domain_pdata[1].dataset.add(pghost_pdata[1].dataset)
-                    del pdatas[pghost_pdata[0]]
 
                 if lghost_pdata is not None:
                     domain_pdata[1].dataset.add(lghost_pdata[1].dataset)

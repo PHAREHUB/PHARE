@@ -66,6 +66,9 @@ namespace amr
         std::vector<VecFieldNames> ghostElectric;
         std::vector<VecFieldNames> ghostCurrent;
         std::vector<VecFieldNames> ghostBulkVelocity;
+        std::vector<VecFieldNames> ghostFlux;
+
+        std::vector<std::string> sumBorderFields;
 
         virtual ~HybridMessengerInfo() = default;
     };
