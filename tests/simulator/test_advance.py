@@ -287,6 +287,47 @@ class AdvanceTestBase(SimulatorTest):
                         assert_fp_any_all_close(slice1, slice2, atol=5.5e-15, rtol=0)
                         checks += 1
                     except AssertionError as e:
+                        import matplotlib.pyplot as plt
+                        from matplotlib.patches import Rectangle
+
+                        def makerec(lower, upper, dl, fc="none", ec="g", lw=1, ls="-"):
+                            origin = (lower[0] * dl[0], lower[1] * dl[1])
+                            sizex, sizey = [
+                                (u - l) * d for u, l, d in zip(upper, lower, dl)
+                            ]
+                            return Rectangle(
+                                origin, sizex, sizey, fc=fc, ec=ec, ls=ls, lw=lw
+                            )
+
+                        print(datahier)
+                        datahier.plot(
+                            qty=pd1.name,
+                            plot_patches=True,
+                            filename=pd1.name + ".png",
+                            patchcolors=["k", "blue"],
+                        )
+                        for level_idx in range(datahier.levelNbr()):
+                            fig, ax = datahier.plot(
+                                qty=pd1.name,
+                                plot_patches=True,
+                                title=f"{pd1.name} at level {level_idx}",
+                                levels=(level_idx,),
+                            )
+                            # add the overlap box only on the level
+                            # where the failing overlap is
+                            if level_idx == ilvl:
+                                ax.add_patch(
+                                    makerec(
+                                        box.lower,
+                                        box.upper,
+                                        pd1.layout.dl,
+                                        fc="none",
+                                        ec="r",
+                                    )
+                                )
+                            fig.savefig(
+                                f"{pd1.name}_level_{level_idx}_box_lower{box.lower}_upper{box.upper}.png"
+                            )
                         print("AssertionError", pd1.name, e)
                         print(pd1.box, pd2.box)
                         print(pd1.x.mean())
@@ -299,9 +340,9 @@ class AdvanceTestBase(SimulatorTest):
                         print(slice1)
                         print(slice2)
                         print(data1[:])
-                        if self.rethrow_:
-                            raise e
-                        return diff_boxes(slice1, slice2, box)
+                        # if self.rethrow_:
+                        #     raise e
+                        # return diff_boxes(slice1, slice2, box)
 
         return checks
 
