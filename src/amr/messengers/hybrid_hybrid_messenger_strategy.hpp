@@ -91,16 +91,30 @@ namespace amr
         using CoarseToFineRefineOpNew  = RefinementParams::CoarseToFineRefineOpNew;
 
         template<typename Policy>
-        using BaseRefineOp          = FieldRefineOperator<GridLayoutT, GridT, Policy>;
-        using DefaultFieldRefineOp  = BaseRefineOp<DefaultFieldRefiner<dimension>>;
-        using MagneticFieldRefineOp = BaseRefineOp<MagneticFieldRefiner<dimension>>;
-        using ElectricFieldRefineOp = BaseRefineOp<ElectricFieldRefiner<dimension>>;
-        using FieldTimeInterp       = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
+        using FieldRefineOp = FieldRefineOperator<GridLayoutT, GridT, Policy>;
 
         template<typename Policy>
-        using BaseCoarsenOp     = FieldCoarsenOperator<GridLayoutT, GridT, Policy>;
-        using MagneticCoarsenOp = BaseCoarsenOp<MagneticFieldCoarsener<dimension>>;
-        using DefaultCoarsenOp  = BaseCoarsenOp<DefaultFieldCoarsener<dimension>>;
+        using VecFieldRefineOp = VecFieldRefineOperator<GridLayoutT, GridT, Policy>;
+
+        using DefaultFieldRefineOp    = FieldRefineOp<DefaultFieldRefiner<dimension>>;
+        using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;
+        using MagneticFieldRefineOp   = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
+        using ElectricFieldRefineOp   = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
+        using FieldTimeInterp         = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
+
+        using VecFieldTimeInterp
+            = VecFieldLinearTimeInterpolate<GridLayoutT, GridT, core::HybridQuantity>;
+
+        template<typename Policy>
+        using FieldCoarsenOp = FieldCoarsenOperator<GridLayoutT, GridT, Policy>;
+
+        template<typename Policy>
+        using VecFieldCoarsenOp
+            = VecFieldCoarsenOperator<GridLayoutT, GridT, Policy, core::HybridQuantity>;
+
+        using MagneticCoarsenOp        = VecFieldCoarsenOp<MagneticFieldCoarsener<dimension>>;
+        using DefaultFieldCoarsenOp    = FieldCoarsenOp<DefaultFieldCoarsener<dimension>>;
+        using DefaultVecFieldCoarsenOp = VecFieldCoarsenOp<DefaultVecFieldCoarsener<dimension>>;
 
     public:
         static inline std::string const stratName    = "HybridModel-HybridModel";
@@ -170,26 +184,25 @@ namespace amr
             std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
                 = std::make_shared<ZVariableFillPattern>();
 
-            auto bx_id = resourcesManager_->getID(hybridInfo->modelMagnetic.xName);
-            auto by_id = resourcesManager_->getID(hybridInfo->modelMagnetic.yName);
-            auto bz_id = resourcesManager_->getID(hybridInfo->modelMagnetic.zName);
+            auto b_id = resourcesManager_->getID(hybridInfo->modelMagnetic);
+            // auto by_id = resourcesManager_->getID(hybridInfo->modelMagnetic.yName);
+            // auto bz_id = resourcesManager_->getID(hybridInfo->modelMagnetic.zName);
 
-            if (!bx_id or !by_id or !bz_id)
+            if (!b_id)
             {
                 throw std::runtime_error(
                     "HybridHybridMessengerStrategy: missing magnetic field variable IDs");
             }
 
-            magneticRefinePatchStrategy_.registerIDs(*bx_id, *by_id, *bz_id);
+            magneticRefinePatchStrategy_.registerIDs(*b_id);
 
-            Balgo.registerRefine(*bx_id, *bx_id, *bx_id, BfieldRefineOp_, xVariableFillPattern);
-            Balgo.registerRefine(*by_id, *by_id, *by_id, BfieldRefineOp_, yVariableFillPattern);
-            Balgo.registerRefine(*bz_id, *bz_id, *bz_id, BfieldRefineOp_, zVariableFillPattern);
+            Balgo.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_, xVariableFillPattern);
+            // Balgo.registerRefine(*by_id, *by_id, *by_id, BfieldRefineOp_, yVariableFillPattern);
+            // Balgo.registerRefine(*bz_id, *bz_id, *bz_id, BfieldRefineOp_, zVariableFillPattern);
 
-
-            auto ex_id = resourcesManager_->getID(hybridInfo->modelElectric.xName);
-            auto ey_id = resourcesManager_->getID(hybridInfo->modelElectric.yName);
-            auto ez_id = resourcesManager_->getID(hybridInfo->modelElectric.zName);
+            auto ex_id = resourcesManager_->getID(hybridInfo->modelElectric);
+            auto ey_id = resourcesManager_->getID(hybridInfo->modelElectric);
+            auto ez_id = resourcesManager_->getID(hybridInfo->modelElectric);
 
             if (!ex_id or !ey_id or !ez_id)
             {
@@ -519,6 +532,8 @@ namespace amr
                     auto& particleDensity = pop.particleDensity();
                     auto& chargeDensity   = pop.chargeDensity();
                     auto& flux            = pop.flux();
+                    // first thing to do is to project patchGhostParitcles moments
+
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
@@ -734,23 +749,13 @@ namespace amr
         }
 
     private:
-        auto makeKeys(auto const& vecFieldNames)
-        {
-            std::vector<std::string> keys;
-            std::transform(std::begin(vecFieldNames), std::end(vecFieldNames),
-                           std::back_inserter(keys), [](auto const& d) { return d.vecName; });
-            return keys;
-        };
-
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
-                                                  makeKeys(info->ghostElectric),
-                                                  defaultFieldFillPattern);
+                                                  info->ghostElectric);
 
             currentGhostsRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
-                                                   core::VecFieldNames{Jold_}, EfieldRefineOp_,
-                                                   fieldTimeOp_, defaultFieldFillPattern);
+                                                   Jold_.name(), EfieldRefineOp_, vecFieldTimeOp_);
 
             rhoGhostsRefiners_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
                                               NiOld_.name(), fieldRefineOp_, fieldTimeOp_,
@@ -758,8 +763,7 @@ namespace amr
 
 
             velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
-                                               core::VecFieldNames{ViOld_}, fieldRefineOp_,
-                                               fieldTimeOp_, defaultFieldFillPattern);
+                                               ViOld_.name(), vecFieldRefineOp_, vecFieldTimeOp_);
         }
 
 
@@ -768,7 +772,7 @@ namespace amr
         void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
-                                                    makeKeys(info->initElectric));
+                                                    info->initElectric);
 
 
             domainParticlesRefiners_.addStaticRefiners(
@@ -792,10 +796,9 @@ namespace amr
 
             for (auto const& vecfield : info->ghostFlux)
             {
-                auto pop_flux_vec = std::vector<core::VecFieldNames>{vecfield};
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        core::VecFieldNames{sumVec_}, vecfield, nullptr, sumVec_.name(),
+                        sumVec_.name(), vecfield, nullptr, sumVec_.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
             }
 
@@ -811,13 +814,13 @@ namespace amr
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             magnetoSynchronizers_.add(info->modelMagnetic, magneticCoarseningOp_,
-                                      info->modelMagnetic.vecName);
+                                      info->modelMagnetic);
 
-            electroSynchronizers_.add(info->modelElectric, fieldCoarseningOp_,
-                                      info->modelElectric.vecName);
+            electroSynchronizers_.add(info->modelElectric, vecFieldCoarseningOp_,
+                                      info->modelElectric);
 
-            ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, fieldCoarseningOp_,
-                                         info->modelIonBulkVelocity.vecName);
+            ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, vecFieldCoarseningOp_,
+                                         info->modelIonBulkVelocity);
 
             densitySynchronizers_.add(info->modelIonDensity, fieldCoarseningOp_,
                                       info->modelIonDensity);
@@ -1077,16 +1080,16 @@ namespace amr
 
         // these refiners are used to initialize electromagnetic fields when creating
         // a new level (initLevel) or regridding (regrid)
-        using InitRefinerPool            = RefinerPool<rm_t, RefinerType::InitField>;
-        using GhostRefinerPool           = RefinerPool<rm_t, RefinerType::GhostField>;
-        using PatchGhostRefinerPool      = RefinerPool<rm_t, RefinerType::PatchGhostField>;
-        using InitDomPartRefinerPool     = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
-        using DomainGhostPartRefinerPool = RefinerPool<rm_t, RefinerType::ExteriorGhostParticles>;
-        using FieldGhostSumRefinerPool   = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
-        using FieldFillPattern_t         = FieldFillPattern<dimension>;
+        using InitRefinerPool             = RefinerPool<rm_t, RefinerType::InitField>;
+        using GhostRefinerPool            = RefinerPool<rm_t, RefinerType::GhostField>;
+        using InitDomPartRefinerPool      = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
+        using DomainGhostPartRefinerPool  = RefinerPool<rm_t, RefinerType::ExteriorGhostParticles>;
+        using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
+        using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
+        using FieldFillPattern_t          = FieldFillPattern<dimension>;
 
         //! += flux on ghost box overlap incomplete population moment nodes
-        std::vector<FieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
+        std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
 
@@ -1142,6 +1145,7 @@ namespace amr
 
 
         RefOp_ptr fieldRefineOp_{std::make_shared<DefaultFieldRefineOp>()};
+        RefOp_ptr vecFieldRefineOp_{std::make_shared<DefaultVecFieldRefineOp>()};
 
         RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
         RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
@@ -1149,9 +1153,12 @@ namespace amr
             = std::make_shared<FieldFillPattern<dimension>>(); // stateless (mostly)
 
         std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
+        std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
+            std::make_shared<VecFieldTimeInterp>()};
 
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
-        CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
+        CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultFieldCoarsenOp>()};
+        CoarsenOperator_ptr vecFieldCoarseningOp_{std::make_shared<DefaultVecFieldCoarsenOp>()};
         CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
 
         MagneticRefinePatchStrategy<ResourcesManagerT, FieldDataT> magneticRefinePatchStrategy_{

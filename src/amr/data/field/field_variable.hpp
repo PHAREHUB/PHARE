@@ -32,10 +32,10 @@ namespace amr
          */
         FieldVariable(std::string const& name, PhysicalQuantity qty,
                       bool fineBoundaryRepresentsVariable = true)
-            : SAMRAI::hier::Variable(
-                name,
-                std::make_shared<FieldDataFactory<GridLayoutT, FieldImpl>>(
-                    fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty), name, qty))
+            : SAMRAI::hier::Variable(name,
+                                     std::make_shared<FieldDataFactory<GridLayoutT, FieldImpl>>(
+                                         fineBoundaryRepresentsVariable,
+                                         computeDataLivesOnPatchBorder_(qty), name, qty))
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
             , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_(qty)}
         {

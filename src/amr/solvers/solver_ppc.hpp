@@ -219,8 +219,8 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     auto const& Eavg  = electromagAvg_.E;
     auto const& Bpred = electromagPred_.B;
 
-    hybridInfo.ghostElectric.emplace_back(core::VecFieldNames{Eavg});
-    hybridInfo.initMagnetic.emplace_back(core::VecFieldNames{Bpred});
+    hybridInfo.ghostElectric.emplace_back(Eavg.name());
+    hybridInfo.initMagnetic.emplace_back(Bpred.name());
 }
 
 
