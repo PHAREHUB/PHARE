@@ -239,7 +239,7 @@ public:
 
         std::size_t const expectedSize = getDataStreamSize_(overlap) / sizeof(double);
         std::vector<typename Grid_t::type> buffer;
-        buffer.reserve(expectedSize * N); // :(
+        buffer.reserve(expectedSize);
 
         auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
@@ -456,18 +456,25 @@ private:
         // The idea here is to tell SAMRAI the maximum memory will be used by our type
         // on a given region.
 
-
         // throws on failure
         auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
         if (fieldOverlap.isOverlapEmpty())
-        {
             return 0;
-        }
+
 
         SAMRAI::hier::BoxContainer const& boxContainer = fieldOverlap.getDestinationBoxContainer();
 
-        return boxContainer.getTotalSizeOfBoxes() * sizeof(typename Grid_t::type) * N;
+        std::size_t size = 0;
+        for (std::uint16_t c = 0; c < N; ++c)
+        {
+            for (auto const& box : boxContainer)
+                if (auto const final_box
+                    = dual_dir_minus_1(phare_box_from<dimension>(box), grids[c].physicalQuantity()))
+                    size += final_box->size();
+        }
+
+        return size * sizeof(typename Grid_t::type);
     }
 
 
