@@ -253,11 +253,16 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     auto const& Eavg  = electromagAvg_.E;
     auto const& Bpred = electromagPred_.B;
 
+<<<<<<< HEAD
     hybridInfo.ghostElectric.emplace_back(core::VecFieldNames{Eavg});
     hybridInfo.initMagnetic.emplace_back(core::VecFieldNames{Bpred});
 
     hybridInfo.refluxElectric  = core::VecFieldNames{Eavg};
     hybridInfo.fluxSumElectric = core::VecFieldNames{fluxSumE_};
+=======
+    hybridInfo.ghostElectric.emplace_back(Eavg.name());
+    hybridInfo.initMagnetic.emplace_back(Bpred.name());
+>>>>>>> f4fd674e (TensorFieldData)
 }
 
 

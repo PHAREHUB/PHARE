@@ -89,14 +89,15 @@ namespace amr
          * in ghostVecs. Data will be spatially refined using the specified refinement
          * operator, and time interpolated between time n and n+1 of next coarser data,
          * represented by modelVec and oldModelVec.*/
-        void
-        addTimeRefiners(std::vector<core::VecFieldNames> const& ghostVecs,
-                        core::VecFieldNames const& modelVec, core::VecFieldNames const& oldModelVec,
-                        std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
-                        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp,
-                        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr);
+        void addTimeRefiners(std::vector<std::string> const& ghostVecs, std::string const& modelVec,
+                             std::string const& oldModelVec,
+                             std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
+                             std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp,
+                             std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
+                             = nullptr);
 
 
+<<<<<<< HEAD
         /**
          * add a refiner that will use time and spatial interpolation.
          * time interpolation will be done between data represented by model and oldModel
@@ -114,6 +115,8 @@ namespace amr
                             std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
                             = nullptr);
 
+=======
+>>>>>>> f4fd674e (TensorFieldData)
 
 
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -242,28 +245,13 @@ void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
 
 template<typename ResourcesManager, RefinerType Type>
 void RefinerPool<ResourcesManager, Type>::addTimeRefiners(
-    std::vector<core::VecFieldNames> const& ghostVecs, core::VecFieldNames const& modelVec,
-    core::VecFieldNames const& oldModelVec, std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
+    std::vector<std::string> const& ghostVecs, std::string const& modelVec,
+    std::string const& oldModelVec, std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
     std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp,
     std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
 {
     for (auto const& ghostVec : ghostVecs)
-        addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec.vecName,
-                       fillPattern);
-}
-
-template<typename ResourcesManager, RefinerType Type>
-void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
-    core::VecFieldNames const& ghost, core::VecFieldNames const& model,
-    core::VecFieldNames const& oldModel,
-    std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-    std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string const& key,
-    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
-{
-    auto const [it, success] = refiners_.insert(
-        {key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp, fillPattern)});
-    if (!success)
-        throw std::runtime_error(key + " is already registered");
+        addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec, fillPattern);
 }
 
 

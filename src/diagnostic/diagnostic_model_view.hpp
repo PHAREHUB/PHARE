@@ -30,12 +30,12 @@ template<typename Hierarchy, typename Model>
 class BaseModelView : public IModelView
 {
 public:
-    using GridLayout                = Model::gridlayout_type;
-    using VecField                  = Model::vecfield_type;
-    using TensorFieldT              = Model::ions_type::tensorfield_type;
-    using GridLayoutT               = Model::gridlayout_type;
-    using ResMan                    = Model::resources_manager_type;
-    using FieldData_t               = ResMan::UserField_t::patch_data_type;
+    using GridLayout        = Model::gridlayout_type;
+    using VecField          = Model::vecfield_type;
+    using TensorFieldT      = Model::ions_type::tensorfield_type;
+    using GridLayoutT       = Model::gridlayout_type;
+    using ResMan            = Model::resources_manager_type;
+    using TensorFieldData_t = ResMan::template UserTensorField_t</*rank=*/2>::patch_data_type;
     static constexpr auto dimension = Model::dimension;
 
 
@@ -149,20 +149,17 @@ protected:
     {
         auto& rm = *model_.resourcesManager;
 
-        auto const dst_names = sumTensor_.componentNames();
+        auto const dst_name = sumTensor_.name();
 
         for (auto& pop : model_.state.ions)
         {
-            auto& MTAlgo         = MTAlgos.emplace_back();
-            auto const src_names = pop.momentumTensor().componentNames();
+            auto& MTAlgo        = MTAlgos.emplace_back();
+            auto const src_name = pop.momentumTensor().name();
 
-            for (std::size_t i = 0; i < dst_names.size(); ++i)
-            {
-                auto&& [idDst, idSrc] = rm.getIDsList(dst_names[i], src_names[i]);
-                MTAlgo.MTalgo->registerRefine(
-                    idDst, idSrc, idDst, nullptr,
-                    std::make_shared<amr::FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-            }
+            auto&& [idDst, idSrc] = rm.getIDsList(dst_name, src_name);
+            MTAlgo.MTalgo->registerRefine(
+                idDst, idSrc, idDst, nullptr,
+                std::make_shared<amr::FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
         }
 
         // can't create schedules here as the hierarchy has no levels yet
@@ -174,10 +171,10 @@ protected:
         {
             if (not MTschedules.count(ilvl))
                 MTschedules.try_emplace(
-                    ilvl,
-                    MTalgo->createSchedule(
-                        hierarchy.getPatchLevel(ilvl), 0,
-                        std::make_shared<amr::FieldBorderSumTransactionFactory<FieldData_t>>()));
+                    ilvl, MTalgo->createSchedule(
+                              hierarchy.getPatchLevel(ilvl), 0,
+                              std::make_shared<
+                                  amr::FieldBorderSumTransactionFactory<TensorFieldData_t>>()));
             return *MTschedules[ilvl];
         }
 

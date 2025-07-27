@@ -1,12 +1,14 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 
-
+#include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
+
 #include <core/hybrid/hybrid_quantities.hpp>
 
 #include <amr/utilities/box/amr_box.hpp>
 #include "amr/data/field/field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_geometry.hpp"
 
 #include <SAMRAI/pdat/CellOverlap.h>
 #include "SAMRAI/xfer/VariableFillPattern.h"
@@ -166,6 +168,7 @@ class FieldGhostInterpOverlapFillPattern : public SAMRAI::xfer::VariableFillPatt
 {
     std::size_t constexpr static dim = Gridlayout_t::dimension;
     using FieldGeometry_t            = FieldGeometryBase<dim>;
+    using TensorFieldGeometry_t      = TensorFieldGeometryBase<dim>;
 
 public:
     FieldGhostInterpOverlapFillPattern() {}
@@ -184,32 +187,66 @@ public:
         if (phare_box_from<dim>(dst_patch_box) == phare_box_from<dim>(src_mask))
             return std::make_shared<FieldOverlap>(SAMRAI::hier::BoxContainer{}, transformation);
 
-        auto& dst_geometry = dynamic_cast<FieldGeometry_t const&>(_dst_geometry);
-        auto& src_geometry = dynamic_cast<FieldGeometry_t const&>(_src_geometry);
+        if (dynamic_cast<FieldGeometry_t const*>(&_dst_geometry))
+        {
+            auto& dst_geometry = dynamic_cast<FieldGeometry_t const&>(_dst_geometry);
+            auto& src_geometry = dynamic_cast<FieldGeometry_t const&>(_src_geometry);
 
-        auto const _primal_ghost_box = [](auto const& box) {
-            auto gb = grow(box, Gridlayout_t::nbrGhosts());
-            gb.upper += 1;
-            return gb;
-        };
+            auto const _primal_ghost_box = [](auto const& box) {
+                auto gb = grow(box, Gridlayout_t::nbrGhosts());
+                gb.upper += 1;
+                return gb;
+            };
 
-        auto const src_ghost_box = [&]() {
-            auto const box              = phare_box_from<dim>(src_geometry.patchBox);
-            auto const primal_ghost_box = _primal_ghost_box(box);
-            return amr::shift(primal_ghost_box, transformation);
-        }();
+            auto const src_ghost_box = [&]() {
+                auto const box              = phare_box_from<dim>(src_geometry.patchBox);
+                auto const primal_ghost_box = _primal_ghost_box(box);
+                return amr::shift(primal_ghost_box, transformation);
+            }();
 
-        auto const dst_ghost_box = [&]() {
-            auto const box = phare_box_from<dim>(dst_geometry.patchBox);
-            return _primal_ghost_box(box);
-        }();
+            auto const dst_ghost_box = [&]() {
+                auto const box = phare_box_from<dim>(dst_geometry.patchBox);
+                return _primal_ghost_box(box);
+            }();
 
 
-        SAMRAI::hier::BoxContainer dest;
-        if (auto overlap = dst_ghost_box * src_ghost_box)
-            dest.push_back(samrai_box_from(*overlap));
+            SAMRAI::hier::BoxContainer dest;
+            if (auto overlap = dst_ghost_box * src_ghost_box)
+                dest.push_back(samrai_box_from(*overlap));
 
-        return std::make_shared<FieldOverlap>(dest, transformation);
+            return std::make_shared<FieldOverlap>(dest, transformation);
+        }
+        else if (dynamic_cast<TensorFieldGeometry_t const*>(&_dst_geometry))
+        {
+            auto& dst_geometry = dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry);
+            auto& src_geometry = dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry);
+
+            auto const _primal_ghost_box = [](auto const& box) {
+                auto gb = grow(box, Gridlayout_t::nbrGhosts());
+                gb.upper += 1;
+                return gb;
+            };
+
+            auto const src_ghost_box = [&]() {
+                auto const box              = phare_box_from<dim>(src_geometry.patchBox);
+                auto const primal_ghost_box = _primal_ghost_box(box);
+                return amr::shift(primal_ghost_box, transformation);
+            }();
+
+            auto const dst_ghost_box = [&]() {
+                auto const box = phare_box_from<dim>(dst_geometry.patchBox);
+                return _primal_ghost_box(box);
+            }();
+
+
+            SAMRAI::hier::BoxContainer dest;
+            if (auto overlap = dst_ghost_box * src_ghost_box)
+                dest.push_back(samrai_box_from(*overlap));
+
+            return std::make_shared<FieldOverlap>(dest, transformation);
+        }
+        else
+            throw std::runtime_error("bad cast");
     }
 
     std::string const& getPatternName() const override { return s_name_id; }
