@@ -8,10 +8,10 @@
 #include <amr/data/tensorfield/tensor_field_data.hpp>
 #include <amr/data/tensorfield/tensor_field_geometry.hpp>
 
-#include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDataFactory.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
+#include <SAMRAI/geom/CartesianPatchGeometry.h>
 
 #include <utility>
 
@@ -109,37 +109,7 @@ public:
 
 
 
-    std::size_t getSizeOfMemory(SAMRAI::hier::Box const& box) const final
-    {
-        return 1;
-        // // TODO: this calculus assumes that we don't need more memory than
-        // //       alignedMemory(nx*ny*nz*sizeof(double)) + alignedMemory(baseSize)
-
-        // std::array<double, dimension> dl;
-        // std::array<std::uint32_t, dimension> nbCell;
-        // core::Point<double, dimension> origin;
-
-        // for (std::size_t iDim = 0; iDim < dimension; ++iDim)
-        // {
-        //     dl[iDim]     = 0.01; // some value that is not used anyway
-        //     origin[iDim] = 0;
-        //     nbCell[iDim] = box.numberCells(iDim);
-        // }
-
-        // std::size_t const baseTensorField = SAMRAI::tbox::MemoryUtilities::align(
-        //     sizeof(TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>));
-
-        // GridLayoutT const gridLayout{dl, nbCell, origin};
-        // auto const& allocSize = gridLayout.allocSize(quantity_);
-
-        // std::size_t data = 1;
-        // for (auto nCell : allocSize)
-        //     data *= nCell;
-
-        // data *= sizeof(typename Grid_t::type);
-
-        // return baseTensorField + SAMRAI::tbox::MemoryUtilities::align(data);
-    }
+    std::size_t getSizeOfMemory(SAMRAI::hier::Box const& box) const final { return 1; }
 
 
 

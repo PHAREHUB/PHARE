@@ -158,41 +158,6 @@ namespace amr
 } // namespace PHARE
 
 
-namespace PHARE::amr
-{
-
-
-
-template<std::size_t rank, std::size_t dimension>
-class DefaultTensorFieldCoarsener : public DefaultFieldCoarsener<dimension>
-{
-    using Super = DefaultFieldCoarsener<dimension>;
-
-    void super(auto&&... args) { static_cast<Super&>(*this)(args...); }
-
-public:
-    DefaultTensorFieldCoarsener(std::array<core::QtyCentering, dimension> const& centering,
-                                SAMRAI::hier::Box const& sourceBox,
-                                SAMRAI::hier::Box const& destinationBox,
-                                SAMRAI::hier::IntVector const& ratio)
-        : Super{centering, sourceBox, destinationBox, ratio}
-    {
-    }
-
-    template<typename FieldT>
-    void operator()(FieldT const& fineField, FieldT& coarseField,
-                    core::Point<int, dimension> const& coarseIndex)
-    {
-        super(fineField, coarseField, coarseIndex);
-    }
-};
-
-
-template<std::size_t dimension>
-using DefaultVecFieldCoarsener = DefaultTensorFieldCoarsener<1, dimension>;
-
-
-} // namespace PHARE::amr
 
 
 #endif

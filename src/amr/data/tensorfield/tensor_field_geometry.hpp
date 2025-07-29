@@ -16,7 +16,6 @@
 
 
 #include <cassert>
-#include <iostream>
 
 namespace PHARE::amr
 {

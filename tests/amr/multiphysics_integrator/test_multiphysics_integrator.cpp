@@ -54,7 +54,7 @@ public:
 
 
 
-TYPED_TEST(SimulatorTest, knowsWhichSolverisOnAGivenLevel)
+TYPED_TEST(SimulatorTest, knowsWhichSolverIsOnAGivenLevel)
 {
     TypeParam sim;
     auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
@@ -144,7 +144,7 @@ TYPED_TEST(SimulatorTest, knowsWhichModelIsSolvedAtAGivenLevel)
 
 
 
-TYPED_TEST(SimulatorTest, returnsCorrecMessengerForEachLevel)
+TYPED_TEST(SimulatorTest, returnsCorrectMessengerForEachLevel)
 {
     TypeParam sim;
     auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
