@@ -1,6 +1,7 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
+#include "amr/data/field/refine/magnetic_field_regrider.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
@@ -83,7 +84,7 @@ namespace amr
         using TensorFieldT      = IonsT::tensorfield_type;
         using GridLayoutT       = HybridModel::gridlayout_type;
         using FieldT            = VecFieldT::field_type;
-        using FieldDataT        = FieldData<GridLayoutT, GridT>;
+        using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::HybridQuantity>;
         using ResourcesManagerT = HybridModel::resources_manager_type;
         using IPhysicalModel    = HybridModel::Interface;
 
@@ -103,6 +104,7 @@ namespace amr
         using DefaultFieldRefineOp    = FieldRefineOp<DefaultFieldRefiner<dimension>>;
         using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;
         using MagneticFieldRefineOp   = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
+        using MagneticFieldRegridOp   = VecFieldRefineOp<MagneticFieldRegrider<dimension>>;
         using ElectricFieldRefineOp   = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
         using FieldTimeInterp         = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
 
@@ -190,8 +192,6 @@ namespace amr
                 = std::make_shared<ZVariableFillPattern>();
 
             auto b_id = resourcesManager_->getID(hybridInfo->modelMagnetic);
-            // auto by_id = resourcesManager_->getID(hybridInfo->modelMagnetic.yName);
-            // auto bz_id = resourcesManager_->getID(hybridInfo->modelMagnetic.zName);
 
             if (!b_id)
             {
@@ -201,10 +201,14 @@ namespace amr
 
             magneticRefinePatchStrategy_.registerIDs(*b_id);
 
-            Balgo.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_, xVariableFillPattern);
-            // Balgo.registerRefine(*by_id, *by_id, *by_id, BfieldRefineOp_, yVariableFillPattern);
-            // Balgo.registerRefine(*bz_id, *bz_id, *bz_id, BfieldRefineOp_, zVariableFillPattern);
+            Balgo.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
+                                 defaultTensorFieldFillPattern);
 
+            BregridAlgo.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
+                                       defaultTensorFieldFillPattern);
+
+            // probably fucked. Need to use tensor field data + refinement or one algo per component
+            // with refiner pool
             auto ex_id = resourcesManager_->getID(hybridInfo->modelElectric);
             auto ey_id = resourcesManager_->getID(hybridInfo->modelElectric);
             auto ez_id = resourcesManager_->getID(hybridInfo->modelElectric);
@@ -276,9 +280,6 @@ namespace amr
                 = Balgo.createSchedule(level, &magneticRefinePatchStrategy_);
 
             elecPatchGhostsRefineSchedules[levelNumber] = Ealgo.createSchedule(level);
-
-            magGhostsRefineSchedules[levelNumber] = Balgo.createSchedule(
-                level, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
 
             // technically not needed for finest
             patchGhostRefluxedSchedules[levelNumber] = PatchGhostRefluxedAlgo.createSchedule(level);
@@ -821,10 +822,12 @@ namespace amr
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
-                                                  info->ghostElectric);
+                                                  info->ghostElectric,
+                                                  defaultTensorFieldFillPattern);
 
             currentGhostsRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
-                                                   Jold_.name(), EfieldRefineOp_, vecFieldTimeOp_);
+                                                   Jold_.name(), EfieldRefineOp_, vecFieldTimeOp_,
+                                                   defaultTensorFieldFillPattern);
 
             chargeDensityGhostsRefiners_.addTimeRefiner(
                 info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldRefineOp_,
@@ -832,7 +835,8 @@ namespace amr
 
 
             velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
-                                               ViOld_.name(), vecFieldRefineOp_, vecFieldTimeOp_);
+                                               ViOld_.name(), vecFieldRefineOp_, vecFieldTimeOp_,
+                                               defaultTensorFieldFillPattern);
         }
 
 
@@ -932,192 +936,30 @@ namespace amr
                                 std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                                 HybridModel& hybridModel, double const initDataTime)
         {
-            // first we set all B ghost nodes to NaN so that we can later
-            // postprocess them and fill them with the correct value
+            // is this setup to nan actually needed?
             for (auto& patch : *level)
             {
-                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
-                auto _  = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
-                auto& B = hybridModel.state.electromag.B;
+                auto& B          = hybridModel.state.electromag.B;
+                auto layout      = amr::layoutFromPatch<GridLayoutT>(*patch);
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, B);
 
-                auto setToNaN = [&](auto& B, core::MeshIndex<dimension> idx) {
-                    B(idx) = std::numeric_limits<double>::quiet_NaN();
-                };
+                layout.evalOnGhostBox(B(core::Component::X), [&](auto const&... args) mutable {
+                    B(core::Component::X)(args...) = std::numeric_limits<double>::quiet_NaN();
+                });
 
-                layout.evalOnGhostBox(B(core::Component::X), [&](auto&... args) mutable {
-                    setToNaN(B(core::Component::X), {args...});
+                layout.evalOnGhostBox(B(core::Component::Y), [&](auto const&... args) mutable {
+                    B(core::Component::Y)(args...) = std::numeric_limits<double>::quiet_NaN();
                 });
-                layout.evalOnGhostBox(B(core::Component::Y), [&](auto&... args) mutable {
-                    setToNaN(B(core::Component::Y), {args...});
-                });
-                layout.evalOnGhostBox(B(core::Component::Z), [&](auto&... args) mutable {
-                    setToNaN(B(core::Component::Z), {args...});
+
+                layout.evalOnGhostBox(B(core::Component::Z), [&](auto const&... args) mutable {
+                    B(core::Component::Z)(args...) = std::numeric_limits<double>::quiet_NaN();
                 });
             }
 
-            // here we create the schedule on the fly because it is the only moment where we
-            // have both the old and current level
-
-            auto magSchedule = Balgo.createSchedule(
-                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+            auto magSchedule = BregridAlgo.createSchedule(
+                level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
+                &magneticRefinePatchStrategy_);
             magSchedule->fillData(initDataTime);
-
-            // we set the new fine faces using the toth and roe (2002) formulas. This requires
-            // an even number of ghost cells as we set the new fine faces using the values of
-            // the fine faces shared with the corresponding coarse faces of the coarse cell.
-            for (auto& patch : *level)
-            {
-                auto const& layout = layoutFromPatch<GridLayoutT>(*patch);
-                auto _   = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
-                auto& B  = hybridModel.state.electromag.B;
-                auto& bx = B(core::Component::X);
-                auto& by = B(core::Component::Y);
-                auto& bz = B(core::Component::Z);
-
-                if constexpr (dimension == 1)
-                {
-                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-
-                        if (std::isnan(bx(ix)))
-                        {
-                            assert(ix % 2 == 1);
-                            MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                        FieldDataT>::postprocessBx1d(bx, idx);
-                        }
-                    };
-
-                    layout.evalOnGhostBox(B(core::Component::X),
-                                          [&](auto&... args) mutable { postprocessBx({args...}); });
-                }
-                else if constexpr (dimension == 2)
-                {
-                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-
-                        if (std::isnan(bx(ix, iy)))
-                        {
-                            assert(ix % 2 == 1);
-                            MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                        FieldDataT>::postprocessBx2d(bx, by, idx);
-                        }
-                    };
-
-                    auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-
-                        if (std::isnan(by(ix, iy)))
-                        {
-                            assert(iy % 2 == 1);
-                            MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                        FieldDataT>::postprocessBy2d(bx, by, idx);
-                        }
-                    };
-
-                    layout.evalOnGhostBox(B(core::Component::X),
-                                          [&](auto&... args) mutable { postprocessBx({args...}); });
-
-                    layout.evalOnGhostBox(B(core::Component::Y),
-                                          [&](auto&... args) mutable { postprocessBy({args...}); });
-                }
-                else if constexpr (dimension == 3)
-                {
-                    auto meshSize = layout.meshSize();
-
-                    auto postprocessBx = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        auto iz = idx[dirZ];
-
-                        if (std::isnan(bx(ix, iy, iz)))
-                        {
-                            assert(ix % 2 == 1);
-                            MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                        FieldDataT>::postprocessBx3d(bx, by, bz,
-                                                                                     meshSize, idx);
-                        }
-                    };
-
-                    auto postprocessBy = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        auto iz = idx[dirZ];
-
-                        if (std::isnan(by(ix, iy, iz)))
-                        {
-                            assert(iy % 2 == 1);
-                            MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                        FieldDataT>::postprocessBy3d(bx, by, bz,
-                                                                                     meshSize, idx);
-                        }
-                    };
-
-                    auto postprocessBz = [&](core::MeshIndex<dimension> idx) {
-                        auto ix = idx[dirX];
-                        auto iy = idx[dirY];
-                        auto iz = idx[dirZ];
-
-                        if (std::isnan(bz(ix, iy, iz)))
-                        {
-                            assert(iz % 2 == 1);
-                            MagneticRefinePatchStrategy<ResourcesManagerT,
-                                                        FieldDataT>::postprocessBz3d(bx, by, bz,
-                                                                                     meshSize, idx);
-                        }
-                    };
-
-                    layout.evalOnGhostBox(B(core::Component::X),
-                                          [&](auto&... args) mutable { postprocessBx({args...}); });
-
-                    layout.evalOnGhostBox(B(core::Component::Y),
-                                          [&](auto&... args) mutable { postprocessBy({args...}); });
-
-                    layout.evalOnGhostBox(B(core::Component::Z),
-                                          [&](auto&... args) mutable { postprocessBz({args...}); });
-                }
-
-                auto notNan = [&](auto& b, core::MeshIndex<dimension> idx) {
-                    auto check = [&](auto&&... indices) {
-                        if (std::isnan(b(indices...)))
-                        {
-                            std::string index_str;
-                            ((index_str
-                              += (index_str.empty() ? "" : ", ") + std::to_string(indices)),
-                             ...);
-                            throw std::runtime_error("NaN found in magnetic field " + b.name()
-                                                     + " at index (" + index_str + ")");
-                        }
-                    };
-
-                    if constexpr (dimension == 1)
-                    {
-                        check(idx[dirX]);
-                    }
-                    else if constexpr (dimension == 2)
-                    {
-                        check(idx[dirX], idx[dirY]);
-                    }
-                    else if constexpr (dimension == 3)
-                    {
-                        check(idx[dirX], idx[dirY], idx[dirZ]);
-                    }
-                };
-
-                auto checkNoNaNsLeft = [&]() {
-                    auto checkComponent = [&](auto component) {
-                        layout.evalOnGhostBox(
-                            B(component), [&](auto&... args) { notNan(B(component), {args...}); });
-                    };
-
-                    checkComponent(core::Component::X);
-                    checkComponent(core::Component::Y);
-                    checkComponent(core::Component::Z);
-                };
-
-                PHARE_DEBUG_DO(checkNoNaNsLeft());
-            }
         }
 
 
@@ -1211,6 +1053,7 @@ namespace amr
         using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
+        using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
         //! += flux on ghost box overlap incomplete population moment nodes
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
@@ -1221,9 +1064,9 @@ namespace amr
 
 
         SAMRAI::xfer::RefineAlgorithm Balgo;
+        SAMRAI::xfer::RefineAlgorithm BregridAlgo;
         SAMRAI::xfer::RefineAlgorithm Ealgo;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magPatchGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> elecPatchGhostsRefineSchedules;
 
@@ -1276,26 +1119,25 @@ namespace amr
         RefOp_ptr vecFieldRefineOp_{std::make_shared<DefaultVecFieldRefineOp>()};
 
         RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
+        RefOp_ptr BfieldRegridOp_{std::make_shared<MagneticFieldRegridOp>()};
         RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
         std::shared_ptr<FieldFillPattern_t> defaultFieldFillPattern
             = std::make_shared<FieldFillPattern<dimension>>(); // stateless (mostly)
+
+        std::shared_ptr<TensorFieldFillPattern_t> defaultTensorFieldFillPattern
+            = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>();
 
         std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
             std::make_shared<VecFieldTimeInterp>()};
 
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
-<<<<<<< HEAD
-        CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultCoarsenOp>()};
-        CoarsenOperator_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
-=======
         CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultFieldCoarsenOp>()};
         CoarsenOperator_ptr vecFieldCoarseningOp_{std::make_shared<DefaultVecFieldCoarsenOp>()};
         CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
->>>>>>> f4fd674e (TensorFieldData)
 
-        MagneticRefinePatchStrategy<ResourcesManagerT, FieldDataT> magneticRefinePatchStrategy_{
-            *resourcesManager_};
+        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
+            magneticRefinePatchStrategy_{*resourcesManager_};
     };
 
 

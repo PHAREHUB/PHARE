@@ -34,11 +34,10 @@ public:
         , ghostTensorFieldBox_{ghostTensorFieldBox}
         , interiorTensorFieldBox_{interiorTensorFieldBox}
         , centerings_{centerings}
-        , pureInteriorTensorFieldBox_{pureInteriorBox_(interiorTensorFieldBox, centerings)}
     {
     }
 
-    auto const& pureInteriorTensorFieldBox() const { return pureInteriorTensorFieldBox_; }
+    auto const& interiorTensorFieldBox() const { return interiorTensorFieldBox_; }
 
     SAMRAI::hier::Box const patchBox;
 
@@ -46,22 +45,6 @@ protected:
     SAMRAI::hier::Box const ghostTensorFieldBox_;
     SAMRAI::hier::Box const interiorTensorFieldBox_;
     std::array<core::QtyCentering, dimension> const centerings_;
-    SAMRAI::hier::Box const pureInteriorTensorFieldBox_;
-
-private:
-    static SAMRAI::hier::Box
-    pureInteriorBox_(SAMRAI::hier::Box const& interiorTensorFieldBox,
-                     std::array<core::QtyCentering, dimension> const& centerings)
-    {
-        auto noSharedNodeBox{interiorTensorFieldBox};
-        SAMRAI::hier::IntVector growth(SAMRAI::tbox::Dimension{dimension});
-        for (auto dir = 0u; dir < dimension; ++dir)
-        {
-            growth[dir] = (centerings[dir] == core::QtyCentering::primal) ? -1 : 0;
-        }
-        noSharedNodeBox.grow(growth);
-        return noSharedNodeBox;
-    }
 };
 
 template<std::size_t rank, typename GridLayoutT, typename PhysicalQuantity>

@@ -1,17 +1,20 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
 
 #include <core/hybrid/hybrid_quantities.hpp>
 
+#include "core/data/tensorfield/tensorfield.hpp"
 #include <amr/utilities/box/amr_box.hpp>
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
 
 #include <SAMRAI/pdat/CellOverlap.h>
 #include "SAMRAI/xfer/VariableFillPattern.h"
+#include "core/utilities/types.hpp"
 
 #include <cassert>
 
@@ -60,27 +63,6 @@ public:
                                              transformation);
     }
 
-    std::string const& getPatternName() const override { return s_name_id; }
-
-private:
-    FieldFillPattern(FieldFillPattern const&)            = delete;
-    FieldFillPattern& operator=(FieldFillPattern const&) = delete;
-
-    static inline std::string const s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
-
-    SAMRAI::hier::IntVector const& getStencilWidth() override
-    {
-        TBOX_ERROR("getStencilWidth() should not be\n"
-                   << "called.  This pattern creates overlaps based on\n"
-                   << "the BoxGeometry objects and is not restricted to a\n"
-                   << "specific stencil.\n");
-
-        /*
-         * Dummy return value that will never get reached.
-         */
-        return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
-    }
-
     /*
      *************************************************************************
      *
@@ -124,9 +106,96 @@ private:
         return std::make_shared<FieldOverlap>(destinationBoxes, overlap.getTransformation());
     }
 
+    std::string const& getPatternName() const override { return s_name_id; }
+
+private:
+    FieldFillPattern(FieldFillPattern const&)            = delete;
+    FieldFillPattern& operator=(FieldFillPattern const&) = delete;
+
+    static inline std::string const s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
+
+    SAMRAI::hier::IntVector const& getStencilWidth() override
+    {
+        TBOX_ERROR("getStencilWidth() should not be\n"
+                   << "called.  This pattern creates overlaps based on\n"
+                   << "the BoxGeometry objects and is not restricted to a\n"
+                   << "specific stencil.\n");
+
+        /*
+         * Dummy return value that will never get reached.
+         */
+        return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
+    }
+
     bool overwrite_interior_;
 };
 
+
+template<std::size_t dim, std::size_t rank_ = 1>
+class TensorFieldFillPattern : public SAMRAI::xfer::VariableFillPattern
+{
+    static constexpr std::size_t N = core::detail::tensor_field_dim_from_rank<rank_>();
+
+public:
+    TensorFieldFillPattern(bool overwrite_interior = false)
+        : scalar_fill_pattern_{overwrite_interior}
+    {
+    }
+
+    ~TensorFieldFillPattern() override = default;
+
+    std::shared_ptr<SAMRAI::hier::BoxOverlap>
+    calculateOverlap(const SAMRAI::hier::BoxGeometry& dst_geometry,
+                     const SAMRAI::hier::BoxGeometry& src_geometry,
+                     const SAMRAI::hier::Box& dst_patch_box, const SAMRAI::hier::Box& src_mask,
+                     const SAMRAI::hier::Box& fill_box, bool const fn_overwrite_interior,
+                     const SAMRAI::hier::Transformation& transformation) const override
+    {
+        auto overlaps = core::for_N<N, core::for_N_R_mode::make_array>([&](auto /*i*/) {
+            auto overlap = scalar_fill_pattern_.calculateOverlap(
+                dst_geometry, src_geometry, dst_patch_box, src_mask, fill_box,
+                fn_overwrite_interior, transformation);
+
+            return std::dynamic_pointer_cast<FieldOverlap>(std::move(overlap));
+        });
+
+        return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
+    }
+
+    std::shared_ptr<SAMRAI::hier::BoxOverlap>
+    computeFillBoxesOverlap(SAMRAI::hier::BoxContainer const& fill_boxes,
+                            SAMRAI::hier::BoxContainer const& node_fill_boxes,
+                            SAMRAI::hier::Box const& patch_box, SAMRAI::hier::Box const& data_box,
+                            SAMRAI::hier::PatchDataFactory const& pdf) const override
+    {
+        NULL_USE(node_fill_boxes); // not needed, consistent with scalar case
+
+        auto overlaps = core::for_N<N, core::for_N_R_mode::make_array>([&](auto /*i*/) {
+            auto overlap = scalar_fill_pattern_.computeFillBoxesOverlap(fill_boxes, node_fill_boxes,
+                                                                        patch_box, data_box, pdf);
+
+            return std::dynamic_pointer_cast<FieldOverlap>(std::move(overlap));
+        });
+
+        return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
+    }
+
+    std::string const& getPatternName() const override { return s_name_id; }
+
+private:
+    TensorFieldFillPattern(TensorFieldFillPattern const&)            = delete;
+    TensorFieldFillPattern& operator=(TensorFieldFillPattern const&) = delete;
+
+    static inline std::string const s_name_id = "BOX_GEOMETRY_FILL_PATTERN";
+
+    SAMRAI::hier::IntVector const& getStencilWidth() override
+    {
+        TBOX_ERROR("getStencilWidth() should not be called for TensorFieldFillPattern.");
+        return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
+    }
+
+    FieldFillPattern<dim> scalar_fill_pattern_;
+};
 
 
 // We use this fill pattern to sum the contributions of border fields like rho and flux
