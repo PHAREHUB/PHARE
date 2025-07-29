@@ -1,8 +1,6 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_HPP
 
-#include <cassert>
-#include <iostream>
 
 #include "core/def/phare_mpi.hpp"
 
@@ -17,6 +15,7 @@
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/BoxGeometry.h>
 
+#include <cassert>
 
 namespace PHARE
 {

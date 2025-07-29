@@ -1,10 +1,10 @@
 #ifndef PHARE_FIELD_DATA_COARSEN_HPP
 #define PHARE_FIELD_DATA_COARSEN_HPP
 
-#include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"

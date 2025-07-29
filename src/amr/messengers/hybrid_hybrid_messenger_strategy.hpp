@@ -114,7 +114,7 @@ namespace amr
 
         using MagneticCoarsenOp        = VecFieldCoarsenOp<MagneticFieldCoarsener<dimension>>;
         using DefaultFieldCoarsenOp    = FieldCoarsenOp<DefaultFieldCoarsener<dimension>>;
-        using DefaultVecFieldCoarsenOp = VecFieldCoarsenOp<DefaultVecFieldCoarsener<dimension>>;
+        using DefaultVecFieldCoarsenOp = VecFieldCoarsenOp<DefaultFieldCoarsener<dimension>>;
 
     public:
         static inline std::string const stratName    = "HybridModel-HybridModel";
