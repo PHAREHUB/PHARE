@@ -178,15 +178,15 @@ public:
         auto geom      = pdf.getBoxGeometry(patch_box);
         auto& casted   = dynamic_cast<TensorFieldGeometryBase<dimension> const&>(*geom);
         auto& toverlap = dynamic_cast<TensorFieldOverlap<rank_> const&>(*basic_overlap);
-        auto& interiorTensorFieldBox = casted.interiorTensorFieldBox();
+        auto&& interiorTensorFieldBox = casted.interiorTensorFieldBox();
 
         auto overlaps = core::for_N<N, core::for_N_R_mode::make_array>([&](auto i) {
             auto& overlap          = toverlap[i];
             auto& interiorFieldBox = interiorTensorFieldBox[i];
-            auto& destinationBoxes = overlap->getDestinationBoxContainer();
+            auto destinationBoxes  = overlap->getDestinationBoxContainer();
             destinationBoxes.removeIntersections(interiorFieldBox);
 
-            return std::make_shared<FieldOverlap>(destinationBoxes, overlap.getTransformation());
+            return std::make_shared<FieldOverlap>(destinationBoxes, overlap->getTransformation());
         });
 
         return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
@@ -206,7 +206,7 @@ private:
         return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
     }
 
-    FieldFillPattern<dim> scalar_fill_pattern_;
+    FieldFillPattern<dimension> scalar_fill_pattern_;
     bool overwrite_interior_;
 };
 
@@ -335,7 +335,7 @@ class TensorFieldGhostInterpOverlapFillPattern : public SAMRAI::xfer::VariableFi
     std::size_t constexpr static dim = Gridlayout_t::dimension;
     static constexpr auto N          = core::detail::tensor_field_dim_from_rank<rank_>();
 
-    using TensorFieldGeometry_t = TensorFieldGeometryBase<dim>;
+    using TensorFieldGeometry_t = TensorFieldGeometryBase<dim, rank_>;
 
 public:
     TensorFieldGhostInterpOverlapFillPattern() {}
@@ -348,7 +348,7 @@ public:
                      SAMRAI::hier::Box const& fill_box, bool const overwrite_interior,
                      SAMRAI::hier::Transformation const& transformation) const override
     {
-        PHARE_LOG_SCOPE(3, "FieldGhostInterpOverlapFillPattern::calculateOverlap");
+        PHARE_LOG_SCOPE(3, "TensorFieldGhostInterpOverlapFillPattern::calculateOverlap");
 
         // Skip if src and dst are the same
         if (phare_box_from<dim>(dst_patch_box) == phare_box_from<dim>(src_mask))
@@ -367,7 +367,7 @@ public:
                     dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry), dst_patch_box,
                     src_mask, fill_box, overwrite_interior, transformation);
 
-                return std::dynamic_pointer_cast<FieldOverlap>(std::move(overlap));
+                return std::dynamic_pointer_cast<FieldOverlap>(overlap);
             });
             return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
         }

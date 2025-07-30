@@ -159,7 +159,8 @@ protected:
             auto&& [idDst, idSrc] = rm.getIDsList(dst_name, src_name);
             MTAlgo.MTalgo->registerRefine(
                 idDst, idSrc, idDst, nullptr,
-                std::make_shared<amr::FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+                std::make_shared<
+                    amr::TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/2>>());
         }
 
         // can't create schedules here as the hierarchy has no levels yet

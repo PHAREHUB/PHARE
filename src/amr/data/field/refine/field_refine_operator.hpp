@@ -185,7 +185,8 @@ public:
     static constexpr std::size_t dimension = GridLayoutT::dimension;
     using GridLayoutImpl                   = GridLayoutT::implT;
 
-    using TensorFieldDataT = TensorFieldData<rank, GridLayoutT, FieldT, core::HybridQuantity>;
+    using TensorFieldDataT     = TensorFieldData<rank, GridLayoutT, FieldT, core::HybridQuantity>;
+    using TensorFieldOverlap_t = TensorFieldOverlap<rank>;
 
     static constexpr std::size_t N = TensorFieldDataT::N;
 
@@ -227,10 +228,10 @@ public:
                 SAMRAI::hier::BoxOverlap const& destinationOverlap,
                 SAMRAI::hier::IntVector const& ratio) const override
     {
-        auto const& destinationFieldOverlap = dynamic_cast<FieldOverlap const&>(destinationOverlap);
-        auto const& overlapBoxes            = destinationFieldOverlap.getDestinationBoxContainer();
-        auto const& srcData                 = source.getPatchData(sourceId);
-        auto const& destData                = destination.getPatchData(destinationId);
+        auto const& destinationTensorFieldOverlap
+            = dynamic_cast<TensorFieldOverlap_t const&>(destinationOverlap);
+        auto const& srcData      = source.getPatchData(sourceId);
+        auto const& destData     = destination.getPatchData(destinationId);
         auto& destinationFields  = TensorFieldDataT::getFields(destination, destinationId);
         auto const& destLayout   = TensorFieldDataT::getLayout(destination, destinationId);
         auto const& sourceFields = TensorFieldDataT::getFields(source, sourceId);
@@ -240,6 +241,8 @@ public:
         // Note that an assertion will be raised in refineIt operator
         for (std::uint16_t c = 0; c < N; ++c)
         {
+            auto const& overlapBoxes
+                = destinationTensorFieldOverlap[c]->getDestinationBoxContainer();
             auto const& qty     = destinationFields[c].physicalQuantity();
             using FieldGeometry = FieldGeometry<GridLayoutT, std::decay_t<decltype(qty)>>;
 

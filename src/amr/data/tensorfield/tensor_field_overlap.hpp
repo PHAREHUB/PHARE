@@ -70,22 +70,6 @@ namespace amr
             return transformation_;
         }
 
-        NO_DISCARD auto& getComponent(core::Component component)
-        {
-            return components_[_get_index_for(component)];
-        }
-
-        NO_DISCARD auto const& getComponent(core::Component component) const
-        {
-            return components_[_get_index_for(component)];
-        }
-
-        NO_DISCARD auto& operator()(core::Component component) const
-        {
-            return getComponent(component);
-        }
-        NO_DISCARD auto& operator()(core::Component component) { return getComponent(component); }
-
         NO_DISCARD auto& operator[](std::size_t i) { return components_[i]; }
         NO_DISCARD auto& operator[](std::size_t i) const { return components_[i]; }
 
