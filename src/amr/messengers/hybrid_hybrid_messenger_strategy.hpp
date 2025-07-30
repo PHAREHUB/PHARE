@@ -872,7 +872,8 @@ namespace amr
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
                         sumVec_.name(), vecfield, nullptr, sumVec_.name(),
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+                        std::make_shared<
+                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
             }
 
             for (auto const& field : info->sumBorderFields)

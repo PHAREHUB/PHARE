@@ -2,11 +2,14 @@
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_GEOMETRY_HPP
 
 
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 
 #include "amr/data/field/field_overlap.hpp"
 
@@ -15,15 +18,19 @@
 #include <SAMRAI/hier/BoxGeometry.h>
 
 
+#include <array>
 #include <cassert>
+#include <type_traits>
 
 namespace PHARE::amr
 {
 
 
-template<std::size_t dimension>
+template<std::size_t dimension, std::size_t rank = 1>
 class TensorFieldGeometryBase : public SAMRAI::hier::BoxGeometry
 {
+    static constexpr auto N = core::detail::tensor_field_dim_from_rank<rank>();
+
 public:
     virtual ~TensorFieldGeometryBase() {}
     TensorFieldGeometryBase(SAMRAI::hier::Box const& patch_box,
@@ -42,15 +49,16 @@ public:
     SAMRAI::hier::Box const patchBox;
 
 protected:
-    SAMRAI::hier::Box const ghostTensorFieldBox_;
-    SAMRAI::hier::Box const interiorTensorFieldBox_;
+    std::array<SAMRAI::hier::Box, N> const ghostTensorFieldBox_;
+    std::array<SAMRAI::hier::Box, N> const interiorTensorFieldBox_;
     std::array<core::QtyCentering, dimension> const centerings_;
 };
 
 template<std::size_t rank, typename GridLayoutT, typename PhysicalQuantity>
 class TensorFieldGeometry : public TensorFieldGeometryBase<GridLayoutT::dimension>
 {
-    using tensor_t = typename PhysicalQuantity::template TensorType<rank>;
+    using tensor_t          = typename PhysicalQuantity::template TensorType<rank>;
+    static constexpr auto N = core::detail::tensor_field_dim_from_rank<rank>();
 
 public:
     using Super                               = TensorFieldGeometryBase<GridLayoutT::dimension>;
@@ -96,15 +104,25 @@ public:
     setUpOverlap(SAMRAI::hier::BoxContainer const& boxes,
                  SAMRAI::hier::Transformation const& offset) const final
     {
-        SAMRAI::hier::BoxContainer destinationBoxes;
+        auto qts = PhysicalQuantity::componentsQuantities(quantity_);
 
-        for (auto& box : boxes)
-        {
-            core::GridLayout const layout = layoutFromBox(box, layout_);
-            destinationBoxes.push_back(toFieldBox(box, quantity_, layout));
-        }
+        auto overlaps = core::for_N<N, core::for_N_R_mode::make_array>([&](auto i) {
+            SAMRAI::hier::BoxContainer destinationBoxes;
 
-        return std::make_shared<FieldOverlap>(destinationBoxes, offset);
+            auto const qty = qts[i];
+
+            for (auto& box : boxes)
+            {
+                core::GridLayout const layout = layoutFromBox(box, layout_);
+                destinationBoxes.push_back(
+                    FieldGeometry<GridLayoutT, std::decay_t<decltype(qty)>>::toFieldBox(box, qty,
+                                                                                        layout));
+            }
+
+            return std::make_shared<FieldOverlap>(destinationBoxes, offset);
+        });
+
+        return std::make_shared<TensorFieldOverlap<rank>>(std::move(overlaps));
     }
 
 
