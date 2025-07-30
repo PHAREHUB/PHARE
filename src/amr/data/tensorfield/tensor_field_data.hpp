@@ -59,24 +59,6 @@ class TensorFieldData : public SAMRAI::hier::PatchData
     using value_type = Grid_t::value_type;
     using SetEqualOp = core::Equals<value_type>;
 
-    template<typename Box_t>
-    std::optional<Box_t> dual_dir_minus_1(Box_t box, auto const qty) const
-    {
-        auto const centerings = GridLayoutT::centering(qty);
-        for (std::uint16_t i = 0; i < dimension; ++i)
-        {
-            auto const dual_dir = centerings[i] == core::QtyCentering::dual;
-            if (dual_dir)
-            {
-                if (box.lower[i] == box.upper[i]) // bad!
-                    return std::nullopt;
-
-                box.upper[i] -= 1;
-            }
-        }
-        return box;
-    }
-
 public:
     static constexpr std::size_t dimension    = GridLayoutT::dimension;
     static constexpr std::size_t interp_order = GridLayoutT::interp_order;
@@ -175,7 +157,7 @@ public:
 
 
             if (!intersectionBox.empty())
-                copy_(sourceBox, destinationBox, fieldSource.grids[c], grids[c],
+                copy_(intersectionBox, sourceBox, destinationBox, fieldSource.grids[c], grids[c],
                       fieldSource.gridLayout, gridLayout);
         }
     }
@@ -259,14 +241,16 @@ public:
         std::vector<typename Grid_t::type> buffer;
         buffer.reserve(expectedSize);
 
-        auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
+        auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
 
-        SAMRAI::hier::Transformation const& transformation = fieldOverlap.getTransformation();
+        SAMRAI::hier::Transformation const& transformation = tFieldOverlap.getTransformation();
         if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
         {
-            for (auto const& box : fieldOverlap.getDestinationBoxContainer())
+            for (std::size_t c = 0; c < N; ++c)
             {
-                for (std::size_t c = 0; c < N; ++c)
+                auto const& fOverlap = tFieldOverlap[c];
+
+                for (auto const& box : fOverlap->getDestinationBoxContainer())
                 {
                     auto const& source = grids[c];
                     SAMRAI::hier::Box packBox{box};
@@ -277,12 +261,9 @@ public:
                     // to get into source space
                     transformation.inverseTransform(packBox);
 
-                    if (auto const finalBox = dual_dir_minus_1(phare_box_from<dimension>(packBox),
-                                                               source.physicalQuantity()))
-                    {
-                        core::FieldBox<Grid_t const> src{source, gridLayout, *finalBox};
-                        src.append_to(buffer);
-                    }
+                    auto const finalBox = phare_box_from<dimension>(packBox);
+                    core::FieldBox<Grid_t const> src{source, gridLayout, finalBox};
+                    src.append_to(buffer);
                 }
             }
         }
@@ -310,9 +291,9 @@ public:
     {
         PHARE_LOG_SCOPE(3, "unpackStream");
 
-        auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
+        auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
 
-        if (fieldOverlap.getTransformation().getRotation() != NO_ROTATE)
+        if (tFieldOverlap.getTransformation().getRotation() != NO_ROTATE)
             throw std::runtime_error("Rotations are not supported in PHARE");
 
         // For unpacking we need to know how much element we will need to extract
@@ -328,17 +309,17 @@ public:
         // are on the destination space
 
         for (std::size_t c = 0; c < N; ++c)
-            for (auto const& sambox : fieldOverlap.getDestinationBoxContainer())
+        {
+            auto const& fOverlap = tFieldOverlap[c];
+            for (auto const& sambox : fOverlap->getDestinationBoxContainer())
             {
                 auto& dst_grid = dst_grids[c];
-                if (auto const box = dual_dir_minus_1(phare_box_from<dimension>(sambox),
-                                                      dst_grid.physicalQuantity()))
-                {
-                    core::FieldBox<Grid_t> dst{dst_grid, gridLayout, *box};
-                    dst.template set_from<Operator>(buffer, seek);
-                    seek += box->size();
-                }
+                auto const box = phare_box_from<dimension>(sambox);
+                core::FieldBox<Grid_t> dst{dst_grid, gridLayout, box};
+                dst.template set_from<Operator>(buffer, seek);
+                seek += box.size();
             }
+        }
     }
 
 
@@ -382,17 +363,21 @@ private:
      *
      */
     template<typename Operator = SetEqualOp>
-    void copy_(SAMRAI::hier::Box const& src_box, SAMRAI::hier::Box const& dst_box,
-               Grid_t const& src_grid, Grid_t& dst_grid, GridLayoutT const& src_layout,
-               GridLayoutT const& dst_layout)
+    void copy_(SAMRAI::hier::Box const& intersectBox, SAMRAI::hier::Box const& src_box,
+               SAMRAI::hier::Box const& dst_box, Grid_t const& src_grid, Grid_t& dst_grid,
+               GridLayoutT const& src_layout, GridLayoutT const& dst_layout)
     {
         // First we represent the intersection that is defined in AMR space to the local
         // space of the source Then we represent the intersection into the local space of
         // the destination We can finally perform the copy of the element in the correct
         // range
 
-        core::FieldBox<Grid_t> dst{dst_grid, dst_layout, dst_box};
-        core::FieldBox<Grid_t const> const src{src_grid, src_layout, src_box};
+        core::FieldBox<Grid_t> dst{
+            dst_grid, dst_layout,
+            as_unsigned_phare_box<dimension>(AMRToLocal(intersectBox, dst_box))};
+        core::FieldBox<Grid_t const> const src{
+            src_grid, src_layout,
+            as_unsigned_phare_box<dimension>(AMRToLocal(intersectBox, src_box))};
         operate_on_fields<Operator>(dst, src);
     }
 
@@ -424,7 +409,7 @@ private:
             for (std::size_t c = 0; c < N; ++c)
             {
                 auto& overlap                             = overlaps[c];
-                SAMRAI::hier::BoxContainer const& boxList = overlap.getDestinationBoxContainer();
+                SAMRAI::hier::BoxContainer const& boxList = overlap->getDestinationBoxContainer();
 
                 if (transformation.getBeginBlock() == transformation.getEndBlock())
                 {
@@ -454,8 +439,9 @@ private:
 
 
                         if (!intersectionBox.empty())
-                            copy_<Operator>(transformedSource, destinationBox, source.grids[c],
-                                            dst.grids[c], source.gridLayout, dst.gridLayout);
+                            copy_<Operator>(intersectionBox, transformedSource, destinationBox,
+                                            source.grids[c], dst.grids[c], source.gridLayout,
+                                            dst.gridLayout);
                     }
                 }
             }
@@ -474,21 +460,25 @@ private:
         // on a given region.
 
         // throws on failure
-        auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
+        auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
 
-        if (fieldOverlap.isOverlapEmpty())
+        if (tFieldOverlap.isOverlapEmpty())
             return 0;
 
 
-        SAMRAI::hier::BoxContainer const& boxContainer = fieldOverlap.getDestinationBoxContainer();
 
         std::size_t size = 0;
         for (std::uint16_t c = 0; c < N; ++c)
         {
+            auto const& fOverlap = tFieldOverlap[c];
+
+            SAMRAI::hier::BoxContainer const& boxContainer = fOverlap->getDestinationBoxContainer();
+
             for (auto const& box : boxContainer)
-                if (auto const final_box
-                    = dual_dir_minus_1(phare_box_from<dimension>(box), grids[c].physicalQuantity()))
-                    size += final_box->size();
+            {
+                auto const final_box = phare_box_from<dimension>(box);
+                size += final_box.size();
+            }
         }
 
         return size * sizeof(typename Grid_t::type);
