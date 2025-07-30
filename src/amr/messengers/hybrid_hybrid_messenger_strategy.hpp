@@ -56,21 +56,6 @@ namespace PHARE
 {
 namespace amr
 {
-    // when registering different components to the same algorithm in SAMRAI, as we want to do for
-    // vecfields, we need those components not to be considered as equivalent_classes by SAMRAI.
-    // Without this precaution SAMRAI will assume the same geometry for all.
-    class XVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
-    {
-    };
-
-    class YVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
-    {
-    };
-
-    class ZVariableFillPattern : public SAMRAI::xfer::BoxGeometryVariableFillPattern
-    {
-    };
-
     /** \brief An HybridMessenger is the specialization of a HybridMessengerStrategy for hybrid
      * to hybrid data communications.
      */
@@ -181,16 +166,6 @@ namespace amr
             std::unique_ptr<HybridMessengerInfo> hybridInfo{
                 dynamic_cast<HybridMessengerInfo*>(fromFinerInfo.release())};
 
-
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> xVariableFillPattern
-                = std::make_shared<XVariableFillPattern>();
-
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> yVariableFillPattern
-                = std::make_shared<YVariableFillPattern>();
-
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> zVariableFillPattern
-                = std::make_shared<ZVariableFillPattern>();
-
             auto b_id = resourcesManager_->getID(hybridInfo->modelMagnetic);
 
             if (!b_id)
@@ -207,13 +182,9 @@ namespace amr
             BregridAlgo.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
                                        defaultTensorFieldFillPattern);
 
-            // probably fucked. Need to use tensor field data + refinement or one algo per component
-            // with refiner pool
-            auto ex_id = resourcesManager_->getID(hybridInfo->modelElectric);
-            auto ey_id = resourcesManager_->getID(hybridInfo->modelElectric);
-            auto ez_id = resourcesManager_->getID(hybridInfo->modelElectric);
+            auto e_id = resourcesManager_->getID(hybridInfo->modelElectric);
 
-            if (!ex_id or !ey_id or !ez_id)
+            if (!e_id)
             {
                 throw std::runtime_error(
                     "HybridHybridMessengerStrategy: missing electric field variable IDs");
@@ -235,9 +206,8 @@ namespace amr
                     "HybridHybridMessengerStrategy: missing electric refluxing field variable IDs");
             }
 
-            Ealgo.registerRefine(*ex_id, *ex_id, *ex_id, EfieldRefineOp_, xVariableFillPattern);
-            Ealgo.registerRefine(*ey_id, *ey_id, *ey_id, EfieldRefineOp_, yVariableFillPattern);
-            Ealgo.registerRefine(*ez_id, *ez_id, *ez_id, EfieldRefineOp_, zVariableFillPattern);
+            Ealgo.registerRefine(*e_id, *e_id, *e_id, EfieldRefineOp_,
+                                 defaultTensorFieldFillPattern);
 
             RefluxAlgo.registerCoarsen(*ex_reflux_id, *ex_fluxsum_id, electricFieldCoarseningOp_,
                                        xVariableFillPattern);

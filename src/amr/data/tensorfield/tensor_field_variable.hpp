@@ -35,9 +35,9 @@ public:
         : SAMRAI::hier::Variable(
               name,
               std::make_shared<TensorFieldDataFactory<rank, GridLayoutT, Grid_t, PhysicalQuantity>>(
-                  fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(), name, qty))
+                  fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty), name, qty))
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
-        , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_()}
+        , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_(qty)}
     {
     }
 
@@ -62,7 +62,24 @@ private:
 
 
 
-    bool static computeDataLivesOnPatchBorder_() { return true; }
+    bool static computeDataLivesOnPatchBorder_(tensor_t const& qty)
+    {
+        auto qts = PhysicalQuantity::componentsQuantities(qty);
+
+        for (auto const& qt : qts)
+        {
+            auto const& centering = GridLayoutT::centering(qt);
+
+            for (auto const& qtyCentering : centering)
+            {
+                if (qtyCentering == core::QtyCentering::primal)
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 };
 
 

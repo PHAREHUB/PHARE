@@ -172,12 +172,6 @@ public:
 };
 
 
-            std::cout << "debug refine operator: "
-                      << "destinationFieldBox: " << destFieldBox
-                      << ", sourceFieldBox: " << sourceFieldBox << ", box: " << box
-                      << ", intersectionBox: " << intersectionBox << std::endl;
-
-
 template<std::size_t rank, typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
 class TensorFieldRefineOperator : public SAMRAI::hier::RefineOperator
 {
