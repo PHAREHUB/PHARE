@@ -269,7 +269,7 @@ namespace amr
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             currentGhostsRefiners_.registerLevel(hierarchy, level);
-            rhoGhostsRefiners_.registerLevel(hierarchy, level);
+            chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
             velGhostsRefiners_.registerLevel(hierarchy, level);
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
@@ -300,7 +300,7 @@ namespace amr
                 // and these for coarsening
                 magnetoSynchronizers_.registerLevel(hierarchy, level);
                 electroSynchronizers_.registerLevel(hierarchy, level);
-                densitySynchronizers_.registerLevel(hierarchy, level);
+                chargeDensitySynchronizers_.registerLevel(hierarchy, level);
                 ionBulkVelSynchronizers_.registerLevel(hierarchy, level);
             }
         }
@@ -566,13 +566,13 @@ namespace amr
         /* pure (patch and level) ghost nodes are filled by applying a regular ghost
          * schedule i.e. that does not overwrite the border patch node previously well
          * calculated from particles Note : the ghost schedule only fills the total density
-         * and bulk velocity and NOT population densities and fluxes. These partial
-         * densities and fluxes are thus not available on ANY ghost node.*/
+         * and bulk velocity and NOT population densities and fluxes. These partial moments
+         * are already completed by the "sum" schedules (+= on incomplete nodes)*/
         virtual void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                          double const afterPushTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
-            rhoGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
+            chargeDensityGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
             velGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
         }
 
@@ -730,7 +730,7 @@ namespace amr
             // call coarsning schedules...
             // magnetoSynchronizers_.sync(levelNumber);
             electroSynchronizers_.sync(levelNumber);
-            densitySynchronizers_.sync(levelNumber);
+            chargeDensitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
         }
 
@@ -767,7 +767,7 @@ namespace amr
             // induction that has occured on the shared coarse face.
             // magPatchGhostsRefineSchedules[levelNumber]->fillData(time);
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
-            rhoGhostsRefiners_.fill(levelNumber, time);
+            chargeDensityGhostsRefiners_.fill(levelNumber, time);
             velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
         }
 
@@ -790,9 +790,9 @@ namespace amr
                                                    core::VecFieldNames{Jold_}, EfieldRefineOp_,
                                                    fieldTimeOp_, defaultFieldFillPattern);
 
-            rhoGhostsRefiners_.addTimeRefiner(info->modelIonDensity, info->modelIonDensity,
-                                              NiOld_.name(), fieldRefineOp_, fieldTimeOp_,
-                                              info->modelIonDensity, defaultFieldFillPattern);
+            chargeDensityGhostsRefiners_.addTimeRefiner(
+                info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldRefineOp_,
+                fieldTimeOp_, info->modelIonDensity, defaultFieldFillPattern);
 
 
             velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
@@ -854,8 +854,8 @@ namespace amr
             ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, fieldCoarseningOp_,
                                          info->modelIonBulkVelocity.vecName);
 
-            densitySynchronizers_.add(info->modelIonDensity, fieldCoarseningOp_,
-                                      info->modelIonDensity);
+            chargeDensitySynchronizers_.add(info->modelIonDensity, fieldCoarseningOp_,
+                                            info->modelIonDensity);
         }
 
 
@@ -1150,7 +1150,7 @@ namespace amr
         // these refiners are used to fill ghost nodes, and therefore, owing to
         // the GhostField tag, will only assign pure ghost nodes. Border nodes will
         // be overwritten only on level borders, which does not seem to be an issue.
-        GhostRefinerPool rhoGhostsRefiners_{resourcesManager_};
+        GhostRefinerPool chargeDensityGhostsRefiners_{resourcesManager_};
         GhostRefinerPool velGhostsRefiners_{resourcesManager_};
 
         // pool of refiners for interior particles of each population
@@ -1174,7 +1174,7 @@ namespace amr
         //! to grab particle leaving neighboring patches and inject into domain
         DomainGhostPartRefinerPool domainGhostPartRefiners_{resourcesManager_};
 
-        SynchronizerPool<rm_t> densitySynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> ionBulkVelSynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> magnetoSynchronizers_{resourcesManager_};

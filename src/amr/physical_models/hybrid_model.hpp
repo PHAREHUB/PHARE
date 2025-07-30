@@ -151,8 +151,12 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
 {
     auto& hybridInfo = dynamic_cast<amr::HybridMessengerInfo&>(*info);
 
-    hybridInfo.modelMagnetic        = core::VecFieldNames{state.electromag.B};
-    hybridInfo.modelElectric        = core::VecFieldNames{state.electromag.E};
+    hybridInfo.modelMagnetic = core::VecFieldNames{state.electromag.B};
+    hybridInfo.modelElectric = core::VecFieldNames{state.electromag.E};
+
+    // only the charge density is registered to the messenger and not the ion mass
+    // density. Reason is that mass density is only used to compute the
+    // total bulk velocity which is already registered to the messenger
     hybridInfo.modelIonDensity      = state.ions.chargeDensityName();
     hybridInfo.modelIonBulkVelocity = core::VecFieldNames{state.ions.velocity()};
     hybridInfo.modelCurrent         = core::VecFieldNames{state.J};
