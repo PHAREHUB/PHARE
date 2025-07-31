@@ -5,6 +5,7 @@
 #include "amr/types/amr_types.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/def/phare_mpi.hpp"
 
 
@@ -407,6 +408,23 @@ namespace amr
             // they need to be identical to levelGhostParticlesOld before advance
             copyLevelGhostOldToPushable_(level, model);
 
+            for(auto& patch : level)
+            {
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
+                auto layout = layoutFromPatch<GridLayoutT>(*patch);
+                auto fgbox   = layout.AMRGhostBoxFor(core::HybridQuantity::Scalar::Bx);
+                for (auto const& index : layout.AMRToLocal(fgbox))
+                {
+                    std::cout << "APRES INIT LEVEL: at index " << index <<"\n";
+                    if (std::isnan(hybridModel.state.electromag.B(core::Component::X)(index)))
+                    {
+                        std::cout << "APRES INIT LEVEL: NaN in B field on patch at index " << index
+                                  << " on level " << level.getLevelNumber()
+                                  << " at time " << initDataTime << " on box "
+                                  << patch->getBox() << "\n";
+                    }
+                }
+            }
             // computeIonMoments_(level, model);
         }
 
@@ -910,10 +928,45 @@ namespace amr
                                 std::shared_ptr<level_t> const& oldLevel, HybridModel& hybridModel,
                                 double const initDataTime)
         {
+            std::cout << "Regriding magnetic field on level " << level->getLevelNumber()
+                      << " at time " << initDataTime << "\n";
+            for(auto& patch : *level)
+            {
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
+                auto layout = layoutFromPatch<GridLayoutT>(*patch);
+                auto fgbox   = layout.AMRGhostBoxFor(core::HybridQuantity::Scalar::Bx);
+                for (auto const& index : layout.AMRToLocal(fgbox))
+                {
+                    if (std::isnan(hybridModel.state.electromag.B(core::Component::X)(index)))
+                    {
+                        std::cout << "AVANT REGRID ERROR : NaN in B field on patch at index " << index
+                                  << " on level " << level->getLevelNumber()
+                                  << " at time " << initDataTime << " on box "
+                                  << patch->getBox() << "\n";
+                    }
+                }
+            }
             auto magSchedule = BregridAlgo.createSchedule(
                 level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
                 &magneticRefinePatchStrategy_);
             magSchedule->fillData(initDataTime);
+
+            for(auto& patch : *level)
+            {
+                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
+                auto layout = layoutFromPatch<GridLayoutT>(*patch);
+                auto fgbox   = layout.AMRGhostBoxFor(core::HybridQuantity::Scalar::Bx);
+                for (auto const& index : layout.AMRToLocal(fgbox))
+                {
+                    if (std::isnan(hybridModel.state.electromag.B(core::Component::X)(index)))
+                    {
+                        std::cout << "Error : NaN in B field on patch at index " << index
+                                  << " on level " << level->getLevelNumber()
+                                  << " at time " << initDataTime << " on box "
+                                  << patch->getBox() << "\n";
+                    }
+                }
+            }
         }
 
 

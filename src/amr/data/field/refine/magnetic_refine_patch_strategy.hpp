@@ -133,7 +133,7 @@ public:
     {
         auto locIdx = layout.AMRToLocal(idx);
         auto ix     = locIdx[dirX];
-        if (idx[dirX] % 2 == 1)
+        if (idx[dirX] % 2 != 0)
             bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
     }
 
@@ -146,7 +146,7 @@ public:
         //                            | <- here with offset = 1
         //                          -- --
         //                            | <- or here with offset = 0
-        if (idx[dirX] % 2 == 1)
+        if (idx[dirX] % 2 != 0)
         {
             // If dual no offset, ie primal for the field we are actually
             // modifying, but dual for the field we are indexing to compute
@@ -173,7 +173,7 @@ public:
         //                            |
         //  here with offset = 0 -> -- -- <- or here with offset = 1
         //                            |
-        if (idx[dirY] % 2 == 1)
+        if (idx[dirY] % 2 != 0)
         {
             int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
             int yoffset = 1;
@@ -199,7 +199,7 @@ public:
         auto iy     = locIdx[dirY];
         auto iz     = locIdx[dirZ];
 
-        if (idx[dirX] % 2 == 1)
+        if (idx[dirX] % 2 != 0)
         {
             int xoffset = 1;
             int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
@@ -258,7 +258,7 @@ public:
         auto iy     = locIdx[dirY];
         auto iz     = locIdx[dirZ];
 
-        if (idx[dirY] % 2 == 1)
+        if (idx[dirY] % 2 != 0)
         {
             int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
             int yoffset = 1;
@@ -317,7 +317,7 @@ public:
         auto iy     = locIdx[dirY];
         auto iz     = locIdx[dirZ];
 
-        if (idx[dirZ] % 2 == 1)
+        if (idx[dirZ] % 2 != 0)
         {
             int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
             int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
