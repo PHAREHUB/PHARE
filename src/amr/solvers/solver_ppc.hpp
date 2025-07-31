@@ -499,8 +499,6 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
              views.electromag_E);
         setTime([](auto& state) -> auto& { return state.electromag.E; });
 
-        std::cout << "LEVEL NUMBER: " << levelNumber << "\n";
-        std::cout << "Filling electric ghosts in corrector\n";
         fromCoarser.fillElectricGhosts(views.model().state.electromag.E, level, newTime);
     }
 }

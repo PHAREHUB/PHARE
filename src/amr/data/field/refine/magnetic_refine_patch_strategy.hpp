@@ -90,7 +90,7 @@ public:
             // which is not obvious at call site
             for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
             {
-                postprocessBx1d(bx, fine_field_box[dirX], i);
+                postprocessBx1d(bx, layout, i);
             }
         }
 
@@ -98,12 +98,12 @@ public:
         {
             for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
             {
-                postprocessBx2d(bx, by, fine_field_box[dirX], i);
+                postprocessBx2d(bx, by, layout, i);
             }
 
             for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
             {
-                postprocessBy2d(bx, by, fine_field_box[dirY], i);
+                postprocessBy2d(bx, by, layout, i);
             }
         }
 
@@ -113,34 +113,34 @@ public:
 
             for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
             {
-                postprocessBx3d(bx, by, bz, meshSize, fine_field_box[dirX], i);
+                postprocessBx3d(bx, by, bz, meshSize, layout, i);
             }
 
             for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
             {
-                postprocessBy3d(bx, by, bz, meshSize, fine_field_box[dirY], i);
+                postprocessBy3d(bx, by, bz, meshSize, layout, i);
             }
 
             for (auto const& i : phare_box_from<dimension>(fine_field_box[dirZ]))
             {
-                postprocessBz3d(bx, by, bz, meshSize, fine_field_box[dirZ], i);
+                postprocessBz3d(bx, by, bz, meshSize, layout, i);
             }
         }
     }
 
 
-    static void postprocessBx1d(auto& bx, auto const& fineBox, core::Point<int, dimension> idx)
+    static void postprocessBx1d(auto& bx, auto const& layout, core::Point<int, dimension> idx)
     {
-        auto locIdx = AMRToLocal(idx, fineBox);
+        auto locIdx = layout.AMRToLocal(idx);
         auto ix     = locIdx[dirX];
         if (idx[dirX] % 2 == 1)
             bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
     }
 
-    static void postprocessBx2d(auto& bx, auto& by, auto const& fineBox,
+    static void postprocessBx2d(auto& bx, auto& by, auto const& layout,
                                 core::Point<int, dimension> idx)
     {
-        auto locIdx = AMRToLocal(idx, fineBox);
+        auto locIdx = layout.AMRToLocal(idx);
         auto ix     = locIdx[dirX];
         auto iy     = locIdx[dirY];
         //                            | <- here with offset = 1
@@ -164,10 +164,10 @@ public:
         }
     }
 
-    static void postprocessBy2d(auto& bx, auto& by, auto const& fineBox,
+    static void postprocessBy2d(auto& bx, auto& by, auto const& layout,
                                 core::Point<int, dimension> idx)
     {
-        auto locIdx = AMRToLocal(idx, fineBox);
+        auto locIdx = layout.AMRToLocal(idx);
         auto ix     = locIdx[dirX];
         auto iy     = locIdx[dirY];
         //                            |
@@ -188,13 +188,13 @@ public:
     }
 
     static void postprocessBx3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                auto const& fineBox, core::Point<int, dimension> idx)
+                                auto const& layout, core::Point<int, dimension> idx)
     {
         auto Dx = meshSize[dirX];
         auto Dy = meshSize[dirY];
         auto Dz = meshSize[dirZ];
 
-        auto locIdx = AMRToLocal(idx, fineBox);
+        auto locIdx = layout.AMRToLocal(idx);
         auto ix     = locIdx[dirX];
         auto iy     = locIdx[dirY];
         auto iz     = locIdx[dirZ];
@@ -247,13 +247,13 @@ public:
     };
 
     static void postprocessBy3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                auto const& fineBox, core::Point<int, dimension> idx)
+                                auto const& layout, core::Point<int, dimension> idx)
     {
         auto Dx = meshSize[dirX];
         auto Dy = meshSize[dirY];
         auto Dz = meshSize[dirZ];
 
-        auto locIdx = AMRToLocal(idx, fineBox);
+        auto locIdx = layout.AMRToLocal(idx);
         auto ix     = locIdx[dirX];
         auto iy     = locIdx[dirY];
         auto iz     = locIdx[dirZ];
@@ -306,13 +306,13 @@ public:
     };
 
     static void postprocessBz3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                auto const& fineBox, core::Point<int, dimension> idx)
+                                auto const& layout, core::Point<int, dimension> idx)
     {
         auto Dx = meshSize[dirX];
         auto Dy = meshSize[dirY];
         auto Dz = meshSize[dirZ];
 
-        auto locIdx = AMRToLocal(idx, fineBox);
+        auto locIdx = layout.AMRToLocal(idx);
         auto ix     = locIdx[dirX];
         auto iy     = locIdx[dirY];
         auto iz     = locIdx[dirZ];
