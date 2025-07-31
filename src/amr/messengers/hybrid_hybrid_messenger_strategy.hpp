@@ -904,26 +904,6 @@ namespace amr
                                 std::shared_ptr<level_t> const& oldLevel, HybridModel& hybridModel,
                                 double const initDataTime)
         {
-            // is this setup to nan actually needed?
-            for (auto& patch : *level)
-            {
-                auto& B          = hybridModel.state.electromag.B;
-                auto layout      = amr::layoutFromPatch<GridLayoutT>(*patch);
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, B);
-
-                layout.evalOnGhostBox(B(core::Component::X), [&](auto const&... args) mutable {
-                    B(core::Component::X)(args...) = std::numeric_limits<double>::quiet_NaN();
-                });
-
-                layout.evalOnGhostBox(B(core::Component::Y), [&](auto const&... args) mutable {
-                    B(core::Component::Y)(args...) = std::numeric_limits<double>::quiet_NaN();
-                });
-
-                layout.evalOnGhostBox(B(core::Component::Z), [&](auto const&... args) mutable {
-                    B(core::Component::Z)(args...) = std::numeric_limits<double>::quiet_NaN();
-                });
-            }
-
             auto magSchedule = BregridAlgo.createSchedule(
                 level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
                 &magneticRefinePatchStrategy_);
