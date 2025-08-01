@@ -2,20 +2,21 @@
 #define PHARE_DEFAULT_FIELD_COARSENER_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/def.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/hier/Box.h>
 
-#include <cstddef>
 #include <array>
+#include <cstddef>
+
 
 
 
@@ -155,6 +156,8 @@ namespace amr
     };
 } // namespace amr
 } // namespace PHARE
+
+
 
 
 #endif

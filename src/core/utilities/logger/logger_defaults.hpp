@@ -1,3 +1,5 @@
+// IWYU pragma: private, include "core/logger.hpp"
+
 #ifndef PHARE_CORE_UTILITIES_LOGGER_LOGGER_DEFAULTS_HPP
 #define PHARE_CORE_UTILITIES_LOGGER_LOGGER_DEFAULTS_HPP
 

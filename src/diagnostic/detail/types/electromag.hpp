@@ -47,14 +47,21 @@ public:
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
         std::size_t maxLevel) override;
+
+private:
+    auto isActiveDiag(DiagnosticProperties const& diagnostic, std::string const& tree,
+                      std::string var)
+    {
+        return diagnostic.quantity == tree + var;
+    };
 };
 
 
 template<typename H5Writer>
 void ElectromagDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
-    for (auto* vecField : this->h5Writer_.modelView().getElectromagFields())
-        checkCreateFileFor_(diagnostic, fileData_, "/", vecField->name());
+    std::string tree = "/";
+    checkCreateFileFor_(diagnostic, fileData_, tree, "EM_B", "EM_E");
 }
 
 
@@ -65,7 +72,6 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
                                                           Attributes& patchAttributes)
 {
     auto& h5Writer         = this->h5Writer_;
-    auto vecFields         = h5Writer.modelView().getElectromagFields();
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
     auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
@@ -84,11 +90,15 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
         }
     };
 
-    for (auto* vecField : vecFields)
+    if (isActiveDiag(diagnostic, "/", "EM_B"))
     {
-        auto& name = vecField->name();
-        if (diagnostic.quantity == "/" + name)
-            infoVF(*vecField, name, patchAttributes[lvlPatchID]);
+        auto& B = h5Writer.modelView().getB();
+        infoVF(B, "EM_B", patchAttributes[lvlPatchID]);
+    }
+    if (isActiveDiag(diagnostic, "/", "EM_E"))
+    {
+        auto& E = h5Writer.modelView().getE();
+        infoVF(E, "EM_E", patchAttributes[lvlPatchID]);
     }
 }
 
@@ -100,8 +110,7 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
     Attributes& patchAttributes, std::size_t maxLevel)
 {
     auto& h5Writer = this->h5Writer_;
-    auto& h5file   = Super::h5FileForQuantity(diagnostic);
-    auto vecFields = h5Writer.modelView().getElectromagFields();
+    auto& h5file   = *fileData_.at(diagnostic.quantity);
 
     auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap())
@@ -131,11 +140,17 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
     auto initPatch = [&](auto& level, auto& attr, std::string patchID = "") {
         bool null = patchID.empty();
         std::string path{h5Writer.getPatchPathAddTimestamp(level, patchID)};
-        for (auto* vecField : vecFields)
+        std::string tree = "/";
+
+        if (isActiveDiag(diagnostic, tree, "EM_B"))
         {
-            auto& name = vecField->name();
-            if (diagnostic.quantity == "/" + name)
-                initVF(path, attr, name, null);
+            auto& B = h5Writer.modelView().getB();
+            initVF(path, attr, "EM_B", null);
+        }
+        if (isActiveDiag(diagnostic, tree, "EM_E"))
+        {
+            auto& E = h5Writer.modelView().getE();
+            initVF(path, attr, "EM_E", null);
         }
     };
 
@@ -148,12 +163,21 @@ template<typename H5Writer>
 void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
+    auto& h5file   = *fileData_.at(diagnostic.quantity);
 
-    for (auto* vecField : h5Writer.modelView().getElectromagFields())
-        if (diagnostic.quantity == "/" + vecField->name())
-            h5Writer.writeTensorFieldAsDataset(Super::h5FileForQuantity(diagnostic),
-                                               h5Writer.patchPath() + "/" + vecField->name(),
-                                               *vecField);
+    std::string tree = "/";
+    std::string path = h5Writer.patchPath() + "/";
+
+    if (isActiveDiag(diagnostic, tree, "EM_B"))
+    {
+        auto& B = h5Writer.modelView().getB();
+        h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B", B);
+    }
+    if (isActiveDiag(diagnostic, tree, "EM_E"))
+    {
+        auto& E = h5Writer.modelView().getE();
+        h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_E", E);
+    }
 }
 
 

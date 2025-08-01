@@ -1,5 +1,3 @@
-
-
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
@@ -533,6 +531,9 @@ public:
         , rho_c{"field", HybridQuantity::Scalar::rho, nx}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
+        (*(&rho)).zero();
+        (*(&rho_c)).zero();
+        v.zero();
         if constexpr (Interpolator::interp_order == 1)
         {
             part.iCell[0] = 19; // AMR index
@@ -706,6 +707,9 @@ struct ACollectionOfParticles_2d : public ::testing::Test
         , rho_c{"field", HybridQuantity::Scalar::rho, nx, ny}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
+        (*(&rho)).zero();
+        (*(&rho_c)).zero();
+        v.zero();
         for (int i = start; i < end; i++)
             for (int j = start; j < end; j++)
             {

@@ -107,6 +107,14 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
+                    std::cout << "Setting Bx at fine index (" << fineIndex[dirX] << ", "
+                              << fineIndex[dirY] << ") to coarse value (" << locCoarseIdx[dirX]
+                              << ", " << locCoarseIdx[dirY]
+                              << " fineField: " << fineField(locFineIdx[dirX], locFineIdx[dirY])
+                              << " coarseField: "
+                              << coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
+                              << " fine address: " << fineField.data()
+                              << " coarse address: " << coarseField.data() << ")\n";
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
                 }
@@ -119,6 +127,15 @@ public:
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
+                    // same print as above
+                    std::cout << "Setting By at fine index (" << fineIndex[dirX] << ", "
+                              << fineIndex[dirY] << ") to coarse value (" << locCoarseIdx[dirX]
+                              << ", " << locCoarseIdx[dirY]
+                              << " fineField: " << fineField(locFineIdx[dirX], locFineIdx[dirY])
+                              << " coarseField: "
+                              << coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY])
+                              << " fine address: " << fineField.data()
+                              << " coarse address: " << coarseField.data() << ")\n";
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
                 }
