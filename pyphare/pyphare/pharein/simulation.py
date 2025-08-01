@@ -906,7 +906,7 @@ class Simulation(object):
 
         * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. Used if no `refinement_boxes` are set
         * **tag_buffer** (``int``), default=1, value representing the number of cells by which tagged cells are buffered before clustering into boxes. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
-        * **clustering** (``str``), {"berger" (default), "tile"}, type of clustering to use for AMR. `tile` results in wider patches, less artifacts and better scalability
+        * **clustering** (``str``), {"berger", "tile" (default)}, type of clustering to use for AMR. `tile` results in wider patches, less artifacts and better scalability
 
         **Expert parameters:**
 
