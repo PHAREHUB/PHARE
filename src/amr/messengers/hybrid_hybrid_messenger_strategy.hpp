@@ -185,7 +185,7 @@ namespace amr
             magneticRefinePatchStrategy_.registerIDs(*b_id);
 
             BalgoPatchGhost.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
-                                 nonOverwriteInteriorTFfillPattern);
+                                           nonOverwriteInteriorTFfillPattern);
 
 
             BregridAlgo.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
@@ -216,7 +216,7 @@ namespace amr
             }
 
             EalgoPatchGhost.registerRefine(*e_id, *e_id, *e_id, EfieldRefineOp_,
-                                 nonOverwriteInteriorTFfillPattern);
+                                           nonOverwriteInteriorTFfillPattern);
 
             RefluxAlgo.registerCoarsen(*ex_reflux_id, *ex_fluxsum_id, electricFieldCoarseningOp_,
                                        xVariableFillPattern);
@@ -407,24 +407,6 @@ namespace amr
             // levelGhostParticles will be pushed during the advance phase
             // they need to be identical to levelGhostParticlesOld before advance
             copyLevelGhostOldToPushable_(level, model);
-
-            for(auto& patch : level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
-                auto layout = layoutFromPatch<GridLayoutT>(*patch);
-                auto fgbox   = layout.AMRGhostBoxFor(core::HybridQuantity::Scalar::Bx);
-                for (auto const& index : layout.AMRToLocal(fgbox))
-                {
-                    std::cout << "APRES INIT LEVEL: at index " << index <<"\n";
-                    if (std::isnan(hybridModel.state.electromag.B(core::Component::X)(index)))
-                    {
-                        std::cout << "APRES INIT LEVEL: NaN in B field on patch at index " << index
-                                  << " on level " << level.getLevelNumber()
-                                  << " at time " << initDataTime << " on box "
-                                  << patch->getBox() << "\n";
-                    }
-                }
-            }
             // computeIonMoments_(level, model);
         }
 
@@ -826,13 +808,12 @@ namespace amr
 
         void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-
             auto b_id = resourcesManager_->getID(info->modelMagnetic);
             BalgoInit.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
-                                 overwriteInteriorTFfillPattern);
+                                     overwriteInteriorTFfillPattern);
 
             // no fill pattern given for this init
-            // will use boxgeometryvariable fillpattern, itself using the 
+            // will use boxgeometryvariable fillpattern, itself using the
             // gield geometry with overwrit_interior true from SAMRAI
             // we could set the overwriteInteriorTFfillPattern it would be the same
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
@@ -928,45 +909,10 @@ namespace amr
                                 std::shared_ptr<level_t> const& oldLevel, HybridModel& hybridModel,
                                 double const initDataTime)
         {
-            std::cout << "Regriding magnetic field on level " << level->getLevelNumber()
-                      << " at time " << initDataTime << "\n";
-            for(auto& patch : *level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
-                auto layout = layoutFromPatch<GridLayoutT>(*patch);
-                auto fgbox   = layout.AMRGhostBoxFor(core::HybridQuantity::Scalar::Bx);
-                for (auto const& index : layout.AMRToLocal(fgbox))
-                {
-                    if (std::isnan(hybridModel.state.electromag.B(core::Component::X)(index)))
-                    {
-                        std::cout << "AVANT REGRID ERROR : NaN in B field on patch at index " << index
-                                  << " on level " << level->getLevelNumber()
-                                  << " at time " << initDataTime << " on box "
-                                  << patch->getBox() << "\n";
-                    }
-                }
-            }
             auto magSchedule = BregridAlgo.createSchedule(
                 level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
                 &magneticRefinePatchStrategy_);
             magSchedule->fillData(initDataTime);
-
-            for(auto& patch : *level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, hybridModel.state.electromag.B);
-                auto layout = layoutFromPatch<GridLayoutT>(*patch);
-                auto fgbox   = layout.AMRGhostBoxFor(core::HybridQuantity::Scalar::Bx);
-                for (auto const& index : layout.AMRToLocal(fgbox))
-                {
-                    if (std::isnan(hybridModel.state.electromag.B(core::Component::X)(index)))
-                    {
-                        std::cout << "Error : NaN in B field on patch at index " << index
-                                  << " on level " << level->getLevelNumber()
-                                  << " at time " << initDataTime << " on box "
-                                  << patch->getBox() << "\n";
-                    }
-                }
-            }
         }
 
 
@@ -1131,7 +1077,8 @@ namespace amr
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>();
 
         std::shared_ptr<TensorFieldFillPattern_t> overwriteInteriorTFfillPattern
-            = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(/*overwrite_interior=*/true);
+            = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
+                /*overwrite_interior=*/true);
 
         std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
