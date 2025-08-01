@@ -613,7 +613,7 @@ def check_hyper_resistivity(**kwargs):
 
 def check_clustering(**kwargs):
     valid_keys = ["berger", "tile"]
-    clustering = kwargs.get("clustering", "berger")
+    clustering = kwargs.get("clustering", "tile")
     if clustering not in valid_keys:
         raise ValueError(
             f"Error: clustering type is not supported, supported types are {valid_keys}"
