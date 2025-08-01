@@ -527,6 +527,8 @@ namespace solver
                 fromCoarser.firstStep(model, *level, hierarchy, currentTime,
                                       subcycleStartTimes_[iLevel - 1],
                                       subcycleEndTimes_[iLevel - 1]);
+
+                solver.resetFluxSum(model, *level);
             }
 
             solver.prepareStep(model, *level, currentTime);
@@ -583,7 +585,6 @@ namespace solver
 
                 toCoarser.reflux(iCoarseLevel, ilvl, syncTime);
                 coarseSolver.reflux(coarseModel, coarseLevel, syncTime);
-                fineSolver.resetFluxSum(coarseModel, fineLevel);
 
                 // recopy (patch) ghosts
                 toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);

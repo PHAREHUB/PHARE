@@ -1,8 +1,6 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
-#include "amr/data/field/refine/magnetic_field_regrider.hpp"
-#include "amr/types/amr_types.hpp"
 #include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -17,6 +15,7 @@
 
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
+#include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
@@ -25,14 +24,13 @@
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
-#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/electric_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
+#include "amr/data/field/refine/magnetic_field_regrider.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
-#include "amr/data/field/coarsening/magnetic_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
@@ -111,9 +109,9 @@ namespace amr
         using VecFieldCoarsenOp
             = VecFieldCoarsenOperator<GridLayoutT, GridT, Policy, core::HybridQuantity>;
 
-        using MagneticCoarsenOp        = VecFieldCoarsenOp<MagneticFieldCoarsener<dimension>>;
         using DefaultFieldCoarsenOp    = FieldCoarsenOp<DefaultFieldCoarsener<dimension>>;
         using DefaultVecFieldCoarsenOp = VecFieldCoarsenOp<DefaultFieldCoarsener<dimension>>;
+        using ElectricFieldCoarsenOp   = VecFieldCoarsenOp<ElectricFieldCoarsener<dimension>>;
 
     public:
         static inline std::string const stratName    = "HybridModel-HybridModel";
@@ -152,7 +150,6 @@ namespace amr
             resourcesManager_->allocate(Jold_, patch, allocateTime);
             resourcesManager_->allocate(NiOld_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
-            resourcesManager_->allocate(Eold_, patch, allocateTime);
             resourcesManager_->allocate(sumVec_, patch, allocateTime);
             resourcesManager_->allocate(sumField_, patch, allocateTime);
             resourcesManager_->allocate(sumTensor_, patch, allocateTime);
@@ -198,44 +195,28 @@ namespace amr
                 throw std::runtime_error(
                     "HybridHybridMessengerStrategy: missing electric field variable IDs");
             }
-            // refluxing
-            // we first want to coarsen the flux sum onto the coarser level
-            auto ex_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric.xName);
-            auto ey_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric.yName);
-            auto ez_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric.zName);
 
-            auto ex_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric.xName);
-            auto ey_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric.yName);
-            auto ez_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric.zName);
+            EalgoPatchGhost.registerRefine(*e_id, *e_id, *e_id, EfieldRefineOp_,
+                                           nonOverwriteInteriorTFfillPattern);
 
-            if (!ex_reflux_id or !ey_reflux_id or !ez_reflux_id or !ex_fluxsum_id or !ey_fluxsum_id
-                or !ez_fluxsum_id)
+            auto e_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric);
+
+            auto e_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric);
+
+            if (!e_reflux_id or !e_fluxsum_id)
             {
                 throw std::runtime_error(
                     "HybridHybridMessengerStrategy: missing electric refluxing field variable IDs");
             }
 
-            EalgoPatchGhost.registerRefine(*e_id, *e_id, *e_id, EfieldRefineOp_,
-                                           nonOverwriteInteriorTFfillPattern);
 
-            RefluxAlgo.registerCoarsen(*ex_reflux_id, *ex_fluxsum_id, electricFieldCoarseningOp_,
-                                       xVariableFillPattern);
-            RefluxAlgo.registerCoarsen(*ey_reflux_id, *ey_fluxsum_id, electricFieldCoarseningOp_,
-                                       yVariableFillPattern);
-            RefluxAlgo.registerCoarsen(*ez_reflux_id, *ez_fluxsum_id, electricFieldCoarseningOp_,
-                                       zVariableFillPattern);
+            RefluxAlgo.registerCoarsen(*e_reflux_id, *e_fluxsum_id, electricFieldCoarseningOp_);
 
             // we then need to refill the ghosts so that they agree with the newly refluxed cells
 
-            PatchGhostRefluxedAlgo.registerRefine(*ex_reflux_id, *ex_reflux_id, *ex_reflux_id,
-                                                  EfieldRefineOp_, xVariableFillPattern);
-
-            PatchGhostRefluxedAlgo.registerRefine(*ey_reflux_id, *ey_reflux_id, *ey_reflux_id,
-                                                  EfieldRefineOp_, yVariableFillPattern);
-
-            PatchGhostRefluxedAlgo.registerRefine(*ez_reflux_id, *ez_reflux_id, *ez_reflux_id,
-                                                  EfieldRefineOp_, zVariableFillPattern);
-
+            PatchGhostRefluxedAlgo.registerRefine(*e_reflux_id, *e_reflux_id, *e_reflux_id,
+                                                  EfieldRefineOp_,
+                                                  nonOverwriteInteriorTFfillPattern);
 
             registerGhostComms_(hybridInfo);
             registerInitComms(hybridInfo);
@@ -294,7 +275,6 @@ namespace amr
                 lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
 
                 // and these for coarsening
-                magnetoSynchronizers_.registerLevel(hierarchy, level);
                 electroSynchronizers_.registerLevel(hierarchy, level);
                 chargeDensitySynchronizers_.registerLevel(hierarchy, level);
                 ionBulkVelSynchronizers_.registerLevel(hierarchy, level);
@@ -683,12 +663,11 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Jold_, NiOld_, ViOld_, Eold_);
+                    hybridModel.state.ions, Jold_, NiOld_, ViOld_);
 
                 resourcesManager_->setTime(Jold_, *patch, currentTime);
                 resourcesManager_->setTime(NiOld_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
-                resourcesManager_->setTime(Eold_, *patch, currentTime);
 
                 auto& J  = hybridModel.state.J;
                 auto& Vi = hybridModel.state.ions.velocity();
@@ -698,7 +677,6 @@ namespace amr
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);
                 NiOld_.copyData(Ni);
-                Eold_.copyData(E);
             }
         }
 
@@ -740,7 +718,6 @@ namespace amr
             PHARE_LOG_LINE_STR("synchronizing level " + std::to_string(levelNumber));
 
             // call coarsning schedules...
-            // magnetoSynchronizers_.sync(levelNumber);
             electroSynchronizers_.sync(levelNumber);
             chargeDensitySynchronizers_.sync(levelNumber);
             ionBulkVelSynchronizers_.sync(levelNumber);
@@ -859,10 +836,7 @@ namespace amr
 
         void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            magnetoSynchronizers_.add(info->modelMagnetic, magneticCoarseningOp_,
-                                      info->modelMagnetic);
-
-            electroSynchronizers_.add(info->modelElectric, vecFieldCoarseningOp_,
+            electroSynchronizers_.add(info->modelElectric, electricFieldCoarseningOp_,
                                       info->modelElectric);
 
             ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, vecFieldCoarseningOp_,
@@ -970,7 +944,6 @@ namespace amr
         VecFieldT Jold_{stratName + "_Jold", core::HybridQuantity::Vector::J};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
-        VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
 
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
         VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
@@ -1061,7 +1034,6 @@ namespace amr
         SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> ionBulkVelSynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
-        SynchronizerPool<rm_t> magnetoSynchronizers_{resourcesManager_};
 
 
         RefOp_ptr fieldRefineOp_{std::make_shared<DefaultFieldRefineOp>()};
@@ -1087,7 +1059,7 @@ namespace amr
         using CoarsenOperator_ptr = std::shared_ptr<SAMRAI::hier::CoarsenOperator>;
         CoarsenOperator_ptr fieldCoarseningOp_{std::make_shared<DefaultFieldCoarsenOp>()};
         CoarsenOperator_ptr vecFieldCoarseningOp_{std::make_shared<DefaultVecFieldCoarsenOp>()};
-        CoarsenOperator_ptr magneticCoarseningOp_{std::make_shared<MagneticCoarsenOp>()};
+        CoarsenOperator_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
         MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
             magneticRefinePatchStrategy_{*resourcesManager_};

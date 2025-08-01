@@ -70,8 +70,8 @@ namespace amr
         std::vector<std::string> ghostBulkVelocity;
 
         // below are the descriptions of the electric field that we use in the refluxing
-        VecFieldNames refluxElectric;
-        VecFieldNames fluxSumElectric;
+        std::string refluxElectric;
+        std::string fluxSumElectric;
 
         virtual ~HybridMessengerInfo() = default;
     };

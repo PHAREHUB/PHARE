@@ -97,27 +97,6 @@ namespace amr
                              = nullptr);
 
 
-<<<<<<< HEAD
-        /**
-         * add a refiner that will use time and spatial interpolation.
-         * time interpolation will be done between data represented by model and oldModel
-         * , and use the timeOp operator. Spatial refinement of the result
-         * will be done using the refineOp operator and the result put in the data
-         * represented by `ghost`.
-         * The refiner added to the pool will be retrievable using the given key.
-         *
-         * This overload is for vector fields*/
-        void addTimeRefiner(core::VecFieldNames const& ghost, core::VecFieldNames const& model,
-                            core::VecFieldNames const& oldModel,
-                            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-                            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
-                            std::string const& key,
-                            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
-                            = nullptr);
-
-=======
->>>>>>> f4fd674e (TensorFieldData)
-
 
         void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)

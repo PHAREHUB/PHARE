@@ -253,16 +253,10 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
     auto const& Eavg  = electromagAvg_.E;
     auto const& Bpred = electromagPred_.B;
 
-<<<<<<< HEAD
-    hybridInfo.ghostElectric.emplace_back(core::VecFieldNames{Eavg});
-    hybridInfo.initMagnetic.emplace_back(core::VecFieldNames{Bpred});
-
-    hybridInfo.refluxElectric  = core::VecFieldNames{Eavg};
-    hybridInfo.fluxSumElectric = core::VecFieldNames{fluxSumE_};
-=======
     hybridInfo.ghostElectric.emplace_back(Eavg.name());
     hybridInfo.initMagnetic.emplace_back(Bpred.name());
->>>>>>> f4fd674e (TensorFieldData)
+    hybridInfo.refluxElectric  = Eavg.name();
+    hybridInfo.fluxSumElectric = fluxSumE_.name();
 }
 
 
@@ -329,17 +323,7 @@ void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
         auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
         auto _             = hybridModel.resourcesManager->setOnPatch(*patch, fluxSumE_);
 
-        layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::X)(args...) = 0.0;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Y), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Y)(args...) = 0.0;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Z), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Z)(args...) = 0.0;
-        });
+        fluxSumE_.zero();
     }
 }
 
