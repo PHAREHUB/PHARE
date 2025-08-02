@@ -139,8 +139,7 @@ class TensorFieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 
 public:
     TensorFieldFillPattern(bool overwrite_interior = false)
-        : scalar_fill_pattern_{overwrite_interior}
-        , overwrite_interior_{overwrite_interior}
+        : overwrite_interior_{overwrite_interior}
     {
     }
 
@@ -206,7 +205,6 @@ private:
         return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
     }
 
-    FieldFillPattern<dimension> scalar_fill_pattern_;
     bool overwrite_interior_;
 };
 

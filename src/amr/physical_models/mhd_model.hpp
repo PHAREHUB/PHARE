@@ -110,13 +110,13 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
     auto& MHDInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
 
     MHDInfo.modelDensity     = state.rho.name();
-    MHDInfo.modelVelocity    = core::VecFieldNames{state.V};
-    MHDInfo.modelMagnetic    = core::VecFieldNames{state.B};
+    MHDInfo.modelVelocity    = state.V.name();
+    MHDInfo.modelMagnetic    = state.B.name();
     MHDInfo.modelPressure    = state.P.name();
-    MHDInfo.modelMomentum    = core::VecFieldNames{state.rhoV};
+    MHDInfo.modelMomentum    = state.rhoV.name();
     MHDInfo.modelTotalEnergy = state.Etot.name();
-    MHDInfo.modelElectric    = core::VecFieldNames{state.E};
-    MHDInfo.modelCurrent     = core::VecFieldNames{state.J};
+    MHDInfo.modelElectric    = state.E.name();
+    MHDInfo.modelCurrent     = state.J.name();
 
     MHDInfo.initDensity.push_back(MHDInfo.modelDensity);
     MHDInfo.initMomentum.push_back(MHDInfo.modelMomentum);

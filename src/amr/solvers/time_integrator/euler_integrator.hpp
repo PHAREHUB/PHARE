@@ -114,38 +114,22 @@ private:
             evalFluxesOnGhostBox(
                 layout,
                 [&](auto& left, auto const& right, auto const&... args) mutable {
-                    if (std::isnan(left(args...)))
-                    {
-                        left(args...) = 0.0;
-                    }
                     left(args...) += right(args...);
                 },
                 butcherFluxes_, fluxes);
 
 
             layout.evalOnGhostBox(butcherE_(core::Component::X), [&](auto const&... args) mutable {
-                if (std::isnan(butcherE_(core::Component::X)(args...)))
-                {
-                    butcherE_(core::Component::X)(args...) = 0.0;
-                }
                 butcherE_(core::Component::X)(args...)
                     += model.state.E(core::Component::X)(args...);
             });
 
             layout.evalOnGhostBox(butcherE_(core::Component::Y), [&](auto const&... args) mutable {
-                if (std::isnan(butcherE_(core::Component::Y)(args...)))
-                {
-                    butcherE_(core::Component::Y)(args...) = 0.0;
-                }
                 butcherE_(core::Component::Y)(args...)
                     += model.state.E(core::Component::Y)(args...);
             });
 
             layout.evalOnGhostBox(butcherE_(core::Component::Z), [&](auto const&... args) mutable {
-                if (std::isnan(butcherE_(core::Component::Z)(args...)))
-                {
-                    butcherE_(core::Component::Z)(args...) = 0.0;
-                }
                 butcherE_(core::Component::Z)(args...)
                     += model.state.E(core::Component::Z)(args...);
             });

@@ -225,18 +225,18 @@ struct AllFluxes
 struct AllFluxesNames
 {
     std::string rho_fx;
-    VecFieldNames rhoV_fx;
-    VecFieldNames B_fx;
+    std::string rhoV_fx;
+    std::string B_fx;
     std::string Etot_fx;
 
     std::string rho_fy;
-    VecFieldNames rhoV_fy;
-    VecFieldNames B_fy;
+    std::string rhoV_fy;
+    std::string B_fy;
     std::string Etot_fy;
 
     std::string rho_fz;
-    VecFieldNames rhoV_fz;
-    VecFieldNames B_fz;
+    std::string rhoV_fz;
+    std::string B_fz;
     std::string Etot_fz;
 
     AllFluxesNames() = default;
@@ -244,16 +244,16 @@ struct AllFluxesNames
     template<typename AllFluxesT>
     explicit AllFluxesNames(AllFluxesT const& f)
         : rho_fx{f.rho_fx.name()}
-        , rhoV_fx{f.rhoV_fx}
-        , B_fx{f.B_fx}
+        , rhoV_fx{f.rhoV_fx.name()}
+        , B_fx{f.B_fx.name()}
         , Etot_fx{f.Etot_fx.name()}
         , rho_fy{f.rho_fy.name()}
-        , rhoV_fy{f.rhoV_fy}
-        , B_fy{f.B_fy}
+        , rhoV_fy{f.rhoV_fy.name()}
+        , B_fy{f.B_fy.name()}
         , Etot_fy{f.Etot_fy.name()}
         , rho_fz{f.rho_fz.name()}
-        , rhoV_fz{f.rhoV_fz}
-        , B_fz{f.B_fz}
+        , rhoV_fz{f.rhoV_fz.name()}
+        , B_fz{f.B_fz.name()}
         , Etot_fz{f.Etot_fz.name()}
     {
     }
