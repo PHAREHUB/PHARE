@@ -1,6 +1,7 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
+#include "amr/data/field/field_geometry.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 
@@ -9,6 +10,7 @@
 
 #include "SAMRAI/hier/PatchLevel.h"
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
+#include "core/utilities/types.hpp"
 
 #include <array>
 #include <cassert>
@@ -19,35 +21,28 @@ using core::dirX;
 using core::dirY;
 using core::dirZ;
 
-template<typename ResMan, typename FieldDataT>
+template<typename ResMan, typename TensorFieldDataT>
 class MagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
 {
 public:
-    using Geometry        = typename FieldDataT::Geometry;
-    using gridlayout_type = typename FieldDataT::gridlayout_type;
+    using Geometry        = typename TensorFieldDataT::Geometry;
+    using gridlayout_type = typename TensorFieldDataT::gridlayout_type;
 
-    static constexpr std::size_t dimension = FieldDataT::dimension;
+    static constexpr std::size_t N         = TensorFieldDataT::N;
+    static constexpr std::size_t dimension = TensorFieldDataT::dimension;
 
     MagneticRefinePatchStrategy(ResMan& resourcesManager)
         : rm_{resourcesManager}
-        , bx_id_{-1}
-        , by_id_{-1}
-        , bz_id_{-1}
+        , b_id_{-1}
     {
     }
 
     void assertIDsSet() const
     {
-        assert(bx_id_ >= 0 && by_id_ >= 0 && bz_id_ >= 0
-               && "MagneticRefinePatchStrategy: IDs must be registered before use");
+        assert(b_id_ >= 0 && "MagneticRefinePatchStrategy: IDs must be registered before use");
     }
 
-    void registerIDs(int bx_id, int by_id, int bz_id)
-    {
-        bx_id_ = bx_id;
-        by_id_ = by_id;
-        bz_id_ = bz_id;
-    }
+    void registerIDs(int const b_id) { b_id_ = b_id; }
 
     void setPhysicalBoundaryConditions(SAMRAI::hier::Patch& patch, double const fill_time,
                                        const SAMRAI::hier::IntVector& ghost_width_to_fill) override
@@ -67,46 +62,48 @@ public:
     {
     }
 
-    // We compute the values of the new fine magnetic faces using what was already refined, ie the
-    // values on the old coarse faces.
+    // We compute the values of the new fine magnetic faces using what was already refined, ie
+    // the values on the old coarse faces.
     void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
                            SAMRAI::hier::Box const& fine_box,
                            SAMRAI::hier::IntVector const& ratio) override
     {
         assertIDsSet();
 
-        auto& bx = FieldDataT::getField(fine, bx_id_);
-        auto& by = FieldDataT::getField(fine, by_id_);
-        auto& bz = FieldDataT::getField(fine, bz_id_);
+        auto& fields       = TensorFieldDataT::getFields(fine, b_id_);
+        auto& [bx, by, bz] = fields;
 
         auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
         auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
 
-        SAMRAI::hier::Box fine_box_x
-            = Geometry::toFieldBox(fine_box, bx.physicalQuantity(), fineBoxLayout);
-        SAMRAI::hier::Box fine_box_y
-            = Geometry::toFieldBox(fine_box, by.physicalQuantity(), fineBoxLayout);
-        SAMRAI::hier::Box fine_box_z
-            = Geometry::toFieldBox(fine_box, bz.physicalQuantity(), fineBoxLayout);
+        auto fine_field_box = core::for_N<N, core::for_N_R_mode::make_array>([&](auto i) {
+            using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
+
+            return FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
+                fine_box, fields[i].physicalQuantity(), fineBoxLayout);
+        });
 
         if constexpr (dimension == 1)
         {
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
+            // if we ever go to c++23 we could use std::views::zip to iterate both on the local and
+            // global indices instead of passing the box to do an amr to local inside the function,
+            // which is not obvious at call site
+            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
             {
-                postprocessBx1d(bx, i);
+                postprocessBx1d(bx, layout, i);
             }
         }
 
         else if constexpr (dimension == 2)
         {
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
+            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
             {
-                postprocessBx2d(bx, by, i);
+                postprocessBx2d(bx, by, layout, i);
             }
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_y)))
+            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
             {
-                postprocessBy2d(bx, by, i);
+                postprocessBy2d(bx, by, layout, i);
             }
         }
 
@@ -114,46 +111,49 @@ public:
         {
             auto meshSize = layout.meshSize();
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_x)))
+            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
             {
-                postprocessBx3d(bx, by, bz, meshSize, i);
+                postprocessBx3d(bx, by, bz, meshSize, layout, i);
             }
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_y)))
+            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
             {
-                postprocessBy3d(bx, by, bz, meshSize, i);
+                postprocessBy3d(bx, by, bz, meshSize, layout, i);
             }
 
-            for (auto const& i : layout.AMRToLocal(phare_box_from<dimension>(fine_box_z)))
+            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirZ]))
             {
-                postprocessBz3d(bx, by, bz, meshSize, i);
+                postprocessBz3d(bx, by, bz, meshSize, layout, i);
             }
         }
     }
 
 
-    static void postprocessBx1d(auto& bx, core::MeshIndex<dimension> idx)
+    static void postprocessBx1d(auto& bx, auto const& layout, core::Point<int, dimension> idx)
     {
-        auto ix = idx[dirX];
-        if (ix % 2 == 1)
+        auto locIdx = layout.AMRToLocal(idx);
+        auto ix     = locIdx[dirX];
+        if (idx[dirX] % 2 != 0)
             bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
     }
 
-    static void postprocessBx2d(auto& bx, auto& by, core::MeshIndex<dimension> idx)
+    static void postprocessBx2d(auto& bx, auto& by, auto const& layout,
+                                core::Point<int, dimension> idx)
     {
-        auto ix = idx[dirX];
-        auto iy = idx[dirY];
+        auto locIdx = layout.AMRToLocal(idx);
+        auto ix     = locIdx[dirX];
+        auto iy     = locIdx[dirY];
         //                            | <- here with offset = 1
         //                          -- --
         //                            | <- or here with offset = 0
-        if (ix % 2 == 1)
+        if (idx[dirX] % 2 != 0)
         {
             // If dual no offset, ie primal for the field we are actually
             // modifying, but dual for the field we are indexing to compute
             // second and third order terms, then the formula reduces to offset
             // = 1
             int xoffset = 1;
-            int yoffset = (iy % 2 == 0) ? 0 : 1;
+            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
 
             bx(ix, iy) = 0.5 * (bx(ix - 1, iy) + bx(ix + 1, iy))
                          + 0.25
@@ -164,16 +164,18 @@ public:
         }
     }
 
-    static void postprocessBy2d(auto& bx, auto& by, core::MeshIndex<dimension> idx)
+    static void postprocessBy2d(auto& bx, auto& by, auto const& layout,
+                                core::Point<int, dimension> idx)
     {
-        auto ix = idx[dirX];
-        auto iy = idx[dirY];
+        auto locIdx = layout.AMRToLocal(idx);
+        auto ix     = locIdx[dirX];
+        auto iy     = locIdx[dirY];
         //                            |
         //  here with offset = 0 -> -- -- <- or here with offset = 1
         //                            |
-        if (iy % 2 == 1)
+        if (idx[dirY] % 2 != 0)
         {
-            int xoffset = (ix % 2 == 0) ? 0 : 1;
+            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
             int yoffset = 1;
 
             by(ix, iy) = 0.5 * (by(ix, iy - 1) + by(ix, iy + 1))
@@ -186,21 +188,22 @@ public:
     }
 
     static void postprocessBx3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                core::MeshIndex<dimension> idx)
+                                auto const& layout, core::Point<int, dimension> idx)
     {
         auto Dx = meshSize[dirX];
         auto Dy = meshSize[dirY];
         auto Dz = meshSize[dirZ];
 
-        auto ix = idx[dirX];
-        auto iy = idx[dirY];
-        auto iz = idx[dirZ];
+        auto locIdx = layout.AMRToLocal(idx);
+        auto ix     = locIdx[dirX];
+        auto iy     = locIdx[dirY];
+        auto iz     = locIdx[dirZ];
 
-        if (ix % 2 == 1)
+        if (idx[dirX] % 2 != 0)
         {
             int xoffset = 1;
-            int yoffset = (iy % 2 == 0) ? 0 : 1;
-            int zoffset = (iz % 2 == 0) ? 0 : 1;
+            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
+            int zoffset = (idx[dirZ] % 2 == 0) ? 0 : 1;
 
             bx(ix, iy, iz)
                 = 0.5 * (bx(ix - 1, iy, iz) + bx(ix + 1, iy, iz))
@@ -244,21 +247,22 @@ public:
     };
 
     static void postprocessBy3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                core::MeshIndex<dimension> idx)
+                                auto const& layout, core::Point<int, dimension> idx)
     {
         auto Dx = meshSize[dirX];
         auto Dy = meshSize[dirY];
         auto Dz = meshSize[dirZ];
 
-        auto ix = idx[dirX];
-        auto iy = idx[dirY];
-        auto iz = idx[dirZ];
+        auto locIdx = layout.AMRToLocal(idx);
+        auto ix     = locIdx[dirX];
+        auto iy     = locIdx[dirY];
+        auto iz     = locIdx[dirZ];
 
-        if (iy % 2 == 1)
+        if (idx[dirY] % 2 != 0)
         {
-            int xoffset = (ix % 2 == 0) ? 0 : 1;
+            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
             int yoffset = 1;
-            int zoffset = (iz % 2 == 0) ? 0 : 1;
+            int zoffset = (idx[dirZ] % 2 == 0) ? 0 : 1;
 
             by(ix, iy, iz)
                 = 0.5 * (by(ix, iy - 1, iz) + by(ix, iy + 1, iz))
@@ -302,20 +306,21 @@ public:
     };
 
     static void postprocessBz3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                core::MeshIndex<dimension> idx)
+                                auto const& layout, core::Point<int, dimension> idx)
     {
         auto Dx = meshSize[dirX];
         auto Dy = meshSize[dirY];
         auto Dz = meshSize[dirZ];
 
-        auto ix = idx[dirX];
-        auto iy = idx[dirY];
-        auto iz = idx[dirZ];
+        auto locIdx = layout.AMRToLocal(idx);
+        auto ix     = locIdx[dirX];
+        auto iy     = locIdx[dirY];
+        auto iz     = locIdx[dirZ];
 
-        if (iz % 2 == 1)
+        if (idx[dirZ] % 2 != 0)
         {
-            int xoffset = (ix % 2 == 0) ? 0 : 1;
-            int yoffset = (iy % 2 == 0) ? 0 : 1;
+            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
+            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
             int zoffset = 1;
 
             bz(ix, iy, iz)
@@ -375,9 +380,7 @@ private:
     static constexpr std::array<int, 2> ijk_factor_{-1, 1};
 
     ResMan& rm_;
-    int bx_id_;
-    int by_id_;
-    int bz_id_;
+    int b_id_;
 };
 
 } // namespace PHARE::amr

@@ -240,17 +240,17 @@ struct IonsBuffers
 
     IonsBuffers(GridLayout const& layout)
         : ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
-                           layout.allocSize(HybridQuantity::Scalar::rho)}
+                           layout.allocSize(HybridQuantity::Scalar::rho), 0.}
         , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
-                         layout.allocSize(HybridQuantity::Scalar::rho)}
+                         layout.allocSize(HybridQuantity::Scalar::rho), 0.}
         , protonParticleDensity{"protons_particleDensity", HybridQuantity::Scalar::rho,
-                                layout.allocSize(HybridQuantity::Scalar::rho)}
+                                layout.allocSize(HybridQuantity::Scalar::rho), 0.}
         , protonChargeDensity{"protons_chargeDensity", HybridQuantity::Scalar::rho,
-                              layout.allocSize(HybridQuantity::Scalar::rho)}
+                              layout.allocSize(HybridQuantity::Scalar::rho), 0.}
         , alphaParticleDensity{"alpha_particleDensity", HybridQuantity::Scalar::rho,
-                               layout.allocSize(HybridQuantity::Scalar::rho)}
+                               layout.allocSize(HybridQuantity::Scalar::rho), 0.}
         , alphaChargeDensity{"alpha_chargeDensity", HybridQuantity::Scalar::rho,
-                             layout.allocSize(HybridQuantity::Scalar::rho)}
+                             layout.allocSize(HybridQuantity::Scalar::rho), 0.}
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}

@@ -226,6 +226,8 @@ auto make_array_view(DataType const* const data, std::array<std::uint32_t, dim> 
     return NdArrayView<dim, DataType const, c_ordering>{data, shape};
 }
 
+template<typename T>
+concept FloatingPoint = std::is_floating_point_v<T>;
 
 template<std::size_t dim, typename DataType = double, bool c_ordering = true>
 class NdArrayVector
@@ -237,7 +239,23 @@ public:
 
     NdArrayVector() = delete;
 
+    template<FloatingPoint U = DataType, typename... Nodes>
+    explicit NdArrayVector(Nodes... nodes)
+        : nCells_{nodes...}
+        , data_((... * nodes), static_cast<U>(std::nan("")))
+    {
+        static_assert(sizeof...(Nodes) == dim);
+    }
+
+    template<FloatingPoint U = DataType>
+    explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells,
+                           type const& value = static_cast<U>(std::nan("")))
+        : nCells_{ncells}
+        , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<int>()), value)
+    {
+    }
     template<typename... Nodes>
+        requires(!FloatingPoint<DataType>)
     explicit NdArrayVector(Nodes... nodes)
         : nCells_{nodes...}
         , data_((... * nodes))
@@ -246,10 +264,12 @@ public:
     }
 
     explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells)
+        requires(!FloatingPoint<DataType>)
         : nCells_{ncells}
         , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<int>()))
     {
     }
+
 
     NdArrayVector(NdArrayVector const& source)            = default;
     NdArrayVector(NdArrayVector&& source)                 = default;
