@@ -62,7 +62,8 @@ private:
     {
         assert(centerings_[dirX] == core::QtyCentering::dual
                && "MHD field should be primal in x in 1D");
-        fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+        if (std::isnan(fineField(locFineIdx[dirX])))
+            fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
     }
 
     template<typename FieldT>
@@ -82,7 +83,8 @@ private:
                && centerings_[dirY] == core::QtyCentering::dual
                && "MHD field should be dual in x and y in 2D");
 
-        fineField(ilfx, ilfy) = coarseField(ilcx, ilcy);
+        if (std::isnan(fineField(ilfx, ilfy)))
+            fineField(ilfx, ilfy) = coarseField(ilcx, ilcy);
     }
 
 
@@ -106,7 +108,8 @@ private:
                && centerings_[dirZ] == core::QtyCentering::dual
                && "MHD field should be dual in x, y and z in 3D");
 
-        fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
+        if (std::isnan(fineField(ilfx, ilfy, ilfz)))
+            fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
     }
 
     SAMRAI::hier::Box const fineBox_;

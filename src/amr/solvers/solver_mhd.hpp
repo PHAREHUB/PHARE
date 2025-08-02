@@ -114,7 +114,7 @@ public:
 
     void resetFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level) override;
 
-    void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
+    void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
                 double const time) override;
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, ISolverModelView& view,
@@ -275,15 +275,15 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
 {
     auto& mhdInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
 
-    mhdInfo.ghostMagneticFluxesX.emplace_back(core::VecFieldNames{fluxes_.B_fx});
+    mhdInfo.ghostMagneticFluxesX.emplace_back(fluxes_.B_fx.name());
 
     if constexpr (dimension >= 2)
     {
-        mhdInfo.ghostMagneticFluxesY.emplace_back(core::VecFieldNames{fluxes_.B_fy});
+        mhdInfo.ghostMagneticFluxesY.emplace_back(fluxes_.B_fy.name());
 
         if constexpr (dimension == 3)
         {
-            mhdInfo.ghostMagneticFluxesZ.emplace_back(core::VecFieldNames{fluxes_.B_fz});
+            mhdInfo.ghostMagneticFluxesZ.emplace_back(fluxes_.B_fz.name());
         }
     }
 
@@ -292,12 +292,12 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
     auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
 
     mhdInfo.reflux          = core::AllFluxesNames{timeFluxes};
-    mhdInfo.refluxElectric  = core::VecFieldNames{timeElectric};
+    mhdInfo.refluxElectric  = timeElectric.name();
     mhdInfo.fluxSum         = core::AllFluxesNames{fluxSum_};
-    mhdInfo.fluxSumElectric = core::VecFieldNames{fluxSumE_};
+    mhdInfo.fluxSumElectric = fluxSumE_.name();
 
     // for the faraday in reflux
-    mhdInfo.ghostElectric.emplace_back(core::VecFieldNames{timeElectric});
+    mhdInfo.ghostElectric.emplace_back(timeElectric.name());
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,
@@ -350,39 +350,20 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
                                                        timeElectric);
 
         evalFluxesOnGhostBox(
-            layout,
-            [&](auto& left, auto const& right, auto const&... args) mutable {
-                if (std::isnan(left(args...)))
-                {
-                    left(args...) = 0.0;
-                }
-                left(args...) += right(args...) * coef; // fluxSum_ += exposedFluxes*coef
-            },
-            fluxSum_, timeFluxes);
+            layout, [&](auto& left, auto const& right, auto const&... args) mutable {}, fluxSum_,
+            timeFluxes);
 
         layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
-            if (std::isnan(fluxSumE_(core::Component::X)(args...)))
-            {
-                fluxSumE_(core::Component::X)(args...) = 0.0;
-            }
             fluxSumE_(core::Component::X)(args...)
                 += timeElectric(core::Component::X)(args...) * coef;
         });
 
         layout.evalOnGhostBox(fluxSumE_(core::Component::Y), [&](auto const&... args) mutable {
-            if (std::isnan(fluxSumE_(core::Component::Y)(args...)))
-            {
-                fluxSumE_(core::Component::Y)(args...) = 0.0;
-            }
             fluxSumE_(core::Component::Y)(args...)
                 += timeElectric(core::Component::Y)(args...) * coef;
         });
 
         layout.evalOnGhostBox(fluxSumE_(core::Component::Z), [&](auto const&... args) mutable {
-            if (std::isnan(fluxSumE_(core::Component::Z)(args...)))
-            {
-                fluxSumE_(core::Component::Z)(args...) = 0.0;
-            }
             fluxSumE_(core::Component::Z)(args...)
                 += timeElectric(core::Component::Z)(args...) * coef;
         });
@@ -423,10 +404,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelView
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,
          typename ModelViews_t>
 void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelViews_t>::reflux(
-    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
-    double const time)
+    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, double const time)
 {
-    auto& fromCoarser                 = dynamic_cast<Messenger&>(messenger);
     auto& mhdModel                    = dynamic_cast<MHDModel&>(model);
     auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
 

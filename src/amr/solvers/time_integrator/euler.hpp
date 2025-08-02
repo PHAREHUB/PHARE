@@ -36,7 +36,7 @@ public:
 
         to_primitive_(level, model, newTime, state);
 
-        bc.fillMomentsGhosts(state, level.getLevelNumber(), newTime);
+        bc.fillMomentsGhosts(state, level, newTime);
 
         fvm_(level, model, newTime, state, fluxes);
 
@@ -45,21 +45,21 @@ public:
 
         fv_euler_(level, model, newTime, state, statenew, fluxes, dt);
 
-        bc.fillMagneticFluxesXGhosts(fluxes.B_fx, level.getLevelNumber(), newTime);
+        bc.fillMagneticFluxesXGhosts(fluxes.B_fx, level, newTime);
 
         if constexpr (MHDModel::dimension >= 2)
         {
-            bc.fillMagneticFluxesYGhosts(fluxes.B_fy, level.getLevelNumber(), newTime);
+            bc.fillMagneticFluxesYGhosts(fluxes.B_fy, level, newTime);
 
             if constexpr (MHDModel::dimension == 3)
             {
-                bc.fillMagneticFluxesZGhosts(fluxes.B_fz, level.getLevelNumber(), newTime);
+                bc.fillMagneticFluxesZGhosts(fluxes.B_fz, level, newTime);
             }
         }
 
         ct_(level, model, state, fluxes);
 
-        bc.fillElectricGhosts(state.E, level.getLevelNumber(), newTime);
+        bc.fillElectricGhosts(state.E, level, newTime);
 
         faraday_(level, model, state, statenew, dt);
     }

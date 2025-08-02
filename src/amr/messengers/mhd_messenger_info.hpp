@@ -13,42 +13,40 @@ namespace amr
 {
     class MHDMessengerInfo : public IMessengerInfo
     {
-        using VecFieldNames = core::VecFieldNames;
-
     public:
         std::string modelDensity;
-        VecFieldNames modelVelocity;
-        VecFieldNames modelMagnetic;
+        std::string modelVelocity;
+        std::string modelMagnetic;
         std::string modelPressure;
 
-        VecFieldNames modelMomentum;
+        std::string modelMomentum;
         std::string modelTotalEnergy;
 
-        VecFieldNames modelElectric;
-        VecFieldNames modelCurrent;
+        std::string modelElectric;
+        std::string modelCurrent;
 
         std::vector<std::string> initDensity;
-        std::vector<VecFieldNames> initMomentum;
-        std::vector<VecFieldNames> initMagnetic;
+        std::vector<std::string> initMomentum;
+        std::vector<std::string> initMagnetic;
         std::vector<std::string> initTotalEnergy;
 
         std::vector<std::string> ghostDensity;
-        std::vector<VecFieldNames> ghostVelocity;
-        std::vector<VecFieldNames> ghostMagnetic; // not actually to fill ghost cells but rather for
-                                                  // amr operations, see hybrid
+        std::vector<std::string> ghostVelocity;
+        std::vector<std::string> ghostMagnetic; // not actually to fill ghost cells but rather for
+                                                // amr operations, see hybrid
         std::vector<std::string> ghostPressure;
-        std::vector<VecFieldNames> ghostMomentum;
+        std::vector<std::string> ghostMomentum;
         std::vector<std::string> ghostTotalEnergy;
-        std::vector<VecFieldNames> ghostMagneticFluxesX;
-        std::vector<VecFieldNames> ghostMagneticFluxesY;
-        std::vector<VecFieldNames> ghostMagneticFluxesZ;
-        std::vector<VecFieldNames> ghostElectric;
-        std::vector<VecFieldNames> ghostCurrent;
+        std::vector<std::string> ghostMagneticFluxesX;
+        std::vector<std::string> ghostMagneticFluxesY;
+        std::vector<std::string> ghostMagneticFluxesZ;
+        std::vector<std::string> ghostElectric;
+        std::vector<std::string> ghostCurrent;
 
         core::AllFluxesNames reflux;
         core::AllFluxesNames fluxSum;
-        VecFieldNames refluxElectric;
-        VecFieldNames fluxSumElectric;
+        std::string refluxElectric;
+        std::string fluxSumElectric;
 
         virtual ~MHDMessengerInfo() = default;
     };

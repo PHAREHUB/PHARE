@@ -33,7 +33,6 @@ class BaseModelView : public IModelView
 public:
     using GridLayout        = Model::gridlayout_type;
     using VecField          = Model::vecfield_type;
-    using TensorFieldT      = Model::ions_type::tensorfield_type;
     using GridLayoutT       = Model::gridlayout_type;
     using ResMan            = Model::resources_manager_type;
     using TensorFieldData_t = ResMan::template UserTensorField_t</*rank=*/2>::patch_data_type;
@@ -48,7 +47,14 @@ public:
         : model_{model}
         , hierarchy_{hierarchy}
     {
-        declareMomentumTensorAlgos();
+    }
+
+    template<typename Action>
+    void onLevels(Action&& action, int minlvl = 0, int maxlvl = 0)
+    {
+        for (int ilvl = minlvl; ilvl < hierarchy_.getNumberOfLevels() && ilvl <= maxlvl; ++ilvl)
+            if (auto lvl = hierarchy_.getPatchLevel(ilvl))
+                action(*lvl);
     }
 
     template<typename Action>
@@ -105,14 +111,65 @@ public:
 protected:
     Model& model_;
     Hierarchy& hierarchy_;
+};
 
+
+template<typename Hierarchy, typename Model, typename Enable = void>
+class ModelView;
+
+
+template<typename Hierarchy, typename Model>
+class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>>
+    : public BaseModelView<Hierarchy, Model>
+{
+    using Super        = BaseModelView<Hierarchy, Model>;
+    using VecField     = typename Model::vecfield_type;
+    using TensorFieldT = Model::ions_type::tensorfield_type;
+
+public:
+    using Model_t = Model;
+
+    ModelView(Hierarchy& hierarchy, Model& model)
+        : Super{hierarchy, model}
+    {
+        declareMomentumTensorAlgos();
+    }
+
+    NO_DISCARD VecField& getB() const { return this->model_.state.electromag.B; }
+
+    NO_DISCARD VecField& getE() const { return this->model_.state.electromag.E; }
+
+    NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
+
+    void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
+    {
+        using value_type = TensorFieldT::value_type;
+        auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
+
+        auto& rm   = *(this->model_.resourcesManager);
+        auto& ions = this->model_.state.ions;
+
+        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+            for (std::uint8_t c = 0; c < N; ++c)
+                std::memcpy(sumTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
+                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+
+        MTAlgos[popidx].getOrCreateSchedule(this->hierarchy_, lvl.getLevelNumber()).fillData(time);
+
+        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+            for (std::uint8_t c = 0; c < N; ++c)
+                std::memcpy(ions[popidx].momentumTensor()[c].data(), sumTensor_[c].data(),
+                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+    }
+
+protected:
     void declareMomentumTensorAlgos()
     {
-        auto& rm = *model_.resourcesManager;
+        auto& rm = *(this->model_.resourcesManager);
 
         auto const dst_name = sumTensor_.name();
 
-        for (auto& pop : model_.state.ions)
+        for (auto& pop : this->model_.state.ions)
         {
             auto& MTAlgo        = MTAlgos.emplace_back();
             auto const src_name = pop.momentumTensor().name();
@@ -121,7 +178,8 @@ protected:
             MTAlgo.MTalgo->registerRefine(
                 idDst, idSrc, idDst, nullptr,
                 std::make_shared<
-                    amr::TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/2>>());
+                    amr::TensorFieldGhostInterpOverlapFillPattern<typename Super::GridLayoutT,
+                                                                  /*rank_=*/2>>());
         }
 
         // can't create schedules here as the hierarchy has no levels yet
@@ -133,10 +191,10 @@ protected:
         {
             if (not MTschedules.count(ilvl))
                 MTschedules.try_emplace(
-                    ilvl, MTalgo->createSchedule(
-                              hierarchy.getPatchLevel(ilvl), 0,
-                              std::make_shared<
-                                  amr::FieldBorderSumTransactionFactory<TensorFieldData_t>>()));
+                    ilvl,
+                    MTalgo->createSchedule(hierarchy.getPatchLevel(ilvl), 0,
+                                           std::make_shared<amr::FieldBorderSumTransactionFactory<
+                                               typename Super::TensorFieldData_t>>()));
             return *MTschedules[ilvl];
         }
 
@@ -150,27 +208,6 @@ protected:
 };
 
 
-template<typename Hierarchy, typename Model, typename Enable = void>
-class ModelView;
-
-
-template<typename Hierarchy, typename Model>
-class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>>
-    : public BaseModelView<Hierarchy, Model>
-{
-    using VecField = typename Model::vecfield_type;
-
-public:
-    using BaseModelView<Hierarchy, Model>::BaseModelView;
-
-    NO_DISCARD VecField& getB() const { return this->model_.state.electromag.B; }
-
-    NO_DISCARD VecField& getE() const { return this->model_.state.electromag.E; }
-
-    NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
-};
-
-
 template<typename Hierarchy, typename Model>
 class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>>>
     : public BaseModelView<Hierarchy, Model>
@@ -179,6 +216,7 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>
     using VecField = typename Model::vecfield_type;
 
 public:
+    using Model_t = Model;
     using BaseModelView<Hierarchy, Model>::BaseModelView;
 
     NO_DISCARD Field& getRho() const { return this->model_.state.rho; }

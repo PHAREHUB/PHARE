@@ -81,10 +81,13 @@ namespace amr
      *
      *
      */
+
     template<typename GridLayoutT, typename Grid_t>
     class ResourcesManager
     {
         using This = ResourcesManager<GridLayoutT, Grid_t>;
+        using QuantityType =
+            typename extract_quantity_type<typename Grid_t::physical_quantity_type>::type;
 
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
@@ -96,8 +99,7 @@ namespace amr
         using UserParticle_t = UserParticleType<ResourcesView, interp_order>;
 
         template<std::size_t rank>
-        using UserTensorField_t
-            = UserTensorFieldType<rank, Grid_t, GridLayoutT, core::HybridQuantity>;
+        using UserTensorField_t = UserTensorFieldType<rank, Grid_t, GridLayoutT, QuantityType>;
 
 
         ResourcesManager()

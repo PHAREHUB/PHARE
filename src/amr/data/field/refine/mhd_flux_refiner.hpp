@@ -11,6 +11,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 
+#include <cmath>
 #include <cstddef>
 
 namespace PHARE::amr
@@ -79,7 +80,8 @@ private:
     {
         assert(centerings_[dirX] == core::QtyCentering::primal
                && "MHD flux should be primal in x in 1D");
-        fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+        if (std::isnan(fineField(locFineIdx[dirX])))
+            fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
     }
 
     template<typename FieldT>
@@ -100,28 +102,30 @@ private:
         {
             assert(centerings_[dirY] == core::QtyCentering::dual
                    && "MHD flux in x direction should be dual in y");
-            if (onCoarseXFace_(fineIndex))
+            if (onCoarseXFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy)))
             {
                 fineField(ilfx, ilfy) = coarseField(ilcx, ilcy);
             }
             else
             {
-                fineField(ilfx, ilfy)
-                    = 0.5 * (coarseField(ilcx, ilcy) + coarseField(ilcx + 1, ilcy));
+                if (std::isnan(fineField(ilfx, ilfy)))
+                    fineField(ilfx, ilfy)
+                        = 0.5 * (coarseField(ilcx, ilcy) + coarseField(ilcx + 1, ilcy));
             }
         }
         else if (centerings_[dirY] == core::QtyCentering::primal)
         {
             assert(centerings_[dirX] == core::QtyCentering::dual
                    && "MHD flux in y direction should be dual in x");
-            if (onCoarseYFace_(fineIndex))
+            if (onCoarseYFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy)))
             {
                 fineField(ilfx, ilfy) = coarseField(ilcx, ilcy);
             }
             else
             {
-                fineField(ilfx, ilfy)
-                    = 0.5 * (coarseField(ilcx, ilcy) + coarseField(ilcx, ilcy + 1));
+                if (std::isnan(fineField(ilfx, ilfy)))
+                    fineField(ilfx, ilfy)
+                        = 0.5 * (coarseField(ilcx, ilcy) + coarseField(ilcx, ilcy + 1));
             }
         }
         else
@@ -152,14 +156,15 @@ private:
             assert(centerings_[dirY] == core::QtyCentering::dual
                    && centerings_[dirZ] == core::QtyCentering::dual
                    && "MHD flux in x direction should be dual in y and z");
-            if (onCoarseXFace_(fineIndex))
+            if (onCoarseXFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy, ilfz)))
             {
                 fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
             }
             else
             {
-                fineField(ilfx, ilfy, ilfz)
-                    = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx + 1, ilcy, ilcz));
+                if (std::isnan(fineField(ilfx, ilfy, ilfz)))
+                    fineField(ilfx, ilfy, ilfz)
+                        = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx + 1, ilcy, ilcz));
             }
         }
         else if (centerings_[dirY] == core::QtyCentering::primal)
@@ -167,14 +172,15 @@ private:
             assert(centerings_[dirX] == core::QtyCentering::dual
                    && centerings_[dirZ] == core::QtyCentering::dual
                    && "MHD flux in y direction should be dual in x and z");
-            if (onCoarseYFace_(fineIndex))
+            if (onCoarseYFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy, ilfz)))
             {
                 fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
             }
             else
             {
-                fineField(ilfx, ilfy, ilfz)
-                    = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx, ilcy + 1, ilcz));
+                if (std::isnan(fineField(ilfx, ilfy, ilfz)))
+                    fineField(ilfx, ilfy, ilfz)
+                        = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx, ilcy + 1, ilcz));
             }
         }
         else if (centerings_[dirZ] == core::QtyCentering::primal)
@@ -182,14 +188,15 @@ private:
             assert(centerings_[dirX] == core::QtyCentering::dual
                    && centerings_[dirY] == core::QtyCentering::dual
                    && "MHD flux in z direction should be dual in x and y");
-            if (onCoarseZFace_(fineIndex))
+            if (onCoarseZFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy, ilfz)))
             {
                 fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
             }
             else
             {
-                fineField(ilfx, ilfy, ilfz)
-                    = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx, ilcy, ilcz + 1));
+                if (std::isnan(fineField(ilfx, ilfy, ilfz)))
+                    fineField(ilfx, ilfy, ilfz)
+                        = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx, ilcy, ilcz + 1));
             }
         }
     }
