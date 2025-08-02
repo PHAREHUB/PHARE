@@ -203,8 +203,6 @@ class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super(HarrisTest, self).__init__(*args, **kwargs)
         self.simulator = None
-        self.plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
-        self.plot_dir.mkdir(parents=True, exist_ok=True)
 
     def tearDown(self):
         super(HarrisTest, self).tearDown()
@@ -217,7 +215,9 @@ class HarrisTest(SimulatorTest):
         self.register_diag_dir_for_cleanup(diag_dir)
         Simulator(config()).run().reset()
         if cpp.mpi_rank() == 0:
-            plot(diag_dir, self.plot_dir)
+            plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
+            plot_dir.mkdir(parents=True, exist_ok=True)
+            plot(diag_dir, plot_dir)
         cpp.mpi_barrier()
         return self
 
