@@ -14,6 +14,7 @@
 namespace PHARE::core
 {
 
+
 /* Grid is the structure owning the field type memory via its inheritance from NdArrayImpl
 Grid exists to decouple the usage of memory by computing routines from the allocation of
 memory. Components needing to own/allocate memory will use a Grid.
@@ -47,7 +48,26 @@ public:
         static_assert(sizeof...(Dims) == dimension, "Invalid dimension");
     }
 
+    template<FloatingPoint U = value_type, std::size_t dim>
+    Grid(std::string const& name, PhysicalQuantity qty, std::array<std::uint32_t, dim> const& dims,
+         value_type value = static_cast<U>(std::nan("")))
+        : Super{dims, value}
+        , name_{name}
+        , qty_{qty}
+    {
+    }
+
+    template<FloatingPoint U = value_type, typename GridLayout_t>
+    Grid(std::string const& name, GridLayout_t const& layout, PhysicalQuantity qty,
+         value_type value = static_cast<U>(std::nan("")))
+        : Super{layout.allocSize(qty), value}
+        , name_{name}
+        , qty_{qty}
+    {
+    }
+
     template<std::size_t dim>
+        requires(!FloatingPoint<value_type>)
     Grid(std::string const& name, PhysicalQuantity qty, std::array<std::uint32_t, dim> const& dims)
         : Super{dims}
         , name_{name}
@@ -56,13 +76,13 @@ public:
     }
 
     template<typename GridLayout_t>
+        requires(!FloatingPoint<value_type>)
     Grid(std::string const& name, GridLayout_t const& layout, PhysicalQuantity qty)
         : Super{layout.allocSize(qty)}
         , name_{name}
         , qty_{qty}
     {
     }
-
     Grid(Grid const& source) // let field_ default
         : Super{source.shape()}
         , name_{source.name()}

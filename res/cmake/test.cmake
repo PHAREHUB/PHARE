@@ -17,6 +17,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/core/data/ion_population)
   add_subdirectory(tests/core/data/maxwellian_particle_initializer)
   add_subdirectory(tests/core/data/particle_initializer)
+  add_subdirectory(tests/core/data/mhd_state)
   add_subdirectory(tests/core/utilities/box)
   add_subdirectory(tests/core/utilities/range)
   add_subdirectory(tests/core/utilities/index)
@@ -29,6 +30,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/core/numerics/faraday)
   add_subdirectory(tests/core/numerics/ohm)
   add_subdirectory(tests/core/numerics/ion_updater)
+  add_subdirectory(tests/core/numerics/mock_mhd_simulator)
 
 
   add_subdirectory(tests/initializer)
@@ -62,6 +64,14 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/ionIonBeam)
   add_subdirectory(tests/functional/conservation)
   add_subdirectory(tests/functional/harris)
+
+  add_subdirectory(tests/functional/mhd_alfven2d)
+  add_subdirectory(tests/functional/mhd_convergence)
+  add_subdirectory(tests/functional/mhd_dispersion)
+  add_subdirectory(tests/functional/mhd_harris)
+  add_subdirectory(tests/functional/mhd_orszagtang)
+  add_subdirectory(tests/functional/mhd_rotor)
+  add_subdirectory(tests/functional/mhd_shock)
 
   add_subdirectory(pyphare/pyphare_tests/test_pharesee/)
   add_subdirectory(pyphare/pyphare_tests/pharein/)

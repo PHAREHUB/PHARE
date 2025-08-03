@@ -3,15 +3,15 @@
 
 #include "core/def/phare_mpi.hpp"
 
+#include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 
 #include "field_resource.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "particle_resource.hpp"
 #include "resources_guards.hpp"
+#include "particle_resource.hpp"
+#include "tensor_field_resource.hpp"
 #include "resources_manager_utilities.hpp"
-#include "core/def.hpp"
-
 
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/VariableDatabase.h>
@@ -81,10 +81,13 @@ namespace amr
      *
      *
      */
+
     template<typename GridLayoutT, typename Grid_t>
     class ResourcesManager
     {
         using This = ResourcesManager<GridLayoutT, Grid_t>;
+        using QuantityType =
+            typename extract_quantity_type<typename Grid_t::physical_quantity_type>::type;
 
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
@@ -94,6 +97,9 @@ namespace amr
 
         template<typename ResourcesView>
         using UserParticle_t = UserParticleType<ResourcesView, interp_order>;
+
+        template<std::size_t rank>
+        using UserTensorField_t = UserTensorFieldType<rank, Grid_t, GridLayoutT, QuantityType>;
 
 
         ResourcesManager()
@@ -333,16 +339,21 @@ namespace amr
 
         // iterate per patch and set args on patch
         template<typename... Args>
+        auto inline enumerate(SAMRAI::hier::PatchLevel const& level, Args&&... args)
+        {
+            return LevelLooper<SAMRAI::hier::PatchLevel const, Args...>{*this, level, args...};
+        }
+        template<typename... Args>
         auto inline enumerate(SAMRAI::hier::PatchLevel& level, Args&&... args)
         {
-            return LevelLooper<Args...>{*this, level, args...};
+            return LevelLooper<SAMRAI::hier::PatchLevel, Args...>{*this, level, args...};
         }
 
     private:
-        template<typename... Args>
+        template<typename Level_t, typename... Args>
         struct LevelLooper
         {
-            LevelLooper(ResourcesManager& rm, SAMRAI::hier::PatchLevel& lvl, Args&... arrgs)
+            LevelLooper(ResourcesManager& rm, Level_t& lvl, Args&... arrgs)
                 : rm{rm}
                 , level{lvl}
                 , args{std::forward_as_tuple(arrgs...)}
@@ -381,7 +392,7 @@ namespace amr
             auto end() { return Iterator{this, level.end()}; };
 
             ResourcesManager& rm;
-            SAMRAI::hier::PatchLevel& level;
+            Level_t& level;
             std::tuple<Args&...> args;
         };
 
@@ -455,10 +466,11 @@ namespace amr
         template<typename ResourceType>
         auto getResourcesNullPointer_(ResourcesInfo const& resourcesVariableInfo) const
         {
-            using patch_data_type            = ResourceType::patch_data_type;
-            auto constexpr patch_data_ptr_fn = &patch_data_type::getPointer;
-            using PointerType = std::invoke_result_t<decltype(patch_data_ptr_fn), patch_data_type>;
-            return static_cast<PointerType>(nullptr);
+            // using patch_data_type            = ResourceType::patch_data_type;
+            // auto constexpr patch_data_ptr_fn = &patch_data_type::getPointer;
+            // using PointerType = std::invoke_result_t<decltype(patch_data_ptr_fn),
+            // patch_data_type>;
+            return nullptr; //.static_cast<PointerType>(nullptr);
         }
 
 
@@ -538,7 +550,7 @@ namespace amr
 
             auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
             if (resourceInfoIt == nameToResourceInfo_.end())
-                throw std::runtime_error("Resources not found !");
+                throw std::runtime_error("Resources not found ! " + obj.name());
 
             obj.setBuffer(getResourcesPointer_<ResourcesType>(resourceInfoIt->second, patch));
         }
@@ -572,7 +584,7 @@ namespace amr
             }
             else
             {
-                throw std::runtime_error("Resources not found !");
+                throw std::runtime_error("Resources not found ! " + resourcesName);
             }
         }
 

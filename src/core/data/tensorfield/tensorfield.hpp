@@ -8,8 +8,8 @@
 #include <unordered_map>
 
 #include "core/def.hpp"
-#include "core/data/field/field.hpp"
 #include "core/utilities/types.hpp"
+// #include "core/data/field/field.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core::detail
@@ -17,6 +17,7 @@ namespace PHARE::core::detail
 template<std::size_t rank>
 constexpr static std::size_t tensor_field_dim_from_rank()
 {
+    static_assert(rank > 0 and rank < 3);
     if constexpr (rank == 1) // Vector field
         return 3;
     else if constexpr (rank == 2) // symmetric 3x3 tensor field
@@ -68,7 +69,8 @@ public:
     TensorField& operator=(TensorField&& source)      = default;
 
     TensorField(std::string const& name, tensor_t physQty)
-        : name_{name}
+        : qty_{physQty}
+        , name_{name}
         , physQties_{PhysicalQuantity::componentsQuantities(physQty)}
         , componentNames_{detail::tensor_field_names<rank>(name)}
         , components_{detail::tensor_field_make_fields<Field_t>(componentNames_, physQties_)}
@@ -80,15 +82,18 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD auto getCompileTimeResourcesViewList()
+    void setBuffer(std::nullptr_t ptr)
     {
-        return for_N<N, for_N_R_mode::forward_tuple>(
-            [&](auto i) -> auto& { return components_[i]; });
+        for_N<N, for_N_R_mode::forward_tuple>([&](auto i) { components_[i].setBuffer(nullptr); });
     }
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
+
+    template<typename Fields>
+    void setBuffer(Fields* const fields)
     {
-        return for_N<N, for_N_R_mode::forward_tuple>(
-            [&](auto i) -> auto& { return components_[i]; });
+        if (!fields)
+            throw std::runtime_error("use other fn");
+        for_N<N, for_N_R_mode::forward_tuple>(
+            [&](auto i) { components_[i].setBuffer(&(*fields)[i]); });
     }
 
 
@@ -201,6 +206,8 @@ public:
     NO_DISCARD auto cend() const { return std::cend(components_); }
 
     NO_DISCARD auto& componentNames() const { return componentNames_; }
+    NO_DISCARD auto& physicalQuantity() const { return qty_; }
+    NO_DISCARD auto constexpr static size() { return N; }
 
 private:
     auto static _get_index_for(Component component)
@@ -223,6 +230,7 @@ private:
 
 
 
+    tensor_t qty_;
     std::string const name_{"No Name"};
     std::array<typename PhysicalQuantity::Scalar, N> physQties_;
     std::array<std::string, N> const componentNames_;
