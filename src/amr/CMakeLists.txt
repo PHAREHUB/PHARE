@@ -11,7 +11,7 @@ set( SOURCES_INC
      data/field/coarsening/field_coarsen_index_weight.hpp
      data/field/coarsening/coarsen_weighter.hpp
      data/field/coarsening/default_field_coarsener.hpp
-     data/field/coarsening/magnetic_field_coarsener.hpp
+     data/field/coarsening/electric_field_coarsener.hpp
      data/field/field_data.hpp
      data/field/field_data_factory.hpp
      data/field/field_geometry.hpp
@@ -20,6 +20,7 @@ set( SOURCES_INC
      data/field/refine/field_linear_refine.hpp
      data/field/refine/field_refiner.hpp
      data/field/refine/magnetic_field_refiner.hpp
+     data/field/refine/magnetic_field_regrider.hpp
      data/field/refine/electric_field_refiner.hpp
      data/field/refine/linear_weighter.hpp
      data/field/refine/field_refine_operator.hpp

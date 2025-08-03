@@ -29,13 +29,18 @@ namespace amr
          *
          *  FieldVariable represent a data on a patch, it does not contain the data itself,
          *  after creation, one need to register it with a context : see registerVariableAndContext.
+         *
+         *
+         *  Note that `fineBoundaryRepresentsVariable` is set to false so that
+         *  coarse-fine interfaces are handled such that copy happens **before**
+         *  refining. See https://github.com/LLNL/SAMRAI/issues/292
          */
         FieldVariable(std::string const& name, PhysicalQuantity qty,
-                      bool fineBoundaryRepresentsVariable = true)
-            : SAMRAI::hier::Variable(
-                name,
-                std::make_shared<FieldDataFactory<GridLayoutT, FieldImpl>>(
-                    fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty), name, qty))
+                      bool fineBoundaryRepresentsVariable = false)
+            : SAMRAI::hier::Variable(name,
+                                     std::make_shared<FieldDataFactory<GridLayoutT, FieldImpl>>(
+                                         fineBoundaryRepresentsVariable,
+                                         computeDataLivesOnPatchBorder_(qty), name, qty))
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
             , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_(qty)}
         {

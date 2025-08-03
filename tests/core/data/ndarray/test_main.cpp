@@ -1,4 +1,3 @@
-
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <random>
@@ -20,7 +19,7 @@ public:
     }
 
 protected:
-    const std::uint32_t nx = 10;
+    std::uint32_t const nx = 10;
     NdArray a;
 };
 
@@ -35,8 +34,8 @@ public:
     }
 
 protected:
-    const std::uint32_t nx = 10;
-    const std::uint32_t ny = 20;
+    std::uint32_t const nx = 10;
+    std::uint32_t const ny = 20;
     NdArray a;
 };
 
@@ -51,9 +50,9 @@ public:
     }
 
 protected:
-    const std::uint32_t nx = 10;
-    const std::uint32_t ny = 20;
-    const std::uint32_t nz = 30;
+    std::uint32_t const nx = 10;
+    std::uint32_t const ny = 20;
+    std::uint32_t const nz = 30;
     NdArray a;
 };
 
@@ -287,7 +286,7 @@ TEST(MaskedView1d, maskOps)
     constexpr std::size_t dim    = 1;
     constexpr std::uint32_t size = 20;
     using Mask                   = NdArrayMask;
-    NdArrayVector<dim> array{size};
+    NdArrayVector<dim> array{{size}, 0.};
 
     EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
 
@@ -320,7 +319,7 @@ TEST(MaskedView2d, maskOps)
     constexpr std::uint32_t size   = 20;
     constexpr std::uint32_t sizeSq = 20 * 20;
     using Mask                     = NdArrayMask;
-    NdArrayVector<dim> array{size, size};
+    NdArrayVector<dim> array{{size, size}, 0.};
 
     EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
 
@@ -359,7 +358,7 @@ TEST(MaskedView2d, maskOps2)
     constexpr std::uint32_t size0 = 20, size1 = 22;
     constexpr std::uint32_t sizeSq = size0 * size1;
     using Mask                     = NdArrayMask;
-    NdArrayVector<dim> array{size0, size1};
+    NdArrayVector<dim> array{{size0, size1}, 0.};
 
     EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
 

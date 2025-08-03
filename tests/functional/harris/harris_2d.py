@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 
-
+import os
 import numpy as np
+import matplotlib as mpl
 from pathlib import Path
 
 import pyphare.pharein as ph
@@ -11,7 +12,7 @@ from pyphare.simulator.simulator import Simulator, startMPI
 
 from tests.simulator import SimulatorTest
 
-ph.NO_GUI()
+mpl.use("Agg")
 
 cpp = cpp_lib()
 
@@ -156,7 +157,6 @@ def plot_file_for_qty(plot_dir, qty, time):
 
 def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
-    pop_name = "protons"
     for time in timestamps:
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
@@ -167,7 +167,7 @@ def plot(diag_dir, plot_dir):
         run.GetRanks(time).plot(
             filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
         )
-        run.GetN(time, pop_name=pop_name).plot(
+        run.GetN(time, pop_name="protons").plot(
             filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
         )
         for c in ["x", "y", "z"]:
@@ -182,20 +182,6 @@ def plot(diag_dir, plot_dir):
             plot_patches=True,
             vmin=-2,
             vmax=2,
-        )
-        run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(plot_dir, "Pxx", time),
-            qty=pop_name + "_Pxx",
-            plot_patches=True,
-            vmin=0,
-            vmax=2.7,
-        )
-        run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(plot_dir, "Pzz", time),
-            qty=pop_name + "_Pzz",
-            plot_patches=True,
-            vmin=0,
-            vmax=1.5,
         )
 
 

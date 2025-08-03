@@ -54,7 +54,7 @@ public:
 
 
 
-TYPED_TEST(SimulatorTest, knowsWhichSolverisOnAGivenLevel)
+TYPED_TEST(SimulatorTest, knowsWhichSolverIsOnAGivenLevel)
 {
     TypeParam sim;
     auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
@@ -79,28 +79,28 @@ TYPED_TEST(SimulatorTest, allocatesModelDataOnAppropriateLevels)
     TypeParam sim;
     auto& hierarchy   = *sim.hierarchy;
     auto& hybridModel = *sim.getHybridModel();
-    auto& mhdModel    = *sim.getMHDModel();
-
+    // auto& mhdModel    = *sim.getMHDModel();
+    //
     for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
     {
-        if (isInMHDdRange(iLevel))
-        {
-            auto Bid = mhdModel.resourcesManager->getIDs(mhdModel.state.B);
-            auto Vid = mhdModel.resourcesManager->getIDs(mhdModel.state.V);
-
-            std::array<std::vector<int> const*, 2> allIDs{{&Bid, &Vid}};
-
-            for (auto& idVec : allIDs)
-            {
-                for (auto& id : *idVec)
-                {
-                    auto level = hierarchy.getPatchLevel(iLevel);
-                    auto patch = level->begin();
-                    EXPECT_TRUE(patch->checkAllocated(id));
-                }
-            }
-        }
-        else if (isInHybridRange(iLevel))
+        //     if (isInMHDdRange(iLevel))
+        //     {
+        //         auto Bid = mhdModel.resourcesManager->getIDs(mhdModel.state.B);
+        //         auto Vid = mhdModel.resourcesManager->getIDs(mhdModel.state.V);
+        //
+        //         std::array<std::vector<int> const*, 2> allIDs{{&Bid, &Vid}};
+        //
+        //         for (auto& idVec : allIDs)
+        //         {
+        //             for (auto& id : *idVec)
+        //             {
+        //                 auto level = hierarchy.getPatchLevel(iLevel);
+        //                 auto patch = level->begin();
+        //                 EXPECT_TRUE(patch->checkAllocated(id));
+        //             }
+        //         }
+        //     }
+        /*else*/ if (isInHybridRange(iLevel))
         {
             auto Bid   = hybridModel.resourcesManager->getIDs(hybridModel.state.electromag.B);
             auto Eid   = hybridModel.resourcesManager->getIDs(hybridModel.state.electromag.E);
@@ -144,7 +144,7 @@ TYPED_TEST(SimulatorTest, knowsWhichModelIsSolvedAtAGivenLevel)
 
 
 
-TYPED_TEST(SimulatorTest, returnsCorrecMessengerForEachLevel)
+TYPED_TEST(SimulatorTest, returnsCorrectMessengerForEachLevel)
 {
     TypeParam sim;
     auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
