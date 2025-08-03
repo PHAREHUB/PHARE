@@ -1,16 +1,17 @@
 #ifndef PHARE_SOLVER_HPP
 #define PHARE_SOLVER_HPP
 
-#include <string>
-#include "core/def/phare_mpi.hpp"
-
-#include <SAMRAI/hier/PatchHierarchy.h>
-#include <SAMRAI/hier/PatchLevel.h>
+#include "core/def.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "core/def.hpp"
+
+#include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
+
+#include <string>
 
 namespace PHARE::solver
 {

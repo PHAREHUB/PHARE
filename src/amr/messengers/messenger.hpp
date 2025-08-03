@@ -2,15 +2,14 @@
 #ifndef PHARE_MESSENGER_HPP
 #define PHARE_MESSENGER_HPP
 
-#include <string>
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+
 
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
 #include "messenger_info.hpp"
-// #include "core/data/grid/gridlayout.hpp"
 
 
 namespace PHARE

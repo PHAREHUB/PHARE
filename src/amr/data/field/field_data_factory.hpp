@@ -2,16 +2,16 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_FACTORY_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include <SAMRAI/geom/CartesianPatchGeometry.h>
 #include <SAMRAI/hier/Patch.h>
-#include <SAMRAI/hier/PatchDataFactory.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
-
-#include <utility>
+#include <SAMRAI/hier/PatchDataFactory.h>
+#include <SAMRAI/geom/CartesianPatchGeometry.h>
 
 #include "field_data.hpp"
+
+#include <utility>
 
 namespace PHARE
 {
@@ -35,7 +35,7 @@ namespace amr
         FieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,
                          std::string const& name, PhysicalQuantity qty)
             : SAMRAI::hier::PatchDataFactory(
-                SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), n_ghosts})
+                  SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension(dimension), n_ghosts})
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
             , dataLivesOnPatchBorder_{dataLivesOnPatchBorder}
             , quantity_{qty}
@@ -127,7 +127,7 @@ namespace amr
                 nbCell[iDim] = box.numberCells(iDim);
             }
 
-            const std::size_t baseField
+            std::size_t const baseField
                 = SAMRAI::tbox::MemoryUtilities::align(sizeof(FieldData<GridLayoutT, FieldImpl>));
 
             GridLayoutT gridLayout{dl, nbCell, origin};

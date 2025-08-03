@@ -2,14 +2,11 @@
 #define PHARE_LINEAR_WEIGHTER_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/field/field.hpp"
-#include "core/utilities/constants.hpp"
-#include "core/utilities/point/point.hpp"
 
 #include <SAMRAI/hier/Box.h>
 
@@ -44,7 +41,7 @@ namespace amr
 
     template<typename T, std::size_t... Is>
     NO_DISCARD std::array<LinearWeighter, sizeof...(Is)>
-    make_weighters(const std::array<T, sizeof...(Is)>& values, SAMRAI::hier::IntVector ratio,
+    make_weighters(std::array<T, sizeof...(Is)> const& values, SAMRAI::hier::IntVector ratio,
                    std::index_sequence<Is...>)
     {
         return {{(LinearWeighter{values[Is], static_cast<std::size_t>(ratio[Is])})...}};

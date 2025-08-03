@@ -1,20 +1,19 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 
-#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
-
+#include "core/utilities/types.hpp"
 #include <core/hybrid/hybrid_quantities.hpp>
-
 #include "core/data/tensorfield/tensorfield.hpp"
+
 #include <amr/utilities/box/amr_box.hpp>
 #include "amr/data/field/field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
 
 #include <SAMRAI/pdat/CellOverlap.h>
 #include "SAMRAI/xfer/VariableFillPattern.h"
-#include "core/utilities/types.hpp"
 
 #include <cassert>
 #include <cstddef>

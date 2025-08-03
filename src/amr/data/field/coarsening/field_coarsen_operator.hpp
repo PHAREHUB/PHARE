@@ -3,17 +3,17 @@
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/constants.hpp"
-#include "core/utilities/point/point.hpp"
-#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "amr/data/field/field_data.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "default_field_coarsener.hpp"
 
 #include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/CoarsenOperator.h>
 #include <SAMRAI/hier/IntVector.h>
+#include <SAMRAI/hier/CoarsenOperator.h>
 
 
 namespace PHARE::amr
@@ -23,63 +23,10 @@ namespace PHARE::amr
 template<typename Dst>
 void coarsen_field(Dst& destinationField, auto& sourceField, auto& intersectionBox, auto& coarsener)
 {
-    auto constexpr static dimension = Dst::dimension;
-
-    // now we can loop over the intersection box
-
-    core::Point<int, dimension> startIndex;
-    core::Point<int, dimension> endIndex;
-
-    startIndex[dirX] = intersectionBox.lower(dirX);
-    endIndex[dirX]   = intersectionBox.upper(dirX);
-
-    if constexpr (dimension > 1)
-    {
-        startIndex[dirY] = intersectionBox.lower(dirY);
-        endIndex[dirY]   = intersectionBox.upper(dirY);
-    }
-    if constexpr (dimension > 2)
-    {
-        startIndex[dirZ] = intersectionBox.lower(dirZ);
-        endIndex[dirZ]   = intersectionBox.upper(dirZ);
-    }
-
-    if constexpr (dimension == 1)
-    {
-        for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
-        {
-            coarsener(sourceField, destinationField, {{ix}});
-        }
-    }
-
-
-    else if constexpr (dimension == 2)
-    {
-        for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
-        {
-            for (int iy = startIndex[dirY]; iy <= endIndex[dirY]; ++iy)
-            {
-                coarsener(sourceField, destinationField, {{ix, iy}});
-            }
-        }
-    }
-
-
-    else if constexpr (dimension == 3)
-    {
-        for (int ix = startIndex[dirX]; ix <= endIndex[dirX]; ++ix)
-        {
-            for (int iy = startIndex[dirY]; iy <= endIndex[dirY]; ++iy)
-            {
-                for (int iz = startIndex[dirZ]; iz <= endIndex[dirZ]; ++iz)
-
-                {
-                    coarsener(sourceField, destinationField, {{ix, iy, iz}});
-                }
-            }
-        }
-    } // end 3D
+    for (auto const bix : phare_box_from<Dst::dimension>(intersectionBox))
+        coarsener(sourceField, destinationField, bix);
 }
+
 
 } // namespace PHARE::amr
 
@@ -88,9 +35,7 @@ namespace PHARE
 {
 namespace amr
 {
-    using core::dirX;
-    using core::dirY;
-    using core::dirZ;
+
     //
     template<typename GridLayoutT, typename FieldT, typename FieldCoarsenerPolicy,
              typename PhysicalQuantity = decltype(std::declval<FieldT>().physicalQuantity())>
@@ -152,7 +97,7 @@ namespace amr
          * get the Field and GridLayout encapsulated into the fieldData.
          * With the help of FieldGeometry, transform the coarseBox to the correct index.
          * After that we can now create FieldCoarsen with the indexAndWeight implementation
-         * selected. Finaly loop over the indexes in the box, and apply the coarsening defined
+         * selected. Finally loop over the indexes in the box, and apply the coarsening defined
          * in FieldCoarsen operator
          *
          */

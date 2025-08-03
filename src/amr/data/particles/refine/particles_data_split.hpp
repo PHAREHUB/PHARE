@@ -2,7 +2,7 @@
 #define PHARE_PARTICLES_DATA_SPLIT_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/def.hpp"
 #include "amr/data/particles/particles_data.hpp"

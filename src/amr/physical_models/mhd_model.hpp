@@ -2,7 +2,7 @@
 #define PHARE_MHD_MODEL_HPP
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/mhd_state.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"

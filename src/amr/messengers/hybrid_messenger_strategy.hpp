@@ -1,13 +1,12 @@
 #ifndef PHARE_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_MESSENGER_STRATEGY_HPP
 
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+
 #include "amr/messengers/messenger_info.hpp"
 
-#include "core/def/phare_mpi.hpp"
-
-
-#include <SAMRAI/hier/PatchHierarchy.h>
 #include <SAMRAI/hier/PatchLevel.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
 
 
 #include <utility>

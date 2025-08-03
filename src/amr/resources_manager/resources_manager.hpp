@@ -1,7 +1,7 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
@@ -461,15 +461,6 @@ namespace amr
             return getPatchData_<ResourceType>(resourcesVariableInfo, patch);
         }
 
-        template<typename ResourceType>
-        auto getResourcesNullPointer_(ResourcesInfo const& resourcesVariableInfo) const
-        {
-            // using patch_data_type            = ResourceType::patch_data_type;
-            // auto constexpr patch_data_ptr_fn = &patch_data_type::getPointer;
-            // using PointerType = std::invoke_result_t<decltype(patch_data_ptr_fn),
-            // patch_data_type>;
-            return nullptr; //.static_cast<PointerType>(nullptr);
-        }
 
 
         void static handle_sub_resources(auto fn, auto& obj, auto&&... args)
@@ -544,7 +535,7 @@ namespace amr
         void setResourcesInternal_(ResourcesView& obj, SAMRAI::hier::Patch const& patch) const
         {
             using ResourceResolver_t = ResourceResolver<This, ResourcesView>;
-            using ResourcesType      = typename ResourceResolver_t::type;
+            using ResourcesType      = ResourceResolver_t::type;
 
             auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
             if (resourceInfoIt == nameToResourceInfo_.end())
@@ -556,14 +547,11 @@ namespace amr
         template<typename ResourcesView>
         void unsetResourcesInternal_(ResourcesView& obj) const
         {
-            using ResourceResolver_t = ResourceResolver<This, ResourcesView>;
-            using ResourcesType      = typename ResourceResolver_t::type;
-
             auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
             if (resourceInfoIt == nameToResourceInfo_.end())
                 throw std::runtime_error("Resources not found !");
 
-            obj.setBuffer(getResourcesNullPointer_<ResourcesType>(resourceInfoIt->second));
+            obj.setBuffer(nullptr);
         }
 
 

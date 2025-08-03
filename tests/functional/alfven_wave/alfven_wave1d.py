@@ -33,7 +33,6 @@ def config():
         cells=1000,  # integer or tuple length == dimension
         dl=1,  # mesh size of the root level, float or tuple
         hyper_resistivity=0.001,
-        refinement_boxes={"L0": {"B0": [(450,), (550,)]}},
         diag_options={
             "format": "phareh5",
             "options": {"dir": ".", "mode": "overwrite"},
@@ -135,13 +134,11 @@ def phase_speed(run_path, ampl, xmax):
 
 def main():
     from pyphare.cpp import cpp_lib
+    from pyphare.pharesee.run import Run
 
     cpp = cpp_lib()
 
-    from pyphare.pharesee.run import Run
-
-    sim = config()
-    Simulator(sim).run()
+    Simulator(config()).run()
 
     if cpp.mpi_rank() == 0:
         vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)

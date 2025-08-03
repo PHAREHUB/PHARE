@@ -4,7 +4,7 @@
 #include <vector>
 #include <cstddef>
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/particles/particle.hpp"
@@ -189,7 +189,7 @@ void declare_essential(py::module& m)
 
 // https://stackoverflow.com/a/51061314/795574
 // ASAN detects leaks by default, even in system/third party libraries
-inline const char* __asan_default_options()
+inline char const* __asan_default_options()
 {
     return "detect_leaks=0";
 }

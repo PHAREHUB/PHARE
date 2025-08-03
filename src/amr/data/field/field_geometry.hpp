@@ -2,17 +2,14 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_HPP
 
 
-#include "core/def/phare_mpi.hpp"
-
-
-#include "SAMRAI/hier/IntVector.h"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/grid/gridlayout.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "field_overlap.hpp"
 
 #include <SAMRAI/hier/Box.h>
+#include "SAMRAI/hier/IntVector.h"
 #include <SAMRAI/hier/BoxGeometry.h>
 
 #include <cassert>

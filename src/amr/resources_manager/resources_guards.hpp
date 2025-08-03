@@ -1,7 +1,7 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_GUARDS_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_GUARDS_HPP
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "resources_manager_utilities.hpp"
 
