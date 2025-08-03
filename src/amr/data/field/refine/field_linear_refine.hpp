@@ -2,22 +2,19 @@
 #define PHARE_FIELD_LINEAR_REFINE_HPP
 
 
-#include "core/def/phare_mpi.hpp"
-
-
 #include "core/def.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/field/field.hpp"
-#include "linear_weighter.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+
+#include "linear_weighter.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>
 
 #include <array>
 #include <utility>
-#include <vector>
 
 
 namespace PHARE

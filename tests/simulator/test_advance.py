@@ -74,7 +74,7 @@ class AdvanceTestBase(SimulatorTest):
 
         extra_diag_options["mode"] = "overwrite"
         extra_diag_options["dir"] = diag_outputs
-        # self.register_diag_dir_for_cleanup(diag_outputs)
+        self.register_diag_dir_for_cleanup(diag_outputs)
         sim = Simulation(
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=largest_patch_size,
@@ -656,9 +656,9 @@ class AdvanceTestBase(SimulatorTest):
         checks = 0
         ndim = global_vars.sim.ndim
         lvl_steps = global_vars.sim.level_time_steps
-        assert len(lvl_steps) == 2, (
-            "this test is only configured for L0 -> L1 refinement comparisons"
-        )
+        assert (
+            len(lvl_steps) == 2
+        ), "this test is only configured for L0 -> L1 refinement comparisons"
 
         coarse_ilvl = 0
         fine_ilvl = 1

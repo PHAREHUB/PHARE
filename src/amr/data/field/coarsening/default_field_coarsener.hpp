@@ -9,8 +9,8 @@
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
-#include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
 
 #include <SAMRAI/hier/Box.h>
 

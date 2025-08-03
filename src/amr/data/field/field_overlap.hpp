@@ -2,10 +2,10 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_OVERLAP_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/BoxOverlap.h>
+#include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/Transformation.h>
 
 namespace PHARE

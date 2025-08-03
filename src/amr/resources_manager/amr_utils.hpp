@@ -1,7 +1,7 @@
 #ifndef PHARE_AMR_UTILS_HPP
 #define PHARE_AMR_UTILS_HPP
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include "core/def.hpp"

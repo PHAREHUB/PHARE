@@ -7,10 +7,7 @@
 #include "core/def/phare_mpi.hpp"
 
 
-#include "core/utilities/point/point.hpp"
-#include "core/data/vecfield/vecfield.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include "refiner_pool.hpp"
@@ -42,6 +39,7 @@
 #include <SAMRAI/hier/CoarseFineBoundary.h>
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>

@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/hier/Variable.h>
 

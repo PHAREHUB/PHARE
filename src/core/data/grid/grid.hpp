@@ -102,6 +102,8 @@ public:
         std::copy(that.data(), that.data() + Super::size(), Super::data());
     }
 
+    void zero() { field_.zero(); } // is always usable
+
     // returns view when getting address of this object, could be misleading, but convenient
     NO_DISCARD auto operator&() { return &field_; }
     NO_DISCARD auto operator&() const { return &field_; }
