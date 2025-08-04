@@ -27,10 +27,12 @@ def config():
         cells=165,
         dl=0.2,
         hyper_resistivity=0.01,
-        refinement_boxes={
-            "L0": {"B0": [(50,), (110,)]},
-            "L1": {"B0": [(140,), (180,)]},
-        },
+        refinement="tagging",
+        max_nbr_levels=3,
+        # refinement_boxes={
+        #     "L0": {"B0": [(50,), (110,)]},
+        #     "L1": {"B0": [(140,), (180,)]},
+        # },
         diag_options={
             "format": "phareh5",
             "options": {"dir": "ion_ion_beam1d", "mode": "overwrite"},
