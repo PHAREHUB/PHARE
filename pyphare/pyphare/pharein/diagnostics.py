@@ -5,8 +5,9 @@ from . import global_vars
 
 
 def all_timestamps(sim):
-    nbr_dump_step = int(sim.final_time / sim.time_step) + 1
-    return sim.time_step * np.arange(nbr_dump_step)
+    init_time = sim.start_time()
+    nbr_dump_step = int((sim.final_time - init_time) / sim.time_step) + 1
+    return (sim.time_step * np.arange(nbr_dump_step)) + init_time
 
 
 # ------------------------------------------------------------------------------

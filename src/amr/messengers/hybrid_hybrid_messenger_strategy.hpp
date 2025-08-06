@@ -107,10 +107,10 @@ namespace amr
         static constexpr std::size_t rootLevelNumber = 0;
 
 
-        HybridHybridMessengerStrategy(std::shared_ptr<ResourcesManagerT> manager,
+        HybridHybridMessengerStrategy(std::shared_ptr<ResourcesManagerT> const& manager,
                                       int const firstLevel)
             : HybridMessengerStrategy<HybridModel>{stratName}
-            , resourcesManager_{std::move(manager)}
+            , resourcesManager_{manager}
             , firstLevel_{firstLevel}
         {
             resourcesManager_->registerResources(Jold_);

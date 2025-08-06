@@ -3,7 +3,6 @@
 
 #include <string>
 #include <vector>
-#include <cstddef>
 
 #include "cppdict/include/dict.hpp"
 
