@@ -3,9 +3,7 @@
 
 
 #include "core/def.hpp"
-#include "core/logger.hpp"
 #include "core/utilities/mpi_utils.hpp"
-#include "core/data/particles/particle_array.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -46,11 +44,11 @@ public:
     }
 
 
-    template<typename Hierarchy, typename Model>
+    template<typename Hierarchy, typename ResourceManager_t>
     NO_DISCARD static std::unique_ptr<RestartsManager>
-    make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
+    make_unique(Hierarchy& hier, ResourceManager_t& resman, initializer::PHAREDict const& dict)
     {
-        auto rMan = std::make_unique<RestartsManager>(Writer::make_unique(hier, model, dict));
+        auto rMan = std::make_unique<RestartsManager>(Writer::make_unique(hier, resman, dict));
         auto restarts_are_written = core::any(
             core::generate([&](auto const& v) { return dict.contains(v); },
                            std::vector<std::string>{"write_timestamps", "elapsed_timestamps"}));

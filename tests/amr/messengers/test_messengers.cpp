@@ -254,14 +254,14 @@ public:
 
     HybridMessengers()
     {
-        auto resourcesManagerHybrid = std::make_shared<ResourcesManagerT>();
-        auto resourcesManagerMHD    = std::make_shared<ResourcesManagerT>();
+        auto resourcesManager = std::make_shared<ResourcesManagerT>();
 
-        auto hybridModel = std::make_unique<HybridModelT>(createDict(), resourcesManagerHybrid);
-        auto mhdModel    = std::make_unique<MHDModelT>(resourcesManagerMHD);
 
-        hybridModel->resourcesManager->registerResources(hybridModel->state);
-        mhdModel->resourcesManager->registerResources(mhdModel->state);
+        auto hybridModel = std::make_unique<HybridModelT>(createDict(), resourcesManager);
+        auto mhdModel    = std::make_unique<MHDModelT>(resourcesManager);
+
+        resourcesManager->registerResources(hybridModel->state);
+        resourcesManager->registerResources(mhdModel->state);
 
         models.push_back(std::move(mhdModel));
         models.push_back(std::move(hybridModel));
