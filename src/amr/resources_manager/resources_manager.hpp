@@ -290,32 +290,27 @@ namespace amr
         }
 
 
-        template<typename ResourcesView>
-        void registerForRestarts(ResourcesView const& view) const
+        void registerForRestarts() const
         {
             auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
-
-            for (auto const& id : restart_patch_data_ids(view))
+            for (auto const& id : restart_patch_data_ids())
                 pdrm->registerPatchDataForRestart(id);
         }
 
-        template<typename ResourcesView>
+
+        NO_DISCARD auto restart_patch_data_ids() const
+        { // see https://github.com/PHAREHUB/PHARE/issues/664
+            std::vector<int> ids;
+            for (auto const& [key, info] : nameToResourceInfo_)
+                ids.emplace_back(info.id);
+            return ids;
+        }
+
+        template<typename ResourcesView> // this function is never called
         NO_DISCARD auto restart_patch_data_ids(ResourcesView const& view) const
         {
-            // true for now with https://github.com/PHAREHUB/PHARE/issues/664
-            constexpr bool ALL_IDS = true;
-
             std::vector<int> ids;
-
-            if constexpr (ALL_IDS)
-            { // get all registered ids to save
-                for (auto const& [key, info] : nameToResourceInfo_)
-                    ids.emplace_back(info.id);
-            }
-            else
-            { // this is the case when transient datas not to be saved
-                getIDs_(view, ids);
-            }
+            getIDs_(view, ids);
             return ids;
         }
 
@@ -399,8 +394,6 @@ namespace amr
             }
             else
             {
-                static_assert(has_sub_resources_v<ResourcesView>);
-
                 if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
                 {
                     for (auto& resourcesUser : obj.getRunTimeResourcesViewList())

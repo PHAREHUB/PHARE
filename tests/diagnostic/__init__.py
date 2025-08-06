@@ -20,7 +20,8 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
     if timestamps is None:
         timestamps = all_timestamps(sim)
 
-    ph.InfoDiagnostics(quantity="particle_count", write_timestamps=timestamps)
+    ph.InfoDiagnostics(quantity="particle_count")  # default to all
+
     # commented out because not working propertly at the moment
     # but we keep it there for when it does
     # ph.MetaDiagnostics(

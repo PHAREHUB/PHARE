@@ -23,11 +23,12 @@ namespace amr
     template<typename MHDModel>
     class MHDMessenger : public IMessenger<typename MHDModel::Interface>
     {
+        using resources_manager_type = MHDModel::resources_manager_type;
+
     public:
         using IPhysicalModel = typename MHDModel::Interface;
-        MHDMessenger(std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager,
-                     int const firstLevel)
-            : resourcesManager_{std::move(resourcesManager)}
+        MHDMessenger(std::shared_ptr<resources_manager_type> resourcesManager, int const firstLevel)
+            : resourcesManager_{resourcesManager}
             , firstLevel_{firstLevel}
         {
         }
@@ -48,7 +49,7 @@ namespace amr
         }
 
 
-        static const std::string stratName;
+        static std::string const stratName;
 
         std::string fineModelName() const override { return MHDModel::model_name; }
 
@@ -77,7 +78,7 @@ namespace amr
 
 
         void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                    const int /*levelNumber*/,
+                    int const /*levelNumber*/,
                     std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
                     IPhysicalModel& /*model*/, double const /*initDataTime*/) override
         {
@@ -85,7 +86,7 @@ namespace amr
 
 
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
-                       const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& /*hierarchy*/,
+                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
                        double const /*currentTime*/, double const /*prevCoarserTIme*/,
                        double const /*newCoarserTime*/) final
         {
@@ -124,13 +125,13 @@ namespace amr
 
 
     private:
-        std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
+        std::shared_ptr<resources_manager_type> resourcesManager_;
         int const firstLevel_;
     };
 
 
     template<typename MHDModel>
-    const std::string MHDMessenger<MHDModel>::stratName = "MHDModel-MHDModel";
+    std::string const MHDMessenger<MHDModel>::stratName = "MHDModel-MHDModel";
 } // namespace amr
 } // namespace PHARE
 #endif

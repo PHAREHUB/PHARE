@@ -18,19 +18,20 @@ namespace amr
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
         using IPhysicalModel = typename HybridModel::Interface;
 
+        using resources_manager_type = HybridModel::resources_manager_type;
+        static_assert(
+            std::is_same_v<resources_manager_type, typename MHDModel::resources_manager_type>);
+
     public:
         static std::string const stratName;
 
-        MHDHybridMessengerStrategy(
-            std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager,
-            std::shared_ptr<typename HybridModel::resources_manager_type> hybridResourcesManager,
-            int const firstLevel)
+        MHDHybridMessengerStrategy(std::shared_ptr<resources_manager_type> const& resourcesManager,
+                                   int const firstLevel)
             : HybridMessengerStrategy<HybridModel>{stratName}
-            , mhdResourcesManager_{std::move(mhdResourcesManager)}
-            , hybridResourcesManager_{std::move(hybridResourcesManager)}
+            , resourcesManager_{resourcesManager}
             , firstLevel_{firstLevel}
         {
-            hybridResourcesManager_->registerResources(EM_old_);
+            resourcesManager_->registerResources(EM_old_);
         }
 
         /**
@@ -41,7 +42,7 @@ namespace amr
         {
             // hybModel.resourcesManager->allocate(EM_old_.E, patch, allocateTime);
             // hybModel.resourcesManager->allocate(EM_old_.B, patch, allocateTime);
-            hybridResourcesManager_->allocate(EM_old_, patch, allocateTime);
+            resourcesManager_->allocate(EM_old_, patch, allocateTime);
         }
 
         void registerQuantities(
@@ -150,8 +151,7 @@ namespace amr
     private:
         using Electromag = decltype(std::declval<HybridModel>().state.electromag);
 
-        std::shared_ptr<typename MHDModel::resources_manager_type> mhdResourcesManager_;
-        std::shared_ptr<typename HybridModel::resources_manager_type> hybridResourcesManager_;
+        std::shared_ptr<resources_manager_type> resourcesManager_;
         int const firstLevel_;
         Electromag EM_old_{stratName + "_EM_old"};
     };
