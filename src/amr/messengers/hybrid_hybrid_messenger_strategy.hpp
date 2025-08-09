@@ -331,8 +331,9 @@ namespace amr
             // nodes may not have been copied correctly, due to a bug in SAMRAI
             // it seems these nodes are only on ghost box border if that border
             // overlaps an old level patch border. See https://github.com/LLNL/SAMRAI/pull/293
-            magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
-            elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+
+            // magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+            // elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
