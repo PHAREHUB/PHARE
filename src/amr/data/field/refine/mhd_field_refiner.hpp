@@ -62,6 +62,7 @@ private:
     {
         assert(centerings_[dirX] == core::QtyCentering::dual
                && "MHD field should be primal in x in 1D");
+
         if (std::isnan(fineField(locFineIdx[dirX])))
             fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
     }
