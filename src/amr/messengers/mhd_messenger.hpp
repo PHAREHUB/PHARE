@@ -525,25 +525,22 @@ namespace amr
                                                    nonOverwriteInteriorTFfillPattern);
 
             rhoGhostsRefiners_.addTimeRefiners(info->ghostDensity, info->modelDensity,
-                                               rhoOld_.name(), mhdFieldRefineOp_, fieldTimeOp_,
-                                               nonOverwriteFieldFillPattern);
+                                               rhoOld_.name(), mhdFieldRefineOp_, fieldTimeOp_);
 
 
             velGhostsRefiners_.addTimeRefiners(info->ghostVelocity, info->modelVelocity,
-                                               Vold_.name(), mhdVecFieldRefineOp_, vecFieldTimeOp_,
-                                               nonOverwriteInteriorTFfillPattern);
+                                               Vold_.name(), mhdVecFieldRefineOp_, vecFieldTimeOp_);
 
             pressureGhostsRefiners_.addTimeRefiners(info->ghostPressure, info->modelPressure,
-                                                    Pold_.name(), mhdFieldRefineOp_, fieldTimeOp_,
-                                                    nonOverwriteFieldFillPattern);
+                                                    Pold_.name(), mhdFieldRefineOp_, fieldTimeOp_);
 
-            momentumGhostsRefiners_.addTimeRefiners(
-                info->ghostMomentum, info->modelMomentum, rhoVold_.name(), mhdVecFieldRefineOp_,
-                vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
+            momentumGhostsRefiners_.addTimeRefiners(info->ghostMomentum, info->modelMomentum,
+                                                    rhoVold_.name(), mhdVecFieldRefineOp_,
+                                                    vecFieldTimeOp_);
 
-            totalEnergyGhostsRefiners_.addTimeRefiners(
-                info->ghostTotalEnergy, info->modelTotalEnergy, EtotOld_.name(), mhdFieldRefineOp_,
-                fieldTimeOp_, nonOverwriteFieldFillPattern);
+            totalEnergyGhostsRefiners_.addTimeRefiners(info->ghostTotalEnergy,
+                                                       info->modelTotalEnergy, EtotOld_.name(),
+                                                       mhdFieldRefineOp_, fieldTimeOp_);
 
             magFluxesXGhostRefiners_.addStaticRefiners(
                 info->ghostMagneticFluxesX, mhdVecFluxRefineOp_, info->ghostMagneticFluxesX,

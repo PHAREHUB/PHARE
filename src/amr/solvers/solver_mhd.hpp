@@ -350,8 +350,11 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
                                                        timeElectric);
 
         evalFluxesOnGhostBox(
-            layout, [&](auto& left, auto const& right, auto const&... args) mutable {}, fluxSum_,
-            timeFluxes);
+            layout,
+            [&](auto& left, auto const& right, auto const&... args) mutable {
+                left(args...) += right(args...);
+            },
+            fluxSum_, timeFluxes);
 
         layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
             fluxSumE_(core::Component::X)(args...)
