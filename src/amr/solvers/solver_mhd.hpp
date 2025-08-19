@@ -352,7 +352,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
         evalFluxesOnGhostBox(
             layout,
             [&](auto& left, auto const& right, auto const&... args) mutable {
-                left(args...) += right(args...);
+                left(args...) += right(args...) * coef;
             },
             fluxSum_, timeFluxes);
 

@@ -632,6 +632,7 @@ def check_max_mhd_level(**kwargs):
 
     return max_mhd_level
 
+
 def check_model_options(**kwargs):
     model_options = kwargs.get("model_options", None)
 
@@ -641,9 +642,12 @@ def check_model_options(**kwargs):
     valid_options = {"MHDModel", "HybridModel"}
 
     if not set(model_options).issubset(valid_options):
-        raise ValueError(f"Invalid model options: {model_options}. Allowed values are {valid_options}.")
+        raise ValueError(
+            f"Invalid model options: {model_options}. Allowed values are {valid_options}."
+        )
 
     return model_options
+
 
 def check_mhd_constants(**kwargs):
     gamma = kwargs.get("gamma", 5.0 / 3.0)
@@ -652,12 +656,14 @@ def check_mhd_constants(**kwargs):
 
     return gamma, eta, nu
 
+
 def check_mhd_terms(**kwargs):
     hall = kwargs.get("hall", False)
     res = kwargs.get("res", False)
     hyper_res = kwargs.get("hyper_res", False)
 
     return hall, res, hyper_res
+
 
 def check_mhd_parameters(**kwargs):
     reconstruction = kwargs.get("reconstruction", "")
@@ -705,7 +711,6 @@ def checker(func):
             "description",
             "dry_run",
             "write_reports",
-
             "max_mhd_level",
             "model_options",
             "gamma",
@@ -808,7 +813,9 @@ def checker(func):
         kwargs["res"] = res
         kwargs["hyper_res"] = hyper_res
 
-        reconstruction, limiter, riemann, mhd_timestepper = check_mhd_parameters(**kwargs)
+        reconstruction, limiter, riemann, mhd_timestepper = check_mhd_parameters(
+            **kwargs
+        )
         kwargs["reconstruction"] = reconstruction
         kwargs["limiter"] = limiter
         kwargs["riemann"] = riemann
