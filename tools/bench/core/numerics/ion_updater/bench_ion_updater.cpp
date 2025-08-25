@@ -24,7 +24,7 @@ void updater_routine(benchmark::State& state)
     GridLayout_t layout{cells};
     Electromag_t em{layout};
     Ions ions{layout, "protons"};
-    Boxing_t const boxing{layout, grow(layout.AMRBox(), GridLayout_t::nbrParticleGhosts())};
+    Boxing_t const boxing{layout, {grow(layout.AMRBox(), GridLayout_t::nbrParticleGhosts())}};
 
     auto& patch_particles = ions.populations[0].particles;
     patch_particles.domain_particles.vector()
