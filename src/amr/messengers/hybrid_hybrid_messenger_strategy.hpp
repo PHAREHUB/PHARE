@@ -1,10 +1,9 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
-#include "core/def.hpp"
+#include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include "core/hybrid/hybrid_quantities.hpp"
@@ -39,14 +38,11 @@
 #include <SAMRAI/hier/CoarseFineBoundary.h>
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
-#include <cmath>
 #include <memory>
 #include <string>
 #include <utility>
 #include <iomanip>
 #include <iostream>
-#include <iterator>
-#include <cmath>
 
 
 
