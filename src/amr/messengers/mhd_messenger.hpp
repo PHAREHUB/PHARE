@@ -121,7 +121,7 @@ namespace amr
             BalgoPatchGhost.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
                                            nonOverwriteInteriorTFfillPattern);
 
-            BalgoInit.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
+            BalgoInit.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
                                      overwriteInteriorTFfillPattern);
 
             BregridAlgo.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,

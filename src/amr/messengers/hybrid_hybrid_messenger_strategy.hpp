@@ -829,7 +829,7 @@ namespace amr
         void registerInitComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             auto b_id = resourcesManager_->getID(info->modelMagnetic);
-            BalgoInit.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
+            BalgoInit.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
                                      overwriteInteriorTFfillPattern);
 
             // no fill pattern given for this init
