@@ -72,8 +72,25 @@ public:
 
         accumulateButcherFluxes_(model, state2_.E, fluxes, level, w11_);
 
+        for (auto& patch : level)
+        {
+            core::FiniteVolumeEuler<GridLayoutT> fveuler;
+            core::Faraday<GridLayoutT> faraday;
+
+            auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+            auto _sp = model.resourcesManager->setOnPatch(*patch, state, butcherFluxes_, butcherE_);
+            auto _sl_faraday = core::SetLayout(&layout, faraday);
+            auto _sl_fveuler = core::SetLayout(&layout, fveuler);
+
+            auto dt = newTime - currentTime;
+
+            fveuler(state, state, butcherFluxes_, dt);
+            faraday(state.B, butcherE_, state.B, dt);
+        };
+
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
-        tvdrk3_step_(level, model, newTime, state, RKPair_t{w10_, state}, RKPair_t{w11_, state2_});
+        // tvdrk3_step_(level, model, newTime, state, RKPair_t{w10_, state}, RKPair_t{w11_,
+        // state2_});
     }
 
     void registerResources(MHDModel& model)
