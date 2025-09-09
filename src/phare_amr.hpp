@@ -2,7 +2,7 @@
 #define PHARE_AMR_INCLUDE_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>

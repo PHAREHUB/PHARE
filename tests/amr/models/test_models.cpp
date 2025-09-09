@@ -155,14 +155,7 @@ TEST(AHybridModel, fillsHybridMessengerInfo)
 
 
     EXPECT_EQ("EM_B", modelInfo.modelMagnetic);
-    // EXPECT_EQ("EM_B_x", modelInfo.modelMagnetic.xName);
-    // EXPECT_EQ("EM_B_y", modelInfo.modelMagnetic.yName);
-    // EXPECT_EQ("EM_B_z", modelInfo.modelMagnetic.zName);
-
     EXPECT_EQ("EM_E", modelInfo.modelElectric);
-    // EXPECT_EQ("EM_E_x", modelInfo.modelElectric.xName);
-    // EXPECT_EQ("EM_E_y", modelInfo.modelElectric.yName);
-    // EXPECT_EQ("EM_E_z", modelInfo.modelElectric.zName);
 }
 
 

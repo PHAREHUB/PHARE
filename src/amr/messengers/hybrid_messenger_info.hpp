@@ -2,7 +2,6 @@
 #define PHARE_HYBRID_MESSENGER_INFO_HPP
 
 #include "messenger_info.hpp"
-#include "core/data/vecfield/vecfield.hpp"
 
 #include <string>
 #include <vector>
@@ -35,8 +34,6 @@ namespace amr
 
     class HybridMessengerInfo : public IMessengerInfo
     {
-        // using std::string = core::std::string;
-
     public:
         // store names of field and vector fields known to be part of the model
         // i.e. that constitute the state of the model between two time steps.

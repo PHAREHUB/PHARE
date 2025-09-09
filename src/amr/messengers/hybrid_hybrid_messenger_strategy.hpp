@@ -1,16 +1,12 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
-#include "core/def.hpp"
+#include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 
-#include "core/utilities/point/point.hpp"
-#include "core/data/vecfield/vecfield.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include "refiner_pool.hpp"
@@ -47,8 +43,6 @@
 #include <utility>
 #include <iomanip>
 #include <iostream>
-#include <iterator>
-#include <cmath>
 
 
 
@@ -333,8 +327,9 @@ namespace amr
             // nodes may not have been copied correctly, due to a bug in SAMRAI
             // it seems these nodes are only on ghost box border if that border
             // overlaps an old level patch border. See https://github.com/LLNL/SAMRAI/pull/293
-            magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
-            elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+
+            // magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+            // elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }

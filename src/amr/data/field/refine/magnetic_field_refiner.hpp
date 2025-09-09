@@ -2,14 +2,14 @@
 #define PHARE_MAGNETIC_FIELD_REFINER_HPP
 
 
-#include "core/def/phare_mpi.hpp"
-
-#include <SAMRAI/hier/Box.h>
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
-#include "core/utilities/constants.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/point/point.hpp"
+
+#include <SAMRAI/hier/Box.h>
 
 #include <cstddef>
 

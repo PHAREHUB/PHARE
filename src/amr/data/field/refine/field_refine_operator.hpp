@@ -2,13 +2,16 @@
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
 
-#include "amr/data/tensorfield/tensor_field_data.hpp"
+
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/def/phare_mpi.hpp"
 
 #include "core/def.hpp"
-#include "amr/data/field/field_data.hpp"
 
-#include "core/hybrid/hybrid_quantities.hpp"
+
+#include "amr/data/field/field_data.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
+
 #include "field_linear_refine.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
@@ -30,63 +33,8 @@ using core::dirZ;
 template<typename Dst>
 void refine_field(Dst& destinationField, auto& sourceField, auto& intersectionBox, auto& refiner)
 {
-    auto constexpr static dimension = Dst::dimension;
-
-    if constexpr (dimension == 1)
-    {
-        int iStartX = intersectionBox.lower(dirX);
-        int iEndX   = intersectionBox.upper(dirX);
-
-        for (int ix = iStartX; ix <= iEndX; ++ix)
-        {
-            refiner(sourceField, destinationField, {{ix}});
-        }
-    }
-
-
-
-
-    else if constexpr (dimension == 2)
-    {
-        int iStartX = intersectionBox.lower(dirX);
-        int iStartY = intersectionBox.lower(dirY);
-
-        int iEndX = intersectionBox.upper(dirX);
-        int iEndY = intersectionBox.upper(dirY);
-
-        for (int ix = iStartX; ix <= iEndX; ++ix)
-        {
-            for (int iy = iStartY; iy <= iEndY; ++iy)
-            {
-                refiner(sourceField, destinationField, {{ix, iy}});
-            }
-        }
-    }
-
-
-
-
-    else if constexpr (dimension == 3)
-    {
-        int iStartX = intersectionBox.lower(dirX);
-        int iStartY = intersectionBox.lower(dirY);
-        int iStartZ = intersectionBox.lower(dirZ);
-
-        int iEndX = intersectionBox.upper(dirX);
-        int iEndY = intersectionBox.upper(dirY);
-        int iEndZ = intersectionBox.upper(dirZ);
-
-        for (int ix = iStartX; ix <= iEndX; ++ix)
-        {
-            for (int iy = iStartY; iy <= iEndY; ++iy)
-            {
-                for (int iz = iStartZ; iz <= iEndZ; ++iz)
-                {
-                    refiner(sourceField, destinationField, {{ix, iy, iz}});
-                }
-            }
-        }
-    }
+    for (auto const bix : phare_box_from<Dst::dimension>(intersectionBox))
+        refiner(sourceField, destinationField, bix);
 }
 
 

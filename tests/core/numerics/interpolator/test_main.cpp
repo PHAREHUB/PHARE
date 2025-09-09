@@ -531,8 +531,8 @@ public:
         , rho_c{"field", HybridQuantity::Scalar::rho, nx}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
-        (*(&rho)).zero();
-        (*(&rho_c)).zero();
+        rho.zero();
+        rho_c.zero();
         v.zero();
         if constexpr (Interpolator::interp_order == 1)
         {
@@ -707,8 +707,8 @@ struct ACollectionOfParticles_2d : public ::testing::Test
         , rho_c{"field", HybridQuantity::Scalar::rho, nx, ny}
         , v{"v", layout, HybridQuantity::Vector::V}
     {
-        (*(&rho)).zero();
-        (*(&rho_c)).zero();
+        rho.zero();
+        rho_c.zero();
         v.zero();
         for (int i = start; i < end; i++)
             for (int j = start; j < end; j++)

@@ -6,96 +6,37 @@
 //     FieldLinearTimeInterpolate
 // -------------------------------------
 
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+
+
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/field/field_geometry.hpp"
-
 #include "amr/data/tensorfield/tensor_field_data.hpp"
-#include "core/def/phare_mpi.hpp"
-
 
 #include <SAMRAI/hier/TimeInterpolateOperator.h>
+
 #include <tuple>
+
 
 
 namespace PHARE::amr
 {
 
-using core::dirX;
-using core::dirY;
-using core::dirZ;
 
 template<typename Dst>
 void linear_time_interpolate(Dst& fieldDest, auto& fieldSrcOld, auto& fieldSrcNew, auto&&... args)
 {
-    auto static constexpr dim = Dst::dimension;
-
     auto const& [localDestBox, localSrcBox, alpha] = std::forward_as_tuple(args...);
+    auto const lclDstBox                           = phare_box_from<Dst::dimension>(localDestBox);
+    auto const lclSrcBox                           = phare_box_from<Dst::dimension>(localSrcBox);
 
-    if constexpr (dim == 1)
-    {
-        auto const iDestStartX = localDestBox.lower(dirX);
-        auto const iDestEndX   = localDestBox.upper(dirX);
+    auto src_it = lclSrcBox.begin();
+    auto dst_it = lclDstBox.begin();
 
-        auto const iSrcStartX = localSrcBox.lower(dirX);
-
-        for (auto ix = iDestStartX, ixSrc = iSrcStartX; ix <= iDestEndX; ++ix, ++ixSrc)
-        {
-            fieldDest(ix) = (1. - alpha) * fieldSrcOld(ixSrc) + alpha * fieldSrcNew(ixSrc);
-        }
-    }
-    else if constexpr (dim == 2)
-    {
-        auto const iDestStartX = localDestBox.lower(dirX);
-        auto const iDestEndX   = localDestBox.upper(dirX);
-        auto const iDestStartY = localDestBox.lower(dirY);
-        auto const iDestEndY   = localDestBox.upper(dirY);
-
-        auto const iSrcStartX = localSrcBox.lower(dirX);
-        auto const iSrcStartY = localSrcBox.lower(dirY);
-
-        for (auto ix = iDestStartX, ixSrc = iSrcStartX; ix <= iDestEndX; ++ix, ++ixSrc)
-        {
-            for (auto iy = iDestStartY, iySrc = iSrcStartY; iy <= iDestEndY; ++iy, ++iySrc)
-            {
-                fieldDest(ix, iy)
-                    = (1. - alpha) * fieldSrcOld(ixSrc, iySrc) + alpha * fieldSrcNew(ixSrc, iySrc);
-            }
-        }
-    }
-    else if constexpr (dim == 3)
-    {
-        auto const iDestStartX = localDestBox.lower(dirX);
-        auto const iDestEndX   = localDestBox.upper(dirX);
-        auto const iDestStartY = localDestBox.lower(dirY);
-        auto const iDestEndY   = localDestBox.upper(dirY);
-        auto const iDestStartZ = localDestBox.lower(dirZ);
-        auto const iDestEndZ   = localDestBox.upper(dirZ);
-
-        auto const iSrcStartX = localSrcBox.lower(dirX);
-        auto const iSrcStartY = localSrcBox.lower(dirY);
-        auto const iSrcStartZ = localSrcBox.lower(dirZ);
-
-        for (auto ix = iDestStartX, ixSrc = iSrcStartX; ix <= iDestEndX; ++ix, ++ixSrc)
-        {
-            for (auto iy = iDestStartY, iySrc = iSrcStartY; iy <= iDestEndY; ++iy, ++iySrc)
-            {
-                for (auto iz = iDestStartZ, izSrc = iSrcStartZ; iz <= iDestEndZ; ++iz, ++izSrc)
-                {
-                    fieldDest(ix, iy, iz) = (1. - alpha) * fieldSrcOld(ixSrc, iySrc, izSrc)
-                                            + alpha * fieldSrcNew(ixSrc, iySrc, izSrc);
-                }
-            }
-        }
-    }
-
-    //
+    for (; dst_it != lclDstBox.end(); ++src_it, ++dst_it)
+        fieldDest(*dst_it) = (1. - alpha) * fieldSrcOld(*src_it) + alpha * fieldSrcNew(*src_it);
 }
 
-
-} // namespace PHARE::amr
-
-namespace PHARE::amr
-{
 
 template<typename GridLayoutT, typename FieldT>
 class FieldLinearTimeInterpolate : public SAMRAI::hier::TimeInterpolateOperator
