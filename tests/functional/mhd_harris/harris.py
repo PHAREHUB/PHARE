@@ -16,17 +16,18 @@ cells = (200, 100)
 time_step = 0.005
 final_time = 50
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
-diag_dir = "phare_outputs/harris"
+diag_dir = "phare_outputs/mhd_harris"
 
 
 def config():
-    dl = (0.40, 0.40)
+    L = 0.5
 
     sim = ph.Simulation(
+        largest_patch_size=(50, 50),
         time_step=time_step,
         final_time=final_time,
         cells=cells,
-        dl=dl,
+        dl=(0.40, 0.40),
         refinement="tagging",
         max_mhd_level=2,
         max_nbr_levels=2,
@@ -41,25 +42,23 @@ def config():
         eta=0.0,
         nu=0.0,
         gamma=5.0 / 3.0,
-        reconstruction="weno3",
+        reconstruction="constant",
         limiter="",
         riemann="rusanov",
-        mhd_timestepper="tvdrk3",
+        mhd_timestepper="euler",
         hall=True,
         model_options=["MHDModel"],
     )
-
-    Lx = cells[0] * dl[0]
-    Ly = cells[1] * dl[1]
 
     def S(y, y0, l):
         return 0.5 * (1.0 + np.tanh((y - y0) / l))
 
     def density(x, y):
+        Ly = sim.simulation_domain()[1]
         return (
-            1.0
-            + 1.0 / np.cosh((y - Ly * 0.3) / 0.5) ** 2
-            + 1.0 / np.cosh((y - Ly * 0.7) / 0.5) ** 2
+            0.4
+            + 1.0 / np.cosh((y - Ly * 0.3) / L) ** 2
+            + 1.0 / np.cosh((y - Ly * 0.7) / L) ** 2
         )
 
     def vx(x, y):
@@ -72,33 +71,36 @@ def config():
         return 0.0
 
     def bx(x, y):
-        w1 = 0.2
-        w2 = 1.0
+        Lx = sim.simulation_domain()[0]
+        Ly = sim.simulation_domain()[1]
+        sigma = 1.0
+        dB = 0.1
+
         x0 = x - 0.5 * Lx
         y1 = y - 0.3 * Ly
         y2 = y - 0.7 * Ly
-        w3 = np.exp(-(x0 * x0 + y1 * y1) / (w2 * w2))
-        w4 = np.exp(-(x0 * x0 + y2 * y2) / (w2 * w2))
-        w5 = 2.0 * w1 / w2
+
+        dBx1 = -2 * dB * y1 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
+        dBx2 = 2 * dB * y2 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
+
         v1 = -1
         v2 = 1.0
-        return (
-            v1
-            + (v2 - v1) * (S(y, Ly * 0.3, 0.5) - S(y, Ly * 0.7, 0.5))
-            + (-w5 * y1 * w3)
-            + (+w5 * y2 * w4)
-        )
+        return v1 + (v2 - v1) * (S(y, Ly * 0.3, L) - S(y, Ly * 0.7, L)) + dBx1 + dBx2
 
     def by(x, y):
-        w1 = 0.2
-        w2 = 1.0
+        Lx = sim.simulation_domain()[0]
+        Ly = sim.simulation_domain()[1]
+        sigma = 1.0
+        dB = 0.1
+
         x0 = x - 0.5 * Lx
         y1 = y - 0.3 * Ly
         y2 = y - 0.7 * Ly
-        w3 = np.exp(-(x0 * x0 + y1 * y1) / (w2 * w2))
-        w4 = np.exp(-(x0 * x0 + y2 * y2) / (w2 * w2))
-        w5 = 2.0 * w1 / w2
-        return (w5 * x0 * w3) + (-w5 * x0 * w4)
+
+        dBy1 = 2 * dB * x0 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
+        dBy2 = -2 * dB * x0 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
+
+        return dBy1 + dBy2
 
     def bz(x, y):
         return 0.0
