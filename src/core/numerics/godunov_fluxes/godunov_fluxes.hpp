@@ -46,6 +46,10 @@ class Godunov : public LayoutHolder<GridLayout>
     using LayoutHolder<GridLayout>::layout_;
 
 public:
+    constexpr static auto Hall             = Equations::hall;
+    constexpr static auto Resistivity      = Equations::resistivity;
+    constexpr static auto HyperResistivity = Equations::hyperResistivity;
+
     Godunov(PHARE::initializer::PHAREDict const& dict)
         : gamma_{dict["heat_capacity_ratio"].template to<double>()}
         , eta_{dict["resistivity"].template to<double>()}

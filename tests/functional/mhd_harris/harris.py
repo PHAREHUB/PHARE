@@ -12,37 +12,32 @@ ph.NO_GUI()
 cpp = cpp_lib()
 startMPI()
 
-diag_outputs = "phare_outputs/high"
-final_time = 10
-time_step = 0.0005
-time_step_nbr = int(final_time / time_step)
-
-dumpfrequency = 2000
-dt = dumpfrequency * time_step
-timestamps = dt * np.arange(int(time_step_nbr / dumpfrequency) + 1)
+cells = (200, 100)
+time_step = 0.005
+final_time = 50
+timestamps = np.arange(0, final_time + time_step, final_time / 5)
+diag_dir = "phare_outputs/harris"
 
 
 def config():
-    cells = (500, 500)
-    dl = (0.05, 0.05)
+    dl = (0.40, 0.40)
 
     sim = ph.Simulation(
-        smallest_patch_size=15,
-        # largest_patch_size=25,
-        time_step_nbr=time_step_nbr,
         time_step=time_step,
+        final_time=final_time,
         cells=cells,
         dl=dl,
         refinement="tagging",
-        max_mhd_level=1,
-        max_nbr_levels=1,
+        max_mhd_level=2,
+        max_nbr_levels=2,
         hyper_resistivity=0.0,
         resistivity=0.0,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": diag_outputs, "mode": "overwrite"},
+            "options": {"dir": diag_dir, "mode": "overwrite"},
         },
         strict=True,
+        nesting_buffer=1,
         eta=0.0,
         nu=0.0,
         gamma=5.0 / 3.0,

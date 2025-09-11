@@ -99,6 +99,10 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
         auto _      = this->resourcesManager->setOnPatch(*patch, state);
 
         state.initialize(layout);
+        // data initialized to NaN on construction
+        // and in 1D Jx is not worked on in Ampere so
+        // we need to zero J before anything happens
+        state.J.zero();
     }
     resourcesManager->registerForRestarts(*this);
 }

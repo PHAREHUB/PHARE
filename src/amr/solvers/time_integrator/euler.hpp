@@ -13,6 +13,7 @@ class Euler
     using Layout        = typename MHDModel::gridlayout_type;
     using Dispatchers_t = Dispatchers<Layout>;
 
+    using Ampere_t               = Dispatchers_t::Ampere_t;
     using FVMethod_t             = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
     using FiniteVolumeEuler_t    = Dispatchers_t::FiniteVolumeEuler_t;
     using ConstrainedTransport_t = Dispatchers_t::ConstrainedTransport_t;
@@ -20,6 +21,10 @@ class Euler
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
     using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
+
+    constexpr static auto Hall             = FVMethod_t::Hall;
+    constexpr static auto Resistivity      = FVMethod_t::Resistivity;
+    constexpr static auto HyperResistivity = FVMethod_t::HyperResistivity;
 
 public:
     Euler(PHARE::initializer::PHAREDict const& dict)
@@ -37,6 +42,13 @@ public:
         to_primitive_(level, model, newTime, state);
 
         bc.fillMomentsGhosts(state, level, newTime);
+
+        if constexpr (Hall || Resistivity || HyperResistivity)
+        {
+            ampere_(level, model, newTime, state);
+
+            bc.fillCurrentGhosts(state.J, level, newTime);
+        }
 
         fvm_(level, model, newTime, state, fluxes);
 
@@ -65,6 +77,7 @@ public:
     }
 
 private:
+    Ampere_t ampere_;
     FVMethod_t fvm_;
     FiniteVolumeEuler_t fv_euler_;
     ConstrainedTransport_t ct_;

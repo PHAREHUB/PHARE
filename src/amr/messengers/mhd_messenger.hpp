@@ -358,13 +358,14 @@ namespace amr
                 auto _ = resourcesManager_->setOnPatch(*patch, mhdModel.state.J);
                 mhdModel.state.J.zero();
             }
+
             magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
             densityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             momentumInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             totalEnergyInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
 
-            magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
-            elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+            // magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
+            // elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
 
 
@@ -505,6 +506,12 @@ namespace amr
         {
             setNaNsOnVecfieldGhosts(E, level);
             elecGhostsRefiners_.fill(E, level.getLevelNumber(), fillTime);
+        }
+
+        void fillCurrentGhosts(VecFieldT& J, level_t const& level, double const fillTime)
+        {
+            setNaNsOnVecfieldGhosts(J, level);
+            currentGhostsRefiners_.fill(J, level.getLevelNumber(), fillTime);
         }
 
         std::string name() override { return stratName; }

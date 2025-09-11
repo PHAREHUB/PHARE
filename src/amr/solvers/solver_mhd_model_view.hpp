@@ -87,12 +87,44 @@ public:
     core_type to_primitive_;
 };
 
+template<typename GridLayout>
+class AmpereMHDTransformer
+{
+    using core_type = PHARE::core::Ampere<GridLayout>;
+
+public:
+    template<typename MHDModel>
+    void operator()(MHDModel::level_t const& level, MHDModel& model, double const newTime,
+                    MHDModel::state_type& state)
+    {
+        TimeSetter setTime{model, newTime};
+
+        for (auto const& patch : level)
+        {
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, state);
+            auto _sl    = core::SetLayout(&layout, ampere_);
+
+            setTime(
+                *patch, [&]() -> auto&& { return state.B; }, [&]() -> auto&& { return state.J; });
+
+            ampere_(state.B, state.J);
+        }
+    }
+
+    core_type ampere_;
+};
+
 template<typename GridLayout, template<typename> typename FVMethod>
 class FVMethodTransformer
 {
     using core_type = FVMethod<GridLayout>;
 
 public:
+    constexpr static auto Hall             = core_type::Hall;
+    constexpr static auto Resistivity      = core_type::Resistivity;
+    constexpr static auto HyperResistivity = core_type::HyperResistivity;
+
     template<typename MHDModel>
     void operator()(MHDModel::level_t const& level, MHDModel& model, double const newTime,
                     MHDModel::state_type& state, auto& fluxes)
@@ -227,6 +259,8 @@ class Dispatchers
 public:
     using ToPrimitiveConverter_t    = ToPrimitiveTransformer<GridLayout>;
     using ToConservativeConverter_t = ToConservativeTransformer<GridLayout>;
+
+    using Ampere_t = AmpereMHDTransformer<GridLayout>;
 
     template<template<typename> typename FVMethodStrategy>
     using FVMethod_t = FVMethodTransformer<GridLayout, FVMethodStrategy>;
