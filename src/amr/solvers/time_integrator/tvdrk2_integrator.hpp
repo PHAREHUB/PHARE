@@ -117,7 +117,7 @@ public:
 
     auto exposeFluxes() { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
 
-    auto const exposeFluxes() const { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
+    auto exposeFluxes() const { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
 
 private:
     void resetButcherFluxes_(MHDModel& model, auto& level)

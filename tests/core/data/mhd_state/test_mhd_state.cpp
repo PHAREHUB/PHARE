@@ -37,6 +37,8 @@ PHAREDict getDict()
 
     dict["pressure"]["initializer"] = static_cast<initfunc>(pressure);
 
+    dict["to_conservative_init"]["heat_capacity_ratio"] = 5. / 3.;
+
     return dict;
 }
 

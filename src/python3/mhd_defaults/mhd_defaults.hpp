@@ -42,7 +42,7 @@ struct DefaultTimeIntegrator
 
     auto exposeFluxes() { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
 
-    auto const exposeFluxes() const { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
+    auto exposeFluxes() const { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
 
     core::AllFluxes<typename MHDModel::field_type, typename MHDModel::vecfield_type> butcherFluxes_;
     MHDModel::vecfield_type butcherE_;

@@ -25,7 +25,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
     auto const diagTypes = []() {
         if constexpr (solver::is_hybrid_model_v<typename DiagManager::Model_t>)
         {
-            return std::vector<std::string>{"fluid", "electromag", "particles", "meta", "info"};
+            return std::vector<std::string>{"fluid", "electromag", "particle", "meta", "info"};
         }
         else if constexpr (solver::is_mhd_model_v<typename DiagManager::Model_t>)
         {
