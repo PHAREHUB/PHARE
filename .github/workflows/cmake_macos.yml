@@ -80,7 +80,6 @@ jobs:
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
               -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 "
 
-
     - name: Build
       working-directory: ${{github.workspace}}/build
       run: cmake --build . -j 2
