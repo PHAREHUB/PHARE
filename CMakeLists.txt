@@ -7,6 +7,8 @@ if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
+set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # TORM after https://github.com/LLNL/SAMRAI/issues/266
+
 if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
   cmake_policy(SET CMP0074 NEW)
 endif()
