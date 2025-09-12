@@ -85,7 +85,8 @@ public:
         }
         else
         {
-            static_assert(false, "Unsupported Model type in H5Writer");
+            // MacOS clang unhappy with static_assert(false), requires a dependency on Model
+            static_assert(!std::is_same_v<Model, Model>, "Unsupported model type in H5Writer");
         }
     }
 

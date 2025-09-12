@@ -17,6 +17,13 @@ namespace PHARE::solver
 template<typename MHDModel>
 struct TimeSetter
 {
+    // MacOS clang has trouble constructing aggregates with template parameters
+    TimeSetter(MHDModel& m, double t)
+        : model(m)
+        , newTime(t)
+    {
+    }
+
     template<typename... QuantityAccessors>
     void operator()(auto& patch, QuantityAccessors... accessors)
     {
