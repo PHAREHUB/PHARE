@@ -23,17 +23,19 @@ template<typename DiagManager>
 void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsParams)
 {
     auto const diagTypes = []() {
-        if constexpr (solver::is_hybrid_model_v<typename DiagManager::Model_t>)
+        using Model = typename DiagManager::Model_t;
+        if constexpr (solver::is_hybrid_model_v<Model>)
         {
             return std::vector<std::string>{"fluid", "electromag", "particle", "meta", "info"};
         }
-        else if constexpr (solver::is_mhd_model_v<typename DiagManager::Model_t>)
+        else if constexpr (solver::is_mhd_model_v<Model>)
         {
             return std::vector<std::string>{"mhd", "meta", "electromag"};
         }
         else
         {
-            static_assert(false, "Unsupported model type");
+            // MacOS clang unhappy with static_assert(false), requires a dependency on Model
+            static_assert(!std::is_same_v<Model, Model>, "Unsupported model type");
             return std::vector<std::string>{};
         }
     }();

@@ -344,8 +344,12 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger,
 
     for (auto& patch : level)
     {
-        auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
-        auto const& layout                = amr::layoutFromPatch<GridLayout>(*patch);
+        // MacOS clang still unhappy with structured bindings captures in lambdas
+        auto&& tf          = evolve_.exposeFluxes();
+        auto& timeFluxes   = std::get<0>(tf);
+        auto& timeElectric = std::get<1>(tf);
+
+        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
         auto _ = mhdModel.resourcesManager->setOnPatch(*patch, fluxSum_, fluxSumE_, timeFluxes,
                                                        timeElectric);
 
