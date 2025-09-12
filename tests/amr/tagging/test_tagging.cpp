@@ -1,7 +1,7 @@
-
 #include <cmath>
 #include <algorithm>
 
+#include "simulator/phare_types.hpp"
 #include "phare_solver.hpp"
 #include "amr/tagging/tagger.hpp"
 #include "amr/tagging/tagger_factory.hpp"

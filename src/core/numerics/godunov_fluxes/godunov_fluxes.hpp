@@ -107,11 +107,6 @@ public:
     template<typename State, typename Fluxes>
     void operator()(State& state, Fluxes& fluxes) const
     {
-        if constexpr (Hall || Resistivity || HyperResistivity)
-        {
-            Ampere_ref{this->layout_}(state.B, state.J);
-        }
-
         constexpr auto directions = getDirections<dimension>();
 
         constexpr auto num_directions = std::tuple_size_v<std::decay_t<decltype(directions)>>;
