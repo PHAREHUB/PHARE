@@ -162,8 +162,8 @@ def plot(diag_dir, plot_dir):
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
-            vmin=1e-11,
-            vmax=2e-10,
+            vmin=-1e-11,
+            vmax=1e-11,
         )
         run.GetRanks(time).plot(
             filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True

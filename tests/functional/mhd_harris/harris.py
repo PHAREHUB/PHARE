@@ -2,15 +2,19 @@
 import os
 
 import numpy as np
+from pathlib import Path
+
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
+from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
+
+from tests.simulator import SimulatorTest
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 
 ph.NO_GUI()
 cpp = cpp_lib()
-startMPI()
 
 cells = (200, 100)
 time_step = 0.005
@@ -18,12 +22,13 @@ final_time = 50
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
 diag_dir = "phare_outputs/mhd_harris"
 
+hall = True
+
 
 def config():
     L = 0.5
 
     sim = ph.Simulation(
-        largest_patch_size=(50, 50),
         time_step=time_step,
         final_time=final_time,
         cells=cells,
@@ -46,7 +51,7 @@ def config():
         limiter="",
         riemann="rusanov",
         mhd_timestepper="euler",
-        hall=True,
+        hall=hall,
         model_options=["MHDModel"],
     )
 
@@ -118,9 +123,70 @@ def config():
     return sim
 
 
-def main():
-    Simulator(config()).run()
+def plot_file_for_qty(plot_dir, qty, time):
+    return f"{plot_dir}/harris_{qty}_t{time}.png"
+
+
+def plot(diag_dir, plot_dir):
+    run = Run(diag_dir)
+    for time in timestamps:
+        run.GetDivB(time).plot(
+            filename=plot_file_for_qty(plot_dir, "divb", time),
+            plot_patches=True,
+            vmin=-1e-11,
+            vmax=1e-11,
+        )
+        run.GetRanks(time).plot(
+            filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
+        )
+        run.GetMHDrho(time).plot(
+            filename=plot_file_for_qty(plot_dir, "rho", time), plot_patches=True
+        )
+        for c in ["x", "y", "z"]:
+            run.GetMHDV(time).plot(
+                filename=plot_file_for_qty(plot_dir, f"v{c}", time),
+                plot_patches=True,
+                qty=f"{c}",
+            )
+            run.GetB(time).plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}", time),
+                plot_patches=True,
+                qty=f"{c}",
+            )
+        run.GetMHDP(time).plot(
+            filename=plot_file_for_qty(plot_dir, "p", time), plot_patches=True
+        )
+        if hall:
+            run.GetJ(time).plot(
+                filename=plot_file_for_qty(plot_dir, "jz", time),
+                qty="z",
+                plot_patches=True,
+            )
+
+
+class HarrisTest(SimulatorTest):
+    def __init__(self, *args, **kwargs):
+        super(HarrisTest, self).__init__(*args, **kwargs)
+        self.simulator = None
+
+    def tearDown(self):
+        super(HarrisTest, self).tearDown()
+        if self.simulator is not None:
+            self.simulator.reset()
+        self.simulator = None
+        ph.global_vars.sim = None
+
+    def test_run(self):
+        self.register_diag_dir_for_cleanup(diag_dir)
+        Simulator(config()).run().reset()
+        if cpp.mpi_rank() == 0:
+            plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
+            plot_dir.mkdir(parents=True, exist_ok=True)
+            plot(diag_dir, plot_dir)
+        cpp.mpi_barrier()
+        return self
 
 
 if __name__ == "__main__":
-    main()
+    startMPI()
+    HarrisTest().test_run().tearDown()
