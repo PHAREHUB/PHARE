@@ -122,7 +122,7 @@ namespace core
             using SimuType = std::decay_t<decltype(simType)>;
             using _dim     = typename std::tuple_element<0, SimuType>::type;
 
-            if constexpr (_dim{}() < 3) // TORM
+            if constexpr (_dim{}() < 3) // TORM on 3D PR
                 if (!p)
                     p = maker(dim, _dim{});
         });
@@ -151,9 +151,9 @@ namespace core
         Ptr_t p     = nullptr;
 
         core::apply(possibleSimulators(), [&](auto const& simType) {
-            using SimuType = std::decay_t<decltype(simType)>;                // TORM
-            using _dim     = typename std::tuple_element<0, SimuType>::type; // TORM
-            if constexpr (_dim{}() < 3)                                      // TORM
+            using SimuType = std::decay_t<decltype(simType)>;                // TORM on 3D PR
+            using _dim     = typename std::tuple_element<0, SimuType>::type; // TORM on 3D PR
+            if constexpr (_dim{}() < 3)                                      // TORM on 3D PR
                 _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, simType);
         });
 

@@ -82,8 +82,8 @@ void declare_etc(py::module& m)
     constexpr auto nbRefinedPart = _nbRefinedPart{}();
     constexpr auto opts          = SimOpts{dim, interp, nbRefinedPart};
 
-    std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
-                              + std::to_string(nbRefinedPart);
+    std::string const type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
+                                    + std::to_string(nbRefinedPart);
 
     using Sim        = Simulator<opts>;
     using DW         = DataWrangler<opts>;
@@ -140,8 +140,8 @@ void declare_sim(py::module& m)
     constexpr auto nbRefinedPart = _nbRefinedPart{}();
     constexpr auto opts          = SimOpts{dim, interp, nbRefinedPart};
 
-    std::string type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
-                              + std::to_string(nbRefinedPart);
+    std::string const type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
+                                    + std::to_string(nbRefinedPart);
 
     using Sim        = Simulator<opts>;
     std::string name = "Simulator" + type_string;
@@ -159,7 +159,7 @@ void declare_sim(py::module& m)
     });
 }
 
-template<typename dim, typename interp, typename nbRefinedPart>
+template<typename dim, typename interp, typename nbRefinedPart> // possibly TORM on 3d PR
 constexpr bool valid_simulator()
 {
     return dim{}() < 3;
