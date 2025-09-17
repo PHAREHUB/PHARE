@@ -270,6 +270,7 @@ def _ppd_to_ppp_domain_slicing(**kwargs):
     else:
         raise RuntimeError("dimension not yet implemented")
 
+
 def _ddd_to_ppp_domain_slicing(**kwargs):
     """
     return the slicing for (dual,dual,dual) to (primal,primal,primal)
@@ -494,8 +495,7 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
         finest_coords = (x,)
 
     elif dim == 2:
-        from scipy.interpolate import (LinearNDInterpolator,
-                                       NearestNDInterpolator)
+        from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 
         if interp == "nearest":
             interpolator = NearestNDInterpolator(coords, data)

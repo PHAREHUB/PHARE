@@ -115,11 +115,13 @@ public:
         info.ghostVelocity.push_back(state1_.V.name());
         info.ghostPressure.push_back(state1_.P.name());
         info.ghostElectric.push_back(state1_.E.name());
+        info.ghostCurrent.push_back(state1_.J.name());
 
         info.ghostDensity.push_back(state2_.rho.name());
         info.ghostVelocity.push_back(state2_.V.name());
         info.ghostPressure.push_back(state2_.P.name());
         info.ghostElectric.push_back(state2_.E.name());
+        info.ghostCurrent.push_back(state2_.J.name());
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
