@@ -310,7 +310,7 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
                                                      SAMRAI::hier::PatchLevel& level)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
+    PHARE_LOG_SCOPE(1, "SolverPPC::resetFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
 

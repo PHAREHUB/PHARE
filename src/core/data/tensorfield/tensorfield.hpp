@@ -9,7 +9,6 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
-// #include "core/data/field/field.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core::detail
@@ -92,8 +91,7 @@ public:
     {
         if (!fields)
             throw std::runtime_error("use other fn");
-        for_N<N, for_N_R_mode::forward_tuple>(
-            [&](auto i) { components_[i].setBuffer(&(*fields)[i]); });
+        for_N<N>([&](auto i) { components_[i].setBuffer(&(*fields)[i]); });
     }
 
 

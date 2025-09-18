@@ -4,13 +4,12 @@
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
+#include <SAMRAI/hier/Box.h>
+
+#include "amr/resources_manager/amr_utils.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-
-#include "amr/resources_manager/amr_utils.hpp"
-
-#include <SAMRAI/hier/Box.h>
 
 #include <cstddef>
 

@@ -1,6 +1,7 @@
-#ifndef PHARE_FLUX_SUM_COARSENER
-#define PHARE_FLUX_SUM_COARSENER
+#ifndef PHARE_ELECTRIC_FIELD_COARSENER
+#define PHARE_ELECTRIC_FIELD_COARSENER
 
+#include "amr/amr_constants.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
@@ -55,7 +56,7 @@ public:
 
         for (auto i = std::size_t{0}; i < dimension; ++i)
         {
-            fineStartIndex[i] = coarseIndex[i] * this->ratio_;
+            fineStartIndex[i] = coarseIndex[i] * refinementRatio;
         }
 
         fineStartIndex = AMRToLocal(fineStartIndex, sourceBox_);
@@ -146,7 +147,6 @@ private:
     std::array<core::QtyCentering, dimension> const centering_;
     SAMRAI::hier::Box const sourceBox_;
     SAMRAI::hier::Box const destinationBox_;
-    static int constexpr ratio_ = 2;
 };
 
 } // namespace PHARE::amr

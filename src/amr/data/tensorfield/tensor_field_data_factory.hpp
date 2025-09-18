@@ -13,6 +13,7 @@
 #include <SAMRAI/tbox/MemoryUtilities.h>
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
 
+#include <stdexcept>
 #include <utility>
 
 
@@ -108,8 +109,13 @@ public:
 
 
 
-
-    std::size_t getSizeOfMemory(SAMRAI::hier::Box const& box) const final { return 1; }
+    std::size_t getSizeOfMemory(SAMRAI::hier::Box const& box) const final
+    {
+        // it seems this funciton is only called by Patch::getSizeOfPatchData() which itself
+        // does not seem to be used anywhere in SAMRAI...
+        throw std::runtime_error("should be implemented since apparently used...");
+        return 1;
+    }
 
 
 

@@ -3,11 +3,12 @@
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/constants.hpp"
+#include "core/utilities/point/point.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_geometry.hpp"
-#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "default_field_coarsener.hpp"
 
@@ -242,8 +243,8 @@ public:
 
 template<typename GridLayoutT, typename FieldT, typename FieldCoarsenerPolicy,
          typename PhysicalQuantity>
-using VecFieldCoarsenOperator
-    = TensorFieldCoarsenOperator<1, GridLayoutT, FieldT, FieldCoarsenerPolicy, PhysicalQuantity>;
+using VecFieldCoarsenOperator = TensorFieldCoarsenOperator</*rank=*/1, GridLayoutT, FieldT,
+                                                           FieldCoarsenerPolicy, PhysicalQuantity>;
 
 } // namespace PHARE::amr
 

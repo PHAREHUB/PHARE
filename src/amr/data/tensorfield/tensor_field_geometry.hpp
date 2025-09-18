@@ -1,10 +1,11 @@
 #ifndef PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_GEOMETRY_HPP
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_GEOMETRY_HPP
 
+// keep this include before any amr or samrai include
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -36,8 +37,7 @@ class TensorFieldGeometryBase : public SAMRAI::hier::BoxGeometry
 public:
     virtual ~TensorFieldGeometryBase() {}
     TensorFieldGeometryBase(std::array<std::shared_ptr<FieldGeometryBase_t>, N>&& geoms)
-        // maybe add a check that all geoms have the same patchBox?
-        : patchBox{geoms[0]->patchBox}
+        : patchBox{geoms[0]->patchBox} // takes the first (index 0) assuming they are all the same
     {
         for (std::size_t i = 0; i < N; ++i)
         {

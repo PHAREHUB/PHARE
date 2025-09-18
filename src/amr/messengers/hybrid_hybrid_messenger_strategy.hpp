@@ -165,50 +165,33 @@ namespace amr
             std::unique_ptr<HybridMessengerInfo> hybridInfo{
                 dynamic_cast<HybridMessengerInfo*>(fromFinerInfo.release())};
 
-            auto b_id = resourcesManager_->getID(hybridInfo->modelMagnetic);
+            auto&& [b_id] = resourcesManager_->getIDsList(hybridInfo->modelMagnetic);
 
-            if (!b_id)
-            {
-                throw std::runtime_error(
-                    "HybridHybridMessengerStrategy: missing magnetic field variable IDs");
-            }
 
-            magneticRefinePatchStrategy_.registerIDs(*b_id);
+            magneticRefinePatchStrategy_.registerIDs(b_id);
 
-            BalgoPatchGhost.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
+            BalgoPatchGhost.registerRefine(b_id, b_id, b_id, BfieldRefineOp_,
                                            nonOverwriteInteriorTFfillPattern);
 
 
-            BregridAlgo.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
+            BregridAlgo.registerRefine(b_id, b_id, b_id, BfieldRegridOp_,
                                        overwriteInteriorTFfillPattern);
 
-            auto e_id = resourcesManager_->getID(hybridInfo->modelElectric);
+            auto&& [e_id] = resourcesManager_->getIDsList(hybridInfo->modelElectric);
 
-            if (!e_id)
-            {
-                throw std::runtime_error(
-                    "HybridHybridMessengerStrategy: missing electric field variable IDs");
-            }
 
-            EalgoPatchGhost.registerRefine(*e_id, *e_id, *e_id, EfieldRefineOp_,
+            EalgoPatchGhost.registerRefine(e_id, e_id, e_id, EfieldRefineOp_,
                                            nonOverwriteInteriorTFfillPattern);
 
-            auto e_reflux_id = resourcesManager_->getID(hybridInfo->refluxElectric);
-
-            auto e_fluxsum_id = resourcesManager_->getID(hybridInfo->fluxSumElectric);
-
-            if (!e_reflux_id or !e_fluxsum_id)
-            {
-                throw std::runtime_error(
-                    "HybridHybridMessengerStrategy: missing electric refluxing field variable IDs");
-            }
+            auto&& [e_reflux_id]  = resourcesManager_->getIDsList(hybridInfo->refluxElectric);
+            auto&& [e_fluxsum_id] = resourcesManager_->getIDsList(hybridInfo->fluxSumElectric);
 
 
-            RefluxAlgo.registerCoarsen(*e_reflux_id, *e_fluxsum_id, electricFieldCoarseningOp_);
+            RefluxAlgo.registerCoarsen(e_reflux_id, e_fluxsum_id, electricFieldCoarseningOp_);
 
             // we then need to refill the ghosts so that they agree with the newly refluxed cells
 
-            PatchGhostRefluxedAlgo.registerRefine(*e_reflux_id, *e_reflux_id, *e_reflux_id,
+            PatchGhostRefluxedAlgo.registerRefine(e_reflux_id, e_reflux_id, e_reflux_id,
                                                   EfieldRefineOp_,
                                                   nonOverwriteInteriorTFfillPattern);
 
@@ -294,9 +277,8 @@ namespace amr
             // therefore J needs to be set to 0 whenever SAMRAI may construct
             // J patchdata. This occurs on level init (root or refined)
             // and here in regriding as well.
-            for (auto& patch : *level)
+            for (auto& patch : resourcesManager_->enumerate(*level, hybridModel.state.J))
             {
-                auto _ = resourcesManager_->setOnPatch(*patch, hybridModel.state.J);
                 hybridModel.state.J.zero();
             }
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
@@ -740,15 +722,7 @@ namespace amr
 
             PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber))
 
-
-            // we fill magnetic field ghosts only on patch ghost nodes and not on level
-            // ghosts the reason is that 1/ filling ghosts is necessary to prevent mismatch
-            // between ghost and overlaped neighboring patch domain nodes resulting from
-            // former coarsening which does not occur for level ghosts and 2/ overwriting
-            // level border with next coarser model B would invalidate divB on the first
-            // fine domain cell since its border face only received a fraction of the
-            // induction that has occured on the shared coarse face.
-            // magPatchGhostsRefineSchedules[levelNumber]->fillData(time);
+            // should we keep the filling on electrif ghosts if done in reflux?
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
             chargeDensityGhostsRefiners_.fill(levelNumber, time);
             velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
@@ -786,7 +760,7 @@ namespace amr
 
             // no fill pattern given for this init
             // will use boxgeometryvariable fillpattern, itself using the
-            // gield geometry with overwrit_interior true from SAMRAI
+            // field geometry with overwrite_interior true from SAMRAI
             // we could set the overwriteInteriorTFfillPattern it would be the same
             electricInitRefiners_.addStaticRefiners(info->initElectric, EfieldRefineOp_,
                                                     info->initElectric);
@@ -906,7 +880,7 @@ namespace amr
             // we need to remove the box from the ghost box
             // to use SAMRAI::removeIntersections we do some conversions to
             // samrai box.
-            // not gbox is a fieldBox (thanks to the layout)
+            // note gbox is a fieldBox (thanks to the layout)
 
             auto const gbox  = layout.AMRGhostBoxFor(field.physicalQuantity());
             auto const sgbox = samrai_box_from(gbox);

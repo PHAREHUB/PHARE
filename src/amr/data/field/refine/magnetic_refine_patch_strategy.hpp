@@ -26,8 +26,8 @@ template<typename ResMan, typename TensorFieldDataT>
 class MagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
 {
 public:
-    using Geometry        = typename TensorFieldDataT::Geometry;
-    using gridlayout_type = typename TensorFieldDataT::gridlayout_type;
+    using Geometry        = TensorFieldDataT::Geometry;
+    using gridlayout_type = TensorFieldDataT::gridlayout_type;
 
     static constexpr std::size_t N         = TensorFieldDataT::N;
     static constexpr std::size_t dimension = TensorFieldDataT::dimension;
@@ -77,7 +77,7 @@ public:
         auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
         auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
 
-        auto fine_field_box = core::for_N<N, core::for_N_R_mode::make_array>([&](auto i) {
+        auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
             using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
 
             return FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
@@ -130,31 +130,38 @@ public:
     }
 
 
+    static auto isNewFineFace(auto const& amrIdx, auto const dir)
+    {
+        // amr index cabn be negative so test !=0 and not ==1
+        // to see if this is odd or even
+        return amrIdx[dir] % 2 != 0;
+    }
+
     static void postprocessBx1d(auto& bx, auto const& layout, core::Point<int, dimension> idx)
     {
-        auto locIdx = layout.AMRToLocal(idx);
-        auto ix     = locIdx[dirX];
-        if (idx[dirX] % 2 != 0)
+        auto const locIdx = layout.AMRToLocal(idx);
+        auto const ix     = locIdx[dirX];
+        if (isNewFineFace(idx, dirX))
             bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
     }
 
     static void postprocessBx2d(auto& bx, auto& by, auto const& layout,
                                 core::Point<int, dimension> idx)
     {
-        auto locIdx = layout.AMRToLocal(idx);
-        auto ix     = locIdx[dirX];
-        auto iy     = locIdx[dirY];
+        auto const locIdx = layout.AMRToLocal(idx);
+        auto const ix     = locIdx[dirX];
+        auto const iy     = locIdx[dirY];
         //                            | <- here with offset = 1
         //                          -- --
         //                            | <- or here with offset = 0
-        if (idx[dirX] % 2 != 0)
+        if (isNewFineFace(idx, dirX))
         {
             // If dual no offset, ie primal for the field we are actually
             // modifying, but dual for the field we are indexing to compute
             // second and third order terms, then the formula reduces to offset
             // = 1
-            int xoffset = 1;
-            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
+            int const xoffset = 1;
+            int const yoffset = isNewFineFace(idx, dirY) ? 1 : 0;
 
             bx(ix, iy) = 0.5 * (bx(ix - 1, iy) + bx(ix + 1, iy))
                          + 0.25
@@ -168,16 +175,16 @@ public:
     static void postprocessBy2d(auto& bx, auto& by, auto const& layout,
                                 core::Point<int, dimension> idx)
     {
-        auto locIdx = layout.AMRToLocal(idx);
-        auto ix     = locIdx[dirX];
-        auto iy     = locIdx[dirY];
+        auto const locIdx = layout.AMRToLocal(idx);
+        auto const ix     = locIdx[dirX];
+        auto const iy     = locIdx[dirY];
         //                            |
         //  here with offset = 0 -> -- -- <- or here with offset = 1
         //                            |
-        if (idx[dirY] % 2 != 0)
+        if (isNewFineFace(idx, dirY))
         {
-            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
-            int yoffset = 1;
+            int const xoffset = isNewFineFace(idx, dirX) ? 1 : 0;
+            int const yoffset = 1;
 
             by(ix, iy) = 0.5 * (by(ix, iy - 1) + by(ix, iy + 1))
                          + 0.25
@@ -191,20 +198,20 @@ public:
     static void postprocessBx3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
                                 auto const& layout, core::Point<int, dimension> idx)
     {
-        auto Dx = meshSize[dirX];
-        auto Dy = meshSize[dirY];
-        auto Dz = meshSize[dirZ];
+        auto const Dx = meshSize[dirX];
+        auto const Dy = meshSize[dirY];
+        auto const Dz = meshSize[dirZ];
 
-        auto locIdx = layout.AMRToLocal(idx);
-        auto ix     = locIdx[dirX];
-        auto iy     = locIdx[dirY];
-        auto iz     = locIdx[dirZ];
+        auto const locIdx = layout.AMRToLocal(idx);
+        auto const ix     = locIdx[dirX];
+        auto const iy     = locIdx[dirY];
+        auto const iz     = locIdx[dirZ];
 
-        if (idx[dirX] % 2 != 0)
+        if (isNewFineFace(idx, dirX))
         {
-            int xoffset = 1;
-            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
-            int zoffset = (idx[dirZ] % 2 == 0) ? 0 : 1;
+            int const xoffset = 1;
+            int const yoffset = isNewFineFace(idx, dirY) ? 1 : 0;
+            int const zoffset = isNewFineFace(idx, dirZ) ? 1 : 0;
 
             bx(ix, iy, iz)
                 = 0.5 * (bx(ix - 1, iy, iz) + bx(ix + 1, iy, iz))
@@ -250,20 +257,20 @@ public:
     static void postprocessBy3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
                                 auto const& layout, core::Point<int, dimension> idx)
     {
-        auto Dx = meshSize[dirX];
-        auto Dy = meshSize[dirY];
-        auto Dz = meshSize[dirZ];
+        auto const Dx = meshSize[dirX];
+        auto const Dy = meshSize[dirY];
+        auto const Dz = meshSize[dirZ];
 
-        auto locIdx = layout.AMRToLocal(idx);
-        auto ix     = locIdx[dirX];
-        auto iy     = locIdx[dirY];
-        auto iz     = locIdx[dirZ];
+        auto const locIdx = layout.AMRToLocal(idx);
+        auto const ix     = locIdx[dirX];
+        auto const iy     = locIdx[dirY];
+        auto const iz     = locIdx[dirZ];
 
-        if (idx[dirY] % 2 != 0)
+        if (isNewFineFace(idx, dirY))
         {
-            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
-            int yoffset = 1;
-            int zoffset = (idx[dirZ] % 2 == 0) ? 0 : 1;
+            int const xoffset = isNewFineFace(idx, dirX) ? 1 : 0;
+            int const yoffset = 1;
+            int const zoffset = isNewFineFace(idx, dirZ) ? 1 : 0;
 
             by(ix, iy, iz)
                 = 0.5 * (by(ix, iy - 1, iz) + by(ix, iy + 1, iz))
@@ -309,20 +316,20 @@ public:
     static void postprocessBz3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
                                 auto const& layout, core::Point<int, dimension> idx)
     {
-        auto Dx = meshSize[dirX];
-        auto Dy = meshSize[dirY];
-        auto Dz = meshSize[dirZ];
+        auto const Dx = meshSize[dirX];
+        auto const Dy = meshSize[dirY];
+        auto const Dz = meshSize[dirZ];
 
-        auto locIdx = layout.AMRToLocal(idx);
-        auto ix     = locIdx[dirX];
-        auto iy     = locIdx[dirY];
-        auto iz     = locIdx[dirZ];
+        auto const locIdx = layout.AMRToLocal(idx);
+        auto const ix     = locIdx[dirX];
+        auto const iy     = locIdx[dirY];
+        auto const iz     = locIdx[dirZ];
 
-        if (idx[dirZ] % 2 != 0)
+        if (isNewFineFace(idx, dirZ))
         {
-            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
-            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
-            int zoffset = 1;
+            int const xoffset = isNewFineFace(idx, dirX) ? 1 : 0;
+            int const yoffset = isNewFineFace(idx, dirY) ? 1 : 0;
+            int const zoffset = 1;
 
             bz(ix, iy, iz)
                 = 0.5 * (bz(ix, iy, iz - 1) + bz(ix, iy, iz + 1))

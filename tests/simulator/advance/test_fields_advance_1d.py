@@ -65,8 +65,8 @@ class AdvanceTest(AdvanceTestBase):
             interp_order,
             refinement_boxes,
             "eb",
-            smallest_patch_size=smallest_patch_size + 0,
-            largest_patch_size=smallest_patch_size + 0,
+            smallest_patch_size=smallest_patch_size,
+            largest_patch_size=smallest_patch_size,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
         )

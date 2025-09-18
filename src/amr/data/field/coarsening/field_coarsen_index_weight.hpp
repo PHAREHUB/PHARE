@@ -1,8 +1,10 @@
 #ifndef PHARE_FIELD_COARSEN_HPP
 #define PHARE_FIELD_COARSEN_HPP
 
+
+#include "core/def/phare_mpi.hpp"
+
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"

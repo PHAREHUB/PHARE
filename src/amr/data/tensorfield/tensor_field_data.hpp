@@ -26,16 +26,9 @@
 
 namespace PHARE::amr
 {
-// We use another class here so that we can specialize specifics function: copy , pack , unpack
-// on the dimension and we don't want to loose non specialized function related to SAMRAI
-// interface
-template<typename GridLayoutT, std::size_t dim, typename Grid_t, typename PhysicalQuantity>
-class TensorFieldDataInternals
-{
-};
 
 /**
- * @brief TensorFieldData is the specialization of SAMRAI::hier::PatchData to Field objects
+ * @brief TensorFieldData is the specialization of SAMRAI::hier::PatchData to TensorField objects
  */
 template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
 class TensorFieldData : public SAMRAI::hier::PatchData
@@ -77,7 +70,7 @@ public:
                     std::string name, GridLayoutT const& layout, tensor_t qty)
         : SAMRAI::hier::PatchData(domain, ghost)
         , gridLayout{layout}
-        , grids(make_grids(core::detail::tensor_field_names<rank>(name), layout, qty))
+        , grids{make_grids(core::detail::tensor_field_names<rank>(name), layout, qty)}
         , quantity_{qty}
     {
     }
@@ -130,7 +123,7 @@ public:
         TBOX_ASSERT_OBJDIM_EQUALITY2(*this, source);
 
         // throws on failure
-        auto& fieldSource = dynamic_cast<TensorFieldData const&>(source);
+        auto const& fieldSource = dynamic_cast<TensorFieldData const&>(source);
 
         TBOX_ASSERT(quantity_ == fieldSource.quantity_);
 
@@ -145,15 +138,16 @@ public:
             // First step is to translate the AMR box into proper index space of the given
             // quantity_ using the source gridlayout to accomplish that we get the interior box,
             // from the TensorFieldData.
-            SAMRAI::hier::Box sourceBox = FieldGeometry<GridLayoutT, SourceQty>::toFieldBox(
+            SAMRAI::hier::Box const sourceBox = FieldGeometry<GridLayoutT, SourceQty>::toFieldBox(
                 fieldSource.getGhostBox(), source_qty, fieldSource.gridLayout);
 
 
-            SAMRAI::hier::Box destinationBox = FieldGeometry<GridLayoutT, ThisQty>::toFieldBox(
-                this->getGhostBox(), this_qty, gridLayout);
+            SAMRAI::hier::Box const destinationBox
+                = FieldGeometry<GridLayoutT, ThisQty>::toFieldBox(this->getGhostBox(), this_qty,
+                                                                  gridLayout);
 
 
-            SAMRAI::hier::Box intersectionBox = sourceBox * destinationBox;
+            SAMRAI::hier::Box const intersectionBox = sourceBox * destinationBox;
 
 
             if (!intersectionBox.empty())
@@ -237,7 +231,7 @@ public:
     {
         PHARE_LOG_SCOPE(3, "packStream");
 
-        std::size_t const expectedSize = getDataStreamSize_(overlap) / sizeof(double);
+        std::size_t const expectedSize = getDataStreamSize_(overlap) / sizeof(value_type);
         std::vector<typename Grid_t::type> buffer;
         buffer.reserve(expectedSize);
 
@@ -267,7 +261,6 @@ public:
                 }
             }
         }
-        // throw, we don't do rotations in phare....
 
         // Once we have fill the buffer, we send it on the stream
         stream.pack(buffer.data(), buffer.size());
@@ -297,7 +290,7 @@ public:
             throw std::runtime_error("Rotations are not supported in PHARE");
 
         // For unpacking we need to know how much element we will need to extract
-        std::vector<double> buffer(getDataStreamSize(overlap) / sizeof(value_type), 0.);
+        std::vector<value_type> buffer(getDataStreamSize(overlap) / sizeof(value_type), 0.);
 
         // We flush a portion of the stream on the buffer.
         stream.unpack(buffer.data(), buffer.size());

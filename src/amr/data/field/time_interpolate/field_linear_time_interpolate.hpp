@@ -24,7 +24,8 @@ namespace PHARE::amr
 
 
 template<typename Dst>
-void linear_time_interpolate(Dst& fieldDest, auto& fieldSrcOld, auto& fieldSrcNew, auto&&... args)
+void linear_time_interpolate(Dst& fieldDest, auto const& fieldSrcOld, auto const& fieldSrcNew,
+                             auto&&... args)
 {
     auto const& [localDestBox, localSrcBox, alpha] = std::forward_as_tuple(args...);
     auto const lclDstBox                           = phare_box_from<Dst::dimension>(localDestBox);
@@ -48,7 +49,7 @@ class FieldLinearTimeInterpolate : public SAMRAI::hier::TimeInterpolateOperator
     using FieldDataT       = FieldData<GridLayoutT, FieldT>;
 
 public:
-    using GridLayoutImpl = typename GridLayoutT::implT;
+    using GridLayoutImpl = GridLayoutT::implT;
 
     FieldLinearTimeInterpolate()
         : SAMRAI::hier::TimeInterpolateOperator{"FieldLinearTimeInterpolate"}
@@ -116,7 +117,7 @@ public:
     using GridLayoutImpl = typename GridLayoutT::implT;
 
     TensorFieldLinearTimeInterpolate()
-        : SAMRAI::hier::TimeInterpolateOperator{"FieldLinearTimeInterpolate"}
+        : SAMRAI::hier::TimeInterpolateOperator{"TensorFieldLinearTimeInterpolate"}
     {
     }
 
@@ -166,7 +167,7 @@ public:
 
 template<typename GridLayoutT, typename FieldT, typename PhysicalQuantity>
 using VecFieldLinearTimeInterpolate
-    = TensorFieldLinearTimeInterpolate<1, GridLayoutT, FieldT, PhysicalQuantity>;
+    = TensorFieldLinearTimeInterpolate</*rank=*/1, GridLayoutT, FieldT, PhysicalQuantity>;
 
 
 } // namespace PHARE::amr

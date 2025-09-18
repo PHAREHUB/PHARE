@@ -358,7 +358,6 @@ class InitializationTest(SimulatorTest):
                     fpx = patch.patch_datas["protons_Fx"].dataset[nbrGhosts:-nbrGhosts]
                     fpy = patch.patch_datas["protons_Fy"].dataset[nbrGhosts:-nbrGhosts]
                     fpz = patch.patch_datas["protons_Fz"].dataset[nbrGhosts:-nbrGhosts]
-                    print("fpx", fpx)
 
                     fbx = patch.patch_datas["beam_Fx"].dataset[nbrGhosts:-nbrGhosts]
                     fby = patch.patch_datas["beam_Fy"].dataset[nbrGhosts:-nbrGhosts]

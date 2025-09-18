@@ -4,7 +4,6 @@
 
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "core/def/phare_mpi.hpp"
 
 #include "core/def.hpp"
 
@@ -47,7 +46,7 @@ public:
     using PhysicalQuantity                 = typename FieldT::physical_quantity_type;
     using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
 
-    FieldRefineOperator(bool node_only = false)
+    FieldRefineOperator()
         : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
 
     {
@@ -132,8 +131,8 @@ public:
 
     static constexpr std::size_t N = TensorFieldDataT::N;
 
-    TensorFieldRefineOperator(bool node_only = false)
-        : SAMRAI::hier::RefineOperator{"FieldRefineOperator"}
+    TensorFieldRefineOperator()
+        : SAMRAI::hier::RefineOperator{"TensorFieldRefineOperator"}
 
     {
     }
@@ -200,7 +199,7 @@ public:
             {
                 // we compute the intersection with the destination,
                 // and then we apply the refine operation on each fine index.
-                auto intersectionBox = destFieldBox * box;
+                auto const intersectionBox = destFieldBox * box;
                 refine_field(destinationFields[c], sourceFields[c], intersectionBox, refiner);
             }
         }
@@ -209,7 +208,7 @@ public:
 
 template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
 using VecFieldRefineOperator
-    = TensorFieldRefineOperator<1, GridLayoutT, FieldT, FieldRefinerPolicy>;
+    = TensorFieldRefineOperator</*rank=*/1, GridLayoutT, FieldT, FieldRefinerPolicy>;
 
 
 } // namespace PHARE::amr

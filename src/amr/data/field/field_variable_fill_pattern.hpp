@@ -80,10 +80,6 @@ public:
         NULL_USE(node_fill_boxes);
 
 
-        /*
-         * For this (default) case, the overlap is simply the intersection of
-         * fill_boxes and data_box.
-         */
         SAMRAI::hier::Transformation transformation(
             SAMRAI::hier::IntVector::getZero(patch_box.getDim()));
 
@@ -95,9 +91,14 @@ public:
             = pdf.getBoxGeometry(patch_box)->setUpOverlap(overlap_boxes, transformation);
 
         if (overwrite_interior_)
-            // if (true)
             return basic_overlap;
 
+        // from here we do not overwrite interior values
+        // so we need to remove from the overlap boxes their intersection
+        // with the interior box.
+        // Note this only removes cells that belong to A PATCH interior
+        // i.e. some cells in this overlap may still be level interior cell but
+        // belong to another patch interior.
         auto& overlap         = dynamic_cast<FieldOverlap const&>(*basic_overlap);
         auto destinationBoxes = overlap.getDestinationBoxContainer();
         auto& casted          = dynamic_cast<FieldGeometryBase<dimension> const&>(*geom);
@@ -127,7 +128,7 @@ private:
         return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
     }
 
-    bool overwrite_interior_;
+    bool const overwrite_interior_;
 };
 
 
@@ -138,8 +139,7 @@ class TensorFieldFillPattern : public SAMRAI::xfer::VariableFillPattern
 
 public:
     TensorFieldFillPattern(bool overwrite_interior = false)
-        : scalar_fill_pattern_{overwrite_interior}
-        , overwrite_interior_{overwrite_interior}
+        : overwrite_interior_{overwrite_interior}
     {
     }
 
@@ -152,6 +152,9 @@ public:
                      const SAMRAI::hier::Box& fill_box, bool const fn_overwrite_interior,
                      const SAMRAI::hier::Transformation& transformation) const override
     {
+        // Note fn_overwrite_interior is the boolean passed by SAMRAI and is always true
+        // this `VariableFillPattern` overrides this behavior using its own `overwrite_interior_`
+        // set on construction and depending on the use case.
         return dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box, overwrite_interior_,
                                              transformation);
     }
@@ -174,6 +177,12 @@ public:
         if (overwrite_interior_)
             return basic_overlap;
 
+        // from here we do not overwrite interior values
+        // so we need to remove from the overlap boxes their intersection
+        // with the interior box.
+        // Note this only removes cells that belong to A PATCH interior
+        // i.e. some cells in this overlap may still be level interior cell but
+        // belong to another patch interior.
         auto geom      = pdf.getBoxGeometry(patch_box);
         auto& casted   = dynamic_cast<TensorFieldGeometryBase<dimension> const&>(*geom);
         auto& toverlap = dynamic_cast<TensorFieldOverlap<rank_> const&>(*basic_overlap);
@@ -205,7 +214,6 @@ private:
         return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension(1));
     }
 
-    FieldFillPattern<dimension> scalar_fill_pattern_;
     bool overwrite_interior_;
 };
 

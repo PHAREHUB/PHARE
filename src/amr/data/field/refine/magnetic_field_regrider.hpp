@@ -17,10 +17,6 @@
 namespace PHARE::amr
 {
 
-using core::dirX;
-using core::dirY;
-using core::dirZ;
-
 /** \brief Refines the magnetic components from a coarse mesh to fine faces shared with the coarse
  * ones.
  *
@@ -36,7 +32,7 @@ public:
     MagneticFieldRegrider(std::array<core::QtyCentering, dimension> const& centering,
                           SAMRAI::hier::Box const& destinationGhostBox,
                           SAMRAI::hier::Box const& sourceGhostBox,
-                          SAMRAI::hier::IntVector const& ratio)
+                          SAMRAI::hier::IntVector const& /*ratio*/)
         : fineBox_{destinationGhostBox}
         , coarseBox_{sourceGhostBox}
         , centerings_{centering}
@@ -55,9 +51,13 @@ public:
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
-        auto locFineIdx   = AMRToLocal(fineIndex, fineBox_);
-        auto coarseIdx    = toCoarseIndex(fineIndex);
-        auto locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
+        using core::dirX;
+        using core::dirY;
+        using core::dirZ;
+
+        auto const locFineIdx   = AMRToLocal(fineIndex, fineBox_);
+        auto const coarseIdx    = toCoarseIndex(fineIndex);
+        auto const locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
 
         if constexpr (dimension == 1)
