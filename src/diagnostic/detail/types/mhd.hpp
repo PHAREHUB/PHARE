@@ -72,39 +72,38 @@ void MHDDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic
 template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
-    // auto& h5Writer  = this->h5Writer_;
-    // auto& modelView = h5Writer.modelView();
-    // auto minLvl     = h5Writer.minLevel;
-    // auto maxLvl     = h5Writer.maxLevel;
-    //
-    // auto& rho  = modelView.getRho();
-    // auto& V    = modelView.getV();
-    // auto& B    = modelView.getB();
-    // auto& P    = modelView.getP();
-    // auto& rhoV = modelView.getRhoV();
-    // auto& Etot = modelView.getEtot();
-    //
-    // std::string tree{"/mhd/"};
-    // if (isActiveDiag(diagnostic, tree, "V"))
-    // {
-    //     auto computeVelocity = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
-    //         core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
-    //         toPrim.rhoVToVOnGhostBox(rho, rhoV, V);
-    //     };
-    //     modelView.visitHierarchy(computeVelocity, minLvl, maxLvl);
-    // }
-    // if (isActiveDiag(diagnostic, tree, "P"))
-    // {
-    //     auto computePressure = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
-    //         auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
-    //                                .template to<double>(); // or FloatType if we want to expose
-    //                                that
-    //                                                        // to DiagnosticProperties
-    //         core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
-    //         toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
-    //     };
-    //     modelView.visitHierarchy(computePressure, minLvl, maxLvl);
-    // }
+    auto& h5Writer  = this->h5Writer_;
+    auto& modelView = h5Writer.modelView();
+    auto minLvl     = h5Writer.minLevel;
+    auto maxLvl     = h5Writer.maxLevel;
+
+    auto& rho  = modelView.getRho();
+    auto& V    = modelView.getV();
+    auto& B    = modelView.getB();
+    auto& P    = modelView.getP();
+    auto& rhoV = modelView.getRhoV();
+    auto& Etot = modelView.getEtot();
+
+    std::string tree{"/mhd/"};
+    if (isActiveDiag(diagnostic, tree, "V"))
+    {
+        auto computeVelocity = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
+            core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
+            toPrim.rhoVToVOnGhostBox(rho, rhoV, V);
+        };
+        modelView.visitHierarchy(computeVelocity, minLvl, maxLvl);
+    }
+    if (isActiveDiag(diagnostic, tree, "P"))
+    {
+        auto computePressure = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
+            auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
+                                   .template to<double>(); // or FloatType if we want to expose that
+                                                           // to DiagnosticProperties
+            core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
+            toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
+        };
+        modelView.visitHierarchy(computePressure, minLvl, maxLvl);
+    }
 }
 
 template<typename H5Writer>

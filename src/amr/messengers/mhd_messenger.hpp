@@ -83,6 +83,9 @@ namespace amr
 
             resourcesManager_->registerResources(Jold_); // conditionally register
 
+            resourcesManager_->registerResources(V_diag_);
+            resourcesManager_->registerResources(P_diag_);
+
             // also magnetic fluxes ? or should we use static refiners instead ?
         }
 
@@ -98,6 +101,9 @@ namespace amr
             resourcesManager_->allocate(EtotOld_, patch, allocateTime);
 
             resourcesManager_->allocate(Jold_, patch, allocateTime);
+
+            resourcesManager_->allocate(V_diag_, patch, allocateTime);
+            resourcesManager_->allocate(P_diag_, patch, allocateTime);
         }
 
 
@@ -648,6 +654,11 @@ namespace amr
         FieldT EtotOld_{stratName + "EtotOld", core::MHDQuantity::Scalar::Etot};
 
         VecFieldT Jold_{stratName + "Jold", core::MHDQuantity::Vector::J};
+
+        // diagnostics buffers
+        VecFieldT V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
+        FieldT P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
+
 
         using rm_t = typename MHDModel::resources_manager_type;
         std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;

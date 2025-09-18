@@ -219,22 +219,33 @@ public:
     using Model_t = Model;
     using BaseModelView<Hierarchy, Model>::BaseModelView;
 
-    NO_DISCARD Field& getRho() const { return this->model_.state.rho; }
+    NO_DISCARD const Field& getRho() const { return this->model_.state.rho; }
 
-    NO_DISCARD VecField& getV() const { return this->model_.state.V; }
+    NO_DISCARD const VecField& getRhoV() const { return this->model_.state.rhoV; }
 
-    NO_DISCARD VecField& getB() const { return this->model_.state.B; }
+    NO_DISCARD const VecField& getB() const { return this->model_.state.B; }
 
-    NO_DISCARD VecField& getE() const
+    NO_DISCARD const Field& getEtot() const { return this->model_.state.Etot; }
+
+    NO_DISCARD const VecField& getE() const
     {
         throw std::runtime_error("E not currently available in MHD diagnostics");
     }
 
-    NO_DISCARD Field& getP() const { return this->model_.state.P; }
+    // diag only
+    NO_DISCARD VecField& getV() { return V_diag_; }
 
-    NO_DISCARD VecField& getRhoV() const { return this->model_.state.rhoV; }
+    NO_DISCARD const VecField& getV() const { return V_diag_; }
 
-    NO_DISCARD Field& getEtot() const { return this->model_.state.Etot; }
+    NO_DISCARD Field& getP() { return P_diag_; }
+
+    NO_DISCARD const Field& getP() const { return P_diag_; }
+
+protected:
+    // these quantities are not always up to date in the calculations but we can compute them from
+    // the conservative variables when needed
+    VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
+    Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
 };
 
 
