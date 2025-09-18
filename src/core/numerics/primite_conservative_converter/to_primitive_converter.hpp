@@ -67,23 +67,24 @@ public:
     void operator()(double const gamma, Field const& rho, VecField const& rhoV, VecField const& B,
                     Field const& Etot, VecField& V, Field& P) const
     {
-        rhoVToVOnBox(rho, rhoV, V);
+        rhoVToVOnGhostBox(rho, rhoV, V);
 
-        eosEtotToPOnBox(gamma, rho, rhoV, B, Etot, P);
+        eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
     }
 
     // used for diagnostics
     template<typename Field, typename VecField>
-    void rhoVToVOnBox(Field const& rho, VecField const& rhoV, VecField& V) const
+    void rhoVToVOnGhostBox(Field const& rho, VecField const& rhoV, VecField& V) const
     {
-        layout_.evalOnBox(rho, [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
+        layout_.evalOnGhostBox(rho,
+                               [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
     }
 
     template<typename Field, typename VecField>
-    void eosEtotToPOnBox(double const gamma, Field const& rho, VecField const& rhoV,
-                         VecField const& B, Field const& Etot, Field& P) const
+    void eosEtotToPOnGhostBox(double const gamma, Field const& rho, VecField const& rhoV,
+                              VecField const& B, Field const& Etot, Field& P) const
     {
-        layout_.evalOnBox(rho, [&](auto&... args) mutable {
+        layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
             eosEtotToP_(gamma, rho, rhoV, B, Etot, P, {args...});
         });
     }

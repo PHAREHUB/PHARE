@@ -9,6 +9,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
@@ -56,6 +57,7 @@ private:
 
     core::AllFluxes<FieldT, VecFieldT> fluxSum_;
     VecFieldT fluxSumE_{this->name() + "_fluxSumE", MHDQuantity::Vector::E};
+    EulerUsingComputedFlux<MHDModel> reflux_euler_;
 
     std::unordered_map<std::size_t, double> oldTime_;
 
@@ -114,7 +116,7 @@ public:
 
     void resetFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level) override;
 
-    void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+    void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
                 double const time) override;
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, ISolverModelView& view,
@@ -411,30 +413,15 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelView
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,
          typename ModelViews_t>
 void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger, ModelViews_t>::reflux(
-    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, double const time)
+    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
+    double const time)
 {
+    auto& bc                          = dynamic_cast<Messenger&>(messenger);
     auto& mhdModel                    = dynamic_cast<MHDModel&>(model);
     auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
 
-    for (auto& patch : level)
-    {
-        core::FiniteVolumeEuler<GridLayout> fveuler;
-        core::Faraday<GridLayout> faraday;
-
-        auto& Bold_ = stateOld_.B;
-        auto& B     = mhdModel.state.B;
-
-        auto layout      = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _sp         = mhdModel.resourcesManager->setOnPatch(*patch, mhdModel.state, stateOld_,
-                                                                 timeFluxes, Bold_, timeElectric, B);
-        auto _sl_faraday = core::SetLayout(&layout, faraday);
-        auto _sl_fveuler = core::SetLayout(&layout, fveuler);
-
-        auto dt = time - oldTime_[level.getLevelNumber()];
-
-        fveuler(stateOld_, mhdModel.state, timeFluxes, dt);
-        faraday(Bold_, timeElectric, B, dt);
-    };
+    reflux_euler_(mhdModel, stateOld_, mhdModel.state, timeElectric, timeFluxes, bc, level,
+                  oldTime_[level.getLevelNumber()], time);
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger,

@@ -41,8 +41,6 @@ public:
 
         to_primitive_(level, model, newTime, state);
 
-        bc.fillMomentsGhosts(state, level, newTime);
-
         if constexpr (Hall || Resistivity || HyperResistivity)
         {
             ampere_(level, model, newTime, state);
@@ -73,7 +71,9 @@ public:
 
         bc.fillElectricGhosts(state.E, level, newTime);
 
-        faraday_(level, model, state, statenew, dt);
+        faraday_(level, model, state, state.E, statenew, dt);
+
+        bc.fillMomentsGhosts(statenew, level, newTime);
     }
 
 private:

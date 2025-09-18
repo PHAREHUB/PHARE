@@ -216,14 +216,14 @@ class FaradayMHDTransformer
 public:
     template<typename MHDModel>
     void operator()(MHDModel::level_t const& level, MHDModel& model, MHDModel::state_type& state,
-                    MHDModel::state_type& statenew, double dt)
+                    MHDModel::vecfield_type& E, MHDModel::state_type& statenew, double dt)
     {
         for (auto const& patch : level)
         {
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
-            auto _sp    = model.resourcesManager->setOnPatch(*patch, state, statenew);
+            auto _sp    = model.resourcesManager->setOnPatch(*patch, E, state, statenew);
             auto _sl    = core::SetLayout(&layout, faraday_);
-            faraday_(state.B, state.E, statenew.B, dt);
+            faraday_(state.B, E, statenew.B, dt);
         }
     }
 

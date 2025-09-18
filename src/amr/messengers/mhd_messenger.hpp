@@ -310,8 +310,8 @@ namespace amr
             currentGhostsRefiners_.registerLevel(hierarchy, level);
 
             rhoGhostsRefiners_.registerLevel(hierarchy, level);
-            velGhostsRefiners_.registerLevel(hierarchy, level);
-            pressureGhostsRefiners_.registerLevel(hierarchy, level);
+            // velGhostsRefiners_.registerLevel(hierarchy, level);
+            // pressureGhostsRefiners_.registerLevel(hierarchy, level);
 
             momentumGhostsRefiners_.registerLevel(hierarchy, level);
             totalEnergyGhostsRefiners_.registerLevel(hierarchy, level);
@@ -464,24 +464,19 @@ namespace amr
         void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                              double const time) override
         {
-            auto levelNumber = level.getLevelNumber();
-            auto& mhdModel   = static_cast<MHDModel&>(model);
-
-            // magSharedNodeRefineSchedules[levelNumber]->fillData(time);
-            // magPatchGhostsRefineSchedules[levelNumber]->fillData(time);
-
-            // might need patch ghost for the non B quantities their when we will want to keep the
-            // ghost correct at the end of each steps (for higher order refinement for example)
+            // The ghosts for B are obtained in the solver's reflux_euler. For B, this is because
+            // refluxing is done through faraday which is computed on the ghost box for the other
+            // quantities, the ghosts are filled in the end of the euler step anyways.
         }
 
         void fillMomentsGhosts(MHDStateT& state, level_t const& level, double const fillTime)
         {
             setNaNsOnFieldGhosts(state.rho, level);
-            setNaNsOnVecfieldGhosts(state.V, level);
-            setNaNsOnFieldGhosts(state.P, level);
+            setNaNsOnVecfieldGhosts(state.rhoV, level);
+            setNaNsOnFieldGhosts(state.Etot, level);
             rhoGhostsRefiners_.fill(state.rho, level.getLevelNumber(), fillTime);
-            velGhostsRefiners_.fill(state.V, level.getLevelNumber(), fillTime);
-            pressureGhostsRefiners_.fill(state.P, level.getLevelNumber(), fillTime);
+            momentumGhostsRefiners_.fill(state.rhoV, level.getLevelNumber(), fillTime);
+            totalEnergyGhostsRefiners_.fill(state.Etot, level.getLevelNumber(), fillTime);
         }
 
         void fillMagneticFluxesXGhosts(VecFieldT& Fx_B, level_t const& level, double const fillTime)
@@ -536,13 +531,14 @@ namespace amr
                                                nonOverwriteFieldFillPattern);
 
 
-            velGhostsRefiners_.addTimeRefiners(info->ghostVelocity, info->modelVelocity,
-                                               Vold_.name(), mhdVecFieldRefineOp_, vecFieldTimeOp_,
-                                               nonOverwriteInteriorTFfillPattern);
-
-            pressureGhostsRefiners_.addTimeRefiners(info->ghostPressure, info->modelPressure,
-                                                    Pold_.name(), mhdFieldRefineOp_, fieldTimeOp_,
-                                                    nonOverwriteFieldFillPattern);
+            // velGhostsRefiners_.addTimeRefiners(info->ghostVelocity, info->modelVelocity,
+            //                                    Vold_.name(), mhdVecFieldRefineOp_,
+            //                                    vecFieldTimeOp_,
+            //                                    nonOverwriteInteriorTFfillPattern);
+            //
+            // pressureGhostsRefiners_.addTimeRefiners(info->ghostPressure, info->modelPressure,
+            //                                         Pold_.name(), mhdFieldRefineOp_,
+            //                                         fieldTimeOp_, nonOverwriteFieldFillPattern);
 
             momentumGhostsRefiners_.addTimeRefiners(
                 info->ghostMomentum, info->modelMomentum, rhoVold_.name(), mhdVecFieldRefineOp_,
@@ -698,8 +694,8 @@ namespace amr
         GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
         GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
         GhostRefinerPool rhoGhostsRefiners_{resourcesManager_};
-        GhostRefinerPool velGhostsRefiners_{resourcesManager_};
-        GhostRefinerPool pressureGhostsRefiners_{resourcesManager_};
+        // GhostRefinerPool velGhostsRefiners_{resourcesManager_};
+        // GhostRefinerPool pressureGhostsRefiners_{resourcesManager_};
         GhostRefinerPool momentumGhostsRefiners_{resourcesManager_};
         GhostRefinerPool totalEnergyGhostsRefiners_{resourcesManager_};
         GhostRefinerPool magFluxesXGhostRefiners_{resourcesManager_};

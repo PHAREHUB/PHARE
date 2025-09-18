@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_NUMERICS_TVDRK3_INTEGRATOR_HPP
 #define PHARE_CORE_NUMERICS_TVDRK3_INTEGRATOR_HPP
 
+#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "initializer/data_provider.hpp"
@@ -72,21 +73,8 @@ public:
 
         accumulateButcherFluxes_(model, state2_.E, fluxes, level, w11_);
 
-        for (auto& patch : level)
-        {
-            core::FiniteVolumeEuler<GridLayoutT> fveuler;
-            core::Faraday<GridLayoutT> faraday;
-
-            auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto _sp = model.resourcesManager->setOnPatch(*patch, state, butcherFluxes_, butcherE_);
-            auto _sl_faraday = core::SetLayout(&layout, faraday);
-            auto _sl_fveuler = core::SetLayout(&layout, fveuler);
-
-            auto dt = newTime - currentTime;
-
-            fveuler(state, state, butcherFluxes_, dt);
-            faraday(state.B, butcherE_, state.B, dt);
-        };
+        euler_using_butcher_fluxes_(model, state, state, butcherE_, butcherFluxes_, bc, level,
+                                    currentTime, newTime);
 
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
         // tvdrk3_step_(level, model, newTime, state, RKPair_t{w10_, state}, RKPair_t{w11_,
@@ -112,14 +100,14 @@ public:
     void fillMessengerInfo(auto& info) const
     {
         info.ghostDensity.push_back(state1_.rho.name());
-        info.ghostVelocity.push_back(state1_.V.name());
-        info.ghostPressure.push_back(state1_.P.name());
+        info.ghostMomentum.push_back(state1_.rhoV.name());
+        info.ghostTotalEnergy.push_back(state1_.Etot.name());
         info.ghostElectric.push_back(state1_.E.name());
         info.ghostCurrent.push_back(state1_.J.name());
 
         info.ghostDensity.push_back(state2_.rho.name());
-        info.ghostVelocity.push_back(state2_.V.name());
-        info.ghostPressure.push_back(state2_.P.name());
+        info.ghostMomentum.push_back(state2_.rhoV.name());
+        info.ghostTotalEnergy.push_back(state2_.Etot.name());
         info.ghostElectric.push_back(state2_.E.name());
         info.ghostCurrent.push_back(state2_.J.name());
     }
@@ -200,6 +188,7 @@ private:
     static constexpr auto w11_{2. / 3.};
 
     Euler<FVMethodStrategy, MHDModel> euler_;
+    EulerUsingComputedFlux<MHDModel> euler_using_butcher_fluxes_;
     core::AllFluxes<FieldT, VecFieldT> butcherFluxes_;
     VecFieldT butcherE_;
     RKUtils_t tvdrk3_step_;

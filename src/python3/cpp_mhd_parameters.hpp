@@ -217,16 +217,18 @@ constexpr void declare_all_mhd_params(py::module& m)
                        ReconstructionType::Constant, SlopeLimiterType::count,
                        RiemannSolverType::Rusanov, false, false, false>::declare_etc(m, full_type);
 
-    variant_name = "euler_constant_rusanov_hall";
-    full_type    = type_name + "_" + variant_name;
-
-    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::Euler,
-                       ReconstructionType::Constant, SlopeLimiterType::count,
-                       RiemannSolverType::Rusanov, true, false, false>::declare_sim(m, full_type);
-
-    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::Euler,
-                       ReconstructionType::Constant, SlopeLimiterType::count,
-                       RiemannSolverType::Rusanov, true, false, false>::declare_etc(m, full_type);
+    // variant_name = "euler_constant_rusanov_hall";
+    // full_type    = type_name + "_" + variant_name;
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::Euler,
+    //                    ReconstructionType::Constant, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, true, false, false>::declare_sim(m,
+    //                    full_type);
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::Euler,
+    //                    ReconstructionType::Constant, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, true, false, false>::declare_etc(m,
+    //                    full_type);
 
     // variant_name = "tvdrk3_wenoz_rusanov";
     // full_type    = type_name + "_" + variant_name;

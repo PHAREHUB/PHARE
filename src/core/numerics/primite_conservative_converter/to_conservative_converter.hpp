@@ -68,9 +68,10 @@ public:
     void operator()(Field const& rho, VecField const& V, VecField const& B, Field const& P,
                     VecField& rhoV, Field& Etot) const
     {
-        layout_.evalOnBox(rho, [&](auto&... args) mutable { vToRhoV_(rho, V, rhoV, {args...}); });
+        layout_.evalOnGhostBox(rho,
+                               [&](auto&... args) mutable { vToRhoV_(rho, V, rhoV, {args...}); });
 
-        layout_.evalOnBox(rho, [&](auto&... args) mutable {
+        layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
             eosPToEtot_(gamma_, rho, V, B, P, Etot, {args...});
         });
     }
