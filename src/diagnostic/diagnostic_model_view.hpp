@@ -10,11 +10,13 @@
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
 #include "cppdict/include/dict.hpp"
+#include <tuple>
 #include <type_traits>
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
 #include <type_traits>
+#include <utility>
 
 namespace PHARE::diagnostic
 {
@@ -27,7 +29,7 @@ public:
 IModelView::~IModelView() {}
 
 
-template<typename Hierarchy, typename Model>
+template<typename Derived, typename Hierarchy, typename Model>
 class BaseModelView : public IModelView
 {
 public:
@@ -62,7 +64,7 @@ public:
     {
         PHARE::amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
                                                std::forward<Action>(action), minLevel, maxLevel,
-                                               model_);
+                                               model_, *this);
     }
 
     NO_DISCARD auto boundaryConditions() const { return hierarchy_.boundaryConditions(); }
@@ -108,9 +110,23 @@ public:
         return model_.tags.at(key);
     }
 
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return derived().getCompileTimeResourcesViewList();
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return derived().getCompileTimeResourcesViewList();
+    }
+
 protected:
     Model& model_;
     Hierarchy& hierarchy_;
+
+private:
+    Derived& derived() { return static_cast<Derived&>(*this); }
+    Derived const& derived() const { return static_cast<Derived const&>(*this); }
 };
 
 
@@ -120,9 +136,9 @@ class ModelView;
 
 template<typename Hierarchy, typename Model>
 class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>>
-    : public BaseModelView<Hierarchy, Model>
+    : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
-    using Super        = BaseModelView<Hierarchy, Model>;
+    using Super        = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
     using VecField     = typename Model::vecfield_type;
     using TensorFieldT = Model::ions_type::tensorfield_type;
 
@@ -161,6 +177,10 @@ public:
                 std::memcpy(ions[popidx].momentumTensor()[c].data(), sumTensor_[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
     }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(); }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(); }
 
 protected:
     void declareMomentumTensorAlgos()
@@ -210,14 +230,14 @@ protected:
 
 template<typename Hierarchy, typename Model>
 class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>>>
-    : public BaseModelView<Hierarchy, Model>
+    : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
     using Field    = typename Model::field_type;
     using VecField = typename Model::vecfield_type;
 
 public:
     using Model_t = Model;
-    using BaseModelView<Hierarchy, Model>::BaseModelView;
+    using BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>::BaseModelView;
 
     NO_DISCARD const Field& getRho() const { return this->model_.state.rho; }
 
@@ -232,6 +252,20 @@ public:
         throw std::runtime_error("E not currently available in MHD diagnostics");
     }
 
+    // for setBuffer function in visitHierarchy
+    NO_DISCARD Field& getRho() { return this->model_.state.rho; }
+
+    NO_DISCARD VecField& getRhoV() { return this->model_.state.rhoV; }
+
+    NO_DISCARD VecField& getB() { return this->model_.state.B; }
+
+    NO_DISCARD Field& getEtot() { return this->model_.state.Etot; }
+
+    NO_DISCARD VecField& getE()
+    {
+        throw std::runtime_error("E not currently available in MHD diagnostics");
+    }
+
     // diag only
     NO_DISCARD VecField& getV() { return V_diag_; }
 
@@ -241,9 +275,20 @@ public:
 
     NO_DISCARD const Field& getP() const { return P_diag_; }
 
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(V_diag_, P_diag_);
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(V_diag_, P_diag_);
+    }
+
 protected:
     // these quantities are not always up to date in the calculations but we can compute them from
-    // the conservative variables when needed
+    // the conservative variables when needed their registration and allocation are handled in the
+    // model
     VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
 };

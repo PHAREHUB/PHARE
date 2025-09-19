@@ -42,12 +42,18 @@ public:
     state_type state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
+    // diagnostics buffers
+    vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
+    field_type P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
+
     void initialize(level_t& level) override;
 
 
     void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
+        resourcesManager->allocate(V_diag_, patch, allocateTime);
+        resourcesManager->allocate(P_diag_, patch, allocateTime);
     }
 
     void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
@@ -63,6 +69,8 @@ public:
         , state{dict["mhd_state"]}
         , resourcesManager{std::move(_resourcesManager)}
     {
+        resourcesManager->registerResources(V_diag_);
+        resourcesManager->registerResources(P_diag_);
     }
 
     ~MHDModel() override = default;
