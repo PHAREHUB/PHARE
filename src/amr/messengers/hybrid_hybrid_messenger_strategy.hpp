@@ -170,10 +170,17 @@ namespace amr
 
             magneticRefinePatchStrategy_.registerIDs(b_id);
 
+            // we do not overwrite interior on patch ghost filling. In theory this doesn't matter
+            // much since the only interior values are the outermost layer of faces of the domain,
+            // and should be near equal from one patch to the other.
             BalgoPatchGhost.registerRefine(b_id, b_id, b_id, BfieldRefineOp_,
                                            nonOverwriteInteriorTFfillPattern);
 
 
+            // for regrid, we need to overwrite the interior or else only the new ghosts would be
+            // filled. We also need to use the regrid operator, which checks for nans before filling
+            // the new values, as we do not want to overwrite the copy that was already done for the
+            // faces that were already there before regrid.
             BregridAlgo.registerRefine(b_id, b_id, b_id, BfieldRegridOp_,
                                        overwriteInteriorTFfillPattern);
 
@@ -218,7 +225,7 @@ namespace amr
 
             elecPatchGhostsRefineSchedules[levelNumber] = EalgoPatchGhost.createSchedule(level);
 
-            // technically not needed for finest
+            // technically not needed for finest as refluxing is not done onto it.
             patchGhostRefluxedSchedules[levelNumber] = PatchGhostRefluxedAlgo.createSchedule(level);
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
@@ -649,7 +656,6 @@ namespace amr
                 auto& J  = hybridModel.state.J;
                 auto& Vi = hybridModel.state.ions.velocity();
                 auto& Ni = hybridModel.state.ions.chargeDensity();
-                auto& E  = hybridModel.state.electromag.E;
 
                 Jold_.copyData(J);
                 ViOld_.copyData(Vi);
@@ -700,7 +706,8 @@ namespace amr
             ionBulkVelSynchronizers_.sync(levelNumber);
         }
 
-
+        // this function coarsens the fluxSum onto the corresponding coarser fluxes (E in hybrid),
+        // and fills the patch ghosts, making it ready for the faraday in the solver.reflux()
         void reflux(int const coarserLevelNumber, int const fineLevelNumber,
                     double const syncTime) override
         {
@@ -731,6 +738,8 @@ namespace amr
     private:
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
+            // all of the ghost refiners take the nonOverwriteInteriorTFfillPattern as they should
+            // only ever modify the ghost and never the interior domain
             elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
                                                   info->ghostElectric,
                                                   nonOverwriteInteriorTFfillPattern);

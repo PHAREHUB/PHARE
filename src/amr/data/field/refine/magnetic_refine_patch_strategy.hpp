@@ -160,8 +160,8 @@ public:
             // modifying, but dual for the field we are indexing to compute
             // second and third order terms, then the formula reduces to offset
             // = 1
-            int const xoffset = 1;
-            int const yoffset = isNewFineFace(idx, dirY) ? 1 : 0;
+            int xoffset = 1;
+            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
 
             bx(ix, iy) = 0.5 * (bx(ix - 1, iy) + bx(ix + 1, iy))
                          + 0.25
@@ -183,8 +183,8 @@ public:
         //                            |
         if (isNewFineFace(idx, dirY))
         {
-            int const xoffset = isNewFineFace(idx, dirX) ? 1 : 0;
-            int const yoffset = 1;
+            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
+            int yoffset = 1;
 
             by(ix, iy) = 0.5 * (by(ix, iy - 1) + by(ix, iy + 1))
                          + 0.25
@@ -209,9 +209,9 @@ public:
 
         if (isNewFineFace(idx, dirX))
         {
-            int const xoffset = 1;
-            int const yoffset = isNewFineFace(idx, dirY) ? 1 : 0;
-            int const zoffset = isNewFineFace(idx, dirZ) ? 1 : 0;
+            int xoffset = 1;
+            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
+            int zoffset = (idx[dirZ] % 2 == 0) ? 0 : 1;
 
             bx(ix, iy, iz)
                 = 0.5 * (bx(ix - 1, iy, iz) + bx(ix + 1, iy, iz))
@@ -268,9 +268,9 @@ public:
 
         if (isNewFineFace(idx, dirY))
         {
-            int const xoffset = isNewFineFace(idx, dirX) ? 1 : 0;
-            int const yoffset = 1;
-            int const zoffset = isNewFineFace(idx, dirZ) ? 1 : 0;
+            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
+            int yoffset = 1;
+            int zoffset = (idx[dirZ] % 2 == 0) ? 0 : 1;
 
             by(ix, iy, iz)
                 = 0.5 * (by(ix, iy - 1, iz) + by(ix, iy + 1, iz))
@@ -327,9 +327,9 @@ public:
 
         if (isNewFineFace(idx, dirZ))
         {
-            int const xoffset = isNewFineFace(idx, dirX) ? 1 : 0;
-            int const yoffset = isNewFineFace(idx, dirY) ? 1 : 0;
-            int const zoffset = 1;
+            int xoffset = (idx[dirX] % 2 == 0) ? 0 : 1;
+            int yoffset = (idx[dirY] % 2 == 0) ? 0 : 1;
+            int zoffset = 1;
 
             bz(ix, iy, iz)
                 = 0.5 * (bz(ix, iy, iz - 1) + bz(ix, iy, iz + 1))
