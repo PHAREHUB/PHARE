@@ -298,15 +298,6 @@ namespace amr
 
             bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
 
-            // Jx not used in 1D ampere and construct-init to NaN
-            // therefore J needs to be set to 0 whenever SAMRAI may construct
-            // J patchdata. This occurs on level init (root or refined)
-            // and here in regriding as well.
-            for (auto& patch : *level)
-            {
-                auto _ = resourcesManager_->setOnPatch(*patch, hybridModel.state.J);
-                hybridModel.state.J.zero();
-            }
             magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);

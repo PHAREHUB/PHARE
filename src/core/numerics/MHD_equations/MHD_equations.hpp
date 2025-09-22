@@ -160,7 +160,7 @@ private:
             F_B.z += -J.x * coef;
             F_Etot += (J.z * B.x - J.x * B.z) * coef;
         }
-        if constexpr (direction == Direction::Y)
+        if constexpr (direction == Direction::Z)
         {
             F_B.x += -J.y * coef;
             F_B.y += J.x * coef;

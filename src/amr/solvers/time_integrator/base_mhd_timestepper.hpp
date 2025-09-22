@@ -87,35 +87,33 @@ protected:
         }
     }
 
-    void accumulateButcherFluxes_(MHDModel& model, auto& fluxes, auto& level)
+    void accumulateButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
+                                  double const coef = 1.0)
     {
         for (auto& patch : level)
         {
             auto const& layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto _ = model.resourcesManager->setOnPatch(*patch, butcherFluxes_, butcherE_, fluxes,
-                                                        model.state.E);
+            auto _
+                = model.resourcesManager->setOnPatch(*patch, butcherFluxes_, butcherE_, fluxes, E);
 
             evalFluxesOnGhostBox(
                 layout,
                 [&](auto& left, auto const& right, auto const&... args) mutable {
-                    left(args...) += right(args...);
+                    left(args...) += right(args...) * coef;
                 },
                 butcherFluxes_, fluxes);
 
 
             layout.evalOnGhostBox(butcherE_(core::Component::X), [&](auto const&... args) mutable {
-                butcherE_(core::Component::X)(args...)
-                    += model.state.E(core::Component::X)(args...);
+                butcherE_(core::Component::X)(args...) += E(core::Component::X)(args...) * coef;
             });
 
             layout.evalOnGhostBox(butcherE_(core::Component::Y), [&](auto const&... args) mutable {
-                butcherE_(core::Component::Y)(args...)
-                    += model.state.E(core::Component::Y)(args...);
+                butcherE_(core::Component::Y)(args...) += E(core::Component::Y)(args...) * coef;
             });
 
             layout.evalOnGhostBox(butcherE_(core::Component::Z), [&](auto const&... args) mutable {
-                butcherE_(core::Component::Z)(args...)
-                    += model.state.E(core::Component::Z)(args...);
+                butcherE_(core::Component::Z)(args...) += E(core::Component::Z)(args...) * coef;
             });
         }
     }

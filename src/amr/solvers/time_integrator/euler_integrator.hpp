@@ -29,7 +29,7 @@ public:
 
         euler_(model, state, state, fluxes, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, fluxes, level);
+        this->accumulateButcherFluxes_(model, state.E, fluxes, level);
     }
 
     using Super::allocate;

@@ -353,12 +353,6 @@ namespace amr
 
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
-            for (auto& patch : *level)
-            {
-                auto _ = resourcesManager_->setOnPatch(*patch, mhdModel.state.J);
-                mhdModel.state.J.zero();
-            }
-
             magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
             densityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             momentumInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -394,12 +388,6 @@ namespace amr
             densityInitRefiners_.fill(levelNumber, initDataTime);
             momentumInitRefiners_.fill(levelNumber, initDataTime);
             totalEnergyInitRefiners_.fill(levelNumber, initDataTime);
-
-            for (auto& patch : level)
-            {
-                auto _ = resourcesManager_->setOnPatch(*patch, mhdModel.state.J);
-                mhdModel.state.J.zero();
-            }
         }
 
         void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
@@ -518,13 +506,19 @@ namespace amr
         // likely
         void registerGhostComms_(std::unique_ptr<MHDMessengerInfo> const& info)
         {
+            // static refinement for J and E because in MHD they are temporaries, so keeping there
+            // state updated after each regrid is not a priority. However if we do not correctly
+            // refine on regrid, the post regrid state is not up to date (in our case it will be nan
+            // since we nan-initialise) and thus is is better to rely on static refinement, which
+            // uses the state after computation of ampere or CT.
             elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
                                                   info->ghostElectric,
                                                   nonOverwriteInteriorTFfillPattern);
 
-            currentGhostsRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
-                                                   Jold_.name(), EfieldRefineOp_, vecFieldTimeOp_,
-                                                   nonOverwriteInteriorTFfillPattern);
+            currentGhostsRefiners_.addStaticRefiners(info->ghostCurrent, EfieldRefineOp_,
+                                                     info->ghostCurrent,
+                                                     nonOverwriteInteriorTFfillPattern);
+
 
             rhoGhostsRefiners_.addTimeRefiners(info->ghostDensity, info->modelDensity,
                                                rhoOld_.name(), mhdFieldRefineOp_, fieldTimeOp_,

@@ -1,7 +1,6 @@
 #ifndef PHARE_MHD_MESSENGER_INFO_HPP
 #define PHARE_MHD_MESSENGER_INFO_HPP
 
-#include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "messenger_info.hpp"
 
