@@ -44,6 +44,9 @@ private:
     {
         auto const& [_, By, Bz] = B();
 
+        if constexpr (dimension == 1)
+            Jx(ijk...) = 0;
+
         if constexpr (dimension == 2)
             Jx(ijk...) = layout_->template deriv<Direction::Y>(Bz, {ijk...});
 
