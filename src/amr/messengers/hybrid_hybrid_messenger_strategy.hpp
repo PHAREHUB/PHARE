@@ -280,14 +280,6 @@ namespace amr
 
             bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
 
-            // Jx not used in 1D ampere and construct-init to NaN
-            // therefore J needs to be set to 0 whenever SAMRAI may construct
-            // J patchdata. This occurs on level init (root or refined)
-            // and here in regriding as well.
-            for (auto& patch : resourcesManager_->enumerate(*level, hybridModel.state.J))
-            {
-                hybridModel.state.J.zero();
-            }
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -348,11 +340,6 @@ namespace amr
 
             magInitRefineSchedules[levelNumber]->fillData(initDataTime);
             electricInitRefiners_.fill(levelNumber, initDataTime);
-            for (auto& patch : level)
-            {
-                auto _ = resourcesManager_->setOnPatch(*patch, hybridModel.state.J);
-                hybridModel.state.J.zero();
-            }
 
             // no need to call these :
             // magGhostsRefiners_.fill(levelNumber, initDataTime);
@@ -744,9 +731,14 @@ namespace amr
                                                   info->ghostElectric,
                                                   nonOverwriteInteriorTFfillPattern);
 
-            currentGhostsRefiners_.addTimeRefiners(info->ghostCurrent, info->modelCurrent,
-                                                   Jold_.name(), EfieldRefineOp_, vecFieldTimeOp_,
-                                                   nonOverwriteInteriorTFfillPattern);
+            // static refinement for J  because it is a temporary, so keeping its
+            // state updated after each regrid is not a priority. However if we do not correctly
+            // refine on regrid, the post regrid state is not up to date (in our case it will be nan
+            // since we nan-initialise) and thus is is better to rely on static refinement, which
+            // uses the state after computation of ampere.
+            currentGhostsRefiners_.addStaticRefiners(info->ghostCurrent, EfieldRefineOp_,
+                                                     info->ghostCurrent,
+                                                     nonOverwriteInteriorTFfillPattern);
 
             chargeDensityGhostsRefiners_.addTimeRefiner(
                 info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldRefineOp_,
