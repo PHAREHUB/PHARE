@@ -185,7 +185,7 @@ private:
 
 
 
-    double restarts_init(initializer::PHAREDict const&);
+    double restarts_init(initializer::PHAREDict const&, auto&);
     void diagnostics_init(initializer::PHAREDict const&, auto&);
     void hybrid_init(initializer::PHAREDict const&);
     void mhd_init(initializer::PHAREDict const&);
@@ -216,9 +216,9 @@ namespace
 template<std::size_t dim, std::size_t _interp, std::size_t nbRefinedPart,
          template<typename> typename MHDTimeStepper>
 double Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::restarts_init(
-    initializer::PHAREDict const& dict)
+    initializer::PHAREDict const& dict, auto& model)
 {
-    rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *hybridModel_, dict);
+    rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, model, dict);
 
     if (dict.contains("restart_time"))
     {
@@ -321,7 +321,7 @@ void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::hybrid_init(
     multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
 
     if (dict["simulation"].contains("restarts"))
-        startTime_ = restarts_init(dict["simulation"]["restarts"]);
+        startTime_ = restarts_init(dict["simulation"]["restarts"], *hybridModel_);
 
     integrator_
         = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
@@ -392,8 +392,8 @@ void Simulator<dim, _interp, nbRefinedPart, MHDTimeStepper>::mhd_init(
     auto lbm_id = lbm_->getId(); // moved on next line
     multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
 
-    /*if (dict["simulation"].contains("restarts"))*/
-    /*    startTime_ = restarts_init(dict["simulation"]["restarts"]);*/
+    if (dict["simulation"].contains("restarts"))
+        startTime_ = restarts_init(dict["simulation"]["restarts"], *mhdModel_);
 
     integrator_
         = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,

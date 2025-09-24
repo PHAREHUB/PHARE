@@ -56,6 +56,8 @@ public:
         resourcesManager->allocate(P_diag_, patch, allocateTime);
     }
 
+    auto patch_data_ids() const { return resourcesManager->restart_patch_data_ids(*this); }
+
     void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const override;
 
     NO_DISCARD auto setOnPatch(patch_t& patch)

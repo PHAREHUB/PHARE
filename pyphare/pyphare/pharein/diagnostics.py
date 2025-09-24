@@ -143,7 +143,7 @@ class Diagnostics(object):
 
         if self.flush_every < 0:
             raise RuntimeError(
-                f"{self.__class__.__name__,}.flush_every cannot be negative"
+                f"{(self.__class__.__name__,)}.flush_every cannot be negative"
             )
 
         self.__extent = None
