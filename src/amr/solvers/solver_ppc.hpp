@@ -330,10 +330,10 @@ void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
                                                SAMRAI::hier::PatchLevel& level,
                                                IMessenger& messenger, double const time)
 {
-    auto& hybridModel     = dynamic_cast<HybridModel&>(model);
-    auto& hybridMessenger = dynamic_cast<HybridMessenger&>(messenger);
-    auto& Eavg            = electromagAvg_.E;
-    auto& B               = hybridModel.state.electromag.B;
+    auto& hybridModel = dynamic_cast<HybridModel&>(model);
+    // auto& hybridMessenger = dynamic_cast<HybridMessenger&>(messenger);
+    auto& Eavg = electromagAvg_.E;
+    auto& B    = hybridModel.state.electromag.B;
 
     for (auto& patch : level)
     {
@@ -345,7 +345,7 @@ void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
         faraday(Bold_, Eavg, B, dt);
     };
 
-    hybridMessenger.fillMagneticGhosts(B, level, time);
+    // hybridMessenger.fillMagneticGhosts(B, level, time);
 }
 
 
@@ -395,7 +395,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
         auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromag_E, views.electromagPred_B, dt);
         setTime([](auto& state) -> auto& { return state.electromagPred.B; });
-        fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
+        // fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
     }
 
     {
@@ -431,7 +431,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
         faraday_(views.layouts, views.electromag_B, views.electromagAvg_E, views.electromagPred_B,
                  dt);
         setTime([](auto& state) -> auto& { return state.electromagPred.B; });
-        fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
+        // fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
     }
 
     {
@@ -469,7 +469,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
         auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromagAvg_E, views.electromag_B, dt);
         setTime([](auto& state) -> auto& { return state.electromag.B; });
-        fromCoarser.fillMagneticGhosts(views.model().state.electromag.B, level, newTime);
+        // fromCoarser.fillMagneticGhosts(views.model().state.electromag.B, level, newTime);
     }
 
     {
