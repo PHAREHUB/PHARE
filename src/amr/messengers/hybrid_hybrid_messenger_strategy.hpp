@@ -746,12 +746,12 @@ namespace amr
 
             chargeDensityGhostsRefiners_.addTimeRefiner(
                 info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldMomentsRefineOp_,
-                fieldTimeOp_, info->modelIonDensity, defaultFieldFillPattern);
+                fieldTimeOp_, info->modelIonDensity, overwriteInteriorFieldFillPattern);
 
 
             velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
                                                ViOld_.name(), vecFieldMomentsRefineOp_,
-                                               vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
+                                               vecFieldTimeOp_, overwriteInteriorTFfillPattern);
 
             chargeDensityPatchGhostsRefiners_.addTimeRefiner(
                 info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldMomentsRefineOp_,
@@ -1034,6 +1034,10 @@ namespace amr
         RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
         std::shared_ptr<FieldFillPattern_t> defaultFieldFillPattern
             = std::make_shared<FieldFillPattern<dimension>>(); // stateless (mostly)
+
+        std::shared_ptr<FieldFillPattern_t> overwriteInteriorFieldFillPattern
+            = std::make_shared<FieldFillPattern<dimension>>(
+                /*overwrite_interior=*/true); // stateless (mostly)
 
         std::shared_ptr<TensorFieldFillPattern_t> nonOverwriteInteriorTFfillPattern
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>();
