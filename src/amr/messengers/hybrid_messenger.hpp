@@ -266,6 +266,11 @@ namespace amr
                             Start HybridMessenger Interface
            -------------------------------------------------------------------------*/
 
+        void fillMagneticGhosts(VecFieldT& B, SAMRAI::hier::PatchLevel const& level,
+                                double const fillTime)
+        {
+            strat_->fillMagneticGhosts(B, level, fillTime);
+        }
 
 
         /**

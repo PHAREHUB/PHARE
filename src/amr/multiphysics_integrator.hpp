@@ -584,7 +584,7 @@ namespace solver
                 auto& coarseModel  = getModel_(iCoarseLevel);
 
                 toCoarser.reflux(iCoarseLevel, ilvl, syncTime);
-                coarseSolver.reflux(coarseModel, coarseLevel, syncTime);
+                coarseSolver.reflux(coarseModel, coarseLevel, toCoarser, syncTime);
 
                 // recopy (patch) ghosts
                 toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);

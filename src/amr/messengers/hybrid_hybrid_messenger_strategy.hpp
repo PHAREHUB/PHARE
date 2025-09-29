@@ -170,6 +170,9 @@ namespace amr
 
             auto&& [b_id] = resourcesManager_->getIDsList(hybridInfo->modelMagnetic);
 
+            auto&& [b_model, b_pred] = resourcesManager_->getIDsList(hybridInfo->ghostMagnetic[0],
+                                                                     hybridInfo->ghostMagnetic[1]);
+
 
             magneticRefinePatchStrategy_.registerIDs(b_id);
 
@@ -186,6 +189,14 @@ namespace amr
             // faces that were already there before regrid.
             BregridAlgo.registerRefine(b_id, b_id, b_id, BfieldRegridOp_,
                                        overwriteInteriorTFfillPattern);
+
+            // this is a bit ugly, should be refactored asap also fills ghosts for both each time
+            // which is not great
+            BghostAlgo.registerRefine(b_model, b_model, b_model, BfieldRegridOp_,
+                                      overwriteInteriorTFfillPattern);
+
+            BghostAlgo.registerRefine(b_pred, b_pred, b_pred, BfieldRegridOp_,
+                                      overwriteInteriorTFfillPattern);
 
             auto&& [e_id] = resourcesManager_->getIDsList(hybridInfo->modelElectric);
 
@@ -225,6 +236,10 @@ namespace amr
 
             magPatchGhostsRefineSchedules[levelNumber]
                 = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
+
+            magGhostsRefineSchedules[levelNumber]
+                = BghostAlgo.createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
+                                            hierarchy, &magneticRefinePatchStrategy_);
 
             elecPatchGhostsRefineSchedules[levelNumber] = EalgoPatchGhost.createSchedule(level);
 
@@ -374,6 +389,13 @@ namespace amr
            ------------------------------------------------------------------------ */
 
 
+        void fillMagneticGhosts(VecFieldT& B, level_t const& level, double const fillTime) override
+        {
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillMagneticGhosts");
+
+            setNaNsOnVecfieldGhosts(B, level);
+            magGhostsRefineSchedules[level.getLevelNumber()]->fillData(fillTime);
+        }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime) override
         {
@@ -969,11 +991,13 @@ namespace amr
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost;
+        SAMRAI::xfer::RefineAlgorithm BghostAlgo;
         SAMRAI::xfer::RefineAlgorithm BalgoInit;
         SAMRAI::xfer::RefineAlgorithm BregridAlgo;
         SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magPatchGhostsRefineSchedules;
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> elecPatchGhostsRefineSchedules;
 
         SAMRAI::xfer::CoarsenAlgorithm RefluxAlgo{SAMRAI::tbox::Dimension{dimension}};

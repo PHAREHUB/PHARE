@@ -84,6 +84,11 @@ namespace amr
 
         virtual ~MHDHybridMessengerStrategy() = default;
 
+        void fillMagneticGhosts(VecFieldT& /*B*/, SAMRAI::hier::PatchLevel const& /*level*/,
+                                double const /*fillTime*/) override
+        {
+        }
+
         void fillElectricGhosts(VecFieldT& /*E*/, SAMRAI::hier::PatchLevel const& /*level*/,
                                 double const /*fillTime*/) override
         {
