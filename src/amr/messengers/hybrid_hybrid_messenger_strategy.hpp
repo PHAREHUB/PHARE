@@ -170,13 +170,12 @@ namespace amr
 
             auto&& [b_id] = resourcesManager_->getIDsList(hybridInfo->modelMagnetic);
 
-            // auto&& [b_model, b_pred] =
-            // resourcesManager_->getIDsList(hybridInfo->ghostMagnetic[0],
-            //                                                          hybridInfo->ghostMagnetic[1]);
+            auto&& [b_model, b_pred] = resourcesManager_->getIDsList(hybridInfo->ghostMagnetic[0],
+                                                                     hybridInfo->ghostMagnetic[1]);
 
 
             magneticRefinePatchStrategy_.registerIDs(b_id);
-            // BpredRefinePatchStrategy_.registerIDs(b_pred);
+            BpredRefinePatchStrategy_.registerIDs(b_pred);
 
             // we do not overwrite interior on patch ghost filling. In theory this doesn't matter
             // much since the only interior values are the outermost layer of faces of the domain,
@@ -194,10 +193,10 @@ namespace amr
 
             // this is a bit ugly, should be refactored asap also fills ghosts for both each time
             // which is not great
-            // BghostAlgo.registerRefine(b_model, b_model, b_model, BfieldRegridOp_,
-            //                           overwriteInteriorTFfillPattern);
-            // BPredGhostAlgo.registerRefine(b_pred, b_pred, b_pred, BfieldRegridOp_,
-            //                               overwriteInteriorTFfillPattern);
+            BghostAlgo.registerRefine(b_model, b_model, b_model, BfieldRegridOp_,
+                                      overwriteInteriorTFfillPattern);
+            BPredGhostAlgo.registerRefine(b_pred, b_pred, b_pred, BfieldRegridOp_,
+                                          overwriteInteriorTFfillPattern);
 
             auto&& [e_id] = resourcesManager_->getIDsList(hybridInfo->modelElectric);
 
@@ -238,14 +237,13 @@ namespace amr
             magPatchGhostsRefineSchedules[levelNumber]
                 = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
 
-            // magGhostsRefineSchedules[levelNumber]
-            //     = BghostAlgo.createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-            //                                 hierarchy, &magneticRefinePatchStrategy_);
-            //
-            // BpredGhostsRefineSchedules[levelNumber]
-            //     = BPredGhostAlgo.createSchedule(level,
-            //     level->getNextCoarserHierarchyLevelNumber(),
-            //                                     hierarchy, &BpredRefinePatchStrategy_);
+            magGhostsRefineSchedules[levelNumber]
+                = BghostAlgo.createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
+                                            hierarchy, &magneticRefinePatchStrategy_);
+
+            BpredGhostsRefineSchedules[levelNumber]
+                = BPredGhostAlgo.createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
+                                                hierarchy, &BpredRefinePatchStrategy_);
 
             elecPatchGhostsRefineSchedules[levelNumber] = EalgoPatchGhost.createSchedule(level);
 
@@ -399,13 +397,13 @@ namespace amr
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillMagneticGhosts");
 
-            // setNaNsOnVecfieldGhosts(B, level);
-            // if (B.name() == "EM_B")
-            //     magGhostsRefineSchedules[level.getLevelNumber()]->fillData(fillTime);
-            // else if (B.name() == "EMPred_B")
-            //     BpredGhostsRefineSchedules[level.getLevelNumber()]->fillData(fillTime);
-            // else
-            //     throw std::runtime_error("unknown magnetic field name : " + B.name());
+            setNaNsOnVecfieldGhosts(B, level);
+            if (B.name() == "EM_B")
+                magGhostsRefineSchedules[level.getLevelNumber()]->fillData(fillTime);
+            else if (B.name() == "EMPred_B")
+                BpredGhostsRefineSchedules[level.getLevelNumber()]->fillData(fillTime);
+            else
+                throw std::runtime_error("unknown magnetic field name : " + B.name());
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime) override
@@ -1095,9 +1093,8 @@ namespace amr
         MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
             magneticRefinePatchStrategy_{*resourcesManager_};
 
-        // MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
-        // BpredRefinePatchStrategy_{
-        //     *resourcesManager_};
+        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT> BpredRefinePatchStrategy_{
+            *resourcesManager_};
     };
 
 
