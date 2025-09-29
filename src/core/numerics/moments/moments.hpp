@@ -48,11 +48,11 @@ namespace core
                 auto& partArray = pop.domainParticles();
                 interpolate(partArray, particleDensity, chargeDensity, flux, layout);
             }
-            else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
-            {
-                auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
-            }
+            // else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
+            // {
+            //     auto& partArray = pop.levelGhostParticlesOld();
+            //     interpolate(partArray, particleDensity, chargeDensity, flux, layout);
+            // }
             else
                 throw std::runtime_error("unknown deposit tag");
         }

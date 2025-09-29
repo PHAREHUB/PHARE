@@ -101,11 +101,12 @@ namespace solver
             // we now complete them by depositing levelghost particles
             for (auto& patch : rm.enumerate(level, ions))
             {
-                if (!isRootLevel(levelNumber))
-                {
-                    auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                    core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
-                }
+                // if (!isRootLevel(levelNumber))
+                // {
+                //     auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                //     // core::depositParticles(ions, layout, interpolate_,
+                //     core::LevelGhostDeposit{});
+                // }
 
 
                 // now all nodes are complete, the total ion moments
