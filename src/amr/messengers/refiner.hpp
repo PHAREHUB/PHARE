@@ -19,6 +19,7 @@ enum class RefinerType {
     InitInteriorPart,
     LevelBorderField,
     LevelBorderParticles,
+    PatchGhostField,
     PatchFieldBorderSum,
     PatchVecFieldBorderSum,
     PatchTensorFieldBorderSum,
@@ -69,6 +70,11 @@ public:
                           algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
                                                hierarchy),
                           levelNumber);
+            }
+
+            if constexpr (Type == RefinerType::PatchGhostField)
+            {
+                this->add(algo, algo->createSchedule(level), levelNumber);
             }
 
 

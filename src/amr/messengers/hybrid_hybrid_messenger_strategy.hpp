@@ -15,6 +15,7 @@
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
+#include "amr/data/field/refine/field_moments_refiner.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
@@ -88,6 +89,8 @@ namespace amr
 
         using DefaultFieldRefineOp    = FieldRefineOp<DefaultFieldRefiner<dimension>>;
         using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;
+        using FieldMomentsRefineOp    = FieldRefineOp<FieldMomentsRefiner<dimension>>;
+        using VecFieldMomentsRefineOp = VecFieldRefineOp<FieldMomentsRefiner<dimension>>;
         using MagneticFieldRefineOp   = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
         using MagneticFieldRegridOp   = VecFieldRefineOp<MagneticFieldRegrider<dimension>>;
         using ElectricFieldRefineOp   = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
@@ -233,6 +236,9 @@ namespace amr
             chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
             velGhostsRefiners_.registerLevel(hierarchy, level);
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
+
+            chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
+            velPatchGhostsRefiners_.registerLevel(hierarchy, level);
 
             for (auto& refiner : popFluxBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
@@ -535,8 +541,6 @@ namespace amr
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
             auto& chargeDensity = ions.chargeDensity();
             auto& velocity      = ions.velocity();
-            setNaNsOnFieldGhosts(chargeDensity, level);
-            setNaNsOnVecfieldGhosts(velocity, level);
             chargeDensityGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
             velGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
         }
@@ -718,8 +722,8 @@ namespace amr
 
             // should we keep the filling on electrif ghosts if done in reflux?
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
-            chargeDensityGhostsRefiners_.fill(levelNumber, time);
-            velGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
+            chargeDensityPatchGhostsRefiners_.fill(levelNumber, time);
+            velPatchGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
         }
 
     private:
@@ -741,13 +745,21 @@ namespace amr
                                                      nonOverwriteInteriorTFfillPattern);
 
             chargeDensityGhostsRefiners_.addTimeRefiner(
-                info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldRefineOp_,
+                info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldMomentsRefineOp_,
                 fieldTimeOp_, info->modelIonDensity, defaultFieldFillPattern);
 
 
             velGhostsRefiners_.addTimeRefiners(info->ghostBulkVelocity, info->modelIonBulkVelocity,
-                                               ViOld_.name(), vecFieldRefineOp_, vecFieldTimeOp_,
-                                               nonOverwriteInteriorTFfillPattern);
+                                               ViOld_.name(), vecFieldMomentsRefineOp_,
+                                               vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
+
+            chargeDensityPatchGhostsRefiners_.addTimeRefiner(
+                info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldMomentsRefineOp_,
+                fieldTimeOp_, info->modelIonDensity, defaultFieldFillPattern);
+
+            velPatchGhostsRefiners_.addTimeRefiners(
+                info->ghostBulkVelocity, info->modelIonBulkVelocity, ViOld_.name(),
+                vecFieldMomentsRefineOp_, vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
         }
 
 
@@ -942,6 +954,7 @@ namespace amr
         using InitDomPartRefinerPool      = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
         using LevelBorderFieldRefinerPool = RefinerPool<rm_t, RefinerType::LevelBorderField>;
         using DomainGhostPartRefinerPool  = RefinerPool<rm_t, RefinerType::ExteriorGhostParticles>;
+        using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
@@ -981,6 +994,9 @@ namespace amr
         LevelBorderFieldRefinerPool chargeDensityGhostsRefiners_{resourcesManager_};
         LevelBorderFieldRefinerPool velGhostsRefiners_{resourcesManager_};
 
+        PatchGhostRefinerPool chargeDensityPatchGhostsRefiners_{resourcesManager_};
+        PatchGhostRefinerPool velPatchGhostsRefiners_{resourcesManager_};
+
         // pool of refiners for interior particles of each population
         // and the associated refinement operator
         InitDomPartRefinerPool domainParticlesRefiners_{resourcesManager_};
@@ -1009,6 +1025,9 @@ namespace amr
 
         RefOp_ptr fieldRefineOp_{std::make_shared<DefaultFieldRefineOp>()};
         RefOp_ptr vecFieldRefineOp_{std::make_shared<DefaultVecFieldRefineOp>()};
+
+        RefOp_ptr fieldMomentsRefineOp_{std::make_shared<FieldMomentsRefineOp>()};
+        RefOp_ptr vecFieldMomentsRefineOp_{std::make_shared<VecFieldMomentsRefineOp>()};
 
         RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
         RefOp_ptr BfieldRegridOp_{std::make_shared<MagneticFieldRegridOp>()};
