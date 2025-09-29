@@ -19,11 +19,11 @@ class EulerUsingComputedFlux
 public:
     EulerUsingComputedFlux() {}
 
+    // we provide dt here because we sometimes need it to be different from newTime-currentTime, for
+    // example in the case of some rk integration methods
     void operator()(MHDModel& model, auto& state, auto& statenew, auto& E, auto& fluxes, auto& bc,
-                    level_t& level, double const currentTime, double const newTime)
+                    level_t& level, double const newTime, double const dt)
     {
-        double const dt = newTime - currentTime;
-
         fv_euler_(level, model, newTime, state, statenew, fluxes, dt);
 
         faraday_(level, model, state, E, statenew, dt);

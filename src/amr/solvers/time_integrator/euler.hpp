@@ -2,88 +2,40 @@
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_EULER_HPP
 
 #include "initializer/data_provider.hpp"
-#include "amr/solvers/solver_mhd_model_view.hpp"
+#include "amr/solvers/time_integrator/compute_fluxes.hpp"
+#include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 
 namespace PHARE::solver
 {
 template<template<typename> typename FVMethodStrategy, typename MHDModel>
 class Euler
 {
-    using level_t       = typename MHDModel::level_t;
-    using Layout        = typename MHDModel::gridlayout_type;
-    using Dispatchers_t = Dispatchers<Layout>;
+    using level_t = typename MHDModel::level_t;
 
-    using Ampere_t               = Dispatchers_t::Ampere_t;
-    using FVMethod_t             = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
-    using FiniteVolumeEuler_t    = Dispatchers_t::FiniteVolumeEuler_t;
-    using ConstrainedTransport_t = Dispatchers_t::ConstrainedTransport_t;
-    using Faraday_t              = Dispatchers_t::Faraday_t;
-
-    using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
-    using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
-
-    constexpr static auto Hall             = FVMethod_t::Hall;
-    constexpr static auto Resistivity      = FVMethod_t::Resistivity;
-    constexpr static auto HyperResistivity = FVMethod_t::HyperResistivity;
+    using ComputeFluxes_t          = ComputeFluxes<FVMethodStrategy, MHDModel>;
+    using EulerUsingComputedFlux_t = EulerUsingComputedFlux<MHDModel>;
 
 public:
     Euler(PHARE::initializer::PHAREDict const& dict)
-        : fvm_{dict["fv_method"]}
-        , to_primitive_{dict["to_primitive"]}
-        , to_conservative_{dict["to_conservative"]}
+        : compute_fluxes_{dict}
     {
     }
 
     void operator()(MHDModel& model, auto& state, auto& statenew, auto& fluxes, auto& bc,
-                    level_t& level, double const currentTime, double const newTime)
+                    level_t& level, double const currentTime, double const newTime,
+                    double dt = std::nan(""))
     {
-        double const dt = newTime - currentTime;
+        if (std::isnan(dt))
+            dt = newTime - currentTime;
 
-        to_primitive_(level, model, newTime, state);
+        compute_fluxes_(model, state, fluxes, bc, level, newTime);
 
-        if constexpr (Hall || Resistivity || HyperResistivity)
-        {
-            ampere_(level, model, newTime, state);
-
-            bc.fillCurrentGhosts(state.J, level, newTime);
-        }
-
-        fvm_(level, model, newTime, state, fluxes);
-
-        // unecessary if we decide to store both primitive and conservative variables
-        to_conservative_(level, model, newTime, state);
-
-        fv_euler_(level, model, newTime, state, statenew, fluxes, dt);
-
-        bc.fillMagneticFluxesXGhosts(fluxes.B_fx, level, newTime);
-
-        if constexpr (MHDModel::dimension >= 2)
-        {
-            bc.fillMagneticFluxesYGhosts(fluxes.B_fy, level, newTime);
-
-            if constexpr (MHDModel::dimension == 3)
-            {
-                bc.fillMagneticFluxesZGhosts(fluxes.B_fz, level, newTime);
-            }
-        }
-
-        ct_(level, model, state, fluxes);
-
-        bc.fillElectricGhosts(state.E, level, newTime);
-
-        faraday_(level, model, state, state.E, statenew, dt);
-
-        bc.fillMomentsGhosts(statenew, level, newTime);
+        euler_using_computed_flux_(model, state, statenew, state.E, fluxes, bc, level, newTime, dt);
     }
 
 private:
-    Ampere_t ampere_;
-    FVMethod_t fvm_;
-    FiniteVolumeEuler_t fv_euler_;
-    ConstrainedTransport_t ct_;
-    Faraday_t faraday_;
-    ToPrimitiveConverter_t to_primitive_;
-    ToConservativeConverter_t to_conservative_;
+    ComputeFluxes_t compute_fluxes_;
+    EulerUsingComputedFlux_t euler_using_computed_flux_;
 };
 } // namespace PHARE::solver
 

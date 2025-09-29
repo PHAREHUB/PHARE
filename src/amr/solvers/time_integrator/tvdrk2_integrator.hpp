@@ -51,7 +51,7 @@ public:
         this->accumulateButcherFluxes_(model, state1_.E, fluxes, level, w1_);
 
         euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, currentTime, newTime);
+                                    level, newTime, newTime - currentTime);
 
         // Un+1 = 0.5*Un + 0.5*Euler(U1)
         // tvdrk2_step_(level, model, newTime, state, RKPair_t{w0_, state}, RKPair_t{w1_, state1_});
