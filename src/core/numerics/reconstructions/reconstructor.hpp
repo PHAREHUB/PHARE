@@ -111,7 +111,7 @@ private:
             auto const [JL_Y_1, JR_Y_1]
                 = Reconstruction::template center_reconstruct<direction>(J, prevY, projection);
             auto const [JL_Y1, JR_Y1]
-                = Reconstruction::template center_reconstruct<Direction::Y>(J, nextY, projection);
+                = Reconstruction::template center_reconstruct<direction>(J, nextY, projection);
 
             std::uint32_t dirY = static_cast<std::uint32_t>(Direction::Y);
 
