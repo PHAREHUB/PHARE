@@ -782,7 +782,7 @@ namespace amr
             for (size_t i = 0; i < info->ghostMagnetic.size(); ++i)
             {
                 magGhostsRefiners_.addStaticRefiner(
-                    info->ghostMagnetic[i], BfieldRefineOp_, info->ghostMagnetic[i],
+                    info->ghostMagnetic[i], BfieldRegridOp_, info->ghostMagnetic[i],
                     nonOverwriteInteriorTFfillPattern, magneticPatchStratPerGhostRefiner_[i]);
             }
 

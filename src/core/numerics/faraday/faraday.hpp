@@ -59,9 +59,9 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        layout_->evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
-        layout_->evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
-        layout_->evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
+        layout_.evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
+        layout_.evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
+        layout_.evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
     }
 
 private:

@@ -75,6 +75,7 @@ public:
         info.ghostMomentum.push_back(state1_.rhoV.name());
         info.ghostTotalEnergy.push_back(state1_.Etot.name());
         info.ghostElectric.push_back(state1_.E.name());
+        info.ghostMagnetic.push_back(state1_.B.name());
         info.ghostCurrent.push_back(state1_.J.name());
     }
 

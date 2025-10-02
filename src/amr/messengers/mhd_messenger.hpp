@@ -60,7 +60,7 @@ namespace amr
         using GridLayoutT       = MHDModel::gridlayout_type;
         using GridT             = MHDModel::grid_type;
         using ResourcesManagerT = MHDModel::resources_manager_type;
-        using TensorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::MHDQuantity>;
+        using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::MHDQuantity>;
 
         static constexpr auto dimension = MHDModel::dimension;
 
@@ -320,6 +320,8 @@ namespace amr
             magFluxesYGhostRefiners_.registerLevel(hierarchy, level);
             magFluxesZGhostRefiners_.registerLevel(hierarchy, level);
 
+            magGhostsRefiners_.registerLevel(hierarchy, level);
+
             if (levelNumber != rootLevelNumber)
             {
                 // refluxing
@@ -491,6 +493,14 @@ namespace amr
             elecGhostsRefiners_.fill(E, level.getLevelNumber(), fillTime);
         }
 
+        void fillMagneticGhosts(VecFieldT& B, level_t const& level, double const fillTime)
+        {
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillMagneticGhosts");
+
+            setNaNsOnVecfieldGhosts(B, level);
+            magGhostsRefiners_.fill(B, level.getLevelNumber(), fillTime);
+        }
+
         void fillCurrentGhosts(VecFieldT& J, level_t const& level, double const fillTime)
         {
             setNaNsOnVecfieldGhosts(J, level);
@@ -553,6 +563,37 @@ namespace amr
             magFluxesZGhostRefiners_.addStaticRefiners(
                 info->ghostMagneticFluxesZ, mhdVecFluxRefineOp_, info->ghostMagneticFluxesZ,
                 nonOverwriteInteriorTFfillPattern);
+
+            // we need a separate patch strategy for each refiner so that each one can register
+            // their required ids
+            magneticPatchStratPerGhostRefiner_ = [&]() {
+                std::vector<std::shared_ptr<
+                    MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+                    result;
+
+                result.reserve(info->ghostMagnetic.size());
+
+                for (auto const& key : info->ghostMagnetic)
+                {
+                    auto&& [id] = resourcesManager_->getIDsList(key);
+
+                    auto patch_strat = std::make_shared<
+                        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
+                        *resourcesManager_);
+
+                    patch_strat->registerIDs(id);
+
+                    result.push_back(patch_strat);
+                }
+                return result;
+            }();
+
+            for (size_t i = 0; i < info->ghostMagnetic.size(); ++i)
+            {
+                magGhostsRefiners_.addStaticRefiner(
+                    info->ghostMagnetic[i], BfieldRegridOp_, info->ghostMagnetic[i],
+                    nonOverwriteInteriorTFfillPattern, magneticPatchStratPerGhostRefiner_[i]);
+            }
         }
 
 
@@ -697,6 +738,8 @@ namespace amr
         GhostRefinerPool magFluxesYGhostRefiners_{resourcesManager_};
         GhostRefinerPool magFluxesZGhostRefiners_{resourcesManager_};
 
+        GhostRefinerPool magGhostsRefiners_{resourcesManager_};
+
         InitRefinerPool densityInitRefiners_{resourcesManager_};
         InitRefinerPool momentumInitRefiners_{resourcesManager_};
         InitRefinerPool totalEnergyInitRefiners_{resourcesManager_};
@@ -772,8 +815,12 @@ namespace amr
         CoarsenOp_ptr mhdVecFluxCoarseningOp_{std::make_shared<MHDVecFluxCoarsenOp>()};
         CoarsenOp_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
-        MagneticRefinePatchStrategy<ResourcesManagerT, TensorFieldDataT>
+        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
             magneticRefinePatchStrategy_{*resourcesManager_};
+
+        std::vector<
+            std::shared_ptr<MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+            magneticPatchStratPerGhostRefiner_;
     };
 
 } // namespace amr

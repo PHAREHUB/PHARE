@@ -28,6 +28,8 @@ public:
 
         faraday_(level, model, state, E, statenew, dt);
 
+        bc.fillMagneticGhosts(statenew.B, level, newTime);
+
         bc.fillMomentsGhosts(statenew, level, newTime);
     }
 

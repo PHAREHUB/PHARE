@@ -111,6 +111,8 @@ public:
         Super::registerResources(model);
         model.resourcesManager->registerResources(state1_);
         model.resourcesManager->registerResources(state2_);
+        model.resourcesManager->registerResources(state3_);
+        model.resourcesManager->registerResources(state4_);
     }
 
     void allocate(MHDModel& model, auto& patch, double const allocateTime) const
@@ -118,33 +120,37 @@ public:
         Super::allocate(model, patch, allocateTime);
         model.resourcesManager->allocate(state1_, patch, allocateTime);
         model.resourcesManager->allocate(state2_, patch, allocateTime);
+        model.resourcesManager->allocate(state3_, patch, allocateTime);
+        model.resourcesManager->allocate(state4_, patch, allocateTime);
     }
 
     void fillMessengerInfo(auto& info) const
     {
-        info.ghostDensity.push_back(state1_.rho.name());
-        info.ghostMomentum.push_back(state1_.rhoV.name());
-        info.ghostTotalEnergy.push_back(state1_.Etot.name());
-        info.ghostElectric.push_back(state1_.E.name());
-        info.ghostCurrent.push_back(state1_.J.name());
+        auto fill_info = [&](auto& state) {
+            info.ghostDensity.push_back(state.rho.name());
+            info.ghostMomentum.push_back(state.rhoV.name());
+            info.ghostTotalEnergy.push_back(state.Etot.name());
+            info.ghostElectric.push_back(state.E.name());
+            info.ghostMagnetic.push_back(state.B.name());
+            info.ghostCurrent.push_back(state.J.name());
+        };
 
-        info.ghostDensity.push_back(state2_.rho.name());
-        info.ghostMomentum.push_back(state2_.rhoV.name());
-        info.ghostTotalEnergy.push_back(state2_.Etot.name());
-        info.ghostElectric.push_back(state2_.E.name());
-        info.ghostCurrent.push_back(state2_.J.name());
+        fill_info(state1_);
+        fill_info(state2_);
+        fill_info(state3_);
+        fill_info(state4_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         return std::tuple_cat(Super::getCompileTimeResourcesViewList(),
-                              std::forward_as_tuple(state1_, state2_));
+                              std::forward_as_tuple(state1_, state2_, state3_, state4_));
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
         return std::tuple_cat(Super::getCompileTimeResourcesViewList(),
-                              std::forward_as_tuple(state1_, state2_));
+                              std::forward_as_tuple(state1_, state2_, state3_, state4_));
     }
 
     using Super::exposeFluxes;
@@ -173,8 +179,8 @@ private:
 
     MHDStateT state1_{"state1"};
     MHDStateT state2_{"state2"};
-    MHDStateT state3_{"state2"};
-    MHDStateT state4_{"state2"};
+    MHDStateT state3_{"state3"};
+    MHDStateT state4_{"state4"};
 };
 
 } // namespace PHARE::solver

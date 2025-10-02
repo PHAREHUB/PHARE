@@ -84,17 +84,17 @@ public:
 
     void fillMessengerInfo(auto& info) const
     {
-        info.ghostDensity.push_back(state1_.rho.name());
-        info.ghostMomentum.push_back(state1_.rhoV.name());
-        info.ghostTotalEnergy.push_back(state1_.Etot.name());
-        info.ghostElectric.push_back(state1_.E.name());
-        info.ghostCurrent.push_back(state1_.J.name());
+        auto fill_info = [&](auto& state) {
+            info.ghostDensity.push_back(state.rho.name());
+            info.ghostMomentum.push_back(state.rhoV.name());
+            info.ghostTotalEnergy.push_back(state.Etot.name());
+            info.ghostElectric.push_back(state.E.name());
+            info.ghostMagnetic.push_back(state.B.name());
+            info.ghostCurrent.push_back(state.J.name());
+        };
 
-        info.ghostDensity.push_back(state2_.rho.name());
-        info.ghostMomentum.push_back(state2_.rhoV.name());
-        info.ghostTotalEnergy.push_back(state2_.Etot.name());
-        info.ghostElectric.push_back(state2_.E.name());
-        info.ghostCurrent.push_back(state2_.J.name());
+        fill_info(state1_);
+        fill_info(state2_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
