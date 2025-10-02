@@ -9,6 +9,7 @@
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
+#include "core/utilities/types.hpp"
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
 #include "amr/types/amr_types.hpp"
@@ -170,12 +171,7 @@ namespace amr
 
             auto&& [b_id] = resourcesManager_->getIDsList(hybridInfo->modelMagnetic);
 
-            auto&& [b_model, b_pred] = resourcesManager_->getIDsList(hybridInfo->ghostMagnetic[0],
-                                                                     hybridInfo->ghostMagnetic[1]);
-
-
             magneticRefinePatchStrategy_.registerIDs(b_id);
-            BpredRefinePatchStrategy_.registerIDs(b_pred);
 
             // we do not overwrite interior on patch ghost filling. In theory this doesn't matter
             // much since the only interior values are the outermost layer of faces of the domain,
@@ -190,13 +186,6 @@ namespace amr
             // faces that were already there before regrid.
             BregridAlgo.registerRefine(b_id, b_id, b_id, BfieldRegridOp_,
                                        overwriteInteriorTFfillPattern);
-
-            // this is a bit ugly, should be refactored asap also fills ghosts for both each time
-            // which is not great
-            BghostAlgo.registerRefine(b_model, b_model, b_model, BfieldRegridOp_,
-                                      overwriteInteriorTFfillPattern);
-            BPredGhostAlgo.registerRefine(b_pred, b_pred, b_pred, BfieldRegridOp_,
-                                          overwriteInteriorTFfillPattern);
 
             auto&& [e_id] = resourcesManager_->getIDsList(hybridInfo->modelElectric);
 
@@ -237,20 +226,13 @@ namespace amr
             magPatchGhostsRefineSchedules[levelNumber]
                 = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
 
-            magGhostsRefineSchedules[levelNumber]
-                = BghostAlgo.createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                            hierarchy, &magneticRefinePatchStrategy_);
-
-            BpredGhostsRefineSchedules[levelNumber]
-                = BPredGhostAlgo.createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                                hierarchy, &BpredRefinePatchStrategy_);
-
             elecPatchGhostsRefineSchedules[levelNumber] = EalgoPatchGhost.createSchedule(level);
 
             // technically not needed for finest as refluxing is not done onto it.
             patchGhostRefluxedSchedules[levelNumber] = PatchGhostRefluxedAlgo.createSchedule(level);
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
+            magGhostsRefiners_.registerLevel(hierarchy, level);
             currentGhostsRefiners_.registerLevel(hierarchy, level);
             chargeDensityGhostsRefiners_.registerLevel(hierarchy, level);
             velGhostsRefiners_.registerLevel(hierarchy, level);
@@ -398,12 +380,7 @@ namespace amr
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillMagneticGhosts");
 
             setNaNsOnVecfieldGhosts(B, level);
-            if (B.name() == "EM_B")
-                magGhostsRefineSchedules[level.getLevelNumber()]->fillData(fillTime);
-            else if (B.name() == "EMPred_B")
-                BpredGhostsRefineSchedules[level.getLevelNumber()]->fillData(fillTime);
-            else
-                throw std::runtime_error("unknown magnetic field name : " + B.name());
+            magGhostsRefiners_.fill(B, level.getLevelNumber(), fillTime);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime) override
@@ -766,6 +743,39 @@ namespace amr
                                                   info->ghostElectric,
                                                   nonOverwriteInteriorTFfillPattern);
 
+
+            // we need a separate patch strategy for each refiner so that each one can register
+            // their required ids
+            magneticPatchStratPerGhostRefiner_ = [&]() {
+                std::vector<std::shared_ptr<
+                    MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+                    result;
+
+                result.reserve(info->ghostMagnetic.size());
+
+                for (auto const& key : info->ghostMagnetic)
+                {
+                    auto&& [id] = resourcesManager_->getIDsList(key);
+
+                    auto patch_strat = std::make_shared<
+                        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
+                        *resourcesManager_);
+
+                    patch_strat->registerIDs(id);
+
+                    result.push_back(patch_strat);
+                }
+                return result;
+            }();
+
+            for (size_t i = 0; i < info->ghostMagnetic.size(); ++i)
+            {
+                magGhostsRefiners_.addStaticRefiner(
+                    info->ghostMagnetic[i], BfieldRefineOp_, info->ghostMagnetic[i],
+                    nonOverwriteInteriorTFfillPattern, magneticPatchStratPerGhostRefiner_[i]);
+            }
+
+
             // static refinement for J  because it is a temporary, so keeping its
             // state updated after each regrid is not a priority. However if we do not correctly
             // refine on regrid, the post regrid state is not up to date (in our case it will be nan
@@ -1019,6 +1029,8 @@ namespace amr
         //! store refiners for electric fields that need ghosts to be filled
         GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
 
+        GhostRefinerPool magGhostsRefiners_{resourcesManager_};
+
         GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
 
         // moment ghosts
@@ -1093,8 +1105,9 @@ namespace amr
         MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
             magneticRefinePatchStrategy_{*resourcesManager_};
 
-        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT> BpredRefinePatchStrategy_{
-            *resourcesManager_};
+        std::vector<
+            std::shared_ptr<MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+            magneticPatchStratPerGhostRefiner_;
     };
 
 

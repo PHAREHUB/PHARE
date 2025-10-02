@@ -1,6 +1,7 @@
 #ifndef PHARE_REFINER_POOL_HPP
 #define PHARE_REFINER_POOL_HPP
 
+#include "SAMRAI/xfer/RefinePatchStrategy.h"
 #include "refiner.hpp"
 
 
@@ -39,21 +40,23 @@ namespace amr
 
         /* @brief add a static communication between a single source and destination.*/
         template<typename Resource, typename Key>
-        void addStaticRefiner(Resource const& ghostName, Resource const& src,
-                              std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-                              Key const& key,
-                              std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
-                              = nullptr);
+        void
+        addStaticRefiner(Resource const& ghostName, Resource const& src,
+                         std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                         Key const& key,
+                         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+                         std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr);
 
         /**
          * @brief convenience overload of above addStaticRefiner taking only one name
          * used for communications from a quantity to the same quantity.*/
         template<typename Resource, typename Key>
-        void addStaticRefiner(Resource const& src_dest,
-                              std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-                              Key const& key,
-                              std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
-                              = nullptr);
+        void
+        addStaticRefiner(Resource const& src_dest,
+                         std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                         Key const& key,
+                         std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+                         std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr);
 
 
         /*@brief add a static communication between sources and destinations.
@@ -62,7 +65,8 @@ namespace amr
         void
         addStaticRefiners(Resources const& destinations, Resources const& sources,
                           std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, Keys const& keys,
-                          std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr);
+                          std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+                          std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr);
 
 
         /*@brief convenience overload of the above when source = destination, for VecField*/
@@ -70,31 +74,32 @@ namespace amr
         void
         addStaticRefiners(Srcs const& src_dest,
                           std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, Keys const& key,
-                          std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr);
-
-
+                          std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+                          std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr);
 
 
         // this overload takes simple strings.
-        void addTimeRefiner(std::string const& ghost, std::string const& model,
-                            std::string const& oldModel,
-                            std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-                            std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
-                            std::string const& key,
-                            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
-                            = nullptr);
+        void
+        addTimeRefiner(std::string const& ghost, std::string const& model,
+                       std::string const& oldModel,
+                       std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
+                       std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp,
+                       std::string const& key,
+                       std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+                       std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr);
 
         /**
          * @brief fill the given pool of refiners with a new refiner per VecField
          * in ghostVecs. Data will be spatially refined using the specified refinement
          * operator, and time interpolated between time n and n+1 of next coarser data,
          * represented by modelVec and oldModelVec.*/
-        void addTimeRefiners(std::vector<std::string> const& ghostVecs, std::string const& modelVec,
-                             std::string const& oldModelVec,
-                             std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
-                             std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp,
-                             std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern
-                             = nullptr);
+        void
+        addTimeRefiners(std::vector<std::string> const& ghostVecs, std::string const& modelVec,
+                        std::string const& oldModelVec,
+                        std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
+                        std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp,
+                        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+                        std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr);
 
 
 
@@ -162,10 +167,11 @@ template<typename Resource, typename Key>
 void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
     Resource const& dst, Resource const& src,
     std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp, Key const& key,
-    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
 {
     auto const [it, success]
-        = refiners_.insert({key, Refiner_t(dst, src, rm_, refineOp, fillPattern)});
+        = refiners_.insert({key, Refiner_t(dst, src, rm_, refineOp, fillPattern, patchStrat)});
 
     if (!success)
         throw std::runtime_error(key + " is already registered");
@@ -176,9 +182,10 @@ template<typename ResourcesManager, RefinerType Type>
 template<typename Resource, typename Key>
 void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
     Resource const& src_dst, std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
-    Key const& key, std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+    Key const& key, std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
 {
-    addStaticRefiner(src_dst, src_dst, refineOp, key, fillPattern);
+    addStaticRefiner(src_dst, src_dst, refineOp, key, fillPattern, patchStrat);
 }
 
 
@@ -187,13 +194,14 @@ template<typename Resources, typename Keys>
 void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
     Resources const& destinations, Resources const& sources,
     std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, Keys const& keys,
-    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
 {
     assert(destinations.size() == sources.size());
     assert(destinations.size() == keys.size());
 
     for (std::size_t i = 0; i < destinations.size(); ++i)
-        addStaticRefiner(destinations[i], sources[i], refineOp, keys[i], fillPattern);
+        addStaticRefiner(destinations[i], sources[i], refineOp, keys[i], fillPattern, patchStrat);
 }
 
 
@@ -201,9 +209,10 @@ template<typename ResourcesManager, RefinerType Type>
 template<typename Srcs, typename Keys>
 void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
     Srcs const& src_dest, std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, Keys const& keys,
-    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
 {
-    addStaticRefiners(src_dest, src_dest, refineOp, keys, fillPattern);
+    addStaticRefiners(src_dest, src_dest, refineOp, keys, fillPattern, patchStrat);
 }
 
 
@@ -213,10 +222,11 @@ void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
     std::string const& ghost, std::string const& model, std::string const& oldModel,
     std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
     std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string const& key,
-    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
 {
     auto const [it, success] = refiners_.insert(
-        {key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp, fillPattern)});
+        {key, Refiner_t(ghost, model, oldModel, rm_, refineOp, timeOp, fillPattern, patchStrat)});
     if (!success)
         throw std::runtime_error(key + " is already registered");
 }
@@ -227,10 +237,12 @@ void RefinerPool<ResourcesManager, Type>::addTimeRefiners(
     std::vector<std::string> const& ghostVecs, std::string const& modelVec,
     std::string const& oldModelVec, std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
     std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp,
-    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern)
+    std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
 {
     for (auto const& ghostVec : ghostVecs)
-        addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec, fillPattern);
+        addTimeRefiner(ghostVec, modelVec, oldModelVec, refineOp, timeOp, ghostVec, fillPattern,
+                       patchStrat);
 }
 
 

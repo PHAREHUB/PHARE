@@ -37,6 +37,7 @@ class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
     using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
     using VecFieldData_t    = ResourcesManager::template UserTensorField_t<1>::patch_data_type;
 
+    std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat_ = nullptr;
 
 public:
     void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
@@ -68,13 +69,13 @@ public:
             {
                 this->add(algo,
                           algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                               hierarchy),
+                                               hierarchy, patchStrat_.get()),
                           levelNumber);
             }
 
             if constexpr (Type == RefinerType::PatchGhostField)
             {
-                this->add(algo, algo->createSchedule(level), levelNumber);
+                this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
             }
 
 
@@ -84,7 +85,7 @@ public:
             {
                 this->add(algo,
                           algo->createSchedule(
-                              level, 0,
+                              level, patchStrat_.get(),
                               std::make_shared<FieldBorderSumTransactionFactory<FieldData_t>>()),
                           levelNumber);
             }
@@ -94,7 +95,7 @@ public:
                 this->add(
                     algo,
                     algo->createSchedule(
-                        level, 0,
+                        level, patchStrat_.get(),
                         std::make_shared<FieldBorderSumTransactionFactory<TensorFieldData_t>>()),
                     levelNumber);
             }
@@ -104,7 +105,7 @@ public:
             {
                 this->add(algo,
                           algo->createSchedule(
-                              level, 0,
+                              level, patchStrat_.get(),
                               std::make_shared<FieldBorderSumTransactionFactory<VecFieldData_t>>()),
                           levelNumber);
             }
@@ -117,7 +118,9 @@ public:
             // but there is nothing there.
             else if constexpr (Type == RefinerType::InitField)
             {
-                this->add(algo, algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy),
+                this->add(algo,
+                          algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy,
+                                               patchStrat_.get()),
                           levelNumber);
             }
 
@@ -135,7 +138,7 @@ public:
                 this->add(algo,
                           algo->createSchedule(
                               std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
-                              level, nullptr, levelNumber - 1, hierarchy),
+                              level, nullptr, levelNumber - 1, hierarchy, patchStrat_.get()),
                           levelNumber);
             }
 
@@ -145,7 +148,8 @@ public:
                 this->add(algo,
                           algo->createSchedule(
                               std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
-                              level->getNextCoarserHierarchyLevelNumber(), hierarchy),
+                              level->getNextCoarserHierarchyLevelNumber(), hierarchy,
+                              patchStrat_.get()),
                           levelNumber);
             }
 
@@ -159,14 +163,14 @@ public:
                 this->add(algo,
                           algo->createSchedule(
                               std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
-                              nullptr, levelNumber - 1, hierarchy),
+                              nullptr, levelNumber - 1, hierarchy, patchStrat_.get()),
                           levelNumber);
             }
 
 
             else if constexpr (Type == RefinerType::ExteriorGhostParticles)
             {
-                this->add(algo, algo->createSchedule(level), levelNumber);
+                this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
             }
         }
     }
@@ -185,13 +189,15 @@ public:
             {
                 auto schedule = algo->createSchedule(
                     std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level,
-                    oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                    oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
+                    patchStrat_.get());
                 schedule->fillData(initDataTime);
             }
             else
             {
-                auto schedule = algo->createSchedule(
-                    level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy);
+                auto schedule = algo->createSchedule(level, oldLevel,
+                                                     level->getNextCoarserHierarchyLevelNumber(),
+                                                     hierarchy, patchStrat_.get());
                 schedule->fillData(initDataTime);
             }
         }
@@ -224,9 +230,12 @@ public:
             std::shared_ptr<ResourcesManager> const& rm,
             std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
             std ::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> timeOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr)
+            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> variableFillPattern = nullptr,
+            std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat          = nullptr)
     {
         constexpr auto dimension = ResourcesManager::dimension;
+
+        patchStrat_ = patchStrat;
 
         register_time_interpolated_resource( //
             rm, ghost, ghost, oldModel, model, refineOp, timeOp, variableFillPattern);
@@ -238,8 +247,11 @@ public:
     Refiner(std::string const& dst, std::string const& src,
             std::shared_ptr<ResourcesManager> const& rm,
             std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
-            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr)
+            std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
+            std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr)
     {
+        patchStrat_ = patchStrat;
+
         auto&& [idDst, idSrc] = rm->getIDsList(dst, src);
         this->add_algorithm()->registerRefine(idDst, idSrc, idDst, refineOp, fillPattern);
     }
