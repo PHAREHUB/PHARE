@@ -1,31 +1,36 @@
 #ifndef PHARE_PYTHON_DATA_WRANGLER_HPP
 #define PHARE_PYTHON_DATA_WRANGLER_HPP
 
-
-#include <algorithm>
-#include <array>
-#include <cstddef>
-#include <iterator>
-#include <memory>
-#include <stdexcept>
-#include <vector>
-#include "amr/wrappers/hierarchy.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/point/point.hpp"
-#include "cppdict/include/dict.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
+
+#include "amr/wrappers/hierarchy.hpp"
+
 #include "initializer/data_provider.hpp"
+
 #include "python3/patch_data.hpp"
 #include "python3/patch_level.hpp"
+
 #include "simulator/simulator.hpp"
+
+#include "cppdict/include/dict.hpp"
+
+#include <array>
+#include <memory>
+#include <vector>
+#include <cstddef>
+#include <iterator>
+#include <stdexcept>
+#include <algorithm>
 
 namespace PHARE::pydata
 {
-template<std::size_t dimension, std::size_t interp_order, std::size_t nbRefinedPart>
+template<auto opts>
 class SimulatorCaster
 {
 public:
-    using Simulator_t = Simulator<dimension, interp_order, nbRefinedPart>;
+    using Simulator_t = Simulator<opts>;
 
     SimulatorCaster(std::shared_ptr<ISimulator> const& _simulator)
         : simulator{_simulator}
@@ -45,7 +50,8 @@ public:
             std::size_t constexpr nb = nbRefinedPart_fn();
 
             // extra if constexpr as cast is templated and not generic interface
-            if constexpr (d == dimension and io == interp_order and nb == nbRefinedPart)
+            if constexpr (d == opts.dimension and io == opts.interp_order
+                          and nb == opts.nbRefinedPart)
                 return dynamic_cast<Simulator_t*>(simulator.get());
         }
         return nullptr;
@@ -57,16 +63,14 @@ private:
 
 
 
-template<std::size_t _dimension, std::size_t _interp_order, std::size_t _nbRefinedPart>
+template<auto opts>
 class __attribute__((visibility("hidden"))) DataWrangler
 {
 public:
-    static constexpr std::size_t dimension     = _dimension;
-    static constexpr std::size_t interp_order  = _interp_order;
-    static constexpr std::size_t nbRefinedPart = _nbRefinedPart;
+    static constexpr std::size_t dimension = opts.dimension;
 
-    using Simulator   = PHARE::Simulator<dimension, interp_order, nbRefinedPart>;
-    using HybridModel = typename Simulator::HybridModel;
+    using Simulator   = PHARE::Simulator<opts>;
+    using HybridModel = Simulator::HybridModel;
 
     DataWrangler(std::shared_ptr<ISimulator> const& simulator,
                  std::shared_ptr<amr::Hierarchy> const& hierarchy)
@@ -81,8 +85,7 @@ public:
 
     auto getPatchLevel(size_t lvl)
     {
-        return PatchLevel<_dimension, _interp_order, _nbRefinedPart>{
-            *hierarchy_, *simulator_.getHybridModel(), lvl};
+        return PatchLevel<opts>{*hierarchy_, *simulator_.getHybridModel(), lvl};
     }
 
     auto sort_merge_1d(std::vector<PatchData<std::vector<double>, dimension>> const&& input,
@@ -167,7 +170,7 @@ private:
 
     static Simulator& cast_simulator(std::shared_ptr<ISimulator> const& simulator)
     {
-        using SimulatorCaster = SimulatorCaster<dimension, interp_order, nbRefinedPart>;
+        using SimulatorCaster = SimulatorCaster<opts>;
 
         auto const& simDict = initializer::PHAREDictHandler::INSTANCE().dict()["simulation"];
 

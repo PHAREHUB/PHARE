@@ -6,7 +6,6 @@
 #include <array>
 #include <cmath>
 #include <tuple>
-#include <vector>
 #include <cassert>
 #include <cstdint>
 #include <cstddef>

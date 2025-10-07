@@ -78,11 +78,17 @@ namespace core
 
                           SimulatorOption<DimConst<2>, InterpConst<1>, 4, 5, 8, 9>,
                           SimulatorOption<DimConst<2>, InterpConst<2>, 4, 5, 8, 9, 16>,
-                          SimulatorOption<DimConst<2>, InterpConst<3>, 4, 5, 8, 9, 25>>{};
+                          SimulatorOption<DimConst<2>, InterpConst<3>, 4, 5, 8, 9, 25>,
+
+                          SimulatorOption<DimConst<3>, InterpConst<1>, 6, 12>,
+                          SimulatorOption<DimConst<3>, InterpConst<2>, 6, 12>,
+                          SimulatorOption<DimConst<3>, InterpConst<3>, 6, 12>
+
+                          >{};
     }
 
-    template<std::size_t dim, std::size_t interp>
-    constexpr auto defaultNbrRefinedParts()
+
+    constexpr std::size_t defaultNbrRefinedParts(std::size_t dim, std::size_t interp)
     {
         auto sims            = possibleSimulators();
         using SimsTuple_t    = decltype(sims);
@@ -93,8 +99,8 @@ namespace core
         for_N<nsims>([&](auto i) {
             using SimOption = std::tuple_element_t<i, SimsTuple_t>;
 
-            if constexpr (std::tuple_element_t<0, SimOption>{}() == dim
-                          and std::tuple_element_t<1, SimOption>{}() == interp)
+            if (std::tuple_element_t<0, SimOption>{}() == dim
+                and std::tuple_element_t<1, SimOption>{}() == interp)
             {
                 nbRefinedPart = std::tuple_element_t<2, SimOption>{};
             }
@@ -116,8 +122,9 @@ namespace core
             using SimuType = std::decay_t<decltype(simType)>;
             using _dim     = typename std::tuple_element<0, SimuType>::type;
 
-            if (!p)
-                p = maker(dim, _dim{});
+            if constexpr (_dim{}() < 3) // TORM on 3D PR
+                if (!p)
+                    p = maker(dim, _dim{});
         });
 
         return p;
@@ -144,7 +151,10 @@ namespace core
         Ptr_t p     = nullptr;
 
         core::apply(possibleSimulators(), [&](auto const& simType) {
-            _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, simType);
+            using SimuType = std::decay_t<decltype(simType)>;                // TORM on 3D PR
+            using _dim     = typename std::tuple_element<0, SimuType>::type; // TORM on 3D PR
+            if constexpr (_dim{}() < 3)                                      // TORM on 3D PR
+                _makeAtRuntime(maker, p, dim, interpOrder, nbRefinedPart, simType);
         });
 
         return p;

@@ -198,15 +198,15 @@ PHARE::initializer::PHAREDict createDict()
 
 namespace test_1d
 {
-static constexpr std::size_t dim          = 1;
-static constexpr std::size_t interpOrder  = 1;
-static constexpr std::size_t nbRefinePart = 2;
+static constexpr std::size_t dim         = 1;
+static constexpr std::size_t interpOrder = 1;
+static constexpr PHARE::SimOpts opts{dim, interpOrder};
 
-using Simulator         = PHARE::Simulator<dim, interpOrder, nbRefinePart>;
+using Simulator         = PHARE::Simulator<opts>;
 using HybridModelT      = Simulator::HybridModel;
 using MHDModelT         = Simulator::MHDModel;
 using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-using Phare_Types       = PHARE::PHARE_Types<dim, interpOrder, nbRefinePart>;
+using Phare_Types       = PHARE::PHARE_Types<opts>;
 
 
 
@@ -443,12 +443,13 @@ template<uint8_t dimension, std::size_t nbRefinePart>
 struct AfullHybridBasicHierarchy
 {
     static constexpr std::size_t interpOrder = 1;
+    static constexpr PHARE::SimOpts opts{dimension, interpOrder, nbRefinePart};
 
-    using Simulator         = typename PHARE::Simulator<dimension, interpOrder, nbRefinePart>;
-    using HybridModelT      = typename Simulator::HybridModel;
-    using MHDModelT         = typename Simulator::MHDModel;
-    using ResourcesManagerT = typename HybridModelT::resources_manager_type;
-    using Phare_Types       = PHARE::PHARE_Types<dimension, interpOrder, nbRefinePart>;
+    using Simulator         = PHARE::Simulator<opts>;
+    using HybridModelT      = Simulator::HybridModel;
+    using MHDModelT         = Simulator::MHDModel;
+    using ResourcesManagerT = HybridModelT::resources_manager_type;
+    using Phare_Types       = PHARE::PHARE_Types<opts>;
 
     int const firstHybLevel{0};
     int const ratio{2};
