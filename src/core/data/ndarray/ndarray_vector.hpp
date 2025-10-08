@@ -239,6 +239,7 @@ public:
 
     template<typename... Nodes>
     explicit NdArrayVector(Nodes... nodes)
+        requires(std::is_integral_v<Nodes> && ...)
         : nCells_{nodes...}
         , data_((... * nodes))
     {
