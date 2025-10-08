@@ -2,8 +2,10 @@
 #define PHARE_ION_UPDATER_HPP
 
 
+#include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/range/range.hpp"
 #include "core/numerics/pusher/pusher.hpp"
 #include "core/numerics/moments/moments.hpp"
@@ -96,14 +98,20 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
     resetMoments(ions);
     pusher_->setMeshAndTimeStep(boxing.layout.meshSize(), dt);
 
-    if (mode == UpdaterMode::domain_only)
+    try
     {
-        updateAndDepositDomain_(ions, em, boxing);
+        if (mode == UpdaterMode::domain_only)
+            updateAndDepositDomain_(ions, em, boxing);
+        else
+            updateAndDepositAll_(ions, em, boxing);
     }
-    else
+    catch (DictionaryException const&)
     {
-        updateAndDepositAll_(ions, em, boxing);
+        // handled by next if mpi::any
     }
+
+    if (mpi::any(core::Errors::instance().any()))
+        throw DictionaryException{}("ID", "Updater::updatePopulations");
 }
 
 

@@ -1,10 +1,12 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_HPP
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
+
 #include "phare_core.hpp"
 #include "phare_types.hpp"
 
 #include "core/def.hpp"
+#include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
@@ -388,6 +390,10 @@ void Simulator<opts>::initialize()
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
         std::rethrow_exception(std::current_exception());
     }
+    catch (core::DictionaryException const& e)
+    {
+        throw std::runtime_error(e());
+    }
     catch (...)
     {
         std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
@@ -427,6 +433,10 @@ double Simulator<opts>::advance(double dt)
     {
         std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
         std::rethrow_exception(std::current_exception());
+    }
+    catch (core::DictionaryException const& e)
+    {
+        throw std::runtime_error(e());
     }
     catch (...)
     {

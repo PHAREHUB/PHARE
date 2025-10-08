@@ -2,14 +2,46 @@
 #define PHARE_CORE_ERRORS_HPP
 
 #include "core/def.hpp"
-#include <vector>
-#include <unordered_map>
+
 #include <string>
 #include <iostream>
+#include <unordered_map>
+
+
+#include "cppdict/include/dict.hpp"
 
 
 namespace PHARE::core
 {
+class DictionaryException : public std::exception
+{
+public:
+    DictionaryException() = default;
+    DictionaryException(auto const& k, auto const& v) { (*this)(k, v); }
+
+    using Dict_t = cppdict::Dict<std::string>;
+
+    auto& operator[](std::string const& key) { return dict_[key]; }
+    auto& operator[](std::string const& key) const { return dict_[key]; }
+    auto& operator()(std::string const key, std::string const val)
+    {
+        dict_[key] = val;
+        return *this;
+    }
+
+    std::string operator()() const
+    {
+        std::stringstream ss;
+        dict_.visit(
+            [&](std::string const& key, auto const& val) { ss << key << " " << val << std::endl; });
+        return ss.str();
+    }
+
+private:
+    Dict_t dict_;
+};
+
+
 class Errors
 {
 public:
