@@ -1,16 +1,16 @@
 #ifndef PHARE_BENCH_CORE_BENCH_H
 #define PHARE_BENCH_CORE_BENCH_H
 
-#include "core/utilities/box/box.hpp"
-
 #include "phare_core.hpp"
+
+#include "core/utilities/box/box.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/electromag/test_electromag_fixtures.hpp"
 
 #include "benchmark/benchmark.h"
+
 #include <fstream>
-#include <iterator>
 
 namespace PHARE::core::bench
 {
@@ -60,8 +60,7 @@ template<std::size_t dim, typename ParticleArray_t = PHARE::core::ParticleArray<
 auto make_particles(std::size_t n_particles)
 {
     auto particles = ParticleArray_t{Box<int, dim>{}};
-    particles.vector()
-        = std::vector<typename ParticleArray_t::value_type>(n_particles, particle<dim>());
+    particles.vector().resize(n_particles, particle<dim>());
     return particles;
 }
 
@@ -93,10 +92,11 @@ void disperse(Particles& particles, std::size_t lo, std::size_t up,
     disperse(particles, core::ConstArray<int, dim>(lo), core::ConstArray<int, dim>(up), seed);
 }
 
-template<std::size_t dim, typename Box>
+template<std::size_t dim, typename Box, typename ParticleArray_t = PHARE::core::ParticleArray<dim>>
 auto make_particles(std::size_t ppc, Box disperse_in, std::optional<int> seed = std::nullopt)
 {
-    auto particles = make_particles<dim>(ppc * disperse_in.size());
+    auto particles = ParticleArray_t{disperse_in};
+    particles.vector().resize(ppc * disperse_in.size(), particle<dim>());
     disperse(particles, disperse_in.lower, disperse_in.upper, seed);
     return particles;
 }

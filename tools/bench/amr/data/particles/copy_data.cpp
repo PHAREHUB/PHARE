@@ -29,6 +29,7 @@ public:
 
         data->sourceData.domainParticles = PHARE::core::bench::make_particles<dim>(ppc, sourceBox);
         assert(data->sourceData.domainParticles.size() == ppc * sourceBox.size());
+        assert(data->destData.domainParticles.size() == 0);
     }
 
     void TearDown(::benchmark::State const& /*state*/) override {}
@@ -37,9 +38,9 @@ public:
 
 private:
     static const inline PHARE::amr::Box<int, dim> sourceBox{PHARE::core::ConstArray<int, dim>(0),
-                                                            PHARE::core::ConstArray<int, dim>(999)};
-    static const inline PHARE::amr::Box<int, dim> destBox{PHARE::core::ConstArray<int, dim>(500),
-                                                          PHARE::core::ConstArray<int, dim>(1499)};
+                                                            PHARE::core::ConstArray<int, dim>(19)};
+    static const inline PHARE::amr::Box<int, dim> destBox{PHARE::core::ConstArray<int, dim>(10),
+                                                          PHARE::core::ConstArray<int, dim>(19)};
 
 
     struct _DATA_ // gbench static init doesn't play well with SAMRAI
@@ -61,7 +62,10 @@ template<std::size_t dim, std::size_t interp, std::size_t op>
 void ParticleDataCopy<dim, interp, op>::copy_data(::benchmark::State& state)
 {
     for (auto _ : state)
+    {
         this->data->destData.copy(this->data->sourceData);
+        data->destData.domainParticles.clear();
+    }
 }
 
 BENCHMARK_TEMPLATE_DEFINE_F(ParticleDataCopy, _2_1_1, 2, 1, 1)(benchmark::State& state)
