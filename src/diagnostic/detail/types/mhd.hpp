@@ -218,14 +218,32 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     auto& Etot     = h5Writer.modelView().getEtot();
     auto& h5file   = *fileData_.at(diagnostic.quantity);
 
+    auto hasNaN = [](auto const& container) {
+        return std::any_of(container.begin(), container.end(),
+                           [](auto const& x) { return std::isnan(x); });
+    };
+
+    auto checkNaN = [&](std::string const& name, auto const& field) {
+        if (hasNaN(field))
+        {
+            throw std::runtime_error("NaN detected in field '" + name + "'");
+        }
+    };
+
     auto writeDS = [&](auto path, auto& field) {
+        checkNaN(path, field);
         h5file.template write_data_set_flat<GridLayout::dimension>(path, field.data());
     };
-    auto writeTF
-        = [&](auto path, auto& vecF) { h5Writer.writeTensorFieldAsDataset(h5file, path, vecF); };
+
+    auto writeTF = [&](auto path, auto& vecF) {
+        for (std::size_t d = 0; d < vecF.size(); ++d)
+            checkNaN(path + "[" + std::to_string(d) + "]", vecF[d]);
+        h5Writer.writeTensorFieldAsDataset(h5file, path, vecF);
+    };
 
     std::string path = h5Writer.patchPath() + "/";
     std::string tree{"/mhd/"};
+
     if (isActiveDiag(diagnostic, tree, "rho"))
         writeDS(path + "rho", rho);
     if (isActiveDiag(diagnostic, tree, "V"))
