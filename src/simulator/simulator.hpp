@@ -217,7 +217,7 @@ namespace
 //-----------------------------------------------------------------------------
 
 template<auto opts>
-double Simulator<dim, _interp, nbRefinedPart>::restart_time(initializer::PHAREDict const& dict)
+double Simulator<opts>::restart_time(initializer::PHAREDict const& dict)
 {
     return cppdict::get_value(dict, "simulation/restarts/restart_time", 0.);
 }
@@ -250,7 +250,7 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict)
 
 
 template<auto opts>
-void Simulator<dim, _interp, nbRefinedPart>::mhd_init(initializer::PHAREDict const& /*dict*/)
+void Simulator<opts>::mhd_init(initializer::PHAREDict const& /*dict*/)
 {
 }
 
