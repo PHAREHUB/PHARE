@@ -98,20 +98,14 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
     resetMoments(ions);
     pusher_->setMeshAndTimeStep(boxing.layout.meshSize(), dt);
 
-    try
+    if (mode == UpdaterMode::domain_only)
     {
-        if (mode == UpdaterMode::domain_only)
-            updateAndDepositDomain_(ions, em, boxing);
-        else
-            updateAndDepositAll_(ions, em, boxing);
+        updateAndDepositDomain_(ions, em, boxing);
     }
-    catch (DictionaryException const&)
+    else
     {
-        // handled by next if mpi::any
+        updateAndDepositAll_(ions, em, boxing);
     }
-
-    if (mpi::any(core::Errors::instance().any()))
-        throw DictionaryException{}("ID", "Updater::updatePopulations");
 }
 
 

@@ -103,11 +103,7 @@ public:
         //   particles consistent. see: https://github.com/PHAREHUB/PHARE/issues/571
         prePushStep_(rangeIn, rangeOut);
 
-        // PHARE_LOG_ERROR(BorisException{}("cause", ex())());
-
-
         rangeOut = firstSelector(rangeOut);
-
 
         double const dto2m = 0.5 * dt_ / mass;
         for (auto idx = rangeOut.ibegin(); idx < rangeOut.iend(); ++idx)
@@ -127,13 +123,13 @@ public:
             }
             catch (DictionaryException const& bex)
             {
-                // ex("cause", ex());
                 auto ex            = bex;
                 auto const& [e, b] = local_em;
                 for (std::uint16_t i = 0; i < 3; ++i)
                     ex("E_" + std::to_string(i), std::to_string(e[i]));
                 for (std::uint16_t i = 0; i < 3; ++i)
                     ex("B_" + std::to_string(i), std::to_string(b[i]));
+                ex("level", std::to_string(layout.levelNumber()));
                 PHARE_LOG_ERROR(ex());
                 throw ex;
             }
