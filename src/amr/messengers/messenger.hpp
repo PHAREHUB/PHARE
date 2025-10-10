@@ -10,7 +10,7 @@
 #include <SAMRAI/hier/PatchHierarchy.h>
 
 #include "messenger_info.hpp"
-//#include "core/data/grid/gridlayout.hpp"
+// #include "core/data/grid/gridlayout.hpp"
 
 
 namespace PHARE
@@ -105,7 +105,7 @@ namespace amr
                                         std::unique_ptr<IMessengerInfo> fromFinerInfo)
             = 0;
 
-
+        virtual void registerQuantities(IPhysicalModel& coarseModel, IPhysicalModel& fineModel) {}
 
         /**
          * @brief registerLevel tells the messenger which level in the hierarchy data will be
@@ -121,7 +121,12 @@ namespace amr
                                    int const levelNumber)
             = 0;
 
-
+        virtual void registerLevel(IPhysicalModel& model,
+                                   std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber)
+        {
+            registerLevel(hierarchy, levelNumber);
+        }
 
         /**
          * @brief regrid performs communications necessary to fill a new level when regridding.
@@ -135,7 +140,7 @@ namespace amr
          * @param initDataTime is the time of the regridding
          */
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            const int levelNumber,
+                            int const levelNumber,
                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
                             IPhysicalModel& model, double const initDataTime)
             = 0;
@@ -168,7 +173,7 @@ namespace amr
          * @param time
          */
         virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               const std::shared_ptr<SAMRAI::hier::PatchHierarchy>& hierarchy,
+                               std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                double const currentTime, double const prevCoarserTime,
                                double const newCoarserTime)
             = 0;

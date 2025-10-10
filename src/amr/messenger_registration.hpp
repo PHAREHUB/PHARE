@@ -24,8 +24,8 @@ namespace solver
          */
         template<typename AMR_Types>
         static void registerQuantities(amr::IMessenger<IPhysicalModel<AMR_Types>>& messenger,
-                                       IPhysicalModel<AMR_Types> const& coarseModel,
-                                       IPhysicalModel<AMR_Types> const& fineModel,
+                                       IPhysicalModel<AMR_Types>& coarseModel,
+                                       IPhysicalModel<AMR_Types>& fineModel,
                                        ISolver<AMR_Types> const& solver)
         {
             if (messenger.fineModelName() == fineModel.name()
@@ -42,6 +42,7 @@ namespace solver
                 solver.fillMessengerInfo(fromFinerInfo);
 
                 messenger.registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
+                messenger.registerQuantities(coarseModel, fineModel);
             }
             else
             {

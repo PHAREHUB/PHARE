@@ -334,7 +334,7 @@ namespace solver
 
             if (isRegriddingL0)
             {
-                messenger.registerLevel(hierarchy, levelNumber);
+                messenger.registerLevel(model, hierarchy, levelNumber);
             }
             else if (isRegridding)
             {
@@ -346,14 +346,14 @@ namespace solver
 
                 for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
                 {
-                    messenger.registerLevel(hierarchy, ilvl);
+                    messenger.registerLevel(model, hierarchy, ilvl);
                 }
                 solver.onRegrid();
             }
             else
             {
                 // we're not regriding, just making a new level
-                messenger.registerLevel(hierarchy, levelNumber);
+                messenger.registerLevel(model, hierarchy, levelNumber);
             }
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
@@ -362,7 +362,7 @@ namespace solver
             if (isRegriddingL0)
             {
                 for (auto ilvl = 1; ilvl <= hierarchy->getFinestLevelNumber(); ++ilvl)
-                    messenger.registerLevel(hierarchy, ilvl);
+                    messenger.registerLevel(model, hierarchy, ilvl);
 
                 solver.onRegrid();
             }
@@ -390,10 +390,11 @@ namespace solver
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
                 {
-                    messenger.registerLevel(hierarchy, ilvl);
+                    auto& model = getModel_(ilvl);
+                    messenger.registerLevel(model, hierarchy, ilvl);
 
-                    model_views_.push_back(getSolver_(ilvl).make_view(
-                        AMR_Types::getLevel(*hierarchy, ilvl), getModel_(ilvl)));
+                    model_views_.push_back(
+                        getSolver_(ilvl).make_view(AMR_Types::getLevel(*hierarchy, ilvl), model));
 
                     auto level = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
@@ -402,7 +403,7 @@ namespace solver
                         load_balancer_manager_->allocate(*patch, time);
                     }
                     // if load balance on restart advance
-                    load_balancer_manager_->estimate(*level, getModel_(ilvl));
+                    load_balancer_manager_->estimate(*level, model);
                 }
                 restartInitialized_ = true;
             }
@@ -436,7 +437,7 @@ namespace solver
 
 
         void initializeLevelIntegrator(
-            const std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy>& /*griddingAlg*/)
+            std::shared_ptr<SAMRAI::mesh::GriddingAlgorithmStrategy> const& /*griddingAlg*/)
             override
         {
         }
@@ -557,7 +558,7 @@ namespace solver
         standardLevelSynchronization(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                      int const coarsestLevel, int const finestLevel,
                                      double const syncTime,
-                                     const std::vector<double>& /*oldTimes*/) override
+                                     std::vector<double> const& /*oldTimes*/) override
         {
             // TODO use messengers to sync with coarser
             for (auto ilvl = finestLevel; ilvl > coarsestLevel; --ilvl)

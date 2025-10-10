@@ -40,7 +40,7 @@ void updater_routine(benchmark::State& state)
     double current_time = 1.0;
     double new_time     = 1.005;
     auto dt             = new_time - current_time;
-    while (state.KeepRunningBatch(1)) // while (state.KeepRunning())
+    while (state.KeepRunningBatch(1))
     {
         ionUpdater_.updatePopulations(ions, em, boxing, dt, core::UpdaterMode::domain_only);
         ionUpdater_.updateIons(ions);

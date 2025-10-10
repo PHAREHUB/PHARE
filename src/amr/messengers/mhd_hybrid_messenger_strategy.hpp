@@ -113,10 +113,6 @@ namespace amr
                              double const /*fillTime*/) override
         {
         }
-        void fillDensityBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
-                                double const /*fillTime*/) override
-        {
-        }
 
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
                        std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,

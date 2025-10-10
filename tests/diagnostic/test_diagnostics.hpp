@@ -226,7 +226,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     using GridLayout                           = typename Simulator::PHARETypes::GridLayout_t;
     constexpr auto dimension                   = Simulator::dimension;
     constexpr std::size_t expectedPopNbr       = 2;
-    constexpr std::size_t expectedPopAttrFiles = 5;
+    constexpr std::size_t expectedPopAttrFiles = 4;
 
     std::string const ionsPopPath = "/ions/pop/";
 

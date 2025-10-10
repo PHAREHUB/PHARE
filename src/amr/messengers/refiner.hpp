@@ -7,23 +7,33 @@
 #include "amr/messengers/field_sum_transaction.hpp"
 
 #include <tuple>
+#include <cstdint>
 #include <stdexcept>
 
 
 namespace PHARE::amr
 {
 
-enum class RefinerType {
-    GhostField,
+enum class RefinerType : std::uint16_t {
+    GhostField = 0,
     PatchGhostField,
     InitField,
     InitInteriorPart,
     LevelBorderParticles,
     PatchFieldBorderSum,
-    ExteriorGhostParticles
+    ExteriorGhostParticles,
+    COUNT
 };
 
 
+auto constexpr static inline as_signed(RefinerType rt)
+{
+    return static_cast<int>(rt);
+}
+auto constexpr static inline refiner_type_enum_count()
+{
+    return static_cast<std::size_t>(RefinerType::COUNT);
+}
 
 template<typename ResourcesManager, RefinerType Type>
 class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
