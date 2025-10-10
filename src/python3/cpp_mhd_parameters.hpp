@@ -19,6 +19,7 @@
 #include "core/numerics/reconstructions/linear.hpp"
 #include "core/numerics/reconstructions/weno3.hpp"
 #include "core/numerics/reconstructions/wenoz.hpp"
+#include "core/numerics/reconstructions/mp5.hpp"
 
 #include "core/numerics/slope_limiters/min_mod.hpp"
 #include "core/numerics/slope_limiters/van_leer.hpp"
@@ -54,7 +55,7 @@ using namespace core;
 using namespace solver;
 
 enum class TimeIntegratorType : uint8_t { Euler, TVDRK2, TVDRK3, SSPRK4_5, count };
-enum class ReconstructionType : uint8_t { Constant, Linear, WENO3, WENOZ, count };
+enum class ReconstructionType : uint8_t { Constant, Linear, WENO3, WENOZ, MP5, count };
 enum class SlopeLimiterType : uint8_t { VanLeer, MinMod, count };
 enum class RiemannSolverType : uint8_t { Rusanov, HLL, count };
 
@@ -124,6 +125,13 @@ struct ReconstructionSelector<ReconstructionType::WENOZ>
 {
     template<typename GridLayout, typename SlopeLimiter>
     using type = WENOZReconstruction<GridLayout, SlopeLimiter>;
+};
+
+template<>
+struct ReconstructionSelector<ReconstructionType::MP5>
+{
+    template<typename GridLayout, typename SlopeLimiter>
+    using type = MP5Reconstruction<GridLayout, SlopeLimiter>;
 };
 
 template<ReconstructionType R, SlopeLimiterType S>
@@ -240,7 +248,21 @@ constexpr void declare_all_mhd_params(py::module& m)
     //                    RiemannSolverType::Rusanov, true, false, false>::declare_etc(m,
     //                    full_type);
 
-    variant_name = "ssprk4_5_wenoz_rusanov";
+    // variant_name = "ssprk4_5_wenoz_rusanov_hall";
+    // full_type    = type_name + "_" + variant_name;
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::SSPRK4_5,
+    //                    ReconstructionType::WENOZ, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, true, false, false>::declare_sim(m,
+    //                    full_type);
+    //
+    // RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::SSPRK4_5,
+    //                    ReconstructionType::WENOZ, SlopeLimiterType::count,
+    //                    RiemannSolverType::Rusanov, true, false, false>::declare_etc(m,
+    //                    full_type);
+
+
+    variant_name = "ssprk4_5_mp5_rusanov";
     full_type    = type_name + "_" + variant_name;
 
     RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::SSPRK4_5,
@@ -251,18 +273,7 @@ constexpr void declare_all_mhd_params(py::module& m)
                        ReconstructionType::WENOZ, SlopeLimiterType::count,
                        RiemannSolverType::Rusanov, false, false, false>::declare_etc(m, full_type);
 
-    variant_name = "ssprk4_5_wenoz_rusanov_hall";
-    full_type    = type_name + "_" + variant_name;
-
-    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::SSPRK4_5,
-                       ReconstructionType::WENOZ, SlopeLimiterType::count,
-                       RiemannSolverType::Rusanov, true, false, false>::declare_sim(m, full_type);
-
-    RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::SSPRK4_5,
-                       ReconstructionType::WENOZ, SlopeLimiterType::count,
-                       RiemannSolverType::Rusanov, true, false, false>::declare_etc(m, full_type);
-
-    variant_name = "tvdrk3_wenoz_rusanov";
+    variant_name = "tvdrk3_mp5_rusanov";
     full_type    = type_name + "_" + variant_name;
 
     RegistererSelector<Dimension, InterpOrder, NbRefinedParts, TimeIntegratorType::TVDRK3,
