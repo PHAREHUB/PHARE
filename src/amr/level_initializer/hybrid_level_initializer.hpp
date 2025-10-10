@@ -1,19 +1,24 @@
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
-#include "amr/level_initializer/level_initializer.hpp"
-#include "amr/messengers/hybrid_messenger.hpp"
-#include "amr/messengers/messenger.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include "core/data/grid/gridlayout_utils.hpp"
-#include "core/data/ions/ions.hpp"
-#include "core/numerics/ampere/ampere.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
-#include "core/numerics/moments/moments.hpp"
+// #include "core/data/ions/ions.hpp"
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/numerics/ampere/ampere.hpp"
+#include "core/numerics/moments/moments.hpp"
+#include "core/data/grid/gridlayout_utils.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+
+
+#include "amr/messengers/messenger.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/messengers/hybrid_messenger.hpp"
+// #include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/level_initializer/level_initializer.hpp"
+
 #include "initializer/data_provider.hpp"
+
+#include <string>
 
 namespace PHARE
 {
@@ -95,7 +100,9 @@ namespace solver
             // contribution of neighbor particles.
             // The following two calls will += flux and density on these overlaps.
             hybMessenger.fillFluxBorders(ions, level, initDataTime);
-            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+
+            hybMessenger.template fill<amr::RefinerType::PatchFieldBorderSum>("PHARE_sumField",
+                                                                              level, initDataTime);
 
             // the only remaning incomplete nodes are those next to and on level ghost layers
             // we now complete them by depositing levelghost particles

@@ -83,7 +83,7 @@ public:
             }
         }
 
-        messenger_->registerLevel(hierarchy, levelNumber);
+        messenger_->registerLevel(*model_, hierarchy, levelNumber);
 
         if (oldLevel)
         {

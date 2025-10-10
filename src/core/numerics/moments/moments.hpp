@@ -1,7 +1,6 @@
 #ifndef MOMENTS_HPP
 #define MOMENTS_HPP
 
-
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include <stdexcept>

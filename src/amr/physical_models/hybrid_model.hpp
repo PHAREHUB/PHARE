@@ -3,14 +3,16 @@
 
 #include <string>
 
-#include "initializer/data_provider.hpp"
-#include "core/models/hybrid_state.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
-#include "amr/messengers/hybrid_messenger_info.hpp"
-#include "core/data/vecfield/vecfield.hpp"
 #include "core/def.hpp"
+#include "core/models/hybrid_state.hpp"
+#include "initializer/data_provider.hpp"
+#include "core/data/vecfield/vecfield.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+
+#include "amr/messengers/scheduler.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
 namespace PHARE::solver
 {
@@ -28,15 +30,16 @@ public:
     using Interface              = IPhysicalModel<AMR_Types>;
     using amr_types              = AMR_Types;
     using electrons_t            = Electrons;
-    using patch_t                = typename AMR_Types::patch_t;
-    using level_t                = typename AMR_Types::level_t;
+    using patch_t                = AMR_Types::patch_t;
+    using level_t                = AMR_Types::level_t;
     using gridlayout_type        = GridLayoutT;
     using electromag_type        = Electromag;
-    using vecfield_type          = typename Electromag::vecfield_type;
-    using field_type             = typename vecfield_type::field_type;
+    using vecfield_type          = Electromag::vecfield_type;
+    using field_type             = vecfield_type::field_type;
     using grid_type              = Grid_t;
     using ions_type              = Ions;
-    using particle_array_type    = typename Ions::particle_array_type;
+    using tensorfield_type       = Ions::tensorfield_type;
+    using particle_array_type    = Ions::particle_array_type;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
@@ -105,7 +108,18 @@ public:
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
+
+    void scheduler(amr::RefinerScheduler& schedulr) { scheduler_ = &schedulr; }
+
+    template<auto rtype>
+    void fill(std::string const& dst, auto& level, double time, auto&&... args)
+    {
+        scheduler_->template fill<rtype>(dst, level, time, args...);
+    }
+
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
+
+    amr::RefinerScheduler* scheduler_ = nullptr;
 };
 
 

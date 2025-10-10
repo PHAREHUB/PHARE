@@ -59,26 +59,26 @@ public:
 
     NO_DISCARD auto& getIons() const { return model_.state.ions; }
 
-    void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
-    {
-        using value_type = TensorFieldT::value_type;
-        auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
+    // void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
+    // {
+    //     using value_type = TensorFieldT::value_type;
+    //     auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
 
-        auto& rm   = *model_.resourcesManager;
-        auto& ions = model_.state.ions;
+    //     auto& rm   = *model_.resourcesManager;
+    //     auto& ions = model_.state.ions;
 
-        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
-            for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(sumTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+    //     for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+    //         for (std::uint8_t c = 0; c < N; ++c)
+    //             std::memcpy(sumTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
+    //                         ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
 
-        MTAlgos[popidx].getOrCreateSchedule(hierarchy_, lvl.getLevelNumber()).fillData(time);
+    //     MTAlgos[popidx].getOrCreateSchedule(hierarchy_, lvl.getLevelNumber()).fillData(time);
 
-        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
-            for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), sumTensor_[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
-    }
+    //     for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+    //         for (std::uint8_t c = 0; c < N; ++c)
+    //             std::memcpy(ions[popidx].momentumTensor()[c].data(), sumTensor_[c].data(),
+    //                         ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+    // }
 
 
     template<typename Action>
@@ -88,6 +88,15 @@ public:
             if (auto lvl = hierarchy_.getPatchLevel(ilvl))
                 action(*lvl);
     }
+
+
+    void fillPopMomTensor(auto& lvl, auto const time, auto const idx)
+    {
+        model_.template fill<amr::RefinerType::PatchFieldBorderSum>("PHARE_sumTensor", lvl, time,
+                                                                    idx);
+    }
+
+
 
 
     template<typename Action>

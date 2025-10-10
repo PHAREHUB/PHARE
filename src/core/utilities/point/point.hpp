@@ -130,6 +130,7 @@ namespace core
             return p;
         }
 
+
         auto& operator+=(Type const& value)
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
@@ -144,6 +145,8 @@ namespace core
                 r[iDim] += value[iDim];
             return *this;
         }
+
+
         auto& operator-=(Type const& value)
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
@@ -224,6 +227,7 @@ namespace core
 
             if constexpr (sizeof(Type) == 4)
                 return Point<std::uint32_t, dim>{this->template toArray<std::uint32_t>()};
+
             // else no return cause not yet handled
         }
 

@@ -3,13 +3,12 @@
 
 #include "core/def/phare_mpi.hpp"
 
-#include "core/numerics/ion_updater/ion_updater.hpp"
-#include "core/numerics/ampere/ampere.hpp"
-#include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/ohm/ohm.hpp"
-
+#include "core/numerics/ampere/ampere.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/numerics/faraday/faraday.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
+#include "core/numerics/ion_updater/ion_updater.hpp"
 
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
@@ -432,10 +431,15 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     // this needs to be done before calling the messenger
     setTime([](auto& state) -> auto& { return state.ions; });
 
-    fromCoarser.fillFluxBorders(views.model().state.ions, level, newTime);
-    fromCoarser.fillDensityBorders(views.model().state.ions, level, newTime);
-    fromCoarser.fillIonPopMomentGhosts(views.model().state.ions, level, newTime);
-    fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
+    auto& model = views.model();
+
+    fromCoarser.fillFluxBorders(model.state.ions, level, newTime);
+
+    model.template fill<amr::RefinerType::PatchFieldBorderSum>( //
+        "PHARE_sumField", level, newTime);
+
+    fromCoarser.fillIonPopMomentGhosts(model.state.ions, level, newTime);
+    fromCoarser.fillIonGhostParticles(model.state.ions, level, newTime);
 
     for (auto& state : views)
         ionUpdater_.updateIons(state.ions);

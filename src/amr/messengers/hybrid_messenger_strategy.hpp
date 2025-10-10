@@ -3,6 +3,7 @@
 
 #include "amr/messengers/messenger_info.hpp"
 
+#include "amr/messengers/scheduler.hpp"
 #include "core/def/phare_mpi.hpp"
 
 
@@ -43,6 +44,7 @@ namespace amr
                            [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo)
             = 0;
 
+        virtual void registerQuantities(IPhysicalModel& coarseModel, IPhysicalModel& fineModel) {}
 
 
         virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() = 0;
@@ -52,6 +54,13 @@ namespace amr
         virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                    int const levelNumber)
             = 0;
+
+        virtual void registerLevel(IPhysicalModel& model,
+                                   std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber)
+        {
+            registerLevel(hierarchy, levelNumber);
+        }
 
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                             int const levelNumber,
@@ -122,15 +131,20 @@ namespace amr
         virtual void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                      double const fillTime)
             = 0;
-        virtual void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                        double const fillTime)
-            = 0;
 
 
         std::string name() const { return stratname_; }
 
         virtual ~HybridMessengerStrategy() = default;
 
+
+        template<auto rtype>
+        void fill(std::string const& dst, SAMRAI::hier::PatchLevel& level, double time)
+        {
+            scheduler_.template fill<rtype>(dst, level, time);
+        }
+
+        auto& scheduler() { return scheduler_; }
 
     protected:
         explicit HybridMessengerStrategy(std::string stratName)
@@ -139,6 +153,7 @@ namespace amr
         }
 
         std::string stratname_;
+        RefinerScheduler scheduler_;
     };
 } // namespace amr
 } // namespace PHARE
