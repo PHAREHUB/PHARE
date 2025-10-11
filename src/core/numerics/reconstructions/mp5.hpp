@@ -65,7 +65,7 @@ private:
 
     static auto recons_mp5_R_(auto ull, auto ul, auto u, auto ur, auto urr)
     {
-        return recons_mp5_impl_(urr, ur, u, ul, ull); // Reversed!
+        return recons_mp5_impl_(urr, ur, u, ul, ull);
     }
 
     static auto recons_mp5_impl_(auto const v_m2, auto const v_m1, auto const u, auto const v_p1,
@@ -82,9 +82,9 @@ private:
         auto const d4i1_2 = MinModLimiter::limit(4. * di - dir, 4. * dir - di, di, dir);
         auto const fMD    = (u + v_p1) / 2. - d4i1_2 / 2.;
         auto const fLC    = u + Dil / 2. + (4. / 3.) * d4i1_2;
-        auto const fmin   = std::max(std::min(u, v_p1, fMD), std::min(u, fUL, fLC));
-        auto const fmax   = std::min(std::max(u, v_p1, fMD), std::max(u, fUL, fLC));
-        return (fi1_2 < u) * (fi1_2 - fMP) < 0 ? fi1_2 : std::clamp(fMP, fmin, fmax);
+        auto const fmin   = std::max(std::min({u, v_p1, fMD}), std::min({u, fUL, fLC}));
+        auto const fmax   = std::min(std::max({u, v_p1, fMD}), std::max({u, fUL, fLC}));
+        return (fi1_2 < u) * (fi1_2 - fMP) < 0 ? fi1_2 : std::clamp(fi1_2, fmin, fmax);
     }
 };
 
