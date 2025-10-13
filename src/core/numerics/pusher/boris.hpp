@@ -130,7 +130,6 @@ public:
                 for (std::uint16_t i = 0; i < 3; ++i)
                     ex("B_" + std::to_string(i), std::to_string(b[i]));
                 ex("level", std::to_string(layout.levelNumber()));
-                PHARE_LOG_ERROR(ex());
                 throw ex;
             }
         }
@@ -211,7 +210,6 @@ private:
                 ss << "PrePush Particle moved 2 cells with delta/vel: ";
                 ss << e.delta << "/" << e.vel << std::endl;
                 DictionaryException ex{"cause", ss.str()};
-                PHARE_LOG_ERROR(ex());
                 throw ex;
             }
         }

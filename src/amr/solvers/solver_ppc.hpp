@@ -442,9 +442,9 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
         for (auto& state : views)
             ionUpdater_.updateIons(state.ions);
     }
-    catch (core::DictionaryException const&)
+    catch (core::DictionaryException const& ex)
     {
-        // handled by next if mpi::any
+        PHARE_LOG_ERROR(ex());
     }
     if (core::mpi::any(core::Errors::instance().any()))
         throw core::DictionaryException{}("ID", "Updater::updatePopulations");

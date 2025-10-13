@@ -375,34 +375,34 @@ void Simulator<opts>::initialize()
 {
     PHARE_LOG_SCOPE(1, "Simulator::initialize");
 
+    std::optional<std::string> error = std::nullopt;
+
     try
     {
         if (isInitialized)
-            std::runtime_error("cannot initialize  - simulator already isInitialized");
+            throw std::runtime_error("cannot initialize  - simulator already isInitialized");
 
-        if (integrator_ != nullptr)
-            integrator_->initialize();
-        else
+        if (integrator_ == nullptr)
             throw std::runtime_error("Error - Simulator has no integrator");
+
+        integrator_->initialize();
     }
-    catch (std::runtime_error const& e)
+    catch (std::exception const& e)
     {
-        std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
-        std::rethrow_exception(std::current_exception());
-    }
-    catch (core::DictionaryException const& e)
-    {
-        throw std::runtime_error(e());
+        error = std::string{"EXCEPTION CAUGHT: "} + e.what();
+        PHARE_LOG_ERROR(*error);
     }
     catch (...)
     {
-        std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
-        std::rethrow_exception(std::current_exception());
+        error = "UNKNOWN EXCEPTION CAUGHT";
+        PHARE_LOG_ERROR(*error);
     }
 
     if (core::mpi::any(core::Errors::instance().any()))
     {
-        this->dMan.release(); // closes/flushes hdf5 files
+        this->dMan.reset(); // closes/flushes hdf5 files
+        if (error)
+            throw std::runtime_error(*error);
         throw std::runtime_error("forcing error");
     }
 
@@ -419,34 +419,34 @@ template<auto opts>
 double Simulator<opts>::advance(double dt)
 {
     PHARE_LOG_SCOPE(1, "Simulator::advance");
-    double dt_new = 0;
 
-    if (!integrator_)
-        throw std::runtime_error("Error - no valid integrator in the simulator");
+    double dt_new                    = 0;
+    std::optional<std::string> error = std::nullopt;
 
     try
     {
+        if (!integrator_)
+            throw std::runtime_error("Error - no valid integrator in the simulator");
+
         dt_new       = integrator_->advance(dt);
         currentTime_ = startTime_ + ((*timeStamper) += dt);
     }
-    catch (std::runtime_error const& e)
+    catch (std::exception const& e)
     {
-        std::cerr << "EXCEPTION CAUGHT: " << e.what() << std::endl;
-        std::rethrow_exception(std::current_exception());
-    }
-    catch (core::DictionaryException const& e)
-    {
-        throw std::runtime_error(e());
+        error = std::string{"EXCEPTION CAUGHT: "} + e.what();
+        PHARE_LOG_ERROR(*error);
     }
     catch (...)
     {
-        std::cerr << "UNKNOWN EXCEPTION CAUGHT" << std::endl;
-        std::rethrow_exception(std::current_exception());
+        error = "UNKNOWN EXCEPTION CAUGHT";
+        PHARE_LOG_ERROR(*error);
     }
 
     if (core::mpi::any(core::Errors::instance().any()))
     {
-        this->dMan.release(); // closes/flushes hdf5 files
+        this->dMan.reset(); // closes/flushes hdf5 files
+        if (error)
+            throw std::runtime_error(*error);
         throw std::runtime_error("forcing error");
     }
 

@@ -4,6 +4,7 @@
 #include "core/def.hpp"
 
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <unordered_map>
 
@@ -35,6 +36,12 @@ public:
         dict_.visit(
             [&](std::string const& key, auto const& val) { ss << key << " " << val << std::endl; });
         return ss.str();
+    }
+
+    char const* what() const noexcept override
+    {
+        static thread_local std::string msg;
+        return (msg = (*this)()).c_str();
     }
 
 private:

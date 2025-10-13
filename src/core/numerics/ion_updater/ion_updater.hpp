@@ -2,10 +2,8 @@
 #define PHARE_ION_UPDATER_HPP
 
 
-#include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
-#include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/range/range.hpp"
 #include "core/numerics/pusher/pusher.hpp"
 #include "core/numerics/moments/moments.hpp"
