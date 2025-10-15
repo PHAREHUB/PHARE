@@ -32,7 +32,7 @@ template<typename Type, std::size_t dimension>
 void declarePatchData(py::module& m, std::string key)
 {
     using PatchDataType = PatchData<Type, dimension>;
-    py::class_<PatchDataType>(m, key.c_str())
+    py::class_<PatchDataType, py::smart_holder>(m, key.c_str())
         .def_readonly("patchID", &PatchDataType::patchID)
         .def_readonly("origin", &PatchDataType::origin)
         .def_readonly("lower", &PatchDataType::lower)
@@ -46,7 +46,7 @@ void declareDim(py::module& m)
 {
     using CP         = core::ContiguousParticles<dim>;
     std::string name = "ContiguousParticles_" + std::to_string(dim);
-    py::class_<CP, std::shared_ptr<CP>>(m, name.c_str())
+    py::class_<CP, py::smart_holder>(m, name.c_str())
         .def(py::init<std::size_t>())
         .def_readwrite("iCell", &CP::iCell)
         .def_readwrite("delta", &CP::delta)
@@ -88,7 +88,7 @@ void declare_etc(py::module& m)
     using Sim        = Simulator<opts>;
     using DW         = DataWrangler<opts>;
     std::string name = "DataWrangler" + type_string;
-    py::class_<DW, std::shared_ptr<DW>>(m, name.c_str())
+    py::class_<DW, py::smart_holder>(m, name.c_str())
         .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def("sync_merge", &DW::sync_merge)
@@ -97,8 +97,7 @@ void declare_etc(py::module& m)
 
     using PL = PatchLevel<opts>;
     name     = "PatchLevel_" + type_string;
-
-    py::class_<PL, std::shared_ptr<PL>>(m, name.c_str())
+    py::class_<PL, py::smart_holder>(m, name.c_str())
         .def("getEM", &PL::getEM)
         .def("getE", &PL::getE)
         .def("getB", &PL::getB)
@@ -123,7 +122,7 @@ void declare_etc(py::module& m)
     using _Splitter
         = PHARE::amr::Splitter<_dim, _interp, core::RefinedParticlesConst<nbRefinedPart>>;
     name = "Splitter" + type_string;
-    py::class_<_Splitter, std::shared_ptr<_Splitter>>(m, name.c_str())
+    py::class_<_Splitter, py::smart_holder>(m, name.c_str())
         .def(py::init<>())
         .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
         .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
@@ -146,7 +145,7 @@ void declare_sim(py::module& m)
     using Sim        = Simulator<opts>;
     std::string name = "Simulator" + type_string;
     declareSimulator<Sim>(
-        py::class_<Sim, std::shared_ptr<Sim>>(m, name.c_str())
+        py::class_<Sim, py::smart_holder>(m, name.c_str())
             .def_property_readonly_static("dims", [](py::object) { return Sim::dimension; })
             .def_property_readonly_static("interp_order",
                                           [](py::object) { return Sim::interp_order; })
@@ -182,11 +181,11 @@ void declare_all(py::module& m, std::tuple<Dimension, InterpOrder, NbRefinedPart
 
 void inline declare_essential(py::module& m)
 {
-    py::class_<SamraiLifeCycle, std::shared_ptr<SamraiLifeCycle>>(m, "SamraiLifeCycle")
+    py::class_<SamraiLifeCycle, py::smart_holder>(m, "SamraiLifeCycle")
         .def(py::init<>())
         .def("reset", &SamraiLifeCycle::reset);
 
-    py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");
+    py::class_<PHARE::amr::Hierarchy, py::smart_holder>(m, "AMRHierarchy");
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
 
     m.def("mpi_size", []() { return core::mpi::size(); });
