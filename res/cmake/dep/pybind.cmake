@@ -10,7 +10,7 @@ function(get_pybind)
   endif()
 
   if(NOT DEFINED PHARE_PYBIND11_VERSION)
-    SET(PHARE_PYBIND11_VERSION "v3.0.1") # master broken since https://github.com/pybind/pybind11/pull/5866
+    SET(PHARE_PYBIND11_VERSION "master")
   endif()
 
   set(PYBIND11_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/pybind11)
