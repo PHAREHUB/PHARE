@@ -16,8 +16,8 @@ os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 ph.NO_GUI()
 cpp = cpp_lib()
 
-cells = (200, 100)
-time_step = 0.005
+cells = (600, 300)
+time_step = 0.005 / 16
 final_time = 50
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
 diag_dir = "phare_outputs/mhd_harris"
@@ -32,10 +32,10 @@ def config():
         time_step=time_step,
         final_time=final_time,
         cells=cells,
-        dl=(0.40, 0.40),
+        dl=(0.10, 0.10),
         refinement="tagging",
-        max_mhd_level=2,
-        max_nbr_levels=2,
+        max_mhd_level=1,
+        max_nbr_levels=1,
         hyper_resistivity=0.0,
         resistivity=0.0,
         diag_options={
@@ -47,10 +47,10 @@ def config():
         eta=0.0,
         nu=0.0,
         gamma=5.0 / 3.0,
-        reconstruction="constant",
-        limiter="",
+        reconstruction="linear",
+        limiter="vanleer",
         riemann="rusanov",
-        mhd_timestepper="euler",
+        mhd_timestepper="tvdrk2",
         hall=hall,
         model_options=["MHDModel"],
     )
