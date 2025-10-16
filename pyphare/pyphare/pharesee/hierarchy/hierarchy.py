@@ -438,8 +438,9 @@ class PatchHierarchy(object):
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
+                lw = kwargs.get("lw", 1)
                 color = kwargs.get("color", "k")
-                ax.plot(x, val, label=label, marker=marker, ls=ls, color=color)
+                ax.plot(x, val, label=label, marker=marker, ls=ls, lw=lw, color=color)
 
         ax.set_title(kwargs.get("title", ""))
         ax.set_xlabel(kwargs.get("xlabel", "x"))
@@ -613,6 +614,21 @@ class PatchHierarchy(object):
                 final[pop] = kwargs["select"](particles)
 
         return final, dp(final, **kwargs)
+
+    def interpol(self, time, interp="nearest"):
+        from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+        from pyphare.pharesee.run.utils import build_interpolator
+
+        nbrGhosts = list(self.level(0, time).patches[0].patch_datas.values())[0].ghosts_nbr
+
+        interp_ = {}
+        for qty in self.quantities():
+            box = self.level(0, time).patches[0].patch_datas[qty].box
+            dl = self.level(0, time).patches[0].patch_datas[qty].dl
+            data, coords = flat_finest_field(self, qty, time=time)
+            interp_[qty] = build_interpolator(data, coords, interp, box, dl, qty, nbrGhosts)
+        return interp_
+
 
 
 def finest_part_data(hierarchy, time=None):
