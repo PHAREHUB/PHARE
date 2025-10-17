@@ -730,9 +730,9 @@ def checker(func):
         kwargs["dry_run"] = kwargs.get(
             "dry_run", os.environ.get("PHARE_DRY_RUN", "0") == "1"
         )
-        kwargs["write_reports"] = kwargs.get(  # on by default except for tests
-            "write_reports", os.environ.get("PHARE_TESTING", "0") != "1"
-        )
+
+        # is per rank, not per node (yet)
+        kwargs["write_reports"] = kwargs.get("write_reports", False)
 
         return func(simulation_object, **kwargs)
 
