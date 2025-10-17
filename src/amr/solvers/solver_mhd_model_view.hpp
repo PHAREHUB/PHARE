@@ -4,6 +4,7 @@
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 #include "core/numerics/constrained_transport/constrained_transport.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
@@ -11,6 +12,8 @@
 #include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/time_integrator_utils.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
 
 namespace PHARE::solver
 {
@@ -143,6 +146,21 @@ public:
             auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
             auto _sp    = model.resourcesManager->setOnPatch(*patch, state, fluxes);
             auto _sl    = core::SetLayout(&layout, fvm_);
+
+            if constexpr (GridLayout::dimension == 2)
+            {
+                auto box = amr::phare_box_from<GridLayout::dimension>(patch->getBox());
+                if (core::isIn(core::Point<int, GridLayout::dimension>(0, 201), box)
+                    || core::isIn(core::Point<int, GridLayout::dimension>(150, 201), box)
+                    || core::isIn(core::Point<int, GridLayout::dimension>(300, 201), box)
+                    || core::isIn(core::Point<int, GridLayout::dimension>(450, 201), box)
+                    || core::isIn(core::Point<int, GridLayout::dimension>(599, 201), box))
+                {
+                    std::cout << "FVMethodTransformer patch box: " << box.lower[0] << ", "
+                              << box.lower[1] << " -> " << box.upper[0] << ", " << box.upper[1]
+                              << "\n";
+                }
+            }
 
             setTime(
                 *patch, [&]() -> auto&& { return state.rho; }, [&]() -> auto&& { return state.V; },

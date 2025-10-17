@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_NUMERICS_GODUNOV_FLUXES_HPP
 #define PHARE_CORE_NUMERICS_GODUNOV_FLUXES_HPP
 
+#include "core/utilities/point/point.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
@@ -152,6 +153,25 @@ public:
 
                         fluxes.template get_dir<direction>({indices...})
                             = riemann_.template solve<direction>(uL, uR, fL, fR);
+
+                        if constexpr (dimension == 2)
+                            if (core::Point<int, dimension>{indices...}
+                                    == core::Point<int, dimension>{0, 0}
+                                || core::Point<int, dimension>{indices...}
+                                       == core::Point<int, dimension>{74, 0}
+                                || core::Point<int, dimension>{indices...}
+                                       == core::Point<int, dimension>{149, 50}
+                                || core::Point<int, dimension>{indices...}
+                                       == core::Point<int, dimension>{0, 50})
+                            {
+                                std::cout
+                                    << "magnetic fluxes at ("
+                                    << core::Point<int, dimension>{indices...}.str() << ") : "
+                                    << fluxes.template get_dir<direction>({indices...}).B.x << ", "
+                                    << fluxes.template get_dir<direction>({indices...}).B.y << ", "
+                                    << fluxes.template get_dir<direction>({indices...}).B.z
+                                    << "direction" << static_cast<int>(direction) << "\n";
+                            }
                     }
                 }
                 else
