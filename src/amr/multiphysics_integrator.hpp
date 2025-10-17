@@ -514,6 +514,9 @@ namespace solver
                                               << " from t = " << currentTime
                                               << " to t = " << newTime);
 
+            std::cout << "advanceLevel " << iLevel << " with dt = " << newTime - currentTime
+                      << " from t = " << currentTime << " to t = " << newTime << '\n';
+
             auto& solver      = getSolver_(iLevel);
             auto& model       = getModel_(iLevel);
             auto& fromCoarser = getMessengerWithCoarser_(iLevel);
