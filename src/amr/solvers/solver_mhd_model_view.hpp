@@ -160,6 +160,10 @@ public:
                               << box.lower[1] << " -> " << box.upper[0] << ", " << box.upper[1]
                               << "\n";
                 }
+                else
+                {
+                    std::cout << "Pass" << "\n";
+                }
             }
 
             setTime(
