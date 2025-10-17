@@ -157,6 +157,17 @@ private:
                 Ez(index) = 0.25
                             * (-By_x(index) - By_x(index[0], index[1] - 1) + Bx_y(index)
                                + Bx_y(index[0] - 1, index[1]));
+
+                if (core::Point<int, dimension>{index} == core::Point<int, dimension>{0, 0}
+                    || core::Point<int, dimension>{index} == core::Point<int, dimension>{74, 0}
+                    || core::Point<int, dimension>{index} == core::Point<int, dimension>{149, 50}
+                    || core::Point<int, dimension>{index} == core::Point<int, dimension>{0, 50})
+                {
+                    std::cout << "Ez at (" << core::Point<int, dimension>{index}.str()
+                              << ") : " << Ez(index) << "with By_x: " << By_x(index) << ", "
+                              << By_x(index[0], index[1] - 1) << " and Bx_y: " << Bx_y(index)
+                              << ", " << Bx_y(index[0] - 1, index[1]) << "\n";
+                }
             }
             else if constexpr (dimension == 3)
             {
