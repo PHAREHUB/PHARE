@@ -5,6 +5,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
+#include <iomanip>
 #include <tuple>
 
 namespace PHARE::core
@@ -160,14 +161,15 @@ private:
 
                 if (core::Point<int, dimension>{index} == core::Point<int, dimension>{0 + 2, 0 + 2}
                     || core::Point<int, dimension>{index}
-                           == core::Point<int, dimension>{74 + 2, 0 + 2}
+                           == core::Point<int, dimension>{74 + 2 + 1, 0 + 2}
                     || core::Point<int, dimension>{index}
-                           == core::Point<int, dimension>{149 + 2, 50 + 2}
+                           == core::Point<int, dimension>{149 + 2 + 1, 50 + 2 + 1}
                     || core::Point<int, dimension>{index}
-                           == core::Point<int, dimension>{0 + 2, 50 + 2})
+                           == core::Point<int, dimension>{0 + 2, 50 + 2 + 1})
                 {
-                    std::cout << "Ez at (" << core::Point<int, dimension>{index}.str()
-                              << ") : " << Ez(index) << "with By_x: " << By_x(index) << ", "
+                    std::cout << std::setprecision(16) << "Ez at ("
+                              << core::Point<int, dimension>{index}.str() << ") : " << Ez(index)
+                              << "with By_x: " << By_x(index) << ", "
                               << By_x(index[0], index[1] - 1) << " and Bx_y: " << Bx_y(index)
                               << ", " << Bx_y(index[0] - 1, index[1]) << "\n";
                 }
