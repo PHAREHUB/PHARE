@@ -147,25 +147,6 @@ public:
             auto _sp    = model.resourcesManager->setOnPatch(*patch, state, fluxes);
             auto _sl    = core::SetLayout(&layout, fvm_);
 
-            if constexpr (GridLayout::dimension == 2)
-            {
-                auto box = amr::phare_box_from<GridLayout::dimension>(patch->getBox());
-                if (core::isIn(core::Point<int, GridLayout::dimension>(0, 201), box)
-                    || core::isIn(core::Point<int, GridLayout::dimension>(150, 201), box)
-                    || core::isIn(core::Point<int, GridLayout::dimension>(300, 201), box)
-                    || core::isIn(core::Point<int, GridLayout::dimension>(450, 201), box)
-                    || core::isIn(core::Point<int, GridLayout::dimension>(599, 201), box))
-                {
-                    std::cout << "FVMethodTransformer patch box: " << box.lower[0] << ", "
-                              << box.lower[1] << " -> " << box.upper[0] << ", " << box.upper[1]
-                              << "\n";
-                }
-                else
-                {
-                    std::cout << "Pass" << "\n";
-                }
-            }
-
             setTime(
                 *patch, [&]() -> auto&& { return state.rho; }, [&]() -> auto&& { return state.V; },
                 [&]() -> auto&& { return state.P; }, [&]() -> auto&& { return state.J; });
