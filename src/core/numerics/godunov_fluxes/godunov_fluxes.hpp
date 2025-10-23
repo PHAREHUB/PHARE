@@ -142,7 +142,7 @@ public:
                         });
 
                         fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR);
+                            = riemann_.template solve<direction>(uL, uR, fL, fR, {indices...});
                     }
                     else
                     {
@@ -152,7 +152,7 @@ public:
                         });
 
                         fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR);
+                            = riemann_.template solve<direction>(uL, uR, fL, fR, {indices...});
                     }
                 }
                 else
@@ -167,7 +167,7 @@ public:
                     });
 
                     fluxes.template get_dir<direction>({indices...})
-                        = riemann_.template solve<direction>(uL, uR, fL, fR);
+                        = riemann_.template solve<direction>(uL, uR, fL, fR, {indices...});
                 }
             });
         });
