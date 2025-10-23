@@ -3,6 +3,8 @@
 
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
+#include "core/utilities/index/index.hpp"
+#include <iomanip>
 
 namespace PHARE::core
 {
@@ -17,7 +19,8 @@ public:
     }
 
     template<auto direction>
-    auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR) const
+    auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR,
+               MeshIndex<GridLayout::dimension> index) const
     {
         auto const speeds = rusanov_speeds_<direction>(uL, uR);
 
@@ -50,6 +53,43 @@ public:
         {
             auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
                 = rusanov_(uL.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hydro_speed);
+
+            if constexpr (GridLayout::dimension == 2)
+            {
+                if constexpr (direction == Direction::X)
+                {
+                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{0 + 2, -1 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, -1 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2 + 1}
+                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2 + 1}
+                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2})
+                    {
+                        std::cout << std::setprecision(16) << " By_x flux at (" << index.str()
+                                  << ") : " << FBy << " uL " << uL.B.y << " uR " << uR.B.y << " fL "
+                                  << fL.B.y << " fR " << fR.B.y << " speed " << hydro_speed << "\n";
+                    }
+                }
+
+                if constexpr (direction == Direction::Y)
+                {
+                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{-1 + 2, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{74 + 2, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2 + 1}
+                        || index == MeshIndex<GridLayout::dimension>{149 + 2, 50 + 2 + 1}
+                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2 + 1}
+                        || index == MeshIndex<GridLayout::dimension>{-1 + 2, 50 + 2 + 1})
+                    {
+                        std::cout << std::setprecision(16) << " Bx_y flux at (" << index.str()
+                                  << ") : " << FBx << " uL " << uL.B.x << " uR " << uR.B.x << " fL "
+                                  << fL.B.x << " fR " << fR.B.x << " speed " << hydro_speed << "\n";
+                    }
+                }
+            }
 
             return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
         }
