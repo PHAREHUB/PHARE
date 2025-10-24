@@ -1,6 +1,8 @@
 #ifndef PHARE_MHD_STATE_HPP
 #define PHARE_MHD_STATE_HPP
 
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/data/field/initializers/field_user_initializer.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
@@ -106,9 +108,52 @@ namespace core
             Binit_.initialize(B, layout);
             FieldUserFunctionInitializer::initialize(P, layout, Pinit_);
 
+            auto forBx = [&](auto& Bx, MeshIndex<GridLayout::dimension> index) {
+                if constexpr (GridLayout::dimension == 2)
+                {
+                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{74 + 2, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{149 + 2, 50 + 2 + 1}
+                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2 + 1})
+                    {
+                        std::cout << std::setprecision(16) << "( " << index.str()
+                                  << ") Bx--: " << Bx(layout.template previous<Direction::Y>(index))
+                                  << " Bx+-: "
+                                  << Bx(layout.template previous<Direction::Y>(
+                                         layout.template next<Direction::X>(index)))
+                                  << " Bx-+: " << Bx(index)
+                                  << " Bx++: " << Bx(layout.template next<Direction::X>(index))
+                                  << "\n";
+                    }
+                }
+            };
+
+            auto forBy = [&](auto& By, MeshIndex<GridLayout::dimension> index) {
+                if constexpr (GridLayout::dimension == 2)
+                {
+                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, 0 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2}
+                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2})
+                    {
+                        std::cout << std::setprecision(16) << "( " << index.str()
+                                  << ") By--: " << By(layout.template previous<Direction::X>(index))
+                                  << " By+-: "
+                                  << By(layout.template previous<Direction::X>(
+                                         layout.template next<Direction::Y>(index)))
+                                  << " By-+: " << By(index)
+                                  << " By++: " << By(layout.template next<Direction::Y>(index))
+                                  << "\n";
+                    }
+                }
+            };
+
+            layout.evalOnBox(B(Component::Y),
+                             [&](auto&... args) mutable { forBx(B(Component::X), {args...}); });
+
             ToConservativeConverter_ref{layout, gamma_}(
-                rho, V, B, P, rhoV, Etot); // initial to conservative conversion because we store
-                                           // conservative quantities on the grid
+                rho, V, B, P, rhoV, Etot); // initial to conservative conversion because we
+                                           // store conservative quantities on the grid
         }
 
         field_type rho;
