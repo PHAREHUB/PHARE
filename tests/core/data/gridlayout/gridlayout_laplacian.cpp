@@ -31,7 +31,8 @@ TYPED_TEST(a1DLaplacian, LaplacianJx1D)
 
     for (auto ix = gsi_X; ix <= gei_X; ++ix)
     {
-        auto point   = this->layout.fieldNodeCoordinates(this->Jx, Point{0.}, ix);
+        auto point = this->layout.fieldNodeCoordinates(
+            this->Jx, this->layout.localToAMR(Point{ix}.as_signed()));
         this->Jx(ix) = std::sinh(0.1 * point[0]);
     }
 
@@ -59,7 +60,8 @@ TYPED_TEST(a1DLaplacian, LaplacianJy1D)
 
     for (auto ix = gsi_X; ix <= gei_X; ++ix)
     {
-        auto point   = this->layout.fieldNodeCoordinates(this->Jy, Point{0.}, ix);
+        auto point = this->layout.fieldNodeCoordinates(
+            this->Jy, this->layout.localToAMR(Point{ix}.as_signed()));
         this->Jy(ix) = std::sinh(0.3 * point[0]);
     }
 
@@ -87,7 +89,8 @@ TYPED_TEST(a1DLaplacian, LaplacianJz1D)
 
     for (auto ix = gsi_X; ix <= gei_X; ++ix)
     {
-        auto point   = this->layout.fieldNodeCoordinates(this->Jz, Point{0.}, ix);
+        auto point = this->layout.fieldNodeCoordinates(
+            this->Jz, this->layout.localToAMR(Point{ix}.as_signed()));
         this->Jz(ix) = std::sinh(0.2 * point[0]);
     }
 
@@ -131,7 +134,8 @@ TYPED_TEST(a2DLaplacian, LaplacianJx2D)
     {
         for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
         {
-            auto point       = this->layout.fieldNodeCoordinates(this->Jx, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                this->Jx, this->layout.localToAMR(Point{ix, iy}.as_signed()));
             this->Jx(ix, iy) = std::sinh(0.1 * point[0]) * std::cosh(0.1 * point[1]);
         }
     }
@@ -173,7 +177,8 @@ TYPED_TEST(a2DLaplacian, LaplacianJy2D)
     {
         for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
         {
-            auto point       = this->layout.fieldNodeCoordinates(this->Jy, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                this->Jy, this->layout.localToAMR(Point{ix, iy}.as_signed()));
             this->Jy(ix, iy) = std::sinh(0.3 * point[0]) * std::cosh(0.3 * point[1]);
         }
     }
@@ -215,7 +220,8 @@ TYPED_TEST(a2DLaplacian, LaplacianJz2D)
     {
         for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
         {
-            auto point       = this->layout.fieldNodeCoordinates(this->Jz, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                this->Jz, this->layout.localToAMR(Point{ix, iy}.as_signed()));
             this->Jz(ix, iy) = std::sinh(0.2 * point[0]) * std::cosh(0.2 * point[1]);
         }
     }
@@ -275,8 +281,8 @@ TYPED_TEST(a3DLaplacian, LaplacianJx3D)
         {
             for (auto iz = gsi_Z; iz <= gei_Z; ++iz)
             {
-                auto point
-                    = this->layout.fieldNodeCoordinates(this->Jx, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    this->Jx, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
                 this->Jx(ix, iy, iz) = std::sinh(0.1 * point[0]) * std::cosh(0.1 * point[1])
                                        * std::tanh(0.1 * point[2]);
             }
@@ -330,8 +336,8 @@ TYPED_TEST(a3DLaplacian, LaplacianJy3D)
         {
             for (auto iz = gsi_Z; iz <= gei_Z; ++iz)
             {
-                auto point
-                    = this->layout.fieldNodeCoordinates(this->Jy, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    this->Jy, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
                 this->Jy(ix, iy, iz) = std::sinh(0.3 * point[0]) * std::cosh(0.3 * point[1])
                                        * std::tanh(0.3 * point[2]);
             }
@@ -385,8 +391,8 @@ TYPED_TEST(a3DLaplacian, LaplacianJz3D)
         {
             for (auto iz = gsi_Z; iz <= gei_Z; ++iz)
             {
-                auto point
-                    = this->layout.fieldNodeCoordinates(this->Jz, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    this->Jz, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
                 this->Jz(ix, iy, iz) = std::sinh(0.2 * point[0]) * std::cosh(0.2 * point[1])
                                        * std::tanh(0.2 * point[2]);
             }

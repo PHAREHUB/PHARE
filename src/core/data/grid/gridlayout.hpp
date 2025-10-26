@@ -227,29 +227,18 @@ namespace core
 
 
 
-        template<typename Centering>
-        NO_DISCARD auto physicalStartToEndIndices(Centering const& centering,
-                                                  bool const includeEnd = false) const
+
+        template<typename T>
+        NO_DISCARD auto indicis(Box<T, dimension> const& box) const
         {
-            return StartToEndIndices_(
-                centering,
-                [&](auto const& centering_, auto const direction) {
-                    return this->physicalStartToEnd(centering_, direction);
+            return generate(
+                [](auto const& bix) -> tuple_fixed_type<T, dimension> {
+                    return for_N<dimension>([&](auto i) { return bix[i]; });
                 },
-                includeEnd);
+                box);
         }
 
-        template<typename Centering>
-        NO_DISCARD auto ghostStartToEndIndices(Centering const& centering,
-                                               bool const includeEnd = false) const
-        {
-            return StartToEndIndices_(
-                centering,
-                [&](auto const& centering_, auto const direction) {
-                    return this->ghostStartToEnd(centering_, direction);
-                },
-                includeEnd);
-        }
+
 
         template<bool WithField, typename Centering, typename CoordsFn, typename... Indexes>
         NO_DISCARD auto inline indexesToCoords([[maybe_unused]] Centering const& centering,
@@ -304,8 +293,8 @@ namespace core
         NO_DISCARD std::uint32_t physicalStartIndex(QtyCentering centering,
                                                     Direction direction) const
         {
-            std::uint32_t icentering = static_cast<std::uint32_t>(centering);
-            std::uint32_t iDir       = static_cast<std::uint32_t>(direction);
+            auto const icentering = static_cast<std::uint32_t>(centering);
+            auto const iDir       = static_cast<std::uint32_t>(direction);
             return physicalStartIndexTable_[icentering][iDir];
         }
 
@@ -314,11 +303,10 @@ namespace core
         NO_DISCARD std::uint32_t physicalStartIndex(HybridQuantity::Scalar const& hybridQuantity,
                                                     Direction direction) const
         {
-            std::uint32_t iQty                 = static_cast<std::uint32_t>(hybridQuantity);
-            std::uint32_t iDir                 = static_cast<std::uint32_t>(direction);
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
-            std::uint32_t iCentering = static_cast<std::uint32_t>(hybridQtyCentering[iQty][iDir]);
-
+            constexpr auto hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
+            auto const iQty                   = static_cast<std::uint32_t>(hybridQuantity);
+            auto const iDir                   = static_cast<std::uint32_t>(direction);
+            auto const iCentering = static_cast<std::uint32_t>(hybridQtyCentering[iQty][iDir]);
             return physicalStartIndexTable_[iCentering][iDir];
         }
 
@@ -463,32 +451,23 @@ namespace core
          * @brief fieldNodeCoordinates returns the coordinate of a multidimensional index
          * associated with a given Field, in physical coordinates.
          */
-        template<typename Field_t, typename... Indexes>
-        NO_DISCARD Point<double, dimension>
-        fieldNodeCoordinates(Field_t const& field, Point<double, dimension> const& origin,
-                             Indexes... index) const
+        template<typename Field_t>
+        NO_DISCARD Point<double, dimension> fieldNodeCoordinates(Field_t const& field,
+                                                                 Point<int, dimension> coord) const
         {
-            static_assert(sizeof...(Indexes) == dimension,
-                          "Error dimension does not match number of arguments");
-
-
-            std::uint32_t iQuantity       = static_cast<std::uint32_t>(field.physicalQuantity());
             constexpr std::uint32_t iDual = static_cast<std::uint32_t>(QtyCentering::dual);
 
-
+            auto const iQuantity = static_cast<std::uint32_t>(field.physicalQuantity());
             constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
-
-            Point<std::int32_t, dimension> coord{static_cast<std::int32_t>(index)...};
 
             Point<double, dimension> position;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                double halfCell = 0.0;
-
                 auto const centering
                     = static_cast<std::uint32_t>(hybridQtyCentering[iQuantity][iDir]);
-                std::int32_t const iStart = physicalStartIndexTable_[centering][iDir];
+
+                double const halfCell = centering == iDual ? 0.5 : 0.0;
 
                 // A shift of +dx/2, +dy/2, +dz/2 is necessary to get the physical
                 // coordinate on the dual mesh
@@ -499,17 +478,20 @@ namespace core
                 // if ix is dual   then ixStart is dual
                 // if iy is primal then iyStart is primal ...
 
-                if (centering == iDual)
-                {
-                    halfCell = 0.5;
-                }
-
-                position[iDir]
-                    = (static_cast<double>(coord[iDir] - iStart) + halfCell) * meshSize_[iDir]
-                      + origin[iDir];
+                position[iDir] = (static_cast<double>(coord[iDir]) + halfCell) * meshSize_[iDir];
             }
 
             return position;
+        }
+
+        template<typename Field_t, typename... Indexes>
+        NO_DISCARD Point<double, dimension> fieldNodeCoordinates(Field_t const& field,
+                                                                 Indexes... index) const
+        {
+            static_assert(sizeof...(Indexes) == dimension,
+                          "Error dimension does not match number of arguments");
+
+            return fieldNodeCoordinates(field, Point<int, dimension>{index...});
         }
 
 
@@ -517,33 +499,33 @@ namespace core
          * @brief cellCenteredCoordinates returns the coordinates in physical units
          * of a multidimensional index that is cell-centered.
          */
+        NO_DISCARD Point<double, dimension>
+        cellCenteredCoordinates(Point<int, dimension> coord) const
+        {
+            constexpr double halfCell = 0.5;
+
+            // A shift of +dx/2, +dy/2, +dz/2 is necessary to get the
+            // cell center physical coordinates,
+            // because this point is located on the dual mesh
+
+
+            Point<double, dimension> physicalPosition;
+
+            for (std::size_t iDir = 0; iDir < dimension; ++iDir)
+                physicalPosition[iDir]
+                    = (static_cast<double>(coord[iDir]) + halfCell) * meshSize_[iDir];
+
+
+            return physicalPosition;
+        }
+
         template<typename... Indexes>
         NO_DISCARD Point<double, dimension> cellCenteredCoordinates(Indexes... index) const
         {
             static_assert(sizeof...(Indexes) == dimension,
                           "Error dimension does not match number of arguments");
 
-            std::uint32_t constexpr iPrimal = static_cast<std::uint32_t>(QtyCentering::primal);
-
-            constexpr double halfCell = 0.5;
-            // A shift of +dx/2, +dy/2, +dz/2 is necessary to get the
-            // cell center physical coordinates,
-            // because this point is located on the dual mesh
-
-            Point<std::uint32_t, dimension> coord(index...);
-
-            Point<double, dimension> physicalPosition;
-
-            for (std::size_t iDir = 0; iDir < dimension; ++iDir)
-            {
-                auto iStart = physicalStartIndexTable_[iPrimal][iDir];
-
-                physicalPosition[iDir]
-                    = (static_cast<double>(coord[iDir] - iStart) + halfCell) * meshSize_[iDir]
-                      + origin_[iDir];
-            }
-
-            return physicalPosition;
+            return cellCenteredCoordinates(Point<int, dimension>{index...});
         }
 
 
@@ -807,7 +789,7 @@ namespace core
             Point<std::uint32_t, dimension> localPoint;
 
             // any direction, it's the same because we want cells
-            auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
+            auto const localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
 
             //
             for (auto i = 0u; i < dimension; ++i)
@@ -897,12 +879,22 @@ namespace core
             return GridLayoutImpl::centering(hybridQuantity);
         }
 
+
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 6>
         centering(HybridQuantity::Tensor hybridQuantity)
         {
             return for_N_make_array<6>(
                 [](auto) { return ConstArray<QtyCentering, dimension>(QtyCentering::primal); });
         }
+
+        template<typename HasQuantity>
+        NO_DISCARD constexpr static auto centering(HasQuantity const& hasQuantity)
+            requires(has_physicalQuantity_v<HasQuantity>)
+        {
+            return centering(hasQuantity.physicalQuantity());
+        }
+
+
 
         /**
          * @brief GridLayout<GridLayoutImpl::dim>::allocSize
@@ -1165,8 +1157,8 @@ namespace core
 
 
 
-        template<typename Field>
-        auto AMRGhostBoxFor(Field const& field) const
+
+        auto AMRGhostBoxFor(auto const& field) const
         {
             auto const centerings = centering(field);
             auto const growBy     = [&]() {
@@ -1181,7 +1173,13 @@ namespace core
             return ghostBox;
         }
 
-
+        auto AMRBoxFor(auto const& field) const
+        {
+            auto const centerings = centering(field);
+            return grow(AMRGhostBoxFor(field), for_N_make_array<dimension>([&](auto i) {
+                            return -1 * nbrGhosts(centerings[i]);
+                        }));
+        }
 
         template<typename Field, typename Fn>
         void evalOnBox(Field& field, Fn&& fn) const
@@ -1260,46 +1258,6 @@ namespace core
                 upper[2]              = iz1;
             }
             return Box<std::uint32_t, dimension>{lower, upper};
-        }
-
-
-        template<typename Centering, typename StartToEnd>
-        auto StartToEndIndices_(Centering const& centering, StartToEnd const&& startToEnd,
-                                bool const includeEnd = false) const
-        {
-            std::vector<tuple_fixed_type<std::uint32_t, dimension>> indices;
-
-            std::size_t plus = (includeEnd) ? 1 : 0;
-
-            auto const [ix0, ix1] = startToEnd(centering, Direction::X);
-
-            for (auto ix = ix0; ix < ix1 + plus; ++ix)
-            {
-                if constexpr (dimension > 1)
-                {
-                    auto const [iy0, iy1] = startToEnd(centering, Direction::Y);
-
-                    for (auto iy = iy0; iy < iy1 + plus; ++iy)
-                    {
-                        if constexpr (dimension > 2)
-                        {
-                            auto const [iz0, iz1] = startToEnd(centering, Direction::Z);
-
-                            for (auto iz = iz0; iz < iz1 + plus; ++iz)
-                                indices.emplace_back(std::make_tuple(ix, iy, iz));
-                        }
-                        else // 2D
-                        {
-                            indices.emplace_back(std::make_tuple(ix, iy));
-                        }
-                    }
-                }
-                else // 1D
-                {
-                    indices.emplace_back(std::make_tuple(ix));
-                }
-            }
-            return indices;
         }
 
 
@@ -1558,6 +1516,45 @@ namespace core
 
 
 
+        struct Blixer //
+        {
+            GridLayout const* layout;
+            Box<int, dimension> amr_box;
+            Box<std::uint32_t, dimension> lcl_box = layout->AMRToLocal(amr_box);
+
+            struct iterator
+            {
+                void operator++()
+                {
+                    ++amr_it;
+                    ++lcl_it;
+                }
+                auto operator*() { return std::forward_as_tuple(*amr_it, *lcl_it); }
+                auto operator==(auto const& that) const
+                {
+                    return amr_it == that.amr_it and lcl_it == that.lcl_it;
+                }
+                auto operator!=(auto const& that) const
+                {
+                    return amr_it != that.amr_it or lcl_it != that.lcl_it;
+                }
+
+                Blixer const* blixer;
+                box_iterator<int, dimension> amr_it;
+                box_iterator<std::uint32_t, dimension> lcl_it;
+            };
+
+            auto begin() const { return iterator{this, amr_box.begin(), lcl_box.begin()}; }
+            auto end() const { return iterator{this, amr_box.end(), lcl_box.end()}; }
+        };
+
+    public:
+        auto blix(auto const& box) const { return Blixer{this, box}; }
+        auto blix() const { return blix(AMRBox()); }
+        auto domain_blix(auto const& field) const { return Blixer{this, AMRBoxFor(field)}; }
+        auto ghost_blix(auto const& field) const { return Blixer{this, AMRGhostBoxFor(field)}; }
+
+    private:
         std::array<double, dimension> meshSize_;
         Point<double, dimension> origin_;
         std::array<std::uint32_t, dimension> nbrPhysicalCells_;

@@ -25,6 +25,7 @@ class box_iterator;
 template<typename Type, std::size_t dim>
 struct Box
 {
+    using value_type                = Type;
     static constexpr auto dimension = dim;
 
 
@@ -137,7 +138,6 @@ struct Box
             return iterator{this, {upper[0] + 1, upper[1] + 1, upper[2] + 1}};
         }
     }
-    using value_type = Type;
 
 
     NO_DISCARD constexpr static std::size_t nbrRemainBoxes()

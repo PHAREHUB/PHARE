@@ -20,17 +20,11 @@ NO_DISCARD auto positionAsPoint(Particle<GridLayout::dimension> const& particle,
                                 GridLayout const& layout)
 {
     Point<double, GridLayout::dimension> position;
-    auto origin       = layout.origin();
-    auto startIndexes = layout.physicalStartIndex(QtyCentering::primal);
-    auto meshSize     = layout.meshSize();
-    auto iCell        = layout.AMRToLocal(Point{particle.iCell});
 
+    auto const meshSize = layout.meshSize();
     for (auto iDim = 0u; iDim < GridLayout::dimension; ++iDim)
-    {
-        position[iDim] = origin[iDim];
-        position[iDim]
-            += (iCell[iDim] - startIndexes[iDim] + particle.delta[iDim]) * meshSize[iDim];
-    }
+        position[iDim] = (particle.iCell[iDim] + particle.delta[iDim]) * meshSize[iDim];
+
     return position;
 }
 

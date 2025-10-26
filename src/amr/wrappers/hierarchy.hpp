@@ -94,7 +94,7 @@ public:
     NO_DISCARD auto const& boundaryConditions() const { return boundaryConditions_; }
     NO_DISCARD auto const& cellWidth() const { return cellWidth_; }
     NO_DISCARD auto const& domainBox() const { return domainBox_; }
-    NO_DISCARD auto const& origin() const { return origin_; }
+
 
 
     auto writeRestartFile(std::string directory) const;
@@ -113,14 +113,12 @@ protected:
               std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
               std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
               std::array<int, dimension> const domainBox,
-              std::array<double, dimension> const origin,
               std::array<double, dimension> const cellWidth,
               std::array<std::string, dimension> const boundaryConditions);
 
 private:
     std::vector<double> const cellWidth_;
     std::vector<int> const domainBox_;
-    std::vector<double> const origin_;
     std::vector<std::string> boundaryConditions_;
 };
 
@@ -204,7 +202,6 @@ Hierarchy::Hierarchy(initializer::PHAREDict const& dict,
                      std::shared_ptr<SAMRAI::geom::CartesianGridGeometry>&& geo,
                      std::shared_ptr<SAMRAI::tbox::MemoryDatabase>&& db,
                      std::array<int, dimension> const domainBox,
-                     std::array<double, dimension> const origin,
                      std::array<double, dimension> const cellWidth,
                      std::array<std::string, dimension> const boundaryConditions)
     // needs to open restart database before SAMRAI::PatchHierarcy constructor
@@ -212,7 +209,6 @@ Hierarchy::Hierarchy(initializer::PHAREDict const& dict,
     , SAMRAI::hier::PatchHierarchy{"PHARE_hierarchy", geo, db}
     , cellWidth_(cellWidth.data(), cellWidth.data() + dimension)
     , domainBox_(domainBox.data(), domainBox.data() + dimension)
-    , origin_(origin.data(), origin.data() + dimension)
     , boundaryConditions_(boundaryConditions.data(), boundaryConditions.data() + dimension)
 {
 }
@@ -264,11 +260,10 @@ void getDomainCoords(PHARE::initializer::PHAREDict const& grid, double lower[dim
 
     auto nbr_cells = parseDimXYZType<int, dimension>(grid, "nbr_cells");
     auto mesh_size = parseDimXYZType<double, dimension>(grid, "meshsize");
-    auto origin    = parseDimXYZType<double, dimension>(grid, "origin");
 
     for (std::size_t i = 0; i < dimension; i++)
     {
-        lower[i] = origin[i];
+        lower[i] = 0;
         upper[i] = lower[i] + nbr_cells[i] * mesh_size[i];
     }
 }
@@ -400,7 +395,6 @@ DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict const& dict
               griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
           patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
           shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
-          parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
           parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"),
           parseDimXYZType<std::string, dimension>(dict["simulation"]["grid"], "boundary_type")}
 {

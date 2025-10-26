@@ -196,7 +196,7 @@ class MaxwellianFluidModel(object):
 
     def validate1d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
-        layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
+        layout = GridLayout(domain_box, domain_box.lower, sim.dl, sim.interp_order)
         nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X"]
@@ -236,7 +236,7 @@ class MaxwellianFluidModel(object):
 
     def validate2d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
-        layout = GridLayout(domain_box, sim.origin, sim.dl, sim.interp_order)
+        layout = GridLayout(domain_box, domain_box.lower, sim.dl, sim.interp_order)
         nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X", "Y"]

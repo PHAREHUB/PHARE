@@ -138,31 +138,19 @@ template<typename ParticleArray, typename GridLayout>
 void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     ParticleArray& particles, GridLayout const& layout) const
 {
-    auto point = [](std::size_t i, auto const& indices) -> core::Point<std::uint32_t, dimension> {
-        if constexpr (dimension == 1)
-            return {std::get<0>(indices[i])};
-        if constexpr (dimension == 2)
-            return {std::get<0>(indices[i]), std::get<1>(indices[i])};
-        if constexpr (dimension == 3)
-            return {std::get<0>(indices[i]), std::get<1>(indices[i]), std::get<2>(indices[i])};
+    auto const icell = [](auto const idx, auto const& indices) {
+        return for_N_make_array<dimension>([&](auto i) { return std::get<i>(indices[idx]); });
     };
 
-
-    auto deltas = [](auto& pos, auto& gen) -> std::array<double, dimension> {
-        if constexpr (dimension == 1)
-            return {pos(gen)};
-        if constexpr (dimension == 2)
-            return {pos(gen), pos(gen)};
-        if constexpr (dimension == 3)
-            return {pos(gen), pos(gen), pos(gen)};
+    auto const deltas = [](auto& pos, auto& gen) {
+        return for_N_make_array<dimension>([&](auto) { return pos(gen); });
     };
-
 
     // in the following two calls,
     // primal indexes are given here because that's what cellCenteredCoordinates takes
 
-    // indices = std::vector<std::tuple<std::uint32_t, per dim>>
-    auto ndCellIndices = layout.physicalStartToEndIndices(QtyCentering::primal);
+    // indices = std::vector<std::tuple<int, per dim>>
+    auto const ndCellIndices = layout.indicis(layout.AMRBox());
 
     // coords = std::tuple<std::vector<double>,  per dim>
     auto cellCoords = layout.indexesToCoordVectors(
@@ -183,9 +171,8 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
         if (n[flatCellIdx] < densityCutOff_)
             continue;
 
-        auto const cellWeight   = n[flatCellIdx] / nbrParticlePerCell_;
-        auto const AMRCellIndex = layout.localToAMR(point(flatCellIdx, ndCellIndices));
-        auto const iCell        = AMRCellIndex.template toArray<int>();
+        auto const cellWeight = n[flatCellIdx] / nbrParticlePerCell_;
+        auto const iCell      = icell(flatCellIdx, ndCellIndices);
         std::array<double, 3> particleVelocity;
         std::array<std::array<double, 3>, 3> basis;
 

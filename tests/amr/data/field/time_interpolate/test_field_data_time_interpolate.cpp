@@ -81,8 +81,8 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
         , srcNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
         , destNew{std::make_shared<FieldDataT>(domain, ghost, fieldName, dl, nbrCells, origin, qty)}
     {
-        double oldTime = 0.;
-        double newTime = 0.5;
+        double const oldTime = 0.;
+        double const newTime = 0.5;
 
         srcOld->setTime(oldTime);
         srcNew->setTime(newTime);
@@ -91,67 +91,30 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
         auto& srcFieldOld = srcOld->field;
         auto& srcFieldNew = srcNew->field;
 
-
-        if constexpr (dim == 1)
+        for (auto const bix : layout.AMRGhostBoxFor(qty))
         {
-            auto iStartX = layout.ghostStartIndex(qty, Direction::X);
-            auto iEndX   = layout.ghostEndIndex(qty, Direction::X);
+            auto const position = layout.fieldNodeCoordinates(srcFieldOld, bix);
+            auto const lix      = layout.AMRToLocal(bix);
 
-            for (auto ix = iStartX; ix <= iEndX; ++ix)
+            if constexpr (dim == 1)
             {
-                auto position = layout.fieldNodeCoordinates(srcFieldOld, origin, ix);
-
-                srcFieldOld(ix) = srcFunc(oldTime, position[dirX]);
-                srcFieldNew(ix) = srcFunc(newTime, position[dirX]);
+                srcFieldOld(lix) = srcFunc(oldTime, position[dirX]);
+                srcFieldNew(lix) = srcFunc(newTime, position[dirX]);
             }
-        }
-        if constexpr (dim == 2)
-        {
-            auto iStartX = layout.ghostStartIndex(qty, Direction::X);
-            auto iEndX   = layout.ghostEndIndex(qty, Direction::X);
-            auto iStartY = layout.ghostStartIndex(qty, Direction::Y);
-            auto iEndY   = layout.ghostEndIndex(qty, Direction::Y);
-
-            for (auto ix = iStartX; ix <= iEndX; ++ix)
+            if constexpr (dim == 2)
             {
-                for (auto iy = iStartY; iy <= iEndY; ++iy)
-                {
-                    auto position = layout.fieldNodeCoordinates(srcFieldOld, origin, ix, iy);
-
-                    srcFieldOld(ix, iy) = srcFunc(oldTime, position[dirX], position[dirY]);
-                    srcFieldNew(ix, iy) = srcFunc(newTime, position[dirX], position[dirY]);
-                }
+                srcFieldOld(lix) = srcFunc(oldTime, position[dirX], position[dirY]);
+                srcFieldNew(lix) = srcFunc(newTime, position[dirX], position[dirY]);
             }
-        }
-        if constexpr (dim == 3)
-        {
-            auto iStartX = layout.ghostStartIndex(qty, Direction::X);
-            auto iEndX   = layout.ghostEndIndex(qty, Direction::X);
-            auto iStartY = layout.ghostStartIndex(qty, Direction::Y);
-            auto iEndY   = layout.ghostEndIndex(qty, Direction::Y);
-            auto iStartZ = layout.ghostStartIndex(qty, Direction::Z);
-            auto iEndZ   = layout.ghostEndIndex(qty, Direction::Z);
-
-            for (auto ix = iStartX; ix <= iEndX; ++ix)
+            if constexpr (dim == 3)
             {
-                for (auto iy = iStartY; iy <= iEndY; ++iy)
-                {
-                    for (auto iz = iStartZ; iz <= iEndZ; ++iz)
-                    {
-                        auto position
-                            = layout.fieldNodeCoordinates(srcFieldOld, origin, ix, iy, iz);
-
-                        srcFieldOld(ix, iy, iz)
-                            = srcFunc(oldTime, position[dirX], position[dirY], position[dirZ]);
-                        srcFieldNew(ix, iy, iz)
-                            = srcFunc(newTime, position[dirX], position[dirY], position[dirZ]);
-                    }
-                }
+                srcFieldOld(lix) = srcFunc(oldTime, position[dirX], position[dirY], position[dirZ]);
+                srcFieldNew(lix) = srcFunc(newTime, position[dirX], position[dirY], position[dirZ]);
             }
         }
     }
 
-    auto zeroTransformation()
+    auto zeroTransformation() const
     {
         return SAMRAI::hier::Transformation(SAMRAI::hier::Transformation::NO_ROTATE,
                                             SAMRAI::hier::IntVector::getZero(dimension),
@@ -177,7 +140,7 @@ int aFieldLinearTimeInterpolate<TypeInfo>::countLocal = 0;
 
 TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
 {
-    double interpolateTime = 0.;
+    double const interpolateTime = 0.;
     this->destNew->setTime(interpolateTime);
 
     auto& layout      = this->srcOld->gridLayout;
@@ -342,90 +305,38 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
 
 TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLinear)
 {
-    double interpolateTime = 0.2;
+    static constexpr auto dim = typename TypeParam::first_type{}();
+
+    double const interpolateTime = 0.2;
     this->destNew->setTime(interpolateTime);
 
     auto& layout    = this->srcOld->gridLayout;
     auto& destField = this->destNew->field;
 
-    auto zero_transformation{this->zeroTransformation()};
     SAMRAI::hier::BoxContainer ghost_cntnr;
-    FieldOverlap overlap{ghost_cntnr, zero_transformation};
+    FieldOverlap overlap{ghost_cntnr, this->zeroTransformation()};
 
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
 
-
-    static constexpr auto dim    = typename TypeParam::first_type{}();
-    static constexpr auto interp = typename TypeParam::second_type{}();
-
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-
-    auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
-                                                                          layout);
-
-    auto ghostBox_{this->domain};
-    ghostBox_.grow(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
-                                           static_cast<int>(GridYee::nbrGhosts())});
-    auto ghostBox
-        = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostBox_, this->qty, layout);
-
-    auto localBox = AMRToLocal(static_cast<std::add_const_t<decltype(box)>>(box), ghostBox);
-
-
-    if constexpr (dim == 1)
+    for (auto const [bix, lix] : layout.domain_blix(destField))
     {
-        auto iStartX = localBox.lower(dirX);
-        auto iEndX   = localBox.upper(dirX);
+        auto const position = layout.fieldNodeCoordinates(destField, bix);
 
-        for (auto ix = iStartX; ix <= iEndX; ++ix)
+        if constexpr (dim == 1)
         {
-            auto position = layout.fieldNodeCoordinates(destField, this->origin, ix);
-
-            EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX]), destField(ix));
+            EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX]), destField(lix));
         }
-    }
-    if constexpr (dim == 2)
-    {
-        auto iStartX = localBox.lower(dirX);
-        auto iEndX   = localBox.upper(dirX);
-        auto iStartY = localBox.lower(dirY);
-        auto iEndY   = localBox.upper(dirY);
-
-        for (auto ix = iStartX; ix <= iEndX; ++ix)
+        if constexpr (dim == 2)
         {
-            for (auto iy = iStartY; iy <= iEndY; ++iy)
-            {
-                auto position = layout.fieldNodeCoordinates(destField, this->origin, ix, iy);
-
-                EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX], position[dirY]),
-                                 destField(ix, iy));
-            }
+            EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX], position[dirY]),
+                             destField(lix));
         }
-    }
-    if constexpr (dim == 3)
-    {
-        auto iStartX = localBox.lower(dirX);
-        auto iEndX   = localBox.upper(dirX);
-        auto iStartY = localBox.lower(dirY);
-        auto iEndY   = localBox.upper(dirY);
-        auto iStartZ = localBox.lower(dirZ);
-        auto iEndZ   = localBox.upper(dirZ);
-
-        for (auto ix = iStartX; ix <= iEndX; ++ix)
+        if constexpr (dim == 3)
         {
-            for (auto iy = iStartY; iy <= iEndY; ++iy)
-            {
-                for (auto iz = iStartZ; iz <= iEndZ; ++iz)
-                {
-                    auto position
-                        = layout.fieldNodeCoordinates(destField, this->origin, ix, iy, iz);
-
-                    EXPECT_DOUBLE_EQ(
-                        srcFunc(interpolateTime, position[dirX], position[dirY], position[dirZ]),
-                        destField(ix, iy, iz));
-                }
-            }
+            EXPECT_DOUBLE_EQ(
+                srcFunc(interpolateTime, position[dirX], position[dirY], position[dirZ]),
+                destField(lix));
         }
     }
 }

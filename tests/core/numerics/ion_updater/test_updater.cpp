@@ -619,10 +619,10 @@ struct IonUpdaterTest : public ::testing::Test
             std::vector<std::size_t> ixes;
             std::vector<double> x;
 
-            for (auto ix = ix0; ix < ix1; ++ix)
+            for (auto const [bix, lix] : this->layout.blix()) // last primal is incomplete
             {
-                ixes.emplace_back(ix);
-                x.emplace_back(layout.cellCenteredCoordinates(ix)[0]);
+                ixes.emplace_back(lix[0]);
+                x.emplace_back(layout.cellCenteredCoordinates(bix)[0]);
             }
 
             auto functionXPtr = function(x); // keep alive

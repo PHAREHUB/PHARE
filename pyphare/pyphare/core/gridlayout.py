@@ -329,6 +329,11 @@ class GridLayout(object):
         )
         return size
 
+    def localPointToAMR(self, point):
+        return (
+            point + self.box.lower - self.physicalStartIndex(self.interp_order, "dual")
+        )
+
     def AMRPointToLocal(self, point):
         return (
             point - self.box.lower + self.physicalStartIndex(self.interp_order, "dual")

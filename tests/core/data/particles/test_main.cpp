@@ -80,14 +80,13 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     GridLayout<GridLayoutImplYee<3, 1>> layout{meshSize, nbrCells, origin,
                                                Box{Point{40, 60, 80}, Point{59, 89, 119}}};
 
-    auto iCell            = layout.AMRToLocal(Point{part.iCell});
+    auto iCell            = part.iCell;
     auto p                = positionAsPoint(part, layout);
     auto startIndexes     = layout.physicalStartIndex(QtyCentering::primal);
     auto expectedPosition = Point<double, 3>{};
     for (auto i = 0u; i < 3; ++i)
     {
-        expectedPosition[i]
-            = origin[i] + meshSize[i] * (iCell[i] - startIndexes[i] + part.delta[i]);
+        expectedPosition[i] = meshSize[i] * (iCell[i] + part.delta[i]);
         EXPECT_DOUBLE_EQ(expectedPosition[i], p[i]);
     }
 }
