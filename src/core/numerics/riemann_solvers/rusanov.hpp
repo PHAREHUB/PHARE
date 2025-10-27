@@ -48,46 +48,6 @@ public:
                 = rusanov_(uLhydro, uRhydro, fLhydro, fRhydro, hydro_speed);
             auto [FBx, FBy, FBz, FEtot] = rusanov_(uLmag, uRmag, fLmag, fRmag, mag_speed);
 
-            if constexpr (GridLayout::dimension == 2)
-            {
-                if constexpr (direction == Direction::X)
-                {
-                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{0 + 2, -1 + 2}
-                        // these are probably never going to be triggered as they are ghosts
-                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, -1 + 2}      //
-                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2 + 1} //
-                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2 + 1} //
-                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2})
-                    {
-                        std::cout << std::setprecision(16) << " By_x flux at (" << index.str()
-                                  << ") : " << FBy << " uL " << uL.B.y << " uR " << uR.B.y << " fL "
-                                  << fL.B.y << " fR " << fR.B.y << " mag speed " << mag_speed
-                                  << "\n";
-                    }
-                }
-
-                if constexpr (direction == Direction::Y)
-                {
-                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{-1 + 2, 0 + 2}     //
-                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, 0 + 2} //
-                        || index == MeshIndex<GridLayout::dimension>{74 + 2, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2 + 1} //
-                        || index == MeshIndex<GridLayout::dimension>{149 + 2, 50 + 2 + 1}
-                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2 + 1}
-                        || index == MeshIndex<GridLayout::dimension>{-1 + 2, 50 + 2 + 1}) //
-                    {
-                        std::cout << std::setprecision(16) << " Bx_y flux at (" << index.str()
-                                  << ") : " << FBx << " uL " << uL.B.x << " uR " << uR.B.x << " fL "
-                                  << fL.B.x << " fR " << fR.B.x << " mag speed " << mag_speed
-                                  << "\n";
-                    }
-                }
-            }
-
             return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
         }
         else

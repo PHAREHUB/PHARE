@@ -31,65 +31,6 @@ public:
 
         for (std::size_t cell_idx = 0; cell_idx < indices.size(); cell_idx++)
             std::apply([&](auto&... args) { field(args...) = grid[cell_idx]; }, indices[cell_idx]);
-
-        auto [start_x, end_x] = layout.physicalStartToEnd(field, Direction::X);
-        auto [start_y, end_y] = layout.physicalStartToEnd(field, Direction::Y);
-
-        if (field.name() == "mhd_state_B_x")
-        {
-            end_x -= 1;
-            end_y += 1;
-            for (std::uint32_t ix = start_x; ix <= end_x; ++ix)
-            {
-                for (std::uint32_t iy = start_y; iy <= end_y; ++iy)
-                {
-                    auto index = MeshIndex<GridLayout::dimension>{ix, iy};
-
-                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{74 + 2, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{149 + 2, 50 + 2 + 1}
-                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2 + 1})
-                    {
-                        auto coord_x = std::get<0>(coords);
-                        std::cout << std::setprecision(16) << "( " << index.str() << ") coord_x--: "
-                                  << coord_x(layout.template previous<Direction::Y>(index))
-                                  << " coord_x+-: "
-                                  << coord_x(layout.template previous<Direction::Y>(
-                                         layout.template next<Direction::X>(index)))
-                                  << " coord_x-+: " << coord_x(index) << " coord_x++: "
-                                  << coord_x(layout.template next<Direction::X>(index)) << "\n";
-                    }
-                }
-            }
-        }
-
-        if (field.name() == "mhd_state_B_y")
-        {
-            end_x -= 1;
-            end_y += 1;
-            for (std::uint32_t ix = start_x; ix <= end_x; ++ix)
-            {
-                for (std::uint32_t iy = start_y; iy <= end_y; ++iy)
-                {
-                    auto index = MeshIndex<GridLayout::dimension>{ix, iy};
-
-                    if (index == MeshIndex<GridLayout::dimension>{0 + 2, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{74 + 2 + 1, 0 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{149 + 2 + 1, 50 + 2}
-                        || index == MeshIndex<GridLayout::dimension>{0 + 2, 50 + 2})
-                    {
-                        auto coord_y = std::get<1>(coords);
-                        std::cout << std::setprecision(16) << "( " << index.str() << ") coord_y--: "
-                                  << coord_y(layout.template previous<Direction::X>(index))
-                                  << " coord_y+-: "
-                                  << coord_y(layout.template previous<Direction::X>(
-                                         layout.template next<Direction::Y>(index)))
-                                  << " coord_y-+: " << coord_y(index) << " coord_y++: "
-                                  << coord_y(layout.template next<Direction::Y>(index)) << "\n";
-                    }
-                }
-            }
-        }
     }
 };
 

@@ -458,61 +458,6 @@ namespace core
                 position[iDir]
                     = (static_cast<double>(coord[iDir] - iStart) + halfCell) * meshSize_[iDir]
                       + origin[iDir];
-
-                if (field.name() == "mhd_state_B_x")
-                {
-                    if (iDir == 0)
-                    {
-                        if (coord[iDir] == 2 || coord[iDir] == 76 || coord[iDir] == 151)
-                        {
-                            std::cout << std::setprecision(16) << "( " << coord.str()
-                                      << ") coord: position_x " << position[0] << "iStart" << iStart
-                                      << " halfCell " << halfCell << "meshSize_x " << meshSize_[0]
-                                      << " origin " << origin
-                                      << "static_cast<double>(coord[iDir] - iStart) "
-                                      << static_cast<double>(coord[iDir] - iStart) << "\n";
-                        }
-                    }
-                    if (iDir == 1)
-                    {
-                        if (coord[iDir] == 2 || coord[iDir] == 53)
-                        {
-                            std::cout << std::setprecision(16) << "( " << coord.str()
-                                      << ") coord: position_y " << position[1] << "iStart" << iStart
-                                      << " halfCell " << halfCell << "meshSize_y " << meshSize_[1]
-                                      << " origin " << origin
-                                      << "static_cast<double>(coord[iDir] - iStart) "
-                                      << static_cast<double>(coord[iDir] - iStart) << "\n";
-                        }
-                    }
-                }
-                if (field.name() == "mhd_state_B_y")
-                {
-                    if (iDir == 0)
-                    {
-                        if (coord[iDir] == 2 || coord[iDir] == 77 || coord[iDir] == 152)
-                        {
-                            std::cout << std::setprecision(16) << "( " << coord.str()
-                                      << ") coord: position_x " << position[0] << "iStart" << iStart
-                                      << " halfCell " << halfCell << "meshSize_x " << meshSize_[0]
-                                      << " origin " << origin
-                                      << "static_cast<double>(coord[iDir] - iStart) "
-                                      << static_cast<double>(coord[iDir] - iStart) << "\n";
-                        }
-                    }
-                    if (iDir == 1)
-                    {
-                        if (coord[iDir] == 2 || coord[iDir] == 52)
-                        {
-                            std::cout << std::setprecision(16) << "( " << coord.str()
-                                      << ") coord: position_y " << position[1] << "iStart" << iStart
-                                      << " halfCell " << halfCell << "meshSize_y " << meshSize_[1]
-                                      << " origin " << origin
-                                      << "static_cast<double>(coord[iDir] - iStart) "
-                                      << static_cast<double>(coord[iDir] - iStart) << "\n";
-                        }
-                    }
-                }
             }
 
             return position;
