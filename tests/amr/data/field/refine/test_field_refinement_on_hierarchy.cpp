@@ -73,11 +73,11 @@ TYPED_TEST(ALinearFieldRefineTest, ConserveLinearFunction)
             auto& layout = fieldData->gridLayout;
             auto& field  = fieldData->field;
 
-            for (auto const bix : layout.AMRGhostBoxFor(field))
+            for (auto const amr_idx : layout.AMRGhostBoxFor(field))
             {
-                auto const position = layout.fieldNodeCoordinates(field, bix);
-                auto const lix      = layout.AMRToLocal(bix);
-                EXPECT_DOUBLE_EQ(field(lix), affineFill(position, dataId));
+                auto const position = layout.fieldNodeCoordinates(field, amr_idx);
+                auto const lcl_idx  = layout.AMRToLocal(amr_idx);
+                EXPECT_DOUBLE_EQ(field(lcl_idx), affineFill(position, dataId));
             }
         }
     }

@@ -226,10 +226,10 @@ struct ElectronsTest : public ::testing::Test
         if constexpr (dim == 1)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                for (auto const [bix, lix] : layout.ghost_blix(field))
+                for (auto const [amr_idx, lcl_idx] : layout.ghost_amr_lcl_idx(field))
                 {
-                    auto const point = this->layout.fieldNodeCoordinates(field, bix);
-                    field(lix)       = filler(point[0]);
+                    auto const point = this->layout.fieldNodeCoordinates(field, amr_idx);
+                    field(lcl_idx)   = filler(point[0]);
                 }
             };
 
@@ -246,10 +246,10 @@ struct ElectronsTest : public ::testing::Test
         else if constexpr (dim == 2)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                for (auto const bix : layout.AMRGhostBoxFor(field))
+                for (auto const amr_idx : layout.AMRGhostBoxFor(field))
                 {
-                    auto point                    = this->layout.fieldNodeCoordinates(field, bix);
-                    field(layout.AMRToLocal(bix)) = filler(point[0], point[1]);
+                    auto point = this->layout.fieldNodeCoordinates(field, amr_idx);
+                    field(layout.AMRToLocal(amr_idx)) = filler(point[0], point[1]);
                 }
             };
 
@@ -267,10 +267,10 @@ struct ElectronsTest : public ::testing::Test
         else if constexpr (dim == 3)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                for (auto const bix : layout.AMRGhostBoxFor(field))
+                for (auto const amr_idx : layout.AMRGhostBoxFor(field))
                 {
-                    auto point                    = this->layout.fieldNodeCoordinates(field, bix);
-                    field(layout.AMRToLocal(bix)) = filler(point[0], point[1], point[2]);
+                    auto point = this->layout.fieldNodeCoordinates(field, amr_idx);
+                    field(layout.AMRToLocal(amr_idx)) = filler(point[0], point[1], point[2]);
                 }
             };
 

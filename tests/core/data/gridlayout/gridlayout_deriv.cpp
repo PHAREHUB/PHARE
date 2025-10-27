@@ -1,4 +1,3 @@
-
 #include <core/data/grid/gridlayoutdefs.hpp>
 #include <math.h>
 
@@ -265,20 +264,22 @@ TYPED_TEST_SUITE(a1DDerivative, layoutImpls1D);
 //     auto expDerValue = read(filename);
 
 
-//     for (auto const [bix, lix] : this->layout.ghost_blix(this->By))
+//     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
 //     {
-//         auto point    = this->layout.fieldNodeCoordinates(this->By, bix);
-//         this->By(lix) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+//         auto point    = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+//         this->By(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. *
+//         point[1])
 //                         * std::sin(2 * M_PI / 12. * point[2]);
 //     }
 
 //     auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
-//     for (auto const lix : this->layout.AMRToLocal(this->layout.AMRBoxFor(this->By)))
+//     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBoxFor(this->By)))
 //     {
-//         auto localDerivative = this->layout.template deriv<Direction::X>(this->By, lix);
-//         auto index_          = lix[0] * nPts_[1] * nPts_[2] + lix[1] * nPts_[2] + lix[2];
-//         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
+//         auto localDerivative = this->layout.template deriv<Direction::X>(this->By, lcl_idx);
+//         auto index_          = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] +
+//         lcl_idx[2]; EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_],
+//         1e-12));
 //     }
 // }
 
@@ -301,20 +302,22 @@ TYPED_TEST_SUITE(a1DDerivative, layoutImpls1D);
 //     auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
 
-//     for (auto const [bix, lix] : this->layout.ghost_blix(this->By))
+//     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
 //     {
-//         auto point    = this->layout.fieldNodeCoordinates(this->By, bix);
-//         this->By(lix) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+//         auto point    = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+//         this->By(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. *
+//         point[1])
 //                         * std::sin(2 * M_PI / 12. * point[2]);
 //     }
 
 //     auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
 
-//     for (auto const lix : this->layout.AMRToLocal(this->layout.AMRBoxFor(this->By)))
+//     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBoxFor(this->By)))
 //     {
-//         auto localDerivative = this->layout.template deriv<Direction::Y>(this->By, lix);
-//         auto index_          = lix[0] * nPts_[1] * nPts_[2] + lix[1] * nPts_[2] + lix[2];
-//         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
+//         auto localDerivative = this->layout.template deriv<Direction::Y>(this->By, lcl_idx);
+//         auto index_          = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] +
+//         lcl_idx[2]; EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_],
+//         1e-12));
 //     }
 // }
 

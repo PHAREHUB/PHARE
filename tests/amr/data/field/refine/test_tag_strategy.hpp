@@ -177,11 +177,11 @@ public:
                     auto& layout = fieldData->gridLayout;
                     auto& field  = fieldData->field;
 
-                    for (auto const bix : layout.AMRGhostBoxFor(field))
+                    for (auto const amr_idx : layout.AMRGhostBoxFor(field))
                     {
-                        auto position  = layout.fieldNodeCoordinates(field, bix);
-                        auto const lix = layout.AMRToLocal(bix);
-                        field(lix)     = affineFill(position, dataId);
+                        auto position      = layout.fieldNodeCoordinates(field, amr_idx);
+                        auto const lcl_idx = layout.AMRToLocal(amr_idx);
+                        field(lcl_idx)     = affineFill(position, dataId);
                     }
                 }
             }

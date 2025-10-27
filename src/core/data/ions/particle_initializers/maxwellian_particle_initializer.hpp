@@ -150,7 +150,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     // primal indexes are given here because that's what cellCenteredCoordinates takes
 
     // indices = std::vector<std::tuple<int, per dim>>
-    auto const ndCellIndices = layout.indicis(layout.AMRBox());
+    auto const ndCellIndices = layout.indices(layout.AMRBox());
 
     // coords = std::tuple<std::vector<double>,  per dim>
     auto cellCoords = layout.indexesToCoordVectors(

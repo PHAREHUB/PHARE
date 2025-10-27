@@ -18,7 +18,7 @@ public:
     void static initialize(Field& field, GridLayout const& layout,
                            initializer::InitFunction<GridLayout::dimension> const& init)
     {
-        auto const indices = layout.indicis(layout.AMRGhostBoxFor(field));
+        auto const indices = layout.indices(layout.AMRGhostBoxFor(field));
         auto const coords  = layout.template indexesToCoordVectors</*WithField=*/true>(
             indices, field, [](auto& gridLayout, auto& field_, auto const&... args) {
                 return gridLayout.fieldNodeCoordinates(field_, args...);

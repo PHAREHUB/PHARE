@@ -91,25 +91,27 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
         auto& srcFieldOld = srcOld->field;
         auto& srcFieldNew = srcNew->field;
 
-        for (auto const bix : layout.AMRGhostBoxFor(qty))
+        for (auto const amr_idx : layout.AMRGhostBoxFor(qty))
         {
-            auto const position = layout.fieldNodeCoordinates(srcFieldOld, bix);
-            auto const lix      = layout.AMRToLocal(bix);
+            auto const position = layout.fieldNodeCoordinates(srcFieldOld, amr_idx);
+            auto const lcl_idx  = layout.AMRToLocal(amr_idx);
 
             if constexpr (dim == 1)
             {
-                srcFieldOld(lix) = srcFunc(oldTime, position[dirX]);
-                srcFieldNew(lix) = srcFunc(newTime, position[dirX]);
+                srcFieldOld(lcl_idx) = srcFunc(oldTime, position[dirX]);
+                srcFieldNew(lcl_idx) = srcFunc(newTime, position[dirX]);
             }
             if constexpr (dim == 2)
             {
-                srcFieldOld(lix) = srcFunc(oldTime, position[dirX], position[dirY]);
-                srcFieldNew(lix) = srcFunc(newTime, position[dirX], position[dirY]);
+                srcFieldOld(lcl_idx) = srcFunc(oldTime, position[dirX], position[dirY]);
+                srcFieldNew(lcl_idx) = srcFunc(newTime, position[dirX], position[dirY]);
             }
             if constexpr (dim == 3)
             {
-                srcFieldOld(lix) = srcFunc(oldTime, position[dirX], position[dirY], position[dirZ]);
-                srcFieldNew(lix) = srcFunc(newTime, position[dirX], position[dirY], position[dirZ]);
+                srcFieldOld(lcl_idx)
+                    = srcFunc(oldTime, position[dirX], position[dirY], position[dirZ]);
+                srcFieldNew(lcl_idx)
+                    = srcFunc(newTime, position[dirX], position[dirY], position[dirZ]);
             }
         }
     }
@@ -319,24 +321,24 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveEvaluationOnTheInterpolateTimeForLin
     this->timeOp.timeInterpolate(*(this->destNew), this->domain, overlap, *(this->srcOld),
                                  *(this->srcNew));
 
-    for (auto const [bix, lix] : layout.domain_blix(destField))
+    for (auto const [amr_idx, lcl_idx] : layout.domain_amr_lcl_idx(destField))
     {
-        auto const position = layout.fieldNodeCoordinates(destField, bix);
+        auto const position = layout.fieldNodeCoordinates(destField, amr_idx);
 
         if constexpr (dim == 1)
         {
-            EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX]), destField(lix));
+            EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX]), destField(lcl_idx));
         }
         if constexpr (dim == 2)
         {
             EXPECT_DOUBLE_EQ(srcFunc(interpolateTime, position[dirX], position[dirY]),
-                             destField(lix));
+                             destField(lcl_idx));
         }
         if constexpr (dim == 3)
         {
             EXPECT_DOUBLE_EQ(
                 srcFunc(interpolateTime, position[dirX], position[dirY], position[dirZ]),
-                destField(lix));
+                destField(lcl_idx));
         }
     }
 }

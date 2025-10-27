@@ -1,5 +1,3 @@
-
-
 #include "phare_core.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/particles/particle_array.hpp"
@@ -29,9 +27,9 @@ PHARE::core::Particle<dim> particle(ICell const& icell)
 template<typename ParticleArray_t, typename Box_t>
 void add_particles_in(ParticleArray_t& particles, Box_t const& box)
 {
-    for (auto const& bix : box)
+    for (auto const& amr_idx : box)
         for (std::size_t i = 0; i < ppc; ++i)
-            particles.emplace_back(particle<ParticleArray_t::dimension>(*bix));
+            particles.emplace_back(particle<ParticleArray_t::dimension>(*amr_idx));
 }
 
 

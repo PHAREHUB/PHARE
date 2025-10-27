@@ -229,11 +229,11 @@ namespace core
 
 
         template<typename T>
-        NO_DISCARD auto indicis(Box<T, dimension> const& box) const
+        NO_DISCARD auto indices(Box<T, dimension> const& box) const
         {
             return generate(
-                [](auto const& bix) -> tuple_fixed_type<T, dimension> {
-                    return for_N<dimension>([&](auto i) { return bix[i]; });
+                [](auto const& amr_idx) -> tuple_fixed_type<T, dimension> {
+                    return for_N<dimension>([&](auto i) { return amr_idx[i]; });
                 },
                 box);
         }
@@ -452,8 +452,8 @@ namespace core
          * associated with a given Field, in physical coordinates.
          */
         template<typename Field_t>
-        NO_DISCARD Point<double, dimension> fieldNodeCoordinates(Field_t const& field,
-                                                                 Point<int, dimension> coord) const
+        NO_DISCARD Point<double, dimension>
+        fieldNodeCoordinates(Field_t const& field, Point<int, dimension> amr_idx) const
         {
             constexpr std::uint32_t iDual = static_cast<std::uint32_t>(QtyCentering::dual);
 
@@ -478,7 +478,7 @@ namespace core
                 // if ix is dual   then ixStart is dual
                 // if iy is primal then iyStart is primal ...
 
-                position[iDir] = (static_cast<double>(coord[iDir]) + halfCell) * meshSize_[iDir];
+                position[iDir] = (static_cast<double>(amr_idx[iDir]) + halfCell) * meshSize_[iDir];
             }
 
             return position;
@@ -1516,7 +1516,7 @@ namespace core
 
 
 
-        struct Blixer //
+        struct AMRLocalIndexer //
         {
             GridLayout const* layout;
             Box<int, dimension> amr_box;
@@ -1539,7 +1539,7 @@ namespace core
                     return amr_it != that.amr_it or lcl_it != that.lcl_it;
                 }
 
-                Blixer const* blixer;
+                AMRLocalIndexer const* amr_lcl_indexer;
                 box_iterator<int, dimension> amr_it;
                 box_iterator<std::uint32_t, dimension> lcl_it;
             };
@@ -1549,10 +1549,16 @@ namespace core
         };
 
     public:
-        auto blix(auto const& box) const { return Blixer{this, box}; }
-        auto blix() const { return blix(AMRBox()); }
-        auto domain_blix(auto const& field) const { return Blixer{this, AMRBoxFor(field)}; }
-        auto ghost_blix(auto const& field) const { return Blixer{this, AMRGhostBoxFor(field)}; }
+        auto amr_lcl_idx(auto const& box) const { return AMRLocalIndexer{this, box}; }
+        auto amr_lcl_idx() const { return amr_lcl_idx(AMRBox()); }
+        auto domain_amr_lcl_idx(auto const& field) const
+        {
+            return AMRLocalIndexer{this, AMRBoxFor(field)};
+        }
+        auto ghost_amr_lcl_idx(auto const& field) const
+        {
+            return AMRLocalIndexer{this, AMRGhostBoxFor(field)};
+        }
 
     private:
         std::array<double, dimension> meshSize_;
