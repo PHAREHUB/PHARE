@@ -151,6 +151,9 @@ namespace core
             layout.evalOnBox(B(Component::Y),
                              [&](auto&... args) mutable { forBx(B(Component::X), {args...}); });
 
+            layout.evalOnBox(B(Component::X),
+                             [&](auto&... args) mutable { forBy(B(Component::Y), {args...}); });
+
             ToConservativeConverter_ref{layout, gamma_}(
                 rho, V, B, P, rhoV, Etot); // initial to conservative conversion because we
                                            // store conservative quantities on the grid
