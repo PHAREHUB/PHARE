@@ -143,6 +143,9 @@ public:
             }
 
 
+            // this will fill ghosts on level border only (i.e. not patch ghost nodes)
+            // it is not used at the moment but would be useful if the moment ghosts
+            // are filled on level border (see Note in hybhyb)
             else if constexpr (Type == RefinerType::LevelBorderField)
             {
                 this->add(algo,
