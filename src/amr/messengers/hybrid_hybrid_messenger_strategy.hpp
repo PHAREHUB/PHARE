@@ -91,12 +91,12 @@ namespace amr
 
         using DefaultFieldRefineOp    = FieldRefineOp<DefaultFieldRefiner<dimension>>;
         using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;
-        using FieldMomentsRefineOp    = FieldRefineOp<FieldMomentsRefiner<dimension>>;
-        using VecFieldMomentsRefineOp = VecFieldRefineOp<FieldMomentsRefiner<dimension>>;
-        using MagneticFieldRefineOp   = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
-        using MagneticFieldRegridOp   = VecFieldRefineOp<MagneticFieldRegrider<dimension>>;
-        using ElectricFieldRefineOp   = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
-        using FieldTimeInterp         = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
+        // using FieldMomentsRefineOp    = FieldRefineOp<FieldMomentsRefiner<dimension>>;
+        // using VecFieldMomentsRefineOp = VecFieldRefineOp<FieldMomentsRefiner<dimension>>;
+        using MagneticFieldRefineOp = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
+        using MagneticFieldRegridOp = VecFieldRefineOp<MagneticFieldRegrider<dimension>>;
+        using ElectricFieldRefineOp = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
+        using FieldTimeInterp       = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
 
         using VecFieldTimeInterp
             = VecFieldLinearTimeInterpolate<GridLayoutT, GridT, core::HybridQuantity>;
@@ -311,16 +311,12 @@ namespace amr
                 copyLevelGhostOldToPushable_(*level, model);
             }
 
-            // computeIonMoments_(*level, model);
             // levelGhostNew will be refined in next firstStep
 
             // after filling the new level with the regrid schedule, some
             // nodes may not have been copied correctly, due to a bug in SAMRAI
             // it seems these nodes are only on ghost box border if that border
             // overlaps an old level patch border. See https://github.com/LLNL/SAMRAI/pull/293
-
-            // magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
-            // elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
 
         std::string fineModelName() const override { return HybridModel::model_name; }
@@ -368,7 +364,6 @@ namespace amr
             // levelGhostParticles will be pushed during the advance phase
             // they need to be identical to levelGhostParticlesOld before advance
             copyLevelGhostOldToPushable_(level, model);
-            // computeIonMoments_(level, model);
         }
 
 
@@ -521,12 +516,10 @@ namespace amr
                     auto& particleDensity = pop.particleDensity();
                     auto& chargeDensity   = pop.chargeDensity();
                     auto& flux            = pop.flux();
-                    // first thing to do is to project patchGhostParitcles moments
-
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
-                        // then grab levelGhostParticlesOld and levelGhostParticlesNew
+                        // grab levelGhostParticlesOld and levelGhostParticlesNew
                         // and project them with alpha and (1-alpha) coefs, respectively
                         auto& levelGhostOld = pop.levelGhostParticlesOld();
                         interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux,
@@ -927,14 +920,14 @@ namespace amr
         }
 
 
-        /** * @brief setNaNsFieldOnGhosts sets NaNs on the ghost nodes of the field
-         *
-         * NaNs are set on all ghost nodes, patch ghost or level ghost nodes
+        /** * @brief setNaNsFieldOnGhosts sets NaNs on the level ghost nodes of the field
          * so that the refinement operators can know nodes at NaN have not been
          * touched by schedule copy.
          *
          * This is needed when the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
+         *
+         * boxes :  are level patch boxes
          */
         void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch,
                                   SAMRAI::hier::BoxContainer const& boxes)
@@ -1057,6 +1050,21 @@ namespace amr
         // these refiners are used to fill ghost nodes, and therefore, owing to
         // the GhostField tag, will only assign pure ghost nodes. Border nodes will
         // be overwritten only on level borders, which does not seem to be an issue.
+        // ******
+        // NOTE :
+        // *****
+        // these and all the code that use them is commented
+        // the reason for not deleting is that in its current state the code
+        // only deposits levelghost particles which therefore leaves some of the level
+        // ghost nodes incomplete (missing the outside contribution).
+        // We thought about replacing levelghost particle deposit by filling a level ghost schedule
+        // but at interp order >=2, levelghost particles will contribute to inner domain nodes
+        // which a schedule will not do so we need them.
+        // Keeping this code here is a way to ease the filling of pure level ghost nodes
+        // if we decide to do so one day. This would overwrite what level ghost particles
+        // have deposited on level ghost nodes, but since it is incomplete it does not matter
+        // on the other hand this would be necessary if we wanted to have a multiple point
+        // coarsening operator for moments.
         // LevelBorderFieldRefinerPool chargeDensityLevelGhostsRefiners_{resourcesManager_};
         // LevelBorderFieldRefinerPool velLevelGhostsRefiners_{resourcesManager_};
 
