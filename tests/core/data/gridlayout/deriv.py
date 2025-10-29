@@ -94,8 +94,6 @@ def main(path="./"):
 
     originPosition = [0.0, 0.0, 0.0]
 
-    gl = gridlayout.GridLayout()
-
     # TODO : end Todo
 
     # TODO: FieldCoords and CenteredCoords share a common base, refactor this
@@ -115,6 +113,8 @@ def main(path="./"):
     outDerivedValues1D = open(os.path.join(path, "deriv_derived_values_1d.txt"), "w")
 
     for interpOrder in interpOrders:
+        gl = gridlayout.GridLayout(interp_order=interpOrder)
+
         for (
             dimension,
             outSummary,
@@ -180,12 +180,7 @@ def main(path="./"):
                 if dimension == 1:
                     for position in np.arange(params.iGhostStart, params.iGhostEnd):
                         coord = fieldNodeCoordinates.fieldCoords(
-                            position,
-                            params.iStart,
-                            quantity,
-                            "X",
-                            params.dl,
-                            params.origin,
+                            position, quantity, "X", params.dl, gl
                         )
                         functionValue = primitive(coord)
 
@@ -200,12 +195,7 @@ def main(path="./"):
 
                     for position in np.arange(params.iStart, params.iEnd + 1):
                         coord = fieldNodeCoordinates.fieldCoords(
-                            position,
-                            params.iStart,
-                            derivQuantity,
-                            "X",
-                            params.dl,
-                            params.origin,
+                            position, derivQuantity, "X", params.dl, gl
                         )
 
                         derivedValue = scipy.misc.derivative(

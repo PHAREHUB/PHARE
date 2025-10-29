@@ -21,16 +21,13 @@ from pyphare.core import gridlayout
 #
 # This method returns a point
 #
-def fieldCoords(primalIndex, startIndex, quantity, direction, dl, origin):
+def fieldCoords(primalIndex, quantity, direction, dl, gl):
     halfCell = 0.0
-    gl = gridlayout.GridLayout()
 
     if gl.qtyCentering(quantity, direction) == "dual":
         halfCell = 0.5
 
-    x = ((primalIndex - startIndex) + halfCell) * dl + origin
-
-    return x
+    return (primalIndex + halfCell) * dl
 
 
 class FieldNodeCoordParams(cellCenteredCoordinates.CenteredCoordParams):
@@ -74,8 +71,6 @@ def main(path="./"):
 
     originPosition = [0.0, 0.0, 0.0]
 
-    gl = gridlayout.GridLayout()
-
     # TODO : end Todo
 
     # TODO: FieldCoords and CenteredCoords share a common base, refactor this
@@ -103,6 +98,8 @@ def main(path="./"):
     for interpOrder, outFilesSumDim, outFilesValDim in zip(
         interpOrders, outSummaries, outValues
     ):
+        gl = gridlayout.GridLayout(interp_order=interpOrder)
+
         for (
             dimension,
             outFileS,
@@ -152,14 +149,7 @@ def main(path="./"):
                         outValuesString = "{} {} {}\n".format(
                             quantity,
                             position,
-                            fieldCoords(
-                                position,
-                                params.iStart,
-                                quantity,
-                                "X",
-                                params.dl,
-                                params.origin,
-                            ),
+                            fieldCoords(position, quantity, "X", params.dl, gl),
                         )
 
                         outFileV.write(utilities.removeTupleFormat(outValuesString))
@@ -171,22 +161,8 @@ def main(path="./"):
                         ):
                             position = (positionX, positionY)
                             centered = (
-                                fieldCoords(
-                                    positionX,
-                                    params.iStart[0],
-                                    quantity,
-                                    "X",
-                                    params.dl[0],
-                                    params.origin[0],
-                                ),
-                                fieldCoords(
-                                    positionY,
-                                    params.iStart[1],
-                                    quantity,
-                                    "Y",
-                                    params.dl[1],
-                                    params.origin[1],
-                                ),
+                                fieldCoords(positionX, quantity, "X", params.dl[0], gl),
+                                fieldCoords(positionY, quantity, "Y", params.dl[1], gl),
                             )
 
                             outValuesString = "{} {} {}\n".format(
@@ -206,28 +182,13 @@ def main(path="./"):
                                 position = (positionX, positionY, positionZ)
                                 centered = (
                                     fieldCoords(
-                                        positionX,
-                                        params.iStart[0],
-                                        quantity,
-                                        "X",
-                                        params.dl[0],
-                                        params.origin[0],
+                                        positionX, quantity, "X", params.dl[0], gl
                                     ),
                                     fieldCoords(
-                                        positionY,
-                                        params.iStart[1],
-                                        quantity,
-                                        "Y",
-                                        params.dl[1],
-                                        params.origin[1],
+                                        positionY, quantity, "Y", params.dl[1], gl
                                     ),
                                     fieldCoords(
-                                        positionZ,
-                                        params.iStart[2],
-                                        quantity,
-                                        "Z",
-                                        params.dl[2],
-                                        params.origin[2],
+                                        positionZ, quantity, "Z", params.dl[2], gl
                                     ),
                                 )
 

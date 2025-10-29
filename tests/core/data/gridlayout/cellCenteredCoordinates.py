@@ -32,40 +32,40 @@ class CenteredCoordParams(gridparams.GridParams):
             self.origin = originPosition[0]
             self.iStart = gl.localPointToAMR(
                 gl.physicalStartIndex(self.interpOrder, centering)
-            )
+            )[0]
             assert self.iStart >= 0
             self.iEnd = gl.localPointToAMR(
                 gl.physicalEndIndex(self.interpOrder, centering, self.nbrCell)
                 - gl.isDual(centering)
-            )
+            )[0]
             assert self.iEnd >= self.iStart
 
         if self.dim > 1:
             iStartX = gl.localPointToAMR(
                 gl.physicalStartIndex(self.interpOrder, centering[0])
-            )
+            )[0]
             iEndX = gl.localPointToAMR(
                 gl.physicalEndIndex(self.interpOrder, centering[0], self.nbrCell[0])
                 - gl.isDual(centering[0])
-            )
+            )[0]
 
             iStartY = gl.localPointToAMR(
                 gl.physicalStartIndex(self.interpOrder, centering[1])
-            )
+            )[0]
             iEndY = gl.localPointToAMR(
                 gl.physicalEndIndex(self.interpOrder, centering[1], self.nbrCell[1])
                 - gl.isDual(centering[1])
-            )
+            )[0]
 
         if self.dim > 2:
             iStartZ = gl.localPointToAMR(
                 gl.physicalStartIndex(self.interpOrder, centering[2])
-            )
+            )[0]
 
             iEndZ = gl.localPointToAMR(
                 gl.physicalEndIndex(self.interpOrder, centering[2], self.nbrCell[2])
                 - gl.isDual(centering[2])
-            )
+            )[0]
 
         if self.dim == 2:
             self.origin = (originPosition[0], originPosition[1])
@@ -153,7 +153,7 @@ def main(path="./"):
     for interpOrder, outFilesSumDim, outFilesValDim in zip(
         interpOrders, outSummaries, outValues
     ):
-        gl = gridlayout.GridLayout(interp_order=interpOrder, field_ghosts_nbr=2)
+        gl = gridlayout.GridLayout(interp_order=interpOrder)
 
         for (
             dimension,

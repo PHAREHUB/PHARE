@@ -104,8 +104,9 @@ auto createFieldCenteringParam()
         auto quantityIt = namesToQuantity.find(quantity);
         if (quantityIt != namesToQuantity.end())
         {
-            auto hqIndex = static_cast<int>(quantityIt->second);
+            auto hqIndex = static_cast<std::size_t>(quantityIt->second);
 
+            assert(hqIndex < params.size());
             auto& param = params[hqIndex];
 
             param.iCellForCentering.push_back(icell);
