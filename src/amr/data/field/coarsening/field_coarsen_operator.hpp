@@ -2,15 +2,12 @@
 #define PHARE_FIELD_DATA_COARSEN_HPP
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/constants.hpp"
-#include "core/utilities/point/point.hpp"
-#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 
-#include "default_field_coarsener.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>

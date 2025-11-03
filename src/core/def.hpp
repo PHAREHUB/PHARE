@@ -21,6 +21,12 @@
 namespace PHARE::core
 {
 
+
+template<typename T>
+concept FloatingPoint = std::is_floating_point_v<T>;
+
+
+
 NO_DISCARD bool isUsable(auto const&... args)
 {
     auto check = [](auto const& arg) {
