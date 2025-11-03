@@ -322,9 +322,11 @@ namespace amr
         auto getIDsList(auto&&... keys) const
         {
             auto const Fn = [&](auto& key) {
+                if (key.empty())
+                    throw std::runtime_error("Resource Manager key cannot be empty");
                 if (auto const id = getID(key))
                     return *id;
-                throw std::runtime_error("bad key");
+                throw std::runtime_error("Resource Manager has no key: " + key);
             };
             return std::array{Fn(keys)...};
         }
@@ -508,6 +510,9 @@ namespace amr
         {
             using ResourcesResolver_t = ResourceResolver<This, ResourcesView>;
 
+            if (view.name().empty())
+                throw std::runtime_error("Resource Manager key cannot be empty");
+
             if (nameToResourceInfo_.count(view.name()) == 0)
             {
                 ResourcesInfo info;
@@ -530,6 +535,9 @@ namespace amr
             using ResourceResolver_t = ResourceResolver<This, ResourcesView>;
             using ResourcesType      = ResourceResolver_t::type;
 
+            if (obj.name().empty())
+                throw std::runtime_error("Resource Manager key cannot be empty");
+
             auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
             if (resourceInfoIt == nameToResourceInfo_.end())
                 throw std::runtime_error("Resources not found !");
@@ -540,6 +548,9 @@ namespace amr
         template<typename ResourcesView>
         void unsetResourcesInternal_(ResourcesView& obj) const
         {
+            if (obj.name().empty())
+                throw std::runtime_error("Resource Manager key cannot be empty");
+
             auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
             if (resourceInfoIt == nameToResourceInfo_.end())
                 throw std::runtime_error("Resources not found !");
@@ -554,7 +565,11 @@ namespace amr
         void allocate_(ResourcesView const& obj, SAMRAI::hier::Patch& patch,
                        double const allocateTime) const
         {
-            std::string const& resourcesName  = obj.name();
+            std::string const& resourcesName = obj.name();
+
+            if (obj.name().empty())
+                throw std::runtime_error("Resource Manager key cannot be empty");
+
             auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
             if (resourceVariablesInfo != nameToResourceInfo_.end())
             {
