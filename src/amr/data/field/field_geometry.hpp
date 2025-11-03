@@ -182,12 +182,10 @@ namespace amr
                                                        PhysicalQuantity qty,
                                                        GridLayoutT const& layout)
         {
-            SAMRAI::hier::BoxContainer fieldBoxes;
-            for (auto const& box : boxes)
-            {
-                fieldBoxes.push_back(toFieldBox(box, qty, layout));
-            }
-            return fieldBoxes;
+            auto to_field_boxes = boxes;
+            for (auto& box : to_field_boxes)
+                box = toFieldBox(box, qty, layout);
+            return to_field_boxes;
         }
 
         /**

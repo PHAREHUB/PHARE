@@ -189,41 +189,6 @@ class AdvanceTestBase(SimulatorTest):
         if qty in ["e", "b", "eb"]:
             return eb_hier
 
-        is_particle_type = qty == "particles" or qty == "particles_patch_ghost"
-
-        if is_particle_type:
-            particle_hier = None
-
-        if qty == "particles":
-            particle_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_domain.h5"
-            )
-            particle_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
-                hier=particle_hier,
-            )
-
-        if not block_merging_particles and qty == "particles":
-            merge_particles(particle_hier)
-
-        if is_particle_type:
-            return particle_hier
-
-        if qty == "fields":
-            eb_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/EM_E.h5", hier=eb_hier
-            )
-            eb_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/EM_B.h5", hier=eb_hier
-            )
-            mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_charge_density.h5", hier=eb_hier
-            )
-            mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
-            )
-            return eb_hier
-
         if qty == "moments" or qty == "fields":
             mom_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_charge_density.h5", hier=eb_hier
@@ -232,6 +197,22 @@ class AdvanceTestBase(SimulatorTest):
                 h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
             )
             return mom_hier
+
+        # else particle tests
+
+        assert qty == "particles"
+
+        particle_hier = hierarchy_from(
+            h5_filename=diag_outputs + "/ions_pop_protons_domain.h5"
+        )
+        particle_hier = hierarchy_from(
+            h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
+            hier=particle_hier,
+        )
+
+        if not block_merging_particles:
+            merge_particles(particle_hier)
+        return particle_hier
 
     def base_test_overlaped_fields_are_equal(self, datahier, coarsest_time):
         checks = 0
@@ -656,9 +637,9 @@ class AdvanceTestBase(SimulatorTest):
         checks = 0
         ndim = global_vars.sim.ndim
         lvl_steps = global_vars.sim.level_time_steps
-        assert len(lvl_steps) == 2, (
-            "this test is only configured for L0 -> L1 refinement comparisons"
-        )
+        assert (
+            len(lvl_steps) == 2
+        ), "this test is only configured for L0 -> L1 refinement comparisons"
 
         coarse_ilvl = 0
         fine_ilvl = 1

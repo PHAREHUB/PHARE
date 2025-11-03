@@ -208,26 +208,6 @@ class InitializationTest(SimulatorTest):
         if qty in ["e", "b", "eb"]:
             return eb_hier
 
-        is_particle_type = qty == "particles" or qty == "particles_patch_ghost"
-
-        if is_particle_type:
-            particle_hier = None
-
-        if qty == "particles":
-            particle_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_domain.h5"
-            )
-            particle_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
-                hier=particle_hier,
-            )
-
-        if qty == "particles":
-            merge_particles(particle_hier)
-
-        if is_particle_type:
-            return particle_hier
-
         if qty == "moments":
             mom_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_charge_density.h5"
@@ -250,6 +230,22 @@ class InitializationTest(SimulatorTest):
                     h5_filename=diag_outputs + "/ions_pop_beam_flux.h5", hier=mom_hier
                 )
             return mom_hier
+
+        # else particles
+
+        assert qty == "particles"
+
+        particle_hier = hierarchy_from(
+            h5_filename=diag_outputs + "/ions_pop_protons_domain.h5"
+        )
+        particle_hier = hierarchy_from(
+            h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
+            hier=particle_hier,
+        )
+
+        merge_particles(particle_hier)
+
+        return particle_hier
 
     def _test_B_is_as_provided_by_user(self, dim, interp_order, **kwargs):
         print(
