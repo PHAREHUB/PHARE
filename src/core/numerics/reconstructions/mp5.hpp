@@ -84,7 +84,7 @@ private:
         auto const fLC    = u + Dil / 2. + (4. / 3.) * d4i1_2;
         auto const fmin   = std::max(std::min({u, v_p1, fMD}), std::min({u, fUL, fLC}));
         auto const fmax   = std::min(std::max({u, v_p1, fMD}), std::max({u, fUL, fLC}));
-        return (fi1_2 < u) * (fi1_2 - fMP) < 0 ? fi1_2 : std::clamp(fi1_2, fmin, fmax);
+        return (fi1_2 - u) * (fi1_2 - fMP) < 0.0 ? fi1_2 : std::clamp(fi1_2, fmin, fmax);
     }
 };
 
