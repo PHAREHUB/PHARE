@@ -332,7 +332,7 @@ private:
                     fineField(ilfx, ilfy, ilfz)
                         = 0.25
                           * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx + 1, ilcy, ilcz)
-                             + coarseField(ilcx, ilcy + 1, ilcz + 1)
+                             + coarseField(ilcx, ilcy + 1, ilcz)
                              + coarseField(ilcx + 1, ilcy + 1, ilcz));
             }
         }

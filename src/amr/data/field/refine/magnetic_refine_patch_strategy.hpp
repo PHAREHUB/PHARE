@@ -1,17 +1,15 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
-#include "amr/data/field/field_geometry.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/utilities/types.hpp"
 
-
+#include "amr/data/field/field_geometry.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
-
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
-#include "core/utilities/types.hpp"
 
 #include <array>
 #include <cassert>
@@ -46,12 +44,12 @@ public:
     void registerIDs(int const b_id) { b_id_ = b_id; }
 
     void setPhysicalBoundaryConditions(SAMRAI::hier::Patch& patch, double const fill_time,
-                                       const SAMRAI::hier::IntVector& ghost_width_to_fill) override
+                                       SAMRAI::hier::IntVector const& ghost_width_to_fill) override
     {
     }
 
     SAMRAI::hier::IntVector
-    getRefineOpStencilWidth(const SAMRAI::tbox::Dimension& dim) const override
+    getRefineOpStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
         return SAMRAI::hier::IntVector(dim, 1); // hard-coded 0th order base interpolation
     }
@@ -132,7 +130,7 @@ public:
 
     static auto isNewFineFace(auto const& amrIdx, auto const dir)
     {
-        // amr index cabn be negative so test !=0 and not ==1
+        // amr index can be negative so test !=0 and not ==1
         // to see if this is odd or even
         return amrIdx[dir] % 2 != 0;
     }

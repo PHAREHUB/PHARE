@@ -1,18 +1,17 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
-#include "amr/data/field/coarsening/moments_coarsener.hpp"
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
-
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
-
 #include "core/utilities/types.hpp"
+
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
+
+#include "amr/data/field/coarsening/moments_coarsener.hpp"
 #include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
@@ -21,18 +20,16 @@
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
-
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/electric_field_refiner.hpp"
+#include "amr/data/field/refine/magnetic_field_init_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
-#include "amr/data/field/refine/magnetic_field_regrider.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
@@ -93,10 +90,10 @@ namespace amr
         using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;
         // using FieldMomentsRefineOp    = FieldRefineOp<FieldMomentsRefiner<dimension>>;
         // using VecFieldMomentsRefineOp = VecFieldRefineOp<FieldMomentsRefiner<dimension>>;
-        using MagneticFieldRefineOp = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
-        using MagneticFieldRegridOp = VecFieldRefineOp<MagneticFieldRegrider<dimension>>;
-        using ElectricFieldRefineOp = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
-        using FieldTimeInterp       = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
+        using MagneticFieldInitRefineOp = VecFieldRefineOp<MagneticFieldInitRefiner<dimension>>;
+        using MagneticFieldRefineOp     = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
+        using ElectricFieldRefineOp     = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
+        using FieldTimeInterp           = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
 
         using VecFieldTimeInterp
             = VecFieldLinearTimeInterpolate<GridLayoutT, GridT, core::HybridQuantity>;
@@ -1022,8 +1019,6 @@ namespace amr
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost;
-        SAMRAI::xfer::RefineAlgorithm BghostAlgo;
-        SAMRAI::xfer::RefineAlgorithm BPredGhostAlgo;
         SAMRAI::xfer::RefineAlgorithm BalgoInit;
         SAMRAI::xfer::RefineAlgorithm BregridAlgo;
         SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost;
@@ -1101,8 +1096,8 @@ namespace amr
         RefOp_ptr vecFieldRefineOp_{std::make_shared<DefaultVecFieldRefineOp>()};
 
 
-        RefOp_ptr BInitRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
-        RefOp_ptr BRefineOp_{std::make_shared<MagneticFieldRegridOp>()};
+        RefOp_ptr BInitRefineOp_{std::make_shared<MagneticFieldInitRefineOp>()};
+        RefOp_ptr BRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
         RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
         std::shared_ptr<FieldFillPattern_t> nonOverwriteInteriorFieldFillPattern
             = std::make_shared<FieldFillPattern<dimension>>(); // stateless (mostly)

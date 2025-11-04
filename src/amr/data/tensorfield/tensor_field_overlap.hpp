@@ -1,10 +1,11 @@
 #ifndef PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_OVERLAP_HPP
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_OVERLAP_HPP
 
+#include "core/def/phare_mpi.hpp"
 
 #include "core/data/tensorfield/tensorfield.hpp"
+
 #include "amr/data/field/field_overlap.hpp"
-#include "core/def/phare_mpi.hpp"
 
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/BoxOverlap.h>
@@ -56,14 +57,14 @@ public:
 
 
 
-    const SAMRAI::hier::IntVector& getSourceOffset() const final
+    SAMRAI::hier::IntVector const& getSourceOffset() const final
     {
         return transformation_.getOffset();
     }
 
 
 
-    const SAMRAI::hier::Transformation& getTransformation() const final { return transformation_; }
+    SAMRAI::hier::Transformation const& getTransformation() const final { return transformation_; }
 
     NO_DISCARD auto& operator[](std::size_t i) { return components_[i]; }
     NO_DISCARD auto& operator[](std::size_t i) const { return components_[i]; }
@@ -78,8 +79,8 @@ private:
             return val - core::detail::tensor_field_dim_from_rank<1>();
     }
 
-    bool transformations_equal_(const SAMRAI::hier::Transformation& a,
-                                const SAMRAI::hier::Transformation& b)
+    bool transformations_equal_(SAMRAI::hier::Transformation const& a,
+                                SAMRAI::hier::Transformation const& b)
     {
         return a.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE
                && b.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE

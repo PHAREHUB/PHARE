@@ -1,10 +1,6 @@
 #ifndef PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_HPP
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_HPP
 
-#include "amr/data/field/field_geometry.hpp"
-#include "amr/data/tensorfield/tensor_field_overlap.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/logger.hpp"
@@ -12,7 +8,9 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
-
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/field_overlap.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
@@ -111,7 +109,7 @@ public:
      *    The data will be copied from the interior and ghost of the source to the interior and
      *    ghost of the destination, where there is an overlap in the underlying index space
      */
-    void copy(const SAMRAI::hier::PatchData& source) final
+    void copy(SAMRAI::hier::PatchData const& source) final
     {
         PHARE_LOG_SCOPE(3, "TensorFieldData::copy");
 
@@ -177,7 +175,7 @@ public:
      * give the necessary transformation to apply to the source, to perform the copy (ie :
      * translation for periodics condition)
      */
-    void copy(const SAMRAI::hier::PatchData& source, const SAMRAI::hier::BoxOverlap& overlap) final
+    void copy(SAMRAI::hier::PatchData const& source, SAMRAI::hier::BoxOverlap const& overlap) final
     {
         PHARE_LOG_SCOPE(3, "TensorFieldData::copy");
 
@@ -194,7 +192,7 @@ public:
     /*** \brief This form should not be called since we cannot derive from TensorFieldData
      */
     void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
-               [[maybe_unused]] const SAMRAI::hier::BoxOverlap& overlap) const final
+               [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const final
     {
         throw std::runtime_error("Error cannot cast the PatchData to TensorFieldData");
     }
@@ -215,7 +213,7 @@ public:
     /*** \brief Compute the maximum amount of memory needed to hold TensorFieldData information
      * on the specified overlap
      */
-    std::size_t getDataStreamSize(const SAMRAI::hier::BoxOverlap& overlap) const final
+    std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
     {
         return getDataStreamSize_(overlap);
     }
@@ -227,7 +225,7 @@ public:
      * overlap, and put it on the stream.
      */
     void packStream(SAMRAI::tbox::MessageStream& stream,
-                    const SAMRAI::hier::BoxOverlap& overlap) const final
+                    SAMRAI::hier::BoxOverlap const& overlap) const final
     {
         PHARE_LOG_SCOPE(3, "packStream");
 
@@ -238,27 +236,29 @@ public:
         auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
 
         SAMRAI::hier::Transformation const& transformation = tFieldOverlap.getTransformation();
-        if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
+
+        if (transformation.getRotation() != SAMRAI::hier::Transformation::NO_ROTATE)
+            throw std::runtime_error(
+                "Rotations are not supported in PHARE (TensorFieldData::packStream)");
+
+        for (std::size_t c = 0; c < N; ++c)
         {
-            for (std::size_t c = 0; c < N; ++c)
+            auto const& fOverlap = tFieldOverlap[c];
+
+            for (auto const& box : fOverlap->getDestinationBoxContainer())
             {
-                auto const& fOverlap = tFieldOverlap[c];
+                auto const& source = grids[c];
+                SAMRAI::hier::Box packBox{box};
 
-                for (auto const& box : fOverlap->getDestinationBoxContainer())
-                {
-                    auto const& source = grids[c];
-                    SAMRAI::hier::Box packBox{box};
+                // Since the transformation, allow to transform the source box,
+                // into the destination box space, and that the box in the boxContainer
+                // are in destination space, we have to use the inverseTransform
+                // to get into source space
+                transformation.inverseTransform(packBox);
 
-                    // Since the transformation, allow to transform the source box,
-                    // into the destination box space, and that the box in the boxContainer
-                    // are in destination space, we have to use the inverseTransform
-                    // to get into source space
-                    transformation.inverseTransform(packBox);
-
-                    auto const finalBox = phare_box_from<dimension>(packBox);
-                    core::FieldBox<Grid_t const> src{source, gridLayout, finalBox};
-                    src.append_to(buffer);
-                }
+                auto const finalBox = phare_box_from<dimension>(packBox);
+                core::FieldBox<Grid_t const> src{source, gridLayout, finalBox};
+                src.append_to(buffer);
             }
         }
 
@@ -273,13 +273,13 @@ public:
      * the overlap, and fill the data where is needed.
      */
     void unpackStream(SAMRAI::tbox::MessageStream& stream,
-                      const SAMRAI::hier::BoxOverlap& overlap) final
+                      SAMRAI::hier::BoxOverlap const& overlap) final
     {
         unpackStream(stream, overlap, grids);
     }
 
     template<typename Operator = SetEqualOp>
-    void unpackStream(SAMRAI::tbox::MessageStream& stream, const SAMRAI::hier::BoxOverlap& overlap,
+    void unpackStream(SAMRAI::tbox::MessageStream& stream, SAMRAI::hier::BoxOverlap const& overlap,
                       auto& dst_grids)
     {
         PHARE_LOG_SCOPE(3, "unpackStream");

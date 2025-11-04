@@ -1,8 +1,8 @@
-#ifndef PHARE_MAGNETIC_FIELD_REGRIDER_HPP
-#define PHARE_MAGNETIC_FIELD_REGRIDER_HPP
+#ifndef PHARE_MAGNETIC_FIELD_INIT_REFINER_HPP
+#define PHARE_MAGNETIC_FIELD_INIT_REFINER_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -11,11 +11,14 @@
 
 #include <SAMRAI/hier/Box.h>
 
-#include <cmath>
 #include <cstddef>
 
 namespace PHARE::amr
 {
+
+using core::dirX;
+using core::dirY;
+using core::dirZ;
 
 /** \brief Refines the magnetic components from a coarse mesh to fine faces shared with the coarse
  * ones.
@@ -26,13 +29,13 @@ namespace PHARE::amr
  * inner fine faces are set by the MagneticRefinePatchStrategy
  */
 template<std::size_t dimension>
-class MagneticFieldRegrider
+class MagneticFieldInitRefiner
 {
 public:
-    MagneticFieldRegrider(std::array<core::QtyCentering, dimension> const& centering,
-                          SAMRAI::hier::Box const& destinationGhostBox,
-                          SAMRAI::hier::Box const& sourceGhostBox,
-                          SAMRAI::hier::IntVector const& /*ratio*/)
+    MagneticFieldInitRefiner(std::array<core::QtyCentering, dimension> const& centering,
+                             SAMRAI::hier::Box const& destinationGhostBox,
+                             SAMRAI::hier::Box const& sourceGhostBox,
+                             SAMRAI::hier::IntVector const& ratio)
         : fineBox_{destinationGhostBox}
         , coarseBox_{sourceGhostBox}
         , centerings_{centering}
@@ -51,13 +54,9 @@ public:
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
-        using core::dirX;
-        using core::dirY;
-        using core::dirZ;
-
-        auto const locFineIdx   = AMRToLocal(fineIndex, fineBox_);
-        auto const coarseIdx    = toCoarseIndex(fineIndex);
-        auto const locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
+        auto locFineIdx   = AMRToLocal(fineIndex, fineBox_);
+        auto coarseIdx    = toCoarseIndex(fineIndex);
+        auto locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
 
         if constexpr (dimension == 1)
@@ -76,7 +75,7 @@ public:
             //
             if (centerings_[0] == core::QtyCentering::primal)
             {
-                if (fineIndex[0] % 2 == 0 && std::isnan(fineField(locFineIdx[dirX])))
+                if (fineIndex[0] % 2 == 0)
                 {
                     fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
                 }
@@ -91,8 +90,7 @@ public:
             // 101 takes 50 = 101/2
             else
             {
-                if (std::isnan(fineField(locFineIdx[dirX])))
-                    fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+                fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
             }
         }
 
@@ -105,8 +103,7 @@ public:
                 and centerings_[dirY] == core::QtyCentering::dual)
             {
                 // Bx
-                if (fineIndex[dirX] % 2 == 0
-                    && std::isnan(fineField(locFineIdx[dirX], locFineIdx[dirY])))
+                if (fineIndex[dirX] % 2 == 0)
                 {
                     // we're on a coarse X face
                     // take the coarse face value
@@ -118,8 +115,7 @@ public:
                      and centerings_[dirY] == core::QtyCentering::primal)
             {
                 // By
-                if (fineIndex[dirY] % 2 == 0
-                    && std::isnan(fineField(locFineIdx[dirX], locFineIdx[dirY])))
+                if (fineIndex[dirY] % 2 == 0)
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
@@ -133,9 +129,8 @@ public:
                 // Bz
                 // we're always on a coarse Z face since there is no dual in z
                 // all 4 fine Bz take the coarse Z value
-                if (std::isnan(fineField(locFineIdx[dirX], locFineIdx[dirY])))
-                    fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                fineField(locFineIdx[dirX], locFineIdx[dirY])
+                    = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
             }
         }
 
@@ -151,8 +146,7 @@ public:
                 and centerings_[dirZ] == core::QtyCentering::dual)
             {
                 // Bx
-                if (fineIndex[dirX] % 2 == 0
-                    && std::isnan(fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])))
+                if (fineIndex[dirX] % 2 == 0)
                 {
                     // we're on a coarse X face
                     // take the coarse face value
@@ -165,8 +159,7 @@ public:
                      and centerings_[dirZ] == core::QtyCentering::dual)
             {
                 // By
-                if (fineIndex[dirY] % 2 == 0
-                    && std::isnan(fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])))
+                if (fineIndex[dirY] % 2 == 0)
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
@@ -179,8 +172,7 @@ public:
                      and centerings_[dirZ] == core::QtyCentering::primal)
             {
                 // Bz
-                if (fineIndex[dirZ] % 2 == 0
-                    && std::isnan(fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])))
+                if (fineIndex[dirZ] % 2 == 0)
                 {
                     // we're on a coarse X face
                     // take the coarse face value
@@ -199,4 +191,4 @@ private:
 } // namespace PHARE::amr
 
 
-#endif // !PHARE_MAGNETIC_FIELD_REFINER_HPP
+#endif // !PHARE_MAGNETIC_FIELD_INIT_REFINER_HPP
