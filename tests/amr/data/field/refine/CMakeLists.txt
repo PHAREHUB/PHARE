@@ -10,7 +10,6 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 set(SOURCES_INC
-  test_field_refinement_on_hierarchy.hpp
   test_tag_strategy.hpp
   ${CMAKE_CURRENT_BINARY_DIR}/input_config.h
    )
@@ -44,6 +43,4 @@ function(_add_serial_amr_field_refine_test src_name)
   add_no_mpi_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
 endfunction(_add_serial_amr_field_refine_test)
 
-# removed for now as registerRefine multiple quantities is broken
-_add_general_amr_field_refine_test(test_field_refinement_on_hierarchy)
 _add_serial_amr_field_refine_test(test_field_refine)
