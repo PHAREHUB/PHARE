@@ -182,7 +182,7 @@ public:
                 if (fineIndex[dirZ] % 2 == 0
                     && std::isnan(fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])))
                 {
-                    // we're on a coarse X face
+                    // we're on a coarse Z face
                     // take the coarse face value
                     fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
                         = coarseField(ix, iy, iz);

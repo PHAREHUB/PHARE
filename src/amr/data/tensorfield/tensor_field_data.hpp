@@ -12,7 +12,6 @@
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/field_overlap.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
 
 #include <SAMRAI/hier/PatchData.h>

@@ -6,7 +6,6 @@
 
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/utilities/box/amr_box.hpp"
-#include "amr/data/field/field_geometry.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
