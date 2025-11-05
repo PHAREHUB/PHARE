@@ -298,12 +298,13 @@ class Simulator:
         Support keys:
             RANK_FILES - logfile per rank
             DATETIME_FILES - logfile with starting datetime timestamp per rank
-            NONE - no logging files, display to cout
+            CLI  - no logging files, display to cout
+            NULL - no logging files, no cout
         """
-
-        if "PHARE_LOG" not in os.environ:
-            os.environ["PHARE_LOG"] = "RANK_FILES"
         from pyphare.cpp import cpp_lib
 
-        if os.environ["PHARE_LOG"] != "NONE" and cpp_lib().mpi_rank() == 0:
+        logging = os.environ["PHARE_LOG"] = os.environ.get("PHARE_LOG", "RANK_FILES")
+        need_log_dir = logging != "CLI" and logging != "NULL"
+        if need_log_dir and cpp_lib().mpi_rank() == 0:
             Path(".log").mkdir(exist_ok=True)
+        cpp_lib().mpi_barrier()

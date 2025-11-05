@@ -123,13 +123,14 @@ protected:
 private:
     auto find_model(std::string name);
 
-    auto static log_file_name()
+    std::unique_ptr<std::ofstream> static log_file()
     {
-        // ".log" directory is not created here, but in python if PHARE_LOG != "NONE"
+        // ".log" directory is not created here, but in simulator.py
         if (auto log = core::get_env("PHARE_LOG"))
         {
             if (log == "RANK_FILES")
-                return ".log/" + std::to_string(core::mpi::rank()) + ".out";
+                return std::make_unique<std::ofstream>(".log/" + std::to_string(core::mpi::rank())
+                                                       + ".out");
 
 
             if (log == "DATETIME_FILES")
@@ -137,18 +138,22 @@ private:
                 auto date_time = core::mpi::date_time();
                 auto rank      = std::to_string(core::mpi::rank());
                 auto size      = std::to_string(core::mpi::size());
-                return ".log/" + date_time + "_" + rank + "_of_" + size + ".out";
+                return std::make_unique<std::ofstream>(".log/" + date_time + "_" + rank + "_of_"
+                                                       + size + ".out");
             }
 
-            if (log != "NONE")
+            if (log == "NULL")
+                return std::make_unique<std::ofstream>("/dev/null");
+
+            if (log != "CLI")
                 throw std::runtime_error(
-                    "PHARE_LOG invalid type, valid keys are RANK_FILES/DATETIME_FILES/NONE");
+                    "PHARE_LOG invalid type, valid keys are RANK_FILES/DATETIME_FILES/CLI/NULL");
         }
 
-        return std::string{""}; // unused
+        return nullptr;
     }
 
-    std::ofstream log_out{log_file_name()};
+    std::unique_ptr<std::ofstream> log_out{log_file()};
     std::streambuf* coutbuf = nullptr;
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
@@ -196,13 +201,13 @@ private:
 
 namespace
 {
-    inline auto logging(std::ofstream& log_out)
+    inline auto logging(std::unique_ptr<std::ofstream>& log_out)
     {
         std::streambuf* buf = nullptr;
-        if (auto log = core::get_env("PHARE_LOG"); log != "NONE")
+        if (log_out)
         {
             buf = std::cout.rdbuf();
-            std::cout.rdbuf(log_out.rdbuf());
+            std::cout.rdbuf(log_out->rdbuf());
         }
         return buf;
     }
