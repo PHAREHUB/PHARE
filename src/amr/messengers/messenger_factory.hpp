@@ -84,10 +84,10 @@ public:
     {
         if (messengerName == HybridHybridMessengerStrategy_t::stratName)
         {
-            auto resourcesManager = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
+            auto& resourcesManager = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
 
-            auto messengerStrategy = std::make_unique<HybridHybridMessengerStrategy_t>(
-                std::move(resourcesManager), firstLevel);
+            auto messengerStrategy
+                = std::make_unique<HybridHybridMessengerStrategy_t>(resourcesManager, firstLevel);
 
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
@@ -97,13 +97,15 @@ public:
         else if (messengerName == MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName)
         {
             // caution we move them so don't put a ref
-            auto mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
-            auto hybridResourcesManager
+            auto& mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
+            auto& hybridResourcesManager
                 = dynamic_cast<HybridModel const&>(fineModel).resourcesManager;
+            if (hybridResourcesManager.get() != mhdResourcesManager.get())
+                throw std::runtime_error("Multiple ResourceManagers in use");
 
             auto messengerStrategy
                 = std::make_unique<MHDHybridMessengerStrategy<MHDModel, HybridModel>>(
-                    std::move(mhdResourcesManager), std::move(hybridResourcesManager), firstLevel);
+                    mhdResourcesManager, firstLevel);
 
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
@@ -113,10 +115,9 @@ public:
 
         else if (messengerName == MHDMessenger<MHDModel>::stratName)
         {
-            auto mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
+            auto& mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
 
-            return std::make_unique<MHDMessenger<MHDModel>>(std::move(mhdResourcesManager),
-                                                            firstLevel);
+            return std::make_unique<MHDMessenger<MHDModel>>(mhdResourcesManager, firstLevel);
         }
         else
             return {};

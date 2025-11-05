@@ -25,11 +25,12 @@ namespace amr
     template<typename MHDModel>
     class MHDMessenger : public IMessenger<typename MHDModel::Interface>
     {
+        using resources_manager_type = MHDModel::resources_manager_type;
+
     public:
         using IPhysicalModel = typename MHDModel::Interface;
-        MHDMessenger(std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager,
-                     int const firstLevel)
-            : resourcesManager_{std::move(resourcesManager)}
+        MHDMessenger(std::shared_ptr<resources_manager_type> resourcesManager, int const firstLevel)
+            : resourcesManager_{resourcesManager}
             , firstLevel_{firstLevel}
         {
         }
@@ -131,7 +132,7 @@ namespace amr
 
 
     private:
-        std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
+        std::shared_ptr<resources_manager_type> resourcesManager_;
         int const firstLevel_;
     };
 

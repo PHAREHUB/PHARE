@@ -72,6 +72,9 @@ public:
     using SimFunctors            = core::PHARE_Sim_Types::SimulationFunctors;
     using Integrator             = PHARE::amr::Integrator<dimension>;
 
+    using ResourceManager_t = HybridModel::resources_manager_type;
+    static_assert(std::is_same_v<ResourceManager_t, typename MHDModel::resources_manager_type>);
+
 
     NO_DISCARD double startTime() override { return startTime_; }
     NO_DISCARD double endTime() override { return finalTime_; }
@@ -173,6 +176,8 @@ private:
     bool isInitialized         = false;
     std::size_t fineDumpLvlMax = 0;
 
+    std::shared_ptr<ResourceManager_t> resman_ptr;
+
     // physical models that can be used
     std::shared_ptr<HybridModel> hybridModel_;
     std::shared_ptr<MHDModel> mhdModel_;
@@ -190,11 +195,10 @@ private:
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
 
-
-
-    double restarts_init(initializer::PHAREDict const&);
+    double restart_time(initializer::PHAREDict const&);
     void diagnostics_init(initializer::PHAREDict const&);
     void hybrid_init(initializer::PHAREDict const&);
+    void mhd_init(initializer::PHAREDict const&);
 };
 
 
@@ -220,18 +224,9 @@ namespace
 //-----------------------------------------------------------------------------
 
 template<auto opts>
-double Simulator<opts>::restarts_init(initializer::PHAREDict const& dict)
+double Simulator<opts>::restart_time(initializer::PHAREDict const& dict)
 {
-    rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *hybridModel_, dict);
-
-    if (dict.contains("restart_time"))
-    {
-        currentTime_ = dict["restart_time"].template to<double>();
-        finalTime_ += currentTime_;
-        return currentTime_;
-    }
-
-    return 0;
+    return cppdict::get_value(dict, "simulation/restarts/restart_time", 0.);
 }
 
 
@@ -261,15 +256,17 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict)
 }
 
 
+template<auto opts>
+void Simulator<opts>::mhd_init(initializer::PHAREDict const& /*dict*/)
+{
+}
+
 
 template<auto opts>
 void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
 {
-    hybridModel_ = std::make_shared<HybridModel>(
-        dict["simulation"], std::make_shared<typename HybridModel::resources_manager_type>());
-
-
-    hybridModel_->resourcesManager->registerResources(hybridModel_->state);
+    hybridModel_ = std::make_shared<HybridModel>(dict["simulation"], resman_ptr);
+    resman_ptr->registerResources(hybridModel_->state); // still valid, never moved
 
     // we register the hybrid model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
@@ -320,8 +317,7 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
     auto lbm_id = lbm_->getId(); // moved on next line
     multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
 
-    if (dict["simulation"].contains("restarts"))
-        startTime_ = restarts_init(dict["simulation"]["restarts"]);
+    startTime_ = restart_time(dict);
 
     integrator_
         = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
@@ -350,8 +346,18 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
+    resman_ptr   = std::make_shared<ResourceManager_t>();
+    currentTime_ = restart_time(dict);
+    finalTime_ += currentTime_;
+
+    if (dict["simulation"].contains("restarts"))
+        rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *resman_ptr,
+                                                              dict["simulation"]["restarts"]);
+
     if (find_model("HybridModel"))
         hybrid_init(dict);
+    else if (find_model("MHDModel"))
+        mhd_init(dict);
     else
         throw std::runtime_error("unsupported model");
 }
@@ -412,6 +418,7 @@ void Simulator<opts>::initialize()
     }
 
     isInitialized = true;
+    resman_ptr->registerForRestarts();
 
     if (hierarchy_->isFromRestart())
         hierarchy_->closeRestartFile();

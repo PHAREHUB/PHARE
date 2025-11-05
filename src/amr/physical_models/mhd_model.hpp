@@ -62,6 +62,7 @@ namespace solver
         }
 
 
+
         virtual ~MHDModel() override = default;
 
         core::MHDState<VecFieldT> state;

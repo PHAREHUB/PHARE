@@ -15,7 +15,6 @@
 
 #if PHARE_HAS_HIGHFIVE
 
-#include "restarts_model_view.hpp"
 #include "restarts/detail/h5writer.hpp"
 
 #endif
@@ -32,14 +31,13 @@ struct NullOpRestartsManager : public IRestartsManager
 
 struct RestartsManagerResolver
 {
-    template<typename Hierarchy, typename Model>
+    template<typename Hierarchy, typename ResourceManager_t>
     NO_DISCARD static std::unique_ptr<IRestartsManager>
-    make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
+    make_unique(Hierarchy& hier, ResourceManager_t& resman, initializer::PHAREDict const& dict)
     {
 #if PHARE_HAS_HIGHFIVE
-        using ModelView_t = ModelView<Hierarchy, Model>;
-        using Writer_t    = h5::Writer<ModelView_t>;
-        return RestartsManager<Writer_t>::make_unique(hier, model, dict);
+        using Writer_t = h5::Writer<Hierarchy, ResourceManager_t>;
+        return RestartsManager<Writer_t>::make_unique(hier, resman, dict);
 #else
         return std::make_unique<NullOpRestartsManager>();
 #endif
