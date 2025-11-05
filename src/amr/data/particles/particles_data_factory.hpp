@@ -3,7 +3,7 @@
 
 #include "particles_data.hpp"
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include <SAMRAI/hier/BoxGeometry.h>

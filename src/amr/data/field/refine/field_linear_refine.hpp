@@ -6,18 +6,17 @@
 
 
 #include "core/def.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/field/field.hpp"
-#include "linear_weighter.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+
+#include "linear_weighter.hpp"
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>
 
 #include <array>
 #include <utility>
-#include <vector>
 
 
 namespace PHARE

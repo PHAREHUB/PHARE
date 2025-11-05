@@ -122,7 +122,7 @@ namespace solver
             // is not needed. But is still seems to use the messenger temporaries like
             // NiOld etc. so prepareStep() must be called, see end of the function.
             // - TODO more better comment(s)
-            hybMessenger.fillIonMomentGhosts(ions, level, initDataTime);
+            // hybMessenger.fillIonMomentGhosts(ions, level, initDataTime);
 
 
             // now moments are known everywhere, compute J and E
@@ -145,7 +145,7 @@ namespace solver
 
                         hybridModel.resourcesManager->setTime(J, *patch, 0.);
                     }
-                    hybMessenger.fillCurrentGhosts(J, levelNumber, 0.);
+                    hybMessenger.fillCurrentGhosts(J, level, 0.);
 
                     auto& electrons = hybridModel.state.electrons;
                     auto& E         = hybridModel.state.electromag.E;
@@ -164,7 +164,7 @@ namespace solver
                         hybridModel.resourcesManager->setTime(E, *patch, 0.);
                     }
 
-                    hybMessenger.fillElectricGhosts(E, levelNumber, 0.);
+                    hybMessenger.fillElectricGhosts(E, level, 0.);
                 }
 
             // quantities have been computed on the level,like the moments and J

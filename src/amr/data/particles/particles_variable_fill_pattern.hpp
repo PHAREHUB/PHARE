@@ -1,7 +1,7 @@
 #ifndef PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include <amr/utilities/box/amr_box.hpp>
 
 #include <SAMRAI/pdat/CellOverlap.h>

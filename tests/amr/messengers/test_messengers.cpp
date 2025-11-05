@@ -286,6 +286,8 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
     auto hybridSolver = std::make_unique<SolverPPC<HybridModelT, SAMRAI_Types>>(
         createDict()["simulation"]["algo"]);
 
+    hybridSolver->registerResources(*models[1]);
+
     MessengerRegistration::registerQuantities(*messengers[1], *models[0], *models[1],
                                               *hybridSolver);
 }
@@ -295,6 +297,9 @@ TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndHybridSolver)
 TEST_F(HybridMessengers, receiveQuantitiesFromMHDHybridModelsAndMHDSolver)
 {
     auto mhdSolver = std::make_unique<SolverMHD<MHDModelT, SAMRAI_Types>>();
+
+    mhdSolver->registerResources(*models[0]);
+
     MessengerRegistration::registerQuantities(*messengers[0], *models[0], *models[0], *mhdSolver);
 }
 

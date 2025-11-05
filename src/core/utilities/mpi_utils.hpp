@@ -2,17 +2,14 @@
 #define PHARE_CORE_UTILITIES_MPI_HPP
 
 #include "core/def.hpp"
-#include <chrono>
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/span.hpp"
+#include "core/utilities/types.hpp"
+
 #include <vector>
 #include <string>
 #include <cassert>
 #include <cstring>
-#include <exception>
-
-
-#include "core/def/phare_mpi.hpp"
-#include "core/utilities/span.hpp"
-#include "core/utilities/types.hpp"
 
 namespace PHARE::core::mpi
 {

@@ -47,15 +47,26 @@ void test_fields(GridLayout const& layout, Field const& field0, T1 const& field1
 
     EXPECT_EQ(field0.shape(), field1.shape());
 
+    auto not_nan = [&](auto const& f0, auto const& f1, auto&... idxs) {
+        auto const& v0 = f0(idxs...);
+        auto const& v1 = f1(idxs...);
 
-    for (std::size_t i = 0; i < field0.size(); ++i)
-    {
-        auto const& v0 = field0.data()[i];
-        auto const& v1 = field1.data()[i];
+        std::ostringstream oss;
+        oss << "(";
+        ((oss << idxs << ","), ...);
+        std::string idx_str = oss.str();
+        if constexpr (sizeof...(idxs) > 0)
+            idx_str.back() = ')';
+        else
+            idx_str += ')';
+
         if (std::isnan(v0) || std::isnan(v1))
-            throw std::runtime_error("This 1dfield should not be NaN index " + std::to_string(i));
-        EXPECT_FLOAT_EQ(v0, v1);
-    }
+            throw std::runtime_error("This 1dfield should not be NaN at index " + idx_str);
+
+        EXPECT_FLOAT_EQ(v0, v1) << " at index " << idx_str;
+    };
+
+    layout.evalOnBox(field0, [&](auto&... idxs) { not_nan(field0, field1, idxs...); });
 }
 
 

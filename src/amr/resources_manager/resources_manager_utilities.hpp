@@ -1,15 +1,18 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_UTILITIES_HPP
 
+#include "core/utilities/types.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
+
+#include "core/data/ions/ion_population/particle_pack.hpp"
 
 #include "field_resource.hpp"
 #include "particle_resource.hpp"
-#include "core/data/ions/ion_population/particle_pack.hpp"
+
 
 #include <string>
-#include <type_traits>
 #include <vector>
+#include <type_traits>
 
 
 namespace PHARE
@@ -33,6 +36,23 @@ namespace amr
     };
     template<typename ResourceView>
     bool constexpr static is_field_v = is_field<ResourceView>::value;
+
+
+    /** \brief is_tensor_field is a trait to check if a ResourceView is a tensor field
+     */
+    template<typename ResourceView, typename Attempt = void>
+    struct is_tensor_field : std::false_type
+    {
+    };
+
+    template<typename ResourcesUser>
+    struct is_tensor_field<
+        ResourcesUser, core::tryToInstanciate<decltype(std::declval<ResourcesUser>().components())>>
+        : std::true_type
+    {
+    };
+    template<typename ResourceView>
+    bool constexpr static is_tensor_field_v = is_tensor_field<ResourceView>::value;
 
 
     /** \brief is_particles is a traits that permit to check if a ResourceView
@@ -59,7 +79,9 @@ namespace amr
     template<typename ResourceView>
     struct is_resource
     {
-        bool constexpr static value = is_field_v<ResourceView> or is_particles_v<ResourceView>;
+        bool constexpr static value
+            = core::any(is_field_v<ResourceView>, is_tensor_field_v<ResourceView>,
+                        is_particles_v<ResourceView>);
     };
     template<typename ResourceView>
     bool constexpr static is_resource_v = is_resource<ResourceView>::value;
@@ -69,10 +91,12 @@ namespace amr
     {
         auto constexpr static resolve_t()
         {
-            if constexpr (is_field_v<ResourceView>)
-                return typename ResourceManager::UserField_t{};
+            if constexpr (is_tensor_field_v<ResourceView>)
+                return typename ResourceManager::template UserTensorField_t<ResourceView::rank>{};
             else if constexpr (is_particles_v<ResourceView>)
                 return typename ResourceManager::template UserParticle_t<ResourceView>{};
+            else if constexpr (is_field_v<ResourceView>)
+                return typename ResourceManager::UserField_t{};
             else
                 throw std::runtime_error("bad condition");
         }
@@ -82,11 +106,16 @@ namespace amr
 
         auto static make_shared_variable(ResourceView const& view)
         {
-            if constexpr (is_field_v<ResourceView>)
+            if constexpr (is_tensor_field_v<ResourceView>)
+                return std::make_shared<typename type::variable_type>(view.name(),
+                                                                      view.physicalQuantity());
+            else if constexpr (is_particles_v<ResourceView>)
+                return std::make_shared<typename type::variable_type>(view.name());
+            else if constexpr (is_field_v<ResourceView>)
                 return std::make_shared<typename type::variable_type>(view.name(),
                                                                       view.physicalQuantity());
             else
-                return std::make_shared<typename type::variable_type>(view.name());
+                throw std::runtime_error("bad condition");
         }
     };
 

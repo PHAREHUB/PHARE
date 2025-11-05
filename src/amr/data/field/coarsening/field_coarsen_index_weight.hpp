@@ -5,14 +5,11 @@
 #include "core/def/phare_mpi.hpp"
 
 #include "core/def.hpp"
-#include "coarsen_weighter.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "core/data/field/field.hpp"
-#include "core/utilities/constants.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 
+#include "coarsen_weighter.hpp"
 
 #include <SAMRAI/hier/Box.h>
 

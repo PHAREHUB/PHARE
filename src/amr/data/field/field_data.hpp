@@ -1,13 +1,11 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/logger.hpp"
-#include "core/def/phare_mpi.hpp"
-#include <core/utilities/types.hpp>
 #include "core/data/field/field_box.hpp"
 
-#include <amr/utilities/box/amr_box.hpp>
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include "field_geometry.hpp"
@@ -17,20 +15,10 @@
 
 #include <utility>
 
-
 namespace PHARE
 {
 namespace amr
 {
-    // We use another class here so that we can specialize specifics function: copy , pack , unpack
-    // on the dimension and we don't want to loose non specialized function related to SAMRAI
-    // interface
-    template<typename GridLayoutT, std::size_t dim, typename Grid_t,
-             typename PhysicalQuantity = decltype(std::declval<Grid_t>().physicalQuantity())>
-    class FieldDataInternals
-    {
-    };
-
 
     /**@brief FieldData is the specialization of SAMRAI::hier::PatchData to Field objects
      *

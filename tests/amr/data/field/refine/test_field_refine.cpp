@@ -1,14 +1,13 @@
 
 #include "core/def/phare_mpi.hpp"
 
+#include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include <core/data/grid/gridlayoutimplyee.hpp>
+#include "core/data/grid/gridlayoutimplyee.hpp"
 
 #include "amr/data/field/refine/field_linear_refine.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
-
-#include "test_field_refinement_on_hierarchy.hpp"
 
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>

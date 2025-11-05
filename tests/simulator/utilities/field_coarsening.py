@@ -28,14 +28,7 @@ def coarsen(qty, coarseField, fineField, coarseBox, fineData, coarseData):
             fineIndex = fineLocal(index, 0)
             coarseLocalIndex = coarseLocal(index, 0)
             if is_primal[0]:
-                if qty == "Bx":
-                    coarseData[coarseLocalIndex] = fineData[fineIndex]
-                else:
-                    coarseData[coarseLocalIndex] = (
-                        fineData[fineIndex - 1] * 0.25
-                        + fineData[fineIndex] * 0.5
-                        + fineData[fineIndex + 1] * 0.25
-                    )
+                coarseData[coarseLocalIndex] = fineData[fineIndex]
             else:
                 # ind 1D it is the same formula for By and Bz as for other quantities
                 coarseData[coarseLocalIndex] = (
@@ -52,67 +45,26 @@ def coarsen(qty, coarseField, fineField, coarseBox, fineData, coarseData):
                 coarseLocalIndexY = coarseLocal(indexY, 1)
                 left, middle, right = 0, 0, 0
                 if all(is_primal):
-                    left += fineData[fineIndexX - 1][fineIndexY - 1] * 0.25
-                    left += fineData[fineIndexX - 1][fineIndexY] * 0.5
-                    left += fineData[fineIndexX - 1][fineIndexY + 1] * 0.25
-                    middle += fineData[fineIndexX][fineIndexY - 1] * 0.25
-                    middle += fineData[fineIndexX][fineIndexY] * 0.5
-                    middle += fineData[fineIndexX][fineIndexY + 1] * 0.25
-                    right += fineData[fineIndexX + 1][fineIndexY - 1] * 0.25
-                    right += fineData[fineIndexX + 1][fineIndexY] * 0.5
-                    right += fineData[fineIndexX + 1][fineIndexY + 1] * 0.25
-                    coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
-                        left * 0.25 + middle * 0.5 + right * 0.25
-                    )
+                    coarseData[coarseLocalIndexX][coarseLocalIndexY] = fineData[
+                        fineIndexX
+                    ][fineIndexY]
 
                 if is_primal[0] and not is_primal[1]:
-                    if qty == "Bx":
-                        coarseData[coarseLocalIndexX, coarseLocalIndexY] = 0.5 * (
-                            fineData[fineIndexX, fineIndexY]
-                            + fineData[fineIndexX, fineIndexY + 1]
-                        )
-                    else:
-                        left += fineData[fineIndexX - 1][fineIndexY] * 0.5
-                        left += fineData[fineIndexX - 1][fineIndexY + 1] * 0.5
-                        middle += fineData[fineIndexX][fineIndexY] * 0.5
-                        middle += fineData[fineIndexX][fineIndexY + 1] * 0.5
-                        right += fineData[fineIndexX + 1][fineIndexY] * 0.5
-                        right += fineData[fineIndexX + 1][fineIndexY + 1] * 0.5
-                        coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
-                            left * 0.25 + middle * 0.5 + right * 0.25
-                        )
+                    coarseData[coarseLocalIndexX, coarseLocalIndexY] = 0.5 * (
+                        fineData[fineIndexX, fineIndexY]
+                        + fineData[fineIndexX, fineIndexY + 1]
+                    )
 
                 if not is_primal[0] and is_primal[1]:
-                    if qty == "By":
-                        coarseData[coarseLocalIndexX, coarseLocalIndexY] = 0.5 * (
-                            fineData[fineIndexX, fineIndexY]
-                            + fineData[fineIndexX + 1, fineIndexY]
-                        )
-
-                    else:
-                        left += fineData[fineIndexX][fineIndexY - 1] * 0.25
-                        left += fineData[fineIndexX][fineIndexY] * 0.5
-                        left += fineData[fineIndexX][fineIndexY + 1] * 0.25
-                        right += fineData[fineIndexX + 1][fineIndexY - 1] * 0.25
-                        right += fineData[fineIndexX + 1][fineIndexY] * 0.5
-                        right += fineData[fineIndexX + 1][fineIndexY + 1] * 0.25
-                        coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
-                            left * 0.5 + right * 0.5
-                        )
+                    coarseData[coarseLocalIndexX, coarseLocalIndexY] = 0.5 * (
+                        fineData[fineIndexX, fineIndexY]
+                        + fineData[fineIndexX + 1, fineIndexY]
+                    )
 
                 if not any(is_primal):
-                    if qty == "Bz":
-                        coarseData[coarseLocalIndexX, coarseLocalIndexY] = 0.25 * (
-                            fineData[fineIndexX, fineIndexY]
-                            + fineData[fineIndexX, fineIndexY + 1]
-                            + fineData[fineIndexX + 1, fineIndexY + 1]
-                            + fineData[fineIndexX + 1, fineIndexY]
-                        )
-                    else:
-                        left += fineData[fineIndexX][fineIndexY] * 0.5
-                        left += fineData[fineIndexX][fineIndexY + 1] * 0.5
-                        right += fineData[fineIndexX + 1][fineIndexY] * 0.5
-                        right += fineData[fineIndexX + 1][fineIndexY + 1] * 0.5
-                        coarseData[coarseLocalIndexX][coarseLocalIndexY] = (
-                            left * 0.5 + right * 0.5
-                        )
+                    coarseData[coarseLocalIndexX, coarseLocalIndexY] = 0.25 * (
+                        fineData[fineIndexX, fineIndexY]
+                        + fineData[fineIndexX, fineIndexY + 1]
+                        + fineData[fineIndexX + 1, fineIndexY + 1]
+                        + fineData[fineIndexX + 1, fineIndexY]
+                    )

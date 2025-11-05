@@ -3,7 +3,7 @@
 
 #include <algorithm>
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -394,15 +394,15 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
 template<std::size_t _dimension>
 DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict const& dict)
     : Hierarchy{
-        dict,
-        std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
-            SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
-            griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
-        patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
-        shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
-        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
-        parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"),
-        parseDimXYZType<std::string, dimension>(dict["simulation"]["grid"], "boundary_type")}
+          dict,
+          std::make_shared<SAMRAI::geom::CartesianGridGeometry>(
+              SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
+              griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
+          patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
+          shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
+          parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "origin"),
+          parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"),
+          parseDimXYZType<std::string, dimension>(dict["simulation"]["grid"], "boundary_type")}
 {
 }
 

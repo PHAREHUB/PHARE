@@ -3,7 +3,7 @@
 #define PHARE_HYBRID_TAGGER_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "tagger.hpp"
 #include "hybrid_tagger_strategy.hpp"

@@ -42,10 +42,31 @@ namespace solver
         {
         }
 
+        void prepareStep(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+                         double const currentTime) override
+        {
+        }
+
+        void accumulateFluxSum(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+                               double const coef) override
+        {
+        }
+
+        void resetFluxSum(IPhysicalModel<AMR_Types>& model,
+                          SAMRAI::hier::PatchLevel& level) override
+        {
+        }
+
+        virtual void reflux(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+                            amr::IMessenger<IPhysicalModel<AMR_Types>>& messenger,
+                            double const time) override
+        {
+        }
+
         void advanceLevel(hierarchy_t const& /*hierarchy*/, int const /*levelNumber*/,
                           ISolverModelView& /*view*/,
                           amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
-                          const double /*currentTime*/, const double /*newTime*/) override
+                          double const /*currentTime*/, double const /*newTime*/) override
         {
         }
 

@@ -1,22 +1,18 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_GEOMETRY_HPP
 
-#include <cassert>
-#include <iostream>
 
-#include "core/def/phare_mpi.hpp"
-
-
-#include "SAMRAI/hier/IntVector.h"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/grid/gridlayout.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "field_overlap.hpp"
 
 #include <SAMRAI/hier/Box.h>
+#include "SAMRAI/hier/IntVector.h"
 #include <SAMRAI/hier/BoxGeometry.h>
 
+#include <cassert>
 
 namespace PHARE
 {
@@ -28,8 +24,6 @@ namespace amr
     // generic BoxGeometry into the specific geometry but cannot cast into
     // the FieldGeometry below because it does not have the GridLayoutT and
     // PhysicalQuantity for template arguments.
-    // this class is thus used instead and provide the method pureInteriorFieldBox()
-    // used in FieldFillPattern::calculateOverlap()
     template<std::size_t dimension>
     class FieldGeometryBase : public SAMRAI::hier::BoxGeometry
     {
@@ -43,11 +37,10 @@ namespace amr
             , ghostFieldBox_{ghostFieldBox}
             , interiorFieldBox_{interiorFieldBox}
             , centerings_{centerings}
-            , pureInteriorFieldBox_{pureInteriorBox_(interiorFieldBox, centerings)}
         {
         }
 
-        auto const& pureInteriorFieldBox() const { return pureInteriorFieldBox_; }
+        auto const& interiorFieldBox() const { return interiorFieldBox_; }
 
         SAMRAI::hier::Box const patchBox;
 
@@ -55,22 +48,6 @@ namespace amr
         SAMRAI::hier::Box const ghostFieldBox_;
         SAMRAI::hier::Box const interiorFieldBox_;
         std::array<core::QtyCentering, dimension> const centerings_;
-        SAMRAI::hier::Box const pureInteriorFieldBox_;
-
-    private:
-        static SAMRAI::hier::Box
-        pureInteriorBox_(SAMRAI::hier::Box const& interiorFieldBox,
-                         std::array<core::QtyCentering, dimension> const& centerings)
-        {
-            auto noSharedNodeBox{interiorFieldBox};
-            SAMRAI::hier::IntVector growth(SAMRAI::tbox::Dimension{dimension});
-            for (auto dir = 0u; dir < dimension; ++dir)
-            {
-                growth[dir] = (centerings[dir] == core::QtyCentering::primal) ? -1 : 0;
-            }
-            noSharedNodeBox.grow(growth);
-            return noSharedNodeBox;
-        }
     };
 
     template<typename GridLayoutT, typename PhysicalQuantity>
@@ -199,6 +176,16 @@ namespace amr
 
 
             return box;
+        }
+
+        static SAMRAI::hier::BoxContainer toFieldBoxes(SAMRAI::hier::BoxContainer const& boxes,
+                                                       PhysicalQuantity qty,
+                                                       GridLayoutT const& layout)
+        {
+            auto to_field_boxes = boxes;
+            for (auto& box : to_field_boxes)
+                box = toFieldBox(box, qty, layout);
+            return to_field_boxes;
         }
 
         /**
