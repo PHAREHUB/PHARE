@@ -569,10 +569,19 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     fromCoarser.fillIonPopMomentGhosts(views.model().state.ions, level, newTime);
     fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
 
-    for (auto& state : views)
-        ionUpdater_.updateIons(state.ions);
-    // no need to update time, since it has been done before
+    try
+    {
+        for (auto& state : views)
+            ionUpdater_.updateIons(state.ions);
+    }
+    catch (core::DictionaryException const& ex)
+    {
+        PHARE_LOG_ERROR(ex());
+    }
+    if (core::mpi::any(core::Errors::instance().any()))
+        throw core::DictionaryException{}("ID", "Updater::updatePopulations");
 
+    // no need to update time, since it has been done before
     // now Ni and Vi are calculated we can fill pure ghost nodes
     // these were not completed by the deposition of patch and levelghost particles
     // fromCoarser.fillIonMomentGhosts(views.model().state.ions, level, newTime);

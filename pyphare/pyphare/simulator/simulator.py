@@ -13,6 +13,7 @@ from pathlib import Path
 from . import monitoring as mon
 
 
+exit_on_exception = True
 life_cycles = {}
 SIM_MONITOR = os.getenv("PHARE_SIM_MON", "False").lower() in ("true", "1", "t")
 SCOPE_TIMING = os.getenv("PHARE_SCOPE_TIMING", "False").lower() in ("true", "1", "t")
@@ -164,7 +165,10 @@ class Simulator:
 
     def _throw(self, e):
         print_rank0(e)
-        sys.exit(1)
+        if exit_on_exception:
+            sys.exit(1)
+        # or reraise
+        raise RuntimeError(e)
 
     def advance(self, dt=None):
         self._check_init()
