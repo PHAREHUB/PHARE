@@ -12,6 +12,8 @@ import pyphare.pharein as ph
 from pathlib import Path
 from . import monitoring as mon
 
+import pyphare.pharein.restarts as restarts
+
 
 exit_on_exception = True
 life_cycles = {}
@@ -241,11 +243,12 @@ class Simulator:
     def dump(self, *args):
         assert len(args) == 0 or len(args) == 2
 
-        if len(args) == 0:
-            return self.cpp_sim.dump(
-                timestamp=self.currentTime(), timestep=self.timeStep()
-            )
-        return self.cpp_sim.dump(timestamp=args[0], timestep=args[1])
+        time = self.currentTime() if len(args) == 0 else args[0]
+        timestep = self.timeStep() if len(args) == 0 else args[1]
+
+        restarts.dump(self, time, timestep)
+
+        return self.cpp_sim.dump_diagnostics(timestamp=time, timestep=timestep)
 
     def data_wrangler(self):
         self._check_init()
