@@ -81,7 +81,7 @@ void allFromPython_test(Simulator&& sim, std::string out_dir)
     using HybridModel = typename Simulator::HybridModel;
     using Hierarchy   = typename Simulator::Hierarchy;
 
-    sim.dump(/*timestamp= */ 0, /*timestep= */ 1);
+    sim.dump_diagnostics(/*timestamp= */ 0, /*timestep= */ 1);
     // flush h5files, killing the DiagnosticsManager killes the H5TypeWriter shared_ptrs internally,
     //  and forces closed any open h5files, flushing any remaining contents, which we use below in
     //  this test

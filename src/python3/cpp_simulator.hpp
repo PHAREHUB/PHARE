@@ -71,7 +71,9 @@ void declareSimulator(PyClass&& sim)
         .def("to_str", &Simulator::to_str)
         .def("domain_box", &Simulator::domainBox)
         .def("cell_width", &Simulator::cellWidth)
-        .def("dump", &Simulator::dump, py::arg("timestamp"), py::arg("timestep"));
+        .def("dump_diagnostics", &Simulator::dump_diagnostics, py::arg("timestamp"),
+             py::arg("timestep"))
+        .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"));
 }
 
 template<typename _dim, typename _interp, typename _nbRefinedPart>
