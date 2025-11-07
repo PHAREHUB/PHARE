@@ -25,7 +25,8 @@ struct __attribute__((visibility("hidden"))) PatchData
 
     template<typename... Args>
     PatchData(Args&&... args)
-        : data{std::forward<Args...>(args...)}
+        requires std::is_constructible_v<Data, Args&&...>
+        : data{std::forward<Args>(args)...}
     {
     }
 };
