@@ -229,7 +229,7 @@ namespace core
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 if (r[iDim] < 0)
                     throw std::runtime_error("Cannot make unsigned from negative values");
-            if constexpr (sizeof(int) == 4)
+            if constexpr (sizeof(Type) == 4)
                 return as<std::uint32_t>();
             // else no return cause not yet handled
         }

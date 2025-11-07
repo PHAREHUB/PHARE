@@ -74,8 +74,6 @@ auto createCellCenteringParam()
     params.emplace_back();
 
     params.back().base = createParam<GridLayoutImpl>(dl, nbCell, Point{origin});
-    auto const& layout = *params.back().base.layout;
-
 
     std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
     std::array<double, GridLayoutImpl::dimension> realPosition;
