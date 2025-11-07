@@ -619,10 +619,12 @@ struct IonUpdaterTest : public ::testing::Test
             std::vector<std::size_t> ixes;
             std::vector<double> x;
 
-            for (auto ix = ix0; ix < ix1; ++ix)
+            // We do not use the primal box as the last primal is incomplete.
+            // This is because level ghosts are only interpolated if they enter the domain
+            for (auto const [amr_idx, lcl_idx] : this->layout.amr_lcl_idx())
             {
-                ixes.emplace_back(ix);
-                x.emplace_back(layout.cellCenteredCoordinates(ix)[0]);
+                ixes.emplace_back(lcl_idx[0]);
+                x.emplace_back(layout.cellCenteredCoordinates(amr_idx)[0]);
             }
 
             auto functionXPtr = function(x); // keep alive

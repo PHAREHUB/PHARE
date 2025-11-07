@@ -65,7 +65,7 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
     {
         EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
         auto pos       = positionAsPoint(particle, layout);
-        auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
+        auto endDomain = (layout.AMRBox().upper[0] + 1) * layout.meshSize()[0];
 
         if (!((pos[0] > 0.) and (pos[0] < endDomain)))
             std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << ")\n";

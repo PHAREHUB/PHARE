@@ -23,37 +23,49 @@ import gridparams
 class CenteredCoordParams(gridparams.GridParams):
     def __init__(self, dim, interpOrder):
         gridparams.GridParams.__init__(self, dim, interpOrder)
-
         self.origin = ()
-
         self.iStart = ()
         self.iEnd = ()
 
     def setCoord(self, gl, originPosition, centering):
         if self.dim == 1:
             self.origin = originPosition[0]
-            self.iStart = gl.physicalStartIndex(self.interpOrder, centering)
-            self.iEnd = gl.physicalEndIndex(
-                self.interpOrder, centering, self.nbrCell
-            ) - gl.isDual(centering)
+            self.iStart = gl.localPointToAMR(
+                gl.physicalStartIndex(self.interpOrder, centering)
+            )[0]
+            assert self.iStart >= 0
+            self.iEnd = gl.localPointToAMR(
+                gl.physicalEndIndex(self.interpOrder, centering, self.nbrCell)
+                - gl.isDual(centering)
+            )[0]
+            assert self.iEnd >= self.iStart
 
         if self.dim > 1:
-            iStartX = gl.physicalStartIndex(self.interpOrder, centering[0])
-            iEndX = gl.physicalEndIndex(
-                self.interpOrder, centering[0], self.nbrCell[0]
-            ) - gl.isDual(centering[0])
+            iStartX = gl.localPointToAMR(
+                gl.physicalStartIndex(self.interpOrder, centering[0])
+            )[0]
+            iEndX = gl.localPointToAMR(
+                gl.physicalEndIndex(self.interpOrder, centering[0], self.nbrCell[0])
+                - gl.isDual(centering[0])
+            )[0]
 
-            iStartY = gl.physicalStartIndex(self.interpOrder, centering[1])
-            iEndY = gl.physicalEndIndex(
-                self.interpOrder, centering[1], self.nbrCell[1]
-            ) - gl.isDual(centering[1])
+            iStartY = gl.localPointToAMR(
+                gl.physicalStartIndex(self.interpOrder, centering[1])
+            )[0]
+            iEndY = gl.localPointToAMR(
+                gl.physicalEndIndex(self.interpOrder, centering[1], self.nbrCell[1])
+                - gl.isDual(centering[1])
+            )[0]
 
         if self.dim > 2:
-            iStartZ = gl.physicalStartIndex(self.interpOrder, centering[2])
+            iStartZ = gl.localPointToAMR(
+                gl.physicalStartIndex(self.interpOrder, centering[2])
+            )[0]
 
-            iEndZ = gl.physicalEndIndex(
-                self.interpOrder, centering[2], self.nbrCell[2]
-            ) - gl.isDual(centering[2])
+            iEndZ = gl.localPointToAMR(
+                gl.physicalEndIndex(self.interpOrder, centering[2], self.nbrCell[2])
+                - gl.isDual(centering[2])
+            )[0]
 
         if self.dim == 2:
             self.origin = (originPosition[0], originPosition[1])
@@ -80,13 +92,10 @@ def getCellCentered(dimension):
 #
 # This method returns a point
 #
-def centeredCoords(primalIndex, startIndex, dl, origin):
+def centeredCoords(primalIndex, dl):
     # a cell-centered coordinate is always dual
     halfCell = 0.5
-
-    x = ((primalIndex - startIndex) + halfCell) * dl + origin
-
-    return x
+    return (primalIndex + halfCell) * dl
 
 
 # ---------------------- MAIN CODE -----------------------------------------
@@ -109,8 +118,6 @@ def main(path="./"):
     dzList = [0.0, 0.0, 0.1]
 
     originPosition = [0.0, 0.0, 0.0]
-
-    gl = gridlayout.GridLayout()
 
     # ------- Debug commands -------
     # for icase in icase_l:
@@ -146,6 +153,8 @@ def main(path="./"):
     for interpOrder, outFilesSumDim, outFilesValDim in zip(
         interpOrders, outSummaries, outValues
     ):
+        gl = gridlayout.GridLayout(interp_order=interpOrder)
+
         for (
             dimension,
             outFileS,
@@ -186,14 +195,11 @@ def main(path="./"):
             outSummaryString = utilities.removeTupleFormat(outSummaryString)
 
             outFileS.write(outSummaryString)
-
             if dimension == 1:
                 for position in np.arange(params.iStart, params.iEnd + 1):
                     outValuesString = "{} {}\n".format(
                         position,
-                        centeredCoords(
-                            position, params.iStart, params.dl, params.origin
-                        ),
+                        centeredCoords(position, params.dl),
                     )
 
                     outFileV.write(utilities.removeTupleFormat(outValuesString))
@@ -203,18 +209,8 @@ def main(path="./"):
                     for positionY in np.arange(params.iStart[1], params.iEnd[1] + 1):
                         position = (positionX, positionY)
                         centered = (
-                            centeredCoords(
-                                positionX,
-                                params.iStart[0],
-                                params.dl[0],
-                                params.origin[0],
-                            ),
-                            centeredCoords(
-                                positionY,
-                                params.iStart[1],
-                                params.dl[1],
-                                params.origin[1],
-                            ),
+                            centeredCoords(positionX, params.dl[0]),
+                            centeredCoords(positionY, params.dl[1]),
                         )
 
                         outValuesString = "{} {}\n".format(position, centered)
@@ -229,24 +225,9 @@ def main(path="./"):
                         ):
                             position = (positionX, positionY, positionZ)
                             centered = (
-                                centeredCoords(
-                                    positionX,
-                                    params.iStart[0],
-                                    params.dl[0],
-                                    params.origin[0],
-                                ),
-                                centeredCoords(
-                                    positionY,
-                                    params.iStart[1],
-                                    params.dl[1],
-                                    params.origin[1],
-                                ),
-                                centeredCoords(
-                                    positionZ,
-                                    params.iStart[2],
-                                    params.dl[2],
-                                    params.origin[2],
-                                ),
+                                centeredCoords(positionX, params.dl[0]),
+                                centeredCoords(positionY, params.dl[1]),
+                                centeredCoords(positionZ, params.dl[2]),
                             )
 
                             outValuesString = "{} {}\n".format(position, centered)

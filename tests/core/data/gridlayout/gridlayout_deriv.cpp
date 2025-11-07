@@ -1,12 +1,14 @@
 
-#include <math.h>
+
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "gridlayout_deriv.hpp"
-#include "gridlayout_params.hpp"
-#include "gridlayout_test.hpp"
+
+#include <math.h>
+#include <string>
 
 
-std::vector<double> read(std::string filename)
+std::vector<double> read(std::string const filename)
 {
     std::ifstream readFile(filename);
     assert(readFile.is_open());
@@ -16,6 +18,7 @@ std::vector<double> read(std::string filename)
               std::back_inserter(x));
     return x;
 }
+
 
 // -----------------------------------------------------------------------------
 //              1D case
@@ -30,26 +33,21 @@ TYPED_TEST_SUITE(a1DDerivative, layoutImpls1D);
 
 TYPED_TEST(a1DDerivative, DXBY1D)
 {
-    std::string filename = std::string("dxBy_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
-    auto expDerValue            = read(filename);
-    [[maybe_unused]] auto gei_d = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
+    auto const filename = std::string("dxBy_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
-    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-
-    for (auto ix = 0u; ix <= gei_d_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
     {
-        Point<double, 1> point = this->layout.fieldNodeCoordinates(this->By, {0.}, ix);
-        this->By(ix)           = std::cos(2 * M_PI / 5. * point[0]);
+        auto const point  = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+        this->By(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]);
     }
 
-    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto localDerivative = this->layout.template deriv<Direction::X>(this->By, {ix});
-        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, {lcl_idx});
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[lcl_idx[0]], 1e-12));
     }
 }
 
@@ -57,33 +55,28 @@ TYPED_TEST(a1DDerivative, DXBY1D)
 
 TYPED_TEST(a1DDerivative, DXEZ1D)
 {
-    std::string filename = std::string("dxEz_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dxEz_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-
-    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-
-    for (auto ix = 0u; ix <= gei_p_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
     {
-        Point<double, 1> point = this->layout.fieldNodeCoordinates(this->Ez, {0.}, ix);
-        this->Ez(ix)           = std::cos(2 * M_PI / 5. * point[0]);
+        auto const point  = this->layout.fieldNodeCoordinates(this->Ez, amr_idx);
+        this->Ez(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]);
     }
 
-    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto localDerivative = this->layout.template deriv<Direction::X>(this->Ez, {ix});
-        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[ix], 1e-12));
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, {lcl_idx});
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[lcl_idx[0]], 1e-12));
     }
 }
 
 
 
-// -----------------------------------------------------------------------------
-//              2D case
-// -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+// //              2D case
+// // -----------------------------------------------------------------------------
 
 using layoutImpls2D
     = ::testing::Types<GridLayoutImplYee<2, 1>, GridLayoutImplYee<2, 2>, GridLayoutImplYee<2, 3>>;
@@ -94,159 +87,105 @@ TYPED_TEST_SUITE(a2DDerivative, layoutImpls2D);
 
 TYPED_TEST(a2DDerivative, DXBY2D)
 {
-    std::string filename = std::string("dxBy_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dxBy_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
 
-    for (auto ix = 0u; ix <= gei_d_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
-            this->By(ix, iy)
-                = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
-        }
+        Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+        this->By(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
     }
 
-    std::array<std::uint32_t, 2> nPts_
-        = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
-    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
+
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
-        {
-            auto localDerivative = this->layout.template deriv<Direction::X>(this->By, {ix, iy});
-            auto index_          = ix * nPts_[1] + iy;
-            EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, lcl_idx);
+        auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
 
 TYPED_TEST(a2DDerivative, DYBY2D)
 {
-    std::string filename = std::string("dyBy_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dyBy_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
 
-    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
-
-    for (auto ix = 0u; ix <= gei_d_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, {0., 0.}, ix, iy);
-            this->By(ix, iy)
-                = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
-        }
+        Point<double, 2> point = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+        this->By(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
 
-    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
-        {
-            auto localDerivative = this->layout.template deriv<Direction::Y>(this->By, {ix, iy});
-            auto index_          = ix * nPts_[1] + iy;
-            EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->By, lcl_idx);
+        auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
 
 TYPED_TEST(a2DDerivative, DXEZ2D)
 {
-    std::string filename = std::string("dxEz_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dxEz_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
 
-    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-
-    for (auto ix = 0u; ix <= gei_p_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            Point<double, 2> point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
-            this->Ez(ix, iy)
-                = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
-        }
+        Point<double, 2> point = this->layout.fieldNodeCoordinates(this->Ez, amr_idx);
+        this->Ez(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
 
-    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
-        {
-            auto localDerivative = this->layout.template deriv<Direction::X>(this->Ez, {ix, iy});
-            auto index_          = ix * nPts_[1] + iy;
-            EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, lcl_idx);
+        auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
 
 TYPED_TEST(a2DDerivative, DYEZ2D)
 {
-    std::string filename = std::string("dyEz_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dyEz_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
 
-    for (auto ix = 0u; ix <= gei_p_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0.}, ix, iy);
-            this->Ez(ix, iy)
-                = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
-        }
+        auto point        = this->layout.fieldNodeCoordinates(this->Ez, amr_idx);
+        this->Ez(lcl_idx) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
 
-    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
-        {
-            auto localDerivative = this->layout.template deriv<Direction::Y>(this->Ez, {ix, iy});
-            auto index_          = ix * nPts_[1] + iy;
-            EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->Ez, lcl_idx);
+        auto index_                = lcl_idx[0] * nPts_[1] + lcl_idx[1];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
 
 
-// -----------------------------------------------------------------------------
-//              3D case
-// -----------------------------------------------------------------------------
+// // -----------------------------------------------------------------------------
+// //              3D case
+// // -----------------------------------------------------------------------------
 
 using layoutImpls3D
     = ::testing::Types<GridLayoutImplYee<3, 1>, GridLayoutImplYee<3, 2>, GridLayoutImplYee<3, 3>>;
@@ -257,48 +196,25 @@ TYPED_TEST_SUITE(a3DDerivative, layoutImpls3D);
 
 TYPED_TEST(a3DDerivative, DXBY3D)
 {
-    std::string filename = std::string("dxBy_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dxBy_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
-    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
 
-    for (auto ix = 0u; ix <= gei_d_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
-            {
-                auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
-                this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                       * std::cos(2 * M_PI / 6. * point[1])
-                                       * std::sin(2 * M_PI / 12. * point[2]);
-            }
-        }
+        auto point        = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+        this->By(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+                            * std::sin(2 * M_PI / 12. * point[2]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::X);
 
-    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
-        {
-            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
-            {
-                auto localDerivative
-                    = this->layout.template deriv<Direction::X>(this->By, {ix, iy, iz});
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-            }
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, lcl_idx);
+        auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
@@ -306,48 +222,24 @@ TYPED_TEST(a3DDerivative, DXBY3D)
 
 TYPED_TEST(a3DDerivative, DYBY3D)
 {
-    std::string filename = std::string("dyBy_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dyBy_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
-    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
-    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
-
-    for (auto ix = 0u; ix <= gei_d_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
-            {
-                auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
-                this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                       * std::cos(2 * M_PI / 6. * point[1])
-                                       * std::sin(2 * M_PI / 12. * point[2]);
-            }
-        }
+        auto point        = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+        this->By(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+                            * std::sin(2 * M_PI / 12. * point[2]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Y);
 
-    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
-        {
-            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
-            {
-                auto localDerivative
-                    = this->layout.template deriv<Direction::Y>(this->By, {ix, iy, iz});
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-            }
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->By, lcl_idx);
+        auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
@@ -355,49 +247,24 @@ TYPED_TEST(a3DDerivative, DYBY3D)
 
 TYPED_TEST(a3DDerivative, DZBY3D)
 {
-    std::string filename = std::string("dzBy_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dzBy_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
-
-    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    auto psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
-    auto pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
-
-    for (auto ix = 0u; ix <= gei_d_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
-            {
-                auto point = this->layout.fieldNodeCoordinates(this->By, {0., 0., 0.}, ix, iy, iz);
-                this->By(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                       * std::cos(2 * M_PI / 6. * point[1])
-                                       * std::sin(2 * M_PI / 12. * point[2]);
-            }
-        }
+        auto point        = this->layout.fieldNodeCoordinates(this->By, amr_idx);
+        this->By(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+                            * std::sin(2 * M_PI / 12. * point[2]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Z);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::By, Direction::Z);
 
-    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
-        {
-            for (auto iz = psi_p_Z; iz <= pei_p_Z; ++iz)
-            {
-                auto localDerivative
-                    = this->layout.template deriv<Direction::Z>(this->By, {ix, iy, iz});
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-            }
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::Z>(this->By, lcl_idx);
+        auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
@@ -405,48 +272,24 @@ TYPED_TEST(a3DDerivative, DZBY3D)
 
 TYPED_TEST(a3DDerivative, DXEZ3D)
 {
-    std::string filename = std::string("dxEz_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dxEz_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
-    auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
-    auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
-    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
-
-    for (auto ix = 0u; ix <= gei_p_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
-            {
-                auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
-                this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                       * std::cos(2 * M_PI / 6. * point[1])
-                                       * std::sin(2 * M_PI / 12. * point[2]);
-            }
-        }
+        auto point        = this->layout.fieldNodeCoordinates(this->Ez, amr_idx);
+        this->Ez(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+                            * std::sin(2 * M_PI / 12. * point[2]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::X);
 
-    for (auto ix = psi_d_X; ix <= pei_d_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
-        {
-            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
-            {
-                auto localDerivative
-                    = this->layout.template deriv<Direction::X>(this->Ez, {ix, iy, iz});
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-            }
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, lcl_idx);
+        auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
@@ -454,48 +297,24 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
 
 TYPED_TEST(a3DDerivative, DYEZ3D)
 {
-    std::string filename = std::string("dyEz_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dyEz_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
-    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    auto psi_d_Y = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Y);
-    auto pei_d_Y = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Y);
-    auto psi_d_Z = this->layout.physicalStartIndex(QtyCentering::dual, Direction::Z);
-    auto pei_d_Z = this->layout.physicalEndIndex(QtyCentering::dual, Direction::Z);
-
-    for (auto ix = 0u; ix <= gei_p_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
-            {
-                auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
-                this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                       * std::cos(2 * M_PI / 6. * point[1])
-                                       * std::sin(2 * M_PI / 12. * point[2]);
-            }
-        }
+        auto point        = this->layout.fieldNodeCoordinates(this->Ez, amr_idx);
+        this->Ez(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+                            * std::sin(2 * M_PI / 12. * point[2]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Y);
 
-    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_d_Y; iy <= pei_d_Y; ++iy)
-        {
-            for (auto iz = psi_d_Z; iz <= pei_d_Z; ++iz)
-            {
-                auto localDerivative
-                    = this->layout.template deriv<Direction::Y>(this->Ez, {ix, iy, iz});
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-            }
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::Y>(this->Ez, lcl_idx);
+        auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }
 
@@ -503,47 +322,23 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
 
 TYPED_TEST(a3DDerivative, DZEZ3D)
 {
-    std::string filename = std::string("dzEz_interpOrder_")
-                           + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
-    auto expDerValue = read(filename);
+    auto const filename = std::string("dzEz_interpOrder_")
+                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const expDerValue = read(filename);
 
-    auto gei_p_X = this->layout.ghostEndIndex(QtyCentering::primal, Direction::X);
-    auto gei_p_Y = this->layout.ghostEndIndex(QtyCentering::primal, Direction::Y);
-    auto gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
-    auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
-    auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
-    auto psi_p_Y = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Y);
-    auto pei_p_Y = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Y);
-    auto psi_p_Z = this->layout.physicalStartIndex(QtyCentering::primal, Direction::Z);
-    auto pei_p_Z = this->layout.physicalEndIndex(QtyCentering::primal, Direction::Z);
-
-    for (auto ix = 0u; ix <= gei_p_X; ++ix)
+    for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
     {
-        for (auto iy = 0u; iy <= gei_p_Y; ++iy)
-        {
-            for (auto iz = 0u; iz <= gei_d_Z; ++iz)
-            {
-                auto point = this->layout.fieldNodeCoordinates(this->Ez, {0., 0., 0.}, ix, iy, iz);
-                this->Ez(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
-                                       * std::cos(2 * M_PI / 6. * point[1])
-                                       * std::sin(2 * M_PI / 12. * point[2]);
-            }
-        }
+        auto point        = this->layout.fieldNodeCoordinates(this->Ez, amr_idx);
+        this->Ez(lcl_idx) = std::sin(2 * M_PI / 5. * point[0]) * std::cos(2 * M_PI / 6. * point[1])
+                            * std::sin(2 * M_PI / 12. * point[2]);
     }
 
-    auto nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Z);
+    auto const nPts_ = this->layout.allocSizeDerived(HybridQuantity::Scalar::Ez, Direction::Z);
 
-    for (auto ix = psi_p_X; ix <= pei_p_X; ++ix)
+    for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        for (auto iy = psi_p_Y; iy <= pei_p_Y; ++iy)
-        {
-            for (auto iz = psi_p_Z; iz <= pei_p_Z; ++iz)
-            {
-                auto localDerivative
-                    = this->layout.template deriv<Direction::Z>(this->Ez, {ix, iy, iz});
-                auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
-                EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
-            }
-        }
+        auto const localDerivative = this->layout.template deriv<Direction::Z>(this->Ez, lcl_idx);
+        auto index_ = lcl_idx[0] * nPts_[1] * nPts_[2] + lcl_idx[1] * nPts_[2] + lcl_idx[2];
+        EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[index_], 1e-12));
     }
 }

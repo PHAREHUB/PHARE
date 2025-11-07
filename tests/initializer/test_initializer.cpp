@@ -62,7 +62,6 @@ TEST(APythonDataProvider, providesAValidTree)
     auto layout = input["simulation"]["grid"]["layout_type"].to<std::string>();
     auto nx     = input["simulation"]["grid"]["nbr_cells"]["x"].to<int>();
     auto dx     = input["simulation"]["grid"]["meshsize"]["x"].to<double>();
-    auto origin = input["simulation"]["grid"]["origin"]["x"].to<double>();
 
     auto pusherName
         = input["simulation"]["algo"]["ion_updater"]["pusher"]["name"].to<std::string>();
@@ -93,7 +92,6 @@ TEST(APythonDataProvider, providesAValidTree)
     EXPECT_EQ(65, nx);
     EXPECT_DOUBLE_EQ(1. / 65., dx);
     EXPECT_DOUBLE_EQ(0.001, dt);
-    EXPECT_DOUBLE_EQ(0., origin);
     EXPECT_EQ("yee", layout);
 
     EXPECT_EQ("modified_boris", pusherName);

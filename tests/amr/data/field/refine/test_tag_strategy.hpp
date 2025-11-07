@@ -177,55 +177,11 @@ public:
                     auto& layout = fieldData->gridLayout;
                     auto& field  = fieldData->field;
 
-                    if constexpr (dim == 1)
+                    for (auto const amr_idx : layout.AMRGhostBoxFor(field))
                     {
-                        std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
-                        std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
-
-                        for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
-                        {
-                            auto position = layout.fieldNodeCoordinates(field, layout.origin(), ix);
-                            field(ix)     = affineFill(position, dataId);
-                        }
-                    }
-                    if constexpr (dim == 2)
-                    {
-                        std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
-                        std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
-                        std::uint32_t gsi_Y = layout.ghostStartIndex(field, Direction::Y);
-                        std::uint32_t gei_Y = layout.ghostEndIndex(field, Direction::Y);
-
-                        for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
-                        {
-                            for (std::uint32_t iy = gsi_Y; iy <= gei_Y; ++iy)
-                            {
-                                auto position
-                                    = layout.fieldNodeCoordinates(field, layout.origin(), ix, iy);
-                                field(ix, iy) = affineFill(position, dataId);
-                            }
-                        }
-                    }
-                    if constexpr (dim == 3)
-                    {
-                        std::uint32_t gsi_X = layout.ghostStartIndex(field, Direction::X);
-                        std::uint32_t gei_X = layout.ghostEndIndex(field, Direction::X);
-                        std::uint32_t gsi_Y = layout.ghostStartIndex(field, Direction::Y);
-                        std::uint32_t gei_Y = layout.ghostEndIndex(field, Direction::Y);
-                        std::uint32_t gsi_Z = layout.ghostStartIndex(field, Direction::Z);
-                        std::uint32_t gei_Z = layout.ghostEndIndex(field, Direction::Z);
-
-                        for (std::uint32_t ix = gsi_X; ix <= gei_X; ++ix)
-                        {
-                            for (std::uint32_t iy = gsi_Y; iy <= gei_Y; ++iy)
-                            {
-                                for (std::uint32_t iz = gsi_Z; iz <= gei_Z; ++iz)
-                                {
-                                    auto position = layout.fieldNodeCoordinates(
-                                        field, layout.origin(), ix, iy, iz);
-                                    field(ix, iy, iz) = affineFill(position, dataId);
-                                }
-                            }
-                        }
+                        auto position      = layout.fieldNodeCoordinates(field, amr_idx);
+                        auto const lcl_idx = layout.AMRToLocal(amr_idx);
+                        field(lcl_idx)     = affineFill(position, dataId);
                     }
                 }
             }

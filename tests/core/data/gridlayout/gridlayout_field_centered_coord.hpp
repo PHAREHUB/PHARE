@@ -1,13 +1,13 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_FIELD_CENTERED_COORD_HPP
 #define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_FIELD_CENTERED_COORD_HPP
 
-#include <array>
 
-#include "core/data/grid/gridlayout.hpp"
-#include "gridlayout_base_params.hpp"
-#include "gridlayout_params.hpp"
-#include "gridlayout_utilities.hpp"
 #include "core/utilities/point/point.hpp"
+
+#include "gridlayout_params.hpp"
+#include "gridlayout_base_params.hpp"
+
+#include <array>
 
 using namespace PHARE::core;
 
@@ -16,25 +16,10 @@ struct GridLayoutFieldCenteringParam
 {
     GridLayoutTestParam<GridLayoutImpl> base;
 
-    std::vector<std::array<std::uint32_t, GridLayoutImpl::dimension>> iCellForCentering;
+    std::vector<Point<int, GridLayoutImpl::dimension>> iCellForCentering;
     std::vector<std::array<double, GridLayoutImpl::dimension>> expectedPosition;
     std::vector<std::array<double, GridLayoutImpl::dimension>> actualPosition;
 
-    template<typename Array, std::size_t... I>
-    auto fieldCoord_impl(Array const& array, std::index_sequence<I...>)
-    {
-        auto& field  = base.field;
-        auto& layout = base.layout;
-        auto& origin = base.origin;
-
-        return layout->fieldNodeCoordinates(*field, origin, array[I]...);
-    }
-
-    template<typename T, std::size_t N, typename Indices = std::make_index_sequence<N>>
-    auto fieldCoord(const std::array<T, N>& array)
-    {
-        return fieldCoord_impl(array, Indices{});
-    }
 
     void init()
     {
@@ -46,18 +31,8 @@ struct GridLayoutFieldCenteringParam
 
         for (auto&& iCell : iCellForCentering)
         {
-            Point<double, GridLayoutImpl::dimension> pos;
-            pos = fieldCoord(iCell);
-
-            std::array<double, GridLayoutImpl::dimension> actualPos;
-
-            for (std::size_t iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
-            {
-                actualPos[iDim] = pos[iDim];
-            }
-
-
-            actualPosition.push_back(actualPos);
+            auto const pos = layout->fieldNodeCoordinates(*field, iCell);
+            actualPosition.push_back(*pos);
         }
     }
 };
@@ -83,7 +58,7 @@ auto createFieldCenteringParam()
 
     std::string layoutName{"yee"};
 
-    const std::map<std::string, HybridQuantity::Scalar> namesToQuantity{
+    std::map<std::string, HybridQuantity::Scalar> const namesToQuantity{
         {"Bx", HybridQuantity::Scalar::Bx}, {"By", HybridQuantity::Scalar::By},
         {"Bz", HybridQuantity::Scalar::Bz}, {"Ex", HybridQuantity::Scalar::Ex},
         {"Ey", HybridQuantity::Scalar::Ey}, {"Ez", HybridQuantity::Scalar::Ez},
@@ -112,9 +87,8 @@ auto createFieldCenteringParam()
 
         params.emplace_back();
 
-        // NOTE: before c++17 Point{origin} cannot deduce the corect type
-        params.back().base = createParam<GridLayoutImpl>(
-            dl, nbCell, Point<double, GridLayoutImpl::dimension>{origin});
+
+        params.back().base = createParam<GridLayoutImpl>(dl, nbCell, Point{origin});
 
         auto quantityIt = namesToQuantity.find(quantity);
         if (quantityIt != namesToQuantity.end())
@@ -130,8 +104,9 @@ auto createFieldCenteringParam()
         auto quantityIt = namesToQuantity.find(quantity);
         if (quantityIt != namesToQuantity.end())
         {
-            auto hqIndex = static_cast<int>(quantityIt->second);
+            auto hqIndex = static_cast<std::size_t>(quantityIt->second);
 
+            assert(hqIndex < params.size());
             auto& param = params[hqIndex];
 
             param.iCellForCentering.push_back(icell);

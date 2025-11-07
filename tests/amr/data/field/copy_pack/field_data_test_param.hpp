@@ -91,8 +91,7 @@ struct FieldDataTestParam
         auto& sourceLayout = sourceFieldData->gridLayout;
         auto& sourceField  = sourceFieldData->field;
 
-        auto origin   = sourceLayout.origin();
-        auto position = sourceLayout.fieldNodeCoordinates(sourceField, origin, iCell);
+        auto const position = sourceLayout.fieldNodeCoordinates(sourceField, iCell);
 
         return std::cos(position[0]);
     }
@@ -107,8 +106,7 @@ struct FieldDataTestParam
         auto& destinationLayout = destinationFieldData->gridLayout;
         auto& destinationField  = destinationFieldData->field;
 
-        auto origin   = destinationLayout.origin();
-        auto position = destinationLayout.fieldNodeCoordinates(destinationField, origin, iCell);
+        auto const position = destinationLayout.fieldNodeCoordinates(destinationField, iCell);
 
         return std::sin(position[0]);
     }

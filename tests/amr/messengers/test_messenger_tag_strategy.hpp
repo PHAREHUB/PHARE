@@ -29,9 +29,8 @@ void fillField(Field& field, GridLayout& layout, Func f)
 
     for (auto ix = iStart; ix <= iEnd; ++ix)
     {
-        auto origin = layout.origin();
-        auto x      = layout.fieldNodeCoordinates(field, origin, ix);
-        field(ix)   = f(x[0]);
+        auto x    = layout.fieldNodeCoordinates(field, ix);
+        field(ix) = f(x[0]);
     }
 }
 

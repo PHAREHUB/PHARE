@@ -1,12 +1,10 @@
 #ifndef PHARE_AMR_UTILS_HPP
 #define PHARE_AMR_UTILS_HPP
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
 
 #include "core/def.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/constants.hpp"
-#include "core/utilities/point/point.hpp"
 
 #include "amr/types/amr_types.hpp"
 #include "amr/utilities/box/amr_box.hpp"
@@ -158,28 +156,13 @@ namespace amr
     {
         auto constexpr dimension = GridLayoutT::dimension;
 
-        SAMRAI::tbox::Dimension const dim{dimension};
-
         //  We get geometry information from the patch, such as meshSize, and physical origin
         auto patchGeom = std::dynamic_pointer_cast<SAMRAI::geom::CartesianPatchGeometry>(
             patch.getPatchGeometry());
-        core::Point<double, dimension> origin;
 
-        std::array<double, dimension> dl;
-
-        if (patchGeom != nullptr)
-        {
-            auto pOrigin = patchGeom->getXLower();
-            auto pDl     = patchGeom->getDx();
-
-            for (std::size_t iDim = 0; iDim < dimension; ++iDim)
-            {
-                origin[iDim] = pOrigin[iDim];
-                dl[iDim]     = pDl[iDim];
-            }
-        }
-        else
         /*
+          if(patchGeom == nullptr)
+
           We assume that this is a temporary patch used by SAMRAI for data transfers
           Temporary patches are not given a Geometry at this moment so we can't use it.
           This happens in:
@@ -187,25 +170,29 @@ namespace amr
 
           SEE: https://github.com/LLNL/SAMRAI/issues/147
         */
-        {
-            for (std::size_t iDim = 0; iDim < dimension; ++iDim)
-            {
-                origin[iDim] = 0;
-                dl[iDim]     = 1;
-            }
-        }
 
-        SAMRAI::hier::Box domain = patch.getBox();
+        auto const dl = core::for_N_make_array<dimension>([&](auto i) {
+            if (patchGeom != nullptr)
+                return patchGeom->getDx()[i];
+            return 1.0;
+        });
 
-        std::array<std::uint32_t, dimension> nbrCell;
+        auto const origin = core::for_N_make_array<dimension>([&](auto i) {
+            if (patchGeom != nullptr)
+                return patchGeom->getXLower()[i];
+            return 0.0;
+        });
 
-        for (std::size_t iDim = 0; iDim < dimension; ++iDim)
-        {
-            nbrCell[iDim] = static_cast<std::uint32_t>(domain.numberCells(iDim));
-        }
+        auto const nbrCell = core::for_N_make_array<dimension>(
+            [&](auto i) { return static_cast<std::uint32_t>(patch.getBox().numberCells(i)); });
 
-        auto lvlNbr = patch.getPatchLevelNumber();
-        return GridLayoutT{dl, nbrCell, origin, amr::Box<int, dimension>{domain}, lvlNbr};
+        return {
+            dl,
+            nbrCell,
+            origin, //
+            amr::Box<int, dimension>{patch.getBox()},
+            patch.getPatchLevelNumber(), //
+        };
     }
 
 

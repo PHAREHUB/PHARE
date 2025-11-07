@@ -23,7 +23,7 @@
 
 using namespace PHARE::core;
 
-const double Te = 0.12;
+double const Te = 0.12;
 
 
 
@@ -226,13 +226,10 @@ struct ElectronsTest : public ::testing::Test
         if constexpr (dim == 1)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
-                auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
-
-                for (auto ix = gsi_X; ix <= gei_X; ++ix)
+                for (auto const [amr_idx, lcl_idx] : layout.ghost_amr_lcl_idx(field))
                 {
-                    auto point = this->layout.fieldNodeCoordinates(field, Point<double, 1>{0.}, ix);
-                    field(ix)  = filler(point[0]);
+                    auto const point = this->layout.fieldNodeCoordinates(field, amr_idx);
+                    field(lcl_idx)   = filler(point[0]);
                 }
             };
 
@@ -249,19 +246,10 @@ struct ElectronsTest : public ::testing::Test
         else if constexpr (dim == 2)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
-                auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
-                auto gsi_Y = this->layout.ghostStartIndex(field, Direction::Y);
-                auto gei_Y = this->layout.ghostEndIndex(field, Direction::Y);
-
-                for (auto ix = gsi_X; ix <= gei_X; ++ix)
+                for (auto const amr_idx : layout.AMRGhostBoxFor(field))
                 {
-                    for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
-                    {
-                        auto point = this->layout.fieldNodeCoordinates(
-                            field, Point<double, 2>{0., 0.}, ix, iy);
-                        field(ix, iy) = filler(point[0], point[1]);
-                    }
+                    auto point = this->layout.fieldNodeCoordinates(field, amr_idx);
+                    field(layout.AMRToLocal(amr_idx)) = filler(point[0], point[1]);
                 }
             };
 
@@ -279,24 +267,10 @@ struct ElectronsTest : public ::testing::Test
         else if constexpr (dim == 3)
         {
             auto fill = [this](auto& field, auto const& filler) {
-                auto gsi_X = this->layout.ghostStartIndex(field, Direction::X);
-                auto gei_X = this->layout.ghostEndIndex(field, Direction::X);
-                auto gsi_Y = this->layout.ghostStartIndex(field, Direction::Y);
-                auto gei_Y = this->layout.ghostEndIndex(field, Direction::Y);
-                auto gsi_Z = this->layout.ghostStartIndex(field, Direction::Z);
-                auto gei_Z = this->layout.ghostEndIndex(field, Direction::Z);
-
-                for (auto ix = gsi_X; ix <= gei_X; ++ix)
+                for (auto const amr_idx : layout.AMRGhostBoxFor(field))
                 {
-                    for (auto iy = gsi_Y; iy <= gei_Y; ++iy)
-                    {
-                        for (auto iz = gsi_Z; iz <= gei_Z; ++iz)
-                        {
-                            auto point = this->layout.fieldNodeCoordinates(
-                                field, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
-                            field(ix, iy, iz) = filler(point[0], point[1], point[2]);
-                        }
-                    }
+                    auto point = this->layout.fieldNodeCoordinates(field, amr_idx);
+                    field(layout.AMRToLocal(amr_idx)) = filler(point[0], point[1], point[2]);
                 }
             };
 

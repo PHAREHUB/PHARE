@@ -295,14 +295,6 @@ def check_refined_particle_nbr(ndim, **kwargs):
 # ------------------------------------------------------------------------------
 
 
-def check_origin(ndim, **kwargs):
-    origin = kwargs.get("origin", [0.0] * ndim)
-    return origin
-
-
-# ------------------------------------------------------------------------------
-
-
 def as_list_per_level(refinement_boxes):
     """
     accepts various formats of boxes.
@@ -636,7 +628,6 @@ def checker(func):
             "time_step_nbr",
             "layout",
             "interp_order",
-            "origin",
             "boundary_types",
             "refined_particle_nbr",
             "path",
@@ -695,7 +686,6 @@ def checker(func):
         kwargs["restart_options"] = check_restart_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
-        kwargs["origin"] = check_origin(ndim, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
         kwargs["diag_export_format"] = kwargs.get("diag_export_format", "hdf5")
@@ -850,7 +840,6 @@ class Simulation(object):
         These parameters are more advanced, modify them at your own risk
 
             * **layout** (``str``), layout of the physical quantities on the mesh (default = "yee")
-            * **origin** (``int`` or ``tuple``), origin of the physical domain, (default (0,0,0) in 3D)
 
 
     For instance:
@@ -976,7 +965,7 @@ class Simulation(object):
         validate_restart_options(self)
 
     def simulation_domain(self):
-        return [dl * n + ori for dl, n, ori in zip(self.dl, self.cells, self.origin)]
+        return [dl * n for dl, n in zip(self.dl, self.cells)]
 
     def within_simulation_duration(self, time_period):
         return time_period[0] >= 0 and time_period[1] < self.time_step_nbr

@@ -27,7 +27,7 @@ using namespace PHARE::core;
 
 struct GridLayoutMock1D
 {
-    static const auto dimension = 1u;
+    static auto const dimension = 1u;
 
     template<auto direction>
     double deriv(FieldMock<1> const& /*f*/, MeshIndex<1u> /*mi*/)
@@ -41,7 +41,7 @@ struct GridLayoutMock1D
 
 struct GridLayoutMock2D
 {
-    static const auto dimension = 2u;
+    static auto const dimension = 2u;
 
     template<auto direction>
     double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<2u> /*mi*/)
@@ -55,7 +55,7 @@ struct GridLayoutMock2D
 
 struct GridLayoutMock3D
 {
-    static const auto dimension = 3u;
+    static auto const dimension = 3u;
 
 
     template<auto direction>
@@ -234,7 +234,8 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
 
     for (auto ix = gsi_p_X; ix <= gei_p_X; ++ix)
     {
-        auto point = this->layout.fieldNodeCoordinates(Ey, Point{0.}, ix);
+        auto point
+            = this->layout.fieldNodeCoordinates(Ey, this->layout.localToAMR(Point{ix}.as_signed()));
 
         Ey(ix) = std::cos(2 * M_PI / 5. * point[0]);
         Ez(ix) = std::sin(2 * M_PI / 5. * point[0]);
@@ -245,7 +246,8 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
 
     for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
     {
-        auto point = this->layout.fieldNodeCoordinates(By, Point{0.}, ix);
+        auto point
+            = this->layout.fieldNodeCoordinates(By, this->layout.localToAMR(Point{ix}.as_signed()));
 
         By(ix) = std::tanh(point[0] - 5. / 2.);
         Bz(ix) = std::tanh(point[0] - 5. / 2.);
@@ -294,7 +296,8 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Ex, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                Ex, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
             Ex(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::sin(2 * M_PI / 6. * point[1]);
         }
@@ -304,7 +307,8 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Ey, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                Ey, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
             Ey(ix, iy) = std::cos(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
@@ -314,7 +318,8 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Ez, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                Ez, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
             Ez(ix, iy) = std::sin(2 * M_PI / 5. * point[0]) * std::tanh(2 * M_PI / 6. * point[1]);
         }
@@ -324,7 +329,8 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                Bx, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
             Bx(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
         }
@@ -334,7 +340,8 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                By, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
             By(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
         }
@@ -344,7 +351,8 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
     {
         for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
         {
-            auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0.}, ix, iy);
+            auto point = this->layout.fieldNodeCoordinates(
+                Bz, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
             Bz(ix, iy) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.);
         }
@@ -433,7 +441,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Ex, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    Ex, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                 Ex(ix, iy, iz) = std::sin(2 * M_PI / 5. * point[0])
                                  * std::cos(2 * M_PI / 6. * point[1])
@@ -448,7 +457,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Ey, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    Ey, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                 Ey(ix, iy, iz) = std::tanh(2 * M_PI / 5. * point[0])
                                  * std::sin(2 * M_PI / 6. * point[1])
@@ -463,7 +473,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Ez, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    Ez, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                 Ez(ix, iy, iz) = std::cos(2 * M_PI / 5. * point[0])
                                  * std::tanh(2 * M_PI / 6. * point[1])
@@ -478,7 +489,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Bx, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    Bx, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                 Bx(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
                                  * std::tanh(point[2] - 12. / 2.);
@@ -492,7 +504,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(By, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    By, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                 By(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
                                  * std::tanh(point[2] - 12. / 2.);
@@ -506,7 +519,8 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         {
             for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
             {
-                auto point = this->layout.fieldNodeCoordinates(Bz, Point{0., 0., 0.}, ix, iy, iz);
+                auto point = this->layout.fieldNodeCoordinates(
+                    Bz, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                 Bz(ix, iy, iz) = std::tanh(point[0] - 5. / 2.) * std::tanh(point[1] - 6. / 2.)
                                  * std::tanh(point[2] - 12. / 2.);

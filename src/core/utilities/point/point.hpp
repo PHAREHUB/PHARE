@@ -216,14 +216,28 @@ namespace core
 
         NO_DISCARD auto& operator*() const { return r; }
 
+
+
+        template<typename To>
+        auto as() const
+        {
+            return Point<To, dim>{this->template toArray<To>()};
+        }
+
         auto as_unsigned() const
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 if (r[iDim] < 0)
                     throw std::runtime_error("Cannot make unsigned from negative values");
-
             if constexpr (sizeof(Type) == 4)
-                return Point<std::uint32_t, dim>{this->template toArray<std::uint32_t>()};
+                return as<std::uint32_t>();
+            // else no return cause not yet handled
+        }
+
+        auto as_signed() const
+        {
+            if constexpr (sizeof(Type) == 4)
+                return as<std::int32_t>();
             // else no return cause not yet handled
         }
 

@@ -271,24 +271,6 @@ class GridLayout(object):
         )
         return index
 
-    def physicalStartIndices(self, qty):
-        assert qty in self.hybridQuantities
-        indices = np.zeros(self.box.ndim)
-        for i, direction in enumerate(directions[: self.box.ndim]):
-            centering = yee_centering[direction][qty]
-            indices[i] = self.physicalStartIndex(self.interp_order, centering)
-        return indices
-
-    def physicalEndIndices(self, qty):
-        assert qty in self.hybridQuantities
-        indices = np.zeros(self.box.ndim)
-        for i, direction in enumerate(directions[: self.box.ndim]):
-            centering = yee_centering[direction][qty]
-            indices[i] = self.physicalEndIndex(
-                self.interp_order, centering, self.box.shape[i]
-            )
-        return indices
-
     def nbrGhostFor(self, qty):
         assert qty in self.hybridQuantities
         nGhosts = np.zeros(self.box.ndim, dtype=np.int32)
@@ -328,6 +310,11 @@ class GridLayout(object):
             - self.isDual(newCentering)
         )
         return size
+
+    def localPointToAMR(self, point):
+        return (
+            point + self.box.lower - self.physicalStartIndex(self.interp_order, "dual")
+        )
 
     def AMRPointToLocal(self, point):
         return (

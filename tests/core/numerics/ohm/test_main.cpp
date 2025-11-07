@@ -100,7 +100,8 @@ struct OhmTest : public ::testing::Test
 
             for (auto ix = gsi_p_X; ix <= gei_p_X; ++ix)
             {
-                auto point = this->layout.fieldNodeCoordinates(n, Point<double, 1>{0.}, ix);
+                auto point = this->layout.fieldNodeCoordinates(
+                    n, this->layout.localToAMR(Point{ix}.as_signed()));
 
                 n(ix)  = std::cosh(0.5 * point[0]);
                 Vx(ix) = std::sinh(0.2 * point[0]);
@@ -114,7 +115,8 @@ struct OhmTest : public ::testing::Test
 
             for (auto ix = gsi_d_X; ix <= gei_d_X; ++ix)
             {
-                auto point = this->layout.fieldNodeCoordinates(Bz, Point<double, 1>{0.}, ix);
+                auto point = this->layout.fieldNodeCoordinates(
+                    Bz, this->layout.localToAMR(Point{ix}.as_signed()));
 
                 By(ix) = std::cosh(0.3 * point[0]);
                 Bz(ix) = std::cosh(0.4 * point[0]);
@@ -137,8 +139,8 @@ struct OhmTest : public ::testing::Test
             {
                 for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
                 {
-                    auto point
-                        = this->layout.fieldNodeCoordinates(n, Point<double, 2>{0., 0.}, ix, iy);
+                    auto point = this->layout.fieldNodeCoordinates(
+                        n, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
                     n(ix, iy)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1]);
                     Vx(ix, iy) = std::sinh(0.2 * point[0]) * std::sinh(0.2 * point[1]);
@@ -149,8 +151,8 @@ struct OhmTest : public ::testing::Test
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
                 {
-                    auto point
-                        = this->layout.fieldNodeCoordinates(Bx, Point<double, 2>{0., 0.}, ix, iy);
+                    auto point = this->layout.fieldNodeCoordinates(
+                        Bx, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
                     Bx(ix, iy) = std::cosh(0.2 * point[0]) * std::cosh(0.2 * point[1]);
                     Jy(ix, iy) = std::tanh(0.3 * point[0]) * std::tanh(0.3 * point[1]);
@@ -160,16 +162,16 @@ struct OhmTest : public ::testing::Test
             {
                 for (auto iy = gsi_p_Y; iy <= gei_p_Y; ++iy)
                 {
-                    auto point
-                        = this->layout.fieldNodeCoordinates(Jx, Point<double, 2>{0., 0.}, ix, iy);
+                    auto point = this->layout.fieldNodeCoordinates(
+                        Jx, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
                     By(ix, iy) = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1]);
                     Jx(ix, iy) = std::tanh(0.2 * point[0]) * std::tanh(0.2 * point[1]);
                 }
                 for (auto iy = gsi_d_Y; iy <= gei_d_Y; ++iy)
                 {
-                    auto point
-                        = this->layout.fieldNodeCoordinates(Bz, Point<double, 2>{0., 0.}, ix, iy);
+                    auto point = this->layout.fieldNodeCoordinates(
+                        Bz, this->layout.localToAMR(Point{ix, iy}.as_signed()));
 
                     Bz(ix, iy) = std::cosh(0.4 * point[0]) * std::cosh(0.4 * point[1]);
                 }
@@ -198,7 +200,7 @@ struct OhmTest : public ::testing::Test
                     for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
-                            n, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            n, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                         n(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
                                         * std::cosh(0.5 * point[2]);
@@ -214,7 +216,7 @@ struct OhmTest : public ::testing::Test
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
-                            Jz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            Jz, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                         Jz(ix, iy, iz) = std::tanh(0.4 * point[0]) * std::tanh(0.4 * point[1])
                                          * std::tanh(0.4 * point[2]);
@@ -225,7 +227,7 @@ struct OhmTest : public ::testing::Test
                     for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
-                            Jy, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            Jy, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                         Jy(ix, iy, iz) = std::tanh(0.3 * point[0]) * std::tanh(0.3 * point[1])
                                          * std::tanh(0.3 * point[2]);
@@ -233,7 +235,7 @@ struct OhmTest : public ::testing::Test
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
-                            Bx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            Bx, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                         Bx(ix, iy, iz) = std::cosh(0.2 * point[0]) * std::cosh(0.2 * point[1])
                                          * std::cosh(0.2 * point[2]);
@@ -247,7 +249,7 @@ struct OhmTest : public ::testing::Test
                     for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
-                            Jx, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            Jx, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                         Jx(ix, iy, iz) = std::tanh(0.2 * point[0]) * std::tanh(0.2 * point[1])
                                          * std::tanh(0.2 * point[2]);
@@ -255,7 +257,7 @@ struct OhmTest : public ::testing::Test
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
-                            By, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            By, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                         By(ix, iy, iz) = std::cosh(0.3 * point[0]) * std::cosh(0.3 * point[1])
                                          * std::cosh(0.3 * point[2]);
@@ -266,7 +268,7 @@ struct OhmTest : public ::testing::Test
                     for (auto iz = gsi_p_Z; iz <= gei_p_Z; ++iz)
                     {
                         auto point = this->layout.fieldNodeCoordinates(
-                            Bz, Point<double, 3>{0., 0., 0.}, ix, iy, iz);
+                            Bz, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
                         Bz(ix, iy, iz) = std::cosh(0.4 * point[0]) * std::cosh(0.4 * point[1])
                                          * std::cosh(0.4 * point[2]);
