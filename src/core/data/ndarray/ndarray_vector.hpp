@@ -2,7 +2,9 @@
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
 #include "core/def.hpp"
+#include "core/logger.hpp"
 #include <stdexcept>
+#include <cassert>
 #include <array>
 #include <cstdint>
 #include <vector>
@@ -19,20 +21,29 @@ namespace PHARE::core
 template<std::size_t dim, bool c_ordering = true, typename DataType = double>
 struct NdArrayViewer
 {
+    template<typename NCells, template<typename, std::size_t> typename Indexes, typename Index>
+    NO_DISCARD static std::size_t idx(NCells const& nCells, Indexes<Index, dim> const& indexes)
+
+    {
+        if constexpr (dim == 1)
+            return idx(nCells, indexes[0]);
+
+        else if constexpr (dim == 2)
+            return idx(nCells, indexes[0], indexes[1]);
+
+        else if constexpr (dim == 3)
+            return idx(nCells, indexes[0], indexes[1], indexes[2]);
+    }
+
     template<typename NCells, typename... Indexes>
-    NO_DISCARD static DataType const& at(DataType const* data, NCells const& nCells,
-                                         Indexes const&... indexes)
+    NO_DISCARD static std::size_t idx(NCells const& nCells, Indexes const&... indexes)
     {
         auto params = std::forward_as_tuple(indexes...);
         static_assert(sizeof...(Indexes) == dim);
-        // static_assert((... && std::is_unsigned_v<decltype(indexes)>)); TODO : manage later if
-        // this test should be included
 
         if constexpr (dim == 1)
         {
-            auto i = std::get<0>(params);
-
-            return data[i];
+            return std::get<0>(params);
         }
 
         if constexpr (dim == 2)
@@ -41,9 +52,9 @@ struct NdArrayViewer
             auto j = std::get<1>(params);
 
             if constexpr (c_ordering)
-                return data[j + i * nCells[1]];
+                return j + i * nCells[1];
             else
-                return data[i + j * nCells[0]];
+                return i + j * nCells[0];
         }
 
         if constexpr (dim == 3)
@@ -53,10 +64,18 @@ struct NdArrayViewer
             auto k = std::get<2>(params);
 
             if constexpr (c_ordering)
-                return data[k + j * nCells[2] + i * nCells[1] * nCells[2]];
+                return k + j * nCells[2] + i * nCells[1] * nCells[2];
             else
-                return data[i + j * nCells[0] + k * nCells[1] * nCells[0]];
+                return i + j * nCells[0] + k * nCells[1] * nCells[0];
         }
+    }
+
+
+    template<typename NCells, typename... Indexes>
+    NO_DISCARD static DataType const& at(DataType const* data, NCells const& nCells,
+                                         Indexes const&... indexes)
+    {
+        return data[idx(nCells, indexes...)];
     }
 
     template<typename NCells, template<typename, std::size_t> typename Indexes, typename Index>
@@ -64,14 +83,9 @@ struct NdArrayViewer
                                          Indexes<Index, dim> const& indexes)
 
     {
-        if constexpr (dim == 1)
-            return at(data, nCells, indexes[0]);
-
-        else if constexpr (dim == 2)
-            return at(data, nCells, indexes[0], indexes[1]);
-
-        else if constexpr (dim == 3)
-            return at(data, nCells, indexes[0], indexes[1], indexes[2]);
+        auto const i = idx(nCells, indexes);
+        assert(i < product(nCells, std::size_t{1})); // debug bounds check
+        return data[i];
     }
 };
 

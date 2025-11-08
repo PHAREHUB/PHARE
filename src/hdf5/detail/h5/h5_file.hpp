@@ -3,12 +3,17 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "highfive/H5File.hpp"
-#include "highfive/H5Easy.hpp"
-
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
+
+#include "highfive/H5File.hpp"
+#include "highfive/H5Easy.hpp"
+
+#include <unordered_set>
+
+#include "group_scanner.hpp"
+
 
 namespace PHARE::hdf5::h5
 {
@@ -38,6 +43,7 @@ NO_DISCARD auto vector_for_dim()
     if constexpr (dim == 3)
         return std::vector<std::vector<std::vector<Data>>>();
 }
+
 
 class HighFiveFile
 {
@@ -69,7 +75,8 @@ public:
 
     ~HighFiveFile() {}
 
-    NO_DISCARD HiFile& file() { return h5file_; }
+    NO_DISCARD auto& file() { return h5file_; }
+    NO_DISCARD auto& file() const { return h5file_; }
 
 
     template<typename T, std::size_t dim = 1>
@@ -245,10 +252,17 @@ public:
     }
 
 
-    HighFiveFile(HighFiveFile const&)             = delete;
-    HighFiveFile(HighFiveFile const&&)            = delete;
-    HighFiveFile& operator=(HighFiveFile const&)  = delete;
-    HighFiveFile& operator=(HighFiveFile const&&) = delete;
+    HighFiveFile(HighFiveFile const&)       = delete;
+    HighFiveFile(HighFiveFile const&&)      = delete;
+    HighFiveFile& operator=(HighFiveFile&)  = delete;
+    HighFiveFile& operator=(HighFiveFile&&) = delete;
+
+    std::unordered_set<std::string> scan_for_groups(std::vector<std::string> const& contains)
+    {
+        return GroupScanner<HighFiveFile>{*this, contains}.scan();
+    }
+
+
 
 private:
     HighFive::FileAccessProps fapl_;
@@ -284,7 +298,6 @@ private:
             return size == 0;
     }
 };
-
 
 
 
