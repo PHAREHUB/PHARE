@@ -8,7 +8,6 @@
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
-
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/CoarsenOperator.h>

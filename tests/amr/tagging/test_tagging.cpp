@@ -1,4 +1,3 @@
-
 #include <cmath>
 #include <algorithm>
 
@@ -16,32 +15,31 @@
 
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "python3/mhd_defaults/default_mhd_time_stepper.hpp"
 
 using namespace PHARE::amr;
 
-
-
 TEST(test_tagger, fromFactoryValid)
 {
-    auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
+    auto static constexpr opts = PHARE::SimOpts<>{1ul, 1ul, 2ul};
     using phare_types          = PHARE::solver::PHARE_Types<opts>;
+    using hybrid_model         = phare_types::HybridModel_t;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]     = std::string{"HybridModel"};
-    dict["method"]    = std::string{"default"};
-    dict["threshold"] = 0.2;
-    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
+    dict["hybrid_method"] = std::string{"default"};
+    dict["threshold"]     = 0.2;
+    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
 }
 
 TEST(test_tagger, fromFactoryInvalid)
 {
-    auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
+    auto static constexpr opts = PHARE::SimOpts<>{1ul, 1ul, 2ul};
     using phare_types          = PHARE::solver::PHARE_Types<opts>;
+    using hybrid_model         = phare_types::HybridModel_t;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]     = std::string{"invalidModel"};
-    dict["method"]    = std::string{"invalidStrat"};
-    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
-    auto badTagger    = TaggerFactory<phare_types>::make(dict);
+    dict["hybrid_method"] = std::string{"invalidStrat"};
+    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
+    auto badTagger        = TaggerFactory<hybrid_model>::make(dict);
     EXPECT_TRUE(badTagger == nullptr);
 }
 
@@ -170,7 +168,7 @@ struct TestTagger : public ::testing::Test
     auto static constexpr dim            = TaggingTestInfo_t::dim;
     auto static constexpr interp_order   = TaggingTestInfo_t::interp;
     auto static constexpr refinedPartNbr = TaggingTestInfo_t::refinedPartNbr;
-    auto static constexpr opts           = PHARE::SimOpts{dim, interp_order, refinedPartNbr};
+    auto static constexpr opts           = PHARE::SimOpts<>{dim, interp_order, refinedPartNbr};
 
     using phare_types = PHARE::solver::PHARE_Types<opts>;
     using Electromag  = phare_types::Electromag_t;

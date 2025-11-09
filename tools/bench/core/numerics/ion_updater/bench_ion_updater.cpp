@@ -10,7 +10,7 @@ void updater_routine(benchmark::State& state)
 {
     constexpr std::uint32_t cells   = 30;
     constexpr std::uint32_t n_parts = 1e7;
-    auto static constexpr opts      = PHARE::SimOpts{dim, interp};
+    auto static constexpr opts      = PHARE::SimOpts<>{dim, interp};
 
     using PHARE_Types   = core::PHARE_Types<opts>;
     using GridLayout_t  = TestGridLayout<typename PHARE_Types::GridLayout_t>;

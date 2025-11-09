@@ -61,8 +61,8 @@ public:
         SAMRAI::mesh::StandardTagAndInitStrategy* tagStrat,
         std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> const& integratorStrat)
         : inputDatabase_{SAMRAI::tbox::InputManager::getManager()->parseInputFile(
-            inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
-            + std::to_string(ratio) + ".txt")}
+              inputBase + "input/input_" + std::to_string(dimension) + "d_ratio_"
+              + std::to_string(ratio) + ".txt")}
         , patchHierarchyDatabase_{inputDatabase_->getDatabase("PatchHierarchy")}
         , dimension_{dimension}
 

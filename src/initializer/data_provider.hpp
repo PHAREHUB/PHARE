@@ -48,9 +48,10 @@ namespace initializer
     using InitFunction = typename InitFunctionHelper<double, dim>::type;
 
 
-    using PHAREDict = cppdict::Dict<bool, int, std::vector<int>, double, std::vector<double>,
-                                    std::size_t, std::optional<std::size_t>, std::string,
-                                    InitFunction<1>, InitFunction<2>, InitFunction<3>>;
+    using PHAREDict
+        = cppdict::Dict<bool, int, std::vector<int>, double, std::vector<double>, std::size_t,
+                        std::optional<std::size_t>, std::string, std::vector<std::string>,
+                        InitFunction<1>, InitFunction<2>, InitFunction<3>>;
 
 
     class PHAREDictHandler

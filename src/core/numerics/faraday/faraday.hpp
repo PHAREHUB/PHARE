@@ -11,6 +11,9 @@
 namespace PHARE::core
 {
 template<typename GridLayout>
+class Faraday_ref;
+
+template<typename GridLayout>
 class Faraday : public LayoutHolder<GridLayout>
 {
     constexpr static auto dimension = GridLayout::dimension;
@@ -27,8 +30,25 @@ public:
         if (!(B.isUsable() && E.isUsable() && Bnew.isUsable()))
             throw std::runtime_error("Error - Faraday - not all VecField parameters are usable");
 
-        this->dt_ = dt;
+        Faraday_ref{*this->layout_, dt}(B, E, Bnew);
+    }
+};
 
+template<typename GridLayout>
+class Faraday_ref
+{
+    constexpr static auto dimension = GridLayout::dimension;
+
+public:
+    Faraday_ref(GridLayout const& layout, double const dt)
+        : layout_{layout}
+        , dt_{dt}
+    {
+    }
+
+    template<typename VecField>
+    void operator()(VecField const& B, VecField const& E, VecField& Bnew) const
+    {
         // can't use structured bindings because
         //   "reference to local binding declared in enclosing function"
         auto const& Bx = B(Component::X);
@@ -39,14 +59,14 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        layout_->evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
-        layout_->evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
-        layout_->evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
+        layout_.evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
+        layout_.evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
+        layout_.evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
     }
 
-
 private:
-    double dt_;
+    GridLayout layout_;
+    double const dt_;
 
 
     template<typename VecField, typename Field, typename... Indexes>
@@ -58,11 +78,11 @@ private:
             Bxnew(ijk...) = Bx(ijk...);
 
         if constexpr (dimension == 2)
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_->template deriv<Direction::Y>(Ez, {ijk...});
+            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_.template deriv<Direction::Y>(Ez, {ijk...});
 
         if constexpr (dimension == 3)
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_->template deriv<Direction::Y>(Ez, {ijk...})
-                            + dt_ * layout_->template deriv<Direction::Z>(Ey, {ijk...});
+            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_.template deriv<Direction::Y>(Ez, {ijk...})
+                            + dt_ * layout_.template deriv<Direction::Z>(Ey, {ijk...});
     }
 
     template<typename VecField, typename Field, typename... Indexes>
@@ -71,11 +91,11 @@ private:
         auto const& [Ex, _, Ez] = E();
 
         if constexpr (dimension == 1 || dimension == 2)
-            Bynew(ijk...) = By(ijk...) + dt_ * layout_->template deriv<Direction::X>(Ez, {ijk...});
+            Bynew(ijk...) = By(ijk...) + dt_ * layout_.template deriv<Direction::X>(Ez, {ijk...});
 
         if constexpr (dimension == 3)
-            Bynew(ijk...) = By(ijk...) - dt_ * layout_->template deriv<Direction::Z>(Ex, {ijk...})
-                            + dt_ * layout_->template deriv<Direction::X>(Ez, {ijk...});
+            Bynew(ijk...) = By(ijk...) - dt_ * layout_.template deriv<Direction::Z>(Ex, {ijk...})
+                            + dt_ * layout_.template deriv<Direction::X>(Ez, {ijk...});
     }
 
     template<typename VecField, typename Field, typename... Indexes>
@@ -84,11 +104,11 @@ private:
         auto const& [Ex, Ey, _] = E();
 
         if constexpr (dimension == 1)
-            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_->template deriv<Direction::X>(Ey, {ijk...});
+            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_.template deriv<Direction::X>(Ey, {ijk...});
 
         else
-            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_->template deriv<Direction::X>(Ey, {ijk...})
-                            + dt_ * layout_->template deriv<Direction::Y>(Ex, {ijk...});
+            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_.template deriv<Direction::X>(Ey, {ijk...})
+                            + dt_ * layout_.template deriv<Direction::Y>(Ex, {ijk...});
     }
 };
 

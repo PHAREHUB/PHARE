@@ -12,6 +12,7 @@ set( SOURCES_INC
      data/field/coarsening/coarsen_weighter.hpp
      data/field/coarsening/default_field_coarsener.hpp
      data/field/coarsening/electric_field_coarsener.hpp
+     data/field/coarsening/mhd_flux_coarsener.hpp
      data/field/field_data.hpp
      data/field/field_data_factory.hpp
      data/field/field_geometry.hpp
@@ -21,7 +22,10 @@ set( SOURCES_INC
      data/field/refine/field_refiner.hpp
      data/field/refine/magnetic_field_init_refiner.hpp
      data/field/refine/magnetic_field_refiner.hpp
+     data/field/refine/magnetic_field_regrider.hpp
      data/field/refine/electric_field_refiner.hpp
+     data/field/refine/mhd_field_refiner.hpp
+     data/field/refine/mhd_flux_refiner.hpp
      data/field/refine/linear_weighter.hpp
      data/field/refine/field_refine_operator.hpp
      data/field/time_interpolate/field_linear_time_interpolate.hpp
@@ -51,9 +55,9 @@ set( SOURCES_INC
      wrappers/integrator.hpp
      tagging/tagger.hpp
      tagging/tagger_factory.hpp
-     tagging/hybrid_tagger.hpp
-     tagging/hybrid_tagger_strategy.hpp
-     tagging/default_hybrid_tagger_strategy.hpp
+     tagging/concrete_tagger.hpp
+     tagging/tagger_strategy.hpp
+     tagging/default_tagger_strategy.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
      solvers/solver_mhd.hpp
@@ -69,10 +73,11 @@ set( SOURCES_INC
      load_balancing/load_balancer_manager.hpp
      load_balancing/load_balancer_estimator.hpp
      load_balancing/load_balancer_estimator_hybrid.hpp
+     load_balancing/load_balancer_estimator_mhd.hpp
      load_balancing/load_balancer_hybrid_strategy_factory.hpp
-     load_balancing/load_balancer_hybrid_strategy.hpp
-     load_balancing/concrete_load_balancer_hybrid_strategy_homogeneous.hpp
-     load_balancing/concrete_load_balancer_hybrid_strategy_nppc.hpp
+     load_balancing/load_balancer_strategy.hpp
+     load_balancing/concrete_load_balancer_strategy_homogeneous.hpp
+     load_balancing/concrete_load_balancer_strategy_nppc.hpp
    )
 set( SOURCES_CPP
      data/field/refine/linear_weighter.cpp

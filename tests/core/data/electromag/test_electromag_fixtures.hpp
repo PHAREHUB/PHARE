@@ -1,14 +1,13 @@
 #ifndef PHARE_TEST_CORE_DATA_ELECTROMAG_ELECTROMAG_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_ELECTROMAG_ELECTROMAG_FIXTURES_HPP
 
-#include "phare_core.hpp"
+#include <cassert>
+#include <cmath>
+#include <functional>
 
+#include "phare_core.hpp"
 #include "tests/core/data/field/test_field_fixtures.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
-
-#include <cmath>
-#include <cassert>
-#include <functional>
 
 namespace PHARE::core
 {
@@ -42,18 +41,14 @@ public:
         _set();
     }
 
-
     Super& view() { return *this; }
     Super const& view() const { return *this; }
     auto& operator*() { return view(); }
     auto& operator*() const { return view(); }
 
-
     UsableVecField<dim> E, B;
 };
 
-
 } // namespace PHARE::core
-
 
 #endif /* PHARE_TEST_CORE_DATA_ELECTROMAG_ELECTROMAG_FIXTURES_HPP */

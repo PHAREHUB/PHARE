@@ -1,11 +1,12 @@
 import os
+from copy import deepcopy
+
 import numpy as np
 
-from ..core import phare_utilities
-from . import global_vars
 from ..core import box as boxm
+from ..core import phare_utilities
 from ..core.box import Box
-from copy import deepcopy
+from . import global_vars
 
 # ------------------------------------------------------------------------------
 
@@ -625,6 +626,55 @@ def check_clustering(**kwargs):
     return clustering
 
 
+def check_max_mhd_level(**kwargs):
+    max_mhd_level = kwargs.get("max_mhd_level", 0)
+
+    if max_mhd_level > kwargs["max_nbr_levels"]:
+        raise ValueError(
+            f"Error: max_mhd_level({max_mhd_level}) should be less or equal to max_nbr_levels({kwargs['max_nbr_levels']})"
+        )
+
+    return max_mhd_level
+
+
+def check_model_options(**kwargs):
+    model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
+
+    valid_options = {"MHDModel", "HybridModel"}
+
+    if not set(model_options).issubset(valid_options):
+        raise ValueError(
+            f"Invalid model options: {model_options}. Allowed values are {valid_options}."
+        )
+
+    return model_options
+
+
+def check_mhd_constants(**kwargs):
+    gamma = kwargs.get("gamma", 5.0 / 3.0)
+    eta = kwargs.get("eta", 0.0)
+    nu = kwargs.get("nu", 0.0)
+
+    return gamma, eta, nu
+
+
+def check_mhd_terms(**kwargs):
+    hall = kwargs.get("hall", False)
+    res = kwargs.get("res", False)
+    hyper_res = kwargs.get("hyper_res", False)
+
+    return hall, res, hyper_res
+
+
+def check_mhd_parameters(**kwargs):
+    reconstruction = kwargs.get("reconstruction", "")
+    limiter = kwargs.get("limiter", "")
+    riemann = kwargs.get("riemann", "")
+    mhd_timestepper = kwargs.get("mhd_timestepper", "")
+
+    return reconstruction, limiter, riemann, mhd_timestepper
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -661,6 +711,18 @@ def checker(func):
             "description",
             "dry_run",
             "write_reports",
+            "max_mhd_level",
+            "model_options",
+            "gamma",
+            "eta",
+            "nu",
+            "hall",
+            "res",
+            "hyper_res",
+            "reconstruction",
+            "limiter",
+            "riemann",
+            "mhd_timestepper",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -735,6 +797,28 @@ def checker(func):
 
         # is per rank, not per node (yet)
         kwargs["write_reports"] = kwargs.get("write_reports", False)
+
+        kwargs["max_mhd_level"] = check_max_mhd_level(**kwargs)
+
+        kwargs["model_options"] = check_model_options(**kwargs)
+
+        gamma, eta, nu = check_mhd_constants(**kwargs)
+        kwargs["gamma"] = gamma
+        kwargs["eta"] = eta
+        kwargs["nu"] = nu
+
+        hall, res, hyper_res = check_mhd_terms(**kwargs)
+        kwargs["hall"] = hall
+        kwargs["res"] = res
+        kwargs["hyper_res"] = hyper_res
+
+        reconstruction, limiter, riemann, mhd_timestepper = check_mhd_parameters(
+            **kwargs
+        )
+        kwargs["reconstruction"] = reconstruction
+        kwargs["limiter"] = limiter
+        kwargs["riemann"] = riemann
+        kwargs["mhd_timestepper"] = mhd_timestepper
 
         return func(simulation_object, **kwargs)
 
@@ -958,7 +1042,9 @@ class Simulation(object):
         self.ndim = compute_dimension(self.cells)
 
         self.diagnostics = {}
-        self.model = None
+        self.uniform_model = None
+        self.maxwellian_fluid_model = None
+        self.mhd_model = None
         self.electrons = None
         self.load_balancer = None
 
@@ -1066,12 +1152,26 @@ class Simulation(object):
 
     # ------------------------------------------------------------------------------
 
-    def set_model(self, model):
+    def set_uniform_model(self, mhd_model):
         """
 
         :meta private:
         """
-        self.model = model
+        self.uniform_model = mhd_model
+
+    def set_maxwellian_fluid_model(self, maxwellian_fluid_model):
+        """
+
+        :meta private:
+        """
+        self.maxwellian_fluid_model = maxwellian_fluid_model
+
+    def set_mhd_model(self, mhd_model):
+        """
+
+        :meta private:
+        """
+        self.mhd_model = mhd_model
 
     def set_electrons(self, electrons):
         """
@@ -1090,8 +1190,9 @@ def serialize(sim):
     :meta private:
     """
     # pickle cannot handle simulation objects
-    import dill
     import codecs
+
+    import dill
 
     return codecs.encode(dill.dumps(de_numpify_simulation(deepcopy(sim))), "hex")
 

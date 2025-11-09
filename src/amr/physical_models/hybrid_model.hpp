@@ -1,16 +1,18 @@
 #ifndef PHARE_HYBRID_MODEL_HPP
 #define PHARE_HYBRID_MODEL_HPP
 
-#include <string>
+
+#include "core/def.hpp"
+#include "core/models/hybrid_state.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
 #include "initializer/data_provider.hpp"
-#include "core/models/hybrid_state.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
-#include "amr/messengers/hybrid_messenger_info.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/def.hpp"
+
+#include <string>
 
 namespace PHARE::solver
 {
@@ -87,6 +89,10 @@ public:
 
 
     virtual ~HybridModel() override {}
+
+    auto& get_B() { return state.electromag.B; }
+
+    auto& get_B() const { return state.electromag.B; }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
