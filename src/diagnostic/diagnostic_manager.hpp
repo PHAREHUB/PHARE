@@ -31,7 +31,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
         while (diagsParams.contains(diagType)
                && diagsParams[diagType].contains(diagType + std::to_string(diagBlockID)))
         {
-            const std::string diagName = diagType + std::to_string(diagBlockID);
+            std::string const diagName = diagType + std::to_string(diagBlockID);
             dMan.addDiagDict(diagsParams[diagType][diagName]);
             ++diagBlockID;
         }

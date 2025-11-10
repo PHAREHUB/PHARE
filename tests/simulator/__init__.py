@@ -7,6 +7,7 @@ import numpy as np
 from datetime import datetime
 
 import pyphare.pharein as ph
+from pyphare.core.box import Box
 from pyphare.pharein import ElectronModel
 
 

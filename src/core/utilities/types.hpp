@@ -4,20 +4,19 @@
 
 #include "core/def.hpp"
 
-#include <cassert>
 #include <array>
-#include <iomanip>
-#include <optional>
-#include <string>
-#include <algorithm>
-#include <cinttypes>
 #include <cmath>
-#include <numeric>
 #include <tuple>
+#include <string>
 #include <vector>
+#include <cassert>
+#include <cstdint>
+#include <iomanip>
+#include <numeric>
+#include <sstream>
+#include <optional>
+#include <algorithm>
 
-
-#include "cppdict/include/dict.hpp"
 
 
 
@@ -221,6 +220,16 @@ namespace core
 
 
 
+    template<typename T>
+    NO_DISCARD T from_string(std::string const& s)
+    {
+        T t;
+        std::stringstream ss(s);
+        ss >> t;
+        return t;
+    }
+
+
     NO_DISCARD inline std::optional<std::string> get_env(std::string const& key)
     {
         if (char const* val = std::getenv(key.c_str()))
@@ -233,6 +242,14 @@ namespace core
         if (auto e = get_env(key))
             return *e;
         return _default;
+    }
+
+    template<typename T>
+    NO_DISCARD inline T get_env_as(std::string const& key, T const& t)
+    {
+        if (auto e = get_env(key))
+            return from_string<T>(*e);
+        return t;
     }
 
 
@@ -487,6 +504,7 @@ constexpr auto for_N_make_array(Fn&& fn)
 {
     return for_N<N, for_N_R_mode::make_array>(fn);
 }
+
 
 template<std::uint16_t N, typename Fn>
 NO_DISCARD constexpr auto for_N_all(Fn&& fn)
