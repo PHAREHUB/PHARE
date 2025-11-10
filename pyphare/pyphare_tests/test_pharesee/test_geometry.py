@@ -27,7 +27,7 @@ class GeometryTest(unittest.TestCase):
             domain_size=domain_size,
             cell_width=domain_size / nbr_cells,
             refinement_boxes=refinement_boxes,
-            **kwargs
+            **kwargs,
         )
 
     # used for tests without ddt hierarchy overrides
@@ -78,18 +78,20 @@ class GeometryTest(unittest.TestCase):
         }
 
         overlaps = hierarchy_overlaps(hierarchy)
+        tested_overlaps = {
+            ilvl: [
+                {"box": overlap["box"], "offset": overlap["offset"]}
+                for overlap in overlaps[ilvl]
+            ]
+            for ilvl in range(len(hierarchy.patch_levels))
+        }
 
         for ilvl, lvl in enumerate(hierarchy.patch_levels):
             self.assertEqual(len(expected[ilvl]), len(overlaps[ilvl]))
 
-            for exp, actual in zip(expected[ilvl], overlaps[ilvl]):
-                act_box = actual["box"]
-                act_offset = actual["offset"]
-                exp_box = exp["box"]
-                exp_offset = exp["offset"]
-
-                self.assertEqual(act_box, exp_box)
-                self.assertEqual(act_offset, exp_offset)
+            for actual in tested_overlaps[ilvl]:
+                if actual not in expected[ilvl]:
+                    raise AssertionError(f"Unexpected overlap: {actual}")
 
     def test_touch_border(self):
         hierarchy = self.basic_hierarchy()
