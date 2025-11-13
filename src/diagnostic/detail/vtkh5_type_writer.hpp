@@ -276,7 +276,7 @@ struct H5TypeWriter<Writer>::VTKFileWriter
         VTKFileFieldWriter{this, {layout}}(field);
     }
 
-    template<std::size_t rank = 2> // TODO convert duals to primals
+    template<std::size_t rank = 2>
     void writeTensorField(auto const& tf, auto const& layout)
     {
         VTKFileTensorFieldWriter<rank>{this, {layout}}(tf);

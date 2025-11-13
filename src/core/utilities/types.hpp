@@ -1,8 +1,10 @@
-#ifndef TYPES_HPP
-#define TYPES_HPP
+#ifndef PHARE_CORE_UTILITIES_TYPES_HPP
+#define PHARE_CORE_UTILITIES_TYPES_HPP
 
 
 #include "core/def.hpp"
+
+
 
 #include <array>
 #include <cmath>
@@ -16,6 +18,7 @@
 #include <sstream>
 #include <optional>
 #include <algorithm>
+#include <stdexcept>
 
 
 
@@ -226,6 +229,8 @@ namespace core
         T t;
         std::stringstream ss(s);
         ss >> t;
+        if (ss.fail())
+            throw std::runtime_error("Cannot Parse T from: " + s);
         return t;
     }
 
@@ -558,4 +563,4 @@ struct PlusEquals
 } // namespace PHARE::core
 
 
-#endif // TYPES_HPP
+#endif // PHARE_CORE_UTILITIES_TYPES_HPP

@@ -1,12 +1,12 @@
 #ifndef PHARE_ALGORITHM_HPP
 #define PHARE_ALGORITHM_HPP
 
+
+#include "core/def.hpp"
+#include "core/utilities/span.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
-#include "core/def.hpp"
-#include "core/utilities/span.hpp"
-
 
 
 #include <string>
