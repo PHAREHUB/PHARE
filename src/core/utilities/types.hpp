@@ -4,21 +4,19 @@
 
 #include "core/def.hpp"
 
-#include <cassert>
+
 #include <array>
-#include <iomanip>
-#include <optional>
-#include <string>
-#include <algorithm>
-#include <cinttypes>
 #include <cmath>
-#include <numeric>
 #include <tuple>
+#include <string>
 #include <vector>
-
-
-#include "cppdict/include/dict.hpp"
-
+#include <cstdint>
+#include <cassert>
+#include <iomanip>
+#include <numeric>
+#include <sstream>
+#include <optional>
+#include <algorithm>
 
 
 namespace PHARE
@@ -31,24 +29,12 @@ namespace core
 
 
     template<typename T>
-    NO_DISCARD std::vector<T> arange(T start, T stop, T step = 1)
-    {
-        std::vector<T> values;
-        for (T value = start; value < stop; value += step)
-            values.push_back(value);
-        return values;
-    }
-
-    template<typename T>
     NO_DISCARD T norm(std::array<T, 3> vec)
     {
         auto squarreSum = std::inner_product(std::begin(vec), std::end(vec), std::begin(vec), 0.);
         return std::sqrt(squarreSum);
     }
 
-
-
-    enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
 
 
     template<typename T> // this is so we can use struct {} initialization with
@@ -159,7 +145,7 @@ namespace core
     NO_DISCARD constexpr std::array<Type, size> ConstArray(Type val = 0)
     {
         std::array<Type, size> arr{};
-        for (uint8_t i = 0; i < size; i++)
+        for (std::uint8_t i = 0; i < size; i++)
             arr[i] = val;
         return arr;
     }
@@ -235,6 +221,25 @@ namespace core
         return _default;
     }
 
+    template<typename T>
+    NO_DISCARD T from_string(std::string const& s)
+    {
+        T t;
+        std::stringstream ss(s);
+        ss >> t;
+        if (ss.fail())
+            throw std::runtime_error("Cannot parse T from: " + s);
+        return t;
+    }
+
+    template<typename T>
+    NO_DISCARD inline T get_env_as(std::string const& key, T const& t)
+    {
+        if (auto e = get_env(key))
+            return from_string<T>(*e);
+        return t;
+    }
+
 
 
 } // namespace core
@@ -256,9 +261,9 @@ NO_DISCARD Return sum(Container const& container, Return r = 0)
 }
 
 template<typename Container, typename F>
-NO_DISCARD auto sum_from(Container const& container, F fn)
+NO_DISCARD auto sum_from(Container&& container, F fn)
 {
-    using value_type  = typename Container::value_type;
+    using value_type  = std::decay_t<Container>::value_type;
     using return_type = std::decay_t<std::invoke_result_t<F const&, value_type const&>>;
     return_type sum   = 0;
     for (auto const& el : container)

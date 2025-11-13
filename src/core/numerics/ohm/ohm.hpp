@@ -2,6 +2,7 @@
 #define PHARE_OHM_HPP
 
 
+#include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"

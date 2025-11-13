@@ -3,7 +3,7 @@
 #
 
 
-def cpp_lib(override=None):
+def cpp_lib():
     import importlib
 
     return importlib.import_module("pybindlibs.cpp")
