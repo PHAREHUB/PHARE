@@ -26,8 +26,13 @@
 #include <string>
 
 
+
+
 namespace PHARE
 {
+
+static inline auto const SIM_REPORT_N = core::get_env_as("PHARE_REPORT_SUMMARY", std::size_t{0});
+
 class ISimulator
 {
 public:
@@ -36,8 +41,8 @@ public:
     virtual double currentTime() = 0;
     virtual double timeStep()    = 0;
 
-    virtual void initialize()         = 0;
-    virtual double advance(double dt) = 0;
+    virtual void initialize()              = 0;
+    virtual std::string advance(double dt) = 0;
 
     virtual std::vector<int> const& domainBox() const    = 0;
     virtual std::vector<double> const& cellWidth() const = 0;
@@ -82,7 +87,7 @@ public:
     NO_DISCARD double currentTime() override { return currentTime_; }
 
     void initialize() override;
-    double advance(double dt) override;
+    std::string advance(double dt) override;
 
     std::vector<int> const& domainBox() const override { return hierarchy_->domainBox(); }
     std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
@@ -169,12 +174,13 @@ private:
     float x_up_[dimension];
     int maxLevelNumber_;
     double dt_;
-    int timeStepNbr_           = 0;
-    double startTime_          = 0;
-    double finalTime_          = 0;
-    double currentTime_        = 0;
-    bool isInitialized         = false;
-    std::size_t fineDumpLvlMax = 0;
+    int timeStepNbr_                = 0;
+    double startTime_               = 0;
+    double finalTime_               = 0;
+    double currentTime_             = 0;
+    std::size_t currentTimeStepIdx_ = 0;
+    bool isInitialized              = false;
+    std::size_t fineDumpLvlMax      = 0;
 
     std::shared_ptr<ResourceManager_t> resman_ptr;
 
@@ -346,6 +352,9 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
+    if (!hierarchy_)
+        throw std::runtime_error("NO HIERARCHY!");
+
     resman_ptr   = std::make_shared<ResourceManager_t>();
     currentTime_ = restart_time(dict);
     finalTime_ += currentTime_;
@@ -428,11 +437,10 @@ void Simulator<opts>::initialize()
 
 
 template<auto opts>
-double Simulator<opts>::advance(double dt)
+std::string Simulator<opts>::advance(double dt)
 {
     PHARE_LOG_SCOPE(1, "Simulator::advance");
 
-    double dt_new                    = 0;
     std::optional<std::string> error = std::nullopt;
 
     try
@@ -440,7 +448,7 @@ double Simulator<opts>::advance(double dt)
         if (!integrator_)
             throw std::runtime_error("Error - no valid integrator in the simulator");
 
-        dt_new       = integrator_->advance(dt);
+        integrator_->advance(dt);
         currentTime_ = startTime_ + ((*timeStamper) += dt);
     }
     catch (std::exception const& e)
@@ -462,7 +470,15 @@ double Simulator<opts>::advance(double dt)
         throw std::runtime_error("forcing error");
     }
 
-    return dt_new;
+    ++currentTimeStepIdx_;
+
+    if (SIM_REPORT_N > 0 and SIM_REPORT_N == currentTimeStepIdx_)
+    {
+        currentTimeStepIdx_ = 0;
+        return hybridModel_->summarize(*hierarchy_);
+    }
+
+    return "";
 }
 
 

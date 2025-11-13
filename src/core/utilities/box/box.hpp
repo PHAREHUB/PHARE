@@ -2,15 +2,15 @@
 #define PHARE_CORE_UTILITIES_BOX_BOX_HPP
 
 
+#include "core/def.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
-#include "core/def.hpp"
 
 #include <cstddef>
-#include <algorithm>
 #include <optional>
 #include <iostream>
+#include <algorithm>
 
 namespace PHARE::core
 {
@@ -265,6 +265,7 @@ NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
 
     return false;
 }
+
 
 
 

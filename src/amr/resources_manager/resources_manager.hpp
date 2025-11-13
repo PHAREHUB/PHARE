@@ -348,6 +348,8 @@ namespace amr
         template<typename Level_t, typename... Args>
         struct LevelLooper
         {
+            using value_type = std::shared_ptr<SAMRAI::hier::Patch>;
+
             LevelLooper(ResourcesManager& rm, Level_t& lvl, Args&... arrgs)
                 : rm{rm}
                 , level{lvl}

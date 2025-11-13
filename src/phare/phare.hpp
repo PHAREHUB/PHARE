@@ -17,7 +17,7 @@ class StreamAppender : public SAMRAI::tbox::Logger::Appender
 {
 public:
     StreamAppender(std::ostream* stream) { d_stream = stream; }
-    void logMessage(std::string const& message, std::string const& filename, const int line)
+    void logMessage(std::string const& message, std::string const& filename, int const line)
     {
         (*d_stream) << "At :" << filename << " line :" << line << " message: " << message
                     << std::endl;
@@ -58,7 +58,6 @@ public:
 
     static void reset()
     {
-        PHARE_WITH_PHLOP(phlop::ScopeTimerMan::reset());
         PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
         SAMRAI::tbox::SAMRAIManager::shutdown();
         SAMRAI::tbox::SAMRAIManager::startup();

@@ -3,11 +3,13 @@
 #ifndef PHARE_CORE_UTILITIES_SPAN_HPP
 #define PHARE_CORE_UTILITIES_SPAN_HPP
 
+
+#include "core/def.hpp"
+#include "core/utilities/types.hpp"
+
 #include <vector>
 #include <cstddef>
 #include <numeric>
-#include "core/utilities/types.hpp"
-#include "core/def.hpp"
 
 namespace PHARE::core
 {

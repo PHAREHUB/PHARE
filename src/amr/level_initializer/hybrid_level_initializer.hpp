@@ -55,6 +55,7 @@ namespace solver
             auto& hybMessenger        = dynamic_cast<HybridMessenger&>(messenger);
             bool const isRegriddingL0 = isRegridding and levelNumber == 0;
 
+            PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level");
             if (isRegridding)
             {
                 PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
