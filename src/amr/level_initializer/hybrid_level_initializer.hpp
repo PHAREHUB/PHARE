@@ -4,11 +4,9 @@
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/messengers/messenger.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "core/data/grid/gridlayout_utils.hpp"
-#include "core/data/ions/ions.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 #include "core/numerics/moments/moments.hpp"
@@ -43,10 +41,12 @@ namespace solver
             : ohm_{dict["algo"]["ohm"]}
         {
         }
-        virtual void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
-                                std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
-                                amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
-                                bool isRegridding) override
+
+
+        void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
+                        std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
+                        amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
+                        bool isRegridding) override
         {
             core::Interpolator<dimension, interp_order> interpolate_;
             auto& hybridModel = static_cast<HybridModel&>(model);
@@ -175,6 +175,8 @@ namespace solver
             hybMessenger.prepareStep(hybridModel, level, initDataTime);
         }
     };
+
+
 } // namespace solver
 } // namespace PHARE
 

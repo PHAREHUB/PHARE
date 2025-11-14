@@ -3,6 +3,8 @@
 #include "phare_core.hpp"
 
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "amr/data/electromag/electromag_initializer.hpp"
+#include "amr/data/particles/initializers/particle_initializer_factory.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
@@ -170,9 +172,9 @@ struct ElectromagBuffers
 {
     constexpr static PHARE::SimOpts opts{dim, interp_order};
     using PHARETypes       = PHARE::core::PHARE_Types<opts>;
-    using Grid             = typename PHARETypes::Grid_t;
-    using GridLayout       = typename PHARETypes::GridLayout_t;
-    using Electromag       = typename PHARETypes::Electromag_t;
+    using Grid             = PHARETypes::Grid_t;
+    using GridLayout       = PHARETypes::GridLayout_t;
+    using Electromag       = PHARETypes::Electromag_t;
     using UsableVecFieldND = UsableVecField<dim>;
 
     UsableVecFieldND B, E;
@@ -207,11 +209,11 @@ struct IonsBuffers
     constexpr static PHARE::SimOpts opts{dim, interp_order};
     using PHARETypes                 = PHARE::core::PHARE_Types<opts>;
     using UsableVecFieldND           = UsableVecField<dim>;
-    using Grid                       = typename PHARETypes::Grid_t;
-    using GridLayout                 = typename PHARETypes::GridLayout_t;
-    using Ions                       = typename PHARETypes::Ions_t;
-    using ParticleArray              = typename PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory_t;
+    using Grid                       = PHARETypes::Grid_t;
+    using GridLayout                 = PHARETypes::GridLayout_t;
+    using Ions                       = PHARETypes::Ions_t;
+    using ParticleArray              = PHARETypes::ParticleArray_t;
+
 
     Grid ionChargeDensity;
     Grid ionMassDensity;
@@ -365,13 +367,15 @@ struct IonUpdaterTest : public ::testing::Test
     static constexpr auto interp_order = DimInterpT::interp_order;
     constexpr static PHARE::SimOpts opts{dim, interp_order};
     using PHARETypes    = PHARE::core::PHARE_Types<opts>;
-    using Ions          = typename PHARETypes::Ions_t;
-    using Electromag    = typename PHARETypes::Electromag_t;
-    using GridLayout    = typename PHARE::core::GridLayout<GridLayoutImplYee<dim, interp_order>>;
-    using ParticleArray = typename PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory_t;
+    using Ions          = PHARETypes::Ions_t;
+    using Electromag    = PHARETypes::Electromag_t;
+    using GridLayout    = PHARE::core::GridLayout<GridLayoutImplYee<dim, interp_order>>;
+    using ParticleArray = PHARETypes::ParticleArray_t;
+    using ParticleInitializerFactory
+        = PHARE::amr::ParticleInitializerFactory<ParticleArray, GridLayout>;
 
-    using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using ElectromagInitializerFactory_t = PHARE::amr::ElectromagInitializerFactory;
+    using IonUpdater = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
     using Boxing_t   = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout>;
 
 
@@ -385,8 +389,8 @@ struct IonUpdaterTest : public ::testing::Test
 
 
     // data for electromagnetic fields
-    using Field            = typename PHARETypes::Grid_t;
-    using VecField         = typename PHARETypes::VecField_t;
+    using Field            = PHARETypes::Grid_t;
+    using VecField         = PHARETypes::VecField_t;
     using UsableVecFieldND = UsableVecField<dim>;
 
     ElectromagBuffers<dim, interp_order> emBuffers;
@@ -411,13 +415,13 @@ struct IonUpdaterTest : public ::testing::Test
         // now let's initialize Electromag fields to user input functions
         // and ion population particles to user supplied moments
 
-
-        EM.initialize(layout);
+        ElectromagInitializerFactory_t::create<Electromag, GridLayout>(init_dict["electromag"])
+            ->init(EM, layout);
         for (auto& pop : ions)
         {
             auto const& info         = pop.particleInitializerInfo();
             auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout);
+            particleInitializer->loadParticles(pop.domainParticles(), layout, pop.name());
         }
 
 
@@ -529,7 +533,7 @@ struct IonUpdaterTest : public ::testing::Test
 
     void fillIonsMomentsGhosts()
     {
-        using Interpolator = typename IonUpdater::Interpolator;
+        using Interpolator = IonUpdater::Interpolator;
         Interpolator interpolate;
 
         for (auto& pop : this->ions)

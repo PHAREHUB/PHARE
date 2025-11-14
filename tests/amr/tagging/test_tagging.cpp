@@ -182,9 +182,18 @@ struct TestTagger : public ::testing::Test
     {
         using gridlayout_type           = GridLayout<GridLayoutImplYee<dim, interp_order>>;
         static auto constexpr dimension = dim;
-        HybridState<Electromag, Ions, Electrons> state;
+
+        PHARE::initializer::PHAREDict dict_;
+        HybridState<Electromag, Ions, Electrons> state{dict_};
+
+        void init(Electromag& em, GridLayoutT const& layout)
+        {
+            ElectromagUserFuncInitializer<Electromag, GridLayoutT>{dict_["electromag"]}.init(
+                em, layout);
+        }
     };
 
+    PHARE::initializer::PHAREDict dict_;
     GridLayoutT layout;
 
     UsableVecField<dim> B, E;
@@ -193,15 +202,17 @@ struct TestTagger : public ::testing::Test
     std::vector<int> tags;
 
     TestTagger()
-        : layout{TestGridLayout<GridLayoutT>::make(20)}
+        : dict_{createDict<dim>()}
+        , layout{TestGridLayout<GridLayoutT>::make(20)}
         , B{"EM_B", layout, HybridQuantity::Vector::B}
         , E{"EM_E", layout, HybridQuantity::Vector::E}
-        , model{createDict<dim>()}
+        , model{dict_}
         , tags(20 + layout.nbrGhosts(PHARE::core::QtyCentering::dual))
     {
         B.set_on(model.state.electromag.B);
         E.set_on(model.state.electromag.E);
-        model.state.electromag.initialize(layout);
+
+        model.init(model.state.electromag, layout);
     }
 };
 

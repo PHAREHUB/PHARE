@@ -25,7 +25,9 @@ struct PHARE_Types
     using ParticleArray_t            = core_types::ParticleArray_t;
     using IonPopulation_t            = core_types::IonPopulation_t;
     using Electrons_t                = core_types::Electrons_t;
-    using ParticleInitializerFactory = core_types::ParticleInitializerFactory_t;
+
+    using ParticleInitializerFactory
+        = amr::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
 
     using amr_types        = amr::PHARE_Types<opts>;
     using hierarchy_t      = amr_types::hierarchy_t;

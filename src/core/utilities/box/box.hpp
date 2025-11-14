@@ -188,6 +188,11 @@ public:
         return *this;
     }
 
+    bool operator==(box_iterator const& other) const
+    {
+        return box_ == other.box_ and index_ == other.index_;
+    }
+
     bool operator!=(box_iterator const& other) const
     {
         return box_ != other.box_ or index_ != other.index_;
