@@ -4,6 +4,7 @@
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/utilities/mpi_utils.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/faraday/faraday.hpp"
@@ -553,6 +554,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     TimeSetter setTime{views, newTime};
     auto const& levelBoxing = boxing[level.getLevelNumber()];
 
+    try
     {
         auto dt = newTime - currentTime;
         for (auto& state : views)
@@ -560,6 +562,12 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
                 state.ions, state.electromagAvg,
                 levelBoxing.at(amr::to_string(state.patch->getGlobalId())), dt, mode);
     }
+    catch (core::DictionaryException const& ex)
+    {
+        PHARE_LOG_ERROR(ex());
+    }
+    if (core::mpi::any(core::Errors::instance().any()))
+        throw core::DictionaryException{}("ID", "Updater::updatePopulations");
 
     // this needs to be done before calling the messenger
     setTime([](auto& state) -> auto& { return state.ions; });
@@ -569,17 +577,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     fromCoarser.fillIonPopMomentGhosts(views.model().state.ions, level, newTime);
     fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
 
-    try
-    {
-        for (auto& state : views)
-            ionUpdater_.updateIons(state.ions);
-    }
-    catch (core::DictionaryException const& ex)
-    {
-        PHARE_LOG_ERROR(ex());
-    }
-    if (core::mpi::any(core::Errors::instance().any()))
-        throw core::DictionaryException{}("ID", "Updater::updatePopulations");
+    for (auto& state : views)
+        ionUpdater_.updateIons(state.ions);
 
     // no need to update time, since it has been done before
     // now Ni and Vi are calculated we can fill pure ghost nodes
