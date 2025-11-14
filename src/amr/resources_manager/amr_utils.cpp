@@ -1,5 +1,6 @@
 
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
 namespace PHARE
 {
@@ -80,3 +81,16 @@ namespace amr
 
 
 } // namespace PHARE
+
+
+namespace PHARE::amr
+{
+
+
+
+ResourcesManagerGlobals& ResourcesManagerGlobals::INSTANCE()
+{
+    static ResourcesManagerGlobals globals;
+    return globals;
+}
+} // namespace PHARE::amr

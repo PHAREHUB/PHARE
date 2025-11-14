@@ -24,7 +24,7 @@ public:
     std::string name() { return name_; }
     virtual void tag(PHARE::solver::IPhysicalModel<amr_t>& model, patch_t& patch, int tag_index)
         = 0;
-    virtual ~Tagger(){};
+    virtual ~Tagger() {};
 };
 
 

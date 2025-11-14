@@ -27,6 +27,7 @@
 
 using namespace PHARE::core;
 
+using SimOpts = PHARE::SimOpts<>;
 
 
 template<typename Weighter>
@@ -217,7 +218,7 @@ class A1DInterpolator : public ::testing::Test
 public:
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
-    constexpr static PHARE::SimOpts opts{dimension, interp_order};
+    constexpr static SimOpts opts{dimension, interp_order};
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
 
@@ -304,7 +305,7 @@ class A2DInterpolator : public ::testing::Test
 public:
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
-    constexpr static PHARE::SimOpts opts{dimension, interp_order};
+    constexpr static SimOpts opts{dimension, interp_order};
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
     static constexpr std::uint32_t ny = 50;
@@ -395,7 +396,7 @@ class A3DInterpolator : public ::testing::Test
 public:
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
-    constexpr static PHARE::SimOpts opts{dimension, interp_order};
+    constexpr static SimOpts opts{dimension, interp_order};
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
     static constexpr std::uint32_t ny = 50;
@@ -495,7 +496,7 @@ class ACollectionOfParticles_1d : public ::testing::Test
 {
     static constexpr auto dimension    = Interpolator::dimension;
     static constexpr auto interp_order = Interpolator::interp_order;
-    constexpr static PHARE::SimOpts opts{dimension, interp_order};
+    constexpr static SimOpts opts{dimension, interp_order};
 
     using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
     using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
@@ -691,7 +692,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
     static constexpr auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
+    constexpr static SimOpts opts{dim, interp_order};
 
     using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
     using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;

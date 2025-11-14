@@ -180,8 +180,40 @@ class Diagnostics(object):
 
 
 # ------------------------------------------------------------------------------
+class MHDDiagnostics(Diagnostics):
+    mhd_quantities = ["rho", "V", "P", "rhoV", "Etot"]
+    type = "mhd"
+
+    def __init__(self, **kwargs):
+        super(MHDDiagnostics, self).__init__(
+            MHDDiagnostics.type
+            + str(global_vars.sim.count_diagnostics(MHDDiagnostics.type)),
+            **kwargs,
+        )
+
+    def _setSubTypeAttributes(self, **kwargs):
+        if kwargs["quantity"] not in MHDDiagnostics.mhd_quantities:
+            error_msg = "Error: '{}' not a valid mhd diagnostics : " + ", ".join(
+                MHDDiagnostics.mhd_quantities
+            )
+            raise ValueError(error_msg.format(kwargs["quantity"]))
+        else:
+            self.quantity = "/mhd/" + kwargs["quantity"]
+
+        self.attributes["heat_capacity_ratio"] = global_vars.sim.gamma
+
+    def to_dict(self):
+        return {
+            "name": self.name,
+            "type": MHDDiagnostics.type,
+            "quantity": self.quantity,
+            "write_timestamps": self.write_timestamps,
+            "compute_timestamps": self.compute_timestamps,
+            "path": self.path,
+        }
 
 
+# ------------------------------------------------------------------------------
 class ElectromagDiagnostics(Diagnostics):
     em_quantities = ["E", "B"]
     type = "electromag"
@@ -217,7 +249,7 @@ class ElectromagDiagnostics(Diagnostics):
 
 
 def population_in_model(population):
-    return population in [p for p in global_vars.sim.model.populations]
+    return population in [p for p in global_vars.sim.maxwellian_fluid_model.populations]
 
 
 class FluidDiagnostics_(Diagnostics):

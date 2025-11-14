@@ -29,8 +29,7 @@ if(HighFive)
 
   endif(testMPI)
 
-
-  # phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()
 

@@ -1,7 +1,7 @@
-#ifndef DEFAULT_HYBRID_TAGGER_STRATEGY_H
-#define DEFAULT_HYBRID_TAGGER_STRATEGY_H
+#ifndef DEFAULT_TAGGER_STRATEGY_H
+#define DEFAULT_TAGGER_STRATEGY_H
 
-#include "hybrid_tagger_strategy.hpp"
+#include "tagger_strategy.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
@@ -10,33 +10,30 @@
 
 namespace PHARE::amr
 {
-template<typename HybridModel>
-class DefaultHybridTaggerStrategy : public HybridTaggerStrategy<HybridModel>
+template<typename Model>
+class DefaultTaggerStrategy : public TaggerStrategy<Model>
 {
-    using gridlayout_type           = typename HybridModel::gridlayout_type;
-    static auto constexpr dimension = HybridModel::dimension;
+    using gridlayout_type           = typename Model::gridlayout_type;
+    static auto constexpr dimension = Model::dimension;
 
 
 public:
-    DefaultHybridTaggerStrategy(initializer::PHAREDict const& dict)
+    DefaultTaggerStrategy(initializer::PHAREDict const& dict)
         : threshold_{cppdict::get_value(dict, "threshold", 0.1)}
     {
     }
-    void tag(HybridModel& model, gridlayout_type const& layout, int* tags) const override;
+    void tag(Model& model, gridlayout_type const& layout, int* tags) const override;
 
 private:
     double threshold_ = 0.1;
 };
 
-template<typename HybridModel>
-void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
-                                                   gridlayout_type const& layout, int* tags) const
+template<typename Model>
+void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layout, int* tags) const
 {
-    auto& Bx = model.state.electromag.B.getComponent(PHARE::core::Component::X);
-    auto& By = model.state.electromag.B.getComponent(PHARE::core::Component::Y);
-    auto& Bz = model.state.electromag.B.getComponent(PHARE::core::Component::Z);
-
-    auto& N = model.state.ions.chargeDensity();
+    auto& Bx = model.get_B().getComponent(PHARE::core::Component::X);
+    auto& By = model.get_B().getComponent(PHARE::core::Component::Y);
+    auto& Bz = model.get_B().getComponent(PHARE::core::Component::Z);
 
     // we loop on cell indexes for all qties regardless of their centering
     auto const& [start_x, _]
