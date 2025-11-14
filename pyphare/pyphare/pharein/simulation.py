@@ -481,7 +481,7 @@ def check_directory(directory, key):
 # diag_options = {"format":"phareh5", "options": {"dir": "phare_ouputs/"}}
 def check_diag_options(**kwargs):
     diag_options = kwargs.get("diag_options", None)
-    formats = ["phareh5"]
+    formats = ["phareh5", "pharevtkhdf"]
     if diag_options is not None and "format" in diag_options:
         if diag_options["format"] not in formats:
             raise ValueError("Error - diag_options format is invalid")

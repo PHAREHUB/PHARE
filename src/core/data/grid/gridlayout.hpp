@@ -879,7 +879,6 @@ namespace core
             return GridLayoutImpl::centering(hybridQuantity);
         }
 
-
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 6>
         centering(HybridQuantity::Tensor hybridQuantity)
         {
@@ -1028,6 +1027,29 @@ namespace core
 
 
         /**
+         * @brief BxToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Bx onto moments.
+         */
+        NO_DISCARD auto static constexpr BxToMoments() { return GridLayoutImpl::BxToMoments(); }
+
+
+        /**
+         * @brief ByToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project By onto moments.
+         */
+        NO_DISCARD auto static constexpr ByToMoments() { return GridLayoutImpl::ByToMoments(); }
+
+
+        /**
+         * @brief BzToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Bz onto moments.
+         */
+        NO_DISCARD auto static constexpr BzToMoments() { return GridLayoutImpl::BzToMoments(); }
+
+
+
+
+        /**
          * @brief ExToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ex onto moments.
          */
@@ -1157,29 +1179,22 @@ namespace core
 
 
 
+        auto AMRBoxFor(auto const& field) const
+        {
+            auto const centerings = centering(field);
+            auto box              = AMRBox_;
+            for (std::uint8_t i = 0; i < dimension; ++i)
+                box.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
+            return box;
+        }
 
         auto AMRGhostBoxFor(auto const& field) const
         {
             auto const centerings = centering(field);
-            auto const growBy     = [&]() {
-                std::array<int, dimension> arr;
-                for (std::uint8_t i = 0; i < dimension; ++i)
-                    arr[i] = nbrGhosts(centerings[i]);
-                return arr;
-            }();
-            auto ghostBox = grow(AMRBox_, growBy);
-            for (std::uint8_t i = 0; i < dimension; ++i)
-                ghostBox.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
-            return ghostBox;
+            return grow(AMRBoxFor(field), for_N_make_array<dimension>(
+                                              [&](auto i) { return nbrGhosts(centerings[i]); }));
         }
 
-        auto AMRBoxFor(auto const& field) const
-        {
-            auto const centerings = centering(field);
-            return grow(AMRGhostBoxFor(field), for_N_make_array<dimension>([&](auto i) {
-                            return -1 * nbrGhosts(centerings[i]);
-                        }));
-        }
 
         template<typename Field, typename Fn>
         void evalOnBox(Field& field, Fn&& fn) const
