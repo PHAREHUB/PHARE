@@ -11,8 +11,8 @@
 
 import numpy as np
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
 import pyphare.core.box as boxm
 from pyphare.simulator.simulator import Simulator, startMPI
 
@@ -147,7 +147,6 @@ def get_hier(path):
     return get_time(path)
 
 
-cpp = cpp_lib()
 test = AdvanceTestBase(rethrow=True)  # change to False for debugging images
 L0_diags = "phare_outputs/test_homo_0"
 L0L1_diags = "phare_outputs/test_homo_1"

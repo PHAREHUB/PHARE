@@ -90,6 +90,9 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: cmake --build . -j 1
 
+
     - name: Test
       working-directory: ${{github.workspace}}/build
       run: ctest -j 2 --output-on-failure
+
+

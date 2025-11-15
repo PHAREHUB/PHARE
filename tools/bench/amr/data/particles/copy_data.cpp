@@ -1,5 +1,5 @@
 
-#include "phare/phare.hpp" // samrai lifecycle
+#include "amr/samrai.hpp" // IWYU pragma: keep
 
 #include "amr/data/particles/particles_data.hpp"
 

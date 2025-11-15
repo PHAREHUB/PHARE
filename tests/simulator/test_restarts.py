@@ -2,7 +2,7 @@
 #
 
 import copy
-import time
+from time import sleep
 import datetime
 import unittest
 import numpy as np
@@ -10,9 +10,8 @@ import numpy as np
 from datetime import timedelta
 from ddt import ddt, data, unpack
 
+from pyphare import cpp
 import pyphare.pharein as ph
-
-from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 
@@ -20,8 +19,6 @@ from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
 from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
-
-cpp = cpp_lib()
 
 
 def permute(dic, expected_num_levels):
@@ -347,7 +344,7 @@ class RestartsTest(SimulatorTest):
         # autodump false to ignore possible init dump
         simulator = Simulator(ph.global_vars.sim, auto_dump=False).initialize()
 
-        time.sleep(5)
+        sleep(5)
         simulator.advance().dump()  # should trigger restart on "restart_idx" advance
         simulator.advance().dump()
         simulator.reset()

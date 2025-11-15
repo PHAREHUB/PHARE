@@ -1,18 +1,10 @@
 #!/usr/bin/env python3
-#
-# formatted with black
-
 
 import unittest
 import numpy as np
 
-from pyphare.cpp import cpp_lib
 from pyphare.simulator.simulator import Simulator
-
 from tests.simulator import populate_simulation
-
-cpp = cpp_lib()
-
 
 # TODO - validate data from somewhere!
 

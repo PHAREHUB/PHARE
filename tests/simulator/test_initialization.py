@@ -1,11 +1,11 @@
 #
 #
 
+
 import unittest
 import numpy as np
 from ddt import ddt
 
-from pyphare.cpp import cpp_lib
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
@@ -22,9 +22,6 @@ from pyphare.pharesee.particles import aggregate as aggregate_particles
 from pyphare.simulator.simulator import Simulator
 
 from tests.simulator import SimulatorTest
-
-
-cpp = cpp_lib()
 
 
 @ddt
