@@ -500,7 +500,16 @@ def check_diag_options(**kwargs):
 
 
 def check_restart_options(**kwargs):
-    valid_keys = ["dir", "elapsed_timestamps", "timestamps", "mode", "restart_time"]
+    import pyphare.pharein.restarts as restarts
+
+    valid_keys = [
+        "dir",
+        "elapsed_timestamps",
+        "timestamps",
+        "mode",
+        "restart_time",  # number or "auto"
+        "keep_last",  # delete obsolete
+    ]
     restart_options = kwargs.get("restart_options", None)
 
     if restart_options is not None:
@@ -522,6 +531,9 @@ def check_restart_options(**kwargs):
             raise ValueError(
                 f"Invalid restart mode {mode}, valid modes are {valid_modes}"
             )
+
+        if restart_time := restarts.restart_time(restart_options):
+            restart_options["restart_time"] = restart_time
 
     return restart_options
 
@@ -1086,6 +1098,7 @@ def serialize(sim):
 
 def deserialize(hex):
     """:meta private:"""
-    import dill, codecs
+    import dill
+    import codecs
 
     return re_numpify_simulation(dill.loads(codecs.decode(hex, "hex")))

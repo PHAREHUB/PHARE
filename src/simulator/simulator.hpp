@@ -48,7 +48,14 @@ public:
     virtual ~ISimulator() {}
 
 
-    virtual bool dump(double timestamp, double timestep) { return false; } // overriding optional
+    virtual bool dump_diagnostics(double timestamp, double timestep)
+    {
+        return false; // overriding optional
+    }
+    virtual bool dump_restarts(double timestamp, double timestep)
+    {
+        return false; // overriding optional
+    }
 };
 
 template<auto opts>
@@ -94,18 +101,16 @@ public:
 
     NO_DISCARD std::string to_str() override;
 
-    bool dump(double timestamp, double timestep) override
+    bool dump_diagnostics(double timestamp, double timestep) override
+    {
+        if (dMan)
+            return dMan->dump(timestamp, timestep);
+        return false;
+    }
+    bool dump_restarts(double timestamp, double timestep) override
     {
         if (rMan)
-        {
-            rMan->dump(timestamp, timestep);
-        }
-
-        if (dMan)
-        {
-            return dMan->dump(timestamp, timestep);
-        }
-
+            return rMan->dump(timestamp, timestep);
         return false;
     }
 
