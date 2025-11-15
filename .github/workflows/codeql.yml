@@ -16,7 +16,7 @@ jobs:
   analyze:
     name: Analyze
     runs-on: ubuntu-latest
-    container: ghcr.io/pharchive/phare_dep/ubuntu:22.04
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
     permissions:
       actions: read
       contents: read
@@ -35,7 +35,7 @@ jobs:
 
       - name: Configure (cpp)
         if: ${{ matrix.language == 'cpp' }}
-        run: mkdir build; cd build; cmake .. -Dphare_configurator=ON
+        run: . /.venv/bin/activate; mkdir build; cd build; cmake .. -Dphare_configurator=ON
 
       - name: Initialize CodeQL
         uses: github/codeql-action/init@v3
@@ -50,7 +50,7 @@ jobs:
 
       - name: Build cpp
         if: ${{ matrix.language == 'cpp' }}
-        run: cd build; make
+        run: . /.venv/bin/activate; cd build; make
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3

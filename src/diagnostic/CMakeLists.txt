@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 
 project(phare_diagnostic)
 
@@ -21,8 +21,9 @@ if (HighFive)
 endif()
 
 add_library(${PROJECT_NAME} INTERFACE)
+
 target_link_libraries(${PROJECT_NAME} INTERFACE phare_amr)
 
 if (HighFive)
   target_link_libraries(${PROJECT_NAME} INTERFACE HighFive)
-endif()
+endif (HighFive)

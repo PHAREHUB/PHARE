@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.20.1)
+cmake_minimum_required (VERSION 3.24.1)
 
 project(test-field-data)
 
@@ -19,6 +19,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_amr
+  phare_initializer
   ${GTEST_LIBS})
 
 add_subdirectory(copy)

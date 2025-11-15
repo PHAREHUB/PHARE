@@ -100,6 +100,9 @@ option(bench "Compile PHARE Benchmarks" OFF)
 option(phare_configurator "Best guess setup for compile" OFF)
 
 
+# -DSAMRAI_BUILD_SHARED_LIBS=OFF
+option(SAMRAI_BUILD_SHARED_LIBS "Build SAMRAI shared libraries" ON)
+
 # print options
 function(print_phare_options)
 

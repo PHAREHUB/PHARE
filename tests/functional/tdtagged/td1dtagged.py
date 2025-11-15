@@ -12,9 +12,7 @@ import numpy as np
 
 from tests.simulator.test_advance import AdvanceTestBase
 from tests.diagnostic import all_timestamps
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
+from pyphare import cpp
 
 mpl.use("Agg")
 

@@ -14,7 +14,6 @@
 #include "core/def.hpp"
 
 #include <array>
-#include <cmath>
 #include <tuple>
 #include <cstddef>
 #include <functional>

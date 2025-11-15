@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from pathlib import Path
 
 from .patch import Patch
 from .patchlevel import PatchLevel
@@ -15,8 +16,6 @@ from ...core.phare_utilities import (
 )
 from ...core.gridlayout import GridLayout
 from .hierarchy_utils import field_qties
-
-from pathlib import Path
 from pyphare.core.phare_utilities import listify
 
 

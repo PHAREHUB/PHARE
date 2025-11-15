@@ -3,22 +3,20 @@
 # basically a harris run
 
 import unittest
+import numpy as np
 from ddt import data, ddt, unpack
+
 import pyphare.pharein as ph
+
+from pyphare import cpp
+from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy.hierarchy_utils import hierarchy_compare
 from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
 
-from pyphare.simulator.simulator import Simulator, startMPI
 from tests.simulator import SimulatorTest
 
-import numpy as np
-import matplotlib as mpl
 
-mpl.use("Agg")
-
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
+ph.NO_GUI()
 
 
 ndim = 2

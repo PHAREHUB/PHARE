@@ -2,16 +2,13 @@
 #
 # formatted with black
 
-
 from ddt import data, ddt
-from pyphare.cpp import cpp_lib
 from pyphare.core.box import Box, Box2D
 from pyphare.simulator.simulator import Simulator
 
 from tests.simulator import NoOverwriteDict, populate_simulation
 from tests.simulator import SimulatorTest
 
-cpp = cpp_lib()
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {

@@ -1,17 +1,17 @@
-import os
+#
+#
 
+import os
 import numpy as np
 import pyphare.pharein as ph
 import matplotlib.pyplot as plt
 
-from pyphare.cpp import cpp_lib
+from pyphare import cpp
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
 
 ph.NO_GUI()
-
-cpp = cpp_lib()
 
 
 def config():

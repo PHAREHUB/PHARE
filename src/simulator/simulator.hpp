@@ -76,6 +76,16 @@ public:
     static_assert(std::is_same_v<ResourceManager_t, typename MHDModel::resources_manager_type>);
 
 
+    Simulator(PHARE::initializer::PHAREDict const& dict,
+              std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
+
+    ~Simulator()
+    {
+        if (coutbuf != nullptr)
+            std::cout.rdbuf(coutbuf);
+    }
+
+
     NO_DISCARD double startTime() override { return startTime_; }
     NO_DISCARD double endTime() override { return finalTime_; }
     NO_DISCARD double timeStep() override { return dt_; }
@@ -108,15 +118,6 @@ public:
 
         return false;
     }
-
-    Simulator(PHARE::initializer::PHAREDict const& dict,
-              std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
-    ~Simulator()
-    {
-        if (coutbuf != nullptr)
-            std::cout.rdbuf(coutbuf);
-    }
-
 
 
 protected:
@@ -508,6 +509,7 @@ struct SimulatorMaker
         }
     }
 };
+
 
 
 template<typename Simulator>
