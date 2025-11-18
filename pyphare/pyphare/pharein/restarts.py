@@ -59,6 +59,7 @@ def restart_time(restart_options):
         if restart_options["restart_time"] == "auto":
             return find_latest_time_from_restarts(restart_options)
         return restart_options["restart_time"]
+    return None
 
 
 def find_latest_time_from_restarts(restart_options):
