@@ -15,7 +15,7 @@
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
-#include "particle_initializers/particle_initializer_factory.hpp"
+
 #include "core/utilities/algorithm.hpp"
 
 namespace PHARE

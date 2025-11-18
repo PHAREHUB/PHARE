@@ -146,6 +146,15 @@ namespace core
         return to;
     }
 
+    template<std::size_t To_Size, typename Type>
+    NO_DISCARD std::array<Type, To_Size> to_array(std::vector<Type> const& from)
+    {
+        std::array<Type, To_Size> to{};
+        for (std::size_t i = 0; i < to.size(); i++)
+            to[i] = from[i];
+        return to;
+    }
+
 
     template<std::size_t To_Size, typename... Args>
     NO_DISCARD constexpr auto as_sized_array(Args&&... args)

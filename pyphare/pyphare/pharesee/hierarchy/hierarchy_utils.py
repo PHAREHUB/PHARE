@@ -1,6 +1,7 @@
-from dataclasses import dataclass, field
-from copy import deepcopy
+import os
 import numpy as np
+from copy import deepcopy
+from dataclasses import dataclass, field
 
 from typing import Any, List, Tuple
 
@@ -589,14 +590,16 @@ class EqualityReport:
         return not self.failed
 
     def __repr__(self):
+        strs = []
         for msg, ref, cmp in self:
-            print(msg)
+            strs.append(msg)
             try:
                 if type(ref) is FieldData:
                     phut.assert_fp_any_all_close(ref[:], cmp[:], atol=1e-16)
             except AssertionError as e:
-                print(e)
-        return self.failed[0][0]
+                strs.append(e)
+        strs.append(self.failed[0][0])
+        return os.linesep.join(strs)
 
     def __call__(self, reason, ref=None, cmp=None):
         self.failed.append((reason, ref, cmp))
@@ -696,6 +699,7 @@ def single_patch_for_LO(hier, qties=None, skip=None):
                     l0_pds[k][patch.box] = v[patch.box]
                 elif isinstance(v, ParticleData):
                     l0_pds[k].dataset.add(v.dataset)
+
                 else:
                     raise RuntimeError("unexpected state")
     return cier

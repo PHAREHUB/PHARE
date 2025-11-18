@@ -526,6 +526,23 @@ def check_restart_options(**kwargs):
     return restart_options
 
 
+def check_init_options(**kwargs):
+    """Advanced options to initialize from SAMRAI HDF5 files"""
+
+    formats = ["samraih5"]
+    init_options = kwargs.get("init_options", None)
+
+    if init_options is not None and "format" in init_options:
+        if init_options["format"] not in formats:
+            raise ValueError("Error - init_options format is invalid")
+        if "options" in init_options and "dir" in init_options["options"]:
+            init_options["options"]["dir"] = check_directory(
+                init_options["options"]["dir"], "init_options"
+            )
+
+    return init_options
+
+
 def validate_restart_options(sim):
     import pyphare.pharein.restarts as restarts
 
@@ -649,6 +666,7 @@ def checker(func):
             "description",
             "dry_run",
             "write_reports",
+            "init_options",
         ]
 
         accepted_keywords += check_optional_keywords(**kwargs)
@@ -683,6 +701,7 @@ def checker(func):
 
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
+        kwargs["init_options"] = check_init_options(**kwargs)
         kwargs["restart_options"] = check_restart_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)

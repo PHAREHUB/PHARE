@@ -62,7 +62,8 @@ public:
      * @brief load pacore
 } // namespace PHARErticles in a ParticleArray in a domain defined by the given layout
      */
-    void loadParticles(ParticleArray& particles, GridLayout const& layout) const override;
+    void loadParticles(ParticleArray& particles, GridLayout const& layout,
+                       std::string const& popname) const override;
 
 
     virtual ~MaxwellianParticleInitializer() = default;
@@ -136,7 +137,7 @@ private:
 
 template<typename ParticleArray, typename GridLayout>
 void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
-    ParticleArray& particles, GridLayout const& layout) const
+    ParticleArray& particles, GridLayout const& layout, std::string const& /*popname*/) const
 {
     auto const icell = [](auto const idx, auto const& indices) {
         return for_N_make_array<dimension>([&](auto i) { return std::get<i>(indices[idx]); });

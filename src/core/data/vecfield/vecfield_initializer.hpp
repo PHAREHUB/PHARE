@@ -27,7 +27,7 @@ namespace core
 
 
         template<typename VecField, typename GridLayout>
-        void initialize(VecField& v, GridLayout const& layout)
+        void initialize(VecField& v, GridLayout const& layout) const
         {
             static_assert(GridLayout::dimension == VecField::dimension,
                           "dimension mismatch between vecfield and gridlayout");

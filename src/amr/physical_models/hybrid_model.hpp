@@ -1,16 +1,23 @@
 #ifndef PHARE_HYBRID_MODEL_HPP
 #define PHARE_HYBRID_MODEL_HPP
 
+#include <memory>
 #include <string>
 
-#include "initializer/data_provider.hpp"
+#include "core/def.hpp"
+#include "core/data/vecfield/vecfield.hpp"
 #include "core/models/hybrid_state.hpp"
+
+#include "initializer/data_provider.hpp"
+
 #include "amr/physical_models/physical_model.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+#include "amr/data/particles/initializers/particle_initializer_factory.hpp"
+
+#include "amr/data/electromag/electromag_initializer.hpp"
+
 #include "amr/resources_manager/resources_manager.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/def.hpp"
+
 
 namespace PHARE::solver
 {
@@ -22,6 +29,9 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
          typename AMR_Types, typename Grid_t>
 class HybridModel : public IPhysicalModel<AMR_Types>
 {
+    struct _Initializers;
+
+
 public:
     static constexpr auto dimension = GridLayoutT::dimension;
 
@@ -39,13 +49,15 @@ public:
     using particle_array_type    = typename Ions::particle_array_type;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
     using ParticleInitializerFactory
-        = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+        = amr::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+    using HybridState_t = core::HybridState<Electromag, Ions, Electrons>;
 
     static constexpr std::string_view model_type_name = "HybridModel";
     static inline std::string const model_name{model_type_name};
 
 
-    core::HybridState<Electromag, Ions, Electrons> state;
+
+    HybridState_t state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
 
@@ -82,6 +94,7 @@ public:
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict}
         , resourcesManager{std::move(_resourcesManager)}
+        , initializers_{std::make_unique<_Initializers>(dict, state)}
     {
     }
 
@@ -105,6 +118,9 @@ public:
     //-------------------------------------------------------------------------
 
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
+    std::unique_ptr<_Initializers> initializers_;
+
+    auto& initializers() { return *initializers_; }
 };
 
 
@@ -128,14 +144,11 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::i
         auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions, state.J);
 
         for (auto& pop : ions)
-        {
-            auto const& info         = pop.particleInitializerInfo();
-            auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout);
-        }
-
-        state.electromag.initialize(layout);
+            initializers_->particles(pop).loadParticles(pop.domainParticles(), layout, pop.name());
+        initializers_->electromag().init(state.electromag, layout);
     }
+
+    initializers_.release();
 }
 
 
@@ -198,6 +211,39 @@ auto constexpr is_hybrid_model(Args...)
 
 template<typename Model>
 auto constexpr is_hybrid_model_v = is_hybrid_model(static_cast<Model*>(nullptr));
+
+
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+struct HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::_Initializers
+{
+    using particle_array_type   = typename Ions::particle_array_type;
+    using ParticleInitializer_t = core::ParticleInitializer<particle_array_type, GridLayoutT>;
+    using ParticleInitializerFactory
+        = amr::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+    using ElectromagInitializer_t = amr::ElectromagInitializer<Electromag, GridLayoutT>;
+
+    _Initializers(initializer::PHAREDict const& dict, HybridState_t const& state)
+        : dict_{dict}
+        , electromag_init{amr::ElectromagInitializerFactory::create<Electromag, GridLayoutT>(
+              dict["electromag"])}
+    {
+        for (auto& pop : state.ions)
+            particle_pop_init.emplace(
+                pop.name(), ParticleInitializerFactory::create(pop.particleInitializerInfo()));
+    }
+
+    auto& electromag() { return *electromag_init; }
+
+    auto& particles(typename Ions::value_type& pop) { return *particle_pop_init[pop.name()]; }
+
+    initializer::PHAREDict dict_;
+    std::unique_ptr<ElectromagInitializer_t> electromag_init;
+    std::unordered_map<std::string, std::unique_ptr<ParticleInitializer_t>> particle_pop_init;
+};
+
 
 
 
