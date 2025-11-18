@@ -465,7 +465,7 @@ class RestartsTest(SimulatorTest):
         self.assertEqual(0.01, ph.restarts.restart_time(simput["restart_options"]))
 
         dirs = []
-        for path_object in Path(local_out).rglob("*"):
+        for path_object in Path(local_out).iterdir():
             if path_object.is_dir():
                 try:
                     dirs.append(float(path_object.name))

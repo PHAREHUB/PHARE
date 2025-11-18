@@ -13,10 +13,12 @@ def format_time(time):
 
 
 def dump(simulator, time, time_step):
-    if not simulator.cpp_sim.dump_restarts(timestamp=time, timestep=time_step):
-        return
-    # else a restart dump was made
+    new_restart_made = simulator.cpp_sim.dump_restarts(time, time_step)
+    if new_restart_made:
+        try_delete_obsolete_restarts(simulator)
 
+
+def try_delete_obsolete_restarts(simulator):
     sim = simulator.simulation
     restart_options = sim.restart_options
 
@@ -39,7 +41,6 @@ def dump(simulator, time, time_step):
 
     dirs = sorted(dirs)
     to_rm = len(dirs) - keep_last
-
     assert to_rm >= 0
 
     import shutil
@@ -54,9 +55,13 @@ def dump(simulator, time, time_step):
 
 
 def restart_time(restart_options):
-    if "restart_time" in restart_options and restart_options["restart_time"] != "auto":
+    if "restart_time" in restart_options:
+        if restart_options["restart_time"] == "auto":
+            return find_latest_time_from_restarts(restart_options)
         return restart_options["restart_time"]
 
+
+def find_latest_time_from_restarts(restart_options):
     directory = restart_options.get("dir", ".")
 
     dirs = []
