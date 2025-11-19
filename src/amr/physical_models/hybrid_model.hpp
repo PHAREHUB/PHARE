@@ -1,16 +1,23 @@
 #ifndef PHARE_HYBRID_MODEL_HPP
 #define PHARE_HYBRID_MODEL_HPP
 
-#include <string>
+
+#include "core/def.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/mpi_utils.hpp"
+#include "core/models/hybrid_state.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 
 #include "initializer/data_provider.hpp"
-#include "core/models/hybrid_state.hpp"
+
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/def.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
+
+
+#include <string>
+#include <sstream>
 
 namespace PHARE::solver
 {
@@ -88,6 +95,8 @@ public:
 
     virtual ~HybridModel() override {}
 
+    std::string summarize(auto& hierarchy);
+
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
@@ -113,6 +122,38 @@ public:
 //-------------------------------------------------------------------------
 //                             definitions
 //-------------------------------------------------------------------------
+
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+std::string
+HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(auto& hierarchy)
+{
+    std::stringstream ss;
+
+    std::size_t total = 0;
+    amr::onLevels(
+        hierarchy,
+        [&](auto& lvl) mutable {
+            auto const lcl = core::sum_from(
+                this->resourcesManager->enumerate(lvl, state.ions), [&](auto const&) {
+                    return core::sum_from(
+                        state.ions, [](auto const& pop) { return pop.domainParticles().size(); });
+                });
+
+            auto const on_lvl = core::mpi::sum_on_rank_0(lcl);
+            total += on_lvl;
+            if (core::mpi::rank() == 0)
+                ss << "lvl:" << lvl.getLevelNumber() << " parts(" << on_lvl << "), ";
+        },
+        0, 10);
+
+    if (core::mpi::rank() == 0)
+        ss << "tot:" << total;
+
+    return ss.str();
+}
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,

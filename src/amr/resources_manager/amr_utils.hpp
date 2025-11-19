@@ -252,6 +252,15 @@ namespace amr
         }
     }
 
+    template<typename Action>
+    void onLevels(auto& hierarchy, Action&& action, int minlvl = 0, int maxlvl = 0)
+    {
+        for (int ilvl = minlvl; ilvl < hierarchy.getNumberOfLevels() && ilvl <= maxlvl; ++ilvl)
+            if (auto lvl = hierarchy.getPatchLevel(ilvl))
+                action(*lvl);
+    }
+
+
 } // namespace amr
 } // namespace PHARE
 

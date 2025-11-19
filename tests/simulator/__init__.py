@@ -9,6 +9,7 @@ from datetime import datetime
 import pyphare.pharein as ph
 from pyphare.core.box import Box
 from pyphare.pharein import ElectronModel
+from pyphare.core.box import Box
 
 
 def parse_cli_args(pop_from_sys=True):
@@ -100,12 +101,17 @@ def density_2d_periodic(sim, x, y):
     )
 
 
-# def density_3d_periodic(sim, x, y, z):
-#     xmax, ymax, zmax = sim.simulation_domain()
-#     background_particles = 0.3  # avoids 0 density
-#     xx, yy, zz = meshify(x, y, z)
-#     r = np.exp(-(xx-0.5*xmax)**2)*np.exp(-(yy-ymax/2.)**2)*np.exp(-(zz-zmax/2.)**2) + background_particles
-#     return r
+def density_3d_periodic(sim, x, y, z):
+    xmax, ymax, zmax = sim.simulation_domain()
+    background_particles = 0.3  # avoids 0 density
+    xx, yy, zz = meshify(x, y, z)
+    r = (
+        np.exp(-((xx - 0.5 * xmax) ** 2))
+        * np.exp(-((yy - ymax / 2.0) ** 2))
+        * np.exp(-((zz - zmax / 2.0) ** 2))
+        + background_particles
+    )
+    return r
 
 
 def defaultPopulationSettings(sim, density_fn, vbulk_fn):
@@ -251,7 +257,10 @@ class SimulatorTest(unittest.TestCase):
         from pyphare.cpp import cpp_lib
 
         cpp = cpp_lib()
-        return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}/{post_path}"
+        base = f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}"
+        if post_path:
+            return f"{base}/{post_path}"
+        return base
 
     def clean_up_diags_dirs(self):
         from pyphare.cpp import cpp_lib
@@ -265,3 +274,33 @@ class SimulatorTest(unittest.TestCase):
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
         cpp_lib().mpi_barrier()
+
+
+def debug_tracer():
+    """
+    print live stack trace during execution
+    """
+
+    import sys, os
+
+    def tracefunc(frame, event, arg, indent=[0]):
+        filename = os.path.basename(frame.f_code.co_filename)
+        line_number = frame.f_lineno
+        if event == "call":
+            indent[0] += 2
+            print(
+                "-" * indent[0] + "> enter function",
+                frame.f_code.co_name,
+                f"{filename} {line_number}",
+            )
+        elif event == "return":
+            print(
+                "<" + "-" * indent[0],
+                "exit function",
+                frame.f_code.co_name,
+                f"{filename} {line_number}",
+            )
+            indent[0] -= 2
+        return tracefunc
+
+    sys.setprofile(tracefunc)

@@ -78,7 +78,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=RelWithDebInfo \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
-              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 "
+              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 -DPHARE_SIMULATORS=2 "
 
     - name: Build
       working-directory: ${{github.workspace}}/build

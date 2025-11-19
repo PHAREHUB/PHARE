@@ -13,12 +13,14 @@ if (NOT SAMRAI_FOUND)
 
     if(NOT DEFINED PHARE_SAMRAI_VERSION)
       SET(PHARE_SAMRAI_VERSION "develop")
+      SET(PHARE_SAMRAI_VERSION "feature/srcmask") # TORM
     endif()
 
     set(SAMRAI_SRCDIR ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/samrai)
     set(SAMRAI_BIN ${CMAKE_CURRENT_BINARY_DIR}/subprojects/samrai)
 
-    phare_github_get_or_update(SAMRAI ${SAMRAI_SRCDIR} LLNL/SAMRAI ${PHARE_SAMRAI_VERSION})
+    # phare_github_get_or_update(SAMRAI ${SAMRAI_SRCDIR} LLNL/SAMRAI ${PHARE_SAMRAI_VERSION}) # uncomment
+    phare_github_get_or_update(SAMRAI ${SAMRAI_SRCDIR} nicolasaunai/SAMRAI ${PHARE_SAMRAI_VERSION}) # TORM
 
     if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
       # enable samrai assertions if not in release mode
