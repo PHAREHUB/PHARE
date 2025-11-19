@@ -328,6 +328,9 @@ def populateDict():
             )
 
     if len(simulation.diagnostics) > 0:
+        if simulation.diag_options is not None and "format" in simulation.diag_options:
+            add_string(diag_path + "format", simulation.diag_options["format"])
+
         if simulation.diag_options is not None and "options" in simulation.diag_options:
             add_string(
                 diag_path + "filePath", simulation.diag_options["options"]["dir"]

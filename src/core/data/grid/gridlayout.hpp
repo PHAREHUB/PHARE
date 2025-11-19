@@ -2,19 +2,17 @@
 #define PHARE_CORE_GRID_GridLayout_HPP
 
 
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/def.hpp"
 #include "core/utilities/types.hpp"
-#include "core/data/field/field.hpp"
-#include "gridlayoutdefs.hpp"
-#include "core/utilities/algorithm.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
-#include "core/def.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+
+#include "gridlayoutdefs.hpp"
 
 #include <array>
-#include <cmath>
 #include <tuple>
 #include <cstddef>
 #include <functional>
@@ -879,7 +877,6 @@ namespace core
             return GridLayoutImpl::centering(hybridQuantity);
         }
 
-
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 6>
         centering(HybridQuantity::Tensor hybridQuantity)
         {
@@ -1028,6 +1025,29 @@ namespace core
 
 
         /**
+         * @brief BxToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Bx onto moments.
+         */
+        NO_DISCARD auto static constexpr BxToMoments() { return GridLayoutImpl::BxToMoments(); }
+
+
+        /**
+         * @brief ByToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project By onto moments.
+         */
+        NO_DISCARD auto static constexpr ByToMoments() { return GridLayoutImpl::ByToMoments(); }
+
+
+        /**
+         * @brief BzToMoments return the indexes and associated coef to compute the linear
+         * interpolation necessary to project Bz onto moments.
+         */
+        NO_DISCARD auto static constexpr BzToMoments() { return GridLayoutImpl::BzToMoments(); }
+
+
+
+
+        /**
          * @brief ExToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ex onto moments.
          */
@@ -1157,29 +1177,22 @@ namespace core
 
 
 
+        auto AMRBoxFor(auto const& field) const
+        {
+            auto const centerings = centering(field);
+            auto box              = AMRBox_;
+            for (std::uint8_t i = 0; i < dimension; ++i)
+                box.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
+            return box;
+        }
 
         auto AMRGhostBoxFor(auto const& field) const
         {
             auto const centerings = centering(field);
-            auto const growBy     = [&]() {
-                std::array<int, dimension> arr;
-                for (std::uint8_t i = 0; i < dimension; ++i)
-                    arr[i] = nbrGhosts(centerings[i]);
-                return arr;
-            }();
-            auto ghostBox = grow(AMRBox_, growBy);
-            for (std::uint8_t i = 0; i < dimension; ++i)
-                ghostBox.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
-            return ghostBox;
+            return grow(AMRBoxFor(field), for_N_make_array<dimension>(
+                                              [&](auto i) { return nbrGhosts(centerings[i]); }));
         }
 
-        auto AMRBoxFor(auto const& field) const
-        {
-            auto const centerings = centering(field);
-            return grow(AMRGhostBoxFor(field), for_N_make_array<dimension>([&](auto i) {
-                            return -1 * nbrGhosts(centerings[i]);
-                        }));
-        }
 
         template<typename Field, typename Fn>
         void evalOnBox(Field& field, Fn&& fn) const
@@ -1202,6 +1215,15 @@ namespace core
         }
 
         auto levelNumber() const { return levelNumber_; }
+
+
+        auto amr_lcl_idx(auto const& box) const { return boxes_iterator{box, AMRToLocal(box)}; }
+        auto amr_lcl_idx() const { return amr_lcl_idx(AMRBox()); }
+        auto domain_amr_lcl_idx(auto const& field) const { return amr_lcl_idx(AMRBoxFor(field)); }
+        auto ghost_amr_lcl_idx(auto const& field) const
+        {
+            return amr_lcl_idx(AMRGhostBoxFor(field));
+        }
 
     private:
         template<typename Field, typename IndicesFn, typename Fn>
@@ -1514,51 +1536,6 @@ namespace core
             return ghostEndIndexTable;
         }
 
-
-
-        struct AMRLocalIndexer //
-        {
-            GridLayout const* layout;
-            Box<int, dimension> amr_box;
-            Box<std::uint32_t, dimension> lcl_box = layout->AMRToLocal(amr_box);
-
-            struct iterator
-            {
-                void operator++()
-                {
-                    ++amr_it;
-                    ++lcl_it;
-                }
-                auto operator*() { return std::forward_as_tuple(*amr_it, *lcl_it); }
-                auto operator==(auto const& that) const
-                {
-                    return amr_it == that.amr_it and lcl_it == that.lcl_it;
-                }
-                auto operator!=(auto const& that) const
-                {
-                    return amr_it != that.amr_it or lcl_it != that.lcl_it;
-                }
-
-                AMRLocalIndexer const* amr_lcl_indexer;
-                box_iterator<int, dimension> amr_it;
-                box_iterator<std::uint32_t, dimension> lcl_it;
-            };
-
-            auto begin() const { return iterator{this, amr_box.begin(), lcl_box.begin()}; }
-            auto end() const { return iterator{this, amr_box.end(), lcl_box.end()}; }
-        };
-
-    public:
-        auto amr_lcl_idx(auto const& box) const { return AMRLocalIndexer{this, box}; }
-        auto amr_lcl_idx() const { return amr_lcl_idx(AMRBox()); }
-        auto domain_amr_lcl_idx(auto const& field) const
-        {
-            return AMRLocalIndexer{this, AMRBoxFor(field)};
-        }
-        auto ghost_amr_lcl_idx(auto const& field) const
-        {
-            return AMRLocalIndexer{this, AMRGhostBoxFor(field)};
-        }
 
     private:
         std::array<double, dimension> meshSize_;
