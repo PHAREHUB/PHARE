@@ -2,16 +2,19 @@
 #define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 
 
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/types.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
+#include "core/utilities/mpi_utils.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
-#include "diagnostic/detail/h5typewriter.hpp"
-#include "diagnostic/diagnostic_manager.hpp"
 #include "diagnostic/diagnostic_props.hpp"
+#include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/detail/types/info.hpp"
+#include "diagnostic/detail/types/meta.hpp"
+#include "diagnostic/detail/types/fluid.hpp"
+#include "diagnostic/detail/types/particle.hpp"
+#include "diagnostic/detail/types/electromag.hpp"
 
 
 #if !defined(PHARE_DIAG_DOUBLES)
@@ -22,17 +25,6 @@
 namespace PHARE::diagnostic::h5
 {
 using namespace hdf5::h5;
-
-template<typename Writer>
-class ElectromagDiagnosticWriter;
-template<typename Writer>
-class FluidDiagnosticWriter;
-template<typename Writer>
-class ParticlesDiagnosticWriter;
-template<typename Writer>
-class MetaDiagnosticWriter;
-template<typename Writer>
-class InfoDiagnosticWriter;
 
 
 
@@ -201,8 +193,8 @@ private:
 
     H5Writer(H5Writer const&)            = delete;
     H5Writer(H5Writer&&)                 = delete;
-    H5Writer& operator&(H5Writer const&) = delete;
-    H5Writer& operator&(H5Writer&&)      = delete;
+    H5Writer& operator=(H5Writer const&) = delete;
+    H5Writer& operator=(H5Writer&&)      = delete;
 
 
     //  State of this class is controlled via "dump()"

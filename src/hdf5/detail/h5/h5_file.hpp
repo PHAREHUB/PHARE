@@ -3,30 +3,29 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "highfive/H5File.hpp"
-#include "highfive/H5Easy.hpp"
-
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
+
+
+#include "highfive/H5File.hpp"
+#include "highfive/H5Easy.hpp"
+
+
+
+namespace PHARE::hdf5::h5::detail
+{
+
+// some testing shows 32 to be the max value supported, something to do with a value `H5S_MAX_RANK`
+static inline auto const CHUNK_SIZE = core::get_env_as("PHARE_H5_CHUNK_SIZE", std::size_t{32});
+
+} // namespace PHARE::hdf5::h5::detail
 
 namespace PHARE::hdf5::h5
 {
 using HiFile = HighFive::File;
 using FileOp = HighFive::File::AccessMode;
 
-
-
-template<std::size_t dim, typename Data>
-NO_DISCARD auto decay_to_pointer(Data& data)
-{
-    if constexpr (dim == 1)
-        return data.data();
-    if constexpr (dim == 2)
-        return data[0].data();
-    if constexpr (dim == 3)
-        return data[0][0].data();
-}
 
 template<typename Data, std::size_t dim>
 NO_DISCARD auto vector_for_dim()
@@ -107,10 +106,39 @@ public:
     template<typename Type, typename Size>
     auto create_data_set(std::string const& path, Size const& dataSetSize)
     {
+        if (exist(path))
+            return h5file_.getDataSet(path);
         createGroupsToDataSet(path);
         return h5file_.createDataSet<Type>(path, HighFive::DataSpace(dataSetSize));
     }
 
+
+    template<typename Type>
+    auto create_chunked_data_set(auto const& path, auto const chunk, auto const& dataspace)
+    {
+        if (exist(path))
+            return h5file_.getDataSet(path);
+        createGroupsToDataSet(path);
+        HighFive::DataSetCreateProps props;
+        props.add(HighFive::Chunking{chunk});
+        return h5file_.createDataSet(path, dataspace, HighFive::create_datatype<Type>(), props);
+    }
+
+    template<typename Type, std::size_t cols>
+    auto create_resizable_2d_data_set(auto const& path)
+    {
+        return create_chunked_data_set<Type>(
+            path, std::vector<hsize_t>{detail::CHUNK_SIZE, cols},
+            HighFive::DataSpace({0, cols}, {HighFive::DataSpace::UNLIMITED, cols}));
+    }
+
+    template<typename Type>
+    auto create_resizable_1d_data_set(auto const& path)
+    {
+        return create_chunked_data_set<Type>(
+            path, std::vector<hsize_t>{detail::CHUNK_SIZE},
+            HighFive::DataSpace({0}, {HighFive::DataSpace::UNLIMITED}));
+    }
 
 
     /*
@@ -244,11 +272,18 @@ public:
         return attr;
     }
 
+    bool exist(std::string const& s) const { return h5file_.exist(s); }
+    auto getDataSet(std::string const& s)
+    {
+        if (!exist(s))
+            throw std::runtime_error("Dataset does not exist: " + s);
+        return h5file_.getDataSet(s);
+    }
 
-    HighFiveFile(HighFiveFile const&)             = delete;
-    HighFiveFile(HighFiveFile const&&)            = delete;
-    HighFiveFile& operator=(HighFiveFile const&)  = delete;
-    HighFiveFile& operator=(HighFiveFile const&&) = delete;
+    HighFiveFile(HighFiveFile const&)            = delete;
+    HighFiveFile(HighFiveFile&&)                 = delete;
+    HighFiveFile& operator=(HighFiveFile const&) = delete;
+    HighFiveFile& operator=(HighFiveFile&&)      = delete;
 
 private:
     HighFive::FileAccessProps fapl_;
