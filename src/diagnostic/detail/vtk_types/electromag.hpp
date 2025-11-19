@@ -40,14 +40,13 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
     };
 
     modelView.onLevels(
-        [&](auto const& lvl) {
-            auto const ilvl = lvl.getLevelNumber();
+        [&](auto const& level) {
+            auto const ilvl = level.getLevelNumber();
             writer.initFileLevel(ilvl);
 
-            auto boxes = modelView.localLevelBoxes(ilvl);
             for (auto* vecField : this->h5Writer_.modelView().getElectromagFields())
                 if (diagnostic.quantity == "/" + vecField->name())
-                    writer.template initTensorFieldFileLevel<1>(ilvl, boxes);
+                    writer.template initTensorFieldFileLevel<1>(level);
 
             modelView.visitHierarchy(write_quantity, ilvl, ilvl);
         },

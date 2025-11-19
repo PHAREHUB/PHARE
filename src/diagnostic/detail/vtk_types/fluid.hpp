@@ -2,6 +2,7 @@
 #define PHARE_DIAGNOSTIC_DETAIL_VTK_TYPES_FLUID_HPP
 
 
+#include "core/logger.hpp"
 #include "diagnostic/detail/vtkh5_type_writer.hpp"
 
 #include <string>
@@ -37,6 +38,8 @@ private:
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
+    PHARE_LOG_SCOPE(1, "FluidDiagnosticWriter<H5Writer>::write");
+
     auto& modelView = this->h5Writer_.modelView();
     auto& ions      = modelView.getIons();
     VTKFileWriter writer{diagnostic, this};
@@ -44,6 +47,8 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     std::string const tree{"/ions/"};
 
     auto const write_quantity = [&](auto& layout, auto const&, auto const iLevel) {
+        PHARE_LOG_SCOPE(1, "FluidDiagnosticWriter<H5Writer>::write_quantity");
+
         if (isActiveDiag(diagnostic, tree, "charge_density"))
             writer.writeField(ions.chargeDensity(), layout);
         else if (isActiveDiag(diagnostic, tree, "mass_density"))
@@ -66,28 +71,30 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     };
 
     modelView.onLevels(
-        [&](auto const& lvl) {
-            auto const ilvl = lvl.getLevelNumber();
+        [&](auto const& level) {
+            PHARE_LOG_SCOPE(1, "FluidDiagnosticWriter<H5Writer>::write_level");
+
+            auto const ilvl = level.getLevelNumber();
+
             writer.initFileLevel(ilvl);
 
-            auto boxes = modelView.localLevelBoxes(ilvl);
             if (isActiveDiag(diagnostic, tree, "charge_density"))
-                writer.initFieldFileLevel(ilvl, boxes);
+                writer.initFieldFileLevel(level);
             else if (isActiveDiag(diagnostic, tree, "mass_density"))
-                writer.initFieldFileLevel(ilvl, boxes);
+                writer.initFieldFileLevel(level);
             else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-                writer.template initTensorFieldFileLevel<1>(ilvl, boxes);
+                writer.template initTensorFieldFileLevel<1>(level);
             else
             {
                 for (auto& pop : ions)
                 {
                     auto const pop_tree = tree + "pop/" + pop.name() + "/";
                     if (isActiveDiag(diagnostic, pop_tree, "density"))
-                        writer.initFieldFileLevel(ilvl, boxes);
+                        writer.initFieldFileLevel(level);
                     else if (isActiveDiag(diagnostic, pop_tree, "charge_density"))
-                        writer.initFieldFileLevel(ilvl, boxes);
+                        writer.initFieldFileLevel(level);
                     else if (isActiveDiag(diagnostic, pop_tree, "flux"))
-                        writer.template initTensorFieldFileLevel<1>(ilvl, boxes);
+                        writer.template initTensorFieldFileLevel<1>(level);
                 }
             }
 
