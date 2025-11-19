@@ -23,7 +23,7 @@ struct UsableIonsDefaultTypes
 public:
     auto static constexpr dim    = ParticleArray_::dimension;
     auto static constexpr interp = interp_;
-    SimOpts static constexpr opts{dim, interp_};
+    SimOpts<> static constexpr opts{dim, interp_};
 
     using PHARE_Types         = PHARE::core::PHARE_Types<opts>;
     using ParticleArray_t     = ParticleArray_;

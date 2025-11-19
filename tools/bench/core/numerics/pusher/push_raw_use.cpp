@@ -5,7 +5,7 @@
 template<std::size_t dim, std::size_t interp>
 void push()
 {
-    auto static constexpr opts    = PHARE::SimOpts{dim, interp};
+    auto static constexpr opts    = PHARE::SimOpts<>{dim, interp};
     constexpr std::uint32_t cells = 65;
     // constexpr std::uint32_t n_parts = 1e7;
 

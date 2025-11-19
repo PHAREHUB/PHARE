@@ -8,6 +8,7 @@
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
+#include "core/data/grid/gridlayoutimplyee_mhd.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
@@ -30,15 +31,17 @@ struct PHARE_Types
     auto static constexpr dimension    = opts.dimension;
     auto static constexpr interp_order = opts.interp_order;
 
-    using Array_t          = NdArrayVector<dimension>;
-    using ArrayView_t      = NdArrayView<dimension>;
-    using Grid_t           = Grid<Array_t, HybridQuantity::Scalar>;
-    using Field_t          = Field<dimension, HybridQuantity::Scalar>;
-    using VecField_t       = VecField<Field_t, HybridQuantity>;
-    using SymTensorField_t = SymTensorField<Field_t, HybridQuantity>;
-    using Electromag_t     = Electromag<VecField_t>;
-    using YeeLayout_t      = GridLayoutImplYee<dimension, interp_order>;
-    using GridLayout_t     = GridLayout<YeeLayout_t>;
+    using Array_t     = PHARE::core::NdArrayVector<dimension>;
+    using ArrayView_t = PHARE::core::NdArrayView<dimension>;
+
+    // Hybrid
+    using Grid_t           = PHARE::core::Grid<Array_t, PHARE::core::HybridQuantity::Scalar>;
+    using Field_t          = PHARE::core::Field<dimension, PHARE::core::HybridQuantity::Scalar>;
+    using VecField_t       = PHARE::core::VecField<Field_t, PHARE::core::HybridQuantity>;
+    using SymTensorField_t = PHARE::core::SymTensorField<Field_t, PHARE::core::HybridQuantity>;
+    using Electromag_t     = PHARE::core::Electromag<VecField_t>;
+    using YeeLayout_t      = PHARE::core::GridLayoutImplYee<dimension, interp_order>;
+    using GridLayout_t     = PHARE::core::GridLayout<YeeLayout_t>;
 
     using Particle_t      = Particle<dimension>;
     using ParticleAoS_t   = ParticleArray<dimension>;
@@ -51,7 +54,16 @@ struct PHARE_Types
     using Ions_t          = Ions<IonPopulation_t, GridLayout_t>;
     using Electrons_t     = Electrons<Ions_t>;
 
-    using ParticleInitializerFactory_t = ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
+    using ParticleInitializerFactory_t
+        = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
+
+    // MHD
+    using Grid_MHD     = PHARE::core::Grid<Array_t, PHARE::core::MHDQuantity::Scalar>;
+    using Field_MHD    = PHARE::core::Field<dimension, PHARE::core::MHDQuantity::Scalar>;
+    using VecField_MHD = PHARE::core::VecField<Field_MHD, PHARE::core::MHDQuantity>;
+
+    using YeeLayout_MHD  = PHARE::core::GridLayoutImplYeeMHD<dimension, interp_order>;
+    using GridLayout_MHD = PHARE::core::GridLayout<YeeLayout_MHD>;
 };
 
 struct PHARE_Sim_Types

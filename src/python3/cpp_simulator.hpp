@@ -20,11 +20,10 @@
 #include "python3/patch_data.hpp"
 #include "python3/patch_level.hpp"
 #include "python3/data_wrangler.hpp"
+#include "python3/cpp_mhd_parameters.hpp"
+#include "python3/cpp_mhd_python_registerer.hpp"
 
 #include <cstddef>
-
-
-namespace py = pybind11;
 
 namespace PHARE::pydata
 {
@@ -59,104 +58,6 @@ void declareDim(py::module& m)
     declarePatchData<CP, dim>(m, name.c_str());
 }
 
-template<typename Simulator, typename PyClass>
-void declareSimulator(PyClass&& sim)
-{
-    sim.def("initialize", &Simulator::initialize)
-        .def("advance", &Simulator::advance)
-        .def("startTime", &Simulator::startTime)
-        .def("currentTime", &Simulator::currentTime)
-        .def("endTime", &Simulator::endTime)
-        .def("timeStep", &Simulator::timeStep)
-        .def("to_str", &Simulator::to_str)
-        .def("domain_box", &Simulator::domainBox)
-        .def("cell_width", &Simulator::cellWidth)
-        .def("dump", &Simulator::dump, py::arg("timestamp"), py::arg("timestep"));
-}
-
-template<typename _dim, typename _interp, typename _nbRefinedPart>
-void declare_etc(py::module& m)
-{
-    constexpr auto dim           = _dim{}();
-    constexpr auto interp        = _interp{}();
-    constexpr auto nbRefinedPart = _nbRefinedPart{}();
-    constexpr auto opts          = SimOpts{dim, interp, nbRefinedPart};
-
-    std::string const type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
-                                    + std::to_string(nbRefinedPart);
-
-    using Sim        = Simulator<opts>;
-    using DW         = DataWrangler<opts>;
-    std::string name = "DataWrangler" + type_string;
-    py::class_<DW, py::smart_holder>(m, name.c_str())
-        .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def("sync_merge", &DW::sync_merge)
-        .def("getPatchLevel", &DW::getPatchLevel)
-        .def("getNumberOfLevels", &DW::getNumberOfLevels);
-
-    using PL = PatchLevel<opts>;
-    name     = "PatchLevel_" + type_string;
-    py::class_<PL, py::smart_holder>(m, name.c_str())
-        .def("getEM", &PL::getEM)
-        .def("getE", &PL::getE)
-        .def("getB", &PL::getB)
-        .def("getBx", &PL::getBx)
-        .def("getBy", &PL::getBy)
-        .def("getBz", &PL::getBz)
-        .def("getEx", &PL::getEx)
-        .def("getEy", &PL::getEy)
-        .def("getEz", &PL::getEz)
-        .def("getVix", &PL::getVix)
-        .def("getViy", &PL::getViy)
-        .def("getViz", &PL::getViz)
-        .def("getDensity", &PL::getDensity)
-        .def("getBulkVelocity", &PL::getBulkVelocity)
-        .def("getPopDensities", &PL::getPopDensities)
-        .def("getPopFluxes", &PL::getPopFlux)
-        .def("getFx", &PL::getFx)
-        .def("getFy", &PL::getFy)
-        .def("getFz", &PL::getFz)
-        .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
-
-    using _Splitter
-        = PHARE::amr::Splitter<_dim, _interp, core::RefinedParticlesConst<nbRefinedPart>>;
-    name = "Splitter" + type_string;
-    py::class_<_Splitter, py::smart_holder>(m, name.c_str())
-        .def(py::init<>())
-        .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
-        .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
-
-    name = "split_pyarray_particles" + type_string;
-    m.def(name.c_str(), splitPyArrayParticles<_Splitter>);
-}
-
-template<typename _dim, typename _interp, typename _nbRefinedPart>
-void declare_sim(py::module& m)
-{
-    constexpr auto dim           = _dim{}();
-    constexpr auto interp        = _interp{}();
-    constexpr auto nbRefinedPart = _nbRefinedPart{}();
-    constexpr auto opts          = SimOpts{dim, interp, nbRefinedPart};
-
-    std::string const type_string = "_" + std::to_string(dim) + "_" + std::to_string(interp) + "_"
-                                    + std::to_string(nbRefinedPart);
-
-    using Sim        = Simulator<opts>;
-    std::string name = "Simulator" + type_string;
-    declareSimulator<Sim>(
-        py::class_<Sim, py::smart_holder>(m, name.c_str())
-            .def_property_readonly_static("dims", [](py::object) { return Sim::dimension; })
-            .def_property_readonly_static("interp_order",
-                                          [](py::object) { return Sim::interp_order; })
-            .def_property_readonly_static("refined_particle_nbr",
-                                          [](py::object) { return Sim::nbRefinedPart; }));
-
-    name = "make_simulator" + type_string;
-    m.def(name.c_str(), [](std::shared_ptr<PHARE::amr::Hierarchy> const& hier) {
-        return std::shared_ptr<Sim>{std::move(makeSimulator<Sim>(hier))};
-    });
-}
 
 template<typename dim, typename interp, typename nbRefinedPart> // possibly TORM on 3d PR
 constexpr bool valid_simulator()
@@ -164,17 +65,14 @@ constexpr bool valid_simulator()
     return dim{}() < 3;
 }
 
+
 template<typename Dimension, typename InterpOrder, typename... NbRefinedParts>
 void declare_all(py::module& m, std::tuple<Dimension, InterpOrder, NbRefinedParts...> const&)
 {
     core::apply(std::tuple<NbRefinedParts...>{}, [&](auto& nbRefinedPart) {
-        using NbRefinedPart_t = std::decay_t<decltype(nbRefinedPart)>;
-
-        if constexpr (valid_simulator<Dimension, InterpOrder, NbRefinedPart_t>())
-        {
-            declare_sim<Dimension, InterpOrder, NbRefinedPart_t>(m);
-            declare_etc<Dimension, InterpOrder, NbRefinedPart_t>(m);
-        }
+        if constexpr (valid_simulator<Dimension, InterpOrder, decltype(nbRefinedPart)>())
+            declare_all_mhd_params<Dimension, InterpOrder, std::decay_t<decltype(nbRefinedPart)>>(
+                m);
     });
 }
 

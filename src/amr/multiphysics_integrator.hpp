@@ -314,7 +314,8 @@ namespace solver
             auto level              = hierarchy->getPatchLevel(levelNumber);
 
 
-            PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding);
+            PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding
+                                            << " and initial time = " << initialTime);
 
             PHARE_LOG_START(3, "initializeLevelData::allocate block");
             if (allocateData)
@@ -548,7 +549,7 @@ namespace solver
                 dump_(iLevel);
             }
 
-            if (iLevel != 0)
+            if (iLevel != 0 && !hierarchy->finerLevelExists(iLevel))
             {
                 auto ratio = (level->getRatioToCoarserLevel()).max();
                 auto coef  = 1. / (ratio * ratio);
@@ -585,6 +586,16 @@ namespace solver
 
                 toCoarser.reflux(iCoarseLevel, ilvl, syncTime);
                 coarseSolver.reflux(coarseModel, coarseLevel, toCoarser, syncTime);
+
+                // now the fluxSum includes the contributions of the finer levels thanks to
+                // toCoarser.reflux(). We can now accumulate the fluxSum that will be used for the
+                // next coarser reflux
+                if (iCoarseLevel != 0)
+                {
+                    auto ratio = (coarseLevel.getRatioToCoarserLevel()).max();
+                    auto coef  = 1. / (ratio * ratio);
+                    coarseSolver.accumulateFluxSum(coarseModel, coarseLevel, coef);
+                }
 
                 // recopy (patch) ghosts
                 toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);

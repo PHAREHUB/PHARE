@@ -40,7 +40,7 @@ struct ParticleArrayConsistencyTest : public ::testing::Test
     auto constexpr static dim    = ParticleArray_::dimension;
     auto constexpr static interp = 1;
 
-    using GridLayout_t = TestGridLayout<typename PHARE_Types<SimOpts{dim, interp}>::GridLayout_t>;
+    using GridLayout_t = TestGridLayout<typename PHARE_Types<SimOpts<>{dim, interp}>::GridLayout_t>;
     using ParticleArray_t = ParticleArray_;
 
     GridLayout_t layout{cells};

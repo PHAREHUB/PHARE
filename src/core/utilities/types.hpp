@@ -48,8 +48,6 @@ namespace core
 
 
 
-    enum class Edge { Xmin, Xmax, Ymin, Ymax, Zmin, Zmax };
-
 
     template<typename T> // this is so we can use struct {} initialization with
                          // shared_ptrs/forwarding
