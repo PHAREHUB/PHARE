@@ -16,8 +16,8 @@
 namespace PHARE::hdf5::h5::detail
 {
 
-// some testing shows 32 to be the max value supported, something to do with a value `H5S_MAX_RANK`
-static inline auto const CHUNK_SIZE = core::get_env_as("PHARE_H5_CHUNK_SIZE", std::size_t{32});
+// https://support.hdfgroup.org/documentation/hdf5/latest/hdf5_chunking.html
+static inline auto const CHUNK_SIZE = core::get_env_as("PHARE_H5_CHUNK_SIZE", std::size_t{1024});
 
 } // namespace PHARE::hdf5::h5::detail
 
