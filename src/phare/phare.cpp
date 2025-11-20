@@ -103,14 +103,21 @@ int main(int argc, char** argv)
 
     [[maybe_unused]] auto time = simulator->startTime();
 
+    auto const dump = [&]() {
+        simulator->dump_diagnostics(simulator->currentTime(), simulator->timeStep());
+        simulator->dump_restarts(simulator->currentTime(), simulator->timeStep());
+    };
+
     while (simulator->currentTime() < simulator->endTime())
     {
         if (gSignalStatus)
             return gSignalStatus;
 
-        simulator->dump(simulator->currentTime(), simulator->timeStep());
+        dump();
         simulator->advance(simulator->timeStep());
     }
+
+    dump();
 
     return gSignalStatus;
 }

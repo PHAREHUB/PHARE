@@ -6,6 +6,7 @@ import time
 import datetime
 import unittest
 import numpy as np
+from pathlib import Path
 
 from datetime import timedelta
 from ddt import ddt, data, unpack
@@ -131,8 +132,9 @@ simArgs = dict(
 
 
 def dup(dic={}):
-    dic.update(copy.deepcopy(simArgs))
-    return dic
+    args = copy.deepcopy(simArgs)
+    args.update(dic)
+    return args
 
 
 @ddt
@@ -423,6 +425,56 @@ class RestartsTest(SimulatorTest):
             self.assertTrue(valid)
         except Exception:
             self.assertTrue(not valid)
+
+    def test_advanced_restarts_options(self):
+        """
+        Dim / interp / etc are not relevant here
+        """
+        ndim, interp = 1, 1
+        print(f"test_advanced_restarts_options")
+
+        simput = copy.deepcopy(
+            dup(
+                dict(
+                    cells=10,
+                    time_step_nbr=10,
+                    max_nbr_levels=1,
+                    refinement="tagging",
+                )
+            )
+        )
+
+        simput["interp_order"] = interp
+        time_step = simput["time_step"]
+        time_step_nbr = simput["time_step_nbr"]
+
+        timestamps = time_step * np.arange(time_step_nbr + 1)
+        local_out = self.unique_diag_dir_for_test_case(f"{out}/test", ndim, interp)
+        simput["restart_options"]["dir"] = local_out
+        simput["restart_options"]["keep_last"] = 3
+        simput["restart_options"]["timestamps"] = timestamps
+
+        ph.global_vars.sim = None
+        ph.global_vars.sim = ph.Simulation(**simput)
+        model = setup_model()
+        Simulator(ph.global_vars.sim).run().reset()
+        self.register_diag_dir_for_cleanup(local_out)
+        diag_dir0 = local_out
+
+        simput["restart_options"]["restart_time"] = "auto"
+        self.assertEqual(0.01, ph.restarts.restart_time(simput["restart_options"]))
+
+        dirs = []
+        for path_object in Path(local_out).iterdir():
+            if path_object.is_dir():
+                try:
+                    dirs.append(float(path_object.name))
+                except ValueError:
+                    ...  # skip
+
+        dirs = sorted(dirs)
+        for i, idx in enumerate(range(8, 11)):
+            self.assertAlmostEqual(dirs[i], time_step * idx)
 
 
 if __name__ == "__main__":

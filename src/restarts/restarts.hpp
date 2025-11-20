@@ -2,28 +2,24 @@
 #define RESTART_RESTARTS_HPP
 
 #include "core/def.hpp"
+
 #if !defined(PHARE_HAS_HIGHFIVE)
 #error // PHARE_HAS_HIGHFIVE expected to be defined as bool
 #endif
 
-#include <memory>
-#include "cppdict/include/dict.hpp"
-
-#include "hdf5/phare_hdf5.hpp"
 #include "restarts_manager.hpp"
 
-
 #if PHARE_HAS_HIGHFIVE
-
 #include "restarts/detail/h5writer.hpp"
-
 #endif
+
+#include <memory>
 
 namespace PHARE::restarts
 {
 struct NullOpRestartsManager : public IRestartsManager
 {
-    void dump(double /*timeStamp*/, double /*timeStep*/) override
+    bool dump(double /*timeStamp*/, double /*timeStep*/) override
     {
         throw std::runtime_error("NOOP");
     }
