@@ -64,12 +64,6 @@ def NO_GUI():
     mpl.use("Agg")
 
 
-def getSimulation():
-    from .global_vars import sim
-
-    return sim
-
-
 def _patch_data_ids(restart_file_dir):
     """
     for restarts we save samrai patch data ids to the restart files, which we access from here
@@ -125,9 +119,14 @@ def clearDict():
     pp.stop()
 
 
-def populateDict():
-    from .global_vars import sim as simulation
+def populateDict(simulation=None):
+    # from .global_vars import sim as simulation
     import pybindlibs.dictator as pp
+
+    if simulation is None:
+        from .global_vars import sim
+
+        simulation = sim
 
     # pybind complains if receiving wrong type
     def add_int(path, val):
@@ -328,6 +327,9 @@ def populateDict():
             )
 
     if len(simulation.diagnostics) > 0:
+        if simulation.diag_options is not None and "format" in simulation.diag_options:
+            add_string(diag_path + "format", simulation.diag_options["format"])
+
         if simulation.diag_options is not None and "options" in simulation.diag_options:
             add_string(
                 diag_path + "filePath", simulation.diag_options["options"]["dir"]

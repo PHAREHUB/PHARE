@@ -199,13 +199,13 @@ public:
 
 
     NO_DISCARD auto begin() { return std::begin(components_); }
-    NO_DISCARD auto cbegin() const { return std::cbegin(components_); }
+    NO_DISCARD auto begin() const { return std::cbegin(components_); }
     NO_DISCARD auto end() { return std::end(components_); }
-    NO_DISCARD auto cend() const { return std::cend(components_); }
+    NO_DISCARD auto end() const { return std::cend(components_); }
 
     NO_DISCARD auto& componentNames() const { return componentNames_; }
     NO_DISCARD auto& physicalQuantity() const { return qty_; }
-    NO_DISCARD auto constexpr static size() { return N; }
+    NO_DISCARD auto static constexpr size() { return N; }
 
 private:
     auto static _get_index_for(Component component)

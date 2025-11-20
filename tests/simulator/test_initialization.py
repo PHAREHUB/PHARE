@@ -57,7 +57,6 @@ class InitializationTest(SimulatorTest):
         diag_outputs = self.unique_diag_dir_for_test_case(
             "phare_outputs/init", ndim, interp_order, diag_outputs
         )
-
         from pyphare.pharein import global_vars
 
         global_vars.sim = None
@@ -247,19 +246,26 @@ class InitializationTest(SimulatorTest):
 
         return particle_hier
 
-    def _test_B_is_as_provided_by_user(self, dim, interp_order, **kwargs):
+    def _test_B_is_as_provided_by_user(self, dim, interp_order, ppc=100, **kwargs):
         print(
             "test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(
                 dim, interp_order
             )
         )
+        now = self.datetime_now()
         hier = self.getHierarchy(
             dim,
             interp_order,
             refinement_boxes=None,
             qty="b",
+            nbr_part_per_cell=ppc,
+            diag_outputs=f"test_b/{dim}/{interp_order}/{self.ddt_test_id()}",
             **kwargs,
         )
+        print(
+            f"\n{self._testMethodName}_{dim}d init took {self.datetime_diff(now)} seconds"
+        )
+        now = self.datetime_now()
 
         from pyphare.pharein import global_vars
 
@@ -315,16 +321,44 @@ class InitializationTest(SimulatorTest):
                     )
 
                 if dim == 3:
-                    raise ValueError("Unsupported dimension")
+                    zbx = bx_pd.z[:]
+                    zby = by_pd.z[:]
+                    zbz = bz_pd.z[:]
 
-    def _test_bulkvel_is_as_provided_by_user(self, dim, interp_order):
+                    xbx, ybx, zbx = [
+                        a.flatten() for a in np.meshgrid(xbx, ybx, zbx, indexing="ij")
+                    ]
+                    xby, yby, zby = [
+                        a.flatten() for a in np.meshgrid(xby, yby, zby, indexing="ij")
+                    ]
+                    xbz, ybz, zbz = [
+                        a.flatten() for a in np.meshgrid(xbz, ybz, zbz, indexing="ij")
+                    ]
+
+                    np.testing.assert_allclose(
+                        bx, bx_fn(xbx, ybx, zbx), atol=1e-16, rtol=0
+                    )
+                    np.testing.assert_allclose(
+                        by, by_fn(xby, yby, zby).reshape(by.shape), atol=1e-16, rtol=0
+                    )
+                    np.testing.assert_allclose(
+                        bz, bz_fn(xbz, ybz, zbz).reshape(bz.shape), atol=1e-16, rtol=0
+                    )
+
+        print(f"\n{self._testMethodName}_{dim}d took {self.datetime_diff(now)} seconds")
+
+    def _test_bulkvel_is_as_provided_by_user(
+        self, dim, interp_order, ppc=100, **kwargs
+    ):
         hier = self.getHierarchy(
             dim,
             interp_order,
             {"L0": {"B0": nDBox(dim, 10, 19)}},
             "moments",
-            nbr_part_per_cell=100,
+            nbr_part_per_cell=ppc,
             beam=True,
+            diag_outputs=f"test_bulkV/{dim}/{interp_order}/{self.ddt_test_id()}",
+            **kwargs,
         )
 
         from pyphare.pharein import global_vars
@@ -342,117 +376,58 @@ class InitializationTest(SimulatorTest):
             for ip, patch in enumerate(level.patches):
                 print("patch {}".format(ip))
 
-                layout = patch.patch_datas["protons_Fx"].layout
-                centering = layout.centering["X"][
-                    patch.patch_datas["protons_Fx"].field_name
-                ]
-                nbrGhosts = layout.nbrGhosts(interp_order, centering)
+                pdatas = patch.patch_datas
+                layout = pdatas["protons_Fx"].layout
+                centering = layout.centering["X"][pdatas["protons_Fx"].field_name]
+                nbrGhosts = layout.nbrGhosts(
+                    interp_order, centering
+                )  # primal in all directions
+                select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(dim)])
 
-                if dim == 1:
-                    x = patch.patch_datas["protons_Fx"].x[nbrGhosts:-nbrGhosts]
-
-                    fpx = patch.patch_datas["protons_Fx"].dataset[nbrGhosts:-nbrGhosts]
-                    fpy = patch.patch_datas["protons_Fy"].dataset[nbrGhosts:-nbrGhosts]
-                    fpz = patch.patch_datas["protons_Fz"].dataset[nbrGhosts:-nbrGhosts]
-
-                    fbx = patch.patch_datas["beam_Fx"].dataset[nbrGhosts:-nbrGhosts]
-                    fby = patch.patch_datas["beam_Fy"].dataset[nbrGhosts:-nbrGhosts]
-                    fbz = patch.patch_datas["beam_Fz"].dataset[nbrGhosts:-nbrGhosts]
-
-                    ni = patch.patch_datas["rho"].dataset[nbrGhosts:-nbrGhosts]
-
-                    vxact = (fpx + fbx) / ni
-                    vyact = (fpy + fby) / ni
-                    vzact = (fpz + fbz) / ni
-
-                    vxexp = (nprot(x) * vx_fn(x) + nbeam(x) * vx_fn(x)) / (
-                        nprot(x) + nbeam(x)
-                    )
-                    vyexp = (nprot(x) * vy_fn(x) + nbeam(x) * vy_fn(x)) / (
-                        nprot(x) + nbeam(x)
-                    )
-                    vzexp = (nprot(x) * vz_fn(x) + nbeam(x) * vz_fn(x)) / (
-                        nprot(x) + nbeam(x)
-                    )
-
-                    for vexp, vact in zip((vxexp, vyexp, vzexp), (vxact, vyact, vzact)):
-                        std = np.std(vexp - vact)
-                        print("sigma(user v - actual v) = {}".format(std))
-                        self.assertTrue(
-                            std < 1e-2
-                        )  # empirical value obtained from print just above
-
-                def reshape(patch_data, nGhosts):
+                def domain(patch_data):
+                    if dim == 1:
+                        return patch_data.dataset[select]
                     return patch_data.dataset[:].reshape(
-                        patch.box.shape + (nGhosts * 2) + 1
-                    )
+                        patch.box.shape + (nbrGhosts * 2) + 1
+                    )[select]
 
-                if dim == 2:
-                    xx, yy = np.meshgrid(
-                        patch.patch_datas["protons_Fx"].x,
-                        patch.patch_datas["protons_Fx"].y,
-                        indexing="ij",
-                    )
+                ni = domain(pdatas["rho"])
+                vxact = (domain(pdatas["protons_Fx"]) + domain(pdatas["beam_Fx"])) / ni
+                vyact = (domain(pdatas["protons_Fy"]) + domain(pdatas["beam_Fy"])) / ni
+                vzact = (domain(pdatas["protons_Fz"]) + domain(pdatas["beam_Fz"])) / ni
 
-                    density = reshape(patch.patch_datas["rho"], nbrGhosts)
+                select = pdatas["protons_Fx"].meshgrid(select)
+                vxexp = (
+                    nprot(*select) * vx_fn(*select) + nbeam(*select) * vx_fn(*select)
+                ) / (nprot(*select) + nbeam(*select))
+                vyexp = (
+                    nprot(*select) * vy_fn(*select) + nbeam(*select) * vy_fn(*select)
+                ) / (nprot(*select) + nbeam(*select))
+                vzexp = (
+                    nprot(*select) * vz_fn(*select) + nbeam(*select) * vz_fn(*select)
+                ) / (nprot(*select) + nbeam(*select))
+                for vexp, vact in zip((vxexp, vyexp, vzexp), (vxact, vyact, vzact)):
+                    self.assertTrue(np.std(vexp - vact) < 1e-2)
 
-                    protons_Fx = reshape(patch.patch_datas["protons_Fx"], nbrGhosts)
-                    protons_Fy = reshape(patch.patch_datas["protons_Fy"], nbrGhosts)
-                    protons_Fz = reshape(patch.patch_datas["protons_Fz"], nbrGhosts)
+    def _test_density_is_as_provided_by_user(self, ndim, interp_order, **kwargs):
+        print(
+            f"test_density_is_as_provided_by_user : dim {ndim} interp_order {interp_order}"
+        )
 
-                    beam_Fx = reshape(patch.patch_datas["beam_Fx"], nbrGhosts)
-                    beam_Fy = reshape(patch.patch_datas["beam_Fy"], nbrGhosts)
-                    beam_Fz = reshape(patch.patch_datas["beam_Fz"], nbrGhosts)
-
-                    x = xx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-                    y = yy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-
-                    fpx = protons_Fx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-                    fpy = protons_Fy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-                    fpz = protons_Fz[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-
-                    fbx = beam_Fx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-                    fby = beam_Fy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-                    fbz = beam_Fz[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-
-                    ni = density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-
-                    vxact = (fpx + fbx) / ni
-                    vyact = (fpy + fby) / ni
-                    vzact = (fpz + fbz) / ni
-
-                    vxexp = (nprot(x, y) * vx_fn(x, y) + nbeam(x, y) * vx_fn(x, y)) / (
-                        nprot(x, y) + nbeam(x, y)
-                    )
-                    vyexp = (nprot(x, y) * vy_fn(x, y) + nbeam(x, y) * vy_fn(x, y)) / (
-                        nprot(x, y) + nbeam(x, y)
-                    )
-                    vzexp = (nprot(x, y) * vz_fn(x, y) + nbeam(x, y) * vz_fn(x, y)) / (
-                        nprot(x, y) + nbeam(x, y)
-                    )
-
-                    for vexp, vact in zip((vxexp, vyexp, vzexp), (vxact, vyact, vzact)):
-                        self.assertTrue(np.std(vexp - vact) < 1e-2)
-
-    def _test_density_is_as_provided_by_user(self, dim, interp_order):
         empirical_dim_devs = {
             1: 6e-3,
             2: 3e-2,
+            3: 2e-1,
         }
-
-        nbParts = {1: 10000, 2: 1000}
-        print(
-            "test_density_is_as_provided_by_user : interp_order : {}".format(
-                interp_order
-            )
-        )
+        nbParts = {1: 10000, 2: 1000, 3: 20}
         hier = self.getHierarchy(
-            dim,
+            ndim,
             interp_order,
-            {"L0": {"B0": nDBox(dim, 10, 20)}},
+            {"L0": {"B0": nDBox(ndim, 5, 14)}},
             qty="moments",
-            nbr_part_per_cell=nbParts[dim],
+            nbr_part_per_cell=nbParts[ndim],
             beam=True,
+            **kwargs,
         )
 
         from pyphare.pharein import global_vars
@@ -474,34 +449,16 @@ class InitializationTest(SimulatorTest):
                 layout = patch.patch_datas["rho"].layout
                 centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
                 nbrGhosts = layout.nbrGhosts(interp_order, centering)
+                select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(ndim)])
 
-                if dim == 1:
-                    protons_expected = proton_density_fn(x[nbrGhosts:-nbrGhosts])
-                    beam_expected = beam_density_fn(x[nbrGhosts:-nbrGhosts])
-                    ion_expected = protons_expected + beam_expected
+                mesh = patch.patch_datas["rho"].meshgrid(select)
+                protons_expected = proton_density_fn(*mesh)
+                beam_expected = beam_density_fn(*mesh)
+                ion_expected = protons_expected + beam_expected
 
-                    ion_actual = ion_density[nbrGhosts:-nbrGhosts]
-                    beam_actual = beam_density[nbrGhosts:-nbrGhosts]
-                    protons_actual = proton_density[nbrGhosts:-nbrGhosts]
-
-                if dim == 2:
-                    y = patch.patch_datas["rho"].y
-                    xx, yy = np.meshgrid(x, y, indexing="ij")
-
-                    x0 = xx[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-                    y0 = yy[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-
-                    protons_expected = proton_density_fn(x0, y0)
-                    beam_expected = beam_density_fn(x0, y0)
-                    ion_expected = protons_expected + beam_expected
-
-                    ion_actual = ion_density[nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts]
-                    beam_actual = beam_density[
-                        nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts
-                    ]
-                    protons_actual = proton_density[
-                        nbrGhosts:-nbrGhosts, nbrGhosts:-nbrGhosts
-                    ]
+                protons_actual = proton_density[select]
+                beam_actual = beam_density[select]
+                ion_actual = ion_density[select]
 
                 names = ("ions", "protons", "beam")
                 expected = (ion_expected, protons_expected, beam_expected)
@@ -514,29 +471,31 @@ class InitializationTest(SimulatorTest):
                 for name, dev in devs.items():
                     print(f"sigma(user density - {name} density) = {dev}")
                     self.assertLess(
-                        dev, empirical_dim_devs[dim], f"{name} has dev = {dev}"
+                        dev, empirical_dim_devs[ndim], f"{name} has dev = {dev}"
                     )
 
     def _test_density_decreases_as_1overSqrtN(
-        self, dim, interp_order, nbr_particles=None, cells=960
+        self, ndim, interp_order, nbr_particles=None, cells=960
     ):
         import matplotlib.pyplot as plt
 
-        print(f"test_density_decreases_as_1overSqrtN, interp_order = {interp_order}")
-
         if nbr_particles is None:
             nbr_particles = np.asarray([100, 1000, 5000, 10000])
+
+        print(
+            f"test_density_decreases_as_1overSqrtN, interp_order = {interp_order} {nbr_particles}"
+        )
 
         noise = np.zeros(len(nbr_particles))
 
         for inbr, nbrpart in enumerate(nbr_particles):
             hier = self.getHierarchy(
-                dim,
+                ndim,
                 interp_order,
                 None,
                 "moments",
                 nbr_part_per_cell=nbrpart,
-                diag_outputs=f"{nbrpart}",
+                diag_outputs=f"1overSqrtN/{ndim}/{interp_order}/{nbrpart}",
                 density=lambda *xyz: np.zeros(tuple(_.shape[0] for _ in xyz)) + 1.0,
                 smallest_patch_size=int(cells / 2),
                 largest_patch_size=int(cells / 2),
@@ -554,7 +513,7 @@ class InitializationTest(SimulatorTest):
 
             centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
             nbrGhosts = layout.nbrGhosts(interp_order, centering)
-            select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(dim)])
+            select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(ndim)])
             ion_density = patch.patch_datas["rho"].dataset[:]
             mesh = patch.patch_datas["rho"].meshgrid(select)
 
@@ -563,14 +522,14 @@ class InitializationTest(SimulatorTest):
             noise[inbr] = np.std(expected - actual)
             print(f"noise is {noise[inbr]} for {nbrpart} particles per cell")
 
-            if dim == 1:
+            if ndim == 1:
                 x = patch.patch_datas["rho"].x
                 plt.figure()
-                plt.plot(x[nbrGhosts:-nbrGhosts], actual, label="actual")
-                plt.plot(x[nbrGhosts:-nbrGhosts], expected, label="expected")
+                plt.plot(x[select], actual, label="actual")
+                plt.plot(x[select], expected, label="expected")
                 plt.legend()
                 plt.title(r"$\sigma =$ {}".format(noise[inbr]))
-                plt.savefig(f"noise_{nbrpart}_interp_{dim}_{interp_order}.png")
+                plt.savefig(f"noise_{nbrpart}_interp_{ndim}_{interp_order}.png")
                 plt.close("all")
 
         plt.figure()
@@ -582,7 +541,7 @@ class InitializationTest(SimulatorTest):
         )
         plt.xlabel("nbr_particles")
         plt.legend()
-        plt.savefig(f"noise_nppc_interp_{dim}_{interp_order}.png")
+        plt.savefig(f"noise_nppc_interp_{ndim}_{interp_order}.png")
         plt.close("all")
 
         noiseMinusTheory = noise / noise[0] - 1 / np.sqrt(
@@ -596,25 +555,32 @@ class InitializationTest(SimulatorTest):
         )
         plt.xlabel("nbr_particles")
         plt.legend()
-        plt.savefig(f"noise_nppc_minus_theory_interp_{dim}_{interp_order}.png")
+        plt.savefig(f"noise_nppc_minus_theory_interp_{ndim}_{interp_order}.png")
         plt.close("all")
         self.assertGreater(3e-2, noiseMinusTheory[1:].mean())
 
     def _test_nbr_particles_per_cell_is_as_provided(
-        self, dim, interp_order, default_ppc=100
+        self, ndim, interp_order, ppc=100, **kwargs
     ):
+        ddt_test_id = self.ddt_test_id()
         datahier = self.getHierarchy(
-            dim,
+            ndim,
             interp_order,
-            {"L0": {"B0": nDBox(dim, 10, 20)}},
+            {},
             "particles",
+            diag_outputs=f"ppc/{ndim}/{interp_order}/{ddt_test_id}",
+            nbr_part_per_cell=ppc,
+            **kwargs,
         )
 
-        for patch in datahier.level(0).patches:
+        if cpp.mpi_rank() > 0:
+            return
+
+        for pi, patch in enumerate(datahier.level(0).patches):
             pd = patch.patch_datas["protons_particles"]
             icells = pd.dataset[patch.box].iCells
-            H, _ = np.histogramdd(icells)
-            self.assertTrue((H == default_ppc).all())
+            H, edges = np.histogramdd(icells, bins=patch.box.shape)
+            self.assertTrue((H == ppc).all())
 
     def _domainParticles_for(self, datahier, ilvl):
         patch0 = datahier.levels()[ilvl].patches[0]
@@ -648,6 +614,9 @@ class InitializationTest(SimulatorTest):
             cells=30,
             **kwargs,
         )
+
+        if cpp.mpi_rank() > 0:
+            return
 
         from pyphare.pharein.global_vars import sim
 
@@ -689,12 +658,12 @@ class InitializationTest(SimulatorTest):
     def _test_levelghostparticles_have_correct_split_from_coarser_particle(
         self, datahier
     ):
-        dim = datahier.level(0).patches[0].box.ndim
+        ndim = datahier.level(0).patches[0].box.ndim
 
         from pyphare.pharein.global_vars import sim
 
         assert sim is not None
-        assert len(sim.cells) == dim
+        assert len(sim.cells) == ndim
 
         particle_level_ghost_boxes_per_level = level_ghost_boxes(datahier, "particles")
 

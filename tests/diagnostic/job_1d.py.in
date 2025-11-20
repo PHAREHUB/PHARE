@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 
 import pyphare.pharein as ph
-
 from tests.diagnostic import dump_all_diags
 from tests.simulator import basicSimulatorArgs, makeBasicModel
 
-out = "phare_outputs/diags_1d/"
+from pyphare.cpp import cpp_lib  # concurrent serial vs parallel tests
+
+out = f"phare_outputs/diags_1d/{cpp_lib().mpi_size()}"
 simInput = {
     "diag_options": {"format": "phareh5", "options": {"dir": out, "mode": "overwrite"}}
 }

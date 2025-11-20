@@ -352,7 +352,9 @@ class RestartsTest(SimulatorTest):
         time.sleep(5)
         simulator.advance().dump()  # should trigger restart on "restart_idx" advance
         simulator.advance().dump()
+        print("First sim finishing...")
         simulator.reset()
+        print("First sim finished / restarting sim...")
         self.register_diag_dir_for_cleanup(diag_dir0)
 
         # second restarted simulation

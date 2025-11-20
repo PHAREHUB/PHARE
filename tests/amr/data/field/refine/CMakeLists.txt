@@ -32,15 +32,11 @@ function(_setup_amr_field_refine_test src_name)
 
 endfunction(_setup_amr_field_refine_test)
 
-
-function(_add_general_amr_field_refine_test src_name)
-  _setup_amr_field_refine_test(${src_name})
-  add_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
-endfunction(_add_general_amr_field_refine_test)
-
 function(_add_serial_amr_field_refine_test src_name)
   _setup_amr_field_refine_test(${src_name})
   add_no_mpi_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
 endfunction(_add_serial_amr_field_refine_test)
 
-_add_serial_amr_field_refine_test(test_field_refine)
+
+_add_serial_amr_field_refine_test(test_default_field_refinement)
+
