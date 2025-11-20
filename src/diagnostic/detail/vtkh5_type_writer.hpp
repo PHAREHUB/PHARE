@@ -173,6 +173,8 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
 
     // set global per file attributes and datasets
     {
+        PHARE_LOG_SCOPE(1, "VTKFileWriter::VTKFileWriter::0");
+
         h5file.create_resizable_1d_data_set<FloatType>(base + "/Steps/Values");
 
         auto steps_group = h5file.file().getGroup(base + "/Steps");
@@ -184,6 +186,8 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
     }
 
     {
+        PHARE_LOG_SCOPE(1, "VTKFileWriter::VTKFileWriter::1");
+
         auto const& timestamp = tw->h5Writer_.timestamp();
         auto ds               = h5file.getDataSet(base + "/Steps/Values");
         auto const old_size   = ds.getDimensions()[0];
@@ -193,6 +197,8 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
 
     if (newFile)
     {
+        PHARE_LOG_SCOPE(1, "VTKFileWriter::VTKFileWriter::2");
+
         auto root = h5file.file().getGroup(base);
 
         if (!root.hasAttribute("Version"))
@@ -221,6 +227,7 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto con
     auto const size    = local_box(layout).size();
     auto ds            = h5file.getDataSet(level_data_path(layout.levelNumber()));
 
+    PHARE_LOG_SCOPE(1, "VTKFileWriter::writeField::0");
     for (std::uint16_t i = 0; i < X_TIMES; ++i)
     {
         ds.select({data_offset, 0}, {size, 1}).write_raw(frimal.data());
@@ -239,6 +246,8 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto 
         = core::convert_to_fortran_primal(modelView.template tmpTensorField<rank>(), tf, layout);
     auto const size = local_box(layout).size();
     auto ds         = h5file.getDataSet(level_data_path(layout.levelNumber()));
+
+    PHARE_LOG_SCOPE(1, "VTKFileWriter::writeTensorField::0");
     for (std::uint16_t i = 0; i < X_TIMES; ++i)
     {
         for (std::uint32_t c = 0; c < N; ++c)
@@ -264,6 +273,8 @@ void H5TypeWriter<Writer>::VTKFileWriter::initFileLevel(int const ilvl) const
     auto level_group = h5file.file().getGroup(level_base + lvl);
     if (!level_group.hasAttribute("Spacing"))
     {
+        PHARE_LOG_SCOPE(1, "VTKFileWriter::initFileLevel::0");
+
         level_group.template createAttribute<std::array<float, dimension>>("Spacing",
                                                                            level_spacing(ilvl));
 
@@ -290,16 +301,19 @@ void H5TypeWriter<Writer>::VTKFileWriter::resize_data(int const ilvl, auto const
     data_offset          = point_data_ds.getDimensions()[0];
 
     {
+        PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_data::0");
         auto ds             = h5file.getDataSet(step_level + lvl + "/PointDataOffset/data");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
         ds.select({old_size}, {1}).write(data_offset);
     }
 
+    PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_data::1");
     auto const rank_data_size = core::mpi::collect(
         core::sum_from(boxes, [](auto const& b) { return b.size() * X_TIMES; }));
     auto const new_size = data_offset + core::sum(rank_data_size);
 
+    PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_data::2");
     point_data_ds.resize({new_size, N});
     for (int i = 0; i < core::mpi::rank(); ++i)
         data_offset += rank_data_size[i];
@@ -317,6 +331,7 @@ void H5TypeWriter<Writer>::VTKFileWriter::resize_boxes(auto const& level, auto c
     auto const total_boxes   = core::sum(rank_box_size);
 
     {
+        PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_boxes::0");
         auto ds             = h5file.getDataSet(step_level + lvl + "/NumberOfAMRBox");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
@@ -327,17 +342,22 @@ void H5TypeWriter<Writer>::VTKFileWriter::resize_boxes(auto const& level, auto c
     auto box_offset = amrbox_ds.getDimensions()[0];
 
     {
+        PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_boxes::1");
         auto ds             = h5file.getDataSet(step_level + lvl + "/AMRBoxOffset");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
         ds.select({old_size}, {1}).write(box_offset);
     }
 
+
+    PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_boxes::2");
     amrbox_ds.resize({box_offset + total_boxes, boxValsIn3D});
     for (int i = 0; i < core::mpi::rank(); ++i)
         box_offset += rank_box_size[i];
 
     auto const vtk_boxes = flatten_boxes(boxes);
+
+    PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_boxes::3");
     amrbox_ds.select({box_offset, 0}, {boxes.size(), dimension * 2}).write(vtk_boxes);
 }
 

@@ -63,8 +63,8 @@ option(withIPO "Use IPO/LTO if system supported" OFF)
 option(withCaliper "Use LLNL Caliper" OFF)
 
 
-# -DwithPhlop=OFF
-option(withPhlop "Use phlop" OFF)
+# -DwithPhlop=OFF - also interacts with CXX def -DPHARE_LOG_LEVEL=N
+option(withPhlop "Use phlop for scope timings and such" OFF)
 
 
 # -DlowResourceTests=ON

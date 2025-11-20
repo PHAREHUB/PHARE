@@ -407,7 +407,7 @@ namespace amr
          */
         void fillIonGhostParticles(IonsT& ions, level_t& level, double const fillTime) override
         {
-            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonGhostParticles");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonGhostParticles");
 
             domainGhostPartRefiners_.fill(level.getLevelNumber(), fillTime);
 
@@ -493,7 +493,7 @@ namespace amr
         void fillIonPopMomentGhosts(IonsT& ions, level_t& level,
                                     double const afterPushTime) override
         {
-            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonPopMomentGhosts");
+            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonPopMomentGhosts");
 
             auto alpha = timeInterpCoef_(afterPushTime, level.getLevelNumber());
             if (level.getLevelNumber() > 0 and (alpha < 0 or alpha > 1))
