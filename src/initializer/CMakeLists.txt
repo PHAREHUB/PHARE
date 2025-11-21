@@ -14,12 +14,10 @@ set(SOURCE_CPP data_provider.cpp)
 set(PYBIND11_CPP_STANDARD -std=c++17)
 
 add_library(${PROJECT_NAME} SHARED ${SOURCE_CPP} ${SOURCE_INC})
+target_link_libraries(${PROJECT_NAME} PUBLIC cppdict)
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
-
-target_include_directories(${PROJECT_NAME}  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
 
 
 # this is the python module that wraps the add() method

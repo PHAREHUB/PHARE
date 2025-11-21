@@ -63,7 +63,7 @@ endif(withPhlop)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C
+target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C cppdict
     PUBLIC ${PHARE_BASE_LIBS}
   )
 
@@ -73,6 +73,4 @@ if (NOT phare_configurator)
 endif()
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
-target_include_directories(${PROJECT_NAME}  PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../../subprojects>)
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")

@@ -17,7 +17,7 @@
 #include <vector>
 
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 
 

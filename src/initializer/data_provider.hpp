@@ -7,7 +7,7 @@
 #include <optional>
 #include <functional>
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 #include "core/def.hpp"
 #include "core/utilities/span.hpp"
 

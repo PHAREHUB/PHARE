@@ -6,7 +6,7 @@
 #include <vector>
 #include <cstddef>
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 namespace PHARE::diagnostic
 {
