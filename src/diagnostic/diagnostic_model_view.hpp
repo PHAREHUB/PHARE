@@ -9,7 +9,7 @@
 #include "amr/messengers/field_sum_transaction.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 

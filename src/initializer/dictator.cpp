@@ -1,5 +1,5 @@
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 #include "initializer/python_data_provider.hpp"
 
 #include "python3/pybind_def.hpp"

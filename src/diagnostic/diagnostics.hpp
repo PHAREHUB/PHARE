@@ -18,7 +18,7 @@
 
 #include "diagnostic_manager.hpp"
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 #if PHARE_HAS_HIGHFIVE
 
