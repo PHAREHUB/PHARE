@@ -9,7 +9,7 @@
 #include <unordered_map>
 
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 
 namespace PHARE::core

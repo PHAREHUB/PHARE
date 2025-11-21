@@ -15,7 +15,7 @@
 
 #include "phare_simulator_options.hpp"
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 #include <string>
 #include <functional>
