@@ -4,10 +4,11 @@
 
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
-#include "core/utilities/box/box.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include "diagnostic/diagnostic_writer.hpp"
 
@@ -16,6 +17,9 @@
 #include <string>
 #include <unordered_map>
 
+#if !defined(PHARE_DIAG_DOUBLES)
+#error // PHARE_DIAG_DOUBLES not defined
+#endif
 
 
 namespace PHARE::diagnostic::vtkh5
@@ -26,10 +30,10 @@ using namespace hdf5::h5;
 template<typename Writer>
 class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
-    using FloatType                            = float;
-    using ModelView                            = Writer::ModelView;
-    using physical_quantity_type               = ModelView::Field::physical_quantity_type;
-    std::string static inline const base       = "/VTKHDF/";
+    using FloatType                      = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
+    using ModelView                      = Writer::ModelView;
+    using physical_quantity_type         = ModelView::Field::physical_quantity_type;
+    std::string static inline const base = "/VTKHDF/";
     std::string static inline const level_base = base + "Level";
     std::string static inline const step_level = base + "Steps/Level";
     auto static inline const level_data_path
@@ -42,6 +46,8 @@ public:
         : h5Writer_{h5Writer}
     {
     }
+
+    virtual void setup(DiagnosticProperties&) = 0;
 
 protected:
     // data is duplicated in lower dimensions to fit a 3d view
@@ -65,7 +71,8 @@ protected:
         return data;
     }
 
-    // main entry point from quantity specific writers
+    class VTKFileInitializer;
+
     class VTKFileWriter;
 
 
@@ -87,31 +94,22 @@ protected:
 };
 
 
-
-
 template<typename Writer>
-class H5TypeWriter<Writer>::VTKFileWriter
+class H5TypeWriter<Writer>::VTKFileInitializer
 {
     auto static constexpr primal_qty         = physical_quantity_type::rho;
     std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
-
-
 public:
-    VTKFileWriter(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter);
-
-    void writeField(auto const& field, auto const& layout);
-
-    template<std::size_t rank = 2>
-    void writeTensorField(auto const& tf, auto const& layout);
+    VTKFileInitializer(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter);
 
     void initFileLevel(int const ilvl) const;
 
-    void initFieldFileLevel(auto const& level) { initAnyFieldLevel(level); }
+    std::size_t initFieldFileLevel(auto const& level) { return initAnyFieldLevel(level); }
 
     template<std::size_t rank = 2>
-    void initTensorFieldFileLevel(auto const& level)
+    std::size_t initTensorFieldFileLevel(auto const& level)
     {
-        initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(level);
+        return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(level);
     }
 
 private:
@@ -122,16 +120,12 @@ private:
             [&](auto i) { return static_cast<float>(mesh_size[i] / std::pow(2, lvl)); });
     }
 
-    auto local_box(auto const& layout) const
-    {
-        return layout.AMRToLocal(layout.AMRBoxFor(primal_qty));
-    }
-
     template<std::size_t N = 1>
-    void initAnyFieldLevel(auto const& level)
+    std::size_t initAnyFieldLevel(auto const& level)
     {
         h5file.create_resizable_2d_data_set<FloatType, N>(level_data_path(level.getLevelNumber()));
         resize<N>(level);
+        return data_offset;
     }
 
 
@@ -155,26 +149,54 @@ private:
     DiagnosticProperties const& diagnostic;
     H5TypeWriter<Writer>* const typewriter;
     HighFiveFile& h5file;
+    std::size_t data_offset;
+    ModelView& modelView = typewriter->h5Writer_.modelView();
+};
+
+
+template<typename Writer>
+class H5TypeWriter<Writer>::VTKFileWriter
+{
+    auto static constexpr primal_qty         = physical_quantity_type::rho;
+    std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
+
+
+public:
+    VTKFileWriter(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter,
+                  std::size_t const offset);
+
+    void writeField(auto const& field, auto const& layout);
+
+    template<std::size_t rank = 2>
+    void writeTensorField(auto const& tf, auto const& layout);
+
+
+
+private:
+    auto local_box(auto const& layout) const
+    {
+        return layout.AMRToLocal(layout.AMRBoxFor(primal_qty));
+    }
+
+    DiagnosticProperties const& diagnostic;
+    H5TypeWriter<Writer>* const typewriter;
+    HighFiveFile& h5file;
     std::size_t data_offset = 0;
     ModelView& modelView    = typewriter->h5Writer_.modelView();
 };
 
 
-
 template<typename Writer>
-H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& prop,
-                                                   H5TypeWriter<Writer>* const tw)
+H5TypeWriter<Writer>::VTKFileInitializer::VTKFileInitializer(DiagnosticProperties const& prop,
+                                                             H5TypeWriter<Writer>* const tw)
     : newFile{!tw->fileExistsFor(prop)}
     , diagnostic{prop}
     , typewriter{tw}
     , h5file{tw->getOrCreateH5File(prop)}
 {
-    PHARE_LOG_SCOPE(1, "VTKFileWriter::VTKFileWriter");
-
-    // set global per file attributes and datasets
     {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::VTKFileInitializer::0");
         h5file.create_resizable_1d_data_set<FloatType>(base + "/Steps/Values");
-
         auto steps_group = h5file.file().getGroup(base + "/Steps");
         if (!steps_group.hasAttribute("NSteps"))
             steps_group.template createAttribute<int>("NSteps", HighFive::DataSpace::From(0))
@@ -184,7 +206,8 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
     }
 
     {
-        auto const& timestamp = tw->h5Writer_.timestamp();
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::VTKFileInitializer::1");
+        auto const& timestamp = typewriter->h5Writer_.timestamp();
         auto ds               = h5file.getDataSet(base + "/Steps/Values");
         auto const old_size   = ds.getDimensions()[0];
         ds.resize({old_size + 1});
@@ -193,6 +216,7 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
 
     if (newFile)
     {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::VTKFileInitializer::2");
         auto root = h5file.file().getGroup(base);
 
         if (!root.hasAttribute("Version"))
@@ -211,16 +235,28 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
 }
 
 
+template<typename Writer>
+H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& prop,
+                                                   H5TypeWriter<Writer>* const tw,
+                                                   std::size_t const offset)
+    : diagnostic{prop}
+    , typewriter{tw}
+    , h5file{tw->getOrCreateH5File(prop)}
+    , data_offset{offset}
+{
+}
+
 
 template<typename Writer>
 void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto const& layout)
 {
-    PHARE_LOG_SCOPE(1, "VTKFileWriter::writeField");
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField");
 
     auto const& frimal = core::convert_to_fortran_primal(modelView.tmpField(), field, layout);
     auto const size    = local_box(layout).size();
     auto ds            = h5file.getDataSet(level_data_path(layout.levelNumber()));
 
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField::0");
     for (std::uint16_t i = 0; i < X_TIMES; ++i)
     {
         ds.select({data_offset, 0}, {size, 1}).write_raw(frimal.data());
@@ -228,17 +264,20 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto con
     }
 }
 
+
 template<typename Writer>
 template<std::size_t rank>
 void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto const& layout)
 {
-    PHARE_LOG_SCOPE(1, "VTKFileWriter::writeTensorField");
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField");
 
     auto static constexpr N = core::detail::tensor_field_dim_from_rank<rank>();
     auto const& frimal
         = core::convert_to_fortran_primal(modelView.template tmpTensorField<rank>(), tf, layout);
     auto const size = local_box(layout).size();
     auto ds         = h5file.getDataSet(level_data_path(layout.levelNumber()));
+
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField::0");
     for (std::uint16_t i = 0; i < X_TIMES; ++i)
     {
         for (std::uint32_t c = 0; c < N; ++c)
@@ -248,11 +287,10 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto 
 }
 
 
-
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileWriter::initFileLevel(int const ilvl) const
+void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl) const
 {
-    PHARE_LOG_SCOPE(1, "VTKFileWriter::initFileLevel");
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::initFileLevel");
 
     auto const lvl = std::to_string(ilvl);
 
@@ -264,6 +302,8 @@ void H5TypeWriter<Writer>::VTKFileWriter::initFileLevel(int const ilvl) const
     auto level_group = h5file.file().getGroup(level_base + lvl);
     if (!level_group.hasAttribute("Spacing"))
     {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::initFileLevel::0");
+
         level_group.template createAttribute<std::array<float, dimension>>("Spacing",
                                                                            level_spacing(ilvl));
 
@@ -277,12 +317,11 @@ void H5TypeWriter<Writer>::VTKFileWriter::initFileLevel(int const ilvl) const
 }
 
 
-
 template<typename Writer>
 template<std::size_t N>
-void H5TypeWriter<Writer>::VTKFileWriter::resize_data(int const ilvl, auto const& boxes)
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl, auto const& boxes)
 {
-    PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_data");
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data");
 
     auto const lvl       = std::to_string(ilvl);
     auto const data_path = level_data_path(ilvl);
@@ -290,16 +329,19 @@ void H5TypeWriter<Writer>::VTKFileWriter::resize_data(int const ilvl, auto const
     data_offset          = point_data_ds.getDimensions()[0];
 
     {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::0");
         auto ds             = h5file.getDataSet(step_level + lvl + "/PointDataOffset/data");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
         ds.select({old_size}, {1}).write(data_offset);
     }
 
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::1");
     auto const rank_data_size = core::mpi::collect(
         core::sum_from(boxes, [](auto const& b) { return b.size() * X_TIMES; }));
     auto const new_size = data_offset + core::sum(rank_data_size);
 
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::2");
     point_data_ds.resize({new_size, N});
     for (int i = 0; i < core::mpi::rank(); ++i)
         data_offset += rank_data_size[i];
@@ -307,16 +349,17 @@ void H5TypeWriter<Writer>::VTKFileWriter::resize_data(int const ilvl, auto const
 
 
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileWriter::resize_boxes(auto const& level, auto const& boxes)
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(auto const& level, auto const& boxes)
 {
-    PHARE_LOG_SCOPE(1, "VTKFileWriter::resize_boxes");
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes");
 
     auto const ilvl          = level.getLevelNumber();
     auto const lvl           = std::to_string(ilvl);
-    auto const rank_box_size = core::mpi::collect(boxes.size());
+    auto const rank_box_size = amr::boxesPerRankOn(level);
     auto const total_boxes   = core::sum(rank_box_size);
 
     {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::0");
         auto ds             = h5file.getDataSet(step_level + lvl + "/NumberOfAMRBox");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
@@ -327,17 +370,22 @@ void H5TypeWriter<Writer>::VTKFileWriter::resize_boxes(auto const& level, auto c
     auto box_offset = amrbox_ds.getDimensions()[0];
 
     {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::1");
         auto ds             = h5file.getDataSet(step_level + lvl + "/AMRBoxOffset");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
         ds.select({old_size}, {1}).write(box_offset);
     }
 
+
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
     amrbox_ds.resize({box_offset + total_boxes, boxValsIn3D});
     for (int i = 0; i < core::mpi::rank(); ++i)
         box_offset += rank_box_size[i];
 
     auto const vtk_boxes = flatten_boxes(boxes);
+
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::3");
     amrbox_ds.select({box_offset, 0}, {boxes.size(), dimension * 2}).write(vtk_boxes);
 }
 

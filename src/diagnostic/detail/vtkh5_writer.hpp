@@ -3,14 +3,9 @@
 
 
 #include "core/logger.hpp"
-#include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"
-
 
 #include "diagnostic/diagnostic_props.hpp"
 #include "diagnostic/detail/vtkh5_type_writer.hpp"
@@ -31,6 +26,8 @@ using namespace hdf5::h5;
 template<typename _ModelView>
 class H5Writer
 {
+    constexpr std::size_t static MAX_LEVEL = 10;
+
     struct NullTypeWriter : public H5TypeWriter<H5Writer<_ModelView>>
     {
         NullTypeWriter(auto& h5Writer)
@@ -38,6 +35,7 @@ class H5Writer
         {
         }
 
+        void setup(DiagnosticProperties& prop) {}
         void write(DiagnosticProperties& prop)
         {
             if (core::mpi::rank() == 0)
@@ -98,8 +96,6 @@ public:
     }
 
 
-
-
     auto makeFile(DiagnosticProperties const& diagnostic)
     {
         return std::make_unique<HighFiveFile>(filePath_ + "/" + fileString(diagnostic.quantity),
@@ -107,11 +103,10 @@ public:
     }
 
 
-
     auto& modelView() { return modelView_; }
     auto timestamp() const { return timestamp_; }
 
-    std::size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
+    std::size_t minLevel = 0, maxLevel = MAX_LEVEL; // TODO hard-coded to be parametrized somehow
     HiFile::AccessMode flags;
 
 
@@ -165,6 +160,9 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     for (auto* diagnostic : diagnostics)
         if (!file_flags.count(diagnostic->type + diagnostic->quantity))
             file_flags[diagnostic->type + diagnostic->quantity] = this->flags;
+
+    for (auto* diagnostic : diagnostics) // all collective calls first!
+        typeWriters_.at(diagnostic->type)->setup(*diagnostic);
 
     for (auto* diagnostic : diagnostics)
         typeWriters_.at(diagnostic->type)->write(*diagnostic);

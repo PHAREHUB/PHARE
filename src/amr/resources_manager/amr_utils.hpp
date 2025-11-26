@@ -4,6 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/constants.hpp"
 
 #include "amr/types/amr_types.hpp"
@@ -250,6 +251,25 @@ namespace amr
             visitLevel<GridLayout>(*hierarchy.getPatchLevel(iLevel), resman,
                                    std::forward<Action>(action), std::forward<Args>(args)...);
         }
+    }
+
+
+    auto boxesPerRankOn(auto const& level)
+    {
+        std::vector<std::size_t> boxesPerRank(core::mpi::size());
+
+        auto const& mapping = level.getProcessorMapping();
+
+        for (int i = 0; i < level.getGlobalNumberOfPatches(); ++i)
+            boxesPerRank[mapping.getProcessorAssignment(i)] += 1;
+
+        return boxesPerRank;
+    }
+
+
+    auto boxesPerRankOn(auto const& hierarchy, int const ilvl)
+    {
+        return boxesPerRankOn(hierarchy.getPatchLevel(ilvl));
     }
 
 } // namespace amr
