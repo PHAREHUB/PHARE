@@ -377,7 +377,6 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(auto const& level, a
         ds.select({old_size}, {1}).write(box_offset);
     }
 
-
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
     amrbox_ds.resize({box_offset + total_boxes, boxValsIn3D});
     for (int i = 0; i < core::mpi::rank(); ++i)

@@ -1,10 +1,11 @@
 #ifndef PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 #define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 
-
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+
+#include "amr/amr_constants.hpp"
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
@@ -160,7 +161,7 @@ public:
     auto& modelView() { return modelView_; }
     auto timestamp() const { return timestamp_; }
 
-    std::size_t minLevel = 0, maxLevel = 10; // TODO hard-coded to be parametrized somehow
+    std::size_t minLevel = 0, maxLevel = amr::MAX_LEVEL;
     HiFile::AccessMode flags;
 
 

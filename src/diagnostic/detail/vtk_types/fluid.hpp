@@ -31,12 +31,7 @@ public:
 private:
     struct Info
     {
-        Info()
-            : offset_per_level(10)
-        {
-        }
-
-        std::vector<std::size_t> offset_per_level;
+        std::vector<std::size_t> offset_per_level = std::vector<std::size_t>(amr::MAX_LEVEL);
     };
 
     auto static isActiveDiag(DiagnosticProperties const& diagnostic, std::string const& tree,
@@ -81,6 +76,7 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
                     return initializer.template initTensorFieldFileLevel<1>(level);
             }
         }
+
         return std::nullopt;
     };
 
@@ -106,33 +102,40 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     auto& info      = mem[diagnostic.quantity];
     std::string const tree{"/ions/"};
 
-    auto const write_quantity = [&](auto& layout, auto const&, auto const iLevel) {
-        PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::write_quantity");
+    modelView.onLevels(
+        [&](auto const& level) {
+            auto const ilvl = level.getLevelNumber();
 
-        VTKFileWriter writer{diagnostic, this, info.offset_per_level[iLevel]};
+            VTKFileWriter writer{diagnostic, this, info.offset_per_level[ilvl]};
 
-        if (isActiveDiag(diagnostic, tree, "charge_density"))
-            writer.writeField(ions.chargeDensity(), layout);
-        else if (isActiveDiag(diagnostic, tree, "mass_density"))
-            writer.writeField(ions.massDensity(), layout);
-        else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-            writer.template writeTensorField<1>(ions.velocity(), layout);
-        else
-        {
-            for (auto& pop : ions)
-            {
-                auto const pop_tree = tree + "pop/" + pop.name() + "/";
-                if (isActiveDiag(diagnostic, pop_tree, "density"))
-                    writer.writeField(pop.particleDensity(), layout);
-                else if (isActiveDiag(diagnostic, pop_tree, "charge_density"))
-                    writer.writeField(pop.chargeDensity(), layout);
-                else if (isActiveDiag(diagnostic, pop_tree, "flux"))
-                    writer.template writeTensorField<1>(pop.flux(), layout);
-            }
-        }
-    };
+            auto const write_quantity = [&](auto& layout, auto const&, auto const) {
+                PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::write_quantity");
 
-    modelView.visitHierarchy(write_quantity, this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
+
+                if (isActiveDiag(diagnostic, tree, "charge_density"))
+                    writer.writeField(ions.chargeDensity(), layout);
+                else if (isActiveDiag(diagnostic, tree, "mass_density"))
+                    writer.writeField(ions.massDensity(), layout);
+                else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
+                    writer.template writeTensorField<1>(ions.velocity(), layout);
+                else
+                {
+                    for (auto& pop : ions)
+                    {
+                        auto const pop_tree = tree + "pop/" + pop.name() + "/";
+                        if (isActiveDiag(diagnostic, pop_tree, "density"))
+                            writer.writeField(pop.particleDensity(), layout);
+                        else if (isActiveDiag(diagnostic, pop_tree, "charge_density"))
+                            writer.writeField(pop.chargeDensity(), layout);
+                        else if (isActiveDiag(diagnostic, pop_tree, "flux"))
+                            writer.template writeTensorField<1>(pop.flux(), layout);
+                    }
+                }
+            };
+
+            modelView.visitHierarchy(write_quantity, ilvl, ilvl);
+        },
+        this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 }
 
 

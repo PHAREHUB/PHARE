@@ -1,6 +1,7 @@
 #ifndef DIAGNOSTIC_MODEL_VIEW_HPP
 #define DIAGNOSTIC_MODEL_VIEW_HPP
 
+#include "amr/amr_constants.hpp"
 #include "core/def.hpp"
 #include "core/utilities/mpi_utils.hpp"
 
@@ -82,11 +83,9 @@ public:
 
 
     template<typename Action>
-    void onLevels(Action&& action, int minlvl = 0, int maxlvl = 0)
+    void onLevels(Action&& action, std::size_t minlvl = 0, std::size_t maxlvl = amr::MAX_LEVEL)
     {
-        for (int ilvl = minlvl; ilvl < hierarchy_.getNumberOfLevels() && ilvl <= maxlvl; ++ilvl)
-            if (auto lvl = hierarchy_.getPatchLevel(ilvl))
-                action(*lvl);
+        amr::onLevels(hierarchy_, std::forward<Action>(action), minlvl, maxlvl);
     }
 
 

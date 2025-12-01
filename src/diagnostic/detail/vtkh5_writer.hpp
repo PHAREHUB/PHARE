@@ -5,6 +5,8 @@
 #include "core/logger.hpp"
 #include "core/utilities/mpi_utils.hpp"
 
+#include "amr/amr_constants.hpp"
+
 #include "initializer/data_provider.hpp"
 
 #include "diagnostic/diagnostic_props.hpp"
@@ -16,7 +18,6 @@
 #include "hdf5/detail/h5/h5_file.hpp"
 
 
-
 namespace PHARE::diagnostic::vtkh5
 {
 using namespace hdf5::h5;
@@ -26,8 +27,6 @@ using namespace hdf5::h5;
 template<typename _ModelView>
 class H5Writer
 {
-    constexpr std::size_t static MAX_LEVEL = 10;
-
     struct NullTypeWriter : public H5TypeWriter<H5Writer<_ModelView>>
     {
         NullTypeWriter(auto& h5Writer)
@@ -106,7 +105,7 @@ public:
     auto& modelView() { return modelView_; }
     auto timestamp() const { return timestamp_; }
 
-    std::size_t minLevel = 0, maxLevel = MAX_LEVEL; // TODO hard-coded to be parametrized somehow
+    std::size_t minLevel = 0, maxLevel = amr::MAX_LEVEL;
     HiFile::AccessMode flags;
 
 
