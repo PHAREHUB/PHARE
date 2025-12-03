@@ -548,7 +548,9 @@ namespace solver
                 dump_(iLevel);
             }
 
-            if (iLevel != 0)
+            // If we are on the finest level, we cannot do the accumulation in the
+            // standardLevelSynchronization, so we need to do it per substep here
+            if (iLevel != 0 && !hierarchy->finerLevelExists(iLevel))
             {
                 auto ratio = (level->getRatioToCoarserLevel()).max();
                 auto coef  = 1. / (ratio * ratio);
@@ -585,6 +587,17 @@ namespace solver
 
                 toCoarser.reflux(iCoarseLevel, ilvl, syncTime);
                 coarseSolver.reflux(coarseModel, coarseLevel, toCoarser, syncTime);
+
+                // Now the fluxSum includes the contributions of the finer levels thanks to
+                // toCoarser.reflux(). We can now accumulate the fluxSum that will be used for the
+                // next coarser reflux.
+                // It is not needed to do this accumulation on the coarsest level.
+                if (iCoarseLevel != 0)
+                {
+                    auto ratio = (coarseLevel.getRatioToCoarserLevel()).max();
+                    auto coef  = 1. / (ratio * ratio);
+                    coarseSolver.accumulateFluxSum(coarseModel, coarseLevel, coef);
+                }
 
                 // recopy (patch) ghosts
                 toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);
