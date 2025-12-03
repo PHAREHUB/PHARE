@@ -65,9 +65,8 @@ struct AParticlesData
     bool overwriteInterior{true};
 
     SAMRAI::hier::Index oneIndex{SAMRAI::hier::IntVector::getOne(amr_dimension)};
-
-    SAMRAI::hier::Transformation transformation{destDomain.lower() - sourceDomain.upper()
-                                                - oneIndex};
+    SAMRAI::hier::Transformation transformation{
+        SAMRAI::hier::IntVector{destDomain.lower() - sourceDomain.upper() - oneIndex}};
 
 
     std::shared_ptr<SAMRAI::pdat::CellOverlap> cellOverlap{
