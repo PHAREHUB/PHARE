@@ -136,8 +136,8 @@ namespace amr
         static SAMRAI::hier::Box toFieldBox(SAMRAI::hier::Box box, PhysicalQuantity qty,
                                             GridLayoutT const& layout)
         {
-            SAMRAI::hier::IntVector lower = box.lower();
-            SAMRAI::hier::IntVector upper = box.upper();
+            auto const lower = box.lower();
+            auto const upper = box.upper();
             using PHARE::core::dirX;
             using PHARE::core::dirY;
             using PHARE::core::dirZ;

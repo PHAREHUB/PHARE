@@ -57,8 +57,8 @@ struct twoParticlesDataNDTouchingPeriodicBorders : public testing::Test
 
     bool overwriteInterior{true};
 
-    SAMRAI::hier::Transformation transformation{destPdat.getGhostBox().lower()
-                                                - sourceDomain.upper()};
+    SAMRAI::hier::Transformation transformation{
+        SAMRAI::hier::IntVector{destPdat.getGhostBox().lower() - sourceDomain.upper()}};
 
     std::shared_ptr<SAMRAI::pdat::CellOverlap> cellOverlap{
         std::dynamic_pointer_cast<SAMRAI::pdat::CellOverlap>(destGeom->calculateOverlap(
