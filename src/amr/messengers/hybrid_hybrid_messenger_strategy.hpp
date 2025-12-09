@@ -4,9 +4,9 @@
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/types.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
-#include "core/utilities/types.hpp"
 
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
@@ -247,6 +247,11 @@ namespace amr
             for (auto& refiner : popDensityBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
+            for (auto& refiner : ionFluxBorderMaxRefiners_)
+                refiner.registerLevel(hierarchy, level);
+            for (auto& refiner : ionDensityBorderMaxRefiners_)
+                refiner.registerLevel(hierarchy, level);
+
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
             // TODO this 'if' may not be OK if L0 is regrided
@@ -448,6 +453,8 @@ namespace amr
         {
             using value_type = FieldT::value_type;
 
+            assert(popDensityBorderSumRefiners_.size() % ions.size() == 0);
+
             std::size_t const fieldsPerPop = popDensityBorderSumRefiners_.size() / ions.size();
 
             for (std::size_t i = 0; i < ions.size(); ++i)
@@ -479,6 +486,20 @@ namespace amr
             }
         }
 
+
+        void fillIonBorders(IonsT& ions, level_t& level, double const fillTime) override
+        {
+            //
+            assert(ionFluxBorderMaxRefiners_.size() == 1);
+            assert(ionDensityBorderMaxRefiners_.size() == 2);
+
+            for (auto& refiner : ionFluxBorderMaxRefiners_)
+                refiner.fill(level.getLevelNumber(), fillTime);
+            for (auto& refiner : ionDensityBorderMaxRefiners_)
+                refiner.fill(level.getLevelNumber(), fillTime);
+
+            //
+        }
 
 
 
@@ -844,19 +865,33 @@ namespace amr
 
 
             for (auto const& vecfield : info->ghostFlux)
-            {
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
                         sumVec_.name(), vecfield, nullptr, sumVec_.name(),
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
-            }
 
             for (auto const& field : info->sumBorderFields)
                 popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
                         sumField_.name(), field, nullptr, sumField_.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+
+
+            assert(info->maxBorderFields.size() == 2);
+            for (auto const& field : info->maxBorderFields)
+                ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(
+                        field, field, nullptr, field,
+                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
+
+            assert(info->maxBorderVecFields.size() == 1);
+            for (auto const& vecfield : info->maxBorderVecFields)
+                ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
+                    .addStaticRefiner(
+                        vecfield, vecfield, nullptr, vecfield,
+                        std::make_shared<
+                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
 
 
@@ -1007,6 +1042,8 @@ namespace amr
         using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
+        using FieldGhostMaxRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderMax>;
+        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
@@ -1014,6 +1051,9 @@ namespace amr
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
+
+        std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
+        std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 

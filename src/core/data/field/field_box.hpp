@@ -68,6 +68,19 @@ void operate_on_fields(auto& dst, auto const& src)
         Operator{dst.field(*dst_it)}(src.field(*src_it));
 }
 
+void max_of_fields(auto& dst, auto const& src)
+{
+    assert(dst.lcl_box.size() == src.lcl_box.size());
+    auto src_it = src.lcl_box.begin();
+    auto dst_it = dst.lcl_box.begin();
+    for (; dst_it != dst.lcl_box.end(); ++src_it, ++dst_it)
+    {
+        auto& dst_val = dst.field(*dst_it);
+        auto& src_val = src.field(*src_it);
+        dst_val       = std::max(dst_val, src_val);
+    }
+}
+
 
 
 template<typename Field_t>

@@ -210,6 +210,7 @@ def compute_overlaps(patches, domain_box):
 
                     overlaps.append(
                         {
+                            "name": ref_pdname,
                             "pdatas": (ref_pd, cmp_pd),
                             "patches": (refPatch, cmpPatch),
                             "box": overlap,
@@ -217,9 +218,10 @@ def compute_overlaps(patches, domain_box):
                         }
                     )
 
-    def append(ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
+    def append(name, ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
         overlaps.append(
             {
+                "name": name,
                 "pdatas": (ref_pd, cmp_pd),
                 "patches": (refPatch, cmpPatch),
                 "box": overlap,
@@ -271,6 +273,7 @@ def compute_overlaps(patches, domain_box):
                                     other_ovrlp = toFieldBox(other_ovrlp, ref_pd)
 
                                 append(
+                                    ref_pdname,
                                     ref_pd,
                                     cmp_pd,
                                     ref_patch,
@@ -279,6 +282,7 @@ def compute_overlaps(patches, domain_box):
                                     (zero_offset, (-offset).tolist()),
                                 )
                                 append(
+                                    ref_pdname,
                                     ref_pd,
                                     cmp_pd,
                                     ref_patch,

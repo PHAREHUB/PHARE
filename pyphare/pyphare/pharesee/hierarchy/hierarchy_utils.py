@@ -612,6 +612,64 @@ class EqualityReport:
         return reversed(self.failed)
 
 
+def diff_hierarchy(hier):
+    import pyphare.core.box as boxm
+    from pyphare.pharesee.geometry import hierarchy_overlaps
+
+    diff_hier = hier.zeros_like()
+    time = list(diff_hier.time_hier.keys())[0]
+
+    def diff_patch_for(box, ilvl):
+        for patch in diff_hier.time_hier[time][ilvl]:
+            if patch.box == box:
+                return patch
+        raise RuntimeError("Patch not found")
+
+    found = 0
+    for ilvl, overlaps in hierarchy_overlaps(hier, time).items():
+        for overlap in overlaps:
+            pd1, pd2 = overlap["pdatas"]
+            ovrlp_box = overlap["box"]
+            offsets = overlap["offset"]
+            patch0, patch1 = overlap["patches"]
+            name = overlap["name"]
+
+            box_pd1 = boxm.amr_to_local(
+                ovrlp_box, boxm.shift(pd1.ghost_box, offsets[0])
+            )
+            box_pd2 = boxm.amr_to_local(
+                ovrlp_box, boxm.shift(pd2.ghost_box, offsets[1])
+            )
+
+            slice1 = boxm.select(pd1.dataset, box_pd1)
+            slice2 = boxm.select(pd2.dataset, box_pd2)
+
+            diff = np.abs(slice1 - slice2)
+
+            diff_patch0 = diff_patch_for(patch0.box, ilvl)
+            diff_patch1 = diff_patch_for(patch1.box, ilvl)
+
+            diff_data0 = diff_patch0.patch_datas[name].dataset
+            diff_data1 = diff_patch1.patch_datas[name].dataset
+            
+            dif0 = boxm.select(diff_data0, box_pd1)
+            dif1 = boxm.select(diff_data1, box_pd2)
+
+            if len(np.nonzero(diff)[0]):
+                
+                boxm.DataSelector(diff_data0)[box_pd1] = np.maximum(dif0, diff)
+                boxm.DataSelector(diff_data1)[box_pd2] = np.maximum(dif1, diff)
+
+                assert len(np.nonzero(diff_patch0.patch_datas[name].dataset)[0])
+                assert len(np.nonzero(diff_patch1.patch_datas[name].dataset)[0])
+                found = 1
+
+    if found:
+        assert diff_hier.has_non_zero()
+        
+    return diff_hier
+
+
 def hierarchy_compare(this, that, atol=1e-16):
     eqr = EqualityReport()
 

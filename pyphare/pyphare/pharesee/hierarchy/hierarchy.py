@@ -614,6 +614,53 @@ class PatchHierarchy(object):
 
         return final, dp(final, **kwargs)
 
+    def zeros_like(self):
+        """only works for fields and vecfields with 1 time"""
+        from copy import deepcopy
+
+        assert len(self.time_hier) == 1
+        copy = deepcopy(self)
+
+        hier = (list(copy.time_hier.values()))[0]
+
+        for ilvl, lvl in hier.items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    patch.patch_datas[key] = pd.zeros_like()
+        assert not copy.has_non_zero()
+        return copy
+
+    def has_non_zero(self):
+        """only works for fields and vecfields with 1 time"""
+
+        assert len(self.time_hier) == 1
+
+        hier = (list(self.time_hier.values()))[0]
+
+        for ilvl, lvl in hier.items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    check = np.nonzero(pd.dataset[:])
+                    if len(check[0]):
+                        return True
+        return False
+
+    def max(self, qty=None):
+        """only works for fields and vecfields with 1 time"""
+
+        assert len(self.time_hier) == 1
+
+        hier = (list(self.time_hier.values()))[0]
+        val = [0 for ilvl, lvl in hier.items()]
+
+        for ilvl, lvl in hier.items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    if qty is None or key == qty:
+                        val[ilvl] = max(np.max(pd.dataset), val[ilvl])
+
+        return val
+
 
 def finest_part_data(hierarchy, time=None):
     """

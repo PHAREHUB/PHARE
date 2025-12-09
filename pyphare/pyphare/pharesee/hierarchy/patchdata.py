@@ -191,6 +191,15 @@ class FieldData(PatchData):
             return tuple(g[select] for g in mesh)
         return mesh
 
+    def zeros_like(self):
+        from copy import deepcopy
+
+        copy = deepcopy(self)
+        assert id(copy.dataset) == id(self.dataset)
+        copy.dataset = np.zeros(deepcopy(self.dataset[:].shape))
+        assert id(copy.dataset) != id(self.dataset)
+        return copy
+
 
 class ParticleData(PatchData):
     """
