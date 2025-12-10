@@ -47,6 +47,7 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
         mem.try_emplace(diagnostic.quantity);
     auto& info = mem[diagnostic.quantity];
 
+    // assumes exists for all models
     auto const init = [&](auto const& level) -> std::optional<std::size_t> {
         for (auto* vecField : this->h5Writer_.modelView().getElectromagFields())
             if (diagnostic.quantity == "/" + vecField->name())
