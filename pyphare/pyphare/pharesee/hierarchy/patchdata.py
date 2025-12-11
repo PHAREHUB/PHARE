@@ -196,7 +196,7 @@ class FieldData(PatchData):
 
         copy = deepcopy(self)
         assert id(copy.dataset) == id(self.dataset)
-        copy.dataset = np.zeros(deepcopy(self.dataset[:].shape))
+        copy.dataset = np.zeros(deepcopy(self.dataset.shape))
         assert id(copy.dataset) != id(self.dataset)
         return copy
 
