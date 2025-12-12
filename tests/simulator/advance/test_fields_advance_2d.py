@@ -7,7 +7,7 @@ import unittest
 
 import matplotlib
 from ddt import data, ddt, unpack
-from pyphare.core.box import Box2D
+from pyphare.core.box import Box, Box2D
 
 from tests.simulator.test_advance import AdvanceTestBase
 
@@ -72,6 +72,40 @@ class AdvanceTest(AdvanceTestBase):
             time_step=time_step,
             time_step_nbr=time_step_nbr,
             nbr_part_per_cell=ppc,
+        )
+        self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
+
+    @data(
+        *per_interp(
+            {
+                "L0": [
+                    Box([00, 20], [19, 39]),
+                    Box([20, 00], [39, 19]),
+                    Box([20, 20], [39, 39]),
+                    Box([20, 40], [39, 59]),
+                    Box([40, 20], [59, 39]),
+                ]
+            }
+        ),
+    )
+    @unpack
+    def test_overlaped_fields_are_equal_with_periodic_refined_level(
+        self, interp_order, refinement_boxes
+    ):
+        print(f"{self._testMethodName}_{ndim}d")
+        time_step_nbr = 10
+        time_step = 0.001
+
+        datahier = self.getHierarchy(
+            ndim,
+            interp_order,
+            refinement_boxes,
+            "eb",
+            time_step=time_step,
+            largest_patch_size=10,
+            time_step_nbr=time_step_nbr,
+            nbr_part_per_cell=ppc,
+            cells=60,
         )
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
 
