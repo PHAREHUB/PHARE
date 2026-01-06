@@ -125,18 +125,19 @@ public:
     }
 
     template<typename Type, std::size_t cols>
-    auto create_resizable_2d_data_set(auto const& path)
+    auto create_resizable_2d_data_set(auto const& path, hsize_t const x_chunk = detail::CHUNK_SIZE,
+                                      hsize_t const y_chunk = 1)
     {
         return create_chunked_data_set<Type>(
-            path, std::vector<hsize_t>{detail::CHUNK_SIZE, cols},
+            path, std::vector<hsize_t>{x_chunk, y_chunk},
             HighFive::DataSpace({0, cols}, {HighFive::DataSpace::UNLIMITED, cols}));
     }
 
     template<typename Type>
-    auto create_resizable_1d_data_set(auto const& path)
+    auto create_resizable_1d_data_set(auto const& path, hsize_t const chunk = detail::CHUNK_SIZE)
     {
         return create_chunked_data_set<Type>(
-            path, std::vector<hsize_t>{detail::CHUNK_SIZE},
+            path, std::vector<hsize_t>{chunk},
             HighFive::DataSpace({0}, {HighFive::DataSpace::UNLIMITED}));
     }
 
@@ -242,7 +243,7 @@ public:
         }();
         auto const paths = core::mpi::collect(path, mpi_size);
 
-        for (int i = 0; i < mpi_size; i++)
+        for (int i = 0; i < mpi_size; ++i)
         {
             std::string const keyPath = paths[i] == "null" ? "" : paths[i];
             if (keyPath.empty())
