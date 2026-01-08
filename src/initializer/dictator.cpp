@@ -2,7 +2,6 @@
 #include "dict.hpp"
 #include "initializer/data_provider.hpp"
 
-
 #include "python3/pybind_def.hpp"
 
 #include <pybind11/functional.h>
