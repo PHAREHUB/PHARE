@@ -130,22 +130,31 @@ private:
 
 
     template<std::size_t N = 1>
-    void resize_data(int const ilvl, auto const& boxes);
+    void resize_data(int const ilvl, auto const& global_boxes, auto const& local_boxes);
 
     void resize_boxes(auto const& level, auto const& boxes);
 
     template<std::size_t N = 1>
     void resize(auto const& level)
     {
-        auto const ilvl = level.getLevelNumber();
-        auto boxes      = modelView.localLevelBoxes(ilvl);
-        resize_boxes(level, boxes);
-        for (auto& box : boxes)
-            box.upper += 1; // primal
-        resize_data<N>(ilvl, boxes);
+        auto const ilvl     = level.getLevelNumber();
+        auto local_boxes    = modelView.localLevelBoxes(ilvl);
+        auto boxes_per_rank = amr::boxesPerRankOn<dimension>(level);
+        resize_boxes(level, local_boxes);
+
+        auto const make_primal = [](auto& boxes) {
+            for (auto& box : boxes)
+                box.upper += 1;
+        };
+
+        for (auto& rank_boxes : boxes_per_rank)
+            make_primal(rank_boxes);
+        make_primal(local_boxes);
+
+        resize_data<N>(ilvl, boxes_per_rank, local_boxes);
     }
 
-    bool newFile;
+    bool const newFile;
     DiagnosticProperties const& diagnostic;
     H5TypeWriter<Writer>* const typewriter;
     HighFiveFile& h5file;
@@ -319,7 +328,9 @@ void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl) con
 
 template<typename Writer>
 template<std::size_t N>
-void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl, auto const& boxes)
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl,
+                                                           auto const& boxes_per_rank,
+                                                           auto const& local_boxes)
 {
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data");
 
@@ -337,14 +348,24 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl, auto 
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::1");
-    auto const rank_data_size = core::mpi::collect(
-        core::sum_from(boxes, [](auto const& b) { return b.size() * X_TIMES; }));
-    auto const new_size = data_offset + core::sum(rank_data_size);
+
+    auto const rank_data_sizes = core::generate(
+        [](auto const& boxes) {
+            return core::sum_from(boxes, [](auto const& b) { return b.size() * X_TIMES; });
+        },
+        boxes_per_rank);
+
+    if (rank_data_sizes[core::mpi::rank()]
+        != core::sum_from(local_boxes, [](auto const& box) { return box.size(); }) * X_TIMES)
+        throw std::runtime_error("Rank box size mismatch!");
+
+    auto const rank_data_size = core::sum(rank_data_sizes);
+    auto const new_size       = data_offset + rank_data_size;
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::2");
     point_data_ds.resize({new_size, N});
     for (int i = 0; i < core::mpi::rank(); ++i)
-        data_offset += rank_data_size[i];
+        data_offset += rank_data_sizes[i];
 }
 
 
@@ -355,7 +376,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(auto const& level, a
 
     auto const ilvl          = level.getLevelNumber();
     auto const lvl           = std::to_string(ilvl);
-    auto const rank_box_size = amr::boxesPerRankOn(level);
+    auto const rank_box_size = amr::numBoxesPerRankOn(level);
     auto const total_boxes   = core::sum(rank_box_size);
 
     {

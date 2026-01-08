@@ -104,7 +104,7 @@ def setup_model(ppc=100):
 
 out = "phare_outputs/vtk_diagnostic_test/"
 simArgs = {
-    "time_step_nbr": 1,
+    "time_step_nbr": 10,
     "final_time": 0.003,
     "boundary_types": "periodic",
     "cells": 40,
@@ -157,7 +157,13 @@ class VTKDiagnosticsTest(SimulatorTest):
         dump_all_diags(setup_model().populations)
         self.simulator = Simulator(simulation).run().reset()
 
-        # maybe use vtk python module to generate artifacts here
+        try:
+            from pyphare.pharesee.phare_vtk import plot as plot_vtk
+
+            plot_vtk(local_out + "/EM_B.vtkhdf", "B.vtk.png")
+            plot_vtk(local_out + "/EM_E.vtkhdf", "E.vtk.png")
+        except ModuleNotFoundError:
+            print("WARNING: vtk python module not found - cannot make plots")
 
 
 if __name__ == "__main__":
