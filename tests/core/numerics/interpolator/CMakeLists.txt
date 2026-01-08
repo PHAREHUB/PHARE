@@ -11,7 +11,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   )
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-  phare_core
+  phare_initializer
   ${GTEST_LIBS})
 
 add_custom_command(TARGET test-interpolator

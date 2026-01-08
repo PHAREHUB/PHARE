@@ -18,14 +18,17 @@ function(phare_github_get_or_update name dir repo branch)
   phare_git_get_or_update(${name} ${dir} https://github.com/${repo} ${branch})
 endfunction(phare_github_get_or_update)
 
+# cppdict
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/cppdict.cmake")
-add_subdirectory(subprojects/cppdict)
 
-# SAMRAI build option
+# HighFive
+include("${PHARE_PROJECT_DIR}/res/cmake/dep/highfive.cmake")
+
+# SAMRAI
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/samrai.cmake")
 
 
-# caliper build option
+# caliper
 #  enabled with -DCALIPER_ROOT=/path/to/caliper
 #    or -DwithCaliper, which downloads to subprojects dir
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/caliper.cmake")
@@ -34,9 +37,5 @@ include("${PHARE_PROJECT_DIR}/res/cmake/dep/caliper.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/pybind.cmake")
 
 
-# HighFive
-include("${PHARE_PROJECT_DIR}/res/cmake/dep/highfive.cmake")
-
-# Phlop
+# Phlop - enabled with -DwithPhlop
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/phlop.cmake")
-
