@@ -329,7 +329,7 @@ for (auto dim = 0; dim < dimension; ++dim)
     if (dr > this->layout_->cell_size(Direction::X) * 0.5)
     {
         throw std::runtime_error(
-            "Particle moved more than half a cell size in one step in 1nd update");
+            "Particle moved more than half a cell size in one step in 1st update");
     }
     particle.position[dim] += dr;
 }
