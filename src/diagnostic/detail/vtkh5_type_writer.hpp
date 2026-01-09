@@ -27,10 +27,88 @@ namespace PHARE::diagnostic::vtkh5
 
 using namespace hdf5::h5;
 
+
+template<std::size_t dim>
+struct HierarchyData
+{
+    // data is duplicated in lower dimensions to fit a 3d view
+    //  so 2d data is * 2
+    //  and 1d data is * 4
+    constexpr static auto X_TIMES = std::array{4, 2, 1}[dim - 1];
+
+    static auto& INSTANCE()
+    {
+        static HierarchyData data;
+        return data;
+    }
+
+    static void reset(auto& h5Writer) // called once per dump
+    {
+        PHARE_LOG_SCOPE(3, "HierarchyData<H5Writer::reset");
+
+        auto& data = INSTANCE();
+        data.level_data_size.resize(amr::MAX_LEVEL);
+        data.n_boxes_per_level.resize(amr::MAX_LEVEL);
+        data.level_boxes_per_rank.resize(amr::MAX_LEVEL);
+        data.level_rank_data_size.resize(amr::MAX_LEVEL);
+        data.flattened_lcl_level_boxes.resize(amr::MAX_LEVEL);
+
+        h5Writer.modelView().onLevels(
+            [&](auto const& level) {
+                auto const ilvl = level.getLevelNumber();
+
+                data.n_boxes_per_level[ilvl]    = 0;
+                data.level_boxes_per_rank[ilvl] = amr::boxesPerRankOn<dim>(level);
+                data.flattened_lcl_level_boxes[ilvl]
+                    = flatten_boxes(data.level_boxes_per_rank[ilvl][core::mpi::rank()]);
+
+                for (std::size_t i = 0; i < data.level_boxes_per_rank[ilvl].size(); ++i)
+                {
+                    data.level_rank_data_size[ilvl].resize(core::mpi::size());
+
+                    data.level_rank_data_size[ilvl][i] = 0;
+                    for (auto box : data.level_boxes_per_rank[ilvl][i])
+                    {
+                        box.upper += 1;                                             // all primal
+                        data.level_rank_data_size[ilvl][i] += box.size() * X_TIMES; // no ghosts
+                    }
+                    data.n_boxes_per_level[ilvl] += data.level_boxes_per_rank[ilvl][i].size();
+                }
+
+                data.level_data_size[ilvl] = core::sum(data.level_rank_data_size[ilvl]);
+            },
+            h5Writer.minLevel, h5Writer.maxLevel);
+    }
+
+
+    auto static flatten_boxes(auto const& boxes)
+    {
+        std::vector<std::array<int, dim * 2>> data(boxes.size());
+        std::size_t pos = 0;
+        for (auto const& box : boxes)
+        {
+            for (std::size_t i = 0; i < dim; ++i)
+            {
+                data[pos][0 + i * 2] = box.lower[i];
+                data[pos][1 + i * 2] = box.upper[i];
+            }
+            ++pos;
+        }
+        return data;
+    }
+
+    std::vector<std::vector<std::array<int, dim * 2>>> flattened_lcl_level_boxes;
+    std::vector<std::vector<std::vector<core::Box<int, dim>>>> level_boxes_per_rank;
+    std::vector<std::vector<int>> level_rank_data_size;
+    std::vector<int> n_boxes_per_level, level_data_size;
+};
+
+
 template<typename Writer>
 class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
     using FloatType                      = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
+    using HierData                       = HierarchyData<Writer::dimension>;
     using ModelView                      = Writer::ModelView;
     using physical_quantity_type         = ModelView::Field::physical_quantity_type;
     std::string static inline const base = "/VTKHDF/";
@@ -38,6 +116,7 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
     std::string static inline const step_level = base + "Steps/Level";
     auto static inline const level_data_path
         = [](auto const ilvl) { return level_base + std::to_string(ilvl) + "/PointData/data"; };
+
 
 public:
     static constexpr auto dimension = Writer::dimension;
@@ -50,27 +129,6 @@ public:
     virtual void setup(DiagnosticProperties&) = 0;
 
 protected:
-    // data is duplicated in lower dimensions to fit a 3d view
-    //  so 2d data is * 2
-    //  and 1d data is * 4
-    constexpr static auto X_TIMES = std::array{4, 2, 1}[dimension - 1];
-
-    auto static flatten_boxes(auto const& boxes)
-    {
-        std::vector<std::array<int, dimension * 2>> data(boxes.size());
-        std::size_t pos = 0;
-        for (auto const& box : boxes)
-        {
-            for (std::uint16_t i = 0; i < dimension; ++i)
-            {
-                data[pos][0 + i * 2] = box.lower[i];
-                data[pos][1 + i * 2] = box.upper[i];
-            }
-            ++pos;
-        }
-        return data;
-    }
-
     class VTKFileInitializer;
 
     class VTKFileWriter;
@@ -130,28 +188,16 @@ private:
 
 
     template<std::size_t N = 1>
-    void resize_data(int const ilvl, auto const& global_boxes, auto const& local_boxes);
+    void resize_data(int const ilvl);
 
-    void resize_boxes(auto const& level, auto const& boxes);
+    void resize_boxes(int const ilvl);
 
     template<std::size_t N = 1>
     void resize(auto const& level)
     {
-        auto const ilvl     = level.getLevelNumber();
-        auto local_boxes    = modelView.localLevelBoxes(ilvl);
-        auto boxes_per_rank = amr::boxesPerRankOn<dimension>(level);
-        resize_boxes(level, local_boxes);
-
-        auto const make_primal = [](auto& boxes) {
-            for (auto& box : boxes)
-                box.upper += 1;
-        };
-
-        for (auto& rank_boxes : boxes_per_rank)
-            make_primal(rank_boxes);
-        make_primal(local_boxes);
-
-        resize_data<N>(ilvl, boxes_per_rank, local_boxes);
+        auto const ilvl = level.getLevelNumber();
+        resize_boxes(ilvl);
+        resize_data<N>(ilvl);
     }
 
     bool const newFile;
@@ -266,7 +312,7 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto con
     auto ds            = h5file.getDataSet(level_data_path(layout.levelNumber()));
 
     PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField::0");
-    for (std::uint16_t i = 0; i < X_TIMES; ++i)
+    for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
     {
         ds.select({data_offset, 0}, {size, 1}).write_raw(frimal.data());
         data_offset += size;
@@ -287,7 +333,7 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto 
     auto ds         = h5file.getDataSet(level_data_path(layout.levelNumber()));
 
     PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField::0");
-    for (std::uint16_t i = 0; i < X_TIMES; ++i)
+    for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
     {
         for (std::uint32_t c = 0; c < N; ++c)
             ds.select({data_offset, c}, {size, 1}).write_raw(frimal[c].data());
@@ -328,16 +374,15 @@ void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl) con
 
 template<typename Writer>
 template<std::size_t N>
-void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl,
-                                                           auto const& boxes_per_rank,
-                                                           auto const& local_boxes)
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
 {
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data");
 
-    auto const lvl       = std::to_string(ilvl);
-    auto const data_path = level_data_path(ilvl);
-    auto point_data_ds   = h5file.getDataSet(data_path);
-    data_offset          = point_data_ds.getDimensions()[0];
+    auto const& hier_data = HierData::INSTANCE();
+    auto const lvl        = std::to_string(ilvl);
+    auto const data_path  = level_data_path(ilvl);
+    auto point_data_ds    = h5file.getDataSet(data_path);
+    data_offset           = point_data_ds.getDimensions()[0];
 
     {
         PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::0");
@@ -348,21 +393,10 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl,
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::1");
+    auto const& rank_data_sizes = hier_data.level_rank_data_size[ilvl];
+    auto const& level_data_size = hier_data.level_data_size[ilvl];
+    auto const new_size         = data_offset + level_data_size;
 
-    auto const rank_data_sizes = core::generate(
-        [](auto const& boxes) {
-            return core::sum_from(boxes, [](auto const& b) { return b.size() * X_TIMES; });
-        },
-        boxes_per_rank);
-
-    if (rank_data_sizes[core::mpi::rank()]
-        != core::sum_from(local_boxes, [](auto const& box) { return box.size(); }) * X_TIMES)
-        throw std::runtime_error("Rank box size mismatch!");
-
-    auto const rank_data_size = core::sum(rank_data_sizes);
-    auto const new_size       = data_offset + rank_data_size;
-
-    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::2");
     point_data_ds.resize({new_size, N});
     for (int i = 0; i < core::mpi::rank(); ++i)
         data_offset += rank_data_sizes[i];
@@ -370,14 +404,14 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl,
 
 
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(auto const& level, auto const& boxes)
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
 {
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes");
 
-    auto const ilvl          = level.getLevelNumber();
-    auto const lvl           = std::to_string(ilvl);
-    auto const rank_box_size = amr::numBoxesPerRankOn(level);
-    auto const total_boxes   = core::sum(rank_box_size);
+    auto const lvl          = std::to_string(ilvl);
+    auto const& hier_data   = HierData::INSTANCE();
+    auto const& rank_boxes  = hier_data.level_boxes_per_rank[ilvl];
+    auto const& total_boxes = hier_data.n_boxes_per_level[ilvl];
 
     {
         PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::0");
@@ -401,12 +435,12 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(auto const& level, a
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
     amrbox_ds.resize({box_offset + total_boxes, boxValsIn3D});
     for (int i = 0; i < core::mpi::rank(); ++i)
-        box_offset += rank_box_size[i];
+        box_offset += rank_boxes[i].size();
 
-    auto const vtk_boxes = flatten_boxes(boxes);
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::3");
-    amrbox_ds.select({box_offset, 0}, {boxes.size(), dimension * 2}).write(vtk_boxes);
+    amrbox_ds.select({box_offset, 0}, {rank_boxes[core::mpi::rank()].size(), dimension * 2})
+        .write(hier_data.flattened_lcl_level_boxes[ilvl]);
 }
 
 

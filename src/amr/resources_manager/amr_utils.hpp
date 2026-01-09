@@ -256,27 +256,6 @@ namespace amr
     }
 
 
-    auto numBoxesPerRankOn(auto const& level)
-    {
-        std::vector<std::size_t> boxesPerRank(core::mpi::size());
-
-        auto const& mapping = level.getProcessorMapping();
-
-        for (int i = 0; i < level.getGlobalNumberOfPatches(); ++i)
-            boxesPerRank[mapping.getProcessorAssignment(i)] += 1;
-
-        return boxesPerRank;
-    }
-
-
-
-    auto numBoxesPerRankOn(auto const& hierarchy, int const ilvl)
-    {
-        return numBoxesPerRankOn(hierarchy.getPatchLevel(ilvl));
-    }
-
-
-
     template<std::size_t dim>
     auto boxesPerRankOn(auto const& level)
     {
@@ -297,7 +276,7 @@ namespace amr
     template<std::size_t dim>
     auto boxesPerRankOn(auto const& hierarchy, int const ilvl)
     {
-        boxesPerRankOn<dim>(hierarchy.getPatchLevel(ilvl));
+        return boxesPerRankOn<dim>(hierarchy.getPatchLevel(ilvl));
     }
 
 

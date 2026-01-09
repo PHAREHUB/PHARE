@@ -155,6 +155,7 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
                                double timestamp)
 {
     timestamp_ = timestamp;
+    HierarchyData<dimension>::reset(*this);
 
     for (auto* diagnostic : diagnostics)
         if (!file_flags.count(diagnostic->type + diagnostic->quantity))
