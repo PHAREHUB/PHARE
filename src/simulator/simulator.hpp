@@ -204,6 +204,8 @@ private:
     void diagnostics_init(initializer::PHAREDict const&);
     void hybrid_init(initializer::PHAREDict const&);
     void mhd_init(initializer::PHAREDict const&);
+
+    void handle_dictionary_exception(core::DictionaryException const& e);
 };
 
 
@@ -448,6 +450,12 @@ double Simulator<opts>::advance(double dt)
         dt_new       = integrator_->advance(dt);
         currentTime_ = startTime_ + ((*timeStamper) += dt);
     }
+    catch (core::DictionaryException const& ex)
+    {
+        handle_dictionary_exception(ex);
+        error = std::string{"DICTIONARY EXCEPTION CAUGHT: "} + ex.what();
+        PHARE_LOG_ERROR(*error);
+    }
     catch (std::exception const& e)
     {
         error = std::string{"EXCEPTION CAUGHT: "} + e.what();
@@ -470,8 +478,17 @@ double Simulator<opts>::advance(double dt)
     return dt_new;
 }
 
-
-
+template<auto opts>
+void Simulator<opts>::handle_dictionary_exception(core::DictionaryException const& ex)
+{
+    if (ex["ID"].template to<std::string>() == "Updater::updatePopulations")
+    {
+        for (auto level_nbr = 0; level_nbr < hierarchy_->getMaxNumberOfLevels(); ++level_nbr)
+        {
+            this->dMan->dump_level(level_nbr, currentTime_);
+        }
+    }
+}
 
 template<auto opts>
 auto Simulator<opts>::find_model(std::string name)
