@@ -99,8 +99,6 @@ def try_system_binaries(log_dir):
 
 
 def log_runtime_config():
-    cpp_lib = cpp.cpp_lib()
-
     settings = RuntimeSettings(
         python_binary=sys.executable,
         python_version=python_version_from(sys.executable),
@@ -108,11 +106,11 @@ def log_runtime_config():
     )
 
     rank_info_dir = DOT_PHARE_DIR / "rank_info"
-    if cpp_lib.mpi_rank() == 0:
+    if cpp.mpi_rank() == 0:
         rank_info_dir.mkdir(exist_ok=True, parents=True)
-    cpp_lib.mpi_barrier()
+    cpp.mpi_barrier()
 
-    rank_dir = rank_info_dir / f"{cpp_lib.mpi_rank()}"
+    rank_dir = rank_info_dir / f"{cpp.mpi_rank()}"
     rank_dir.mkdir(exist_ok=True)
 
     with open(rank_dir / "runtime_config.json", "w") as f:

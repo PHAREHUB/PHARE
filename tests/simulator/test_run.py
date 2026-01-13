@@ -2,17 +2,14 @@
 
 import numpy as np
 from pathlib import Path
-import matplotlib as mpl
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.run import Run
 from tests.simulator import SimulatorTest
 
-mpl.use("Agg")
-
-cpp = cpp_lib()
+ph.NO_GUI()
 
 
 time_step = 0.005
