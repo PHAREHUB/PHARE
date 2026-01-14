@@ -180,6 +180,7 @@ private:
     double currentTime_        = 0;
     bool isInitialized         = false;
     std::size_t fineDumpLvlMax = 0;
+    bool allowEmergencyDumps   = false;
 
     std::shared_ptr<ResourceManager_t> resman_ptr;
 
@@ -260,6 +261,10 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict)
             };
         }
     }
+
+    this->allowEmergencyDumps = dict.contains("allow_emergency_dumps")
+                                    ? dict["allow_emergency_dumps"].template to<bool>()
+                                    : false;
 }
 
 
@@ -481,11 +486,14 @@ double Simulator<opts>::advance(double dt)
 template<auto opts>
 void Simulator<opts>::handle_dictionary_exception(core::DictionaryException const& ex)
 {
-    if (ex["ID"].template to<std::string>() == "Updater::updatePopulations")
+    if (this->allowEmergencyDumps)
     {
-        for (auto level_nbr = 0; level_nbr < hierarchy_->getMaxNumberOfLevels(); ++level_nbr)
+        if (ex["ID"].template to<std::string>() == "Updater::updatePopulations")
         {
-            this->dMan->dump_level(level_nbr, currentTime_);
+            for (auto level_nbr = 0; level_nbr < hierarchy_->getMaxNumberOfLevels(); ++level_nbr)
+            {
+                this->dMan->dump_level(level_nbr, currentTime_);
+            }
         }
     }
 }

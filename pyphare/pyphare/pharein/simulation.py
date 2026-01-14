@@ -496,6 +496,15 @@ def check_diag_options(**kwargs):
                 raise ValueError(
                     f"Invalid diagnostics mode {mode}, valid modes are {valid_modes}"
                 )
+        if (
+            "options" in diag_options
+            and "allow_emergency_dumps" in diag_options["options"]
+        ):
+            allow_emergency_dumps = diag_options["options"]["allow_emergency_dumps"]
+            if not isinstance(allow_emergency_dumps, bool):
+                raise ValueError(
+                    "Invalid allow_emergency_dumps option, should be a boolean"
+                )
     return diag_options
 
 
