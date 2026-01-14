@@ -770,7 +770,7 @@ def zero_patch_hierarchy_like(hier, **kwargs):
     cpy.time_hier = {}
     for time in times:
         cpy.time_hier[format_timestamp(time)] = deepcopy(hier.levels(time))
-        for ilvl, lvl in cpy.levels(time).items():
+        for lvl in cpy.levels(time).values():
             for patch in lvl:
                 for key, pd in patch.patch_datas.items():
                     patch.patch_datas[key] = zeros_like(pd)
@@ -778,7 +778,7 @@ def zero_patch_hierarchy_like(hier, **kwargs):
     return cpy
 
 
-def zero_field_data_like(field_data, **kwargs):
+def zero_field_data_like(field_data):
     from copy import deepcopy
 
     cpy = deepcopy(field_data)
@@ -825,23 +825,23 @@ def has_non_zero(that, **kwargs):
     return dispatch[type(that)](that, **kwargs)
 
 
-def max_from_field_data(field_data, **kwargs):
+def max_from_field_data(field_data):
     return np.max(field_data.dataset[:])
 
 
 def max_from_patch_hierarchy(hier, time, **kwargs):
     qty = kwargs.get("qty")
-    val = []
+    vals = {}
     for ilvl, lvl in hier.levels(time).items():
         for patch in lvl:
             for key, pd in patch.patch_datas.items():
                 if qty is None or key == qty:
-                    if len(val) == ilvl:
-                        val.append(max_from(pd))
+                    if ilvl in vals:
+                        vals[ilvl] = max(max_from(pd), vals[ilvl])
                     else:
-                        val[ilvl] = max(max_from(pd), val[ilvl])
+                        vals[ilvl] = max_from(pd)
 
-    return val
+    return vals
 
 
 def max_from(that, **kwargs):

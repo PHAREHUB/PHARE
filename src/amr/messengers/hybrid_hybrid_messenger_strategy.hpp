@@ -487,9 +487,8 @@ namespace amr
         }
 
 
-        void fillIonBorders(IonsT& ions, level_t& level, double const fillTime) override
+        void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
         {
-            //
             assert(ionFluxBorderMaxRefiners_.size() == 1);
             assert(ionDensityBorderMaxRefiners_.size() == 2);
 
@@ -497,8 +496,6 @@ namespace amr
                 refiner.fill(level.getLevelNumber(), fillTime);
             for (auto& refiner : ionDensityBorderMaxRefiners_)
                 refiner.fill(level.getLevelNumber(), fillTime);
-
-            //
         }
 
 

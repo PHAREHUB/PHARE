@@ -2,7 +2,6 @@
 
 import os
 import sys
-import numpy as np
 from pathlib import Path
 
 import pyphare.pharein as ph
@@ -14,18 +13,17 @@ from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 from tests.simulator.test_advance import AdvanceTestBase
 
 ph.NO_GUI()
-
 cpp = cpp_lib()
 
-diag_dir = sys.argv[1] if len(sys.argv) > 1 else "phare_outputs/advance/test_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts_6/2/2/3"
-print("diag_dir", os.getcwd(), diag_dir)
+if len(sys.argv) == 1:
+    print("diag dir expected as first argument")
+    sys.exit(1)
+
+diag_dir = sys.argv[1]
 
 
 def plot_file_for_qty(plot_dir, qty, time, extra=""):
     return f"{plot_dir}/harris_t{"{:.10f}".format(time)}_{qty}_{extra}.png"
-
-
-
 
 
 def diff(new_time):
@@ -38,13 +36,15 @@ def diff(new_time):
 
     for ilvl in range(ranks.levelNbr()):
         ranks.plot(
-            filename=plot_file_for_qty(plot_dir, f"ranks", new_time, f"L{ilvl}"),
+            filename=plot_file_for_qty(plot_dir, "ranks", new_time, f"L{ilvl}"),
             plot_patches=True,
             levels=(ilvl,),
             dpi=2000,
         )
 
-    differ = hootils.overlap_diff_hierarchy(run.GetE(new_time, all_primal=False), new_time)
+    differ = hootils.overlap_diff_hierarchy(
+        run.GetE(new_time, all_primal=False), new_time
+    )
     print("E max: ", hootils.max_from(differ, time=new_time))
     print("Ex max: ", hootils.max_from(differ, time=new_time, qty="Ex"))
     print("Ey max: ", hootils.max_from(differ, time=new_time, qty="Ey"))
@@ -65,7 +65,9 @@ def diff(new_time):
                     dpi=2000,
                 )
 
-    differ = hootils.overlap_diff_hierarchy(run.GetB(new_time, all_primal=False), new_time)
+    differ = hootils.overlap_diff_hierarchy(
+        run.GetB(new_time, all_primal=False), new_time
+    )
     print("B max: ", hootils.max_from(differ, time=new_time))
     print("Bx max: ", hootils.max_from(differ, time=new_time, qty="Bx"))
     print("By max: ", hootils.max_from(differ, time=new_time, qty="By"))
@@ -115,6 +117,7 @@ def diff(new_time):
                 dpi=1000,
             )
 
+
 def get_time(path, time=None, datahier=None):
     if time is not None:
         time = "{:.10f}".format(time)
@@ -126,6 +129,7 @@ def get_time(path, time=None, datahier=None):
 
 
 test = AdvanceTestBase(rethrow=True)  # change to False for debugging images
+
 
 def check_time(new_time):
     if cpp.mpi_rank() == 0:
@@ -155,8 +159,6 @@ def check_diags():
         check_time(time)
 
 
-
 if __name__ == "__main__":
     startMPI()
     check_diags()
-
