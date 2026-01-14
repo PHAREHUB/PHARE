@@ -878,7 +878,7 @@ namespace amr
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
 
-            assert(info->maxBorderFields.size() == 2);
+            assert(info->maxBorderFields.size() == 2); // mass & charge densities
             for (auto const& field : info->maxBorderFields)
                 ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(

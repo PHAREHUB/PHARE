@@ -9,8 +9,7 @@ import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.hierarchy.hierarchy_utils import diff_hierarchy
-
+from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 
 from tests.simulator.test_advance import AdvanceTestBase
 
@@ -45,13 +44,13 @@ def diff(new_time):
             dpi=2000,
         )
 
-    differ = diff_hierarchy(run.GetE(new_time, all_primal=False))
-    print("E max: ", differ.max())
-    print("Ex max: ", differ.max("Ex"))
-    print("Ey max: ", differ.max("Ey"))
-    print("Ez max: ", differ.max("Ez"))
+    differ = hootils.overlap_diff_hierarchy(run.GetE(new_time, all_primal=False), new_time)
+    print("E max: ", hootils.max_from(differ, time=new_time))
+    print("Ex max: ", hootils.max_from(differ, time=new_time, qty="Ex"))
+    print("Ey max: ", hootils.max_from(differ, time=new_time, qty="Ey"))
+    print("Ez max: ", hootils.max_from(differ, time=new_time, qty="Ez"))
 
-    if differ.has_non_zero():
+    if hootils.has_non_zero(differ, time=new_time):
         for c in ["x", "y", "z"]:
             for ilvl in range(differ.levelNbr()):
                 differ.plot(
@@ -66,12 +65,12 @@ def diff(new_time):
                     dpi=2000,
                 )
 
-    differ = diff_hierarchy(run.GetB(new_time, all_primal=False))
-    print("B max: ", differ.max())
-    print("Bx max: ", differ.max("Bx"))
-    print("By max: ", differ.max("By"))
-    print("Bz max: ", differ.max("Bz"))
-    if differ.has_non_zero():
+    differ = hootils.overlap_diff_hierarchy(run.GetB(new_time, all_primal=False), new_time)
+    print("B max: ", hootils.max_from(differ, time=new_time))
+    print("Bx max: ", hootils.max_from(differ, time=new_time, qty="Bx"))
+    print("By max: ", hootils.max_from(differ, time=new_time, qty="By"))
+    print("Bz max: ", hootils.max_from(differ, time=new_time, qty="Bz"))
+    if hootils.has_non_zero(differ, time=new_time):
         for c in ["x", "y", "z"]:
             for ilvl in range(differ.levelNbr()):
                 differ.plot(
@@ -86,10 +85,10 @@ def diff(new_time):
                     dpi=2000,
                 )
 
-    differ = diff_hierarchy(run.GetNi(new_time))
-    print("ion charge rho max: ", differ.max())
+    differ = hootils.overlap_diff_hierarchy(run.GetNi(new_time), new_time)
+    print("ion charge rho max: ", hootils.max_from(differ, time=new_time))
 
-    if differ.has_non_zero():
+    if hootils.has_non_zero(differ, time=new_time):
         for ilvl in range(differ.levelNbr()):
             differ.plot(
                 filename=plot_file_for_qty(
@@ -102,10 +101,10 @@ def diff(new_time):
                 dpi=2000,
             )
 
-    differ = diff_hierarchy(run.GetMassDensity(new_time))
-    print("ion mass rho max: ", differ.max())
+    differ = hootils.overlap_diff_hierarchy(run.GetMassDensity(new_time), new_time)
+    print("ion mass rho max: ", hootils.max_from(differ, time=new_time))
 
-    if differ.has_non_zero():
+    if hootils.has_non_zero(differ, time=new_time):
         for ilvl in range(differ.levelNbr()):
             differ.plot(
                 filename=plot_file_for_qty(plot_dir, f"ionMass", new_time, f"L{ilvl}"),

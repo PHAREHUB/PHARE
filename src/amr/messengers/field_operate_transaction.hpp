@@ -14,8 +14,20 @@ namespace PHARE::amr
 {
 
 
-/** * @brief FieldBorderOpTransaction is TODO
+/** * @brief FieldBorderOpTransaction is provided to perform operations on border data shared
+ * across adjacent patches with overlapping ghost boxes
  *
+ * A FieldBorderOpTransaction is a SAMRAI Transaction created by the
+ * FieldBorderOpTransactionFactory provided (via createShedule) to schedules that executes
+ * the provided operation on ghost box overlaps.
+ *
+ * One context this is used for is due to the lack of neighbor particle contributions,
+ * some domain nodes and ghost nodes have incomplete moments after deposition.
+ * The complement of these nodes is what has been deposited on (also incomplete) neighbor nodes.
+ *
+ * Default SAMRAI transaction calls PatchData::copy and PatchData::packStream
+ * This transaction defines these override to these methods to call specific methods
+ * of FieldData to perform arbitrary operations.
  */
 template<typename FieldData_t, typename Operation>
 class FieldBorderOpTransaction : public SAMRAI::tbox::Transaction

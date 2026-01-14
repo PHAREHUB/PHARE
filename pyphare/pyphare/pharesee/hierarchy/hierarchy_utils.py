@@ -612,15 +612,18 @@ class EqualityReport:
         return reversed(self.failed)
 
 
-def diff_hierarchy(hier):
+def overlap_diff_hierarchy(hier, time):
+    """
+    This function creates a hierarchy whose values are the maximum difference
+     there can be for each node existing in multiple patches's ghost boxes
+    """
     import pyphare.core.box as boxm
     from pyphare.pharesee.geometry import hierarchy_overlaps
 
-    diff_hier = hier.zeros_like()
-    time = list(diff_hier.time_hier.keys())[0]
+    diff_hier = zeros_like(hier, time=time)
 
     def diff_patch_for(box, ilvl):
-        for patch in diff_hier.time_hier[time][ilvl]:
+        for patch in diff_hier.levels(time)[ilvl]:
             if patch.box == box:
                 return patch
         raise RuntimeError("Patch not found")
@@ -651,12 +654,11 @@ def diff_hierarchy(hier):
 
             diff_data0 = diff_patch0.patch_datas[name].dataset
             diff_data1 = diff_patch1.patch_datas[name].dataset
-            
+
             dif0 = boxm.select(diff_data0, box_pd1)
             dif1 = boxm.select(diff_data1, box_pd2)
 
             if len(np.nonzero(diff)[0]):
-                
                 boxm.DataSelector(diff_data0)[box_pd1] = np.maximum(dif0, diff)
                 boxm.DataSelector(diff_data1)[box_pd2] = np.maximum(dif1, diff)
 
@@ -665,8 +667,8 @@ def diff_hierarchy(hier):
                 found = 1
 
     if found:
-        assert diff_hier.has_non_zero()
-        
+        assert has_non_zero(diff_hier, time=time)
+
     return diff_hier
 
 
@@ -757,3 +759,98 @@ def single_patch_for_LO(hier, qties=None, skip=None):
                 else:
                     raise RuntimeError("unexpected state")
     return cier
+
+
+def zero_patch_hierarchy_like(hier, **kwargs):
+    from copy import deepcopy
+
+    times = phut.listify(kwargs.get("time", hier.times()))
+
+    cpy = deepcopy(hier)
+    cpy.time_hier = {}
+    for time in times:
+        cpy.time_hier[format_timestamp(time)] = deepcopy(hier.levels(time))
+        for ilvl, lvl in cpy.levels(time).items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    patch.patch_datas[key] = zeros_like(pd)
+        assert not has_non_zero(cpy, time=time)
+    return cpy
+
+
+def zero_field_data_like(field_data, **kwargs):
+    from copy import deepcopy
+
+    cpy = deepcopy(field_data)
+    assert id(cpy.dataset) == id(field_data.dataset)
+    cpy.dataset = np.zeros(field_data.dataset.shape)
+    assert id(cpy.dataset) != id(field_data.dataset)
+    return cpy
+
+
+def zeros_like(that, **kwargs):
+    dispatch = {
+        PatchHierarchy: zero_patch_hierarchy_like,
+        FieldData: zero_field_data_like,
+    }
+    if type(that) not in dispatch:
+        raise RuntimeError(
+            "Cannot resolve type to zero_like, consider updating if required"
+        )
+    return dispatch[type(that)](that, **kwargs)
+
+
+def field_data_has_non_zero(field_data, **kwargs):
+    return bool(len(np.nonzero(field_data.dataset[:])[0]))
+
+
+def patch_hierarchy_has_non_zero(hier, time, **kwargs):
+    for ilvl, lvl in hier.levels(time).items():
+        for patch in lvl:
+            for pd in patch.patch_datas.values():
+                if has_non_zero(pd):
+                    return True
+    return False
+
+
+def has_non_zero(that, **kwargs):
+    dispatch = {
+        PatchHierarchy: patch_hierarchy_has_non_zero,
+        FieldData: field_data_has_non_zero,
+    }
+    if type(that) not in dispatch:
+        raise RuntimeError(
+            "Cannot resolve type to has_non_zero, consider updating if required"
+        )
+    return dispatch[type(that)](that, **kwargs)
+
+
+def max_from_field_data(field_data, **kwargs):
+    return np.max(field_data.dataset[:])
+
+
+def max_from_patch_hierarchy(hier, time, **kwargs):
+    qty = kwargs.get("qty")
+    val = []
+    for ilvl, lvl in hier.levels(time).items():
+        for patch in lvl:
+            for key, pd in patch.patch_datas.items():
+                if qty is None or key == qty:
+                    if len(val) == ilvl:
+                        val.append(max_from(pd))
+                    else:
+                        val[ilvl] = max(max_from(pd), val[ilvl])
+
+    return val
+
+
+def max_from(that, **kwargs):
+    dispatch = {
+        PatchHierarchy: max_from_patch_hierarchy,
+        FieldData: max_from_field_data,
+    }
+    if type(that) not in dispatch:
+        raise RuntimeError(
+            "Cannot resolve type to max_from, consider updating if required"
+        )
+    return dispatch[type(that)](that, **kwargs)
