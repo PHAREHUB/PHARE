@@ -1,6 +1,7 @@
 import os
 import glob
 import numpy as np
+from pathlib import Path
 
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.hierarchy import ScalarField, VectorField
@@ -36,7 +37,7 @@ class Run:
     def __init__(self, path, default_time=None):
         self.path = path
         self.default_time_ = default_time
-        self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
+        self.available_diags = self._available_diags()
 
     def _get_hierarchy(self, times, filename, hier=None, **kwargs):
         from pyphare.core.box import Box
@@ -122,7 +123,7 @@ class Run:
         return ScalarField(self._get(hier, time, merged, interp))
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        hier = self._get_hier_for(time, "ions_bulkVelocity", **kwargs)
         return VectorField(self._get(hier, time, merged, interp))
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
@@ -288,3 +289,21 @@ class Run:
 
     def times(self, qty):
         return self.all_times()[qty]
+
+    def _available_diags(self):
+        files = glob.glob(os.path.join(self.path, "*.h5"))
+        if files:
+            return files
+        files = glob.glob(os.path.join(self.path, "*.vtkhdf"))
+        if files:
+            return files
+        raise RuntimeError(f"No HDF5 files found at: {self.path}")
+
+    def _get_hier_for(self, time, qty, **kwargs):
+        path = Path(self.path) / f"{qty}.h5"
+        if path.exists():
+            return self._get_hierarchy(time, f"{qty}.h5", **kwargs)
+        path = Path(self.path) / f"{qty}.vtkhdf"
+        if path.exists():
+            return self._get_hierarchy(time, f"{qty}.vtkhdf", **kwargs)
+        raise RuntimeError(f"No HDF5 file found for: {qty}")

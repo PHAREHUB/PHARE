@@ -2,10 +2,10 @@
 #
 
 import copy
-import time
 import datetime
 import unittest
 import numpy as np
+from time import sleep
 from pathlib import Path
 
 from datetime import timedelta
@@ -349,7 +349,7 @@ class RestartsTest(SimulatorTest):
         # autodump false to ignore possible init dump
         simulator = Simulator(ph.global_vars.sim, auto_dump=False).initialize()
 
-        time.sleep(5)
+        sleep(5)
         simulator.advance().dump()  # should trigger restart on "restart_idx" advance
         simulator.advance().dump()
         simulator.reset()
@@ -431,7 +431,7 @@ class RestartsTest(SimulatorTest):
         Dim / interp / etc are not relevant here
         """
         ndim, interp = 1, 1
-        print(f"test_advanced_restarts_options")
+        print("test_advanced_restarts_options")
 
         simput = copy.deepcopy(
             dup(
@@ -456,10 +456,9 @@ class RestartsTest(SimulatorTest):
 
         ph.global_vars.sim = None
         ph.global_vars.sim = ph.Simulation(**simput)
-        model = setup_model()
+        setup_model()
         Simulator(ph.global_vars.sim).run().reset()
         self.register_diag_dir_for_cleanup(local_out)
-        diag_dir0 = local_out
 
         simput["restart_options"]["restart_time"] = "auto"
         self.assertEqual(0.01, ph.restarts.restart_time(simput["restart_options"]))

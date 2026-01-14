@@ -49,10 +49,7 @@ class VectorField(PatchHierarchy):
         h_self = rename(self, names_self)
         h_other = rename(other, names_other)
 
-        h = compute_hier_from(
-            _compute_add,
-            (h_self, h_other),
-        )
+        h = compute_hier_from(_compute_add, (h_self, h_other))
 
         self = rename(h_self, names_self_kept)  # needed ?
         other = rename(h_other, names_other_kept)

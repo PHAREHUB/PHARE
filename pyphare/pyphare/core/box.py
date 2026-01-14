@@ -37,6 +37,10 @@ class Box:
         """returns the number of cells in the box"""
         return self.shape.prod()
 
+    def size(self):
+        """returns the number of cells in the box"""
+        return self.nCells()
+
     def __str__(self):
         return "Box({},{})".format(self.lower.tolist(), self.upper.tolist())
 

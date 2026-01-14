@@ -172,11 +172,12 @@ def extract_patchdatas(hierarchies, ilvl, t, ipatch):
 
 
 def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
+    from copy import deepcopy
+
     new_patch_datas = {}
     datas = compute(patchdatas, patch_id=id, **kwargs)
     for data in datas:
-        pd = FieldData(layout, data["name"], data["data"], centering=data["centering"])
-        new_patch_datas[data["name"]] = pd
+        new_patch_datas[data["name"]] = deepcopy(data["data"])
     return new_patch_datas
 
 
@@ -451,13 +452,7 @@ def compute_rename(patch_datas, **kwargs):
     pd_attrs = []
 
     for new_name, pd_name in zip(new_names, patch_datas):
-        pd_attrs.append(
-            {
-                "name": new_name,
-                "data": patch_datas[pd_name].dataset,
-                "centering": patch_datas[pd_name].centerings,
-            }
-        )
+        pd_attrs.append({"name": new_name, "data": patch_datas[pd_name]})
 
     return tuple(pd_attrs)
 
@@ -596,7 +591,7 @@ class EqualityReport:
                     phut.assert_fp_any_all_close(ref[:], cmp[:], atol=1e-16)
             except AssertionError as e:
                 print(e)
-        return self.failed[0][0]
+        return self.failed[0][0] if self.failed else "=="
 
     def __call__(self, reason, ref=None, cmp=None):
         self.failed.append((reason, ref, cmp))
@@ -646,8 +641,12 @@ def hierarchy_compare(this, that, atol=1e-16):
                     patch_data_ref = patch_ref.patch_datas[patch_data_key]
                     patch_data_cmp = patch_cmp.patch_datas[patch_data_key]
 
-                    if not patch_data_cmp.compare(patch_data_ref, atol=atol):
+                    ret = patch_data_cmp.compare(patch_data_ref, atol=atol)
+                    suc = ret if type(ret) is bool else bool(ret)
+                    if not suc:
                         msg = f"data mismatch: {type(patch_data_ref).__name__} {patch_data_key}"
+                        if type(ret) is not bool:
+                            msg += "\n" + str(ret)
                         eqr(msg, patch_data_cmp, patch_data_ref)
 
                 if not eqr:

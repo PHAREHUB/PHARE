@@ -1,7 +1,6 @@
 #
 #
 
-import os
 import unittest
 import numpy as np
 from datetime import datetime
@@ -251,7 +250,7 @@ class SimulatorTest(unittest.TestCase):
         from pyphare.cpp import cpp_lib
 
         cpp = cpp_lib()
-        return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}/{post_path}"
+        return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}{'/'+post_path if post_path else ''}"
 
     def clean_up_diags_dirs(self):
         from pyphare.cpp import cpp_lib

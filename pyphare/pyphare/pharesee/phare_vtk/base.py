@@ -85,7 +85,6 @@ class VtkFile:
         self.reader.UpdateTimeStep(time if time else self.times[-1])
 
         _in = self.reader
-        out = [None] * len(phases)
         for i in range(len(phases)):
             ret = phases[i](_in, array_name=array_name)
             for key, val in ret:
@@ -97,9 +96,6 @@ class VtkFile:
         self.mapper = _in
         self.bounds = bounds_in(self.reader)
         self.spacing = self.reader.GetOutput().GetDataSet(0, 0).GetSpacing()
-
-    def _count_type(self, endswith):
-        return sum([1 for out in self.outputs if type(out).__name__.endswith(endswith)])
 
 
 class VtkFieldFile(VtkFile):

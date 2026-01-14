@@ -3,7 +3,8 @@
 #
 
 
-from .base import *
+import vtk
+from .base import VtkTensorFieldFile
 
 
 def plot(vtk_file, out_file="vtk.png"):

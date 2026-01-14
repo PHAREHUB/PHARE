@@ -3,14 +3,16 @@
 import unittest
 import itertools
 import numpy as np
-
-from pathlib import Path
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
+from pyphare.pharesee.run import Run
+
+from pyphare.core import phare_utilities as phut
 from pyphare.simulator.simulator import startMPI
 from pyphare.simulator.simulator import Simulator
+from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 
 from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
@@ -102,7 +104,7 @@ def setup_model(ppc=100):
     return model
 
 
-out = "phare_outputs/vtk_diagnostic_test/"
+out = "phare_outputs/vtk_diagnostic_test"
 simArgs = {
     "time_step_nbr": 10,
     "final_time": 0.003,
@@ -134,36 +136,61 @@ class VTKDiagnosticsTest(SimulatorTest):
         super(VTKDiagnosticsTest, self).__init__(*args, **kwargs)
         self.simulator = None
 
-    def tearDown(self):
-        if self.simulator is not None:
-            self.simulator.reset()
-        self.simulator = None
+    def _run(self, ndim, interp, simInput, diag_dir="", **kwargs):
+        for key in ["cells", "dl", "boundary_types"]:
+            simInput[key] = list(phut.np_array_ify(simInput[key], ndim))
+        local_out = self.unique_diag_dir_for_test_case(
+            f"{out}{'/'+diag_dir if diag_dir else ''}", ndim, interp
+        )
+        simInput["diag_options"]["options"]["dir"] = local_out
+        simulation = ph.Simulation(**simInput)
+        self.assertTrue(len(simulation.cells) == ndim)
+        dump_all_diags(setup_model().populations)
+        Simulator(simulation).run().reset()
         ph.global_vars.sim = None
-        super().tearDown()
+        return local_out
 
     @data(*permute({}))
     @unpack
     def test_dump_diags(self, ndim, interp, simInput):
         print("test_dump_diags dim/interp:{}/{}".format(ndim, interp))
-        for key in ["cells", "dl", "boundary_types"]:
-            simInput[key] = [simInput[key] for d in range(ndim)]
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
-        local_out = self.unique_diag_dir_for_test_case(f"{out}/test_vtk", ndim, interp)
-        simInput["diag_options"]["options"]["dir"] = local_out
-        simInput["diag_options"]["format"] = "pharevtkhdf"
-        simulation = ph.Simulation(**simInput)
-        self.assertTrue(len(simulation.cells) == ndim)
-        dump_all_diags(setup_model().populations)
-        self.simulator = Simulator(simulation).run().reset()
+        local_out = self._run(ndim, interp, simInput)
 
         try:
             from pyphare.pharesee.phare_vtk import plot as plot_vtk
 
-            plot_vtk(local_out + "/EM_B.vtkhdf", "B.vtk.png")
-            plot_vtk(local_out + "/EM_E.vtkhdf", "E.vtk.png")
+            plot_vtk(local_out + "/EM_B.vtkhdf", f"B{ndim}d.vtk.png")
+            plot_vtk(local_out + "/EM_E.vtkhdf", f"E{ndim}d.vtk.png")
         except ModuleNotFoundError:
             print("WARNING: vtk python module not found - cannot make plots")
+
+    @data(*permute({}))
+    @unpack
+    def test_compare_l0_primal_to_phareh5(self, ndim, interp, simInput):
+        print("test_compare_l0_primal_to_phareh5 dim/interp:{}/{}".format(ndim, interp))
+
+        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
+        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+
+        vtk_diags = self._run(ndim, interp, simInput, "test_vtk")
+
+        simInput["diag_options"]["format"] = "phareh5"
+        phareh5_diags = self._run(ndim, interp, simInput, "test_h5")
+
+        # not binary == with more than 2 cores
+        atol = 0 if cpp.mpi_size() <= 2 else 1e-17
+
+        for time in [0, simInput["final_time"]]:
+            # choose all primal value generally
+            phareh5_hier = Run(phareh5_diags).GetVi(time)
+            vtk_hier = Run(vtk_diags).GetVi(time)
+
+            eqr = hootils.hierarchy_compare(phareh5_hier, vtk_hier, atol)
+            if not eqr:
+                print(eqr)
+            self.assertTrue(eqr)
 
 
 if __name__ == "__main__":
