@@ -9,6 +9,7 @@
 
 using namespace PHARE::core;
 
+using SimOpts = PHARE::SimOpts<>;
 
 
 using Param  = std::vector<double> const&;
@@ -168,7 +169,7 @@ struct DimInterp
 template<std::size_t dim, std::size_t interp_order>
 struct ElectromagBuffers
 {
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
+    constexpr static SimOpts opts{dim, interp_order};
     using PHARETypes       = PHARE::core::PHARE_Types<opts>;
     using Grid             = typename PHARETypes::Grid_t;
     using GridLayout       = typename PHARETypes::GridLayout_t;
@@ -204,7 +205,7 @@ struct ElectromagBuffers
 template<std::size_t dim, std::size_t interp_order>
 struct IonsBuffers
 {
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
+    constexpr static SimOpts opts{dim, interp_order};
     using PHARETypes                 = PHARE::core::PHARE_Types<opts>;
     using UsableVecFieldND           = UsableVecField<dim>;
     using Grid                       = typename PHARETypes::Grid_t;
@@ -363,7 +364,7 @@ struct IonUpdaterTest : public ::testing::Test
 {
     static constexpr auto dim          = DimInterpT::dimension;
     static constexpr auto interp_order = DimInterpT::interp_order;
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
+    constexpr static SimOpts opts{dim, interp_order};
     using PHARETypes    = PHARE::core::PHARE_Types<opts>;
     using Ions          = typename PHARETypes::Ions_t;
     using Electromag    = typename PHARETypes::Electromag_t;

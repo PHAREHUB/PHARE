@@ -4,10 +4,11 @@
 #include "phare/phare.hpp"
 #include "initializer/python_data_provider.hpp"
 #include "tests/core/data/field/test_field.hpp"
+#include "python3/mhd_defaults/default_mhd_time_stepper.hpp"
 
 #include "gtest/gtest.h"
 
-using SimOpts = PHARE::SimOpts;
+using SimOpts = PHARE::SimOpts<>;
 
 struct __attribute__((visibility("hidden"))) StaticIntepreter
 {

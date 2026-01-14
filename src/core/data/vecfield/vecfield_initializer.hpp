@@ -1,12 +1,12 @@
 #ifndef VECFIELD_INITIALIZER_HPP
 #define VECFIELD_INITIALIZER_HPP
 
+#include <array>
+
+#include "core/data/field/initializers/field_user_initializer.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
-#include "core/data/field/initializers/field_user_initializer.hpp"
-
-#include <array>
 
 namespace PHARE
 {
@@ -24,7 +24,6 @@ namespace core
             , z_{dict["z_component"].template to<initializer::InitFunction<dimension>>()}
         {
         }
-
 
         template<typename VecField, typename GridLayout>
         void initialize(VecField& v, GridLayout const& layout)

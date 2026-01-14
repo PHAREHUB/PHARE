@@ -240,7 +240,10 @@ class DiagnosticsTest(unittest.TestCase):
                                 == pd.dataset.size() * refined_particle_nbr
                             )
 
-            self.assertEqual(particle_files, ph.global_vars.sim.model.nbr_populations())
+            self.assertEqual(
+                particle_files,
+                ph.global_vars.sim.maxwellian_fluid_model.nbr_populations(),
+            )
 
             self.simulator = None
             ph.global_vars.sim = None

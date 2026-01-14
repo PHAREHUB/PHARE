@@ -248,7 +248,7 @@ namespace amr
              iLevel++)
         {
             visitLevel<GridLayout>(*hierarchy.getPatchLevel(iLevel), resman,
-                                   std::forward<Action>(action), std::forward<Args...>(args...));
+                                   std::forward<Action>(action), std::forward<Args>(args)...);
         }
     }
 

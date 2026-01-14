@@ -4,28 +4,28 @@
 
 #include <memory>
 
-#include "amr/load_balancing/load_balancer_hybrid_strategy.hpp"
-#include "amr/load_balancing/concrete_load_balancer_hybrid_strategy_nppc.hpp"
-#include "amr/load_balancing/concrete_load_balancer_hybrid_strategy_homogeneous.hpp"
+#include "amr/load_balancing/load_balancer_strategy.hpp"
+#include "amr/load_balancing/concrete_load_balancer_strategy_nppc.hpp"
+#include "amr/load_balancing/concrete_load_balancer_strategy_homogeneous.hpp"
 
 
 namespace PHARE::amr
 {
-template<typename PHARE_T>
+template<typename HybridModel>
 class LoadBalancerHybridStrategyFactory
 {
 public:
-    static std::unique_ptr<LoadBalancerHybridStrategy<PHARE_T>> create(std::string strat_name,
-                                                                       int const id)
+    static std::unique_ptr<LoadBalancerStrategy<HybridModel>> create(std::string strat_name,
+                                                                     int const id)
     {
         if (strat_name == "nppc")
         {
-            return std::make_unique<ConcreteLoadBalancerHybridStrategyNPPC<PHARE_T>>(id);
+            return std::make_unique<ConcreteLoadBalancerStrategyNPPC<HybridModel>>(id);
         }
 
         else if (strat_name == "homogeneous")
         {
-            return std::make_unique<ConcreteLoadBalancerHybridStrategyHomogeneous<PHARE_T>>(id);
+            return std::make_unique<ConcreteLoadBalancerStrategyHomogeneous<HybridModel>>(id);
         }
 
         return nullptr;

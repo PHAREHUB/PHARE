@@ -83,6 +83,7 @@ public:
         , qty_{qty}
     {
     }
+
     Grid(Grid const& source) // let field_ default
         : Super{source}
         , name_{source.name()}

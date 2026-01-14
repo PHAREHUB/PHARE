@@ -12,7 +12,7 @@ namespace PHARE::amr::bench
 template<std::size_t dim, std::size_t interp, std::size_t op>
 class ParticleDataCopy : public benchmark::Fixture
 {
-    auto static constexpr opts = PHARE::SimOpts{dim, interp};
+    auto static constexpr opts = PHARE::SimOpts<>{dim, interp};
     using PHARE_Types          = PHARE::core::PHARE_Types<opts>;
     using GridLayout_t         = PHARE_Types::GridLayout_t;
     using ParticleArray        = PHARE_Types::ParticleArray_t;
@@ -37,9 +37,9 @@ public:
     void copy_data(::benchmark::State&);
 
 private:
-    static const inline PHARE::amr::Box<int, dim> sourceBox{PHARE::core::ConstArray<int, dim>(0),
+    static inline PHARE::amr::Box<int, dim> const sourceBox{PHARE::core::ConstArray<int, dim>(0),
                                                             PHARE::core::ConstArray<int, dim>(19)};
-    static const inline PHARE::amr::Box<int, dim> destBox{PHARE::core::ConstArray<int, dim>(10),
+    static inline PHARE::amr::Box<int, dim> const destBox{PHARE::core::ConstArray<int, dim>(10),
                                                           PHARE::core::ConstArray<int, dim>(19)};
 
 
