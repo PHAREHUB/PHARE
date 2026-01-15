@@ -16,6 +16,7 @@
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/HierarchyNeighbors.h>
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <stdexcept>
 
 namespace PHARE
 {
@@ -196,6 +197,33 @@ namespace amr
     }
 
 
+
+    NO_DISCARD auto inline getSameLevelNeighbors(SAMRAI::hier::Patch const& patch,
+                                                 SAMRAI::hier::PatchHierarchy const& hierarchy)
+    {
+        auto const lvlNbr = patch.getPatchLevelNumber();
+
+        return SAMRAI::hier::HierarchyNeighbors{hierarchy, lvlNbr, lvlNbr}.getSameLevelNeighbors(
+            patch.getBox(), lvlNbr);
+    }
+
+    void inline noDomainOverlapsOn(SAMRAI::hier::PatchHierarchy const& hierarchy, int const ilvl)
+    {
+        for (auto const& patch : *hierarchy.getPatchLevel(ilvl))
+            for (auto const& neighbox : getSameLevelNeighbors(*patch, hierarchy))
+                if (auto const overlap = patch->getBox() * neighbox; !overlap.empty())
+                    throw std::runtime_error(
+                        "CATASTROPHIC ERROR: Patch domain overlap detected on level: "
+                        + std::to_string(ilvl));
+    }
+
+    void inline noDomainOverlapsOn(SAMRAI::hier::PatchHierarchy const& hierarchy)
+    {
+        for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
+            noDomainOverlapsOn(hierarchy, iLevel);
+    }
+
+
     // potentially to replace with SAMRAI coarse to fine boundary stuff
     template<typename GridLayoutT> // fow now it gives us a box for only patch ghost layer
     NO_DISCARD auto makeNonLevelGhostBoxFor(SAMRAI::hier::Patch const& patch,
@@ -207,8 +235,7 @@ namespace amr
         auto const domBox              = phare_box_from<dimension>(domain);
         auto const particleGhostBox    = grow(domBox, GridLayoutT::nbrParticleGhosts());
 
-        SAMRAI::hier::HierarchyNeighbors const hier_nbrs{hierarchy, lvlNbr, lvlNbr};
-        auto const neighbors = hier_nbrs.getSameLevelNeighbors(domain, lvlNbr);
+        auto const neighbors = getSameLevelNeighbors(patch, hierarchy);
         std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
         patchGhostLayerBoxes.reserve(neighbors.size() + 1);
         patchGhostLayerBoxes.emplace_back(domBox);
@@ -245,7 +272,7 @@ namespace amr
                         int minLevel, int maxLevel, Args&&... args)
     {
         for (int iLevel = minLevel; iLevel < hierarchy.getNumberOfLevels() && iLevel <= maxLevel;
-             iLevel++)
+             ++iLevel)
         {
             visitLevel<GridLayout>(*hierarchy.getPatchLevel(iLevel), resman,
                                    std::forward<Action>(action), std::forward<Args...>(args...));

@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 
+#include <stdexcept>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -42,6 +43,13 @@ public:
     {
         static thread_local std::string msg;
         return (msg = (*this)()).c_str();
+    }
+
+    std::string id() const
+    {
+        if (!dict_.contains("ID"))
+            throw std::runtime_error("DictionaryException has no ID");
+        return (*this)["ID"].template to<std::string>();
     }
 
 private:
