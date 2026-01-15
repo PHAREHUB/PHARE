@@ -7,6 +7,9 @@ from pyphare.pharesee.run import Run
 from pyphare.simulator import simulator
 
 
+ph.NO_GUI()
+
+
 def setup_model(ppc=100):
     def density(*xyz):
         return 1.0
@@ -98,7 +101,9 @@ class BorisTwoCellJumpTest(unittest.TestCase):
         with self.assertRaises(Exception):
             simulator.exit_on_exception = False
             simulator.Simulator(simulation).run()
-        Run(out).GetN(0, "protons").plot()  # will fail if there is no emergency diag
+
+        # the following will fail if there is no emergency diag
+        Run(out).GetN(0, "protons").plot(filename="exceptional_pop_density.png")
 
 
 if __name__ == "__main__":
