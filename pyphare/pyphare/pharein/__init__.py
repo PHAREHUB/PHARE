@@ -341,6 +341,11 @@ def populateDict():
                     diag_path + "fine_dump_lvl_max",
                     simulation.diag_options["options"]["fine_dump_lvl_max"],
                 )
+            if "allow_emergency_dumps" in simulation.diag_options["options"]:
+                add_bool(
+                    diag_path + "allow_emergency_dumps",
+                    simulation.diag_options["options"]["allow_emergency_dumps"],
+                )
         else:
             add_string(diag_path + "filePath", "phare_output")
     #### diagnostics added
