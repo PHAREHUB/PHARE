@@ -3,6 +3,7 @@
 import unittest
 
 import pyphare.pharein as ph
+from pyphare.pharesee.run import Run
 from pyphare.simulator import simulator
 
 
@@ -60,6 +61,10 @@ def setup_model(ppc=100):
         },
     )
     ph.ElectronModel(closure="isothermal", Te=0.12)
+
+    ph.FluidDiagnostics(  # NO TIMESTAMPS!
+        quantity="density", write_timestamps=[], population_name="protons"
+    )
     return model
 
 
@@ -72,7 +77,7 @@ simArgs = {
     "dl": 0.3,
     "diag_options": {
         "format": "phareh5",
-        "options": {"dir": out, "mode": "overwrite"},
+        "options": {"dir": out, "mode": "overwrite", "allow_emergency_dumps": True},
     },
 }
 
@@ -93,6 +98,7 @@ class BorisTwoCellJumpTest(unittest.TestCase):
         with self.assertRaises(Exception):
             simulator.exit_on_exception = False
             simulator.Simulator(simulation).run()
+        Run(out).GetN(0, "protons").plot()  # will fail if there is no emergency diag
 
 
 if __name__ == "__main__":
