@@ -99,6 +99,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   SAMRAI_tbox
   SAMRAI_xfer
   MPI::MPI_C
+  cppdict
   )
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
 

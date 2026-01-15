@@ -14,7 +14,7 @@
 
 #include "simulator/simulator.hpp"
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 #include <array>
 #include <memory>

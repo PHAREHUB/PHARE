@@ -1,10 +1,9 @@
 #ifndef RESTART_DAO_HPP
 #define RESTART_DAO_HPP
 
-#include <string>
 #include <vector>
 
-#include "cppdict/include/dict.hpp"
+#include "dict.hpp"
 
 namespace PHARE::restarts
 {

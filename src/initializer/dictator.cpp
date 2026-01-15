@@ -1,6 +1,6 @@
 
-#include "cppdict/include/dict.hpp"
-#include "initializer/python_data_provider.hpp"
+#include "dict.hpp"
+#include "initializer/data_provider.hpp"
 
 #include "python3/pybind_def.hpp"
 
@@ -11,7 +11,6 @@
 
 
 
-namespace py = pybind11;
 
 using PHARE::initializer::InitFunction;
 

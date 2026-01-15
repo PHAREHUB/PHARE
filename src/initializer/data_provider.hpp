@@ -1,15 +1,16 @@
 #ifndef DATA_PROVIDER_HPP
 #define DATA_PROVIDER_HPP
 
+#include <memory>
 #include <string>
 #include <vector>
-#include <cstdint>
 #include <optional>
 #include <functional>
 
-#include "cppdict/include/dict.hpp"
 #include "core/def.hpp"
 #include "core/utilities/span.hpp"
+
+#include "dict.hpp"
 
 namespace PHARE
 {

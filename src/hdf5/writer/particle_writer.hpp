@@ -1,11 +1,10 @@
 #ifndef PHARE_HDF5_PARTICLE_WRITER_HPP
 #define PHARE_HDF5_PARTICLE_WRITER_HPP
 
-#include <array>
 #include <vector>
 
 #include "hdf5/detail/hdf5_utils.hpp"
-#include "hdf5/detail/h5/h5_file.hpp"
+
 
 #include "core/def.hpp"
 #include "core/data/particles/particle_packer.hpp"
