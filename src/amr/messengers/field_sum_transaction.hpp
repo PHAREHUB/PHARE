@@ -1,7 +1,7 @@
 #ifndef PHARE_AMR_MESSENGERS_FIELD_SUM_TRANSACTION_HPP
 #define PHARE_AMR_MESSENGERS_FIELD_SUM_TRANSACTION_HPP
 
-#include <core/utilities/logger/logger_defaults.hpp>
+#include "core/logger.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/PatchLevel.h>
