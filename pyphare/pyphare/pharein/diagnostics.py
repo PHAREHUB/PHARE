@@ -85,8 +85,6 @@ def validate_timestamps(clazz, key, **kwargs):
 
 
 def validate_elapsed_timestamps(clazz, key, **kwargs):
-    sim = global_vars.sim
-
     import datetime
 
     timestamps = phare_utilities.np_array_ify(kwargs.get(key, []))
@@ -97,9 +95,7 @@ def validate_elapsed_timestamps(clazz, key, **kwargs):
     ]
 
     if not np.all(np.diff(timestamps) >= 0):
-        raise RuntimeError(
-            "Error: diagnostic elapsed_timestamps not in ascending order)"
-        )
+        raise RuntimeError(f"Error: {clazz}.{key} not in ascending order)")
 
     return timestamps
 

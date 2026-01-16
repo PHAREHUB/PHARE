@@ -163,7 +163,9 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     diagProps.type            = diagParams["type"].template to<std::string>();
     diagProps.quantity        = diagParams["quantity"].template to<std::string>();
     diagProps.writeTimestamps = diagParams["write_timestamps"].template to<std::vector<double>>();
-    diagProps["flush_every"]  = diagParams["flush_every"].template to<std::size_t>();
+    diagProps.elapsedTimestamps
+        = diagParams["elapsed_timestamps"].template to<std::vector<double>>();
+    diagProps["flush_every"] = diagParams["flush_every"].template to<std::size_t>();
 
     diagProps.computeTimestamps
         = diagParams["compute_timestamps"].template to<std::vector<double>>();
