@@ -150,8 +150,9 @@ private:
     std::map<std::string, std::size_t> nextCompute_;
     std::map<std::string, std::size_t> nextWrite_;
     std::map<std::string, std::size_t> nextWriteElapsed_;
-};
 
+    std::time_t const start_time_{core::mpi::unix_timestamp_now()};
+};
 
 
 
@@ -163,8 +164,15 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     diagProps.type            = diagParams["type"].template to<std::string>();
     diagProps.quantity        = diagParams["quantity"].template to<std::string>();
     diagProps.writeTimestamps = diagParams["write_timestamps"].template to<std::vector<double>>();
-    diagProps.elapsedTimestamps
-        = diagParams["elapsed_timestamps"].template to<std::vector<double>>();
+
+    if (diagParams.contains("elapsed_timestamps"))
+    {
+        diagProps.elapsedTimestamps
+            = diagParams["elapsed_timestamps"].template to<std::vector<double>>();
+        for (auto& time : diagProps.elapsedTimestamps)
+            time += start_time_; // expected for comparison later
+    }
+
     diagProps["flush_every"] = diagParams["flush_every"].template to<std::size_t>();
 
     diagProps.computeTimestamps
