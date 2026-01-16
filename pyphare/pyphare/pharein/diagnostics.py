@@ -27,11 +27,14 @@ def diagnostics_checker(func):
                 + ", ".join(missing_mandatory_kwds)
             )
 
-        accepted_keywords = [
-            "path",
-            "population_name",
-            "flush_every",
-        ]
+        one_of_required = ["elapsed_timestamps", "write_timestamps"]
+        if not any([k in kwargs for k in one_of_required]):
+            raise RuntimeError(
+                "Error: missing parameters - one required: "
+                + ", ".join(one_of_required)
+            )
+
+        accepted_keywords = ["path", "population_name", "flush_every"]
         accepted_keywords += mandatory_keywords
 
         # check that all passed keywords are in the accepted keyword list
@@ -81,6 +84,26 @@ def validate_timestamps(clazz, key, **kwargs):
     return timestamps
 
 
+def validate_elapsed_timestamps(clazz, key, **kwargs):
+    sim = global_vars.sim
+
+    import datetime
+
+    timestamps = phare_utilities.np_array_ify(kwargs.get(key, []))
+
+    timestamps = [
+        int(ts.total_seconds()) if isinstance(ts, datetime.timedelta) else ts
+        for ts in phare_utilities.np_array_ify(timestamps)
+    ]
+
+    if not np.all(np.diff(timestamps) >= 0):
+        raise RuntimeError(
+            "Error: diagnostic elapsed_timestamps not in ascending order)"
+        )
+
+    return timestamps
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -116,6 +139,10 @@ class Diagnostics(object):
 
         self.write_timestamps = validate_timestamps(
             self.__class__.__name__, "write_timestamps", **kwargs
+        )
+
+        self.elapsed_timestamps = validate_elapsed_timestamps(
+            self.__class__.__name__, "elapsed_timestamps", **kwargs
         )
         # for now every diagnostics needing computation (like momentum tensor)
         # is computing at the same time as written.
@@ -178,6 +205,18 @@ class Diagnostics(object):
     def _setSubTypeAttributes(self, **kwargs):  # stop pyline complaining
         raise RuntimeError("Never to be called, defined in subclass")
 
+    def to_dict(self, type, **kwargs):
+        return {
+            "name": self.name,
+            "type": type,
+            "quantity": self.quantity,
+            "write_timestamps": self.write_timestamps,
+            "elapsed_timestamps": self.elapsed_timestamps,
+            "compute_timestamps": self.compute_timestamps,
+            "path": self.path,
+            **kwargs,
+        }
+
 
 # ------------------------------------------------------------------------------
 
@@ -203,14 +242,7 @@ class ElectromagDiagnostics(Diagnostics):
             self.quantity = "/EM_" + kwargs["quantity"]
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "type": ElectromagDiagnostics.type,
-            "quantity": self.quantity,
-            "write_timestamps": self.write_timestamps,
-            "compute_timestamps": self.compute_timestamps,
-            "path": self.path,
-        }
+        return super().to_dict(type(self).type)
 
 
 # ------------------------------------------------------------------------------
@@ -274,15 +306,7 @@ class FluidDiagnostics_(Diagnostics):
             self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "type": FluidDiagnostics_.type,
-            "quantity": self.quantity,
-            "write_timestamps": self.write_timestamps,
-            "compute_timestamps": self.compute_timestamps,
-            "path": self.path,
-            "population_name": self.population_name,
-        }
+        return super().to_dict(type(self).type, population_name=self.population_name)
 
 
 def for_total_ions(**kwargs):
@@ -356,16 +380,11 @@ class ParticleDiagnostics(Diagnostics):
             self.extent = kwargs["extent"]
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "type": ParticleDiagnostics.type,
-            "quantity": self.quantity,
-            "write_timestamps": self.write_timestamps,
-            "compute_timestamps": self.compute_timestamps,
-            "path": self.path,
-            "extent": ", ".join([str(x) for x in self.extent]),
-            "population_name": self.population_name,
-        }
+        return super().to_dict(
+            type(self).type,
+            extent=", ".join([str(x) for x in self.extent]),
+            population_name=self.population_name,
+        )
 
 
 # ------------------------------------------------------------------------------
@@ -392,14 +411,7 @@ class MetaDiagnostics(Diagnostics):
         self.quantity = f"/{kwargs['quantity']}"
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "type": MetaDiagnostics.type,
-            "quantity": self.quantity,
-            "write_timestamps": self.write_timestamps,
-            "compute_timestamps": self.compute_timestamps,
-            "path": self.path,
-        }
+        return super().to_dict(type(self).type)
 
 
 # ------------------------------------------------------------------------------
@@ -432,10 +444,4 @@ class InfoDiagnostics(Diagnostics):
         self.quantity = f"/{kwargs['quantity']}"
 
     def to_dict(self):
-        return {
-            "name": self.name,
-            "type": InfoDiagnostics.type,
-            "quantity": self.quantity,
-            "write_timestamps": self.write_timestamps,
-            "path": self.path,
-        }
+        return super().to_dict(type(self).type)

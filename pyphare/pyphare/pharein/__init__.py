@@ -316,6 +316,9 @@ def populateDict():
             name_path + "/" + "write_timestamps", diag.write_timestamps
         )
         pp.add_array_as_vector(
+            name_path + "/" + "elapsed_timestamps", diag.elapsed_timestamps
+        )
+        pp.add_array_as_vector(
             name_path + "/" + "compute_timestamps", diag.compute_timestamps
         )
 

@@ -2,9 +2,10 @@
 
 
 import os
+import copy
 import unittest
 import numpy as np
-from ddt import data, ddt
+from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
 from pyphare.cpp import cpp_lib
@@ -14,6 +15,7 @@ from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 
+from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
 
 cpp = cpp_lib()
@@ -114,19 +116,15 @@ simArgs = {
 }
 
 
-def dup(dic):
-    dic.update(simArgs.copy())
-    return dic
+def permute(dic):
+    args = copy.deepcopy(simArgs)
+    args.update(dic)
+    dims = supported_dimensions()
+    return [[dim, interp, copy.deepcopy(args)] for dim in dims for interp in [1, 2, 3]]
 
 
 @ddt
-class DiagnosticsTest(unittest.TestCase):
-    _test_cases = (
-        dup({"smallest_patch_size": 10, "largest_patch_size": 20}),
-        dup({"smallest_patch_size": 20, "largest_patch_size": 20}),
-        dup({"smallest_patch_size": 20, "largest_patch_size": 40}),
-    )
-
+class DiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super(DiagnosticsTest, self).__init__(*args, **kwargs)
         self.simulator = None
@@ -136,19 +134,18 @@ class DiagnosticsTest(unittest.TestCase):
             self.simulator.reset()
         self.simulator = None
 
-    def ddt_test_id(self):
-        return self._testMethodName.split("_")[-1]
-
-    @data(*_test_cases)
-    def test_dump_diags(self, simInput):
-        for ndim in supported_dimensions():
-            self._test_dump_diags(ndim, **simInput)
-
-    def _test_dump_diags(self, dim, **simInput):
+    @data(
+        *permute({"smallest_patch_size": 10, "largest_patch_size": 20}),
+        *permute({"smallest_patch_size": 20, "largest_patch_size": 20}),
+        *permute({"smallest_patch_size": 20, "largest_patch_size": 40}),
+    )
+    @unpack
+    def test_dump_diags(self, dim, interp, simInput):
         import h5py  # see doc/conventions.md section 2.1.1
 
-        test_id = self.ddt_test_id()
+        print("test_dump_diags dim/interp:{}/{}".format(dim, interp))
 
+        print("cells", simInput["cells"])
         # configure simulation dim sized values
         for key in ["cells", "dl", "boundary_types"]:
             simInput[key] = [simInput[key] for d in range(dim)]
@@ -159,91 +156,86 @@ class DiagnosticsTest(unittest.TestCase):
         py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"]]
         py_attrs += ["git_hash", "serialized_simulation"]
 
-        for interp in range(1, 4):
-            print("test_dump_diags dim/interp:{}/{}".format(dim, interp))
+        local_out = self.unique_diag_dir_for_test_case(f"{out}/test", dim, interp)
+        simInput["diag_options"]["options"]["dir"] = local_out
 
-            local_out = (
-                f"{out}_dim{dim}_interp{interp}_mpi_n_{cpp.mpi_size()}_id{test_id}"
+        simulation = ph.Simulation(**simInput)
+        self.register_diag_dir_for_cleanup(local_out)
+        self.assertTrue(len(simulation.cells) == dim)
+
+        dump_all_diags(setup_model().populations)
+        self.simulator = Simulator(simulation).initialize().advance().reset()
+
+        refined_particle_nbr = simulation.refined_particle_nbr
+
+        self.assertTrue(
+            any(
+                [
+                    diagInfo.quantity.endswith("domain")
+                    for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
+                ]
             )
-            simInput["diag_options"]["options"]["dir"] = local_out
+        )
 
-            simulation = ph.Simulation(**simInput)
-            self.assertTrue(len(simulation.cells) == dim)
+        particle_files = 0
+        for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
+            h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
+            self.assertTrue(os.path.exists(h5_filepath))
 
-            dump_all_diags(setup_model().populations)
-            self.simulator = Simulator(simulation).initialize().advance().reset()
+            h5_file = h5py.File(h5_filepath, "r")
 
-            refined_particle_nbr = simulation.refined_particle_nbr
+            self.assertTrue("0.0000000000" in h5_file[h5_time_grp_key])  # init dump
+            self.assertTrue(
+                "0.0010000000" in h5_file[h5_time_grp_key]
+            )  # first advance dump
+
+            h5_py_attrs = h5_file["py_attrs"].attrs.keys()
+            for py_attr in py_attrs:
+                self.assertIn(py_attr, h5_py_attrs)
+
+            h5_version = h5_file["py_attrs"].attrs["highfive_version"].split(".")
+            self.assertTrue(len(h5_version) == 3)
+            # semver patch version may contain "-beta" so ignore
+            self.assertTrue(all(i.isdigit() for i in h5_version[:2]))
 
             self.assertTrue(
-                any(
-                    [
-                        diagInfo.quantity.endswith("domain")
-                        for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
-                    ]
-                )
+                ph.simulation.deserialize(
+                    h5_file["py_attrs"].attrs["serialized_simulation"]
+                ).electrons.closure.Te
+                == 0.12
             )
 
-            particle_files = 0
-            for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
-                h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
-                self.assertTrue(os.path.exists(h5_filepath))
+            hier = hierarchy_from(h5_filename=h5_filepath)
 
-                h5_file = h5py.File(h5_filepath, "r")
+            self.assertTrue(hier.sim.electrons.closure.Te == 0.12)
 
-                self.assertTrue("0.0000000000" in h5_file[h5_time_grp_key])  # init dump
-                self.assertTrue(
-                    "0.0010000000" in h5_file[h5_time_grp_key]
-                )  # first advance dump
+            if h5_filepath.endswith("domain.h5"):
+                particle_files += 1
+                self.assertTrue("pop_mass" in h5_file.attrs)
 
-                h5_py_attrs = h5_file["py_attrs"].attrs.keys()
-                for py_attr in py_attrs:
-                    self.assertIn(py_attr, h5_py_attrs)
+                if "protons" in h5_filepath:
+                    self.assertTrue(h5_file.attrs["pop_mass"] == 1)
+                elif "alpha" in h5_filepath:
+                    self.assertTrue(h5_file.attrs["pop_mass"] == 4)
+                else:
+                    raise RuntimeError("Unknown population")
 
-                h5_version = h5_file["py_attrs"].attrs["highfive_version"].split(".")
-                self.assertTrue(len(h5_version) == 3)
-                # semver patch version may contain "-beta" so ignore
-                self.assertTrue(all(i.isdigit() for i in h5_version[:2]))
+                self.assertGreater(len(hier.level(0).patches), 0)
 
-                self.assertTrue(
-                    ph.simulation.deserialize(
-                        h5_file["py_attrs"].attrs["serialized_simulation"]
-                    ).electrons.closure.Te
-                    == 0.12
-                )
+                for patch in hier.level(0).patches:
+                    self.assertTrue(len(patch.patch_datas.items()))
+                    for qty_name, pd in patch.patch_datas.items():
+                        splits = pd.dataset.split(ph.global_vars.sim)
+                        self.assertTrue(splits.size() > 0)
+                        self.assertTrue(pd.dataset.size() > 0)
+                        self.assertTrue(
+                            splits.size() == pd.dataset.size() * refined_particle_nbr
+                        )
 
-                hier = hierarchy_from(h5_filename=h5_filepath)
+        self.assertEqual(particle_files, ph.global_vars.sim.model.nbr_populations())
 
-                self.assertTrue(hier.sim.electrons.closure.Te == 0.12)
-
-                if h5_filepath.endswith("domain.h5"):
-                    particle_files += 1
-                    self.assertTrue("pop_mass" in h5_file.attrs)
-
-                    if "protons" in h5_filepath:
-                        self.assertTrue(h5_file.attrs["pop_mass"] == 1)
-                    elif "alpha" in h5_filepath:
-                        self.assertTrue(h5_file.attrs["pop_mass"] == 4)
-                    else:
-                        raise RuntimeError("Unknown population")
-
-                    self.assertGreater(len(hier.level(0).patches), 0)
-
-                    for patch in hier.level(0).patches:
-                        self.assertTrue(len(patch.patch_datas.items()))
-                        for qty_name, pd in patch.patch_datas.items():
-                            splits = pd.dataset.split(ph.global_vars.sim)
-                            self.assertTrue(splits.size() > 0)
-                            self.assertTrue(pd.dataset.size() > 0)
-                            self.assertTrue(
-                                splits.size()
-                                == pd.dataset.size() * refined_particle_nbr
-                            )
-
-            self.assertEqual(particle_files, ph.global_vars.sim.model.nbr_populations())
-
-            self.simulator = None
-            ph.global_vars.sim = None
+        self.simulator = None
+        ph.global_vars.sim = None
 
 
 if __name__ == "__main__":
