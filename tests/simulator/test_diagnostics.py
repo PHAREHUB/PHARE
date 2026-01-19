@@ -5,6 +5,8 @@ import os
 import copy
 import unittest
 import numpy as np
+from time import sleep
+from pathlib import Path
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
@@ -145,6 +147,7 @@ class DiagnosticsTest(SimulatorTest):
             h5_filepath = os.path.join(diag_path, h5_filename_from(diagInfo))
             self.assertTrue(os.path.exists(h5_filepath))
 
+            self.assertTrue(Path(h5_filepath).exists())
             h5_file = h5py.File(h5_filepath, "r")
 
             self.assertTrue(len(times))
@@ -246,6 +249,7 @@ class DiagnosticsTest(SimulatorTest):
 
         diag_path = self.unique_diag_dir_for_test_case(f"{out}/test", dim, interp)
         simInput["diag_options"]["options"]["dir"] = diag_path
+        del simInput["diag_options"]["options"]["fine_dump_lvl_max"]  # don't want
 
         simulation = ph.Simulation(**simInput)
         self.register_diag_dir_for_cleanup(diag_path)
@@ -255,7 +259,9 @@ class DiagnosticsTest(SimulatorTest):
         for diagname, diagInfo in simulation.diagnostics.items():
             diagInfo.write_timestamps = []  # disable
             diagInfo.elapsed_timestamps = [0]  # expect init dump
-        self.simulator = Simulator(simulation).initialize().reset()
+        simulator = Simulator(simulation).setup()
+        sleep(3)  # wait so time "elapses"
+        simulator.initialize().reset()
 
         self._check_diags(simulation, diag_path, ["0.0000000000"])
 
