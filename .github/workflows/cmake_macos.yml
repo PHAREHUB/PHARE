@@ -75,10 +75,10 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: |
         cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON \
-              -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+              -DCMAKE_BUILD_TYPE=Debug \
               -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache -DlowResourceTests=ON \
-              -DCMAKE_CXX_FLAGS="-DPHARE_DIAG_DOUBLES=1 "
+              -DCMAKE_CXX_FLAGS="-O2 -DPHARE_DIAG_DOUBLES=1"
 
     - name: Build
       working-directory: ${{github.workspace}}/build

@@ -1,7 +1,13 @@
+#
+#
+#
+
 from .scalarfield import ScalarField
 from .vectorfield import VectorField
 from .hierarchy import PatchHierarchy
-from pyphare.core.phare_utilities import listify
+
+
+from pyphare.core import phare_utilities as phut
 
 __all__ = [
     "ScalarField",
@@ -37,7 +43,7 @@ def hierarchy_from(
     """
 
     if times is not None:
-        times = listify(times)
+        times = phut.listify(times)
 
     if simulator is not None and h5_filename is not None:
         raise ValueError("cannot pass both a simulator and a h5 file")
@@ -55,3 +61,19 @@ def hierarchy_from(
         return hierarchy_from_func(func, hier, **kwargs)
 
     raise ValueError("can't make hierarchy")
+
+
+def all_times_from(h5_filename):
+    if h5_filename.endswith(".h5"):
+        from .fromh5 import get_times_from_h5
+
+        return get_times_from_h5(h5_filename)
+    if h5_filename.endswith(".vtkhdf"):
+        from .fromvtkhdf5 import get_times_from_h5
+
+        return get_times_from_h5(h5_filename)
+    raise RuntimeError(f"Unknown h5 file type: {h5_filename}")
+
+
+def default_time_from(h5_filename):
+    return all_times_from(h5_filename)[0]

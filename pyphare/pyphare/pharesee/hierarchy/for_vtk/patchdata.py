@@ -22,30 +22,45 @@ class VtkFieldDatasetAccessor:
             self.field_data.field_box.shape, order="F"
         )
 
+    @property
+    def shape(self):
+        return self.field_data.field_box.shape
+
 
 class VtkFieldData(patchdata.FieldData):
-    def __init__(self, lvl_info, patch_idx, cmp_idx, data_offset, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, layout, cmp_idx, data_offset, *args, **kwargs):
+        super().__init__(
+            layout,
+            *args,
+            centering=["primal"] * layout.box.ndim,
+            ghosts_nbr=[0] * layout.box.ndim,
+            **kwargs
+        )
 
-        self.lvl_info = lvl_info
-        self.patch_idx = patch_idx
+        import h5py
+
         self.cmp_idx = cmp_idx
         self.data_offset = data_offset
         self.dataset = (
-            self.dataset
-            if type(self.dataset) is VtkFieldDatasetAccessor
-            else VtkFieldDatasetAccessor(self, self.dataset)
+            VtkFieldDatasetAccessor(self, self.dataset)
+            if type(self.dataset) is h5py.Dataset
+            else self.dataset
         )
         self.field_box = boxm.Box(self.box.lower, self.box.upper + 1)
         self.data_size = self.field_box.size()
 
     def compare(self, that, atol=1e-16):
         """VTK Diagnostics do not have ghosts values!"""
+
         try:
-            that_data = that[:] if type(that) is VtkFieldData else that[that.box]
+            that_data = (
+                that[:]
+                if all([that.dataset.shape == self.dataset.shape])
+                else that[that.box]
+            )
             phut.assert_fp_any_all_close(self.dataset[:], that_data, atol=atol)
             return True
-        except Exception as e:
+        except AssertionError as e:
             return phut.EqualityCheck(False, str(e))
 
     def __eq__(self, that):
@@ -56,3 +71,13 @@ class VtkFieldData(patchdata.FieldData):
         cpy = phut.deep_copy(self, memo, no_copy_keys)
         cpy.dataset = self.dataset
         return cpy
+
+    def copy_as(self, data=None, **kwargs):
+        return type(self)(
+            self.layout,
+            self.cmp_idx,
+            self.data_offset,
+            self.field_name,
+            data if data is not None else self.dataset,
+            **kwargs
+        )

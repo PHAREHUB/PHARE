@@ -78,7 +78,9 @@ class VtkFile:
             raise RuntimeError("Error: Zero phases!")
 
         self.array_name = array_name
-        self.reader = vtk.vtkHDFReader(file_name=filename)
+        self.reader = vtk.vtkHDFReader()
+        self.reader.SetFileName(filename)
+        self.reader.Update()
         self.reader.UpdateInformation()
 
         self.times = all_times_in(self.reader)

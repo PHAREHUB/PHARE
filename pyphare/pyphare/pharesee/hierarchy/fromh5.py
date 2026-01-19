@@ -131,13 +131,11 @@ def h5_filename_from(diagInfo):
 def get_times_from_h5(filepath, as_float=True):
     import h5py  # see doc/conventions.md section 2.1.1
 
-    f = h5py.File(filepath, "r")
-    if as_float:
-        times = np.array(sorted([float(s) for s in list(f[h5_time_grp_key].keys())]))
-    else:
+    with h5py.File(filepath, "r") as f:
         times = list(f[h5_time_grp_key].keys())
-    f.close()
-    return times
+        if as_float:
+            times = np.array(sorted([float(s) for s in times]))
+        return times
 
 
 def create_from_all_times(time, hier):

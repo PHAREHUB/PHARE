@@ -3,6 +3,7 @@
 import unittest
 import itertools
 import numpy as np
+from copy import deepcopy
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
@@ -124,7 +125,7 @@ def permute(dic):
         dict(
             ndim=ndim,
             interp=interp_order,
-            simInput=dic,
+            simInput=deepcopy(dic),
         )
         for ndim, interp_order in itertools.product(ndims, interp_orders)
     ]

@@ -24,14 +24,14 @@ step_level_path = base_path + "/Steps/Level"
 h5_time_ds_path = "/VTKHDF/Steps/Values"
 
 _qty_per_filename = {
-    "EM_E": "E",
-    "EM_B": "B",
+    "EM_E": "EM_E",
+    "EM_B": "EM_B",
     "ions_bulkVelocity": "bulkVelocity",
 }
 
 _vec_fields = {
-    "E",
-    "B",
+    "EM_E",
+    "EM_B",
     "bulkVelocity",
 }
 
@@ -46,6 +46,9 @@ def get_path_from(h5file, string):
 
 class VtkFile:
     def __init__(self, path):
+        if not Path(path).exists():
+            raise ValueError("ERROR: VTKHDF file does not exist: ", path)
+
         import h5py  # see doc/conventions.md section 2.1.1
 
         self.filepath = path
@@ -53,12 +56,6 @@ class VtkFile:
         self._times = None
         self._domain_box = None
         self._level_spacing = {}
-
-    def __del__(self):
-        self.close()
-
-    def close(self):
-        self.file.close()
 
     def level_spacing(self, ilvl=0):
         if ilvl in self._level_spacing:
@@ -163,18 +160,6 @@ class VtkPatchLevelInfo:
         self.box_offset = vtk_file._amr_box_offset(ilvl, self.time_idx)
         self.rolling_data_offset = self.data_offset  #
 
-    def box(self, idx):
-        dim = self.vtk_file.dimension
-        box_vals = self.vtk_file.file["VTKHDF"][f"Level{self.ilvl}"][
-            self.box_offset + idx
-        ]
-        lo = np.zeros(dim)
-        up = np.zeros(dim)
-        for i, di in enumerate(range(0, dim * 2, 2)):
-            lo[i] = box_vals[di + 0]
-            up[i] = box_vals[di + 1]
-        return Box(lo, up)
-
     def boxes(self):
         dim = self.vtk_file.dimension
         amr_box_ds = self.vtk_file.file["VTKHDF"][f"Level{self.ilvl}"]["AMRBox"]
@@ -243,11 +228,9 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
         for ci, cmp in enumerate(["x", "y", "z"]):
             dataset_name = f"{qty}_{cmp}"
             pdata = FieldData(
-                lvl_info,
-                patch_idx,
+                layout,
                 ci,
                 lvl_info.rolling_data_offset,
-                layout,
                 field_qties[dataset_name],
                 dataset,
             )
@@ -272,12 +255,9 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
             )
 
         pdata = FieldData(
-            vtk_file,
-            lvl_info,
-            patch_idx,
+            layout,
             cmp_id,
             lvl_info.rolling_data_offset,
-            layout,
             field_qties[dataset_name],
             dataset,
         )
@@ -306,14 +286,12 @@ def h5_filename_from(diagInfo):
 def get_times_from_h5(filepath, as_float=True):
     import h5py  # see doc/conventions.md section 2.1.1
 
-    f = h5py.File(filepath, "r")
-    ds = get_path_from(f, h5_time_ds_path)
-    if as_float:
-        times = np.array(sorted([float(s) for s in list(ds[:])]))
-    else:
+    with h5py.File(filepath, "r") as f:
+        ds = get_path_from(f, h5_time_ds_path)
         times = list(ds[:])
-    f.close()
-    return times
+        if as_float:
+            times = np.array(sorted([float(s) for s in times]))
+        return times
 
 
 def create_from_all_times(time, hier):
