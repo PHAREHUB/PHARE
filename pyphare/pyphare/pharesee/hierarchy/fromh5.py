@@ -111,7 +111,7 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
             if is_pop_fluid_file(basename):
                 pdata_name = pop_name(basename) + "_" + pdata_name
 
-            if dataset_name in patch_datas:
+            if pdata_name in patch_datas:
                 raise ValueError("error - {} already in patchdata".format(dataset_name))
 
             patch_datas[pdata_name] = pdata

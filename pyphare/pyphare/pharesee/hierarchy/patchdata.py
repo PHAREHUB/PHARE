@@ -161,7 +161,9 @@ class FieldData(PatchData):
     def copy_as(self, data=None, **kwargs):
         data = data if data is not None else self.dataset
         name = kwargs.get("name", self.field_name)
-        return type(self)(self.layout, name, data, **kwargs)
+        kwargs["centering"] = kwargs.get("centering", self.centerings)
+        kwargs["ghosts_nbr"] = kwargs.get("ghosts_nbr", self.ghosts_nbr)
+        return FieldData(self.layout, name, data, **kwargs)
 
     def yeeCoordsFor(self, idx):
         return self.layout.yeeCoordsFor(
@@ -178,7 +180,7 @@ class FieldData(PatchData):
             if self.field_name != "tags":
                 for i, centering in enumerate(self.centerings):
                     ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
-        return ghosts_nbr
+        return phut.np_array_ify(ghosts_nbr, layout.box.ndim)
 
     def _resolve_centering(self, **kwargs):
         field_name = self.field_name

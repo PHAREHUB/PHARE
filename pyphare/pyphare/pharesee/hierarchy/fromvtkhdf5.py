@@ -47,7 +47,7 @@ def get_path_from(h5file, string):
 class VtkFile:
     def __init__(self, path):
         if not Path(path).exists():
-            raise ValueError("ERROR: VTKHDF file does not exist: ", path)
+            raise ValueError(f"ERROR: VTKHDF file does not exist: {path}")
 
         import h5py  # see doc/conventions.md section 2.1.1
 
@@ -76,8 +76,8 @@ class VtkFile:
         amr_box_ds = self._get_path_from(level_base_path + str(ilvl) + "/AMRBox")
         boxes = [0] * num_boxes
 
-        for bi in range(box_offset, box_offset + num_boxes):
-            box_vals = amr_box_ds[bi]
+        for bi, boff in enumerate(range(box_offset, box_offset + num_boxes)):
+            box_vals = amr_box_ds[boff]
             lo = np.zeros(dim)
             up = np.zeros(dim)
             for i, di in enumerate(range(0, dim * 2, 2)):
@@ -115,35 +115,27 @@ class VtkFile:
 
     @property
     def dimension(self):
-        return 2  # inject into file?
+        return self.file.attrs["dimension"]
 
     @property
     def interp_order(self):
-        return 1  # inject into file?
+        return self.file.attrs["interpOrder"]
 
     @property
     def domain_box(self):
-        if self._domain_box:
-            return self._domain_box
-        dim = self.dimension
-        lo = np.zeros(dim)
-        up = np.zeros(dim)
-        for box in self.level_boxes(0):
-            up = np.maximum(up, box.upper)
-        self._domain_box = Box(lo, up)
+        if self._domain_box is None:
+            dbox_attr = self.file.attrs["domain_box"]
+            self._domain_box = Box([0] * len(dbox_attr), dbox_attr)
         return self._domain_box
 
-    @property
     def has_time(self, time):
         return self.time_idx(time) is not None
 
     def times(self, reset=False):
         if reset:
             self._times = None
-        if self._times is not None:
-            self._times
-        ds = self._get_path_from(h5_time_ds_path)
-        self._times = ds[:]
+        if self._times is None:
+            self._times = self._get_path_from(h5_time_ds_path)[:]
         return self._times
 
     def _get_path_from(self, string):
@@ -158,7 +150,7 @@ class VtkPatchLevelInfo:
         self.num_boxes = vtk_file._num_boxes(ilvl, self.time_idx)
         self.data_offset = vtk_file._data_offset(ilvl, self.time_idx)
         self.box_offset = vtk_file._amr_box_offset(ilvl, self.time_idx)
-        self.rolling_data_offset = self.data_offset  #
+        self.rolling_data_offset = self.data_offset
 
     def boxes(self):
         dim = self.vtk_file.dimension
@@ -204,7 +196,7 @@ def is_particle_file(filename):
 
 
 def pop_name(basename):
-    return basename.strip(".vtkhdf").split("_")[2]
+    return Path(".vtkhdf").stem.split("_")[2]
 
 
 def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layout):
@@ -218,57 +210,34 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
     if is_particle_file(basename):
         raise RuntimeError("Particle diagnostics are not supported under vtkhdf")
 
-    # else assume Field or Tensorfield for now
-
-    qty = _qty_per_filename[basename]
-    dataset = vtk_file._data_set(lvl_info.ilvl)
-    data_size = 0
-
-    if qty in _vec_fields:
-        for ci, cmp in enumerate(["x", "y", "z"]):
-            dataset_name = f"{qty}_{cmp}"
-            pdata = FieldData(
-                layout,
-                ci,
-                lvl_info.rolling_data_offset,
-                field_qties[dataset_name],
-                dataset,
-            )
-            data_size = pdata.data_size
-
-            pdata_name = field_qties[dataset_name]
-            if is_pop_fluid_file(basename):
-                pdata_name = pop_name(basename) + "_" + pdata_name
-            if dataset_name in patch_datas:
-                raise ValueError("error - {} already in patchdata".format(dataset_name))
-            patch_datas[pdata_name] = pdata
-
-    else:  # assume scalar field
-        cmp_id = 0
-
-        dataset_name = qty
-        if dataset_name not in field_qties:
+    def _do_field(cmp_id, qty):
+        if qty not in field_qties:
             raise RuntimeError(
-                "invalid dataset name : {} is not in {}".format(
-                    dataset_name, field_qties
-                )
+                "invalid dataset name : {} is not in {}".format(qty, field_qties)
             )
-
+        pdata_name = field_qties[qty]
         pdata = FieldData(
             layout,
+            pdata_name,
+            vtk_file._data_set(lvl_info.ilvl),
             cmp_id,
             lvl_info.rolling_data_offset,
-            field_qties[dataset_name],
-            dataset,
         )
-        data_size = pdata.data_size
 
-        pdata_name = field_qties[dataset_name]
         if is_pop_fluid_file(basename):
             pdata_name = pop_name(basename) + "_" + pdata_name
-        if dataset_name in patch_datas:
-            raise ValueError("error - {} already in patchdata".format(dataset_name))
+        if pdata_name in patch_datas:
+            raise ValueError("error - {} already in patchdata".format(qty))
         patch_datas[pdata_name] = pdata
+        return pdata.field_box.size()  # constant as all primal
+
+    data_size = 0
+    qty = _qty_per_filename[basename]
+    if qty in _vec_fields:
+        for cmp_id, cmp in enumerate(["x", "y", "z"]):
+            data_size = _do_field(cmp_id, f"{qty}_{cmp}")
+    else:  # assume scalar field
+        data_size = _do_field(0, qty)
 
     lvl_info.rolling_data_offset += data_size * X_TIMES
     return True  # valid patch assumed

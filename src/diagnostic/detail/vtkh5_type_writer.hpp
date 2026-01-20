@@ -111,6 +111,7 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
     using HierData                       = HierarchyData<Writer::dimension>;
     using ModelView                      = Writer::ModelView;
     using physical_quantity_type         = ModelView::Field::physical_quantity_type;
+    using Attributes                     = Writer::Attributes;
     std::string static inline const base = "/VTKHDF/";
     std::string static inline const level_base = base + "Level";
     std::string static inline const step_level = base + "Steps/Level";
@@ -127,6 +128,8 @@ public:
     }
 
     virtual void setup(DiagnosticProperties&) = 0;
+
+    void writeFileAttributes(DiagnosticProperties const&, Attributes const&);
 
 protected:
     class VTKFileInitializer;
@@ -150,6 +153,15 @@ protected:
     Writer& h5Writer_;
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData_;
 };
+
+
+template<typename Writer>
+void H5TypeWriter<Writer>::writeFileAttributes(DiagnosticProperties const& prop,
+                                               Attributes const& attrs)
+{
+    if (fileExistsFor(prop)) // otherwise qty not supported (yet)
+        h5Writer_.writeGlobalAttributeDict(*fileData_.at(prop.quantity), attrs, "/");
+}
 
 
 template<typename Writer>

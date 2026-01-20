@@ -27,7 +27,7 @@ def config(diag_dir, diag_format):
     sim = ph.Simulation(
         time_step=time_step,
         final_time=final_time,
-        cells=(40, 40),
+        cells=(20, 20),
         dl=(0.40, 0.40),
         refinement="tagging",
         max_nbr_levels=3,
@@ -190,7 +190,6 @@ def plot(diag_dir):
                 plot_patches=True,
             )
         run.GetJ(time).plot(
-            all_primal=False,
             filename=plot_file_for_qty(plot_dir, "jz", time),
             qty="z",
             plot_patches=True,
@@ -254,6 +253,12 @@ class RunTest(SimulatorTest):
         B = run.GetB(timestamps[-1])
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
+    def test_run_phareh5(self):
+        diag_dir = "phare_outputs/test_run_phareh5"
+        sim = config(diag_dir, "phareh5")
+        self._test_any_format(sim, diag_dir)
+
+        # move to _test_any_format when vtkhdf supports divb etc
         if cpp.mpi_rank() == 0:
             plot_dir = plot(diag_dir)
 
@@ -269,11 +274,6 @@ class RunTest(SimulatorTest):
                     )
 
         cpp.mpi_barrier()
-
-    def test_run_phareh5(self):
-        diag_dir = "phare_outputs/test_run_phareh5"
-        sim = config(diag_dir, "phareh5")
-        self._test_any_format(sim, diag_dir)
 
     def test_run_pharevtkhdf(self):
         diag_dir = "phare_outputs/test_run_pharevtkhdf"

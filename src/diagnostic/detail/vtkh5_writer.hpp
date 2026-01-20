@@ -101,6 +101,13 @@ public:
                                               file_flags[diagnostic.type + diagnostic.quantity]);
     }
 
+    template<typename Dict>
+    static void writeGlobalAttributeDict(HighFiveFile& h5, Dict const& dict, std::string path)
+    {
+        dict.visit(
+            [&](std::string const& key, auto const& val) { h5.write_attribute(path, key, val); });
+    }
+
 
     auto& modelView() { return modelView_; }
     auto timestamp() const { return timestamp_; }
@@ -154,7 +161,12 @@ template<typename ModelView>
 void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnostics,
                                double timestamp)
 {
-    timestamp_ = timestamp;
+    timestamp_                             = timestamp;
+    fileAttributes_["dimension"]           = dimension;
+    fileAttributes_["interpOrder"]         = interpOrder;
+    fileAttributes_["domain_box"]          = modelView_.domainBox();
+    fileAttributes_["boundary_conditions"] = modelView_.boundaryConditions();
+
     HierarchyData<dimension>::reset(*this);
 
     for (auto* diagnostic : diagnostics)
@@ -162,7 +174,11 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
             file_flags[diagnostic->type + diagnostic->quantity] = this->flags;
 
     for (auto* diagnostic : diagnostics) // all collective calls first!
-        typeWriters_.at(diagnostic->type)->setup(*diagnostic);
+    {
+        auto& type_writer = *typeWriters_.at(diagnostic->type);
+        type_writer.setup(*diagnostic);
+        type_writer.writeFileAttributes(*diagnostic, fileAttributes_);
+    }
 
     for (auto* diagnostic : diagnostics)
         typeWriters_.at(diagnostic->type)->write(*diagnostic);

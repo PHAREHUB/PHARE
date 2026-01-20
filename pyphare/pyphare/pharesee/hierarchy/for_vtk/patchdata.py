@@ -10,44 +10,41 @@ from pyphare.core import phare_utilities as phut
 
 
 class VtkFieldDatasetAccessor:
-    def __init__(self, field_data, dataset):
-        self.field_data = field_data
+    def __init__(self, dataset, cmp_idx, offset, box):
+        self.box = box
+        self.cmp_idx = cmp_idx
+        self.offset = offset
         self.dataset = dataset
 
-    def __getitem__(self, slice):  # todo finish slice/box lookup
-        cmp_idx = self.field_data.cmp_idx
-        off_set = self.field_data.data_offset
-        data_size = self.field_data.data_size
-        return self.dataset[:, cmp_idx][off_set : off_set + data_size].reshape(
-            self.field_data.field_box.shape, order="F"
-        )
+    def __getitem__(self, slice):
+        # todo finish slice/box lookup
+        return self.dataset[:, self.cmp_idx][
+            self.offset : self.offset + self.box.size()
+        ].reshape(self.box.shape, order="F")
 
     @property
     def shape(self):
-        return self.field_data.field_box.shape
+        return self.box.shape
 
 
 class VtkFieldData(patchdata.FieldData):
-    def __init__(self, layout, cmp_idx, data_offset, *args, **kwargs):
-        super().__init__(
-            layout,
-            *args,
-            centering=["primal"] * layout.box.ndim,
-            ghosts_nbr=[0] * layout.box.ndim,
-            **kwargs
-        )
-
+    def __init__(self, layout, name, data, cmp_idx, offset, **kwargs):
         import h5py
 
-        self.cmp_idx = cmp_idx
-        self.data_offset = data_offset
-        self.dataset = (
-            VtkFieldDatasetAccessor(self, self.dataset)
-            if type(self.dataset) is h5py.Dataset
-            else self.dataset
+        data_t = type(data)
+        if not (data_t is h5py.Dataset or data_t is VtkFieldDatasetAccessor):
+            raise RuntimeError("VtkFieldData only handles vtkhdf datasets")
+
+        box = layout.box
+        self.field_box = boxm.Box(box.lower, box.upper + 1)
+        kwargs["ghosts_nbr"] = [0] * layout.box.ndim
+        kwargs["centering"] = ["primal"] * layout.box.ndim
+        data = (
+            data
+            if data_t is VtkFieldDatasetAccessor
+            else VtkFieldDatasetAccessor(data, cmp_idx, offset, self.field_box)
         )
-        self.field_box = boxm.Box(self.box.lower, self.box.upper + 1)
-        self.data_size = self.field_box.size()
+        super().__init__(layout, name, data, **kwargs)
 
     def compare(self, that, atol=1e-16):
         """VTK Diagnostics do not have ghosts values!"""
@@ -73,11 +70,10 @@ class VtkFieldData(patchdata.FieldData):
         return cpy
 
     def copy_as(self, data=None, **kwargs):
-        return type(self)(
-            self.layout,
-            self.cmp_idx,
-            self.data_offset,
-            self.field_name,
-            data if data is not None else self.dataset,
-            **kwargs
-        )
+        data = self.dataset if data is None else data
+        if type(data) is VtkFieldDatasetAccessor:
+            return type(self)(
+                self.layout, self.field_name, data, data.cmp_idx, data.offset, **kwargs
+            )
+        # make a normal FieldData
+        return super().copy_as(data, **kwargs)

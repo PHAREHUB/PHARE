@@ -102,13 +102,10 @@ class Run:
 
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
         hier = self._get_hier_for(time, "ions_charge_density")
-
         Te = hier.sim.electrons.closure.Te
-
         if not all_primal:
             return Te * self._get(hier, time, merged, interp)
-
-        h = compute_hier_from(_compute_to_primal, hier)
+        h = compute_hier_from(hc.drop_ghosts, hier)
         return ScalarField(h) * Te
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):

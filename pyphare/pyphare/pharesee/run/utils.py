@@ -312,7 +312,10 @@ def _compute_to_primal(patch, **kwargs):
         nb_ghosts = ref_pd.layout.nbrGhosts(ref_pd.layout.interp_order, "primal")
         ref_ds = ref_pd.dataset
 
-        if all(centering == "primal" for centering in ref_pd.centerings):
+        should_skip = all(  # vtkhdf is all primal with no ghosts
+            [ref_pd.centerings == ["primal"] * ndim, not any(ref_pd.ghosts_nbr)]
+        )
+        if should_skip:
             pd_attrs.append({"name": name, "data": ref_pd})
             continue
 
