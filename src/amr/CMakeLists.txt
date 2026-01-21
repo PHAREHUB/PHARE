@@ -104,7 +104,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   SAMRAI_xfer
   MPI::MPI_C
   cppdict
-  )
 )
 
 if (HighFive) # SAMRAI USES HDF5 so we need this here
