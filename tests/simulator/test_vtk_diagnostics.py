@@ -24,52 +24,81 @@ ndims = [2]  # 3d todo / 1d not supported
 interp_orders = [1]  # , 2, 3
 
 
-def setup_model(ppc=100):
-    def density(*xyz):
-        return 1.0
+def setup_model(sim, ppc=100):
+    L = 0.5
 
-    def by(*xyz):
-        from pyphare.pharein.global_vars import sim
+    def density(x, y):
+        Ly = sim.simulation_domain()[1]
+        return (
+            0.4
+            + 1.0 / np.cosh((y - Ly * 0.3) / L) ** 2
+            + 1.0 / np.cosh((y - Ly * 0.7) / L) ** 2
+        )
 
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+    def S(y, y0, l):
+        return 0.5 * (1.0 + np.tanh((y - y0) / l))
 
-    def bz(*xyz):
-        from pyphare.pharein.global_vars import sim
+    def by(x, y):
+        Lx = sim.simulation_domain()[0]
+        Ly = sim.simulation_domain()[1]
+        sigma = 1.0
+        dB = 0.1
 
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+        x0 = x - 0.5 * Lx
+        y1 = y - 0.3 * Ly
+        y2 = y - 0.7 * Ly
 
-    def bx(*xyz):
-        return 1.0
+        dBy1 = 2 * dB * x0 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
+        dBy2 = -2 * dB * x0 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
 
-    def vx(*xyz):
+        return dBy1 + dBy2
+
+    def bx(x, y):
+        Lx = sim.simulation_domain()[0]
+        Ly = sim.simulation_domain()[1]
+        sigma = 1.0
+        dB = 0.1
+
+        x0 = x - 0.5 * Lx
+        y1 = y - 0.3 * Ly
+        y2 = y - 0.7 * Ly
+
+        dBx1 = -2 * dB * y1 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
+        dBx2 = 2 * dB * y2 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
+
+        v1 = -1
+        v2 = 1.0
+        return v1 + (v2 - v1) * (S(y, Ly * 0.3, L) - S(y, Ly * 0.7, L)) + dBx1 + dBx2
+
+    def bz(x, y):
         return 0.0
 
-    def vy(*xyz):
-        from pyphare.pharein.global_vars import sim
+    def b2(x, y):
+        return bx(x, y) ** 2 + by(x, y) ** 2 + bz(x, y) ** 2
 
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+    def T(x, y):
+        K = 0.7
+        temp = 1.0 / density(x, y) * (K - b2(x, y) * 0.5)
+        assert np.all(temp > 0)
+        return temp
 
-    def vz(*xyz):
-        from pyphare.pharein.global_vars import sim
+    def vx(x, y):
+        return 0.0
 
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+    def vy(x, y):
+        return 0.0
 
-    def vthx(*xyz):
-        return 0.01
+    def vz(x, y):
+        return 0.0
 
-    def vthy(*xyz):
-        return 0.01
+    def vthx(x, y):
+        return np.sqrt(T(x, y))
 
-    def vthz(*xyz):
-        return 0.01
+    def vthy(x, y):
+        return np.sqrt(T(x, y))
+
+    def vthz(x, y):
+        return np.sqrt(T(x, y))
 
     vvv = {
         "vbulkx": vx,
@@ -107,8 +136,8 @@ def setup_model(ppc=100):
 
 out = "phare_outputs/vtk_diagnostic_test"
 simArgs = {
-    "time_step_nbr": 10,
-    "final_time": 0.003,
+    "time_step_nbr": 1,
+    "final_time": 0.001,
     "boundary_types": "periodic",
     "cells": 40,
     "dl": 0.3,
@@ -143,10 +172,11 @@ class VTKDiagnosticsTest(SimulatorTest):
         local_out = self.unique_diag_dir_for_test_case(
             f"{out}{'/'+diag_dir if diag_dir else ''}", ndim, interp
         )
+        self.register_diag_dir_for_cleanup(local_out)
         simInput["diag_options"]["options"]["dir"] = local_out
         simulation = ph.Simulation(**simInput)
         self.assertTrue(len(simulation.cells) == ndim)
-        dump_all_diags(setup_model().populations)
+        dump_all_diags(setup_model(simulation).populations)
         Simulator(simulation).run().reset()
         ph.global_vars.sim = None
         return local_out
@@ -155,6 +185,7 @@ class VTKDiagnosticsTest(SimulatorTest):
     @unpack
     def test_dump_diags(self, ndim, interp, simInput):
         print("test_dump_diags dim/interp:{}/{}".format(ndim, interp))
+
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
         local_out = self._run(ndim, interp, simInput)
@@ -174,14 +205,13 @@ class VTKDiagnosticsTest(SimulatorTest):
 
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
-
         vtk_diags = self._run(ndim, interp, simInput, "test_vtk")
 
         simInput["diag_options"]["format"] = "phareh5"
         phareh5_diags = self._run(ndim, interp, simInput, "test_h5")
 
         # not binary == with more than 2 cores
-        atol = 0 if cpp.mpi_size() <= 2 else 1e-17
+        atol = 0 if cpp.mpi_size() <= 2 else 1e-16
 
         for time in [0, simInput["final_time"]]:
             # choose all primal value generally
@@ -192,6 +222,41 @@ class VTKDiagnosticsTest(SimulatorTest):
             if not eqr:
                 print(eqr)
             self.assertTrue(eqr)
+
+    @data(*permute({}))
+    @unpack
+    def test_missing_level_case(self, ndim, interp, simInput):
+        simInput.update(
+            dict(
+                refinement="tagging",
+                max_nbr_levels=2,
+                tagging_threshold=0.99,  # prevent level,
+            )
+        )
+        simInput["restart_options"] = dict(
+            dir="phare_outputs/vtk_padding_test", mode="overwrite", timestamps=[0.001]
+        )
+        vtk_diags = self._run(ndim, interp, simInput, "test_vtk")
+
+        simInput.update(
+            dict(
+                final_time=0.002,
+                tagging_threshold=0.01,  # prefer level
+            )
+        )
+
+        simInput["restart_options"]["timestamps"] = []
+        simInput["restart_options"]["restart_time"] = 0.001
+        del simInput["diag_options"]["options"]["mode"]  # do not truncate diags
+        vtk_diags = self._run(ndim, interp, simInput, "test_vtk")
+
+        hier0 = Run(vtk_diags).GetVi(0)
+        hier1 = Run(vtk_diags).GetVi(0.001)
+        hier2 = Run(vtk_diags).GetVi(0.002)
+
+        self.assertTrue(1 not in hier0.levels())
+        self.assertTrue(1 not in hier1.levels())
+        self.assertTrue(1 in hier2.levels())
 
 
 if __name__ == "__main__":

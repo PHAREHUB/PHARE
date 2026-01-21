@@ -297,6 +297,23 @@ namespace amr
 
 
 
+    void onLevels(auto& hierarchy, auto&& onLevel, auto&& orMissing, std::size_t const minlvl,
+                  std::size_t const maxlvl)
+    {
+        if (hierarchy.getNumberOfLevels() < 1)
+            throw std::runtime_error("Hierarchy must have a level");
+
+        std::size_t const hier_levels = hierarchy.getNumberOfLevels();
+
+        for (std::size_t ilvl = minlvl; ilvl < hier_levels; ++ilvl)
+            onLevel(*hierarchy.getPatchLevel(ilvl));
+
+        for (std::size_t ilvl = std::max(minlvl, hier_levels); ilvl <= maxlvl; ++ilvl)
+            orMissing(ilvl);
+    }
+
+
+
 } // namespace amr
 } // namespace PHARE
 

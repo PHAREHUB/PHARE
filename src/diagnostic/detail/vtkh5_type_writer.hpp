@@ -46,12 +46,14 @@ struct HierarchyData
     {
         PHARE_LOG_SCOPE(3, "HierarchyData<H5Writer::reset");
 
-        auto& data = INSTANCE();
-        data.level_data_size.resize(amr::MAX_LEVEL);
-        data.n_boxes_per_level.resize(amr::MAX_LEVEL);
-        data.level_boxes_per_rank.resize(amr::MAX_LEVEL);
-        data.level_rank_data_size.resize(amr::MAX_LEVEL);
-        data.flattened_lcl_level_boxes.resize(amr::MAX_LEVEL);
+        auto const maxLevels = h5Writer.modelView().maxLevel() + 1;
+        auto& data           = INSTANCE();
+
+        data.level_data_size.resize(maxLevels);
+        data.n_boxes_per_level.resize(maxLevels);
+        data.level_boxes_per_rank.resize(maxLevels);
+        data.level_rank_data_size.resize(maxLevels);
+        data.flattened_lcl_level_boxes.resize(maxLevels);
 
         h5Writer.modelView().onLevels(
             [&](auto const& level) {
@@ -76,6 +78,15 @@ struct HierarchyData
                 }
 
                 data.level_data_size[ilvl] = core::sum(data.level_rank_data_size[ilvl]);
+            },
+            [&](int const ilvl) { // ilvl does not exist currently
+                data.level_data_size[ilvl]   = 0;
+                data.n_boxes_per_level[ilvl] = 0;
+                data.level_rank_data_size[ilvl].clear();
+                data.level_rank_data_size[ilvl].resize(core::mpi::size());
+                data.level_boxes_per_rank[ilvl].clear();
+                data.level_boxes_per_rank[ilvl].resize(core::mpi::size());
+                data.flattened_lcl_level_boxes[ilvl].clear();
             },
             h5Writer.minLevel, h5Writer.maxLevel);
     }
@@ -172,14 +183,14 @@ class H5TypeWriter<Writer>::VTKFileInitializer
 public:
     VTKFileInitializer(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter);
 
-    void initFileLevel(int const ilvl) const;
+    void initFileLevel(int const ilvl);
 
-    std::size_t initFieldFileLevel(auto const& level) { return initAnyFieldLevel(level); }
+    std::size_t initFieldFileLevel(auto const ilvl) { return initAnyFieldLevel(ilvl); }
 
     template<std::size_t rank = 2>
-    std::size_t initTensorFieldFileLevel(auto const& level)
+    std::size_t initTensorFieldFileLevel(auto const ilvl)
     {
-        return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(level);
+        return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(ilvl);
     }
 
 private:
@@ -191,10 +202,12 @@ private:
     }
 
     template<std::size_t N = 1>
-    std::size_t initAnyFieldLevel(auto const& level)
+    std::size_t initAnyFieldLevel(auto const ilvl)
     {
-        h5file.create_resizable_2d_data_set<FloatType, N>(level_data_path(level.getLevelNumber()));
-        resize<N>(level);
+        h5file.create_resizable_2d_data_set<FloatType, N>(level_data_path(ilvl));
+        initFileLevel(ilvl);
+        resize_boxes(ilvl);
+        resize_data<N>(ilvl);
         return data_offset;
     }
 
@@ -203,14 +216,6 @@ private:
     void resize_data(int const ilvl);
 
     void resize_boxes(int const ilvl);
-
-    template<std::size_t N = 1>
-    void resize(auto const& level)
-    {
-        auto const ilvl = level.getLevelNumber();
-        resize_boxes(ilvl);
-        resize_data<N>(ilvl);
-    }
 
     bool const newFile;
     DiagnosticProperties const& diagnostic;
@@ -355,7 +360,7 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto 
 
 
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl) const
+void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl)
 {
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::initFileLevel");
 

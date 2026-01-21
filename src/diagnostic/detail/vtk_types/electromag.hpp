@@ -48,10 +48,10 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
     auto& info = mem[diagnostic.quantity];
 
     // assumes exists for all models
-    auto const init = [&](auto const& level) -> std::optional<std::size_t> {
+    auto const init = [&](auto const ilvl) -> std::optional<std::size_t> {
         for (auto* vecField : this->h5Writer_.modelView().getElectromagFields())
             if (diagnostic.quantity == "/" + vecField->name())
-                return initializer.template initTensorFieldFileLevel<1>(level);
+                return initializer.template initTensorFieldFileLevel<1>(ilvl);
 
         return std::nullopt;
     };
@@ -59,9 +59,11 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
     modelView.onLevels(
         [&](auto const& level) {
             auto const ilvl = level.getLevelNumber();
-            initializer.initFileLevel(ilvl);
-            if (auto const offset = init(level))
+            if (auto const offset = init(ilvl))
                 info.offset_per_level[ilvl] = *offset;
+        },
+        [&](int const ilvl) { // missing level
+            init(ilvl);
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 }

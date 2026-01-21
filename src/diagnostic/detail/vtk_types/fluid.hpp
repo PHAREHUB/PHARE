@@ -40,7 +40,7 @@ private:
 
     struct HybridFluidInitializer
     {
-        std::optional<std::size_t> operator()(auto const& level);
+        std::optional<std::size_t> operator()(auto const ilvl);
 
         FluidDiagnosticWriter* writer;
         DiagnosticProperties& diagnostic;
@@ -49,7 +49,7 @@ private:
 
     struct MhdFluidInitializer
     {
-        std::optional<std::size_t> operator()(auto const& level);
+        std::optional<std::size_t> operator()(auto const ilvl);
 
         FluidDiagnosticWriter* writer;
         DiagnosticProperties& diagnostic;
@@ -87,28 +87,28 @@ private:
 
 template<typename H5Writer>
 std::optional<std::size_t>
-FluidDiagnosticWriter<H5Writer>::HybridFluidInitializer::operator()(auto const& level)
+FluidDiagnosticWriter<H5Writer>::HybridFluidInitializer::operator()(auto const ilvl)
 {
     auto& modelView = writer->h5Writer_.modelView();
     auto& ions      = modelView.getIons();
     std::string const tree{"/ions/"};
 
     if (isActiveDiag(diagnostic, tree, "charge_density"))
-        return file_initializer.initFieldFileLevel(level);
+        return file_initializer.initFieldFileLevel(ilvl);
     if (isActiveDiag(diagnostic, tree, "mass_density"))
-        return file_initializer.initFieldFileLevel(level);
+        return file_initializer.initFieldFileLevel(ilvl);
     if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-        return file_initializer.template initTensorFieldFileLevel<1>(level);
+        return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
 
     for (auto& pop : ions)
     {
         auto const pop_tree = tree + "pop/" + pop.name() + "/";
         if (isActiveDiag(diagnostic, pop_tree, "density"))
-            return file_initializer.initFieldFileLevel(level);
+            return file_initializer.initFieldFileLevel(ilvl);
         else if (isActiveDiag(diagnostic, pop_tree, "charge_density"))
-            return file_initializer.initFieldFileLevel(level);
+            return file_initializer.initFieldFileLevel(ilvl);
         else if (isActiveDiag(diagnostic, pop_tree, "flux"))
-            return file_initializer.template initTensorFieldFileLevel<1>(level);
+            return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
     }
 
     return std::nullopt;
@@ -118,7 +118,7 @@ FluidDiagnosticWriter<H5Writer>::HybridFluidInitializer::operator()(auto const& 
 
 template<typename H5Writer>
 std::optional<std::size_t>
-FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const& level)
+FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const ilvl)
 {
     return std::nullopt;
 }
@@ -138,15 +138,15 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
         mem.try_emplace(diagnostic.quantity);
     auto& info = mem[diagnostic.quantity];
 
-    auto const init = [&](auto const& level) -> std::optional<std::size_t> {
+    auto const init = [&](auto const ilvl) -> std::optional<std::size_t> {
         //
 
         if constexpr (solver::is_hybrid_model_v<Model_t>)
-            if (auto ret = HybridFluidInitializer{this, diagnostic, initializer}(level))
+            if (auto ret = HybridFluidInitializer{this, diagnostic, initializer}(ilvl))
                 return ret;
 
         if constexpr (solver::is_mhd_model_v<Model_t>)
-            if (auto ret = MhdFluidInitializer{this, diagnostic, initializer}(level))
+            if (auto ret = MhdFluidInitializer{this, diagnostic, initializer}(ilvl))
                 return ret;
 
         return std::nullopt;
@@ -154,12 +154,16 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
 
     modelView.onLevels(
         [&](auto const& level) {
-            PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::setup");
+            PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::setup_level");
 
             auto const ilvl = level.getLevelNumber();
-            initializer.initFileLevel(ilvl);
-            if (auto const offset = init(level))
+            if (auto const offset = init(ilvl))
                 info.offset_per_level[ilvl] = *offset;
+        },
+        [&](int const ilvl) {
+            PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::setup_missing_level");
+
+            init(ilvl);
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 }
@@ -237,4 +241,4 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 
 
 
-#endif /* PHARE_DIAGNOSTIC_DETAIL_VTK_TYPES_FLUID_H */
+#endif /* PHARE_DIAGNOSTIC_DETAIL_VTK_TYPES_FLUID_HPP */

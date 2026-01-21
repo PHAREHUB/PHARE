@@ -61,11 +61,12 @@ public:
 
     template<typename Hierarchy, typename Model>
     H5Writer(Hierarchy& hier, Model& model, std::string const hifivePath, HiFile::AccessMode _flags)
-        : flags{_flags}
+        : modelView_{hier, model}
+        , flags{_flags}
         , filePath_{hifivePath}
-        , modelView_{hier, model}
     {
     }
+
     ~H5Writer() {}
     H5Writer(H5Writer const&)            = delete;
     H5Writer(H5Writer&&)                 = delete;
@@ -112,14 +113,17 @@ public:
     auto& modelView() { return modelView_; }
     auto timestamp() const { return timestamp_; }
 
-    std::size_t minLevel = 0, maxLevel = amr::MAX_LEVEL;
+private:
+    ModelView modelView_;
+
+public:
+    std::size_t minLevel = 0, maxLevel = modelView_.maxLevel();
     HiFile::AccessMode flags;
 
 
 private:
     double timestamp_ = 0;
     std::string filePath_;
-    ModelView modelView_;
     Attributes fileAttributes_;
 
     std::unordered_map<std::string, HiFile::AccessMode> file_flags;

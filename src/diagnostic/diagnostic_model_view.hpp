@@ -83,9 +83,19 @@ public:
 
 
     template<typename Action>
-    void onLevels(Action&& action, std::size_t minlvl = 0, std::size_t maxlvl = amr::MAX_LEVEL)
+    void onLevels(Action&& action, std::size_t const minlvl = 0,
+                  std::size_t const maxlvl = amr::MAX_LEVEL)
     {
         amr::onLevels(hierarchy_, std::forward<Action>(action), minlvl, maxlvl);
+    }
+
+
+    template<typename OnLevel, typename OrMissing>
+    void onLevels(OnLevel&& onLevel, OrMissing&& orMissing, std::size_t const minlvl,
+                  std::size_t const maxlvl)
+    {
+        amr::onLevels(hierarchy_, std::forward<OnLevel>(onLevel),
+                      std::forward<OrMissing>(orMissing), minlvl, maxlvl);
     }
 
 
@@ -101,6 +111,7 @@ public:
     NO_DISCARD auto domainBox() const { return hierarchy_.domainBox(); }
     NO_DISCARD auto origin() const { return std::vector<double>(dimension, 0); }
     NO_DISCARD auto cellWidth() const { return hierarchy_.cellWidth(); }
+    NO_DISCARD auto maxLevel() const { return hierarchy_.maxLevel(); }
 
     NO_DISCARD std::string getLayoutTypeString() const
     {
