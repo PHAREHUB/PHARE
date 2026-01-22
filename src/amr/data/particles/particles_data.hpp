@@ -1,15 +1,14 @@
 #ifndef PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 #define PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 
+
+#include "core/def.hpp"           // IWYU pragma: keep
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
-
-
-#include "core/def.hpp"
-#include "core/data/ions/ion_population/particle_pack.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
+#include "core/data/ions/ion_population/particle_pack.hpp"
 
+#include "amr/samrai.hpp" // IWYU pragma: keep
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include <amr/data/particles/particles_variable_fill_pattern.hpp>

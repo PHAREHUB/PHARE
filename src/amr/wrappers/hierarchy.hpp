@@ -1,9 +1,18 @@
 #ifndef PHARE_AMR_HIERARCHY_HPP
 #define PHARE_AMR_HIERARCHY_HPP
 
-#include <algorithm>
 
+
+#include "core/def.hpp"
+#include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/mpi_utils.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
+
+#include "initializer/data_provider.hpp"
+
+#include "amr/samrai.hpp"
+
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -18,15 +27,10 @@
 #include <SAMRAI/tbox/DatabaseBox.h>
 #include <SAMRAI/tbox/InputManager.h>
 #include <SAMRAI/tbox/MemoryDatabase.h>
-#include <SAMRAI/tbox/RestartManager.h>
-#include "SAMRAI/hier/PatchDataRestartManager.h"
 
 
-#include "core/def.hpp"
-#include "core/utilities/mpi_utils.hpp"
-#include "initializer/data_provider.hpp"
-#include "core/utilities/meta/meta_utilities.hpp"
 
+#include <algorithm>
 
 
 namespace PHARE::amr
@@ -40,7 +44,8 @@ namespace PHARE::amr
 class HierarchyRestarter
 {
 public:
-    HierarchyRestarter(initializer::PHAREDict const& sim_dict)
+    HierarchyRestarter(initializer::PHAREDict const& _sim_dict)
+        : sim_dict{_sim_dict}
     {
         if (sim_dict["simulation"].contains("restarts"))
         {
@@ -48,8 +53,8 @@ public:
 
             if (dict.contains("loadPath"))
             {
-                auto restart_manager = SAMRAI::tbox::RestartManager::getManager();
-                auto pdrm            = SAMRAI::hier::PatchDataRestartManager::getManager();
+                auto restart_manager = SamraiLifeCycle::getRestartManager();
+                auto pdrm            = SamraiLifeCycle::getPatchDataRestartManager();
 
                 for (auto& id : dict["restart_ids"].template to<std::vector<int>>())
                     pdrm->registerPatchDataForRestart(id);
@@ -57,6 +62,22 @@ public:
                 int timeStepIdx = 0; // forced to zero as we wrap in our own timestamp directories
                 auto& directory = dict["loadPath"].template to<std::string>();
                 restart_manager->openRestartFile(directory, timeStepIdx, core::mpi::size());
+            }
+        }
+    }
+
+    ~HierarchyRestarter()
+    {
+        if (sim_dict["simulation"].contains("restarts"))
+        {
+            auto& dict = sim_dict["simulation"]["restarts"];
+
+            if (dict.contains("loadPath"))
+            {
+                auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
+
+                for (auto& id : dict["restart_ids"].template to<std::vector<int>>())
+                    pdrm->unregisterPatchDataForRestart(id);
             }
         }
     }
@@ -73,12 +94,15 @@ public:
                + "/proc." + SAMRAI::tbox::Utilities::processorToString(core::mpi::rank());
     }
 
-    void closeRestartFile() { SAMRAI::tbox::RestartManager::getManager()->closeRestartFile(); }
+    void closeRestartFile() { SamraiLifeCycle::getRestartManager()->closeRestartFile(); }
 
     NO_DISCARD bool isFromRestart() const
     {
-        return SAMRAI::tbox::RestartManager::getManager()->isFromRestart();
+        return SamraiLifeCycle::getRestartManager()->isFromRestart();
     }
+
+private:
+    initializer::PHAREDict sim_dict;
 };
 
 
@@ -192,8 +216,14 @@ inline auto Hierarchy::make()
 {
     PHARE::initializer::PHAREDict const& theDict
         = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-    auto dim = theDict["simulation"]["dimension"].template to<int>();
-    return core::makeAtRuntime<HierarchyMaker>(dim, HierarchyMaker{theDict});
+    auto dim  = theDict["simulation"]["dimension"].template to<int>();
+    auto hier = core::makeAtRuntime<HierarchyMaker>(dim, HierarchyMaker{theDict});
+    if (hier)
+        return hier;
+    PHARE_LOG_LINE_SS("hierarchy not found for params:\n"
+                      << dim << " " << theDict["simulation"]["interp_order"].template to<int>()
+                      << " " << theDict["simulation"]["refined_particle_nbr"].template to<int>());
+    throw std::runtime_error("Likely unsupported template parameters");
 }
 
 
@@ -217,7 +247,7 @@ Hierarchy::Hierarchy(initializer::PHAREDict const& dict,
 
 inline auto Hierarchy::writeRestartFile(std::string directory) const
 {
-    auto* restart_manager = SAMRAI::tbox::RestartManager::getManager();
+    auto* restart_manager = SamraiLifeCycle::getRestartManager();
 
     int timeStepIdx = 0; // samrai needs this
     restart_manager->writeRestartFile(directory, timeStepIdx);

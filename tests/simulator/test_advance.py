@@ -1,13 +1,13 @@
 #
 #
 
-
 import unittest
 import numpy as np
 from ddt import ddt
-import pyphare.core.box as boxm
 
-from pyphare.cpp import cpp_lib
+
+from pyphare import cpp
+import pyphare.core.box as boxm
 from pyphare.core.box import Box
 from pyphare.core.phare_utilities import assert_fp_any_all_close, np_array_ify
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
@@ -25,8 +25,6 @@ from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import all_timestamps
 from tests.simulator import SimulatorTest, diff_boxes
-
-cpp = cpp_lib()
 
 
 @ddt

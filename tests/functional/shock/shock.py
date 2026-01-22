@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.run import Run
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import numpy as np
+import matplotlib.pyplot as plt
 
-mpl.use("Agg")
-from pyphare.cpp import cpp_lib
 
-cpp = cpp_lib()
+import pyphare.pharein as ph
+
+from pyphare import cpp
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator, startMPI
+
+
+ph.NO_GUI()
 
 
 def config(interp_order):
