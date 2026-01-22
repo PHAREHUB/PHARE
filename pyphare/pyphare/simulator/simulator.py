@@ -12,6 +12,7 @@ import pyphare.pharein as ph
 from pathlib import Path
 from . import monitoring as mon
 
+from pyphare import cpp
 import pyphare.pharein.restarts as restarts
 
 
@@ -30,34 +31,42 @@ def simulator_shutdown():
     life_cycles.clear()
 
 
-def make_cpp_simulator(dim, interp, nbrRefinedPart, hier):
-    from pyphare.cpp import cpp_lib
-
+def make_cpp_simulator(cpp_lib, hier):
+    """Create a C++ simulator instance for the given hierarchy.
+    
+    Args:
+        cpp_lib: The imported C++ library module for a specific simulator configuration.
+                 This is now configuration-specific (e.g., cpp_1_2_3) rather than generic.
+        hier: SAMRAI hierarchy object
+        
+    Returns:
+        C++ simulator instance
+        
+    Note:
+        Previously this function took (dim, interp, nbrRefinedPart) parameters and
+        selected the appropriate make_simulator_X_Y_Z function. Now each cpp_lib
+        module contains a single 'make_simulator' function for its configuration.
+    """
     if SCOPE_TIMING:
-        mon.timing_setup(cpp_lib())
+        mon.timing_setup(cpp_lib)
 
-    make_sim = f"make_simulator_{dim}_{interp}_{nbrRefinedPart}"
-    return getattr(cpp_lib(), make_sim)(hier)
+    make_sim = "make_simulator"
+    assert hasattr(cpp_lib, make_sim), f"Module {cpp_lib} missing make_simulator function"
+    return getattr(cpp_lib, make_sim)(hier)
 
 
 def startMPI():
     if "samrai" not in life_cycles:
-        from pyphare.cpp import cpp_lib
-
-        life_cycles["samrai"] = cpp_lib().SamraiLifeCycle()
+        life_cycles["samrai"] = cpp.cpp_etc_lib().SamraiLifeCycle()
 
 
 def print_rank0(*args, **kwargs):
-    from pyphare.cpp import cpp_lib
-
-    if cpp_lib().mpi_rank() == 0:
+    if cpp.mpi_rank() == 0:
         print(*args, **kwargs)
 
 
 def plot_timestep_time(timestep_times):
-    from pyphare.cpp import cpp_lib
-
-    if cpp_lib().mpi_rank() == 0:
+    if cpp.mpi_rank() == 0:
         import matplotlib.pyplot as plt
 
         fig, ax = plt.subplots()
@@ -66,7 +75,7 @@ def plot_timestep_time(timestep_times):
         plt.xlabel("timestep")
         fig.savefig("timestep_times.png")
 
-    cpp_lib().mpi_barrier()
+    cpp.mpi_barrier()
 
 
 class Simulator:
@@ -113,33 +122,32 @@ class Simulator:
     def setup(self):
         # mostly to detach C++ class construction/dict parsing from C++ Simulator::init
         try:
-            from pyphare.cpp import cpp_lib
-            import pyphare.cpp.validate as validate_cpp
-
             startMPI()
 
             if all([not self.simulation.dry_run, self.simulation.write_reports]):
                 # not necessary during testing
-                validate_cpp.log_runtime_config()
-            validate_cpp.check_build_config_is_runtime_compatible()
+                cpp.validate.log_runtime_config()
+            cpp.validate.check_build_config_is_runtime_compatible()
 
             if self.log_to_file:
                 self._log_to_file()
             ph.populateDict()
-            self.cpp_hier = cpp_lib().make_hierarchy()
 
-            self.cpp_sim = make_cpp_simulator(
-                self.simulation.ndim,
-                self.simulation.interp_order,
-                self.simulation.refined_particle_nbr,
-                self.cpp_hier,
-            )
+            # Load the C++ module for this specific simulator configuration (ndim, interp, refined_nbr)
+            self.cpp_lib = cpp.cpp_lib(self.simulation)
+            
+            # Create SAMRAI hierarchy (independent of simulator configuration, hence cpp_etc_lib)
+            self.cpp_hier = cpp.cpp_etc_lib().make_hierarchy()
+            
+            # Create the C++ simulator instance using the configuration-specific module
+            self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
+
             return self
         except Exception:
             import traceback
 
             print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
-            print(traceback.extract_stack())
+            print(traceback.format_exc())
             raise ValueError("Error in Simulator.setup(), see previous error")
 
     def initialize(self):
@@ -202,7 +210,6 @@ class Simulator:
         Run the simulation until the end time
         monitoring requires phlop
         """
-        from pyphare.cpp import cpp_lib
 
         self._check_init()
 
@@ -212,7 +219,7 @@ class Simulator:
         if self.simulation.dry_run:
             return self
         if monitoring:
-            mon.setup_monitoring(cpp_lib())
+            mon.setup_monitoring(self.cpp_lib)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -224,7 +231,7 @@ class Simulator:
             ticktock = tock - tick
             perf.append(ticktock)
             t = self.cpp_sim.currentTime()
-            if cpp_lib().mpi_rank() == 0:
+            if cpp.mpi_rank() == 0:
                 out = f"t = {t:8.5f}  -  {ticktock:6.5f}sec  - total {np.sum(perf):7.4}sec"
                 print(out, end=self.print_eol)
 
@@ -234,7 +241,7 @@ class Simulator:
         if plot_times:
             plot_timestep_time(perf)
 
-        mon.monitoring_shutdown(cpp_lib())
+        mon.monitoring_shutdown(self.cpp_lib)
         return self.reset()
 
     def _auto_dump(self):
@@ -304,10 +311,9 @@ class Simulator:
             CLI  - no logging files, display to cout
             NULL - no logging files, no cout
         """
-        from pyphare.cpp import cpp_lib
 
         logging = os.environ["PHARE_LOG"] = os.environ.get("PHARE_LOG", "RANK_FILES")
         need_log_dir = logging != "CLI" and logging != "NULL"
-        if need_log_dir and cpp_lib().mpi_rank() == 0:
+        if need_log_dir and cpp.mpi_rank() == 0:
             Path(".log").mkdir(exist_ok=True)
-        cpp_lib().mpi_barrier()
+        cpp.mpi_barrier()

@@ -27,3 +27,28 @@ Outline the context of your issue, and upload the zip
     Solution:
       LD_PRELOAD=/path/to/your/libmpi.so python3 $SCRIPT
 
+3. SAMRAI Static Library Incompatibility
+
+   PROBLEM:
+     SAMRAI libraries used by PHARE Python modules MUST be shared libraries (.so/.dylib),
+     not static archives (.a). 
+     
+   WHY:
+     SAMRAI contains static singletons (e.g., VariableDatabase, RestartManager).
+     When SAMRAI is statically linked, each Python module (cpp_1_2_3, cpp_1_2_4, etc.)
+     gets its own copy of these singletons, causing crashes and data corruption.
+     
+   SOLUTION:
+     By default, PHARE builds SAMRAI with shared libraries (-DSAMRAI_BUILD_SHARED_LIBS=ON).
+     To use a pre-installed SAMRAI, it MUST be built with shared libraries:
+       cmake -DSAMRAI_ROOT=/path/to/samrai -DSAMRAI_BUILD_SHARED_LIBS=ON
+       
+   SYMPTOMS:
+     - Segmentation faults when switching between different simulator configurations
+     - "Variable already registered" errors from SAMRAI
+     - Crashes in SAMRAI's VariableDatabase or RestartManager
+     
+   VERIFICATION:
+     Check if SAMRAI is shared:
+       file /path/to/samrai/lib/libSAMRAI_*.so  # should show "shared object"
+       # NOT "ar archive"
