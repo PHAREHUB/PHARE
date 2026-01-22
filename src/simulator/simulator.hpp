@@ -262,9 +262,7 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict)
         }
     }
 
-    this->allowEmergencyDumps = dict.contains("allow_emergency_dumps")
-                                    ? dict["allow_emergency_dumps"].template to<bool>()
-                                    : false;
+    this->allowEmergencyDumps = cppdict::get_value(dict, "allow_emergency_dumps", false);
 }
 
 
@@ -410,6 +408,12 @@ void Simulator<opts>::initialize()
 
         integrator_->initialize();
     }
+    catch (core::DictionaryException const& ex)
+    {
+        handle_dictionary_exception(ex);
+        error = std::string{"DICTIONARY EXCEPTION CAUGHT: "} + ex.what();
+        PHARE_LOG_ERROR(*error);
+    }
     catch (std::exception const& e)
     {
         error = std::string{"EXCEPTION CAUGHT: "} + e.what();
@@ -486,16 +490,14 @@ double Simulator<opts>::advance(double dt)
 template<auto opts>
 void Simulator<opts>::handle_dictionary_exception(core::DictionaryException const& ex)
 {
+    constexpr static std::array dump_exceptions{"Updater::updatePopulations",
+                                                "HybridLevelInitializer::initialize"};
+
     if (this->allowEmergencyDumps)
-    {
-        if (ex["ID"].template to<std::string>() == "Updater::updatePopulations")
-        {
-            for (auto level_nbr = 0; level_nbr < hierarchy_->getMaxNumberOfLevels(); ++level_nbr)
-            {
-                this->dMan->dump_level(level_nbr, currentTime_);
-            }
-        }
-    }
+        for (auto const& exception_id : dump_exceptions)
+            if (ex.id() == exception_id)
+                for (int ilvl = 0; ilvl < hierarchy_->getMaxNumberOfLevels(); ++ilvl)
+                    this->dMan->dump_level(ilvl, currentTime_);
 }
 
 template<auto opts>

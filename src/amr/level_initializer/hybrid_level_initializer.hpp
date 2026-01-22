@@ -1,19 +1,23 @@
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
-#include "amr/level_initializer/level_initializer.hpp"
-#include "amr/messengers/hybrid_messenger.hpp"
-#include "amr/messengers/messenger.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include "core/data/grid/gridlayout_utils.hpp"
-#include "core/data/ions/ions.hpp"
-#include "core/numerics/ampere/ampere.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
-#include "core/numerics/moments/moments.hpp"
+#include "core/errors.hpp"
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/utilities/mpi_utils.hpp"
+#include "core/numerics/ampere/ampere.hpp"
+#include "core/numerics/moments/moments.hpp"
+#include "core/data/grid/gridlayout_utils.hpp"
+#include "core/numerics/interpolator/interpolator.hpp"
+
+#include "amr/messengers/messenger.hpp"
+#include "amr/messengers/hybrid_messenger.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/level_initializer/level_initializer.hpp"
+
 #include "initializer/data_provider.hpp"
+
+#include <exception>
 
 namespace PHARE
 {
@@ -36,7 +40,7 @@ namespace solver
         PHARE::core::Ohm<GridLayoutT> ohm_;
         PHARE::core::Ampere<GridLayoutT> ampere_;
 
-        inline bool isRootLevel(int levelNumber) const { return levelNumber == 0; }
+        inline bool isRootLevel(int const levelNumber) const { return levelNumber == 0; }
 
     public:
         explicit HybridLevelInitializer(PHARE::initializer::PHAREDict const& dict)
@@ -78,6 +82,17 @@ namespace solver
                     PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : initlevel");
                 }
             }
+
+            try
+            {
+                amr::noDomainOverlapsOn(*hierarchy, levelNumber); // VERY BAD!
+            }
+            catch (std::exception const& ex)
+            {
+                PHARE_LOG_ERROR(ex.what());
+            }
+            if (core::mpi::any(core::Errors::instance().any()))
+                throw core::DictionaryException{}("ID", "HybridLevelInitializer::initialize");
 
             // now all particles are here, we must compute moments.
             auto& ions = hybridModel.state.ions;
@@ -166,6 +181,7 @@ namespace solver
 
                     hybMessenger.fillElectricGhosts(E, level, 0.);
                 }
+
 
             // quantities have been computed on the level,like the moments and J
             // that we later in the code need to get on level ghost nodes via
