@@ -10,8 +10,8 @@
 #endif // PHARE_WITH_PHLOP
 
 #ifndef PHARE_SCOPE_TIMER
-#define PHARE_SCOPE_TIMER(str) // nothing
-#endif                         // PHARE_SCOPE_TIMER
+#define PHARE_SCOPE_TIMER(str)
+#endif // PHARE_SCOPE_TIMER
 
 
 #if PHARE_LOG_LEVEL >= 1

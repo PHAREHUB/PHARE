@@ -3,6 +3,7 @@
 
 #include <algorithm>
 
+#include "amr/amr_constants.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
@@ -94,6 +95,7 @@ public:
     NO_DISCARD auto const& boundaryConditions() const { return boundaryConditions_; }
     NO_DISCARD auto const& cellWidth() const { return cellWidth_; }
     NO_DISCARD auto const& domainBox() const { return domainBox_; }
+    NO_DISCARD auto const& maxLevel() const { return maxLevel_; }
 
 
 
@@ -120,6 +122,7 @@ private:
     std::vector<double> const cellWidth_;
     std::vector<int> const domainBox_;
     std::vector<std::string> boundaryConditions_;
+    std::size_t maxLevel_ = 0;
 };
 
 
@@ -210,7 +213,16 @@ Hierarchy::Hierarchy(initializer::PHAREDict const& dict,
     , cellWidth_(cellWidth.data(), cellWidth.data() + dimension)
     , domainBox_(domainBox.data(), domainBox.data() + dimension)
     , boundaryConditions_(boundaryConditions.data(), boundaryConditions.data() + dimension)
+
 {
+    auto const max_nbr_levels = dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>();
+    if (max_nbr_levels < 1)
+        throw std::runtime_error("Invalid max_nbr_levels, must be >= 1");
+
+    maxLevel_ = max_nbr_levels - 1;
+
+    if (maxLevel_ >= MAX_LEVEL)
+        throw std::runtime_error("Invalid max_nbr_levels, must be <= " + std::to_string(MAX_LEVEL));
 }
 
 
