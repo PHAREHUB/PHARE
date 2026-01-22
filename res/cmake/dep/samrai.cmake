@@ -35,12 +35,4 @@ else()
   unset(CMAKE_RUNTIME_OUTPUT_DIRECTORY CACHE) # undoes what samrai does, so ctest can continue to work
   include_directories(${CMAKE_BINARY_DIR}/include) # this is needed to find build-dir/include/SAMRAI/SAMRAI_config.h
 
-
-  # REMOVE AFTER MERGED https://github.com/LLNL/SAMRAI/pull/294
-  target_link_libraries(SAMRAI_algs PUBLIC SAMRAI_mesh)
-  target_link_libraries(SAMRAI_appu PUBLIC SAMRAI_geom)
-  target_link_libraries(SAMRAI_mesh PUBLIC SAMRAI_pdat)
-  target_link_libraries(SAMRAI_solv PUBLIC SAMRAI_geom)
-
-
 endif(DEFINED SAMRAI_ROOT)

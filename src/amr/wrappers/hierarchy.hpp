@@ -45,40 +45,32 @@ class HierarchyRestarter
 {
 public:
     HierarchyRestarter(initializer::PHAREDict const& _sim_dict)
-        : sim_dict{_sim_dict}
+        : _restartFilePath{restartFilePath(_sim_dict)}
+        , sim_dict{_sim_dict}
     {
-        if (sim_dict["simulation"].contains("restarts"))
+        if (_restartFilePath)
         {
-            auto& dict = sim_dict["simulation"]["restarts"];
+            auto& dict           = sim_dict["simulation"]["restarts"];
+            auto restart_manager = SamraiLifeCycle::getRestartManager();
+            auto pdrm            = SamraiLifeCycle::getPatchDataRestartManager();
 
-            if (dict.contains("loadPath"))
-            {
-                auto restart_manager = SamraiLifeCycle::getRestartManager();
-                auto pdrm            = SamraiLifeCycle::getPatchDataRestartManager();
+            for (auto& id : dict["restart_ids"].template to<std::vector<int>>())
+                pdrm->registerPatchDataForRestart(id);
 
-                for (auto& id : dict["restart_ids"].template to<std::vector<int>>())
-                    pdrm->registerPatchDataForRestart(id);
-
-                int timeStepIdx = 0; // forced to zero as we wrap in our own timestamp directories
-                auto& directory = dict["loadPath"].template to<std::string>();
-                restart_manager->openRestartFile(directory, timeStepIdx, core::mpi::size());
-            }
+            int timeStepIdx = 0; // forced to zero as we wrap in our own timestamp directories
+            restart_manager->openRestartFile(*_restartFilePath, timeStepIdx, core::mpi::size());
         }
     }
 
     ~HierarchyRestarter()
     {
-        if (sim_dict["simulation"].contains("restarts"))
+        if (_restartFilePath)
         {
             auto& dict = sim_dict["simulation"]["restarts"];
+            auto pdrm  = SamraiLifeCycle::getPatchDataRestartManager();
 
-            if (dict.contains("loadPath"))
-            {
-                auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
-
-                for (auto& id : dict["restart_ids"].template to<std::vector<int>>())
-                    pdrm->unregisterPatchDataForRestart(id);
-            }
+            for (auto& id : dict["restart_ids"].template to<std::vector<int>>())
+                pdrm->unregisterPatchDataForRestart(id);
         }
     }
 
@@ -102,6 +94,15 @@ public:
     }
 
 private:
+    std::optional<std::string> static restartFilePath(auto const& dict)
+    {
+        if (dict["simulation"].contains("restarts"))
+            if (dict["simulation"]["restarts"].contains("loadPath"))
+                return dict["simulation"]["restarts"]["loadPath"].template to<std::string>();
+        return std::nullopt;
+    }
+
+    std::optional<std::string> _restartFilePath; // only set if we have a restart to load
     initializer::PHAREDict sim_dict;
 };
 
