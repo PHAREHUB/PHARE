@@ -3,6 +3,9 @@
 
 
 #ifndef PHARE_SIM_STR
+// Default template parameters for IDE/tooling parsing only
+// This will be overridden at compile time with actual values (e.g., "1,1,2")
+// via -DPHARE_SIM_STR=<dimension>,<interp_order>,<refined_particles>
 #define PHARE_SIM_STR 1, 1, 2 // mostly for clangformat - errors in cpp file if define is missing
 #endif
 
@@ -34,6 +37,7 @@ namespace PHARE::pydata
 template<typename Simulator, typename PyClass>
 void declareSimulator(PyClass&& sim)
 {
+    // Bind common simulator methods available to all template instantiations
     sim.def("initialize", &Simulator::initialize)
         .def("advance", &Simulator::advance)
         .def("startTime", &Simulator::startTime)
@@ -51,8 +55,10 @@ void declareSimulator(PyClass&& sim)
 template<typename Sim>
 void inline declare_etc(py::module& m)
 {
+    // Extract template parameters from PHARE_SIM_STR macro (e.g., "1,1,2")
     constexpr auto opts = SimOpts{PHARE_SIM_STR};
 
+    // Declare DataWrangler for accessing simulation data
     using DW         = DataWrangler<opts>;
     std::string name = "DataWrangler";
 
@@ -63,6 +69,7 @@ void inline declare_etc(py::module& m)
         .def("getPatchLevel", &DW::getPatchLevel)
         .def("getNumberOfLevels", &DW::getNumberOfLevels);
 
+    // Declare PatchLevel for accessing patch-level data (fields, particles, etc.)
     using PL = PatchLevel<opts>;
     name     = "PatchLevel";
     py::class_<PL, py::smart_holder>(m, name.c_str())
@@ -87,6 +94,7 @@ void inline declare_etc(py::module& m)
         .def("getFz", &PL::getFz)
         .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
 
+    // Declare Splitter for particle refinement operations
     using _Splitter
         = PHARE::amr::Splitter<core::DimConst<Sim::dimension>, core::InterpConst<Sim::interp_order>,
                                core::RefinedParticlesConst<Sim::nbRefinedPart>>;
@@ -101,14 +109,15 @@ void inline declare_etc(py::module& m)
     m.def(name.c_str(), splitPyArrayParticles<_Splitter>);
 }
 
-
 void inline declare_macro_sim(py::module& m)
 {
+    // Instantiate Simulator with template parameters from PHARE_SIM_STR macro
     using Sim = Simulator<SimOpts{PHARE_SIM_STR}>;
 
     std::string name = "Simulator";
     declareSimulator<Sim>(
         py::class_<Sim, py::smart_holder>(m, name.c_str())
+            // Expose template parameters as static properties for introspection
             .def_property_readonly_static("dims", [](py::object) { return Sim::dimension; })
             .def_property_readonly_static("interp_order",
                                           [](py::object) { return Sim::interp_order; })
