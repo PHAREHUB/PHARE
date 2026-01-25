@@ -25,7 +25,7 @@ else()
   endif()
 
   if(SAMRAI_BUILD_SHARED_LIBS)
-    option(BUILD_SHARED_LIBS "Make shared libs" ON ) # default as of 15/JUL/2025 is static libs
+    set(BUILD_SHARED_LIBS ON CACHE BOOL "Make shared libs" FORCE) # default as of 25/JAN/2026 is static libs
   endif(SAMRAI_BUILD_SHARED_LIBS)
 
   option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after

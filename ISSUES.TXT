@@ -30,5 +30,5 @@ Outline the context of your issue, and upload the zip
 3. SAMRAI libraries used by PHARE python modules must not be static archives.
      SAMRAI has static singletons which may exist more than once.
      This will likely lead to unsatisfactory results.
-     By default, PHARE will build SAMRAI in place with shared libaries,
+     By default, PHARE will build SAMRAI in place with shared libraries,
      The CMake flag `-DSAMRAI_ROOT=/path` may be used to target an existing installation
