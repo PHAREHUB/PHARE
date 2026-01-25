@@ -1,6 +1,7 @@
 #ifndef PHARE_SOLVER_PPC_HPP
 #define PHARE_SOLVER_PPC_HPP
 
+#include "core/errors.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/numerics/ohm/ohm.hpp"
@@ -577,8 +578,10 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     fromCoarser.fillIonPopMomentGhosts(views.model().state.ions, level, newTime);
     fromCoarser.fillIonGhostParticles(views.model().state.ions, level, newTime);
 
-    for (auto& state : views)
-        ionUpdater_.updateIons(state.ions);
+    {
+        for (auto& state : views)
+            ionUpdater_.updateIons(state.ions);
+    }
 
     // no need to update time, since it has been done before
     // now Ni and Vi are calculated we can fill pure ghost nodes

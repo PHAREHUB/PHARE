@@ -29,15 +29,19 @@ set (PHARE_BASE_LIBS )
 if(PGO_GEN)
   if(PGO_USE)
     message(FATAL_ERROR "cannot generate and use pgo at the same time.")
-  endif()
+  endif(PGO_USE)
   set (PHARE_FLAGS ${PHARE_FLAGS} -fprofile-generate -fprofile-update=prefer-atomic )
   set (PHARE_LINK_FLAGS "${PHARE_LINK_FLAGS} -fprofile-generate -fprofile-update=prefer-atomic" )
-endif()
+endif(PGO_GEN)
 
 if(PGO_USE)
   set (PHARE_LINK_FLAGS ${PHARE_LINK_FLAGS} -fprofile-use )
   set (PHARE_FLAGS ${PHARE_FLAGS} -fprofile-use )
-endif()
+endif(PGO_USE)
+
+if(catchFPE)
+  set (PHARE_FLAGS ${PHARE_FLAGS} -DPHARE_CATCH_FPE )
+endif(catchFPE)
 
 
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})

@@ -7,6 +7,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   configure_file(${CMAKE_SOURCE_DIR}/tests/__init__.py ${CMAKE_BINARY_DIR}/tests/__init__.py @ONLY)
 
 
+  add_subdirectory(tests/core/errors)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/grid)
   add_subdirectory(tests/core/data/gridlayout)

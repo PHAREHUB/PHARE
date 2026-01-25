@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+#include "core/def.hpp"
+
 #if !defined(PHARE_LOG_LEVEL)
 #define PHARE_LOG_LEVEL 0 // 0 == off
 #endif
@@ -27,7 +29,7 @@ constexpr static std::uint8_t LOG_LEVEL = PHARE_LOG_LEVEL;
 
 #define PHARE_LOG_START(lvl, str) CALI_MARK_BEGIN(str)
 #define PHARE_LOG_STOP(lvl, str) CALI_MARK_END(str)
-#define PHARE_LOG_SCOPE(lvl, str) PHARE::scope_log __phare_scope##__line__(lvl, str)
+#define PHARE_LOG_SCOPE(lvl, str) PHARE::scope_log PHARE_STR_CAT(__phare_scope, __LINE__)(lvl, str)
 
 #else // !PHARE_WITH_CALIPER
 
