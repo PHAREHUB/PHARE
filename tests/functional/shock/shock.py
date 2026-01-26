@@ -2,12 +2,9 @@
 
 
 import numpy as np
-import matplotlib.pyplot as plt
-
-
-import pyphare.pharein as ph
 
 from pyphare import cpp
+import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
@@ -115,9 +112,10 @@ def config(interp_order):
 
 def main():
     import os
-    import subprocess
     import glob
     import shlex
+    import subprocess
+    import matplotlib.pyplot as plt
 
     for interp_order in (1, 2, 3):
         sim = config(interp_order)

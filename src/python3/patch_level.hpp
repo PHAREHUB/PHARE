@@ -1,14 +1,12 @@
 #ifndef PHARE_PYTHON_PATCH_LEVEL_HPP
 #define PHARE_PYTHON_PATCH_LEVEL_HPP
 
-#include "patch_data.hpp"
 #include "phare_solver.hpp"
+#include "python3/patch_data.hpp"
 
 #include <string>
 #include <cstring>
 #include <cstddef>
-
-#include "python3/patch_data.hpp"
 
 
 namespace PHARE::pydata
