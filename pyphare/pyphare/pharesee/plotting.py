@@ -18,7 +18,7 @@ def dist_plot(particles, **kwargs):
 
     kwargs:
     * axis : ("x", "Vx"), ("x", "Vy"), ("x", "Vz"), ("Vx", "Vy") (default) --
-       ("Vx", "Vz"), ("Vy", "Vz")
+       ("Vx", "Vz"), ("Vy", "Vz"), ("Vx"), (Vy"), ("Vz")
     * bins :  number of bins in each dimension, default is (50,50)
     * gaussian_filter_sigma : sigma of the gaussian filter, default is (0,0)
     * median_filter_size : size of the median filter, default is (0,0)
@@ -53,50 +53,111 @@ def dist_plot(particles, **kwargs):
     axis = kwargs.get("axis", ("Vx", "Vy"))
     vaxis = {"Vx": 0, "Vy": 1, "Vz": 2}
 
-    if axis[0] in vaxis:
-        x = particles.v[:, vaxis[axis[0]]]
-    elif axis[0] == "x":
-        x = particles.x
-    if axis[1] in vaxis:
-        y = particles.v[:, vaxis[axis[1]]]
+    if len(axis) == 2:
+        if axis[0] in vaxis:
+            x = particles.v[:, vaxis[axis[0]]]
+        elif axis[0] == "x":
+            x = particles.x
+        else:
+            raise ValueError("Only abscissa and velocity X-axis are supported yet")
+        if axis[1] in vaxis:
+            y = particles.v[:, vaxis[axis[1]]]
+        else:
+            raise ValueError("Only velocity Y-axis are supported yet")
 
-    bins = kwargs.get("bins", (50, 50))
-    h, xh, yh = np.histogram2d(
-        x, y, bins=kwargs.get("bins", bins), weights=particles.weights[:, 0]
-    )
-
-    if "gaussian_filter_sigma" in kwargs and "median_filter_size" not in kwargs:
-        from scipy.ndimage import gaussian_filter
-
-        sig = kwargs.get("gaussian_filter_sigma", (0, 0))
-        image = gaussian_filter(h.T, sigma=sig)
-    elif "median_filter_size" in kwargs and "gaussian_filter_sigma" not in kwargs:
-        from scipy.ndimage import median_filter
-
-        siz = kwargs.get("median_filter_size", (0, 0))
-        image = median_filter(h.T, size=siz)
-    elif "gaussian_filter_sigma" not in kwargs and "median_filter_size" not in kwargs:
-        image = h.T
-    else:
-        raise ValueError(
-            "gaussian and median filters can not be called at the same time"
+        bins = kwargs.get("bins", (50, 50))
+        h, xh, yh = np.histogram2d(
+            x, y, bins=bins, weights=particles.weights[:, 0]
         )
 
-    cmap = kwargs.get("cmap", "jet")
+        if "gaussian_filter_sigma" in kwargs and "median_filter_size" not in kwargs:
+            from scipy.ndimage import gaussian_filter
 
-    cmax = kwargs.get("color_max", h.max())
-    cmin = kwargs.get("color_min", h.min())
-    cmin = max(cmin, 1e-4)
+            sig = kwargs.get("gaussian_filter_sigma", (0, 0))
+            image = gaussian_filter(h.T, sigma=sig)
+        elif "median_filter_size" in kwargs and "gaussian_filter_sigma" not in kwargs:
+            from scipy.ndimage import median_filter
 
-    color_scale = kwargs.get("color_scale", "log")
-    if color_scale == "log":
-        norm = LogNorm(vmin=cmin, vmax=cmax)
-    elif color_scale == "linear":
-        norm = Normalize(cmin, cmax)
+            siz = kwargs.get("median_filter_size", (0, 0))
+            image = median_filter(h.T, size=siz)
+        elif "gaussian_filter_sigma" not in kwargs and "median_filter_size" not in kwargs:
+            image = h.T
+        else:
+            raise ValueError(
+                "gaussian and median filters can not be called at the same time"
+            )
 
-    im = ax.pcolormesh(xh, yh, image, cmap=cmap, norm=norm)
+        plain = kwargs.get("plain", False)
 
-    fig.colorbar(im, ax=ax)
+        if not plain:
+            cmap = kwargs.get("cmap", "jet")
+
+            cmax = kwargs.get("color_max", h.max())
+            cmin = kwargs.get("color_min", h.min())
+            cmin = max(cmin, 1e-4)
+
+            color_scale = kwargs.get("color_scale", "log")
+            if color_scale == "log":
+                norm = LogNorm(vmin=cmin, vmax=cmax)
+            elif color_scale == "linear":
+                norm = Normalize(cmin, cmax)
+            else:
+                raise ValueError("Only log and linear color_scale values are supported yet")
+
+            im = ax.pcolormesh(xh, yh, image, cmap=cmap, norm=norm)
+
+            fig.colorbar(im, ax=ax)
+        else:
+            color = kwargs.get("color", "k")
+            stride = kwargs.get("stride", 1)
+            markersize = kwargs.get("markersize", 0.5)
+            alpha = kwargs.get("alpha", 0.5)
+            im = ax.plot(x[::stride], y[::stride],
+                         color=color,
+                         linewidth=0,
+                         marker='.',
+                         markersize=markersize,
+                         alpha=alpha)
+
+        ax.set_ylabel(kwargs.get("ylabel", axis[1]))
+
+
+    elif len(axis) == 1:
+        bins = kwargs.get("bins", (50))
+        cuts = kwargs.get("cuts", None)
+        ndim = particles.ndim
+
+        if cuts is not None:
+            from pyphare.core.box import Box
+            if ndim == 1:
+                box_new = Box(cuts[0][0], cuts[0][1])
+                new_particles = particles.select(box_new, box_type="pos")
+            elif ndim == 2:
+                box_new = Box((cuts[0][0], cuts[1][0]), (cuts[0][1], cuts[1][1]))  # TODO need to be tested
+                new_particles = particles.select(box_new, box_type="pos")
+            else:
+                box_new = Box((cuts[0][0], cuts[1][0], cuts[2][0]), (cuts[0][1], cuts[1][1], cuts[2][1]))  # TODO need to be tested
+                new_particles = particles.select(box_new, box_type="pos")
+        else:
+            new_particles = particles
+
+        drawstyle = kwargs.get("drawstyle", "steps-mid")
+
+        if axis[0] in vaxis:
+            x = new_particles.v[:, vaxis[axis[0]]]
+        else:
+            raise ValueError("For 1-D dist_plot, the abscissa has to be a velocity axis")
+
+        bins = kwargs.get("bins", 50)
+        h, xh = np.histogram(
+            x, bins=bins, weights=new_particles.weights[:, 0]
+        )
+
+        xh_ = 0.5*(xh[:-1]+xh[1:])
+        im = ax.plot(xh_, h, drawstyle=drawstyle)
+
+        ax.set_ylabel(kwargs.get("ylabel", "f"))
+
 
     if kwargs.get("kde", False) is True:
         import seaborn as sns
@@ -105,7 +166,7 @@ def dist_plot(particles, **kwargs):
 
     ax.set_title(kwargs.get("title", ""))
     ax.set_xlabel(kwargs.get("xlabel", axis[0]))
-    ax.set_ylabel(kwargs.get("ylabel", axis[1]))
+
     if "xlim" in kwargs:
         ax.set_xlim(kwargs["xlim"])
     if "ylim" in kwargs:
@@ -116,7 +177,7 @@ def dist_plot(particles, **kwargs):
             if axis[0] in vaxis:
                 ax.axvline(
                     np.average(
-                        particles.v[:, vaxis[axis[0]]], weights=particles.weights
+                        new_particles.v[:, vaxis[axis[0]]], weights=new_particles.weights
                     ),
                     color="w",
                     ls="--",
@@ -124,7 +185,7 @@ def dist_plot(particles, **kwargs):
             if axis[1] in vaxis:
                 ax.axhline(
                     np.average(
-                        particles.v[:, vaxis[axis[1]]], weights=particles.weights
+                        new_particles.v[:, vaxis[axis[1]]], weights=new_particles.weights
                     ),
                     color="w",
                     ls="--",
@@ -331,8 +392,8 @@ def finest_field_plot(run_path, qty, **kwargs):
 
     ax.set_title(kwargs.get("title", ""))
 
-    ax.set_xlabel(kwargs.get("xlabel", "$x c / \omega_p$"))
-    ax.set_ylabel(kwargs.get("ylabel", "$y c / \omega_p$"))
+    ax.set_xlabel(kwargs.get("xlabel", "$x \\ (d_p)$"))
+    ax.set_ylabel(kwargs.get("ylabel", "$y \\ (d_p)$"))
 
     if "xlim" in kwargs:
         ax.set_xlim(kwargs["xlim"])

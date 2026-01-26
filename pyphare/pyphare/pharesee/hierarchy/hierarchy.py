@@ -583,11 +583,14 @@ class PatchHierarchy(object):
 
         if finest:
             final = finest_part_data(self)
-            if axis[0] == "x":
-                xbins = amr_grid(self, time)
-                bins = (xbins, vbins)
-            else:
-                bins = (vbins, vbins)
+            if len(axis) == 2:
+                if axis[0] == "x":
+                    xbins = amr_grid(self, time)
+                    bins = (xbins, vbins)
+                else:
+                    bins = (vbins, vbins)
+            elif len(axis) == 1:
+                bins = vbins
             kwargs["bins"] = bins
 
         else:
