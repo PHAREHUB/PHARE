@@ -1054,9 +1054,10 @@ class Simulation(object):
         :meta private:
         """
         # to be considered https://github.com/PHAREHUB/PHARE/issues/666
-        check = ["cells", "dl"]
-        are_comparable = all([getattr(self, k) == getattr(sim, k)] for k in check)
-        return are_comparable
+
+        import pyphare.pharein.restarts as restarts
+
+        return restarts.is_restartable_compared_to(self, sim)
 
     # ------------------------------------------------------------------------------
 
