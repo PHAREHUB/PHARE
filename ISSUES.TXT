@@ -27,3 +27,8 @@ Outline the context of your issue, and upload the zip
     Solution:
       LD_PRELOAD=/path/to/your/libmpi.so python3 $SCRIPT
 
+3. SAMRAI libraries used by PHARE python modules must not be static archives.
+     SAMRAI has static singletons which may exist more than once.
+     This will likely lead to unsatisfactory results.
+     By default, PHARE will build SAMRAI in place with shared libaries,
+     The CMake flag `-DSAMRAI_ROOT=/path` may be used to target an existing installation

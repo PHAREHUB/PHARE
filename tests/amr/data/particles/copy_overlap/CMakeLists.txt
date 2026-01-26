@@ -19,8 +19,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
   )
 
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_amr
+  phare_initializer
   ${GTEST_LIBS})
 
 

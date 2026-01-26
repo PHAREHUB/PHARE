@@ -9,14 +9,12 @@ import yaml
 import unittest
 import numpy as np
 
-from pyphare.cpp import cpp_lib
-from pyphare.cpp import splitter_type
+from pyphare import cpp
 from pyphare.simulator.simulator import Simulator
 
-from tests.simulator import NoOverwriteDict, populate_simulation
+from tests.simulator import NoOverwriteDict
+from tests.simulator import populate_simulation
 from tests.simulator.config import project_root
-
-cpp = cpp_lib()
 
 
 class SimulatorRefinedParticleNbr(unittest.TestCase):
@@ -40,7 +38,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
             return refined_particle_nbr * ((cellNbr[0] * 2 + (cellNbr[1] * 2)))
         raise ValueError("Unhandled dimension for function")
 
-    def _check_deltas_and_weights(self, dim, interp, refined_particle_nbr):
+    def _check_deltas_and_weights(self, sim, dim, interp, refined_particle_nbr):
         yaml_dim = self.yaml_root["dimension_" + str(dim)]
         yaml_interp = yaml_dim["interp_" + str(interp)]
         yaml_n_particles = yaml_interp["N_particles_" + str(refined_particle_nbr)]
@@ -48,7 +46,7 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
         yaml_delta = [float(s) for s in str(yaml_n_particles["delta"]).split(" ")]
         yaml_weight = [float(s) for s in str(yaml_n_particles["weight"]).split(" ")]
 
-        splitter_t = splitter_type(dim, interp, refined_particle_nbr)
+        splitter_t = cpp.splitter_type(sim)
         np.testing.assert_allclose(yaml_delta, splitter_t.delta)
         np.testing.assert_allclose(yaml_weight, splitter_t.weight)
 
@@ -58,12 +56,14 @@ class SimulatorRefinedParticleNbr(unittest.TestCase):
         for interp in range(1, 4):
             prev_split_particle_max = 0
             for refined_particle_nbr in valid_refined_particle_nbr[dim][interp]:
-                self._check_deltas_and_weights(dim, interp, refined_particle_nbr)
 
                 simInput = NoOverwriteDict(
                     {"refined_particle_nbr": refined_particle_nbr}
                 )
-                self.simulator = Simulator(populate_simulation(dim, interp, **simInput))
+                sim = populate_simulation(dim, interp, **simInput)
+                self._check_deltas_and_weights(sim, dim, interp, refined_particle_nbr)
+
+                self.simulator = Simulator(sim)
                 self.simulator.initialize()
                 dw = self.simulator.data_wrangler()
                 max_per_pop = 0
