@@ -88,8 +88,10 @@ class MaxwellianFluidModel(object):
         should_validate = not any(
             [global_vars.sim.dry_run, global_vars.sim.is_from_restart()]
         )
+        self.validated = False
         if should_validate:
             self.validate(global_vars.sim)
+            self.validated = True
 
         global_vars.sim.set_model(self)
 
