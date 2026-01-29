@@ -1,9 +1,11 @@
 #ifndef PHARE_TEST_SIMULATOR_PER_TEST_HPP
 #define PHARE_TEST_SIMULATOR_PER_TEST_HPP
 
-#include "phare/phare.hpp"
+#include "amr/samrai.hpp"
+#include "simulator/simulator.hpp"
 #include "initializer/python_data_provider.hpp"
 #include "tests/core/data/field/test_field.hpp"
+
 
 #include "gtest/gtest.h"
 
