@@ -1,11 +1,12 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/def.hpp"
-#include "core/logger.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/hybrid/hybrid_quantities.hpp"
+
+#include "amr/samrai.hpp"
 
 #include "field_resource.hpp"
 #include "resources_guards.hpp"
@@ -19,6 +20,7 @@
 
 #include <map>
 #include <optional>
+
 
 
 namespace PHARE
@@ -101,7 +103,7 @@ namespace amr
 
 
         ResourcesManager()
-            : variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
+            : variableDatabase_{SamraiLifeCycle::getDatabase()}
             , context_{variableDatabase_->getContext(contextName_)}
             , dimension_{SAMRAI::tbox::Dimension{dimension}}
         {
@@ -296,28 +298,21 @@ namespace amr
 
         void registerForRestarts() const
         {
-            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
+            auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
             for (auto const& id : restart_patch_data_ids())
                 pdrm->registerPatchDataForRestart(id);
         }
 
 
+
         NO_DISCARD auto restart_patch_data_ids() const
-        { // see https://github.com/PHAREHUB/PHARE/issues/664
+        {
+            // see https://github.com/PHAREHUB/PHARE/issues/664
             std::vector<int> ids;
             for (auto const& [key, info] : nameToResourceInfo_)
                 ids.emplace_back(info.id);
             return ids;
         }
-
-        template<typename ResourcesView> // this function is never called
-        NO_DISCARD auto restart_patch_data_ids(ResourcesView const& view) const
-        {
-            std::vector<int> ids;
-            getIDs_(view, ids);
-            return ids;
-        }
-
 
         auto getIDsList(auto&&... keys) const
         {
