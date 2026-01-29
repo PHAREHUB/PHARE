@@ -160,9 +160,9 @@ class Particles:
     def split(self, sim):  # REQUIRES C++ PYBIND PHARE LIB
         from pyphare.cpp import split_pyarrays_fn
 
-        split_pyarrays = split_pyarrays_fn(
-            sim.ndim, sim.interp_order, sim.refined_particle_nbr
-        )((self.iCells, self.deltas, self.weights, self.charges, self.v))
+        split_pyarrays = split_pyarrays_fn(sim)(
+            (self.iCells, self.deltas, self.weights, self.charges, self.v)
+        )
         return Particles(
             icells=split_pyarrays[0].reshape(
                 int(len(split_pyarrays[0]) / self.ndim), self.ndim

@@ -1,8 +1,7 @@
 
 
-#include "src/simulator/simulator.hpp"
-#include "src/simulator/phare_types.hpp"
-#include "src/phare/phare.hpp"
+#include "amr/samrai.hpp"
+#include "simulator/simulator.hpp"
 
 #include "test_messenger_basichierarchy.hpp"
 #include "test_integrator_strat.hpp"

@@ -20,7 +20,7 @@ endif()
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 include(CheckCXXCompilerFlag)
-find_program(Git git)
+find_program(Git git REQUIRED)
 find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
 
 set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})

@@ -1,6 +1,6 @@
 
 
-#include "phare/phare.hpp"
+#include "amr/samrai.hpp"
 #include "simulator/simulator.hpp"
 #include "amr/wrappers/hierarchy.hpp"
 #include "initializer/python_data_provider.hpp"
