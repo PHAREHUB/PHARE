@@ -23,7 +23,7 @@ namespace amr
             std::is_same_v<resources_manager_type, typename MHDModel::resources_manager_type>);
 
     public:
-        static std::string const stratName;
+        static inline std::string const stratName = "MHDModel-HybridModel";
 
         MHDHybridMessengerStrategy(std::shared_ptr<resources_manager_type> const& resourcesManager,
                                    int const firstLevel)
@@ -123,6 +123,12 @@ namespace amr
                                 double const /*fillTime*/) override
         {
         }
+        void fillIonBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                            double const /*fillTime*/) override
+        {
+        }
+
+
 
         void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
                        std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
@@ -166,9 +172,6 @@ namespace amr
         Electromag EM_old_{stratName + "_EM_old"};
     };
 
-    template<typename MHDModel, typename HybridModel>
-    std::string const MHDHybridMessengerStrategy<MHDModel, HybridModel>::stratName
-        = "MHDModel-HybridModel";
 
 } // namespace amr
 } // namespace PHARE

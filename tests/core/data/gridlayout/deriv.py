@@ -4,7 +4,6 @@
 import os
 import sys
 import math
-import scipy.misc
 import numpy as np
 
 from pyphare.core import gridlayout
@@ -75,6 +74,8 @@ def primitive(coord):
 
 
 def main(path="./"):
+    import scipy.misc  # see doc/conventions.md #2.2.1
+
     if len(sys.argv) == 2:
         path = sys.argv[1]
 

@@ -5,6 +5,7 @@
 import os
 from pathlib import Path
 
+from pyphare import cpp
 from pyphare.logger import getLogger
 
 logger = getLogger(__name__)
@@ -31,25 +32,25 @@ def valdict(**kwargs):
 _globals = valdict(stats_man=None)
 
 
-def monitoring_yaml_file(cpplib):
-    path = Path(".phare") / "stats" / f"rank.{cpplib.mpi_rank()}.yaml"
+def monitoring_yaml_file():
+    path = Path(".phare") / "stats" / f"rank.{cpp.mpi_rank()}.yaml"
     path.parent.mkdir(exist_ok=True, parents=True)
     return path
 
 
-def setup_monitoring(cpplib, interval=10):
+def setup_monitoring(interval=10):
     if not have_phlop():
         return
 
     from phlop.app import stats_man as sm  # pylint: disable=import-error
 
     _globals.stats_man = sm.AttachableRuntimeStatsManager(
-        valdict(yaml=monitoring_yaml_file(cpplib), interval=interval),
-        dict(rank=cpplib.mpi_rank()),
+        valdict(yaml=monitoring_yaml_file(), interval=interval),
+        dict(rank=cpp.mpi_rank()),
     ).start()
 
 
-def monitoring_shutdown(cpplib):
+def monitoring_shutdown():
     if not have_phlop():
         return
 
@@ -57,8 +58,8 @@ def monitoring_shutdown(cpplib):
         _globals.stats_man.kill().join()
 
 
-def timing_setup(cpplib):
-    if cpplib.mpi_rank() == 0:
+def timing_setup():
+    if cpp.mpi_rank() == 0:
         try:
             Path(".phare/timings").mkdir(parents=True, exist_ok=True)
         except FileNotFoundError:

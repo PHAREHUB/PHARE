@@ -116,7 +116,6 @@ class GeometryTest(unittest.TestCase):
         }
 
         gaboxes = ghost_area_boxes(hierarchy, "particles")
-        particles = "particles"
 
         # same number of levels
         self.assertEqual(len(expected), len(gaboxes))

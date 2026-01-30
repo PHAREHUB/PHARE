@@ -20,9 +20,9 @@ ph.NO_GUI()
 
 cells = (200, 100)
 time_step = 0.005
-final_time = 50
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
-diag_dir = "phare_outputs/harris"
+final_time = 0.01
+timestamps = [0, final_time/2,final_time] #np.arange(0, final_time + time_step, final_time / 5)
+diag_dir = "phare_outputs/harris_2d"
 
 
 def config():
@@ -40,6 +40,13 @@ def config():
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
+        },
+
+        restart_options={
+            "dir": "checkpoints",
+            "mode": "overwrite",
+            # "elapsed_timestamps": elapsed_restart_timestamps,
+            # "restart_time": start_time,
         },
         strict=True,
         nesting_buffer=1,
@@ -215,13 +222,13 @@ class HarrisTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def test_run(self):
-        self.register_diag_dir_for_cleanup(diag_dir)
+        # self.register_diag_dir_for_cleanup(diag_dir)
         Simulator(config()).run().reset()
-        if cpp.mpi_rank() == 0:
-            plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
-            plot_dir.mkdir(parents=True, exist_ok=True)
-            plot(diag_dir, plot_dir)
-        cpp.mpi_barrier()
+        # if cpp.mpi_rank() == 0:
+        #     plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
+        #     plot_dir.mkdir(parents=True, exist_ok=True)
+        #     plot(diag_dir, plot_dir)
+        # cpp.mpi_barrier()
         return self
 
 

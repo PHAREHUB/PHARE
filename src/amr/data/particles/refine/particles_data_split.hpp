@@ -2,22 +2,18 @@
 #define PHARE_PARTICLES_DATA_SPLIT_HPP
 
 
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include "core/def.hpp"
-#include "amr/data/particles/particles_data.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
-#include "split.hpp"
-#include "core/utilities/constants.hpp"
-#include "phare_core.hpp"
 #include "amr/amr_constants.hpp"
+#include "amr/data/particles/particles_data.hpp"
 
-#include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include "split.hpp" // IWYU pragma: keep
+
 #include <SAMRAI/hier/Box.h>
-#include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/pdat/CellOverlap.h>
-
-#include <functional>
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/geom/CartesianPatchGeometry.h>
 
 
 namespace PHARE
@@ -50,6 +46,9 @@ namespace amr
     }
 
 
+    /** \brief the ParticlesRefineOperator is the concrete RefineOperator PHARE provides to
+     * SAMRAI to refine particles from coarse to fine levels.
+     */
     template<typename ParticleArray, ParticlesDataSplitType splitType, typename Splitter>
     class ParticlesRefineOperator : public SAMRAI::hier::RefineOperator
     {

@@ -180,6 +180,10 @@ public:
                CellExtractor extract = default_extractor);
 
 
+    template<typename Array, typename = std::enable_if_t<is_iterable_v<Array>, void>>
+    void erase(Array const& items, cell_t const oldCell, std::size_t const itemIndex);
+
+
     // sort all cell indexes
     void sort();
 
@@ -204,6 +208,8 @@ public:
         return cellIndexes_(local_(cell));
     }
 
+    void swap(cell_t const a, cell_t const b, std::size_t const i0, std::size_t i1);
+
 private:
     template<typename Cell>
     auto local_(Cell const& cell) const
@@ -219,6 +225,16 @@ private:
     NdArrayVector<dim, Indexer> cellIndexes_;
 };
 
+
+template<std::size_t dim, typename cell_index_t>
+void CellMap<dim, cell_index_t>::swap(cell_t const a, cell_t const b, std::size_t const i0,
+                                      std::size_t i1)
+{
+    assert(cellIndexes_(local_(a)).is_indexed(i0));
+    assert(cellIndexes_(local_(b)).is_indexed(i1));
+    cellIndexes_(local_(a)).updateIndex(i0, i1);
+    cellIndexes_(local_(b)).updateIndex(i1, i0);
+}
 
 
 template<std::size_t dim, typename cell_index_t>
@@ -273,6 +289,14 @@ inline void CellMap<dim, cell_index_t>::erase(Array const& items, std::size_t it
 }
 
 
+template<std::size_t dim, typename cell_index_t>
+template<typename Array, typename>
+inline void CellMap<dim, cell_index_t>::erase(Array const& items, cell_t const oldCell,
+                                              std::size_t const itemIndex)
+{
+    auto& blist = cellIndexes_(local_(oldCell));
+    blist.remove(itemIndex);
+}
 
 
 template<std::size_t dim, typename cell_index_t>

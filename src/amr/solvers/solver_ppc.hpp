@@ -283,7 +283,7 @@ void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& mode
                                                           SAMRAI::hier::PatchLevel& level,
                                                           double const coef)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
+    PHARE_LOG_SCOPE(3, "SolverPPC::accumulateFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
 
@@ -312,7 +312,7 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
                                                      SAMRAI::hier::PatchLevel& level)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::resetFluxSum");
+    PHARE_LOG_SCOPE(3, "SolverPPC::resetFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
 
@@ -357,7 +357,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
                                                      IMessenger& fromCoarserMessenger,
                                                      double const currentTime, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::advanceLevel");
+    PHARE_LOG_SCOPE(3, "SolverPPC::advanceLevel");
 
     auto& modelView   = dynamic_cast<ModelViews_t&>(views);
     auto& fromCoarser = dynamic_cast<HybridMessenger&>(fromCoarserMessenger);
@@ -387,12 +387,12 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
                                                     Messenger& fromCoarser,
                                                     double const currentTime, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::predictor1_");
 
     TimeSetter setTime{views, newTime};
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.faraday");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor1_.faraday");
         auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromag_E, views.electromagPred_B, dt);
         setTime([](auto& state) -> auto& { return state.electromagPred.B; });
@@ -400,14 +400,14 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
     }
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor1_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
         fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ohm");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor1_.ohm");
         for (auto& state : views)
             state.electrons.update(state.layout);
         ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromagPred_B, views.J,
@@ -422,12 +422,12 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
                                                     Messenger& fromCoarser,
                                                     double const currentTime, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::predictor2_");
 
     TimeSetter setTime{views, newTime};
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.faraday");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor2_.faraday");
         auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromagAvg_E, views.electromagPred_B,
                  dt);
@@ -436,14 +436,14 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
     }
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor2_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
         fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ohm");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor2_.ohm");
         for (auto& state : views)
             state.electrons.update(state.layout);
         ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromagPred_B, views.J,
@@ -460,13 +460,13 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
                                                    Messenger& fromCoarser, double const currentTime,
                                                    double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::corrector_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::corrector_");
 
     auto levelNumber = level.getLevelNumber();
     TimeSetter setTime{views, newTime};
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.faraday");
+        PHARE_LOG_SCOPE(3, "SolverPPC::corrector_.faraday");
         auto dt = newTime - currentTime;
         faraday_(views.layouts, views.electromag_B, views.electromagAvg_E, views.electromag_B, dt);
         setTime([](auto& state) -> auto& { return state.electromag.B; });
@@ -474,14 +474,14 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
     }
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere");
+        PHARE_LOG_SCOPE(3, "SolverPPC::corrector_.ampere");
         ampere_(views.layouts, views.electromag_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
         fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
     }
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ohm");
+        PHARE_LOG_SCOPE(3, "SolverPPC::corrector_.ohm");
         for (auto& state : views)
             state.electrons.update(state.layout);
         ohm_(views.layouts, views.N, views.Ve, views.Pe, views.electromag_B, views.J,
@@ -498,7 +498,7 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, ModelViews_t& views,
                                                  Messenger& fromCoarser, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::average_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::average_");
 
     TimeSetter setTime{views, newTime};
 
@@ -548,7 +548,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
                                                   Messenger& fromCoarser, double const currentTime,
                                                   double const newTime, core::UpdaterMode mode)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::moveIons_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::moveIons_");
     PHARE_DEBUG_DO(_debug_log_move_ions(views);)
 
     TimeSetter setTime{views, newTime};
@@ -579,6 +579,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
 
     for (auto& state : views)
         ionUpdater_.updateIons(state.ions);
+
+    fromCoarser.fillIonBorders(views.model().state.ions, level, newTime);
 
     // no need to update time, since it has been done before
     // now Ni and Vi are calculated we can fill pure ghost nodes

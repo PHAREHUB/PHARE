@@ -3,6 +3,7 @@
 #ifndef PHARE_CORE_UTILITIES_SPAN_HPP
 #define PHARE_CORE_UTILITIES_SPAN_HPP
 
+
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
 
