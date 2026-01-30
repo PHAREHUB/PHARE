@@ -1,13 +1,14 @@
 #ifndef PHARE_TEST_CORE_FIELD_TEST_HPP
 #define PHARE_TEST_CORE_FIELD_TEST_HPP
 
-#include <cassert>
-#include <functional>
 
 #include "core/data/ndarray/ndarray_vector.hpp"
 
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
+#include "gtest/gtest.h" // EXPECT_FLOAT_EQ
+
+
+#include <cassert>
+
 
 
 namespace PHARE::core

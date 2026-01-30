@@ -72,11 +72,18 @@ public:
     using Simulator   = PHARE::Simulator<opts>;
     using HybridModel = Simulator::HybridModel;
 
+
+    DataWrangler(std::shared_ptr<Simulator> const& simulator,
+                 std::shared_ptr<amr::Hierarchy> const& hierarchy)
+        : simulator_{*simulator}
+        , hierarchy_{hierarchy}
+    {
+    }
+
     DataWrangler(std::shared_ptr<ISimulator> const& simulator,
                  std::shared_ptr<amr::Hierarchy> const& hierarchy)
         : simulator_{cast_simulator(simulator)}
         , hierarchy_{hierarchy}
-
     {
     }
 
@@ -178,7 +185,7 @@ private:
             simDict["dimension"].template to<int>(), simDict["interp_order"].template to<int>(),
             simDict["refined_particle_nbr"].template to<int>(), SimulatorCaster{simulator});
         if (!simulator_ptr)
-            throw std::runtime_error("Data Wranger creation error: failed to cast Simulator");
+            throw std::runtime_error("Data Wrangler creation error: failed to cast Simulator");
 
         return *simulator_ptr;
     }

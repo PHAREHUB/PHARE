@@ -9,18 +9,17 @@ from time import sleep
 from pathlib import Path
 from ddt import data, ddt, unpack
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
-from pyphare.simulator.simulator import startMPI
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import hierarchy_from
+
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
+from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.simulator.simulator import Simulator
+from pyphare.simulator.simulator import startMPI
 
 from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
-
-cpp = cpp_lib()
 
 
 def setup_model(ppc=100):
