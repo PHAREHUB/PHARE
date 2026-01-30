@@ -1,16 +1,16 @@
 #ifndef PHARE_LOAD_BALANCER_MANAGER_HPP
 #define PHARE_LOAD_BALANCER_MANAGER_HPP
 
-#include <memory>
-#include <vector>
-#include <algorithm>
+#include "initializer/data_provider.hpp"
+#include "load_balancer_estimator.hpp"
+
+#include "amr/samrai.hpp"
 
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/pdat/CellVariable.h>
 
-#include "initializer/data_provider.hpp"
-#include "load_balancer_estimator.hpp"
-
+#include <memory>
+#include <vector>
 
 namespace PHARE::amr
 {
@@ -24,12 +24,12 @@ public:
         : dim_{SAMRAI::tbox::Dimension{dim}}
         , loadBalancerVar_{std::make_shared<SAMRAI::pdat::CellVariable<double>>(
               dim_, "LoadBalancerVariable")}
-        , variableDatabase_{SAMRAI::hier::VariableDatabase::getDatabase()}
+        , variableDatabase_{SamraiLifeCycle::getDatabase()}
         , context_{variableDatabase_->getContext("default")}
         , id_{variableDatabase_->registerVariableAndContext(loadBalancerVar_, context_,
                                                             SAMRAI::hier::IntVector::getZero(dim_))}
         , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
-        , loadBalancerEstimators_(maxLevelNumber_){};
+        , loadBalancerEstimators_(maxLevelNumber_) {};
 
     ~LoadBalancerManager() { variableDatabase_->removeVariable("LoadBalancerVariable"); };
 

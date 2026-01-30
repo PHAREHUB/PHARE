@@ -1,17 +1,15 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
-from pyphare.pharesee.run import Run
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import numpy as np
 
-mpl.use("Agg")
-from pyphare.cpp import cpp_lib
+from pyphare import cpp
+import pyphare.pharein as ph
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator, startMPI
 
-cpp = cpp_lib()
+
+ph.NO_GUI()
 
 
 def config(interp_order):
@@ -114,9 +112,10 @@ def config(interp_order):
 
 def main():
     import os
-    import subprocess
     import glob
     import shlex
+    import subprocess
+    import matplotlib.pyplot as plt
 
     for interp_order in (1, 2, 3):
         sim = config(interp_order)

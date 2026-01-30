@@ -1,8 +1,9 @@
 
-#include "phare/phare.hpp"
 
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
+
+#include "amr/samrai.hpp" // IWYU pragma: keep
 
 #include "hdf5/detail/hdf5_utils.hpp"
 #include "hdf5/detail/h5/h5_file.hpp"

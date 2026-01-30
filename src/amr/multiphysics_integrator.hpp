@@ -384,8 +384,7 @@ namespace solver
             // handle samrai restarts / schedule creation
             // allocation of patch datas which may not want to be saved to restart files will
             // likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
-            if (!restartInitialized_
-                and SAMRAI::tbox::RestartManager::getManager()->isFromRestart())
+            if (!restartInitialized_ and SamraiLifeCycle::getRestartManager()->isFromRestart())
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
