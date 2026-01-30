@@ -3,7 +3,6 @@
 
 #include "diagnostic_props.hpp"
 
-#include "dict.hpp"
 
 namespace PHARE::diagnostic
 {

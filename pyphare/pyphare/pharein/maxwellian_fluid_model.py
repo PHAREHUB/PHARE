@@ -193,6 +193,10 @@ class MaxwellianFluidModel(object):
             self.validate1d(sim, atol)
         elif sim.ndim == 2:
             self.validate2d(sim, atol)
+        elif sim.ndim == 3:
+            self.validate3d(sim, atol)
+        else:
+            raise ValueError("Unknown dimension")
 
     def validate1d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
@@ -254,6 +258,88 @@ class MaxwellianFluidModel(object):
                 return (np.zeros_like(L), L), (np.zeros_like(R), R)
 
         phare_utilities.debug_print("2d periodic validation")
+        for idir in np.arange(sim.ndim):
+            phare_utilities.debug_print("validating direction ...", idir)
+            if sim.boundary_types[idir] == "periodic":
+                phare_utilities.debug_print(f"direction {idir} is periodic?")
+                dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts) + 0.5) * sim.dl[0]
+                dual_right = dual_left + domain[0]
+                primal_left = np.arange(-nbrPrimalGhosts, nbrPrimalGhosts) * sim.dl[0]
+                primal_right = primal_left + domain[0]
+
+                direction = directions[idir]
+
+                for b_i, b_name in zip((bx, by, bz), ("Bx", "By", "Bz")):
+                    if layout.qtyIsDual(b_name, direction):
+                        L, R = dual_left, dual_right
+                    else:
+                        L, R = primal_left, primal_right
+
+                coordsL, coordsR = getCoord(L, R, idir)
+                check = np.allclose(b_i(*coordsL), b_i(*coordsR), atol=atol, rtol=0)
+                if not check:
+                    not_periodic += [(b_name, idir)]
+                is_periodic &= check
+
+                for pop in self.populations:
+                    functions = ("vx", "vy", "vz", "vthx", "vthy", "vthz")
+                    L, R = primal_left, primal_right
+                    coordsL, coordsR = getCoord(L, R, idir)
+
+                    for fn in functions:
+                        f = self.model_dict[pop][fn]
+                        fL = f(*coordsL)
+                        fR = f(*coordsR)
+                        check = np.allclose(fL, fR, atol=atol, rtol=0)
+                        phare_utilities.debug_print(
+                            f"checked {fn} : fL = {fL} and fR = {fR} and check = {check}"
+                        )
+                        if not check:
+                            not_periodic += [(fn, idir)]
+                        is_periodic &= check
+
+        if not is_periodic:
+            print(
+                "Warning: Simulation is periodic but some functions are not : ",
+                not_periodic,
+            )
+            if sim.strict:
+                raise RuntimeError("Simulation is not periodic")
+
+    def validate3d(self, sim, atol):
+        domain_box = Box([0] * sim.ndim, sim.cells)
+        layout = GridLayout(domain_box, domain_box.lower, sim.dl, sim.interp_order)
+        nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
+        directions = ["X", "Y", "Z"]
+        domain = sim.simulation_domain()
+        bx = self.model_dict["bx"]
+        by = self.model_dict["by"]
+        bz = self.model_dict["bz"]
+        is_periodic = True
+        not_periodic = []
+
+        def getCoord(L, R, idir):
+            if idir == 0:
+                return (L, np.zeros_like(L), np.zeros_like(L)), (
+                    R,
+                    np.zeros_like(R),
+                    np.zeros_like(R),
+                )
+            elif idir == 1:
+                return (np.zeros_like(L), L, np.zeros_like(L)), (
+                    np.zeros_like(R),
+                    R,
+                    np.zeros_like(R),
+                )
+            else:
+                return (np.zeros_like(L), np.zeros_like(L), L), (
+                    np.zeros_like(R),
+                    np.zeros_like(R),
+                    R,
+                )
+
+        phare_utilities.debug_print("3d periodic validation")
         for idir in np.arange(sim.ndim):
             phare_utilities.debug_print("validating direction ...", idir)
             if sim.boundary_types[idir] == "periodic":
