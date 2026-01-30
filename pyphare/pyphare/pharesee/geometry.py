@@ -3,7 +3,6 @@ import numpy as np
 from ..core import box as boxm
 from pyphare.core.box import Box
 from .hierarchy.patchdata import FieldData
-from .hierarchy.hierarchy_utils import is_root_lvl
 
 from pyphare.core.phare_utilities import listify, is_scalar
 
@@ -210,6 +209,7 @@ def compute_overlaps(patches, domain_box):
 
                     overlaps.append(
                         {
+                            "name": ref_pdname,
                             "pdatas": (ref_pd, cmp_pd),
                             "patches": (refPatch, cmpPatch),
                             "box": overlap,
@@ -217,9 +217,10 @@ def compute_overlaps(patches, domain_box):
                         }
                     )
 
-    def append(ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
+    def append(name, ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
         overlaps.append(
             {
+                "name": name,
                 "pdatas": (ref_pd, cmp_pd),
                 "patches": (refPatch, cmpPatch),
                 "box": overlap,
@@ -271,6 +272,7 @@ def compute_overlaps(patches, domain_box):
                                     other_ovrlp = toFieldBox(other_ovrlp, ref_pd)
 
                                 append(
+                                    ref_pdname,
                                     ref_pd,
                                     cmp_pd,
                                     ref_patch,
@@ -279,6 +281,7 @@ def compute_overlaps(patches, domain_box):
                                     (zero_offset, (-offset).tolist()),
                                 )
                                 append(
+                                    ref_pdname,
                                     ref_pd,
                                     cmp_pd,
                                     ref_patch,
@@ -436,6 +439,8 @@ def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
       levelNbrs : limit working set of hierarchy levels to those requested, if scalar, returns just that level
       time      : the simulation time to access the appropriate data for the requested time
     """
+    from .hierarchy.hierarchy_utils import is_root_lvl  # avoid cyclic imports
+
     quantities = listify(quantities)
 
     levelNbrs_is_scalar = is_scalar(levelNbrs)

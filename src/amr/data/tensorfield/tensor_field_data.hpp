@@ -46,7 +46,10 @@ class TensorFieldData : public SAMRAI::hier::PatchData
             [&](auto i) { return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i])}; });
     }
 
+public:
     using value_type = Grid_t::value_type;
+
+private:
     using SetEqualOp = core::Equals<value_type>;
 
 public:
@@ -336,10 +339,12 @@ public:
         return patchData->grids;
     }
 
-    void sum(SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap);
-    void unpackStreamAndSum(SAMRAI::tbox::MessageStream& stream,
-                            SAMRAI::hier::BoxOverlap const& overlap);
 
+    template<typename Operation>
+    void operate(SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap);
+    template<typename Operation>
+    void unpackStreamAnd(SAMRAI::tbox::MessageStream& stream,
+                         SAMRAI::hier::BoxOverlap const& overlap);
 
 
     GridLayoutT gridLayout;
@@ -481,30 +486,26 @@ private:
 
 
 
-
 template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
-void TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>::unpackStreamAndSum(
+template<typename Operation>
+void TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>::unpackStreamAnd(
     SAMRAI::tbox::MessageStream& stream, SAMRAI::hier::BoxOverlap const& overlap)
 {
-    using PlusEqualOp = core::PlusEquals<value_type>;
-
-    unpackStream<PlusEqualOp>(stream, overlap, grids);
+    unpackStream<Operation>(stream, overlap, grids);
 }
 
 
-
 template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
-void TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>::sum(
+template<typename Operation>
+void TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>::operate(
     SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap)
 {
-    using PlusEqualOp = core::PlusEquals<value_type>;
-
     TBOX_ASSERT_OBJDIM_EQUALITY2(*this, src);
 
     auto& fieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
     auto& fieldSource  = dynamic_cast<TensorFieldData const&>(src);
 
-    copy_<PlusEqualOp>(fieldSource, fieldOverlap, *this);
+    copy_<Operation>(fieldSource, fieldOverlap, *this);
 }
 
 

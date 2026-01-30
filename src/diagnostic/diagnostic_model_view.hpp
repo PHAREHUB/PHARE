@@ -6,7 +6,7 @@
 
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
-#include "amr/messengers/field_sum_transaction.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
 #include "dict.hpp"
@@ -170,12 +170,14 @@ protected:
     {
         auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
         {
+            using PlusEqualsOp = core::PlusEquals<typename VecField::value_type>;
             if (not MTschedules.count(ilvl))
                 MTschedules.try_emplace(
-                    ilvl, MTalgo->createSchedule(
-                              hierarchy.getPatchLevel(ilvl), 0,
-                              std::make_shared<
-                                  amr::FieldBorderSumTransactionFactory<TensorFieldData_t>>()));
+                    ilvl,
+                    MTalgo->createSchedule(
+                        hierarchy.getPatchLevel(ilvl), 0,
+                        std::make_shared<amr::FieldBorderOpTransactionFactory<TensorFieldData_t,
+                                                                              PlusEqualsOp>>()));
             return *MTschedules[ilvl];
         }
 

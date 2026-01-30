@@ -159,7 +159,10 @@ NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_siz
     std::vector<Vector> collected;
     for (int i = 0; i < mpi_size; i++)
     {
-        collected.emplace_back(&rcvBuff[offset], &rcvBuff[offset] + perMPISize[i]);
+        if (perMPISize[i] == 0)
+            collected.emplace_back();
+        else
+            collected.emplace_back(&rcvBuff[offset], &rcvBuff[offset] + perMPISize[i]);
         offset += perMPISize[i];
     }
     return collected;

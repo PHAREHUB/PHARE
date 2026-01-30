@@ -41,7 +41,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
 
     _, smallest_patch_size = check_patch_size(dim, interp_order=interp, cells=cells)
     dl = [1.0 / v for v in cells]
-    b0 = [[3] * dim, [8] * dim]
+    b0 = [[3] * dim, [12] * dim]
     args = {
         "interp_order": interp,
         "smallest_patch_size": smallest_patch_size,
