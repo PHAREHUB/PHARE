@@ -58,7 +58,7 @@ namespace core
         NO_DISCARD auto size() const { return nbrPopulations(); }
 
         NO_DISCARD field_type const& massDensity() const { return massDensity_; }
-        NO_DISCARD field_type const& massDensity() { return massDensity_; }
+        NO_DISCARD field_type& massDensity() { return massDensity_; }
 
         NO_DISCARD field_type const& chargeDensity() const { return chargeDensity_; }
         NO_DISCARD field_type& chargeDensity() { return chargeDensity_; }
