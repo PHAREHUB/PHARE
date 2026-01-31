@@ -69,6 +69,7 @@ struct Hi5Diagnostic
         dict["flush_every"] = Writer_t::flush_never;
 
         dict["write_timestamps"]   = std::vector<double>{0, 1, 2};
+        dict["elapsed_timestamps"] = std::vector<double>{0};
         dict["compute_timestamps"] = std::vector<double>{0, 1, 2};
         dict["n_attributes"]       = std::size_t{0}; // real diag attrs are loaded from python
 

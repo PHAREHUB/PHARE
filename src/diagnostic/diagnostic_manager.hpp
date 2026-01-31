@@ -2,14 +2,17 @@
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
 #include "core/def.hpp"
-#include "core/data/particles/particle_array.hpp"
+#include "core/logger.hpp"
+#include "core/utilities/mpi_utils.hpp"
+
 #include "initializer/data_provider.hpp"
+
 #include "diagnostic_props.hpp"
 
-#include <utility>
+#include <map>
 #include <cmath>
 #include <memory>
-#include <map>
+#include <utility>
 
 namespace PHARE::diagnostic
 {
@@ -31,7 +34,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
         while (diagsParams.contains(diagType)
                && diagsParams[diagType].contains(diagType + std::to_string(diagBlockID)))
         {
-            const std::string diagName = diagType + std::to_string(diagBlockID);
+            std::string const diagName = diagType + std::to_string(diagBlockID);
             dMan.addDiagDict(diagsParams[diagType][diagName]);
             ++diagBlockID;
         }
@@ -104,12 +107,33 @@ private:
         return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
     }
 
+    bool needsElapsedAction_(double const nextTime) const
+    {
+        return core::mpi::unix_timestamp_now() > nextTime;
+    }
+
+
 
     NO_DISCARD bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto nextWrite = nextWrite_[diag.type + diag.quantity];
-        return nextWrite < diag.writeTimestamps.size()
-               and needsAction_(diag.writeTimestamps[nextWrite], timeStamp, timeStep);
+        auto const& diag_key     = diag.type + diag.quantity;
+        auto& nextWriteTimestamp = nextWrite_[diag_key];
+        auto& nextWriteElapsed   = nextWriteElapsed_[diag_key];
+
+        auto const writeTimestampNow
+            = nextWriteTimestamp < diag.writeTimestamps.size()
+              and needsAction_(diag.writeTimestamps[nextWriteTimestamp], timeStamp, timeStep);
+
+        auto const writeElapsedNow
+            = nextWriteElapsed < diag.elapsedTimestamps.size()
+              and needsElapsedAction_(diag.elapsedTimestamps[nextWriteElapsed]);
+
+        if (writeTimestampNow)
+            ++nextWriteTimestamp;
+        if (writeElapsedNow)
+            ++nextWriteElapsed;
+
+        return writeTimestampNow || writeElapsedNow;
     }
 
 
@@ -125,8 +149,10 @@ private:
     std::unique_ptr<Writer> writer_;
     std::map<std::string, std::size_t> nextCompute_;
     std::map<std::string, std::size_t> nextWrite_;
-};
+    std::map<std::string, std::size_t> nextWriteElapsed_;
 
+    std::time_t const start_time_{core::mpi::unix_timestamp_now()};
+};
 
 
 
@@ -138,7 +164,16 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     diagProps.type            = diagParams["type"].template to<std::string>();
     diagProps.quantity        = diagParams["quantity"].template to<std::string>();
     diagProps.writeTimestamps = diagParams["write_timestamps"].template to<std::vector<double>>();
-    diagProps["flush_every"]  = diagParams["flush_every"].template to<std::size_t>();
+
+    if (diagParams.contains("elapsed_timestamps"))
+    {
+        diagProps.elapsedTimestamps
+            = diagParams["elapsed_timestamps"].template to<std::vector<double>>();
+        for (auto& time : diagProps.elapsedTimestamps)
+            time += start_time_; // expected for comparison later
+    }
+
+    diagProps["flush_every"] = diagParams["flush_every"].template to<std::size_t>();
 
     diagProps.computeTimestamps
         = diagParams["compute_timestamps"].template to<std::vector<double>>();
@@ -191,11 +226,6 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     {
         PHARE_LOG_SCOPE(1, "DiagnosticsManager::dump");
         writer_->dump(activeDiagnostics, timeStamp);
-
-        for (auto const* diag : activeDiagnostics)
-        {
-            nextWrite_[diag->type + diag->quantity]++;
-        }
     }
 
     return activeDiagnostics.size() > 0;
