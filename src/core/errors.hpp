@@ -3,10 +3,13 @@
 
 #include "core/def.hpp"
 
-#include <stdexcept>
+#include <cfenv>
+#include <atomic>
 #include <string>
+#include <csignal>
 #include <sstream>
 #include <iostream>
+#include <stdexcept>
 #include <unordered_map>
 
 
@@ -93,5 +96,66 @@ private:
     PHARE::core::Errors::instance().log(std::string{__FILE__} + ":" + std::to_string(__LINE__), x);
 #endif
 
+
+
+#if PHARE_CATCH_FPE
+
+namespace PHARE
+{
+
+int static constexpr default_fpe_exceptions()
+{
+#if defined(PHARE_FPE_ALL)
+    return FE_ALL_EXCEPT;
+#elif defined(PHARE_FPE_CUSTOM)
+    return PHARE_FPE_CUSTOM;
+#else // default
+    return FE_INVALID | FE_DIVBYZERO | FE_OVERFLOW;
+#endif
+}
+
+struct FPEWatcher
+{
+    static void enable()
+    {
+        ++depth;
+        if (depth > 1)
+            return;
+        feclearexcept(FE_ALL_EXCEPT);
+        feenableexcept(exceptions);
+    }
+
+    static void disable()
+    {
+        --depth;
+        if (depth > 0)
+            return;
+
+        fedisableexcept(exceptions);
+    }
+
+    static inline std::atomic<std::size_t> depth = 0;
+    static int constexpr exceptions              = default_fpe_exceptions();
+
+    FPEWatcher() { enable(); }
+    ~FPEWatcher() { disable(); }
+};
+
+} // namespace PHARE
+
+
+
+#define PHARE_FPE_START PHARE::FPEWatcher::enable()
+#define PHARE_FPE_STOP PHARE::FPEWatcher::disable()
+#define PHARE_FPE_SCOPE                                                                            \
+    PHARE::FPEWatcher PHARE_STR_CAT(__phare_fpe, __LINE__) {}
+
+#else // !PHARE_CATCH_FPE
+
+#define PHARE_FPE_START
+#define PHARE_FPE_STOP
+#define PHARE_FPE_SCOPE
+
+#endif // PHARE_FPE
 
 #endif /* PHARE_CORE_ERRORS_H */

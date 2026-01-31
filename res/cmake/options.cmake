@@ -108,6 +108,10 @@ option(SAMRAI_BUILD_SHARED_LIBS "Build SAMRAI shared libraries" ON)
 option(PHARE_EXE "Build PHARE EXE" OFF)
 
 
+# -DcatchFPE=ON - activate scope level fpe watchers denoted by `PHARE_FPE_SCOPE;`
+option(catchFPE "Enable floating point exception detection" OFF)
+
+
 # print options
 function(print_phare_options)
 
