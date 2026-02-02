@@ -522,9 +522,9 @@ def check_restart_options(**kwargs):
         "restart_time",  # number or "auto"
         "keep_last",  # delete obsolete
     ]
-    restart_options = kwargs.get("restart_options", None)
+    restart_options = kwargs.get("restart_options", {})
 
-    if restart_options is not None:
+    if "restart_options" is kwargs:
         for key in restart_options.keys():
             if key not in valid_keys:
                 raise ValueError(
@@ -544,7 +544,8 @@ def check_restart_options(**kwargs):
                 f"Invalid restart mode {mode}, valid modes are {valid_modes}"
             )
 
-        if restart_time := restarts.restart_time(restart_options):
+        restart_time = restarts.restart_time(restart_options)
+        if restart_time is not None:
             restart_options["restart_time"] = restart_time
 
     return restart_options
@@ -693,6 +694,7 @@ def checker(func):
 
         kwargs["clustering"] = check_clustering(**kwargs)
 
+        kwargs["restart_options"] = check_restart_options(**kwargs)
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
         kwargs["time_step"] = time_step

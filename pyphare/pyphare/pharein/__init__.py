@@ -359,7 +359,7 @@ def populateDict():
         if "dir" in restart_options:
             restart_file_path = restart_options["dir"]
 
-        if "restart_time" in restart_options and restart_options["restart_time"] > 0:
+        if "restart_time" in restart_options:
             from pyphare.cpp import cpp_etc_lib
 
             restart_time = restart_options["restart_time"]

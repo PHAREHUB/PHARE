@@ -181,3 +181,24 @@ def remove(box, to_remove):
 
 def amr_to_local(box, ref_box):
     return Box(box.lower - ref_box.lower, box.upper - ref_box.lower)
+
+
+def select(data, box):
+    return data[tuple([slice(l, u + 1) for l, u in zip(box.lower, box.upper)])]
+
+class DataSelector:
+    """
+        can't assign return to function unless []
+        usage
+        DataSelector(data)[box] = val
+    """
+    def __init__(self, data):
+        self.data = data
+    def __getitem__(self, box_or_slice):
+        if isinstance(box_or_slice, Box):
+            return select(self.data, box_or_slice)
+        return self.data[box_or_slice]
+
+    def __setitem__(self, box_or_slice, val):
+        self.__getitem__(box_or_slice)[:] = val
+

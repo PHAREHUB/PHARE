@@ -69,7 +69,6 @@ void operate_on_fields(auto& dst, auto const& src)
 }
 
 
-
 template<typename Field_t>
 template<typename Operator>
 void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t seek)
@@ -78,6 +77,7 @@ void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t
     for (; dst_it != lcl_box.end(); ++seek, ++dst_it)
         Operator{field(*dst_it)}(vec[seek]);
 }
+
 
 template<typename Field_t>
 void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
