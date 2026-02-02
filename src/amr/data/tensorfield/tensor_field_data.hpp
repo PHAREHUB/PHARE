@@ -13,6 +13,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
@@ -54,8 +55,11 @@ public:
     static constexpr std::size_t interp_order = GridLayoutT::interp_order;
     static constexpr auto N                   = core::detail::tensor_field_dim_from_rank<rank>();
 
-    using Geometry        = TensorFieldGeometry<rank, GridLayoutT, PhysicalQuantity>;
-    using gridlayout_type = GridLayoutT;
+    using Geometry             = TensorFieldGeometry<rank, GridLayoutT, PhysicalQuantity>;
+    using gridlayout_type      = GridLayoutT;
+    using field_type           = typename Grid_t::field_type;
+    using scalar_quantity_type = typename PhysicalQuantity::Scalar;
+    using tensorfield_type     = core::TensorField<field_type, scalar_quantity_type>;
 
     /*** \brief Construct a TensorFieldData from information associated to a patch
      *
@@ -69,6 +73,7 @@ public:
         , gridLayout{layout}
         , grids{make_grids(core::detail::tensor_field_names<rank>(name), layout, qty)}
         , quantity_{qty}
+        , name_{name}
     {
     }
 
@@ -336,6 +341,23 @@ public:
         return patchData->grids;
     }
 
+    /**
+     * @brief Get a TensorField associated to data with @p id on @p patch.
+     *
+     * @param patch the AMR patch
+     * @param id the resource index of the data
+     * @return a tensor field
+     **/
+    static tensorfield_type& getTensorField(SAMRAI::hier::Patch const& patch, int const id)
+    {
+        auto const& patchData = std::dynamic_pointer_cast<This>(patch.getPatchData(id));
+        if (!patchData)
+            throw std::runtime_error("cannot cast to TensorFieldData");
+        tensorfield_type tensorField{patchData->name_, patchData->quantity_};
+        tensorField.setBuffer(&patchData->grids);
+        return tensorField;
+    }
+
     void sum(SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap);
     void unpackStreamAndSum(SAMRAI::tbox::MessageStream& stream,
                             SAMRAI::hier::BoxOverlap const& overlap);
@@ -347,6 +369,7 @@ public:
 
 private:
     tensor_t quantity_; ///! PhysicalQuantity used for this field data
+    std::string name_;
 
 
 
