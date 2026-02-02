@@ -41,7 +41,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
 
     _, smallest_patch_size = check_patch_size(dim, interp_order=interp, cells=cells)
     dl = [1.0 / v for v in cells]
-    b0 = [[3] * dim, [8] * dim]
+    b0 = [[3] * dim, [12] * dim]
     args = {
         "interp_order": interp,
         "smallest_patch_size": smallest_patch_size,
@@ -250,7 +250,10 @@ class SimulatorTest(unittest.TestCase):
     def unique_diag_dir_for_test_case(self, base_path, ndim, interp, post_path=""):
         from pyphare import cpp
 
-        return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}/{post_path}"
+        base = f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}"
+        if post_path:
+            return base + f"/{post_path}"
+        return base
 
     def clean_up_diags_dirs(self):
         from pyphare import cpp

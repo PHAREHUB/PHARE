@@ -405,8 +405,11 @@ def check_patch_size(ndim, **kwargs):
     small_invalid_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim)
     largest_patch_size = kwargs.get("largest_patch_size", None)
 
-    # to prevent primal ghost overlaps of non adjacent patches, we need smallest_patch_size+=1
-    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim) + 1
+    # to prevent primal ghost overlaps of non adjacent patches, we need smallest_patch_size * 2 + 1
+    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim) * 2 + 1
+    # TORM next lines after https://github.com/llnl/SAMRAI/issues/311
+    min_per_dim = [6, 9, 9]
+    smallest_patch_size = phare_utilities.np_array_ify(min_per_dim[ndim - 1], ndim)
     if "smallest_patch_size" in kwargs and kwargs["smallest_patch_size"] is not None:
         smallest_patch_size = phare_utilities.np_array_ify(
             kwargs["smallest_patch_size"], ndim
@@ -519,9 +522,9 @@ def check_restart_options(**kwargs):
         "restart_time",  # number or "auto"
         "keep_last",  # delete obsolete
     ]
-    restart_options = kwargs.get("restart_options", None)
+    restart_options = kwargs.get("restart_options", {})
 
-    if restart_options is not None:
+    if "restart_options" is kwargs:
         for key in restart_options.keys():
             if key not in valid_keys:
                 raise ValueError(
@@ -541,7 +544,8 @@ def check_restart_options(**kwargs):
                 f"Invalid restart mode {mode}, valid modes are {valid_modes}"
             )
 
-        if restart_time := restarts.restart_time(restart_options):
+        restart_time = restarts.restart_time(restart_options)
+        if restart_time is not None:
             restart_options["restart_time"] = restart_time
 
     return restart_options
@@ -690,6 +694,7 @@ def checker(func):
 
         kwargs["clustering"] = check_clustering(**kwargs)
 
+        kwargs["restart_options"] = check_restart_options(**kwargs)
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
         kwargs["time_step"] = time_step
@@ -704,7 +709,6 @@ def checker(func):
 
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
-        kwargs["restart_options"] = check_restart_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
 
