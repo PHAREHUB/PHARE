@@ -27,8 +27,12 @@ namespace amr
              typename PhysicalQuantity = decltype(std::declval<Grid_t>().physicalQuantity())>
     class FieldData : public SAMRAI::hier::PatchData
     {
-        using Super      = SAMRAI::hier::PatchData;
+        using Super = SAMRAI::hier::PatchData;
+
+    public:
         using value_type = Grid_t::value_type;
+
+    private:
         using SetEqualOp = core::Equals<value_type>;
 
     public:
@@ -98,7 +102,7 @@ namespace amr
          *    The data will be copied from the interior and ghost of the source to the interior and
          *    ghost of the destination, where there is an overlap in the underlying index space
          */
-        void copy(const SAMRAI::hier::PatchData& source) final
+        void copy(SAMRAI::hier::PatchData const& source) final
         {
             PHARE_LOG_SCOPE(3, "FieldData::copy");
 
@@ -154,8 +158,8 @@ namespace amr
          * give the necessary transformation to apply to the source, to perform the copy (ie :
          * translation for periodics condition)
          */
-        void copy(const SAMRAI::hier::PatchData& source,
-                  const SAMRAI::hier::BoxOverlap& overlap) final
+        void copy(SAMRAI::hier::PatchData const& source,
+                  SAMRAI::hier::BoxOverlap const& overlap) final
         {
             PHARE_LOG_SCOPE(3, "FieldData::copy");
 
@@ -172,7 +176,7 @@ namespace amr
         /*** \brief This form should not be called since we cannot derive from FieldData
          */
         void copy2([[maybe_unused]] SAMRAI::hier::PatchData& destination,
-                   [[maybe_unused]] const SAMRAI::hier::BoxOverlap& overlap) const final
+                   [[maybe_unused]] SAMRAI::hier::BoxOverlap const& overlap) const final
         {
             throw std::runtime_error("Error cannot cast the PatchData to FieldData");
         }
@@ -193,7 +197,7 @@ namespace amr
         /*** \brief Compute the maximum amount of memory needed to hold FieldData information on
          * the specified overlap
          */
-        std::size_t getDataStreamSize(const SAMRAI::hier::BoxOverlap& overlap) const final
+        std::size_t getDataStreamSize(SAMRAI::hier::BoxOverlap const& overlap) const final
         {
             return getDataStreamSize_(overlap);
         }
@@ -205,7 +209,7 @@ namespace amr
          * overlap, and put it on the stream.
          */
         void packStream(SAMRAI::tbox::MessageStream& stream,
-                        const SAMRAI::hier::BoxOverlap& overlap) const final
+                        SAMRAI::hier::BoxOverlap const& overlap) const final
         {
             PHARE_LOG_SCOPE(3, "packStream");
 
@@ -243,14 +247,14 @@ namespace amr
          * by the overlap, and fill the data where is needed.
          */
         void unpackStream(SAMRAI::tbox::MessageStream& stream,
-                          const SAMRAI::hier::BoxOverlap& overlap) final
+                          SAMRAI::hier::BoxOverlap const& overlap) final
         {
             unpackStream(stream, overlap, field);
         }
 
         template<typename Operator = SetEqualOp>
         void unpackStream(SAMRAI::tbox::MessageStream& stream,
-                          const SAMRAI::hier::BoxOverlap& overlap, Grid_t& dst_grid)
+                          SAMRAI::hier::BoxOverlap const& overlap, Grid_t& dst_grid)
         {
             PHARE_LOG_SCOPE(3, "unpackStream");
 
@@ -308,9 +312,14 @@ namespace amr
         }
 
 
-        void sum(SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap);
-        void unpackStreamAndSum(SAMRAI::tbox::MessageStream& stream,
-                                SAMRAI::hier::BoxOverlap const& overlap);
+        template<typename Operation>
+        void operate(SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap);
+
+
+        template<typename Operation>
+        void unpackStreamAnd(SAMRAI::tbox::MessageStream& stream,
+                             SAMRAI::hier::BoxOverlap const& overlap);
+
 
         GridLayoutT gridLayout;
         Grid_t field;
@@ -366,9 +375,6 @@ namespace amr
             if (transformation.getRotation() == NO_ROTATE)
             {
                 SAMRAI::hier::BoxContainer const& boxList = overlap.getDestinationBoxContainer();
-
-                SAMRAI::hier::IntVector const zeroOffset{
-                    SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension{dimension})};
 
                 if (transformation.getBeginBlock() == transformation.getEndBlock())
                 {
@@ -434,28 +440,24 @@ namespace PHARE::amr
 
 
 template<typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
-void FieldData<GridLayoutT, Grid_t, PhysicalQuantity>::unpackStreamAndSum(
+template<typename Operation>
+void FieldData<GridLayoutT, Grid_t, PhysicalQuantity>::unpackStreamAnd(
     SAMRAI::tbox::MessageStream& stream, SAMRAI::hier::BoxOverlap const& overlap)
 {
-    using PlusEqualOp = core::PlusEquals<value_type>;
-
-    unpackStream<PlusEqualOp>(stream, overlap, field);
+    unpackStream<Operation>(stream, overlap, field);
 }
 
-
-
 template<typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
-void FieldData<GridLayoutT, Grid_t, PhysicalQuantity>::sum(SAMRAI::hier::PatchData const& src,
-                                                           SAMRAI::hier::BoxOverlap const& overlap)
+template<typename Operation>
+void FieldData<GridLayoutT, Grid_t, PhysicalQuantity>::operate(
+    SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap)
 {
-    using PlusEqualOp = core::PlusEquals<value_type>;
-
     TBOX_ASSERT_OBJDIM_EQUALITY2(*this, src);
 
     auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
     auto& fieldSource  = dynamic_cast<FieldData const&>(src);
 
-    copy_<PlusEqualOp>(fieldSource, fieldOverlap, field);
+    copy_<Operation>(fieldSource, fieldOverlap, field);
 }
 
 
