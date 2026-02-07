@@ -290,21 +290,14 @@ public:
         SAMRAI::hier::Box const& src_mask, SAMRAI::hier::Box const& fill_box,
         bool const overwrite_interior, SAMRAI::hier::Transformation const& transformation)
     {
-        auto const _primal_ghost_box = [](auto const& box) {
-            auto gb = grow(box, Gridlayout_t::nbrGhosts());
-            gb.upper += 1;
-            return gb;
-        };
-
         auto const src_ghost_box = [&]() {
-            auto const box              = phare_box_from<dim>(src_geometry.patchBox);
-            auto const primal_ghost_box = _primal_ghost_box(box);
-            return amr::shift(primal_ghost_box, transformation);
+            auto const ghost_field_box = phare_box_from<dim>(src_geometry.ghostFieldBox());
+            return amr::shift(ghost_field_box, transformation);
         }();
 
         auto const dst_ghost_box = [&]() {
-            auto const box = phare_box_from<dim>(dst_geometry.patchBox);
-            return _primal_ghost_box(box);
+            auto const ghost_field_box = phare_box_from<dim>(dst_geometry.ghostFieldBox());
+            return ghost_field_box;
         }();
 
 
@@ -370,8 +363,8 @@ public:
         {
             auto overlaps = for_N_make_array<N>([&](auto /*i*/) {
                 auto overlap = FieldGhostInterpOverlapFillPattern<Gridlayout_t>::calculateOverlap(
-                    dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry),
-                    dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry), dst_patch_box,
+                    dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry)[i],
+                    dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry)[i], dst_patch_box,
                     src_mask, fill_box, overwrite_interior, transformation);
 
                 return std::dynamic_pointer_cast<FieldOverlap>(overlap);

@@ -31,11 +31,16 @@ public:
 private:
     struct Info
     {
-        std::vector<std::size_t> offset_per_level
-            = std::vector<std::size_t>(amr::MAX_LEVEL_IDX + 1);
+        std::vector<std::size_t> offset_per_level = std::vector<std::size_t>(amr::MAX_LEVEL_IDX);
     };
 
     std::unordered_map<std::string, Info> mem;
+
+    auto isActiveDiag(DiagnosticProperties const& diagnostic, std::string const& tree,
+                      std::string var)
+    {
+        return diagnostic.quantity == tree + var;
+    };
 };
 
 
@@ -50,10 +55,15 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
     auto& info = mem[diagnostic.quantity];
 
     // assumes exists for all models
-    auto const init = [&](auto const ilvl) -> std::optional<std::size_t> {
-        for (auto* vecField : this->h5Writer_.modelView().getElectromagFields())
-            if (diagnostic.quantity == "/" + vecField->name())
-                return initializer.template initTensorFieldFileLevel<1>(ilvl);
+    auto const init = [&](auto const& level) -> std::optional<std::size_t> {
+        if (isActiveDiag(diagnostic, "/", "EM_B"))
+        {
+            return initializer.template initTensorFieldFileLevel<1>(level);
+        }
+        if (isActiveDiag(diagnostic, "/", "EM_E"))
+        {
+            return initializer.template initTensorFieldFileLevel<1>(level);
+        }
 
         return std::nullopt;
     };
@@ -85,11 +95,18 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
             VTKFileWriter writer{diagnostic, this, info.offset_per_level[ilvl]};
 
             auto const write_quantity = [&](auto& layout, auto const&, auto const) {
-                PHARE_LOG_SCOPE(3, "ElectromagDiagnosticWriter<H5Writer>::write_quantity");
+                PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::write_quantity");
 
-                for (auto* vecField : this->h5Writer_.modelView().getElectromagFields())
-                    if (diagnostic.quantity == "/" + vecField->name())
-                        writer.template writeTensorField<1>(*vecField, layout);
+                if (isActiveDiag(diagnostic, "/", "EM_B"))
+                {
+                    auto& B = this->h5Writer_.modelView().getB();
+                    writer.template writeTensorField<1>(B, layout);
+                }
+                if (isActiveDiag(diagnostic, "/", "EM_E"))
+                {
+                    auto& E = this->h5Writer_.modelView().getE();
+                    writer.template writeTensorField<1>(E, layout);
+                }
             };
 
             modelView.visitHierarchy(write_quantity, ilvl, ilvl);

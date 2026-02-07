@@ -37,9 +37,9 @@ public:
     void copy_data(::benchmark::State&);
 
 private:
-    static const inline PHARE::amr::Box<int, dim> sourceBox{PHARE::core::ConstArray<int, dim>(0),
+    static inline PHARE::amr::Box<int, dim> const sourceBox{PHARE::core::ConstArray<int, dim>(0),
                                                             PHARE::core::ConstArray<int, dim>(19)};
-    static const inline PHARE::amr::Box<int, dim> destBox{PHARE::core::ConstArray<int, dim>(10),
+    static inline PHARE::amr::Box<int, dim> const destBox{PHARE::core::ConstArray<int, dim>(10),
                                                           PHARE::core::ConstArray<int, dim>(19)};
 
 

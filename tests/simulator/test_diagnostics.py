@@ -153,57 +153,22 @@ class DiagnosticsTest(SimulatorTest):
         self.simulator = None
         ph.global_vars.sim = None
 
-    @data(
-        *permute({"smallest_patch_size": 10, "largest_patch_size": 20}),
-        *permute({"smallest_patch_size": 20, "largest_patch_size": 20}),
-        *permute({"smallest_patch_size": 20, "largest_patch_size": 40}),
-    )
-    @unpack
-    def test_dump_diags(self, ndim, interp, simInput):
+    def _check_diags(self, sim, diag_path, times):
         import h5py  # see doc/conventions.md section 2.1.1
 
-        print("test_dump_diags ndim/interp:{}/{}".format(ndim, interp))
-
-        # configure simulation ndim sized values
-        for key in ["cells", "dl", "boundary_types"]:
-            simInput[key] = [simInput[key] for d in range(ndim)]
-
-        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
-        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
-
-        diag_path = self.unique_diag_dir_for_test_case(f"{out}/test", dim, interp)
-        simInput["diag_options"]["options"]["dir"] = diag_path
-
-        local_out = self.unique_diag_dir_for_test_case(out, ndim, interp)
-        simInput["diag_options"]["options"]["dir"] = local_out
-        simulation = config(ndim, interp, **simInput)
-        self.assertTrue(len(simulation.cells) == ndim)
-
-        dump_all_diags(simulation.model.populations)
-        self.simulator = Simulator(simulation).initialize().advance().reset()
-
-        refined_particle_nbr = simulation.refined_particle_nbr
-
-        self.assertTrue(
-            any(
-                [
-                    diagInfo.quantity.endswith("domain")
-                    for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
-                ]
-            )
-        )
-
+        py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"]]
+        py_attrs += ["git_hash", "serialized_simulation"]
         particle_files = 0
-        for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
-            h5_filepath = os.path.join(local_out, h5_filename_from(diagInfo))
+        for diagname, diagInfo in sim.diagnostics.items():
+            h5_filepath = os.path.join(diag_path, h5_filename_from(diagInfo))
             self.assertTrue(os.path.exists(h5_filepath))
 
+            self.assertTrue(Path(h5_filepath).exists())
             h5_file = h5py.File(h5_filepath, "r")
 
-            self.assertTrue("0.0000000000" in h5_file[h5_time_grp_key])  # init dump
-            self.assertTrue(
-                "0.0010000000" in h5_file[h5_time_grp_key]
-            )  # first advance dump
+            self.assertTrue(len(times))
+            for time in times:
+                self.assertTrue(time in h5_file[h5_time_grp_key])
 
             h5_py_attrs = h5_file["py_attrs"].attrs.keys()
             for py_attr in py_attrs:
@@ -245,7 +210,8 @@ class DiagnosticsTest(SimulatorTest):
                         self.assertTrue(splits.size() > 0)
                         self.assertTrue(pd.dataset.size() > 0)
                         self.assertTrue(
-                            splits.size() == pd.dataset.size() * refined_particle_nbr
+                            splits.size()
+                            == pd.dataset.size() * sim.refined_particle_nbr
                         )
 
         self.assertEqual(particle_files, ph.global_vars.sim.model.nbr_populations())

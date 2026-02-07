@@ -21,6 +21,7 @@
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/electric_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
+#include "amr/data/field/refine/magnetic_field_regrider.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/refine/magnetic_field_init_refiner.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
@@ -41,6 +42,7 @@
 
 #include <memory>
 #include <string>
+#include <optional>
 #include <utility>
 #include <iomanip>
 #include <iostream>
@@ -206,8 +208,8 @@ namespace amr
                                                   nonOverwriteInteriorTFfillPattern);
 
             registerGhostComms_(hybridInfo);
-            registerInitComms(hybridInfo);
-            registerSyncComms(hybridInfo);
+            registerInitComms_(hybridInfo);
+            registerSyncComms_(hybridInfo);
         }
 
 
@@ -292,7 +294,7 @@ namespace amr
 
             bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
 
-            magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
+            magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             domainParticlesRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
 
@@ -532,6 +534,8 @@ namespace amr
                     auto& particleDensity = pop.particleDensity();
                     auto& chargeDensity   = pop.chargeDensity();
                     auto& flux            = pop.flux();
+                    // first thing to do is to project patchGhostParitcles moments
+
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
                     {
@@ -831,7 +835,7 @@ namespace amr
 
 
 
-        void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
+        void registerInitComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             auto b_id = resourcesManager_->getID(info->modelMagnetic);
             BalgoInit.registerRefine(*b_id, *b_id, *b_id, BInitRefineOp_,
@@ -896,7 +900,7 @@ namespace amr
 
 
 
-        void registerSyncComms(std::unique_ptr<HybridMessengerInfo> const& info)
+        void registerSyncComms_(std::unique_ptr<HybridMessengerInfo> const& info)
         {
             electroSynchronizers_.add(info->modelElectric, electricFieldCoarseningOp_,
                                       info->modelElectric);
@@ -939,11 +943,9 @@ namespace amr
 
 
 
-
         void magneticRegriding_(std::shared_ptr<hierarchy_t> const& hierarchy,
                                 std::shared_ptr<level_t> const& level,
-                                std::shared_ptr<level_t> const& oldLevel, HybridModel& hybridModel,
-                                double const initDataTime)
+                                std::shared_ptr<level_t> const& oldLevel, double const initDataTime)
         {
             auto magSchedule = BregridAlgo.createSchedule(
                 level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,
@@ -973,7 +975,7 @@ namespace amr
             // we need to remove the box from the ghost box
             // to use SAMRAI::removeIntersections we do some conversions to
             // samrai box.
-            // note gbox is a fieldBox (thanks to the layout)
+            // not gbox is a fieldBox (thanks to the layout)
 
             auto const gbox  = layout.AMRGhostBoxFor(field.physicalQuantity());
             auto const sgbox = samrai_box_from(gbox);

@@ -42,6 +42,8 @@ namespace amr
 
         auto const& interiorFieldBox() const { return interiorFieldBox_; }
 
+        auto const& ghostFieldBox() const { return ghostFieldBox_; }
+
         SAMRAI::hier::Box const patchBox;
 
     protected:
@@ -251,6 +253,7 @@ namespace amr
             // the sourceMask is a restriction of the sourceBox
             // so we need to intersect it with the sourceBox, then to apply a transformation
             // to account for the periodicity
+
             SAMRAI::hier::Box sourceShift = sourceGeometry.ghostFieldBox_ * sourceMask;
             sourceOffset.transform(sourceShift);
 

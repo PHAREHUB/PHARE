@@ -355,9 +355,9 @@ TestMaxwellianParticleInitializer<ParticleArray, GridLayout>::TestMaxwellianPart
 
                     particles.push_back(std::move(tmpParticle));
                 } // end particle looop
-            }     // end z
-        }         // end y
-    }             // end x
+            } // end z
+        } // end y
+    } // end x
 }
 
 

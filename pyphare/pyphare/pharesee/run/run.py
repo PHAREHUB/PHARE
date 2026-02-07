@@ -5,6 +5,7 @@
 import os
 import glob
 from pathlib import Path
+import numpy as np
 
 from pyphare.pharesee.hierarchy import all_times_from
 from pyphare.pharesee.hierarchy import default_time_from
@@ -21,11 +22,11 @@ from pyphare.logger import getLogger
 from .man import RunMan
 
 from .utils import (
-    _compute_to_primal,
-    _compute_pop_pressure,
-    _compute_pressure,
     _compute_current,
     _compute_divB,
+    _compute_pop_pressure,
+    _compute_pressure,
+    _compute_to_primal,
     _get_rank,
     make_interpolator,
 )
@@ -127,6 +128,136 @@ class Run:
         B = self.GetB(time, all_primal=False, **kwargs)
         db = compute_hier_from(_compute_divB, B)
         return ScalarField(self._get(db, time, merged, interp))
+
+    def GetMHDrho(
+        self, time, merged=False, interp="nearest", all_primal=True, **kwargs
+    ):
+        if merged:
+            all_primal = False
+        hier = self._get_hierarchy(time, "mhd_rho.h5", **kwargs)
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, value="mhdRho")
+        return ScalarField(h)
+
+    def GetMHDV(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
+        hier = self._get_hierarchy(time, "mhd_V.h5", **kwargs)
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, x="mhdVx", y="mhdVy", z="mhdVz")
+        return VectorField(h)
+
+    def GetMHDP(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
+        hier = self._get_hierarchy(time, "mhd_P.h5", **kwargs)
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, value="mhdP")
+        return ScalarField(h)
+
+    def GetMHDrhoV(
+        self, time, merged=False, interp="nearest", all_primal=True, **kwargs
+    ):
+        if merged:
+            all_primal = False
+        hier = self._get_hierarchy(time, "mhd_rhoV.h5", **kwargs)
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(
+            _compute_to_primal, hier, x="mhdRhoVx", y="mhdRhoVy", z="mhdRhoVz"
+        )
+        return VectorField(h)
+
+    def GetMHDEtot(
+        self, time, merged=False, interp="nearest", all_primal=True, **kwargs
+    ):
+        if merged:
+            all_primal = False
+        hier = self._get_hierarchy(time, "mhd_Etot.h5", **kwargs)
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, value="mhdEtot")
+        return VectorField(h)
+
+    def GetMagneticFlux(self, time, interp="nearest", xn=None, yn=None, Xn=None, Yn=None):
+        # Reuse grids if provided, otherwise generate them
+        if xn is None or yn is None or Xn is None or Yn is None:
+            domain = self.GetDomainSize()
+            dl = self.GetDl(level="finest", time=time)
+            xn = np.arange(0, domain[0] + dl[0], dl[0])
+            yn = np.arange(0, domain[1] + dl[1], dl[1])
+            Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
+
+        merged_B = self.GetB(time, merged=True, interp=interp)
+        bx_interp = merged_B["Bx"][0]
+        by_interp = merged_B["By"][0]
+
+        bx = bx_interp(Xn, Yn)
+        by = by_interp(Xn, Yn)
+
+        from scipy.integrate import cumulative_trapezoid
+        Az_x0 = -cumulative_trapezoid(by[:, 0], xn, initial=0)
+        Az = cumulative_trapezoid(bx, yn, axis=1, initial=0)
+        Az += Az_x0[:, np.newaxis]
+
+        return Az, (xn, yn)
+
+    def FindPrimaryXPoint(self, Az, xn, yn):
+        dAz_dx = np.gradient(Az, xn, axis=0)
+        dAz_dy = np.gradient(Az, yn, axis=1)
+
+        grad_mag = np.sqrt(dAz_dx**2 + dAz_dy**2)
+        threshold = np.percentile(grad_mag, 5)
+
+        d2Az_dx2 = np.gradient(dAz_dx, xn, axis=0)
+        d2Az_dy2 = np.gradient(dAz_dy, yn, axis=1)
+        d2Az_dxdy = np.gradient(dAz_dx, yn, axis=1)
+
+        det_hessian = d2Az_dx2 * d2Az_dy2 - d2Az_dxdy**2
+
+        candidates = (grad_mag < threshold) & (det_hessian < 0)
+
+        det_hessian_masked = np.where(candidates, det_hessian, np.inf)
+        idx = np.unravel_index(np.argmin(det_hessian_masked), Az.shape)
+
+        return xn[idx[0]], yn[idx[1]], idx
+
+
+    def GetReconnectionRate(self, times, interp="nearest"):
+        domain = self.GetDomainSize()
+        dl = self.GetDl(level="finest", time=times[0])
+        xn = np.arange(0, domain[0] + dl[0], dl[0])
+        yn = np.arange(0, domain[1] + dl[1], dl[1])
+        Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
+
+        flux_at_xpoint = []
+        xpoint_trajectory = []
+
+        for t in times:
+            Az, _ = self.GetMagneticFlux(t, interp=interp, xn=xn, yn=yn, Xn=Xn, Yn=Yn)
+
+            x_xp, y_xp, idx = self.FindPrimaryXPoint(Az, xn, yn)
+
+            xpoint_trajectory.append([x_xp, y_xp])
+
+            flux_at_xpoint.append(Az[idx])
+
+        flux_at_xpoint = np.array(flux_at_xpoint)
+        xpoint_trajectory = np.array(xpoint_trajectory)
+
+        dt = np.diff(times)
+        rates = np.diff(flux_at_xpoint) / dt
+        times_centered = (times[:-1] + times[1:]) / 2
+
+        return times_centered, rates, flux_at_xpoint, xpoint_trajectory
 
     def GetRanks(self, time, merged=False, interp="nearest", **kwargs):
         """

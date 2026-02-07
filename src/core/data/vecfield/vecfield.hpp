@@ -31,29 +31,6 @@ namespace core
                 Vavg.getComponent(Component::Z));
     }
 
-
-
-    struct VecFieldNames
-    {
-        std::string vecName;
-        std::string xName;
-        std::string yName;
-        std::string zName;
-
-        VecFieldNames() = default;
-
-        template<typename VecFieldT>
-        explicit VecFieldNames(VecFieldT const& v)
-            : vecName{v.name()}
-            , xName{v.getComponentName(core::Component::X)}
-            , yName{v.getComponentName(core::Component::Y)}
-            , zName{v.getComponentName(core::Component::Z)}
-
-        {
-        }
-    };
-
-
 } // namespace core
 } // namespace PHARE
 

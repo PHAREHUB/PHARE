@@ -3,6 +3,10 @@
 #
 
 import numpy as np
+from pyphare.core.gridlayout import yee_centering
+
+
+from pyphare.core.gridlayout import yee_centering
 
 
 from pyphare.core.gridlayout import yee_centering
@@ -156,9 +160,9 @@ def _pdd_to_ppp_domain_slicing(**kwargs):
     ndim = kwargs["ndim"]
 
     inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+    inner_all = tuple([inner] * ndim)
 
     if ndim == 1:
-        inner_all = tuple([inner] * ndim)
         return inner_all, (inner_all,)
 
     if ndim == 2:
@@ -191,7 +195,7 @@ def _dpd_to_ppp_domain_slicing(**kwargs):
 
 def _ddp_to_ppp_domain_slicing(**kwargs):
     """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
+    return the slicing for (dual,dual,primal) to (primal,primal,primal)
     centering that is the centering of Bz on a Yee grid
     """
 
@@ -278,6 +282,32 @@ def _ppd_to_ppp_domain_slicing(**kwargs):
         raise RuntimeError("dimension not yet implemented")
 
 
+def _ddd_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,dual,dual) to (primal,primal,primal)
+    centering that is the centering of Bz on a Yee grid
+    """
+
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
+
+    if ndim == 1:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (inner_shift_left, inner_shift_right)
+    elif ndim == 2:
+        inner_all = tuple([inner] * ndim)
+        return inner_all, (
+            (inner_shift_left, inner_shift_left),
+            (inner_shift_left, inner_shift_right),
+            (inner_shift_right, inner_shift_left),
+            (inner_shift_right, inner_shift_right),
+        )
+    else:
+        raise RuntimeError("dimension not yet implemented")
+
+
 slices_to_primal_ = {
     "primal_primal_primal": _ppp_to_ppp_domain_slicing,
     "primal_dual_dual": _pdd_to_ppp_domain_slicing,
@@ -286,6 +316,7 @@ slices_to_primal_ = {
     "dual_primal_primal": _dpp_to_ppp_domain_slicing,
     "primal_dual_primal": _pdp_to_ppp_domain_slicing,
     "primal_primal_dual": _ppd_to_ppp_domain_slicing,
+    "dual_dual_dual": _ddd_to_ppp_domain_slicing,
 }
 
 
@@ -367,17 +398,17 @@ def _get_rank(patch, **kwargs):
     layout = reference_pd.layout
     centering = ["dual"] * ndim
     nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
-    shape = grow(reference_pd.box, [nbrGhosts] * 2).shape
+    shape = grow(reference_pd.box, [nbrGhosts] * ndim).shape
 
     if ndim == 1:
-        pass
+        raise RuntimeError("Not used in 1D")
 
     elif ndim == 2:
         data = np.zeros(shape) + int(patch.id.strip("p").split("#")[0])
         pd = reference_pd.copy_as(data, centering=centering)
         return ({"name": "rank", "data": pd},)
     else:
-        raise RuntimeError("Not Implemented yet")
+        raise RuntimeError("Not Implemented - not sure it is useful")
 
 
 def _compute_pressure(patch, **kwargs):

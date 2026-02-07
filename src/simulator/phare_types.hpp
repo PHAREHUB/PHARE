@@ -32,13 +32,15 @@ struct PHARE_Types
     using Splitter         = amr_types::Splitter_t;
     using RefinementParams = amr_types::RefinementParams;
 
-    using solver_types           = solver::PHARE_Types<opts>;
-    using HybridModel_t          = solver_types::HybridModel_t;
-    using MHDModel_t             = solver_types::MHDModel_t;
-    using SolverPPC_t            = solver_types::SolverPPC_t;
-    using SolverMHD_t            = solver_types::SolverMHD_t;
-    using MessengerFactory       = solver_types::MessengerFactory;
-    using MultiPhysicsIntegrator = solver_types::MultiPhysicsIntegrator_t;
+    using solver_types              = solver::PHARE_Types<opts>;
+    using IPhysicalModel            = solver_types::IPhysicalModel;
+    using HybridModel_t             = solver_types::HybridModel_t;
+    using MHDModel_t                = solver_types::MHDModel_t;
+    using SolverPPC_t               = solver_types::SolverPPC_t;
+    using SolverMHD_t               = solver_types::SolverMHD_t;
+    using MessengerFactory          = solver_types::MessengerFactory;
+    using LevelInitializerFactory_t = solver_types::LevelInitializerFactory_t;
+    using MultiPhysicsIntegrator    = solver_types::MultiPhysicsIntegrator_t;
 };
 
 } // namespace PHARE

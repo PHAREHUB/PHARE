@@ -25,11 +25,10 @@ print("diag_dir", os.getcwd(), diag_dir)
 
 
 def plot_file_for_qty(plot_dir, qty, time, extra=""):
-    return f"{plot_dir}/harris_t{"{:.10f}".format(time)}_{qty}_{extra}.png"
+    return f"{plot_dir}/harris_t{'{:.10f}'.format(time)}_{qty}_{extra}.png"
 
 
 def diff_ranks(run, plot_dir, new_time):
-
     if DO_PLOTS:
         ranks = run.GetRanks(new_time)
         for ilvl in range(ranks.levelNbr()):
@@ -110,7 +109,9 @@ def diff_current_density(run, plot_dir, new_time):
 
 
 def diff_mass_density(run, plot_dir, new_time):
-    differ = overlap_diff_hierarchy(run.GetMassDensity(new_time), domain_only=DOMAIN_ONLY)
+    differ = overlap_diff_hierarchy(
+        run.GetMassDensity(new_time), domain_only=DOMAIN_ONLY
+    )
     print("ion mass rho max: ", differ.max())
 
     if DO_PLOTS and differ.has_non_zero():
@@ -148,7 +149,6 @@ def check_time(run, plot_dir, new_time):
 
 
 def check_diags():
-
     plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
     plot_dir.mkdir(parents=True, exist_ok=True)
     run = Run(diag_dir)

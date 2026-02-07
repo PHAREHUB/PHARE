@@ -30,13 +30,13 @@ def config():
     L = 0.5
 
     sim = ph.Simulation(
-        largest_patch_size=5,
+        # largest_patch_size=5,
         time_step=time_step,
         final_time=final_time,
         cells=cells,
         dl=(0.40, 0.40),
         refinement="tagging",
-        max_nbr_levels=2,
+        max_nbr_levels=1,
         hyper_resistivity=0.002,
         resistivity=0.001,
         diag_options={
@@ -172,8 +172,8 @@ def plot(diag_dir, plot_dir):
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
-            vmin=1e-11,
-            vmax=2e-10,
+            vmin=-1e-11,
+            vmax=1e-11,
         )
         run.GetRanks(time).plot(
             filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True

@@ -263,7 +263,7 @@ void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& mode
                                                           SAMRAI::hier::PatchLevel& level,
                                                           double const coef)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
+    PHARE_LOG_SCOPE(3, "SolverPPC::accumulateFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
 
@@ -292,7 +292,7 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
                                                      SAMRAI::hier::PatchLevel& level)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::resetFluxSum");
+    PHARE_LOG_SCOPE(3, "SolverPPC::resetFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
 
@@ -331,7 +331,7 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
                                                      IMessenger& fromCoarserMessenger,
                                                      double const currentTime, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::advanceLevel");
+    PHARE_LOG_SCOPE(3, "SolverPPC::advanceLevel");
 
     auto& model       = dynamic_cast<HybridModel&>(level_model);
     auto& fromCoarser = dynamic_cast<HybridMessenger&>(fromCoarserMessenger);
@@ -361,7 +361,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
                                                     Messenger& fromCoarser,
                                                     double const currentTime, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::predictor1_");
 
     TimeSetter setTime{level, model, newTime};
 
@@ -398,7 +398,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
                                                     Messenger& fromCoarser,
                                                     double const currentTime, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::predictor2_");
 
     TimeSetter setTime{level, model, newTime};
 
@@ -436,7 +436,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
                                                    Messenger& fromCoarser, double const currentTime,
                                                    double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::corrector_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::corrector_");
 
     auto levelNumber = level.getLevelNumber();
     TimeSetter setTime{level, model, newTime};
@@ -477,7 +477,7 @@ template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model,
                                                  Messenger& fromCoarser, double const newTime)
 {
-    PHARE_LOG_SCOPE(1, "SolverPPC::average_");
+    PHARE_LOG_SCOPE(3, "SolverPPC::average_");
 
     TimeSetter setTime{level, model, newTime};
     auto& rm         = *model.resourcesManager;

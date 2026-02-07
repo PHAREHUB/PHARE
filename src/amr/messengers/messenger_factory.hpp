@@ -100,12 +100,13 @@ public:
             auto& mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
             auto& hybridResourcesManager
                 = dynamic_cast<HybridModel const&>(fineModel).resourcesManager;
-            if (hybridResourcesManager.get() != mhdResourcesManager.get())
-                throw std::runtime_error("Multiple ResourceManagers in use");
+
+            // if (hybridResourcesManager.get() != mhdResourcesManager.get())
+            //     throw std::runtime_error("Multiple ResourceManagers in use");
 
             auto messengerStrategy
                 = std::make_unique<MHDHybridMessengerStrategy<MHDModel, HybridModel>>(
-                    mhdResourcesManager, firstLevel);
+                    hybridResourcesManager, firstLevel);
 
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }

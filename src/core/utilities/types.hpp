@@ -247,8 +247,6 @@ namespace core
         return t;
     }
 
-
-
 } // namespace core
 } // namespace PHARE
 
