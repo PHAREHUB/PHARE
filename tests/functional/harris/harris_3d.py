@@ -14,7 +14,6 @@ from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
 
-
 start_time = 0
 cells = (40, 80, 20)
 dl = (0.4, 0.4, 0.4)

@@ -10,6 +10,7 @@
 #include "diagnostic_props.hpp"
 
 #include <map>
+#include <type_traits>
 #include <cmath>
 #include <memory>
 #include <utility>
@@ -23,7 +24,23 @@ enum class Mode { LIGHT, FULL };
 template<typename DiagManager>
 void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsParams)
 {
-    std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle", "meta", "info"};
+    auto const diagTypes = []() {
+        using Model = typename DiagManager::Model_t;
+        if constexpr (solver::is_hybrid_model_v<Model>)
+        {
+            return std::vector<std::string>{"fluid", "electromag", "particle", "meta", "info"};
+        }
+        else if constexpr (solver::is_mhd_model_v<Model>)
+        {
+            return std::vector<std::string>{"mhd", "meta", "electromag"};
+        }
+        else
+        {
+            // MacOS clang unhappy with static_assert(false), requires a dependency on Model
+            static_assert(!std::is_same_v<Model, Model>, "Unsupported model type");
+            return std::vector<std::string>{};
+        }
+    }();
 
     for (auto& diagType : diagTypes)
     {
@@ -59,6 +76,8 @@ template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
+    using Model_t = typename Writer::Model_t;
+
     bool dump(double timeStamp, double timeStep) override;
 
 
@@ -183,8 +202,16 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     {
         std::string idx = std::to_string(i);
         std::string key = diagParams["attribute_" + idx + "_key"].template to<std::string>();
-        std::string val = diagParams["attribute_" + idx + "_value"].template to<std::string>();
-        diagProps.fileAttributes[key] = val;
+        if (key == "heat_capacity_ratio")
+        {
+            double val = diagParams["attribute_" + idx + "_value"].template to<double>();
+            diagProps.fileAttributes[key] = val;
+        }
+        else
+        {
+            std::string val = diagParams["attribute_" + idx + "_value"].template to<std::string>();
+            diagProps.fileAttributes[key] = val;
+        }
     }
 
     return *this;

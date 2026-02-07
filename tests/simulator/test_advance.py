@@ -12,6 +12,7 @@ from pyphare.core.box import amr_to_local
 from pyphare import cpp
 import pyphare.core.box as boxm
 from pyphare.core.box import Box
+from pyphare.core.box import amr_to_local
 from pyphare.core.phare_utilities import assert_fp_any_all_close, np_array_ify
 from pyphare.pharein import ElectronModel, MaxwellianFluidModel
 from pyphare.pharein.diagnostics import (
@@ -288,6 +289,13 @@ class AdvanceTestBase(SimulatorTest):
                 slice1 = boxm.select(pd1.dataset, box_pd1)
                 slice2 = boxm.select(pd2.dataset, box_pd2)
 
+                loc_b1 = boxm.amr_to_local(
+                    ovrlp_box, boxm.shift(pd1.ghost_box, offsets[0])
+                )
+                loc_b2 = boxm.amr_to_local(
+                    ovrlp_box, boxm.shift(pd2.ghost_box, offsets[1])
+                )
+
                 try:
                     # empirical max absolute observed 5.2e-15
                     # https://hephaistos.lpp.polytechnique.fr/teamcity/buildConfiguration/Phare_Phare_BuildGithubPrClang/78544
@@ -300,10 +308,10 @@ class AdvanceTestBase(SimulatorTest):
                     import matplotlib.pyplot as plt
                     from matplotlib.patches import Rectangle
 
-                    if box.ndim == 1:
+                    if ovrlp_box.ndim == 1:
                         failed_i = np.where(np.abs(slice1 - slice2) > 5.5e-15)
 
-                    if box.ndim == 2:
+                    if ovrlp_box.ndim == 2:
                         failed_i, failed_j = np.where(np.abs(slice1 - slice2) > 5.5e-15)
 
                         def makerec(lower, upper, dl, fc="none", ec="g", lw=1, ls="-"):
@@ -341,8 +349,8 @@ class AdvanceTestBase(SimulatorTest):
                             if level_idx == ilvl:
                                 ax.add_patch(
                                     makerec(
-                                        box.lower,
-                                        box.upper,
+                                        ovrlp_box.lower,
+                                        ovrlp_box.upper,
                                         pd1.layout.dl,
                                         fc="none",
                                         ec="r",
@@ -679,9 +687,9 @@ class AdvanceTestBase(SimulatorTest):
         successful_test_nbr = 0
         ndim = global_vars.sim.ndim
         lvl_steps = global_vars.sim.level_time_steps
-        assert (
-            len(lvl_steps) == 2
-        ), "this test is only configured for L0 -> L1 refinement comparisons"
+        assert len(lvl_steps) == 2, (
+            "this test is only configured for L0 -> L1 refinement comparisons"
+        )
 
         coarse_ilvl = 0
         fine_ilvl = 1

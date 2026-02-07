@@ -171,7 +171,7 @@ if __name__ == "__main__":
         writer.Write()
 
         print(
-            f"Saved slice {i+1}/{n_slices} at z={z:.3f}, cells={cutter.GetOutputDataObject(0).GetNumberOfCells()}",
+            f"Saved slice {i + 1}/{n_slices} at z={z:.3f}, cells={cutter.GetOutputDataObject(0).GetNumberOfCells()}",
             z,
         )
 

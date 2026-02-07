@@ -11,8 +11,10 @@
 
 
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
+#include "core/utilities/types.hpp"
 
 #include <array>
+#include <cmath>
 #include <cassert>
 
 namespace PHARE::amr

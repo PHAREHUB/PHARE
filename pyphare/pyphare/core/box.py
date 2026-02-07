@@ -22,8 +22,9 @@ class Box:
         """
         box1 = self
 
-        lower, upper = np.maximum(box1.lower, box2.lower), np.minimum(
-            box1.upper, box2.upper
+        lower, upper = (
+            np.maximum(box1.lower, box2.lower),
+            np.minimum(box1.upper, box2.upper),
         )
         if (lower <= upper).all():
             return Box(lower, upper)

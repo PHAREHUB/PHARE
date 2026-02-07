@@ -121,7 +121,7 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
     using FloatType                      = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
     using HierData                       = HierarchyData<Writer::dimension>;
     using ModelView                      = Writer::ModelView;
-    using physical_quantity_type         = ModelView::Field::physical_quantity_type;
+    using physical_quantity_type         = ModelView::physical_quantity_type;
     using Attributes                     = Writer::Attributes;
     std::string static inline const base = "/VTKHDF";
     std::string static inline const level_base = base + "/Level";
@@ -178,15 +178,6 @@ protected:
         return fileData_.count(diagnostic.quantity);
     }
 
-<<<<<<< HEAD
-=======
-    void write_on_rank_0(auto&& dataset, auto const& data)
-    {
-        if (core::mpi::rank() == 0)
-            dataset.write(data);
-    }
-
->>>>>>> 0316a848 (3d...)
 
     Writer& h5Writer_;
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData_;
@@ -205,7 +196,7 @@ void H5TypeWriter<Writer>::writeFileAttributes(DiagnosticProperties const& prop,
 template<typename Writer>
 class H5TypeWriter<Writer>::VTKFileInitializer
 {
-    auto static constexpr primal_qty         = physical_quantity_type::rho;
+    auto static constexpr primal_qty         = physical_quantity_type::all_primal_field;
     std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
 public:
     VTKFileInitializer(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter);
@@ -256,7 +247,7 @@ private:
 template<typename Writer>
 class H5TypeWriter<Writer>::VTKFileWriter
 {
-    auto static constexpr primal_qty         = physical_quantity_type::rho;
+    auto static constexpr primal_qty         = physical_quantity_type::all_primal_field;
     std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
 
 
@@ -301,11 +292,7 @@ H5TypeWriter<Writer>::VTKFileInitializer::VTKFileInitializer(DiagnosticPropertie
             steps_group.template createAttribute<int>("NSteps", HighFive::DataSpace::From(0))
                 .write(0);
         auto steps_attr = steps_group.getAttribute("NSteps");
-<<<<<<< HEAD
         steps_attr.write(steps_attr.template read<int>() + 1);
-=======
-        typewriter->write_on_rank_0(steps_attr, steps_attr.template read<int>() + 1);
->>>>>>> 0316a848 (3d...)
     }
 
     {
@@ -314,11 +301,7 @@ H5TypeWriter<Writer>::VTKFileInitializer::VTKFileInitializer(DiagnosticPropertie
         auto ds               = h5file.getDataSet(base + "/Steps/Values");
         auto const old_size   = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-<<<<<<< HEAD
         ds.select({old_size}, {1}).write(timestamp);
-=======
-        typewriter->write_on_rank_0(ds.select({old_size}, {1}), timestamp);
->>>>>>> 0316a848 (3d...)
     }
 
     if (newFile)
@@ -441,11 +424,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/PointDataOffset/data");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-<<<<<<< HEAD
         ds.select({old_size}, {1}).write(data_offset);
-=======
-        typewriter->write_on_rank_0(ds.select({old_size}, {1}), data_offset);
->>>>>>> 0316a848 (3d...)
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::1");
@@ -474,11 +453,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/NumberOfAMRBox");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-<<<<<<< HEAD
         ds.select({old_size}, {1}).write(total_boxes);
-=======
-        typewriter->write_on_rank_0(ds.select({old_size}, {1}), total_boxes);
->>>>>>> 0316a848 (3d...)
     }
 
     auto amrbox_ds  = h5file.getDataSet(level_base + lvl + "/AMRBox");
@@ -489,17 +464,14 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/AMRBoxOffset");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-<<<<<<< HEAD
         ds.select({old_size}, {1}).write(box_offset);
-=======
-        typewriter->write_on_rank_0(ds.select({old_size}, {1}), box_offset);
->>>>>>> 0316a848 (3d...)
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
     amrbox_ds.resize({box_offset + total_boxes, boxValsIn3D});
     for (int i = 0; i < core::mpi::rank(); ++i)
         box_offset += rank_boxes[i].size();
+
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::3");
     amrbox_ds.select({box_offset, 0}, {rank_boxes[core::mpi::rank()].size(), dimension * 2})

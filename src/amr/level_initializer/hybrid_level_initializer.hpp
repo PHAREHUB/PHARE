@@ -101,7 +101,7 @@ namespace solver
 
             for (auto& patch : rm.enumerate(level, ions))
             {
-                auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
             }
@@ -119,7 +119,7 @@ namespace solver
             {
                 if (!isRootLevel(levelNumber))
                 {
-                    auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 

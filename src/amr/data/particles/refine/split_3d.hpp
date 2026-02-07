@@ -165,7 +165,7 @@ struct Splitter<DimConst<3>, InterpConst<1>, RefinedParticlesConst<27>>
 {
     constexpr Splitter()
         : SplitPattern_3_1_27_Dispatcher{
-            {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
+              {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
     {
     }
 
@@ -225,7 +225,7 @@ struct Splitter<DimConst<3>, InterpConst<2>, RefinedParticlesConst<27>>
 {
     constexpr Splitter()
         : SplitPattern_3_2_27_Dispatcher{
-            {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
+              {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
     {
     }
 
@@ -284,7 +284,7 @@ struct Splitter<DimConst<3>, InterpConst<3>, RefinedParticlesConst<27>>
 {
     constexpr Splitter()
         : SplitPattern_3_3_27_Dispatcher{
-            {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
+              {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
     {
     }
 

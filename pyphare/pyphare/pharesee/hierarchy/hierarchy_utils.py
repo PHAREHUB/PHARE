@@ -8,16 +8,16 @@ from dataclasses import dataclass, field
 
 from typing import Any, List, Tuple
 
-from .hierarchy import PatchHierarchy, format_timestamp
-from .patchdata import FieldData, ParticleData
-from .patchlevel import PatchLevel
-from .patch import Patch
-from ...core.box import Box
-from ...core.gridlayout import GridLayout
-from ...core.phare_utilities import listify
-from ...core.phare_utilities import refinement_ratio
+import numpy as np
 from pyphare.core import phare_utilities as phut
 
+from ...core.box import Box
+from ...core.gridlayout import GridLayout
+from ...core.phare_utilities import listify, refinement_ratio
+from .hierarchy import PatchHierarchy, format_timestamp
+from .patch import Patch
+from .patchdata import FieldData, ParticleData
+from .patchlevel import PatchLevel
 
 field_qties = {
     "EM_B_x": "Bx",
@@ -41,6 +41,16 @@ field_qties = {
     "density": "rho",
     "mass_density": "rho",
     "charge_density": "rho",
+    # for now mhd specific quantities
+    "rho": "mhdRho",
+    "V_x": "mhdVx",
+    "V_y": "mhdVy",
+    "V_z": "mhdVz",
+    "P": "mhdP",
+    "rhoV_x": "mhdRhoVx",
+    "rhoV_y": "mhdRhoVy",
+    "rhoV_z": "mhdRhoVz",
+    "Etot": "mhdEtot",
     "tags": "tags",
 }
 
@@ -615,8 +625,9 @@ def single_patch_for_LO(hier, qties=None, skip=None):
 
     cier = deepcopy(hier)
     sim = hier.sim
+    origin = (0,) * sim.ndim
     layout = GridLayout(
-        Box(sim.origin, sim.cells), sim.origin, sim.dl, interp_order=sim.interp_order
+        Box(origin, sim.cells), origin, sim.dl, interp_order=sim.interp_order
     )
     p0 = Patch(patch_datas={}, patch_id="", layout=layout)
     for t in cier.times():

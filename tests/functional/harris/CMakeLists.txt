@@ -1,6 +1,6 @@
 cmake_minimum_required (VERSION 3.20.1)
 
-project(test-conservation)
+project(test-harris)
 
 if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   file(GLOB PYFILES "*.py")

@@ -124,6 +124,7 @@ public:
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
+                    // same print as above
                     fineField(locFineIdx[dirX], locFineIdx[dirY])
                         = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
                 }

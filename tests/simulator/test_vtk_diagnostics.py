@@ -144,7 +144,7 @@ class VTKDiagnosticsTest(SimulatorTest):
         for key in ["cells", "dl", "boundary_types"]:
             simInput[key] = list(phut.np_array_ify(simInput[key], ndim))
         local_out = self.unique_diag_dir_for_test_case(
-            f"{out}{'/'+diag_dir if diag_dir else ''}", ndim, interp
+            f"{out}{'/' + diag_dir if diag_dir else ''}", ndim, interp
         )
         self.register_diag_dir_for_cleanup(local_out)
         simInput["diag_options"]["options"]["dir"] = local_out

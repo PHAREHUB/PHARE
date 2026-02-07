@@ -38,6 +38,34 @@ namespace amr
     };
 
 
+    struct ResourcesManagerGlobals
+    {
+        static ResourcesManagerGlobals& INSTANCE();
+
+
+        std::vector<std::map<std::string, ResourcesInfo>*> resources_;
+
+        static auto ALL_IDS()
+        {
+            std::vector<int> ids;
+            ids.reserve((core::sum_from(INSTANCE().resources_,
+                                        [](auto const& map) { return map->size(); })));
+
+            assert(INSTANCE().resources_.size());
+            for (auto const res_map_ptr : INSTANCE().resources_)
+                for (auto const& [_, info] : *res_map_ptr)
+                    ids.emplace_back(info.id);
+
+            return ids;
+        }
+
+        static void registerForRestarts()
+        {
+            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
+            for (auto const& id : ALL_IDS()) // duplicates don't matter
+                pdrm->registerPatchDataForRestart(id);
+        }
+    };
 
 
     /** \brief ResourcesManager is an adapter between PHARE objects that manipulate
@@ -83,10 +111,13 @@ namespace amr
      *
      *
      */
+
     template<typename GridLayoutT, typename Grid_t>
     class ResourcesManager
     {
         using This = ResourcesManager<GridLayoutT, Grid_t>;
+        using QuantityType =
+            typename extract_quantity_type<typename Grid_t::physical_quantity_type>::type;
 
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
@@ -98,8 +129,7 @@ namespace amr
         using UserParticle_t = UserParticleType<ResourcesView, interp_order>;
 
         template<std::size_t rank>
-        using UserTensorField_t
-            = UserTensorFieldType<rank, Grid_t, GridLayoutT, core::HybridQuantity>;
+        using UserTensorField_t = UserTensorFieldType<rank, Grid_t, GridLayoutT, QuantityType>;
 
 
         ResourcesManager()
@@ -107,6 +137,15 @@ namespace amr
             , context_{variableDatabase_->getContext(contextName_)}
             , dimension_{SAMRAI::tbox::Dimension{dimension}}
         {
+            ResourcesManagerGlobals::INSTANCE().resources_.emplace_back(&nameToResourceInfo_);
+        }
+        ~ResourcesManager()
+        {
+            for (auto& [key, resourcesInfo] : nameToResourceInfo_)
+                variableDatabase_->removeVariable(key);
+
+            auto& vec = ResourcesManagerGlobals::INSTANCE().resources_;
+            vec.erase(std::remove(vec.begin(), vec.end(), &nameToResourceInfo_), vec.end());
         }
 
 
@@ -287,14 +326,6 @@ namespace amr
 
 
 
-        ~ResourcesManager()
-        {
-            for (auto& [key, resourcesInfo] : nameToResourceInfo_)
-            {
-                variableDatabase_->removeVariable(key);
-            }
-        }
-
 
         void registerForRestarts() const
         {
@@ -302,6 +333,18 @@ namespace amr
             for (auto const& id : restart_patch_data_ids())
                 pdrm->registerPatchDataForRestart(id);
         }
+
+        // needed as long as we have different resource managers dealing with different physical
+        // quantities
+        // template<typename ResourcesView>
+        // void registerForRestarts(ResourcesView const& view) const
+        // {
+        //     auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
+
+        //     for (auto const& id : restart_patch_data_ids(view))
+        //         pdrm->registerPatchDataForRestart(id);
+        // }
+
 
 
 
@@ -537,7 +580,7 @@ namespace amr
 
             auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
             if (resourceInfoIt == nameToResourceInfo_.end())
-                throw std::runtime_error("Resources not found !");
+                throw std::runtime_error("Resources not found ! " + obj.name());
 
             obj.setBuffer(getResourcesPointer_<ResourcesType>(resourceInfoIt->second, patch));
         }
@@ -575,7 +618,7 @@ namespace amr
             }
             else
             {
-                throw std::runtime_error("Resources not found !");
+                throw std::runtime_error("Resources not found ! " + resourcesName);
             }
         }
 
