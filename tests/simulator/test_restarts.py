@@ -2,10 +2,10 @@
 #
 
 import copy
-from time import sleep
 import datetime
 import unittest
 import numpy as np
+from time import sleep
 from pathlib import Path
 
 from datetime import timedelta
@@ -428,7 +428,7 @@ class RestartsTest(SimulatorTest):
         Dim / interp / etc are not relevant here
         """
         ndim, interp = 1, 1
-        print(f"test_advanced_restarts_options")
+        print("test_advanced_restarts_options")
 
         simput = copy.deepcopy(
             dup(
@@ -453,10 +453,9 @@ class RestartsTest(SimulatorTest):
 
         ph.global_vars.sim = None
         ph.global_vars.sim = ph.Simulation(**simput)
-        model = setup_model()
+        setup_model()
         Simulator(ph.global_vars.sim).run().reset()
         self.register_diag_dir_for_cleanup(local_out)
-        diag_dir0 = local_out
 
         simput["restart_options"]["restart_time"] = "auto"
         self.assertEqual(0.01, ph.restarts.restart_time(simput["restart_options"]))

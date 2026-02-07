@@ -160,31 +160,39 @@ def check_time(**kwargs):
         and "time_step" not in kwargs
     )
 
-    start_time = kwargs.get("restart_options", {}).get("restart_time", 0)
-
-    if final_and_dt:
-        time_step_nbr = int(kwargs["final_time"] / kwargs["time_step"])
-        time_step = kwargs["final_time"] / time_step_nbr
-
-    elif final_and_nsteps:
-        time_step = kwargs["final_time"] / kwargs["time_step_nbr"]
-        time_step_nbr = kwargs["time_step_nbr"]
-
-    elif nsteps_and_dt:
-        time_step = kwargs["time_step"]
-        time_step_nbr = kwargs["time_step_nbr"]
-
-    else:
+    if sum([final_and_dt, final_and_nsteps, nsteps_and_dt]) != 1:
         raise ValueError(
             "Error: Specify either 'final_time' and 'time_step' or 'time_step_nbr' and 'time_step'"
             + " or 'final_time' and 'time_step_nbr'"
         )
 
-    return (
-        time_step_nbr,
-        time_step,
-        kwargs.get("final_time", start_time + time_step * time_step_nbr),
-    )
+    start_time = kwargs.get("restart_options", {}).get("restart_time", 0)
+
+    def _final_time():
+        if "final_time" in kwargs:
+            return kwargs["final_time"]
+        return start_time + kwargs["time_step"] * kwargs["time_step_nbr"]
+
+    final_time = _final_time()
+    total_time = final_time - start_time
+    if total_time < 0:
+        raise RuntimeError("Simulation time cannot be negative - review inputs")
+    if phare_utilities.fp_equal(total_time, 0):
+        return 0, 0, final_time
+
+    if final_and_dt:
+        time_step_nbr = int(total_time / kwargs["time_step"])
+        time_step = total_time / time_step_nbr
+
+    elif final_and_nsteps:
+        time_step = total_time / kwargs["time_step_nbr"]
+        time_step_nbr = kwargs["time_step_nbr"]
+
+    else:  # must be nsteps_and_dt
+        time_step = kwargs["time_step"]
+        time_step_nbr = kwargs["time_step_nbr"]
+
+    return time_step_nbr, time_step, final_time
 
 
 # ------------------------------------------------------------------------------
@@ -485,7 +493,7 @@ def check_directory(directory, key):
 # diag_options = {"format":"phareh5", "options": {"dir": "phare_ouputs/"}}
 def check_diag_options(**kwargs):
     diag_options = kwargs.get("diag_options", None)
-    formats = ["phareh5"]
+    formats = ["phareh5", "pharevtkhdf"]
     if diag_options is not None and "format" in diag_options:
         if diag_options["format"] not in formats:
             raise ValueError("Error - diag_options format is invalid")
@@ -731,8 +739,10 @@ def checker(func):
                 kwargs["max_nbr_levels"],
             ) = check_refinement_boxes(ndim, **kwargs)
         else:
-            kwargs["max_nbr_levels"] = kwargs.get("max_nbr_levels", None)
-            assert kwargs["max_nbr_levels"] is not None  # this needs setting otherwise
+            if "max_nbr_levels" not in kwargs:
+                print("WARNING, 'max_nbr_levels' is not set, defaulting to 1")
+            kwargs["max_nbr_levels"] = kwargs.get("max_nbr_levels", 1)
+
             kwargs["refinement_boxes"] = None
             kwargs["tagging_threshold"] = kwargs.get("tagging_threshold", 0.1)
 
