@@ -2,11 +2,10 @@
 #define PHARE_REFINER_HPP
 
 #include "communicator.hpp"
-#include "core/data/vecfield/vecfield.hpp"
 
-#include "amr/messengers/field_sum_transaction.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
+#include "core/utilities/types.hpp"
 
-#include <tuple>
 #include <stdexcept>
 
 
@@ -23,6 +22,8 @@ enum class RefinerType {
     PatchFieldBorderSum,
     PatchVecFieldBorderSum,
     PatchTensorFieldBorderSum,
+    PatchFieldBorderMax,
+    PatchVecFieldBorderMax,
     ExteriorGhostParticles
 };
 
@@ -32,6 +33,9 @@ template<typename ResourcesManager, RefinerType Type>
 class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
 {
     using FieldData_t = ResourcesManager::UserField_t::patch_data_type;
+
+    using SetMaxOp     = core::SetMax<typename FieldData_t::value_type>;
+    using PlusEqualsOp = core::PlusEquals<typename FieldData_t::value_type>;
 
     // hard coded rank cause there's no real tensorfields that use this code yet
     using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
@@ -73,7 +77,7 @@ public:
                           levelNumber);
             }
 
-            if constexpr (Type == RefinerType::PatchGhostField)
+            else if constexpr (Type == RefinerType::PatchGhostField)
             {
                 this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
             }
@@ -86,9 +90,11 @@ public:
                 this->add(algo,
                           algo->createSchedule(
                               level, patchStrat_.get(),
-                              std::make_shared<FieldBorderSumTransactionFactory<FieldData_t>>()),
+                              std::make_shared<
+                                  FieldBorderOpTransactionFactory<FieldData_t, PlusEqualsOp>>()),
                           levelNumber);
             }
+
 
             else if constexpr (Type == RefinerType::PatchTensorFieldBorderSum)
             {
@@ -96,7 +102,8 @@ public:
                     algo,
                     algo->createSchedule(
                         level, patchStrat_.get(),
-                        std::make_shared<FieldBorderSumTransactionFactory<TensorFieldData_t>>()),
+                        std::make_shared<
+                            FieldBorderOpTransactionFactory<TensorFieldData_t, PlusEqualsOp>>()),
                     levelNumber);
             }
 
@@ -106,7 +113,34 @@ public:
                 this->add(algo,
                           algo->createSchedule(
                               level, patchStrat_.get(),
-                              std::make_shared<FieldBorderSumTransactionFactory<VecFieldData_t>>()),
+                              std::make_shared<
+                                  FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>()),
+                          levelNumber);
+            }
+
+
+            // schedule used to == max of density and flux for populations
+            // on complete overlaped ghost box nodes
+            else if constexpr (Type == RefinerType::PatchFieldBorderMax)
+            {
+                this->add(
+                    algo,
+                    algo->createSchedule(
+                        level, patchStrat_.get(),
+                        std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, SetMaxOp>>()),
+                    levelNumber);
+            }
+
+
+            // schedule used to == max of density and flux for populations
+            // on complete overlaped ghost box nodes
+            else if constexpr (Type == RefinerType::PatchVecFieldBorderMax)
+            {
+                this->add(algo,
+                          algo->createSchedule(
+                              level, patchStrat_.get(),
+                              std::make_shared<
+                                  FieldBorderOpTransactionFactory<VecFieldData_t, SetMaxOp>>()),
                           levelNumber);
             }
 
@@ -174,6 +208,11 @@ public:
             else if constexpr (Type == RefinerType::ExteriorGhostParticles)
             {
                 this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
+            }
+
+            else
+            {
+                throw std::runtime_error("No Schedule for RefinerType");
             }
         }
     }

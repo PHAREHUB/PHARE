@@ -33,7 +33,7 @@ def simulator_shutdown():
 
 def make_cpp_simulator(cpp_lib, hier):
     if SCOPE_TIMING:
-        mon.timing_setup(cpp_lib)
+        mon.timing_setup()
 
     make_sim = "make_simulator"
     assert hasattr(cpp_lib, make_sim)
@@ -75,7 +75,7 @@ class Simulator:
 
         These arguments have good default, change them at your own risk.
 
-        *  **print_one_line**: (``bool``), default True, will print simulator info per advance on one line (erasing the previous)
+        *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
         *  **auto_dump**: (``bool``), if True (default), will dump diagnostics automatically at requested timestamps
         *  **post_advance**: (``Function``),  default None. A python function to execute after each advance()
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
@@ -91,11 +91,11 @@ class Simulator:
         self.post_advance = kwargs.get("post_advance", None)
         self.initialized = False
         self.print_eol = "\n"
-        if kwargs.get("print_one_line", True):
+        if kwargs.get("print_one_line", False):
             self.print_eol = "\r"
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
-
+        self.report = ""
         self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
 
@@ -116,7 +116,7 @@ class Simulator:
 
             if self.log_to_file:
                 self._log_to_file()
-            ph.populateDict()
+            ph.populateDict(self.simulation)
 
             self.cpp_lib = cpp.cpp_lib(self.simulation)
             self.cpp_hier = cpp.cpp_etc_lib().make_hierarchy()
@@ -167,8 +167,9 @@ class Simulator:
         if dt is None:
             dt = self.timeStep()
 
+        self.report = ""
         try:
-            self.cpp_sim.advance(dt)
+            self.report = self.cpp_sim.advance(dt)
         except (RuntimeError, TypeError, NameError, ValueError) as e:
             self._throw(f"Exception caught in simulator.py::advance: \n{e}")
         except KeyboardInterrupt as e:
@@ -195,33 +196,41 @@ class Simulator:
 
         if monitoring is None:  # check env
             monitoring = SIM_MONITOR
-
         if self.simulation.dry_run:
             return self
         if monitoring:
-            mon.setup_monitoring(self.cpp_lib)
+            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
+            mon.setup_monitoring(interval)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
 
+        tot = 0
+        print_rank0("Starting at ", datetime.datetime.now())
+        print_rank0("Simulation start time/end time ", t, end_time)
         while t < end_time:
             tick = timem.time()
             self.advance()
             tock = timem.time()
             ticktock = tock - tick
             perf.append(ticktock)
+            tot += ticktock
             t = self.cpp_sim.currentTime()
+            delta = datetime.timedelta(seconds=tot)
             if cpp.mpi_rank() == 0:
-                out = f"t = {t:8.5f}  -  {ticktock:6.5f}sec  - total {np.sum(perf):7.4}sec"
-                print(out, end=self.print_eol)
+                print(
+                    f"t = {t:8.5f} - {ticktock:6.5f}sec - total {delta} {self.report}",
+                    end=self.print_eol,
+                )
 
         print_rank0(f"mean advance time = {np.mean(perf)}")
         print_rank0(f"total advance time = {datetime.timedelta(seconds=np.sum(perf))}")
+        print_rank0("Finished at ", datetime.datetime.now())
 
         if plot_times:
             plot_timestep_time(perf)
 
-        mon.monitoring_shutdown(self.cpp_lib)
+        mon.monitoring_shutdown()
         return self.reset()
 
     def _auto_dump(self):

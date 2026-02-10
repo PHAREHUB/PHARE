@@ -155,6 +155,11 @@ struct UpdaterSelectionBoxing
                   return isIn(cell, ghostBox) and !isIn(cell, domainBox);
               });
           };
+
+    Selector_t const outsideGhostBox = [ghostBox = ghostBox](auto& particleRange) {
+        return particleRange.array().partition(
+            particleRange, [&](auto const& cell) { return !isIn(cell, ghostBox); });
+    };
 };
 
 /**
@@ -247,6 +252,23 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto& patchGhost = pop.patchGhostParticles();
         patchGhost.reserve(patchGhost.size() + not_level_ghosts.size());
         std::copy(not_level_ghosts.begin(), not_level_ghosts.end(), std::back_inserter(patchGhost));
+
+        PHARE_DEBUG_DO({
+            auto const outsideGhostBox = boxing.outsideGhostBox(now_ghosts);
+            for (auto const& particle : outsideGhostBox)
+            {
+                PHARE_LOG_LINE_SS(particle);
+                auto const nearbyBox = grow(Box(particle.iCell, particle.iCell), 3);
+                for (auto const& xyz : em.E)
+                    if (auto const overlap = nearbyBox * layout.AMRGhostBoxFor(xyz))
+                        for (auto const [bix, lix] : layout.amr_lcl_idx(*overlap))
+                        {
+                            PHARE_LOG_LINE_SS(xyz.name() << " at:" << bix << ":" << xyz(lix));
+                        }
+            }
+            if (outsideGhostBox.size())
+                throw core::DictionaryException{}("ID", "Updater::outsideGhostBox");
+        })
 
         domainParticles.erase(now_ghosts); // drop all ghosts
 
