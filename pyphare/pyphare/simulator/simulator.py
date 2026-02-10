@@ -33,7 +33,7 @@ def simulator_shutdown():
 
 def make_cpp_simulator(cpp_lib, hier):
     if SCOPE_TIMING:
-        mon.timing_setup(cpp_lib)
+        mon.timing_setup()
 
     make_sim = "make_simulator"
     assert hasattr(cpp_lib, make_sim)
@@ -199,7 +199,8 @@ class Simulator:
         if self.simulation.dry_run:
             return self
         if monitoring:
-            mon.setup_monitoring(self.cpp_lib)
+            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
+            mon.setup_monitoring(interval)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -221,7 +222,7 @@ class Simulator:
         if plot_times:
             plot_timestep_time(perf)
 
-        mon.monitoring_shutdown(self.cpp_lib)
+        mon.monitoring_shutdown()
         return self.reset()
 
     def _auto_dump(self):
