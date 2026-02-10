@@ -25,11 +25,7 @@
 #include "diagnostic_model_view.hpp"
 
 #include "diagnostic/detail/h5writer.hpp"
-#include "diagnostic/detail/types/electromag.hpp"
-#include "diagnostic/detail/types/particle.hpp"
-#include "diagnostic/detail/types/fluid.hpp"
-#include "diagnostic/detail/types/meta.hpp"
-#include "diagnostic/detail/types/info.hpp"
+#include "diagnostic/detail/vtkh5_writer.hpp"
 
 #endif
 
@@ -56,8 +52,13 @@ struct DiagnosticsManagerResolver
     {
 #if PHARE_HAS_HIGHFIVE
         using ModelView_t = ModelView<Hierarchy, Model>;
-        using Writer_t    = h5::H5Writer<ModelView_t>;
-        return DiagnosticsManager<Writer_t>::make_unique(hier, model, dict);
+        auto const format = cppdict::get_value(dict, "format", std::string{"phareh5"});
+
+        if (format == "phareh5")
+            return DiagnosticsManager<h5::H5Writer<ModelView_t>>::make_unique(hier, model, dict);
+        if (format == "pharevtkhdf")
+            return DiagnosticsManager<vtkh5::H5Writer<ModelView_t>>::make_unique(hier, model, dict);
+        throw std::runtime_error("DiagnosticsManagerResolver - unknown format " + format);
 #else
         return std::make_unique<NullOpDiagnosticsManager>();
 #endif

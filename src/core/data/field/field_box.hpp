@@ -5,6 +5,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 
 #include <vector>
 #include <cstddef>
@@ -68,6 +69,18 @@ void operate_on_fields(auto& dst, auto const& src)
         Operator{dst.field(*dst_it)}(src.field(*src_it));
 }
 
+void max_of_fields(auto& dst, auto const& src)
+{
+    assert(dst.lcl_box.size() == src.lcl_box.size());
+    auto src_it = src.lcl_box.begin();
+    auto dst_it = dst.lcl_box.begin();
+    for (; dst_it != dst.lcl_box.end(); ++src_it, ++dst_it)
+    {
+        auto& dst_val = dst.field(*dst_it);
+        auto& src_val = src.field(*src_it);
+        dst_val       = std::max(dst_val, src_val);
+    }
+}
 
 
 template<typename Field_t>
@@ -79,6 +92,7 @@ void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t
         Operator{field(*dst_it)}(vec[seek]);
 }
 
+
 template<typename Field_t>
 void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
 {
@@ -87,6 +101,17 @@ void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
     for (; src_it != lcl_box.end(); ++src_it)
         vec.push_back(field(*src_it));
 }
+
+
+
+template<typename Field_t>
+void fill_ghost(Field_t& field, auto const& layout, auto const v)
+{
+    std::size_t const nghosts  = layout.nbrGhosts();
+    std::size_t const max      = nghosts - 1;
+    field[NdArrayMask{0, max}] = v;
+}
+
 
 } // namespace PHARE::core
 
