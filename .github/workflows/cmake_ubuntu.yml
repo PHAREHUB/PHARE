@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ${{ matrix.os }}
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
     strategy:
       fail-fast: false
       matrix:
@@ -32,27 +33,10 @@ jobs:
         key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
         restore-keys: ${{ runner.os }}-ccache-
 
-    - name: Cache PIP (Linux)
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
-        restore-keys: |
-          ${{ runner.os }}-pip-
-
     - name: Clone PHARE
       uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-
-    - uses: actions/setup-python@v4
-      with:
-        python-version: '3.11.1'
-
-    - name: Install system deps (openmpi, hdf5, ccache,...)
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y libopenmpi-dev openmpi-bin libhdf5-openmpi-dev ccache
 
     - name: Ensure ccache uses ~/.ccache
       run: |
@@ -60,26 +44,15 @@ jobs:
           ccache --set-config=cache_dir=~/.ccache
           ccache --get-config=cache_dir
 
-    - name: Install python deps
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install -r requirements.txt
-
-    - name: Create Build Environment
-      run: cmake -E make_directory ${{github.workspace}}/build
-
     - name: Configure CMake
-      working-directory: ${{github.workspace}}/build
       run: |
         set -ex
         export CC=gcc CXX=g++
         [ "${{ matrix.cc }}" = "clang" ] && export CC=clang CXX=clang++
-        cmake $GITHUB_WORKSPACE
-        cd ${{github.workspace}}/subprojects/samrai && mkdir build && cd build
-        cmake .. -DENABLE_SAMRAI_TESTS=OFF -DCMAKE_BUILD_TYPE=RelWithDebInfo
-        make -j2 && sudo make install && cd ../.. && rm -rf samrai
-        cd ${{github.workspace}}/build && rm -rf *
-        cmake $GITHUB_WORKSPACE -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
+        . /.venv/bin/activate;
+        mkdir -p build && cd build
+        cmake .. -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
+              -DSAMRAI_ROOT=/usr/local \
               -DCMAKE_BUILD_TYPE=Debug -Dasan=OFF \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
@@ -88,8 +61,8 @@ jobs:
 
     - name: Build
       working-directory: ${{github.workspace}}/build
-      run: cmake --build . -j 1
+      run: . /.venv/bin/activate; cmake --build . -j 2
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: ctest -j 2 --output-on-failure
+      run: . /.venv/bin/activate; ctest -j 2 --output-on-failure
