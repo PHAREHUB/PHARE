@@ -128,6 +128,7 @@ namespace solver
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
             }
+            hybMessenger.fillIonBorders(ions, level, initDataTime);
 
             // on level i>0, this relies on 'prepareStep' having been called on when
             // level i-1 was initialized (at the end of this function)
@@ -145,38 +146,36 @@ namespace solver
             // this only needs to be done for the root level
             // since otherwise initLevel has done it already
             // TODO NICO comment! E is regridded, we only needed J for E
+
             if (!isRegriddingL0)
                 if (isRootLevel(levelNumber))
                 {
                     auto& B = hybridModel.state.electromag.B;
                     auto& J = hybridModel.state.J;
 
-                    for (auto& patch : level)
+                    for (auto& patch : rm.enumerate(level, B, J))
                     {
-                        auto _      = hybridModel.resourcesManager->setOnPatch(*patch, B, J);
                         auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
                         auto __     = core::SetLayout(&layout, ampere_);
                         ampere_(B, J);
 
-                        hybridModel.resourcesManager->setTime(J, *patch, 0.);
+                        rm.setTime(J, *patch, 0.);
                     }
                     hybMessenger.fillCurrentGhosts(J, level, 0.);
 
                     auto& electrons = hybridModel.state.electrons;
                     auto& E         = hybridModel.state.electromag.E;
 
-                    for (auto& patch : level)
+                    for (auto& patch : rm.enumerate(level, B, E, J, electrons))
                     {
                         auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                        auto _
-                            = hybridModel.resourcesManager->setOnPatch(*patch, B, E, J, electrons);
                         electrons.update(layout);
                         auto& Ve = electrons.velocity();
                         auto& Ne = electrons.density();
                         auto& Pe = electrons.pressure();
                         auto __  = core::SetLayout(&layout, ohm_);
                         ohm_(Ne, Ve, Pe, B, J, E);
-                        hybridModel.resourcesManager->setTime(E, *patch, 0.);
+                        rm.setTime(E, *patch, 0.);
                     }
 
                     hybMessenger.fillElectricGhosts(E, level, 0.);

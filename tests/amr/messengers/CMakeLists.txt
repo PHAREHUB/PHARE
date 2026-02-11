@@ -27,7 +27,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_simulator
   pybind11::embed
-  ${GTEST_LIBS})
+  ${GTEST_LIBS}
+)
 
 
 add_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
