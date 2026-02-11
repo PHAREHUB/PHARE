@@ -2,78 +2,70 @@
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
 #include "core/def.hpp"
-#include <stdexcept>
-#include <array>
-#include <cstdint>
-#include <vector>
-#include <tuple>
-#include <numeric>
-#include <iostream>
-
-
 #include "core/utilities/types.hpp"
+
+#include <array>
+#include <vector>
+#include <cstdint>
+#include <numeric>
+#include <stdexcept>
 
 
 namespace PHARE::core
 {
-template<std::size_t dim, bool c_ordering = true, typename DataType = double>
+template<std::size_t dim, bool c_ordering = true>
 struct NdArrayViewer
 {
-    template<typename NCells, typename... Indexes>
-    NO_DISCARD static DataType const& at(DataType const* data, NCells const& nCells,
-                                         Indexes const&... indexes)
-    {
-        auto params = std::forward_as_tuple(indexes...);
-        static_assert(sizeof...(Indexes) == dim);
-        // static_assert((... && std::is_unsigned_v<decltype(indexes)>)); TODO : manage later if
-        // this test should be included
-
-        if constexpr (dim == 1)
-        {
-            auto i = std::get<0>(params);
-
-            return data[i];
-        }
-
-        if constexpr (dim == 2)
-        {
-            auto i = std::get<0>(params);
-            auto j = std::get<1>(params);
-
-            if constexpr (c_ordering)
-                return data[j + i * nCells[1]];
-            else
-                return data[i + j * nCells[0]];
-        }
-
-        if constexpr (dim == 3)
-        {
-            auto i = std::get<0>(params);
-            auto j = std::get<1>(params);
-            auto k = std::get<2>(params);
-
-            if constexpr (c_ordering)
-                return data[k + j * nCells[2] + i * nCells[1] * nCells[2]];
-            else
-                return data[i + j * nCells[0] + k * nCells[1] * nCells[0]];
-        }
-    }
-
     template<typename NCells, template<typename, std::size_t> typename Indexes, typename Index>
-    NO_DISCARD static DataType const& at(DataType const* data, NCells const& nCells,
-                                         Indexes<Index, dim> const& indexes)
-
+    static inline std::uint32_t idx(NCells const& nCells, Indexes<Index, dim> const& indexes)
     {
         if constexpr (dim == 1)
-            return at(data, nCells, indexes[0]);
+            return idx(nCells, indexes[0]);
 
         else if constexpr (dim == 2)
-            return at(data, nCells, indexes[0], indexes[1]);
+            return idx(nCells, indexes[0], indexes[1]);
 
         else if constexpr (dim == 3)
-            return at(data, nCells, indexes[0], indexes[1], indexes[2]);
+            return idx(nCells, indexes[0], indexes[1], indexes[2]);
+    }
+
+    static inline std::uint32_t idx(auto const& /*nCells*/, std::uint32_t const i) { return i; }
+    static inline std::uint32_t idx(auto const& nCells, std::uint32_t const i,
+                                    std::uint32_t const j)
+    {
+        if constexpr (c_ordering)
+            return j + i * nCells[1];
+        else
+            return i + j * nCells[0];
+    }
+
+    static inline std::uint32_t idx(auto const& nCells, std::uint32_t const i,
+                                    std::uint32_t const j, std::uint32_t const k)
+    {
+        if constexpr (c_ordering)
+            return k + j * nCells[2] + i * nCells[1] * nCells[2];
+        else
+            return i + j * nCells[0] + k * nCells[1] * nCells[0];
+    }
+
+    template<template<typename, std::size_t> typename Indexes, typename Index>
+    NO_DISCARD static inline auto& at(auto* data, auto const& nCells,
+                                      Indexes<Index, dim> const& indexes)
+
+    {
+        auto const& i = idx(nCells, indexes);
+        assert(i < product(nCells, std::uint32_t{1}));
+        return data[i];
+    }
+
+    static inline auto& at(auto* data, auto const nCells, auto const... indexes)
+    {
+        auto const& i = idx(nCells, indexes...);
+        assert(i < product(nCells, std::uint32_t{1}));
+        return data[i];
     }
 };
+
 
 
 
@@ -102,7 +94,7 @@ public:
     template<typename... Indexes>
     NO_DISCARD DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dimension, true, DataType>::at(array_.data(), shape_, indexes...);
+        return NdArrayViewer<dimension, true>::at(array_.data(), shape_, indexes...);
     }
 
     template<typename... Indexes>
@@ -139,7 +131,7 @@ public:
     static std::size_t const dimension  = dim;
     using type                          = DataType;
     using pointer_type                  = DataType*;
-    using viewer                        = NdArrayViewer<dim, c_ordering, DataType>;
+    using viewer                        = NdArrayViewer<dim, c_ordering>;
 
     explicit NdArrayView(pointer_type ptr, std::array<std::uint32_t, dim> const& nCells)
         : ptr_{ptr}
@@ -292,7 +284,7 @@ public:
     template<typename... Indexes>
     NO_DISCARD DataType const& operator()(Indexes... indexes) const
     {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(data_.data(), nCells_, indexes...);
+        return NdArrayViewer<dim, c_ordering>::at(data_.data(), nCells_, indexes...);
     }
 
     template<typename... Indexes>
@@ -304,7 +296,7 @@ public:
     template<typename Index>
     NO_DISCARD DataType const& operator()(std::array<Index, dim> const& indexes) const
     {
-        return NdArrayViewer<dim, c_ordering, DataType>::at(data_.data(), nCells_, indexes);
+        return NdArrayViewer<dim, c_ordering>::at(data_.data(), nCells_, indexes);
     }
 
     template<typename Index>

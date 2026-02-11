@@ -57,7 +57,7 @@ jobs:
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
               -DlowResourceTests=ON -DdevMode=ON -Dbench=ON \
-              -DCMAKE_CXX_FLAGS="-O3 -DPHARE_DIAG_DOUBLES=1 " -Dphare_configurator=ON
+              -DCMAKE_CXX_FLAGS="-O3 -DPHARE_DIAG_DOUBLES=1" -Dphare_configurator=ON
 
     - name: Build
       working-directory: ${{github.workspace}}/build

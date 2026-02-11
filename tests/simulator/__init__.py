@@ -250,7 +250,10 @@ class SimulatorTest(unittest.TestCase):
     def unique_diag_dir_for_test_case(self, base_path, ndim, interp, post_path=""):
         from pyphare import cpp
 
-        return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}/{post_path}"
+        base = f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}"
+        if post_path:
+            return base + "/" + post_path
+        return base
 
     def clean_up_diags_dirs(self):
         from pyphare import cpp
