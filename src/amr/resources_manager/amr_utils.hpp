@@ -319,7 +319,10 @@ namespace amr
     }
 
 
-
+    /* This function differs from the one above in that the "orMissing(int ilvl)" function will be
+       executed when the level does not exist in the hierarchy at the current time, but we want to
+       do something anyway for that "index".
+    */
     void onLevels(auto& hierarchy, auto&& onLevel, auto&& orMissing, std::size_t const minlvl,
                   std::size_t const maxlvl)
     {
