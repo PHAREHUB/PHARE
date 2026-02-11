@@ -1,7 +1,6 @@
 #
 #
 
-import os
 import unittest
 import numpy as np
 from datetime import datetime
@@ -42,7 +41,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
 
     _, smallest_patch_size = check_patch_size(dim, interp_order=interp, cells=cells)
     dl = [1.0 / v for v in cells]
-    b0 = [[3] * dim, [8] * dim]
+    b0 = [[3] * dim, [12] * dim]
     args = {
         "interp_order": interp,
         "smallest_patch_size": smallest_patch_size,
@@ -164,6 +163,8 @@ def populate_simulation(dim, interp, **input):
 
 
 def diff_boxes(slice1, slice2, box, atol=None):
+    from pyphare.core.box import Box
+
     if atol is not None:
         ignore = np.isclose(slice1, slice2, atol=atol, rtol=0)
 
@@ -247,20 +248,19 @@ class SimulatorTest(unittest.TestCase):
         super().run(result)
 
     def unique_diag_dir_for_test_case(self, base_path, ndim, interp, post_path=""):
-        from pyphare.cpp import cpp_lib
+        from pyphare import cpp
 
-        cpp = cpp_lib()
         return f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}/{post_path}"
 
     def clean_up_diags_dirs(self):
-        from pyphare.cpp import cpp_lib
+        from pyphare import cpp
 
-        cpp_lib().mpi_barrier()
-        if cpp_lib().mpi_rank() == 0 and self.success:
+        cpp.mpi_barrier()
+        if cpp.mpi_rank() == 0 and self.success:
             import os
             import shutil
 
             for diag_dir in self.diag_dirs:
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
-        cpp_lib().mpi_barrier()
+        cpp.mpi_barrier()

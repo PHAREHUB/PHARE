@@ -134,6 +134,9 @@ namespace amr
         virtual void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                         double const fillTime)
             = 0;
+        virtual void fillIonBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                    double const fillTime)
+            = 0;
 
 
         std::string name() const { return stratname_; }
