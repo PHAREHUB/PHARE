@@ -2,16 +2,13 @@
 
 # renamed to not be run on test discovery by directory
 
-from pyphare.cpp import cpp_lib
-
-cpp = cpp_lib()
-
 import os
 import unittest
 
 
 import numpy as np
 import pyphare.pharein as ph
+from pyphare import cpp
 from ddt import data, ddt
 from pyphare.pharein import ElectronModel
 from pyphare.pharein.simulation import supported_dimensions
