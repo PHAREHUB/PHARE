@@ -7,6 +7,7 @@ from pyphare.pharesee.hierarchy import ScalarField, VectorField
 
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+from pyphare.pharesee.hierarchy.hierarchy_utils import rename
 from pyphare.core.phare_utilities import listify
 
 from pyphare.logger import getLogger
@@ -93,6 +94,7 @@ class Run:
         if merged:
             all_primal = False
         hier = self._get_hierarchy(time, "EM_B.h5", **kwargs)
+
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
@@ -103,30 +105,69 @@ class Run:
         if merged:
             all_primal = False
         hier = self._get_hierarchy(time, "EM_E.h5", **kwargs)
+
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
         return VectorField(h)
 
-    def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
+    def GetMassDensity(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
         hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
 
-    def GetNi(self, time, merged=False, interp="nearest", **kwargs):
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, value="rho")
+        return ScalarField(h)
+
+    def GetNi(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
         hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
 
-    def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, value="rho")
+        return ScalarField(h)
+
+    def GetN(self, time, pop_name, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
 
-    def GetVi(self, time, merged=False, interp="nearest", **kwargs):
+        hier_ = rename(hier, ['rho',])
+        if not all_primal:
+            return self._get(hier_, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier_, value="rho")
+        return ScalarField(h)
+
+    def GetVi(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, x="Vx", y="Vy", z="Vz")
         return VectorField(self._get(hier, time, merged, interp))
 
-    def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+    def GetFlux(self, time, pop_name, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
+
+        hier_ = rename(hier, ['Fx', 'Fy', 'Fz'])
+        # print(hier.quantities())
+        if not all_primal:
+            return self._get(hier_, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier_, x="Fx", y="Fy", z="Fz")
         return VectorField(self._get(hier, time, merged, interp))
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
