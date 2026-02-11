@@ -1,5 +1,5 @@
-#ifndef PHARE_AMR_MESSENGERS_FIELD_SUM_TRANSACTION_HPP
-#define PHARE_AMR_MESSENGERS_FIELD_SUM_TRANSACTION_HPP
+#ifndef PHARE_AMR_MESSENGERS_FIELD_OP_TRANSACTION_HPP
+#define PHARE_AMR_MESSENGERS_FIELD_OP_TRANSACTION_HPP
 
 #include "core/logger.hpp"
 
@@ -14,31 +14,30 @@ namespace PHARE::amr
 {
 
 
-/** * @brief FieldBorderSumTransaction is used to += pop density and flux on ghost box overlaps
+/** * @brief FieldBorderOpTransaction is provided to perform operations on border data shared
+ * across adjacent patches with overlapping ghost boxes
  *
- * A FieldBorderSumTransaction is a SAMRAI Transaction created by the
- * FieldBorderSumTransactionFactory provided (via createShedule) to schedules that accumulate
- * incomplete density and flux on ghost box overlaps.
+ * A FieldBorderOpTransaction is a SAMRAI Transaction created by the
+ * FieldBorderOpTransactionFactory provided (via createShedule) to schedules that executes
+ * the provided operation on ghost box overlaps.
  *
- * Due to the lack of neighbor particle contributions, some domain nodes and ghost nodes
- * have incomplete moments after deposition. The complement of these nodes is what has
- * been deposited on (also incomplete) neighbor nodes.
+ * One context this is used for is due to the lack of neighbor particle contributions,
+ * some domain nodes and ghost nodes have incomplete moments after deposition.
+ * The complement of these nodes is what has been deposited on (also incomplete) neighbor nodes.
  *
  * Default SAMRAI transaction calls PatchData::copy and PatchData::packStream
  * This transaction defines these override to these methods to call specific methods
- * of FieldData to perform the += instead of =.
- * These methods are copyAndSum and unpackStreamAndSum.
- *
+ * of FieldData to perform arbitrary operations.
  */
-template<typename FieldData_t>
-class FieldBorderSumTransaction : public SAMRAI::tbox::Transaction
+template<typename FieldData_t, typename Operation>
+class FieldBorderOpTransaction : public SAMRAI::tbox::Transaction
 {
 public:
-    FieldBorderSumTransaction(std::shared_ptr<SAMRAI::hier::PatchLevel> const& dst_level,
-                              std::shared_ptr<SAMRAI::hier::PatchLevel> const& src_level,
-                              std::shared_ptr<SAMRAI::hier::BoxOverlap> const& overlap,
-                              SAMRAI::hier::Box const& dst_node, SAMRAI::hier::Box const& src_node,
-                              SAMRAI::xfer::RefineClasses::Data const** refine_data, int item_id)
+    FieldBorderOpTransaction(std::shared_ptr<SAMRAI::hier::PatchLevel> const& dst_level,
+                             std::shared_ptr<SAMRAI::hier::PatchLevel> const& src_level,
+                             std::shared_ptr<SAMRAI::hier::BoxOverlap> const& overlap,
+                             SAMRAI::hier::Box const& dst_node, SAMRAI::hier::Box const& src_node,
+                             SAMRAI::xfer::RefineClasses::Data const** refine_data, int item_id)
         : d_dst_level(dst_level)
         , d_src_level(src_level)
         , d_overlap(overlap)
@@ -60,7 +59,7 @@ public:
         TBOX_ASSERT_OBJDIM_EQUALITY4(*dst_level, *src_level, dst_node, src_node);
     }
 
-    virtual ~FieldBorderSumTransaction() {}
+    virtual ~FieldBorderOpTransaction() {}
 
 
     virtual bool canEstimateIncomingMessageSize();
@@ -94,10 +93,10 @@ private:
 };
 
 
-template<typename FieldData_t>
-bool FieldBorderSumTransaction<FieldData_t>::canEstimateIncomingMessageSize()
+template<typename FieldData_t, typename Operation>
+bool FieldBorderOpTransaction<FieldData_t, Operation>::canEstimateIncomingMessageSize()
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::canEstimateIncomingMessageSize");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::canEstimateIncomingMessageSize");
     bool can_estimate = false;
     if (getSourceProcessor() == d_src_level->getBoxLevel()->getMPI().getRank())
     {
@@ -115,74 +114,78 @@ bool FieldBorderSumTransaction<FieldData_t>::canEstimateIncomingMessageSize()
 }
 
 
-template<typename FieldData_t>
-size_t FieldBorderSumTransaction<FieldData_t>::computeIncomingMessageSize()
+template<typename FieldData_t, typename Operation>
+size_t FieldBorderOpTransaction<FieldData_t, Operation>::computeIncomingMessageSize()
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::computeIncomingMessageSize");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::computeIncomingMessageSize");
     d_incoming_bytes = d_dst_level->getPatch(d_dst_node.getGlobalId())
                            ->getPatchData(d_refine_data[d_item_id]->d_scratch)
                            ->getDataStreamSize(*d_overlap);
     return d_incoming_bytes;
 }
 
-template<typename FieldData_t>
-size_t FieldBorderSumTransaction<FieldData_t>::computeOutgoingMessageSize()
+template<typename FieldData_t, typename Operation>
+size_t FieldBorderOpTransaction<FieldData_t, Operation>::computeOutgoingMessageSize()
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::computeOutgoingMessageSize");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::computeOutgoingMessageSize");
     d_outgoing_bytes = d_src_level->getPatch(d_src_node.getGlobalId())
                            ->getPatchData(d_refine_data[d_item_id]->d_src)
                            ->getDataStreamSize(*d_overlap);
     return d_outgoing_bytes;
 }
 
-template<typename FieldData_t>
-int FieldBorderSumTransaction<FieldData_t>::getSourceProcessor()
+template<typename FieldData_t, typename Operation>
+int FieldBorderOpTransaction<FieldData_t, Operation>::getSourceProcessor()
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::getSourceProcessor");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::getSourceProcessor");
     return d_src_node.getOwnerRank();
 }
 
-template<typename FieldData_t>
-int FieldBorderSumTransaction<FieldData_t>::getDestinationProcessor()
+template<typename FieldData_t, typename Operation>
+int FieldBorderOpTransaction<FieldData_t, Operation>::getDestinationProcessor()
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::getDestinationProcessor");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::getDestinationProcessor");
     return d_dst_node.getOwnerRank();
 }
 
-template<typename FieldData_t>
-void FieldBorderSumTransaction<FieldData_t>::packStream(SAMRAI::tbox::MessageStream& stream)
+template<typename FieldData_t, typename Operation>
+void FieldBorderOpTransaction<FieldData_t, Operation>::packStream(
+    SAMRAI::tbox::MessageStream& stream)
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::packStream");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::packStream");
     d_src_level->getPatch(d_src_node.getGlobalId())
         ->getPatchData(d_refine_data[d_item_id]->d_src)
         ->packStream(stream, *d_overlap);
 }
 
-template<typename FieldData_t>
-void FieldBorderSumTransaction<FieldData_t>::unpackStream(SAMRAI::tbox::MessageStream& stream)
+template<typename FieldData_t, typename Operation>
+void FieldBorderOpTransaction<FieldData_t, Operation>::unpackStream(
+    SAMRAI::tbox::MessageStream& stream)
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::unpackStream");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::unpackStream");
     std::shared_ptr<FieldData_t> onode_dst_data(
         SAMRAI_SHARED_PTR_CAST<FieldData_t, SAMRAI::hier::PatchData>(
             d_dst_level->getPatch(d_dst_node.getGlobalId())
                 ->getPatchData(d_refine_data[d_item_id]->d_scratch)));
     TBOX_ASSERT(onode_dst_data);
 
-    onode_dst_data->unpackStreamAndSum(stream, *d_overlap);
+    onode_dst_data->template unpackStreamAnd<Operation>(stream, *d_overlap);
 }
 
 
-template<typename FieldData_t>
-void FieldBorderSumTransaction<FieldData_t>::printClassData(std::ostream& stream) const
+template<typename FieldData_t, typename Operation>
+void FieldBorderOpTransaction<FieldData_t, Operation>::printClassData(std::ostream& stream) const
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::printClassData");
-    throw std::runtime_error("FieldBorderSumTransaction::printClassData!");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::printClassData");
+
+    throw std::runtime_error("FieldBorderOpTransaction::printClassData!");
 }
 
-template<typename FieldData_t>
-void FieldBorderSumTransaction<FieldData_t>::copyLocalData()
+template<typename FieldData_t, typename Operation>
+void FieldBorderOpTransaction<FieldData_t, Operation>::copyLocalData()
 {
-    PHARE_LOG_SCOPE(2, "FieldBorderSumTransaction::copyLocalData");
+    PHARE_LOG_SCOPE(2, "FieldBorderOpTransaction::copyLocalData");
+
     std::shared_ptr<FieldData_t> onode_dst_data(
         SAMRAI_SHARED_PTR_CAST<FieldData_t, SAMRAI::hier::PatchData>(
             d_dst_level->getPatch(d_dst_node.getGlobalId())
@@ -195,12 +198,12 @@ void FieldBorderSumTransaction<FieldData_t>::copyLocalData()
                 ->getPatchData(d_refine_data[d_item_id]->d_src)));
     TBOX_ASSERT(onode_src_data);
 
-    onode_dst_data->sum(*onode_src_data, *d_overlap);
+    onode_dst_data->template operate<Operation>(*onode_src_data, *d_overlap);
 }
 
 
-template<typename FieldData_t>
-class FieldBorderSumTransactionFactory : public SAMRAI::xfer::RefineTransactionFactory
+template<typename FieldData_t, typename Operation>
+class FieldBorderOpTransactionFactory : public SAMRAI::xfer::RefineTransactionFactory
 {
 public:
     std::shared_ptr<SAMRAI::tbox::Transaction>
@@ -222,8 +225,9 @@ public:
         TBOX_ASSERT(refine_data != 0);
         TBOX_ASSERT_OBJDIM_EQUALITY4(*dst_level, *src_level, dst_node, src_node);
 
-        PHARE_LOG_SCOPE(2, "FieldBorderSumTransactionFactory::allocate");
-        return std::make_shared<FieldBorderSumTransaction<FieldData_t>>(
+        PHARE_LOG_SCOPE(2, "FieldBorderOpTransactionFactory::allocate");
+
+        return std::make_shared<FieldBorderOpTransaction<FieldData_t, Operation>>(
             dst_level, src_level, overlap, dst_node, src_node, refine_data, item_id);
     }
 
@@ -231,7 +235,7 @@ public:
     preprocessScratchSpace(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level, double fill_time,
                            SAMRAI::hier::ComponentSelector const& preprocess_vector) const override
     {
-        PHARE_LOG_SCOPE(2, "FieldBorderSumTransactionFactory::preprocessScratchSpace");
+        PHARE_LOG_SCOPE(2, "FieldBorderOpTransactionFactory::preprocessScratchSpace");
 
         // noop
     }
@@ -239,4 +243,4 @@ public:
 
 } // namespace PHARE::amr
 
-#endif // PHARE_AMR_MESSENGERS_FIELD_SUM_TRANSACTION_HPP
+#endif // PHARE_AMR_MESSENGERS_FIELD_OP_TRANSACTION_HPP

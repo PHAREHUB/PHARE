@@ -75,7 +75,7 @@ class Simulator:
 
         These arguments have good default, change them at your own risk.
 
-        *  **print_one_line**: (``bool``), default True, will print simulator info per advance on one line (erasing the previous)
+        *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
         *  **auto_dump**: (``bool``), if True (default), will dump diagnostics automatically at requested timestamps
         *  **post_advance**: (``Function``),  default None. A python function to execute after each advance()
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
@@ -91,7 +91,7 @@ class Simulator:
         self.post_advance = kwargs.get("post_advance", None)
         self.initialized = False
         self.print_eol = "\n"
-        if kwargs.get("print_one_line", True):
+        if kwargs.get("print_one_line", False):
             self.print_eol = "\r"
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
