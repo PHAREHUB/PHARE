@@ -16,7 +16,7 @@ struct DiagnosticProperties
     using Params         = cppdict::Dict<std::size_t>;
     using FileAttributes = cppdict::Dict<std::string>;
 
-    std::vector<double> writeTimestamps, computeTimestamps;
+    std::vector<double> writeTimestamps, computeTimestamps, elapsedTimestamps;
     std::string type, quantity;
 
     Params params{}; // supports arbitrary values for specific diagnostic writers

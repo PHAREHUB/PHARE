@@ -88,12 +88,12 @@ private:
 
     bool needsWrite_(RestartsProperties const& rest, double const timeStamp, double const timeStep)
     {
-        auto simUnit
+        auto const simUnit
             = nextWriteSimUnit_ < rest.writeTimestamps.size()
               and needsCadenceAction_(rest.writeTimestamps[nextWriteSimUnit_], timeStamp, timeStep);
 
-        auto elapsed = nextWriteElapsed_ < rest.elapsedTimestamps.size()
-                       and needsElapsedAction_(rest.elapsedTimestamps[nextWriteElapsed_]);
+        auto const elapsed = nextWriteElapsed_ < rest.elapsedTimestamps.size()
+                             and needsElapsedAction_(rest.elapsedTimestamps[nextWriteElapsed_]);
 
         if (simUnit)
             ++nextWriteSimUnit_;
