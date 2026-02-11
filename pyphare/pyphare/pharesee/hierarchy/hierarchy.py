@@ -603,12 +603,16 @@ class PatchHierarchy(object):
                         pops = list(patch.patch_datas.keys())
 
                     for pop in pops:
-                        tmp = copy.copy(patch.patch_datas[pop].dataset)
-
-                        if final[pop] is None:
-                            final[pop] = tmp
+                        if patch.patch_datas.__len__() == 0:
+                            tmp = None
                         else:
-                            final[pop].add(tmp)
+                            tmp = copy.copy(patch.patch_datas[pop].dataset)
+
+                        if tmp is not None:
+                            if final[pop] is None:
+                                final[pop] = tmp
+                            else:
+                                final[pop].add(tmp)
 
         # select particles
         if "select" in kwargs:
