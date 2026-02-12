@@ -1,4 +1,5 @@
 #
+from .patchdata import FieldData
 
 
 class Patch:
@@ -67,3 +68,48 @@ class Patch:
             return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
         elif idim == 1:
             return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(f"__array_function__ of Patch called for {ufunc.__name__}")
+        if method != "__call__":
+            return NotImplemented
+
+        # Collect per-argument sequences
+        seqs = []
+        for x in inputs:
+            print("zobi : ", type(x))
+            if isinstance(x, Patch):
+                print("zob", x.patch_datas)
+                for k, v in x.patch_datas.items():
+                    print("toto", k, v, type(v))
+                    seqs.append(v)
+                    if isinstance(v, FieldData):
+                        print("is a fieldData")
+                #seqs.append(x.patch_datas)
+            else:
+                #  TODO seqs.append(x) ?
+                raise TypeError("this arg should be a Patch")
+
+        # print(type(seqs[0]))
+        # print(seqs[0].dataset.shape)
+        # # Outer length must match
+        # n = len(seqs[0])                        # length of the first patch
+        # if not all(len(s) == n for s in seqs):  # each of the other Patches have to be homogeneous
+        #     raise ValueError("Patch length mismatch")
+
+        print(seqs)
+        for elem in zip(*seqs):
+            print(elem)
+
+        # Pairwise application
+        result = [
+            ufunc(*elems, **kwargs)
+            for elems in zip(*seqs)
+        ]
+
+        return Patch(result, patch_id=self.id, layout=self.layout, attrs=self.attrs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
+        return func(*args, **kwargs)
+
