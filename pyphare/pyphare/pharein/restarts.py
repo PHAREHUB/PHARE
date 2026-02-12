@@ -160,3 +160,26 @@ def conserve_existing(sim):
 
 
 # ------------------------------------------------------------------------------
+
+
+def is_restartable_compared_to(curr_sim, prev_sim):
+    import operator
+
+    failed = []
+
+    def _do(op, keys):
+        for key in keys:
+            curr = getattr(curr_sim, key)
+            prev = getattr(prev_sim, key)
+            if any([op(curr, prev)]):
+                failed.append((key, curr, prev, op))
+
+    # use negative operator for printing
+    _do(operator.ne, ["cells", "dl", "max_nbr_levels"])
+
+    if failed:
+        print("ERROR: Simulation not restartable - variable mismatch")
+        for key, curr, prev, op in failed:
+            print(f"{key} current({curr}) {op.__name__} previous({prev})")
+
+    return not failed

@@ -54,6 +54,5 @@ if (bench)
   add_subdirectory(tools/bench/core/numerics/interpolator)
 
   add_subdirectory(tools/bench/hi5)
-  add_subdirectory(tools/bench/real)
 
 endif()
