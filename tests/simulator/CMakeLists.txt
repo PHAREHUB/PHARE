@@ -10,7 +10,6 @@ endif()
 
 phare_python3_exec(9 validation           test_validation.py      ${CMAKE_CURRENT_BINARY_DIR})
 phare_python3_exec(9 data-wrangler        data_wrangler.py        ${CMAKE_CURRENT_BINARY_DIR})
-phare_python3_exec(9 sim-refineParticlNbr refined_particle_nbr.py ${CMAKE_CURRENT_BINARY_DIR})
 add_no_mpi_python3_test(periodicity test_init_periodicity.py ${CMAKE_CURRENT_BINARY_DIR})
 
 if(HighFive)
@@ -18,6 +17,7 @@ if(HighFive)
   phare_python3_exec(9       diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       restarts    test_restarts.py     ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       run         test_run.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       vtk_diagnostics test_vtk_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
   if(testMPI)
@@ -27,10 +27,11 @@ if(HighFive)
     # doesn't make sense in serial
     phare_mpi_python3_exec(9 3 load_balancing test_load_balancing.py ${CMAKE_CURRENT_BINARY_DIR})
 
+    phare_mpi_python3_exec(9 4 vtk_diagnostics test_vtk_diagnostics.py ${CMAKE_CURRENT_BINARY_DIR})
+
   endif(testMPI)
 
-
-  # phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()
 

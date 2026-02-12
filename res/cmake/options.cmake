@@ -63,15 +63,19 @@ option(withIPO "Use IPO/LTO if system supported" OFF)
 option(withCaliper "Use LLNL Caliper" OFF)
 
 
-# -DwithPhlop=OFF
-option(withPhlop "Use phlop" OFF)
+# -DwithPhlop=OFF - also interacts with CXX def -DPHARE_LOG_LEVEL=N
+option(withPhlop "Use phlop for scope timings and such" OFF)
 
 
 # -DlowResourceTests=ON
 option(lowResourceTests "Disable heavy tests for CI (2d/3d/etc" OFF)
 
+# -DhighResourceTests=ON
+option(highResourceTests "Enable heavy tests for CI (3d/etc" OFF)
+
 # -DtestDuringBuild=ON enabled if devMode=ON, disabled if asan=ON (needs LD_PRELOAD)
 option(testDuringBuild "Runs C++ unit tests after they are built" OFF)
+
 
 
 # -DPGO_GEN=OFF profile guided optimization generate
@@ -82,6 +86,7 @@ option(PGO_USE "profile guided optimization use" OFF)
 
 # -DPHARE_COMPILER_WORKAROUNDS=OFF
 option(PHARE_COMPILER_WORKAROUNDS "Attempt silence compiler false positives" ON) # on by default
+
 
 
 # Controlling the activation of tests
@@ -107,6 +112,8 @@ option(SAMRAI_BUILD_SHARED_LIBS "Build SAMRAI shared libraries" ON)
 #-DPHARE_EXE=OFF
 option(PHARE_EXE "Build PHARE EXE" OFF)
 
+#-DSAMRAI_DEBUG=OFF
+option(SAMRAI_DEBUG "Build SAMRAI with assertions" OFF)
 
 # print options
 function(print_phare_options)
