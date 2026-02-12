@@ -93,7 +93,7 @@ def gF(hier, **kwargs):
         raise ValueError("sigma value has to be at least 2")
     h_ = hier.__deepcopy__(memo={})
     ndim = hier.ndim
-    n_pad = 2*sigma
+    n_pad = 4*sigma+1
     # The gaussian filter is calculated on the box extended by
     # n_pad. Hence, the number of points is large enough so that the value
     # at the last point of the real box is as equal as possible to the one
@@ -109,6 +109,8 @@ def gF(hier, **kwargs):
                 for name in names:
                     pdata = patch.patch_datas[name]
                     nb_ghosts = pdata.ghosts_nbr
+                    if not n_pad > nb_ghosts:
+                        raise ValueError('sigma value is too small')
 
                     r_ = []
                     for i in range(ndim):
