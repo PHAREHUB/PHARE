@@ -6,6 +6,8 @@
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
 
+#include "core/data/field/field_box_span.hpp"
+
 #include <vector>
 #include <cstddef>
 #include <type_traits>
@@ -62,10 +64,24 @@ template<typename Operator>
 void operate_on_fields(auto& dst, auto const& src)
 {
     assert(dst.lcl_box.size() == src.lcl_box.size());
-    auto src_it = src.lcl_box.begin();
-    auto dst_it = dst.lcl_box.begin();
-    for (; dst_it != dst.lcl_box.end(); ++src_it, ++dst_it)
-        Operator{dst.field(*dst_it)}(src.field(*src_it));
+
+    auto d_span       = make_field_box_span(dst.lcl_box, dst.field);
+    auto const s_span = make_field_box_span(src.lcl_box, src.field);
+
+    auto d_slabs = d_span.begin();
+    auto s_slabs = s_span.begin();
+    for (; s_slabs != s_span.end(); ++s_slabs, ++d_slabs)
+    {
+        auto d_rows = d_slabs.begin();
+        auto s_rows = s_slabs.begin();
+        for (; s_rows != s_slabs.end(); ++s_rows, ++d_rows)
+        {
+            auto& s_row = *s_rows;
+            auto& d_row = *d_rows;
+            for (std::size_t i = 0; i < s_row.size(); ++i)
+                Operator{d_row[i]}(s_row[i]);
+        }
+    }
 }
 
 
