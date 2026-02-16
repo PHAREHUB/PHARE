@@ -40,7 +40,7 @@ class AGeometryTest(unittest.TestCase):
 
 
 @ddt
-class GeometryTest(AGeometryTest):
+class GeometryTest2D(AGeometryTest):
     @data(
         (
             {
@@ -49,31 +49,31 @@ class GeometryTest(AGeometryTest):
             {
                 0: [
                     {"box": Box([5, 5], [15, 14]), "offset": ([0, 0], [0, 0])},
-                    {"box": Box([-5, 5], [15, 14]), "offset": ([0, 0], [0, 0])},
-                    {"box": Box([5, -5], [15, 14]), "offset": ([0, 0], [0, 0])},
-                    {"box": Box([5, 5], [15, 24]), "offset": ([0, 0], [0, 0])},
-                    {"box": Box([5, 5], [25, 14]), "offset": ([0, 0], [0, 0])},
-                    {"box": Box([5, 5], [15, 14]), "offset": ([0, 0], [0, 0])},
-                    {"box": Box([-5, 5], [5, 14]), "offset": ([0, 0], [-20, 0])},
-                    {"box": Box([15, 5], [25, 14]), "offset": ([20, 0], [0, 0])},
-                    {"box": Box([-5, -5], [5, 14]), "offset": ([0, 0], [-20, 0])},
-                    {"box": Box([15, -5], [25, 14]), "offset": ([20, 0], [0, 0])},
                     {"box": Box([5, -5], [15, 4]), "offset": ([0, 0], [0, -20])},
                     {"box": Box([5, 15], [15, 24]), "offset": ([0, 20], [0, 0])},
-                    {"box": Box([-5, -5], [15, 4]), "offset": ([0, 0], [0, -20])},
-                    {"box": Box([-5, 15], [15, 24]), "offset": ([0, 20], [0, 0])},
-                    {"box": Box([-5, -5], [5, 4]), "offset": ([0, 0], [-20, -20])},
-                    {"box": Box([15, 15], [25, 24]), "offset": ([20, 20], [0, 0])},
-                    {"box": Box([15, 5], [25, 24]), "offset": ([0, 0], [20, 0])},
-                    {"box": Box([-5, 5], [5, 24]), "offset": ([-20, 0], [0, 0])},
-                    {"box": Box([5, 15], [25, 24]), "offset": ([0, 0], [0, 20])},
-                    {"box": Box([5, -5], [25, 4]), "offset": ([0, -20], [0, 0])},
                     {"box": Box([-5, 5], [5, 14]), "offset": ([0, 0], [-20, 0])},
                     {"box": Box([15, 5], [25, 14]), "offset": ([20, 0], [0, 0])},
+                    {"box": Box([-5, -5], [5, 4]), "offset": ([0, 0], [-20, -20])},
+                    {"box": Box([15, 15], [25, 24]), "offset": ([20, 20], [0, 0])},
+                    {"box": Box([-5, 5], [15, 14]), "offset": ([0, 0], [0, 0])},
+                    {"box": Box([-5, -5], [15, 4]), "offset": ([0, 0], [0, -20])},
+                    {"box": Box([-5, 15], [15, 24]), "offset": ([0, 20], [0, 0])},
+                    {"box": Box([5, -5], [15, 14]), "offset": ([0, 0], [0, 0])},
+                    {"box": Box([-5, -5], [5, 14]), "offset": ([0, 0], [-20, 0])},
+                    {"box": Box([15, -5], [25, 14]), "offset": ([20, 0], [0, 0])},
+                    {"box": Box([5, 5], [15, 24]), "offset": ([0, 0], [0, 0])},
+                    {"box": Box([15, 5], [25, 24]), "offset": ([0, 0], [20, 0])},
+                    {"box": Box([-5, 5], [5, 24]), "offset": ([-20, 0], [0, 0])},
+                    {"box": Box([5, 5], [25, 14]), "offset": ([0, 0], [0, 0])},
+                    {"box": Box([5, 15], [25, 24]), "offset": ([0, 0], [0, 20])},
+                    {"box": Box([5, -5], [25, 4]), "offset": ([0, -20], [0, 0])},
+                    {"box": Box([5, 5], [15, 14]), "offset": ([0, 0], [0, 0])},
                     {"box": Box([5, 15], [15, 24]), "offset": ([0, 0], [0, 20])},
                     {"box": Box([5, -5], [15, 4]), "offset": ([0, -20], [0, 0])},
                     {"box": Box([-5, 15], [5, 24]), "offset": ([0, 0], [-20, 20])},
                     {"box": Box([15, -5], [25, 4]), "offset": ([20, -20], [0, 0])},
+                    {"box": Box([-5, 5], [5, 14]), "offset": ([0, 0], [-20, 0])},
+                    {"box": Box([15, 5], [25, 14]), "offset": ([20, 0], [0, 0])},
                 ]
             },
         ),
@@ -88,16 +88,16 @@ class GeometryTest(AGeometryTest):
             },
             {
                 1: [  # level 0 same as previous
-                    {"box": Box([-5, -5], [5, 14]), "offset": ([0, 0], [-40, 0])},
-                    {"box": Box([35, -5], [45, 14]), "offset": ([40, 0], [0, 0])},
                     {"box": Box([-5, -5], [15, 4]), "offset": ([0, 0], [0, -40])},
                     {"box": Box([-5, 35], [15, 44]), "offset": ([0, 40], [0, 0])},
+                    {"box": Box([-5, -5], [5, 14]), "offset": ([0, 0], [-40, 0])},
+                    {"box": Box([35, -5], [45, 14]), "offset": ([40, 0], [0, 0])},
                     {"box": Box([-5, -5], [5, 4]), "offset": ([0, 0], [-40, -40])},
                     {"box": Box([35, 35], [45, 44]), "offset": ([40, 40], [0, 0])},
-                    {"box": Box([-5, 25], [5, 44]), "offset": ([0, 0], [-40, 0])},
-                    {"box": Box([35, 25], [45, 44]), "offset": ([40, 0], [0, 0])},
                     {"box": Box([-5, 35], [5, 44]), "offset": ([0, 0], [-40, 40])},
                     {"box": Box([35, -5], [45, 4]), "offset": ([40, -40], [0, 0])},
+                    {"box": Box([-5, 25], [5, 44]), "offset": ([0, 0], [-40, 0])},
+                    {"box": Box([35, 25], [45, 44]), "offset": ([40, 0], [0, 0])},
                     {"box": Box([25, -5], [45, 4]), "offset": ([0, 0], [0, -40])},
                     {"box": Box([25, 35], [45, 44]), "offset": ([0, 40], [0, 0])},
                 ]
@@ -114,6 +114,7 @@ class GeometryTest(AGeometryTest):
         )
 
         level_overlaps = hierarchy_overlaps(hierarchy)
+
         for ilvl, lvl in enumerate(hierarchy.levels().items()):
             if ilvl not in expected:
                 continue
@@ -134,22 +135,22 @@ class GeometryTest(AGeometryTest):
 
     @data(
         [
-            {"box": Box([-5, -5], [6, 25]), "offset": ([0, 0], [-20, 0])},
-            {"box": Box([15, -5], [26, 25]), "offset": ([20, 0], [0, 0])},
-            {"box": Box([-5, -5], [26, 5]), "offset": ([0, 0], [0, -20])},
-            {"box": Box([-5, 15], [26, 25]), "offset": ([0, 20], [0, 0])},
-            {"box": Box([-5, -5], [6, 5]), "offset": ([0, 0], [-20, -20])},
-            {"box": Box([15, 15], [26, 25]), "offset": ([20, 20], [0, 0])},
-            {"box": Box([15, -5], [26, 25]), "offset": ([0, 0], [20, 0])},
-            {"box": Box([-5, -5], [6, 25]), "offset": ([-20, 0], [0, 0])},
-            {"box": Box([-5, 15], [26, 25]), "offset": ([0, 0], [0, 20])},
-            {"box": Box([-5, -5], [26, 5]), "offset": ([0, -20], [0, 0])},
             {"box": Box([15, 15], [26, 25]), "offset": ([0, 0], [20, 20])},
             {"box": Box([-5, -5], [6, 5]), "offset": ([-20, -20], [0, 0])},
+            {"box": Box([15, -5], [26, 25]), "offset": ([0, 0], [20, 0])},
+            {"box": Box([-5, -5], [6, 25]), "offset": ([-20, 0], [0, 0])},
             {"box": Box([15, -5], [26, 5]), "offset": ([0, 0], [20, -20])},
             {"box": Box([-5, 15], [6, 25]), "offset": ([-20, 20], [0, 0])},
+            {"box": Box([-5, 15], [26, 25]), "offset": ([0, 0], [0, 20])},
+            {"box": Box([-5, -5], [26, 5]), "offset": ([0, -20], [0, 0])},
+            {"box": Box([-5, -5], [26, 5]), "offset": ([0, 0], [0, -20])},
+            {"box": Box([-5, 15], [26, 25]), "offset": ([0, 20], [0, 0])},
             {"box": Box([-5, 15], [6, 25]), "offset": ([0, 0], [-20, 20])},
             {"box": Box([15, -5], [26, 5]), "offset": ([20, -20], [0, 0])},
+            {"box": Box([-5, -5], [6, 25]), "offset": ([0, 0], [-20, 0])},
+            {"box": Box([15, -5], [26, 25]), "offset": ([20, 0], [0, 0])},
+            {"box": Box([-5, -5], [6, 5]), "offset": ([0, 0], [-20, -20])},
+            {"box": Box([15, 15], [26, 25]), "offset": ([20, 20], [0, 0])},
         ]
     )
     def test_large_patchoverlaps(self, expected):
@@ -164,7 +165,6 @@ class GeometryTest(AGeometryTest):
         ilvl = 0
         overlap_boxes = []
 
-        self.assertEqual(len(expected), len(level_overlaps[ilvl]))
         for exp, actual in zip(expected, level_overlaps[ilvl]):
             self.assertEqual(actual["box"], exp["box"])
             self.assertTrue(
@@ -265,7 +265,7 @@ class GeometryTest(AGeometryTest):
 
         self.assertEqual(len(expected), len(gaboxes))
 
-        for ilvl, lvl in enumerate(hierarchy.levels().items()):
+        for ilvl in hierarchy.levels().keys():
             self.assertEqual(len(gaboxes[ilvl][particles]), len(expected[ilvl]))
             for act_pdata, exp_pdata in zip(gaboxes[ilvl][particles], expected[ilvl]):
                 self.assertEqual(len(exp_pdata["boxes"]), len(act_pdata["boxes"]))
@@ -280,11 +280,11 @@ class GeometryTest(AGeometryTest):
 
         lvl_gboxes = level_ghost_boxes(hierarchy, "particles")
 
-        assert len(lvl_gboxes) > 0
+        self.assertGreater(len(lvl_gboxes), 0)
         for ilvl, pdatainfos in lvl_gboxes.items():
-            assert len(pdatainfos) > 0
+            self.assertGreater(len(pdatainfos), 0)
             for particles_id, gaboxes_list in pdatainfos.items():
-                assert len(gaboxes_list) > 0
+                self.assertGreater(len(gaboxes_list), 0)
                 for pdatainfo in gaboxes_list:
                     for box in pdatainfo["boxes"]:
                         for patch in hierarchy.level(ilvl).patches:
@@ -292,7 +292,7 @@ class GeometryTest(AGeometryTest):
 
 
 @ddt
-class ParticleLevelGhostGeometryTest(AGeometryTest):
+class ParticleLevelGhostGeometryTest2D(AGeometryTest):
     @data(
         (  # no patch ghost on level 1
             {"L0": [Box2D(5, 9), Box2D(14, 19)]},
@@ -414,19 +414,19 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                     Box([0, 0], [9, 9]),
                     Box([0, 10], [9, 19]),
                     Box([10, 0], [19, 9]),
-                    Box([10, 10], [19, 19]),
-                    Box([20, 0], [29, 9]),
                     Box([0, 20], [9, 29]),
+                    Box([20, 0], [29, 9]),
                     Box([20, 20], [29, 29]),
-                    Box([-10, 10], [-1, 19]),
-                    Box([10, -10], [19, -1]),
-                    Box([-10, -10], [-1, -1]),
-                    Box([20, 10], [29, 19]),
                     Box([0, -10], [9, -1]),
                     Box([20, -10], [29, -1]),
+                    Box([20, 10], [29, 19]),
                     Box([-10, 0], [-1, 9]),
-                    Box([10, 20], [19, 29]),
                     Box([-10, 20], [-1, 29]),
+                    Box([10, 20], [19, 29]),
+                    Box([10, 10], [19, 19]),
+                    Box([-10, -10], [-1, -1]),
+                    Box([-10, 10], [-1, 19]),
+                    Box([10, -10], [19, -1]),
                 ]
             },
         ),
@@ -444,19 +444,19 @@ class ParticleLevelGhostGeometryTest(AGeometryTest):
                     Box([0, 0], [9, 9]),
                     Box([30, 0], [39, 9]),
                     Box([0, 30], [9, 39]),
-                    Box([30, 30], [39, 39]),
-                    Box([40, 0], [49, 9]),
                     Box([0, 40], [9, 49]),
+                    Box([40, 0], [49, 9]),
                     Box([40, 40], [49, 49]),
-                    Box([-10, 30], [-1, 39]),
-                    Box([30, -10], [39, -1]),
-                    Box([-10, -10], [-1, -1]),
                     Box([-10, 0], [-1, 9]),
-                    Box([30, 40], [39, 49]),
                     Box([-10, 40], [-1, 49]),
-                    Box([40, 30], [49, 39]),
+                    Box([30, 40], [39, 49]),
                     Box([0, -10], [9, -1]),
                     Box([40, -10], [49, -1]),
+                    Box([40, 30], [49, 39]),
+                    Box([30, 30], [39, 39]),
+                    Box([-10, -10], [-1, -1]),
+                    Box([-10, 30], [-1, 39]),
+                    Box([30, -10], [39, -1]),
                 ]
             },
         ),
