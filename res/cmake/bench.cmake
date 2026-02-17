@@ -46,12 +46,13 @@ if (bench)
   endfunction(add_phare_cpp_benchmark)
 
 
+  add_subdirectory(tools/bench/core/utilities)
   add_subdirectory(tools/bench/core/data/particles)
   add_subdirectory(tools/bench/core/numerics/pusher)
-
-  add_subdirectory(tools/bench/amr/data/particles)
   add_subdirectory(tools/bench/core/numerics/ion_updater)
   add_subdirectory(tools/bench/core/numerics/interpolator)
+
+  add_subdirectory(tools/bench/amr/data/particles)
 
   add_subdirectory(tools/bench/hi5)
 

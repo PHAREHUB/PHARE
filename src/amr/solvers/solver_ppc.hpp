@@ -112,10 +112,14 @@ public:
 
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
-    { return std::forward_as_tuple(Bold_, fluxSumE_); }
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
+    }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
-    { return std::forward_as_tuple(Bold_, fluxSumE_); }
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
+    }
 
 
 private:
@@ -363,7 +367,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 
     Faraday_t faraday{level, model};
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.faraday");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor1_.faraday");
         auto dt = newTime - currentTime;
         faraday(model.state.electromag.B, model.state.electromag.E, electromagPred_.B, dt);
         setTime(electromagPred_.B);
@@ -400,7 +404,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
     Faraday_t faraday{level, model};
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.faraday");
+        PHARE_LOG_SCOPE(3, "SolverPPC::predictor2_.faraday");
         auto dt = newTime - currentTime;
         faraday(model.state.electromag.B, electromagAvg_.E, electromagPred_.B, dt);
         setTime(electromagPred_.B);
@@ -440,7 +444,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     auto& electromag = model.state.electromag;
     Faraday_t faraday{level, model};
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.faraday");
+        PHARE_LOG_SCOPE(3, "SolverPPC::corrector_.faraday");
         auto dt = newTime - currentTime;
         faraday(electromag.B, electromagAvg_.E, electromag.B, dt);
         setTime(model.state.electromag.B);

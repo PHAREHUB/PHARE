@@ -5,6 +5,9 @@ import unittest
 import numpy as np
 from ddt import ddt
 
+import pyphare.core.box as boxm
+from pyphare.core.box import amr_to_local
+
 
 from pyphare import cpp
 import pyphare.core.box as boxm

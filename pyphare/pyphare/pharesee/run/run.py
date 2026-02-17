@@ -1,15 +1,25 @@
+#
+#
+#
+
 import os
 import glob
-import numpy as np
+from pathlib import Path
 
+from pyphare.pharesee.hierarchy import all_times_from
+from pyphare.pharesee.hierarchy import default_time_from
 from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.pharesee.hierarchy import hierarchy_compute as hc
 from pyphare.pharesee.hierarchy import ScalarField, VectorField
 
+from pyphare.core import phare_utilities as phut
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
-from pyphare.core.phare_utilities import listify
 
 from pyphare.logger import getLogger
+
+from .man import RunMan
+
 from .utils import (
     _compute_to_primal,
     _compute_pop_pressure,
@@ -20,70 +30,14 @@ from .utils import (
     make_interpolator,
 )
 
-
 logger = getLogger(__name__)
-
-quantities_per_file = {
-    "EM_B": "B",
-    "EM_E": "E",
-    "ions_bulkVelocity": "Vi",
-    "ions_charge_density": "Ni",
-    "particle_count": "nppc",
-}
 
 
 class Run:
     def __init__(self, path, default_time=None):
         self.path = path
         self.default_time_ = default_time
-        self.available_diags = glob.glob(os.path.join(self.path, "*.h5"))
-
-    def _get_hierarchy(self, times, filename, hier=None, **kwargs):
-        from pyphare.core.box import Box
-
-        times = listify(times)
-        times = [f"{t:.10f}" for t in times]
-        if "selection_box" in kwargs:
-            if isinstance(kwargs["selection_box"], tuple):
-                lower = kwargs["selection_box"][:2]
-                upper = kwargs["selection_box"][2:]
-                kwargs["selection_box"] = Box(lower, upper)
-
-        def _get_hier(h):
-            return hierarchy_from(
-                h5_filename=os.path.join(self.path, filename),
-                times=times,
-                hier=h,
-                **kwargs,
-            )
-
-        return _get_hier(hier)
-
-    # TODO maybe transform that so multiple times can be accepted
-    def _get(self, hierarchy, time, merged, interp):
-        """
-        if merged=True, will return an interpolator and a tuple of 1d arrays
-        with the coordinates of the finest grid where the interpolator
-        can be calculated (that is the return of flat_finest_field)
-        """
-        if merged:
-            domain = self.GetDomainSize()
-            dl = self.GetDl(time=time)
-
-            # assumes all qties in the hierarchy have the same ghost width
-            # so take the first patch data of the first patch of the first level....
-            nbrGhosts = list(hierarchy.level(0).patches[0].patch_datas.values())[
-                0
-            ].ghosts_nbr
-            merged_qties = {}
-            for qty in hierarchy.quantities():
-                data, coords = flat_finest_field(hierarchy, qty, time=time)
-                merged_qties[qty] = make_interpolator(
-                    data, coords, interp, domain, dl, qty, nbrGhosts
-                )
-            return merged_qties
-        else:
-            return hierarchy
+        self.available_diags = self._available_diags()
 
     def GetTags(self, time, merged=False, **kwargs):
         hier = self._get_hierarchy(time, "tags.h5")
@@ -92,44 +46,44 @@ class Run:
     def GetB(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
             all_primal = False
-        hier = self._get_hierarchy(time, "EM_B.h5", **kwargs)
+        hier = self._get_hier_for(time, "EM_B", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
-        h = compute_hier_from(_compute_to_primal, hier, x="Bx", y="By", z="Bz")
-        return VectorField(h)
+        return VectorField(compute_hier_from(_compute_to_primal, hier))
 
     def GetE(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
             all_primal = False
-        hier = self._get_hierarchy(time, "EM_E.h5", **kwargs)
+        hier = self._get_hier_for(time, "EM_E", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
-        h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
-        return VectorField(h)
+        return VectorField(compute_hier_from(_compute_to_primal, hier))
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
+        hier = self._get_hier_for(time, "ions_mass_density", **kwargs)
         return ScalarField(self._get(hier, time, merged, interp))
 
     def GetNi(self, time, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
+        hier = self._get_hier_for(time, "ions_charge_density", **kwargs)
+        return ScalarField(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
+        hier = self._get_hier_for(time, f"ions_pop_{pop_name}_density", **kwargs)
         return ScalarField(self._get(hier, time, merged, interp))
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
-        return VectorField(self._get(hier, time, merged, interp))
+        hier = self._get_hier_for(time, "ions_bulkVelocity", **kwargs)
+        return VectorField(self._get(hier, time, merged, interp, drop_ghosts=True))
+        return RunMan(self).GetVi(time, merged, interp, **kwargs)
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
+        hier = self._get_hier_for(time, f"ions_pop_{pop_name}_flux", **kwargs)
         return VectorField(self._get(hier, time, merged, interp))
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+        # return RunMan(self).GetPressure(time, pop_name, merged, interp, **kwargs)
         M = self._get_hierarchy(
             time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
         )
@@ -142,23 +96,21 @@ class Run:
             mass=self.GetMass(pop_name, **kwargs),
         )
         return self._get(P, time, merged, interp)  # should later be a TensorField
+        return RunMan(self).GetPressure(time, pop_name, merged, interp, **kwargs)
 
     def GetPi(self, time, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(time, "ions_momentum_tensor.h5", **kwargs)
         massDensity = self.GetMassDensity(time, **kwargs)
-        Vi = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        Vi = self._get_hier_for(time, "ions_bulkVelocity", **kwargs)
         Pi = compute_hier_from(_compute_pressure, (M, massDensity, Vi))
         return self._get(Pi, time, merged, interp)  # should later be a TensorField
 
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
-        hier = self._get_hierarchy(time, "ions_charge_density.h5")
-
+        hier = self._get_hier_for(time, "ions_charge_density")
         Te = hier.sim.electrons.closure.Te
-
         if not all_primal:
             return Te * self._get(hier, time, merged, interp)
-
-        h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
+        h = compute_hier_from(hc.drop_ghosts, hier)
         return ScalarField(h) * Te
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
@@ -168,8 +120,8 @@ class Run:
         J = compute_hier_from(_compute_current, B)
         if not all_primal:
             return self._get(J, time, merged, interp)
-        h = compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
-        return VectorField(h)
+        J = hc.rename(compute_hier_from(_compute_to_primal, J), ["Jx", "Jy", "Jz"])
+        return VectorField(J)
 
     def GetDivB(self, time, merged=False, interp="nearest", **kwargs):
         B = self.GetB(time, all_primal=False, **kwargs)
@@ -218,12 +170,10 @@ class Run:
         return list_of_mass[0]
 
     def GetDomainSize(self, **kwargs):
-        import h5py
-
-        data_file = h5py.File(self.available_diags[0], "r")  # That is the first file in th available diags
-        root_cell_width = np.asarray(data_file.attrs["cell_width"])
-
-        return (data_file.attrs["domain_box"] + 1) * root_cell_width
+        hier = self._get_any_hierarchy(self.default_time)
+        root_cell_width = hier.level(0).cell_width
+        domain_box = hier.domain_box
+        return (domain_box.upper + 1) * root_cell_width
 
     def GetDl(self, level="finest", time=None):
         """
@@ -235,55 +185,90 @@ class Run:
         :param time: the time because level depends on it
         """
 
-        import h5py
-
-        def _get_time():
-            if time:
-                return time
-            if self.default_time_:
-                return self.default_time_
-            self.default_time_ = float(list(data_file[h5_time_grp_key].keys())[0])
-            return self.default_time_
-
-        h5_time_grp_key = "t"
-        files = self.available_diags
-
-        for h5_filename in files:
-            data_file = h5py.File(h5_filename, "r")
-
-            time = _get_time()
-
-            try:
-                hier = self._get_hierarchy(time, h5_filename.split("/")[-1])
-
-                if level == "finest":
-                    level = hier.finest_level(time)
-                fac = np.power(hier.refinement_ratio, level)
-
-                root_cell_width = np.asarray(data_file.attrs["cell_width"])
-
-                return root_cell_width / fac
-
-            except KeyError:
-                ...  # time may not be avilaable for given quantity
-
-        raise RuntimeError("Unable toGetDl")
+        time = time if time is not None else self.default_time
+        hier = self._get_any_hierarchy(time)
+        level = hier.finest_level(time) if level == "finest" else level
+        return hier.level(level).cell_width
 
     def all_times(self):
-        import h5py
-
-        files = self.available_diags
-        ts = {}
-        for file in files:
-            basename = os.path.basename(file).split(".")[0]
-            ff = h5py.File(file)
-            time_keys = ff["t"].keys()
-            time = np.zeros(len(time_keys))
-            for it, t in enumerate(time_keys):
-                time[it] = float(t)
-            ts[quantities_per_file[basename]] = time
-            ff.close()
-        return ts
+        return {Path(file).stem: all_times_from(file) for file in self.available_diags}
 
     def times(self, qty):
         return self.all_times()[qty]
+
+    def _available_diags(self):
+        files = glob.glob(os.path.join(self.path, "*.h5"))
+        if files:
+            return files
+        files = glob.glob(os.path.join(self.path, "*.vtkhdf"))
+        if files:
+            return files
+        raise RuntimeError(f"No HDF5 files found at: {self.path}")
+
+    def _get_hier_for(self, time, qty, **kwargs):
+        path = Path(self.path) / f"{qty}.h5"
+        if path.exists():
+            return self._get_hierarchy(time, f"{qty}.h5", **kwargs)
+        path = Path(self.path) / f"{qty}.vtkhdf"
+        if path.exists():
+            return self._get_hierarchy(time, f"{qty}.vtkhdf", **kwargs)
+        raise RuntimeError(f"No HDF5 file found for: {qty}")
+
+    def _get_any_hierarchy(self, time):
+        ref_file = Path(self.available_diags[0]).stem
+        return self._get_hier_for(time, ref_file)
+
+    def _get_hierarchy(self, times, filename, hier=None, **kwargs):
+        from pyphare.core.box import Box
+
+        times = phut.listify(times)
+        times = [f"{t:.10f}" for t in times]
+        if "selection_box" in kwargs:
+            if isinstance(kwargs["selection_box"], tuple):
+                lower = kwargs["selection_box"][:2]
+                upper = kwargs["selection_box"][2:]
+                kwargs["selection_box"] = Box(lower, upper)
+
+        return hierarchy_from(
+            h5_filename=os.path.join(self.path, filename),
+            times=times,
+            hier=hier,
+            **kwargs,
+        )
+
+    # TODO maybe transform that so multiple times can be accepted
+    def _get(self, hierarchy, time, merged, interp, drop_ghosts=False):
+        """
+        if merged=True, will return an interpolator and a tuple of 1d arrays
+        with the coordinates of the finest grid where the interpolator
+        can be calculated (that is the return of flat_finest_field)
+        """
+        if merged:
+            domain = self.GetDomainSize()
+            dl = self.GetDl(time=time)
+
+            # assumes all qties in the hierarchy have the same ghost width
+            # so take the first patch data of the first patch of the first level....
+            nbrGhosts = list(hierarchy.level(0).patches[0].patch_datas.values())[
+                0
+            ].ghosts_nbr
+            merged_qties = {}
+            for qty in hierarchy.quantities():
+                data, coords = flat_finest_field(hierarchy, qty, time=time)
+                merged_qties[qty] = make_interpolator(
+                    data, coords, interp, domain, dl, qty, nbrGhosts
+                )
+            return merged_qties
+        else:
+            return (
+                compute_hier_from(hc.drop_ghosts, hierarchy)
+                if drop_ghosts
+                else hierarchy
+            )
+
+    @property
+    def default_time(self):
+        if self.default_time_ is None:
+            ref_file = self.available_diags[0]
+            self.default_time_ = default_time_from(ref_file)
+        return self.default_time_

@@ -11,7 +11,7 @@ from copy import deepcopy
 
 
 def supported_dimensions():
-    return [1, 2]
+    return [1, 2, 3]
 
 
 def compute_dimension(cells):
@@ -713,6 +713,7 @@ def checker(func):
         kwargs["clustering"] = check_clustering(**kwargs)
 
         kwargs["restart_options"] = check_restart_options(**kwargs)
+
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
         kwargs["time_step"] = time_step

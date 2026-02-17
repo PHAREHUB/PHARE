@@ -14,7 +14,7 @@ namespace core
     enum class Direction { X, Y, Z };
 
 
-    enum class QtyCentering { primal = 0, dual = 1 };
+    enum class QtyCentering : std::uint16_t { primal = 0, dual = 1 };
 
 
     template<std::size_t dim>

@@ -95,7 +95,7 @@ class Simulator:
             self.print_eol = "\r"
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
-
+        self.report = ""
         self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
 
@@ -116,7 +116,7 @@ class Simulator:
 
             if self.log_to_file:
                 self._log_to_file()
-            ph.populateDict()
+            ph.populateDict(self.simulation)
 
             self.cpp_lib = cpp.cpp_lib(self.simulation)
             self.cpp_hier = cpp.cpp_etc_lib().make_hierarchy()
@@ -167,8 +167,9 @@ class Simulator:
         if dt is None:
             dt = self.timeStep()
 
+        self.report = ""
         try:
-            self.cpp_sim.advance(dt)
+            self.report = self.cpp_sim.advance(dt)
         except (RuntimeError, TypeError, NameError, ValueError) as e:
             self._throw(f"Exception caught in simulator.py::advance: \n{e}")
         except KeyboardInterrupt as e:
@@ -195,7 +196,6 @@ class Simulator:
 
         if monitoring is None:  # check env
             monitoring = SIM_MONITOR
-
         if self.simulation.dry_run:
             return self
         if monitoring:
@@ -216,6 +216,7 @@ class Simulator:
             perf.append(ticktock)
             tot += ticktock
             t = self.cpp_sim.currentTime()
+            delta = datetime.timedelta(seconds=tot)
             if cpp.mpi_rank() == 0:
                 delta = datetime.timedelta(seconds=tot)
                 print(

@@ -85,6 +85,7 @@ option(PGO_USE "profile guided optimization use" OFF)
 option(PHARE_COMPILER_WORKAROUNDS "Attempt silence compiler false positives" ON) # on by default
 
 
+
 # Controlling the activation of tests
 if (NOT DEFINED PHARE_EXEC_LEVEL_MIN)
   set(PHARE_EXEC_LEVEL_MIN 1)
@@ -108,6 +109,8 @@ option(SAMRAI_BUILD_SHARED_LIBS "Build SAMRAI shared libraries" ON)
 #-DPHARE_EXE=OFF
 option(PHARE_EXE "Build PHARE EXE" OFF)
 
+#-DSAMRAI_DEBUG=OFF
+option(SAMRAI_DEBUG "Build SAMRAI with assertions" OFF)
 
 # print options
 function(print_phare_options)

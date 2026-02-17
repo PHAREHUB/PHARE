@@ -8,6 +8,8 @@
 #include <cstring>
 #include <cstddef>
 
+#include "python3/patch_data.hpp"
+
 
 namespace PHARE::pydata
 {
