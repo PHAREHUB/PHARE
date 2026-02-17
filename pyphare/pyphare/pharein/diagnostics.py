@@ -65,9 +65,9 @@ def validate_timestamps(clazz, key, **kwargs):
     timestamps = phare_utilities.np_array_ify(kwargs.get(key, []))
 
     if np.any(timestamps < init_time):
-        raise RuntimeError(
-            f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({init_time}))"
-        )
+        timestamps = timestamps[timestamps >= init_time]
+        print(f"Warning: some timestamps below ({init_time}) are filtered")
+
     if np.any(timestamps > sim.final_time):
         raise RuntimeError(
             f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))"

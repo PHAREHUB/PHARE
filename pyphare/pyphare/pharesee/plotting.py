@@ -325,7 +325,7 @@ def finest_field_plot(run_path, qty, **kwargs):
         ax.set_aspect("equal")
         divider = make_axes_locatable(ax)
         cax = divider.append_axes("right", size="5%", pad=0.08)
-        cb = plt.colorbar(im, ax=ax, cax=cax)
+        plt.colorbar(im, ax=ax, cax=cax)
     else:
         raise ValueError("finest_field_plot not yet ready for 3d")
 

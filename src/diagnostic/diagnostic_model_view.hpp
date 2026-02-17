@@ -1,6 +1,7 @@
 #ifndef DIAGNOSTIC_MODEL_VIEW_HPP
 #define DIAGNOSTIC_MODEL_VIEW_HPP
 
+#include "amr/amr_constants.hpp"
 #include "core/def.hpp"
 #include "core/utilities/mpi_utils.hpp"
 
@@ -33,8 +34,8 @@ public:
     using GridLayout        = Model::gridlayout_type;
     using VecField          = Model::vecfield_type;
     using TensorFieldT      = Model::ions_type::tensorfield_type;
-    using GridLayoutT       = Model::gridlayout_type;
     using ResMan            = Model::resources_manager_type;
+    using Field             = Model::field_type;
     using TensorFieldData_t = ResMan::template UserTensorField_t</*rank=*/2>::patch_data_type;
     static constexpr auto dimension = Model::dimension;
 
@@ -67,41 +68,50 @@ public:
         auto& rm   = *model_.resourcesManager;
         auto& ions = model_.state.ions;
 
-        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(sumTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
+                std::memcpy(tmpTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
 
         MTAlgos[popidx].getOrCreateSchedule(hierarchy_, lvl.getLevelNumber()).fillData(time);
 
-        for (auto patch : rm.enumerate(lvl, ions, sumTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), sumTensor_[c].data(),
+                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
     }
 
 
     template<typename Action>
-    void onLevels(Action&& action, int minlvl = 0, int maxlvl = 0)
+    void onLevels(Action&& action, std::size_t const minlvl = 0,
+                  std::size_t const maxlvl = amr::MAX_LEVEL_IDX)
     {
-        for (int ilvl = minlvl; ilvl < hierarchy_.getNumberOfLevels() && ilvl <= maxlvl; ++ilvl)
-            if (auto lvl = hierarchy_.getPatchLevel(ilvl))
-                action(*lvl);
+        amr::onLevels(hierarchy_, std::forward<Action>(action), minlvl, maxlvl);
+    }
+
+
+    template<typename OnLevel, typename OrMissing>
+    void onLevels(OnLevel&& onLevel, OrMissing&& orMissing, std::size_t const minlvl,
+                  std::size_t const maxlvl)
+    {
+        amr::onLevels(hierarchy_, std::forward<OnLevel>(onLevel),
+                      std::forward<OrMissing>(orMissing), minlvl, maxlvl);
     }
 
 
     template<typename Action>
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
     {
-        PHARE::amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
-                                               std::forward<Action>(action), minLevel, maxLevel,
-                                               model_);
+        amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
+                                        std::forward<Action>(action), minLevel, maxLevel, *this,
+                                        model_);
     }
 
     NO_DISCARD auto boundaryConditions() const { return hierarchy_.boundaryConditions(); }
     NO_DISCARD auto domainBox() const { return hierarchy_.domainBox(); }
     NO_DISCARD auto origin() const { return std::vector<double>(dimension, 0); }
     NO_DISCARD auto cellWidth() const { return hierarchy_.cellWidth(); }
+    NO_DISCARD auto maxLevel() const { return hierarchy_.maxLevel(); }
 
     NO_DISCARD std::string getLayoutTypeString() const
     {
@@ -141,6 +151,26 @@ public:
         return model_.tags.at(key);
     }
 
+
+    auto& tmpField() { return tmpField_; }
+    auto& tmpVecField() { return tmpVec_; }
+
+    template<std::size_t rank = 2>
+    auto& tmpTensorField()
+    {
+        static_assert(rank > 0 and rank < 3);
+        if constexpr (rank == 1)
+            return tmpVec_;
+        else
+            return tmpTensor_;
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(tmpField_, tmpVec_, tmpTensor_);
+    }
+
+
 protected:
     Model& model_;
     Hierarchy& hierarchy_;
@@ -149,7 +179,7 @@ protected:
     {
         auto& rm = *model_.resourcesManager;
 
-        auto const dst_name = sumTensor_.name();
+        auto const dst_name = tmpTensor_.name();
 
         for (auto& pop : model_.state.ions)
         {
@@ -160,7 +190,7 @@ protected:
             MTAlgo.MTalgo->registerRefine(
                 idDst, idSrc, idDst, nullptr,
                 std::make_shared<
-                    amr::TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/2>>());
+                    amr::TensorFieldGhostInterpOverlapFillPattern<GridLayout, /*rank_=*/2>>());
         }
 
         // can't create schedules here as the hierarchy has no levels yet
@@ -187,7 +217,9 @@ protected:
     };
 
     std::vector<MTAlgo> MTAlgos;
-    TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
+    Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
+    VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
+    TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
 };
 
 

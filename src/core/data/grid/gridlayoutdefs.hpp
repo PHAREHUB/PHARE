@@ -1,11 +1,11 @@
 #ifndef PHARE_CORE_GRID_GRIDLAYOUTDEFS_HPP
 #define PHARE_CORE_GRID_GRIDLAYOUTDEFS_HPP
 
-#include <cstddef>
 
-#include "core/hybrid/hybrid_quantities.hpp"
-#include "core/utilities/types.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+
+#include <cstddef>
 
 namespace PHARE
 {
