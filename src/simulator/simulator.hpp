@@ -359,6 +359,7 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
 {
     resman_ptr   = std::make_shared<ResourceManager_t>();
     currentTime_ = restart_time(dict);
+    finalTime_ += currentTime_; // final time is from timestep * timestep_nbr!
 
     if (dict["simulation"].contains("restarts"))
         rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *resman_ptr,
