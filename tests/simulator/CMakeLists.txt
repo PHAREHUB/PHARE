@@ -30,9 +30,10 @@ if(HighFive)
 
     phare_mpi_python3_exec(9 4 vtk_diagnostics test_vtk_diagnostics.py ${CMAKE_CURRENT_BINARY_DIR})
 
+  else() # serial only
+    phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
   endif(testMPI)
 
-  phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()
 
