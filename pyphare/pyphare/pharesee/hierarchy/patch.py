@@ -1,4 +1,5 @@
 #
+from .patchdata import FieldData
 
 
 class Patch:
@@ -67,3 +68,35 @@ class Patch:
             return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
         elif idim == 1:
             return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(f"__array_function__ of Patch called for {ufunc.__name__}")
+        if method != "__call__":
+            return NotImplemented
+
+        pds = []  # list (p1, p2, p3... ) of list ('x', 'y', 'z') of pds
+        for x in inputs:  # inputs is a list of Patch
+            if isinstance(x, Patch):  # hence, x is a Patch
+                pd_k = []
+                pds_ = []
+                for k, p in x.patch_datas.items():
+                    pd_k.append(k)
+                    pds_.append(p)
+                pds.append(pds_)
+            else:
+                raise TypeError("this arg should be a Patch")
+
+        out = [getattr(ufunc, method)(*pd, **kwargs)  for pd in zip(*pds)]
+        # out = [ufunc(*pd, **kwargs) for pd in zip(*pds)]
+
+        final = {}
+        for k, pd in zip(pd_k, out):  # TODO hmmmm, the output patch will keep the keys of the last patch in inputs
+            final[k] = pd
+
+        return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        # TODO this has to be tested w. np.mean for example
+        print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
+        return func(*args, **kwargs)
+
