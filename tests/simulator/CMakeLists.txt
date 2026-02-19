@@ -12,6 +12,7 @@ phare_python3_exec(9 validation           test_validation.py      ${CMAKE_CURREN
 phare_python3_exec(9 data-wrangler        data_wrangler.py        ${CMAKE_CURRENT_BINARY_DIR})
 phare_python3_exec(9 sim-refineParticlNbr refined_particle_nbr.py ${CMAKE_CURRENT_BINARY_DIR})
 add_no_mpi_python3_test(periodicity test_init_periodicity.py ${CMAKE_CURRENT_BINARY_DIR})
+add_no_mpi_python3_test(exceptions test_exceptions.py ${CMAKE_CURRENT_BINARY_DIR})
 
 if(HighFive)
   ## These test use dump diagnostics so require HighFive!
