@@ -192,30 +192,30 @@ class FieldData(PatchData):
         return mesh
 
     def __array__(self, dtype=None):
-            # numpy array protocol
-            return np.asarray(self.dataset, dtype=dtype)
+        # numpy array protocol
+        return np.asarray(self.dataset, dtype=dtype)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         print(f"__array_function__ of FieldData called for {ufunc.__name__}")
         if method != "__call__":
             raise NotImplementedError
 
-        unwrapped = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
-        result = getattr(ufunc, method)(*unwrapped, **kwargs)
+        ds = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
+        out = getattr(ufunc, method)(*ds, **kwargs)
 
-        if isinstance(result, np.ndarray):
-            return FieldData(self.layout, ufunc.__name__+"@"+self.field_name, result, centering=self.centerings)
+        if isinstance(out, np.ndarray):
+            return FieldData(self.layout, ufunc.__name__+"@"+self.field_name, out, centering=self.centerings)
 
     def __array_function__(self, func, types, args, kwargs):
         print(f"__array_function__ of FieldData {func.__name__} called with {[getattr(a, 'name', a) for a in args]}")
 
-        unwrapped = [a.dataset if isinstance(a, FieldData) else a for a in args]
-        result = func(*unwrapped, **kwargs)
+        ds = [a.dataset if isinstance(a, FieldData) else a for a in args]
+        out = func(*ds, **kwargs)
 
-        if isinstance(result, np.ndarray):
-            return FieldData(self.layout, func.__name__+"@"+self.field_name, result, centering=self.centerings)
+        if isinstance(out, np.ndarray):
+            return FieldData(self.layout, func.__name__+"@"+self.field_name, out, centering=self.centerings)
         else:
-            return result
+            return out
 
 
 

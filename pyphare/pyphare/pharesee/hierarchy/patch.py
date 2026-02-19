@@ -74,42 +74,29 @@ class Patch:
         if method != "__call__":
             return NotImplemented
 
-        # Collect per-argument sequences
-        seqs = []
-        for x in inputs:
-            print("zobi : ", type(x))
-            if isinstance(x, Patch):
-                print("zob", x.patch_datas)
-                for k, v in x.patch_datas.items():
-                    print("toto", k, v, type(v))
-                    seqs.append(v)
-                    if isinstance(v, FieldData):
-                        print("is a fieldData")
-                #seqs.append(x.patch_datas)
+        pds = []  # list (p1, p2, p3... ) of list ('x', 'y', 'z') of pds
+        for x in inputs:  # inputs is a list of Patch
+            if isinstance(x, Patch):  # hence, x is a Patch
+                pd_k = []
+                pds_ = []
+                for k, p in x.patch_datas.items():
+                    pd_k.append(k)
+                    pds_.append(p)
+                pds.append(pds_)
             else:
-                #  TODO seqs.append(x) ?
                 raise TypeError("this arg should be a Patch")
 
-        # print(type(seqs[0]))
-        # print(seqs[0].dataset.shape)
-        # # Outer length must match
-        # n = len(seqs[0])                        # length of the first patch
-        # if not all(len(s) == n for s in seqs):  # each of the other Patches have to be homogeneous
-        #     raise ValueError("Patch length mismatch")
+        out = [getattr(ufunc, method)(*pd, **kwargs)  for pd in zip(*pds)]
+        # out = [ufunc(*pd, **kwargs) for pd in zip(*pds)]
 
-        print(seqs)
-        for elem in zip(*seqs):
-            print(elem)
+        final = {}
+        for k, pd in zip(pd_k, out):  # TODO hmmmm, the output patch will keep the keys of the last patch in inputs
+            final[k] = pd
 
-        # Pairwise application
-        result = [
-            ufunc(*elems, **kwargs)
-            for elems in zip(*seqs)
-        ]
-
-        return Patch(result, patch_id=self.id, layout=self.layout, attrs=self.attrs)
+        return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)
 
     def __array_function__(self, func, types, args, kwargs):
+        # TODO this has to be tested w. np.mean for example
         print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
         return func(*args, **kwargs)
 

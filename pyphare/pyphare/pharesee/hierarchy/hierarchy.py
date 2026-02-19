@@ -631,6 +631,31 @@ class PatchHierarchy(object):
 
 
 
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(f"__array_function__ of PatchHierarchy called for {ufunc.__name__}")
+        if method != "__call__":
+            return NotImplemented
+
+        pls = []  # list (h1, h2, h3... ) of list ('pl0', 'pl1', 'pl2') of pls
+        for x in inputs:  # inputs is a list of PatchHierarchy
+            if isinstance(x, PatchHierarchy):  # hence, x is a PatchHierarchy
+                pls_ = []
+                for pl in x.patch_levels:
+                    pls_.append(pl)
+                pls.append(pls_)
+            else:
+                raise TypeError("this arg should be a PatchHierarchy")
+
+        out = [getattr(ufunc, method)(*pl, **kwargs)  for pl in zip(*pls)]
+
+        return PatchHierarchy(out,
+                              domain_box=self.domain_box,
+                              refinement_box=self.refinement_ratio,
+                              times=self.times,
+                              data_files=self.data_files,
+                              selection_box=self.selection_box)
+
 def finest_part_data(hierarchy, time=None):
     """
     returns a dict {popname : Particles}
