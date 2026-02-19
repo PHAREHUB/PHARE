@@ -391,6 +391,60 @@ TEST(MaskedView2d, maskOps2)
                                                                   + Mask{0u}.nCells(array));
 }
 
+TEST(MaskedView3d, maskOps3)
+{
+    constexpr std::size_t dim      = 3;
+    constexpr std::uint32_t size0  = 10;
+    constexpr std::uint32_t sizeCu = size0 * size0 * size0;
+    using Mask                     = PHARE::core::NdArrayMask;
+
+    auto sum = [](auto const& array) { return std::accumulate(array.begin(), array.end(), 0); };
+
+    {
+        NdArrayVector<dim> array{{size0, size0, size0}, 0.};
+        EXPECT_EQ(sum(array), 0);
+        std::fill(array.begin(), array.end(), 1);
+        EXPECT_EQ(sum(array), sizeCu);
+    }
+
+    {
+        NdArrayVector<dim> array{{size0, size0, size0}, 0.};
+        EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
+        array[Mask{0}] = 1;
+        EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 488);
+
+        // outter cells of a 10**3 cube =
+        // (10 * 10 * 2) + (10 * 8 * 2) + (8 * 8 * 2);
+        // or
+        // (8 * 8 * 6) + (10 * 4) + (8 * 8);
+        // = 488
+    }
+
+    std::uint32_t ten = 10;
+    PHARE::core::NdArrayVector<3> array({ten, ten, ten}, 0.);
+
+    array[Mask{0}] = 1;
+    EXPECT_EQ(sum(array), 488);
+    array[Mask{1}] >> array[Mask{0}];
+    EXPECT_EQ(sum(array), 0);
+
+    array[Mask{2}] = 1;
+    EXPECT_EQ(sum(array), 152);
+    array[Mask{1}] = 1;
+    EXPECT_EQ(sum(array), 448);
+    array[Mask{1}] = 0;
+    EXPECT_EQ(sum(array), 152);
+
+    array[Mask{2}] >> array[Mask{1}];
+    EXPECT_EQ(sum(array), 448);
+    array[Mask{2}] = 0;
+    EXPECT_EQ(sum(array), 296);
+
+    EXPECT_EQ(Mask{1}.nCells(array), 296);
+    EXPECT_EQ(Mask{2}.nCells(array), 152);
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
