@@ -115,7 +115,7 @@ class GeometryTest2D(AGeometryTest):
 
         level_overlaps = hierarchy_overlaps(hierarchy)
 
-        for ilvl, lvl in enumerate(hierarchy.levels().items()):
+        for ilvl in hierarchy.levels():
             if ilvl not in expected:
                 continue
             self.assertEqual(len(expected[ilvl]), len(level_overlaps[ilvl]))
