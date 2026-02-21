@@ -5,6 +5,16 @@
 import vtk
 
 
+class Phase:
+    def __init__(self, λ, *args, **kwargs):
+        self.λ = λ
+        self.args = args
+        self.kwargs = {**kwargs}
+
+    def __call__(self, *args, **kwargs):
+        self.λ(*args, *self.args, **kwargs, **self.kwargs)
+
+
 class PhaseOutput:
     def __init__(self, **kwargs):
         self.kwargs = {**kwargs}
@@ -74,6 +84,7 @@ def _default_phases():
 class VtkFile:
     def __init__(self, filename, time=None, array_name="data", phases=None):
         phases = phases if phases is not None else _default_phases()
+
         if len(phases) == 0:
             raise RuntimeError("Error: Zero phases!")
 

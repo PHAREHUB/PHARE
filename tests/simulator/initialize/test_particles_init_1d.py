@@ -9,9 +9,7 @@ import matplotlib
 from ddt import data, ddt, unpack
 from pyphare.core.box import Box1D
 
-
 from tests.simulator.test_initialization import InitializationTest
-
 
 matplotlib.use("Agg")  # for systems without GUI
 

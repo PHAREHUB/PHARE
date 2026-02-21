@@ -26,91 +26,62 @@ def config(ndim, interp, **simInput):
     ppc = ppc_per_dim[ndim - 1]
     sim = ph.Simulation(**simInput)
 
-    L = 0.5
+    def density(*xyz):
+        return 1.0
 
-    def density(x, y):
-        Ly = sim.simulation_domain()[1]
-        return (
-            0.4
-            + 1.0 / np.cosh((y - Ly * 0.3) / L) ** 2
-            + 1.0 / np.cosh((y - Ly * 0.7) / L) ** 2
-        )
-
-    def S(y, y0, l):
-        return 0.5 * (1.0 + np.tanh((y - y0) / l))
-
-    def by(x, y):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
-        sigma = 1.0
-        dB = 0.1
-
-        x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
-
-        dBy1 = 2 * dB * x0 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
-        dBy2 = -2 * dB * x0 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
-
-        return dBy1 + dBy2
-
-    def bx(x, y):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
-        sigma = 1.0
-        dB = 0.1
-
-        x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
-
-        dBx1 = -2 * dB * y1 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
-        dBx2 = 2 * dB * y2 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
-
-        v1 = -1
-        v2 = 1.0
-        return v1 + (v2 - v1) * (S(y, Ly * 0.3, L) - S(y, Ly * 0.7, L)) + dBx1 + dBx2
-
-    def bz(x, y):
+    def bx(*xyz):
         return 0.0
 
-    def b2(x, y):
-        return bx(x, y) ** 2 + by(x, y) ** 2 + bz(x, y) ** 2
+    def S(x, x0, l):
+        return 0.5 * (1 + np.tanh((x - x0) / l))
 
-    def T(x, y):
-        K = 0.7
-        temp = 1.0 / density(x, y) * (K - b2(x, y) * 0.5)
-        assert np.all(temp > 0)
-        return temp
+    def by(*xyz):
+        L = ph.global_vars.sim.simulation_domain()[0]
+        v1, v2 = -1, 1.0
+        return v1 + (v2 - v1) * (S(xyz[0], L * 0.25, 1) - S(xyz[0], L * 0.75, 1))
 
-    def vx(x, y):
+    def bz(*xyz):
+        return 0.5
+
+    def b2(*xyz):
+        return bx(xyz[0]) ** 2 + by(xyz[0]) ** 2 + bz(xyz[0]) ** 2
+
+    def T(*xyz):
+        K = 1
+        return 1 / density(xyz[0]) * (K - b2(xyz[0]) * 0.5)
+
+    def vx(*xyz):
+        return 2.0
+
+    def vy(*xyz):
         return 0.0
 
-    def vy(x, y):
+    def vz(*xyz):
         return 0.0
 
-    def vz(x, y):
-        return 0.0
+    def vxalpha(*xyz):
+        return 3.0
 
-    def vthx(x, y):
-        return np.sqrt(T(x, y))
-
-    def vthy(x, y):
-        return np.sqrt(T(x, y))
-
-    def vthz(x, y):
-        return np.sqrt(T(x, y))
+    def vthxyz(*xyz):
+        return T(xyz[0])
 
     vvv = {
         "vbulkx": vx,
         "vbulky": vy,
         "vbulkz": vz,
-        "vthx": vthx,
-        "vthy": vthy,
-        "vthz": vthz,
+        "vthx": vthxyz,
+        "vthy": vthxyz,
+        "vthz": vthxyz,
     }
-
-    ph.MaxwellianFluidModel(
+    vvvalpha = {
+        "vbulkx": vxalpha,
+        "vbulky": vy,
+        "vbulkz": vz,
+        "vthx": vthxyz,
+        "vthy": vthxyz,
+        "vthz": vthxyz,
+    }
+    model = ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
         bz=bz,
@@ -123,10 +94,10 @@ def config(ndim, interp, **simInput):
             "init": {"seed": 1337},
         },
         alpha={
-            "mass": 4,
+            "mass": 4.0,
             "charge": 1,
             "density": density,
-            **vvv,
+            **vvvalpha,
             "nbr_part_per_cell": ppc,
             "init": {"seed": 2334},
         },
@@ -150,7 +121,7 @@ simArgs = {
 
 
 def permute(dic):
-    ndims = [2]
+    ndims = [1, 2, 3]
     interp_orders = [1]
     dic.update(simArgs.copy())
     return [
@@ -202,6 +173,68 @@ class VTKDiagnosticsTest(SimulatorTest):
                 plot_vtk(local_out + "/EM_E.vtkhdf", f"E{ndim}d_interp{interp}.vtk.png")
             except ModuleNotFoundError:
                 print("WARNING: vtk python module not found - cannot make plots")
+
+    @data(*permute({}))
+    @unpack
+    def test_compare_l0_primal_to_phareh5(self, ndim, interp, simInput):
+        print("test_compare_l0_primal_to_phareh5 dim/interp:{}/{}".format(ndim, interp))
+
+        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
+        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+        vtk_diags = self._run(ndim, interp, simInput, "test_vtk")
+
+        simInput["diag_options"]["format"] = "phareh5"
+        phareh5_diags = self._run(ndim, interp, simInput, "test_h5")
+
+        # not binary == with more than 2 cores
+        atol = 0 if cpp.mpi_size() <= 2 else [1e-15, 1e-14, 1e-14][ndim - 1]
+        time = 0
+        # choose all primal value generally
+        phareh5_hier = Run(phareh5_diags).GetVi(time)
+        vtk_hier = Run(vtk_diags).GetVi(time)
+
+        eqr = hootils.hierarchy_compare(vtk_hier, phareh5_hier, atol)
+        if not eqr:
+            print(eqr)
+        self.assertTrue(eqr)
+
+    @data(*permute({}))
+    @unpack
+    def test_missing_level_case(self, ndim, interp, simInput):
+        simInput.update(
+            dict(
+                refinement="tagging",
+                max_nbr_levels=2,
+                tagging_threshold=0.99,  # prevent level,
+            )
+        )
+        restart_dir = self.unique_diag_dir_for_test_case(
+            f"{out}/test_padding_vtk/restart", ndim, interp
+        )
+        simInput["restart_options"] = dict(
+            dir=restart_dir, mode="overwrite", timestamps=[0.001]
+        )
+        vtk_diags = self._run(ndim, interp, simInput, "test_padding_vtk")
+
+        simInput.update(
+            dict(
+                final_time=0.002,
+                tagging_threshold=0.01,  # prefer level
+            )
+        )
+
+        simInput["restart_options"]["timestamps"] = []
+        simInput["restart_options"]["restart_time"] = 0.001
+        del simInput["diag_options"]["options"]["mode"]  # do not truncate diags
+        vtk_diags = self._run(ndim, interp, simInput, "test_padding_vtk")
+
+        hier0 = Run(vtk_diags).GetVi(0)
+        hier1 = Run(vtk_diags).GetVi(0.001)
+        hier2 = Run(vtk_diags).GetVi(0.002)
+
+        self.assertTrue(1 not in hier0.levels())
+        self.assertTrue(1 not in hier1.levels())
+        self.assertTrue(1 in hier2.levels())
 
 
 if __name__ == "__main__":

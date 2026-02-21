@@ -15,6 +15,7 @@ matplotlib.use("Agg")  # for systems without GUI
 
 ndim = 1
 interp_orders = [1, 2, 3]
+#
 
 
 def per_interp(dic):
@@ -22,7 +23,7 @@ def per_interp(dic):
 
 
 @ddt
-class AdvanceTest(AdvanceTestBase):
+class AdvanceTest1D(AdvanceTestBase):
     @data(*interp_orders)
     def test_L0_particle_number_conservation(self, interp):
         self._test_L0_particle_number_conservation(ndim, interp)
