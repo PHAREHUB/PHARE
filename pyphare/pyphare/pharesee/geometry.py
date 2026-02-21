@@ -72,11 +72,11 @@ def periodic_shifts_for(domain_box):
 def border_shifted_patches_for(patch, domain_box):
     from copy import deepcopy
 
+    if not is_border_patch(patch, domain_box):
+        return []  # skip
+
     ndim = domain_box.ndim
     gbox = boxm.grow(patch.box, [1] * ndim)
-    if gbox * domain_box == gbox:
-        return []  # not a border patch
-
     shifted_patches = []
     for shift in periodic_shifts_for(domain_box):
         shifted_box = boxm.shift(gbox, shift)
