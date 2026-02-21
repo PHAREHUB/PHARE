@@ -10,143 +10,124 @@
 #include <cstddef>
 
 
-namespace PHARE::core // 3d only for now
+namespace PHARE::core
 {
 
-template<std::size_t dim>
-struct BoxRow
+template<typename T, std::size_t dim_>
+struct BoxRows
 {
-    Point<std::uint32_t, dim> start_;
-    std::uint32_t size_;
+    auto constexpr static dim = dim_;
 
-    auto& local_start() const { return start_; }
-    auto& size() const { return size_; }
+    Box<T, dim> const& box;
+    T const slab_idx;
+    T row_idx;
+    std::uint32_t const row_size = _row_size();
+    Point<T, dim> _point{};
+
+    BoxRows& operator++()
+    {
+        ++row_idx;
+        return *this;
+    }
+
+    auto& point()
+    {
+        if constexpr (dim == 1)
+            return (_point = {box.lower[0]});
+        if constexpr (dim == 2)
+            return (_point = {row_idx, box.lower[1]});
+        if constexpr (dim == 3)
+            return (_point = {slab_idx, row_idx, box.lower[2]});
+    }
+
+    auto operator*() { return std::forward_as_tuple(point(), row_size); }
+
+    bool operator==(BoxRows const& that) const { return row_idx == that.row_idx; }
+    bool operator!=(BoxRows const& that) const { return row_idx != that.row_idx; }
+
+    std::uint32_t _row_size() const { return box.upper[dim - 1] - box.lower[dim - 1] + 1; }
 };
 
 
-
-
-template<std::size_t dim>
-struct BoxSpan
+template<typename T, std::size_t dim_>
+struct BoxSlab
 {
-    std::uint32_t constexpr static ZERO = 0;
+    auto constexpr static dim = dim_;
+    using BoxRows_t           = BoxRows<T, dim>;
 
-    template<typename Span_t>
-    struct BoxRows
+    Box<T, dim> const& box;
+    T slab_idx;
+
+    BoxRows_t begin() { return {box, slab_idx, row_begin()}; }
+    BoxRows_t begin() const { return {box, slab_idx, row_begin()}; }
+    BoxRows_t end() { return {box, slab_idx, row_end()}; }
+    BoxRows_t end() const { return {box, slab_idx, row_end()}; }
+
+    auto& operator*() { return *this; }
+    auto& operator*() const { return *this; }
+
+    bool operator==(BoxSlab const& that) const { return slab_idx == that.slab_idx; }
+    bool operator!=(BoxSlab const& that) const { return slab_idx != that.slab_idx; }
+
+    BoxSlab& operator++()
     {
-        Span_t& span;
-
-        std::uint32_t k;
-        std::uint32_t j;
-        std::uint32_t s = span._size_i();
-        BoxRow<dim> iter{begin(), s};
-
-        Point<std::uint32_t, dim> begin() const
-        {
-            if constexpr (dim == 1)
-                return Point<std::uint32_t, dim>{ZERO};
-
-            if constexpr (dim == 2)
-                return Point<std::uint32_t, dim>{j, ZERO};
-
-            if constexpr (dim == 3)
-                return Point<std::uint32_t, dim>{k, j, ZERO};
-        }
-
-        BoxRows& operator++()
-        {
-            ++j;
-            if constexpr (dim == 1)
-                iter.start_ = {span.box.lower[0]};
-            if constexpr (dim == 2)
-                iter.start_ = {j, span.box.lower[1]};
-            if constexpr (dim == 3)
-                iter.start_ = {k, j, span.box.lower[2]};
-            // PHARE_LOG_LINE_SS(k);
-            return *this;
-        }
-
-        auto& operator*() const { return iter; }
-        bool operator==(BoxRows const& that) const { return j == that.j; }
-        bool operator!=(BoxRows const& that) const { return j != that.j; }
-
-        void next()
-        {
-            j = 0;
-            ++k;
-            if constexpr (dim == 1)
-                iter.start_ = Point{span.box.lower[0]};
-            if constexpr (dim == 2)
-                iter.start_ = Point{j, span.box.lower[1]};
-            if constexpr (dim == 3)
-                iter.start_ = Point{k, j, span.box.lower[2]};
-            // PHARE_LOG_LINE_SS(k);
-        }
-    };
-
-    template<typename Span_t>
-    struct BoxSlab
-    {
-        Span_t& span;
-        BoxRows<Span_t> br{span, 0, 0};
-
-        BoxRows<Span_t> begin() const { return br; }
-        BoxRows<Span_t> end() const { return {span, span._end_k(), span._end_j()}; }
-
-        void next() { br.next(); }
-    };
-
-    template<typename Span_t>
-    struct BoxSlabber
-    {
-        Span_t& span;
-        std::uint32_t k = 0;
-        BoxSlab<Span_t> slab{span};
-
-        bool operator==(BoxSlabber const& that) const { return k == that.k; }
-        bool operator!=(BoxSlabber const& that) const { return k != that.k; }
-
-        BoxSlabber& operator++()
-        {
-            slab.next();
-            ++k;
-            return *this;
-        }
-        auto& operator*() { return slab; }
-    };
-
-    Box<std::uint32_t, dim> const box;
-
-    auto begin() { return BoxSlabber<BoxSpan<dim>>{*this}; }
-    auto end() { return BoxSlabber<BoxSpan<dim>>{*this, _end_k()}; }
-    auto begin() const { return BoxSlabber<BoxSpan<dim> const>{*this}; }
-    auto end() const { return BoxSlabber<BoxSpan<dim> const>{*this, _end_k()}; }
-
-    std::uint32_t _end_k() const
-    {
-        if constexpr (dim == 3)
-            return box.upper[0] + 1;
-        else
-            return 1;
+        ++slab_idx;
+        return *this;
     }
 
-    std::uint32_t _end_j() const
+    T row_begin() const
     {
         if constexpr (dim > 1)
-            return box.upper[1] + 1;
-        else
-            return 1;
+            return box.lower[dim - 2];
+        return 0;
+    }
+    T row_end() const
+    {
+        if constexpr (dim > 1)
+            return box.upper[dim - 2] + 1;
+        return 1;
+    }
+};
+
+template<typename T, std::size_t dim_>
+struct BoxSpan
+{
+    auto constexpr static dim = dim_;
+    using BoxSlab_t           = BoxSlab<T, dim>;
+
+    Box<T, dim> const box;
+
+    BoxSlab_t begin() { return {box, slab_begin()}; }
+    BoxSlab_t begin() const { return {box, slab_begin()}; }
+    BoxSlab_t end() { return {box, slab_end()}; }
+    BoxSlab_t end() const { return {box, slab_end()}; }
+
+    T slab_begin() const
+    {
+        if constexpr (dim > 2)
+            return box.lower[0];
+        return 0;
+    }
+    T slab_end() const
+    {
+        if constexpr (dim > 2)
+            return box.upper[0] + 1;
+        return 1;
     }
 
-    std::uint32_t _size_i() const { return box.upper[dim - 1] + 1; }
+    std::uint32_t size() const
+    {
+        auto s = slab_end() - slab_begin();
+        assert(s > 0);
+        return s;
+    }
 };
 
 
-
-template<std::size_t dim>
-auto make_box_span(Box<std::uint32_t, dim> const box)
+template<typename T, std::size_t dim>
+auto make_box_span(Box<T, dim> const box)
 {
-    return BoxSpan<dim>{box};
+    return BoxSpan<T, dim>{box};
 }
 
 

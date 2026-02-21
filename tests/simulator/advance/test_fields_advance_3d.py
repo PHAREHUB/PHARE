@@ -23,7 +23,7 @@ def per_interp(dic):
 
 
 @ddt
-class AdvanceTest(AdvanceTestBase):
+class AdvanceTest3D(AdvanceTestBase):
     @data(
         *per_interp({}),
         *per_interp({"L0": [Box3D(4, 8)]}),

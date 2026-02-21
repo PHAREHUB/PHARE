@@ -16,22 +16,24 @@
 namespace PHARE::core
 {
 
-template<typename Field_t>
+template<typename Field_t_>
 class FieldBox
 {
-    using value_type = std::decay_t<typename Field_t::value_type>;
+    using value_type = std::decay_t<typename Field_t_::value_type>;
 
 public:
+    using Field_t = Field_t_;
+
     auto constexpr static dimension = Field_t::dimension;
 
     Field_t& field;
-    Box<int, dimension> amr_ghost_box;
+    Box<int, dimension> amr_box;
     Box<std::uint32_t, dimension> lcl_box;
 
     template<typename GridLayout_t>
     FieldBox(Field_t& field_, GridLayout_t const& layout)
         : field{field_}
-        , amr_ghost_box{layout.AMRGhostBoxFor(field.physicalQuantity())}
+        , amr_box{layout.AMRGhostBoxFor(field.physicalQuantity())}
         , lcl_box{layout.ghostBoxFor(field)}
     {
     }
@@ -40,7 +42,7 @@ public:
     FieldBox(Field_t& field_, GridLayout_t const& layout,
              Box<std::uint32_t, dimension> const& selection)
         : field{field_}
-        , amr_ghost_box{layout.AMRGhostBoxFor(field.physicalQuantity())}
+        , amr_box{layout.localToAMR(selection)}
         , lcl_box{selection}
     {
     }
@@ -48,7 +50,7 @@ public:
     template<typename GridLayout_t>
     FieldBox(Field_t& field_, GridLayout_t const& layout, Box<int, dimension> const& selection)
         : field{field_}
-        , amr_ghost_box{layout.AMRGhostBoxFor(field.physicalQuantity())}
+        , amr_box{selection}
         , lcl_box{layout.AMRToLocal(selection)}
     {
     }

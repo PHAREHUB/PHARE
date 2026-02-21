@@ -58,6 +58,39 @@ TEST(FieldBoxSpanTest, test_field_box_span_3d)
 }
 
 
+TEST(FieldBoxSpanTest, test_field_box_poiont_span_3d)
+{
+    static constexpr std::size_t dim = 3;
+    static constexpr PHARE::SimOpts opts{dim, 1};
+    using PHARE_Types  = PHARE::core::PHARE_Types<opts>;
+    using GridLayout_t = TestGridLayout<typename PHARE_Types::GridLayout_t>;
+    using Grid_t       = PHARE_Types::Grid_t;
+
+    GridLayout_t layout{9};
+    Grid_t src{"rho", layout, PHARE::core::HybridQuantity::Scalar::rho, 0};
+    Grid_t dst{"rho", layout, PHARE::core::HybridQuantity::Scalar::rho, 0};
+
+    auto const domain_box = layout.domainBoxFor(src);
+    for (auto const& bix : domain_box)
+        src(bix) = product(bix);
+
+    for (auto const& slab : make_field_box_point_span(domain_box, src))
+        for (auto const& [row, point] : slab)
+            for (std::size_t i = 0; i < row.size(); ++i, ++point[dim - 1])
+                dst(point) += row[i];
+
+
+    for (auto const& bix : domain_box)
+    {
+        EXPECT_EQ(dst(bix), product(bix));
+    }
+
+    EXPECT_EQ(sum(dst), sum(src));
+}
+
+
+
+
 TEST(BoxSpanTest, test_range_loop)
 {
     std::size_t static constexpr dim = 3;

@@ -30,7 +30,7 @@ def config():
     L = 0.5
 
     sim = ph.Simulation(
-        largest_patch_size=5,
+        # largest_patch_size=5,
         time_step=time_step,
         final_time=final_time,
         cells=cells,

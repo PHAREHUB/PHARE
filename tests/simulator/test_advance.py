@@ -300,6 +300,7 @@ class AdvanceTestBase(SimulatorTest):
                     import matplotlib.pyplot as plt
                     from matplotlib.patches import Rectangle
 
+                    box = ovrlp_box
                     if box.ndim == 1:
                         failed_i = np.where(np.abs(slice1 - slice2) > 5.5e-15)
 
@@ -372,15 +373,15 @@ class AdvanceTestBase(SimulatorTest):
                                     )
                                 )
                                 for i, j in zip(failed_i, failed_j):
-                                    x = i + pd2.ghost_box.lower[0] + loc_b2.lower[0]
+                                    x = i + pd2.ghost_box.lower[0] + box_pd2.lower[0]
                                     x *= pd2.layout.dl[0]
-                                    y = j + pd2.ghost_box.lower[1] + loc_b2.lower[1]
+                                    y = j + pd2.ghost_box.lower[1] + box_pd2.lower[1]
                                     y *= pd2.layout.dl[1]
                                     ax.plot(x, y, marker="+", color="r")
 
-                                    x = i + pd1.ghost_box.lower[0] + loc_b1.lower[0]
+                                    x = i + pd1.ghost_box.lower[0] + box_pd1.lower[0]
                                     x *= pd1.layout.dl[0]
-                                    y = j + pd1.ghost_box.lower[1] + loc_b1.lower[1]
+                                    y = j + pd1.ghost_box.lower[1] + box_pd1.lower[1]
                                     y *= pd1.layout.dl[1]
                                     ax.plot(x, y, marker="o", color="r")
                                 ax.set_title(
@@ -407,7 +408,6 @@ class AdvanceTestBase(SimulatorTest):
                     print(coarsest_time)
                     # if self.rethrow_:
                     #     raise e
-                    # return diff_boxes(slice1, slice2, box)
 
         return success_test_nbr
 
