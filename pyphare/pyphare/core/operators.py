@@ -2,60 +2,47 @@ import numpy as np
 
 from pyphare.pharesee.hierarchy import ScalarField, VectorField
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import rename
 
 
-def _compute_dot_product(patch_datas, **kwargs):
-    ref_name = next(iter(patch_datas.keys()))
-
+def _compute_dot_product(patch0, hinfo, other, **kwargs):
+    patch1 = other.level(hinfo.ilvl, hinfo.time)[hinfo.patch_idx]
+    ref_name = next(iter(patch0.patch_datas.keys()))
     dset = (
-        patch_datas["left_x"][:] * patch_datas["right_x"][:]
-        + patch_datas["left_y"][:] * patch_datas["right_y"][:]
-        + patch_datas["left_z"][:] * patch_datas["right_z"][:]
+        patch0["x"][:] * patch1["x"][:]
+        + patch0["y"][:] * patch1["y"][:]
+        + patch0["z"][:] * patch1["z"][:]
     )
+
+    return ({"name": "value", "data": patch0[ref_name].copy_as(dset)},)
+
+
+def _compute_sqrt(patch, **kwargs):
+    ref_name = next(iter(patch.patch_datas.keys()))
+
+    dset = np.sqrt(patch["value"][:])
+
+    return ({"name": "value", "data": patch[ref_name].copy_as(dset)},)
+
+
+def _compute_cross_product(patch0, hinfo, other, **kwargs):
+    patch1 = other.level(hinfo.ilvl, hinfo.time)[hinfo.patch_idx]
+    ref_name = next(iter(patch0.patch_datas.keys()))
+
+    dset_x = patch0["y"][:] * patch1["z"][:] - patch0["z"][:] * patch1["y"][:]
+    dset_y = patch0["z"][:] * patch1["x"][:] - patch0["x"][:] * patch1["z"][:]
+    dset_z = patch0["x"][:] * patch1["y"][:] - patch0["y"][:] * patch1["x"][:]
 
     return (
-        {"name": "value", "data": dset, "centering": patch_datas[ref_name].centerings},
+        {"name": "x", "data": patch0[ref_name].copy_as(dset_x)},
+        {"name": "y", "data": patch0[ref_name].copy_as(dset_y)},
+        {"name": "z", "data": patch0[ref_name].copy_as(dset_z)},
     )
 
 
-def _compute_sqrt(patch_datas, **kwargs):
-    ref_name = next(iter(patch_datas.keys()))
-
-    dset = np.sqrt(patch_datas["value"][:])
-
-    return (
-        {"name": "value", "data": dset, "centering": patch_datas[ref_name].centerings},
-    )
-
-
-def _compute_cross_product(patch_datas, **kwargs):
-    ref_name = next(iter(patch_datas.keys()))
-
-    dset_x = (
-        patch_datas["left_y"][:] * patch_datas["right_z"][:]
-        - patch_datas["left_z"][:] * patch_datas["right_y"][:]
-    )
-    dset_y = (
-        patch_datas["left_z"][:] * patch_datas["right_x"][:]
-        - patch_datas["left_x"][:] * patch_datas["right_z"][:]
-    )
-    dset_z = (
-        patch_datas["left_x"][:] * patch_datas["right_y"][:]
-        - patch_datas["left_y"][:] * patch_datas["right_x"][:]
-    )
-
-    return (
-        {"name": "x", "data": dset_x, "centering": patch_datas[ref_name].centerings},
-        {"name": "y", "data": dset_y, "centering": patch_datas[ref_name].centerings},
-        {"name": "z", "data": dset_z, "centering": patch_datas[ref_name].centerings},
-    )
-
-
-def _compute_grad(patch_data, **kwargs):
-    ndim = patch_data["value"].box.ndim
+def _compute_grad(patch, **kwargs):
+    ndim = patch["value"].box.ndim
     nb_ghosts = kwargs["nb_ghosts"]
-    ds = patch_data["value"].dataset
+    ds = patch["value"].dataset
 
     ds_shape = list(ds.shape)
 
@@ -74,57 +61,28 @@ def _compute_grad(patch_data, **kwargs):
         raise RuntimeError("dimension not yet implemented")
 
     return (
-        {"name": "x", "data": ds_x, "centering": patch_data["value"].centerings},
-        {"name": "y", "data": ds_y, "centering": patch_data["value"].centerings},
-        {"name": "z", "data": ds_z, "centering": patch_data["value"].centerings},
+        {"name": "x", "data": patch["value"].copy_as(ds_x)},
+        {"name": "y", "data": patch["value"].copy_as(ds_y)},
+        {"name": "z", "data": patch["value"].copy_as(ds_z)},
     )
 
 
-def dot(hier_left, hier_right, **kwargs):
-    if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
-        names_left = ["left_x", "left_y", "left_z"]
-        names_right = ["right_x", "right_y", "right_z"]
-
-    else:
+def dot(hier0, hier1, **kwargs):
+    if not all(isinstance(hier, VectorField) for hier in [hier0, hier1]):
         raise RuntimeError("type of hierarchy not yet considered")
 
-    hl = rename(hier_left, names_left)
-    hr = rename(hier_right, names_right)
-
-    h = compute_hier_from(
-        _compute_dot_product,
-        (hl, hr),
-    )
-
-    return ScalarField(h)
+    return ScalarField(compute_hier_from(_compute_dot_product, hier0, other=hier1))
 
 
-def cross(hier_left, hier_right, **kwargs):
-    if isinstance(hier_left, VectorField) and isinstance(hier_right, VectorField):
-        names_left = ["left_x", "left_y", "left_z"]
-        names_right = ["right_x", "right_y", "right_z"]
-
-    else:
+def cross(hier0, hier1, **kwargs):
+    if not all(isinstance(hier, VectorField) for hier in [hier0, hier1]):
         raise RuntimeError("type of hierarchy not yet considered")
 
-    hl = rename(hier_left, names_left)
-    hr = rename(hier_right, names_right)
-
-    h = compute_hier_from(
-        _compute_cross_product,
-        (hl, hr),
-    )
-
-    return VectorField(h)
+    return VectorField(compute_hier_from(_compute_cross_product, hier0, other=hier1))
 
 
 def sqrt(hier, **kwargs):
-    h = compute_hier_from(
-        _compute_sqrt,
-        hier,
-    )
-
-    return ScalarField(h)
+    return ScalarField(compute_hier_from(_compute_sqrt, hier))
 
 
 def modulus(hier):

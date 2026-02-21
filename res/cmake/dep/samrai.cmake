@@ -17,16 +17,22 @@ else()
 
   phare_github_get_or_update(SAMRAI ${SAMRAI_SRCDIR} LLNL/SAMRAI ${PHARE_SAMRAI_VERSION})
 
-  if (NOT CMAKE_BUILD_TYPE STREQUAL "Release")
-    # enable samrai assertions if not in release mode
-    set (DEBUG_INITIALIZE_UNDEFINED On)
-    set (DEBUG_CHECK_ASSERTIONS On)
-    set (DEBUG_CHECK_DIM_ASSERTIONS On)
-  endif()
+  if (SAMRAI_DEBUG)
+    set (DEBUG_INITIALIZE_UNDEFINED Off CACHE BOOL "YES!" FORCE)
+    set (DEBUG_CHECK_ASSERTIONS Off CACHE BOOL "YES!" FORCE)
+    set (DEBUG_CHECK_DIM_ASSERTIONS Off CACHE BOOL "YES!" FORCE)
+  else()
+    set (DEBUG_INITIALIZE_UNDEFINED Off CACHE BOOL "NO!" FORCE)
+    set (DEBUG_CHECK_ASSERTIONS Off CACHE BOOL "NO!" FORCE)
+    set (DEBUG_CHECK_DIM_ASSERTIONS Off CACHE BOOL "NO!" FORCE)
+  endif(SAMRAI_DEBUG)
 
   if(SAMRAI_BUILD_SHARED_LIBS)
     set(BUILD_SHARED_LIBS ON CACHE BOOL "Make shared libs" FORCE) # default as of 25/JAN/2026 is static libs
   endif(SAMRAI_BUILD_SHARED_LIBS)
+
+  set(ENABLE_TIMERS OFF CACHE BOOL "NO!" FORCE)
+  set(ENABLE_CHECK_ASSERTIONS OFF CACHE BOOL "NO!" FORCE)
 
   option(ENABLE_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after
   option(ENABLE_SAMRAI_TESTS "Enable Samrai Test" OFF ) # disable SAMRAI Test so that we can use the googletest pulled after

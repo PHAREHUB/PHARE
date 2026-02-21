@@ -11,24 +11,42 @@
 #include <cassert>
 #include <cstring>
 
+
+#if !defined(PHARE_LOG_ERROR)
+#define PHARE_LOG_ERROR(x)                                                                         \
+    PHARE::core::mpi::log_error(std::string{__FILE__} + ":" + std::to_string(__LINE__), x);
+#endif
+
 namespace PHARE::core::mpi
 {
 template<typename Data>
 NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
-NO_DISCARD std::size_t max(std::size_t const local, int mpi_size = 0);
+NO_DISCARD auto max(auto const local);
+NO_DISCARD auto min(auto const local);
 
 NO_DISCARD bool any(bool);
+NO_DISCARD bool any_errors();
+void log_error(std::string const key, std::string const val);
 
 NO_DISCARD int size();
 
 NO_DISCARD int rank();
 
 void barrier();
+void debug_barrier();
 
 NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
 NO_DISCARD std::int64_t unix_timestamp_now();
+
+auto inline sum_on_rank_0(std::size_t const s)
+{
+    std::size_t localsum[1]  = {s};
+    std::size_t globalsum[1] = {0};
+    MPI_Reduce(localsum, globalsum, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+    return static_cast<std::size_t>(globalsum[0]);
+}
 
 inline bool is_init()
 {
@@ -58,6 +76,11 @@ NO_DISCARD auto mpi_type_for()
         return MPI_CHAR;
 
     // don't return anything = compile failure if tried to use this function
+}
+
+auto mpi_type_for(auto const& val)
+{
+    return mpi_type_for<std::decay_t<decltype(val)>>();
 }
 
 
@@ -157,9 +180,9 @@ NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_siz
 
     std::size_t offset = 0;
     std::vector<Vector> collected;
-    for (int i = 0; i < mpi_size; i++)
+    for (int i = 0; i < mpi_size; ++i)
     {
-        if (perMPISize[i] == 0)
+        if (perMPISize[i] == 0) // NO OUT OF BOUNDS ON LAST RANK
             collected.emplace_back();
         else
             collected.emplace_back(&rcvBuff[offset], &rcvBuff[offset] + perMPISize[i]);
@@ -230,6 +253,39 @@ NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size)
         return values;
     }
 }
+
+auto max_on_rank0(auto const local)
+{
+    auto global = local;
+    MPI_Reduce(&local, &global, 1, mpi_type_for(local), MPI_MAX, 0, MPI_COMM_WORLD);
+    return global;
+}
+
+
+auto min_on_rank0(auto const local)
+{
+    auto global = local;
+    MPI_Reduce(&local, &global, 1, mpi_type_for(local), MPI_MIN, 0, MPI_COMM_WORLD);
+    return global;
+}
+
+
+auto max(auto const local)
+{
+    auto const mpi_size = size();
+    auto const perMPI   = collect(local, mpi_size);
+    return *std::max_element(std::begin(perMPI), std::end(perMPI));
+}
+
+
+auto min(auto const local)
+{
+    auto global = local;
+    MPI_Allreduce(&local, &global, 1, mpi_type_for(local), MPI_MIN, MPI_COMM_WORLD);
+    return global;
+}
+
+
 } // namespace PHARE::core::mpi
 
 

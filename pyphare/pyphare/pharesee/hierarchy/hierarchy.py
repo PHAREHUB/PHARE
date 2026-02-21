@@ -73,9 +73,6 @@ class PatchHierarchy(object):
         no_copy_keys = ["data_files"]  # do not copy these things
         return deep_copy(self, memo, no_copy_keys)
 
-    def __getitem__(self, qty):
-        return self.__dict__[qty]
-
     def update(self):
         if len(self.quantities()) > 1:
             for qty in self.quantities():
@@ -273,7 +270,7 @@ class PatchHierarchy(object):
         first = True
         for ilvl, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
                     m = np.nanmin(pd.dataset[:])
                     first = False
@@ -288,7 +285,7 @@ class PatchHierarchy(object):
         first = True
         for _, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
                     m = np.nanmax(pd.dataset[:])
                     first = False
@@ -432,9 +429,11 @@ class PatchHierarchy(object):
                 if qty is None:
                     qty = pdata_names[0]
 
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                pd = patch[qty]
+                nbrGhosts = pd.ghosts_nbr
+                any_ghosts = any(nbrGhosts)
+                val = pd[patch.box] if any_ghosts else pd[:]
+                x = pd.x[nbrGhosts[0] : -nbrGhosts[0]] if nbrGhosts[0] > 0 else pd.x
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
@@ -493,7 +492,7 @@ class PatchHierarchy(object):
             if lvl_nbr not in usr_lvls:
                 continue
             for patch in self.level(lvl_nbr, time).patches:
-                pdat = patch.patch_datas[qty]
+                pdat = patch[qty]
                 data = pdat.dataset[:]
                 nbrGhosts = pdat.ghosts_nbr
                 x = pdat.x
@@ -560,6 +559,8 @@ class PatchHierarchy(object):
             return self.plot1d(**kwargs)
         elif self.ndim == 2:
             return self.plot2d(**kwargs)
+        elif self.ndim == 3:
+            raise RuntimeError("There is no 3d plot available, consider using paraview")
 
     def dist_plot(self, **kwargs):
         """
@@ -613,6 +614,70 @@ class PatchHierarchy(object):
                 final[pop] = kwargs["select"](particles)
 
         return final, dp(final, **kwargs)
+
+    def zeros_like(self):
+        """only works for fields and vecfields with 1 time"""
+        from copy import deepcopy
+
+        assert len(self.time_hier) == 1
+        copy = deepcopy(self)
+
+        hier = (list(copy.time_hier.values()))[0]
+
+        for ilvl, lvl in hier.items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    patch.patch_datas[key] = pd.zeros_like()
+        assert not copy.has_non_zero()
+        return copy
+
+    def has_non_zero(self):
+        """only works for fields and vecfields with 1 time"""
+
+        assert len(self.time_hier) == 1
+
+        hier = (list(self.time_hier.values()))[0]
+
+        for ilvl, lvl in hier.items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    check = np.nonzero(pd.dataset[:])
+                    if len(check[0]):
+                        return True
+        return False
+
+    def max(self, qty=None):
+        """only works for fields and vecfields with 1 time"""
+
+        assert len(self.time_hier) == 1
+
+        hier = (list(self.time_hier.values()))[0]
+        val = [0 for ilvl, lvl in hier.items()]
+
+        for ilvl, lvl in hier.items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    if qty is None or key == qty:
+                        val[ilvl] = max(np.max(pd.dataset), val[ilvl])
+
+        return val
+
+    def min_max_patch_shape(self, qty=None):
+        """only works for fields and vecfields with 1 time"""
+
+        assert len(self.time_hier) == 1
+
+        hier = (list(self.time_hier.values()))[0]
+        val = [[10000, 0] for ilvl, lvl in hier.items()]
+
+        for ilvl, lvl in hier.items():
+            for patch in lvl:
+                for key, pd in patch.patch_datas.items():
+                    if qty is None or key == qty:
+                        val[ilvl][0] = min(np.min(pd.dataset.shape), val[ilvl][0])
+                        val[ilvl][1] = max(np.max(pd.dataset.shape), val[ilvl][1])
+
+        return val
 
 
 def finest_part_data(hierarchy, time=None):

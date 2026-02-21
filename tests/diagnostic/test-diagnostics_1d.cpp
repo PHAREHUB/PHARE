@@ -4,7 +4,7 @@
 #include "test_diagnostics.ipp"
 
 static std::string const job_file = "job_1d";
-static std::string const out_dir  = "phare_outputs/diags_1d/";
+static std::string out_dir        = "phare_outputs/diags_1d/";
 
 TYPED_TEST(Simulator1dTest, fluid)
 {
@@ -31,5 +31,6 @@ int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
     PHARE::SamraiLifeCycle samsam(argc, argv);
+    out_dir += std::to_string(core::mpi::size()) + "/"; // concurrent tests
     return RUN_ALL_TESTS();
 }

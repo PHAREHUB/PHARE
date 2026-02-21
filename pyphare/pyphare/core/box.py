@@ -199,6 +199,7 @@ def remove_all(box, to_remove):
                 del remaining[rm]
             remaining += tmp
         return remaining
+
     return [box]
 
 

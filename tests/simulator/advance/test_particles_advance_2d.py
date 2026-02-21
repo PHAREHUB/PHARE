@@ -23,7 +23,7 @@ def per_interp(dic):
 
 
 @ddt
-class AdvanceTest(AdvanceTestBase):
+class AdvanceTest2D(AdvanceTestBase):
     @data(*interp_orders)
     def test_L0_particle_number_conservation(self, interp):
         self._test_L0_particle_number_conservation(ndim, interp, ppc=ppc)
