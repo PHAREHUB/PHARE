@@ -378,9 +378,8 @@ class AdvanceTestBase(SimulatorTest):
                         elif box.ndim == 2:
                             print(f"failing cells: {failed_i}, {failed_j}")
                         print(coarsest_time)
-                        # if self.rethrow_:
-                        #     raise e
-                        # return diff_boxes(slice1, slice2, box)
+                        if self.rethrow_:
+                            raise e
 
         return checks
 

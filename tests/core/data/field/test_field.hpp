@@ -1,13 +1,15 @@
 #ifndef PHARE_TEST_CORE_FIELD_TEST_HPP
 #define PHARE_TEST_CORE_FIELD_TEST_HPP
 
-
+#include "core/utilities/types.hpp"
+#include "core/data/field/field.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
 #include "gtest/gtest.h" // EXPECT_FLOAT_EQ
 
-
 #include <cassert>
+
 
 
 
@@ -39,6 +41,17 @@ struct FieldMock
 };
 
 
+template<typename PQ>
+bool valid_ghost_box(PQ const physicalQuantity)
+{
+    if constexpr (std::is_same_v<PQ, HybridQuantity::Scalar>)
+    {
+        using enum HybridQuantity::Scalar;
+        // cause last ghost can have no interpolation
+        return not any_in(physicalQuantity, rho, Vx, Vy, Vz);
+    }
+    throw std::runtime_error("No other impl");
+}
 
 
 template<typename GridLayout, typename Field, typename T1>
@@ -67,7 +80,10 @@ void test_fields(GridLayout const& layout, Field const& field0, T1 const& field1
         EXPECT_FLOAT_EQ(v0, v1) << " at index " << idx_str;
     };
 
-    layout.evalOnBox(field0, [&](auto&... idxs) { not_nan(field0, field1, idxs...); });
+    if (valid_ghost_box(field0.physicalQuantity()))
+        layout.evalOnGhostBox(field0, [&](auto&... idxs) { not_nan(field0, field1, idxs...); });
+    else
+        layout.evalOnBox(field0, [&](auto&... idxs) { not_nan(field0, field1, idxs...); });
 }
 
 
