@@ -1,7 +1,8 @@
+#
+
 import numpy as np
 
 from ..core import box as boxm
-from pyphare.core.box import Box
 from .hierarchy.patchdata import FieldData
 from .hierarchy.hierarchy_utils import is_root_lvl
 
@@ -33,40 +34,7 @@ def shift_patch(patch, offset):
     for pdata in patch.patch_datas.values():
         pdata.box = boxm.shift(pdata.box, offset)
         pdata.ghost_box = boxm.shift(pdata.ghost_box, offset)
-
-
-def domain_border_ghost_boxes(domain_box, patches):
-    max_ghosts = max(
-        [
-            pd.ghosts_nbr.max()
-            for pd in sum([list(patch.patch_datas.values()) for patch in patches], [])
-        ]
-    )
-    ghost_box_width = max_ghosts - 1
-
-    if domain_box.ndim == 1:
-        upper_x = domain_box.upper
-        return {
-            "left": Box(0, ghost_box_width),
-            "right": Box(upper_x - ghost_box_width, upper_x),
-        }
-
-    elif domain_box.ndim == 2:
-        upper_x, upper_y = domain_box.upper
-        return {
-            "bottom": Box(
-                (
-                    0,
-                    0,
-                ),
-                (upper_x, ghost_box_width),
-            ),
-            "top": Box((0, upper_y - ghost_box_width), (upper_x, upper_y)),
-            "left": Box((0, 0), (ghost_box_width, upper_y)),
-            "right": Box((upper_x - ghost_box_width, 0), (upper_x, upper_y)),
-        }
-
-    raise ValueError("Unhandeled dimension")
+    return patch
 
 
 def touch_domain_border(box, domain_box, border):
@@ -78,75 +46,44 @@ def touch_domain_border(box, domain_box, border):
         raise RuntimeError("invalid border")
 
 
-def periodicity_shifts(domain_box):
-    if domain_box.ndim == 1:
-        shape_x = domain_box.shape
-        return {
-            "left": shape_x,
-            "right": -shape_x,
-        }
+def is_border_patch(patch, domain_box):
+    gbox = boxm.grow(patch.box, [1] * domain_box.ndim)
+    return gbox * domain_box != gbox
 
-    if domain_box.ndim == 2:
-        shape_x, shape_y = domain_box.shape
-        shifts = {
-            "left": [(shape_x, 0)],
-            "right": [(-shape_x, 0)],
-            "bottom": [(0, shape_y)],
-            "top": [(0, -shape_y)],
-        }
-        shifts.update(
-            {
-                "bottomleft": [*shifts["left"], *shifts["bottom"], (shape_x, shape_y)],
-                "bottomright": [
-                    *shifts["right"],
-                    *shifts["bottom"],
-                    (-shape_x, shape_y),
-                ],
-                "topleft": [*shifts["left"], *shifts["top"], (shape_x, -shape_y)],
-                "topright": [*shifts["right"], *shifts["top"], (-shape_x, -shape_y)],
-                "bottomtop": [*shifts["bottom"], *shifts["top"]],
-                "leftright": [*shifts["left"], *shifts["right"]],
-            }
-        )
-        shifts.update(
-            {
-                "bottomtopleft": [
-                    *shifts["bottomtop"],
-                    *shifts["left"],
-                    shifts["bottomleft"][-1],
-                    shifts["topleft"][-1],
-                ],
-                "bottomtopright": [
-                    *shifts["bottomtop"],
-                    *shifts["right"],
-                    shifts["bottomright"][-1],
-                    shifts["topright"][-1],
-                ],
-                "bottomleftright": [
-                    *shifts["leftright"],
-                    *shifts["bottom"],
-                    shifts["bottomleft"][-1],
-                    shifts["bottomright"][-1],
-                ],
-                "topleftright": [
-                    *shifts["leftright"],
-                    *shifts["top"],
-                    shifts["topleft"][-1],
-                    shifts["topright"][-1],
-                ],
-                "bottomtopleftright": [  # one patch covers domain
-                    *shifts["bottomleft"],
-                    *shifts["topright"],
-                    shifts["bottomright"][-1],
-                    shifts["topleft"][-1],
-                ],
-            }
-        )
 
-    if domain_box.ndim == 3:
-        raise ValueError("Unhandeled dimension")
+def periodic_shifts_for(domain_box):
+    import itertools
+
+    L = np.asarray(domain_box.shape)
+    ndim = domain_box.ndim
+
+    if ndim == 1:
+        return [L[0], -L[0]]
+
+    shifts = []
+    for coeffs in itertools.product([-1, 0, 1], repeat=ndim):
+        if all(c == 0 for c in coeffs):
+            continue  # skip zero shift
+        shifts.append(np.array(coeffs) * L)
 
     return shifts
+
+
+def border_shifted_patches_for(patch, domain_box):
+    from copy import deepcopy
+
+    if not is_border_patch(patch, domain_box):
+        return []  # skip
+
+    ndim = domain_box.ndim
+    gbox = boxm.grow(patch.box, [1] * ndim)
+    shifted_patches = []
+    for shift in periodic_shifts_for(domain_box):
+        shifted_box = boxm.shift(gbox, shift)
+        if shifted_box * domain_box is not None:
+            shifted_patches.append(shift_patch(deepcopy(patch), shift))
+
+    return shifted_patches
 
 
 def compute_overlaps(patches, domain_box):
@@ -185,41 +122,41 @@ def compute_overlaps(patches, domain_box):
 
     overlaps = []
 
-    # first deal with intra domain overlaps
-    for ip, refPatch in enumerate(patches):
-        for cmpPatch in patches[ip + 1 :]:
-            # for two patches, compare patch_datas of the same quantity
-            for ref_pdname, ref_pd in refPatch.patch_datas.items():
-                cmp_pd = cmpPatch.patch_datas[ref_pdname]
+    def check_overlap(refPatch, cmpPatch):
+        # for two patches, compare patch_datas of the same quantity
+        for ref_pdname, ref_pd in refPatch.patch_datas.items():
+            cmp_pd = cmpPatch.patch_datas[ref_pdname]
 
-                gb1 = ref_pd.ghost_box
-                gb2 = cmp_pd.ghost_box
-                overlap = gb1 * gb2
+            gb1 = ref_pd.ghost_box
+            gb2 = cmp_pd.ghost_box
+            overlap = gb1 * gb2
 
-                if overlap is not None:
-                    # boxes indexes represent cells
-                    # therefore for fields, we need to
-                    # adjust the box. This essentially
-                    # add 1 to upper in case field is on corners
-                    # because upper corner can only be grabbed
-                    # if box extends to upper+1 cell
-                    # particles don't need that as they are contained
-                    # in cells.
-                    if ref_pd.quantity == "field":
-                        overlap = toFieldBox(overlap, ref_pd)
+            if overlap is not None:
+                # boxes indexes represent cells
+                # therefore for fields, we need to
+                # adjust the box. This essentially
+                # add 1 to upper in case field is on corners
+                # because upper corner can only be grabbed
+                # if box extends to upper+1 cell
+                # particles don't need that as they are contained
+                # in cells.
+                if ref_pd.quantity == "field":
+                    overlap = toFieldBox(overlap, ref_pd)
 
-                    overlaps.append(
-                        {
-                            "pdatas": (ref_pd, cmp_pd),
-                            "patches": (refPatch, cmpPatch),
-                            "box": overlap,
-                            "offset": (zero_offset, zero_offset),
-                        }
-                    )
+                overlaps.append(
+                    {
+                        "name": ref_pdname,
+                        "pdatas": (ref_pd, cmp_pd),
+                        "patches": (refPatch, cmpPatch),
+                        "box": overlap,
+                        "offset": (zero_offset, zero_offset),
+                    }
+                )
 
-    def append(ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
+    def append(name, ref_pd, cmp_pd, refPatch, cmpPatch, overlap, offset_tuple):
         overlaps.append(
             {
+                "name": name,
                 "pdatas": (ref_pd, cmp_pd),
                 "patches": (refPatch, cmpPatch),
                 "box": overlap,
@@ -227,65 +164,60 @@ def compute_overlaps(patches, domain_box):
             }
         )
 
-    def borders_per(patch):
-        return "".join(
-            [key for key, side in sides.items() if patch.box * side is not None]
-        )
+    shifts = periodic_shifts_for(domain_box)
 
-    sides = domain_border_ghost_boxes(domain_box, patches)
-    shifts = periodicity_shifts(domain_box)
-
-    # now dealing with border patches to see their patchdata overlap
-    if dim == 1 and len(patches) > 0:
-        patches = [patches[0], patches[-1]]
-
-    # filter out patches not near a border
-    borders_per_patch = {p: borders_per(p) for p in patches}
-    border_patches = [
-        p for p, in_sides in borders_per_patch.items() if len(in_sides) > 0
-    ]
-
-    for patch_i, ref_patch in enumerate(border_patches):
-        in_sides = borders_per_patch[ref_patch]
-        assert in_sides in shifts
-
+    def check_periodic_overlap(ref_patch, cmp_patch):
         for ref_pdname, ref_pd in ref_patch.patch_datas.items():
-            for shift in shifts[in_sides]:
-                for cmp_patch in border_patches[
-                    patch_i:
-                ]:  # patches can overlap with themselves
-                    for cmp_pdname, cmp_pd in cmp_patch.patch_datas.items():
-                        if cmp_pdname == ref_pdname:
-                            gb1 = ref_pd.ghost_box
-                            gb2 = cmp_pd.ghost_box
+            cmp_pd = cmp_patch.patch_datas[ref_pdname]
 
-                            offset = np.asarray(shift)
-                            overlap = gb1 * boxm.shift(gb2, -offset)
+            gb1 = ref_pd.ghost_box
+            gb2 = cmp_pd.ghost_box
 
-                            if overlap is not None:
-                                other_ovrlp = boxm.shift(gb1, offset) * gb2
-                                assert other_ovrlp is not None
+            for offset in shifts:
+                overlap = gb1 * boxm.shift(gb2, -offset)
 
-                                if ref_pd.quantity == "field":
-                                    overlap = toFieldBox(overlap, ref_pd)
-                                    other_ovrlp = toFieldBox(other_ovrlp, ref_pd)
+                if overlap is not None:
+                    other_ovrlp = boxm.shift(gb1, offset) * gb2
+                    assert other_ovrlp is not None
 
-                                append(
-                                    ref_pd,
-                                    cmp_pd,
-                                    ref_patch,
-                                    cmp_patch,
-                                    overlap,
-                                    (zero_offset, (-offset).tolist()),
-                                )
-                                append(
-                                    ref_pd,
-                                    cmp_pd,
-                                    ref_patch,
-                                    cmp_patch,
-                                    other_ovrlp,
-                                    (offset.tolist(), zero_offset),
-                                )
+                    if ref_pd.quantity == "field":
+                        overlap = toFieldBox(overlap, ref_pd)
+                        other_ovrlp = toFieldBox(other_ovrlp, ref_pd)
+
+                    append(
+                        ref_pdname,
+                        ref_pd,
+                        cmp_pd,
+                        ref_patch,
+                        cmp_patch,
+                        overlap,
+                        (zero_offset, (-offset).tolist()),
+                    )
+                    append(
+                        ref_pdname,
+                        ref_pd,
+                        cmp_pd,
+                        ref_patch,
+                        cmp_patch,
+                        other_ovrlp,
+                        (offset.tolist(), zero_offset),
+                    )
+
+    def is_border(patch):
+        return is_border_patch(patch, domain_box)
+
+    def check_overlaps(refPatch, cmpPatch):
+        # no internal overlap with self
+        if refPatch.box != cmpPatch.box:
+            check_overlap(refPatch, cmpPatch)
+
+        # but possible periodic overlaps
+        if is_border(refPatch) and is_border(cmpPatch):
+            check_periodic_overlap(refPatch, cmpPatch)
+
+    for ip, refPatch in enumerate(patches):
+        for cmpPatch in patches[ip:]:  # patches can overlap with themselves
+            check_overlaps(refPatch, cmpPatch)
 
     return overlaps
 
@@ -336,38 +268,12 @@ def get_periodic_list(patches, domain_box, n_ghosts):
             shift_patch(first_patch, domain_box.shape)
             sorted_patches.append(first_patch)
 
-    if dim == 2:
-        sides = {
-            "bottom": Box([0, 0], [domain_box.upper[0], 0]),
-            "top": Box(
-                [0, domain_box.upper[1]], [domain_box.upper[0], domain_box.upper[1]]
-            ),
-            "left": Box([0, 0], [0, domain_box.upper[1]]),
-            "right": Box(
-                [domain_box.upper[0], 0], [domain_box.upper[0], domain_box.upper[1]]
-            ),
-        }
+        return sorted_patches
 
-        shifts = periodicity_shifts(domain_box)
+    for patch in patches:
+        sorted_patches.extend(border_shifted_patches_for(patch, domain_box))
 
-        def borders_per(box):
-            return "".join(
-                [key for key, side in sides.items() if box * side is not None]
-            )
-
-        for patch in patches:
-            in_sides = borders_per(boxm.grow(patch.box, n_ghosts))
-
-            if in_sides in shifts:  # in_sides might be empty, so no borders
-                for shift in shifts[in_sides]:
-                    patch_copy = copy(patch)
-                    shift_patch(patch_copy, shift)
-                    sorted_patches.append(patch_copy)
-
-    if dim == 3:
-        raise ValueError("not yet implemented")
-
-    return sorted_patches
+    return sorted(sorted_patches, key=lambda p: p.origin.all())
 
 
 def ghost_area_boxes(hierarchy, quantities, levelNbrs=[], time=0):
@@ -470,18 +376,7 @@ def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
                     check_patches = patches
 
                 for gabox in ghostAreaBoxes:
-                    remaining = gabox - check_patches[0].box
-
-                    for patch in check_patches[1:]:
-                        tmp = []
-                        remove = []
-                        for i, rem in enumerate(remaining):
-                            if rem * patch.box is not None:
-                                remove.append(i)
-                                tmp += rem - patch.box
-                        for rm in reversed(remove):
-                            del remaining[rm]
-                        remaining += tmp
+                    remaining = gabox - [p.box for p in check_patches]
 
                     if ilvl not in lvl_gaboxes:
                         lvl_gaboxes[ilvl] = {}

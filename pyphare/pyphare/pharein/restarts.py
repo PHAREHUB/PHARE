@@ -171,7 +171,7 @@ def is_restartable_compared_to(curr_sim, prev_sim):
         for key in keys:
             curr = getattr(curr_sim, key)
             prev = getattr(prev_sim, key)
-            if any([op(curr, prev)]):
+            if np.any([op(curr, prev)]):
                 failed.append((key, curr, prev, op))
 
     # use negative operator for printing
