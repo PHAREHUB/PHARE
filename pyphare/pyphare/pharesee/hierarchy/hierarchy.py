@@ -629,32 +629,64 @@ class PatchHierarchy(object):
             interp_[qty] = build_interpolator(data, coords, interp, box, dl, qty, nbrGhosts)
         return interp_
 
-
-
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         print(f"__array_function__ of PatchHierarchy called for {ufunc.__name__}")
         if method != "__call__":
             return NotImplemented
 
-        pls = []  # list (h1, h2, h3... ) of list ('pl0', 'pl1', 'pl2') of pls
-        for x in inputs:  # inputs is a list of PatchHierarchy
-            if isinstance(x, PatchHierarchy):  # hence, x is a PatchHierarchy
-                pls_ = []
-                for pl in x.patch_levels:
-                    pls_.append(pl)
-                pls.append(pls_)
-            else:
+        # print(type(inputs), inputs, type(inputs[0]), inputs[0])
+
+        final = []
+
+        times = inputs[0].times()
+        for x in inputs:
+            assert(times == x.times())
+            if not isinstance(x, PatchHierarchy):
                 raise TypeError("this arg should be a PatchHierarchy")
+        ils = [key for d in inputs[0].patch_levels for key in d]
+        # print(ils)
+        h_type = type(inputs[0])
 
-        out = [getattr(ufunc, method)(*pl, **kwargs)  for pl in zip(*pls)]
+        all_ = []
+        for i, time in enumerate(times):
+            # print("* * * ", i, time)
+            pls = []
+            for x in inputs:
+                # print(". . . ", x.times()[i], x.patch_levels[i])
+                pls_ = []
+                for ilvl, plvl in x.patch_levels[i].items():
+                    # print("_ _ _ ", ilvl, plvl)
+                    pls_.append(plvl)
+                pls.append(pls_)
 
-        return PatchHierarchy(out,
-                              domain_box=self.domain_box,
-                              refinement_box=self.refinement_ratio,
-                              times=self.times,
-                              data_files=self.data_files,
-                              selection_box=self.selection_box)
+            out = [getattr(ufunc, method)(*pl, **kwargs)  for pl in zip(*pls)]
+
+            # print("   ->  ", type(out), type(out[0]))
+
+            # out est une liste de liste de patchlevel : indice  sur le levels (pour 1 temps donne)
+            # il faut les remettre dans un dict avec ilvl
+
+            final = {}
+            for il, pl in zip(ils, out):
+                final[il] = pl
+            # print("___ ",final)
+
+            all_.append(final)
+
+        h_ = PatchHierarchy(all_,
+                           domain_box=self.domain_box,
+                           refinement_box=self.refinement_ratio,
+                           times=self.times(),
+                           data_files=self.data_files,
+                           selection_box=self.selection_box)
+
+        from .scalarfield import ScalarField
+        from .vectorfield import VectorField
+
+        if h_type is ScalarField:
+            return ScalarField(h_)
+        elif h_type is VectorField:
+            return self
 
 def finest_part_data(hierarchy, time=None):
     """
