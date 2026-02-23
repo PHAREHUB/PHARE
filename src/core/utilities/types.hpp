@@ -394,6 +394,20 @@ NO_DISCARD auto constexpr none(Container const& container, Fn fn = to_bool)
 }
 
 
+
+auto constexpr all_in(auto const a, auto&&... ts)
+{
+    return ((a == ts) && ...);
+}
+
+auto constexpr any_in(auto const a, auto&&... ts)
+{
+    return ((a == ts) || ...);
+}
+
+
+
+
 template<typename SignedInt, typename UnsignedInt>
 bool diff_sign_int_equals(SignedInt const& i0, UnsignedInt const& i1)
 {
