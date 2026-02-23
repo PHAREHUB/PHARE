@@ -191,6 +191,34 @@ class FieldData(PatchData):
             return tuple(g[select] for g in mesh)
         return mesh
 
+    def __array__(self, dtype=None):
+        # numpy array protocol
+        return np.asarray(self.dataset, dtype=dtype)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(f"__array_function__ of FieldData called for {ufunc.__name__}")
+        if method != "__call__":
+            raise NotImplementedError
+
+        ds = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
+        out = getattr(ufunc, method)(*ds, **kwargs)
+
+        if isinstance(out, np.ndarray):
+            return FieldData(self.layout, ufunc.__name__+"@"+self.field_name, out, centering=self.centerings)
+
+    def __array_function__(self, func, types, args, kwargs):
+        print(f"__array_function__ of FieldData {func.__name__} called with {[getattr(a, 'name', a) for a in args]}")
+
+        ds = [a.dataset if isinstance(a, FieldData) else a for a in args]
+        out = func(*ds, **kwargs)
+
+        if isinstance(out, np.ndarray):
+            return FieldData(self.layout, func.__name__+"@"+self.field_name, out, centering=self.centerings)
+        else:
+            return out
+
+
+
 
 class ParticleData(PatchData):
     """
@@ -236,3 +264,12 @@ class ParticleData(PatchData):
 
     def __eq__(self, that):
         return self.compare(that)
+
+    def __str__(self):
+        return "ParticleData: (pop_name={}, #_of_part={})".format(
+            self.pop_name, self.dataset.shape[0]  # TODO need to be tested
+        )
+
+    def __repr__(self):
+        return self.__str__()
+

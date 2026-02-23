@@ -210,3 +210,4 @@ class ScalarField(PatchHierarchy):
         names_self = self.quantities()
         h = compute_hier_from(_compute_neg, self, new_names=names_self)
         return ScalarField(h)
+

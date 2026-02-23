@@ -488,3 +488,50 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
         raise ValueError("make_interpolator is not yet 3d")
 
     return interpolator, finest_coords
+
+
+def build_interpolator(data, coords, interp, box, dl, qty, nbrGhosts):
+    """
+    :param data: the values of the data that will be used for making
+    the interpolator, defined on coords
+    :param coords: coordinates where the data are known. they
+    can be define on an irregular grid (eg the finest)
+
+    finest_coords will be the structured coordinates defined on the
+    finest grid.
+    """
+    from pyphare.core.gridlayout import directions
+    from pyphare.core.gridlayout import yeeCoordsFor
+
+    dim = coords.ndim
+
+    nCells = box.upper-box.lower+2
+
+    fc = []
+    for i in range(dim):
+        s_ = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, directions[i])
+        fc.append(s_)
+
+    finest_coords = fc
+
+    if dim == 1:
+        from scipy.interpolate import interp1d
+
+        interpolator = interp1d(
+            coords, data, kind=interp, fill_value="extrapolate", assume_sorted=False
+        )
+
+    elif dim == 2:
+        from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
+
+        if interp == "nearest":
+            interpolator = NearestNDInterpolator(coords, data)
+        elif interp == "bilinear":
+            interpolator = LinearNDInterpolator(coords, data)
+        else:
+            raise ValueError("the 'interp' kwarg can only be 'nearest' or 'bilinear'")
+
+    else:
+        raise ValueError("build_interpolator is not yet 3d")
+
+    return interpolator, finest_coords
