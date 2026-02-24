@@ -166,7 +166,12 @@ def check_time(**kwargs):
             + " or 'final_time' and 'time_step_nbr'"
         )
 
-    start_time = kwargs.get("restart_options", {}).get("restart_time", 0)
+    def _start_time():
+        if restart_options := kwargs.get("restart_options", {}):
+            return restart_options.get("restart_time", 0)
+        return 0
+
+    start_time = _start_time()
 
     def _final_time():
         if "final_time" in kwargs:
@@ -532,9 +537,9 @@ def check_restart_options(**kwargs):
         "keep_last",  # delete obsolete
     ]
 
-    restart_options = kwargs.get("restart_options", {})
+    restart_options = kwargs.get("restart_options", None)
 
-    if "restart_options" in kwargs:
+    if restart_options:
         for key in restart_options.keys():
             if key not in valid_keys:
                 raise ValueError(
