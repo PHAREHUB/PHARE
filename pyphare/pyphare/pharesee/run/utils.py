@@ -309,6 +309,7 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
 
     pd_attrs = []
     for name, pd_name in kwargs.items():
+        # print(name, pd_name)
         pd = patchdatas[pd_name]
 
         ds = pd.dataset
@@ -328,6 +329,9 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
         # chunks is a tupls of all the slices coming from the initial dataset
         # that are needed to calculate the average for the all_primal dataset
         inner, chunks = slices_to_primal(pd_name, nb_ghosts=nb_ghosts, ndim=ndim)
+        # TODO if the pd_name contains the name of a population (like the one coming from GetN)
+        # then, this name has to be removed from "pd_name" as in the "yee_centering" dict
+        # coming from gridlayout, the pop_name is not here...
 
         for chunk in chunks:
             ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
@@ -488,3 +492,5 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
         raise ValueError("make_interpolator is not yet 3d")
 
     return interpolator, finest_coords
+
+
