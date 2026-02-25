@@ -5,19 +5,17 @@
 
 #include "core/logger.hpp"
 #include "core/data/field/field_box.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
 #include "amr/data/field/field_geometry.hpp"
-#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
-#include "amr/data/field/field_overlap.hpp"
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"
 
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>
 
-#include <optional>
+#include <limits>
 #include <type_traits>
 
 
@@ -38,19 +36,21 @@ class TensorFieldData : public SAMRAI::hier::PatchData
     using tensor_t             = typename PhysicalQuantity::template TensorType<rank>;
     using TensorFieldOverlap_t = TensorFieldOverlap<rank>;
 
+public:
+    using value_type = Grid_t::value_type;
+
+private:
+    using SetEqualOp          = core::Equals<value_type>;
+    auto constexpr static NaN = std::numeric_limits<value_type>::quiet_NaN();
+
     template<typename ComponentNames, typename GridLayout>
     auto static make_grids(ComponentNames const& compNames, GridLayout const& layout, tensor_t qty)
     {
         auto qts = PhysicalQuantity::componentsQuantities(qty);
         return core::for_N<N, core::for_N_R_mode::make_array>(
-            [&](auto i) { return Grid_t{compNames[i], qts[i], layout.allocSize(qts[i])}; });
+            [&](auto i) { return Grid_t{compNames[i], layout, qts[i], NaN}; });
     }
 
-public:
-    using value_type = Grid_t::value_type;
-
-private:
-    using SetEqualOp = core::Equals<value_type>;
 
 public:
     static constexpr std::size_t dimension    = GridLayoutT::dimension;
@@ -229,7 +229,7 @@ public:
     void packStream(SAMRAI::tbox::MessageStream& stream,
                     SAMRAI::hier::BoxOverlap const& overlap) const final
     {
-        PHARE_LOG_SCOPE(3, "packStream");
+        PHARE_LOG_SCOPE(3, "TensorFieldData::packStream");
 
         std::size_t const expectedSize = getDataStreamSize_(overlap) / sizeof(value_type);
         std::vector<typename Grid_t::type> buffer;
@@ -284,7 +284,7 @@ public:
     void unpackStream(SAMRAI::tbox::MessageStream& stream, SAMRAI::hier::BoxOverlap const& overlap,
                       auto& dst_grids)
     {
-        PHARE_LOG_SCOPE(3, "unpackStream");
+        PHARE_LOG_SCOPE(3, "TensorFieldData::unpackStream");
 
         auto& tFieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
 
