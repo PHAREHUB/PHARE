@@ -561,7 +561,7 @@ auto make_named_tuple(Pairs&&... pairs)
 
 
 template<typename D>
-struct Equals
+struct SetEqual
 {
     void operator()(auto& d0) { d = d0; }
     D& d;
