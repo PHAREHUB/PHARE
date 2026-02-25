@@ -5,9 +5,11 @@
 #include "core/utilities/types.hpp"
 
 #include <array>
+#include <memory>
 #include <vector>
 #include <cstdint>
 #include <numeric>
+#include <optional>
 #include <stdexcept>
 
 
@@ -223,45 +225,35 @@ auto make_array_view(DataType const* const data, std::array<std::uint32_t, dim> 
 template<std::size_t dim, typename DataType = double, bool c_ordering = true>
 class NdArrayVector
 {
+    auto init_optional(std::size_t const size, std::optional<DataType> const& value)
+    {
+        if (value)
+            return std::vector<DataType>(size, *value);
+        return std::vector<DataType>(size);
+    }
+
 public:
     static constexpr bool is_contiguous = 1;
     static std::size_t const dimension  = dim;
     using type                          = DataType;
+    using value_type                    = DataType;
 
     NdArrayVector() = delete;
 
-    template<FloatingPoint U = DataType>
     explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells,
-                           type const& value = static_cast<U>(std::nan("")))
+                           std::optional<type> const& value = std::nullopt)
         : nCells_{ncells}
-        , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<std::size_t>()),
-                value)
-    {
-    }
-
-    template<FloatingPoint U = DataType, typename... Nodes>
-    explicit NdArrayVector(Nodes... nodes)
-        requires(std::is_integral_v<Nodes> && ...)
-        : NdArrayVector{std::array{nodes...}}
-    {
-        static_assert(sizeof...(Nodes) == dim);
-    }
-
-    explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells)
-        requires(!FloatingPoint<DataType>)
-        : nCells_{ncells}
-        , data_(std::accumulate(ncells.begin(), ncells.end(), 1, std::multiplies<std::size_t>()))
+        , data_(init_optional(product(ncells), value))
     {
     }
 
     template<typename... Nodes>
-        requires(!FloatingPoint<DataType>)
     explicit NdArrayVector(Nodes... nodes)
-        requires(std::is_integral_v<Nodes> && ...)
+        requires(sizeof...(Nodes) == dim && (std::is_integral_v<Nodes> && ...))
         : NdArrayVector{std::array{nodes...}}
     {
-        static_assert(sizeof...(Nodes) == dim);
     }
+
 
 
     NdArrayVector(NdArrayVector const& source)            = default;
