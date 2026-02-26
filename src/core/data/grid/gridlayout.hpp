@@ -742,10 +742,10 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        NO_DISCARD auto localToAMR(Point<T, dimension> localPoint) const
+        NO_DISCARD auto localToAMR(Point<T, dimension> const& localPoint) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            Point<T, dimension> pointAMR;
+            Point<int, dimension> pointAMR;
 
             // any direction, it's the same because we want cells
             auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
@@ -764,10 +764,10 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        NO_DISCARD auto localToAMR(Box<T, dimension> localBox) const
+        NO_DISCARD auto localToAMR(Box<T, dimension> const& localBox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            auto AMRBox = Box<T, dimension>{};
+            auto AMRBox = Box<int, dimension>{};
 
             AMRBox.lower = localToAMR(localBox.lower);
             AMRBox.upper = localToAMR(localBox.upper);
@@ -781,7 +781,7 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        NO_DISCARD auto AMRToLocal(Point<T, dimension> AMRPoint) const
+        NO_DISCARD auto AMRToLocal(Point<T, dimension> const& AMRPoint) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
             Point<std::uint32_t, dimension> localPoint;
@@ -805,7 +805,7 @@ namespace core
          * This method only deals with **cell** indexes.
          */
         template<typename T>
-        NO_DISCARD auto AMRToLocal(Box<T, dimension> AMRBox) const
+        NO_DISCARD auto AMRToLocal(Box<T, dimension> const& AMRBox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
             auto localBox = Box<std::uint32_t, dimension>{};
@@ -1170,7 +1170,7 @@ namespace core
         template<typename Field>
         Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
         {
-            return _BoxFor(field, [&](auto const& centering, auto const direction) {
+            return BoxFor(field, [&](auto const& centering, auto const direction) {
                 return this->ghostStartToEnd(centering, direction);
             });
         }
@@ -1260,7 +1260,7 @@ namespace core
 
 
         template<typename Field, typename Fn>
-        auto _BoxFor(Field const& field, Fn startToEnd) const
+        auto BoxFor(Field const& field, Fn startToEnd) const
         {
             std::array<std::uint32_t, dimension> lower, upper;
 

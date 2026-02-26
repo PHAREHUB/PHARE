@@ -16,6 +16,10 @@ namespace amr
     /**
      * @brief The CoarsenWeighter class computes the weights to use for each nbrPoints fine nodes to
      * get the value on the associated coarse node
+     *
+     *
+     * This implementation dates from the early phase of the project where
+     * the refinement ratio was not hard-coded 2 and thus works for the general case
      */
     class CoarsenWeighter
     {
