@@ -61,19 +61,21 @@ public:
 };
 
 
-template<typename Operator>
-void operate_on_field_row(auto& dst, auto const& src)
-    requires(std::is_same_v<Operator, Equals<double>>)
+
+template<typename Operator, typename T>
+void operate_on_span(auto& dst, T const* src_data)
+    requires(std::is_same_v<Operator, Equals<T>>)
 {
-    std::memcpy(dst.data(), src.data(), src.size() * sizeof(double));
+    std::memcpy(dst.data(), src_data, dst.size() * sizeof(T));
 }
 
-template<typename Operator>
-void operate_on_field_row(auto& dst, auto const& src)
+template<typename Operator, typename T>
+void operate_on_span(auto& dst, T const* src_data)
 {
-    for (std::size_t i = 0; i < src.size(); ++i)
-        Operator{dst[i]}(src[i]);
+    for (std::size_t i = 0; i < dst.size(); ++i, ++src_data)
+        Operator{dst[i]}(*src_data);
 }
+
 
 
 template<typename Operator>
@@ -87,40 +89,14 @@ void operate_on_fields(auto& dst, auto const& src)
     auto s_slabs = s_span.begin();
     for (; s_slabs != s_span.end(); ++s_slabs, ++d_slabs)
     {
-        auto d_rows = d_slabs.begin();
-        auto s_rows = s_slabs.begin();
-        for (; s_rows != s_slabs.end(); ++s_rows, ++d_rows)
-            operate_on_field_row<Operator>(*d_rows, *s_rows);
-    }
-}
-
-void max_of_fields(auto& dst, auto const& src)
-{
-    assert(dst.lcl_box.size() == src.lcl_box.size());
-    auto src_it = src.lcl_box.begin();
-    auto dst_it = dst.lcl_box.begin();
-    for (; dst_it != dst.lcl_box.end(); ++src_it, ++dst_it)
-    {
-        auto& dst_val = dst.field(*dst_it);
-        auto& src_val = src.field(*src_it);
-        dst_val       = std::max(dst_val, src_val);
+        auto d_spans = d_slabs.begin();
+        auto s_spans = s_slabs.begin();
+        for (; s_spans != s_slabs.end(); ++s_spans, ++d_spans)
+            operate_on_span<Operator>(*d_spans, (*s_spans).data());
     }
 }
 
 
-template<typename Operator>
-void set_field_row_from(auto& dst, auto const* src_data)
-    requires(std::is_same_v<Operator, Equals<double>>)
-{
-    std::memcpy(dst.data(), src_data, dst.size() * sizeof(double));
-}
-
-template<typename Operator>
-void set_field_row_from(auto& dst, auto const* src_data)
-{
-    for (std::size_t i = 0; i < dst.size(); ++i, ++src_data)
-        Operator{dst[i]}(*src_data);
-}
 
 
 template<typename Field_t>
@@ -128,10 +104,10 @@ template<typename Operator>
 void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t seek)
 {
     for (auto& slab : make_field_box_span(lcl_box, field))
-        for (auto& row : slab)
+        for (auto& span : slab)
         {
-            set_field_row_from<Operator>(row, vec.data() + seek);
-            seek += row.size();
+            operate_on_span<Operator>(span, vec.data() + seek);
+            seek += span.size();
         }
 }
 
@@ -139,16 +115,15 @@ void FieldBox<Field_t>::set_from(std::vector<value_type> const& vec, std::size_t
 template<typename Field_t>
 void FieldBox<Field_t>::append_to(std::vector<value_type>& vec)
 {
-    using value_type = Field_t::value_type;
     // reserve vec before use!
     std::size_t seek = vec.size();
     vec.resize(vec.size() + lcl_box.size());
 
     for (auto const& slab : make_field_box_span(lcl_box, field))
-        for (auto const& row : slab)
+        for (auto const& span : slab)
         {
-            std::memcpy(vec.data() + seek, row.data(), row.size() * sizeof(value_type));
-            seek += row.size();
+            std::memcpy(vec.data() + seek, span.data(), span.size() * sizeof(value_type));
+            seek += span.size();
         }
 }
 
