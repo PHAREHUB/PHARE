@@ -13,9 +13,6 @@
 
 namespace PHARE::amr
 {
-using core::dirX;
-using core::dirY;
-using core::dirZ;
 /** @brief This class gives an operator() that performs the coarsening of N fine nodes onto a
  * given coarse node
  *
@@ -49,6 +46,10 @@ public:
     void operator()(FieldT const& fineField, FieldT& coarseField,
                     core::Point<int, dimension> coarseIndex)
     {
+        using core::dirX;
+        using core::dirY;
+        using core::dirZ;
+
         // For the moment we only take the case of field with the same centering
         TBOX_ASSERT(fineField.physicalQuantity() == coarseField.physicalQuantity());
 

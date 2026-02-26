@@ -359,6 +359,7 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
 {
     resman_ptr   = std::make_shared<ResourceManager_t>();
     currentTime_ = restart_time(dict);
+    finalTime_ += currentTime_; // final time is from timestep * timestep_nbr!
 
     if (dict["simulation"].contains("restarts"))
         rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *resman_ptr,
@@ -425,7 +426,7 @@ void Simulator<opts>::initialize()
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any(core::Errors::instance().any()))
+    if (core::mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)
@@ -476,7 +477,7 @@ double Simulator<opts>::advance(double dt)
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any(core::Errors::instance().any()))
+    if (core::mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)

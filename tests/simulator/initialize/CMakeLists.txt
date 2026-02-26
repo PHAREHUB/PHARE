@@ -10,14 +10,19 @@ endif()
 if(HighFive)
   ## These test use dump diagnostics so require HighFive!
 
-  phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-1d-fields     test_fields_init_1d.py     ${CMAKE_CURRENT_BINARY_DIR})
-  phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-1d-particles  test_particles_init_1d.py  ${CMAKE_CURRENT_BINARY_DIR})
+  if(PHARE_PYTEST_SIMULATORS GREATER_EQUAL 1)
+    phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-1d-fields     test_fields_init_1d.py     ${CMAKE_CURRENT_BINARY_DIR})
+    phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-1d-particles  test_particles_init_1d.py  ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 
-  if(NOT lowResourceTests)
-
+  if(PHARE_PYTEST_SIMULATORS GREATER_EQUAL 2)
     phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-2d-fields     test_fields_init_2d.py     ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-2d-particles  test_particles_init_2d.py  ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 
+  if(PHARE_PYTEST_SIMULATORS GREATER_EQUAL 3)
+    phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-3d-fields     test_fields_init_3d.py     ${CMAKE_CURRENT_BINARY_DIR})
+    phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-3d-particles  test_particles_init_3d.py  ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 
   phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-densities density_check.py  ${CMAKE_CURRENT_BINARY_DIR})

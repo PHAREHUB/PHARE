@@ -11,6 +11,12 @@
 #include <cassert>
 #include <cstring>
 
+
+#if !defined(PHARE_LOG_ERROR)
+#define PHARE_LOG_ERROR(x)                                                                         \
+    PHARE::core::mpi::log_error(std::string{__FILE__} + ":" + std::to_string(__LINE__), x);
+#endif
+
 namespace PHARE::core::mpi
 {
 template<typename Data>
@@ -19,6 +25,8 @@ NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size = 0);
 NO_DISCARD std::size_t max(std::size_t const local, int mpi_size = 0);
 
 NO_DISCARD bool any(bool);
+NO_DISCARD bool any_errors();
+void log_error(std::string const key, std::string const val);
 
 NO_DISCARD int size();
 
@@ -157,9 +165,9 @@ NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_siz
 
     std::size_t offset = 0;
     std::vector<Vector> collected;
-    for (int i = 0; i < mpi_size; i++)
+    for (int i = 0; i < mpi_size; ++i)
     {
-        if (perMPISize[i] == 0)
+        if (perMPISize[i] == 0) // NO OUT OF BOUNDS ON LAST RANK
             collected.emplace_back();
         else
             collected.emplace_back(&rcvBuff[offset], &rcvBuff[offset] + perMPISize[i]);
