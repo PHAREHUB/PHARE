@@ -205,19 +205,27 @@ class Simulator:
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
 
+        tot = 0
+        print_rank0("Starting at ", datetime.datetime.now())
+        print_rank0("Simulation start time/end time ", t, end_time)
         while t < end_time:
             tick = timem.time()
             self.advance()
             tock = timem.time()
             ticktock = tock - tick
             perf.append(ticktock)
+            tot += ticktock
             t = self.cpp_sim.currentTime()
             if cpp.mpi_rank() == 0:
-                out = f"t = {t:8.5f}  -  {ticktock:6.5f}sec  - total {np.sum(perf):7.4}sec"
-                print(out, end=self.print_eol)
+                delta = datetime.timedelta(seconds=tot)
+                print(
+                    f"t = {t:8.5f} - {ticktock:6.5f}sec - total {delta}",
+                    end=self.print_eol,
+                )
 
         print_rank0(f"mean advance time = {np.mean(perf)}")
-        print_rank0(f"total advance time = {datetime.timedelta(seconds=np.sum(perf))}")
+        print_rank0(f"total advance time = {datetime.timedelta(seconds=tot)}")
+        print_rank0("Finished at ", datetime.datetime.now())
 
         if plot_times:
             plot_timestep_time(perf)
