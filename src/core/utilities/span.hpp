@@ -37,15 +37,14 @@ struct Span
     Span& operator=(Span const&) = default;
 
     NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
-    NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
-    NO_DISCARD auto data() const { return ptr; }
+    NO_DISCARD value_type const& operator[](SIZE i) const { return ptr[i]; }
+    NO_DISCARD value_type const* data() const { return ptr; }
     NO_DISCARD auto data() { return ptr; }
     NO_DISCARD auto begin() { return ptr; }
     NO_DISCARD auto begin() const { return ptr; }
     NO_DISCARD auto end() { return ptr + s; }
     NO_DISCARD auto end() const { return ptr + s; }
     NO_DISCARD SIZE const& size() const { return s; }
-    NO_DISCARD auto size_address() { return &s; }
 
     T* ptr = nullptr;
     SIZE s = 0;
