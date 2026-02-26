@@ -8,7 +8,7 @@
 #include "core/data/particles/particle_packer.hpp"
 #include "core/data/ions/ion_population/particle_pack.hpp"
 
-#include "amr/samrai.hpp" // IWYU pragma: keep
+#include "amr/samrai.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include <amr/data/particles/particles_variable_fill_pattern.hpp>
@@ -122,7 +122,7 @@ namespace amr
 
                 std::size_t part_idx = 0;
                 core::apply(soa.as_tuple(), [&](auto const& arg) {
-                    restart_db->putVector(name + "_" + packer.keys()[part_idx++], arg);
+                    putVectorToRestart(*restart_db, name + "_" + packer.keys()[part_idx++], arg);
                 });
             };
 
@@ -160,7 +160,8 @@ namespace amr
                 {
                     std::size_t part_idx = 0;
                     core::apply(soa.as_tuple(), [&](auto& arg) {
-                        restart_db->getVector(name + "_" + Packer::keys()[part_idx++], arg);
+                        getVectorFromRestart(*restart_db, name + "_" + Packer::keys()[part_idx++],
+                                             arg);
                     });
                 }
 
@@ -200,7 +201,7 @@ namespace amr
 
             SAMRAI::hier::Box const& sourceBox  = pSource.getBox();
             SAMRAI::hier::Box const& myGhostBox = getGhostBox();
-            const SAMRAI::hier::Box intersectionBox{sourceBox * myGhostBox};
+            SAMRAI::hier::Box const intersectionBox{sourceBox * myGhostBox};
 
             if (!intersectionBox.empty())
             {
