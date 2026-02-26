@@ -6,12 +6,12 @@ from tests.simulator import basicSimulatorArgs, makeBasicModel
 
 from pyphare import cpp  # concurrent serial vs parallel tests
 
-out = f"phare_outputs/diags_2d/{cpp.mpi_size()}"
+out = f"phare_outputs/diags_3d/{cpp.mpi_size()}"
 simInput = {
     "diag_options": {"format": "phareh5", "options": {"dir": out, "mode": "overwrite"}}
 }
 
-ph.Simulation(**basicSimulatorArgs(dim=2, interp=1, **simInput))
+ph.Simulation(**basicSimulatorArgs(dim=3, interp=1, **simInput))
 model = makeBasicModel()
 ph.ElectronModel(closure="isothermal", Te=0.12)
 dump_all_diags(model.populations)

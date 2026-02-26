@@ -103,7 +103,25 @@ namespace core
             return std::vector<Type>(r.data(), r.data() + dimension);
         }
 
+        NO_DISCARD std::string str(std::uint8_t const precision = 6,
+                                   bool left_pad_positive       = true) const
+            requires(FloatingPoint<Type>)
+        {
+            std::stringstream ss;
+            for (auto const v : r)
+            {
+                if (left_pad_positive and v >= 0)
+                    ss << " ";
+                ss << to_string_with_precision(v, precision) << ",";
+            }
+            auto s = ss.str(); // drop last comma
+            s.pop_back();
+            return s;
+        }
+
+
         NO_DISCARD std::string str() const
+            requires(!FloatingPoint<Type>)
         {
             std::stringstream ss;
             ss << r[0];

@@ -426,7 +426,7 @@ void Simulator<opts>::initialize()
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any(core::Errors::instance().any()))
+    if (core::mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)
@@ -477,7 +477,7 @@ double Simulator<opts>::advance(double dt)
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any(core::Errors::instance().any()))
+    if (core::mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)

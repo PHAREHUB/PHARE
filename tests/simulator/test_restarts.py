@@ -455,7 +455,8 @@ class RestartsTest(SimulatorTest):
 
         ph.global_vars.sim = None
         ph.global_vars.sim = ph.Simulation(**simput)
-        setup_model()
+        model = setup_model()
+        self.assertTrue(model.validated)
         Simulator(ph.global_vars.sim).run().reset()
         self.register_diag_dir_for_cleanup(local_out)
 
@@ -464,11 +465,13 @@ class RestartsTest(SimulatorTest):
         simput["time_step_nbr"] = 3
         simput["restart_options"]["restart_time"] = "auto"
         simput["restart_options"]["timestamps"] = timestamps
+
         # if not binary equal we have a problem! C++/python float impl diff
         self.assertEqual(0.007, ph.restarts.restart_time(simput["restart_options"]))
         ph.global_vars.sim = None
         ph.global_vars.sim = ph.Simulation(**simput)
-        setup_model()
+        model = setup_model()
+        self.assertFalse(model.validated)
         Simulator(ph.global_vars.sim).run().reset()
 
         dirs = []

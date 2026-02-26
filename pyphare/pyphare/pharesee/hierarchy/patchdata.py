@@ -108,11 +108,9 @@ class FieldData(PatchData):
         if overlap is not None:
             lower = self.layout.AMRToLocal(overlap.lower)
             upper = self.layout.AMRToLocal(overlap.upper)
+            select = tuple(slice(lower[i], upper[i] + 1) for i in range(box.ndim))
+            return self.dataset[select]
 
-            if box.ndim == 1:
-                return self.dataset[lower[0] : upper[0] + 1]
-            if box.ndim == 2:
-                return self.dataset[lower[0] : upper[0] + 1, lower[1] : upper[1] + 1]
         return np.array([])
 
     def __getitem__(self, box_or_slice):

@@ -1,22 +1,35 @@
-
-
 #ifndef PHARE_SPLITTER_HPP
 #define PHARE_SPLITTER_HPP
+
+#include "core/utilities/types.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include "amr/amr_constants.hpp"
 
 #include <array>
 #include <cmath>
 #include <tuple>
 #include <cassert>
-#include <cstdint>
 #include <cstddef>
-#include "core/utilities/types.hpp"
-#include "core/utilities/point/point.hpp"
-#include "amr/amr_constants.hpp"
+
+
 
 namespace PHARE::amr
 {
 // see meta_utilities.hpp for list of declared permutations.
 
+/** \brief A SplitPattern identifies where refined particles will be placed
+ * relative to a coarse particle and their weight.
+ *
+ * A pattern is a geometric description of the placement of refined particles
+ * around the coarse particle. All particles refined with a specific pattern
+ * are placed at the same distance (delta) from the coarse particle with the same
+ * weight.
+ *
+ * The concrete splitting of a coarse particle can be the result of a single pattern
+ * or the combination of several patterns.
+ *
+ */
 template<typename _dimension, typename _nbRefinedPart>
 struct SplitPattern
 {
@@ -30,6 +43,9 @@ struct SplitPattern
 };
 
 
+/** \brief PatternDispatcher is the way to concretely place all refined particles
+ * for a combination of patterns given at compile time.
+ */
 template<typename... Patterns>
 class PatternDispatcher
 {
@@ -66,17 +82,17 @@ private:
         using FineParticle = decltype(particles[0]); // may be a reference
 
         core::apply(patterns, [&](auto const& pattern) {
-            for (size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); rpIndex++)
+            auto const weight = static_cast<Weight_t>(pattern.weight_);
+            for (std::size_t rpIndex = 0; rpIndex < pattern.deltas_.size(); ++rpIndex)
             {
                 FineParticle fineParticle = particles[idx++];
-                fineParticle.weight       = particle.weight * static_cast<Weight_t>(pattern.weight_)
-                                      * power[dimension - 1];
-                fineParticle.charge = particle.charge;
-                fineParticle.iCell  = particle.iCell;
-                fineParticle.delta  = particle.delta;
-                fineParticle.v      = particle.v;
+                fineParticle.weight       = particle.weight * weight * power[dimension - 1];
+                fineParticle.charge       = particle.charge;
+                fineParticle.iCell        = particle.iCell;
+                fineParticle.delta        = particle.delta;
+                fineParticle.v            = particle.v;
 
-                for (size_t iDim = 0; iDim < dimension; iDim++)
+                for (std::size_t iDim = 0; iDim < dimension; ++iDim)
                 {
                     fineParticle.delta[iDim]
                         += static_cast<Delta_t>(pattern.deltas_[rpIndex][iDim]);
@@ -106,6 +122,11 @@ struct ASplitter
     constexpr ASplitter() {}
 };
 
+
+/** \brief this class is just the template declaration of the Splitter class
+ * Only its concrete specializations defined in split_1d, split_2d, split_3d
+ * are to be used therefore the constructor here is deleted to prevent instantiation.
+ */
 template<typename dimension, typename interp_order, typename nbRefinedPart>
 class Splitter : public ASplitter<dimension, interp_order, nbRefinedPart>
 {
@@ -113,25 +134,33 @@ class Splitter : public ASplitter<dimension, interp_order, nbRefinedPart>
 };
 
 template<typename dim>
-struct BlackDispatcher : SplitPattern<dim, core::RefinedParticlesConst<1>>
+struct BlackPattern : SplitPattern<dim, core::RefinedParticlesConst<1>>
 {
     using Super = SplitPattern<dim, core::RefinedParticlesConst<1>>;
-    constexpr BlackDispatcher(float const weight)
+    constexpr BlackPattern(float const weight)
         : Super{weight}
     {
     }
 };
 
 template<typename dim>
-struct PurpleDispatcher
+struct PinkPattern
 {
 };
 template<typename dim>
-struct BrownDispatcher
+struct PurplePattern
 {
 };
 template<typename dim>
-struct PinkDispatcher
+struct BrownPattern
+{
+};
+template<typename dim>
+struct LimePattern
+{
+};
+template<typename dim>
+struct WhitePattern
 {
 };
 
