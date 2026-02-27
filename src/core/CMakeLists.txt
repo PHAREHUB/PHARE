@@ -28,8 +28,6 @@ set( SOURCES_INC
      numerics/boundary_condition/boundary_condition.hpp
      numerics/interpolator/interpolator.hpp
      numerics/pusher/boris.hpp
-     numerics/pusher/pusher.hpp
-     numerics/pusher/pusher_factory.hpp
      numerics/ampere/ampere.hpp
      numerics/faraday/faraday.hpp
      numerics/ohm/ohm.hpp

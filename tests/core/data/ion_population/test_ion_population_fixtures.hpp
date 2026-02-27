@@ -40,7 +40,7 @@ public:
 
 
 template<typename _defaults>
-class UsableIonsPopulation : public _defaults::IonPopulation_t
+class UsableIonsPopulation_ : public _defaults::IonPopulation_t
 {
     using GridLayout_t    = _defaults::GridLayout_t;
     using VecField_t      = _defaults::VecField_t;
@@ -49,7 +49,7 @@ class UsableIonsPopulation : public _defaults::IonPopulation_t
     using Super           = IonPopulation<ParticleArray_t, VecField_t, TensorField_t>;
 
 public:
-    UsableIonsPopulation(initializer::PHAREDict const& dict, GridLayout_t const& layout)
+    UsableIonsPopulation_(initializer::PHAREDict const& dict, GridLayout_t const& layout)
         : Super{dict}
         , particleDensity{this->name() + "_particleDensity", layout, HybridQuantity::Scalar::rho}
         , chargeDensity{this->name() + "_chargeDensity", layout, HybridQuantity::Scalar::rho}
@@ -76,10 +76,12 @@ public:
     _defaults::UsableTensorField_t M;
     UsableParticlesPopulation<ParticleArray_t> particles;
 };
+template<typename ParticleArray_t, std::size_t interp = 1>
+using UsableIonsPopulation = UsableIonsPopulation_<UsableIonsDefaultTypes<ParticleArray_t, interp>>;
 
 
 template<typename _defaults>
-class UsableIons
+class UsableIons_
     : public Ions<typename _defaults::IonPopulation_t, typename _defaults::GridLayout_t>
 {
     using GridLayout_t = _defaults::GridLayout_t;
@@ -105,7 +107,7 @@ class UsableIons
     }
 
 public:
-    UsableIons(GridLayout_t const& layout, std::vector<std::string> const& pop_names)
+    UsableIons_(GridLayout_t const& layout, std::vector<std::string> const& pop_names)
         : Super{super(pop_names)}
         , massDensity{"massDensity", layout, HybridQuantity::Scalar::rho}
         , chargeDensity{"chargeDensity", layout, HybridQuantity::Scalar::rho}
@@ -125,8 +127,8 @@ public:
             Super::getRunTimeResourcesViewList().emplace_back(*pop);
     }
 
-    UsableIons(GridLayout_t const& layout, std::string const& pop_name)
-        : UsableIons{layout, std::vector<std::string>{pop_name}}
+    UsableIons_(GridLayout_t const& layout, std::string const& pop_name = "protons")
+        : UsableIons_{layout, std::vector<std::string>{pop_name}}
     {
     }
 
@@ -138,16 +140,10 @@ public:
     _defaults::Grid_t massDensity, chargeDensity;
     _defaults::UsableVecField_t Vi;
     _defaults::UsableTensorField_t M;
-    std::vector<UsableIonsPopulation<_defaults>> populations;
+    std::vector<UsableIonsPopulation_<_defaults>> populations;
 };
-
 template<typename ParticleArray_t, std::size_t interp = 1>
-using UsableIonsPopulation_t
-    = UsableIonsPopulation<UsableIonsDefaultTypes<ParticleArray_t, interp>>;
-
-
-template<typename ParticleArray_t, std::size_t interp = 1>
-using UsableIons_t = UsableIons<UsableIonsDefaultTypes<ParticleArray_t, interp>>;
+using UsableIons = UsableIons_<UsableIonsDefaultTypes<ParticleArray_t, interp>>;
 
 
 } // namespace PHARE::core
