@@ -20,6 +20,7 @@ class DictionaryException : public std::exception
 public:
     DictionaryException() = default;
     DictionaryException(auto const& k, auto const& v) { (*this)(k, v); }
+    DictionaryException(auto const& cause) { (*this)("cause", cause); }
 
     using Dict_t = cppdict::Dict<std::string>;
 

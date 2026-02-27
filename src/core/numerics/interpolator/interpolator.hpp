@@ -468,41 +468,47 @@ public:
      *  - then it uses Interpol<> to calculate the interpolation of E and B components
      * onto the particle.
      */
+    template<typename Particle_t, typename GridLayout, typename VecField, typename Field>
+    void particleToMesh(Particle_t const& particle, Field& particleDensity, Field& chargeDensity,
+                        VecField& flux, GridLayout const& layout, double coef = 1.)
+    {
+        auto const& startIndex_           = primal_startIndex_;
+        auto const& weights_              = primal_weights_;
+        auto const& [xFlux, yFlux, zFlux] = flux();
+
+        indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, particle.iCell,
+                                                             particle.delta);
+
+        particleToMesh_(
+            particleDensity, particle, [](auto const& /*part*/) { return 1.; }, startIndex_,
+            weights_, coef);
+        particleToMesh_(
+            chargeDensity, particle, [](auto const& part) { return part.charge; }, startIndex_,
+            weights_, coef);
+        particleToMesh_(
+            xFlux, particle, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
+            coef);
+        particleToMesh_(
+            yFlux, particle, [](auto const& part) { return part.v[1]; }, startIndex_, weights_,
+            coef);
+        particleToMesh_(
+            zFlux, particle, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
+            coef);
+    }
+
+
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
     inline void operator()(ParticleRange& particleRange, Field& particleDensity,
                            Field& chargeDensity, VecField& flux, GridLayout const& layout,
                            double coef = 1.)
     {
-        auto begin                        = particleRange.begin();
-        auto end                          = particleRange.end();
-        auto& startIndex_                 = primal_startIndex_;
-        auto& weights_                    = primal_weights_;
-        auto const& [xFlux, yFlux, zFlux] = flux();
-
+        auto const end = particleRange.end();
 
         PHARE_LOG_START(3, "ParticleToMesh::operator()");
 
-        for (auto currPart = begin; currPart != end; ++currPart)
-        {
-            indexAndWeights_<QtyCentering, QtyCentering::primal>(layout, currPart->iCell,
-                                                                 currPart->delta);
+        for (auto currPart = particleRange.begin(); currPart != end; ++currPart)
+            particleToMesh(*currPart, particleDensity, chargeDensity, flux, layout, coef);
 
-            particleToMesh_(
-                particleDensity, *currPart, [](auto const& part) { return 1.; }, startIndex_,
-                weights_, coef);
-            particleToMesh_(
-                chargeDensity, *currPart, [](auto const& part) { return part.charge; }, startIndex_,
-                weights_, coef);
-            particleToMesh_(
-                xFlux, *currPart, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
-                coef);
-            particleToMesh_(
-                yFlux, *currPart, [](auto const& part) { return part.v[1]; }, startIndex_, weights_,
-                coef);
-            particleToMesh_(
-                zFlux, *currPart, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
-                coef);
-        }
         PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
     }
     template<typename ParticleRange, typename VecField, typename GridLayout, typename Field>
