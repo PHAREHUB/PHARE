@@ -23,7 +23,7 @@ class Initialization2DTest(InitializationTest):
     @data(*interp_orders)
     def test_B_is_as_provided_by_user(self, interp_order):
         print(f"\n{self._testMethodName}_{ndim}d")
-        self._test_B_is_as_provided_by_user(ndim, interp_order, nbr_part_per_cell=ppc)
+        self._test_B_is_as_provided_by_user(ndim, interp_order, ppc=ppc)
 
     @data(*interp_orders)
     def test_bulkvel_is_as_provided_by_user(self, interp_order):
@@ -39,7 +39,7 @@ class Initialization2DTest(InitializationTest):
     def test_density_decreases_as_1overSqrtN(self, interp_order):
         print(f"{self._testMethodName}_{ndim}d")
         self._test_density_decreases_as_1overSqrtN(
-            ndim, interp_order, np.asarray([50, 500, 1000, 2222]), cells=220
+            ndim, interp_order, np.asarray([50, 500, 1000, 2222]), cells=100
         )
 
 

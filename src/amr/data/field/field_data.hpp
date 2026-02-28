@@ -33,7 +33,8 @@ namespace amr
         using value_type = Grid_t::value_type;
 
     private:
-        using SetEqualOp = core::Equals<value_type>;
+        using SetEqualOp          = core::Equals<value_type>;
+        auto constexpr static NaN = std::numeric_limits<value_type>::quiet_NaN();
 
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
@@ -53,7 +54,7 @@ namespace amr
                   std::string name, GridLayoutT const& layout, PhysicalQuantity qty)
             : SAMRAI::hier::PatchData(domain, ghost)
             , gridLayout{layout}
-            , field(name, qty, gridLayout.allocSize(qty))
+            , field(name, layout, qty, NaN)
             , quantity_{qty}
         {
         } //
@@ -91,7 +92,7 @@ namespace amr
         {
             Super::putToRestart(restart_db);
 
-            restart_db->putVector("field_" + field.name(), field.vector());
+            restart_db->putDoubleArray("field_" + field.name(), field.data(), field.size());
         };
 
 

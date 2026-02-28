@@ -135,6 +135,55 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
             }
         }
     }
+    if constexpr (dimension == 3)
+    {
+        auto const& [start_y, __]
+            = layout.physicalStartToEnd(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Y);
+        auto const& [start_z, ___]
+            = layout.physicalStartToEnd(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Z);
+
+        auto const& end_y = layout.nbrCells()[1] - 1;
+        auto const& end_z = layout.nbrCells()[2] - 1;
+
+        for (auto iTag_x = 0u, ix = start_x; iTag_x <= end_x; ++ix, ++iTag_x)
+        {
+            for (auto iTag_y = 0u, iy = start_y; iTag_y <= end_y; ++iy, ++iTag_y)
+            {
+                for (auto iTag_z = 0u, iz = start_z; iTag_z <= end_z; ++iz, ++iTag_z)
+                {
+                    auto const field_diff = [&](auto const& F) {
+                        auto const delta_2x = std::abs(F(ix + 2, iy, iz) - F(ix, iy, iz));
+                        auto const delta_2y = std::abs(F(ix, iy + 2, iz) - F(ix, iy, iz));
+                        auto const delta_2z = std::abs(F(ix, iy, iz + 2) - F(ix, iy, iz));
+                        auto const delta_x  = std::abs(F(ix + 1, iy, iz) - F(ix, iy, iz));
+                        auto const delta_y  = std::abs(F(ix, iy + 1, iz) - F(ix, iy, iz));
+                        auto const delta_z  = std::abs(F(ix, iy, iz + 1) - F(ix, iy, iz));
+
+                        auto const criter_x = delta_2x / (1 + delta_x);
+                        auto const criter_y = delta_2y / (1 + delta_y);
+                        auto const criter_z = delta_2z / (1 + delta_z);
+
+                        return std::make_tuple(criter_x, criter_y, criter_z);
+                    };
+
+                    auto const& [Bx_x, Bx_y, Bx_z] = field_diff(Bx);
+                    auto const& [By_x, By_y, By_z] = field_diff(By);
+                    auto const& [Bz_x, Bz_y, Bz_z] = field_diff(Bz);
+                    auto const crit
+                        = std::max({Bx_x, Bx_y, Bx_z, By_x, By_y, By_z, Bz_x, Bz_y, Bz_z});
+
+                    if (crit > threshold_)
+                    {
+                        tagsv(iTag_x, iTag_y, iTag_z) = 1;
+                    }
+                    else
+                    {
+                        tagsv(iTag_x, iTag_y, iTag_z) = 0;
+                    }
+                }
+            }
+        }
+    }
 }
 } // namespace PHARE::amr
 

@@ -7,6 +7,7 @@
 
 
 #include <array>
+#include <optional>
 #include <string>
 #include <cstddef>
 #include <cassert>
@@ -35,12 +36,14 @@ public:
 
 
     Grid()                              = delete;
+    Grid(Grid const& source)            = default;
     Grid(Grid&& source)                 = default;
     Grid& operator=(Grid&& source)      = delete;
     Grid& operator=(Grid const& source) = delete;
 
     template<typename... Dims>
     Grid(std::string const& name, PhysicalQuantity qty, Dims... dims)
+        requires(std::is_integral_v<Dims> && ...)
         : Super{dims...}
         , name_{name}
         , qty_{qty}
@@ -48,47 +51,22 @@ public:
         static_assert(sizeof...(Dims) == dimension, "Invalid dimension");
     }
 
-    template<FloatingPoint U = value_type, std::size_t dim>
-    Grid(std::string const& name, PhysicalQuantity qty, std::array<std::uint32_t, dim> const& dims,
-         value_type value = static_cast<U>(std::nan("")))
+    Grid(std::string const& name, PhysicalQuantity qty,
+         std::array<std::uint32_t, dimension> const& dims,
+         std::optional<value_type> const value = std::nullopt)
         : Super{dims, value}
         , name_{name}
         , qty_{qty}
     {
     }
 
-    template<FloatingPoint U = value_type, typename GridLayout_t>
-    Grid(std::string const& name, GridLayout_t const& layout, PhysicalQuantity qty,
-         value_type value = static_cast<U>(std::nan("")))
-        : Super{layout.allocSize(qty), value}
-        , name_{name}
-        , qty_{qty}
-    {
-    }
-
-    template<std::size_t dim>
-        requires(!FloatingPoint<value_type>)
-    Grid(std::string const& name, PhysicalQuantity qty, std::array<std::uint32_t, dim> const& dims)
-        : Super{dims}
-        , name_{name}
-        , qty_{qty}
-    {
-    }
-
     template<typename GridLayout_t>
-        requires(!FloatingPoint<value_type>)
-    Grid(std::string const& name, GridLayout_t const& layout, PhysicalQuantity qty)
-        : Super{layout.allocSize(qty)}
-        , name_{name}
-        , qty_{qty}
+    Grid(std::string const& name, GridLayout_t const& layout, PhysicalQuantity qty,
+         std::optional<value_type> const value = std::nullopt)
+        : Grid{name, qty, layout.allocSize(qty), value}
     {
     }
-    Grid(Grid const& source) // let field_ default
-        : Super{source}
-        , name_{source.name()}
-        , qty_{source.physicalQuantity()}
-    {
-    }
+
 
     NO_DISCARD std::string name() const { return name_; }
 

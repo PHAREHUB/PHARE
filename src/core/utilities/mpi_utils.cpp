@@ -1,3 +1,7 @@
+//
+
+#include "core/errors.hpp"
+
 #include "mpi_utils.hpp"
 
 namespace PHARE::core::mpi
@@ -16,16 +20,6 @@ int rank()
     return mpi_rank;
 }
 
-std::size_t max(std::size_t const local, int mpi_size)
-{
-    if (mpi_size == 0)
-        MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
-
-    auto perMPI = collect(local, mpi_size);
-    return *std::max_element(std::begin(perMPI), std::end(perMPI));
-}
-
-
 
 bool any(bool b)
 {
@@ -34,10 +28,32 @@ bool any(bool b)
     return global_sum > 0;
 }
 
+bool any_errors()
+{
+    PHARE_DEBUG_DO({ return any(core::Errors::instance().any()); }) // ALLREDUCE!
+    return false;
+}
+
+
+void log_error(std::string const key, std::string const val)
+{
+#ifdef NDEBUG
+    MPI_Abort(MPI_COMM_WORLD, -1);
+#endif
+    core::Errors::instance().log(key, val);
+}
 
 void barrier()
 {
     MPI_Barrier(MPI_COMM_WORLD);
+}
+
+
+void debug_barrier()
+{
+#if PHARE_DEBUG_BARRIER
+    barrier();
+#endif
 }
 
 

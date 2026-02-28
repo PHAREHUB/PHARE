@@ -64,12 +64,6 @@ def NO_GUI():
     mpl.use("Agg")
 
 
-def getSimulation():
-    from .global_vars import sim
-
-    return sim
-
-
 def _patch_data_ids(restart_file_dir):
     """
     for restarts we save samrai patch data ids to the restart files, which we access from here
@@ -125,9 +119,13 @@ def clearDict():
     pp.stop()
 
 
-def populateDict():
-    from .global_vars import sim as simulation
+def populateDict(simulation=None):
     import pybindlibs.dictator as pp
+
+    if simulation is None:
+        from .global_vars import sim
+
+        simulation = sim
 
     # pybind complains if receiving wrong type
     def add_int(path, val):
@@ -365,7 +363,7 @@ def populateDict():
         if "dir" in restart_options:
             restart_file_path = restart_options["dir"]
 
-        if "restart_time" in restart_options and restart_options["restart_time"] > 0:
+        if "restart_time" in restart_options:
             from pyphare.cpp import cpp_etc_lib
 
             restart_time = restart_options["restart_time"]

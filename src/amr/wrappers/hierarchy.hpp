@@ -8,11 +8,10 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
-#include "initializer/data_provider.hpp"
-
 #include "amr/samrai.hpp"
 #include "amr/amr_constants.hpp"
 
+#include "initializer/data_provider.hpp"
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>

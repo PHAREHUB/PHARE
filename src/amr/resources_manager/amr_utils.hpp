@@ -345,4 +345,14 @@ namespace amr
 } // namespace amr
 } // namespace PHARE
 
+namespace PHARE::amr{
+
+template<typename Box_t>
+NO_DISCARD Box_t coarsen_box(Box_t const& box)
+{
+    return Box_t{toCoarseIndex(box.lower), toCoarseIndex(box.upper)};
+}
+
+}
+
 #endif // UTILS_HPP

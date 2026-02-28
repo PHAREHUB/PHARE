@@ -26,8 +26,13 @@
 #include <string>
 
 
+
+
 namespace PHARE
 {
+
+static inline auto const SIM_REPORT_N = core::get_env_as("PHARE_REPORT_SUMMARY", std::size_t{0});
+
 class ISimulator
 {
 public:
@@ -36,8 +41,8 @@ public:
     virtual double currentTime() = 0;
     virtual double timeStep()    = 0;
 
-    virtual void initialize()         = 0;
-    virtual double advance(double dt) = 0;
+    virtual void initialize()              = 0;
+    virtual std::string advance(double dt) = 0;
 
     virtual std::vector<int> const& domainBox() const    = 0;
     virtual std::vector<double> const& cellWidth() const = 0;
@@ -99,7 +104,7 @@ public:
     NO_DISCARD double currentTime() override { return currentTime_; }
 
     void initialize() override;
-    double advance(double dt) override;
+    std::string advance(double dt) override;
 
     std::vector<int> const& domainBox() const override { return hierarchy_->domainBox(); }
     std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
@@ -171,17 +176,18 @@ private:
     std::vector<PHARE::amr::MessengerDescriptor> descriptors_;
     MessengerFactory messengerFactory_;
 
-    float x_lo_[dimension];
-    float x_up_[dimension];
+
     int maxLevelNumber_;
     double dt_;
-    int timeStepNbr_           = 0;
-    double startTime_          = 0;
-    double finalTime_          = 0;
-    double currentTime_        = 0;
-    bool isInitialized         = false;
-    std::size_t fineDumpLvlMax = 0;
-    bool allowEmergencyDumps   = false;
+    int timeStepNbr_               = 0;
+    double startTime_              = 0;
+    double finalTime_              = 0;
+    double currentTime_            = 0;
+    std::size_t fineDumpLvlMax     = 0;
+    std::size_t summaryCadenceIdx_ = 0;
+    bool isInitialized             = false;
+
+    bool allowEmergencyDumps = false;
 
     std::shared_ptr<ResourceManager_t> resman_ptr;
 
@@ -357,8 +363,12 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
+    if (!hierarchy_)
+        throw std::runtime_error("NO HIERARCHY!");
+
     resman_ptr   = std::make_shared<ResourceManager_t>();
     currentTime_ = restart_time(dict);
+    finalTime_ += currentTime_; // final time is from timestep * timestep_nbr!
 
     if (dict["simulation"].contains("restarts"))
         rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *resman_ptr,
@@ -425,7 +435,7 @@ void Simulator<opts>::initialize()
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any(core::Errors::instance().any()))
+    if (core::mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)
@@ -438,17 +448,18 @@ void Simulator<opts>::initialize()
 
     if (hierarchy_->isFromRestart())
         hierarchy_->closeRestartFile();
+
+    core::mpi::debug_barrier();
 }
 
 
 
 
 template<auto opts>
-double Simulator<opts>::advance(double dt)
+std::string Simulator<opts>::advance(double dt)
 {
     PHARE_LOG_SCOPE(1, "Simulator::advance");
 
-    double dt_new                    = 0;
     std::optional<std::string> error = std::nullopt;
 
     try
@@ -456,7 +467,7 @@ double Simulator<opts>::advance(double dt)
         if (!integrator_)
             throw std::runtime_error("Error - no valid integrator in the simulator");
 
-        dt_new       = integrator_->advance(dt);
+        integrator_->advance(dt);
         currentTime_ = startTime_ + ((*timeStamper) += dt);
     }
     catch (core::DictionaryException const& ex)
@@ -476,7 +487,7 @@ double Simulator<opts>::advance(double dt)
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any(core::Errors::instance().any()))
+    if (core::mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)
@@ -484,7 +495,15 @@ double Simulator<opts>::advance(double dt)
         throw std::runtime_error("forcing error");
     }
 
-    return dt_new;
+    ++summaryCadenceIdx_;
+
+    if (SIM_REPORT_N > 0 and SIM_REPORT_N == summaryCadenceIdx_)
+    {
+        summaryCadenceIdx_ = 0;
+        return hybridModel_->summarize(*hierarchy_);
+    }
+
+    return "";
 }
 
 template<auto opts>

@@ -1,17 +1,17 @@
 #ifndef PHARE_FIELD_REFINE_OPERATOR_HPP
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
-
-
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/def.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/box/box_span.hpp"
 
 
 #include "amr/data/field/field_data.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
-#include "field_linear_refine.hpp"
+
+// #include "field_linear_refine.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/RefineOperator.h>
@@ -27,13 +27,92 @@ using core::dirX;
 using core::dirY;
 using core::dirZ;
 
-
-
-template<typename Dst>
-void refine_field(Dst& destinationField, auto& sourceField, auto& intersectionBox, auto& refiner)
+template<typename Field_t>
+struct CrossLevelIndices
 {
-    for (auto const bix : phare_box_from<Dst::dimension>(intersectionBox))
-        refiner(sourceField, destinationField, bix);
+    auto constexpr static dim = Field_t::dimension;
+    using FieldRow_t          = core::FieldBoxPointRows<Field_t>;
+    using FieldRow_ct         = core::FieldBoxPointRows<Field_t const>;
+
+
+    core::FieldBox<Field_t>& dst;
+    core::FieldBox<Field_t const> const& src;
+
+    core::FieldBoxSpan<Field_t, FieldRow_t> dst_lcl_span
+        = core::make_field_box_point_span(dst.lcl_box, dst.field);
+    core::FieldBoxSpan<Field_t const, FieldRow_ct> src_lcl_span
+        = core::make_field_box_point_span(src.lcl_box, src.field);
+
+    core::BoxSpan<int, dim> dst_amr_span = core::make_box_span(dst.amr_box);
+    core::BoxSpan<int, dim> src_amr_span = core::make_box_span(src.amr_box);
+};
+
+
+
+
+template<typename Field_t>
+void refine_field(core::FieldBox<Field_t>& dst, core::FieldBox<Field_t const>& src, auto& refiner)
+{
+    auto constexpr static IDX = Field_t::dimension - 1;
+
+    CrossLevelIndices<Field_t> indices{dst, src};
+
+    auto d_f_slabs = indices.dst_lcl_span.begin();
+    auto d_b_slabs = indices.dst_amr_span.begin();
+    auto s_f_slabs = indices.src_lcl_span.begin();
+    auto s_b_slabs = indices.src_amr_span.begin();
+
+    auto slab_idx = indices.dst_amr_span.slab_begin();
+
+    for (; d_f_slabs != indices.dst_lcl_span.end(); ++d_f_slabs, ++d_b_slabs, ++slab_idx)
+    {
+        auto d_f_rows = d_f_slabs.begin();
+        auto s_f_rows = s_f_slabs.begin();
+        auto d_b_rows = d_b_slabs.begin();
+        auto s_b_rows = s_b_slabs.begin();
+
+        auto row_idx = d_b_slabs.row_begin();
+        for (; d_f_rows != d_f_slabs.end(); ++d_f_rows, ++d_b_rows, ++row_idx)
+        {
+            auto const& [d_amr_point, d_size] = *d_b_rows;
+            auto const& [s_amr_point, s_size] = *s_b_rows;
+
+            auto&& [d_row, d_lcl_point] = *d_f_rows;
+            auto&& [s_row, s_lcl_point] = *s_f_rows;
+
+            std::size_t dst_idx = 0;
+            std::size_t src_idx = 0;
+            for (; dst_idx < d_row.size(); ++dst_idx)
+            {
+                assert(s_amr_point == toCoarseIndex(d_amr_point));
+
+                refiner(src.field, dst.field, d_amr_point, s_amr_point, d_lcl_point, s_lcl_point,
+                        d_row[dst_idx], s_row[src_idx]);
+
+                if (d_amr_point[IDX] % 2 != 0)
+                {
+                    ++src_idx;
+                    ++s_lcl_point[IDX];
+                    ++s_amr_point[IDX];
+                }
+
+                ++d_amr_point[IDX];
+                ++d_lcl_point[IDX];
+            }
+
+            if (row_idx % 2 != 0)
+            {
+                ++s_f_rows;
+                ++s_b_rows;
+            }
+        }
+
+        if (slab_idx % 2 != 0)
+        {
+            ++s_f_slabs;
+            ++s_b_slabs;
+        }
+    }
 }
 
 
@@ -112,8 +191,10 @@ public:
         {
             // we compute the intersection with the destination,
             // and then we apply the refine operation on each fine index.
-            auto intersectionBox = destFieldBox * box;
-            refine_field(destinationField, sourceField, intersectionBox, refiner);
+            auto const dst_overlap = phare_box_from<dimension>(destFieldBox * box);
+            core::FieldBox dst{destinationField, destLayout, dst_overlap};
+            core::FieldBox src{sourceField, srcLayout, coarsen_box(dst_overlap)};
+            refine_field(dst, src, refiner);
         }
     }
 };
@@ -178,6 +259,8 @@ public:
         auto const& sourceFields = TensorFieldDataT::getFields(source, sourceId);
         auto const& srcLayout    = TensorFieldDataT::getLayout(source, sourceId);
 
+        PHARE_LOG_SCOPE(2, "TensorFieldRefineOperator::refine::" + sourceFields[0].name());
+
         // We assume that quantity are all the same.
         // Note that an assertion will be raised in refineIt operator
         for (std::uint16_t c = 0; c < N; ++c)
@@ -199,8 +282,13 @@ public:
             {
                 // we compute the intersection with the destination,
                 // and then we apply the refine operation on each fine index.
-                auto const intersectionBox = destFieldBox * box;
-                refine_field(destinationFields[c], sourceFields[c], intersectionBox, refiner);
+                auto const dst_overlap = phare_box_from<dimension>(destFieldBox * box);
+                core::FieldBox dst{destinationFields[c], destLayout, dst_overlap};
+
+                auto const src_overlap
+                    = *(coarsen_box(dst_overlap) * srcLayout.AMRGhostBoxFor(sourceFields[c]));
+                core::FieldBox src{sourceFields[c], srcLayout, src_overlap};
+                refine_field(dst, src, refiner);
             }
         }
     }
