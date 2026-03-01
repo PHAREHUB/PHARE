@@ -7,6 +7,8 @@
 #include <cstdint>
 #include <utility>
 
+#include "core/def.hpp"
+
 #if !defined(PHARE_LOG_LEVEL)
 #define PHARE_LOG_LEVEL 0 // 0 == off
 #endif
