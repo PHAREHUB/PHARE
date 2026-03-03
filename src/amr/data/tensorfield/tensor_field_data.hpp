@@ -50,7 +50,7 @@ public:
     using value_type = Grid_t::value_type;
 
 private:
-    using SetEqualOp = core::Equals<value_type>;
+    using SetEqualOp = core::SetEqual<value_type>;
 
 public:
     static constexpr std::size_t dimension    = GridLayoutT::dimension;
