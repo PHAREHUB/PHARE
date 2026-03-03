@@ -391,6 +391,96 @@ TEST(MaskedView2d, maskOps2)
                                                                   + Mask{0u}.nCells(array));
 }
 
+TEST(MaskedView3d, maskOps3)
+{
+    constexpr std::size_t dim      = 3;
+    constexpr std::uint32_t size0  = 10;
+    constexpr std::uint32_t sizeCu = size0 * size0 * size0;
+    using Mask                     = PHARE::core::NdArrayMask;
+
+
+    {
+        NdArrayVector<dim> array{{size0, size0, size0}, 0.};
+        EXPECT_EQ(std::accumulate(array.begin(), array.end(), 0), 0);
+        array[Mask{0}] = 1;
+
+        // outter cells of a 10**3 cube = 10**3 - 8**3 = 488
+        EXPECT_EQ(sum(array), 488);
+
+
+        std::fill(array.begin(), array.end(), 1);
+        array[Mask{0}] = 0;
+        EXPECT_EQ(sum(array), sizeCu - 488);
+        array[Mask{1}] >> array[Mask{0}];
+        EXPECT_EQ(sum(array), sizeCu);
+    }
+
+
+    PHARE::core::NdArrayVector<3> array({size0, size0, size0}, 0.);
+
+    array[Mask{0}] = 1;
+    EXPECT_EQ(sum(array), 488);
+    array[Mask{1}] >> array[Mask{0}];
+    EXPECT_EQ(sum(array), 0);
+
+    array[Mask{2}] = 1;
+    EXPECT_EQ(sum(array), 152);
+    array[Mask{1}] = 1;
+    EXPECT_EQ(sum(array), 448);
+    array[Mask{1}] = 0;
+    EXPECT_EQ(sum(array), 152);
+
+    array[Mask{2}] >> array[Mask{1}];
+    EXPECT_EQ(sum(array), 448);
+    array[Mask{2}] = 0;
+    EXPECT_EQ(sum(array), 296);
+
+    EXPECT_EQ(Mask{1}.nCells(array), 296);
+    EXPECT_EQ(Mask{2}.nCells(array), 152);
+}
+
+TEST(MaskedView3d, operatorRightShiftCoordinatesCorrect)
+{
+    constexpr std::size_t dim     = 3;
+    constexpr std::uint32_t size0 = 10;
+    using Mask                    = PHARE::core::NdArrayMask;
+
+    // Create source and destination arrays
+    NdArrayVector<dim> outer{{size0, size0, size0}, 0.};
+    NdArrayVector<dim> inner{{size0, size0, size0}, 0.};
+
+    // Fill outer's Mask{1} region (second ghost layer) with 1.0
+    outer[Mask{1}] = 1.0;
+
+    // Copy from outer's Mask{1} to inner's Mask{0}
+    // This exercises all 6 face sections of operator>>
+    outer[Mask{1}] >> inner[Mask{0}];
+
+    // If coordinates are correct, all 488 cells of Mask{0} should be 1.0
+
+    EXPECT_DOUBLE_EQ(sum(inner), 488.0);
+
+    // Detailed cell-by-cell verification to pinpoint failures
+    for (std::uint32_t i = 0; i < size0; ++i)
+    {
+        for (std::uint32_t j = 0; j < size0; ++j)
+        {
+            for (std::uint32_t k = 0; k < size0; ++k)
+            {
+                bool is_mask0 = (i == 0 || i == size0 - 1 || j == 0 || j == size0 - 1 || k == 0
+                                 || k == size0 - 1);
+                if (is_mask0)
+                {
+                    EXPECT_DOUBLE_EQ(inner(i, j, k), 1.0)
+                        << "Mask{0} cell (" << i << "," << j << "," << k
+                        << ") should be 1.0 but is " << inner(i, j, k);
+                }
+            }
+        }
+    }
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
