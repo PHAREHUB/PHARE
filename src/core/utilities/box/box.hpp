@@ -73,7 +73,6 @@ struct Box
         return Box{lower - that.lower, upper - that.upper};
     }
 
-    NO_DISCARD bool isEmpty() const { return (*this) == Box{}; }
 
     void grow(Type const& size)
     {
@@ -341,11 +340,7 @@ NO_DISCARD Box<Type, dim> shift(Box<Type, dim> const& box, Shifter const& offset
     return copy;
 }
 
-template<typename Type, std::size_t dim>
-NO_DISCARD Box<Type, dim> emptyBox()
-{
-    return Box<Type, dim>{};
-}
+
 
 template<typename Type, std::size_t dim>
 auto& operator<<(std::ostream& os, Box<Type, dim> const& box)
