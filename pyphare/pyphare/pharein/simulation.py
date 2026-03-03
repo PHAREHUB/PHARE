@@ -166,7 +166,12 @@ def check_time(**kwargs):
             + " or 'final_time' and 'time_step_nbr'"
         )
 
-    start_time = kwargs.get("restart_options", {}).get("restart_time", 0)
+    def _start_time():
+        if restart_options := kwargs.get("restart_options", {}):
+            return restart_options.get("restart_time", 0)
+        return 0
+
+    start_time = _start_time()
 
     def _final_time():
         if "final_time" in kwargs:
@@ -531,9 +536,10 @@ def check_restart_options(**kwargs):
         "restart_time",  # number or "auto"
         "keep_last",  # delete obsolete
     ]
+
     restart_options = kwargs.get("restart_options", None)
 
-    if restart_options is not None:
+    if restart_options:
         for key in restart_options.keys():
             if key not in valid_keys:
                 raise ValueError(
@@ -553,8 +559,11 @@ def check_restart_options(**kwargs):
                 f"Invalid restart mode {mode}, valid modes are {valid_modes}"
             )
 
-        if restart_time := restarts.restart_time(restart_options):
+        restart_time = restarts.restart_time(restart_options)
+        if restart_time is not None:
             restart_options["restart_time"] = restart_time
+        elif "restart_time" in restart_options:
+            restart_options.pop("restart_time")  # auto with no existing file to use
 
     return restart_options
 
@@ -650,7 +659,7 @@ def check_clustering(**kwargs):
 
 
 def checker(func):
-    def wrapper(simulation_object, **kwargs):
+    def wrapper(simulation_object, **kwargs_in):
         accepted_keywords = [
             "domain_size",
             "cells",
@@ -684,6 +693,7 @@ def checker(func):
             "write_reports",
         ]
 
+        kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
         accepted_keywords += check_optional_keywords(**kwargs)
 
         wrong_kwds = phare_utilities.not_in_keywords_list(accepted_keywords, **kwargs)
@@ -702,6 +712,7 @@ def checker(func):
 
         kwargs["clustering"] = check_clustering(**kwargs)
 
+        kwargs["restart_options"] = check_restart_options(**kwargs)
         time_step_nbr, time_step, final_time = check_time(**kwargs)
         kwargs["time_step_nbr"] = time_step_nbr
         kwargs["time_step"] = time_step
@@ -716,7 +727,6 @@ def checker(func):
 
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
-        kwargs["restart_options"] = check_restart_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
 
@@ -1022,9 +1032,9 @@ class Simulation(object):
         return 0
 
     def is_from_restart(self):
-        return (
-            self.restart_options is not None and "restart_time" in self.restart_options
-        )
+        if self.restart_options is not None and "restart_time" in self.restart_options:
+            return self.restart_options["restart_time"] is not None
+        return False
 
     def __getattr__(
         self, name
