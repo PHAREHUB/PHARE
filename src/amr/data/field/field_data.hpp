@@ -6,6 +6,7 @@
 #include "core/logger.hpp"
 #include "core/data/field/field_box.hpp"
 
+#include "amr/samrai.hpp" // restarts
 #include "amr/resources_manager/amr_utils.hpp"
 
 #include "field_geometry.hpp"
@@ -82,16 +83,14 @@ namespace amr
         {
             Super::getFromRestart(restart_db);
 
-            assert(field.vector().size() > 0);
-            restart_db->getDoubleArray("field_" + field.name(), field.vector().data(),
-                                       field.vector().size()); // do not reallocate!
+            getVectorFromRestart(*restart_db, "field_" + field.name(), field.vector());
         }
 
         void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& restart_db) const override
         {
             Super::putToRestart(restart_db);
 
-            restart_db->putVector("field_" + field.name(), field.vector());
+            putVectorToRestart(*restart_db, "field_" + field.name(), field.vector());
         };
 
 
