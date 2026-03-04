@@ -65,8 +65,6 @@ namespace core
     };
 
 
-
-
     template<typename T>
     struct is_std_vector : std::false_type
     {
