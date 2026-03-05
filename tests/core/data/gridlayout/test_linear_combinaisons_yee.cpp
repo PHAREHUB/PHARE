@@ -207,3 +207,18 @@ TEST(JzToEz, combinaisonOk)
 {
     runTestFile("linear_coefs_yee_JzToEz.txt", []<typename Layout>() { return Layout::JzToEz(); });
 }
+
+TEST(BxToEx, combinaisonOk)
+{
+    runTestFile("linear_coefs_yee_BxToEx.txt", []<typename Layout>() { return Layout::BxToEx(); });
+}
+
+TEST(ByToEy, combinaisonOk)
+{
+    runTestFile("linear_coefs_yee_ByToEy.txt", []<typename Layout>() { return Layout::ByToEy(); });
+}
+
+TEST(BzToEz, combinaisonOk)
+{
+    runTestFile("linear_coefs_yee_BzToEz.txt", []<typename Layout>() { return Layout::BzToEz(); });
+}

@@ -332,6 +332,118 @@ def JzToEz(dim, interpOrder):
         return tupleToString((dim, interpOrder, 1, 0, 0, 0, 1.0))
 
 
+def BxToEx(dim, interpOrder):
+    """
+    pdd to dpp
+    order 2
+    """
+    if dim == 1:
+        return tupleToString((
+            dim, interpOrder, 2,
+            0,
+            1,
+            0.5
+        ))
+    if dim == 2:
+        return tupleToString((
+            dim, interpOrder, 4,
+            0, -1,
+            0,  0,
+            1, -1,
+            1,  0,
+            0.25
+        ))
+    if dim == 3:
+        return tupleToString((
+            dim, interpOrder, 8,
+
+            0, -1, -1,
+            0, -1,  0,
+            0,  0, -1,
+            0,  0,  0,
+            1, -1, -1,
+            1, -1,  0,
+            1,  0, -1,
+            1,  0,  0,
+
+            0.125
+        ))
+
+def ByToEy(dim, interpOrder):
+    """
+    dpd to pdp
+    order 2
+    """
+    if dim == 1:
+        return tupleToString((
+            dim, interpOrder, 2,
+            -1,
+             0,
+            0.5
+        ))
+    if dim == 2:
+        return tupleToString((
+            dim, interpOrder, 4,
+            -1, 0,
+            -1, 1,
+             0, 0,
+             0, 1,
+            0.25
+        ))
+    if dim == 3:
+        return tupleToString((
+            dim, interpOrder, 8,
+
+            -1, 0, -1,
+            -1, 0,  0,
+            -1, 1, -1,
+            -1, 1,  0,
+             0, 0, -1,
+             0, 0,  0,
+             0, 1, -1,
+             0, 1,  0,
+
+            0.125
+        ))
+
+def BzToEz(dim, interpOrder):
+    """
+    ddp to ppd
+    order 2
+    """
+
+    if dim == 1:
+        return tupleToString((
+            dim, interpOrder, 2,
+            -1,
+             0,
+            0.5
+        ))
+    if dim == 2:
+        return tupleToString((
+            dim, interpOrder, 4,
+            -1, -1,
+            -1,  0,
+             0, -1,
+             0,  0,
+            0.25
+        ))
+    if dim == 3:
+        return tupleToString((
+            dim, interpOrder, 8,
+
+            -1, -1, 0,
+            -1, -1, 1,
+            -1,  0, 0,
+            -1,  0, 1,
+             0, -1, 0,
+             0, -1, 1,
+             0,  0, 0,
+             0,  0, 1,
+
+            0.125
+        ))
+
 def main(path="./"):
     if len(sys.argv) == 2:
         path = sys.argv[1]
@@ -356,6 +468,9 @@ def main(path="./"):
         "JxToEx": JxToEx,
         "JyToEy": JyToEy,
         "JzToEz": JzToEz,
+        "BxToEx": BxToEx,
+        "ByToEy": ByToEy,
+        "BzToEz": BzToEz,
     }
 
     for case in cases:
