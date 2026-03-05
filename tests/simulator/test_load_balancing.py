@@ -15,7 +15,6 @@ from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
 
 from tests.simulator import SimulatorTest
 
-
 ph.NO_GUI()
 
 
@@ -29,22 +28,7 @@ diag_outputs = "phare_outputs/load_balancing_2d"
 timestamps = [x * time_step for x in range(time_step_nbr + 1)]
 
 
-def config(diag_dir, loadbalancing={}):
-    sim = ph.Simulation(
-        time_step_nbr=time_step_nbr,
-        time_step=time_step,
-        cells=cells,
-        dl=dl,
-        refinement="tagging",
-        max_nbr_levels=2,
-        hyper_resistivity=0.001,
-        resistivity=0.001,
-        diag_options={
-            "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
-        },
-    )
-
+def config(sim, loadbalancing={}):
     def density(x, y):
         L = sim.simulation_domain()[1]
         return (
@@ -155,7 +139,6 @@ def config(diag_dir, loadbalancing={}):
 
     if loadbalancing:
         ph.LoadBalancer(**loadbalancing)
-
     return sim
 
 
@@ -195,11 +178,25 @@ class LoadBalancingTest(SimulatorTest):
     def tearDown(self):
         ph.global_vars.sim = None
 
-    def run_sim(self, diags_dir, dic={}):
+    def run_sim(self, dic={}):
         ph.global_vars.sim = None
-        self.register_diag_dir_for_cleanup(diags_dir)
-        Simulator(config(diags_dir, dic)).run()
-        return diags_dir
+        sim = self.simulation(
+            time_step_nbr=time_step_nbr,
+            time_step=time_step,
+            cells=cells,
+            dl=dl,
+            refinement="tagging",
+            max_nbr_levels=2,
+            hyper_resistivity=0.001,
+            resistivity=0.001,
+            diag_options={
+                "format": "phareh5",
+                "options": {"dir": diag_outputs, "mode": "overwrite"},
+            },
+        )
+
+        Simulator(config(sim, dic)).run()
+        return sim.diag_options["options"]["dir"]
 
     @data(dict(auto=True, every=1))
     @unpack
@@ -209,7 +206,6 @@ class LoadBalancingTest(SimulatorTest):
 
         with self.assertRaises(RuntimeError):
             self.run_sim(
-                self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
                 dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
             )
             # does not get here
@@ -228,7 +224,6 @@ class LoadBalancingTest(SimulatorTest):
             return
 
         diag_dir = self.run_sim(
-            self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
             dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
         )
 
@@ -242,9 +237,7 @@ class LoadBalancingTest(SimulatorTest):
         if cpp.mpi_size() == 1:  # doesn't make sense
             return
 
-        diag_dir = self.run_sim(
-            self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp)
-        )
+        diag_dir = self.run_sim()
 
         if cpp.mpi_rank() == 0:
             t0_sdev = np.std(list(time_info(diag_dir).values()))
@@ -259,14 +252,11 @@ class LoadBalancingTest(SimulatorTest):
         check_time = 0.001
 
         not_hier = get_particles(
-            self.run_sim(
-                self.unique_diag_dir_for_test_case(diag_outputs + "/not", ndim, interp)
-            ),
+            self.run_sim(),
             check_time,
         )
         is_hier = get_particles(
             self.run_sim(
-                self.unique_diag_dir_for_test_case(diag_outputs, ndim, interp),
                 dict(active=True, auto=True, mode="nppc", tol=0.05),
             ),
             check_time,

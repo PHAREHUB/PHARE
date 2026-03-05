@@ -15,30 +15,13 @@ ph.NO_GUI()
 
 time_step = 0.005
 final_time = 0.005
-timestamps = [0, final_time]
+time_step_nbr = int(final_time / time_step)
+timestamps = np.arange(0, final_time + 0.01, 0.05)
 diag_base = "phare_outputs/test_run"
 
 
-def config(diag_dir):
+def config(sim):
     L = 0.5
-
-    sim = ph.Simulation(
-        time_step=time_step,
-        final_time=final_time,
-        cells=(40, 40),
-        dl=(0.40, 0.40),
-        refinement="tagging",
-        max_nbr_levels=3,
-        nesting_buffer=1,
-        clustering="tile",
-        tag_buffer="1",
-        hyper_resistivity=0.002,
-        resistivity=0.001,
-        diag_options={
-            "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
-        },
-    )
 
     def density(x, y):
         Ly = sim.simulation_domain()[1]
@@ -238,10 +221,25 @@ class RunTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def test_run(self):
-        diag_dir = self.unique_diag_dir_for_test_case(diag_base, 2, 1)
-        sim = config(diag_dir)
-        self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(sim).run().reset()
+        sim = self.simulation(
+            time_step=time_step,
+            final_time=final_time,
+            cells=(40, 40),
+            dl=(0.40, 0.40),
+            refinement="tagging",
+            max_nbr_levels=3,
+            nesting_buffer=1,
+            clustering="tile",
+            tag_buffer="1",
+            hyper_resistivity=0.002,
+            resistivity=0.001,
+            diag_options={
+                "format": "phareh5",
+                "options": {"dir": diag_base, "mode": "overwrite"},
+            },
+        )
+        diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(config(sim)).run().reset()
 
         run = Run(diag_dir)
         B = run.GetB(timestamps[-1], all_primal=False)

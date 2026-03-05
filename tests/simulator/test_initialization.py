@@ -1,4 +1,8 @@
 #
+#  Common base class across hybrid and mhd tests
+#   see
+#      tests/simulator/initialize/test_init_mhd.py
+#      tests/simulator/initialize/test_init_hybrid.py
 #
 
 
@@ -6,244 +10,15 @@ import unittest
 import numpy as np
 from ddt import ddt
 
-from pyphare import cpp
+import pyphare.pharein as ph
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
-from pyphare.pharein import ElectronModel, MaxwellianFluidModel
-from pyphare.pharein.diagnostics import (
-    ElectromagDiagnostics,
-    FluidDiagnostics,
-    ParticleDiagnostics,
-)
-from pyphare.pharein.simulation import Simulation
-from pyphare.pharesee.geometry import level_ghost_boxes
-from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
-from pyphare.pharesee.particles import aggregate as aggregate_particles
-from pyphare.simulator.simulator import Simulator
 
 from tests.simulator import SimulatorTest
 
 
 @ddt
 class InitializationTest(SimulatorTest):
-    def _density(*xyz):
-        from pyphare.pharein.global_vars import sim
-
-        hL = np.array(sim.simulation_domain()) / 2
-        _ = lambda i: -((xyz[i] - hL[i]) ** 2)
-        return 0.3 + np.exp(sum([_(i) for i in range(len(xyz))]))
-
-    def getHierarchy(
-        self,
-        ndim,
-        interp_order,
-        refinement_boxes,
-        qty,
-        diag_outputs="",
-        nbr_part_per_cell=100,
-        density=_density,
-        extra_diag_options={},
-        beam=False,
-        time_step_nbr=1,
-        smallest_patch_size=None,
-        largest_patch_size=10,
-        cells=120,
-        dl=0.1,
-        **kwargs,
-    ):
-        diag_outputs = self.unique_diag_dir_for_test_case(
-            "phare_outputs/init", ndim, interp_order, diag_outputs
-        )
-        from pyphare.pharein import global_vars
-
-        global_vars.sim = None
-
-        if smallest_patch_size is None:
-            from pyphare.pharein.simulation import check_patch_size
-
-            _, smallest_patch_size = check_patch_size(
-                ndim, interp_order=interp_order, cells=cells
-            )
-
-        extra_diag_options["mode"] = "overwrite"
-        extra_diag_options["dir"] = diag_outputs
-        self.register_diag_dir_for_cleanup(diag_outputs)
-        sim = Simulation(
-            smallest_patch_size=smallest_patch_size,
-            largest_patch_size=largest_patch_size,
-            time_step_nbr=time_step_nbr,
-            final_time=30.0,
-            boundary_types=["periodic"] * ndim,
-            cells=[cells] * ndim,
-            dl=[dl] * ndim,
-            interp_order=interp_order,
-            refinement_boxes=refinement_boxes,
-            diag_options={"format": "phareh5", "options": extra_diag_options},
-            strict=True,
-            **kwargs,
-        )
-
-        def beam_density(*xyz):
-            return np.zeros_like(xyz[0]) + 0.3
-
-        def bx(*xyz):
-            return 1.0
-
-        def by(*xyz):
-            L = sim.simulation_domain()
-            _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
-
-        def bz(*xyz):
-            L = sim.simulation_domain()
-            _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
-            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
-
-        def vx(*xyz):
-            L = sim.simulation_domain()
-            _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
-
-        def vy(*xyz):
-            L = sim.simulation_domain()
-            _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
-
-        def vz(*xyz):
-            L = sim.simulation_domain()
-            _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
-            return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
-
-        def vth(*xyz):
-            return 0.01 + np.zeros_like(xyz[0])
-
-        def vthx(*xyz):
-            return vth(*xyz)
-
-        def vthy(*xyz):
-            return vth(*xyz)
-
-        def vthz(*xyz):
-            return vth(*xyz)
-
-        protons = {
-            "charge": 1,
-            "density": density,
-            "vbulkx": vx,
-            "vbulky": vy,
-            "vbulkz": vz,
-            "vthx": vthx,
-            "vthy": vthy,
-            "vthz": vthz,
-            "nbr_part_per_cell": nbr_part_per_cell,
-            "init": {"seed": 1337},
-        }
-
-        if beam:
-            MaxwellianFluidModel(
-                bx=bx,
-                by=by,
-                bz=bz,
-                protons=protons,
-                beam={
-                    "charge": 1,
-                    "density": beam_density,
-                    "vbulkx": vx,
-                    "vbulky": vy,
-                    "vbulkz": vz,
-                    "vthx": vthx,
-                    "vthy": vthy,
-                    "vthz": vthz,
-                    "nbr_part_per_cell": nbr_part_per_cell,
-                    "init": {"seed": 1337},
-                },
-            )
-
-        else:
-            MaxwellianFluidModel(bx=bx, by=by, bz=bz, protons=protons)
-
-        ElectronModel(closure="isothermal", Te=0.12)
-
-        for quantity in ["E", "B"]:
-            ElectromagDiagnostics(
-                quantity=quantity, write_timestamps=np.zeros(time_step_nbr)
-            )
-
-        for quantity in ["charge_density", "bulkVelocity"]:
-            FluidDiagnostics(
-                quantity=quantity, write_timestamps=np.zeros(time_step_nbr)
-            )
-
-        poplist = ["protons", "beam"] if beam else ["protons"]
-        for pop in poplist:
-            for quantity in ["density", "flux"]:
-                FluidDiagnostics(
-                    quantity=quantity,
-                    write_timestamps=np.zeros(time_step_nbr),
-                    population_name=pop,
-                )
-
-            for quantity in ["domain", "levelGhost"]:
-                ParticleDiagnostics(
-                    quantity=quantity,
-                    write_timestamps=np.zeros(time_step_nbr),
-                    population_name=pop,
-                )
-
-        Simulator(global_vars.sim).initialize().reset()
-
-        eb_hier = None
-        if qty in ["e", "eb"]:
-            eb_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/EM_E.h5", hier=eb_hier
-            )
-        if qty in ["b", "eb"]:
-            eb_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/EM_B.h5", hier=eb_hier
-            )
-        if qty in ["e", "b", "eb"]:
-            return eb_hier
-
-        if qty == "moments":
-            mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_charge_density.h5"
-            )
-            mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
-            )
-            mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_density.h5", hier=mom_hier
-            )
-            mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_pop_protons_flux.h5", hier=mom_hier
-            )
-            if beam:
-                mom_hier = hierarchy_from(
-                    h5_filename=diag_outputs + "/ions_pop_beam_density.h5",
-                    hier=mom_hier,
-                )
-                mom_hier = hierarchy_from(
-                    h5_filename=diag_outputs + "/ions_pop_beam_flux.h5", hier=mom_hier
-                )
-            return mom_hier
-
-        # else particles
-
-        assert qty == "particles"
-
-        particle_hier = hierarchy_from(
-            h5_filename=diag_outputs + "/ions_pop_protons_domain.h5"
-        )
-        particle_hier = hierarchy_from(
-            h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
-            hier=particle_hier,
-        )
-
-        merge_particles(particle_hier)
-
-        return particle_hier
-
     def _test_B_is_as_provided_by_user(self, dim, interp_order, ppc=100, **kwargs):
         print(
             "test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(
@@ -265,9 +40,7 @@ class InitializationTest(SimulatorTest):
         )
         now = self.datetime_now()
 
-        from pyphare.pharein import global_vars
-
-        model = global_vars.sim.model
+        model = ph.global_vars.sim.model
 
         bx_fn = model.model_dict["bx"]
         by_fn = model.model_dict["by"]
@@ -359,9 +132,7 @@ class InitializationTest(SimulatorTest):
             **kwargs,
         )
 
-        from pyphare.pharein import global_vars
-
-        model = global_vars.sim.model
+        model = ph.global_vars.sim.model
         # protons and beam have same bulk vel here so take only proton func.
         vx_fn = model.model_dict["protons"]["vx"]
         vy_fn = model.model_dict["protons"]["vy"]
@@ -428,9 +199,7 @@ class InitializationTest(SimulatorTest):
             **kwargs,
         )
 
-        from pyphare.pharein import global_vars
-
-        model = global_vars.sim.model
+        model = ph.global_vars.sim.model
         proton_density_fn = model.model_dict["protons"]["density"]
         beam_density_fn = model.model_dict["beam"]["density"]
 
@@ -501,9 +270,7 @@ class InitializationTest(SimulatorTest):
                 dl=0.0125,
             )
 
-            from pyphare.pharein import global_vars
-
-            model = global_vars.sim.model
+            model = ph.global_vars.sim.model
             density_fn = model.model_dict["protons"]["density"]
 
             patch = hier.level(0).patches[0]
@@ -556,138 +323,6 @@ class InitializationTest(SimulatorTest):
         plt.savefig(f"noise_nppc_minus_theory_interp_{ndim}_{interp_order}.png")
         plt.close("all")
         self.assertGreater(3e-2, noiseMinusTheory[1:].mean())
-
-    def _test_nbr_particles_per_cell_is_as_provided(
-        self, ndim, interp_order, ppc=100, **kwargs
-    ):
-        ddt_test_id = self.ddt_test_id()
-        datahier = self.getHierarchy(
-            ndim,
-            interp_order,
-            {},
-            "particles",
-            diag_outputs=f"ppc/{ndim}/{interp_order}/{ddt_test_id}",
-            nbr_part_per_cell=ppc,
-            **kwargs,
-        )
-
-        if cpp.mpi_rank() > 0:
-            return
-
-        for pi, patch in enumerate(datahier.level(0).patches):
-            pd = patch.patch_datas["protons_particles"]
-            icells = pd.dataset[patch.box].iCells
-            H, edges = np.histogramdd(icells, bins=patch.box.shape)
-            self.assertTrue((H == ppc).all())
-
-    def _domainParticles_for(self, datahier, ilvl):
-        patch0 = datahier.levels()[ilvl].patches[0]
-        pop_names = [
-            key for key in patch0.patch_datas.keys() if key.endswith("particles")
-        ]
-        particlePatchDatas = {k: [] for k in pop_names}
-        for patch in datahier.levels()[ilvl].patches:
-            for pop_name, patch_data in patch.patch_datas.items():
-                particlePatchDatas[pop_name].append(patch_data)
-        return {
-            pop_name: aggregate_particles(
-                [patchData.dataset.select(patchData.box) for patchData in patchDatas]
-            )  # including patch ghost particles means duplicates
-            for pop_name, patchDatas in particlePatchDatas.items()
-        }
-
-    def _test_domainparticles_have_correct_split_from_coarser_particle(
-        self, ndim, interp_order, refinement_boxes, **kwargs
-    ):
-        print(
-            "test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(
-                ndim, interp_order
-            )
-        )
-        datahier = self.getHierarchy(
-            ndim,
-            interp_order,
-            refinement_boxes,
-            "particles",
-            cells=30,
-            **kwargs,
-        )
-
-        if cpp.mpi_rank() > 0:
-            return
-
-        from pyphare.pharein.global_vars import sim
-
-        assert sim is not None and len(sim.cells) == ndim
-
-        levels = datahier.levels()
-        self.assertTrue(len(levels) > 1)
-
-        for ilvl in range(1, len(levels)):
-            self.assertTrue(ilvl > 0)  # skip level 0
-            level = levels[ilvl]
-            coarse_particles = self._domainParticles_for(datahier, ilvl - 1)
-
-            self.assertTrue(
-                all([particles.size() > 0 for _, particles in coarse_particles.items()])
-            )
-
-            coarse_split_particles = {
-                k: particles.split(sim) for k, particles in coarse_particles.items()
-            }
-
-            for k, particles in coarse_particles.items():
-                self.assertTrue(coarse_split_particles[k].size() > 0)
-                self.assertTrue(
-                    coarse_split_particles[k].size()
-                    == particles.size() * sim.refined_particle_nbr
-                )
-
-            for patch in level.patches:
-                for pop_name in [
-                    key for key in patch.patch_datas.keys() if key.endswith("particles")
-                ]:
-                    part1 = patch.patch_datas[pop_name].dataset.select(
-                        patch.box
-                    )  # drop ghosts
-                    part2 = coarse_split_particles[pop_name].select(patch.box)
-                    self.assertEqual(part1, part2)
-
-    def _test_levelghostparticles_have_correct_split_from_coarser_particle(
-        self, datahier
-    ):
-        ndim = datahier.level(0).patches[0].box.ndim
-
-        from pyphare.pharein.global_vars import sim
-
-        assert sim is not None
-        assert len(sim.cells) == ndim
-
-        particle_level_ghost_boxes_per_level = level_ghost_boxes(datahier, "particles")
-
-        self.assertTrue(len(particle_level_ghost_boxes_per_level.items()) > 0)
-        for ilvl, particle_gaboxes in particle_level_ghost_boxes_per_level.items():
-            self.assertTrue(ilvl > 0)  # has no level 0
-
-            lvlParticles = self._domainParticles_for(datahier, ilvl - 1)
-            for pop_name, gaboxes_list in particle_gaboxes.items():
-                coarse_particles = lvlParticles[pop_name]
-                self.assertTrue(coarse_particles.size() > 0)
-
-                coarse_split_particles = coarse_particles.split(sim)
-                self.assertTrue(coarse_split_particles.size() > 0)
-                self.assertTrue(
-                    coarse_split_particles.size()
-                    == coarse_particles.size() * sim.refined_particle_nbr
-                )
-
-                for gabox in gaboxes_list:
-                    gabox_patchData = gabox["pdata"]
-
-                    for ghostBox in gabox["boxes"]:
-                        part1 = gabox_patchData.dataset.select(ghostBox)
-                        part2 = coarse_split_particles.select(ghostBox)
-                        self.assertEqual(part1, part2)
 
 
 if __name__ == "__main__":
