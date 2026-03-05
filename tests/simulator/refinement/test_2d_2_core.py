@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 
 """
-  Simple test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
-    grouping of quantity components with distinct geometries.
+Simple test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
+  grouping of quantity components with distinct geometries.
 
-  Should be run with 2 cores
-    mpirun -n 2 tests/simulator/refinement/test_2d_2_core.py
+Should be run with 2 cores
+  mpirun -n 2 tests/simulator/refinement/test_2d_2_core.py
 """
-
 
 import numpy as np
 
