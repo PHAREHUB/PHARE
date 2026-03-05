@@ -383,7 +383,7 @@ namespace core
                                                                  // not needed in lower dimensions
             {
                 return std::array<WeightPoint<dimension>, 1>{
-                    WeightPoint<dimension>{Point<int, dimension>{}, 1.0}};
+                    WeightPoint{Point<int, dimension>{}, 1.0}};
             }
             else
             {
@@ -396,8 +396,8 @@ namespace core
                 {
                     auto constexpr w1 = 0.5;
                     return std::array<WeightPoint<dimension>, 2>{
-                        WeightPoint<dimension>{make_p(baseidx - 1, dir), w1},
-                        WeightPoint<dimension>{make_p(baseidx, dir), w1}};
+                        WeightPoint{make_p(baseidx - 1, dir), w1},
+                        WeightPoint{make_p(baseidx, dir), w1}};
                 }
                 else if constexpr (order == 4)
                 {
@@ -405,10 +405,10 @@ namespace core
                     auto constexpr w2 = 9.0 / 16.0;
 
                     return std::array<WeightPoint<dimension>, 4>{
-                        WeightPoint<dimension>{make_p(baseidx - 2, dir), w1},
-                        WeightPoint<dimension>{make_p(baseidx - 1, dir), w2},
-                        WeightPoint<dimension>{make_p(baseidx, dir), w2},
-                        WeightPoint<dimension>{make_p(baseidx + 1, dir), w1}};
+                        WeightPoint{make_p(baseidx - 2, dir), w1},
+                        WeightPoint{make_p(baseidx - 1, dir), w2},
+                        WeightPoint{make_p(baseidx, dir), w2},
+                        WeightPoint{make_p(baseidx + 1, dir), w1}};
                 }
                 else if constexpr (order == 6)
                 {
@@ -416,12 +416,12 @@ namespace core
                     auto constexpr w2 = -25.0 / 256.0;
                     auto constexpr w3 = 150.0 / 256.0;
                     return std::array<WeightPoint<dimension>, 6>{
-                        WeightPoint<dimension>{make_p(baseidx - 3, dir), w1},
-                        WeightPoint<dimension>{make_p(baseidx - 2, dir), w2},
-                        WeightPoint<dimension>{make_p(baseidx - 1, dir), w3},
-                        WeightPoint<dimension>{make_p(baseidx, dir), w3},
-                        WeightPoint<dimension>{make_p(baseidx + 1, dir), w2},
-                        WeightPoint<dimension>{make_p(baseidx + 2, dir), w1}};
+                        WeightPoint{make_p(baseidx - 3, dir), w1},
+                        WeightPoint{make_p(baseidx - 2, dir), w2},
+                        WeightPoint{make_p(baseidx - 1, dir), w3},
+                        WeightPoint{make_p(baseidx, dir), w3},
+                        WeightPoint{make_p(baseidx + 1, dir), w2},
+                        WeightPoint{make_p(baseidx + 2, dir), w1}};
                 }
             }
         }
@@ -445,7 +445,7 @@ namespace core
                         pt[dir1] = p1.indexes[dir1];
                     if constexpr (dir2 < dimension)
                         pt[dir2] = p2.indexes[dir2];
-                    result[k++] = WeightPoint<dimension>{pt, p1.coef * p2.coef};
+                    result[k++] = WeightPoint{pt, p1.coef * p2.coef};
                 }
             return result;
         }
@@ -471,7 +471,7 @@ namespace core
                             pt[dir2] = p2.indexes[dir2];
                         if constexpr (dir3 < dimension)
                             pt[dir3] = p3.indexes[dir3];
-                        result[k++] = WeightPoint<dimension>{pt, p1.coef * p2.coef * p3.coef};
+                        result[k++] = WeightPoint{pt, p1.coef * p2.coef * p3.coef};
                     }
             return result;
         }
@@ -758,8 +758,7 @@ namespace core
             // operation is thus dpp to dpp
             // no shift for a yee grid
 
-            return std::array<WeightPoint<dimension>, 1>{
-                WeightPoint<dimension>{Point<int, dimension>{}, 1.0}};
+            return std::array<WeightPoint<dimension>, 1>{WeightPoint{Point<int, dimension>{}, 1.0}};
         }
 
         NO_DISCARD auto static constexpr JyToEy()
@@ -769,8 +768,7 @@ namespace core
             // operation is thus pdp to pdp
             // no shift for a yee grid
 
-            return std::array<WeightPoint<dimension>, 1>{
-                WeightPoint<dimension>{Point<int, dimension>{}, 1.0}};
+            return std::array<WeightPoint<dimension>, 1>{WeightPoint{Point<int, dimension>{}, 1.0}};
         }
 
         NO_DISCARD auto static constexpr JzToEz()
@@ -780,8 +778,7 @@ namespace core
             // operation is thus ppd to ppd
             // no shift for a yee grid
 
-            return std::array<WeightPoint<dimension>, 1>{
-                WeightPoint<dimension>{Point<int, dimension>{}, 1.0}};
+            return std::array<WeightPoint<dimension>, 1>{WeightPoint{Point<int, dimension>{}, 1.0}};
         }
     }; // namespace core
 
