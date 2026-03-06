@@ -745,7 +745,7 @@ namespace core
         NO_DISCARD auto localToAMR(Point<T, dimension> localPoint) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            Point<T, dimension> pointAMR;
+            Point<int, dimension> pointAMR;
 
             // any direction, it's the same because we want cells
             auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
@@ -767,7 +767,7 @@ namespace core
         NO_DISCARD auto localToAMR(Box<T, dimension> localBox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            auto AMRBox = Box<T, dimension>{};
+            auto AMRBox = Box<int, dimension>{};
 
             AMRBox.lower = localToAMR(localBox.lower);
             AMRBox.upper = localToAMR(localBox.upper);
@@ -1175,6 +1175,14 @@ namespace core
             });
         }
 
+
+        template<typename Field>
+        Box<std::uint32_t, dimension> domainBoxFor(Field const& field) const
+        {
+            return _BoxFor(field, [&](auto const& centering, auto const direction) {
+                return this->physicalStartToEnd(centering, direction);
+            });
+        }
 
 
         auto AMRBoxFor(auto const& field) const
