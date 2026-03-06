@@ -6,7 +6,6 @@ import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator import simulator
 
-
 ph.NO_GUI()
 
 

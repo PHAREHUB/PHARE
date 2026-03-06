@@ -1,17 +1,17 @@
 """
-  This file exists independently from test_advance.py to isolate dimension
-    test cases and allow each to be overridden in some way if required.
+This file exists independently from test_advance.py to isolate dimension
+  test cases and allow each to be overridden in some way if required.
 """
 
 import unittest
-
-import matplotlib
 from ddt import data, ddt, unpack
+
+import pyphare.pharein as ph
 from pyphare.core.box import Box2D
 
-from tests.simulator.test_advance import AdvanceTestBase
+from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 
-matplotlib.use("Agg")  # for systems without GUI
+ph.NO_GUI()
 
 ndim = 2
 interp_orders = [1, 2, 3]
@@ -23,7 +23,7 @@ def per_interp(dic):
 
 
 @ddt
-class AdvanceTest(AdvanceTestBase):
+class AdvanceTest2D(HybridAdvanceTest):
     @data(*interp_orders)
     def test_L0_particle_number_conservation(self, interp):
         self._test_L0_particle_number_conservation(ndim, interp, ppc=ppc)
