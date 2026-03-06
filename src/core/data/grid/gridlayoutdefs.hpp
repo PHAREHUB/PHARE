@@ -26,6 +26,8 @@ namespace core
         {
         }
 
+        constexpr WeightPoint() = default;
+
         Point<int, dim> indexes;
         double coef;
     };

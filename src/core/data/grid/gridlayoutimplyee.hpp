@@ -370,45 +370,108 @@ namespace core
         }
 
 
+        enum class InterpDir { DualToPrimal = 0, PrimalToDual = 1 };
 
-
-        NO_DISCARD auto static constexpr dualToPrimal()
+        // we might want to support the same interpolation possibilities as for the derivative, and
+        // centralise the parametrisation of it
+        template<auto dir, InterpDir interp_dir, std::size_t order = 2>
+        NO_DISCARD auto static constexpr directionalInterp()
         {
-            /*
-             * the following is only valid when dual and primal do not have the same number of
-            ghosts
-             * and that depends on the interp order
-             * It is commented out because ghosts are hard coded to 5 for now.
-             *
-            if constexpr (interp_order == 1 || interp_order == 2 || interp_order == 4)
-                return -1;
-            else if constexpr (interp_order == 3)
-                return 1;
-               */
-            return -1;
+            constexpr auto baseidx = interp_dir == InterpDir::PrimalToDual ? 1 : 0;
+
+            if constexpr (dimension <= static_cast<size_t>(dir)) // Exclude interpolations that are
+                                                                 // not needed in lower dimensions
+            {
+                return std::array{WeightPoint{Point<int, dimension>{}, 1.0}};
+            }
+            else
+            {
+                auto constexpr make_p = [](auto offset, auto d) constexpr {
+                    Point<int, dimension> p{};
+                    p[d] = offset;
+                    return p;
+                };
+                if constexpr (order == 2)
+                {
+                    auto constexpr w1 = 0.5;
+                    return std::array{WeightPoint{make_p(baseidx - 1, dir), w1},
+                                      WeightPoint{make_p(baseidx, dir), w1}};
+                }
+                else if constexpr (order == 4)
+                {
+                    auto constexpr w1 = -1.0 / 16.0;
+                    auto constexpr w2 = 9.0 / 16.0;
+
+                    return std::array{WeightPoint{make_p(baseidx - 2, dir), w1},
+                                      WeightPoint{make_p(baseidx - 1, dir), w2},
+                                      WeightPoint{make_p(baseidx, dir), w2},
+                                      WeightPoint{make_p(baseidx + 1, dir), w1}};
+                }
+                else if constexpr (order == 6)
+                {
+                    auto constexpr w1 = 3.0 / 256.0;
+                    auto constexpr w2 = -25.0 / 256.0;
+                    auto constexpr w3 = 150.0 / 256.0;
+                    return std::array{WeightPoint{make_p(baseidx - 3, dir), w1},
+                                      WeightPoint{make_p(baseidx - 2, dir), w2},
+                                      WeightPoint{make_p(baseidx - 1, dir), w3},
+                                      WeightPoint{make_p(baseidx, dir), w3},
+                                      WeightPoint{make_p(baseidx + 1, dir), w2},
+                                      WeightPoint{make_p(baseidx + 2, dir), w1}};
+                }
+            }
         }
 
-
-
-
-        NO_DISCARD auto static constexpr primalToDual()
+        // we could possibly have a variadic version to factor out these 2 overload, but this might
+        // complexify the code quite a bit. possibly not worth it
+        template<auto dir1, auto dir2>
+        static constexpr auto tensorProduct(auto const& s1, auto const& s2)
         {
-            return 1;
-            /*
-             * the following is only valid when dual and primal do not have the same number of
-            ghosts
-             * and that depends on the interp order
-             * It is commented out because ghosts are hard coded to 5 for now.
-             *
-            if constexpr (interp_order == 1 || interp_order == 2 || interp_order == 4)
-                return 1;
-            else if constexpr (interp_order == 3)
-                return -1;
-                */
+            constexpr auto N1 = std::tuple_size_v<std::decay_t<decltype(s1)>>;
+            constexpr auto N2 = std::tuple_size_v<std::decay_t<decltype(s2)>>;
+            static_assert(dir1 != dir2);
+
+            std::array<WeightPoint<dimension>, N1 * N2> result{};
+            std::size_t k = 0;
+            for (auto const& p1 : s1)
+                for (auto const& p2 : s2)
+                {
+                    Point<int, dimension> pt{};
+                    if constexpr (dir1 < dimension)
+                        pt[dir1] = p1.indexes[dir1];
+                    if constexpr (dir2 < dimension)
+                        pt[dir2] = p2.indexes[dir2];
+                    result[k++] = {pt, p1.coef * p2.coef};
+                }
+            return result;
         }
 
+        template<auto dir1, auto dir2, auto dir3>
+        static constexpr auto tensorProduct(auto const& s1, auto const& s2, auto const& s3)
+        {
+            constexpr auto N1 = std::tuple_size_v<std::decay_t<decltype(s1)>>;
+            constexpr auto N2 = std::tuple_size_v<std::decay_t<decltype(s2)>>;
+            constexpr auto N3 = std::tuple_size_v<std::decay_t<decltype(s3)>>;
+            static_assert(dir1 != dir2 && dir1 != dir3 && dir2 != dir3);
 
-
+            std::array<WeightPoint<dimension>, N1 * N2 * N3> result{};
+            std::size_t k = 0;
+            for (auto const& p1 : s1)
+                for (auto const& p2 : s2)
+                    for (auto const& p3 : s3)
+                    {
+                        Point<int, dimension> pt{};
+                        if constexpr (dir1 < dimension)
+                            pt[dir1] = p1.indexes[dir1];
+                        if constexpr (dir2 < dimension)
+                            pt[dir2] = p2.indexes[dir2];
+                        if constexpr (dir3 < dimension)
+                            pt[dir3] = p3.indexes[dir3];
+                        result[k++] = {pt, p1.coef * p2.coef * p3.coef};
+                    }
+            return result;
+        }
+        //
 
         NO_DISCARD auto static constexpr momentsToEx()
         {
@@ -416,32 +479,11 @@ namespace core
             // moments are primal primal primal
             // operation is thus Ppp to Dpp
             // shift only in the X direction
-            auto constexpr iShift = primalToDual();
 
-            // P1 is always on top of Ex so no shift
+            using PHARE::core::dirX;
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            return directionalInterp<dirX, InterpDir::PrimalToDual>();
         }
-
-
-
 
         NO_DISCARD auto static constexpr momentsToEy()
         {
@@ -449,32 +491,11 @@ namespace core
             // moments are primal primal primal
             // operation is thus pPp to pDp
             // shift only in the Y direction
-            [[maybe_unused]] auto constexpr iShift = primalToDual();
 
-            if constexpr (dimension == 1)
-            {
-                // since the linear combination is in the Y direction
-                // in 1D the moment is already on Ey so return 1 point with no shift
-                // with coef 1.
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirY;
+
+            return directionalInterp<dirY, InterpDir::PrimalToDual>();
         }
-
-
-
 
         NO_DISCARD auto static constexpr momentsToEz()
         {
@@ -482,28 +503,10 @@ namespace core
             // moments are primal primal primal
             // operation is thus ppP to ppD
             // shift only in the Z direction
-            [[maybe_unused]] auto constexpr iShift = primalToDual();
 
-            if constexpr (dimension == 1)
-            {
-                // since the linear combination is in the Z direction
-                // in 1D or 2D the moment is already on Ez so return 1 point with no shift
-                // with coef 1.
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                // in 3D we need two points, the second with a primalToDual shift along Z
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, 0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirZ;
+
+            return directionalInterp<dirZ, InterpDir::PrimalToDual>();
         }
 
 
@@ -513,27 +516,12 @@ namespace core
             // Bx is primal dual dual
             // moments are primal primal primal
             // operation is thus Pdd to Ppp
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, 0, iShift}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{0, iShift, iShift}, 0.25};
-                return std::array{P1, P2, P3, P4};
-            }
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
+
+            return tensorProduct<dirY, dirZ>(directionalInterp<dirY, InterpDir::DualToPrimal>(),
+                                             directionalInterp<dirZ, InterpDir::DualToPrimal>());
         }
 
 
@@ -544,28 +532,11 @@ namespace core
             // moments are primal primal primal
             // operation is thus Dpd to Ppp
 
-            auto constexpr iShift = dualToPrimal();
+            using PHARE::core::dirX;
+            using PHARE::core::dirZ;
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, 0, iShift}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{iShift, 0, iShift}, 0.25};
-                return std::array{P1, P2, P3, P4};
-            }
+            return tensorProduct<dirX, dirZ>(directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                                             directionalInterp<dirZ, InterpDir::DualToPrimal>());
         }
 
 
@@ -577,34 +548,12 @@ namespace core
             // moments are primal primal primal
             // operation is thus Ddp to Ppp
 
-            auto constexpr iShift = dualToPrimal();
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, iShift}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{iShift, iShift}, 0.25};
-                return std::array{P1, P2, P3, P4};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, iShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{iShift, iShift, 0}, 0.25};
-                return std::array{P1, P2, P3, P4};
-            }
+            return tensorProduct<dirX, dirY>(directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                                             directionalInterp<dirY, InterpDir::DualToPrimal>());
         }
-
-
-
 
         NO_DISCARD auto static constexpr ExToMoments()
         {
@@ -612,30 +561,11 @@ namespace core
             // moments are primal primal primal
             // operation is thus Dpp to Ppp
             // shift only in the X direction
-            auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirX;
+
+            return directionalInterp<dirX, InterpDir::DualToPrimal>();
         }
-
-
-
 
         NO_DISCARD auto static constexpr EyToMoments()
         {
@@ -643,29 +573,11 @@ namespace core
             // moments are primal primal primal
             // operation is thus pDp to pPp
             // shift only in the Y direction
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.0};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirY;
+
+            return directionalInterp<dirY, InterpDir::DualToPrimal>();
         }
-
-
-
 
         NO_DISCARD auto static constexpr EzToMoments()
         {
@@ -673,26 +585,11 @@ namespace core
             // moments are primal primal primal
             // operation is thus ppD to ppP
             // shift only in the Z direction
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.0};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, 0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirZ;
+
+            return directionalInterp<dirZ, InterpDir::DualToPrimal>();
         }
-
 
         NO_DISCARD auto static constexpr JxToMoments()
         {
@@ -701,28 +598,10 @@ namespace core
             // operation is thus Dpp to Ppp
             // shift only in the X direction
 
-            auto constexpr iShift = dualToPrimal();
+            using PHARE::core::dirX;
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            return directionalInterp<dirX, InterpDir::DualToPrimal>();
         }
-
 
         NO_DISCARD auto static constexpr JyToMoments()
         {
@@ -731,54 +610,21 @@ namespace core
             // operation is thus pDp to pPp
             // shift only in the Y direction
 
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
+            using PHARE::core::dirY;
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.0};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            return directionalInterp<dirY, InterpDir::DualToPrimal>();
         }
-
-
 
         NO_DISCARD auto static constexpr JzToMoments()
         {
-            // Jy is primal primal dual
+            // Jz is primal primal dual
             // moments are primal primal primal
             // operation is thus ppD to ppP
             // shift only in the Z direction
 
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
+            using PHARE::core::dirZ;
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.0};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, 0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            return directionalInterp<dirZ, InterpDir::DualToPrimal>();
         }
 
         NO_DISCARD auto static constexpr BxToEx()
@@ -786,43 +632,16 @@ namespace core
             // Bx is primal dual dual
             // Ex is dual primal primal
             // operation is pdd to dpp
-            [[maybe_unused]] auto constexpr p2dShift = primalToDual();
-            [[maybe_unused]] auto constexpr d2pShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{p2dShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, d2pShift}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{p2dShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{p2dShift, d2pShift},
-                                                    0.25};
-                return std::array{P1, P2, P3, P4};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.125};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, d2pShift, 0}, 0.125};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{p2dShift, 0, 0}, 0.125};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{p2dShift, d2pShift, 0},
-                                                    0.125};
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
 
-                constexpr WeightPoint<dimension> P5{Point<int, dimension>{0, 0, d2pShift}, 0.125};
-                constexpr WeightPoint<dimension> P6{Point<int, dimension>{0, d2pShift, d2pShift},
-                                                    0.125};
-                constexpr WeightPoint<dimension> P7{Point<int, dimension>{p2dShift, 0, d2pShift},
-                                                    0.125};
-                constexpr WeightPoint<dimension> P8{
-                    Point<int, dimension>{p2dShift, d2pShift, d2pShift}, 0.125};
-                return std::array{P1, P2, P3, P4, P5, P6, P7, P8};
-            }
+            return tensorProduct<dirX, dirY, dirZ>(
+                directionalInterp<dirX, InterpDir::PrimalToDual>(),
+                directionalInterp<dirY, InterpDir::DualToPrimal>(),
+                directionalInterp<dirZ, InterpDir::DualToPrimal>());
         }
-
 
         NO_DISCARD auto static constexpr ByToEx()
         {
@@ -830,28 +649,11 @@ namespace core
             // Ex is dual primal primal
             // operation is thus dpD to dpP
             // shift only in the Z direction
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.0};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, 0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirZ;
+
+            return directionalInterp<dirZ, InterpDir::DualToPrimal>();
         }
-
-
-
 
         NO_DISCARD auto static constexpr BzToEx()
         {
@@ -859,71 +661,27 @@ namespace core
             // Ex is dual primal primal
             // operation is thus pDp to pPp
             // shift only in the Y direction
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirY;
 
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            return directionalInterp<dirY, InterpDir::DualToPrimal>();
         }
-
 
         NO_DISCARD auto static constexpr BzToEz()
         {
             // Bz is dual dual primal
             // Ez is primal primal dual
             // operation is thus ddp to ppd
-            auto constexpr p2dShift = primalToDual();
-            auto constexpr d2pShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
 
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, d2pShift}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, d2pShift},
-                                                    0.25};
-                return std::array{P1, P2, P3, P4};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, d2pShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, d2pShift, 0},
-                                                    0.25};
-                constexpr WeightPoint<dimension> P5{Point<int, dimension>{0, 0, p2dShift}, 0.25};
-                constexpr WeightPoint<dimension> P6{Point<int, dimension>{d2pShift, 0, p2dShift},
-                                                    0.25};
-                constexpr WeightPoint<dimension> P7{Point<int, dimension>{0, d2pShift, p2dShift},
-                                                    0.25};
-                constexpr WeightPoint<dimension> P8{
-                    Point<int, dimension>{d2pShift, d2pShift, p2dShift}, 0.25};
-                return std::array{P1, P2, P3, P4, P5, P6, P7, P8};
-            }
+            return tensorProduct<dirX, dirY, dirZ>(
+                directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                directionalInterp<dirY, InterpDir::DualToPrimal>(),
+                directionalInterp<dirZ, InterpDir::PrimalToDual>());
         }
-
 
         NO_DISCARD auto static constexpr ByToEz()
         {
@@ -931,32 +689,11 @@ namespace core
             // Ez is primal primal dual
             // operation is thus Dpd to Ppd
             // shift only in the X direction
-            auto constexpr iShift = dualToPrimal();
 
-            // P1 is always on top of Ez so no shift
+            using PHARE::core::dirX;
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            return directionalInterp<dirX, InterpDir::DualToPrimal>();
         }
-
-
-
 
         NO_DISCARD auto static constexpr BxToEz()
         {
@@ -964,30 +701,11 @@ namespace core
             // Ez is primal primal dual
             // operation is thus pDd to pPd
             // shift only in the Y direction
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1.};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirY;
 
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            return directionalInterp<dirY, InterpDir::DualToPrimal>();
         }
-
-
-
 
         NO_DISCARD auto static constexpr BxToEy()
         {
@@ -995,69 +713,27 @@ namespace core
             // Ey is primal dual primal
             // operation is thus pdD to pdP
             // shift only in the Z direction
-            [[maybe_unused]] auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                // in 3D we need two points, the second with a dualToPrimal shift along Z
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{0, 0, iShift}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirZ;
+
+            return directionalInterp<dirZ, InterpDir::DualToPrimal>();
         }
-
 
         NO_DISCARD auto static constexpr ByToEy()
         {
             // By is dual primal dual
             // Ey is primal dual primal
             // the operation is thus dpd to pdp
-            auto constexpr p2dShift = primalToDual();
-            auto constexpr d2pShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, p2dShift}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, p2dShift},
-                                                    0.25};
-                return std::array{P1, P2, P3, P4};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{d2pShift, 0, 0}, 0.25};
-                constexpr WeightPoint<dimension> P3{Point<int, dimension>{0, p2dShift, 0}, 0.25};
-                constexpr WeightPoint<dimension> P4{Point<int, dimension>{d2pShift, p2dShift, 0},
-                                                    0.25};
-                constexpr WeightPoint<dimension> P5{Point<int, dimension>{0, 0, d2pShift}, 0.25};
-                constexpr WeightPoint<dimension> P6{Point<int, dimension>{d2pShift, 0, d2pShift},
-                                                    0.25};
-                constexpr WeightPoint<dimension> P7{Point<int, dimension>{0, p2dShift, d2pShift},
-                                                    0.25};
-                constexpr WeightPoint<dimension> P8{
-                    Point<int, dimension>{d2pShift, p2dShift, d2pShift}, 0.25};
-                return std::array{P1, P2, P3, P4, P5, P6, P7, P8};
-            }
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
+
+            return tensorProduct<dirX, dirY, dirZ>(
+                directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                directionalInterp<dirY, InterpDir::PrimalToDual>(),
+                directionalInterp<dirZ, InterpDir::DualToPrimal>());
         }
-
 
         NO_DISCARD auto static constexpr BzToEy()
         {
@@ -1065,29 +741,11 @@ namespace core
             // Ey is primal dual primal
             // operation is thus Ddp to Pdp
             // shift only in the X direction
-            auto constexpr iShift = dualToPrimal();
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift}, 0.5};
-                return std::array{P1, P2};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0}, 0.5};
-                return std::array{P1, P2};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 0.5};
-                constexpr WeightPoint<dimension> P2{Point<int, dimension>{iShift, 0, 0}, 0.5};
-                return std::array{P1, P2};
-            }
+            using PHARE::core::dirX;
+
+            return directionalInterp<dirX, InterpDir::DualToPrimal>();
         }
-
-
 
         NO_DISCARD auto static constexpr JxToEx()
         {
@@ -1096,24 +754,8 @@ namespace core
             // operation is thus dpp to dpp
             // no shift for a yee grid
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 1.0};
-                return std::array{P1};
-            }
+            return std::array{WeightPoint{Point<int, dimension>{}, 1.0}};
         }
-
-
 
         NO_DISCARD auto static constexpr JyToEy()
         {
@@ -1122,24 +764,8 @@ namespace core
             // operation is thus pdp to pdp
             // no shift for a yee grid
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 1.0};
-                return std::array{P1};
-            }
+            return std::array{WeightPoint{Point<int, dimension>{}, 1.0}};
         }
-
-
 
         NO_DISCARD auto static constexpr JzToEz()
         {
@@ -1148,24 +774,9 @@ namespace core
             // operation is thus ppd to ppd
             // no shift for a yee grid
 
-            if constexpr (dimension == 1)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0}, 1};
-                return std::array{P1};
-            }
-            if constexpr (dimension == 2)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0}, 1.0};
-                return std::array{P1};
-            }
-            else if constexpr (dimension == 3)
-            {
-                constexpr WeightPoint<dimension> P1{Point<int, dimension>{0, 0, 0}, 1.0};
-                return std::array{P1};
-            }
+            return std::array{WeightPoint{Point<int, dimension>{}, 1.0}};
         }
     }; // namespace core
-
 
     /*
 
