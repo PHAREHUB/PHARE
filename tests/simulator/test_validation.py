@@ -9,7 +9,6 @@ from pyphare.simulator.simulator import Simulator
 from tests.simulator import NoOverwriteDict, populate_simulation
 from tests.simulator import SimulatorTest
 
-
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {
     "diag_options": {"format": "phareh5", "options": {"dir": out, "mode": "overwrite"}}
