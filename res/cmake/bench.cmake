@@ -49,6 +49,7 @@ if (bench)
   add_subdirectory(tools/bench/core/data/particles)
   add_subdirectory(tools/bench/core/numerics/pusher)
 
+  add_subdirectory(tools/bench/amr/data/field/refinement)
   add_subdirectory(tools/bench/amr/data/particles)
   add_subdirectory(tools/bench/core/numerics/ion_updater)
   add_subdirectory(tools/bench/core/numerics/interpolator)
