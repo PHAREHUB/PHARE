@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-import os
 
+import os
 import numpy as np
 from pathlib import Path
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare import cpp 
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
@@ -35,11 +35,11 @@ def config():
         cells=cells,
         dl=(0.40, 0.40),
         refinement="tagging",
-        max_mhd_level=1,
-        max_nbr_levels=1,
+        max_mhd_level=2,
+        max_nbr_levels=2,
         hyper_resistivity=0.0,
         resistivity=0.0,
-        interp_order = 2,
+        interp_order=2,
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},

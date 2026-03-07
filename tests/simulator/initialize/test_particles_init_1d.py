@@ -44,8 +44,8 @@ class Initialization1DTest(HybridInitializationTest):
             self.getHierarchy(
                 ndim,
                 interp_order,
-                refinement_boxes,
                 "particles",
+                refinement_boxes,
                 cells=30,
             )
         )
@@ -72,8 +72,8 @@ class Initialization1DTest(HybridInitializationTest):
         self.getHierarchy(
             dim,
             interp_order,
-            {"L0": {"B0": [(10,), (20,)]}},
             "particles",
+            {"L0": {"B0": [(10,), (20,)]}},
             clustering=clustering,
         )
 

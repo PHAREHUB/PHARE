@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-from dataclasses import field
-import os
 
+import os
 import numpy as np
 from pathlib import Path
+from dataclasses import field
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
@@ -15,7 +15,7 @@ from tests.simulator import SimulatorTest
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 
 ph.NO_GUI()
-cpp = cpp_lib()
+
 
 final_time = 80
 time_step = 0.2

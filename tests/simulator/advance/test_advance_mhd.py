@@ -143,9 +143,9 @@ class MHDAdvanceTest(AdvanceTestBase):
 
         if qty == "moments" or qty == "fields":
             mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_charge_density.h5", hier=eb_hier
+                h5_filename=diag_outputs + "/mhd_rho.h5", hier=eb_hier
             )
-            mom_hier = hierarchy_from(
-                h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
-            )
+            # mom_hier = hierarchy_from(
+            #     h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
+            # )
             return mom_hier

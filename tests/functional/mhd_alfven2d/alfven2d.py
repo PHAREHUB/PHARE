@@ -4,8 +4,8 @@ import os
 import numpy as np
 from pathlib import Path
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
@@ -14,7 +14,7 @@ from tests.simulator import SimulatorTest
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 
 ph.NO_GUI()
-cpp = cpp_lib()
+
 
 time_step = 0.002
 final_time = 1.0  # time for one period

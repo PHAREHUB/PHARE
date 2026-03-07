@@ -10,13 +10,10 @@ import unittest
 import numpy as np
 from ddt import ddt
 
-import pyphare.core.box as boxm
-from pyphare.core.box import amr_to_local
-
-
 from pyphare import cpp
 import pyphare.core.box as boxm
 from pyphare.core.box import Box
+from pyphare.core.box import amr_to_local
 from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
 from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
@@ -26,6 +23,26 @@ from tests.simulator import SimulatorTest, diff_boxes
 
 @ddt
 class AdvanceTestBase(SimulatorTest):
+    """
+    This class groups the setup of tests and the implementation of tests that is
+    common regardless of the dimensionality.
+
+    dimension dependent aspects are to be found in:
+
+    - advance/test_field_advance_1d.py
+    - advance/test_field_advance_2d.py
+    - advance/test_field_advance_3d.py
+
+    """
+
+    # ----------------------------------------------------------------------
+    #
+    #
+    #                       TEST DEFINITIONS
+    #
+    #
+    # ----------------------------------------------------------------------
+
     def base_test_overlaped_fields_are_equal(self, datahier, coarsest_time):
         """
         here overlaps are calculated between patches at the same level
@@ -56,13 +73,6 @@ class AdvanceTestBase(SimulatorTest):
                 slice1 = boxm.select(pd1.dataset, box_pd1)
                 slice2 = boxm.select(pd2.dataset, box_pd2)
 
-                loc_b1 = boxm.amr_to_local(
-                    ovrlp_box, boxm.shift(pd1.ghost_box, offsets[0])
-                )
-                loc_b2 = boxm.amr_to_local(
-                    ovrlp_box, boxm.shift(pd2.ghost_box, offsets[1])
-                )
-
                 try:
                     # empirical max absolute observed 5.2e-15
                     # https://hephaistos.lpp.polytechnique.fr/teamcity/buildConfiguration/Phare_Phare_BuildGithubPrClang/78544
@@ -77,7 +87,6 @@ class AdvanceTestBase(SimulatorTest):
 
                     if ovrlp_box.ndim == 1:
                         failed_i = np.where(np.abs(slice1 - slice2) > 5.5e-15)
-
 
                     if ovrlp_box.ndim == 2:
                         failed_i, failed_j = np.where(np.abs(slice1 - slice2) > 5.5e-15)
@@ -148,41 +157,41 @@ class AdvanceTestBase(SimulatorTest):
                                     )
                                 )
                                 for i, j in zip(failed_i, failed_j):
-                                    x = i + pd2.ghost_box.lower[0] + loc_b2.lower[0]
+                                    x = i + pd2.ghost_box.lower[0] + box_pd2.lower[0]
                                     x *= pd2.layout.dl[0]
-                                    y = j + pd2.ghost_box.lower[1] + loc_b2.lower[1]
+                                    y = j + pd2.ghost_box.lower[1] + box_pd2.lower[1]
                                     y *= pd2.layout.dl[1]
                                     ax.plot(x, y, marker="+", color="r")
 
-                                        x = i + pd1.ghost_box.lower[0] + loc_b1.lower[0]
-                                        x *= pd1.layout.dl[0]
-                                        y = j + pd1.ghost_box.lower[1] + loc_b1.lower[1]
-                                        y *= pd1.layout.dl[1]
-                                        ax.plot(x, y, marker="o", color="r")
-                                    ax.set_title(
-                                        f"max error: {np.abs(slice1 - slice2).max()}, min error: {np.abs(slice1[failed_i, failed_j] - slice2[failed_i, failed_j]).min()}"
-                                    )
-                                    fig.savefig(
-                                        f"{pd1.name}_level_{level_idx}_box_lower{box.lower}_upper{box.upper}.png"
-                                    )
-                        print("coarsest time: ", coarsest_time)
-                        print("AssertionError", pd1.name, e)
-                        print(f"overlap box {box} (shape {box.shape})")
-                        print(f"offsets: {offsets}")
-                        print(
-                            f"pd1 ghost box {pd1.ghost_box} (shape {pd1.ghost_box.shape}) and box {pd1.box} (shape {pd1.box.shape})"
-                        )
-                        print(
-                            f"pd2 ghost box {pd2.ghost_box} (shape {pd2.ghost_box.shape}) and box {pd2.box} (shape {pd2.box.shape})"
-                        )
-                        print("interp_order: ", pd1.layout.interp_order)
-                        if box.ndim == 1:
-                            print(f"failing cells: {failed_i}")
-                        elif box.ndim == 2:
-                            print(f"failing cells: {failed_i}, {failed_j}")
-                        print(coarsest_time)
-                        if self.rethrow_:
-                            raise e
+                                    x = i + pd1.ghost_box.lower[0] + box_pd1.lower[0]
+                                    x *= pd1.layout.dl[0]
+                                    y = j + pd1.ghost_box.lower[1] + box_pd1.lower[1]
+                                    y *= pd1.layout.dl[1]
+                                    ax.plot(x, y, marker="o", color="r")
+                                ax.set_title(
+                                    f"max error: {np.abs(slice1 - slice2).max()}, min error: {np.abs(slice1[failed_i, failed_j] - slice2[failed_i, failed_j]).min()}"
+                                )
+                                fig.savefig(
+                                    f"{pd1.name}_level_{level_idx}_box_lower{ovrlp_box.lower}_upper{ovrlp_box.upper}.png"
+                                )
+                    print("coarsest time: ", coarsest_time)
+                    print("AssertionError", pd1.name, e)
+                    print(f"overlap box {ovrlp_box} (shape {ovrlp_box.shape})")
+                    print(f"offsets: {offsets}")
+                    print(
+                        f"pd1 ghost box {pd1.ghost_box} (shape {pd1.ghost_box.shape}) and box {pd1.box} (shape {pd1.box.shape})"
+                    )
+                    print(
+                        f"pd2 ghost box {pd2.ghost_box} (shape {pd2.ghost_box.shape}) and box {pd2.box} (shape {pd2.box.shape})"
+                    )
+                    print("interp_order: ", pd1.layout.interp_order)
+                    if ovrlp_box.ndim == 1:
+                        print(f"failing cells: {failed_i}")
+                    elif ovrlp_box.ndim == 2:
+                        print(f"failing cells: {failed_i}, {failed_j}")
+                    print(coarsest_time)
+                    if self.rethrow_:
+                        raise e
 
         return success_test_nbr
 
@@ -225,8 +234,14 @@ class AdvanceTestBase(SimulatorTest):
             **kwargs,
         )
 
-        qties = ["rho"]
-        qties += [f"{qty}{xyz}" for qty in ["E", "V"] for xyz in ["x", "y", "z"]]
+        test_type = type(self).__name__
+        if test_type.endswith("MHDAdvanceTest"):
+            qties = ["mhdRho"]
+
+        else:  # hybrid
+            qties = ["rho"]
+            qties += [f"{qty}{xyz}" for qty in ["E", "V"] for xyz in ["x", "y", "z"]]
+
         lvl_steps = global_vars.sim.level_time_steps
         print("LEVELSTEPS === ", lvl_steps)
         assert len(lvl_steps) > 1, "this test makes no sense with only 1 level"
@@ -271,8 +286,8 @@ class AdvanceTestBase(SimulatorTest):
                         lvlOverlap = boxm.refine(coarsePatch.box, 2) * finePatch.box
                         if lvlOverlap is not None:
                             for qty in qties:
-                                coarse_pd = coarsePatch.patch_datas[qty]
-                                fine_pd = finePatch.patch_datas[qty]
+                                coarse_pd = coarsePatch[qty]
+                                fine_pd = finePatch[qty]
                                 coarseBox = boxm.coarsen(lvlOverlap, 2)
 
                                 coarse_pdDataset = coarse_pd.dataset[:]
@@ -363,9 +378,9 @@ class AdvanceTestBase(SimulatorTest):
         successful_test_nbr = 0
         ndim = global_vars.sim.ndim
         lvl_steps = global_vars.sim.level_time_steps
-        assert len(lvl_steps) == 2, (
-            "this test is only configured for L0 -> L1 refinement comparisons"
-        )
+        assert (
+            len(lvl_steps) == 2
+        ), "this test is only configured for L0 -> L1 refinement comparisons"
 
         coarse_ilvl = 0
         fine_ilvl = 1
@@ -540,8 +555,8 @@ class AdvanceTestBase(SimulatorTest):
             return self.getHierarchy(
                 ndim,
                 interp_order,
-                boxes,
                 "moments",  # only N, Vi and J are space/time interpolated, only test moments
+                boxes,
                 cells=30,
                 time_step_nbr=1,
                 largest_patch_size=15,
@@ -563,7 +578,6 @@ class AdvanceTestBase(SimulatorTest):
         self.assertGreater(
             successful_test_nbr, len(refinement_boxes["L0"]) * len(quantities)
         )
-
 
 
 if __name__ == "__main__":

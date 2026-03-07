@@ -21,7 +21,6 @@ from pyphare.simulator.simulator import startMPI
 
 from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
-from tests.simulator import SimulatorTest
 
 
 ppc_per_dim = [100, 25, 10]
@@ -226,9 +225,9 @@ class DiagnosticsTest(SimulatorTest):
 
         simulation = self.simulation(**simInput)
         diag_path = simulation.diag_options["options"]["dir"]
-        self.assertTrue(len(simulation.cells) == dim)
+        self.assertTrue(len(simulation.cells) == ndim)
 
-        dump_all_diags(setup_model(simulation))
+        dump_all_diags(setup_model(simulation).model.populations)
         self.simulator = Simulator(simulation).initialize().advance().reset()
 
         self.assertTrue(
@@ -241,24 +240,24 @@ class DiagnosticsTest(SimulatorTest):
         )
         self._check_diags(simulation, diag_path, ["0.0000000000", "0.0010000000"])
 
-    def test_dump_elapsed_time_diags(self, dim=1, interp=1):
-        print("test_dump_elapsed_time_diags dim/interp:{}/{}".format(dim, interp))
+    def test_dump_elapsed_time_diags(self, ndim=1, interp=1):
+        print("test_dump_elapsed_time_diags dim/interp:{}/{}".format(ndim, interp))
 
         simInput = copy.deepcopy(simArgs)
-        # configure simulation dim sized values
+        # configure simulation ndim sized values
         for key in ["cells", "dl", "boundary_types"]:
-            simInput[key] = [simInput[key] for d in range(dim)]
+            simInput[key] = [simInput[key] for d in range(ndim)]
 
-        b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
+        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
         del simInput["diag_options"]["options"]["fine_dump_lvl_max"]  # don't want
 
         simulation = self.simulation(**simInput)
         diag_path = simulation.diag_options["options"]["dir"]
-        self.assertTrue(len(simulation.cells) == dim)
+        self.assertTrue(len(simulation.cells) == ndim)
 
-        dump_all_diags(setup_model(simulation))
+        dump_all_diags(setup_model(simulation).model.populations)
         for diagname, diagInfo in simulation.diagnostics.items():
             diagInfo.write_timestamps = []  # disable
             diagInfo.elapsed_timestamps = [0]  # expect init dump

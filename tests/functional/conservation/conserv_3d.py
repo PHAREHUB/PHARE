@@ -77,7 +77,7 @@ def uniform(vth, dl, cells, nbr_steps):
 
     ph.ElectronModel(closure="isothermal", Te=0.1)
 
-    timestamps = np.arange(0, sim.final_time+sim.time_step, 50 * sim.time_step)
+    timestamps = np.arange(0, sim.final_time + sim.time_step, 50 * sim.time_step)
 
     for quantity in ["B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
@@ -184,7 +184,7 @@ def avg_interval(t1, t2, times):
 def main():
     cases = [0.02, 0.1, 0.5, 1]
 
-    dls = [0.2,0.1
+    dls = [0.2, 0.1]
     nbrcells = [20, 50]
     nbrdts = [25000, 100000]
 

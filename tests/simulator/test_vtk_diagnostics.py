@@ -13,6 +13,7 @@ from pyphare.pharesee.run import Run
 from pyphare.core import phare_utilities as phut
 from pyphare.simulator.simulator import startMPI
 from pyphare.simulator.simulator import Simulator
+from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 
 from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
@@ -78,7 +79,7 @@ def config(sim):
         "vthy": vthxyz,
         "vthz": vthxyz,
     }
-    model = ph.MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
         bz=bz,
@@ -197,13 +198,12 @@ class VTKDiagnosticsTest(SimulatorTest):
                 tagging_threshold=0.99,  # prevent level,
             )
         )
-        restart_dir = self.unique_diag_dir_for_test_case(
-            f"{out}/test_padding_vtk/restart", ndim, interp
-        )
         simInput["restart_options"] = dict(
-            dir=restart_dir, mode="overwrite", timestamps=[0.001]
+            dir="overridden", mode="overwrite", timestamps=[0.001]
         )
         vtk_diags = self._run(ndim, interp, simInput, "test_padding_vtk")
+        simInput["diag_options"]["options"]["dir"] = vtk_diags
+        simInput["restart_options"]["dir"] = vtk_diags
 
         simInput.update(
             dict(

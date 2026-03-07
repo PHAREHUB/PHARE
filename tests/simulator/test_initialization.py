@@ -19,7 +19,7 @@ from tests.simulator import SimulatorTest
 
 @ddt
 class InitializationTest(SimulatorTest):
-    def _test_B_is_as_provided_by_user(self, dim, interp_order, ppc=100, **kwargs):
+    def _test_B_is_as_provided_by_user(self, dim, interp_order, **kwargs):
         print(
             "test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(
                 dim, interp_order
@@ -29,9 +29,8 @@ class InitializationTest(SimulatorTest):
         hier = self.getHierarchy(
             dim,
             interp_order,
-            refinement_boxes=None,
             qty="b",
-            nbr_part_per_cell=ppc,
+            refinement_boxes=None,
             diag_outputs=f"test_b/{dim}/{interp_order}/{self.ddt_test_id()}",
             **kwargs,
         )
@@ -118,15 +117,12 @@ class InitializationTest(SimulatorTest):
 
         print(f"\n{self._testMethodName}_{dim}d took {self.datetime_diff(now)} seconds")
 
-    def _test_bulkvel_is_as_provided_by_user(
-        self, dim, interp_order, ppc=100, **kwargs
-    ):
+    def _test_bulkvel_is_as_provided_by_user(self, dim, interp_order, **kwargs):
         hier = self.getHierarchy(
             dim,
             interp_order,
-            {"L0": {"B0": nDBox(dim, 10, 19)}},
             "moments",
-            nbr_part_per_cell=ppc,
+            {"L0": {"B0": nDBox(dim, 10, 19)}},
             beam=True,
             diag_outputs=f"test_bulkV/{dim}/{interp_order}/{self.ddt_test_id()}",
             **kwargs,
@@ -192,8 +188,8 @@ class InitializationTest(SimulatorTest):
         hier = self.getHierarchy(
             ndim,
             interp_order,
+            "moments",
             {"L0": {"B0": nDBox(ndim, 5, 14)}},
-            qty="moments",
             nbr_part_per_cell=nbParts[ndim],
             beam=True,
             **kwargs,
@@ -259,8 +255,8 @@ class InitializationTest(SimulatorTest):
             hier = self.getHierarchy(
                 ndim,
                 interp_order,
-                None,
                 "moments",
+                None,
                 nbr_part_per_cell=nbrpart,
                 diag_outputs=f"1overSqrtN/{ndim}/{interp_order}/{nbrpart}",
                 density=lambda *xyz: np.zeros(tuple(_.shape[0] for _ in xyz)) + 1.0,
