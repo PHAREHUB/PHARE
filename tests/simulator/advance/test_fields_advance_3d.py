@@ -37,8 +37,8 @@ class AdvanceTest3D(AdvanceTestBase):
         datahier = self.getHierarchy(
             ndim,
             interp_order,
-            refinement_boxes,
             "eb",
+            refinement_boxes,
             cells=20,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
@@ -67,8 +67,8 @@ class AdvanceTest3D(AdvanceTestBase):
         datahier = self.getHierarchy(
             ndim,
             interp_order,
-            refinement_boxes,
             "eb",
+            refinement_boxes,
             cells=cells,
             smallest_patch_size=smallest_patch_size,
             largest_patch_size=smallest_patch_size,

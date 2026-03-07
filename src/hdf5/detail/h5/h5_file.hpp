@@ -41,14 +41,11 @@ NO_DISCARD auto vector_for_dim()
 
 class HighFiveFile
 {
-    static inline core::FunctionCountMonitor mon{"HighFiveFile"};
-
 public:
     template<typename FileAccessProps>
     static auto createHighFiveFile(std::string const path, FileOp flags, bool para,
                                    FileAccessProps& fapl)
     {
-        PHARE_FUNC_COUNT(mon, "createHighFiveFile");
         PHARE_LOG_SCOPE(3, "HighFiveFile::createHighFiveFile");
         if (para)
         {
@@ -94,7 +91,6 @@ public:
     template<std::size_t dim = 1, typename Data>
     auto& write_data_set(std::string path, Data const& data)
     {
-        PHARE_FUNC_COUNT(mon, "write_data_set_flat");
         PHARE_LOG_SCOPE(3, "HighFiveFile::write_data_set");
         h5file_.getDataSet(path).write(data);
         return *this;
@@ -103,7 +99,6 @@ public:
     template<std::size_t dim = 1, typename Data>
     auto& write_data_set_flat(std::string path, Data const& data)
     {
-        PHARE_FUNC_COUNT(mon, "write_data_set_flat");
         PHARE_LOG_SCOPE(3, "HighFiveFile::write_data_set_flat");
         h5file_.getDataSet(path).write_raw(data);
         return *this;
@@ -191,7 +186,6 @@ public:
 
         auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
             PHARE_LOG_SCOPE(3, "HighFiveFile::createAttribute");
-            PHARE_FUNC_COUNT(mon, "createAttribute");
 
             if constexpr (data_is_vector)
                 node.template createAttribute<typename Data::value_type>(
@@ -233,7 +227,7 @@ public:
 
         auto doAttribute = [&](auto node, auto const& _key, auto const& value) {
             PHARE_LOG_SCOPE(3, "HighFiveFile::createAttribute");
-            PHARE_FUNC_COUNT(mon, "createAttribute");
+
             if constexpr (data_is_vector)
             {
                 if (value.size())

@@ -4,8 +4,8 @@
 
 import os
 import glob
-from pathlib import Path
 import numpy as np
+from pathlib import Path
 
 from pyphare.pharesee.hierarchy import all_times_from
 from pyphare.pharesee.hierarchy import default_time_from
@@ -187,7 +187,9 @@ class Run:
         h = compute_hier_from(_compute_to_primal, hier, value="mhdEtot")
         return VectorField(h)
 
-    def GetMagneticFlux(self, time, interp="nearest", xn=None, yn=None, Xn=None, Yn=None):
+    def GetMagneticFlux(
+        self, time, interp="nearest", xn=None, yn=None, Xn=None, Yn=None
+    ):
         # Reuse grids if provided, otherwise generate them
         if xn is None or yn is None or Xn is None or Yn is None:
             domain = self.GetDomainSize()
@@ -204,6 +206,7 @@ class Run:
         by = by_interp(Xn, Yn)
 
         from scipy.integrate import cumulative_trapezoid
+
         Az_x0 = -cumulative_trapezoid(by[:, 0], xn, initial=0)
         Az = cumulative_trapezoid(bx, yn, axis=1, initial=0)
         Az += Az_x0[:, np.newaxis]
@@ -229,7 +232,6 @@ class Run:
         idx = np.unravel_index(np.argmin(det_hessian_masked), Az.shape)
 
         return xn[idx[0]], yn[idx[1]], idx
-
 
     def GetReconnectionRate(self, times, interp="nearest"):
         domain = self.GetDomainSize()

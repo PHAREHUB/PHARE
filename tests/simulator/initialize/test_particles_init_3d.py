@@ -46,8 +46,8 @@ class Initialization3DTest(InitializationTest):
             self.getHierarchy(
                 ndim,
                 interp_order,
-                refinement_boxes,
                 "particles",
+                refinement_boxes,
                 cells=cells,
                 nbr_part_per_cell=ppc,
             )

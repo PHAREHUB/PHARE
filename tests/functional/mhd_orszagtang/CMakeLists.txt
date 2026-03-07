@@ -10,5 +10,5 @@ endif()
 if(HighFive)
 
   ## These test use dump diagnostics so require HighFive!
-  phare_python3_exec(11, test-orszag-tang orszag_tang.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_python3_exec(111, test-orszag-tang orszag_tang.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()

@@ -31,6 +31,13 @@ namespace PHARE::pydata
 {
 
 
+auto static constexpr resolve_simulator_options()
+{
+    using namespace PHARE::MHDOpts;
+    return SimOpts{PHARE_SIM_STR};
+}
+
+
 template<typename Simulator, typename PyClass>
 void declareSimulator(PyClass&& sim)
 {
@@ -51,7 +58,7 @@ void declareSimulator(PyClass&& sim)
 template<typename Sim>
 void inline declare_etc(py::module& m)
 {
-    constexpr auto opts = SimOpts{PHARE_SIM_STR};
+    constexpr auto opts = resolve_simulator_options();
 
     using DW         = DataWrangler<opts>;
     std::string name = "DataWrangler";
@@ -104,7 +111,7 @@ void inline declare_etc(py::module& m)
 
 void inline declare_macro_sim(py::module& m)
 {
-    using Sim = Simulator<SimOpts{PHARE_SIM_STR}>;
+    using Sim = Simulator<resolve_simulator_options()>;
 
     std::string name = "Simulator";
     declareSimulator<Sim>(

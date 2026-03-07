@@ -44,8 +44,8 @@ class Initialization2DTest(HybridInitializationTest):
             self.getHierarchy(
                 ndim,
                 interp_order,
-                refinement_boxes,
                 "particles",
+                refinement_boxes,
                 cells=30,
                 nbr_part_per_cell=ppc,
             )

@@ -323,7 +323,7 @@ class RestartsTest(SimulatorTest):
         sim = self.simulation(**simput)
         diag_dir0 = sim.diag_options["options"]["dir"]
         diag_dir1 = f"{diag_dir0}_n2"
-        sim.restart_options["dir"] = diag_dir0
+
         self.assertEqual([seconds], sim.restart_options["elapsed_timestamps"])
 
         assert "restart_time" not in sim.restart_options
@@ -340,6 +340,7 @@ class RestartsTest(SimulatorTest):
 
         # second restarted simulation
         simput["diag_options"]["options"]["dir"] = diag_dir1
+        simput["restart_options"]["dir"] = diag_dir0
         simput["restart_options"]["restart_time"] = time_step
 
         del simput["restart_options"]["elapsed_timestamps"]
@@ -431,6 +432,7 @@ class RestartsTest(SimulatorTest):
         )
 
         time_step = simput["time_step"]
+        time_step_nbr = simput["time_step_nbr"]
 
         timestamps = time_step * np.arange(time_step_nbr + 1)
         simput["restart_options"]["keep_last"] = 3
@@ -438,25 +440,26 @@ class RestartsTest(SimulatorTest):
         simput["restart_options"]["restart_time"] = "auto"
 
         sim = self.simulation(**simput)
-        setup_model(sim)
+        local_out = sim.diag_options["options"]["dir"]
+        model = setup_model(sim)
+        self.assertTrue(model.validated)
         Simulator(sim).run().reset()
 
         # restarted
         timestamps = time_step * np.arange(7, 11)
         simput["time_step_nbr"] = 3
+        simput["restart_options"]["dir"] = local_out
         simput["restart_options"]["restart_time"] = "auto"
         simput["restart_options"]["timestamps"] = timestamps
 
         # if not binary equal we have a problem! C++/python float impl diff
         self.assertEqual(0.007, ph.restarts.restart_time(simput["restart_options"]))
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        model = setup_model()
+        sim = self.simulation(**simput)
+        model = setup_model(sim)
         self.assertFalse(model.validated)
         Simulator(ph.global_vars.sim).run().reset()
 
         dirs = []
-        local_out = sim.diag_options["options"]["dir"]
         for path_object in Path(local_out).iterdir():
             if path_object.is_dir():
                 try:

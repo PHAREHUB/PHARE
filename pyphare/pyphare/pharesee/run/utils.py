@@ -6,12 +6,6 @@ import numpy as np
 from pyphare.core.gridlayout import yee_centering
 
 
-from pyphare.core.gridlayout import yee_centering
-
-
-from pyphare.core.gridlayout import yee_centering
-
-
 def _current1d(by, bz, xby, xbz):
     # jx = 0
     # jy = -dxBz
