@@ -365,30 +365,37 @@ private:
                 return std::min({meshSize[0], meshSize[1], meshSize[2]});
         }();
 
-        if constexpr (direction == Direction::X)
-        {
-            auto const Bx = B.x; // normal component
-            auto const By = Bt.y;
-            auto const Bz = Bt.z;
-        }
-        else if constexpr (direction == Direction::Y)
-        {
-            auto const Bx = Bt.x;
-            auto const By = B.y; // normal component
-            auto const Bz = Bt.z;
-        }
-        else if constexpr (direction == Direction::Z)
-        {
-            auto const Bx = Bt.x;
-            auto const By = Bt.y;
-            auto const Bz = B.z; // normal component
-        }
 
         auto computeHR = [&](auto Bx, auto By, auto Bz) {
             auto b          = std::sqrt(Bx * Bx + By * By + Bz * Bz);
             auto const coef = -nu_ * minMeshSize * minMeshSize * (b / rhot + 1);
             equations_.template resistive_contributions<direction>(coef, Bt, vecLaplJ, F_B, F_Etot);
         };
+
+        if constexpr (direction == Direction::X)
+        {
+            auto const Bx = B.x; // normal component
+            auto const By = Bt.y;
+            auto const Bz = Bt.z;
+
+            computeHR(Bx, By, Bz);
+        }
+        else if constexpr (direction == Direction::Y)
+        {
+            auto const Bx = Bt.x;
+            auto const By = B.y; // normal component
+            auto const Bz = Bt.z;
+
+            computeHR(Bx, By, Bz);
+        }
+        else if constexpr (direction == Direction::Z)
+        {
+            auto const Bx = Bt.x;
+            auto const By = Bt.y;
+            auto const Bz = B.z; // normal component
+
+            computeHR(Bx, By, Bz);
+        }
     }
 
     template<auto direction>
