@@ -17,7 +17,7 @@ void updater_routine(benchmark::State& state)
     using Electromag_t  = core::UsableElectromag<dim>;
     using ParticleArray = PHARE_Types::ParticleArray_t;
     using Particle_t    = ParticleArray::value_type;
-    using Ions          = PHARE::core::UsableIons_t<ParticleArray, interp>;
+    using Ions          = PHARE::core::UsableIons<ParticleArray, interp>;
     using IonUpdater    = core::IonUpdater<Ions, Electromag_t, GridLayout_t>;
     using Boxing_t      = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout_t>;
 

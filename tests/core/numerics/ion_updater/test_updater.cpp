@@ -664,13 +664,6 @@ TYPED_TEST_SUITE(IonUpdaterTest, DimInterps, );
 
 
 
-TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)
-{
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
-}
-
-
 // the following 3 tests are testing the fixture is well configured.
 
 
