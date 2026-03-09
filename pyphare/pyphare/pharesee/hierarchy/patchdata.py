@@ -1,8 +1,14 @@
+#
+#
+#
+
+
 import numpy as np
 
-from ...core import phare_utilities as phut
+
+from ...core import gridlayout
 from ...core import box as boxm
-from ...core.box import Box
+from ...core import phare_utilities as phut
 
 
 class PatchData:
@@ -24,7 +30,9 @@ class PatchData:
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["dataset"]  # do not copy these things
-        return phut.deep_copy(self, memo, no_copy_keys)
+        cpy = phut.deep_copy(self, memo, no_copy_keys)
+        cpy.dataset = self.dataset
+        return cpy
 
 
 class FieldData(PatchData):
@@ -35,38 +43,20 @@ class FieldData(PatchData):
 
     @property
     def x(self):
-        withGhosts = self.field_name != "tags"
         if self._x is None:
-            self._x = self.layout.yeeCoordsFor(
-                self.field_name,
-                "x",
-                withGhosts=withGhosts,
-                centering=self.centerings[0],
-            )
+            self._x = self.yeeCoordsFor(0)
         return self._x
 
     @property
     def y(self):
-        withGhosts = self.field_name != "tags"
         if self._y is None:
-            self._y = self.layout.yeeCoordsFor(
-                self.field_name,
-                "y",
-                withGhosts=withGhosts,
-                centering=self.centerings[1],
-            )
+            self._y = self.yeeCoordsFor(1)
         return self._y
 
     @property
     def z(self):
-        withGhosts = self.field_name != "tags"
         if self._z is None:
-            self._z = self.layout.yeeCoordsFor(
-                self.field_name,
-                "z",
-                withGhosts=withGhosts,
-                centering=self.centerings[2],
-            )
+            self._z = self.yeeCoordsFor(2)
         return self._z
 
     def primal_directions(self):
@@ -81,9 +71,11 @@ class FieldData(PatchData):
         return self.__str__()
 
     def compare(self, that, atol=1e-16):
-        return self.field_name == that.field_name and phut.fp_any_all_close(
-            self.dataset[:], that.dataset[:], atol=atol
-        )
+        try:
+            phut.assert_fp_any_all_close(self.dataset[:], that.dataset[:], atol=atol)
+        except AssertionError as e:
+            return phut.EqualityCheck(False, str(e))
+        return self.field_name == that.field_name
 
     def __eq__(self, that):
         return self.compare(that)
@@ -96,7 +88,7 @@ class FieldData(PatchData):
         return view of internal data based on overlap of input box
            returns a view +1 in size in primal directions
         """
-        assert isinstance(box, Box) and box.ndim == self.box.ndim
+        assert isinstance(box, boxm.Box) and box.ndim == self.box.ndim
 
         gbox = self.ghost_box.copy()
         gbox.upper += self.primal_directions()
@@ -134,38 +126,15 @@ class FieldData(PatchData):
         self._y = None
         self._z = None
 
+        self.dl = np.asarray(layout.dl)
         self.field_name = field_name
         self.name = field_name
-        self.dl = np.asarray(layout.dl)
         self.ndim = layout.box.ndim
-        self.ghosts_nbr = np.zeros(self.ndim, dtype=int)
 
-        if field_name in layout.centering["X"]:
-            directions = ["X", "Y", "Z"][: layout.box.ndim]  # drop unused directions
-            self.centerings = [
-                layout.qtyCentering(field_name, direction) for direction in directions
-            ]
-        elif "centering" in kwargs:
-            if isinstance(kwargs["centering"], list):
-                self.centerings = kwargs["centering"]
-                assert len(self.centerings) == self.ndim
-            else:
-                if self.ndim != 1:
-                    raise ValueError(
-                        "FieldData invalid dimenion for centering argument, expected list for dim > 1"
-                    )
-                self.centerings = [kwargs["centering"]]
-        else:
-            raise ValueError(
-                f"centering not specified and cannot be inferred from field name : {field_name}"
-            )
-
-        if self.field_name != "tags":
-            for i, centering in enumerate(self.centerings):
-                self.ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+        self.centerings = self._resolve_centering(**kwargs)
+        self.ghosts_nbr = self._resolve_ghost_nbr(**kwargs)
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
-
         self.size = np.copy(self.ghost_box.shape)
         self.offset = np.zeros(self.ndim)
 
@@ -190,6 +159,53 @@ class FieldData(PatchData):
         if select is not None:
             return tuple(g[select] for g in mesh)
         return mesh
+
+    def copy_as(self, data=None, **kwargs):
+        data = data if data is not None else self.dataset
+        name = kwargs.get("name", self.field_name)
+        kwargs["centering"] = kwargs.get("centering", self.centerings)
+        kwargs["ghosts_nbr"] = kwargs.get("ghosts_nbr", self.ghosts_nbr)
+        return FieldData(self.layout, name, data, **kwargs)
+
+    def yeeCoordsFor(self, idx):
+        return self.layout.yeeCoordsFor(
+            self.field_name,
+            gridlayout.directions[idx],
+            withGhosts=any(self.ghosts_nbr) and self.field_name != "tags",
+            centering=self.centerings[idx],
+        )
+
+    def _resolve_ghost_nbr(self, **kwargs):
+        layout = self.layout
+        ghosts_nbr = kwargs.get("ghosts_nbr", np.zeros(self.ndim, dtype=int))
+        if "ghosts_nbr" not in kwargs:
+            if self.field_name != "tags":
+                for i, centering in enumerate(self.centerings):
+                    ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+        return phut.np_array_ify(ghosts_nbr, layout.box.ndim)
+
+    def _resolve_centering(self, **kwargs):
+        field_name = self.field_name
+        if "centering" in kwargs:
+            if isinstance(kwargs["centering"], list):
+                assert len(kwargs["centering"]) == self.ndim
+                return kwargs["centering"]
+            else:
+                if self.ndim != 1:
+                    raise ValueError(
+                        "FieldData invalid dimenion for centering argument, expected list for dim > 1"
+                    )
+                return phut.listify(kwargs["centering"])
+
+        if field_name in self.layout.centering["X"]:
+            directions = ["X", "Y", "Z"][: self.ndim]  # drop unused directions
+            return [
+                self.layout.qtyCentering(field_name, direction)
+                for direction in directions
+            ]
+        raise ValueError(
+            f"centering not specified and cannot be inferred from field name : {field_name}"
+        )
 
 
 class ParticleData(PatchData):
