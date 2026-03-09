@@ -9,7 +9,6 @@ from time import sleep
 from pathlib import Path
 from ddt import data, ddt, unpack
 
-from pyphare import cpp
 import pyphare.pharein as ph
 
 from pyphare.pharein.simulation import supported_dimensions
@@ -23,22 +22,22 @@ from tests.diagnostic import dump_all_diags
 
 
 def setup_model(ppc=100):
+    from pyphare.pharein.global_vars import sim
+
+    L = sim.simulation_domain()
+
     def density(*xyz):
         return 1.0
 
     def by(*xyz):
-        from pyphare.pharein.global_vars import sim
-
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+        return np.asarray(
+            [0.1 * np.sin(2 * np.pi * xyz[i] / L[i]) for i in range(len(xyz))]
+        ).prod(axis=0)
 
     def bz(*xyz):
-        from pyphare.pharein.global_vars import sim
-
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.sin(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+        return np.asarray(
+            [0.1 * np.sin(2 * np.pi * xyz[i] / L[i]) for i in range(len(xyz))]
+        ).prod(axis=0)
 
     def bx(*xyz):
         return 1.0
@@ -47,18 +46,14 @@ def setup_model(ppc=100):
         return 0.0
 
     def vy(*xyz):
-        from pyphare.pharein.global_vars import sim
-
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+        return np.asarray(
+            [0.1 * np.cos(2 * np.pi * xyz[i] / L[i]) for i in range(len(xyz))]
+        ).prod(axis=0)
 
     def vz(*xyz):
-        from pyphare.pharein.global_vars import sim
-
-        L = sim.simulation_domain()
-        _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-        return np.asarray([_(i) for i in range(len(xyz))]).prod(axis=0)
+        return np.asarray(
+            [0.1 * np.cos(2 * np.pi * xyz[i] / L[i]) for i in range(len(xyz))]
+        ).prod(axis=0)
 
     def vthx(*xyz):
         return 0.01
@@ -131,6 +126,7 @@ class DiagnosticsTest(SimulatorTest):
         self.simulator = None
 
     def tearDown(self):
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
@@ -215,11 +211,8 @@ class DiagnosticsTest(SimulatorTest):
         b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
-        diag_path = self.unique_diag_dir_for_test_case(f"{out}/test", dim, interp)
-        simInput["diag_options"]["options"]["dir"] = diag_path
-
-        simulation = ph.Simulation(**simInput)
-        self.register_diag_dir_for_cleanup(diag_path)
+        simulation = self.simulation(**simInput)
+        diag_path = simulation.diag_options["options"]["dir"]
         self.assertTrue(len(simulation.cells) == dim)
 
         dump_all_diags(setup_model().populations)
@@ -246,12 +239,10 @@ class DiagnosticsTest(SimulatorTest):
         b0 = [[10 for i in range(dim)], [19 for i in range(dim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}
 
-        diag_path = self.unique_diag_dir_for_test_case(f"{out}/test", dim, interp)
-        simInput["diag_options"]["options"]["dir"] = diag_path
         del simInput["diag_options"]["options"]["fine_dump_lvl_max"]  # don't want
 
-        simulation = ph.Simulation(**simInput)
-        self.register_diag_dir_for_cleanup(diag_path)
+        simulation = self.simulation(**simInput)
+        diag_path = simulation.diag_options["options"]["dir"]
         self.assertTrue(len(simulation.cells) == dim)
 
         dump_all_diags(setup_model().populations)
