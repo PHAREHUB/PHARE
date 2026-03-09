@@ -134,7 +134,7 @@ class Run:
     ):
         if merged:
             all_primal = False
-        hier = self._get_hierarchy(time, "mhd_rho.h5", **kwargs)
+        hier = self._get_hier_for(time, "mhd_rho", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
@@ -144,7 +144,7 @@ class Run:
     def GetMHDV(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
             all_primal = False
-        hier = self._get_hierarchy(time, "mhd_V.h5", **kwargs)
+        hier = self._get_hier_for(time, "mhd_V", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
@@ -154,7 +154,7 @@ class Run:
     def GetMHDP(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
             all_primal = False
-        hier = self._get_hierarchy(time, "mhd_P.h5", **kwargs)
+        hier = self._get_hier_for(time, "mhd_P", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
@@ -166,7 +166,7 @@ class Run:
     ):
         if merged:
             all_primal = False
-        hier = self._get_hierarchy(time, "mhd_rhoV.h5", **kwargs)
+        hier = self._get_hier_for(time, "mhd_rhoV", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
@@ -180,12 +180,12 @@ class Run:
     ):
         if merged:
             all_primal = False
-        hier = self._get_hierarchy(time, "mhd_Etot.h5", **kwargs)
+        hier = self._get_hier_for(time, "mhd_Etot", **kwargs)
         if not all_primal:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, value="mhdEtot")
-        return VectorField(h)
+        return ScalarField(h)
 
     def GetMagneticFlux(
         self, time, interp="nearest", xn=None, yn=None, Xn=None, Yn=None
