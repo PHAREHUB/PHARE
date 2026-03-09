@@ -26,7 +26,7 @@ NO_DISCARD int rank();
 
 void barrier();
 
-NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
+NO_DISCARD std::string date_time(std::string const& format = "%Y-%m-%d-%H:%M:%S");
 
 NO_DISCARD std::int64_t unix_timestamp_now();
 
@@ -58,6 +58,11 @@ NO_DISCARD auto mpi_type_for()
         return MPI_CHAR;
 
     // don't return anything = compile failure if tried to use this function
+}
+
+auto mpi_type_for(auto const& val)
+{
+    return mpi_type_for<std::decay_t<decltype(val)>>();
 }
 
 
@@ -142,10 +147,11 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
     );
 }
 
-template<typename Vector>
-NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
+
+template<typename Vector, typename Return_t = std::vector<Vector>>
+NO_DISCARD Return_t collectVector(Vector const& sendBuff, int mpi_size = 0)
 {
-    using Data = typename Vector::value_type;
+    using Data = Vector::value_type;
 
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -156,10 +162,10 @@ NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_siz
     _collect_vector<Data>(sendBuff, rcvBuff, perMPISize, displs, mpi_size);
 
     std::size_t offset = 0;
-    std::vector<Vector> collected;
-    for (int i = 0; i < mpi_size; i++)
+    Return_t collected;
+    for (int i = 0; i < mpi_size; ++i)
     {
-        if (perMPISize[i] == 0)
+        if (perMPISize[i] == 0) // NO OUT OF BOUNDS ON LAST RANK
             collected.emplace_back();
         else
             collected.emplace_back(&rcvBuff[offset], &rcvBuff[offset] + perMPISize[i]);
@@ -191,13 +197,12 @@ NO_DISCARD auto collectArrays(std::array<T, size> const& arr, int mpi_size)
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    std::size_t maxMPISize = arr.size();
-    std::vector<Data> datas(maxMPISize * mpi_size);
-    _collect(arr.data(), datas, arr.size(), maxMPISize);
+    std::vector<Data> datas(size * mpi_size);
+    _collect(arr.data(), datas, size, size);
 
     std::vector<Array> values(mpi_size);
     for (int i = 0; i < mpi_size; i++)
-        std::memcpy(&values[i], &datas[maxMPISize * i], maxMPISize);
+        std::memcpy(&values[i], &datas[size * i], size * sizeof(T));
 
     return values;
 }
@@ -210,6 +215,14 @@ NO_DISCARD SpanSet<typename Vector::value_type, int> collect_raw(Vector const& d
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
     return collectSpanSet<typename Vector::value_type>(data, mpi_size);
+}
+
+
+template<typename T>
+NO_DISCARD auto collect(Span<T> const& sendBuff, int mpi_size = 0)
+{
+    using V = Span<T>::value_type;
+    return collectVector<Span<T>, std::vector<std::vector<V>>>(sendBuff, mpi_size);
 }
 
 
