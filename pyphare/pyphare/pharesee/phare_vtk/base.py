@@ -74,6 +74,7 @@ def _default_phases():
 class VtkFile:
     def __init__(self, filename, time=None, array_name="data", phases=None):
         phases = phases if phases is not None else _default_phases()
+
         if len(phases) == 0:
             raise RuntimeError("Error: Zero phases!")
 
