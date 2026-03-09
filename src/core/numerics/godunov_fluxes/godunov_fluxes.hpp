@@ -140,7 +140,7 @@ public:
                         //     fluxes.template get_dir<direction>({indices...})
                         //         = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
                         //
-                        //     ct.template save<direction>(uL, uR, riemann_.vt, riemann_.jt,
+                        //     ct.template save<direction>(riemann_.vt, riemann_.jt,
                         //                                 riemann_.rhot, riemann_.uct_coefs,
                         //                                 {indices...});
                         // }
@@ -156,7 +156,7 @@ public:
                         fluxes.template get_dir<direction>({indices...})
                             = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
 
-                        ct.template save<direction>(uL, uR, riemann_.vt, riemann_.jt, riemann_.rhot,
+                        ct.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
                                                     riemann_.uct_coefs, {indices...});
 
                         // for energy ExB term
@@ -170,7 +170,7 @@ public:
                         //     fluxes.template get_dir<direction>({indices...})
                         //         = riemann_.template solve<direction>(uL, uR, fL, fR);
                         //
-                        //     ct.template save<direction>(uL, uR, riemann_.vt,
+                        //     ct.template save<direction>(riemann_.vt,
                         //                                 riemann_.uct_coefs, {indices...});
                         // }
                         // }
@@ -189,8 +189,7 @@ public:
                         fluxes.template get_dir<direction>({indices...})
                             = riemann_.template solve<direction>(uL, uR, fL, fR);
 
-                        ct.template save<direction>(uL, uR, riemann_.vt, riemann_.uct_coefs,
-                                                    {indices...});
+                        ct.template save<direction>(riemann_.vt, riemann_.uct_coefs, {indices...});
 
                         // for energy ExB term
                         if constexpr (Resistivity)

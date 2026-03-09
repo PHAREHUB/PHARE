@@ -150,7 +150,7 @@ private:
 
             return std::make_tuple(LaplJL, LaplJR);
         }
-        else if (Field::dimension >= 2)
+        else if constexpr (Field::dimension >= 2)
         {
             MeshIndex<Field::dimension> prevY = GridLayout::template previous<Direction::Y>(index);
             MeshIndex<Field::dimension> nextY = GridLayout::template next<Direction::Y>(index);

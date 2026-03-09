@@ -27,16 +27,6 @@
 #include "SAMRAI/hier/CoarsenOperator.h"
 #include "SAMRAI/hier/PatchLevel.h"
 #include "SAMRAI/hier/RefineOperator.h"
-#include "SAMRAI/hier/CoarseFineBoundary.h"
-
-#include <memory>
-#include <string>
-
-
-#include <SAMRAI/hier/PatchLevel.h>
-#include <SAMRAI/hier/RefineOperator.h>
-#include <SAMRAI/hier/CoarsenOperator.h>
-
 
 #include <memory>
 #include <string>
@@ -499,7 +489,7 @@ namespace amr
 
         void fillMagneticGhosts(VecFieldT& B, level_t const& level, double const fillTime)
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillMagneticGhosts");
+            PHARE_LOG_SCOPE(3, "MHDMessenger::fillMagneticGhosts");
 
             setNaNsOnVecfieldGhosts(B, level);
             magGhostsRefiners_.fill(B, level.getLevelNumber(), fillTime);

@@ -34,8 +34,7 @@ public:
     }
 
     template<auto direction>
-    void save(auto const& uL, auto const& uR, auto const vt, auto const& coefs,
-              MeshIndex<dimension> const& idx)
+    void save(auto const vt, auto const& coefs, MeshIndex<dimension> const& idx)
     {
         auto assign_fields = [&](auto& vT, auto& aL, auto& aR, auto& dL, auto& dR) {
             vT(Component::X)(idx) = vt.x;
@@ -57,8 +56,8 @@ public:
     }
 
     template<auto direction>
-    void save(auto const& uL, auto const& uR, auto const& vt, auto const& jt, auto const rhot,
-              auto const& coefs, MeshIndex<dimension> const& idx)
+    void save(auto const& vt, auto const& jt, auto const rhot, auto const& coefs,
+              MeshIndex<dimension> const& idx)
     {
         auto assign_fields
             = [&](auto& vT, auto& jT, auto& rhoT, auto& aL, auto& aR, auto& dL, auto& dR) {
