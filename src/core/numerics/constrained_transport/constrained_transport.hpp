@@ -8,7 +8,6 @@
 #include "core/numerics/ohm/ohm.hpp"
 
 #include <iomanip>
-#include <strings.h>
 #include <tuple>
 
 namespace PHARE::core

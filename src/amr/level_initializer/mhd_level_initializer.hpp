@@ -5,7 +5,6 @@
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
 #include "initializer/data_provider.hpp"
 
 namespace PHARE::solver
@@ -34,7 +33,6 @@ public:
                     amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
                     bool isRegridding) override
     {
-        core::Interpolator<dimension, interp_order> interpolate_;
         auto& mhdModel = static_cast<MHDModel&>(model);
         auto& level    = amr_types::getLevel(*hierarchy, levelNumber);
 
