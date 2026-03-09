@@ -128,8 +128,8 @@ private:
                   auto PtL = PL + 0.5 * BdotBL;
                   auto PtR = PR + 0.5 * BdotBR;
 
-                  // auto const Bn = BcompL; // should be the same on both sides
-                  auto const Bn = SR * BcompR - SL * BcompL / (SR - SL);
+                  auto const Bn = BcompL; // should be the same on both sides
+                  // auto const Bn = (SR * BcompR - SL * BcompL) / (SR - SL);
 
                   auto SM_numerator
                       = rhoR * VcompR * (SR - VcompR) - rhoL * VcompL * (SL - VcompL) - PtR + PtL;
@@ -204,8 +204,8 @@ private:
             auto const vn = SM;
             // this should probably not be reconstructed in the normal direction as B is already
             // face centered there
-            // auto const Bn = uL.B(direction); // should be the same on both sides
-            auto const Bn = (SR * uR.B(direction) - SL * uL.B(direction)) / (SR - SL);
+            auto const Bn = uL.B(direction); // should be the same on both sides
+            // auto const Bn = (SR * uR.B(direction) - SL * uL.B(direction)) / (SR - SL);
 
 
             auto compute_tranverse_magnetic_s = [&](auto const u, auto const S, auto const tdir) {
@@ -338,7 +338,7 @@ private:
             BL_ss(transverse[0]) = Bt0_ss;
             BL_ss(transverse[1]) = Bt1_ss;
             BR_ss(direction)     = Bn;
-            BR_ss(transverse[0]) = Bt1_ss;
+            BR_ss(transverse[0]) = Bt0_ss;
             BR_ss(transverse[1]) = Bt1_ss;
 
             auto const uL_s  = PerIndex{rhoL_s, rhoVL_s, BL_s, EtotL_s};
