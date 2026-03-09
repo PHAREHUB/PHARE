@@ -1,3 +1,8 @@
+#
+#
+#
+
+
 class PatchLevel:
     """is a collection of patches"""
 
@@ -5,11 +10,18 @@ class PatchLevel:
         self.level_number = lvl_nbr
         self.patches = patches
 
-    def __iter__(self):
-        return self.patches.__iter__()
-
     def level_range(self):
         name = list(self.patches[0].patch_datas.keys())[0]
         return min([patch.patch_datas[name].x.min() for patch in self.patches]), max(
             [patch.patch_datas[name].x.max() for patch in self.patches]
         )
+
+    def __getitem__(self, idx):
+        return self.patches[idx]
+
+    def __iter__(self):
+        return self.patches.__iter__()
+
+    @property
+    def cell_width(self):
+        return self.patches[0].layout.dl
