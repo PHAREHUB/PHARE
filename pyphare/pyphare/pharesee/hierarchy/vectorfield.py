@@ -1,22 +1,18 @@
+#
+#
+#
+
+
+from . import tensorfield
 from . import hierarchy_compute as hc
-from .hierarchy import PatchHierarchy
 from .hierarchy_utils import compute_hier_from
 
 
-class VectorField(PatchHierarchy):
+class VectorField(tensorfield.AnyTensorField):
     def __init__(self, hier):
-        renamed_hier = compute_hier_from(
-            hc.compute_rename, hier, new_names=("x", "y", "z")
-        )
-        patch_levels = renamed_hier.patch_levels
-        domain_box = renamed_hier.domain_box
-        refinement_ratio = renamed_hier.refinement_ratio
-        data_files = renamed_hier.data_files
-
         self.names = ["x", "y", "z"]
-
         super().__init__(
-            patch_levels, domain_box, refinement_ratio, renamed_hier.times(), data_files
+            compute_hier_from(hc.compute_rename, hier, new_names=self.names)
         )
 
     def __mul__(self, other):

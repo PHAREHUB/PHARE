@@ -52,7 +52,7 @@ class VtkFieldData(patchdata.FieldData):
         try:
             that_data = (
                 that[:]
-                if all([that.dataset.shape == self.dataset.shape])
+                if (that.dataset.shape == self.dataset.shape).all()
                 else that[that.box]
             )
             phut.assert_fp_any_all_close(self.dataset[:], that_data, atol=atol)

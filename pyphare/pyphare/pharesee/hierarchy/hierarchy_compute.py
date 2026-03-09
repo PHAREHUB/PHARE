@@ -48,18 +48,24 @@ def _compute_copy_do(patch_data, λ):
     return new_patch_data
 
 
-def drop_ghosts(patch, **kwargs):
+def drop_patchdata_ghosts(pd, **kwargs):
+    ghosts_nbr = [0] * pd.box.ndim
+    data = pd[pd.box] if any(pd.ghosts_nbr) else pd[:]
+    return pd.copy_as(data, ghosts_nbr=ghosts_nbr)
+
+
+def drop_patch_ghosts(patch, **kwargs):
     pd_attrs = []
-    ghosts_nbr = [0] * patch.box.ndim
     for name, pd in patch.patch_datas.items():
-        data = pd[patch.box] if any(pd.ghosts_nbr) else pd[:]
-        pd_attrs.append(
-            {
-                "name": name,
-                "data": pd.copy_as(data, ghosts_nbr=ghosts_nbr),
-            }
-        )
+        pd_attrs.append({"name": name, "data": drop_patchdata_ghosts(pd)})
     return tuple(pd_attrs)
+
+
+def drop_ghosts(input, **kwargs):
+    """accepts patch or specific FieldData"""
+    if hasattr(input, "patch_datas"):
+        return drop_patch_ghosts(input)
+    return drop_patchdata_ghosts(input)
 
 
 class DataAccessor:

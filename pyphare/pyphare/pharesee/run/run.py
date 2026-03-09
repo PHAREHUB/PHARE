@@ -17,6 +17,9 @@ from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
 
 from pyphare.logger import getLogger
+
+from .man import RunMan
+
 from .utils import (
     _compute_to_primal,
     _compute_pop_pressure,
@@ -26,7 +29,6 @@ from .utils import (
     _get_rank,
     make_interpolator,
 )
-
 
 logger = getLogger(__name__)
 
@@ -72,8 +74,7 @@ class Run:
         return ScalarField(self._get(hier, time, merged, interp))
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
-        hier = self._get_hier_for(time, "ions_bulkVelocity", **kwargs)
-        return VectorField(self._get(hier, time, merged, interp, drop_ghosts=True))
+        return RunMan(self).GetVi(time, merged, interp, **kwargs)
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hier_for(time, f"ions_pop_{pop_name}_flux", **kwargs)
@@ -90,6 +91,7 @@ class Run:
             mass=self.GetMass(pop_name, **kwargs),
         )
         return self._get(P, time, merged, interp)  # should later be a TensorField
+        # return RunMan(self).GetPressure(time, pop_name, merged, interp, **kwargs)
 
     def GetPi(self, time, merged=False, interp="nearest", **kwargs):
         M = self._get_hier_for(time, "ions_momentum_tensor", **kwargs)
@@ -222,15 +224,12 @@ class Run:
                 upper = kwargs["selection_box"][2:]
                 kwargs["selection_box"] = Box(lower, upper)
 
-        def _get_hier(h):
-            return hierarchy_from(
-                h5_filename=os.path.join(self.path, filename),
-                times=times,
-                hier=h,
-                **kwargs,
-            )
-
-        return _get_hier(hier)
+        return hierarchy_from(
+            h5_filename=os.path.join(self.path, filename),
+            times=times,
+            hier=hier,
+            **kwargs,
+        )
 
     # TODO maybe transform that so multiple times can be accepted
     def _get(self, hierarchy, time, merged, interp, drop_ghosts=False):

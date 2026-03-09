@@ -154,18 +154,16 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     hierarchies = listify(hierarchies)
     if not are_compatible_hierarchies(hierarchies):
         raise RuntimeError("hierarchies are not compatible")
-
     reference_hier = hierarchies[0]
     domain_box = reference_hier.domain_box
     patch_levels_per_time = []
     for t in reference_hier.times():
         patch_levels = {}
-        for ilvl in range(reference_hier.levelNbr()):
-            patch_levels[ilvl] = PatchLevel(
-                ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
-            )
+        for ilvl in reference_hier.levels(t).keys():
+            patches = new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
+            if patches:
+                patch_levels[ilvl] = PatchLevel(ilvl, patches)
         patch_levels_per_time.append(patch_levels)
-
     return PatchHierarchy(
         patch_levels_per_time,
         domain_box,
@@ -195,19 +193,17 @@ def new_patchdatas_from(compute, patch, **kwargs):
 
 def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     reference_hier = hierarchies[0]
+    if ilvl not in reference_hier.levels(t):
+        return []
+
     new_patches = []
     ref_patches = reference_hier.level(ilvl, time=t).patches
     for ip, ref_patch in enumerate(ref_patches):
         patch = deepcopy(ref_patch)
         patch.patch_datas = extract_patchdatas(hierarchies, ilvl, t, ip)
         hinfo = HierarchyAccessor(reference_hier, t, ilvl, ip)
-        new_patches.append(
-            Patch(
-                new_patchdatas_from(compute, patch, hinfo=hinfo, **kwargs),
-                patch.id,
-                attrs=patch.attrs,
-            )
-        )
+        patch.patch_datas = new_patchdatas_from(compute, patch, hinfo=hinfo, **kwargs)
+        new_patches.append(patch)
     return new_patches
 
 

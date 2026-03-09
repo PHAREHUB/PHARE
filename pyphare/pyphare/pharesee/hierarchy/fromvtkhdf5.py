@@ -424,7 +424,7 @@ def hierarchy_fromvtkhdf(h5_filename, time=None, hier=None, silent=True, **kwarg
         return add_time_from_h5(hier, h5_filename, time[0], **kwargs)
 
     if load_all_times(time, hier):
-        for t in VtkFile(h5_filename).times:
+        for t in get_times_from_h5(h5_filename):
             add_time_from_h5(hier, h5_filename, t, **kwargs)
         return hier
 

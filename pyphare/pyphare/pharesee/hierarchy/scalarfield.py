@@ -1,18 +1,17 @@
+#
+#
+#
+
+
+from . import tensorfield
 from . import hierarchy_compute as hc
-from .hierarchy import PatchHierarchy
 from .hierarchy_utils import compute_hier_from
 
 
-class ScalarField(PatchHierarchy):
+class ScalarField(tensorfield.AnyTensorField):
     def __init__(self, hier):
-        renamed_hier = compute_hier_from(hc.compute_rename, hier, new_names=("value",))
-        patch_levels = renamed_hier.patch_levels
-        domain_box = renamed_hier.domain_box
-        refinement_ratio = renamed_hier.refinement_ratio
-        data_files = renamed_hier.data_files
-
         super().__init__(
-            patch_levels, domain_box, refinement_ratio, renamed_hier.times(), data_files
+            compute_hier_from(hc.compute_rename, hier, new_names=("value",))
         )
 
     def __add__(self, other):

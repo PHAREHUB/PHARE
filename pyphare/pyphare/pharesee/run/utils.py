@@ -409,6 +409,13 @@ def _compute_pressure(patch, **kwargs):
     )
 
 
+def _compute_pop_pressure_xx(patch, mass, popname):
+    Mxx = patch[popname + "_Mxx"]
+    Fx = patch[popname + "_Fx"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pxx": Mxx.copy_as(Mxx[:] - Fx * Fx * mass / N)}
+
+
 def _compute_pop_pressure(patch, **kwargs):
     """
     computes the pressure tensor for a given population

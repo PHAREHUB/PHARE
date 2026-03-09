@@ -83,11 +83,15 @@ class FieldData(PatchData):
     def __ne__(self, that):
         return not (self == that)
 
-    def select(self, box):
+    def select(self, box_or_slice):
         """
         return view of internal data based on overlap of input box
            returns a view +1 in size in primal directions
         """
+        if isinstance(box_or_slice, slice):
+            return self.dataset[box_or_slice]
+
+        box = box_or_slice
         assert isinstance(box, boxm.Box) and box.ndim == self.box.ndim
 
         gbox = self.ghost_box.copy()
@@ -100,16 +104,12 @@ class FieldData(PatchData):
         if overlap is not None:
             lower = self.layout.AMRToLocal(overlap.lower)
             upper = self.layout.AMRToLocal(overlap.upper)
+            select = tuple(slice(lower[i], upper[i] + 1) for i in range(box.ndim))
+            return self.dataset[select]
 
-            if box.ndim == 1:
-                return self.dataset[lower[0] : upper[0] + 1]
-            if box.ndim == 2:
-                return self.dataset[lower[0] : upper[0] + 1, lower[1] : upper[1] + 1]
         return np.array([])
 
     def __getitem__(self, box_or_slice):
-        if isinstance(box_or_slice, slice):
-            return self.dataset[box_or_slice]
         return self.select(box_or_slice)
 
     def __setitem__(self, box_or_slice, val):

@@ -4,6 +4,7 @@
 
 from .scalarfield import ScalarField
 from .vectorfield import VectorField
+from .tensorfield import TensorField
 from .hierarchy import PatchHierarchy
 
 
@@ -12,6 +13,7 @@ from pyphare.core import phare_utilities as phut
 __all__ = [
     "ScalarField",
     "VectorField",
+    "TensorField",
     "PatchHierarchy",
 ]
 
