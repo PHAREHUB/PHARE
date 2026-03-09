@@ -37,8 +37,15 @@ class Patch:
     def __repr__(self):
         return self.__str__()
 
+    def __iter__(self):
+        return self.patch_datas.items().__iter__()
+
     def __getitem__(self, key):
-        return self.patch_datas[key]
+        try:
+            return self.patch_datas[key]
+        except KeyError as e:
+            print(key, "not in", self.patch_datas.keys())
+            raise e
 
     def copy(self):
         """does not copy patchdatas.datasets (see class PatchData)"""
