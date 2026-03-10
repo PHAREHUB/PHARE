@@ -184,10 +184,9 @@ public:
     {
         auto oldCell                    = particles_[particleIndex].iCell;
         particles_[particleIndex].iCell = newCell;
-        if (!box_.isEmpty())
-        {
+        auto const box_is_valid         = box_.size() > 1;
+        if (box_is_valid)
             cellMap_.update(particles_, particleIndex, oldCell);
-        }
     }
 
 

@@ -113,13 +113,13 @@ public:
 };
 
 
-template<std::size_t dimension_>
+template<std::size_t dim>
 struct DummyLayout
 {
-    static constexpr std::size_t dimension = dimension_;
+    static constexpr std::size_t dimension = dim;
     std::array<unsigned int, dimension> nbrCells_;
     auto nbrCells() const { return nbrCells_; }
-    auto AMRBox() const { return PHARE::core::emptyBox<int, dimension>(); }
+    auto AMRBox() const { return PHARE::core::Box<int, dimension>{}; }
     auto levelNumber() const { return 0; }
 };
 

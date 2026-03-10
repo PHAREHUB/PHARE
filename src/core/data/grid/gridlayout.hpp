@@ -15,6 +15,7 @@
 #include <array>
 #include <tuple>
 #include <cstddef>
+#include <optional>
 #include <functional>
 #include <type_traits>
 
@@ -99,7 +100,7 @@ namespace core
         static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
         using This                                = GridLayout<GridLayoutImpl>;
         using implT                               = GridLayoutImpl;
-
+        using AMRBox_t                            = Box<int, dimension>;
 
         /**
          * @brief Constructor of a GridLayout
@@ -110,37 +111,20 @@ namespace core
         GridLayout(std::array<double, dimension> const& meshSize,
                    std::array<std::uint32_t, dimension> const& nbrCells,
                    Point<double, dimension> const& origin,
-                   Box<int, dimension> AMRBox = Box<int, dimension>{}, int level_number = 0)
+                   std::optional<AMRBox_t> const AMRBox = std::nullopt, int level_number = 0)
             : meshSize_{meshSize}
             , origin_{origin}
             , nbrPhysicalCells_{nbrCells}
             , physicalStartIndexTable_{initPhysicalStart_()}
             , physicalEndIndexTable_{initPhysicalEnd_()}
             , ghostEndIndexTable_{initGhostEnd_()}
-            , AMRBox_{AMRBox}
+            , AMRBox_{AMRBox ? *AMRBox : boxFromNbrCells(nbrCells)}
             , levelNumber_{level_number}
         {
-            if (AMRBox_.isEmpty())
-            {
-                AMRBox_ = boxFromNbrCells(nbrCells);
-            }
-            else
-            {
-                if (AMRBox.size() != boxFromNbrCells(nbrCells).size())
-                {
-                    throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
-                }
-            }
+            if (AMRBox_.size() != boxFromNbrCells(nbrCells).size())
+                throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
 
-            inverseMeshSize_[0] = 1. / meshSize_[0];
-            if constexpr (dimension > 1)
-            {
-                inverseMeshSize_[1] = 1. / meshSize_[1];
-                if constexpr (dimension > 2)
-                {
-                    inverseMeshSize_[2] = 1. / meshSize_[2];
-                }
-            }
+            inverseMeshSize_ = generate([](auto const e) { return 1. / e; }, meshSize_);
         }
 
 
@@ -1548,7 +1532,7 @@ namespace core
         std::array<std::array<std::uint32_t, dimension>, 2> physicalStartIndexTable_;
         std::array<std::array<std::uint32_t, dimension>, 2> physicalEndIndexTable_;
         std::array<std::array<std::uint32_t, dimension>, 2> ghostEndIndexTable_;
-        Box<int, dimension> AMRBox_;
+        AMRBox_t AMRBox_;
 
         // this constexpr initialization only works if primal==0 and dual==1
         // this is defined in gridlayoutdefs.hpp don't change it because these
