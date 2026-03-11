@@ -625,9 +625,16 @@ def finest_part_data(hierarchy, time=None):
 
     from ..particles import remove
 
+    i_ref = None
+    for i_ref, p in enumerate(hierarchy.level(0, time=time).patches):
+        if p.patch_datas.__len__()!=0:
+            break
+    if i_ref == None:
+        raise ValueError("This particle hierarchy seems empty !")
+
     # we are going to return a dict {popname : Particles}
     # we prepare it with population names
-    aPatch = hierarchy.level(0, time=time).patches[0]
+    aPatch = hierarchy.level(0, time=time).patches[i_ref]
     particles = {popname: None for popname in aPatch.patch_datas.keys()}
 
     # our strategy is to explore the hierarchy from the finest
