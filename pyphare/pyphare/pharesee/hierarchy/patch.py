@@ -86,8 +86,7 @@ class Patch:
             else:
                 raise TypeError("this arg should be a Patch")
 
-        out = [getattr(ufunc, method)(*pd, **kwargs)  for pd in zip(*pds)]
-        # out = [ufunc(*pd, **kwargs) for pd in zip(*pds)]
+        out = [getattr(ufunc, method)(*pd, **kwargs) for pd in zip(*pds)]
 
         final = {}
         for k, pd in zip(pd_k, out):  # TODO hmmmm, the output patch will keep the keys of the last patch in inputs
@@ -96,7 +95,25 @@ class Patch:
         return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)
 
     def __array_function__(self, func, types, args, kwargs):
-        # TODO this has to be tested w. np.mean for example
         print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
-        return func(*args, **kwargs)
+
+        pds = []
+        for x in args:
+            if isinstance(x, Patch):
+                pd_k = []
+                pds_ = []
+                for k, p in x.patch_datas.items():
+                    pd_k.append(k)
+                    pds_.append(p)
+                pds.append(pds_)
+            else:
+                raise TypeError("this arg should be a Patch")
+
+        out = [func(*pd, **kwargs) for pd in zip(*pds)]
+
+        final = {}
+        for k, pd in zip(pd_k, out):
+            final[k] = pd
+
+        return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)
 

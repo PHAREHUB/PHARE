@@ -200,24 +200,22 @@ class FieldData(PatchData):
         if method != "__call__":
             raise NotImplementedError
 
-        ds = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
-        out = getattr(ufunc, method)(*ds, **kwargs)
+        in_ = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
+        out_ = getattr(ufunc, method)(*in_, **kwargs)
 
-        if isinstance(out, np.ndarray):
-            return FieldData(self.layout, ufunc.__name__+"@"+self.field_name, out, centering=self.centerings)
+        if isinstance(out_, np.ndarray):
+            return FieldData(self.layout, ufunc.__name__+"@"+self.field_name, out_, centering=self.centerings)
 
     def __array_function__(self, func, types, args, kwargs):
         print(f"__array_function__ of FieldData {func.__name__} called with {[getattr(a, 'name', a) for a in args]}")
 
-        ds = [a.dataset if isinstance(a, FieldData) else a for a in args]
-        out = func(*ds, **kwargs)
+        in_ = [a.dataset if isinstance(a, FieldData) else a for a in args]
+        out_ = func(*in_, **kwargs)
 
-        if isinstance(out, np.ndarray):
-            return FieldData(self.layout, func.__name__+"@"+self.field_name, out, centering=self.centerings)
+        if isinstance(out_, np.ndarray):
+            return FieldData(self.layout, func.__name__+"@"+self.field_name, out_, centering=self.centerings)
         else:
-            return out
-
-
+            return out_
 
 
 class ParticleData(PatchData):

@@ -688,6 +688,12 @@ class PatchHierarchy(object):
         elif h_type is VectorField:
             return self
 
+    def __array_function__(self, func, types, args, kwargs):
+        # TODO this has to be tested w. np.mean for example
+        print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
+        return func(*args, **kwargs)
+
+
 def finest_part_data(hierarchy, time=None):
     """
     returns a dict {popname : Particles}
