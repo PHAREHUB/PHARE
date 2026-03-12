@@ -286,24 +286,22 @@ void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& mode
     PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
+    auto& Eavg        = electromagAvg_.E;
+    auto& rm          = *hybridModel.resourcesManager;
 
-    for (auto& patch : level)
+    for (auto& patch : rm.enumerate(level, fluxSumE_, Eavg))
     {
-        auto& Eavg         = electromagAvg_.E;
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _             = hybridModel.resourcesManager->setOnPatch(*patch, fluxSumE_, Eavg);
+        auto const&& [Fx, Fy, Fz] = fluxSumE_();
+        auto const&& [Ex, Ey, Ez] = Eavg();
 
-        layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::X)(args...) += Eavg(core::Component::X)(args...) * coef;
-        });
+        for (std::size_t i = 0; i < Fx.size(); ++i)
+            Fx.data()[i] += Ex.data()[i] * coef;
 
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Y), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Y)(args...) += Eavg(core::Component::Y)(args...) * coef;
-        });
+        for (std::size_t i = 0; i < Fy.size(); ++i)
+            Fy.data()[i] += Ey.data()[i] * coef;
 
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Z), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Z)(args...) += Eavg(core::Component::Z)(args...) * coef;
-        });
+        for (std::size_t i = 0; i < Fz.size(); ++i)
+            Fz.data()[i] += Ez.data()[i] * coef;
     }
 }
 
