@@ -34,6 +34,24 @@ public:
         ++span_idx;
         return *this;
     }
+    BoxSpans operator++(int) // postfix increment
+    {
+        auto copy = *this;
+        ++(*this);
+        return copy;
+    }
+
+    BoxSpans& operator--()
+    {
+        --span_idx;
+        return *this;
+    }
+    BoxSpans operator--(int) // postfix decrement
+    {
+        auto copy = *this;
+        --(*this);
+        return copy;
+    }
 
     auto& point()
     {
@@ -49,6 +67,8 @@ public:
 
     bool operator==(BoxSpans const& that) const { return span_idx == that.span_idx; }
     bool operator!=(BoxSpans const& that) const { return span_idx != that.span_idx; }
+    bool operator<(BoxSpans const& that) const { return span_idx < that.span_idx; }
+    bool operator>(BoxSpans const& that) const { return span_idx > that.span_idx; }
 
 
 protected:
@@ -87,11 +107,31 @@ public:
 
     bool operator==(BoxSlab const& that) const { return slab_idx == that.slab_idx; }
     bool operator!=(BoxSlab const& that) const { return slab_idx != that.slab_idx; }
+    bool operator<(BoxSlab const& that) const { return slab_idx < that.slab_idx; }
+    bool operator>(BoxSlab const& that) const { return slab_idx > that.slab_idx; }
 
     BoxSlab& operator++()
     {
         ++slab_idx;
         return *this;
+    }
+    BoxSlab operator++(int) // postfix increment
+    {
+        auto copy = *this;
+        ++(*this);
+        return copy;
+    }
+
+    BoxSlab& operator--()
+    {
+        --slab_idx;
+        return *this;
+    }
+    BoxSlab operator--(int) // postfix decrement
+    {
+        auto copy = *this;
+        --(*this);
+        return copy;
     }
 
     T span_begin() const
