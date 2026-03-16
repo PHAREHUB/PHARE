@@ -24,7 +24,7 @@ class FluidDiagnosticWriter : public H5TypeWriter<H5Writer>
     using VTKFileWriter      = Super::VTKFileWriter;
     using VTKFileInitializer = Super::VTKFileInitializer;
     using Model_t            = H5Writer::ModelView::Model_t;
-    using GridLayout         = typename H5Writer::GridLayout;
+    using GridLayout         = H5Writer::GridLayout;
 
 public:
     FluidDiagnosticWriter(H5Writer& h5Writer)
@@ -81,7 +81,7 @@ private:
 
     struct HybridFluidComputer
     {
-        void operator()(void);
+        void operator()();
 
         FluidDiagnosticWriter* writer;
         DiagnosticProperties& diagnostic;
@@ -90,7 +90,7 @@ private:
 
     struct MhdFluidComputer
     {
-        void operator()(void);
+        void operator()();
 
         FluidDiagnosticWriter* writer;
         DiagnosticProperties& diagnostic;
@@ -301,7 +301,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 
 
 template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::HybridFluidComputer::operator()(void)
+void FluidDiagnosticWriter<H5Writer>::HybridFluidComputer::operator()()
 {
     // to implement
 }
@@ -309,7 +309,7 @@ void FluidDiagnosticWriter<H5Writer>::HybridFluidComputer::operator()(void)
 
 
 template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()(void)
+void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
 {
     auto& modelView = writer->h5Writer_.modelView();
     auto minLvl     = writer->h5Writer_.minLevel;
@@ -324,28 +324,27 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()(void)
 
     std::string tree{"/mhd/"};
 
-    std::optional<std::function<void(GridLayout&, std::string, std::size_t)>> computer
-        = std::nullopt;
     if (isActiveDiag(diagnostic, tree, "V"))
     {
-        computer = [&](GridLayout& layout, std::string, std::size_t) {
-            core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
-            toPrim.rhoVToVOnGhostBox(rho, rhoV, V);
-        };
+        modelView.visitHierarchy(
+            [&](GridLayout& layout, std::string, std::size_t) {
+                core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
+                toPrim.rhoVToVOnGhostBox(rho, rhoV, V);
+            },
+            minLvl, maxLvl);
     }
     else if (isActiveDiag(diagnostic, tree, "P"))
     {
-        computer = [&](GridLayout& layout, std::string, std::size_t) {
-            auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
-                                   .template to<double>(); // or FloatType if we want to expose
-                                                           // that to DiagnosticProperties
-            core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
-            toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
-        };
+        modelView.visitHierarchy(
+            [&](GridLayout& layout, std::string, std::size_t) {
+                auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
+                                       .template to<double>(); // or FloatType if we want to expose
+                                                               // that to DiagnosticProperties
+                core::ToPrimitiveConverter_ref<GridLayout> toPrim{layout};
+                toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
+            },
+            minLvl, maxLvl);
     }
-
-    if (computer)
-        modelView.visitHierarchy(*computer, minLvl, maxLvl);
 }
 
 
