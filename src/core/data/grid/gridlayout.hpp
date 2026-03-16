@@ -6,6 +6,7 @@
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/data/field/field_box.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
@@ -745,7 +746,7 @@ namespace core
         NO_DISCARD auto localToAMR(Point<T, dimension> localPoint) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            Point<T, dimension> pointAMR;
+            Point<int, dimension> pointAMR;
 
             // any direction, it's the same because we want cells
             auto localStart = physicalStartIndex(QtyCentering::dual, Direction::X);
@@ -767,7 +768,7 @@ namespace core
         NO_DISCARD auto localToAMR(Box<T, dimension> localBox) const
         {
             static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
-            auto AMRBox = Box<T, dimension>{};
+            auto AMRBox = Box<int, dimension>{};
 
             AMRBox.lower = localToAMR(localBox.lower);
             AMRBox.upper = localToAMR(localBox.upper);
@@ -1170,21 +1171,26 @@ namespace core
         template<typename Field>
         Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
         {
-            return _BoxFor(field, [&](auto const& centering, auto const direction) {
-                return this->ghostStartToEnd(centering, direction);
-            });
+            return boxFor(field, [&](auto&&... args) { return this->ghostStartToEnd(args...); });
         }
 
 
+        template<typename Field>
+        Box<std::uint32_t, dimension> domainBoxFor(Field const& field) const
+        {
+            return boxFor(field, [&](auto&&... args) { return this->physicalStartToEnd(args...); });
+        }
 
-        auto AMRBoxFor(auto const& field) const
+        auto FieldBoxFor(auto const& field, Box<int, dimension> box) const
         {
             auto const centerings = centering(field);
-            auto box              = AMRBox_;
+
             for (std::uint8_t i = 0; i < dimension; ++i)
                 box.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
             return box;
         }
+
+        auto AMRBoxFor(auto const& field) const { return FieldBoxFor(field, AMRBox_); }
 
         auto AMRGhostBoxFor(auto const& field) const
         {
@@ -1194,24 +1200,16 @@ namespace core
         }
 
 
-        template<typename Field, typename Fn>
-        void evalOnBox(Field& field, Fn&& fn) const
+        template<typename... Args>
+        void evalOnBox(auto const& field, auto&& fn, Args&&... args) const
         {
-            auto indices = [&](auto const& centering, auto const direction) {
-                return this->physicalStartToEnd(centering, direction);
-            };
-
-            evalOnBox_(field, fn, indices);
+            evalOnAnyBox(domainBoxFor(field), fn, std::forward<Args>(args)...);
         }
 
-        template<typename Field, typename Fn>
-        void evalOnGhostBox(Field& field, Fn&& fn) const
+        template<typename... Args>
+        void evalOnGhostBox(auto const& field, auto&& fn, Args&&... args) const
         {
-            auto indices = [&](auto const& centering, auto const direction) {
-                return this->ghostStartToEnd(centering, direction);
-            };
-
-            evalOnBox_(field, fn, indices);
+            evalOnAnyBox(ghostBoxFor(field), fn, std::forward<Args>(args)...);
         }
 
         auto levelNumber() const { return levelNumber_; }
@@ -1226,41 +1224,20 @@ namespace core
         }
 
     private:
-        template<typename Field, typename IndicesFn, typename Fn>
-        static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd)
+        template<typename... Args>
+        void evalOnAnyBox(auto const& box, auto&& fn, Args&&... args) const
         {
-            auto const [ix0, ix1] = startToEnd(field, Direction::X);
-            for (auto ix = ix0; ix <= ix1; ++ix)
-            {
-                if constexpr (dimension == 1)
-                {
-                    fn(ix);
-                }
-                else
-                {
-                    auto const [iy0, iy1] = startToEnd(field, Direction::Y);
+            auto constexpr static IDX = dimension - 1; // Fast index
 
-                    for (auto iy = iy0; iy <= iy1; ++iy)
-                    {
-                        if constexpr (dimension == 2)
-                        {
-                            fn(ix, iy);
-                        }
-                        else
-                        {
-                            auto const [iz0, iz1] = startToEnd(field, Direction::Z);
-
-                            for (auto iz = iz0; iz <= iz1; ++iz)
-                                fn(ix, iy, iz);
-                        }
-                    }
-                }
-            }
+            for (auto const& slab : make_box_span(box))
+                for (auto const& [point, _] : slab)
+                    for (; point[IDX] <= box.upper[IDX]; ++point[IDX])
+                        fn(point, std::forward<Args>(args)...);
         }
 
 
         template<typename Field, typename Fn>
-        auto _BoxFor(Field const& field, Fn startToEnd) const
+        auto boxFor(Field const& field, Fn startToEnd) const
         {
             std::array<std::uint32_t, dimension> lower, upper;
 

@@ -119,9 +119,7 @@ public:
         auto& Vez = Ve_(Component::Z);
 
         // from Ni because all components defined on primal
-        layout.evalOnBox(Ne, [&](auto const&... args) {
-            auto arr = std::array{args...};
-
+        layout.evalOnBox(Ne, [&](auto const& arr) {
             auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
             auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
             auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
