@@ -162,7 +162,7 @@ htmlhelp_basename = "PHAREdoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
-preamble_lines = [rf"usepackage{{{pkg}}}" for pkg in tex_extensions] \
+preamble_lines = [rf"\usepackage{{{pkg}}}" for pkg in tex_extensions] \
 + [r"\AtBeginDocument{\RenewCommandCopy\qty\SI}"]
 latex_elements = {
     'preamble': r" ".join(preamble_lines),
