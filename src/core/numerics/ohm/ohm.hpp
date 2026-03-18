@@ -88,179 +88,54 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal1D_(VecField const& Ve, VecField const& B, MeshIndex<1> index) const
-    {
-        if constexpr (component == Component::X)
-        {
-            auto const& Vy = Ve(Component::Y);
-            auto const& Vz = Ve(Component::Z);
-
-            auto const& By = B(Component::Y);
-            auto const& Bz = B(Component::Z);
-
-            auto constexpr momentsToEx = GridLayout::momentsToEx();
-            auto const vyOnEx          = GridLayout::project(Vy, index, momentsToEx);
-            auto const vzOnEx          = GridLayout::project(Vz, index, momentsToEx);
-            auto const byOnEx          = GridLayout::project(By, index, GridLayout::ByToEx());
-            auto const bzOnEx          = GridLayout::project(Bz, index, GridLayout::BzToEx());
-
-            return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
-        }
-
-        if constexpr (component == Component::Y)
-        {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vz = Ve(Component::Z);
-            auto const& Bx = B(Component::X);
-            auto const& Bz = B(Component::Z);
-
-            auto constexpr momentsToEy = GridLayout::momentsToEy();
-            auto const vxOnEy          = GridLayout::project(Vx, index, momentsToEy);
-            auto const vzOnEy          = GridLayout::project(Vz, index, momentsToEy);
-            auto const bxOnEy          = GridLayout::project(Bx, index, GridLayout::BxToEy());
-            auto const bzOnEy          = GridLayout::project(Bz, index, GridLayout::BzToEy());
-
-            return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
-        }
-
-        if constexpr (component == Component::Z)
-        {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vy = Ve(Component::Y);
-            auto const& Bx = B(Component::X);
-            auto const& By = B(Component::Y);
-
-            auto constexpr momentsToEz = GridLayout::momentsToEz();
-            auto const vxOnEz          = GridLayout::project(Vx, index, momentsToEz);
-            auto const vyOnEz          = GridLayout::project(Vy, index, momentsToEz);
-            auto const bxOnEz          = GridLayout::project(Bx, index, GridLayout::BxToEz());
-            auto const byOnEz          = GridLayout::project(By, index, GridLayout::ByToEz());
-
-            return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
-        }
-    }
-
-
-    template<auto component, typename VecField>
-    auto ideal2D_(VecField const& Ve, VecField const& B, MeshIndex<2> index) const
-    {
-        if constexpr (component == Component::X)
-        {
-            auto const& Vy = Ve(Component::Y);
-            auto const& Vz = Ve(Component::Z);
-            auto const& By = B(Component::Y);
-            auto const& Bz = B(Component::Z);
-
-            auto constexpr momentsToEx = GridLayout::momentsToEx();
-            auto const vyOnEx          = GridLayout::project(Vy, index, momentsToEx);
-            auto const vzOnEx          = GridLayout::project(Vz, index, momentsToEx);
-            auto const byOnEx          = GridLayout::project(By, index, GridLayout::ByToEx());
-            auto const bzOnEx          = GridLayout::project(Bz, index, GridLayout::BzToEx());
-
-            return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
-        }
-
-
-        if constexpr (component == Component::Y)
-        {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vz = Ve(Component::Z);
-            auto const& Bx = B(Component::X);
-            auto const& Bz = B(Component::Z);
-
-            auto constexpr momentsToEy = GridLayout::momentsToEy();
-            auto const vxOnEy          = GridLayout::project(Vx, index, momentsToEy);
-            auto const vzOnEy          = GridLayout::project(Vz, index, momentsToEy);
-            auto const bxOnEy          = GridLayout::project(Bx, index, GridLayout::BxToEy());
-            auto const bzOnEy          = GridLayout::project(Bz, index, GridLayout::BzToEy());
-
-            return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
-        }
-
-        if constexpr (component == Component::Z)
-        {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vy = Ve(Component::Y);
-            auto const& Bx = B(Component::X);
-            auto const& By = B(Component::Y);
-
-            auto constexpr momentsToEz = GridLayout::momentsToEz();
-            auto const vxOnEz          = GridLayout::project(Vx, index, momentsToEz);
-            auto const vyOnEz          = GridLayout::project(Vy, index, momentsToEz);
-            auto const bxOnEz          = GridLayout::project(Bx, index, GridLayout::BxToEz());
-            auto const byOnEz          = GridLayout::project(By, index, GridLayout::ByToEz());
-
-            return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
-        }
-    }
-
-
-
-    template<auto component, typename VecField>
-    auto ideal3D_(VecField const& Ve, VecField const& B, MeshIndex<3> index) const
-    {
-        if constexpr (component == Component::X)
-        {
-            auto const& Vy = Ve(Component::Y);
-            auto const& Vz = Ve(Component::Z);
-            auto const& By = B(Component::Y);
-            auto const& Bz = B(Component::Z);
-
-            auto constexpr momentsToEx = GridLayout::momentsToEx();
-            auto const vyOnEx          = GridLayout::project(Vy, index, momentsToEx);
-            auto const vzOnEx          = GridLayout::project(Vz, index, momentsToEx);
-            auto const byOnEx          = GridLayout::project(By, index, GridLayout::ByToEx());
-            auto const bzOnEx          = GridLayout::project(Bz, index, GridLayout::BzToEx());
-
-            return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
-        }
-
-        if constexpr (component == Component::Y)
-        {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vz = Ve(Component::Z);
-            auto const& Bx = B(Component::X);
-            auto const& Bz = B(Component::Z);
-
-            auto constexpr momentsToEy = GridLayout::momentsToEy();
-            auto const vxOnEy          = GridLayout::project(Vx, index, momentsToEy);
-            auto const vzOnEy          = GridLayout::project(Vz, index, momentsToEy);
-            auto const bxOnEy          = GridLayout::project(Bx, index, GridLayout::BxToEy());
-            auto const bzOnEy          = GridLayout::project(Bz, index, GridLayout::BzToEy());
-
-            return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
-        }
-
-        if constexpr (component == Component::Z)
-        {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vy = Ve(Component::Y);
-            auto const& Bx = B(Component::X);
-            auto const& By = B(Component::Y);
-
-            auto constexpr momentsToEz = GridLayout::momentsToEz();
-            auto const vxOnEz          = GridLayout::project(Vx, index, momentsToEz);
-            auto const vyOnEz          = GridLayout::project(Vy, index, momentsToEz);
-            auto const bxOnEz          = GridLayout::project(Bx, index, GridLayout::BxToEz());
-            auto const byOnEz          = GridLayout::project(By, index, GridLayout::ByToEz());
-
-            return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
-        }
-    }
-
-
-
-    template<auto component, typename VecField>
     auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
     {
-        if constexpr (dimension == 1)
-            return ideal1D_<component>(Ve, B, index);
-        if constexpr (dimension == 2)
-            return ideal2D_<component>(Ve, B, index);
-        if constexpr (dimension == 3)
-            return ideal3D_<component>(Ve, B, index);
-    }
+        if constexpr (component == Component::X)
+        {
+            auto const& Vy = Ve(Component::Y);
+            auto const& Vz = Ve(Component::Z);
 
+            auto const& By = B(Component::Y);
+            auto const& Bz = B(Component::Z);
+
+            auto const vyOnEx = GridLayout::template project<GridLayout::momentsToEx>(Vy, index);
+            auto const vzOnEx = GridLayout::template project<GridLayout::momentsToEx>(Vz, index);
+            auto const byOnEx = GridLayout::template project<GridLayout::ByToEx>(By, index);
+            auto const bzOnEx = GridLayout::template project<GridLayout::BzToEx>(Bz, index);
+
+            return -vyOnEx * bzOnEx + vzOnEx * byOnEx;
+        }
+
+        if constexpr (component == Component::Y)
+        {
+            auto const& Vx = Ve(Component::X);
+            auto const& Vz = Ve(Component::Z);
+            auto const& Bx = B(Component::X);
+            auto const& Bz = B(Component::Z);
+
+            auto const vxOnEy = GridLayout::template project<GridLayout::momentsToEy>(Vx, index);
+            auto const vzOnEy = GridLayout::template project<GridLayout::momentsToEy>(Vz, index);
+            auto const bxOnEy = GridLayout::template project<GridLayout::BxToEy>(Bx, index);
+            auto const bzOnEy = GridLayout::template project<GridLayout::BzToEy>(Bz, index);
+
+            return -vzOnEy * bxOnEy + vxOnEy * bzOnEy;
+        }
+
+        if constexpr (component == Component::Z)
+        {
+            auto const& Vx = Ve(Component::X);
+            auto const& Vy = Ve(Component::Y);
+            auto const& Bx = B(Component::X);
+            auto const& By = B(Component::Y);
+
+            auto const vxOnEz = GridLayout::template project<GridLayout::momentsToEz>(Vx, index);
+            auto const vyOnEz = GridLayout::template project<GridLayout::momentsToEz>(Vy, index);
+            auto const bxOnEz = GridLayout::template project<GridLayout::BxToEz>(Bx, index);
+            auto const byOnEz = GridLayout::template project<GridLayout::ByToEz>(By, index);
+
+            return -vxOnEz * byOnEz + vyOnEz * bxOnEz;
+        }
+    }
 
 
     template<auto component, typename Field>
@@ -268,7 +143,7 @@ private:
     {
         if constexpr (component == Component::X)
         {
-            auto const nOnEx = GridLayout::project(n, index, GridLayout::momentsToEx());
+            auto const nOnEx = GridLayout::template project<GridLayout::momentsToEx>(n, index);
 
             auto gradPOnEx = layout_->template deriv<Direction::X>(Pe, index); // TODO : issue 3391
 
@@ -279,7 +154,7 @@ private:
         {
             if constexpr (Field::dimension >= 2)
             {
-                auto const nOnEy = GridLayout::project(n, index, GridLayout::momentsToEy());
+                auto const nOnEy = GridLayout::template project<GridLayout::momentsToEy>(n, index);
 
                 auto gradPOnEy
                     = layout_->template deriv<Direction::Y>(Pe, index); // TODO : issue 3391
@@ -296,7 +171,7 @@ private:
         {
             if constexpr (Field::dimension >= 3)
             {
-                auto const nOnEz = GridLayout::project(n, index, GridLayout::momentsToEz());
+                auto const nOnEz = GridLayout::template project<GridLayout::momentsToEz>(n, index);
 
                 auto gradPOnEz
                     = layout_->template deriv<Direction::Z>(Pe, index); // TODO : issue 3391
@@ -320,19 +195,19 @@ private:
 
         if constexpr (component == Component::X)
         {
-            auto const jxOnEx = GridLayout::project(Jxyx, index, GridLayout::JxToEx());
+            auto const jxOnEx = GridLayout::template project<GridLayout::JxToEx>(Jxyx, index);
             return eta_ * jxOnEx;
         }
 
         if constexpr (component == Component::Y)
         {
-            auto const jyOnEy = GridLayout::project(Jxyx, index, GridLayout::JyToEy());
+            auto const jyOnEy = GridLayout::template project<GridLayout::JyToEy>(Jxyx, index);
             return eta_ * jyOnEy;
         }
 
         if constexpr (component == Component::Z)
         {
-            auto const jzOnEz = GridLayout::project(Jxyx, index, GridLayout::JzToEz());
+            auto const jzOnEz = GridLayout::template project<GridLayout::JzToEz>(Jxyx, index);
             return eta_ * jzOnEz;
         }
     }
@@ -360,34 +235,32 @@ private:
     template<auto component, typename VecField, typename Field>
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
-    { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
+    {
         auto const lvlCoeff        = 1. / std::pow(4, layout_->levelNumber());
         auto constexpr min_density = 0.1;
-
-        auto computeHR = [&](auto BxProj, auto ByProj, auto BzProj, auto nProj) {
-            auto const BxOnE = GridLayout::project(B(Component::X), index, BxProj);
-            auto const ByOnE = GridLayout::project(B(Component::Y), index, ByProj);
-            auto const BzOnE = GridLayout::project(B(Component::Z), index, BzProj);
-            auto const nOnE  = GridLayout::project(n, index, nProj);
+        auto computeHR             = [&]<auto BxProj, auto ByProj, auto BzProj, auto nProj>() {
+            auto const BxOnE = GridLayout::template project<BxProj>(B(Component::X), index);
+            auto const ByOnE = GridLayout::template project<ByProj>(B(Component::Y), index);
+            auto const BzOnE = GridLayout::template project<BzProj>(B(Component::Z), index);
+            auto const nOnE  = GridLayout::template project<nProj>(n, index);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             return -nu_ * (b / (nOnE + min_density) + 1) * lvlCoeff
                    * layout_->laplacian(J(component), index);
         };
-
         if constexpr (component == Component::X)
         {
-            return computeHR(GridLayout::BxToEx(), GridLayout::ByToEx(), GridLayout::BzToEx(),
-                             GridLayout::momentsToEx());
+            return computeHR.template operator()<GridLayout::BxToEx, GridLayout::ByToEx,
+                                                 GridLayout::BzToEx, GridLayout::momentsToEx>();
         }
         if constexpr (component == Component::Y)
         {
-            return computeHR(GridLayout::BxToEy(), GridLayout::ByToEy(), GridLayout::BzToEy(),
-                             GridLayout::momentsToEy());
+            return computeHR.template operator()<GridLayout::BxToEy, GridLayout::ByToEy,
+                                                 GridLayout::BzToEy, GridLayout::momentsToEy>();
         }
         if constexpr (component == Component::Z)
         {
-            return computeHR(GridLayout::BxToEz(), GridLayout::ByToEz(), GridLayout::BzToEz(),
-                             GridLayout::momentsToEz());
+            return computeHR.template operator()<GridLayout::BxToEz, GridLayout::ByToEz,
+                                                 GridLayout::BzToEz, GridLayout::momentsToEz>();
         }
     }
 };

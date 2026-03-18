@@ -818,12 +818,14 @@ namespace core
 
 
 
-        template<typename Field, std::size_t nbr_points>
-        NO_DISCARD static typename Field::type
-        project(Field const& field, MeshIndex<dimension> index,
-                std::array<WeightPoint<dimension>, nbr_points> wps)
+        template<auto func, typename Field>
+        NO_DISCARD static typename Field::type project(Field const& field,
+                                                       MeshIndex<dimension> index)
         {
+            auto constexpr wps = func();
+
             typename Field::type result = 0.;
+
             for (auto const& wp : wps)
             {
                 if constexpr (dimension == 1)
