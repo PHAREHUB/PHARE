@@ -55,7 +55,6 @@ Warning: This documentation is a work in progress. It is not complete and may co
    theory/spatial_discretization
    theory/temporal_discretization
    theory/amr
-   theory/boundary_conditions
 
 
 
