@@ -105,7 +105,7 @@ $$
 - the reference pressure $P_0$
 
 $$
-P_0 = \rho_0 v_0^2 = \frac{B_0^2}{\mu{0}}
+P_0 = \rho_0 v_0^2 = \frac{B_0^2}{\mu_0}
 $$
 
 - the reference electric field $E_0$
