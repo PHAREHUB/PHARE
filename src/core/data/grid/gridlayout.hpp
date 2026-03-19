@@ -827,22 +827,8 @@ namespace core
             typename Field::type result = 0.;
 
             for (auto const& wp : wps)
-            {
-                if constexpr (dimension == 1)
-                {
-                    result += wp.coef * field(index[0] + wp.indexes[0]);
-                }
-                if constexpr (dimension == 2)
-                {
-                    result += wp.coef * field(index[0] + wp.indexes[0], index[1] + wp.indexes[1]);
-                }
-                if constexpr (dimension == 3)
-                {
-                    result += wp.coef
-                              * field(index[0] + wp.indexes[0], index[1] + wp.indexes[1],
-                                      index[2] + wp.indexes[2]);
-                }
-            }
+                result += wp.coef * field(index + wp.indexes);
+
             return result;
         }
 
