@@ -399,25 +399,20 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
     using GridYee                = GridLayout<GridLayoutImplYee<dim, interp>>;
-
-    auto& electrons = this->electrons;
-    auto& layout    = this->layout;
-
+    auto& electrons              = this->electrons;
+    auto& layout                 = this->layout;
     electrons.update(layout);
-
     auto& Ne = electrons.density();
 
-    auto check = [&layout](auto const& Vecomp, auto const& Vicomp, auto const& Jcomp,
-                           auto const& Ne_, auto const& projector) -> void {
+    auto check = [&layout]<auto projector>(auto const& Vecomp, auto const& Vicomp,
+                                           auto const& Jcomp, auto const& Ne_) -> void {
         if constexpr (dim == 1)
         {
             auto psi_X = layout.physicalStartIndex(Vicomp, Direction::X);
             auto pei_X = layout.physicalEndIndex(Vicomp, Direction::X);
-
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
             {
-                auto const JOnV = GridYee::project(Jcomp, {i}, projector());
-
+                auto const JOnV = GridYee::template project<projector>(Jcomp, {i});
                 EXPECT_DOUBLE_EQ(Vecomp(i), Vicomp(i) - JOnV / Ne_(i));
             }
         }
@@ -427,16 +422,12 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
             auto pei_X = layout.physicalEndIndex(Vicomp, Direction::X);
             auto psi_Y = layout.physicalStartIndex(Vicomp, Direction::Y);
             auto pei_Y = layout.physicalEndIndex(Vicomp, Direction::Y);
-
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
-            {
                 for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
                 {
-                    auto const JOnV = GridYee::project(Jcomp, {i, j}, projector());
-
+                    auto const JOnV = GridYee::template project<projector>(Jcomp, {i, j});
                     EXPECT_DOUBLE_EQ(Vecomp(i, j), Vicomp(i, j) - JOnV / Ne_(i, j));
                 }
-            }
         }
         else if constexpr (dim == 3)
         {
@@ -446,30 +437,24 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
             auto pei_Y = layout.physicalEndIndex(Vicomp, Direction::Y);
             auto psi_Z = layout.physicalStartIndex(Vicomp, Direction::Z);
             auto pei_Z = layout.physicalEndIndex(Vicomp, Direction::Z);
-
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
-            {
                 for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
-                {
                     for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
                     {
-                        auto const JOnV = GridYee::project(Jcomp, {i, j, k}, projector());
-
+                        auto const JOnV = GridYee::template project<projector>(Jcomp, {i, j, k});
                         EXPECT_DOUBLE_EQ(Vecomp(i, j, k), Vicomp(i, j, k) - JOnV / Ne_(i, j, k));
                     }
-                }
-            }
         }
     };
 
     auto const& [Jx, Jy, Jz]    = this->J();
     auto const& [Vix, Viy, Viz] = this->Vi();
     auto const& [Vex, Vey, Vez] = this->Ve();
-    check(Vex, Vix, Jx, Ne, &GridYee::JxToMoments);
-    check(Vey, Viy, Jy, Ne, &GridYee::JyToMoments);
-    check(Vez, Viz, Jz, Ne, &GridYee::JzToMoments);
-}
 
+    check.template operator()<GridYee::JxToMoments>(Vex, Vix, Jx, Ne);
+    check.template operator()<GridYee::JyToMoments>(Vey, Viy, Jy, Ne);
+    check.template operator()<GridYee::JzToMoments>(Vez, Viz, Jz, Ne);
+}
 
 
 TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)

@@ -81,21 +81,22 @@ auto convert_to_primal(        //
     PhysicalQuantity const qty //
 )
 {
-    using PQ = PhysicalQuantity;
+    using PQ         = PhysicalQuantity;
+    using GridLayout = std::decay_t<decltype(layout)>;
 
     if (qty == PQ::Bx)
-        return layout.project(src, lix, layout.BxToMoments());
+        return GridLayout::template project<GridLayout::BxToMoments>(src, lix);
     else if (qty == PQ::By)
-        return layout.project(src, lix, layout.ByToMoments());
+        return GridLayout::template project<GridLayout::ByToMoments>(src, lix);
     else if (qty == PQ::Bz)
-        return layout.project(src, lix, layout.BzToMoments());
+        return GridLayout::template project<GridLayout::BzToMoments>(src, lix);
 
     else if (qty == PQ::Ex)
-        return layout.project(src, lix, layout.ExToMoments());
+        return GridLayout::template project<GridLayout::ExToMoments>(src, lix);
     else if (qty == PQ::Ey)
-        return layout.project(src, lix, layout.EyToMoments());
+        return GridLayout::template project<GridLayout::EyToMoments>(src, lix);
     else if (qty == PQ::Ez)
-        return layout.project(src, lix, layout.EzToMoments());
+        return GridLayout::template project<GridLayout::EzToMoments>(src, lix);
 
     throw std::runtime_error("Quantity not supported for conversion to primal.");
 }
