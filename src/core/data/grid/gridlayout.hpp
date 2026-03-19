@@ -1384,21 +1384,13 @@ namespace core
 
         /**
          * @brief nbrDualGhosts_ returns the number of ghost nodes on each side for dual quantities.
-         * It is obtained using the required number of ghost for the interpolation ((interp_order +
-         * 1) / 2), to which we add one for the patchghost for particles that may leave the cells,
-         * and we then take the closest even number. This is because we are using the Toth and Roe
-         * (2002) formulas for magnetic refinement, so we want to have on refinement full coarse
-         * cell below the fine grid, which odd number of ghost nodes would not allow.
-         * 
-         * Now uses GhostWidthCalculator to determine ghost count based on interpolation order.
-         * This maintains backward compatibility while allowing future model-specific customization.
+         * The exact value is delegated to the layout-specific ghost width configuration so
+         * Hybrid and MHD can reserve different widths while keeping the public GridLayout
+         * interface stable.
          */
         NO_DISCARD std::uint32_t constexpr static nbrDualGhosts_()
         {
-            static_assert(interp_order > 0 and interp_order < 4);
-            // Use GhostWidthCalculator with Hybrid configuration
-            // (uses interpolation order, which is appropriate for both Hybrid and MHD currently)
-            using GhostConfig = HybridConfig<interp_order>;
+            using GhostConfig = typename GridLayoutImpl::ghost_width_config;
             return GhostWidthCalculator<GhostConfig>::value;
         }
 
