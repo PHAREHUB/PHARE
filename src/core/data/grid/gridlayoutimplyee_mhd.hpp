@@ -7,6 +7,7 @@
 
 #include "core/def.hpp"
 #include "core/mhd/mhd_quantities.hpp"
+#include "core/utilities/ghost_width_calculator.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/types.hpp"
 #include "gridlayoutdefs.hpp"
@@ -38,6 +39,11 @@ namespace core
         static constexpr std::size_t interp_order = interpOrder;
         static constexpr std::string_view type    = "yee";
         using quantity_type                       = MHDQuantity;
+        // The MHD layout must reserve enough ghosts for the widest supported
+        // reconstruction stencil, plus the extra layers needed for J and
+        // hyper-resistivity corrections.
+        static constexpr std::uint32_t reconstruction_nghosts = 3;
+        using ghost_width_config                              = MHDConfig<reconstruction_nghosts>;
 
         /**
          * @brief GridLayoutImpl<Selector<Layout,Layout::Yee>,dim>::initLayoutCentering_ initialize

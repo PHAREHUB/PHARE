@@ -47,24 +47,16 @@ struct GhostWidthRequirement<HybridModelTag, Config>
 {
     static constexpr std::uint32_t interp_order = Config::interp_order;
 
-    // Formula: (interp_order + 1) / 2 + 1 for particle exit
-    // Then round up to even for magnetic field refinement (Toth & Roe 2002)
-    static constexpr std::uint32_t base_requirement()
-    {
-        return (interp_order + 1) / 2 + 1;
-    }
-
     static constexpr std::uint32_t compute()
     {
-        // For backward compatibility, enforce current values
         if constexpr (interp_order == 1)
             return 2;
         else if constexpr (interp_order == 2)
-            return 4; // Conservative: keep 4 for order 2
+            return 4;
         else if constexpr (interp_order == 3)
             return 4;
         else
-            return roundUpToEven(base_requirement());
+            return roundUpToEven((interp_order + 1) / 2 + 1);
     }
 };
 
@@ -73,15 +65,14 @@ struct GhostWidthRequirement<HybridModelTag, Config>
 template<typename Config>
 struct GhostWidthRequirement<MHDModelTag, Config>
 {
-    // Reconstruction methods define static constexpr nghosts
-    // (Constant=1, Linear=2, WENO3=2, WENOZ=3, MP5=3)
     static constexpr std::uint32_t reconstruction_stencil = Config::reconstruction_nghosts;
 
-    // Formula: reconstruction_stencil + 1 for flux derivatives
-    // Then round up to even for magnetic field refinement
     static constexpr std::uint32_t compute()
     {
-        return roundUpToEven(reconstruction_stencil + 1);
+        // Reconstruction stencil + one layer for J on the full ghost box + one more
+        // for the J Laplacian used by hyper-resistivity, then round up for magnetic
+        // refinement requirements.
+        return roundUpToEven(reconstruction_stencil + 2);
     }
 };
 
@@ -112,8 +103,8 @@ struct GhostWidthRequirement<MultiModelTag, Config>
 template<std::uint32_t InterpOrder>
 struct HybridConfig
 {
-    using model_tag                                 = HybridModelTag;
-    static constexpr std::uint32_t interp_order     = InterpOrder;
+    using model_tag                                       = HybridModelTag;
+    static constexpr std::uint32_t interp_order           = InterpOrder;
     static constexpr std::uint32_t reconstruction_nghosts = 0; // Not used for Hybrid
 };
 
@@ -122,8 +113,8 @@ struct HybridConfig
 template<std::uint32_t ReconstructionGhosts, std::uint32_t InterpOrder = 1>
 struct MHDConfig
 {
-    using model_tag                                 = MHDModelTag;
-    static constexpr std::uint32_t interp_order     = InterpOrder; // For GridLayout compatibility
+    using model_tag                             = MHDModelTag;
+    static constexpr std::uint32_t interp_order = InterpOrder; // For GridLayout compatibility
     static constexpr std::uint32_t reconstruction_nghosts = ReconstructionGhosts;
 };
 
@@ -132,8 +123,8 @@ struct MHDConfig
 template<std::uint32_t InterpOrder, std::uint32_t ReconstructionGhosts>
 struct MultiModelConfig
 {
-    using model_tag                                 = MultiModelTag;
-    static constexpr std::uint32_t interp_order     = InterpOrder;
+    using model_tag                                       = MultiModelTag;
+    static constexpr std::uint32_t interp_order           = InterpOrder;
     static constexpr std::uint32_t reconstruction_nghosts = ReconstructionGhosts;
 };
 
@@ -153,7 +144,7 @@ struct GhostWidthCalculator
     }
 
     // Convenience aliases
-    static constexpr std::uint32_t value = compute();
+    static constexpr std::uint32_t value         = compute();
     static constexpr std::uint32_t primal_ghosts = compute();
     static constexpr std::uint32_t dual_ghosts   = compute();
 };

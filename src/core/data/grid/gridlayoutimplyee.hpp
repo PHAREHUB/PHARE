@@ -6,6 +6,7 @@
 
 #include "core/def.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
+#include "core/utilities/ghost_width_calculator.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/utilities/types.hpp"
 #include "gridlayoutdefs.hpp"
@@ -37,6 +38,7 @@ namespace core
         static constexpr std::size_t interp_order = interpOrder;
         static constexpr std::string_view type    = "yee";
         using quantity_type                       = HybridQuantity;
+        using ghost_width_config                  = HybridConfig<interpOrder>;
         /*
     void constexpr initLinearCombinations_();
 
