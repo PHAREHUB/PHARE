@@ -14,6 +14,7 @@
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/ghost_width_calculator.hpp"
 
 #include "gridlayoutdefs.hpp"
 
@@ -1413,12 +1414,17 @@ namespace core
          * and we then take the closest even number. This is because we are using the Toth and Roe
          * (2002) formulas for magnetic refinement, so we want to have on refinement full coarse
          * cell below the fine grid, which odd number of ghost nodes would not allow.
+         * 
+         * Now uses GhostWidthCalculator to determine ghost count based on interpolation order.
+         * This maintains backward compatibility while allowing future model-specific customization.
          */
         NO_DISCARD std::uint32_t constexpr static nbrDualGhosts_()
         {
             static_assert(interp_order > 0 and interp_order < 4);
-            constexpr auto ghosts = std::array{2, 4, 4};
-            return ghosts[interp_order - 1];
+            // Use GhostWidthCalculator with Hybrid configuration
+            // (uses interpolation order, which is appropriate for both Hybrid and MHD currently)
+            using GhostConfig = HybridConfig<interp_order>;
+            return GhostWidthCalculator<GhostConfig>::value;
         }
 
         /**
