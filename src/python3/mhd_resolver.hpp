@@ -2,6 +2,7 @@
 #define PHARE_MHD_RESOLVER_HPP
 
 #include "core/numerics/godunov_fluxes/godunov_fluxes.hpp"
+#include "core/numerics/reconstructions/reconstruction_nghosts.hpp"
 #include "phare_simulator_options.hpp"
 
 #include "amr/solvers/time_integrator/euler_integrator.hpp"
@@ -80,6 +81,8 @@ struct TimeIntegratorSelector<MHDOpts::TimeIntegratorType::SSPRK4_5, MHDModel>
 template<>
 struct ReconstructionSelector<MHDOpts::ReconstructionType::Default>
 {
+    static constexpr std::uint32_t nghosts
+        = MHDOpts::reconstruction_nghosts_v<MHDOpts::ReconstructionType::Default>;
     template<typename GridLayout, typename SlopeLimiter>
     using type = DefaultReconstruction<GridLayout, SlopeLimiter>;
 };
@@ -87,6 +90,8 @@ struct ReconstructionSelector<MHDOpts::ReconstructionType::Default>
 template<>
 struct ReconstructionSelector<MHDOpts::ReconstructionType::Constant>
 {
+    static constexpr std::uint32_t nghosts
+        = MHDOpts::reconstruction_nghosts_v<MHDOpts::ReconstructionType::Constant>;
     template<typename GridLayout, typename SlopeLimiter>
     using type = core::ConstantReconstruction<GridLayout, SlopeLimiter>;
 };
@@ -94,6 +99,8 @@ struct ReconstructionSelector<MHDOpts::ReconstructionType::Constant>
 template<>
 struct ReconstructionSelector<MHDOpts::ReconstructionType::Linear>
 {
+    static constexpr std::uint32_t nghosts
+        = MHDOpts::reconstruction_nghosts_v<MHDOpts::ReconstructionType::Linear>;
     template<typename GridLayout, typename SlopeLimiter>
     using type = core::LinearReconstruction<GridLayout, SlopeLimiter>;
 };
@@ -101,6 +108,8 @@ struct ReconstructionSelector<MHDOpts::ReconstructionType::Linear>
 template<>
 struct ReconstructionSelector<MHDOpts::ReconstructionType::WENO3>
 {
+    static constexpr std::uint32_t nghosts
+        = MHDOpts::reconstruction_nghosts_v<MHDOpts::ReconstructionType::WENO3>;
     template<typename GridLayout, typename SlopeLimiter>
     using type = core::WENO3Reconstruction<GridLayout, SlopeLimiter>;
 };
@@ -108,6 +117,8 @@ struct ReconstructionSelector<MHDOpts::ReconstructionType::WENO3>
 template<>
 struct ReconstructionSelector<MHDOpts::ReconstructionType::WENOZ>
 {
+    static constexpr std::uint32_t nghosts
+        = MHDOpts::reconstruction_nghosts_v<MHDOpts::ReconstructionType::WENOZ>;
     template<typename GridLayout, typename SlopeLimiter>
     using type = core::WENOZReconstruction<GridLayout, SlopeLimiter>;
 };
@@ -115,6 +126,8 @@ struct ReconstructionSelector<MHDOpts::ReconstructionType::WENOZ>
 template<>
 struct ReconstructionSelector<MHDOpts::ReconstructionType::MP5>
 {
+    static constexpr std::uint32_t nghosts
+        = MHDOpts::reconstruction_nghosts_v<MHDOpts::ReconstructionType::MP5>;
     template<typename GridLayout, typename SlopeLimiter>
     using type = core::MP5Reconstruction<GridLayout, SlopeLimiter>;
 };
