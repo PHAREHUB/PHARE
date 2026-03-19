@@ -13,6 +13,7 @@
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+#include "core/numerics/reconstructions/reconstruction_nghosts.hpp"
 
 #include "phare_simulator_options.hpp"
 
@@ -57,12 +58,16 @@ struct PHARE_Types
     using ParticleInitializerFactory_t
         = PHARE::core::ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
 
-    // MHD
+    // MHD - ghost width depends on reconstruction scheme stencil
+    static constexpr auto mhd_reconstruction_nghosts
+        = MHDOpts::reconstruction_nghosts_v<opts.reconstruction_type>;
+
     using Grid_MHD     = PHARE::core::Grid<Array_t, PHARE::core::MHDQuantity::Scalar>;
     using Field_MHD    = PHARE::core::Field<dimension, PHARE::core::MHDQuantity::Scalar>;
     using VecField_MHD = PHARE::core::VecField<Field_MHD, PHARE::core::MHDQuantity>;
 
-    using YeeLayout_MHD  = PHARE::core::GridLayoutImplYeeMHD<dimension, interp_order>;
+    using YeeLayout_MHD
+        = PHARE::core::GridLayoutImplYeeMHD<dimension, interp_order, mhd_reconstruction_nghosts>;
     using GridLayout_MHD = PHARE::core::GridLayout<YeeLayout_MHD>;
 };
 
