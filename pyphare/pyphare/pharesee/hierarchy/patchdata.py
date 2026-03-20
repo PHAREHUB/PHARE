@@ -177,8 +177,9 @@ class FieldData(PatchData):
 
     def _resolve_ghost_nbr(self, **kwargs):
         layout = self.layout
-        ghosts_nbr = kwargs.get("ghosts_nbr", np.zeros(self.ndim, dtype=int))
-        if "ghosts_nbr" not in kwargs:
+        ghosts_nbr = kwargs.get("ghosts_nbr", None)
+        if ghosts_nbr is None:
+            ghosts_nbr = np.zeros(self.ndim, dtype=int)
             if self.field_name != "tags":
                 for i, centering in enumerate(self.centerings):
                     ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
