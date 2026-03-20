@@ -6,33 +6,33 @@
 
 using namespace PHARE::core;
 
-// Test that GridLayout now uses GhostWidthCalculator internally
+// Test that GridLayout uses ghost_width from GridLayoutImpl
 
-TEST(GridLayoutIntegration, UsesGhostCalculatorOrder1)
+TEST(GridLayoutIntegration, UsesGhostWidthOrder1)
 {
     using GridLayoutImpl = GridLayoutImplYee<1, 1>;
     using Layout         = GridLayout<GridLayoutImpl>;
 
-    // GridLayout should return same value as calculator
-    EXPECT_EQ(Layout::nbrGhosts(), GhostWidthCalculator<HybridConfig<1>>::value);
+    // GridLayout should return same value as the impl's ghost_width
+    EXPECT_EQ(Layout::nbrGhosts(), GridLayoutImpl::ghost_width);
     EXPECT_EQ(Layout::nbrGhosts(), 2);
 }
 
-TEST(GridLayoutIntegration, UsesGhostCalculatorOrder2)
+TEST(GridLayoutIntegration, UsesGhostWidthOrder2)
 {
     using GridLayoutImpl = GridLayoutImplYee<1, 2>;
     using Layout         = GridLayout<GridLayoutImpl>;
 
-    EXPECT_EQ(Layout::nbrGhosts(), GhostWidthCalculator<HybridConfig<2>>::value);
+    EXPECT_EQ(Layout::nbrGhosts(), GridLayoutImpl::ghost_width);
     EXPECT_EQ(Layout::nbrGhosts(), 4);
 }
 
-TEST(GridLayoutIntegration, UsesGhostCalculatorOrder3)
+TEST(GridLayoutIntegration, UsesGhostWidthOrder3)
 {
     using GridLayoutImpl = GridLayoutImplYee<1, 3>;
     using Layout         = GridLayout<GridLayoutImpl>;
 
-    EXPECT_EQ(Layout::nbrGhosts(), GhostWidthCalculator<HybridConfig<3>>::value);
+    EXPECT_EQ(Layout::nbrGhosts(), GridLayoutImpl::ghost_width);
     EXPECT_EQ(Layout::nbrGhosts(), 4);
 }
 
@@ -44,8 +44,7 @@ TEST(GridLayoutIntegration, MHDConstantReconstruction)
     using GridLayoutImpl = GridLayoutImplYeeMHD<1, 2, 1>;
     using Layout         = GridLayout<GridLayoutImpl>;
 
-    EXPECT_EQ(Layout::nbrGhosts(),
-              GhostWidthCalculator<typename GridLayoutImpl::ghost_width_config>::value);
+    EXPECT_EQ(Layout::nbrGhosts(), GridLayoutImpl::ghost_width);
     EXPECT_EQ(Layout::nbrGhosts(), 4);
 }
 
@@ -55,8 +54,7 @@ TEST(GridLayoutIntegration, MHDLinearReconstruction)
     using GridLayoutImpl = GridLayoutImplYeeMHD<1, 2, 2>;
     using Layout         = GridLayout<GridLayoutImpl>;
 
-    EXPECT_EQ(Layout::nbrGhosts(),
-              GhostWidthCalculator<typename GridLayoutImpl::ghost_width_config>::value);
+    EXPECT_EQ(Layout::nbrGhosts(), GridLayoutImpl::ghost_width);
     EXPECT_EQ(Layout::nbrGhosts(), 4);
 }
 
@@ -66,8 +64,7 @@ TEST(GridLayoutIntegration, MHDWENOZReconstruction)
     using GridLayoutImpl = GridLayoutImplYeeMHD<1, 2, 3>;
     using Layout         = GridLayout<GridLayoutImpl>;
 
-    EXPECT_EQ(Layout::nbrGhosts(),
-              GhostWidthCalculator<typename GridLayoutImpl::ghost_width_config>::value);
+    EXPECT_EQ(Layout::nbrGhosts(), GridLayoutImpl::ghost_width);
     EXPECT_EQ(Layout::nbrGhosts(), 6);
 }
 

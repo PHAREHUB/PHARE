@@ -42,7 +42,8 @@ namespace core
         // The MHD layout reserves ghosts based on the reconstruction stencil width,
         // plus extra layers for J Laplacian and hyper-resistivity corrections.
         static constexpr std::uint32_t reconstruction_nghosts = reconstruction_nghosts_;
-        using ghost_width_config                              = MHDConfig<reconstruction_nghosts>;
+        // Ghost width computed directly based on reconstruction stencil
+        static constexpr std::uint32_t ghost_width = nbrGhostsFromReconstruction<reconstruction_nghosts>();
 
         /**
          * @brief GridLayoutImpl<Selector<Layout,Layout::Yee>,dim>::initLayoutCentering_ initialize

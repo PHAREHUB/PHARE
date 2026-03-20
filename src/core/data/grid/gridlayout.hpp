@@ -1384,14 +1384,12 @@ namespace core
 
         /**
          * @brief nbrDualGhosts_ returns the number of ghost nodes on each side for dual quantities.
-         * The exact value is delegated to the layout-specific ghost width configuration so
-         * Hybrid and MHD can reserve different widths while keeping the public GridLayout
-         * interface stable.
+         * The exact value is provided directly by the layout implementation so Hybrid and MHD
+         * can reserve different widths while keeping the public GridLayout interface stable.
          */
         NO_DISCARD std::uint32_t constexpr static nbrDualGhosts_()
         {
-            using GhostConfig = typename GridLayoutImpl::ghost_width_config;
-            return GhostWidthCalculator<GhostConfig>::value;
+            return GridLayoutImpl::ghost_width;
         }
 
         /**
