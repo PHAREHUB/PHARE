@@ -38,7 +38,8 @@ namespace core
         static constexpr std::size_t interp_order = interpOrder;
         static constexpr std::string_view type    = "yee";
         using quantity_type                       = HybridQuantity;
-        using ghost_width_config                  = HybridConfig<interpOrder>;
+        // Ghost width computed directly based on interpolation order
+        static constexpr std::uint32_t ghost_width = nbrGhostsFromInterpOrder<interpOrder>();
         /*
     void constexpr initLinearCombinations_();
 

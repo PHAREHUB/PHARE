@@ -13,38 +13,43 @@ TEST(GhostWidthCalculator, RoundUpToEven)
 
 TEST(GhostWidthCalculator, HybridOrder1)
 {
-    using Config = HybridConfig<1>;
-    EXPECT_EQ(GhostWidthCalculator<Config>::value, 2);
+    EXPECT_EQ(nbrGhostsFromInterpOrder<1>(), 2);
 }
 
 TEST(GhostWidthCalculator, HybridOrder2)
 {
-    using Config = HybridConfig<2>;
-    EXPECT_EQ(GhostWidthCalculator<Config>::value, 4);
+    EXPECT_EQ(nbrGhostsFromInterpOrder<2>(), 4);
+}
+
+TEST(GhostWidthCalculator, HybridOrder3)
+{
+    EXPECT_EQ(nbrGhostsFromInterpOrder<3>(), 4);
 }
 
 TEST(GhostWidthCalculator, MHDConstantReconstruction)
 {
-    using Config = MHDConfig<1>;
-    EXPECT_EQ(GhostWidthCalculator<Config>::value, 4);
+    // stencil=1, (1+2)=3 -> rounded to 4
+    EXPECT_EQ(nbrGhostsFromReconstruction<1>(), 4);
 }
 
 TEST(GhostWidthCalculator, MHDLinearReconstruction)
 {
-    using Config = MHDConfig<2>;
-    EXPECT_EQ(GhostWidthCalculator<Config>::value, 4);
+    // stencil=2, (2+2)=4 -> 4
+    EXPECT_EQ(nbrGhostsFromReconstruction<2>(), 4);
 }
 
 TEST(GhostWidthCalculator, MHDWENOZReconstruction)
 {
-    using Config = MHDConfig<3>;
-    EXPECT_EQ(GhostWidthCalculator<Config>::value, 6);
+    // stencil=3, (3+2)=5 -> rounded to 6
+    EXPECT_EQ(nbrGhostsFromReconstruction<3>(), 6);
 }
 
-TEST(GhostWidthCalculator, MultiModelMaxLogic)
+TEST(GhostWidthCalculator, ParticleGhosts)
 {
-    using Config = MultiModelConfig<1, 3>;
-    EXPECT_EQ(GhostWidthCalculator<Config>::value, 6);
+    // Same as Hybrid field ghosts
+    EXPECT_EQ(particleGhostWidth<1>(), 2);
+    EXPECT_EQ(particleGhostWidth<2>(), 4);
+    EXPECT_EQ(particleGhostWidth<3>(), 4);
 }
 
 int main(int argc, char** argv)

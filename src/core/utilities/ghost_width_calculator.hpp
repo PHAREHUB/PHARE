@@ -2,7 +2,6 @@
 #define PHARE_CORE_UTILITIES_GHOST_WIDTH_CALCULATOR_HPP
 
 #include <cstdint>
-#include <type_traits>
 
 namespace PHARE::core
 {
@@ -18,157 +17,56 @@ constexpr std::uint32_t roundUpToEven(std::uint32_t n)
 
 
 // ============================================================================
-// Model Type Tags
+// Ghost Width Computation Functions
 // ============================================================================
 
-struct HybridModelTag
-{
-};
-struct MHDModelTag
-{
-};
-struct MultiModelTag
-{
-};
-
-
-// ============================================================================
-// Ghost Width Requirement Traits
-// ============================================================================
-
-// Base trait for ghost width requirements
-template<typename ModelTag, typename Config>
-struct GhostWidthRequirement;
-
-
-// Hybrid model: Based on interpolation order
-template<typename Config>
-struct GhostWidthRequirement<HybridModelTag, Config>
-{
-    static constexpr std::uint32_t interp_order = Config::interp_order;
-
-    static constexpr std::uint32_t compute()
-    {
-        if constexpr (interp_order == 1)
-            return 2;
-        else if constexpr (interp_order == 2)
-            return 4;
-        else if constexpr (interp_order == 3)
-            return 4;
-        else
-            return roundUpToEven((interp_order + 1) / 2 + 1);
-    }
-};
-
-
-// MHD model: Based on reconstruction stencil
-template<typename Config>
-struct GhostWidthRequirement<MHDModelTag, Config>
-{
-    static constexpr std::uint32_t reconstruction_stencil = Config::reconstruction_nghosts;
-
-    static constexpr std::uint32_t compute()
-    {
-        // Reconstruction stencil + one layer for J on the full ghost box + one more
-        // for the J Laplacian used by hyper-resistivity, then round up for magnetic
-        // refinement requirements.
-        return roundUpToEven(reconstruction_stencil + 2);
-    }
-};
-
-
-// Multi-model: Take maximum of all model requirements
-template<typename Config>
-struct GhostWidthRequirement<MultiModelTag, Config>
-{
-    static constexpr std::uint32_t hybrid_ghosts
-        = GhostWidthRequirement<HybridModelTag, Config>::compute();
-
-    static constexpr std::uint32_t mhd_ghosts
-        = GhostWidthRequirement<MHDModelTag, Config>::compute();
-
-    static constexpr std::uint32_t compute()
-    {
-        // Both are already even, so max is also even
-        return (hybrid_ghosts > mhd_ghosts) ? hybrid_ghosts : mhd_ghosts;
-    }
-};
-
-
-// ============================================================================
-// Configuration Types
-// ============================================================================
-
-// Hybrid PIC configuration
-template<std::uint32_t InterpOrder>
-struct HybridConfig
-{
-    using model_tag                                       = HybridModelTag;
-    static constexpr std::uint32_t interp_order           = InterpOrder;
-    static constexpr std::uint32_t reconstruction_nghosts = 0; // Not used for Hybrid
-};
-
-
-// MHD configuration
-template<std::uint32_t ReconstructionGhosts, std::uint32_t InterpOrder = 1>
-struct MHDConfig
-{
-    using model_tag                             = MHDModelTag;
-    static constexpr std::uint32_t interp_order = InterpOrder; // For GridLayout compatibility
-    static constexpr std::uint32_t reconstruction_nghosts = ReconstructionGhosts;
-};
-
-
-// Multi-model configuration
-template<std::uint32_t InterpOrder, std::uint32_t ReconstructionGhosts>
-struct MultiModelConfig
-{
-    using model_tag                                       = MultiModelTag;
-    static constexpr std::uint32_t interp_order           = InterpOrder;
-    static constexpr std::uint32_t reconstruction_nghosts = ReconstructionGhosts;
-};
-
-
-// ============================================================================
-// Main Calculator
-// ============================================================================
-
-template<typename Config>
-struct GhostWidthCalculator
-{
-    using model_tag = typename Config::model_tag;
-
-    static constexpr std::uint32_t compute()
-    {
-        return GhostWidthRequirement<model_tag, Config>::compute();
-    }
-
-    // Convenience aliases
-    static constexpr std::uint32_t value         = compute();
-    static constexpr std::uint32_t primal_ghosts = compute();
-    static constexpr std::uint32_t dual_ghosts   = compute();
-};
-
-
-// ============================================================================
-// Convenience Functions for Backward Compatibility
-// ============================================================================
-
-// Legacy function matching GridLayout's current interface
+/**
+ * @brief Compute ghost width for Hybrid PIC model based on interpolation order.
+ *
+ * Ghost cells are needed for:
+ * - Particle-mesh interpolation: (interp_order + 1) / 2
+ * - One extra layer for particles that may leave cells
+ * - Rounded to even for Toth & Roe (2002) magnetic refinement formulas
+ */
 template<std::uint32_t interp_order>
 constexpr std::uint32_t nbrGhostsFromInterpOrder()
 {
-    using Config = HybridConfig<interp_order>;
-    return GhostWidthCalculator<Config>::value;
+    if constexpr (interp_order == 1)
+        return 2;
+    else if constexpr (interp_order == 2)
+        return 4;
+    else if constexpr (interp_order == 3)
+        return 4;
+    else
+        return roundUpToEven((interp_order + 1) / 2 + 1);
 }
 
 
-// For reconstruction-based calculations
+/**
+ * @brief Compute ghost width for MHD model based on reconstruction stencil.
+ *
+ * Ghost cells are needed for:
+ * - Reconstruction stencil width
+ * - One layer for J computation on the full ghost box
+ * - One more layer for J Laplacian used by hyper-resistivity
+ * - Rounded to even for Toth & Roe (2002) magnetic refinement formulas
+ */
 template<std::uint32_t reconstruction_nghosts>
 constexpr std::uint32_t nbrGhostsFromReconstruction()
 {
-    using Config = MHDConfig<reconstruction_nghosts>;
-    return GhostWidthCalculator<Config>::value;
+    return roundUpToEven(reconstruction_nghosts + 2);
+}
+
+
+/**
+ * @brief For particles, ghost width depends on interpolation order.
+ *
+ * This is the same as the Hybrid field ghost width.
+ */
+template<std::uint32_t interp_order>
+constexpr std::uint32_t particleGhostWidth()
+{
+    return nbrGhostsFromInterpOrder<interp_order>();
 }
 
 
