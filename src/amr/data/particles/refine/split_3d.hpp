@@ -82,7 +82,11 @@ struct LimePattern<DimConst<3>> : SplitPattern<DimConst<3>, RefinedParticlesCons
 
         addSquare(0, delta);  // top
         addSquare(4, -delta); // bottom
-        addSquare(8, 0);      // middle
+
+        Super::deltas_[8]  = {delta, zero, delta};
+        Super::deltas_[9]  = {delta, zero, -delta};
+        Super::deltas_[10] = {-delta, zero, delta};
+        Super::deltas_[11] = {-delta, zero, -delta};
     }
 };
 
