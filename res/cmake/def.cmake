@@ -22,6 +22,13 @@ if(PHARE_COMPILER_WORKAROUNDS)
   endif() # compiler is GNU
 endif(PHARE_COMPILER_WORKAROUNDS)
 
+if(devMode) # set defaults
+  set (useExceptionsInsteadOfMPIAbort ON CACHE BOOL "YES!" FORCE)
+endif(devMode)
+
+if(useExceptionsInsteadOfMPIAbort)
+  set (PHARE_FLAGS ${PHARE_FLAGS} -DPHARE_ERRORS_USE_MPI_ABORT=0 ) # defaults in C++ to true if not set!
+endif(useExceptionsInsteadOfMPIAbort)
 
 set (PHARE_LINK_FLAGS )
 set (PHARE_BASE_LIBS )
@@ -89,6 +96,14 @@ if(devMode) # -DdevMode=ON
   endif()
 
 endif(devMode)
+
+if(NOT DEFINED PHARE_PYTEST_SIMULATORS)
+  if(devMode)
+    set (PHARE_PYTEST_SIMULATORS 3)
+  else()
+    set (PHARE_PYTEST_SIMULATORS 2)
+  endif()
+endif(NOT DEFINED PHARE_PYTEST_SIMULATORS)
 
 function(phare_sanitize_ san cflags )
   set(CMAKE_REQUIRED_FLAGS ${san})

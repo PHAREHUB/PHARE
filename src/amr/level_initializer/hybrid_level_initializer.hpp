@@ -59,6 +59,7 @@ namespace solver
             auto& hybMessenger        = dynamic_cast<HybridMessenger&>(messenger);
             bool const isRegriddingL0 = isRegridding and levelNumber == 0;
 
+            PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level");
             if (isRegridding)
             {
                 PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
@@ -91,7 +92,7 @@ namespace solver
             {
                 PHARE_LOG_ERROR(ex.what());
             }
-            if (core::mpi::any(core::Errors::instance().any()))
+            if (core::mpi::any_errors())
                 throw core::DictionaryException{}("ID", "HybridLevelInitializer::initialize");
 
             // now all particles are here, we must compute moments.

@@ -3,25 +3,25 @@
 
 #include "test_diagnostics.ipp"
 
-static std::string const job_file = "job_1d";
-static std::string out_dir        = "phare_outputs/diags_1d/";
+static std::string const job_file = "job_3d";
+static std::string out_dir        = "phare_outputs/diags_3d/";
 
-TYPED_TEST(Simulator1dTest, fluid)
+TYPED_TEST(Simulator3dTest, fluid)
 {
     fluid_test(TypeParam{job_file}, out_dir);
 }
 
-TYPED_TEST(Simulator1dTest, particles)
+TYPED_TEST(Simulator3dTest, particles)
 {
     particles_test(TypeParam{job_file}, out_dir);
 }
 
-TYPED_TEST(Simulator1dTest, electromag)
+TYPED_TEST(Simulator3dTest, electromag)
 {
     electromag_test(TypeParam{job_file}, out_dir);
 }
 
-TYPED_TEST(Simulator1dTest, allFromPython)
+TYPED_TEST(Simulator3dTest, allFromPython)
 {
     allFromPython_test(TypeParam{job_file}, out_dir);
 }

@@ -349,4 +349,4 @@ void H5Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> cons
 
 } /* namespace PHARE::diagnostic::h5 */
 
-#endif /* PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_H */
+#endif /* PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP */

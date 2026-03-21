@@ -566,7 +566,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
     {
         PHARE_LOG_ERROR(ex());
     }
-    if (core::mpi::any(core::Errors::instance().any()))
+    if (core::mpi::any_errors())
         throw core::DictionaryException{}("ID", "Updater::updatePopulations");
 
     // this needs to be done before calling the messenger

@@ -225,6 +225,9 @@ class HarrisTest(SimulatorTest):
         return self
 
 
-if __name__ == "__main__":
+if ph.PHARE_EXE:
+    config()
+
+elif __name__ == "__main__":
     startMPI()
     HarrisTest().test_run().tearDown()
