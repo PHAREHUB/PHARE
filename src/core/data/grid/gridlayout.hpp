@@ -14,6 +14,7 @@
 #include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/ghost_width_calculator.hpp"
 
 #include "gridlayoutdefs.hpp"
 
@@ -1408,17 +1409,12 @@ namespace core
 
         /**
          * @brief nbrDualGhosts_ returns the number of ghost nodes on each side for dual quantities.
-         * It is obtained using the required number of ghost for the interpolation ((interp_order +
-         * 1) / 2), to which we add one for the patchghost for particles that may leave the cells,
-         * and we then take the closest even number. This is because we are using the Toth and Roe
-         * (2002) formulas for magnetic refinement, so we want to have on refinement full coarse
-         * cell below the fine grid, which odd number of ghost nodes would not allow.
+         * The exact value is provided directly by the layout implementation so Hybrid and MHD
+         * can reserve different widths while keeping the public GridLayout interface stable.
          */
         NO_DISCARD std::uint32_t constexpr static nbrDualGhosts_()
         {
-            static_assert(interp_order > 0 and interp_order < 4);
-            constexpr auto ghosts = std::array{2, 4, 4};
-            return ghosts[interp_order - 1];
+            return GridLayoutImpl::ghost_width;
         }
 
         /**
