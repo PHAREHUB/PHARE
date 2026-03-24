@@ -99,7 +99,7 @@ namespace core
         static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
         using This                                = GridLayout<GridLayoutImpl>;
         using implT                               = GridLayoutImpl;
-
+        using AMRBox_t                            = Box<int, dimension>;
 
         /**
          * @brief Constructor of a GridLayout
@@ -109,8 +109,8 @@ namespace core
          */
         GridLayout(std::array<double, dimension> const& meshSize,
                    std::array<std::uint32_t, dimension> const& nbrCells,
-                   Point<double, dimension> const& origin,
-                   Box<int, dimension> AMRBox = Box<int, dimension>{}, int level_number = 0)
+                   Point<double, dimension> const& origin, AMRBox_t const AMRBox = {},
+                   int level_number = 0)
             : meshSize_{meshSize}
             , origin_{origin}
             , nbrPhysicalCells_{nbrCells}

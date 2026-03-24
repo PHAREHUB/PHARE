@@ -42,7 +42,7 @@ public:
 
 
 public:
-    ParticleArray(box_t box)
+    ParticleArray(box_t box = {})
         : box_{box}
         , cellMap_{box_}
     {

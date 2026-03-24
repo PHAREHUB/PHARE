@@ -459,7 +459,6 @@ public:
     }
 
 
-
     /**\brief interpolate electromagnetic fields on all particles in the range
      *
      * For each particle :

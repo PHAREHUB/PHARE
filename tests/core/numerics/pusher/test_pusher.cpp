@@ -1,31 +1,28 @@
+
+
+#include "core/utilities/types.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/range/range.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/numerics/boundary_condition/boundary_condition.hpp"
+#include "core/numerics/ion_updater/ion_updater/ion_updater_impl0.hpp"
+
+#include "phare_core.hpp"
+
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <array>
-#include <core/data/electromag/electromag.hpp>
-#include <core/data/grid/gridlayout.hpp>
-#include <core/numerics/interpolator/interpolator.hpp>
-#include <core/numerics/ion_updater/ion_updater.hpp>
 #include <cstddef>
 #include <fstream>
 #include <iterator>
-#include <memory>
 #include <random>
 #include <string>
 #include <vector>
 
-#include "core/data/particles/particle_array.hpp"
-#include "core/numerics/boundary_condition/boundary_condition.hpp"
-#include "core/numerics/pusher/boris.hpp"
-#include "core/utilities/range/range.hpp"
-#include "core/utilities/box/box.hpp"
-
-#include "tests/core/data/gridlayout/test_gridlayout.hpp"
-#include "tests/core/data/ion_population/test_ion_population_fixtures.hpp"
-
 using namespace PHARE::core;
-
-
 
 struct Trajectory
 {
@@ -97,8 +94,6 @@ public:
 
         return eb_interop;
     }
-
-    void particleToMesh(auto&&... args) {}
 };
 
 
@@ -106,28 +101,6 @@ public:
 // the Interpolator
 class TestElectromag
 {
-};
-
-template<typename GridLayout, typename ParticleArray_>
-struct TestIons // Some tests have large domains but no need for fields
-{
-    using particle_array_type = ParticleArray_;
-
-    struct TestIonPop
-    {
-        auto& domainParticles() { return domain; }
-        auto& levelGhostParticles() { return levelGhost; }
-        auto& patchGhostParticles() { return patchGhost; }
-        double mass() const { return 1; }
-
-        GridLayout const& layout;
-        ParticleArray_ domain{layout.AMRBox()};
-        ParticleArray_ patchGhost{layout.AMRBox()};
-        ParticleArray_ levelGhost{layout.AMRBox()};
-    };
-
-    GridLayout layout;
-    TestIonPop pop{layout};
 };
 
 
@@ -147,76 +120,40 @@ public:
 template<std::size_t dim>
 class APusher : public ::testing::Test
 {
-    static constexpr auto dimension    = dim;
-    static constexpr auto interp_order = 1;
-    constexpr static PHARE::SimOpts opts{dimension, interp_order};
-
-    using PHARE_TYPES  = PHARE::core::PHARE_Types<opts>;
-    using Interpolator = TestInterpolator;
-    using Electromag   = TestElectromag;
-    using GridLayout_t = TestGridLayout<typename PHARE_TYPES::GridLayout_t>;
-    using Ions_t       = TestIons<GridLayout_t, ParticleArray<dim>>;
-    using IonUpdater   = typename PHARE::core::IonUpdater<Ions_t, Electromag, GridLayout_t>;
-    using Boxing_t     = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout_t>;
+    using Particle     = typename ParticleArray<dim>::Particle_t;
+    using PhareTypes   = PHARE_Types<PHARE::SimOpts{dim, /*interp=*/1}>;
+    using GridLayout_t = TestGridLayout<typename PhareTypes::GridLayout_t>;
+    using Ions_t       = PhareTypes::Ions_t;
 
 public:
-    using Pusher_ = BorisPusher<dim, ParticleArray<dim>, Electromag, Interpolator,
-                                BoundaryCondition<dim, 1>, GridLayout_t>;
+    using Pusher = IonUpdater0<Ions_t>::Pusher;
 
     APusher()
-        : expectedTrajectory{readExpectedTrajectory()}
-        , layout{30}
-        , pusher{std::make_unique<Pusher_>()}
-        , mass{1}
-        , dt{0.0001}
-        , tstart{0}
-        , tend{10}
-        , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
-
     {
-        particles.emplace_back(
+        particlesIn.emplace_back(
             Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
-        dxyz.fill(0.05);
+        particlesOut.emplace_back(
+            Particle{1., 1., ConstArray<int, dim>(5), ConstArray<double, dim>(0.), {0., 10., 0.}});
         for (std::size_t i = 0; i < dim; i++)
             actual[i].resize(nt, 0.05);
-        pusher->setMeshAndTimeStep(dxyz, dt);
-
-        std::transform(std::begin(dxyz), std::end(dxyz), std::begin(halfDtOverDl),
-                       [dt = this->dt](double& x) { return 0.5 * dt / x; });
     }
 
 protected:
-    using Particle = typename ParticleArray<dim>::Particle_t;
-    Trajectory expectedTrajectory;
-    GridLayout_t layout;
-
-    std::unique_ptr<Pusher_> pusher;
-    double mass;
-    double dt;
-    double tstart, tend;
-    std::size_t nt;
-    Electromag em;
-    Interpolator interpolator;
+    Trajectory expectedTrajectory{readExpectedTrajectory()};
+    GridLayout_t layout{.05, 0ul};
+    ParticleArray<dim> particlesIn{};
+    ParticleArray<dim> particlesOut{};
+    double mass   = 1;
+    double dt     = 0.0001;
+    double tstart = 0, tend = 10;
+    std::size_t nt = static_cast<std::size_t>((tend - tstart) / dt + 1);
+    TestElectromag em;
+    TestInterpolator interpolator;
+    DummySelector selector;
     // BoundaryCondition bc;
 
     std::array<std::vector<float>, dim> actual;
-    std::array<double, dim> dxyz;
-    Ions_t ions{layout};
-
-    ParticleArray<dim>& particles = ions.pop.domainParticles();
-
-    std::array<double, dim> halfDtOverDl;
-    double const dto2m = 0.5 * dt / mass;
-
-    void move()
-    {
-        for (auto& particle : particles)
-        {
-            particle.iCell = boris::advance(particle, halfDtOverDl);
-            boris::accelerate(particle, interpolator(particle, em, layout), dto2m);
-            particle.iCell = boris::advance(particle, halfDtOverDl);
-        }
-    }
+    std::array<double, dim> dxyz = layout.meshSize();
 };
 
 
@@ -226,13 +163,21 @@ using APusher3D = APusher<3>;
 
 TEST_F(APusher3D, trajectoryIsOk)
 {
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto rangeOut = makeIndexRange(particlesOut);
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
+
+    Pusher pusher{dt, mass, layout};
+
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i] = (particles[0].iCell[0] + particles[0].delta[0]) * dxyz[0];
-        actual[1][i] = (particles[0].iCell[1] + particles[0].delta[1]) * dxyz[1];
-        actual[2][i] = (particles[0].iCell[2] + particles[0].delta[2]) * dxyz[2];
+        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
+        actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
+        actual[2][i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * dxyz[2];
 
-        move();
+        pusher.move(rangeIn, rangeOut, em, interpolator, selector, selector);
+
+        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
 
     EXPECT_THAT(actual[0], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
@@ -245,12 +190,19 @@ TEST_F(APusher3D, trajectoryIsOk)
 
 TEST_F(APusher2D, trajectoryIsOk)
 {
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto rangeOut = makeIndexRange(particlesOut);
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
+
+    Pusher pusher{dt, mass, layout};
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i] = (particles[0].iCell[0] + particles[0].delta[0]) * dxyz[0];
-        actual[1][i] = (particles[0].iCell[1] + particles[0].delta[1]) * dxyz[1];
+        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
+        actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
 
-        move();
+        pusher.move(rangeIn, rangeOut, em, interpolator, selector, selector);
+
+        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
 
     EXPECT_THAT(actual[0], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
@@ -261,11 +213,18 @@ TEST_F(APusher2D, trajectoryIsOk)
 
 TEST_F(APusher1D, trajectoryIsOk)
 {
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto rangeOut = makeIndexRange(particlesOut);
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
+    Pusher pusher{dt, mass, layout};
+
     for (decltype(nt) i = 0; i < nt; ++i)
     {
-        actual[0][i] = (particles[0].iCell[0] + particles[0].delta[0]) * dxyz[0];
+        actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
 
-        move();
+        pusher.move(rangeIn, rangeOut, em, interpolator, selector, selector);
+
+        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
 
     EXPECT_THAT(actual[0], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
@@ -279,32 +238,14 @@ TEST_F(APusher1D, trajectoryIsOk)
 // and those that stay.
 class APusherWithLeavingParticles : public ::testing::Test
 {
-    using Interpolator = TestInterpolator;
-    using Electromag   = TestElectromag;
-
-    static constexpr auto dimension    = 1;
-    static constexpr auto interp_order = 1;
-    constexpr static PHARE::SimOpts opts{dimension, interp_order};
-
-    using PHARE_TYPES     = PHARE::core::PHARE_Types<opts>;
-    using ParticleArray_t = ParticleArray<1>;
-    using GridLayout_t    = TestGridLayout<typename PHARE_TYPES::GridLayout_t>;
-    using Ions_t          = PHARE_TYPES::Ions_t;
-    using IonUpdater      = typename PHARE::core::IonUpdater<Ions_t, Electromag, GridLayout_t>;
-    using Boxing_t        = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout_t>;
+    using PhareTypes   = PHARE_Types<PHARE::SimOpts{/*dim=*/1, /*interp=*/1}>;
+    using GridLayout_t = TestGridLayout<typename PhareTypes::GridLayout_t>;
+    using Ions_t       = PhareTypes::Ions_t;
 
 public:
+    using Pusher = IonUpdater0<Ions_t>::Pusher;
+
     APusherWithLeavingParticles()
-        : pusher{std::make_unique<BorisPusher<1, ParticleArray<1>, TestElectromag, TestInterpolator,
-                                              BoundaryCondition<1, 1>, GridLayout_t>>()}
-        , mass{1}
-        , dt{0.001}
-        , tstart{0}
-        , tend{10}
-        , nt{static_cast<std::size_t>((tend - tstart) / dt + 1)}
-        , layout{10}
-    // , particlesOut1{grow(domain, 1), 1000}
-    // , particlesOut2{grow(domain, 1), 1000}
     {
         std::random_device rd;
         std::mt19937 gen(rd());
@@ -312,38 +253,27 @@ public:
         std::uniform_real_distribution<double> delta(0, 1);
 
         for (std::size_t iPart = 0; iPart < 1000; ++iPart)
-        {
             particlesIn.emplace_back(
                 Particle<1>{1., 1., {{dis(gen)}}, {{delta(gen)}}, {{5., 0., 0.}}});
-        }
-        pusher->setMeshAndTimeStep({{dx}}, dt);
     }
 
 
 protected:
-    std::unique_ptr<BorisPusher<1, ParticleArray<1>, Electromag, Interpolator,
-                                BoundaryCondition<1, 1>, GridLayout_t>>
-        pusher;
-    double mass;
-    double dt;
-    double tstart;
-    double tend;
-    std::size_t nt;
-    Electromag em;
-    Interpolator interpolator;
+    double mass    = 1;
+    double dt      = .001;
+    double tstart  = 0;
+    double tend    = 10;
+    std::size_t nt = static_cast<std::size_t>((tend - tstart) / dt + 1);
+    TestElectromag em;
+    TestInterpolator interpolator;
     double dx = 0.1;
-    GridLayout_t layout;
-    Box<int, 1> domain = layout.AMRBox();
-    // BoundaryCondition<1, 1> bc;
-    // ParticleArray<1> particlesOut1;
-    // ParticleArray<1> particlesOut2;
-
-    // TestIons<GridLayout_t, ParticleArray<dimension>> ions{layout};
-    UsableIons<ParticleArray_t> ions{layout};
-
-    ParticleArray<dimension>& particlesIn = ions[0].domainParticles();
-
-    Boxing_t const boxing{layout, {layout.AMRBox()}};
+    Box<double, 1> domain{Point<double, 1>{0.}, Point<double, 1>{1.}};
+    Box<int, 1> cells{Point{0}, Point{9}};
+    BoundaryCondition<1, 1> bc;
+    ParticleArray<1> particlesIn{grow(cells, 1)};
+    ParticleArray<1> particlesOut1{{grow(cells, 1)}, 1000};
+    ParticleArray<1> particlesOut2{{grow(cells, 1)}, 1000};
+    GridLayout_t layout{10ul};
 };
 
 
@@ -351,16 +281,33 @@ protected:
 
 TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
 {
-    for (decltype(nt) i = 0; i < nt; ++i)
-        pusher->move(ions[0], em, interpolator, boxing);
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto inDomain = rangeIn;
 
-    auto& patchGhost = ions[0].patchGhostParticles();
-    EXPECT_TRUE(
-        std::none_of(std::begin(patchGhost), std::end(patchGhost),
-                     [this](auto const& particle) { return PHARE::core::isIn(particle, domain); }));
-    EXPECT_TRUE(
-        std::all_of(std::begin(particlesIn), std::end(particlesIn),
-                    [this](auto const& particle) { return PHARE::core::isIn(particle, domain); }));
+    auto selector = [this](auto& particleRange) //
+    {
+        auto& box = this->cells;
+        return particleRange.array().partition(
+            [&](auto const& cell) { return PHARE::core::isIn(Point{cell}, box); });
+    };
+
+    Pusher pusher{dt, mass, layout};
+    for (decltype(nt) i = 0; i < nt; ++i)
+    {
+        inDomain = pusher.move(rangeIn, rangeIn, em, interpolator, selector, selector);
+
+        if (inDomain.end() != std::end(particlesIn))
+        {
+            std::cout << inDomain.iend() << " and " << particlesIn.size() << "\n";
+            break;
+        }
+    }
+    EXPECT_TRUE(std::none_of(inDomain.end(), std::end(particlesIn), [this](auto const& particle) {
+        return PHARE::core::isIn(Point{particle.iCell}, cells);
+    }));
+    EXPECT_TRUE(std::all_of(std::begin(inDomain), std::end(inDomain), [this](auto const& particle) {
+        return PHARE::core::isIn(Point{particle.iCell}, cells);
+    }));
 }
 
 
@@ -386,9 +333,9 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
     {
         auto layout = DummyLayout<1>{};
         newEndWithBC
-            = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc, layout);
+            = pusher.move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc, layout);
         newEndWithoutBC
-            = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector, layout);
+            = pusher.move(rangeIn, rangeOut2, em, mass, interpolator, selector, layout);
 
         if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
         {

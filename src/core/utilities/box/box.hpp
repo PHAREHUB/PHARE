@@ -12,6 +12,7 @@
 #include <optional>
 #include <iostream>
 #include <algorithm>
+#include <unordered_map>
 
 namespace PHARE::core
 {
@@ -269,8 +270,8 @@ NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
 }
 
 
-template<typename Particle, typename Type>
-NO_DISCARD auto isIn(Particle const& particle, Box<Type, Particle::dimension> const& box)
+template<typename Particle>
+NO_DISCARD auto isIn(Particle const& particle, Box<int, Particle::dimension> const& box)
     -> decltype(isIn(particle.iCell, box), bool())
 {
     return isIn(particle.iCell, box);
@@ -280,17 +281,10 @@ NO_DISCARD auto isIn(Particle const& particle, Box<Type, Particle::dimension> co
  * and returns true if the Point is at least in one of the boxes.
  * Returns occurs at the first box the point is in.
  */
-template<typename Point, typename BoxContainer, is_iterable<BoxContainer> = dummy::value>
-bool isIn(Point const& point, BoxContainer const& boxes)
+template<typename Boxes>
+bool isIn(auto const& point, Boxes const& boxes)
+    requires(is_iterable_v<Boxes>)
 {
-    if (boxes.size() == 0)
-        return false;
-
-
-    static_assert(std::is_same<typename Point::value_type,
-                               typename BoxContainer::value_type::value_type>::value,
-                  "Box and Point should have the same data type");
-
     for (auto const& box : boxes)
         if (isIn(point, box))
             return true;
@@ -336,6 +330,71 @@ auto& operator<<(std::ostream& os, Box<Type, dim> const& box)
     os << ")";
     return os;
 }
+
+
+
+template<typename Type, std::size_t dim>
+std::vector<Box<Type, dim>> remove(Box<Type, dim> const box, Box<Type, dim> const& to_remove)
+{
+    using box_t = Box<Type, dim>;
+    using _m    = std::unordered_map<std::uint16_t, std::uint32_t>;
+
+    auto overlap = box * to_remove;
+
+    if (not overlap)
+        return std::vector{box};
+
+
+    auto copy = [](auto cpy, auto const& replace) {
+        for (auto const& [i, v] : replace)
+            cpy[i] = v;
+        return cpy;
+    };
+
+    auto intersection = *overlap;
+
+
+    std::unordered_map<std::string, box_t> boxes;
+
+    if (intersection.lower[0] > box.lower[0])
+        boxes["left"] = Box(box.lower, copy(box.upper, _m{{0, intersection.lower[0] - 1}}));
+    if (intersection.upper[0] < box.upper[0])
+        boxes["right"] = box_t{copy(box.lower, _m{{0, intersection.upper[0] + 1}}), box.upper};
+
+    [[maybe_unused]] Type minx = 0, maxx = 0;
+    if constexpr (dim > 1)
+    {
+        minx = boxes.count("left") > 0 ? intersection.lower[0] : box.lower[0];
+        maxx = boxes.count("right") > 0 ? intersection.upper[0] : box.upper[0];
+
+        if (intersection.lower[1] > box.lower[1])
+            boxes["down"] = box_t{copy(box.lower, _m{{0, minx}}),
+                                  copy(box.upper, _m{{0, maxx}, {1, intersection.lower[1] - 1}})};
+
+        if (intersection.upper[1] < box.upper[1])
+            boxes["up"] = Box(copy(box.lower, _m{{0, minx}, {1, intersection.upper[1] + 1}}),
+                              copy(box.upper, _m{{0, maxx}}));
+    }
+
+    if constexpr (dim > 2)
+    {
+        Type miny = boxes.count("down") > 0 ? intersection.lower[1] : box.lower[1];
+        Type maxy = boxes.count("up") > 0 ? intersection.upper[1] : box.upper[1];
+
+        if (intersection.lower[2] > box.lower[2])
+            boxes["back"] = Box(copy(box.lower, _m{{0, minx}, {1, miny}}),
+                                copy(intersection.lower - 1, _m{{0, maxx}, {1, maxy}}));
+        if (intersection.upper[2] < box.upper[2])
+            boxes["front"] = Box(copy(intersection.upper + 1, _m{{0, minx}, {1, miny}}),
+                                 copy(box.upper, _m{{0, maxx}, {1, maxy}}));
+    }
+
+    std::vector<box_t> remaining;
+    for (auto const& [key, val] : boxes)
+        remaining.emplace_back(val);
+    return remaining;
+}
+
 
 
 } // namespace PHARE::core
