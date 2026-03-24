@@ -26,6 +26,10 @@ set( SOURCES_INC
      data/vecfield/vecfield_initializer.hpp
      hybrid/hybrid_quantities.hpp
      numerics/boundary_condition/boundary_condition.hpp
+     inner_boundary/inner_boundary.hpp
+     inner_boundary/inner_boundary_factory.hpp
+     inner_boundary/sphere_inner_boundary.hpp
+     inner_boundary/plane_inner_boundary.hpp
      numerics/interpolator/interpolator.hpp
      numerics/pusher/boris.hpp
      numerics/pusher/pusher.hpp

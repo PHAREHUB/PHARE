@@ -270,6 +270,72 @@ def check_boundaries(ndim, **kwargs):
 # ------------------------------------------------------------------------------
 
 
+def check_inner_boundary(ndim, **kwargs):
+    inner_boundary = kwargs.get("inner_boundary", None)
+    if inner_boundary is None:
+        return None
+
+    if not isinstance(inner_boundary, dict):
+        raise ValueError("Error: inner_boundary must be a dictionary")
+
+    if "shape" not in inner_boundary:
+        raise ValueError("Error: inner_boundary requires a 'shape' key")
+
+    shape = inner_boundary["shape"]
+    valid_shapes = {"sphere", "plane"}
+    if shape not in valid_shapes:
+        raise ValueError(
+            f"Error: inner_boundary shape '{shape}' is invalid, valid shapes are {valid_shapes}"
+        )
+
+    if shape == "sphere":
+        allowed = {"shape", "center", "radius"}
+        unknown = set(inner_boundary.keys()) - allowed
+        if unknown:
+            raise ValueError(
+                f"Error: invalid inner_boundary keys for sphere: {sorted(unknown)}"
+            )
+        if "center" not in inner_boundary or "radius" not in inner_boundary:
+            raise ValueError(
+                "Error: sphere inner_boundary requires both 'center' and 'radius'"
+            )
+
+        center = phare_utilities.listify(inner_boundary["center"])
+        if len(center) != ndim:
+            raise ValueError(
+                f"Error: sphere center must have length {ndim}, got {len(center)}"
+            )
+        center = [float(v) for v in center]
+        radius = float(inner_boundary["radius"])
+        if radius <= 0:
+            raise ValueError("Error: sphere radius must be > 0")
+        return {"shape": "sphere", "center": center, "radius": radius}
+
+    allowed = {"shape", "point", "normal"}
+    unknown = set(inner_boundary.keys()) - allowed
+    if unknown:
+        raise ValueError(f"Error: invalid inner_boundary keys for plane: {sorted(unknown)}")
+    if "point" not in inner_boundary or "normal" not in inner_boundary:
+        raise ValueError("Error: plane inner_boundary requires both 'point' and 'normal'")
+
+    point = phare_utilities.listify(inner_boundary["point"])
+    normal = phare_utilities.listify(inner_boundary["normal"])
+    if len(point) != ndim:
+        raise ValueError(f"Error: plane point must have length {ndim}, got {len(point)}")
+    if len(normal) != ndim:
+        raise ValueError(
+            f"Error: plane normal must have length {ndim}, got {len(normal)}"
+        )
+    point = [float(v) for v in point]
+    normal = [float(v) for v in normal]
+    if np.linalg.norm(np.asarray(normal)) == 0:
+        raise ValueError("Error: plane normal cannot be the zero vector")
+    return {"shape": "plane", "point": point, "normal": normal}
+
+
+# ------------------------------------------------------------------------------
+
+
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
 # This should match possibleSimulators() in meta_utilities.h
 valid_refined_particle_nbr = {
@@ -748,6 +814,7 @@ def checker(func):
             "limiter",
             "riemann",
             "mhd_timestepper",
+            "inner_boundary",
         ]
 
         kwargs = deepcopy(dict(**kwargs_in))  # local copy - dictionaries are weird
@@ -786,6 +853,7 @@ def checker(func):
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
+        kwargs["inner_boundary"] = check_inner_boundary(ndim, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
         kwargs["diag_export_format"] = kwargs.get("diag_export_format", "hdf5")
@@ -1054,6 +1122,10 @@ class Simulation(object):
         * **resistivity** (``float``), resistivity value (default=0.0)
         * **hyper-resistivity** (``float``), hyper-resistivity value (default=0.0)
         * **boundary_types** (``str`` or ``tuple``) type of boundary conditions (default is "periodic" for each direction)
+        * **inner_boundary** (``dict``), optional embedded boundary definition.
+          Supported shapes:
+            * sphere: ``{"shape": "sphere", "center": (...), "radius": r}``
+            * plane: ``{"shape": "plane", "point": (...), "normal": (...)}``
 
     """
 
