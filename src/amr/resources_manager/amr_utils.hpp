@@ -227,27 +227,37 @@ namespace amr
             noDomainOverlapsOn(hierarchy, iLevel);
     }
 
-
     // potentially to replace with SAMRAI coarse to fine boundary stuff
     template<typename GridLayoutT> // fow now it gives us a box for only patch ghost layer
     NO_DISCARD auto makeNonLevelGhostBoxFor(SAMRAI::hier::Patch const& patch,
                                             SAMRAI::hier::PatchHierarchy const& hierarchy)
     {
         auto constexpr dimension       = GridLayoutT::dimension;
-        auto const lvlNbr              = patch.getPatchLevelNumber();
         SAMRAI::hier::Box const domain = patch.getBox();
         auto const domBox              = phare_box_from<dimension>(domain);
         auto const particleGhostBox    = grow(domBox, GridLayoutT::nbrParticleGhosts());
-
-        auto const neighbors = getSameLevelNeighbors(patch, hierarchy);
+        auto const neighbors           = getSameLevelNeighbors(patch, hierarchy);
         std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
         patchGhostLayerBoxes.reserve(neighbors.size() + 1);
         patchGhostLayerBoxes.emplace_back(domBox);
         for (auto const& neighbox : neighbors)
             patchGhostLayerBoxes.emplace_back(
                 *(particleGhostBox * phare_box_from<dimension>(neighbox)));
-
         return patchGhostLayerBoxes;
+    }
+
+    template<typename GridLayoutT>
+    NO_DISCARD auto patchGhostBoxOverlaps(SAMRAI::hier::Patch const& patch,
+                                          SAMRAI::hier::PatchHierarchy const& hierarchy)
+    {
+        auto constexpr dimension    = GridLayoutT::dimension;
+        auto const domBox           = phare_box_from<dimension>(patch.getBox());
+        auto const particleGhostBox = grow(domBox, GridLayoutT::nbrParticleGhosts());
+        return core::generate(
+            [&](auto& neighbox) {
+                return *(particleGhostBox * phare_box_from<dimension>(neighbox));
+            },
+            getSameLevelNeighbors(patch, hierarchy));
     }
 
     inline auto to_string(auto const& id)
@@ -340,7 +350,20 @@ namespace amr
             orMissing(ilvl);
     }
 
+    template<std::size_t dim>
+    auto removeIntersections(core::Box<int, dim> const& box, core::Box<int, dim> const& remove)
+    {
+        return generate([&](auto const& rem) { return phare_box_from<dim>(rem); },
+                        samrai_box_from(box).removeIntersections(samrai_box_from(remove)));
+    }
 
+    template<std::size_t dim>
+    auto removeIntersections(core::Box<std::uint32_t, dim> const& box,
+                             core::Box<uint32_t, dim> const& remove)
+    {
+        return generate([&](auto const& rem) { return as_unsigned_phare_box<dim>(rem); },
+                        samrai_box_from(box).removeIntersections(samrai_box_from(remove)));
+    }
 
 } // namespace amr
 } // namespace PHARE

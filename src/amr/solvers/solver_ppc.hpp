@@ -50,7 +50,7 @@ private:
     using Faraday_t    = ModelViews_t::Faraday_t;
     using Ampere_t     = ModelViews_t::Ampere_t;
     using Ohm_t        = ModelViews_t::Ohm_t;
-    using IonUpdater_t = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using IonUpdater_t = PHARE::core::IonUpdater<Ions>;
 
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
@@ -184,7 +184,7 @@ private:
             if (auto [it, suc] = levelBoxing.try_emplace(
                     amr::to_string(patch->getGlobalId()),
                     Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, hierarchy)});
+                             amr::patchGhostBoxOverlaps<GridLayout>(*patch, hierarchy)});
                 !suc)
                 throw std::runtime_error("boxing map insertion failure");
     }
@@ -198,7 +198,7 @@ private:
     }
 
 
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using Boxing_t = core::UpdaterSelectionBoxing<GridLayout, ParticleArray>;
     std::unordered_map<int /*level*/, std::unordered_map<std::string /*patchid*/, Boxing_t>> boxing;
 
 
@@ -559,8 +559,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, ModelViews_t& 
         auto dt = newTime - currentTime;
         for (auto& state : views)
             ionUpdater_.updatePopulations(
-                state.ions, state.electromagAvg,
-                levelBoxing.at(amr::to_string(state.patch->getGlobalId())), dt, mode);
+                mode, state.ions, state.electromagAvg,
+                levelBoxing.at(amr::to_string(state.patch->getGlobalId())), dt);
     }
     catch (core::DictionaryException const& ex)
     {

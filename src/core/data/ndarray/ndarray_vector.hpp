@@ -306,6 +306,12 @@ public:
         return MaskedView{*this, std::forward<Mask>(mask)};
     }
 
+    void zero() { fill(0); }
+    auto& fill(DataType const& v)
+    {
+        std::fill(begin(), end(), v);
+        return *this;
+    }
 
     NO_DISCARD auto& vector() { return data_; }
     NO_DISCARD auto& vector() const { return data_; }
