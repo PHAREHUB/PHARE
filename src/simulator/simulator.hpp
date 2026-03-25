@@ -86,6 +86,7 @@ public:
     using SimFunctorParams       = core::PHARE_Sim_Types::SimFunctorParams;
     using SimFunctors            = core::PHARE_Sim_Types::SimulationFunctors;
     using Integrator             = PHARE::amr::Integrator<dimension>;
+    using InnerBoundary          = core::InnerBoundary<dimension>;
 
     using HybridResourceManager_t = HybridModel::resources_manager_type;
     using MHDResourceManager_t    = MHDModel::resources_manager_type;
@@ -212,7 +213,7 @@ private:
     }
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
-    core::InnerBoundaryPtr<dimension> innerBoundary_;
+    std::shared_ptr<InnerBoundary> innerBoundary_;
 
 
 

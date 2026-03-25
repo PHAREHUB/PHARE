@@ -72,6 +72,18 @@ namespace core
             std::array<QtyCentering, NBR_COMPO> const Bx = {{data.primal, data.dual, data.dual}};
             std::array<QtyCentering, NBR_COMPO> const By = {{data.dual, data.primal, data.dual}};
             std::array<QtyCentering, NBR_COMPO> const Bz = {{data.dual, data.dual, data.primal}};
+            std::array<QtyCentering, NBR_COMPO> const FaceCenteredX
+                = {{data.primal, data.dual, data.dual}};
+            std::array<QtyCentering, NBR_COMPO> const FaceCenteredY
+                = {{data.dual, data.primal, data.dual}};
+            std::array<QtyCentering, NBR_COMPO> const FaceCenteredZ
+                = {{data.dual, data.dual, data.primal}};
+            std::array<QtyCentering, NBR_COMPO> const EdgeCenteredX
+                = {{data.dual, data.primal, data.primal}};
+            std::array<QtyCentering, NBR_COMPO> const EdgeCenteredY
+                = {{data.primal, data.dual, data.primal}};
+            std::array<QtyCentering, NBR_COMPO> const EdgeCenteredZ
+                = {{data.primal, data.primal, data.dual}};
 
             std::array<QtyCentering, NBR_COMPO> const Ex = {{data.dual, data.primal, data.primal}};
             std::array<QtyCentering, NBR_COMPO> const Ey = {{data.primal, data.dual, data.primal}};
@@ -109,8 +121,9 @@ namespace core
 
             std::array<std::array<QtyCentering, NBR_COMPO>,
                        static_cast<std::size_t>(HybridQuantity::Scalar::count)> const _QtyCentering{
-                Bx, By, Bz, Ex, Ey,  Ez,  Jx,  Jy,  Jz,  Rho,
-                Vx, Vy, Vz, P,  Mxx, Mxy, Mxz, Myy, Myz, Mzz};
+                Bx, By, Bz, Ex, Ey, Ez, Jx, Jy, Jz, Rho, Vx, Vy, Vz, P, Mxx, Mxy, Mxz, Myy,
+                Myz, Mzz, FaceCenteredX, FaceCenteredY, FaceCenteredZ, EdgeCenteredX,
+                EdgeCenteredY, EdgeCenteredZ};
 
             return _QtyCentering;
         }
@@ -140,6 +153,18 @@ namespace core
                         return {{_QtyCentering_[gridData_.iBy][gridData_.idirX]}};
                     case HybridQuantity::Scalar::Bz:
                         return {{_QtyCentering_[gridData_.iBz][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::FaceCenteredX:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredX][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::FaceCenteredY:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredY][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::FaceCenteredZ:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredZ][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::EdgeCenteredX:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredX][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::EdgeCenteredY:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredY][gridData_.idirX]}};
+                    case HybridQuantity::Scalar::EdgeCenteredZ:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredZ][gridData_.idirX]}};
                     case HybridQuantity::Scalar::Ex:
                         return {{_QtyCentering_[gridData_.iEx][gridData_.idirX]}};
                     case HybridQuantity::Scalar::Ey:
@@ -191,6 +216,24 @@ namespace core
                     case HybridQuantity::Scalar::Bz:
                         return {{_QtyCentering_[gridData_.iBz][gridData_.idirX],
                                  _QtyCentering_[gridData_.iBz][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::FaceCenteredX:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredX][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iFaceCenteredX][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::FaceCenteredY:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredY][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iFaceCenteredY][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::FaceCenteredZ:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredZ][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iFaceCenteredZ][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::EdgeCenteredX:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredX][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iEdgeCenteredX][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::EdgeCenteredY:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredY][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iEdgeCenteredY][gridData_.idirY]}};
+                    case HybridQuantity::Scalar::EdgeCenteredZ:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredZ][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iEdgeCenteredZ][gridData_.idirY]}};
                     case HybridQuantity::Scalar::Ex:
                         return {{_QtyCentering_[gridData_.iEx][gridData_.idirX],
                                  _QtyCentering_[gridData_.iEx][gridData_.idirY]}};
@@ -262,6 +305,30 @@ namespace core
                         return {{_QtyCentering_[gridData_.iBz][gridData_.idirX],
                                  _QtyCentering_[gridData_.iBz][gridData_.idirY],
                                  _QtyCentering_[gridData_.iBz][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::FaceCenteredX:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredX][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iFaceCenteredX][gridData_.idirY],
+                                 _QtyCentering_[gridData_.iFaceCenteredX][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::FaceCenteredY:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredY][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iFaceCenteredY][gridData_.idirY],
+                                 _QtyCentering_[gridData_.iFaceCenteredY][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::FaceCenteredZ:
+                        return {{_QtyCentering_[gridData_.iFaceCenteredZ][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iFaceCenteredZ][gridData_.idirY],
+                                 _QtyCentering_[gridData_.iFaceCenteredZ][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::EdgeCenteredX:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredX][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iEdgeCenteredX][gridData_.idirY],
+                                 _QtyCentering_[gridData_.iEdgeCenteredX][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::EdgeCenteredY:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredY][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iEdgeCenteredY][gridData_.idirY],
+                                 _QtyCentering_[gridData_.iEdgeCenteredY][gridData_.idirZ]}};
+                    case HybridQuantity::Scalar::EdgeCenteredZ:
+                        return {{_QtyCentering_[gridData_.iEdgeCenteredZ][gridData_.idirX],
+                                 _QtyCentering_[gridData_.iEdgeCenteredZ][gridData_.idirY],
+                                 _QtyCentering_[gridData_.iEdgeCenteredZ][gridData_.idirZ]}};
                     case HybridQuantity::Scalar::Ex:
                         return {{_QtyCentering_[gridData_.iEx][gridData_.idirX],
                                  _QtyCentering_[gridData_.iEx][gridData_.idirY],
@@ -361,6 +428,14 @@ namespace core
                     return {{centering(HybridQuantity::Scalar::Ex),
                              centering(HybridQuantity::Scalar::Ey),
                              centering(HybridQuantity::Scalar::Ez)}};
+                case HybridQuantity::Vector::FaceCentered:
+                    return {{centering(HybridQuantity::Scalar::FaceCenteredX),
+                             centering(HybridQuantity::Scalar::FaceCenteredY),
+                             centering(HybridQuantity::Scalar::FaceCenteredZ)}};
+                case HybridQuantity::Vector::EdgeCentered:
+                    return {{centering(HybridQuantity::Scalar::EdgeCenteredX),
+                             centering(HybridQuantity::Scalar::EdgeCenteredY),
+                             centering(HybridQuantity::Scalar::EdgeCenteredZ)}};
 
                 default: throw std::runtime_error("Wrong _Quantity");
             }

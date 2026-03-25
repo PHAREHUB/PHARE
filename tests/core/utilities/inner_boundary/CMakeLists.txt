@@ -2,7 +2,9 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(test-inner_boundary)
 
-set(SOURCES test_inner_boundary.cpp)
+set(SOURCES
+    test_inner_boundary.cpp
+    test_inner_boundary_geometry_tagger.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

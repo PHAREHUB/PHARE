@@ -341,8 +341,8 @@ protected:
     VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
 
-    Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
-    VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
+    Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::NodeCentered};
+    VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::NodeCentered};
 };
 
 

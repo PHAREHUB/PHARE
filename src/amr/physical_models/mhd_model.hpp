@@ -48,8 +48,8 @@ public:
 
     // maybe these could have a single allocation shared for hybrid and mhd, as they are strictly
     // temporaries. Right now the hybrid version is in the hybrid_hybrid_messenger_strategy.hpp
-    field_type tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
-    vecfield_type tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
+    field_type tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::NodeCentered};
+    vecfield_type tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::NodeCentered};
 
     void initialize(level_t& level) override;
 

@@ -34,9 +34,15 @@ public:
         Myy,
         Myz,
         Mzz,
+        FaceCenteredX,
+        FaceCenteredY,
+        FaceCenteredZ,
+        EdgeCenteredX,
+        EdgeCenteredY,
+        EdgeCenteredZ,
         count
     };
-    enum class Vector { B, E, J, V };
+    enum class Vector { B, E, J, V, FaceCentered, EdgeCentered };
     enum class Tensor { M, count };
 
     static constexpr auto all_primal_field = Scalar::rho;
@@ -48,6 +54,8 @@ public:
     NO_DISCARD static constexpr auto E() { return componentsQuantities(Vector::E); }
     NO_DISCARD static constexpr auto J() { return componentsQuantities(Vector::J); }
     NO_DISCARD static constexpr auto V() { return componentsQuantities(Vector::V); }
+    NO_DISCARD static constexpr auto FaceCentered() { return componentsQuantities(Vector::FaceCentered); }
+    NO_DISCARD static constexpr auto EdgeCentered() { return componentsQuantities(Vector::EdgeCentered); }
 
     NO_DISCARD static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
     {
@@ -62,6 +70,12 @@ public:
 
         if (qty == Vector::V)
             return {{Scalar::Vx, Scalar::Vy, Scalar::Vz}};
+
+        if (qty == Vector::FaceCentered)
+            return {{Scalar::FaceCenteredX, Scalar::FaceCenteredY, Scalar::FaceCenteredZ}};
+
+        if (qty == Vector::EdgeCentered)
+            return {{Scalar::EdgeCenteredX, Scalar::EdgeCenteredY, Scalar::EdgeCenteredZ}};
 
         throw std::runtime_error("Error - invalid Vector");
     }

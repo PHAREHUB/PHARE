@@ -48,17 +48,37 @@ public:
         VecFluxY_z,
         VecFluxZ_z,
 
-        ScalarAllPrimal,
-        VecAllPrimalX,
-        VecAllPrimalY,
-        VecAllPrimalZ,
+        FaceCenteredX,
+        FaceCenteredY,
+        FaceCenteredZ,
+
+        NodeCentered,
+
+        CellCentered,
+
+        EdgeCenteredX,
+        EdgeCenteredY,
+        EdgeCenteredZ,
 
         count
     };
-    enum class Vector { V, B, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal };
+    enum class Vector {
+        V,
+        B,
+        rhoV,
+        E,
+        J,
+        VecFlux_x,
+        VecFlux_y,
+        VecFlux_z,
+        FaceCentered,
+        NodeCentered,
+        CellCentered,
+        EdgeCentered
+    };
     enum class Tensor { count };
 
-    static constexpr auto all_primal_field = Scalar::ScalarAllPrimal;
+    static constexpr auto all_primal_field = Scalar::NodeCentered;
 
     template<std::size_t rank, typename = std::enable_if_t<rank == 1 or rank == 2, void>>
     using TensorType = std::conditional_t<rank == 1, Vector, Tensor>;
@@ -73,10 +93,19 @@ public:
     NO_DISCARD static constexpr auto VecFlux_x() { return componentsQuantities(Vector::VecFlux_x); }
     NO_DISCARD static constexpr auto VecFlux_y() { return componentsQuantities(Vector::VecFlux_y); }
     NO_DISCARD static constexpr auto VecFlux_z() { return componentsQuantities(Vector::VecFlux_z); }
-
-    NO_DISCARD static constexpr auto VecAllPrimal()
+    NO_DISCARD static constexpr auto FaceCentered()
     {
-        return componentsQuantities(Vector::VecAllPrimal);
+        return componentsQuantities(Vector::FaceCentered);
+    }
+
+    NO_DISCARD static constexpr auto NodeCentered()
+    {
+        return componentsQuantities(Vector::NodeCentered);
+    }
+
+    NO_DISCARD static constexpr auto EdgeCentered()
+    {
+        return componentsQuantities(Vector::EdgeCentered);
     }
 
     NO_DISCARD static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
@@ -107,8 +136,17 @@ public:
         if (qty == Vector::VecFlux_z)
             return {{Scalar::VecFluxX_z, Scalar::VecFluxY_z, Scalar::VecFluxZ_z}};
 
-        if (qty == Vector::VecAllPrimal)
-            return {{Scalar::VecAllPrimalX, Scalar::VecAllPrimalY, Scalar::VecAllPrimalZ}};
+        if (qty == Vector::FaceCentered)
+            return {{Scalar::FaceCenteredX, Scalar::FaceCenteredY, Scalar::FaceCenteredZ}};
+
+        if (qty == Vector::NodeCentered)
+            return {{Scalar::NodeCentered, Scalar::NodeCentered, Scalar::NodeCentered}};
+
+        if (qty == Vector::CellCentered)
+            return {{Scalar::CellCentered, Scalar::CellCentered, Scalar::CellCentered}};
+
+        if (qty == Vector::EdgeCentered)
+            return {{Scalar::EdgeCenteredX, Scalar::EdgeCenteredY, Scalar::EdgeCenteredZ}};
 
         throw std::runtime_error("Error - invalid Vector");
     }

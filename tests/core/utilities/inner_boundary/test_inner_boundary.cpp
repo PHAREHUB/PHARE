@@ -1,8 +1,8 @@
 #include "gtest/gtest.h"
 
+#include "core/inner_boundary/inner_boundary_factory.hpp"
 #include "core/inner_boundary/plane_inner_boundary.hpp"
 #include "core/inner_boundary/sphere_inner_boundary.hpp"
-#include "core/inner_boundary/inner_boundary_factory.hpp"
 
 #include "initializer/data_provider.hpp"
 
