@@ -14,10 +14,10 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
 #if H5_HAVE_SUBFILING_VFD
     int provided;
     MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
-    SAMRAI::tbox::SAMRAI_MPI::init(MPI_COMM_WORLD);
     if (provided < MPI_THREAD_MULTIPLE)
         throw std::runtime_error(
             "MPI_THREAD_MULTIPLE required for HDF5 subfiling but not provided");
+    SAMRAI::tbox::SAMRAI_MPI::init(MPI_COMM_WORLD);
 
 #else  // normal way
     SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
