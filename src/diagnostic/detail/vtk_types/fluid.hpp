@@ -142,15 +142,6 @@ template<typename H5Writer>
 std::optional<std::size_t>
 FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const ilvl)
 {
-    auto& modelView = writer->h5Writer_.modelView();
-
-    auto& rho  = modelView.getRho();
-    auto& rhoV = modelView.getRhoV();
-    auto& Etot = modelView.getEtot();
-
-    // need computation
-    // auto& V    = modelView.getV();
-    // auto& P    = modelView.getP();
     std::string const tree{"/mhd/"};
 
     if (isActiveDiag(diagnostic, tree, "rho"))
@@ -163,6 +154,11 @@ FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const ilvl
         return file_initializer.initFieldFileLevel(ilvl);
     if (isActiveDiag(diagnostic, tree, "V"))
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
+    if (isActiveDiag(diagnostic, tree, "IBCellStatus"))
+        return file_initializer.initFieldFileLevel(ilvl);
+    if (isActiveDiag(diagnostic, tree, "IBSignedDistance"))
+        return file_initializer.initFieldFileLevel(ilvl);
+
 
     return std::nullopt;
 }
@@ -249,11 +245,12 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
 {
     auto& modelView = writer->h5Writer_.modelView();
 
-    auto& rho  = modelView.getRho();
-    auto& rhoV = modelView.getRhoV();
-    auto& Etot = modelView.getEtot();
-    auto& P    = modelView.getP();
-    auto& V    = modelView.getV();
+    auto& rho                   = modelView.getRho();
+    auto& rhoV                  = modelView.getRhoV();
+    auto& Etot                  = modelView.getEtot();
+    auto& P                     = modelView.getP();
+    auto& V                     = modelView.getV();
+    auto& innerBoundaryMeshData = modelView.getInnerBoundaryMeshData();
 
     std::string const tree{"/mhd/"};
 
@@ -267,6 +264,10 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
         file_writer.writeField(P, layout);
     else if (isActiveDiag(diagnostic, tree, "V"))
         file_writer.template writeTensorField<1>(V, layout);
+    else if (isActiveDiag(diagnostic, tree, "IBCellStatus"))
+        file_writer.writeField(innerBoundaryMeshData.cellStatus, layout);
+    else if (isActiveDiag(diagnostic, tree, "IBSignedDistance"))
+        file_writer.writeField(innerBoundaryMeshData.signedDistanceAtNodes, layout);
 }
 
 

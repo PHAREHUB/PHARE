@@ -30,21 +30,22 @@ public:
         if (!simulation_dict.contains("inner_boundary"))
             return nullptr;
 
-        auto const& dict = simulation_dict["inner_boundary"];
-        auto shape_name  = dict["shape"].template to<std::string>();
-        auto shape       = getInnerBoundaryShapeFromString(shape_name);
+        auto const& dict  = simulation_dict["inner_boundary"];
+        auto shape_name   = dict["shape"].template to<std::string>();
+        auto shape        = getInnerBoundaryShapeFromString(shape_name);
+        auto boundaryName = dict["name"].template to<std::string>();
 
         switch (shape)
         {
             case InnerBoundaryShape::Sphere: {
                 auto center = asPoint_(dict["center"].template to<std::vector<double>>());
                 auto radius = dict["radius"].template to<double>();
-                return std::make_unique<SphereInnerBoundary<dim>>(center, radius);
+                return std::make_unique<SphereInnerBoundary<dim>>(boundaryName, center, radius);
             }
             case InnerBoundaryShape::Plane: {
                 auto point  = asPoint_(dict["point"].template to<std::vector<double>>());
                 auto normal = asPoint_(dict["normal"].template to<std::vector<double>>());
-                return std::make_unique<PlaneInnerBoundary<dim>>(point, normal);
+                return std::make_unique<PlaneInnerBoundary<dim>>(boundaryName, point, normal);
             }
             default: throw std::runtime_error("Unknow inner boudary shape");
         }

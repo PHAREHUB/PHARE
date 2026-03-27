@@ -3,6 +3,9 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/inner_boundary/inner_boundary.hpp"
+#include "core/inner_boundary/inner_boundary_factory.hpp"
+#include "core/inner_boundary/inner_boundary_mesh_data.hpp"
 #include "core/models/mhd_state.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
@@ -11,6 +14,7 @@
 
 #include <SAMRAI/hier/PatchLevel.h>
 
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -35,6 +39,9 @@ public:
     using gridlayout_type        = GridLayoutT;
     using grid_type              = Grid_t;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
+    using inner_boundary_type    = core::InnerBoundary<dimension>;
+    using inner_boundary_mesh_data_type
+        = core::InnerBoundaryMeshData<dimension, physical_quantity_type>;
 
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
@@ -51,6 +58,10 @@ public:
     field_type tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::NodeCentered};
     vecfield_type tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::NodeCentered};
 
+    // those quantities are not specific to MHD either.
+    std::shared_ptr<inner_boundary_type> innerBoundary;
+    inner_boundary_mesh_data_type innerBoundaryMeshData;
+
     void initialize(level_t& level) override;
 
 
@@ -61,6 +72,8 @@ public:
         resourcesManager->allocate(P_diag_, patch, allocateTime);
         resourcesManager->allocate(tmpField_, patch, allocateTime);
         resourcesManager->allocate(tmpVec_, patch, allocateTime);
+        if (innerBoundary)
+            resourcesManager->allocate(innerBoundaryMeshData, patch, allocateTime);
     }
 
 
@@ -76,11 +89,16 @@ public:
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
         , resourcesManager{std::move(_resourcesManager)}
+        , innerBoundary{core::InnerBoundaryFactory<dimension>::create(dict)}
+        , innerBoundaryMeshData{innerBoundary ? inner_boundary_mesh_data_type{innerBoundary->name()}
+                                              : inner_boundary_mesh_data_type{}}
     {
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
         resourcesManager->registerResources(tmpField_);
         resourcesManager->registerResources(tmpVec_);
+        if (innerBoundary)
+            resourcesManager->registerResources(innerBoundaryMeshData);
     }
 
     ~MHDModel() override = default;
@@ -88,6 +106,8 @@ public:
     auto get_B() -> auto& { return state.B; }
 
     auto get_B() const -> auto& { return state.B; }
+
+    bool hasInnerBoundary() const { return innerBoundary != nullptr; }
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface

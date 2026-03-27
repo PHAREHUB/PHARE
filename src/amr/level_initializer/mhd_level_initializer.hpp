@@ -5,6 +5,9 @@
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
 #include "amr/physical_models/physical_model.hpp"
+
+#include "core/inner_boundary/inner_boundary_mesh_mapper.hpp"
+
 #include "initializer/data_provider.hpp"
 
 namespace PHARE::solver
@@ -19,9 +22,12 @@ class MHDLevelInitializer : public LevelInitializer<typename MHDModel::amr_types
     using IPhysicalModelT              = IPhysicalModel<amr_types>;
     using IMessengerT                  = amr::IMessenger<IPhysicalModelT>;
     using MHDMessenger                 = amr::MHDMessenger<MHDModel>;
-    using GridLayoutT                  = typename MHDModel::gridlayout_type;
+    using GridLayoutT                  = MHDModel::gridlayout_type;
+    using PhysicalQuantityT            = MHDModel::physical_quantity_type;
     static constexpr auto dimension    = GridLayoutT::dimension;
     static constexpr auto interp_order = GridLayoutT::interp_order;
+    using inner_boundary_mesh_mapper_type
+        = core::InnerBoundaryMeshMapper<dimension, GridLayoutT, PhysicalQuantityT>;
 
     inline bool isRootLevel(int levelNumber) const { return levelNumber == 0; }
 
@@ -57,6 +63,20 @@ public:
                 PHARE_LOG_START(3, "mhdLevelInitializer::initialize : initlevel");
                 messenger.initLevel(model, level, initDataTime);
                 PHARE_LOG_STOP(3, "mhdLevelInitializer::initialize : initlevel");
+            }
+        }
+
+        if (mhdModel.hasInnerBoundary())
+        {
+            for (auto& patch : level)
+            {
+                auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                auto _      = mhdModel.resourcesManager->setOnPatch(*patch,
+                                                                    mhdModel.innerBoundaryMeshData);
+
+                auto mapper = inner_boundary_mesh_mapper_type::withDefaults(
+                    *mhdModel.innerBoundary, layout);
+                mapper(layout, mhdModel.innerBoundaryMeshData);
             }
         }
     }

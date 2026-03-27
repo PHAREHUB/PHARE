@@ -83,10 +83,11 @@ class TestSimulation(unittest.TestCase):
             boundary_types=("periodic", "periodic"),
             cells=(80, 40),
             dl=(0.1, 0.2),
-            inner_boundary={"shape": "sphere", "center": (1.0, 2.0), "radius": 0.5},
+            inner_boundary={"name": "sphere_boundary", "shape": "sphere", "center": (1.0, 2.0), "radius": 0.5},
             final_time=1.0,
         )
         self.assertEqual("sphere", s.inner_boundary["shape"])
+        self.assertEqual("sphere_boundary", s.inner_boundary["name"])
         self.assertEqual([1.0, 2.0], s.inner_boundary["center"])
         self.assertEqual(0.5, s.inner_boundary["radius"])
         global_vars.sim = None
@@ -98,6 +99,7 @@ class TestSimulation(unittest.TestCase):
             cells=(80, 40, 12),
             dl=(0.1, 0.2, 0.3),
             inner_boundary={
+                "name": "plane_boundary",
                 "shape": "plane",
                 "point": (1.0, 2.0, 3.0),
                 "normal": (0.0, 0.0, 2.0),
@@ -105,6 +107,7 @@ class TestSimulation(unittest.TestCase):
             final_time=1.0,
         )
         self.assertEqual("plane", s.inner_boundary["shape"])
+        self.assertEqual("plane_boundary", s.inner_boundary["name"])
         self.assertEqual([1.0, 2.0, 3.0], s.inner_boundary["point"])
         self.assertEqual([0.0, 0.0, 2.0], s.inner_boundary["normal"])
         global_vars.sim = None

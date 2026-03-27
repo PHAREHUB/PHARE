@@ -13,10 +13,12 @@ template<std::size_t dim>
 class PlaneInnerBoundary : public InnerBoundary<dim>
 {
 public:
+    using Base       = InnerBoundary<dim>;
     using point_type = typename InnerBoundary<dim>::point_type;
 
-    PlaneInnerBoundary(point_type point, point_type normal)
-        : point_{std::move(point)}
+    PlaneInnerBoundary(std::string name, point_type point, point_type normal)
+        : Base{name}
+        , point_{std::move(point)}
         , normal_{normalize_(std::move(normal))}
     {
     }

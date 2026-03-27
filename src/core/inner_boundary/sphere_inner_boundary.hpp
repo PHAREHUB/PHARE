@@ -13,10 +13,12 @@ template<std::size_t dim>
 class SphereInnerBoundary : public InnerBoundary<dim>
 {
 public:
-    using point_type = typename InnerBoundary<dim>::point_type;
+    using Base       = InnerBoundary<dim>;
+    using point_type = InnerBoundary<dim>::point_type;
 
-    SphereInnerBoundary(point_type center, double radius)
-        : center_{std::move(center)}
+    SphereInnerBoundary(std::string name, point_type center, double radius)
+        : Base{name}
+        , center_{std::move(center)}
         , radius_{radius}
     {
         if (radius_ <= 0)

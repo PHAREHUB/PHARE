@@ -4,7 +4,7 @@ project(test-inner_boundary)
 
 set(SOURCES
     test_inner_boundary.cpp
-    test_inner_boundary_geometry_tagger.cpp)
+    test_inner_boundary_mesh_mapper.cpp)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 

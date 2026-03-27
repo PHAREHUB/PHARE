@@ -1,14 +1,12 @@
-#ifndef PHARE_CORE_INNER_BOUNDARY_INNER_BOUNDARY_GEOMETRY_TAGGER_HPP
-#define PHARE_CORE_INNER_BOUNDARY_INNER_BOUNDARY_GEOMETRY_TAGGER_HPP
+#ifndef PHARE_CORE_INNER_BOUNDARY_INNER_BOUNDARY_MESH_MAPPER_HPP
+#define PHARE_CORE_INNER_BOUNDARY_INNER_BOUNDARY_MESH_MAPPER_HPP
 
-#include "core/inner_boundary/inner_boundary.hpp"
-#include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield.hpp"
+#include "core/inner_boundary/inner_boundary.hpp"
+#include "core/inner_boundary/inner_boundary_mesh_data.hpp"
 
-
-#include <array>
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
@@ -18,55 +16,7 @@
 
 namespace PHARE::core
 {
-/**
- * @brief Cell state relative to an inner boundary.
- */
-enum class CellTag : std::uint8_t { Fluid, Cut, Ghost, Inactive };
-/**
- * @brief Face state relative to an inner boundary.
- */
-enum class FaceTag : std::uint8_t { Fluid, Cut, Ghost, Inactive };
-/**
- * @brief Edge state relative to an inner boundary.
- */
-enum class EdgeTag : std::uint8_t { Fluid, Cut, Ghost, Inactive };
 
-
-/**
- * @brief Gather useful type definitions for tagging data.
- */
-template<std::size_t dim, typename PhysicalQuantityT>
-struct InnerBoundaryTagTypes
-{
-    using node_double_field_type  = Field<dim, typename PhysicalQuantityT::Scalar, double>;
-    using cell_tags_field_type    = Field<dim, typename PhysicalQuantityT::Scalar, CellTag>;
-    using face_tags_field_type    = Field<dim, typename PhysicalQuantityT::Scalar, FaceTag>;
-    using face_tags_vecfield_type = VecField<face_tags_field_type, PhysicalQuantityT>;
-    using edge_tags_field_type    = Field<dim, typename PhysicalQuantityT::Scalar, EdgeTag>;
-    using edge_tags_vecfield_type = VecField<edge_tags_field_type, PhysicalQuantityT>;
-};
-
-/**
- * @brief Bundle of node level-set values and support tags around an inner boundary.
- *
- * @tparam dim Spatial dimension.
- * @tparam PhysicalQuantityT Quantity traits used to define node/cell/face/edge
- * field types.
- */
-template<std::size_t dim, typename PhysicalQuantityT>
-struct InnerBoundaryTags
-{
-    using types                   = InnerBoundaryTagTypes<dim, PhysicalQuantityT>;
-    using node_double_field_type  = types::node_double_field_type;
-    using cell_tags_field_type    = types::cell_tags_field_type;
-    using face_tags_vecfield_type = types::face_tags_vecfield_type;
-    using edge_tags_vecfield_type = types::edge_tags_vecfield_type;
-
-    node_double_field_type phiNodes;
-    cell_tags_field_type cellTags;
-    face_tags_vecfield_type faceTags;
-    edge_tags_vecfield_type edgeTags;
-};
 
 
 /**
@@ -83,20 +33,20 @@ struct InnerBoundaryTags
  * field types.
  */
 template<std::size_t dim, typename GridLayoutT, typename PhysicalQuantityT>
-class InnerBoundaryGeometryTagger
+class InnerBoundaryMeshMapper
 {
 public:
-    using tag_types               = InnerBoundaryTagTypes<dim, PhysicalQuantityT>;
-    using point_type              = typename InnerBoundary<dim>::point_type;
-    using local_index_type        = Point<std::uint32_t, dim>;
-    using signed_local_index_type = Point<int, dim>;
-    using node_double_field_type  = tag_types::node_double_field_type;
-    using cell_tags_field_type    = tag_types::cell_tags_field_type;
-    using face_tags_field_type    = tag_types::face_tags_field_type;
-    using face_tags_vecfield_type = tag_types::face_tags_vecfield_type;
-    using edge_tags_field_type    = tag_types::edge_tags_field_type;
-    using edge_tags_vecfield_type = tag_types::edge_tags_vecfield_type;
-    using tags_type               = InnerBoundaryTags<dim, PhysicalQuantityT>;
+    using mesh_data_types           = InnerBoundaryMeshDataTypes<dim, PhysicalQuantityT>;
+    using point_type                = typename InnerBoundary<dim>::point_type;
+    using local_index_type          = Point<std::uint32_t, dim>;
+    using signed_local_index_type   = Point<int, dim>;
+    using node_double_field_type    = mesh_data_types::node_double_field_type;
+    using cell_status_field_type    = mesh_data_types::cell_status_field_type;
+    using face_status_field_type    = mesh_data_types::face_status_field_type;
+    using face_status_vecfield_type = mesh_data_types::face_status_vecfield_type;
+    using edge_status_field_type    = mesh_data_types::edge_status_field_type;
+    using edge_status_vecfield_type = mesh_data_types::edge_status_vecfield_type;
+    using mesh_data_type            = InnerBoundaryMeshData<dim, PhysicalQuantityT>;
 
 
     /**
@@ -137,9 +87,9 @@ public:
      * @param overrides Optional parameter overrides.
      * @return Configured tagger instance.
      */
-    static InnerBoundaryGeometryTagger withDefaults(InnerBoundary<dim> const& boundary,
-                                                    GridLayoutT const& layout,
-                                                    Overrides const& overrides = {})
+    static InnerBoundaryMeshMapper withDefaults(InnerBoundary<dim> const& boundary,
+                                                GridLayoutT const& layout,
+                                                Overrides const& overrides = {})
     {
         auto const& dx    = layout.meshSize();
         auto const dx_min = *std::min_element(dx.begin(), dx.end());
@@ -148,7 +98,7 @@ public:
         p.ghost_layers = overrides.ghost_layers.value_or(1);
         p.cut_eps      = overrides.cut_eps.value_or(1e-6 * dx_min);
         p.inactive_eps = overrides.inactive_eps.value_or(p.cut_eps);
-        return InnerBoundaryGeometryTagger{boundary, p};
+        return InnerBoundaryMeshMapper{boundary, p};
     }
 
     /**
@@ -157,7 +107,7 @@ public:
      * @param boundary Embedded boundary used for signed-distance queries.
      * @param params Explicit cut/ghost classification parameters.
      */
-    InnerBoundaryGeometryTagger(InnerBoundary<dim> const& boundary, Params params)
+    InnerBoundaryMeshMapper(InnerBoundary<dim> const& boundary, Params params)
         : boundary_{boundary}
         , params_{params}
     {
@@ -167,32 +117,33 @@ public:
      * @brief Fill node level-set values and classify cells, faces, and edges.
      *
      * @param layout Grid layout used to iterate and locate all supports.
-     * @param phi_nodes Node-centered signed-distance field to populate.
-     * @param cell_tags Cell tags written by the tagger.
-     * @param face_tags Face tags written by the tagger.
-     * @param edge_tags Edge tags written by the tagger.
+     * @param signed_distance_at_nodes Node-centered signed-distance field to populate.
+     * @param cell_status Cell meshData written by the tagger.
+     * @param face_status Face meshData written by the tagger.
+     * @param edge_status Edge meshData written by the tagger.
      */
-    void tagAll(GridLayoutT const& layout, node_double_field_type& phi_nodes,
-                cell_tags_field_type& cell_tags, face_tags_vecfield_type& face_tags,
-                edge_tags_vecfield_type& edge_tags) const
+    void operator()(GridLayoutT const& layout, node_double_field_type& signed_distance_at_nodes,
+                    cell_status_field_type& cell_status, face_status_vecfield_type& face_status,
+                    edge_status_vecfield_type& edge_status) const
     {
-        validateCenterings_(phi_nodes, cell_tags, face_tags, edge_tags);
-        fillNodePhi_(layout, phi_nodes);
-        tagCutInactiveAndFluidCells_(layout, phi_nodes, cell_tags);
-        tagGhostCells_(layout, cell_tags);
-        tagFaces_(layout, phi_nodes, cell_tags, face_tags);
-        tagEdges_(layout, phi_nodes, cell_tags, edge_tags);
+        validateCenterings_(signed_distance_at_nodes, cell_status, face_status, edge_status);
+        fillNodePhi_(layout, signed_distance_at_nodes);
+        tagCutInactiveAndFluidCells_(layout, signed_distance_at_nodes, cell_status);
+        tagGhostCells_(layout, cell_status);
+        tagFaces_(layout, signed_distance_at_nodes, cell_status, face_status);
+        tagEdges_(layout, signed_distance_at_nodes, cell_status, edge_status);
     }
 
     /**
      * @brief Fill node level-set values and classify all supports in a tag bundle.
      *
      * @param layout Grid layout used to iterate and locate all supports.
-     * @param tags Bundle written by the tagger.
+     * @param meshData Bundle written by the tagger.
      */
-    void tagAll(GridLayoutT const& layout, tags_type& tags) const
+    void operator()(GridLayoutT const& layout, mesh_data_type& meshData) const
     {
-        tagAll(layout, tags.phiNodes, tags.cellTags, tags.faceTags, tags.edgeTags);
+        (*this)(layout, meshData.signedDistanceAtNodes, meshData.cellStatus, meshData.faceStatus,
+                meshData.edgeStatus);
     }
 
 private:
@@ -496,20 +447,20 @@ private:
      *
      * @param face Face local index.
      * @param dir Face normal direction.
-     * @param cell_tags Cell tags used to inspect adjacent cells.
+     * @param cell_status Cell meshData used to inspect adjacent cells.
      * @return True when the face surrounds a ghost cell.
      */
     bool faceSurroundsGhostCell_(local_index_type const& face, std::size_t dir,
-                                 cell_tags_field_type const& cell_tags) const
+                                 cell_status_field_type const& cell_status) const
     {
         bool has_ghost        = false;
-        auto const cell_shape = cell_tags.shape();
+        auto const cell_shape = cell_status.shape();
         signed_local_index_type cell{};
         forEachFaceAdjacentCell_<0>(face, dir, cell, [&](auto const& adjacent_cell) {
             if (has_ghost || !inBounds_(adjacent_cell, cell_shape))
                 return;
 
-            if (cell_tags(asLocal_(adjacent_cell)) == CellTag::Ghost)
+            if (cell_status(asLocal_(adjacent_cell)) == toDouble(CellStatus::Ghost))
                 has_ghost = true;
         });
         return has_ghost;
@@ -520,20 +471,20 @@ private:
      *
      * @param edge Edge local index.
      * @param dir Edge direction.
-     * @param cell_tags Cell tags used to inspect adjacent cells.
+     * @param cell_status Cell meshData used to inspect adjacent cells.
      * @return True when the edge surrounds a ghost cell.
      */
     bool edgeSurroundsGhostCell_(local_index_type const& edge, std::size_t dir,
-                                 cell_tags_field_type const& cell_tags) const
+                                 cell_status_field_type const& cell_status) const
     {
         bool has_ghost        = false;
-        auto const cell_shape = cell_tags.shape();
+        auto const cell_shape = cell_status.shape();
         signed_local_index_type cell{};
         forEachEdgeAdjacentCell_<0>(edge, dir, cell, [&](auto const& adjacent_cell) {
             if (has_ghost || !inBounds_(adjacent_cell, cell_shape))
                 return;
 
-            if (cell_tags(asLocal_(adjacent_cell)) == CellTag::Ghost)
+            if (cell_status(asLocal_(adjacent_cell)) == toDouble(CellStatus::Ghost))
                 has_ghost = true;
         });
         return has_ghost;
@@ -543,15 +494,16 @@ private:
      * @brief Populate the node-centered signed-distance field.
      *
      * @param layout Grid layout used to iterate and locate nodes.
-     * @param phi_nodes Node-centered level-set field to fill.
+     * @param signed_distance_at_nodes Node-centered level-set field to fill.
      */
-    void fillNodePhi_(GridLayoutT const& layout, node_double_field_type& phi_nodes) const
+    void fillNodePhi_(GridLayoutT const& layout,
+                      node_double_field_type& signed_distance_at_nodes) const
     {
-        layout.evalOnGhostBox(phi_nodes, [&](auto... idx) {
+        layout.evalOnGhostBox(signed_distance_at_nodes, [&](auto... idx) {
             auto const local_point = local_index_type{static_cast<std::uint32_t>(idx)...};
-            auto const amr_point   = fieldAMRIndex_(layout, phi_nodes, local_point);
-            phi_nodes(local_point)
-                = boundary_.signedDistance(layout.fieldNodeCoordinates(phi_nodes, amr_point));
+            auto const amr_point   = fieldAMRIndex_(layout, signed_distance_at_nodes, local_point);
+            signed_distance_at_nodes(local_point) = boundary_.signedDistance(
+                layout.fieldNodeCoordinates(signed_distance_at_nodes, amr_point));
         });
     }
 
@@ -559,19 +511,19 @@ private:
      * @brief Grow ghost-cell layers outward from cut cells.
      *
      * @param layout Grid layout used to iterate the local cell support.
-     * @param cell_tags Cell tags updated in place.
+     * @param cell_status Cell meshData updated in place.
      */
-    void tagGhostCells_(GridLayoutT const& layout, cell_tags_field_type& cell_tags) const
+    void tagGhostCells_(GridLayoutT const& layout, cell_status_field_type& cell_status) const
     {
         if (params_.ghost_layers == 0)
             return;
 
-        auto const cell_shape = cell_tags.shape();
+        auto const cell_shape = cell_status.shape();
         std::vector<signed_local_index_type> frontier;
 
-        layout.evalOnGhostBox(cell_tags, [&](auto... idx) {
+        layout.evalOnGhostBox(cell_status, [&](auto... idx) {
             auto const cell = local_index_type{static_cast<std::uint32_t>(idx)...};
-            if (cell_tags(cell) == CellTag::Cut)
+            if (cell_status(cell) == toDouble(CellStatus::Cut))
                 frontier.push_back(asSigned_(cell));
         });
 
@@ -595,10 +547,10 @@ private:
                             continue;
 
                         auto const local_neigh = asLocal_(neigh);
-                        if (cell_tags(local_neigh) != CellTag::Fluid)
+                        if (cell_status(local_neigh) != toDouble(CellStatus::Fluid))
                             continue;
 
-                        cell_tags(local_neigh) = CellTag::Ghost;
+                        cell_status(local_neigh) = toDouble(CellStatus::Ghost);
                         next_frontier.push_back(neigh);
                     }
                 }
@@ -611,39 +563,39 @@ private:
     /**
      * @brief Classify cells as cut, inactive, or fluid from geometry only.
      *
-     * This pass intentionally does not assign ghost tags.
+     * This pass intentionally does not assign ghost meshData.
      *
      * @param layout Grid layout used to iterate and locate cells.
-     * @param phi_nodes Node-centered signed-distance field.
-     * @param cell_tags Cell tags updated in place.
+     * @param signed_distance_at_nodes Node-centered signed-distance field.
+     * @param cell_status Cell meshData updated in place.
      */
     void tagCutInactiveAndFluidCells_(GridLayoutT const& layout,
-                                      node_double_field_type const& phi_nodes,
-                                      cell_tags_field_type& cell_tags) const
+                                      node_double_field_type const& signed_distance_at_nodes,
+                                      cell_status_field_type& cell_status) const
     {
-        layout.evalOnGhostBox(cell_tags, [&](auto... idx) {
+        layout.evalOnGhostBox(cell_status, [&](auto... idx) {
             auto const local_cell = local_index_type{static_cast<std::uint32_t>(idx)...};
-            auto const amr_cell   = fieldAMRIndex_(layout, cell_tags, local_cell);
+            auto const amr_cell   = fieldAMRIndex_(layout, cell_status, local_cell);
 
             double phi_min = std::numeric_limits<double>::max();
             double phi_max = std::numeric_limits<double>::lowest();
             local_index_type node_idx{};
             forEachCellCorner_<0>(local_cell, node_idx, [&](auto const& corner) {
-                auto const phi = phi_nodes(corner);
+                auto const phi = signed_distance_at_nodes(corner);
                 phi_min        = std::min(phi_min, phi);
                 phi_max        = std::max(phi_max, phi);
             });
 
             if (isCut_(phi_min, phi_max, params_.cut_eps))
             {
-                cell_tags(local_cell) = CellTag::Cut;
+                cell_status(local_cell) = toDouble(CellStatus::Cut);
                 return;
             }
 
             auto const phi_center
                 = boundary_.signedDistance(layout.cellCenteredCoordinates(amr_cell));
-            cell_tags(local_cell)
-                = (phi_center < -params_.inactive_eps) ? CellTag::Inactive : CellTag::Fluid;
+            cell_status(local_cell)
+                = (phi_center < -params_.inactive_eps) ? toDouble(CellStatus::Inactive) : toDouble(CellStatus::Fluid);
         });
     }
 
@@ -651,46 +603,48 @@ private:
      * @brief Classify faces from geometry and cell ghost information.
      *
      * @param layout Grid layout used to iterate and locate faces.
-     * @param phi_nodes Node-centered signed-distance field.
-     * @param cell_tags Cell tags used to detect ghost adjacency.
-     * @param face_tags Face tags updated in place.
+     * @param signed_distance_at_nodes Node-centered signed-distance field.
+     * @param cell_status Cell meshData used to detect ghost adjacency.
+     * @param face_status Face meshData updated in place.
      */
-    void tagFaces_(GridLayoutT const& layout, node_double_field_type const& phi_nodes,
-                   cell_tags_field_type const& cell_tags, face_tags_vecfield_type& face_tags) const
+    void tagFaces_(GridLayoutT const& layout,
+                   node_double_field_type const& signed_distance_at_nodes,
+                   cell_status_field_type const& cell_status,
+                   face_status_vecfield_type& face_status) const
     {
         for (std::size_t dir = 0; dir < dim; ++dir)
         {
-            layout.evalOnGhostBox(face_tags[dir], [&](auto... idx) {
+            layout.evalOnGhostBox(face_status[dir], [&](auto... idx) {
                 auto const local_face = local_index_type{static_cast<std::uint32_t>(idx)...};
-                auto const amr_face   = fieldAMRIndex_(layout, face_tags[dir], local_face);
+                auto const amr_face   = fieldAMRIndex_(layout, face_status[dir], local_face);
 
                 double phi_min = std::numeric_limits<double>::max();
                 double phi_max = std::numeric_limits<double>::lowest();
                 local_index_type node_idx{};
                 forEachFaceCorner_<0>(local_face, dir, node_idx, [&](auto const& corner) {
-                    auto const phi = phi_nodes(corner);
+                    auto const phi = signed_distance_at_nodes(corner);
                     phi_min        = std::min(phi_min, phi);
                     phi_max        = std::max(phi_max, phi);
                 });
 
                 if (isCut_(phi_min, phi_max, params_.cut_eps))
                 {
-                    face_tags[dir](local_face) = FaceTag::Cut;
+                    face_status[dir](local_face) = toDouble(FaceStatus::Cut);
                     return;
                 }
 
                 // Cut faces take priority; otherwise, any face adjacent to the
                 // ghost-cell shell is itself tagged as ghost.
-                if (faceSurroundsGhostCell_(local_face, dir, cell_tags))
+                if (faceSurroundsGhostCell_(local_face, dir, cell_status))
                 {
-                    face_tags[dir](local_face) = FaceTag::Ghost;
+                    face_status[dir](local_face) = toDouble(FaceStatus::Ghost);
                     return;
                 }
 
                 auto const phi_fc = boundary_.signedDistance(
-                    layout.fieldNodeCoordinates(face_tags[dir], amr_face));
-                face_tags[dir](local_face)
-                    = (phi_fc < -params_.inactive_eps) ? FaceTag::Inactive : FaceTag::Fluid;
+                    layout.fieldNodeCoordinates(face_status[dir], amr_face));
+                face_status[dir](local_face)
+                    = (phi_fc < -params_.inactive_eps) ? toDouble(FaceStatus::Inactive) : toDouble(FaceStatus::Fluid);
             });
         }
     }
@@ -699,46 +653,48 @@ private:
      * @brief Classify edges from geometry and cell ghost information.
      *
      * @param layout Grid layout used to iterate and locate edges.
-     * @param phi_nodes Node-centered signed-distance field.
-     * @param cell_tags Cell tags used to detect ghost adjacency.
-     * @param edge_tags Edge tags updated in place.
+     * @param signed_distance_at_nodes Node-centered signed-distance field.
+     * @param cell_status Cell meshData used to detect ghost adjacency.
+     * @param edge_status Edge meshData updated in place.
      */
-    void tagEdges_(GridLayoutT const& layout, node_double_field_type const& phi_nodes,
-                   cell_tags_field_type const& cell_tags, edge_tags_vecfield_type& edge_tags) const
+    void tagEdges_(GridLayoutT const& layout,
+                   node_double_field_type const& signed_distance_at_nodes,
+                   cell_status_field_type const& cell_status,
+                   edge_status_vecfield_type& edge_status) const
     {
         for (std::size_t dir = 0; dir < dim; ++dir)
         {
-            layout.evalOnGhostBox(edge_tags[dir], [&](auto... idx) {
+            layout.evalOnGhostBox(edge_status[dir], [&](auto... idx) {
                 auto const local_edge = local_index_type{static_cast<std::uint32_t>(idx)...};
-                auto const amr_edge   = fieldAMRIndex_(layout, edge_tags[dir], local_edge);
+                auto const amr_edge   = fieldAMRIndex_(layout, edge_status[dir], local_edge);
 
                 double phi_min = std::numeric_limits<double>::max();
                 double phi_max = std::numeric_limits<double>::lowest();
                 local_index_type node_idx{};
                 forEachEdgeEndpoint_<0>(local_edge, dir, node_idx, [&](auto const& endpoint) {
-                    auto const phi = phi_nodes(endpoint);
+                    auto const phi = signed_distance_at_nodes(endpoint);
                     phi_min        = std::min(phi_min, phi);
                     phi_max        = std::max(phi_max, phi);
                 });
 
                 if (isCut_(phi_min, phi_max, params_.cut_eps))
                 {
-                    edge_tags[dir](local_edge) = EdgeTag::Cut;
+                    edge_status[dir](local_edge) = toDouble(EdgeStatus::Cut);
                     return;
                 }
 
                 // Edges follow the same precedence as faces: cut first, then
                 // ghost if they border the ghost-cell shell.
-                if (edgeSurroundsGhostCell_(local_edge, dir, cell_tags))
+                if (edgeSurroundsGhostCell_(local_edge, dir, cell_status))
                 {
-                    edge_tags[dir](local_edge) = EdgeTag::Ghost;
+                    edge_status[dir](local_edge) = toDouble(EdgeStatus::Ghost);
                     return;
                 }
 
                 auto const phi_edge = boundary_.signedDistance(
-                    layout.fieldNodeCoordinates(edge_tags[dir], amr_edge));
-                edge_tags[dir](local_edge)
-                    = (phi_edge < -params_.inactive_eps) ? EdgeTag::Inactive : EdgeTag::Fluid;
+                    layout.fieldNodeCoordinates(edge_status[dir], amr_edge));
+                edge_status[dir](local_edge)
+                    = (phi_edge < -params_.inactive_eps) ? toDouble(EdgeStatus::Inactive) : toDouble(EdgeStatus::Fluid);
             });
         }
     }
@@ -746,34 +702,34 @@ private:
     /**
      * @brief Validate that all fields use the centerings expected by the tagger.
      *
-     * @param phi_nodes Node-centered signed-distance field.
-     * @param cell_tags Cell-centered tag field.
-     * @param face_tags Face-centered tag vector field.
-     * @param edge_tags Edge-centered tag vector field.
+     * @param signed_distance_at_nodes Node-centered signed-distance field.
+     * @param cell_status Cell-centered tag field.
+     * @param face_status Face-centered tag vector field.
+     * @param edge_status Edge-centered tag vector field.
      *
      * @throws std::runtime_error If one of the field centerings is inconsistent
      * with the tagger expectations.
      */
-    static void validateCenterings_(node_double_field_type const& phi_nodes,
-                                    cell_tags_field_type const& cell_tags,
-                                    face_tags_vecfield_type const& face_tags,
-                                    edge_tags_vecfield_type const& edge_tags)
+    static void validateCenterings_(node_double_field_type const& signed_distance_at_nodes,
+                                    cell_status_field_type const& cell_status,
+                                    face_status_vecfield_type const& face_status,
+                                    edge_status_vecfield_type const& edge_status)
     {
-        if (GridLayoutT::centering(phi_nodes) != nodeCentering_())
-            throw std::runtime_error("phi_nodes has invalid centering");
+        if (GridLayoutT::centering(signed_distance_at_nodes) != nodeCentering_())
+            throw std::runtime_error("signed_distance_at_nodes has invalid centering");
 
-        if (GridLayoutT::centering(cell_tags) != cellCentering_())
-            throw std::runtime_error("cell_tags has invalid centering");
+        if (GridLayoutT::centering(cell_status) != cellCentering_())
+            throw std::runtime_error("cell_status has invalid centering");
 
-        auto const face_centering = GridLayoutT::centering(face_tags);
+        auto const face_centering = GridLayoutT::centering(face_status);
         for (std::size_t dir = 0; dir < dim; ++dir)
             if (face_centering[dir] != faceCentering_(dir))
-                throw std::runtime_error("face_tags has invalid centering");
+                throw std::runtime_error("face_status has invalid centering");
 
-        auto const edge_centering = GridLayoutT::centering(edge_tags);
+        auto const edge_centering = GridLayoutT::centering(edge_status);
         for (std::size_t dir = 0; dir < dim; ++dir)
             if (edge_centering[dir] != edgeCentering_(dir))
-                throw std::runtime_error("edge_tags has invalid centering");
+                throw std::runtime_error("edge_status has invalid centering");
     }
 };
 

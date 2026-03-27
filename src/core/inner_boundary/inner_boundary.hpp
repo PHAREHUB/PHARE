@@ -22,6 +22,11 @@ class InnerBoundary
 public:
     using point_type = Point<double, dim>;
 
+    InnerBoundary(std::string name)
+        : name_{name}
+    {
+    }
+
     virtual ~InnerBoundary() = default;
 
     /**
@@ -51,7 +56,7 @@ public:
      * @param point Physical point where the normal is evaluated.
      * @return Outward normal direction at @p point.
      */
-    virtual point_type normal(point_type const& point) const     = 0;
+    virtual point_type normal(point_type const& point) const = 0;
 
     /**
      * @brief Orthogonal projection of a point onto the boundary.

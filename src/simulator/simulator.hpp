@@ -22,7 +22,6 @@
 #include "diagnostic/diagnostics.hpp"
 
 #include "restarts/restarts.hpp"
-#include "core/inner_boundary/inner_boundary_factory.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -86,7 +85,6 @@ public:
     using SimFunctorParams       = core::PHARE_Sim_Types::SimFunctorParams;
     using SimFunctors            = core::PHARE_Sim_Types::SimulationFunctors;
     using Integrator             = PHARE::amr::Integrator<dimension>;
-    using InnerBoundary          = core::InnerBoundary<dimension>;
 
     using HybridResourceManager_t = HybridModel::resources_manager_type;
     using MHDResourceManager_t    = MHDModel::resources_manager_type;
@@ -213,7 +211,6 @@ private:
     }
 
     std::shared_ptr<MultiPhysicsIntegrator> multiphysInteg_{nullptr};
-    std::shared_ptr<InnerBoundary> innerBoundary_;
 
 
 
@@ -438,7 +435,6 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
 
     currentTime_ = restart_time(dict);
     finalTime_ += currentTime_; // final time is from timestep * timestep_nbr!
-    innerBoundary_ = core::InnerBoundaryFactory<dimension>::create(dict["simulation"]);
 
 
     // we would need a different restart manager for mhd and hybrid if both models are used

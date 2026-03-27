@@ -113,6 +113,7 @@ def populateDict(sim):
     if sim.inner_boundary is not None:
         inner_boundary = sim.inner_boundary
         base = "simulation/inner_boundary"
+        add_string(f"{base}/name", inner_boundary["name"])
         add_string(f"{base}/shape", inner_boundary["shape"])
         if inner_boundary["shape"] == "sphere":
             pp.add_array_as_vector(f"{base}/center", np.asarray(inner_boundary["center"]))

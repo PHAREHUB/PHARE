@@ -289,12 +289,14 @@ def check_inner_boundary(ndim, **kwargs):
         )
 
     if shape == "sphere":
-        allowed = {"shape", "center", "radius"}
+        allowed = {"shape", "name", "center", "radius"}
         unknown = set(inner_boundary.keys()) - allowed
         if unknown:
             raise ValueError(
                 f"Error: invalid inner_boundary keys for sphere: {sorted(unknown)}"
             )
+        if "name" not in inner_boundary:
+            raise ValueError("Error: inner_boundary requires a 'name' key")
         if "center" not in inner_boundary or "radius" not in inner_boundary:
             raise ValueError(
                 "Error: sphere inner_boundary requires both 'center' and 'radius'"
@@ -309,12 +311,14 @@ def check_inner_boundary(ndim, **kwargs):
         radius = float(inner_boundary["radius"])
         if radius <= 0:
             raise ValueError("Error: sphere radius must be > 0")
-        return {"shape": "sphere", "center": center, "radius": radius}
+        return {"shape": "sphere", "name": inner_boundary["name"], "center": center, "radius": radius}
 
-    allowed = {"shape", "point", "normal"}
+    allowed = {"shape", "name", "point", "normal"}
     unknown = set(inner_boundary.keys()) - allowed
     if unknown:
         raise ValueError(f"Error: invalid inner_boundary keys for plane: {sorted(unknown)}")
+    if "name" not in inner_boundary:
+        raise ValueError("Error: inner_boundary requires a 'name' key")
     if "point" not in inner_boundary or "normal" not in inner_boundary:
         raise ValueError("Error: plane inner_boundary requires both 'point' and 'normal'")
 
@@ -330,7 +334,7 @@ def check_inner_boundary(ndim, **kwargs):
     normal = [float(v) for v in normal]
     if np.linalg.norm(np.asarray(normal)) == 0:
         raise ValueError("Error: plane normal cannot be the zero vector")
-    return {"shape": "plane", "point": point, "normal": normal}
+    return {"shape": "plane", "name": inner_boundary["name"], "point": point, "normal": normal}
 
 
 # ------------------------------------------------------------------------------

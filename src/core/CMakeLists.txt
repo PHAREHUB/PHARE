@@ -28,7 +28,7 @@ set( SOURCES_INC
      numerics/boundary_condition/boundary_condition.hpp
      inner_boundary/inner_boundary.hpp
      inner_boundary/inner_boundary_factory.hpp
-     inner_boundary/inner_boundary_geometry_tagger.hpp
+     inner_boundary/inner_boundary_mesh_mapper.hpp
      inner_boundary/sphere_inner_boundary.hpp
      inner_boundary/plane_inner_boundary.hpp
      numerics/interpolator/interpolator.hpp

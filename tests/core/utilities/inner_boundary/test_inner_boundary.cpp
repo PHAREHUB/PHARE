@@ -15,7 +15,7 @@ using namespace PHARE;
 
 TEST(InnerBoundarySphere, basicGeometry)
 {
-    core::SphereInnerBoundary<2> sphere{{0., 0.}, 1.};
+    core::SphereInnerBoundary<2> sphere{"sphere", {0., 0.}, 1.};
 
     auto const p = core::Point<double, 2>{2., 0.};
     EXPECT_NEAR(sphere.signedDistance(p), 1., eps);
@@ -35,7 +35,7 @@ TEST(InnerBoundarySphere, basicGeometry)
 
 TEST(InnerBoundaryPlane, basicGeometry)
 {
-    core::PlaneInnerBoundary<3> plane{{0., 0., 0.}, {0., 0., 2.}};
+    core::PlaneInnerBoundary<3> plane{"plane", {0., 0., 0.}, {0., 0., 2.}};
 
     auto const p = core::Point<double, 3>{1., 2., 3.};
     EXPECT_NEAR(plane.signedDistance(p), 3., eps);
@@ -59,6 +59,7 @@ TEST(InnerBoundaryPlane, basicGeometry)
 TEST(InnerBoundaryParser, createsSphere)
 {
     initializer::PHAREDict dict;
+    dict["inner_boundary"]["name"]   = std::string{"my_sphere"};
     dict["inner_boundary"]["shape"]  = std::string{"sphere"};
     dict["inner_boundary"]["center"] = std::vector<double>{1., 2.};
     dict["inner_boundary"]["radius"] = 2.;
@@ -73,6 +74,7 @@ TEST(InnerBoundaryParser, createsSphere)
 TEST(InnerBoundaryParser, createsPlane)
 {
     initializer::PHAREDict dict;
+    dict["inner_boundary"]["name"]   = std::string{"my_plane"};
     dict["inner_boundary"]["shape"]  = std::string{"plane"};
     dict["inner_boundary"]["point"]  = std::vector<double>{0., 0., 0.};
     dict["inner_boundary"]["normal"] = std::vector<double>{0., 1., 0.};
