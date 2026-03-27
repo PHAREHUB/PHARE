@@ -72,6 +72,15 @@ def GetDl(hier, time, level="finest"):
     return hier.level(level).cell_width
 
 
+def resolve_mutators_in(hier):
+    for time in hier.time_hier:
+        for ilvl, lvl in hier.levels(time).items():
+            for patch in lvl:
+                for qty in hier.quantities():
+                    patch[qty].dataset = patch[qty][:]
+    return hier
+
+
 def get_interpolated_selection_from(hier: AnyTensorField, input, interp="nearest"):
     if type(hier) is PatchHierarchy:
         raise ValueError("PatchHierarchy not supported, must be AnyTensorField")
@@ -84,6 +93,7 @@ def get_interpolated_selection_from(hier: AnyTensorField, input, interp="nearest
 
     from pyphare.pharesee.run import utils as rutils
 
+    hier = resolve_mutators_in(hier)
     time = times[0]
 
     dl = GetDl(hier, time)
@@ -100,11 +110,9 @@ def get_interpolated_selection_from(hier: AnyTensorField, input, interp="nearest
 
     nbrGhosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr
     for qty in hier.quantities():
-        qty_domain = deepcopy(domain) + patch0[qty].primal_directions() * dl * 2  # ???
-
         data, coords = hootils.flat_finest_field(hier, qty, time=time)
         interpolator, finest_coords = rutils.make_interpolator(
-            data, coords, interp, qty_domain, dl, qty, nbrGhosts
+            data, coords, interp, domain, dl, qty, nbrGhosts
         )
 
         mesh = np.meshgrid(*finest_coords, indexing="ij")
@@ -113,7 +121,7 @@ def get_interpolated_selection_from(hier: AnyTensorField, input, interp="nearest
             layout=patch0.layout,
             name=patch0[qty].name,
             data=interpolator(*mesh),
-            ghosts_nbr=patch0[qty].ghosts_nbr,
+            ghosts_nbr=nbrGhosts - nbrGhosts,
             centering=patch0[qty].centerings,
         )
         new_patch0.patch_datas[qty] = pdata

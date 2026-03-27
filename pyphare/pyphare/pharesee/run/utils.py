@@ -303,6 +303,7 @@ def _compute_to_primal_patch_data(ref_pd, name=None):
     ndim = ref_pd.box.ndim
     name = name or ref_pd.name
     nb_ghosts = ref_pd.layout.nbrGhosts(ref_pd.layout.interp_order, "primal")
+
     ref_ds = ref_pd.dataset
 
     should_skip = all(  # vtkhdf is all primal with no ghosts
@@ -357,6 +358,9 @@ def _compute_to_primal(patch, **kwargs):
 
 
 def _inner_slices(nb_ghosts):
+    if nb_ghosts < 2:
+        raise ValueError("can't work")
+
     inner = slice(nb_ghosts, -nb_ghosts)
     inner_shift_left = slice(nb_ghosts - 1, -nb_ghosts)
     inner_shift_right = slice(nb_ghosts, -nb_ghosts + 1)
@@ -504,8 +508,8 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
             raise ValueError("interp can only be 'nearest' or 'bilinear'")
 
         nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells + nbrGhosts, qty, "x")
-        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells + nbrGhosts, qty, "y")
+        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
+        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
         finest_coords = (x, y)
 
     else:

@@ -496,7 +496,7 @@ class PatchHierarchy(object):
                 continue
             for patch in self.level(lvl_nbr, time).patches:
                 pdat = patch[qty]
-                data = pdat[:]
+
                 nbrGhosts = pdat.ghosts_nbr
                 x = pdat.x
                 y = pdat.y
@@ -505,15 +505,18 @@ class PatchHierarchy(object):
                 if np.all(nbrGhosts == np.zeros_like(nbrGhosts)):
                     x = np.copy(x)
                     y = np.copy(y)
+                    data = pdat[:]
                 else:
                     data = pdat[patch.box]
                     x = np.copy(x[nbrGhosts[0] : -nbrGhosts[0]])
                     y = np.copy(y[nbrGhosts[1] : -nbrGhosts[1]])
+
                 dx, dy = pdat.layout.dl
                 x -= dx * 0.5
                 y -= dy * 0.5
                 x = np.append(x, x[-1] + dx)
                 y = np.append(y, y[-1] + dy)
+
                 im = ax.pcolormesh(
                     x,
                     y,
