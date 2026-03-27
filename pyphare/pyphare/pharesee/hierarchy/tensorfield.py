@@ -100,19 +100,21 @@ def get_interpolated_selection_from(hier: AnyTensorField, input, interp="nearest
 
     nbrGhosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr
     for qty in hier.quantities():
+        qty_domain = deepcopy(domain) + patch0[qty].primal_directions() * dl * 2  # ???
+
         data, coords = hootils.flat_finest_field(hier, qty, time=time)
         interpolator, finest_coords = rutils.make_interpolator(
-            data, coords, interp, domain, dl, qty, nbrGhosts
+            data, coords, interp, qty_domain, dl, qty, nbrGhosts
         )
 
         mesh = np.meshgrid(*finest_coords, indexing="ij")
 
-        pdata = FieldData(
-            patch0.layout,
-            patch0[qty].name,
-            interpolator(*mesh),
+        pdata = patch0[qty].copy_as(
+            layout=patch0.layout,
+            name=patch0[qty].name,
+            data=interpolator(*mesh),
             ghosts_nbr=patch0[qty].ghosts_nbr,
-            centering=["dual", "dual"],  # ?
+            centering=patch0[qty].centerings,
         )
         new_patch0.patch_datas[qty] = pdata
 

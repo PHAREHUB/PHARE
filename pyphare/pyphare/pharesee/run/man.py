@@ -29,14 +29,21 @@ class LazyFieldData(hierm.patchdata.FieldData):
         self.default_mutators = []  # only compute once!
         self.select_mutators = []
 
-        if default_mutators:
-            for mut in default_mutators:
-                self.update(mut(self))
-        if select_mutators:
-            for mut in select_mutators:
-                self.update(mut(self.select(get)))
+        for mut in default_mutators:
+            self.update(mut(self))
+        for mut in select_mutators:
+            self.update(mut(self.select(get)))
 
         return self.select(get)
+
+    def copy_as(self, data=None, **kwargs):
+        if self.default_mutators or self.select_mutators:
+            return LazyFieldData(
+                super().copy_as(data=data, **kwargs),
+                self.default_mutators,
+                self.select_mutators,
+            )
+        return super().copy_as(data=data, **kwargs)
 
 
 class LazyPatch(hierm.patch.Patch):

@@ -427,11 +427,11 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
                         for i in range(len(pdata.ghosts_nbr))
                     ]
                 )
-                data = pdata[select]
+                data = pdata.dataset[select]
                 x = pdata.x[needed_points[0] : -needed_points[0]]
                 y = pdata.y[needed_points[1] : -needed_points[1]]
             else:
-                data = pdata[:]
+                data = pdata.dataset[:]
                 x = pdata.x
                 y = pdata.y
 

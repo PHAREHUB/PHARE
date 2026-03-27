@@ -165,7 +165,8 @@ class FieldData(PatchData):
         name = kwargs.get("name", self.field_name)
         kwargs["centering"] = kwargs.get("centering", self.centerings)
         kwargs["ghosts_nbr"] = kwargs.get("ghosts_nbr", self.ghosts_nbr)
-        return FieldData(self.layout, name, data, **kwargs)
+        kwargs["layout"] = kwargs.get("layout", self.layout)
+        return FieldData(field_name=name, data=data, **kwargs)
 
     def yeeCoordsFor(self, idx):
         return self.layout.yeeCoordsFor(
