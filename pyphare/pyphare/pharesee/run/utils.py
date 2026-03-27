@@ -299,49 +299,59 @@ def slices_to_primal(pdname, **kwargs):
     return slices_to_primal_[merge_centerings(pdname)](**kwargs)
 
 
+def _compute_to_primal_patch_data(ref_pd, name=None):
+    ndim = ref_pd.box.ndim
+    name = name or ref_pd.name
+    nb_ghosts = ref_pd.layout.nbrGhosts(ref_pd.layout.interp_order, "primal")
+    ref_ds = ref_pd.dataset
+
+    should_skip = all(  # vtkhdf is all primal with no ghosts
+        [ref_pd.centerings == ["primal"] * ndim, not any(ref_pd.ghosts_nbr)]
+    )
+    if should_skip:
+        return ref_pd
+
+    ds_shape = list(ref_ds.shape)
+    for i in range(ndim):
+        if ref_pd.centerings[i] == "dual":
+            ds_shape[i] += 1
+
+    # should be something else than nan values when the ghosts cells
+    # will be filled with correct values coming from the neighbors
+    ds_ = np.zeros(ds_shape)
+
+    # inner is the slice containing the points that are updated
+    # in the all_primal dataset
+    # chunks is a tupls of all the slices coming from the initial dataset
+    # that are needed to calculate the average for the all_primal dataset
+    inner, chunks = slices_to_primal(name, nb_ghosts=nb_ghosts, ndim=ndim)
+
+    for chunk in chunks:
+        ds_[inner] = np.add(ds_[inner], ref_ds[chunk] / len(chunks))
+
+    copy_pd = ref_pd.copy_as(
+        ds_[inner], centering=["primal"] * ndim, ghosts_nbr=[0] * ndim
+    )
+
+    return copy_pd
+
+
 def _compute_to_primal(patch, **kwargs):
     """
     datasets have NaN in their ghosts... might need to be properly filled
     with their neighbors already properly projected on primal
     """
 
+    if not hasattr(patch, "patch_datas"):  # assume is patch_data
+        return _compute_to_primal_patch_data(patch)
+
     ndim = patch.box.ndim
 
     pd_attrs = []
     for name, ref_pd in patch.patch_datas.items():
-        nb_ghosts = ref_pd.layout.nbrGhosts(ref_pd.layout.interp_order, "primal")
-        ref_ds = ref_pd.dataset
-
-        should_skip = all(  # vtkhdf is all primal with no ghosts
-            [ref_pd.centerings == ["primal"] * ndim, not any(ref_pd.ghosts_nbr)]
+        pd_attrs.append(
+            {"name": name, "data": _compute_to_primal_patch_data(ref_pd, name)}
         )
-        if should_skip:
-            pd_attrs.append({"name": name, "data": ref_pd})
-            continue
-
-        ds_shape = list(ref_ds.shape)
-        for i in range(ndim):
-            if ref_pd.centerings[i] == "dual":
-                ds_shape[i] += 1
-
-        # should be something else than nan values when the ghosts cells
-        # will be filled with correct values coming from the neighbors
-        ds_ = np.zeros(ds_shape)
-
-        # inner is the slice containing the points that are updated
-        # in the all_primal dataset
-        # chunks is a tupls of all the slices coming from the initial dataset
-        # that are needed to calculate the average for the all_primal dataset
-        inner, chunks = slices_to_primal(name, nb_ghosts=nb_ghosts, ndim=ndim)
-
-        for chunk in chunks:
-            ds_[inner] = np.add(ds_[inner], ref_ds[chunk] / len(chunks))
-
-        copy_pd = ref_pd.copy_as(
-            ds_[inner], centering=["primal"] * ndim, ghosts_nbr=[0] * ndim
-        )
-
-        pd_attrs.append({"name": name, "data": copy_pd})
 
     return tuple(pd_attrs)
 

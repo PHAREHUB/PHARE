@@ -320,4 +320,4 @@ def hierarchy_fromh5(h5_filename, time=None, hier=None, silent=True, **kwargs):
             add_time_from_h5(hier, h5_filename, t, **kwargs)
         return hier
 
-    assert False
+    raise ValueError("Could not build hierarchy from h5 files")

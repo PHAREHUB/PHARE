@@ -44,7 +44,7 @@ def compute_rtruediv(patch, **kwargs):
 
 def _compute_copy_do(patch_data, λ):
     new_patch_data = deepcopy(patch_data)
-    new_patch_data.dataset = λ(patch_data.dataset[:])
+    new_patch_data.dataset = λ(patch_data[:])
     return new_patch_data
 
 
@@ -76,9 +76,7 @@ class DataAccessor:
     def __getitem__(self, key):
         hinfo = self.hinfo
         if issubclass(type(self.other), type(hinfo.hier)):
-            return self.other.level(hinfo.ilvl, hinfo.time)[hinfo.patch_idx][
-                key
-            ].dataset[:]
+            return self.other.level(hinfo.ilvl, hinfo.time)[hinfo.patch_idx][key][:]
         return self.other
 
 

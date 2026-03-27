@@ -112,7 +112,7 @@ def get_interpolated_selection_from(hier: AnyTensorField, input, interp="nearest
             patch0[qty].name,
             interpolator(*mesh),
             ghosts_nbr=patch0[qty].ghosts_nbr,
-            centering=patch0[qty].centerings,
+            centering=["dual", "dual"],  # ?
         )
         new_patch0.patch_datas[qty] = pdata
 

@@ -30,10 +30,8 @@ class LazyFieldData(hierm.patchdata.FieldData):
         self.select_mutators = []
 
         if default_mutators:
-            get_all = get == slice(None) or get is None
-            if get_all:
-                for mut in default_mutators:
-                    self.update(mut(self))
+            for mut in default_mutators:
+                self.update(mut(self))
         if select_mutators:
             for mut in select_mutators:
                 self.update(mut(self.select(get)))
@@ -61,13 +59,29 @@ class LazyPatch(hierm.patch.Patch):
         return self.pds[key]
 
 
+def resolve_selected_level_patches(time, hier, level, ilvl):
+    if not hier.selection_box[time]:
+        return level.patches
+
+    overlapped = []
+    boxes = phut.listify(hier.selection_box[time] or [])
+    for patch in level:
+        for box in boxes:
+            level_box = hier.refined_box(ilvl, box)
+            if patch.box * box is not None:
+                overlapped.append(patch)
+                break
+
+    return overlapped
+
+
 def lazy_patch_hierarchy(
     hier, default_mutators=None, select_mutators=None, calculators=None
 ):
     for time, levels in hier.time_hier.items():
         for ilvl, lvl in levels.items():
             lvl.patches = [LazyPatch(patch, calculators) for patch in lvl.patches]
-            for patch in lvl.patches:
+            for patch in resolve_selected_level_patches(time, hier, lvl, ilvl):
                 patch.patch_datas = {
                     name: LazyFieldData(pd, default_mutators, select_mutators)
                     for name, pd in patch
@@ -89,21 +103,29 @@ class RunFunc:
 class RunMan:
     def __init__(self, run, *args, **kwargs):
         self.run = run
-        self.patch_mutators = []
-        self.level_mutators = []
         for key, val in kwargs.items():
             setattr(self, key, val)
 
-    def RawVi(self, time, **kwargs):
-        return self.run._get_hier_for(time, "ions_bulkVelocity")
+    def RawB(self, time, **kwargs):
+        return self.run._get_hier_for(time, "EM_B", **kwargs)
 
-    def GetVi(self, time, merged=False, interp="nearest", **kwargs):
-        return lazy_patch_hierarchy(self.RawVi(time, **kwargs), hc.drop_ghosts)
+    def GetB(self, time, **kwargs):
+        return hierm.VectorField(
+            lazy_patch_hierarchy(self.RawB(time, **kwargs), uzi._compute_to_primal)
+        )
+
+    def RawVi(self, time, **kwargs):
+        return self.run._get_hier_for(time, "ions_bulkVelocity", **kwargs)
+
+    def GetVi(self, time, **kwargs):
+        return hierm.VectorField(
+            lazy_patch_hierarchy(self.RawVi(time, **kwargs), hc.drop_ghosts)
+        )
 
     def RawN(self, time, pop_name, **kwargs):
         return self.run._get_hier_for(time, f"ions_pop_{pop_name}_density", **kwargs)
 
-    def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+    def GetN(self, time, pop_name, **kwargs):
         return hierm.ScalarField(
             lazy_patch_hierarchy(self.RawN(time, pop_name, **kwargs), hc.drop_ghosts)
         )
@@ -111,12 +133,12 @@ class RunMan:
     def RawFlux(self, time, pop_name, **kwargs):
         return self.run._get_hier_for(time, f"ions_pop_{pop_name}_flux", **kwargs)
 
-    def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+    def GetFlux(self, time, pop_name, **kwargs):
         return hierm.VectorField(
             lazy_patch_hierarchy(self.RawFlux(time, pop_name, **kwargs), hc.drop_ghosts)
         )
 
-    def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+    def GetPressure(self, time, pop_name, **kwargs):
         hier = self.run._get_hierarchy(
             time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
         )

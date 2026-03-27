@@ -272,10 +272,10 @@ class PatchHierarchy(object):
             for patch in lvl.patches:
                 pd = patch[qty]
                 if first:
-                    m = np.nanmin(pd.dataset[:])
+                    m = np.nanmin(pd[:])
                     first = False
                 else:
-                    data_and_min = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_min = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmin(data_and_min)
 
         return m
@@ -287,20 +287,23 @@ class PatchHierarchy(object):
             for patch in lvl.patches:
                 pd = patch[qty]
                 if first:
-                    m = np.nanmax(pd.dataset[:])
+                    m = np.nanmax(pd[:])
                     first = False
                 else:
-                    data_and_max = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_max = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmax(data_and_max)
 
         return m
+
+    def refined_box(self, level_number, box):
+        return boxm.refine(box, self.refinement_ratio**level_number)
 
     def refined_domain_box(self, level_number):
         """
         returns the domain box refined for a given level number
         """
         assert level_number >= 0
-        return boxm.refine(self.domain_box, self.refinement_ratio**level_number)
+        return self.refined_box(level_number, self.domain_box)
 
     def level_domain_box(self, level_number):
         if level_number == 0:
@@ -493,7 +496,7 @@ class PatchHierarchy(object):
                 continue
             for patch in self.level(lvl_nbr, time).patches:
                 pdat = patch[qty]
-                data = pdat.dataset[:]
+                data = pdat[:]
                 nbrGhosts = pdat.ghosts_nbr
                 x = pdat.x
                 y = pdat.y

@@ -88,7 +88,7 @@ class FieldData(PatchData):
         return view of internal data based on overlap of input box
            returns a view +1 in size in primal directions
         """
-        if isinstance(box_or_slice, slice):
+        if isinstance(box_or_slice, (slice, list, tuple)):
             return self.dataset[box_or_slice]
 
         box = box_or_slice

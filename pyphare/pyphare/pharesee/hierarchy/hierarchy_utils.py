@@ -421,14 +421,17 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
                 needed_points = pdata.ghosts_nbr - 1
 
                 # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-                data = pdata.dataset[
-                    needed_points[0] : -needed_points[0],
-                    needed_points[1] : -needed_points[1],
-                ]
+                select = tuple(
+                    [
+                        slice(needed_points[i], -needed_points[i])
+                        for i in range(len(pdata.ghosts_nbr))
+                    ]
+                )
+                data = pdata[select]
                 x = pdata.x[needed_points[0] : -needed_points[0]]
                 y = pdata.y[needed_points[1] : -needed_points[1]]
             else:
-                data = pdata.dataset[:]
+                data = pdata[:]
                 x = pdata.x
                 y = pdata.y
 

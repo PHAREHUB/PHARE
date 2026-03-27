@@ -46,11 +46,10 @@ class Run:
     def GetB(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
             all_primal = False
-        hier = self._get_hier_for(time, "EM_B", **kwargs)
         if not all_primal:
+            hier = self._get_hier_for(time, "EM_B", **kwargs)
             return self._get(hier, time, merged, interp)
-
-        return VectorField(compute_hier_from(_compute_to_primal, hier))
+        return RunMan(self).GetB(time, **kwargs)
 
     def GetE(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -73,8 +72,8 @@ class Run:
         hier = self._get_hier_for(time, f"ions_pop_{pop_name}_density", **kwargs)
         return ScalarField(self._get(hier, time, merged, interp))
 
-    def GetVi(self, time, merged=False, interp="nearest", **kwargs):
-        return RunMan(self).GetVi(time, merged, interp, **kwargs)
+    def GetVi(self, time, **kwargs):
+        return RunMan(self).GetVi(time, **kwargs)
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hier_for(time, f"ions_pop_{pop_name}_flux", **kwargs)
