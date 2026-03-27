@@ -72,7 +72,7 @@ class FieldData(PatchData):
 
     def compare(self, that, atol=1e-16):
         try:
-            phut.assert_fp_any_all_close(self.dataset[:], that.dataset[:], atol=atol)
+            phut.assert_fp_any_all_close(self[:], that[:], atol=atol)
         except AssertionError as e:
             return phut.EqualityCheck(False, str(e))
         return self.field_name == that.field_name

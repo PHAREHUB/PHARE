@@ -310,8 +310,12 @@ def overlap_mask_2d(x, y, dl, level, qty):
         pdata = patch.patch_datas[qty]
         ghosts_nbr = pdata.ghosts_nbr
 
-        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
-        fine_y = pdata.y[ghosts_nbr[1] - 1 : -ghosts_nbr[1] + 1]
+        if any(ghosts_nbr > 0):
+            fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
+            fine_y = pdata.y[ghosts_nbr[1] - 1 : -ghosts_nbr[1] + 1]
+        else:
+            fine_x = pdata.x
+            fine_y = pdata.y
 
         fine_dl = pdata.dl
         local_dl = dl
@@ -410,18 +414,23 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
         for ip, patch in enumerate(patches):
             pdata = patch.patch_datas[qty]
 
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - 1
+            if any(pdata.ghosts_nbr > 0):
+                # all but 1 ghost nodes are removed in order to limit
+                # the overlapping, but to keep enough point to avoid
+                # any extrapolation for the interpolator
+                needed_points = pdata.ghosts_nbr - 1
 
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[
-                needed_points[0] : -needed_points[0],
-                needed_points[1] : -needed_points[1],
-            ]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
-            y = pdata.y[needed_points[1] : -needed_points[1]]
+                # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
+                data = pdata.dataset[
+                    needed_points[0] : -needed_points[0],
+                    needed_points[1] : -needed_points[1],
+                ]
+                x = pdata.x[needed_points[0] : -needed_points[0]]
+                y = pdata.y[needed_points[1] : -needed_points[1]]
+            else:
+                data = pdata.dataset[:]
+                x = pdata.x
+                y = pdata.y
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 

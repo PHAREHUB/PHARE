@@ -13,7 +13,7 @@ ph.NO_GUI()
 
 
 time_step = 0.005
-final_time = 0.05
+final_time = 0.005
 time_step_nbr = int(final_time / time_step)
 timestamps = np.arange(0, final_time + 0.01, 0.05)
 
@@ -186,6 +186,11 @@ def plot(diag_dir):
                 qty=f"B{c}",
                 plot_patches=True,
             )
+        for c in ["x", "y", "z"]:
+            run.GetB(time)[:].plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}_finest", time), qty=f"{c}"
+            )
+
         run.GetJ(time).plot(
             filename=plot_file_for_qty(plot_dir, "jz", time),
             qty="z",

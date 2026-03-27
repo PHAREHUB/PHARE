@@ -15,24 +15,29 @@ class LazyFieldData(hierm.patchdata.FieldData):
         dic = dict(ghosts_nbr=pd.ghosts_nbr, centering=pd.centerings)
         super().__init__(pd.layout, pd.name, pd.dataset, **dic)
 
-        self.default_mutators = phut.listify(default_mutators) or []
-        self.select_mutators = phut.listify(select_mutators) or []
+        self.default_mutators = phut.listify(default_mutators or [])
+        self.select_mutators = phut.listify(select_mutators or [])
 
     def update(self, pd):
         self.dataset = pd.dataset
         self.ghosts_nbr = pd.ghosts_nbr
         self.centerings = pd.centerings
+        return self
 
     def __getitem__(self, get):
-        if self.default_mutators:
+        default_mutators, select_mutators = self.default_mutators, self.select_mutators
+        self.default_mutators = []  # only compute once!
+        self.select_mutators = []
+
+        if default_mutators:
             get_all = get == slice(None) or get is None
             if get_all:
-                for mut in self.default_mutators:
+                for mut in default_mutators:
                     self.update(mut(self))
-            for mut in self.select_mutators:
-                self.update(mut(self))
-            self.default_mutators = []
-            self.select_mutators = []
+        if select_mutators:
+            for mut in select_mutators:
+                self.update(mut(self.select(get)))
+
         return self.select(get)
 
 
@@ -41,7 +46,7 @@ class LazyPatch(hierm.patch.Patch):
         super().__init__(patch.patch_datas, patch.id, patch.layout, patch.attrs)
         self.pds = {}
         self.calculators = calculators or {}
-        if not type(self.calculators) is dict:
+        if type(self.calculators) is not dict:
             raise RuntimeError(
                 "Lazy Patch calculators is expected to be a dict[str, callable]"
             )
@@ -49,7 +54,6 @@ class LazyPatch(hierm.patch.Patch):
     def __getitem__(self, key):
         if key in self.patch_datas:
             return self.patch_datas[key]
-        print("self.calculators", self.calculators, key)
         if key not in self.pds:
             assert key in self.calculators
             if key in self.calculators:
