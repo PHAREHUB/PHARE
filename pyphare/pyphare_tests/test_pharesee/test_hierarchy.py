@@ -10,10 +10,10 @@ from pyphare.pharesee.hierarchy import ScalarField, VectorField
 from pyphare.core.operators import dot, cross, sqrt, modulus, grad
 
 diag_outputs = "phare_outputs/"
-time_step_nbr = 20
+time_step_nbr = 2
 time_step = 0.005
 final_time = time_step * time_step_nbr
-dt = 10 * time_step
+dt = time_step
 nt = int(final_time / dt) + 1
 timestamps = dt * np.arange(nt)
 
@@ -159,7 +159,7 @@ class PatchHierarchyTest(unittest.TestCase):
 
     def _test_can_read_multiple_times(self):
         r = Run(self.diag_dir())
-        times = (0.0, 0.1)
+        times = (0.0, final_time)
         B = r.GetB(times)
         E = r.GetE(times)
         Ni = r.GetNi(times)
@@ -232,7 +232,7 @@ class PatchHierarchyTest(unittest.TestCase):
         Ni = r.GetNi(time)
         Vi = r.GetVi(time)
         self.assertTrue(isinstance(Ni, ScalarField))
-        self.assertTrue(isinstance(Vi, VectorField))
+        self.assertEqual(type(Vi), VectorField)
 
     def _test_sum_two_scalarfields(self):
         r = Run(self.diag_dir())

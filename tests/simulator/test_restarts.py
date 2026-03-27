@@ -431,7 +431,7 @@ class RestartsTest(SimulatorTest):
             dup(
                 dict(
                     cells=10,
-                    time_step_nbr=10,
+                    time_step_nbr=7,
                     max_nbr_levels=1,
                     refinement="tagging",
                 )
@@ -440,13 +440,13 @@ class RestartsTest(SimulatorTest):
 
         simput["interp_order"] = interp
         time_step = simput["time_step"]
-        time_step_nbr = simput["time_step_nbr"]
 
-        timestamps = time_step * np.arange(time_step_nbr + 1)
+        timestamps = time_step * np.arange(simput["time_step_nbr"] + 1)
         local_out = self.unique_diag_dir_for_test_case(f"{out}/test", ndim, interp)
         simput["restart_options"]["dir"] = local_out
         simput["restart_options"]["keep_last"] = 3
         simput["restart_options"]["timestamps"] = timestamps
+        simput["restart_options"]["restart_time"] = "auto"
 
         ph.global_vars.sim = None
         ph.global_vars.sim = ph.Simulation(**simput)
@@ -454,8 +454,16 @@ class RestartsTest(SimulatorTest):
         Simulator(ph.global_vars.sim).run().reset()
         self.register_diag_dir_for_cleanup(local_out)
 
+        # restarted
+        timestamps = time_step * np.arange(7, 11)
+        simput["time_step_nbr"] = 3
         simput["restart_options"]["restart_time"] = "auto"
-        self.assertEqual(0.01, ph.restarts.restart_time(simput["restart_options"]))
+        simput["restart_options"]["timestamps"] = timestamps
+        self.assertEqual(0.007, ph.restarts.restart_time(simput["restart_options"]))
+        ph.global_vars.sim = None
+        ph.global_vars.sim = ph.Simulation(**simput)
+        setup_model()
+        Simulator(ph.global_vars.sim).run().reset()
 
         dirs = []
         for path_object in Path(local_out).iterdir():
@@ -468,6 +476,8 @@ class RestartsTest(SimulatorTest):
         dirs = sorted(dirs)
         for i, idx in enumerate(range(8, 11)):
             self.assertAlmostEqual(dirs[i], time_step * idx)
+
+        self.assertEqual(0.01, ph.restarts.restart_time(simput["restart_options"]))
 
 
 if __name__ == "__main__":

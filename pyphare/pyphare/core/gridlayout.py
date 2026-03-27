@@ -44,6 +44,10 @@ yee_centering = {
         "Pyz": "primal",
         "Pzz": "primal",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
     "y": {
         "Bx": "dual",
@@ -79,6 +83,10 @@ yee_centering = {
         "Pyz": "primal",
         "Pzz": "primal",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
     "z": {
         "Bx": "dual",
@@ -114,6 +122,10 @@ yee_centering = {
         "Pyz": "primal",
         "Pzz": "primal",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
 }
 yee_centering_lower = {
@@ -379,9 +391,12 @@ class GridLayout(object):
         else:
             centering = yee_centering[direction][qty]
 
+        nbrGhosts = kwargs.get(
+            "nbrGhosts", [self.nbrGhosts(self.interp_order, centering)]
+        )[0]
         return yeeCoordsFor(
             self.origin,
-            self.nbrGhosts(self.interp_order, centering),
+            nbrGhosts,
             self.dl,
             self.box.shape,
             qty,

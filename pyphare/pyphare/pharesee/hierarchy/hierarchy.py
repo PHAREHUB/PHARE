@@ -73,9 +73,6 @@ class PatchHierarchy(object):
         no_copy_keys = ["data_files"]  # do not copy these things
         return deep_copy(self, memo, no_copy_keys)
 
-    def __getitem__(self, qty):
-        return self.__dict__[qty]
-
     def update(self):
         if len(self.quantities()) > 1:
             for qty in self.quantities():
@@ -273,12 +270,12 @@ class PatchHierarchy(object):
         first = True
         for ilvl, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
-                    m = np.nanmin(pd.dataset[:])
+                    m = np.nanmin(pd[:])
                     first = False
                 else:
-                    data_and_min = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_min = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmin(data_and_min)
 
         return m
@@ -288,22 +285,25 @@ class PatchHierarchy(object):
         first = True
         for _, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
-                    m = np.nanmax(pd.dataset[:])
+                    m = np.nanmax(pd[:])
                     first = False
                 else:
-                    data_and_max = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_max = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmax(data_and_max)
 
         return m
+
+    def refined_box(self, level_number, box):
+        return boxm.refine(box, self.refinement_ratio**level_number)
 
     def refined_domain_box(self, level_number):
         """
         returns the domain box refined for a given level number
         """
         assert level_number >= 0
-        return boxm.refine(self.domain_box, self.refinement_ratio**level_number)
+        return self.refined_box(level_number, self.domain_box)
 
     def level_domain_box(self, level_number):
         if level_number == 0:
@@ -432,9 +432,11 @@ class PatchHierarchy(object):
                 if qty is None:
                     qty = pdata_names[0]
 
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                pd = patch[qty]
+                nbrGhosts = pd.ghosts_nbr
+                any_ghosts = any(nbrGhosts)
+                val = pd[patch.box] if any_ghosts else pd[:]
+                x = pd.x[nbrGhosts[0] : -nbrGhosts[0]] if nbrGhosts[0] > 0 else pd.x
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
@@ -493,8 +495,8 @@ class PatchHierarchy(object):
             if lvl_nbr not in usr_lvls:
                 continue
             for patch in self.level(lvl_nbr, time).patches:
-                pdat = patch.patch_datas[qty]
-                data = pdat.dataset[:]
+                pdat = patch[qty]
+
                 nbrGhosts = pdat.ghosts_nbr
                 x = pdat.x
                 y = pdat.y
@@ -503,15 +505,18 @@ class PatchHierarchy(object):
                 if np.all(nbrGhosts == np.zeros_like(nbrGhosts)):
                     x = np.copy(x)
                     y = np.copy(y)
+                    data = pdat[:]
                 else:
                     data = pdat[patch.box]
                     x = np.copy(x[nbrGhosts[0] : -nbrGhosts[0]])
                     y = np.copy(y[nbrGhosts[1] : -nbrGhosts[1]])
+
                 dx, dy = pdat.layout.dl
                 x -= dx * 0.5
                 y -= dy * 0.5
                 x = np.append(x, x[-1] + dx)
                 y = np.append(y, y[-1] + dy)
+
                 im = ax.pcolormesh(
                     x,
                     y,
@@ -560,6 +565,8 @@ class PatchHierarchy(object):
             return self.plot1d(**kwargs)
         elif self.ndim == 2:
             return self.plot2d(**kwargs)
+        elif self.ndim == 3:
+            raise RuntimeError("There is no 3d plot available, consider using paraview")
 
     def dist_plot(self, **kwargs):
         """
