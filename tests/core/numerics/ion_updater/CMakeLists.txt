@@ -2,19 +2,18 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(test-updater)
 
-set(SOURCES test_updater.cpp)
+function(_updater_test test_name)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+  add_executable(${test_name} ${test_name}.cpp)
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-  ${GTEST_INCLUDE_DIRS}
-  )
+  target_include_directories(${test_name} PRIVATE ${GTEST_INCLUDE_DIRS})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-  phare_core
-  phare_simulator
-  ${GTEST_LIBS})
+  target_link_libraries(${test_name} PRIVATE phare_core phare_initializer ${GTEST_LIBS})
 
-add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+  add_no_mpi_phare_test(${test_name} ${CMAKE_CURRENT_BINARY_DIR})
 
+endfunction(_updater_test)
+
+_updater_test(test_updater)
+_updater_test(test_updaters)
 

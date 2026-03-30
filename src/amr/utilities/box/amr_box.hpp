@@ -1,14 +1,11 @@
 #ifndef PHARE_AMR_UTILITIES_BOX_BOX_HPP
 #define PHARE_AMR_UTILITIES_BOX_BOX_HPP
 
-
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
+#include "core/utilities/box/box.hpp"
 
 #include "SAMRAI/hier/Box.h"
-#include "core/utilities/box/box.hpp"
-#include "core/def.hpp"
-
 
 namespace PHARE::amr
 {

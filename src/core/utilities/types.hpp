@@ -447,6 +447,15 @@ auto inline float_equals(double const& a, double const& b, double diff = 1e-12)
     return std::abs(a - b) < diff;
 }
 
+
+template<std::size_t S>
+bool inline float_equals(std::array<double, S> const& a, std::array<double, S> const& b,
+                         double diff = 1e-15)
+{
+    return for_N_all<S>([&](auto i) { return float_equals(a[i], b[i], diff); });
+}
+
+
 template<typename T = std::uint16_t>
 struct Apply
 {
@@ -579,6 +588,13 @@ struct SetMax
 {
     void operator()(auto& d0) { d = std::max(d, d0); }
     D& d;
+};
+
+
+template<typename T, std::size_t S>
+auto static constexpr as_tuple(std::array<T, S> const& arr)
+{
+    return for_N<S, for_N_R_mode::forward_tuple>([&](auto i) -> auto& { return arr[i]; });
 };
 
 } // namespace PHARE::core
