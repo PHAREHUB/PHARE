@@ -15,9 +15,9 @@
 namespace PHARE::core
 {
 // RUNTIME ENV VAR OVERRIDES
+auto static const seeder    = get_env_as("PHARE_SEED", std::size_t{0}); // 0 == NO SEED!
 auto static const cells     = get_env_as("PHARE_CELLS", std::uint32_t{10});
 auto static const ppc       = get_env_as("PHARE_PPC", std::size_t{500});
-auto static const seeder    = get_env_as("PHARE_SEED", std::size_t{0}); // 0 == NO SEED!
 auto static const n_patches = get_env_as("PHARE_PATCHES", std::size_t{1});
 auto static const dt        = get_env_as("PHARE_TIMESTEP", double{.001});
 auto static const do_cmp    = get_env_as("PHARE_COMPARE", std::size_t{1});
@@ -27,8 +27,8 @@ auto static const ref_only  = get_env_as("PHARE_REF_ONLY", std::size_t{0});
 bool static const premain = []() { return true; }();
 
 
-template<std::uint16_t impl, typename Ions, typename EM, typename GridLayout_t>
-auto get_updater_for(Ions& /*ions*/, EM const& /*em*/, GridLayout_t const& /*layout*/)
+template<std::uint16_t impl, typename Ions>
+auto get_updater_for(Ions const&)
 {
     if constexpr (impl == 0)
         return IonUpdaterProxy<IonUpdater0<Ions>>();
@@ -50,7 +50,7 @@ void ref_update(UpdaterMode mode, Patches& patches)
     {
         auto const domainBox = layout.AMRBox();
         auto const ghostBox  = grow(domainBox, GridLayout_t::nbrParticleGhosts());
-        auto updater         = get_updater_for<0>(*ions, electromag, layout);
+        auto updater         = get_updater_for<0>(*ions);
 
         Boxing_t const boxing{layout, remove(ghostBox, domainBox)};
         updater.updatePopulations(mode, *ions, electromag, boxing, dt);
@@ -68,7 +68,7 @@ void cmp_update(UpdaterMode mode, Patches& patches)
     {
         auto const domainBox = layout.AMRBox();
         auto const ghostBox  = grow(domainBox, GridLayout_t::nbrParticleGhosts());
-        auto updater         = get_updater_for<impl>(*ions, electromag, layout);
+        auto updater         = get_updater_for<impl>(*ions);
 
         Boxing_t const boxing{layout, remove(ghostBox, domainBox)};
         updater.updatePopulations(mode, *ions, electromag, boxing, dt);
