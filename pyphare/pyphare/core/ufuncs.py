@@ -59,32 +59,32 @@ def _compute_gaussian_filter_on_vectorfield(patch_datas, **kwargs):
     )
 
 
-def gFilt(hier, **kwargs):
-    sigma = kwargs.get("sigma", 2)
-
-    # time0 = list(hier.times())[0]
-    # level0 = 0
-    # p0 = 0
-    # pd0 = hier.levels(time0)[level0].patches[p0].patch_datas
-    # key0 = list(pd0.keys())[0]
-    # nb_ghosts = np.max(pd0[key0].ghosts_nbr)
-
-    nb_ghosts = np.max(list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr)
-
-    if nb_ghosts < sigma :
-        print("nb_ghosts ({0}) < sigma ({1}) : your gaussian filter might be dirty".format(nb_ghosts, sigma))
-
-    if hier.ndim == 1:
-        if isinstance(hier, ScalarField) :
-            h = compute_hier_from(_compute_gaussian_filter_on_scalarfield, hier, nb_ghosts=nb_ghosts, sigma=sigma)
-            return ScalarField(h)
-        elif isinstance(hier, VectorField) :
-            h = compute_hier_from(_compute_gaussian_filter_on_vectorfield, hier, nb_ghosts=nb_ghosts, sigma=sigma)
-            return VectorField(h)
-        else:
-            return NotImplemented
-    else:
-        return NotImplemented
+# def gFilt(hier, **kwargs):
+#     sigma = kwargs.get("sigma", 2)
+# 
+#     # time0 = list(hier.times())[0]
+#     # level0 = 0
+#     # p0 = 0
+#     # pd0 = hier.levels(time0)[level0].patches[p0].patch_datas
+#     # key0 = list(pd0.keys())[0]
+#     # nb_ghosts = np.max(pd0[key0].ghosts_nbr)
+# 
+#     nb_ghosts = np.max(list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr)
+# 
+#     if nb_ghosts < sigma :
+#         print("nb_ghosts ({0}) < sigma ({1}) : your gaussian filter might be dirty".format(nb_ghosts, sigma))
+# 
+#     if hier.ndim == 1:
+#         if isinstance(hier, ScalarField) :
+#             h = compute_hier_from(_compute_gaussian_filter_on_scalarfield, hier, nb_ghosts=nb_ghosts, sigma=sigma)
+#             return ScalarField(h)
+#         elif isinstance(hier, VectorField) :
+#             h = compute_hier_from(_compute_gaussian_filter_on_vectorfield, hier, nb_ghosts=nb_ghosts, sigma=sigma)
+#             return VectorField(h)
+#         else:
+#             return NotImplemented
+#     else:
+#         return NotImplemented
 
 
 def gF(hier, **kwargs):
@@ -144,25 +144,27 @@ def peakIds(hier, **kwargs):
     else:
         raise ValueError('multiple time is not yet implemented')
 
-    pks_ = np.array([])
-    hgs_ = np.array([])
+    # pks_ = np.array([])
+    # hgs_ = np.array([])
 
     names_ = kwargs.pop("names", None)
     if names_ is None:
         names_ = list(hier.levels(time)[0].patches[0].patch_datas.keys())
 
-    ph_ = kwargs.get('peak_heights', None)
-    if ph_ is None:
-        raise ValueError("the kwarg 'peak_heights' is mandatory for now...")
+    # ph_ = kwargs.get('peak_heights', None)
+    # if ph_ is None:
+    #     raise ValueError("the kwarg 'peak_heights' is mandatory for now...")
 
     for lvl in hier.levels(time).values():
         for patch in lvl.patches:
             for name in names_:
                 pdata = patch.patch_datas[name]
                 ds = np.asarray(pdata.dataset)
-                pks = find_peaks(ds, **kwargs)
-                for pk, hg in zip(pks[0], pks[1]['peak_heights']):
-                    pks_ = np.append(pks_, np.add(np.multiply(pk, patch.dl), patch.origin))
-                    hgs_ = np.append(hgs_, hg)
+                # pks = find_peaks(ds, **kwargs)
+                # for pk, hg in zip(pks[0], pks[1]['peak_heights']):
+                #     pks_ = np.append(pks_, np.add(np.multiply(pk, patch.dl), patch.origin))
+                #     hgs_ = np.append(hgs_, hg)
+                out = find_peaks(ds, **kwargs)
 
-    return pks_, hgs_
+    # return pks_, hgs_
+    return zip(*out)
