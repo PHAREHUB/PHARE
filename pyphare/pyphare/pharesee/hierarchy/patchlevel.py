@@ -34,7 +34,21 @@ class PatchLevel:
         return PatchLevel(self.level_number, out)
 
     def __array_function__(self, func, types, args, kwargs):
-        # TODO this has to be tested w. np.mean for example
         print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
-        return func(*args, **kwargs)
 
+        ps = []
+        others = []
+        for x in args:
+            if isinstance(x, PatchLevel):
+                ps_ = []
+                for p in x.patches:
+                    ps_.append(p)
+                ps.append(ps_)
+            else:
+                others.append(x)
+
+        out = []
+        for p in zip(*ps):
+            out.append(func(*p, *others, **kwargs))
+
+        return PatchLevel(self.level_number, out)

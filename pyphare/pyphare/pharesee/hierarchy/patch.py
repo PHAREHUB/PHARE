@@ -70,17 +70,17 @@ class Patch:
             return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        print(f"__array_function__ of Patch called for {ufunc.__name__}")
+        print(f"__array_ufunct__ of Patch called for {ufunc.__name__}")
         if method != "__call__":
             return NotImplemented
 
-        pds = []  # list (p1, p2, p3... ) of list ('x', 'y', 'z') of pds
-        for x in inputs:  # inputs is a list of Patch
-            if isinstance(x, Patch):  # hence, x is a Patch
-                pd_k = []
+        pds = []
+        for x in inputs:
+            if isinstance(x, Patch):
+                keys_ = []
                 pds_ = []
                 for k, p in x.patch_datas.items():
-                    pd_k.append(k)
+                    keys_.append(k)
                     pds_.append(p)
                 pds.append(pds_)
             else:
@@ -89,7 +89,7 @@ class Patch:
         out = [getattr(ufunc, method)(*pd, **kwargs) for pd in zip(*pds)]
 
         final = {}
-        for k, pd in zip(pd_k, out):  # TODO hmmmm, the output patch will keep the keys of the last patch in inputs
+        for k, pd in zip(keys_, out):  # TODO hmmmm, the output patch will keep the keys of the last patch in inputs
             final[k] = pd
 
         return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)
@@ -98,21 +98,24 @@ class Patch:
         print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
 
         pds = []
+        others = []
         for x in args:
             if isinstance(x, Patch):
-                pd_k = []
+                keys_ = []
                 pds_ = []
                 for k, p in x.patch_datas.items():
-                    pd_k.append(k)
+                    keys_.append(k)
                     pds_.append(p)
                 pds.append(pds_)
             else:
-                raise TypeError("this arg should be a Patch")
+                others.append(x)
 
-        out = [func(*pd, **kwargs) for pd in zip(*pds)]
+        out = []
+        for pd in zip(*pds):
+            out.append(func(*pd, *others, **kwargs))
 
         final = {}
-        for k, pd in zip(pd_k, out):
+        for k, pd in zip(keys_, out):
             final[k] = pd
 
         return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)

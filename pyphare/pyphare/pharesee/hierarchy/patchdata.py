@@ -196,7 +196,7 @@ class FieldData(PatchData):
         return np.asarray(self.dataset, dtype=dtype)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
-        print(f"__array_function__ of FieldData called for {ufunc.__name__}")
+        print(f"__array_ufunc__ of FieldData called for {ufunc.__name__}")
         if method != "__call__":
             raise NotImplementedError
 

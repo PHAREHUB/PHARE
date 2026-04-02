@@ -634,8 +634,6 @@ class PatchHierarchy(object):
         if method != "__call__":
             return NotImplemented
 
-        # print(type(inputs), inputs, type(inputs[0]), inputs[0])
-
         final = []
 
         times = inputs[0].times()
@@ -643,25 +641,25 @@ class PatchHierarchy(object):
             assert(times == x.times())
             if not isinstance(x, PatchHierarchy):
                 raise TypeError("this arg should be a PatchHierarchy")
-        ils = [key for d in inputs[0].patch_levels for key in d]
-        # print(ils)
+
+
+        # for  d in inputs[0].patch_levels:
+        #     print(type(d), d)
+
+
+        ils = [key for dict_ in inputs[0].patch_levels for key in dict_]
         h_type = type(inputs[0])
 
         all_ = []
-        for i, time in enumerate(times):
-            # print("* * * ", i, time)
+        for i in range(len(times)):
             pls = []
             for x in inputs:
-                # print(". . . ", x.times()[i], x.patch_levels[i])
                 pls_ = []
-                for ilvl, plvl in x.patch_levels[i].items():
-                    # print("_ _ _ ", ilvl, plvl)
+                for plvl in x.patch_levels[i].values():
                     pls_.append(plvl)
                 pls.append(pls_)
 
             out = [getattr(ufunc, method)(*pl, **kwargs)  for pl in zip(*pls)]
-
-            # print("   ->  ", type(out), type(out[0]))
 
             # out est une liste de liste de patchlevel : indice  sur le levels (pour 1 temps donne)
             # il faut les remettre dans un dict avec ilvl
@@ -669,7 +667,6 @@ class PatchHierarchy(object):
             final = {}
             for il, pl in zip(ils, out):
                 final[il] = pl
-            # print("___ ",final)
 
             all_.append(final)
 
@@ -686,12 +683,59 @@ class PatchHierarchy(object):
         if h_type is ScalarField:
             return ScalarField(h_)
         elif h_type is VectorField:
-            return self
+            return VectorField(h_)
 
     def __array_function__(self, func, types, args, kwargs):
-        # TODO this has to be tested w. np.mean for example
         print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
-        return func(*args, **kwargs)
+
+        final = []
+        others = []
+
+        times = args[0].times()
+        for x in args:
+            if isinstance(x, PatchHierarchy):
+                assert(times == x.times())
+            else:
+                others.append(x)
+
+        ils = [key for dict_ in args[0].patch_levels for key in dict_]
+        h_type = type(args[0])
+
+
+        all_ = []
+        for i in range(len(times)):
+            pls = []
+            for x in args:
+                if isinstance(x, PatchHierarchy):
+                    pls_ = []
+                    for plvl in x.patch_levels[i].values():
+                        pls_.append(plvl)
+                    pls.append(pls_)
+
+            out = []
+            for pl in zip(*pls):
+                out.append(func(*pl, *others, **kwargs))
+
+            final = {}
+            for il, pl in zip(ils, out):
+                final[il] = pl
+
+            all_.append(final)
+
+        h_ = PatchHierarchy(all_,
+                           domain_box=self.domain_box,
+                           refinement_box=self.refinement_ratio,
+                           times=self.times(),
+                           data_files=self.data_files,
+                           selection_box=self.selection_box)
+
+        from .scalarfield import ScalarField
+        from .vectorfield import VectorField
+
+        if h_type is ScalarField:
+            return ScalarField(h_)
+        elif h_type is VectorField:
+            return VectorField(h_)
 
 
 def finest_part_data(hierarchy, time=None):
