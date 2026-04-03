@@ -9,7 +9,6 @@
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/faraday/faraday.hpp"
-#include "core/data/grid/gridlayout_utils.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 
 #include "amr/solvers/solver.hpp"
@@ -151,21 +150,6 @@ private:
 
     void moveIons_(level_t& level, HybridModel& model, Messenger& fromCoarser,
                    double const currentTime, double const newTime, core::UpdaterMode mode);
-
-
-    struct TimeSetter
-    {
-        void operator()(auto&... quantities)
-        {
-            auto& rm = *model.resourcesManager;
-            for (auto& patch : rm.enumerate(level, quantities...))
-                (model.resourcesManager->setTime(quantities, *patch, newTime), ...);
-        }
-
-        level_t& level;
-        HybridModel& model;
-        double newTime;
-    };
 
 
     void make_boxes(hierarchy_t const& hierarchy, level_t& level)
