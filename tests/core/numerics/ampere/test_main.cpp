@@ -1,24 +1,19 @@
+
+
+#include "core/data/field/field.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/utilities/index/index.hpp"
+#include "core/numerics/ampere/ampere.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/grid/gridlayoutimplyee.hpp"
+
+#include "tests/core/data/field/test_field.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <fstream>
-#include <memory>
-
-
-#include "core/data/grid/grid.hpp"
-#include "core/data/field/field.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/numerics/ampere/ampere.hpp"
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/index/index.hpp"
-
-#include "tests/core/data/field/test_field.hpp"
-#include "tests/core/data/vecfield/test_vecfield.hpp"
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
-#include "tests/core/data/gridlayout/gridlayout_test.hpp"
 
 
 using namespace PHARE::core;
@@ -73,38 +68,19 @@ struct GridLayoutMock3D
 
 TEST(Ampere, canBe1D)
 {
-    Ampere<GridLayoutMock1D> ampere;
+    Ampere<GridLayoutMock1D> ampere{GridLayoutMock1D{}};
 }
 
 TEST(Ampere, canBe2D)
 {
-    Ampere<GridLayoutMock2D> ampere;
+    Ampere<GridLayoutMock2D> ampere{GridLayoutMock2D{}};
 }
 
 TEST(Ampere, canBe3D)
 {
-    Ampere<GridLayoutMock3D> ampere;
+    Ampere<GridLayoutMock3D> ampere{GridLayoutMock3D{}};
 }
 
-TEST(Ampere, shouldBeGivenAGridLayoutPointerToBeOperational)
-{
-    std::size_t constexpr interp = 1;
-
-    auto constexpr check = [](auto ic) {
-        auto constexpr dim = ic();
-
-        VecFieldMock<FieldMock<dim>> B, J;
-        using GridLayout = GridLayout<GridLayoutImplYee<dim, interp>>;
-        Ampere<GridLayout> ampere;
-        auto layout = std::make_unique<TestGridLayout<GridLayout>>();
-        EXPECT_ANY_THROW(ampere(B, J));
-        ampere.setLayout(layout.get());
-    };
-
-    check(std::integral_constant<std::size_t, 1>{});
-    check(std::integral_constant<std::size_t, 2>{});
-    check(std::integral_constant<std::size_t, 3>{});
-}
 
 
 std::vector<double> read(std::string filename)
@@ -127,11 +103,11 @@ protected:
     static constexpr std::size_t interp_order = 1;
     using UsableVecFieldND                    = UsableVecField<dim>;
     using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
+    using Ampere_t                            = Ampere<GridLayout<GridLayoutImpl>>;
+
     GridLayout<GridLayoutImpl> layout;
 
     UsableVecFieldND B, J;
-
-    Ampere<GridLayout<GridLayoutImpl>> ampere;
 
 public:
     Ampere1DTest()
@@ -150,11 +126,11 @@ protected:
     static constexpr std::size_t interp_order = 1;
     using UsableVecFieldND                    = UsableVecField<dim>;
     using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
+    using Ampere_t                            = Ampere<GridLayout<GridLayoutImpl>>;
+
     GridLayout<GridLayoutImpl> layout;
 
     UsableVecFieldND B, J;
-
-    Ampere<GridLayout<GridLayoutImpl>> ampere;
 
 public:
     Ampere2DTest()
@@ -173,11 +149,11 @@ protected:
     static constexpr std::size_t interp_order = 1;
     using UsableVecFieldND                    = UsableVecField<dim>;
     using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
+    using Ampere_t                            = Ampere<GridLayout<GridLayoutImpl>>;
+
     GridLayout<GridLayoutImpl> layout;
 
     UsableVecFieldND B, J;
-
-    Ampere<GridLayout<GridLayoutImpl>> ampere;
 
 public:
     Ampere3DTest()
@@ -211,8 +187,7 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
         Bz(ix) = std::sin(2 * M_PI / 5. * point[0]);
     }
 
-    ampere.setLayout(&layout);
-    ampere(B, J);
+    Ampere_t{layout}(B, J);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -276,8 +251,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
         }
     }
 
-    ampere.setLayout(&layout);
-    ampere(B, J);
+    Ampere_t{layout}(B, J);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -394,8 +368,7 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
         }
     }
 
-    ampere.setLayout(&layout);
-    ampere(B, J);
+    Ampere_t{layout}(B, J);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);

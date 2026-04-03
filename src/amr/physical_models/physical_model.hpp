@@ -75,4 +75,32 @@ namespace solver
 
 } // namespace PHARE
 
+
+
+namespace PHARE::solver
+{
+
+
+template<typename level_t, typename Model>
+struct TimeSetter
+{
+    void operator()(auto&... quantities)
+    {
+        auto& rm = *model.resourcesManager;
+        for (auto& patch : rm.enumerate(level, quantities...))
+            (model.resourcesManager->setTime(quantities, *patch, newTime), ...);
+    }
+
+    level_t& level;
+    Model& model;
+    double newTime;
+};
+
+template<typename level_t, typename Model>
+TimeSetter(level_t&, Model&, double) -> TimeSetter<level_t, Model>;
+
+
+} // namespace PHARE::solver
+
+
 #endif

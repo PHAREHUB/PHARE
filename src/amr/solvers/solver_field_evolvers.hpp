@@ -15,15 +15,11 @@ namespace PHARE::solver
 template<typename GridLayout, typename AMR_Types>
 class FaradayTransformer
 {
-    using core_type = PHARE::core::Faraday<GridLayout>;
+    using core_type = core::Faraday<GridLayout>;
     using level_t   = AMR_Types::level_t;
 
 public:
-    void operator()(GridLayout& layout, auto&&... args)
-    {
-        auto _ = core::SetLayout(&layout, faraday_);
-        faraday_(args...);
-    }
+    void operator()(GridLayout& layout, auto&&... args) { core_type{layout}(args...); }
 
     void operator()(level_t& level, auto& model, auto& B, auto& E, auto& Bnew, auto& dt)
     {
@@ -35,23 +31,16 @@ public:
             (*this)(layout, B, E, Bnew, dt);
         }
     }
-
-
-    core_type faraday_;
 };
 
 template<typename GridLayout, typename AMR_Types>
 class AmpereTransformer
 {
-    using core_type = PHARE::core::Ampere<GridLayout>;
+    using core_type = core::Ampere<GridLayout>;
     using level_t   = AMR_Types::level_t;
 
 public:
-    void operator()(GridLayout& layout, auto&&... args)
-    {
-        auto _ = core::SetLayout(&layout, ampere_);
-        ampere_(args...);
-    }
+    void operator()(GridLayout& layout, auto&&... args) { core_type{layout}(args...); }
 
     void operator()(level_t& level, auto& model, auto& B, auto& J)
     {
@@ -63,28 +52,23 @@ public:
             (*this)(layout, B, J);
         }
     }
-
-    core_type ampere_;
 };
 
 
 template<typename GridLayout, typename AMR_Types>
 class OhmTransformer
 {
-    using core_type = PHARE::core::Ohm<GridLayout>;
+    using info_type = core::OhmInfo;
+    using core_type = core::Ohm<GridLayout>;
     using level_t   = AMR_Types::level_t;
 
 public:
     explicit OhmTransformer(initializer::PHAREDict const& dict)
-        : ohm_{dict}
+        : info_{info_type::FROM(dict)}
     {
     }
 
-    void operator()(GridLayout& layout, auto&&... args)
-    {
-        auto _ = core::SetLayout(&layout, ohm_);
-        ohm_(args...);
-    }
+    void operator()(GridLayout& layout, auto&&... args) { core_type{info_, layout}(args...); }
 
     void operator()(level_t& level, auto& model, auto& B, auto& J, auto& E)
     {
@@ -105,7 +89,7 @@ public:
         (*this)(level, model, B, model.state.J, E);
     }
 
-    core_type ohm_;
+    info_type info_;
 };
 
 

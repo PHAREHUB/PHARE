@@ -4,30 +4,42 @@
 
 #include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/grid/gridlayout_utils.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"
 
 
-
 namespace PHARE::core
 {
+
 enum class HyperMode { constant, spatial };
 
-template<typename GridLayout>
-class Ohm : public LayoutHolder<GridLayout>
+struct OhmInfo
 {
+    double const eta_;
+    double const nu_;
+    HyperMode const hyper_mode;
+
+    OhmInfo static FROM(initializer::PHAREDict const& dict)
+    {
+        return {dict["resistivity"].template to<double>(),
+                dict["hyper_resistivity"].template to<double>(),
+                cppdict::get_value(dict, "hyper_mode", std::string{"constant"}) == "constant"
+                    ? HyperMode::constant
+                    : HyperMode::spatial};
+    }
+};
+
+template<typename GridLayout>
+class Ohm : public OhmInfo
+{
+    using Super                     = OhmInfo;
     constexpr static auto dimension = GridLayout::dimension;
-    using LayoutHolder<GridLayout>::layout_;
 
 public:
-    explicit Ohm(PHARE::initializer::PHAREDict const& dict)
-        : eta_{dict["resistivity"].template to<double>()}
-        , nu_{dict["hyper_resistivity"].template to<double>()}
-        , hyper_mode{cppdict::get_value(dict, "hyper_mode", std::string{"constant"}) == "constant"
-                         ? HyperMode::constant
-                         : HyperMode::spatial}
+    explicit Ohm(OhmInfo const& info, GridLayout const& layout)
+        : Super{info}
+        , layout_{layout}
     {
     }
 
@@ -37,30 +49,21 @@ public:
     {
         using Pack = OhmPack<VecField, Field>;
 
-        if (!this->hasLayout())
-            throw std::runtime_error(
-                "Error - Ohm - GridLayout not set, cannot proceed to calculate ohm()");
-
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        layout_->evalOnBox(Exnew, [&](auto&... args) mutable {
+        layout_.evalOnBox(Exnew, [&](auto&... args) mutable {
             this->template E_Eq_<Component::X>(Pack{Enew, n, Pe, Ve, B, J}, args...);
         });
-        layout_->evalOnBox(Eynew, [&](auto&... args) mutable {
+        layout_.evalOnBox(Eynew, [&](auto&... args) mutable {
             this->template E_Eq_<Component::Y>(Pack{Enew, n, Pe, Ve, B, J}, args...);
         });
-        layout_->evalOnBox(Eznew, [&](auto&... args) mutable {
+        layout_.evalOnBox(Eznew, [&](auto&... args) mutable {
             this->template E_Eq_<Component::Z>(Pack{Enew, n, Pe, Ve, B, J}, args...);
         });
     }
 
-
-
-
 private:
-    double const eta_;
-    double const nu_;
-    HyperMode const hyper_mode;
+    GridLayout layout_;
 
     template<typename VecField, typename Field>
     struct OhmPack
@@ -270,7 +273,7 @@ private:
         {
             auto const nOnEx = GridLayout::project(n, index, GridLayout::momentsToEx());
 
-            auto gradPOnEx = layout_->template deriv<Direction::X>(Pe, index); // TODO : issue 3391
+            auto gradPOnEx = layout_.template deriv<Direction::X>(Pe, index); // TODO : issue 3391
 
             return -gradPOnEx / nOnEx;
         }
@@ -282,7 +285,7 @@ private:
                 auto const nOnEy = GridLayout::project(n, index, GridLayout::momentsToEy());
 
                 auto gradPOnEy
-                    = layout_->template deriv<Direction::Y>(Pe, index); // TODO : issue 3391
+                    = layout_.template deriv<Direction::Y>(Pe, index); // TODO : issue 3391
 
                 return -gradPOnEy / nOnEy;
             }
@@ -299,7 +302,7 @@ private:
                 auto const nOnEz = GridLayout::project(n, index, GridLayout::momentsToEz());
 
                 auto gradPOnEz
-                    = layout_->template deriv<Direction::Z>(Pe, index); // TODO : issue 3391
+                    = layout_.template deriv<Direction::Z>(Pe, index); // TODO : issue 3391
 
                 return -gradPOnEz / nOnEz;
             }
@@ -353,7 +356,7 @@ private:
     template<auto component, typename VecField>
     auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        return -nu_ * layout_->laplacian(J(component), index);
+        return -nu_ * layout_.laplacian(J(component), index);
     }
 
 
@@ -361,7 +364,7 @@ private:
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        auto const lvlCoeff        = 1. / std::pow(4, layout_->levelNumber());
+        auto const lvlCoeff        = 1. / std::pow(4, layout_.levelNumber());
         auto constexpr min_density = 0.1;
 
         auto computeHR = [&](auto BxProj, auto ByProj, auto BzProj, auto nProj) {
@@ -371,7 +374,7 @@ private:
             auto const nOnE  = GridLayout::project(n, index, nProj);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
             return -nu_ * (b / (nOnE + min_density) + 1) * lvlCoeff
-                   * layout_->laplacian(J(component), index);
+                   * layout_.laplacian(J(component), index);
         };
 
         if constexpr (component == Component::X)
