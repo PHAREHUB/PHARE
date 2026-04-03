@@ -362,6 +362,11 @@ namespace amr
                     looper->set(*patch);
                 }
 
+                Patch(Patch const&)            = delete;
+                Patch(Patch&&)                 = delete;
+                Patch& operator=(Patch const&) = delete;
+                Patch& operator=(Patch&&)      = delete;
+
                 SAMRAI::hier::Patch const& operator*() { return *patch; }
 
                 ~Patch() { looper->unset(); }

@@ -1,14 +1,11 @@
 #ifndef PHARE_SOLVER_PPC_HPP
 #define PHARE_SOLVER_PPC_HPP
 
-#include "core/data/electrons/electrons.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/mpi_utils.hpp"
-#include "core/numerics/ampere/ampere.hpp"
 #include "core/data/vecfield/vecfield.hpp"
-#include "core/numerics/faraday/faraday.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 
 #include "amr/solvers/solver.hpp"
@@ -46,9 +43,9 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
-    using Faraday_t    = FaradayTransformer<GridLayout, AMR_Types>;
-    using Ampere_t     = AmpereTransformer<GridLayout, AMR_Types>;
-    using Ohm_t        = OhmTransformer<GridLayout, AMR_Types>;
+    using Faraday_t    = FaradayLevelTransformer<HybridModel>;
+    using Ampere_t     = AmpereLevelTransformer<HybridModel>;
+    using Ohm_t        = OhmLevelTransformer<HybridModel>;
     using IonUpdater_t = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
     Electromag electromagPred_{"EMPred"};
@@ -58,10 +55,7 @@ private:
     VecFieldT fluxSumE_{this->name() + "_fluxSumE", core::HybridQuantity::Vector::E};
     std::unordered_map<std::size_t, double> oldTime_;
 
-    Faraday_t faraday_;
-    Ampere_t ampere_;
-    Ohm_t ohm_;
-
+    core::OhmInfo ohm_info;
     IonUpdater_t ionUpdater_;
 
 
@@ -71,10 +65,9 @@ public:
     using hierarchy_t = AMR_Types::hierarchy_t;
 
 
-
     explicit SolverPPC(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"PPC"}
-        , ohm_{dict["ohm"]}
+        , ohm_info{core::OhmInfo::FROM(dict["ohm"])}
         , ionUpdater_{dict["ion_updater"]}
 
     {
@@ -323,7 +316,8 @@ void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
     auto& Eavg            = electromagAvg_.E;
     auto& B               = hybridModel.state.electromag.B;
     auto dt               = time - oldTime_[level.getLevelNumber()];
-    faraday_(level, hybridModel, Bold_, Eavg, B, dt);
+
+    Faraday_t{level, hybridModel}(Bold_, Eavg, B, dt);
 
     hybridMessenger.fillMagneticGhosts(B, level, time);
 }
@@ -371,26 +365,29 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
 
     TimeSetter setTime{level, model, newTime};
 
+    Faraday_t faraday{level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.faraday");
         auto dt = newTime - currentTime;
-        faraday_(level, model, model.state.electromag.B, model.state.electromag.E,
-                 electromagPred_.B, dt);
+        faraday(model.state.electromag.B, model.state.electromag.E, electromagPred_.B, dt);
         setTime(electromagPred_.B);
         fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
     }
 
+    Ampere_t ampere{level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere");
-        ampere_(level, model, electromagPred_.B, model.state.J);
+        ampere(electromagPred_.B, model.state.J);
         setTime(model.state.J);
         fromCoarser.fillCurrentGhosts(model.state.J, level, newTime);
     }
 
+
+    Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ohm");
         update_electrons(level, model);
-        ohm_(level, model, electromagPred_.B, electromagPred_.E);
+        ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
 }
@@ -405,25 +402,28 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
 
     TimeSetter setTime{level, model, newTime};
 
+    Faraday_t faraday{level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.faraday");
         auto dt = newTime - currentTime;
-        faraday_(level, model, model.state.electromag.B, electromagAvg_.E, electromagPred_.B, dt);
+        faraday(model.state.electromag.B, electromagAvg_.E, electromagPred_.B, dt);
         setTime(electromagPred_.B);
         fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
     }
 
+    Ampere_t ampere{level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere");
-        ampere_(level, model, electromagPred_.B, model.state.J);
+        ampere(electromagPred_.B, model.state.J);
         setTime(model.state.J);
         fromCoarser.fillCurrentGhosts(model.state.J, level, newTime);
     }
 
+    Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ohm");
         update_electrons(level, model);
-        ohm_(level, model, electromagPred_.B, electromagPred_.E);
+        ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
 }
@@ -442,26 +442,29 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     TimeSetter setTime{level, model, newTime};
 
     auto& electromag = model.state.electromag;
+    Faraday_t faraday{level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.faraday");
         auto dt = newTime - currentTime;
-        faraday_(level, model, electromag.B, electromagAvg_.E, electromag.B, dt);
+        faraday(electromag.B, electromagAvg_.E, electromag.B, dt);
         setTime(model.state.electromag.B);
         fromCoarser.fillMagneticGhosts(model.state.electromag.B, level, newTime);
     }
 
+    Ampere_t ampere{level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere");
-        ampere_(level, model, electromag.B, model.state.J);
+        ampere(electromag.B, model.state.J);
         setTime(model.state.J);
         fromCoarser.fillCurrentGhosts(model.state.J, level, newTime);
     }
 
+    Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ohm");
 
         update_electrons(level, model);
-        ohm_(level, model, electromag.B, electromag.E);
+        ohm(electromag.B, electromag.E, model.state.electrons);
         setTime(model.state.electromag.E);
 
         fromCoarser.fillElectricGhosts(model.state.electromag.E, level, newTime);
