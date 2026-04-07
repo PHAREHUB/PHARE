@@ -1,10 +1,10 @@
 #ifndef DIAGNOSTIC_MODEL_VIEW_HPP
 #define DIAGNOSTIC_MODEL_VIEW_HPP
 
-#include "amr/amr_constants.hpp"
 #include "core/def.hpp"
 #include "core/utilities/mpi_utils.hpp"
 
+#include "amr/amr_constants.hpp"
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/messengers/field_operate_transaction.hpp"

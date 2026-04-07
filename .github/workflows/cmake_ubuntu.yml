@@ -56,7 +56,7 @@ jobs:
               -DCMAKE_BUILD_TYPE=Debug -Dasan=OFF \
               -DCMAKE_C_COMPILER_LAUNCHER=ccache \
               -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
-              -DlowResourceTests=ON -DdevMode=ON -Dbench=ON \
+              -DPHARE_PYTEST_SIMULATORS=1 -DdevMode=ON -Dbench=ON \
               -DCMAKE_CXX_FLAGS="-O3 -DPHARE_DIAG_DOUBLES=1" -Dphare_configurator=ON
 
     - name: Build
