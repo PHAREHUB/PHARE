@@ -1,10 +1,12 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_HPP
 
-#include "diagnostic/detail/h5typewriter.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
-#include "core/data/vecfield/vecfield_component.hpp"
+#include "diagnostic/detail/h5typewriter.hpp"
+
+#include <stdexcept>
 
 namespace PHARE::diagnostic::h5
 {
@@ -30,9 +32,9 @@ public:
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
-    using Attributes = typename Super::Attributes;
-    using GridLayout = typename H5Writer::GridLayout;
-    using FloatType  = typename H5Writer::FloatType;
+    using Attributes = Super::Attributes;
+    using GridLayout = H5Writer::GridLayout;
+    using FloatType  = H5Writer::FloatType;
 
     static constexpr auto dimension    = GridLayout::dimension;
     static constexpr auto interp_order = GridLayout::interp_order;
@@ -42,6 +44,7 @@ public:
         : Super{h5Writer}
     {
     }
+
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override;
 
@@ -160,28 +163,27 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
     std::string lvlPatchID{std::to_string(iLevel) + "_" + patchID};
 
 
-    auto setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
-        auto ghosts              = GridLayout::nDNbrGhosts(field.physicalQuantity());
-        attr[name + "_ghosts_x"] = static_cast<std::size_t>(ghosts[0]);
-        if constexpr (GridLayout::dimension > 1)
-            attr[name + "_ghosts_y"] = static_cast<std::size_t>(ghosts[1]);
-        if constexpr (GridLayout::dimension > 2)
-            attr[name + "_ghosts_z"] = static_cast<std::size_t>(ghosts[2]);
+    auto const setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
+        auto ghosts = GridLayout::nDNbrGhosts(field.physicalQuantity());
+        for (std::uint8_t i = 1; i < GridLayout::dimension; ++i)
+            if (ghosts[i] != ghosts[i - 1])
+                throw std::runtime_error("ghosts per direction must be constant");
+        attr[name + "_ghosts"] = static_cast<std::size_t>(ghosts[0]);
     };
 
-    auto infoDS = [&](auto& field, std::string name, auto& attr) {
+    auto const infoDS = [&](auto& field, std::string name, auto& attr) {
         // highfive doesn't accept uint32 which ndarray.shape() is
         auto const& shape = field.shape();
         attr[name]        = std::vector<std::size_t>(shape.data(), shape.data() + shape.size());
         setGhostNbr(field, attr, name);
     };
 
-    auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
+    auto const infoVF = [&](auto& vecF, std::string name, auto& attr) {
         for (auto const& [id, type] : core::VectorComponents::map())
             infoDS(vecF.getComponent(type), name + "_" + id, attr);
     };
 
-    auto infoTF = [&](auto& tensorF, std::string name, auto& attr) {
+    auto const infoTF = [&](auto& tensorF, std::string name, auto& attr) {
         for (auto const& [id, type] : core::TensorComponents::map())
             infoDS(tensorF.getComponent(type), name + "_" + id, attr);
     };
@@ -224,18 +226,12 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
     auto& ions     = h5Writer.modelView().getIons();
     auto& h5file   = Super::h5FileForQuantity(diagnostic);
 
-    auto writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
+    auto const writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
         this->writeGhostsAttr_(h5file, path,
-                               null ? 0 : attr[key + "_ghosts_x"].template to<std::size_t>(), null);
-        if constexpr (GridLayout::dimension > 1)
-            this->writeGhostsAttr_(
-                h5file, path, null ? 0 : attr[key + "_ghosts_y"].template to<std::size_t>(), null);
-        if constexpr (GridLayout::dimension > 2)
-            this->writeGhostsAttr_(
-                h5file, path, null ? 0 : attr[key + "_ghosts_z"].template to<std::size_t>(), null);
+                               null ? 0 : attr[key + "_ghosts"].template to<std::size_t>(), null);
     };
 
-    auto initDS = [&](auto& path, auto& attr, std::string key, auto null) {
+    auto const initDS = [&](auto& path, auto& attr, std::string key, auto null) {
         auto dsPath = path + key;
         h5Writer.template createDataSet<FloatType>(
             h5file, dsPath,
@@ -243,16 +239,16 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
                  : attr[key].template to<std::vector<std::size_t>>());
         writeGhosts(dsPath, attr, key, null);
     };
-    auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
+    auto const initVF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap())
             initDS(path, attr, key + "_" + id, null);
     };
-    auto initTF = [&](auto& path, auto& attr, std::string key, auto null) {
+    auto const initTF = [&](auto& path, auto& attr, std::string key, auto null) {
         for (auto& [id, type] : core::Components::componentMap<2>())
             initDS(path, attr, key + "_" + id, null);
     };
 
-    auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
+    auto const initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
         bool null        = patchID.empty();
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
