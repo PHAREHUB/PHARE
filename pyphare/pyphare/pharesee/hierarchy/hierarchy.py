@@ -438,8 +438,9 @@ class PatchHierarchy(object):
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
+                lw = kwargs.get("lw", 1)
                 color = kwargs.get("color", "k")
-                ax.plot(x, val, label=label, marker=marker, ls=ls, color=color)
+                ax.plot(x, val, label=label, marker=marker, ls=ls, lw=lw, color=color)
 
         ax.set_title(kwargs.get("title", ""))
         ax.set_xlabel(kwargs.get("xlabel", "x"))
@@ -613,6 +614,128 @@ class PatchHierarchy(object):
                 final[pop] = kwargs["select"](particles)
 
         return final, dp(final, **kwargs)
+
+    def interpol(self, time, interp="nearest"):
+        from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+        from pyphare.pharesee.run.utils import build_interpolator
+
+        nbrGhosts = list(self.level(0, time).patches[0].patch_datas.values())[0].ghosts_nbr
+
+        interp_ = {}
+        for qty in self.quantities():
+            box = self.level(0, time).patches[0].patch_datas[qty].box
+            dl = self.level(0, time).patches[0].patch_datas[qty].dl
+            data, coords = flat_finest_field(self, qty, time=time)
+            interp_[qty] = build_interpolator(data, coords, interp, box, dl, qty, nbrGhosts)
+        return interp_
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(f"__array_function__ of PatchHierarchy called for {ufunc.__name__}")
+        if method != "__call__":
+            return NotImplemented
+
+        final = []
+
+        times = inputs[0].times()
+        for x in inputs:
+            assert(times == x.times())
+            if not isinstance(x, PatchHierarchy):
+                raise TypeError("this arg should be a PatchHierarchy")
+
+
+        # for  d in inputs[0].patch_levels:
+        #     print(type(d), d)
+
+
+        ils = [key for dict_ in inputs[0].patch_levels for key in dict_]
+        h_type = type(inputs[0])
+
+        all_ = []
+        for i in range(len(times)):
+            pls = []
+            for x in inputs:
+                pls_ = []
+                for plvl in x.patch_levels[i].values():
+                    pls_.append(plvl)
+                pls.append(pls_)
+
+            out = [getattr(ufunc, method)(*pl, **kwargs)  for pl in zip(*pls)]
+
+            # out est une liste de liste de patchlevel : indice  sur le levels (pour 1 temps donne)
+            # il faut les remettre dans un dict avec ilvl
+
+            final = {}
+            for il, pl in zip(ils, out):
+                final[il] = pl
+
+            all_.append(final)
+
+        h_ = PatchHierarchy(all_,
+                           domain_box=self.domain_box,
+                           refinement_box=self.refinement_ratio,
+                           times=self.times(),
+                           data_files=self.data_files,
+                           selection_box=self.selection_box)
+
+        from .scalarfield import ScalarField
+        from .vectorfield import VectorField
+
+        if h_type is ScalarField:
+            return ScalarField(h_)
+        elif h_type is VectorField:
+            return VectorField(h_)
+
+    def __array_function__(self, func, types, args, kwargs):
+        print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
+
+        final = []
+        others = []
+
+        times = args[0].times()
+        for x in args:
+            if isinstance(x, PatchHierarchy):
+                assert(times == x.times())
+            else:
+                others.append(x)
+
+        ils = [key for dict_ in args[0].patch_levels for key in dict_]
+        h_type = type(args[0])
+
+
+        all_ = []
+        for i in range(len(times)):
+            pls = []
+            for x in args:
+                if isinstance(x, PatchHierarchy):
+                    pls_ = []
+                    for plvl in x.patch_levels[i].values():
+                        pls_.append(plvl)
+                    pls.append(pls_)
+
+            out = []
+            for pl in zip(*pls):
+                out.append(func(*pl, *others, **kwargs))
+
+            final = {}
+            for il, pl in zip(ils, out):
+                final[il] = pl
+
+            all_.append(final)
+
+        h_ = PatchHierarchy(all_,
+                           domain_box=self.domain_box,
+                           refinement_box=self.refinement_ratio,
+                           times=self.times(),
+                           data_files=self.data_files,
+                           selection_box=self.selection_box)
+
+        from .scalarfield import ScalarField
+        from .vectorfield import VectorField
+
+        if h_type is ScalarField:
+            return ScalarField(h_)
+        elif h_type is VectorField:
+            return VectorField(h_)
 
 
 def finest_part_data(hierarchy, time=None):
