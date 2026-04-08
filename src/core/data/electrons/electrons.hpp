@@ -122,9 +122,9 @@ public:
         layout.evalOnBox(Ne, [&](auto const&... args) {
             auto arr = std::array{args...};
 
-            auto const JxOnVx = GridLayout::project(Jx, arr, GridLayout::JxToMoments());
-            auto const JyOnVy = GridLayout::project(Jy, arr, GridLayout::JyToMoments());
-            auto const JzOnVz = GridLayout::project(Jz, arr, GridLayout::JzToMoments());
+            auto const JxOnVx = GridLayout::template project<GridLayout::JxToMoments>(Jx, arr);
+            auto const JyOnVy = GridLayout::template project<GridLayout::JyToMoments>(Jy, arr);
+            auto const JzOnVz = GridLayout::template project<GridLayout::JzToMoments>(Jz, arr);
 
             Vex(arr) = Vix(arr) - JxOnVx / Ne(arr);
             Vey(arr) = Viy(arr) - JyOnVy / Ne(arr);
