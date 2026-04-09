@@ -1,3 +1,8 @@
+#
+#
+#
+
+
 class PatchLevel:
     """is a collection of patches"""
 
@@ -13,3 +18,46 @@ class PatchLevel:
         return min([patch.patch_datas[name].x.min() for patch in self.patches]), max(
             [patch.patch_datas[name].x.max() for patch in self.patches]
         )
+
+    def __getitem__(self, idx):
+        if type(idx) is int:
+            return self.patches[idx]
+        raise ValueError("PatchLevel::__getitem__ unhandled input type:", type(idx))
+
+    @property
+    def cell_width(self):
+        return self.patches[0].layout.dl
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return patch_level_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return patch_level_array_function(self, func, types, args, kwargs)
+
+    def is_compatible(self, that):
+        return type(self) is type(that) and len(self.patches) == len(that.patches)
+
+
+def patch_level_array_ufunc(patch_level, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    if not all([patch_level.is_compatible(o) for o in inputs]):
+        raise TypeError("PatchLevel: incompatible arguments")
+
+    ps = [x.patches for x in inputs]
+    out = [getattr(ufunc, method)(*p, **kwargs) for p in zip(*ps)]
+
+    return type(patch_level)(patch_level.level_number, out)
+
+
+def patch_level_array_function(patch_level, func, types, args, kwargs):
+    if not all([patch_level.is_compatible(o) for o in args]):
+        raise TypeError("PatchLevel: incompatible arguments")
+
+    ps = [x.patches for x in args]
+    out = [func(*p, **kwargs) for p in zip(*ps)]
+
+    if type(out[0]) is not type(patch_level[0]):
+        return out
+    return type(patch_level)(patch_level.level_number, out)

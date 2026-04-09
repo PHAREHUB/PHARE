@@ -5,29 +5,28 @@ from pathlib import Path
 
 from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.run import Run
 from tests.simulator import SimulatorTest
+from pyphare.simulator.simulator import Simulator, startMPI
+
+from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 
 ph.NO_GUI()
 
 
 time_step = 0.005
-final_time = 0.05
+final_time = 0.005
 time_step_nbr = int(final_time / time_step)
 timestamps = np.arange(0, final_time + 0.01, 0.05)
-diag_dir = "phare_outputs/test_run"
-plot_dir = Path(f"{diag_dir}_plots")
-plot_dir.mkdir(parents=True, exist_ok=True)
 
 
-def config():
+def config(diag_dir, diag_format):
     L = 0.5
 
     sim = ph.Simulation(
         time_step=time_step,
         final_time=final_time,
-        cells=(40, 40),
+        cells=(20, 20),
         dl=(0.40, 0.40),
         refinement="tagging",
         max_nbr_levels=3,
@@ -37,7 +36,7 @@ def config():
         hyper_resistivity=0.002,
         resistivity=0.001,
         diag_options={
-            "format": "phareh5",
+            "format": diag_format,
             "options": {"dir": diag_dir, "mode": "overwrite"},
         },
     )
@@ -160,60 +159,90 @@ def config():
     return sim
 
 
-def plot_file_for_qty(qty, time):
+def plot_file_for_qty(plot_dir, qty, time):
     return f"{plot_dir}/harris_{qty}_t{time}.png"
 
 
-def plot(diag_dir):
+def plot(test, diag_dir):
     run = Run(diag_dir)
+    plot_dir = Path(f"{diag_dir}_plots")
+    plot_dir.mkdir(parents=True, exist_ok=True)
+
     pop_name = "protons"
     for time in timestamps:
+        for c in ["x", "y", "z"]:
+            run.GetB(time, all_primal=False).plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}", time),
+                qty=f"B{c}",
+                plot_patches=True,
+            )
+        B_finest = run.GetB(time)[:]
+        B2 = B_finest + B_finest
+        B22 = run.GetB(time)[:]
+        B22 += run.GetB(time)[:]
+        B_gaussian = B_finest.gaussian()
+        test.assertTrue(hootils.hierarchy_compare(B_finest, run.GetB(time)[:]))
+        test.assertTrue(hootils.hierarchy_compare(B2, B22))
+        for c in ["x", "y", "z"]:
+            B2.plot(filename=plot_file_for_qty(plot_dir, f"b2{c}", time), qty=f"{c}")
+            B_gaussian.plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}_gaussian", time),
+                qty=f"{c}",
+            )
+            np.exp(B_finest).plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}_exp", time), qty=f"B{c}"
+            )
+            print("np.mean(B_finest)", np.mean(B_finest))
+            print("np.clip(B_finest)", np.clip(B_finest))
+
+            np.dot(B_finest, B_finest).plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}_mean", time), qty=f"B{c}"
+            )
+
+            B_finest.plot(
+                filename=plot_file_for_qty(plot_dir, f"b{c}_finest", time), qty=f"B{c}"
+            )
         run.GetDivB(time).plot(
-            filename=plot_file_for_qty("divb", time),
+            filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
             vmin=1e-11,
             vmax=2e-10,
         )
         run.GetRanks(time).plot(
-            filename=plot_file_for_qty("Ranks", time), plot_patches=True
+            filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
         )
         run.GetN(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty("N", time), plot_patches=True
+            filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
         )
-        for c in ["x", "y", "z"]:
-            run.GetB(time, all_primal=False).plot(
-                filename=plot_file_for_qty(f"b{c}", time),
-                qty=f"B{c}",
-                plot_patches=True,
-            )
+
         run.GetJ(time).plot(
-            all_primal=False,
-            filename=plot_file_for_qty("jz", time),
-            qty="z",
+            filename=plot_file_for_qty(plot_dir, "jz", time),
+            qty="Jz",
             plot_patches=True,
             vmin=-2,
             vmax=2,
         )
         run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(f"{pop_name}_Pxx", time),
+            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pxx", time),
             qty=pop_name + "_Pxx",
             plot_patches=True,
         )
         run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(f"{pop_name}_Pzz", time),
+            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pzz", time),
             qty=pop_name + "_Pzz",
             plot_patches=True,
         )
         run.GetPi(time).plot(
-            filename=plot_file_for_qty("Pxx", time),
+            filename=plot_file_for_qty(plot_dir, "Pxx", time),
             qty="Pxx",
             plot_patches=True,
         )
         run.GetPi(time).plot(
-            filename=plot_file_for_qty("Pzz", time),
+            filename=plot_file_for_qty(plot_dir, "Pzz", time),
             qty="Pzz",
             plot_patches=True,
         )
+    return plot_dir
 
 
 def assert_file_exists_with_size_at_least(file, size=10000):
@@ -239,31 +268,43 @@ class RunTest(SimulatorTest):
         self.simulator = None
         ph.global_vars.sim = None
 
-    def test_run(self):
-        sim = config()
+    def _test_any_format(self, sim, diag_dir):
         self.register_diag_dir_for_cleanup(diag_dir)
         Simulator(sim).run().reset()
-
         run = Run(diag_dir)
+        self.assertTrue(all(run.times("EM_B") == timestamps))
         B = run.GetB(timestamps[-1], all_primal=False)
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
         B = run.GetB(timestamps[-1])
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
+    def test_run_phareh5(self):
+        diag_dir = "phare_outputs/test_run_phareh5"
+        sim = config(diag_dir, "phareh5")
+        self._test_any_format(sim, diag_dir)
+
+        # move to _test_any_format when vtkhdf supports divb etc
         if cpp.mpi_rank() == 0:
-            plot(diag_dir)
+            plot_dir = plot(self, diag_dir)
 
             for time in timestamps:
                 for q in ["divb", "Ranks", "N", "jz"]:
-                    assert_file_exists_with_size_at_least(plot_file_for_qty(q, time))
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(plot_dir, q, time)
+                    )
 
                 for c in ["x", "y", "z"]:
                     assert_file_exists_with_size_at_least(
-                        plot_file_for_qty(f"b{c}", time)
+                        plot_file_for_qty(plot_dir, f"b{c}", time)
                     )
 
         cpp.mpi_barrier()
+
+    def test_run_pharevtkhdf(self):
+        diag_dir = "phare_outputs/test_run_pharevtkhdf"
+        sim = config(diag_dir, "pharevtkhdf")
+        self._test_any_format(sim, diag_dir)
 
 
 if __name__ == "__main__":
