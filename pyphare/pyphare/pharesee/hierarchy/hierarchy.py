@@ -627,7 +627,7 @@ def finest_part_data(hierarchy, time=None):
 
     i_ref = None
     for i_ref, p in enumerate(hierarchy.level(0, time=time).patches):
-        if p.patch_datas.__len__()!=0:
+        if len(p.patch_datas):
             break
     if i_ref == None:
         raise ValueError("This particle hierarchy seems empty !")
