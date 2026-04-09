@@ -4,7 +4,7 @@ from mpl_toolkits.axes_grid1.inset_locator import (
     BboxConnector,
     BboxConnectorPatch,
 )
-
+from pyphare.core.phare_utilities import listify
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -18,7 +18,7 @@ def dist_plot(particles, **kwargs):
 
     kwargs:
     * axis : ("x", "Vx"), ("x", "Vy"), ("x", "Vz"), ("Vx", "Vy") (default) --
-       ("Vx", "Vz"), ("Vy", "Vz"), ("Vx"), (Vy"), ("Vz")
+       ("Vx", "Vz"), ("Vy", "Vz"), ("Vx"), ("Vy"), ("Vz")
     * bins :  number of bins in each dimension, default is (50,50)
     * gaussian_filter_sigma : sigma of the gaussian filter, default is (0,0)
     * median_filter_size : size of the median filter, default is (0,0)
@@ -50,7 +50,7 @@ def dist_plot(particles, **kwargs):
     else:
         ax = kwargs["ax"]
         fig = ax.figure
-    axis = kwargs.get("axis", ("Vx", "Vy"))
+    axis = listify(kwargs.get("axis", ("Vx", "Vy")))
     vaxis = {"Vx": 0, "Vy": 1, "Vz": 2}
 
     if len(axis) == 2:
@@ -110,14 +110,15 @@ def dist_plot(particles, **kwargs):
         else:
             color = kwargs.get("color", "k")
             stride = kwargs.get("stride", 1)
+            if stride <= 0:
+                raise ValueError("stride must be a positive integer")
             markersize = kwargs.get("markersize", 0.5)
             alpha = kwargs.get("alpha", 0.5)
-            im = ax.plot(x[::stride], y[::stride],
-                         color=color,
-                         linewidth=0,
-                         marker='.',
-                         markersize=markersize,
-                         alpha=alpha)
+            im = ax.scatter(x[::stride], y[::stride],
+                            color=color,
+                            marker='.',
+                            markersize=markersize,
+                            alpha=alpha)
 
         ax.set_ylabel(kwargs.get("ylabel", axis[1]))
 
@@ -130,8 +131,11 @@ def dist_plot(particles, **kwargs):
         if cuts is not None:
             from pyphare.core.box import Box
             if ndim == 1:
-                box_new = Box(cuts[0][0], cuts[0][1])
-                new_particles = particles.select(box_new, box_type="pos")
+                if cuts[0] is None:
+                    new_particles = particles
+                else:
+                    box_new = Box(cuts[0][0], cuts[0][1])
+                    new_particles = particles.select(box_new, box_type="pos")
             elif ndim == 2:
                 box_new = Box((cuts[0][0], cuts[1][0]), (cuts[0][1], cuts[1][1]))  # TODO need to be tested
                 new_particles = particles.select(box_new, box_type="pos")
@@ -158,11 +162,12 @@ def dist_plot(particles, **kwargs):
 
         ax.set_ylabel(kwargs.get("ylabel", "f"))
 
-
     if kwargs.get("kde", False) is True:
         import seaborn as sns
-
-        sns.kdeplot(x=x, y=y, ax=ax, color="w")
+        if len(axis) == 1:
+            sns.kdeplot(x=x, ax=ax, color="w")
+        else:
+            sns.kdeplot(x=x, y=y, ax=ax, color="w")
 
     ax.set_title(kwargs.get("title", ""))
     ax.set_xlabel(kwargs.get("xlabel", axis[0]))
