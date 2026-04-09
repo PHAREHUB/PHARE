@@ -155,7 +155,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Vx", y="Vy", z="Vz")
-        return VectorField(self._get(hier, time, merged, interp))
+        return VectorField(h)
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -168,7 +168,7 @@ class Run:
             return self._get(hier_, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier_, x="Fx", y="Fy", z="Fz")
-        return VectorField(self._get(hier, time, merged, interp))
+        return VectorField(h)
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(
