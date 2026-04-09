@@ -5,9 +5,7 @@ from .patch import Patch
 from .patchlevel import PatchLevel
 from ...core.box import Box
 from ...core import box as boxm
-from ...core.phare_utilities import listify
-from ...core.phare_utilities import deep_copy
-from ...core.phare_utilities import refinement_ratio
+from ...core import phare_utilities as phut
 
 
 def format_timestamp(timestamp):
@@ -29,15 +27,15 @@ class PatchHierarchy(object):
         **kwargs,
     ):
         if not isinstance(times, (tuple, list)):
-            times = listify(times)
+            times = phut.listify(times)
 
         if not isinstance(patch_levels, (tuple, list)):
-            patch_levels = listify(patch_levels)
+            patch_levels = phut.listify(patch_levels)
 
         self.selection_box = kwargs.get("selection_box", None)
         if self.selection_box is not None:
             if not isinstance(self.selection_box, (tuple, list)):
-                self.selection_box = listify(self.selection_box)
+                self.selection_box = phut.listify(self.selection_box)
             self.selection_box = {
                 format_timestamp(t): box for t, box in zip(times, self.selection_box)
             }
@@ -57,6 +55,7 @@ class PatchHierarchy(object):
 
         self._sim = None
 
+        self.data_files = {}
         if data_files is not None and isinstance(data_files, dict):
             self.data_files = data_files
         elif data_files is not None:
@@ -64,17 +63,12 @@ class PatchHierarchy(object):
                 self.data_files.update({data_files.filename: data_files})
             else:
                 self.data_files = {data_files.filename: data_files}
-        else:
-            self.data_files = {}
 
         self.update()
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things
-        return deep_copy(self, memo, no_copy_keys)
-
-    def __getitem__(self, qty):
-        return self.__dict__[qty]
+        return phut.deep_copy(self, memo, no_copy_keys)
 
     def update(self):
         if len(self.quantities()) > 1:
@@ -96,6 +90,14 @@ class PatchHierarchy(object):
                         )
                     else:
                         self.__dict__[qty].time_hier[time] = new_lvls
+
+    def __getattr__(self, key):
+        if key in self.__dict__:
+            return self.__dict__[key]
+        for k, v in self.__dict__.items():
+            if k.endswith(key) and type(v) is PatchHierarchy:
+                return v
+        raise ValueError("PatchHierarchy.__getattr__ cannot handle input", key)
 
     def nbytes(self):
         n = 0
@@ -136,6 +138,8 @@ class PatchHierarchy(object):
         return self._sim
 
     def __call__(self, qty=None, **kwargs):
+        print("PatchHierarchy.__call__")
+
         # take slice/slab of 1/2d array from 2/3d array
         def cuts(c, coord):
             return c > coord.min() and c < coord.max()
@@ -273,12 +277,12 @@ class PatchHierarchy(object):
         first = True
         for ilvl, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
-                    m = np.nanmin(pd.dataset[:])
+                    m = np.nanmin(pd[:])
                     first = False
                 else:
-                    data_and_min = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_min = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmin(data_and_min)
 
         return m
@@ -288,22 +292,25 @@ class PatchHierarchy(object):
         first = True
         for _, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
-                    m = np.nanmax(pd.dataset[:])
+                    m = np.nanmax(pd[:])
                     first = False
                 else:
-                    data_and_max = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_max = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmax(data_and_max)
 
         return m
+
+    def refined_box(self, level_number, box):
+        return boxm.refine(box, self.refinement_ratio**level_number)
 
     def refined_domain_box(self, level_number):
         """
         returns the domain box refined for a given level number
         """
         assert level_number >= 0
-        return boxm.refine(self.domain_box, self.refinement_ratio**level_number)
+        return self.refined_box(level_number, self.domain_box)
 
     def level_domain_box(self, level_number):
         if level_number == 0:
@@ -432,9 +439,11 @@ class PatchHierarchy(object):
                 if qty is None:
                     qty = pdata_names[0]
 
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                pd = patch[qty]
+                nbrGhosts = pd.ghosts_nbr
+                any_ghosts = any(nbrGhosts)
+                val = pd[patch.box] if any_ghosts else pd[:]
+                x = pd.x[nbrGhosts[0] : -nbrGhosts[0]] if nbrGhosts[0] > 0 else pd.x
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
@@ -493,8 +502,8 @@ class PatchHierarchy(object):
             if lvl_nbr not in usr_lvls:
                 continue
             for patch in self.level(lvl_nbr, time).patches:
-                pdat = patch.patch_datas[qty]
-                data = pdat.dataset[:]
+                pdat = patch[qty]
+
                 nbrGhosts = pdat.ghosts_nbr
                 x = pdat.x
                 y = pdat.y
@@ -503,15 +512,18 @@ class PatchHierarchy(object):
                 if np.all(nbrGhosts == np.zeros_like(nbrGhosts)):
                     x = np.copy(x)
                     y = np.copy(y)
+                    data = pdat[:]
                 else:
                     data = pdat[patch.box]
                     x = np.copy(x[nbrGhosts[0] : -nbrGhosts[0]])
                     y = np.copy(y[nbrGhosts[1] : -nbrGhosts[1]])
+
                 dx, dy = pdat.layout.dl
                 x -= dx * 0.5
                 y -= dy * 0.5
                 x = np.append(x, x[-1] + dx)
                 y = np.append(y, y[-1] + dy)
+
                 im = ax.pcolormesh(
                     x,
                     y,
@@ -560,6 +572,8 @@ class PatchHierarchy(object):
             return self.plot1d(**kwargs)
         elif self.ndim == 2:
             return self.plot2d(**kwargs)
+        elif self.ndim == 3:
+            raise RuntimeError("There is no 3d plot available, consider using paraview")
 
     def dist_plot(self, **kwargs):
         """
@@ -614,6 +628,56 @@ class PatchHierarchy(object):
 
         return final, dp(final, **kwargs)
 
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return hierarchy_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return hierarchy_array_function(self, func, types, args, kwargs)
+
+    def is_compatible(self, that):
+        return (
+            type(self) is type(that) and self.time_hier.keys() == that.time_hier.keys()
+        )
+
+
+def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    if not all([hier.is_compatible(o) for o in inputs]):
+        raise TypeError("PatchHierarchy: incompatible arguments")
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    for i, time in enumerate(hier.time_hier):
+        ilvls = hier.levels(time).keys()
+        pls = [list(x.levels(time).values()) for x in inputs]
+        out = [getattr(ufunc, method)(*pl, **kwargs) for pl in zip(*pls)]
+        ret.time_hier[time] = {il: pl for il, pl in zip(ilvls, out)}
+    return ret
+
+
+def hierarchy_array_function(hier, func, types, args, kwargs):
+    if not all([hier.is_compatible(o) for o in args]):
+        raise TypeError("PatchHierarchy: incompatible arguments")
+
+    time_hier = {}
+    for i, time in enumerate(hier.time_hier):
+        ilvls = hier.levels(time).keys()
+        pls = [list(x.levels(time).values()) for x in args]
+        out = [func(*pl, **kwargs) for pl in zip(*pls)]
+        time_hier[time] = {il: pl for il, pl in zip(ilvls, out)}
+
+    if type(time_hier[time][0][0]) is dict:
+        return time_hier  # return a dictionary of times[]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    ret.time_hier = time_hier
+    return ret
+
 
 def finest_part_data(hierarchy, time=None):
     """
@@ -659,7 +723,7 @@ def finest_part_data(hierarchy, time=None):
                     parts = deepcopy(pdata.dataset)
                     create = True
                     for finerBox in lvlPatchBoxes[ilvl + 1]:
-                        coarseFinerBox = boxm.coarsen(finerBox, refinement_ratio)
+                        coarseFinerBox = boxm.coarsen(finerBox, phut.refinement_ratio)
                         within = np.where(
                             (icells >= coarseFinerBox.lower[0])
                             & (icells <= coarseFinerBox.upper[0])
@@ -718,7 +782,8 @@ def amr_grid(hierarchy, time):
                 # on other levels
                 # we take only grids not overlaped by next finer
                 coarsenedNextFinerBoxes = [
-                    boxm.coarsen(b, refinement_ratio) for b in lvlPatchBoxes[ilvl + 1]
+                    boxm.coarsen(b, phut.refinement_ratio)
+                    for b in lvlPatchBoxes[ilvl + 1]
                 ]
                 for coarseBox in coarsenedNextFinerBoxes:
                     ccells = np.arange(coarseBox.lower[0], coarseBox.upper[0] + 1)
