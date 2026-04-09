@@ -57,6 +57,7 @@ class PatchHierarchy(object):
 
         self._sim = None
 
+        self.data_files = {}
         if data_files is not None and isinstance(data_files, dict):
             self.data_files = data_files
         elif data_files is not None:
@@ -64,8 +65,6 @@ class PatchHierarchy(object):
                 self.data_files.update({data_files.filename: data_files})
             else:
                 self.data_files = {data_files.filename: data_files}
-        else:
-            self.data_files = {}
 
         self.update()
 
@@ -613,6 +612,56 @@ class PatchHierarchy(object):
                 final[pop] = kwargs["select"](particles)
 
         return final, dp(final, **kwargs)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return hierarchy_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return hierarchy_array_function(self, func, types, args, kwargs)
+
+    def is_compatible(self, that):
+        return (
+            type(self) is type(that) and self.time_hier.keys() == that.time_hier.keys()
+        )
+
+
+def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    if not all([hier.is_compatible(o) for o in inputs]):
+        raise TypeError("PatchHierarchy: incompatible arguments")
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    for i, time in enumerate(hier.time_hier):
+        ilvls = hier.levels(time).keys()
+        pls = [list(x.levels(time).values()) for x in inputs]
+        out = [getattr(ufunc, method)(*pl, **kwargs) for pl in zip(*pls)]
+        ret.time_hier[time] = {il: pl for il, pl in zip(ilvls, out)}
+    return ret
+
+
+def hierarchy_array_function(hier, func, types, args, kwargs):
+    if not all([hier.is_compatible(o) for o in args]):
+        raise TypeError("PatchHierarchy: incompatible arguments")
+
+    time_hier = {}
+    for i, time in enumerate(hier.time_hier):
+        ilvls = hier.levels(time).keys()
+        pls = [list(x.levels(time).values()) for x in args]
+        out = [func(*pl, **kwargs) for pl in zip(*pls)]
+        time_hier[time] = {il: pl for il, pl in zip(ilvls, out)}
+
+    if type(time_hier[time][0][0]) is dict:
+        return time_hier  # return a dictionary of times[]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    ret.time_hier = time_hier
+    return ret
 
 
 def finest_part_data(hierarchy, time=None):

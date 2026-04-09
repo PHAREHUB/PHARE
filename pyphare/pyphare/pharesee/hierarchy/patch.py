@@ -67,3 +67,41 @@ class Patch:
             return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
         elif idim == 1:
             return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return patch_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return patch_array_function(self, func, types, args, kwargs)
+
+    def is_compatible(self, that):
+        return type(self) is type(that) and self.patch_datas == that.patch_datas
+
+
+def patch_array_ufunc(patch, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    if not all([patch.is_compatible(o) for o in inputs]):
+        raise TypeError("Patch: incompatible arguments")
+
+    pds = [x.patch_datas.values() for x in inputs]
+    out = [getattr(ufunc, method)(*pd, **kwargs) for pd in zip(*pds)]
+    final = {k: pd for k, pd in zip(patch.patch_datas, out)}
+
+    return type(patch)(final, patch_id=patch.id, layout=patch.layout, attrs=patch.attrs)
+
+
+def patch_array_function(patch, func, types, args, kwargs):
+    if not all([patch.is_compatible(o) for o in args]):
+        raise TypeError("Patch: incompatible arguments")
+
+    pds = [x.patch_datas.values() for x in args]
+    out = [func(*pd, **kwargs) for pd in zip(*pds)]
+    final = {k: pd for k, pd in zip(patch.patch_datas, out)}
+    any_patch_data = next(iter(patch.patch_datas.values()))
+
+    if type(any_patch_data) is not type(out[0]):
+        return final
+
+    return type(patch)(final, patch_id=patch.id, layout=patch.layout, attrs=patch.attrs)
