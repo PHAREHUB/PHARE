@@ -629,7 +629,7 @@ def finest_part_data(hierarchy, time=None):
     for i_ref, p in enumerate(hierarchy.level(0, time=time).patches):
         if len(p.patch_datas):
             break
-    if i_ref == None:
+    if i_ref is None:
         raise ValueError("This particle hierarchy seems empty !")
 
     # we are going to return a dict {popname : Particles}
