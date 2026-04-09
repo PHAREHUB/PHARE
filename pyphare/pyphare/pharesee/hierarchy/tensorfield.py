@@ -10,7 +10,6 @@ from pyphare.core.box import Box
 from .hierarchy import PatchHierarchy
 
 from .patch import Patch
-from . import hierarchy_compute as hc
 from . import hierarchy_utils as hootils
 
 
@@ -34,26 +33,7 @@ class AnyTensorField(PatchHierarchy):
             return get_interpolated_selection_from(self, input)
         if input in self.__dict__:
             return self.__dict__[input]
-        raise ValueError("AnyTensorField.__getitem__ cannot handle input", input)
-
-
-class TensorField(AnyTensorField):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.names = ["xx", "xy", "xz", "yy", "yz", "zz"]
-
-    @classmethod
-    def FROM(cls, hier):
-        return super().FROM(cls, hier)
-
-    def __mul__(self, other):
-        if type(other) is TensorField:
-            raise ValueError(
-                "TensorField * TensorField is ambiguous, use pyphare.core.operators.dot or .prod"
-            )
-        return TensorField(hootils.compute_hier_from(hc.compute_mul, self, other=other))
-
-    # is finished in lazy hierarchy work
+        raise IndexError("AnyTensorField.__getitem__ cannot handle input", input)
 
 
 def GetDomainSize(hier, **kwargs):

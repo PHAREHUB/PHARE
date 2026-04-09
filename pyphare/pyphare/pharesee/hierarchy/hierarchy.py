@@ -619,42 +619,37 @@ class PatchHierarchy(object):
     def __array_function__(self, func, types, args, kwargs):
         return hierarchy_array_function(self, func, types, args, kwargs)
 
-    def is_compatible(self, that):
-        return (
-            type(self) is type(that) and self.time_hier.keys() == that.time_hier.keys()
-        )
-
 
 def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
     if method != "__call__":
         return NotImplemented
 
-    if not all([hier.is_compatible(o) for o in inputs]):
-        raise TypeError("PatchHierarchy: incompatible arguments")
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in inputs]
 
     from copy import deepcopy
 
     ret = deepcopy(hier)
-    for i, time in enumerate(hier.time_hier):
-        ilvls = hier.levels(time).keys()
-        pls = [list(x.levels(time).values()) for x in inputs]
-        out = [getattr(ufunc, method)(*pl, **kwargs) for pl in zip(*pls)]
-        ret.time_hier[time] = {il: pl for il, pl in zip(ilvls, out)}
+    for time in hier.time_hier:
+        for ilvl in hier.levels(time):
+            ret.time_hier[time][ilvl] = getattr(ufunc, method)(
+                *extract(time, ilvl), **kwargs
+            )
     return ret
 
 
 def hierarchy_array_function(hier, func, types, args, kwargs):
-    if not all([hier.is_compatible(o) for o in args]):
-        raise TypeError("PatchHierarchy: incompatible arguments")
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in args]
 
     time_hier = {}
-    for i, time in enumerate(hier.time_hier):
-        ilvls = hier.levels(time).keys()
-        pls = [list(x.levels(time).values()) for x in args]
-        out = [func(*pl, **kwargs) for pl in zip(*pls)]
-        time_hier[time] = {il: pl for il, pl in zip(ilvls, out)}
+    for time in hier.time_hier:
+        time_hier[time] = {}
+        for ilvl in hier.levels(time):
+            time_hier[time][ilvl] = func(*extract(time, ilvl), **kwargs)
 
-    if type(time_hier[time][0][0]) is dict:
+    any_level = next(iter(next(iter(time_hier.values())).values()))
+    if type(any_level[0]) is dict:
         return time_hier  # return a dictionary of times[]
 
     from copy import deepcopy

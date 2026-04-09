@@ -204,35 +204,36 @@ class FieldData(PatchData):
 
 def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
     if method != "__call__":
-        raise NotImplementedError
+        return NotImplemented
 
     in_ = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
     out_ = getattr(ufunc, method)(*in_, **kwargs)
 
-    if isinstance(out_, np.ndarray):
+    if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
         return type(patch_data)(
             layout=patch_data.layout,
             field_name=patch_data.field_name,
             data=out_,
             centering=patch_data.centerings,
+            ghosts_nbr=patch_data.ghosts_nbr,
         )
 
-    raise NotImplementedError
+    return out_
 
 
 def field_data_array_function(patch_data, func, types, args, kwargs):
     in_ = [a.dataset if isinstance(a, FieldData) else a for a in args]
     out_ = func(*in_, **kwargs)
 
-    if phut.is_scalar(out_):
-        return out_
-
-    return type(patch_data)(
-        layout=patch_data.layout,
-        field_name=patch_data.field_name,
-        data=out_,
-        centering=patch_data.centerings,
-    )
+    if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
+        return type(patch_data)(
+            layout=patch_data.layout,
+            field_name=patch_data.field_name,
+            data=out_,
+            centering=patch_data.centerings,
+            ghosts_nbr=patch_data.ghosts_nbr,
+        )
+    return out_
 
 
 class ParticleData(PatchData):

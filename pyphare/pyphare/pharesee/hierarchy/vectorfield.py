@@ -103,6 +103,8 @@ class VectorField(tensorfield.AnyTensorField):
             )
 
     def gaussian(self, sigma=2):
-        return hootils.compute_hier_from(
-            hc._compute_gaussian_filter_on_vectorfield, self, sigma=sigma
+        return VectorField.FROM(
+            hootils.compute_hier_from(
+                hc._compute_gaussian_filter_on_vectorfield, self, sigma=sigma
+            )
         )

@@ -74,34 +74,32 @@ class Patch:
     def __array_function__(self, func, types, args, kwargs):
         return patch_array_function(self, func, types, args, kwargs)
 
-    def is_compatible(self, that):
-        return type(self) is type(that) and self.patch_datas == that.patch_datas
-
 
 def patch_array_ufunc(patch, ufunc, method, *inputs, **kwargs):
     if method != "__call__":
         return NotImplemented
 
-    if not all([patch.is_compatible(o) for o in inputs]):
-        raise TypeError("Patch: incompatible arguments")
+    def extract(key):
+        return [x.patch_datas[key] if type(x) is type(patch) else x for x in inputs]
 
-    pds = [x.patch_datas.values() for x in inputs]
-    out = [getattr(ufunc, method)(*pd, **kwargs) for pd in zip(*pds)]
-    final = {k: pd for k, pd in zip(patch.patch_datas, out)}
-
-    return type(patch)(final, patch_id=patch.id, layout=patch.layout, attrs=patch.attrs)
+    patch_datas = {
+        key: getattr(ufunc, method)(*extract(key), **kwargs)
+        for key in patch.patch_datas
+    }
+    return type(patch)(
+        patch_datas, patch_id=patch.id, layout=patch.layout, attrs=patch.attrs
+    )
 
 
 def patch_array_function(patch, func, types, args, kwargs):
-    if not all([patch.is_compatible(o) for o in args]):
-        raise TypeError("Patch: incompatible arguments")
+    def extract(key):
+        return [x.patch_datas[key] if type(x) is type(patch) else x for x in args]
 
-    pds = [x.patch_datas.values() for x in args]
-    out = [func(*pd, **kwargs) for pd in zip(*pds)]
-    final = {k: pd for k, pd in zip(patch.patch_datas, out)}
+    final = {key: func(*extract(key), **kwargs) for key in patch.patch_datas}
     any_patch_data = next(iter(patch.patch_datas.values()))
+    any_data = next(iter(final.values()))
 
-    if type(any_patch_data) is not type(out[0]):
+    if type(any_patch_data) is not type(any_data):
         return final
 
     return type(patch)(final, patch_id=patch.id, layout=patch.layout, attrs=patch.attrs)

@@ -22,7 +22,7 @@ class PatchLevel:
     def __getitem__(self, idx):
         if type(idx) is int:
             return self.patches[idx]
-        raise ValueError("PatchLevel::__getitem__ unhandled input type:", type(idx))
+        raise IndexError(f"PatchLevel::__getitem__ unhandled input type: {type(idx)}")
 
     @property
     def cell_width(self):
@@ -34,30 +34,26 @@ class PatchLevel:
     def __array_function__(self, func, types, args, kwargs):
         return patch_level_array_function(self, func, types, args, kwargs)
 
-    def is_compatible(self, that):
-        return type(self) is type(that) and len(self.patches) == len(that.patches)
-
 
 def patch_level_array_ufunc(patch_level, ufunc, method, *inputs, **kwargs):
     if method != "__call__":
         return NotImplemented
 
-    if not all([patch_level.is_compatible(o) for o in inputs]):
-        raise TypeError("PatchLevel: incompatible arguments")
+    def extract(pidx):
+        return [x.patches[pidx] if type(x) is type(patch_level) else x for x in inputs]
 
-    ps = [x.patches for x in inputs]
-    out = [getattr(ufunc, method)(*p, **kwargs) for p in zip(*ps)]
-
+    out = [
+        getattr(ufunc, method)(*extract(pidx), **kwargs)
+        for pidx in range(len(patch_level.patches))
+    ]
     return type(patch_level)(patch_level.level_number, out)
 
 
 def patch_level_array_function(patch_level, func, types, args, kwargs):
-    if not all([patch_level.is_compatible(o) for o in args]):
-        raise TypeError("PatchLevel: incompatible arguments")
+    def extract(pidx):
+        return [x.patches[pidx] if type(x) is type(patch_level) else x for x in args]
 
-    ps = [x.patches for x in args]
-    out = [func(*p, **kwargs) for p in zip(*ps)]
-
+    out = [func(*extract(pidx), **kwargs) for pidx in range(len(patch_level.patches))]
     if type(out[0]) is not type(patch_level[0]):
         return out
     return type(patch_level)(patch_level.level_number, out)

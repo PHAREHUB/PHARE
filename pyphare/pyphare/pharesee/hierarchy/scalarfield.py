@@ -216,9 +216,11 @@ class ScalarField(tensorfield.AnyTensorField):
         return ScalarField.FROM(h)
 
     def gaussian(self, sigma=2):
-        return hootils.compute_hier_from(
-            hc._compute_gaussian_filter_on_scalarfield,
-            self,
-            sigma=sigma,
-            qty=self.patch_datas.keys()[0],
+        return ScalarField.FROM(
+            hootils.compute_hier_from(
+                hc._compute_gaussian_filter_on_scalarfield,
+                self,
+                sigma=sigma,
+                qty=next(iter(self.quantities())),
+            )
         )

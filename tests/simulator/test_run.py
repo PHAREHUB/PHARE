@@ -186,8 +186,9 @@ def plot(test, diag_dir):
             np.exp(B_finest).plot(
                 filename=plot_file_for_qty(plot_dir, f"b{c}_exp", time), qty=f"{c}"
             )
+            print("np.add(hier, 2)", np.add(2, B_finest))
             print("np.mean(B_finest)", np.mean(B_finest))
-            print("np.clip(B_finest)", np.clip(B_finest))
+            print("np.clip(B_finest)", np.clip(B_finest, 0, 1))
 
             np.dot(B_finest, B_finest).plot(
                 filename=plot_file_for_qty(plot_dir, f"b{c}_mean", time), qty=f"{c}"

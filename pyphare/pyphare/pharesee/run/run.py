@@ -267,7 +267,7 @@ class Run:
                 return root_cell_width / fac
 
             except KeyError:
-                ...  # time may not be avilaable for given quantity
+                ...  # time may not be available for given quantity
 
         raise RuntimeError("Unable toGetDl")
 
