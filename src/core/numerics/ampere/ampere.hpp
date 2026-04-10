@@ -32,9 +32,14 @@ public:
         auto& Jy = J(Component::Y);
         auto& Jz = J(Component::Z);
 
-        layout_->evalOnBox(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
-        layout_->evalOnBox(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
-        layout_->evalOnBox(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
+        // Evaluate on interior + first ghost layer. B is already valid in its ghost layer
+        // after fillMagneticGhosts, so the curl stencil is safe here. This fills J ghosts
+        // locally and removes the need for the MPI fillCurrentGhosts barrier.
+        // Peer ghost cells: B is an exact copy of the neighbour interior — no physics change.
+        // Level-border ghost cells: J = curl(interpolated B) rather than interpolated(J).
+        layout_->evalOnFirstGhostLayer(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
+        layout_->evalOnFirstGhostLayer(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
+        layout_->evalOnFirstGhostLayer(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
     }
 
 
