@@ -8,6 +8,8 @@ from copy import deepcopy
 
 from pyphare.core.box import Box
 from .hierarchy import PatchHierarchy
+from .hierarchy import ValueHierarchy
+from .hierarchy import IndexHierarchy
 
 from .patch import Patch
 from . import hierarchy_utils as hootils
@@ -31,36 +33,55 @@ class AnyTensorField(PatchHierarchy):
         cls = type(input)
         if cls is Box or cls is slice:
             return get_interpolated_selection_from(self, input)
+        if cls is IndexHierarchy:
+            return get_from_index_hierarchy(self, input)
         if input in self.__dict__:
             return self.__dict__[input]
         raise IndexError("AnyTensorField.__getitem__ cannot handle input", input)
 
-    def find_peaks(self):
-        return find_peaks(self)
+    def find_peaks(self, qty=None, **kwargs):
+        return find_peaks(self, qty, **kwargs)
 
 
 def find_peaks(hier: AnyTensorField, qty=None, **kwargs):
     from scipy.signal import find_peaks
 
     times = hier.times()
-    if len(hier.times()) > 1:
+    if len(times) > 1:
         raise ValueError("AnyTensorField::find_peaks does not support multiple times")
+    if qty and qty not in hier.quantities():
+        raise ValueError(f"AnyTensorField::find_peaks unknown quantitiy: {qty}")
 
-    ret = {}
+    indexes = {}
+    for ilvl, lvl in hier.levels(times[0]).items():
+        indexes[ilvl] = []
+        for patch in lvl:
+            peaks = {}
+            for k, v in patch.patch_datas.items():
+                if qty is None or qty == k:
+                    peaks[k] = find_peaks(v.dataset[:].flatten(), **kwargs)[0]
+            indexes[ilvl].append(peaks)
+    return IndexHierarchy(times[0], hier, indexes)
 
-    for time in hier.time_hier:
-        ret[time] = {}
-        for ilvl, lvl in hier.levels(time).items():
-            ret[time][ilvl] = []
-            for patch in lvl:
-                vals = {}
-                for k, v in patch.patch_datas.items():
-                    if qty is None or qty == k:
-                        vals[k] = find_peaks(v.dataset[:].flatten(), **kwargs)[0]
-                        vals[k + "_vals"] = v.dataset[:].flatten()[vals[k]]
-                ret[time][ilvl].append(vals)
 
-    return ret
+def get_from_index_hierarchy(hier, index_hier):
+    if hier != index_hier.hier:
+        raise ValueError(
+            "AnyTensorField::get_from_index_hierarchy cannot operate on two different hierarchies"
+        )
+
+    values = {}
+    for ilvl, lvl in index_hier.indexes.items():
+        patch_level = hier.level(ilvl, index_hier.time)
+        values[ilvl] = []
+        for idx, indexes in enumerate(lvl):
+            data = {}
+            patch = patch_level[idx]
+            for k, v in indexes.items():
+                if k in patch.patch_datas:
+                    data[k] = patch[k].dataset[:].flatten()[v]
+            values[ilvl].append(data)
+    return ValueHierarchy(index_hier.time, hier, values)
 
 
 def GetDomainSize(hier, **kwargs):
@@ -79,7 +100,7 @@ def get_interpolated_selection_from(hier: AnyTensorField, input, interp="nearest
         raise ValueError("PatchHierarchy not supported, must be AnyTensorField")
 
     times = hier.times()
-    if len(hier.times()) > 1:
+    if len(times) > 1:
         raise ValueError(
             "AnyTensorField interpoloation does not support multiple times"
         )
