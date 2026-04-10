@@ -35,6 +35,33 @@ class AnyTensorField(PatchHierarchy):
             return self.__dict__[input]
         raise IndexError("AnyTensorField.__getitem__ cannot handle input", input)
 
+    def find_peaks(self):
+        return find_peaks(self)
+
+
+def find_peaks(hier: AnyTensorField, qty=None, **kwargs):
+    from scipy.signal import find_peaks
+
+    times = hier.times()
+    if len(hier.times()) > 1:
+        raise ValueError("AnyTensorField::find_peaks does not support multiple times")
+
+    ret = {}
+
+    for time in hier.time_hier:
+        ret[time] = {}
+        for ilvl, lvl in hier.levels(time).items():
+            ret[time][ilvl] = []
+            for patch in lvl:
+                vals = {}
+                for k, v in patch.patch_datas.items():
+                    if qty is None or qty == k:
+                        vals[k] = find_peaks(v.dataset[:].flatten(), **kwargs)[0]
+                        vals[k + "_vals"] = v.dataset[:].flatten()[vals[k]]
+                ret[time][ilvl].append(vals)
+
+    return ret
+
 
 def GetDomainSize(hier, **kwargs):
     root_cell_width = hier.level(0).cell_width

@@ -176,6 +176,8 @@ def plot(test, diag_dir):
                 qty=f"B{c}",
                 plot_patches=True,
             )
+        B = run.GetB(time)
+        print("peaks", B.find_peaks())
         B_finest = run.GetB(time)[:]
         B_gaussian = B_finest.gaussian()
         for c in ["x", "y", "z"]:
