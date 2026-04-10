@@ -1186,6 +1186,20 @@ namespace core
             evalOnBox_(field, fn, indices);
         }
 
+        // Iterates over the first ghost layer only (physStart-1 .. physEnd+1).
+        // Safe to use for Ampere after fillMagneticGhosts: B has >= 2 ghost layers so the
+        // curl stencil at ghost depth 1 always has valid B on both sides.
+        template<typename Field, typename Fn>
+        void evalOnFirstGhostLayer(Field& field, Fn&& fn) const
+        {
+            auto indices = [&](auto const& centering, auto const direction) {
+                auto [s, e] = this->physicalStartToEnd(centering, direction);
+                return std::make_pair(s - 1, e + 1);
+            };
+
+            evalOnBox_(field, fn, indices);
+        }
+
         auto levelNumber() const { return levelNumber_; }
 
 
