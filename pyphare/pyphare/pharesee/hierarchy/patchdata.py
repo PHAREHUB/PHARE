@@ -1,8 +1,12 @@
+#
+#
+#
+
 import numpy as np
 
-from ...core import phare_utilities as phut
+from ...core import gridlayout
 from ...core import box as boxm
-from ...core.box import Box
+from ...core import phare_utilities as phut
 
 
 class PatchData:
@@ -35,38 +39,20 @@ class FieldData(PatchData):
 
     @property
     def x(self):
-        withGhosts = self.field_name != "tags"
         if self._x is None:
-            self._x = self.layout.yeeCoordsFor(
-                self.field_name,
-                "x",
-                withGhosts=withGhosts,
-                centering=self.centerings[0],
-            )
+            self._x = self.yeeCoordsFor(0)
         return self._x
 
     @property
     def y(self):
-        withGhosts = self.field_name != "tags"
         if self._y is None:
-            self._y = self.layout.yeeCoordsFor(
-                self.field_name,
-                "y",
-                withGhosts=withGhosts,
-                centering=self.centerings[1],
-            )
+            self._y = self.yeeCoordsFor(1)
         return self._y
 
     @property
     def z(self):
-        withGhosts = self.field_name != "tags"
         if self._z is None:
-            self._z = self.layout.yeeCoordsFor(
-                self.field_name,
-                "z",
-                withGhosts=withGhosts,
-                centering=self.centerings[2],
-            )
+            self._z = self.yeeCoordsFor(2)
         return self._z
 
     def primal_directions(self):
@@ -91,12 +77,16 @@ class FieldData(PatchData):
     def __ne__(self, that):
         return not (self == that)
 
-    def select(self, box):
+    def select(self, box_or_slice):
         """
         return view of internal data based on overlap of input box
            returns a view +1 in size in primal directions
         """
-        assert isinstance(box, Box) and box.ndim == self.box.ndim
+        if isinstance(box_or_slice, (slice, list, tuple)):
+            return self.dataset[box_or_slice]
+
+        box = box_or_slice
+        assert isinstance(box, boxm.Box) and box.ndim == self.box.ndim
 
         gbox = self.ghost_box.copy()
         gbox.upper += self.primal_directions()
@@ -114,8 +104,6 @@ class FieldData(PatchData):
         return np.array([])
 
     def __getitem__(self, box_or_slice):
-        if isinstance(box_or_slice, slice):
-            return self.dataset[box_or_slice]
         return self.select(box_or_slice)
 
     def __setitem__(self, box_or_slice, val):
@@ -132,38 +120,15 @@ class FieldData(PatchData):
         self._y = None
         self._z = None
 
+        self.dl = np.asarray(layout.dl)
         self.field_name = field_name
         self.name = field_name
-        self.dl = np.asarray(layout.dl)
         self.ndim = layout.box.ndim
-        self.ghosts_nbr = np.zeros(self.ndim, dtype=int)
 
-        if field_name in layout.centering["X"]:
-            directions = ["X", "Y", "Z"][: layout.box.ndim]  # drop unused directions
-            self.centerings = [
-                layout.qtyCentering(field_name, direction) for direction in directions
-            ]
-        elif "centering" in kwargs:
-            if isinstance(kwargs["centering"], list):
-                self.centerings = kwargs["centering"]
-                assert len(self.centerings) == self.ndim
-            else:
-                if self.ndim != 1:
-                    raise ValueError(
-                        "FieldData invalid dimenion for centering argument, expected list for dim > 1"
-                    )
-                self.centerings = [kwargs["centering"]]
-        else:
-            raise ValueError(
-                f"centering not specified and cannot be inferred from field name : {field_name}"
-            )
-
-        if self.field_name != "tags":
-            for i, centering in enumerate(self.centerings):
-                self.ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+        self.centerings = self._resolve_centering(**kwargs)
+        self.ghosts_nbr = self._resolve_ghost_nbr(**kwargs)
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
-
         self.size = np.copy(self.ghost_box.shape)
         self.offset = np.zeros(self.ndim)
 
@@ -188,6 +153,88 @@ class FieldData(PatchData):
         if select is not None:
             return tuple(g[select] for g in mesh)
         return mesh
+
+    def yeeCoordsFor(self, idx):
+        return self.layout.yeeCoordsFor(
+            self.field_name,
+            gridlayout.directions[idx],
+            withGhosts=any(self.ghosts_nbr) and self.field_name != "tags",
+            centering=self.centerings[idx],
+            nbrGhosts=self.ghosts_nbr,
+        )
+
+    def _resolve_ghost_nbr(self, **kwargs):
+        layout = self.layout
+        ghosts_nbr = kwargs.get("ghosts_nbr", np.zeros(self.ndim, dtype=int))
+        if "ghosts_nbr" not in kwargs:
+            if self.field_name != "tags":
+                for i, centering in enumerate(self.centerings):
+                    ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+        return phut.np_array_ify(ghosts_nbr, layout.box.ndim)
+
+    def _resolve_centering(self, **kwargs):
+        field_name = self.field_name
+        if "centering" in kwargs:
+            if isinstance(kwargs["centering"], list):
+                assert len(kwargs["centering"]) == self.ndim
+                return kwargs["centering"]
+            else:
+                if self.ndim != 1:
+                    raise ValueError(
+                        "FieldData invalid dimenion for centering argument, expected list for dim > 1"
+                    )
+                return phut.listify(kwargs["centering"])
+
+        if field_name in self.layout.centering["X"]:
+            directions = ["X", "Y", "Z"][: self.ndim]  # drop unused directions
+            return [
+                self.layout.qtyCentering(field_name, direction)
+                for direction in directions
+            ]
+        raise ValueError(
+            f"centering not specified and cannot be inferred from field name : {field_name}"
+        )
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return field_data_array_function(self, func, types, args, kwargs)
+
+
+def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    in_ = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
+    out_ = getattr(ufunc, method)(*in_, **kwargs)
+
+    if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
+        return type(patch_data)(
+            layout=patch_data.layout,
+            field_name=patch_data.field_name,
+            data=out_,
+            centering=patch_data.centerings,
+            ghosts_nbr=patch_data.ghosts_nbr,
+        )
+
+    return out_
+
+
+def field_data_array_function(patch_data, func, types, args, kwargs):
+    in_ = [a.dataset if isinstance(a, FieldData) else a for a in args]
+    out_ = func(*in_, **kwargs)
+
+    if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
+        return type(patch_data)(
+            layout=patch_data.layout,
+            field_name=patch_data.field_name,
+            data=out_,
+            centering=patch_data.centerings,
+            ghosts_nbr=patch_data.ghosts_nbr,
+        )
+
+    return out_
 
 
 class ParticleData(PatchData):

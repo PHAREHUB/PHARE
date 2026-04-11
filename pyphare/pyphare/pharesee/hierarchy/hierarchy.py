@@ -16,6 +16,40 @@ def format_timestamp(timestamp):
     return "{:.10f}".format(timestamp)
 
 
+class IndexHierarchy:
+    def __init__(self, time, hier, indexes):
+        self.time = time
+        self.hier = hier
+        self.indexes = indexes
+
+    def __str__(self):
+        s = "IndexHierarchy: \n"
+        s += "Time {}\n".format(self.time)
+        for ilvl, lvl in self.indexes.items():
+            s += "Level {}\n".format(ilvl)
+            for ip, qty_indexes in enumerate(lvl):
+                for qty_name, indexes in qty_indexes.items():
+                    s += f"    P{ip} {type} {qty_name} {indexes} \n"
+        return s
+
+
+class ValueHierarchy:
+    def __init__(self, time, hier, values):
+        self.time = time
+        self.hier = hier
+        self.values = values
+
+    def __str__(self):
+        s = "ValueHierarchy: \n"
+        s += "Time {}\n".format(self.time)
+        for ilvl, lvl in self.values.items():
+            s += "Level {}\n".format(ilvl)
+            for ip, qty_values in enumerate(lvl):
+                for qty_name, values in qty_values.items():
+                    s += f"    P{ip} {type} {qty_name} {values} \n"
+        return s
+
+
 class PatchHierarchy(object):
     """is a collection of patch levels"""
 
@@ -57,6 +91,7 @@ class PatchHierarchy(object):
 
         self._sim = None
 
+        self.data_files = {}
         if data_files is not None and isinstance(data_files, dict):
             self.data_files = data_files
         elif data_files is not None:
@@ -64,8 +99,6 @@ class PatchHierarchy(object):
                 self.data_files.update({data_files.filename: data_files})
             else:
                 self.data_files = {data_files.filename: data_files}
-        else:
-            self.data_files = {}
 
         self.update()
 
@@ -613,6 +646,51 @@ class PatchHierarchy(object):
                 final[pop] = kwargs["select"](particles)
 
         return final, dp(final, **kwargs)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return hierarchy_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return hierarchy_array_function(self, func, types, args, kwargs)
+
+
+def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in inputs]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    for time in hier.time_hier:
+        for ilvl in hier.levels(time):
+            ret.time_hier[time][ilvl] = getattr(ufunc, method)(
+                *extract(time, ilvl), **kwargs
+            )
+    return ret
+
+
+def hierarchy_array_function(hier, func, types, args, kwargs):
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in args]
+
+    time_hier = {}
+    for time in hier.time_hier:
+        time_hier[time] = {}
+        for ilvl in hier.levels(time):
+            time_hier[time][ilvl] = func(*extract(time, ilvl), **kwargs)
+
+    any_level = next(iter(next(iter(time_hier.values())).values()))
+    if type(any_level[0]) is dict:
+        return time_hier  # return a dictionary of times[]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    ret.time_hier = time_hier
+    return ret
 
 
 def finest_part_data(hierarchy, time=None):
