@@ -233,6 +233,7 @@ def field_data_array_function(patch_data, func, types, args, kwargs):
             centering=patch_data.centerings,
             ghosts_nbr=patch_data.ghosts_nbr,
         )
+
     return out_
 
 

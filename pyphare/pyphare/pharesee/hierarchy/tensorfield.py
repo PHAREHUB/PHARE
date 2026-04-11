@@ -44,6 +44,9 @@ class AnyTensorField(PatchHierarchy):
 
 
 def find_peaks(hier: AnyTensorField, qty=None, **kwargs):
+    if hier.ndim > 1:
+        raise ValueError("AnyTensorField::find_peaks only supports 1d simulations")
+
     from scipy.signal import find_peaks
 
     times = hier.times()
@@ -59,7 +62,7 @@ def find_peaks(hier: AnyTensorField, qty=None, **kwargs):
             peaks = {}
             for k, v in patch.patch_datas.items():
                 if qty is None or qty == k:
-                    peaks[k] = find_peaks(v.dataset[:].flatten(), **kwargs)[0]
+                    peaks[k] = find_peaks(v.dataset[:], **kwargs)[0]
             indexes[ilvl].append(peaks)
     return IndexHierarchy(times[0], hier, indexes)
 
@@ -79,7 +82,7 @@ def get_from_index_hierarchy(hier, index_hier):
             patch = patch_level[idx]
             for k, v in indexes.items():
                 if k in patch.patch_datas:
-                    data[k] = patch[k].dataset[:].flatten()[v]
+                    data[k] = patch[k].dataset[v]
             values[ilvl].append(data)
     return ValueHierarchy(index_hier.time, hier, values)
 

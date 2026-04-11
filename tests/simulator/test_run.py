@@ -15,12 +15,11 @@ ph.NO_GUI()
 
 
 time_step = 0.005
-final_time = 0.005
-time_step_nbr = int(final_time / time_step)
-timestamps = np.arange(0, final_time + 0.01, 0.05)
+final_time = time_step
+timestamps = [0, final_time]
 
 
-def config(diag_dir, diag_format):
+def config_2d(diag_dir, diag_format):
     L = 0.5
 
     sim = ph.Simulation(
@@ -177,10 +176,11 @@ def plot(test, diag_dir):
                 plot_patches=True,
             )
         B = run.GetB(time)
-        peaks = B.find_peaks()
-        print("peaks", type(peaks), peaks)
-        values = B[peaks]
-        print("values", values)
+        if B.ndim == 1:  # only 1d for now
+            peaks = B.find_peaks()
+            print("peaks", type(peaks), peaks)
+            values = B[peaks]
+            print("values", values)
         B_finest = run.GetB(time)[:]
         B_gaussian = B_finest.gaussian()
         for c in ["x", "y", "z"]:
@@ -195,53 +195,56 @@ def plot(test, diag_dir):
             print("np.mean(B_finest)", np.mean(B_finest))
             print("np.clip(B_finest)", np.clip(B_finest, 0, 1))
 
-            np.dot(B_finest, B_finest).plot(
-                filename=plot_file_for_qty(plot_dir, f"b{c}_mean", time), qty=f"{c}"
-            )
+            if B.ndim > 1:  # in 1d it returns a scalar?
+                np.dot(B_finest, B_finest).plot(
+                    filename=plot_file_for_qty(plot_dir, f"b{c}_mean", time), qty=f"{c}"
+                )
 
             B_finest.plot(
                 filename=plot_file_for_qty(plot_dir, f"b{c}_finest", time), qty=f"{c}"
             )
-        run.GetDivB(time).plot(
-            filename=plot_file_for_qty(plot_dir, "divb", time),
-            plot_patches=True,
-            vmin=1e-11,
-            vmax=2e-10,
-        )
-        run.GetRanks(time).plot(
-            filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
-        )
+
         run.GetN(time, pop_name=pop_name).plot(
             filename=plot_file_for_qty(plot_dir, "N", time), plot_patches=True
         )
 
-        run.GetJ(time).plot(
-            filename=plot_file_for_qty(plot_dir, "jz", time),
-            qty="z",
-            plot_patches=True,
-            vmin=-2,
-            vmax=2,
-        )
-        run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pxx", time),
-            qty=pop_name + "_Pxx",
-            plot_patches=True,
-        )
-        run.GetPressure(time, pop_name=pop_name).plot(
-            filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pzz", time),
-            qty=pop_name + "_Pzz",
-            plot_patches=True,
-        )
-        run.GetPi(time).plot(
-            filename=plot_file_for_qty(plot_dir, "Pxx", time),
-            qty="Pxx",
-            plot_patches=True,
-        )
-        run.GetPi(time).plot(
-            filename=plot_file_for_qty(plot_dir, "Pzz", time),
-            qty="Pzz",
-            plot_patches=True,
-        )
+        if B.ndim > 1:  # divB is 0 by construction in 1D
+            run.GetDivB(time).plot(
+                filename=plot_file_for_qty(plot_dir, "divb", time),
+                plot_patches=True,
+                vmin=1e-11,
+                vmax=2e-10,
+            )
+            run.GetRanks(time).plot(  # not implemented in 1d
+                filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
+            )
+            run.GetJ(time).plot(  # Jx in 1d has issues?
+                filename=plot_file_for_qty(plot_dir, "jz", time),
+                qty="z",
+                plot_patches=True,
+                vmin=-2,
+                vmax=2,
+            )
+            run.GetPressure(time, pop_name=pop_name).plot(
+                filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pxx", time),
+                qty=pop_name + "_Pxx",
+                plot_patches=True,
+            )
+            run.GetPressure(time, pop_name=pop_name).plot(
+                filename=plot_file_for_qty(plot_dir, f"{pop_name}_Pzz", time),
+                qty=pop_name + "_Pzz",
+                plot_patches=True,
+            )
+            run.GetPi(time).plot(
+                filename=plot_file_for_qty(plot_dir, "Pxx", time),
+                qty="Pxx",
+                plot_patches=True,
+            )
+            run.GetPi(time).plot(
+                filename=plot_file_for_qty(plot_dir, "Pzz", time),
+                qty="Pzz",
+                plot_patches=True,
+            )
     return plot_dir
 
 
@@ -256,13 +259,145 @@ def assert_file_exists_with_size_at_least(file, size=10000):
         )
 
 
-class RunTest(SimulatorTest):
+def config_1d(diag_dir, diag_format):
+    sim = ph.Simulation(
+        time_step=time_step,
+        final_time=final_time,
+        cells=(200),
+        dl=(0.40),
+        refinement="tagging",
+        max_nbr_levels=3,
+        nesting_buffer=1,
+        clustering="tile",
+        tag_buffer="1",
+        hyper_resistivity=0.002,
+        resistivity=0.001,
+        diag_options={
+            "format": diag_format,
+            "options": {"dir": diag_dir, "mode": "overwrite"},
+        },
+    )
+    L = sim.simulation_domain()
+
+    def density(x):
+        return 1.0
+
+    def by(x):
+        return 0.01 * np.cos(2 * np.pi * x / L[0])
+
+    def bz(x):
+        return 0.01 * np.sin(2 * np.pi * x / L[0])
+
+    def bx(x):
+        return 1.0
+
+    def vx(x):
+        return 0.0
+
+    def vy(x):
+        return 0.01 * np.cos(2 * np.pi * x / L[0])
+
+    def vz(x):
+        return 0.01 * np.sin(2 * np.pi * x / L[0])
+
+    def vthx(x):
+        return 0.01
+
+    def vthy(x):
+        return 0.01
+
+    def vthz(x):
+        return 0.01
+
+    vvv = {
+        "vbulkx": vx,
+        "vbulky": vy,
+        "vbulkz": vz,
+        "vthx": vthx,
+        "vthy": vthy,
+        "vthz": vthz,
+    }
+
+    ph.MaxwellianFluidModel(
+        bx=bx, by=by, bz=bz, protons={"charge": 1, "density": density, **vvv}
+    )
+    ph.ElectronModel(closure="isothermal", Te=0.0)
+
+    for quantity in ["E", "B"]:
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
+
+    for quantity in [
+        "mass_density",
+        "charge_density",
+        "bulkVelocity",
+        "pressure_tensor",
+    ]:
+        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
+
+    pop = "protons"
+    ph.ParticleDiagnostics(
+        quantity="domain", write_timestamps=timestamps, population_name=pop
+    )
+
+    for quantity in ["density", "charge_density", "pressure_tensor"]:
+        ph.FluidDiagnostics(
+            quantity=quantity, write_timestamps=timestamps, population_name=pop
+        )
+    return sim
+
+
+class RunTest1D(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(RunTest, self).__init__(*args, **kwargs)
+        super(RunTest1D, self).__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(RunTest, self).tearDown()
+        super(RunTest1D, self).tearDown()
+        if self.simulator is not None:
+            self.simulator.reset()
+        self.simulator = None
+        ph.global_vars.sim = None
+
+    def _test_any_format(self, sim, diag_dir):
+        self.register_diag_dir_for_cleanup(diag_dir)
+        Simulator(sim).run().reset()
+        run = Run(diag_dir)
+        B = run.GetB(timestamps[-1], all_primal=False)
+        self.assertTrue(B.ndim == 1)
+
+        self.assertTrue(B.levels()[0].patches[0].attrs)
+
+        B = run.GetB(timestamps[-1])
+        self.assertTrue(B.levels()[0].patches[0].attrs)
+
+    def test_run_phareh5(self):
+        diag_dir = "phare_outputs/test_run_phareh5_1d"
+        sim = config_1d(diag_dir, "phareh5")
+        self._test_any_format(sim, diag_dir)
+
+        # move to _test_any_format when vtkhdf supports divb etc
+        if cpp.mpi_rank() == 0:
+            plot_dir = plot(self, diag_dir)
+
+            for time in timestamps:
+                for q in ["N"]:
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(plot_dir, q, time)
+                    )
+
+                for c in ["x", "y", "z"]:
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(plot_dir, f"b{c}", time)
+                    )
+
+
+class RunTest2D(SimulatorTest):
+    def __init__(self, *args, **kwargs):
+        super(RunTest2D, self).__init__(*args, **kwargs)
+        self.simulator = None
+
+    def tearDown(self):
+        super(RunTest2D, self).tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
@@ -279,8 +414,8 @@ class RunTest(SimulatorTest):
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
     def test_run_phareh5(self):
-        diag_dir = "phare_outputs/test_run_phareh5"
-        sim = config(diag_dir, "phareh5")
+        diag_dir = "phare_outputs/test_run_phareh5_2d"
+        sim = config_2d(diag_dir, "phareh5")
         self._test_any_format(sim, diag_dir)
 
         # move to _test_any_format when vtkhdf supports divb etc
@@ -297,8 +432,6 @@ class RunTest(SimulatorTest):
                     assert_file_exists_with_size_at_least(
                         plot_file_for_qty(plot_dir, f"b{c}", time)
                     )
-
-        cpp.mpi_barrier()
 
 
 if __name__ == "__main__":

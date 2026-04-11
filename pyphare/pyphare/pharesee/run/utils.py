@@ -464,7 +464,7 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
 
         nx = 1 + int(domain[0] / dl[0])
 
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x", withGhosts=True)
+        x = yeeCoordsFor([0] * dim, nbrGhosts[0], dl, [nx], qty, "x", withGhosts=True)
         finest_coords = (x,)
 
     elif dim == 2:
