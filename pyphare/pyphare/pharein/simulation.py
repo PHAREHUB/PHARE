@@ -420,10 +420,10 @@ def check_patch_size(ndim, **kwargs):
     largest_patch_size = kwargs.get("largest_patch_size", None)
 
     # to prevent primal ghost box overlaps of non adjacent patches, we need smallest_patch_size * 2 + 1
-    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim) * 2 + 1
+    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim) + 1
     # TORM next lines after https://github.com/llnl/SAMRAI/issues/311
-    min_per_interp = [6, 9, 9]  # SAMRAI BORDER BUG
-    smallest_patch_size = phare_utilities.np_array_ify(min_per_interp[interp - 1], ndim)
+    # min_per_interp = [3, 5, 5]  # SAMRAI BORDER BUG
+    # smallest_patch_size = phare_utilities.np_array_ify(min_per_interp[interp - 1], ndim)
     if "smallest_patch_size" in kwargs and kwargs["smallest_patch_size"] is not None:
         smallest_patch_size = phare_utilities.np_array_ify(
             kwargs["smallest_patch_size"], ndim

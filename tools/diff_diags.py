@@ -4,8 +4,8 @@ import os
 import sys
 from pathlib import Path
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.cpp import cpp_lib
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
@@ -22,7 +22,6 @@ diag_dir = sys.argv[1]
 
 ph.NO_GUI()
 DO_PLOTS = True  # global plot skip
-cpp = cpp_lib()
 dpi=300
 
 
@@ -93,7 +92,7 @@ def diff_current_density(run, plot_dir, time):
     if hootils.has_non_zero(differ, time):
         for ilvl in differ.levels(time).keys():
             differ.plot(
-                filename=plot_file_for_qty(plot_dir, f"ionCharge", time, f"L{ilvl}"),
+                filename=plot_file_for_qty(plot_dir, "ionCharge", time, f"L{ilvl}"),
                 plot_patches=True,
                 vmin=0,
                 vmax=+1e-16,

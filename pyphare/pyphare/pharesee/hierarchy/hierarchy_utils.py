@@ -148,9 +148,9 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     for t in reference_hier.times():
         patch_levels = {}
         for ilvl in reference_hier.levels(t).keys():
-            patch_levels[ilvl] = PatchLevel(
-                ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
-            )
+            patches = new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
+            if patches:
+                patch_levels[ilvl] = PatchLevel(ilvl, patches)
         patch_levels_per_time.append(patch_levels)
     return PatchHierarchy(
         patch_levels_per_time,
@@ -182,8 +182,7 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
 
 def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     reference_hier = hierarchies[0]
-
-    if not reference_hier.has_time(t):
+    if ilvl not in reference_hier.levels(t):
         return []
 
     new_patches = []
@@ -600,7 +599,7 @@ class EqualityReport:
                     phut.assert_fp_any_all_close(ref[:], cmp[:], atol=1e-16)
             except AssertionError as e:
                 print(e)
-        return self.failed[0][0]
+        return self.failed[0][0] if self.failed else "=="
 
     def __call__(self, reason, ref=None, cmp=None):
         self.failed.append((reason, ref, cmp))
@@ -793,22 +792,20 @@ def zero_field_data_like(field_data):
 
 
 def zeros_like(that, **kwargs):
-    dispatch = {
-        PatchHierarchy: zero_patch_hierarchy_like,
-        FieldData: zero_field_data_like,
-    }
-    if type(that) not in dispatch:
-        raise RuntimeError(
-            "Cannot resolve type to zero_like, consider updating if required"
-        )
-    return dispatch[type(that)](that, **kwargs)
+    if issubclass(type(that), PatchHierarchy):
+        return zero_patch_hierarchy_like(that, **kwargs)
+    if issubclass(type(that), FieldData):
+        return zero_field_data_like(that, **kwargs)
+    raise RuntimeError(
+        "Cannot resolve type to zeros_like, consider updating if required"
+    )
 
 
-def field_data_has_non_zero(field_data, **kwargs):
+def field_data_has_non_zero(field_data):
     return bool(len(np.nonzero(field_data.dataset[:])[0]))
 
 
-def patch_hierarchy_has_non_zero(hier, time, **kwargs):
+def patch_hierarchy_has_non_zero(hier, time):
     for ilvl, lvl in hier.levels(time).items():
         for patch in lvl:
             for pd in patch.patch_datas.values():
@@ -817,24 +814,21 @@ def patch_hierarchy_has_non_zero(hier, time, **kwargs):
     return False
 
 
-def has_non_zero(that, **kwargs):
-    dispatch = {
-        PatchHierarchy: patch_hierarchy_has_non_zero,
-        FieldData: field_data_has_non_zero,
-    }
-    if type(that) not in dispatch:
-        raise RuntimeError(
-            "Cannot resolve type to has_non_zero, consider updating if required"
-        )
-    return dispatch[type(that)](that, **kwargs)
+def has_non_zero(that, time=None):
+    if issubclass(type(that), PatchHierarchy):
+        return patch_hierarchy_has_non_zero(that, time)
+    if issubclass(type(that), FieldData):
+        return field_data_has_non_zero(that)
+    raise RuntimeError(
+        "Cannot resolve type to has_non_zero, consider updating if required"
+    )
 
 
 def max_from_field_data(field_data):
     return np.max(field_data.dataset[:])
 
 
-def max_from_patch_hierarchy(hier, time, **kwargs):
-    qty = kwargs.get("qty")
+def max_from_patch_hierarchy(hier, time, qty):
     vals = {}
     for ilvl, lvl in hier.levels(time).items():
         for patch in lvl:
@@ -848,13 +842,23 @@ def max_from_patch_hierarchy(hier, time, **kwargs):
     return vals
 
 
-def max_from(that, **kwargs):
-    dispatch = {
-        PatchHierarchy: max_from_patch_hierarchy,
-        FieldData: max_from_field_data,
-    }
-    if type(that) not in dispatch:
-        raise RuntimeError(
-            "Cannot resolve type to max_from, consider updating if required"
-        )
-    return dispatch[type(that)](that, **kwargs)
+def max_from(that, time=None, qty=None):
+    if issubclass(type(that), PatchHierarchy):
+        return max_from_patch_hierarchy(that, time, qty)
+    if issubclass(type(that), FieldData):
+        return max_from_field_data(that)
+    raise RuntimeError("Cannot resolve type to max_from, consider updating if required")
+
+
+def min_max_patch_shape(hier, time, qty=None):
+    time_hier = hier.levels(time)
+    val = {ilvl: [10000, 0] for ilvl in time_hier.keys()}
+
+    for ilvl, lvl in time_hier.items():
+        for patch in lvl:
+            for key, pd in patch.patch_datas.items():
+                if qty is None or key == qty:
+                    val[ilvl][0] = min(np.min(pd.dataset.shape), val[ilvl][0])
+                    val[ilvl][1] = max(np.max(pd.dataset.shape), val[ilvl][1])
+
+    return val
