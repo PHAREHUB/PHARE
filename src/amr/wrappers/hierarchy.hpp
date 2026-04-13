@@ -89,7 +89,9 @@ public:
     void closeRestartFile() { SamraiLifeCycle::getRestartManager()->closeRestartFile(); }
 
     NO_DISCARD bool isFromRestart() const
-    { return SamraiLifeCycle::getRestartManager()->isFromRestart(); }
+    {
+        return SamraiLifeCycle::getRestartManager()->isFromRestart();
+    }
 
 private:
     std::optional<std::string> static restartFilePath(auto const& dict)
@@ -99,6 +101,7 @@ private:
                 return dict["simulation"]["restarts"]["loadPath"].template to<std::string>();
         return std::nullopt;
     }
+
 
     std::optional<std::string> _restartFilePath; // only set if we have a restart to load
     initializer::PHAREDict sim_dict;

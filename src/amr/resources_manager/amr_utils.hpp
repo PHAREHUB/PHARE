@@ -18,6 +18,7 @@
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/HierarchyNeighbors.h>
 #include <SAMRAI/geom/CartesianPatchGeometry.h>
+#include <stdexcept>
 
 #include <algorithm>
 #include <stdexcept>
