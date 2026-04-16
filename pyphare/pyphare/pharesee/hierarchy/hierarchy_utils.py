@@ -699,3 +699,64 @@ def single_patch_for_LO(hier, qties=None, skip=None):
                 else:
                     raise RuntimeError("unexpected state")
     return cier
+
+
+def plot_velocity_peaks_over_time(run, times, temperature, out_file, sigma=0):
+    """POC - not clean or finished"""
+    import matplotlib.pyplot as plt
+    from scipy.signal import find_peaks
+    from pyphare.pharesee.run.utils import _compute_to_primal
+
+    def get_velocities():
+        for it, t in enumerate(times):
+            Vi = run.GetVi(t)[:]
+            if sigma > 0:
+                Vi = Vi.gaussian(sigma)
+            xV = Vi.level(0, t)[0]["x"].x[2:-2]  # constant
+            v = Vi.level(0, t)[0]["x"].dataset[2:-2]  # nans on borders
+
+            if np.isnan(np.sum(v)):
+                print("summary")
+                print("nan", np.count_nonzero(np.isnan(v)))
+                print("notnan", np.count_nonzero(~np.isnan(v)))
+                raise RuntimeError("Nan!")
+
+            if it == 0:
+                vt = np.zeros((len(v), len(times)))
+            vt[:, it] = v
+
+        return xV, vt
+
+    def get_peaks(x, Vs):
+        nt = Vs.shape[1]
+        positions = np.zeros((nt, 2))
+        amplitudes = np.zeros((nt, 2))
+        for it in range(nt):
+            ps = find_peaks(Vs[:, it], height=0.010)
+            if len(ps[0]) == 1:
+                positions[it, 0] = x[ps[0][0]]
+                positions[it, 1] = x[ps[0][0]]
+                amplitudes[it, 0] = Vs[ps[0][0], it]
+                amplitudes[it, 1] = Vs[ps[0][0], it]
+            else:
+                positions[it, 0] = x[ps[0][0]]
+                positions[it, 1] = x[ps[0][1]]
+                amplitudes[it, 0] = Vs[ps[0][0], it]
+                amplitudes[it, 1] = Vs[ps[0][1], it]
+        return positions, amplitudes
+
+    x, Vs = get_velocities()
+    positions, amplitudes = get_peaks(x, Vs)
+
+    fig, ax = plt.subplots()
+
+    for it, t in enumerate(times):
+        ax.plot(x, Vs[:, it], label=r"t={:6.4f}".format(t))
+        ax.set_ylim((-0.03, 0.1))
+        ax.axhline(0, ls="--", color="k")
+        for p in positions[it, :]:
+            ax.axvline(p, color="gray", ls="-.")
+    ax.set_title("$T_e$ = {:6.4f}".format(temperature))
+    ax.legend()
+
+    fig.savefig(out_file)
