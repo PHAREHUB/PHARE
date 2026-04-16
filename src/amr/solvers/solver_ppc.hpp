@@ -403,7 +403,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, ModelViews_t
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
+        // fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
+        // J ghost layer is now filled locally by Ampere (evalOnFirstGhostLayer).
     }
 
     {
@@ -439,7 +440,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, ModelViews_t
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere");
         ampere_(views.layouts, views.electromagPred_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
+        // fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
+        // J ghost layer is now filled locally by Ampere (evalOnFirstGhostLayer).
     }
 
     {
@@ -477,7 +479,8 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, ModelViews_t&
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere");
         ampere_(views.layouts, views.electromag_B, views.J);
         setTime([](auto& state) -> auto& { return state.J; });
-        fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
+        // fromCoarser.fillCurrentGhosts(views.model().state.J, level, newTime);
+        // J ghost layer is now filled locally by Ampere (evalOnFirstGhostLayer).
     }
 
     {
