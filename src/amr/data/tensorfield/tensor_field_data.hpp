@@ -47,7 +47,7 @@ private:
     auto static make_grids(ComponentNames const& compNames, GridLayout const& layout, tensor_t qty)
     {
         auto qts = PhysicalQuantity::componentsQuantities(qty);
-        return core::for_N<N, core::for_N_R_mode::make_array>(
+        return core::for_N_make_array<N>(
             [&](auto i) { return Grid_t{compNames[i], layout, qts[i], NaN}; });
     }
 

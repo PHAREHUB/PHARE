@@ -2,12 +2,12 @@
 #define PHARE_AMR_UTILITIES_BOX_BOX_HPP
 
 
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/box/box.hpp"
 
 
 #include "SAMRAI/hier/Box.h"
-#include "core/utilities/box/box.hpp"
-#include "core/def.hpp"
 
 
 namespace PHARE::amr
@@ -111,8 +111,7 @@ NO_DISCARD inline bool isInBox(SAMRAI::hier::Box const& box, Particle const& par
 template<std::size_t dim>
 auto as_point(SAMRAI::hier::IntVector const& vec)
 {
-    return core::Point{
-        core::for_N<dim, core::for_N_R_mode::make_array>([&](auto i) { return vec[i]; })};
+    return core::Point{core::for_N_make_array<dim>([&](auto i) { return vec[i]; })};
 }
 
 

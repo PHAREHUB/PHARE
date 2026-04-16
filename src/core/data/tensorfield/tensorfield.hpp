@@ -37,7 +37,7 @@ R static tensor_field_names(std::string const& name)
 template<typename Field_t, std::size_t N, typename Qtys>
 auto static tensor_field_make_fields(std::array<std::string, N> const& names, Qtys const& qtys)
 {
-    return for_N<N, for_N_R_mode::make_array>([&](auto i) { return Field_t{names[i], qtys[i]}; });
+    return for_N_make_array<N>([&](auto i) { return Field_t{names[i], qtys[i]}; });
 }
 
 } // namespace PHARE::core::detail
