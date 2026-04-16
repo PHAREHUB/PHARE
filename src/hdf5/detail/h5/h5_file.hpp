@@ -7,17 +7,32 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
+#include "H5pubconf.h" // may define H5_HAVE_SUBFILING_VFD
+
+#if !defined(H5_HAVE_SUBFILING_VFD)
+#define H5_HAVE_SUBFILING_VFD 0
+#endif
 
 #include "highfive/H5File.hpp"
 #include "highfive/H5Easy.hpp"
 
-
+#if H5_HAVE_SUBFILING_VFD
+#include "H5FDsubfiling.h"
+#include "H5FDioc.h"
+#endif
 
 namespace PHARE::hdf5::h5::detail
 {
-
+int inline determine_subfile_count()
+{
+#if H5_HAVE_SUBFILING_VFD
+    return core::get_env_as("PHARE_H5_SUB_FILES", int{20});
+#endif
+    return 0;
+}
 // https://support.hdfgroup.org/documentation/hdf5/latest/hdf5_chunking.html
 static inline auto const CHUNK_SIZE = core::get_env_as("PHARE_H5_CHUNK_SIZE", std::size_t{1024});
+static inline auto const SUB_FILES  = determine_subfile_count();
 
 } // namespace PHARE::hdf5::h5::detail
 
@@ -38,31 +53,83 @@ NO_DISCARD auto vector_for_dim()
         return std::vector<std::vector<std::vector<Data>>>();
 }
 
+
+struct SubFiler
+{
+    friend HighFive::FileAccessProps;
+
+public:
+    SubFiler([[maybe_unused]] hid_t const plist_id,
+             [[maybe_unused]] int const subfiles = detail::SUB_FILES)
+    {
+#if H5_HAVE_SUBFILING_VFD
+        if (H5Pget_fapl_subfiling(plist_id, &vfd_config) < 0)
+            throw std::runtime_error("Failed to get subfiling config!");
+        if (H5Pget_fapl_ioc(plist_id, &ioc_config) < 0)
+            throw std::runtime_error("Failed to get IOC config!");
+
+        // review https://github.com/HDFGroup/hdf5-examples/blob/master/C/H5PAR/ph5_subfiling.c#L217
+        vfd_config.shared_cfg.stripe_count = subfiles;
+
+        if (H5Pset_fapl_ioc(vfd_config.ioc_fapl_id, &ioc_config) < 0)
+            throw std::runtime_error("Subfiling ioc failed!");
+#else
+        throw std::runtime_error("Subfiling not available!");
+#endif
+    }
+
+    ~SubFiler()
+    {
+#if H5_HAVE_SUBFILING_VFD
+        H5Pclose(vfd_config.ioc_fapl_id);
+#endif
+    }
+
+private:
+    void apply(hid_t const plist_id) const
+    {
+#if H5_HAVE_SUBFILING_VFD
+        if (H5Pset_fapl_subfiling(plist_id, &vfd_config) < 0)
+            throw std::runtime_error("Subfiling failed!");
+#endif
+    }
+
+private:
+#if H5_HAVE_SUBFILING_VFD
+    H5FD_subfiling_config_t vfd_config;
+    H5FD_ioc_config_t ioc_config;
+#endif
+};
+
 class HighFiveFile
 {
 public:
-    template<typename FileAccessProps>
-    static auto createHighFiveFile(std::string const path, FileOp flags, bool para,
-                                   FileAccessProps& fapl)
+    static auto createHighFiveFile(std::string const path, FileOp flags, bool para)
     {
+        auto fapl = HighFive::FileAccessProps::Empty();
         if (para)
         {
 #if defined(H5_HAVE_PARALLEL)
             fapl.add(HighFive::MPIOFileAccess{MPI_COMM_WORLD, MPI_INFO_NULL});
-#else
+
+#if H5_HAVE_SUBFILING_VFD
+            if (detail::SUB_FILES > 0) // run time disabled
+                fapl.add(SubFiler{fapl.getId()});
+
+#endif // H5_HAVE_SUBFILING_VFD
+
+#else  // NOT H5_HAVE_PARALLEL
             std::cout << "WARNING: PARALLEL HDF5 not available" << std::endl;
             if (core::mpi::size() > 1)
-            {
                 throw std::runtime_error("HDF5 NOT PARALLEL!");
-            }
-#endif
+#endif // defined(H5_HAVE_PARALLEL)
         }
+
         return HiFile{path, flags, fapl};
     }
 
     HighFiveFile(std::string const path, FileOp flags = HiFile::ReadWrite, bool para = true)
-        : fapl_{}
-        , h5file_{createHighFiveFile(path, flags, para, fapl_)}
+        : h5file_{createHighFiveFile(path, flags, para)}
     {
     }
 
@@ -287,7 +354,6 @@ public:
     HighFiveFile& operator=(HighFiveFile&&)      = delete;
 
 private:
-    HighFive::FileAccessProps fapl_;
     HiFile h5file_;
 
 
