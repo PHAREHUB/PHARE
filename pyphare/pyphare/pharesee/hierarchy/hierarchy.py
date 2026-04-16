@@ -583,11 +583,14 @@ class PatchHierarchy(object):
 
         if finest:
             final = finest_part_data(self)
-            if axis[0] == "x":
-                xbins = amr_grid(self, time)
-                bins = (xbins, vbins)
-            else:
-                bins = (vbins, vbins)
+            if len(axis) == 2:
+                if axis[0] == "x":
+                    xbins = amr_grid(self, time)
+                    bins = (xbins, vbins)
+                else:
+                    bins = (vbins, vbins)
+            elif len(axis) == 1:
+                bins = vbins
             kwargs["bins"] = bins
 
         else:
@@ -600,12 +603,16 @@ class PatchHierarchy(object):
                         pops = list(patch.patch_datas.keys())
 
                     for pop in pops:
-                        tmp = copy.copy(patch.patch_datas[pop].dataset)
-
-                        if final[pop] is None:
-                            final[pop] = tmp
+                        if patch.patch_datas.__len__() == 0:
+                            tmp = None
                         else:
-                            final[pop].add(tmp)
+                            tmp = copy.copy(patch.patch_datas[pop].dataset)
+
+                        if tmp is not None:
+                            if final[pop] is None:
+                                final[pop] = tmp
+                            else:
+                                final[pop].add(tmp)
 
         # select particles
         if "select" in kwargs:
