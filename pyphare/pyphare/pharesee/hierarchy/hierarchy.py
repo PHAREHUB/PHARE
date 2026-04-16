@@ -16,6 +16,40 @@ def format_timestamp(timestamp):
     return "{:.10f}".format(timestamp)
 
 
+class IndexHierarchy:
+    def __init__(self, time, hier, indexes):
+        self.time = time
+        self.hier = hier
+        self.indexes = indexes
+
+    def __str__(self):
+        s = "IndexHierarchy: \n"
+        s += "Time {}\n".format(self.time)
+        for ilvl, lvl in self.indexes.items():
+            s += "Level {}\n".format(ilvl)
+            for ip, qty_indexes in enumerate(lvl):
+                for qty_name, indexes in qty_indexes.items():
+                    s += f"    P{ip} {type} {qty_name} {indexes} \n"
+        return s
+
+
+class ValueHierarchy:
+    def __init__(self, time, hier, values):
+        self.time = time
+        self.hier = hier
+        self.values = values
+
+    def __str__(self):
+        s = "ValueHierarchy: \n"
+        s += "Time {}\n".format(self.time)
+        for ilvl, lvl in self.values.items():
+            s += "Level {}\n".format(ilvl)
+            for ip, qty_values in enumerate(lvl):
+                for qty_name, values in qty_values.items():
+                    s += f"    P{ip} {type} {qty_name} {values} \n"
+        return s
+
+
 class PatchHierarchy(object):
     """is a collection of patch levels"""
 
@@ -57,6 +91,7 @@ class PatchHierarchy(object):
 
         self._sim = None
 
+        self.data_files = {}
         if data_files is not None and isinstance(data_files, dict):
             self.data_files = data_files
         elif data_files is not None:
@@ -64,8 +99,6 @@ class PatchHierarchy(object):
                 self.data_files.update({data_files.filename: data_files})
             else:
                 self.data_files = {data_files.filename: data_files}
-        else:
-            self.data_files = {}
 
         self.update()
 
