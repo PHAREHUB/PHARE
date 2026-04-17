@@ -12,7 +12,6 @@
 
 
 
-
 namespace PHARE::core
 {
 template<std::size_t dim>
