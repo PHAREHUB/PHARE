@@ -438,8 +438,9 @@ class PatchHierarchy(object):
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
+                lw = kwargs.get("lw", 1)
                 color = kwargs.get("color", "k")
-                ax.plot(x, val, label=label, marker=marker, ls=ls, color=color)
+                ax.plot(x, val, label=label, marker=marker, ls=ls, lw=lw, color=color)
 
         ax.set_title(kwargs.get("title", ""))
         ax.set_xlabel(kwargs.get("xlabel", "x"))

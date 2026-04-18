@@ -20,12 +20,10 @@ def _compute_dot_product(patch_datas, **kwargs):
 
 
 def _compute_sqrt(patch_datas, **kwargs):
-    ref_name = next(iter(patch_datas.keys()))
-
     dset = np.sqrt(patch_datas["value"][:])
 
     return (
-        {"name": "value", "data": dset, "centering": patch_datas[ref_name].centerings},
+        {"name": "value", "data": dset, "centering": patch_datas["value"].centerings},
     )
 
 
