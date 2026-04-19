@@ -1,0 +1,63 @@
+{
+
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "(gdb) Launch",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "python3",
+            "args": ["tests/functional/harris/harris_2d.py"],
+            "stopAtEntry": false,
+            "environment": [],
+            "externalConsole": false,
+            "cwd" : "${workspaceFolder}",
+            "MIMode": "gdb",
+            "setupCommands": [
+                { 
+                    "description": "Additional libs",
+                    "text": "set env PHARE_LOG=CLI",
+                },
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                },
+                {
+                    "description": "Set Disassembly Flavor to Intel",
+                    "text": "-gdb-set disassembly-flavor intel",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Python C++ Debugger",
+            "type": "pythoncpp",
+            "request": "launch",
+            "pythonLaunchName": "Python: Current File",
+            "cppAttachName": "(gdb) Attach"
+        },
+        {
+            "name": "(gdb) Attach",
+            "type": "cppdbg",
+            "request": "attach",
+            "program": "/opt/py/py/bin/python3",
+            "processId": "",
+            "MIMode": "gdb",
+            "setupCommands": [
+                {
+                    "description": "Enable pretty-printing for gdb",
+                    "text": "-enable-pretty-printing",
+                    "ignoreFailures": true
+                }
+            ]
+        },
+        {
+            "name": "Python: Current File",
+            "type": "python",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal"
+        }
+    ]
+}
