@@ -81,7 +81,7 @@ See section :ref:
 
 
 Advanced usage
-^^^^^^^^^^^^^
+^^^^^^^^^^^^^^
 
 
 
