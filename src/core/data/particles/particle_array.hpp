@@ -2,18 +2,19 @@
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_HPP
 
 
-#include <cstddef>
-#include <utility>
-#include <vector>
-
 #include "core/def.hpp"
-#include "core/logger.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/cellmap.hpp"
 #include "core/utilities/range/range.hpp"
 
 #include "particle.hpp"
+
+
+#include <vector>
+#include <cstddef>
+#include <utility>
+
 
 namespace PHARE::core
 {
@@ -41,7 +42,7 @@ public:
 
 
 public:
-    ParticleArray(box_t box)
+    ParticleArray(box_t box = {})
         : box_{box}
         , cellMap_{box_}
     {
@@ -146,6 +147,27 @@ public:
     void empty_map() { cellMap_.empty(); }
 
 
+    template<typename Cell>
+    bool swap_last_reduce_by_one(Cell const& oldCell, std::size_t const idx)
+    {
+        // swap last to index
+        // swap idx to last
+        // --size
+        // return true if you need to repeat the current index == expected
+
+        bool const idx_is_last = idx == size() - 1;
+        if (!idx_is_last)
+        {
+            cellMap_.swap(oldCell, particles_[size() - 1].iCell, idx, size() - 1);
+            particles_[idx] = particles_[size() - 1];
+        }
+
+        cellMap_.erase(*this, oldCell, size() - 1); // doesn't erase from particles vector
+        resize(size() - 1);
+        return !idx_is_last;
+    }
+
+
     NO_DISCARD auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
 
     using cell_t = std::array<int, dim>;
@@ -180,12 +202,21 @@ public:
 
 
     template<typename Cell>
-    void change_icell(Cell const& newCell, std::size_t particleIndex)
+    void change_icell(Particle_t& /*particle*/, Cell const& oldCell,
+                      std::size_t const particleIndex)
     {
-        auto oldCell                    = particles_[particleIndex].iCell;
+        if (auto const box_is_valid = box_.size() > 1)
+            cellMap_.update(particles_, particleIndex, oldCell);
+    }
+
+
+    template<typename Cell>
+    void change_icell(Cell const& newCell, std::size_t const particleIndex)
+    {
+        auto const oldCell              = particles_[particleIndex].iCell;
         particles_[particleIndex].iCell = newCell;
-        auto const box_is_valid         = box_.size() > 1;
-        if (box_is_valid)
+
+        if (auto const box_is_valid = box_.size() > 1)
             cellMap_.update(particles_, particleIndex, oldCell);
     }
 

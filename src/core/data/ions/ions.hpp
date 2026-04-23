@@ -27,11 +27,11 @@ namespace core
     {
     public:
         using value_type                = IonPopulation;
-        using field_type                = typename IonPopulation::field_type;
-        using vecfield_type             = typename IonPopulation::vecfield_type;
-        using Float                     = typename field_type::type;
-        using tensorfield_type          = typename IonPopulation::tensorfield_type;
-        using particle_array_type       = typename IonPopulation::particle_array_type;
+        using field_type                = IonPopulation::field_type;
+        using vecfield_type             = IonPopulation::vecfield_type;
+        using Float                     = field_type::type;
+        using tensorfield_type          = IonPopulation::tensorfield_type;
+        using particle_array_type       = IonPopulation::particle_array_type;
         using gridlayout_type           = GridLayout;
         static constexpr auto dimension = GridLayout::dimension;
 
