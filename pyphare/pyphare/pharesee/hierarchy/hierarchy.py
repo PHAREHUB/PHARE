@@ -573,7 +573,7 @@ class PatchHierarchy(object):
         finest = kwargs.get("finest", False)
         pops = kwargs.get("pop", [])
         time = kwargs.get("time", self.times()[0])
-        axis = kwargs.get("axis", ("Vx", "Vy"))
+        axis = listify(kwargs.get("axis", ("Vx", "Vy")))
         all_pops = list(self.level(0, time).patches[0].patch_datas.keys())
 
         vmin = kwargs.get("vmin", -2)
