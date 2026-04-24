@@ -1,4 +1,5 @@
 #
+from .patchdata import FieldData
 
 
 class Patch:
@@ -67,3 +68,55 @@ class Patch:
             return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
         elif idim == 1:
             return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        print(f"__array_ufunct__ of Patch called for {ufunc.__name__}")
+        if method != "__call__":
+            return NotImplemented
+
+        pds = []
+        for x in inputs:
+            if isinstance(x, Patch):
+                keys_ = []
+                pds_ = []
+                for k, p in x.patch_datas.items():
+                    keys_.append(k)
+                    pds_.append(p)
+                pds.append(pds_)
+            else:
+                raise TypeError("this arg should be a Patch")
+
+        out = [getattr(ufunc, method)(*pd, **kwargs) for pd in zip(*pds)]
+
+        final = {}
+        for k, pd in zip(keys_, out):  # TODO hmmmm, the output patch will keep the keys of the last patch in inputs
+            final[k] = pd
+
+        return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        print(f"__array_function__ of Patch {func.__name__} called for {[getattr(a, 'name', a) for a in args]}")
+
+        pds = []
+        others = []
+        for x in args:
+            if isinstance(x, Patch):
+                keys_ = []
+                pds_ = []
+                for k, p in x.patch_datas.items():
+                    keys_.append(k)
+                    pds_.append(p)
+                pds.append(pds_)
+            else:
+                others.append(x)
+
+        out = []
+        for pd in zip(*pds):
+            out.append(func(*pd, *others, **kwargs))
+
+        final = {}
+        for k, pd in zip(keys_, out):
+            final[k] = pd
+
+        return Patch(final, patch_id=self.id, layout=self.layout, attrs=self.attrs)
+
