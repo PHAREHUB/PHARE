@@ -1,3 +1,8 @@
+#
+#
+#
+
+
 class PatchLevel:
     """is a collection of patches"""
 
@@ -13,3 +18,10 @@ class PatchLevel:
         return min([patch.patch_datas[name].x.min() for patch in self.patches]), max(
             [patch.patch_datas[name].x.max() for patch in self.patches]
         )
+
+    def __getitem__(self, idx):
+        return self.patches[idx]
+
+    @property
+    def cell_width(self):
+        return self.patches[0].layout.dl
