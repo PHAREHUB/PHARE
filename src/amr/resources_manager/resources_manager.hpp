@@ -353,6 +353,28 @@ namespace amr
             }
 
 
+            struct Patch
+            {
+                Patch(LevelLooper* looper, std::shared_ptr<SAMRAI::hier::Patch> const& patch)
+                    : looper{looper}
+                    , patch{patch}
+                {
+                    looper->set(*patch);
+                }
+
+                Patch(Patch const&)            = delete;
+                Patch(Patch&&)                 = delete;
+                Patch& operator=(Patch const&) = delete;
+                Patch& operator=(Patch&&)      = delete;
+
+                SAMRAI::hier::Patch const& operator*() { return *patch; }
+
+                ~Patch() { looper->unset(); }
+
+                LevelLooper* looper;
+                std::shared_ptr<SAMRAI::hier::Patch> const patch;
+            };
+
             struct Iterator
             {
                 void operator++() { ++raw; }
@@ -382,6 +404,8 @@ namespace amr
 
             auto begin() { return Iterator{this, level.begin()}; }
             auto end() { return Iterator{this, level.end()}; };
+            auto size() const { return static_cast<std::size_t>(level.getLocalNumberOfPatches()); }
+            auto operator[](std::size_t const idx) { return Patch{this, level.getPatch(idx)}; }
 
             ResourcesManager& rm;
             Level_t& level;
@@ -413,7 +437,8 @@ namespace amr
 
                 if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
                 {
-                    // unpack the tuple subResources and apply for each element registerResources()
+                    // unpack the tuple subResources and apply for each element
+                    // registerResources()
                     std::apply(
                         [this, &IDs](auto&... subResource) {
                             (this->getIDs_(subResource, IDs), ...);

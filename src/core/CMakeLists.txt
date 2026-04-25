@@ -8,7 +8,6 @@ set( SOURCES_INC
      data/grid/gridlayout.hpp
      data/grid/gridlayout_impl.hpp
      data/grid/gridlayoutimplyee.hpp
-     data/grid/gridlayout_utils.hpp
      data/ndarray/ndarray_vector.hpp
      data/particles/particle.hpp
      data/particles/particle_utilities.hpp
