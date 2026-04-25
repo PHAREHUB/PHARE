@@ -239,7 +239,7 @@ private:
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
     {
-        auto const lvlCoeff        = 1. / std::pow(4, layout_->levelNumber());
+        auto const lvlCoeff        = 1. / std::pow(4, layout_.levelNumber());
         auto constexpr min_density = 0.1;
         auto computeHR             = [&]<auto BxProj, auto ByProj, auto BzProj, auto nProj>() {
             auto const BxOnE = GridLayout::template project<BxProj>(B(Component::X), index);

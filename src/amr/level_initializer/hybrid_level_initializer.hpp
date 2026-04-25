@@ -35,17 +35,15 @@ namespace solver
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::interp_order;
 
-        using Ampere_t = AmpereTransformer<GridLayoutT, amr_types>;
-        using Ohm_t    = OhmTransformer<GridLayoutT, amr_types>;
-
-        Ohm_t ohm_;
-        Ampere_t ampere_;
+        using Ampere_t = AmpereLevelTransformer<HybridModel>;
+        using Ohm_t    = OhmLevelTransformer<HybridModel>;
+        core::OhmInfo ohm_info;
 
         inline bool isRootLevel(int const levelNumber) const { return levelNumber == 0; }
 
     public:
         explicit HybridLevelInitializer(PHARE::initializer::PHAREDict const& dict)
-            : ohm_{dict["algo"]["ohm"]}
+            : ohm_info{core::OhmInfo::FROM(dict["algo"]["ohm"])}
         {
         }
 
@@ -159,7 +157,7 @@ namespace solver
                     auto& E = hybridModel.state.electromag.E;
                     auto& J = hybridModel.state.J;
 
-                    ampere_(level, hybridModel, B, J);
+                    Ampere_t{level, hybridModel}(B, J);
                     setTime(J);
                     hybMessenger.fillCurrentGhosts(J, level, 0.);
 
@@ -167,7 +165,7 @@ namespace solver
                     for (auto& patch : rm.enumerate(level, electrons))
                         electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
 
-                    ohm_(level, hybridModel, B, J, E);
+                    Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
                     setTime(E);
                     hybMessenger.fillElectricGhosts(E, level, 0.);
                 }
