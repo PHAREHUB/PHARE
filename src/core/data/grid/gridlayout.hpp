@@ -1108,7 +1108,7 @@ namespace core
         template<typename Field>
         Box<std::uint32_t, dimension> domainBoxFor(Field const& field) const
         {
-            return _BoxFor(field, [&](auto const& centering, auto const direction) {
+            return BoxFor(field, [&](auto const& centering, auto const direction) {
                 return this->physicalStartToEnd(centering, direction);
             });
         }

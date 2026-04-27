@@ -34,26 +34,22 @@ public:
                               recons_mp5_R_(u_2, u_1, u, u1, u2));
     }
 
-    template<auto direction, typename Field>
-    static auto center_reconstruct(Field const& U, MeshIndex<Field::dimension> index,
-                                   auto projection)
+    template<auto direction, auto Projection, typename Field>
+    static auto center_reconstruct(Field const& U, MeshIndex<Field::dimension> index)
     {
-        auto u_3 = GridLayout::project(
-            U,
-            GridLayout::template previous<direction>(GridLayout::template previous<direction>(
-                GridLayout::template previous<direction>(index))),
-            projection);
-        auto u_2 = GridLayout::project(U,
-                                       GridLayout::template previous<direction>(
-                                           GridLayout::template previous<direction>(index)),
-                                       projection);
-        auto u_1
-            = GridLayout::project(U, GridLayout::template previous<direction>(index), projection);
-        auto u  = GridLayout::project(U, index, projection);
-        auto u1 = GridLayout::project(U, GridLayout::template next<direction>(index), projection);
-        auto u2 = GridLayout::project(
-            U, GridLayout::template next<direction>(GridLayout::template next<direction>(index)),
-            projection);
+        auto u_3 = GridLayout::template project<Projection>(
+            U, GridLayout::template previous<direction>(GridLayout::template previous<direction>(
+                   GridLayout::template previous<direction>(index))));
+        auto u_2 = GridLayout::template project<Projection>(
+            U, GridLayout::template previous<direction>(
+                   GridLayout::template previous<direction>(index)));
+        auto u_1 = GridLayout::template project<Projection>(
+            U, GridLayout::template previous<direction>(index));
+        auto u  = GridLayout::template project<Projection>(U, index);
+        auto u1 = GridLayout::template project<Projection>(
+            U, GridLayout::template next<direction>(index));
+        auto u2 = GridLayout::template project<Projection>(
+            U, GridLayout::template next<direction>(GridLayout::template next<direction>(index)));
 
         return std::make_pair(recons_mp5_L_(u_3, u_2, u_1, u, u1),
                               recons_mp5_R_(u_2, u_1, u, u1, u2));

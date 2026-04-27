@@ -115,10 +115,10 @@ public:
                             = Reconstructor_t::template reconstruct<direction>(state, {indices...});
 
                         auto const& [jL, jR]
-                            = Reconstructor_t::template center_reconstruct<direction>(
-                                state.J, GridLayout::edgeXToCellCenter(),
-                                GridLayout::edgeYToCellCenter(), GridLayout::edgeZToCellCenter(),
-                                {indices...});
+                            = Reconstructor_t::template center_reconstruct<
+                                direction, GridLayout::edgeXToCellCenter,
+                                GridLayout::edgeYToCellCenter, GridLayout::edgeZToCellCenter>(
+                                state.J, {indices...});
 
                         auto&& u      = std::forward_as_tuple(uL, uR);
                         auto const& j = std::forward_as_tuple(jL, jR);

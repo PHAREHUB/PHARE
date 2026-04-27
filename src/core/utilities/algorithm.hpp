@@ -98,18 +98,18 @@ auto convert_to_primal(        //
                   || std::is_same_v<PhysicalQuantity, HybridQuantity::Tensor>)
     {
         if (qty == PQ::Ex)
-            return layout.project(src, lix, layout.ExToMoments());
+            return GridLayout::template project<GridLayout::ExToMoments>(src, lix);
         else if (qty == PQ::Ey)
-            return layout.project(src, lix, layout.EyToMoments());
+            return GridLayout::template project<GridLayout::EyToMoments>(src, lix);
         else if (qty == PQ::Ez)
-            return layout.project(src, lix, layout.EzToMoments());
+            return GridLayout::template project<GridLayout::EzToMoments>(src, lix);
     }
     if constexpr (std::is_same_v<PhysicalQuantity, MHDQuantity::Scalar>
                   || std::is_same_v<PhysicalQuantity, MHDQuantity::Vector>
                   || std::is_same_v<PhysicalQuantity, MHDQuantity::Tensor>)
     {
         // if we are not the magnetic field, then all scalars and vectors are cell-centered in MHD
-        return layout.project(src, lix, layout.cellCenterToFullPrimal());
+        return GridLayout::template project<GridLayout::cellCenterToFullPrimal>(src, lix);
     }
 
     throw std::runtime_error("Quantity not supported for conversion to primal.");

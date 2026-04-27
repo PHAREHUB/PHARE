@@ -35,20 +35,19 @@ public:
         return std::make_pair(uL, uR);
     }
 
-    template<auto direction, typename VecField>
-    static auto center_reconstruct(VecField const& U, auto projectionX, auto projectionY,
-                                   auto projectionZ, MeshIndex<VecField::dimension> index)
+    template<auto direction, auto ProjectionX, auto ProjectionY, auto ProjectionZ, typename VecField>
+    static auto center_reconstruct(VecField const& U, MeshIndex<VecField::dimension> index)
     {
         auto const& Ux = U(Component::X);
         auto const& Uy = U(Component::Y);
         auto const& Uz = U(Component::Z);
 
         auto [UxL, UxR]
-            = Reconstruction::template center_reconstruct<direction>(Ux, index, projectionX);
+            = Reconstruction::template center_reconstruct<direction, ProjectionX>(Ux, index);
         auto [UyL, UyR]
-            = Reconstruction::template center_reconstruct<direction>(Uy, index, projectionY);
+            = Reconstruction::template center_reconstruct<direction, ProjectionY>(Uy, index);
         auto [UzL, UzR]
-            = Reconstruction::template center_reconstruct<direction>(Uz, index, projectionZ);
+            = Reconstruction::template center_reconstruct<direction, ProjectionZ>(Uz, index);
 
         return std::make_tuple(PerIndexVector{UxL, UyL, UzL}, PerIndexVector{UxR, UyR, UzR});
     }
@@ -82,10 +81,10 @@ public:
         auto const Bt0 = B(static_cast<Component>(transverse[0]));
         auto const Bt1 = B(static_cast<Component>(transverse[1]));
 
-        auto [Bt0L, Bt0R] = Reconstruction::template center_reconstruct<direction>(
-            Bt0, index, projection<transverse[0]>());
-        auto [Bt1L, Bt1R] = Reconstruction::template center_reconstruct<direction>(
-            Bt1, index, projection<transverse[1]>());
+        auto [Bt0L, Bt0R] = Reconstruction::template center_reconstruct<
+            direction, Reconstructor::template projection<transverse[0]>>(Bt0, index);
+        auto [Bt1L, Bt1R] = Reconstruction::template center_reconstruct<
+            direction, Reconstructor::template projection<transverse[1]>>(Bt1, index);
 
         PerIndexVector<typename VecField::value_type> BL, BR;
         BL(direction)     = Bn(index);
@@ -106,24 +105,26 @@ public:
         auto const& Jy = J(Component::Y);
         auto const& Jz = J(Component::Z);
 
-        auto const& [laplJxL, laplJxR] = reconstructed_laplacian_component_<direction>(
-            inverseMeshSize, Jx, index, GridLayout::edgeXToCellCenter());
+        auto const& [laplJxL, laplJxR]
+            = reconstructed_laplacian_component_<direction, GridLayout::edgeXToCellCenter>(
+                inverseMeshSize, Jx, index);
 
-        auto const& [laplJyL, laplJyR] = reconstructed_laplacian_component_<direction>(
-            inverseMeshSize, Jy, index, GridLayout::edgeYToCellCenter());
+        auto const& [laplJyL, laplJyR]
+            = reconstructed_laplacian_component_<direction, GridLayout::edgeYToCellCenter>(
+                inverseMeshSize, Jy, index);
 
-        auto const& [laplJzL, laplJzR] = reconstructed_laplacian_component_<direction>(
-            inverseMeshSize, Jz, index, GridLayout::edgeZToCellCenter());
+        auto const& [laplJzL, laplJzR]
+            = reconstructed_laplacian_component_<direction, GridLayout::edgeZToCellCenter>(
+                inverseMeshSize, Jz, index);
 
         return std::make_tuple(PerIndexVector{laplJxL, laplJyL, laplJzL},
                                PerIndexVector{laplJxR, laplJyR, laplJzR});
     }
 
 private:
-    template<auto direction, typename Field>
+    template<auto direction, auto Projection, typename Field>
     static auto reconstructed_laplacian_component_(auto inverseMeshSize, Field const& J,
-                                                   MeshIndex<Field::dimension> index,
-                                                   auto projection)
+                                                   MeshIndex<Field::dimension> index)
     {
         auto d2 = [&](auto dir, auto const& prevValue, auto const& Value, auto const& nextValue) {
             return (inverseMeshSize[dir]) * (inverseMeshSize[dir])
@@ -131,15 +132,15 @@ private:
         };
 
         auto const [JL, JR]
-            = Reconstruction::template center_reconstruct<direction>(J, index, projection);
+            = Reconstruction::template center_reconstruct<direction, Projection>(J, index);
 
         MeshIndex<Field::dimension> prevX = GridLayout::template previous<Direction::X>(index);
         MeshIndex<Field::dimension> nextX = GridLayout::template next<Direction::X>(index);
 
         auto const [JL_X_1, JR_X_1]
-            = Reconstruction::template center_reconstruct<direction>(J, prevX, projection);
+            = Reconstruction::template center_reconstruct<direction, Projection>(J, prevX);
         auto const [JL_X1, JR_X1]
-            = Reconstruction::template center_reconstruct<direction>(J, nextX, projection);
+            = Reconstruction::template center_reconstruct<direction, Projection>(J, nextX);
 
         std::uint32_t dirX = static_cast<std::uint32_t>(Direction::X);
 
@@ -156,9 +157,9 @@ private:
             MeshIndex<Field::dimension> nextY = GridLayout::template next<Direction::Y>(index);
 
             auto const [JL_Y_1, JR_Y_1]
-                = Reconstruction::template center_reconstruct<direction>(J, prevY, projection);
+                = Reconstruction::template center_reconstruct<direction, Projection>(J, prevY);
             auto const [JL_Y1, JR_Y1]
-                = Reconstruction::template center_reconstruct<direction>(J, nextY, projection);
+                = Reconstruction::template center_reconstruct<direction, Projection>(J, nextY);
 
             std::uint32_t dirY = static_cast<std::uint32_t>(Direction::Y);
 
@@ -176,9 +177,9 @@ private:
                 MeshIndex<Field::dimension> nextZ = GridLayout::template next<Direction::Z>(index);
 
                 auto const [JL_Z_1, JR_Z_1]
-                    = Reconstruction::template center_reconstruct<direction>(J, prevZ, projection);
+                    = Reconstruction::template center_reconstruct<direction, Projection>(J, prevZ);
                 auto const [JL_Z1, JR_Z1]
-                    = Reconstruction::template center_reconstruct<direction>(J, nextZ, projection);
+                    = Reconstruction::template center_reconstruct<direction, Projection>(J, nextZ);
 
                 std::uint32_t dirZ = static_cast<std::uint32_t>(Direction::Z);
 

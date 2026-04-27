@@ -361,7 +361,7 @@ public:
 
         if (dynamic_cast<TensorFieldGeometry_t const*>(&_dst_geometry))
         {
-            auto overlaps = for_N_make_array<N>([&](auto /*i*/) {
+            auto overlaps = for_N_make_array<N>([&](auto i) {
                 auto overlap = FieldGhostInterpOverlapFillPattern<Gridlayout_t>::calculateOverlap(
                     dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry)[i],
                     dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry)[i], dst_patch_box,

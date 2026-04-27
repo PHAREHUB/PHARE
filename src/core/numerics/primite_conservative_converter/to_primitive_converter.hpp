@@ -130,9 +130,9 @@ private:
         auto const vx = rhoVx(index) / rho(index);
         auto const vy = rhoVy(index) / rho(index);
         auto const vz = rhoVz(index) / rho(index);
-        auto const bx = GridLayout::project(Bx, index, GridLayout::faceXToCellCenter());
-        auto const by = GridLayout::project(By, index, GridLayout::faceYToCellCenter());
-        auto const bz = GridLayout::project(Bz, index, GridLayout::faceZToCellCenter());
+        auto const bx = GridLayout::template project<GridLayout::faceXToCellCenter>(Bx, index);
+        auto const by = GridLayout::template project<GridLayout::faceYToCellCenter>(By, index);
+        auto const bz = GridLayout::template project<GridLayout::faceZToCellCenter>(Bz, index);
         P(index)      = eosEtotToP(gamma, rho(index), vx, vy, vz, bx, by, bz, Etot(index));
     }
 
