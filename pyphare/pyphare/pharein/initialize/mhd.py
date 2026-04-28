@@ -15,6 +15,7 @@ def populateDict(sim):
     add_double("simulation/algo/fv_method/hyper_resistivity", sim.nu)
     add_double("simulation/algo/fv_method/heat_capacity_ratio", sim.gamma)
     add_string("simulation/algo/fv_method/hyper_mode", sim.hyper_mode)
+    add_string("simulation/algo/time_integrator_type", sim.mhd_timestepper)
     add_double("simulation/algo/to_primitive/heat_capacity_ratio", sim.gamma)
     add_double("simulation/algo/to_conservative/heat_capacity_ratio", sim.gamma)
     add_double("simulation/algo/constrained_transport/resistivity", sim.eta)
