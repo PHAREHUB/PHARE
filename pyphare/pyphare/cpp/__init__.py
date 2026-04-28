@@ -18,8 +18,7 @@ def simulator_id(sim):
     Hall = "true" if sim.hall else "false"
     return (
         f"{sim.ndim}_{sim.interp_order}_{sim.refined_particle_nbr}_"
-        f"{sim.mhd_timestepper}_{sim.reconstruction}_{sim.limiter}_"
-        f"{sim.riemann}_{Hall}"
+        f"{sim.reconstruction}_{sim.limiter}_{sim.riemann}_{Hall}"
     )
 
 

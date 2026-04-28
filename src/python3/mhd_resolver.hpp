@@ -5,10 +5,7 @@
 #include "core/numerics/reconstructions/reconstruction_nghosts.hpp"
 #include "phare_simulator_options.hpp"
 
-#include "amr/solvers/time_integrator/euler_integrator.hpp"
-#include "amr/solvers/time_integrator/tvdrk2_integrator.hpp"
-#include "amr/solvers/time_integrator/tvdrk3_integrator.hpp"
-#include "amr/solvers/time_integrator/ssprk4_5_integrator.hpp"
+#include "amr/solvers/time_integrator/integrator_variant.hpp"
 
 #include "core/numerics/reconstructions/constant.hpp"
 #include "core/numerics/reconstructions/linear.hpp"
@@ -31,9 +28,6 @@ namespace PHARE
 
 // Selectors
 
-template<MHDOpts::TimeIntegratorType T, typename MHDModel>
-struct TimeIntegratorSelector;
-
 template<MHDOpts::ReconstructionType T>
 struct ReconstructionSelector;
 
@@ -42,41 +36,6 @@ struct SlopeLimiterSelector;
 
 template<MHDOpts::RiemannSolverType T>
 struct RiemannSolverSelector;
-
-template<typename MHDModel>
-struct TimeIntegratorSelector<MHDOpts::TimeIntegratorType::Default, MHDModel>
-{
-    template<typename FVmethod>
-    using type = DefaultTimeIntegrator<FVmethod, MHDModel>;
-};
-
-template<typename MHDModel>
-struct TimeIntegratorSelector<MHDOpts::TimeIntegratorType::Euler, MHDModel>
-{
-    template<typename FVmethod>
-    using type = solver::EulerIntegrator<FVmethod, MHDModel>;
-};
-
-template<typename MHDModel>
-struct TimeIntegratorSelector<MHDOpts::TimeIntegratorType::TVDRK2, MHDModel>
-{
-    template<typename FVmethod>
-    using type = solver::TVDRK2Integrator<FVmethod, MHDModel>;
-};
-
-template<typename MHDModel>
-struct TimeIntegratorSelector<MHDOpts::TimeIntegratorType::TVDRK3, MHDModel>
-{
-    template<typename FVmethod>
-    using type = solver::TVDRK3Integrator<FVmethod, MHDModel>;
-};
-
-template<typename MHDModel>
-struct TimeIntegratorSelector<MHDOpts::TimeIntegratorType::SSPRK4_5, MHDModel>
-{
-    template<typename FVmethod>
-    using type = solver::SSPRK4_5Integrator<FVmethod, MHDModel>;
-};
 
 template<>
 struct ReconstructionSelector<MHDOpts::ReconstructionType::Default>
@@ -178,6 +137,20 @@ struct RiemannSolverSelector<MHDOpts::RiemannSolverType::HLLD>
     using type = core::HLLD<Hall>;
 };
 
+// Avoid instantiating IntegratorVariant for non-MHD opts (Default reconstruction has stub types
+// that would fail inside Godunov). Partial specialization ensures only the selected branch compiles.
+template<bool IsMHD, typename FVMethod, typename MHDModel>
+struct MHDTimestepperSelector
+{
+    using type = solver::IntegratorVariant<FVMethod, MHDModel>;
+};
+
+template<typename FVMethod, typename MHDModel>
+struct MHDTimestepperSelector<false, FVMethod, MHDModel>
+{
+    using type = DefaultTimeIntegrator<FVMethod, MHDModel>;
+};
+
 template<auto opts, typename MHDModel>
 struct MHDResolver
 {
@@ -195,10 +168,6 @@ struct MHDResolver
     using Reconstruction
         = ReconstructionSelector<opts.reconstruction_type>::template type<Layout, Limiter>;
 
-    template<typename FVMethod>
-    using MHDTimeStepper
-        = TimeIntegratorSelector<opts.time_integrator_type, MHDModel>::template type<FVMethod>;
-
     // Resolution
 
     using GridLayout = MHDModel::gridlayout_type;
@@ -214,7 +183,11 @@ struct MHDResolver
     using FVMethodStrategy
         = core::Godunov<GridLayout, Reconstruction_t, RiemannSolver_t, Equations_t>;
 
-    using MHDTimeStepper_t = MHDTimeStepper<FVMethodStrategy>;
+    static constexpr bool is_mhd
+        = (opts.reconstruction_type != MHDOpts::ReconstructionType::Default);
+
+    using MHDTimeStepper_t =
+        MHDTimestepperSelector<is_mhd, FVMethodStrategy, MHDModel>::type;
 };
 } // namespace PHARE
 
