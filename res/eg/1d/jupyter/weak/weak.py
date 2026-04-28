@@ -3,16 +3,9 @@
 #
 
 
-import sys
 import numpy as np
-from pathlib import Path
 
-from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
-
-# ph.NO_GUI()
-SCRIPT_DIR = Path(__file__).parent
 
 
 time_step = 0.005
@@ -106,7 +99,8 @@ def config(**kwargs):
 
 
 if __name__ == "__main__":
-    startMPI()
+    import sys
+    from pyphare.simulator.simulator import Simulator
 
     if len(sys.argv) != 4:
         print('This code needs 3 paramaters, "run_name", Te, Ti')
@@ -115,10 +109,5 @@ if __name__ == "__main__":
         Te = float(sys.argv[2])
         Ti = float(sys.argv[3])
 
-    # Te = 0.2
-    # if len(sys.argv) > 1:
-    #     Te = float(sys.argv[1])
-
-    # diag_dir = f"{SCRIPT_DIR}/outputs"
     Simulator(config(diagdir=diagdir, Te=Te), print_one_line=True).run().reset()
     ph.global_vars.sim = None

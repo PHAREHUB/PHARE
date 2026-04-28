@@ -15,8 +15,6 @@ from .hierarchy_utils import (
 from .scalarfield import ScalarField
 
 from . import tensorfield
-from . import hierarchy_compute as hc
-from . import hierarchy_utils as hootils
 
 
 class VectorField(tensorfield.AnyTensorField):
@@ -101,10 +99,3 @@ class VectorField(tensorfield.AnyTensorField):
                     _compute_scalardiv, (self,), res_names=("x", "y", "z"), scalar=other
                 )
             )
-
-    def gaussian(self, sigma=2):
-        return VectorField.FROM(
-            hootils.compute_hier_from(
-                hc._compute_gaussian_filter_on_vectorfield, self, sigma=sigma
-            )
-        )

@@ -4,8 +4,6 @@
 
 
 from . import tensorfield
-from . import hierarchy_compute as hc
-from . import hierarchy_utils as hootils
 from .hierarchy_utils import compute_hier_from, compute_rename, rename, _compute_neg
 
 
@@ -214,13 +212,3 @@ class ScalarField(tensorfield.AnyTensorField):
         names_self = self.quantities()
         h = compute_hier_from(_compute_neg, self, new_names=names_self)
         return ScalarField.FROM(h)
-
-    def gaussian(self, sigma=2):
-        return ScalarField.FROM(
-            hootils.compute_hier_from(
-                hc._compute_gaussian_filter_on_scalarfield,
-                self,
-                sigma=sigma,
-                qty=next(iter(self.quantities())),
-            )
-        )
