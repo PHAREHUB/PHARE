@@ -30,8 +30,6 @@ struct SimOpts
     MHDOpts::SlopeLimiterType slope_limiter_type     = MHDOpts::SlopeLimiterType::None;
     MHDOpts::RiemannSolverType riemann_solver_type   = MHDOpts::RiemannSolverType::Default;
     bool Hall                                        = false;
-    bool Resistivity                                 = false;
-    bool HyperResistivity                            = false;
 };
 
 

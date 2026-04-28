@@ -360,42 +360,32 @@ void evalFluxesOnGhostBox(Layout& layout, Fn&& fn, First& first, Fluxes&... flux
 template<typename VecField, typename Equations>
 class GodunovState
 {
-    using Field                            = VecField::field_type;
-    constexpr static auto dimension        = VecField::dimension;
-    constexpr static auto Resistivity      = Equations::resistivity;
-    constexpr static auto HyperResistivity = Equations::hyperResistivity;
+    using Field                     = VecField::field_type;
+    constexpr static auto dimension = VecField::dimension;
 
 public:
     GodunovState() = default;
 
+    // resistivity / hyper-resistivity are now runtime selections, so the transverse magnetic
+    // field storage is always allocated.
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(bt_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(bt_x, bt_y);
-            else if constexpr (dimension == 3)
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
-        }
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(bt_x);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(bt_x, bt_y);
         else
-            return std::forward_as_tuple();
+            return std::forward_as_tuple(bt_x, bt_y, bt_z);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(bt_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(bt_x, bt_y);
-            else if constexpr (dimension == 3)
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
-        }
+        if constexpr (dimension == 1)
+            return std::forward_as_tuple(bt_x);
+        else if constexpr (dimension == 2)
+            return std::forward_as_tuple(bt_x, bt_y);
         else
-            return std::forward_as_tuple();
+            return std::forward_as_tuple(bt_x, bt_y, bt_z);
     }
 
     VecField bt_x{"b_t_x", MHDQuantity::Vector::VecFlux_x};
