@@ -15,82 +15,51 @@ class TVDRK2Integrator : public BaseMHDTimestepper<MHDModel>
 {
     using Super = BaseMHDTimestepper<MHDModel>;
 
-    using level_t     = MHDModel::level_t;
-    using VecFieldT   = MHDModel::vecfield_type;
-    using GridLayoutT = MHDModel::gridlayout_type;
-    using MHDStateT   = MHDModel::state_type;
-
+    using GridLayoutT   = MHDModel::gridlayout_type;
     using Dispatchers_t = Dispatchers<MHDModel>;
     using RKUtils_t     = Dispatchers_t::RKUtils_t;
 
-    using RKPair_t = core::RKPair<typename VecFieldT::value_type, MHDStateT>;
-
 public:
     TVDRK2Integrator(PHARE::initializer::PHAREDict const& dict)
-        : Super{dict}
+        : Super{dict, /*n_extra_states=*/1}
         , euler_{dict}
     {
     }
 
-    // Butcher fluxes are used to accumulate fluxes over multiple stages, the corresponding buffer
-    // should only contain the fluxes over one time step. The accumulation over all substeps is
-    // delegated to the solver.
-    void operator()(MHDModel& model, MHDStateT& state, auto& fluxes, auto& bc, level_t& level,
-                    double const currentTime, double const newTime)
+    void operator()(MHDModel& model, Super::MHDStateT& state,
+                    Super::FluxT& fluxes, Super::Messenger& bc,
+                    Super::level_t& level, double const currentTime,
+                    double const newTime) override
     {
+        auto& state1 = this->extra_states_[0];
+
         this->resetButcherFluxes_(model, level);
 
         // U1 = Euler(Un)
-        euler_(model, state, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state1, fluxes, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state.E, fluxes, level, w1_);
 
         // U1 = Euler(U1)
-        euler_(model, state1_, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state1, state1, fluxes, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state1_.E, fluxes, level, w1_);
+        this->accumulateButcherFluxes_(model, state1.E, fluxes, level, w1_);
 
         euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
                                     level, newTime, newTime - currentTime);
-
-        // Un+1 = 0.5*Un + 0.5*Euler(U1)
-        // tvdrk2_step_(level, model, newTime, state, RKPair_t{w0_, state}, RKPair_t{w1_, state1_});
     }
 
-    void registerResources(MHDModel& model)
+    void registerResources(MHDModel& model) override
     {
         Super::registerResources(model);
-        model.resourcesManager->registerResources(state1_);
         euler_.registerResources(model);
     }
 
-    void allocate(MHDModel& model, auto& patch, double const allocateTime) const
+    void allocate(MHDModel& model, SAMRAI::hier::Patch& patch,
+                  double const allocateTime) const override
     {
         Super::allocate(model, patch, allocateTime);
-        model.resourcesManager->allocate(state1_, patch, allocateTime);
         euler_.allocate(model, patch, allocateTime);
-    }
-
-    void fillMessengerInfo(auto& info) const
-    {
-        info.ghostDensity.push_back(state1_.rho.name());
-        info.ghostMomentum.push_back(state1_.rhoV.name());
-        info.ghostTotalEnergy.push_back(state1_.Etot.name());
-        info.ghostElectric.push_back(state1_.E.name());
-        info.ghostMagnetic.push_back(state1_.B.name());
-        info.ghostCurrent.push_back(state1_.J.name());
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        return std::tuple_cat(Super::getCompileTimeResourcesViewList(),
-                              std::forward_as_tuple(state1_));
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        return std::tuple_cat(Super::getCompileTimeResourcesViewList(),
-                              std::forward_as_tuple(state1_));
     }
 
     using Super::exposeFluxes;
@@ -101,8 +70,6 @@ private:
 
     Euler<FVMethodStrategy, MHDModel> euler_;
     EulerUsingComputedFlux<MHDModel> euler_using_butcher_fluxes_;
-
-    MHDStateT state1_{"state1"};
 };
 
 } // namespace PHARE::solver

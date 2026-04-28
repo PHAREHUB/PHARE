@@ -5,7 +5,7 @@
 #include "core/numerics/reconstructions/reconstruction_nghosts.hpp"
 #include "phare_simulator_options.hpp"
 
-#include "amr/solvers/time_integrator/integrator_variant.hpp"
+#include "amr/solvers/time_integrator/time_integrator.hpp"
 
 #include "core/numerics/reconstructions/constant.hpp"
 #include "core/numerics/reconstructions/linear.hpp"
@@ -137,12 +137,12 @@ struct RiemannSolverSelector<MHDOpts::RiemannSolverType::HLLD>
     using type = core::HLLD<Hall>;
 };
 
-// Avoid instantiating IntegratorVariant for non-MHD opts (Default reconstruction has stub types
+// Avoid instantiating TimeIntegrator for non-MHD opts (Default reconstruction has stub types
 // that would fail inside Godunov). Partial specialization ensures only the selected branch compiles.
 template<bool IsMHD, typename FVMethod, typename MHDModel>
 struct MHDTimestepperSelector
 {
-    using type = solver::IntegratorVariant<FVMethod, MHDModel>;
+    using type = solver::TimeIntegrator<FVMethod, MHDModel>;
 };
 
 template<typename FVMethod, typename MHDModel>
