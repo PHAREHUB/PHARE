@@ -1,24 +1,15 @@
-#!/usr/bin/env python3
-
-import pyphare.pharein as ph  # lgtm [py/import-and-import-from]
-from pyphare.pharein import Simulation
-from pyphare.pharein import MaxwellianFluidModel
-from pyphare.pharein import ElectromagDiagnostics, FluidDiagnostics, ParticleDiagnostics
-from pyphare.pharein import ElectronModel
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharein import global_vars as gv
-from pyphare.pharesee.run import Run
+#
+#
+#
 
 
-import matplotlib.pyplot as plt
-import matplotlib as mpl
 import numpy as np
 
-mpl.use("Agg")
+import pyphare.pharein as ph
 
 
 def config(**kwargs):
-    Simulation(
+    sim = ph.Simulation(
         time_step=0.001,
         final_time=20.0,
         boundary_types="periodic",
@@ -65,40 +56,41 @@ def config(**kwargs):
         "vthz": vth,
     }
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
         bz=bz,
         protons={"charge": 1, "density": density, "nbr_part_per_cell": 200, **vvv},
     )
 
-    ElectronModel(closure="isothermal", Te=kwargs.get("Te", 0.005))
+    ph.ElectronModel(closure="isothermal", Te=kwargs.get("Te", 0.005))
 
     sim = ph.global_vars.sim
     dt = sim.time_step * 500
     timestamps = np.arange(0, sim.final_time + dt, dt)
 
     for quantity in ["E", "B"]:
-        ElectromagDiagnostics(
+        ph.ElectromagDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
         )
 
-    for quantity in ["density", "charge_density", "bulkVelocity"]:
-        FluidDiagnostics(
+    for quantity in ["charge_density", "bulkVelocity"]:
+        ph.FluidDiagnostics(
             quantity=quantity,
             write_timestamps=timestamps,
         )
 
     for quantity in ["domain"]:  # , 'levelGhost', 'patchGhost']:
-        ParticleDiagnostics(
+        ph.ParticleDiagnostics(
             quantity=quantity, write_timestamps=timestamps, population_name="protons"
         )
+    return sim
 
 
 def main():
-    from pyphare import cpp
     import sys
+    from pyphare.simulator.simulator import Simulator
 
     if len(sys.argv) != 4:
         print('This code needs 3 paramaters, "run_name", Te, Ti')
@@ -107,9 +99,8 @@ def main():
         Te = float(sys.argv[2])
         Ti = float(sys.argv[3])
 
-    config(diagdir=diagdir, Te=Te, Ti=Ti)
-    Simulator(gv.sim).run()
-    gv.sim = None
+    Simulator(config(diagdir=diagdir, Te=Te, Ti=Ti), print_one_line=True).run().reset()
+    ph.global_vars.sim = None
 
 
 if __name__ == "__main__":

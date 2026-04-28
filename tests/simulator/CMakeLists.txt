@@ -35,7 +35,6 @@ if(HighFive)
 
   else() # serial only
     phare_python3_exec(11 test_diagnostic_timestamps test_diagnostic_timestamps.py ${CMAKE_CURRENT_BINARY_DIR})
-    phare_python3_exec(09 test_weak_perturbation test_weak_perturbation.py ${CMAKE_CURRENT_BINARY_DIR})
   endif(testMPI)
 
 

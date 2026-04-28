@@ -160,7 +160,7 @@ class FieldData(PatchData):
             gridlayout.directions[idx],
             withGhosts=any(self.ghosts_nbr) and self.field_name != "tags",
             centering=self.centerings[idx],
-            nbrGhosts=self.ghosts_nbr,
+            nbrGhosts=self.ghosts_nbr[idx],
         )
 
     def _resolve_ghost_nbr(self, **kwargs):
@@ -194,7 +194,6 @@ class FieldData(PatchData):
         raise ValueError(
             f"centering not specified and cannot be inferred from field name : {field_name}"
         )
-
 
 
 class ParticleData(PatchData):

@@ -477,11 +477,9 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
         else:
             raise ValueError("interp can only be 'nearest' or 'bilinear'")
 
-        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
+        nCells = [int(d / dl) for d, dl in zip(domain, dl)]
         x = yeeCoordsFor([0] * dim, nbrGhosts[0], dl, nCells, qty, "x", withGhosts=True)
         y = yeeCoordsFor([0] * dim, nbrGhosts[1], dl, nCells, qty, "y", withGhosts=True)
-        # x = np.arange(0, domain[0]+dl[0], dl[0])
-        # y = np.arange(0, domain[1]+dl[1], dl[1])
         finest_coords = (x, y)
 
     else:

@@ -40,7 +40,7 @@ class Patch:
     def __getitem__(self, key):
         if key in self.patch_datas:
             return self.patch_datas[key]
-        raise IndexError(f"No patchdata for key: {key} in {self.patch_datas}")
+        raise KeyError(f"No patchdata for key: {key} in {self.patch_datas}")
 
     def copy(self):
         """does not copy patchdatas.datasets (see class PatchData)"""

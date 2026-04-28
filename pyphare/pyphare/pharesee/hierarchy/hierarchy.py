@@ -1,53 +1,20 @@
+#
+#
+#
+
+
 import numpy as np
-import matplotlib.pyplot as plt
 
 from .patch import Patch
-from .patchlevel import PatchLevel
-from ...core.box import Box
 from ...core import box as boxm
-from ...core.phare_utilities import listify
-from ...core.phare_utilities import deep_copy
-from ...core.phare_utilities import refinement_ratio
+from .patchlevel import PatchLevel
+from ...core import phare_utilities as phut
 
 
 def format_timestamp(timestamp):
     if isinstance(timestamp, str):
         return timestamp
     return "{:.10f}".format(timestamp)
-
-
-class IndexHierarchy:
-    def __init__(self, time, hier, indexes):
-        self.time = time
-        self.hier = hier
-        self.indexes = indexes
-
-    def __str__(self):
-        s = "IndexHierarchy: \n"
-        s += "Time {}\n".format(self.time)
-        for ilvl, lvl in self.indexes.items():
-            s += "Level {}\n".format(ilvl)
-            for ip, qty_indexes in enumerate(lvl):
-                for qty_name, indexes in qty_indexes.items():
-                    s += f"    P{ip} {type} {qty_name} {indexes} \n"
-        return s
-
-
-class ValueHierarchy:
-    def __init__(self, time, hier, values):
-        self.time = time
-        self.hier = hier
-        self.values = values
-
-    def __str__(self):
-        s = "ValueHierarchy: \n"
-        s += "Time {}\n".format(self.time)
-        for ilvl, lvl in self.values.items():
-            s += "Level {}\n".format(ilvl)
-            for ip, qty_values in enumerate(lvl):
-                for qty_name, values in qty_values.items():
-                    s += f"    P{ip} {type} {qty_name} {values} \n"
-        return s
 
 
 class PatchHierarchy(object):
@@ -60,18 +27,19 @@ class PatchHierarchy(object):
         refinement_ratio=2,
         times=[0.0],
         data_files=None,
-        **kwargs,
+        selection_box=None,
+        ephemerals=None,
     ):
         if not isinstance(times, (tuple, list)):
-            times = listify(times)
+            times = phut.listify(times)
 
         if not isinstance(patch_levels, (tuple, list)):
-            patch_levels = listify(patch_levels)
+            patch_levels = phut.listify(patch_levels)
 
-        self.selection_box = kwargs.get("selection_box", None)
+        self.selection_box = selection_box
         if self.selection_box is not None:
             if not isinstance(self.selection_box, (tuple, list)):
-                self.selection_box = listify(self.selection_box)
+                self.selection_box = phut.listify(self.selection_box)
             self.selection_box = {
                 format_timestamp(t): box for t, box in zip(times, self.selection_box)
             }
@@ -100,11 +68,12 @@ class PatchHierarchy(object):
             else:
                 self.data_files = {data_files.filename: data_files}
 
+        self.ephemerals = ephemerals
         self.update()
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things
-        return deep_copy(self, memo, no_copy_keys)
+        return phut.deep_copy(self, memo, no_copy_keys)
 
     def __getitem__(self, qty):
         return self.__dict__[qty]
@@ -373,422 +342,36 @@ class PatchHierarchy(object):
         return np.sort(np.asarray(list(self.time_hier.keys())))
 
     def plot_patches(self, save=False):
-        fig, ax = plt.subplots(figsize=(10, 3))
-        for ilvl, lvl in self.levels(0.0).items():
-            lvl_offset = ilvl * 0.1
-            for patch in lvl.patches:
-                dx = patch.dl[0]
-                x0 = patch.box.lower * dx
-                x1 = patch.box.upper * dx
-                xcells = np.arange(x0, x1 + dx, dx)
-                y = lvl_offset + np.zeros_like(xcells)
-                ax.plot(xcells, y, marker=".")
+        from .plotting.plot_fields import plot_patches
 
-        if save:
-            fig.savefig("hierarchy.png")
+        return plot_patches(self, save=save)
 
     def box_to_Rectangle(self, box):
-        from matplotlib.patches import Rectangle
+        from .plotting import box_to_Rectangle
 
-        return Rectangle(box.lower, *box.shape)
+        return box_to_Rectangle(box)
 
     def plot_2d_patches(self, ilvl, collections, **kwargs):
-        if isinstance(collections, list) and all(
-            [isinstance(el, Box) for el in collections]
-        ):
-            collections = [{"boxes": collections}]
+        from .plotting.plot_fields import plot_2d_patches
 
-        from matplotlib.collections import PatchCollection
-
-        level_domain_box = self.level_domain_box(ilvl)
-        mi, ma = level_domain_box.lower.min(), level_domain_box.upper.max()
-
-        fig, ax = kwargs.get("subplot", plt.subplots(figsize=(6, 6)))
-
-        for collection in collections:
-            facecolor = collection.get("facecolor", "none")
-            edgecolor = collection.get("edgecolor", "purple")
-            alpha = collection.get("alpha", 1)
-            rects = [self.box_to_Rectangle(box) for box in collection["boxes"]]
-
-            ax.add_collection(
-                PatchCollection(
-                    rects, facecolor=facecolor, alpha=alpha, edgecolor=edgecolor
-                )
-            )
-
-        if "title" in kwargs:
-            from textwrap import wrap
-
-            xfigsize = int(fig.get_size_inches()[0] * 10)  # 10 characters per inch
-            ax.set_title("\n".join(wrap(kwargs["title"], xfigsize)))
-
-        major_ticks = np.arange(mi - 5, ma + 5 + 5, 5)
-        ax.set_xticks(major_ticks)
-        ax.set_yticks(major_ticks)
-
-        minor_ticks = np.arange(mi - 5, ma + 5 + 5, 1)
-        ax.set_xticks(minor_ticks, minor=True)
-        ax.set_yticks(minor_ticks, minor=True)
-
-        ax.grid(which="both")
-
-        return fig
+        return plot_2d_patches(self, ilvl, collections, **kwargs)
 
     def plot1d(self, **kwargs):
-        """
-        plot
-        """
-        usr_lvls = kwargs.get("levels", (0,))
-        qty = kwargs.get("qty", None)
-        time = kwargs.get("time", self.times()[0])
+        from .plotting.plot_fields import plot1d
 
-        if "ax" not in kwargs:
-            fig, ax = plt.subplots()
-        else:
-            ax = kwargs["ax"]
-            fig = ax.figure
-        for lvl_nbr, level in self.levels(time).items():
-            if lvl_nbr not in usr_lvls:
-                continue
-            for ip, patch in enumerate(level.patches):
-                pdata_nbr = len(patch.patch_datas)
-                pdata_names = list(patch.patch_datas.keys())
-                if qty is None and pdata_nbr != 1:
-                    multiple = "multiple quantities in patch, "
-                    err = (
-                        multiple
-                        + "please specify a quantity in "
-                        + " ".join(pdata_names)
-                    )
-                    raise ValueError(err)
-                if qty is None:
-                    qty = pdata_names[0]
-
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
-                label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
-                marker = kwargs.get("marker", "")
-                ls = kwargs.get("ls", "--")
-                color = kwargs.get("color", "k")
-                ax.plot(x, val, label=label, marker=marker, ls=ls, color=color)
-
-        ax.set_title(kwargs.get("title", ""))
-        ax.set_xlabel(kwargs.get("xlabel", "x"))
-        ax.set_ylabel(kwargs.get("ylabel", qty))
-        if "xlim" in kwargs:
-            ax.set_xlim(kwargs["xlim"])
-        if "ylim" in kwargs:
-            ax.set_ylim(kwargs["ylim"])
-
-        if kwargs.get("legend", None) is not None:
-            ax.legend()
-
-        if "filename" in kwargs:
-            fig.savefig(kwargs["filename"])
+        return plot1d(self, **kwargs)
 
     def plot2d(self, **kwargs):
-        from matplotlib.patches import Rectangle
-        from mpl_toolkits.axes_grid1 import make_axes_locatable
+        from .plotting.plot_fields import plot2d
 
-        time = kwargs.get("time", self._default_time())
-        usr_lvls = kwargs.get("levels", self.levelNbrs(time))
-        default_qty = None
-        if len(self.quantities()) == 1:
-            default_qty = self.quantities()[0]
-        qty = kwargs.get("qty", default_qty)
-
-        if "ax" not in kwargs:
-            fig, ax = plt.subplots()
-        else:
-            ax = kwargs["ax"]
-            fig = ax.figure
-
-        glob_min = self.global_min(qty)
-        glob_max = self.global_max(qty)
-        # assumes max 5 levels...
-        patchcolors = {ilvl: "k" for ilvl in usr_lvls}
-        patchcolors = kwargs.get("patchcolors", patchcolors)
-        if not isinstance(patchcolors, dict):
-            patchcolors = dict(zip(usr_lvls, patchcolors))
-
-        linewidths = {ilvl: 1 for ilvl in usr_lvls}
-        linewidths = kwargs.get("lw", linewidths)
-        if not isinstance(linewidths, dict):
-            linewidths = dict(zip(usr_lvls, linewidths))
-        linestyles = {ilvl: "-" for ilvl in usr_lvls}
-        linestyles = kwargs.get("ls", linestyles)
-        if not isinstance(linestyles, dict):
-            linestyles = dict(zip(usr_lvls, linestyles))
-
-        for lvl_nbr, lvl in self.levels(time).items():
-            if lvl_nbr not in usr_lvls:
-                continue
-            for patch in self.level(lvl_nbr, time).patches:
-                pdat = patch.patch_datas[qty]
-                data = pdat.dataset[:]
-                nbrGhosts = pdat.ghosts_nbr
-                x = pdat.x
-                y = pdat.y
-
-                # if nbrGhosts is 0, we cannot do array[0,-0]
-                if np.all(nbrGhosts == np.zeros_like(nbrGhosts)):
-                    x = np.copy(x)
-                    y = np.copy(y)
-                else:
-                    data = pdat[patch.box]
-                    x = np.copy(x[nbrGhosts[0] : -nbrGhosts[0]])
-                    y = np.copy(y[nbrGhosts[1] : -nbrGhosts[1]])
-                dx, dy = pdat.layout.dl
-                x -= dx * 0.5
-                y -= dy * 0.5
-                x = np.append(x, x[-1] + dx)
-                y = np.append(y, y[-1] + dy)
-                im = ax.pcolormesh(
-                    x,
-                    y,
-                    data.T,
-                    cmap=kwargs.get("cmap", "Spectral_r"),
-                    vmin=kwargs.get("vmin", glob_min - 1e-6),
-                    vmax=kwargs.get("vmax", glob_max + 1e-6),
-                )
-
-                if kwargs.get("plot_patches", False) is True:
-                    r = Rectangle(
-                        (patch.box.lower[0] * dx, patch.box.lower[1] * dy),
-                        patch.box.shape[0] * dx,
-                        patch.box.shape[1] * dy,
-                        fc="none",
-                        ec=patchcolors[lvl_nbr],
-                        alpha=0.4,
-                        lw=linewidths[lvl_nbr],
-                        ls=linestyles[lvl_nbr],
-                    )
-                    ax.add_patch(r)
-
-        ax.set_aspect(kwargs.get("aspect", "equal"))
-        ax.set_title(kwargs.get("title", ""))
-        ax.set_xlabel(kwargs.get("xlabel", "x"))
-        ax.set_ylabel(kwargs.get("ylabel", "y"))
-        if "xlim" in kwargs:
-            ax.set_xlim(kwargs["xlim"])
-        if "ylim" in kwargs:
-            ax.set_ylim(kwargs["ylim"])
-
-        divider = make_axes_locatable(ax)
-        cax = divider.append_axes("right", size="5%", pad=0.08)
-        plt.colorbar(im, ax=ax, cax=cax)
-
-        if kwargs.get("legend", None) is not None:
-            ax.legend()
-
-        if "filename" in kwargs:
-            fig.savefig(kwargs["filename"], dpi=kwargs.get("dpi", 200))
-
-        return fig, ax
+        return plot2d(self, **kwargs)
 
     def plot(self, **kwargs):
-        if self.ndim == 1:
-            return self.plot1d(**kwargs)
-        elif self.ndim == 2:
-            return self.plot2d(**kwargs)
+        from .plotting.plot_fields import plot
+
+        return plot(self, **kwargs)
 
     def dist_plot(self, **kwargs):
-        """
-        plot phase space of a particle hierarchy
-        """
-        import copy
+        from .plotting.plot_particles import hierarchy_dist_plot
 
-        from ..plotting import dist_plot as dp
-
-        usr_lvls = kwargs.get("levels", (0,))
-        finest = kwargs.get("finest", False)
-        pops = kwargs.get("pop", [])
-        time = kwargs.get("time", self.times()[0])
-        axis = listify(kwargs.get("axis", ("Vx", "Vy")))
-        all_pops = list(self.level(0, time).patches[0].patch_datas.keys())
-
-        vmin = kwargs.get("vmin", -2)
-        vmax = kwargs.get("vmax", 2)
-        dv = kwargs.get("dv", 0.05)
-        vbins = vmin + dv * np.arange(int((vmax - vmin) / dv))
-
-        if finest:
-            final = finest_part_data(self)
-            if len(axis) == 2:
-                if axis[0] == "x":
-                    xbins = amr_grid(self, time)
-                    bins = (xbins, vbins)
-                else:
-                    bins = (vbins, vbins)
-            elif len(axis) == 1:
-                bins = vbins
-            kwargs["bins"] = bins
-
-        else:
-            final = {pop: None for pop in all_pops}
-            for lvl_nbr, level in self.levels(time).items():
-                if lvl_nbr not in usr_lvls:
-                    continue
-                for ip, patch in enumerate(level.patches):
-                    if len(pops) == 0:
-                        pops = list(patch.patch_datas.keys())
-
-                    for pop in pops:
-                        if patch.patch_datas.__len__() == 0:
-                            tmp = None
-                        else:
-                            tmp = copy.copy(patch.patch_datas[pop].dataset)
-
-                        if tmp is not None:
-                            if final[pop] is None:
-                                final[pop] = tmp
-                            else:
-                                final[pop].add(tmp)
-
-        # select particles
-        if "select" in kwargs:
-            for pop, particles in final.items():
-                final[pop] = kwargs["select"](particles)
-
-        return final, dp(final, **kwargs)
-
-
-def finest_part_data(hierarchy, time=None):
-    """
-    returns a dict {popname : Particles}
-    Particles contained in the dict are those from
-    the finest patches available at a given location
-    """
-    from copy import deepcopy
-
-    from ..particles import remove
-
-    i_ref = None
-    for i_ref, p in enumerate(hierarchy.level(0, time=time).patches):
-        if len(p.patch_datas):
-            break
-    if i_ref is None:
-        raise ValueError("This particle hierarchy seems empty !")
-
-    # we are going to return a dict {popname : Particles}
-    # we prepare it with population names
-    aPatch = hierarchy.level(0, time=time).patches[i_ref]
-    particles = {popname: None for popname in aPatch.patch_datas.keys()}
-
-    # our strategy is to explore the hierarchy from the finest
-    # level to the coarsest. at Each level we keep only particles
-    # that are in cells that are not overlaped by finer boxes
-
-    # this dict keeps boxes for patches at each level
-    # each level will thus need this dict to see next finer boxes
-    lvlPatchBoxes = {ilvl: [] for ilvl in range(hierarchy.finest_level(time) + 1)}
-
-    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
-        plvl = hierarchy.level(ilvl, time=time)
-        for ip, patch in enumerate(plvl.patches):
-            lvlPatchBoxes[ilvl].append(patch.box)
-            for popname, pdata in patch.patch_datas.items():
-                # if we're at the finest level
-                # we need to keep all particles
-                if ilvl == hierarchy.finest_level(time):
-                    if particles[popname] is None:
-                        particles[popname] = deepcopy(pdata.dataset)
-                    else:
-                        particles[popname].add(deepcopy(pdata.dataset))
-
-                # if there is a finer level
-                # we need to keep only those of the current patch
-                # that are not in cells overlaped by finer patch boxes
-                else:
-                    icells = pdata.dataset.iCells
-                    parts = deepcopy(pdata.dataset)
-                    create = True
-                    for finerBox in lvlPatchBoxes[ilvl + 1]:
-                        coarseFinerBox = boxm.coarsen(finerBox, refinement_ratio)
-                        within = np.where(
-                            (icells >= coarseFinerBox.lower[0])
-                            & (icells <= coarseFinerBox.upper[0])
-                        )[0]
-                        if create:
-                            toRemove = within
-                            create = False
-                        else:
-                            toRemove = np.concatenate((toRemove, within))
-
-                    if toRemove.size != 0:
-                        parts = remove(parts, toRemove)
-                    if parts is not None:
-                        particles[popname].add(parts)
-    return particles
-
-
-def amr_grid(hierarchy, time):
-    """returns a non-uniform contiguous primal grid
-    associated to the given hierarchy
-    """
-    lvlPatchBoxes = {ilvl: [] for ilvl in range(hierarchy.finest_level() + 1)}
-    finalCells = {ilvl: None for ilvl in range(hierarchy.finest_level() + 1)}
-    lvl = hierarchy.levels(time)
-
-    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
-        sorted_patches = sorted(lvl[ilvl].patches, key=lambda p: p.layout.box.lower[0])
-
-        for ip, patch in enumerate(sorted_patches):
-            box = patch.layout.box
-            lvlPatchBoxes[ilvl].append(box)
-
-            # we create a list of all cells in the current patch
-            # remember that if the box upper cell is, say = 40,
-            # it means that the upper node is the lower node of cell 41
-            # so to get all primal nodes of a patch we need to include
-            # one past the upper cell.
-            # this said we do not want to include that last primal nodes
-            # all the time because that would be a duplicate with the lower
-            # node of the next patch. We only want to add it for the LAST
-            # (because sorted) patch. We also do not want to do it on levels
-            # other than L0 because the last primal node of the last patch
-            # of L_i is the first primal node of a L_{i-1} node, so including it
-            # would also mean adding a duplicate.
-            last = 1 if ilvl == 0 and ip == len(sorted_patches) - 1 else 0
-            cells = np.arange(box.lower[0], box.upper[0] + 1 + last)
-
-            # finest level has no next finer so we take all cells
-            if ilvl == hierarchy.finest_level(time):
-                if finalCells[ilvl] is None:
-                    finalCells[ilvl] = cells
-                else:
-                    finalCells[ilvl] = np.concatenate((finalCells[ilvl], cells))
-
-            else:
-                # on other levels
-                # we take only grids not overlaped by next finer
-                coarsenedNextFinerBoxes = [
-                    boxm.coarsen(b, refinement_ratio) for b in lvlPatchBoxes[ilvl + 1]
-                ]
-                for coarseBox in coarsenedNextFinerBoxes:
-                    ccells = np.arange(coarseBox.lower[0], coarseBox.upper[0] + 1)
-                    inter, icells, iccells = np.intersect1d(
-                        cells, ccells, return_indices=True
-                    )
-                    cells = np.delete(cells, icells)
-                if len(cells):
-                    if finalCells[ilvl] is None:
-                        finalCells[ilvl] = cells
-                    else:
-                        finalCells[ilvl] = np.unique(
-                            np.concatenate((finalCells[ilvl], cells))
-                        )
-
-    # now we have all cells for each level we
-    # just need to compute the primal coordinates
-    # and concatenate in a single array
-    for ilvl in range(hierarchy.finest_level() + 1):
-        if ilvl == 0:
-            x = finalCells[ilvl] * hierarchy.level(ilvl).patches[0].layout.dl[0]
-        else:
-            xx = finalCells[ilvl] * hierarchy.level(ilvl).patches[0].layout.dl[0]
-            x = np.concatenate((x, xx))
-
-    return np.sort(x)
+        return hierarchy_dist_plot(self, **kwargs)
