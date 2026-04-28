@@ -621,6 +621,51 @@ class PatchHierarchy(object):
 
         return final, dp(final, **kwargs)
 
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return hierarchy_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return hierarchy_array_function(self, func, types, args, kwargs)
+
+
+def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in inputs]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    for time in hier.time_hier:
+        for ilvl in hier.levels(time):
+            ret.time_hier[time][ilvl] = getattr(ufunc, method)(
+                *extract(time, ilvl), **kwargs
+            )
+    return ret
+
+
+def hierarchy_array_function(hier, func, types, args, kwargs):
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in args]
+
+    time_hier = {}
+    for time in hier.time_hier:
+        time_hier[time] = {}
+        for ilvl in hier.levels(time):
+            time_hier[time][ilvl] = func(*extract(time, ilvl), **kwargs)
+
+    any_level = next(iter(next(iter(time_hier.values())).values()))
+    if type(any_level[0]) is dict:
+        return time_hier  # return a dictionary of times[]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    ret.time_hier = time_hier
+    return ret
+
 
 def finest_part_data(hierarchy, time=None):
     """
