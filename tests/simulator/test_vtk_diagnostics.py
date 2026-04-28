@@ -8,12 +8,9 @@ from ddt import data, ddt, unpack
 
 from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.pharesee.run import Run
-
 from pyphare.core import phare_utilities as phut
 from pyphare.simulator.simulator import startMPI
 from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
 
 from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
@@ -22,9 +19,8 @@ from tests.diagnostic import dump_all_diags
 ppc_per_dim = [100, 25, 10]
 
 
-def config(ndim, interp, **simInput):
-    ppc = ppc_per_dim[ndim - 1]
-    sim = ph.Simulation(**simInput)
+def config(sim):
+    ppc = ppc_per_dim[sim.ndim - 1]
 
     L = 0.5
 
@@ -135,7 +131,6 @@ def config(ndim, interp, **simInput):
     return sim
 
 
-out = "phare_outputs/vtk_diagnostic_test"
 simArgs = {
     "time_step_nbr": 1,
     "final_time": 0.001,
@@ -144,7 +139,7 @@ simArgs = {
     "dl": 0.3,
     "diag_options": {
         "format": "pharevtkhdf",
-        "options": {"dir": out, "mode": "overwrite"},
+        "options": {"mode": "overwrite", "dir": "phare_outputs/vtk_diagnostic_test"},
     },
 }
 
@@ -168,22 +163,15 @@ class VTKDiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
         super(VTKDiagnosticsTest, self).__init__(*args, **kwargs)
         self.simulator = None
-        ph.global_vars.sim = None
 
     def _run(self, ndim, interp, simInput, diag_dir="", **kwargs):
         for key in ["cells", "dl", "boundary_types"]:
             simInput[key] = list(phut.np_array_ify(simInput[key], ndim))
-        local_out = self.unique_diag_dir_for_test_case(
-            f"{out}{'/'+diag_dir if diag_dir else ''}", ndim, interp
-        )
-        self.register_diag_dir_for_cleanup(local_out)
-        simInput["diag_options"]["options"]["dir"] = local_out
-        simulation = config(ndim, interp, **simInput)
+        simulation = config(self.simulation(interp_order=interp, **simInput))
         self.assertTrue(len(simulation.cells) == ndim)
         dump_all_diags(simulation.model.populations)
         Simulator(simulation).run().reset()
-        ph.global_vars.sim = None
-        return local_out
+        return simulation.diag_options["options"]["dir"]
 
     @data(*permute({}))
     @unpack
