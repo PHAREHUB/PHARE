@@ -179,12 +179,17 @@ def plot(diag_dir):
         run.GetN(time, pop_name=pop_name).plot(
             filename=plot_file_for_qty("N", time), plot_patches=True
         )
+
+        B = run.GetB(time, all_primal=False)
+        Bexp = np.exp(B)
         for c in ["x", "y", "z"]:
-            run.GetB(time, all_primal=False).plot(
+            B.plot(
                 filename=plot_file_for_qty(f"b{c}", time),
                 qty=f"B{c}",
                 plot_patches=True,
             )
+            Bexp.plot(filename=plot_file_for_qty(f"b{c}_exp", time), qty=f"B{c}")
+
         run.GetJ(time).plot(
             all_primal=False,
             filename=plot_file_for_qty("jz", time),
