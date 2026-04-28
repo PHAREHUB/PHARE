@@ -13,9 +13,8 @@ ph.NO_GUI()
 
 
 time_step = 0.005
-final_time = 0.05
-time_step_nbr = int(final_time / time_step)
-timestamps = np.arange(0, final_time + 0.01, 0.05)
+final_time = 0.01
+timestamps = [0, time_step, final_time]
 diag_dir = "phare_outputs/test_run"
 plot_dir = Path(f"{diag_dir}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
@@ -180,12 +179,17 @@ def plot(diag_dir):
         run.GetN(time, pop_name=pop_name).plot(
             filename=plot_file_for_qty("N", time), plot_patches=True
         )
+
+        B = run.GetB(time, all_primal=False)
+        Bexp = np.exp(B)
         for c in ["x", "y", "z"]:
-            run.GetB(time, all_primal=False).plot(
+            B.plot(
                 filename=plot_file_for_qty(f"b{c}", time),
                 qty=f"B{c}",
                 plot_patches=True,
             )
+            Bexp.plot(filename=plot_file_for_qty(f"b{c}_exp", time), qty=f"B{c}")
+
         run.GetJ(time).plot(
             all_primal=False,
             filename=plot_file_for_qty("jz", time),

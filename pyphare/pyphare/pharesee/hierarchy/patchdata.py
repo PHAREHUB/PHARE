@@ -190,6 +190,48 @@ class FieldData(PatchData):
         return mesh
 
 
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return field_data_array_function(self, func, types, args, kwargs)
+
+
+def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    in_ = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
+    out_ = getattr(ufunc, method)(*in_, **kwargs)
+
+    if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
+        return type(patch_data)(
+            layout=patch_data.layout,
+            field_name=patch_data.field_name,
+            data=out_,
+            centering=patch_data.centerings,
+            ghosts_nbr=patch_data.ghosts_nbr,
+        )
+
+    return out_
+
+
+def field_data_array_function(patch_data, func, types, args, kwargs):
+    in_ = [a.dataset if isinstance(a, FieldData) else a for a in args]
+    out_ = func(*in_, **kwargs)
+
+    if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
+        return type(patch_data)(
+            layout=patch_data.layout,
+            field_name=patch_data.field_name,
+            data=out_,
+            centering=patch_data.centerings,
+            ghosts_nbr=patch_data.ghosts_nbr,
+        )
+
+    return out_
+
+
 class ParticleData(PatchData):
     """
     Concrete type of PatchData representing particles in a region
