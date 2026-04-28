@@ -357,16 +357,9 @@ def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - neghosts
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[needed_points[0] : -needed_points[0]]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
+            pdata = patch[qty]
+            data = pdata[:]
+            x = pdata.x
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -397,20 +390,10 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - 1
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[
-                needed_points[0] : -needed_points[0],
-                needed_points[1] : -needed_points[1],
-            ]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
-            y = pdata.y[needed_points[1] : -needed_points[1]]
+            pdata = patch[qty]
+            data = pdata[:]
+            x = pdata.x
+            y = pdata.y
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 
@@ -441,9 +424,7 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
                 tmp_x = np.concatenate((tmp_x, finest_x))
                 tmp_y = np.concatenate((tmp_y, finest_y))
 
-    final_xy = np.stack((tmp_x, tmp_y), axis=1)
-
-    return final_data, final_xy
+    return final_data, np.stack((tmp_x, tmp_y), axis=1)
 
 
 def compute_rename(patch_datas, **kwargs):
