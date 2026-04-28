@@ -107,9 +107,7 @@ public:
     template<typename T>
     using Rec = core_type::template Rec<T>;
 
-    constexpr static auto Hall             = core_type::Hall;
-    constexpr static auto Resistivity      = core_type::Resistivity;
-    constexpr static auto HyperResistivity = core_type::HyperResistivity;
+    constexpr static auto Hall = core_type::Hall;
 
     explicit FVMethodTransformer(level_t& level, auto& model, info_type const& info)
         : level{level}
@@ -181,13 +179,11 @@ FiniteVolumeEulerTransformer(typename Model::amr_types::level_t&, Model&)
 
 
 
-template<typename GridLayout, typename Model, template<typename> typename Reconstruction, auto Hall,
-         auto Resistivity, auto HyperResistivity>
+template<typename GridLayout, typename Model, template<typename> typename Reconstruction, auto Hall>
 class ConstrainedTransportTransformer
 {
     using level_t   = Model::amr_types::level_t;
-    using core_type = core::UpwindConstrainedTransport<GridLayout, Reconstruction, Hall,
-                                                       Resistivity, HyperResistivity>;
+    using core_type = core::UpwindConstrainedTransport<GridLayout, Reconstruction, Hall>;
 
 public:
     using info_type = core_type::Info_t;
@@ -266,11 +262,9 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
 
     using FiniteVolumeEuler_t = FiniteVolumeEulerTransformer<Model>;
 
-    template<template<typename> typename Reconstruction, auto Hall, auto Resistivity,
-             auto HyperResistivity>
+    template<template<typename> typename Reconstruction, auto Hall>
     using ConstrainedTransport_t
-        = ConstrainedTransportTransformer<GridLayout, Model, Reconstruction, Hall, Resistivity,
-                                          HyperResistivity>;
+        = ConstrainedTransportTransformer<GridLayout, Model, Reconstruction, Hall>;
 
     using RKUtils_t = RKUtilsTransformer<Model>;
 };

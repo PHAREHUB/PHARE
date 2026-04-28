@@ -183,9 +183,7 @@ struct MHDResolver
 {
     // Get the types from opts
 
-    static constexpr bool Hall             = opts.Hall;
-    static constexpr bool Resistivity      = opts.Resistivity;
-    static constexpr bool HyperResistivity = opts.HyperResistivity;
+    static constexpr bool Hall = opts.Hall;
 
     using SlopeLimiter
         = SlopeLimiterSelector<opts.reconstruction_type, opts.slope_limiter_type>::type;
@@ -206,7 +204,7 @@ struct MHDResolver
     using GridLayout = MHDModel::gridlayout_type;
     using VecField   = MHDModel::vecfield_type;
 
-    using Equations_t = core::MHDEquations<Hall, Resistivity, HyperResistivity>;
+    using Equations_t = core::MHDEquations<Hall>;
 
     using RiemannSolver_t = RiemannSolver<Hall>;
 

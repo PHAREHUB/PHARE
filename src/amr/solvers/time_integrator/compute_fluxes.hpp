@@ -19,15 +19,12 @@ class ComputeFluxes
     using FVMethod_t     = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
     using FVMethodInfo_t = FVMethod_t::info_type;
 
-    constexpr static auto Hall             = FVMethod_t::Hall;
-    constexpr static auto Resistivity      = FVMethod_t::Resistivity;
-    constexpr static auto HyperResistivity = FVMethod_t::HyperResistivity;
+    constexpr static auto Hall = FVMethod_t::Hall;
 
     template<typename T>
     using Rec = FVMethod_t::template Rec<T>;
 
-    using ConstrainedTransport_t
-        = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall, Resistivity, HyperResistivity>;
+    using ConstrainedTransport_t = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
@@ -51,7 +48,12 @@ public:
     {
         ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_, newTime);
 
-        if constexpr (Hall || Resistivity || HyperResistivity)
+        if constexpr (Hall)
+        {
+            Ampere_t{level, model}(state.B, state.J);
+            TimeSetter{level, model, newTime}(state.B, state.J);
+        }
+        else if (fVMethodInfo_.eta != 0.0 || fVMethodInfo_.nu != 0.0)
         {
             Ampere_t{level, model}(state.B, state.J);
             TimeSetter{level, model, newTime}(state.B, state.J);
@@ -83,7 +85,7 @@ private:
 
     // Ampere_t ampere_;
     core::GodunovState<VecField, Equations_t> fvm_{};
-    core::UpwindConstrainedTransportState<VecField, Hall, Resistivity> ct_{};
+    core::UpwindConstrainedTransportState<VecField, Hall> ct_{};
     // ToPrimitiveConverter_t to_primitive_;
     // ToConservativeConverter_t to_conservative_;
     double to_primitive_gamma_;

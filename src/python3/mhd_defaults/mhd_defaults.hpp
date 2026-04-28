@@ -58,7 +58,7 @@ struct DefaultRiemannSolver
 {
 };
 
-template<bool Hall, bool Resistivity, bool HyperResistivity>
+template<bool Hall>
 struct DefaultEquations
 {
 };
