@@ -15,6 +15,7 @@
 #include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/particles/particles_data.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/data/field/refine/field_moments_refiner.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
@@ -39,6 +40,7 @@
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <iomanip>
@@ -269,6 +271,8 @@ namespace amr
                 domainParticlesRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
+
+                setOwnedLevelGhostBoxes_(*level, *hierarchy);
 
                 // and these for coarsening
                 electroSynchronizers_.registerLevel(hierarchy, level);
@@ -850,10 +854,23 @@ namespace amr
                                                        levelGhostParticlesOldOp_,
                                                        info->levelGhostParticlesOld);
 
-
             lvlGhostPartNewRefiners_.addStaticRefiners(info->levelGhostParticlesNew,
                                                        levelGhostParticlesNewOp_,
                                                        info->levelGhostParticlesNew);
+
+            if (lgPartOldIDs_.size() || lgPartNewIDs_.size())
+                throw std::runtime_error("Unexpected case for levelghost resource IDs");
+
+            for (auto const& name : info->levelGhostParticlesOld)
+            {
+                auto [id] = resourcesManager_->getIDsList(name);
+                lgPartOldIDs_.push_back(id);
+            }
+            for (auto const& name : info->levelGhostParticlesNew)
+            {
+                auto [id] = resourcesManager_->getIDsList(name);
+                lgPartNewIDs_.push_back(id);
+            }
 
 
             domainGhostPartRefiners_.addStaticRefiners(
@@ -906,6 +923,25 @@ namespace amr
         }
 
 
+
+
+        void setOwnedLevelGhostBoxes_(level_t const& level,
+                                      SAMRAI::hier::PatchHierarchy const& hierarchy)
+        {
+            using PData_t = ParticlesData<typename HybridModel::particle_array_type>;
+            for (auto const& patch : level)
+            {
+                auto const owned = makeLevelGhostParticleBoxFor<GridLayoutT>(*patch, hierarchy);
+                for (int id : lgPartOldIDs_)
+                    std::dynamic_pointer_cast<PData_t>(patch->getPatchData(id))
+                        ->ownedLevelGhostBoxes
+                        = owned;
+                for (int id : lgPartNewIDs_)
+                    std::dynamic_pointer_cast<PData_t>(patch->getPatchData(id))
+                        ->ownedLevelGhostBoxes
+                        = owned;
+            }
+        }
 
 
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
@@ -1119,6 +1155,8 @@ namespace amr
         RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_{resourcesManager_};
         RefOp_ptr levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()};
         RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
+        std::vector<int> lgPartOldIDs_;
+        std::vector<int> lgPartNewIDs_;
 
 
         //! to grab particle leaving neighboring patches and inject into domain

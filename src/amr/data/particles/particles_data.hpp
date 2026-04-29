@@ -11,6 +11,7 @@
 #include "amr/samrai.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include <SAMRAI/hier/BoxContainer.h>
 #include <amr/data/particles/particles_variable_fill_pattern.hpp>
 
 
@@ -464,6 +465,9 @@ namespace amr
 
         core::ParticlesPack<ParticleArray> pack;
 
+        // set externally (in registerLevel) to the subset of the level ghost region this
+        // patch owns exclusively — used to avoid filling duplicate particles across patches
+        SAMRAI::hier::BoxContainer ownedLevelGhostBoxes;
 
     private:
         //! interiorLocalBox_ is the box, in local index space, that goes from the first to the

@@ -3,9 +3,10 @@
 
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/def/phare_mpi.hpp" // IW#YU pragma: keep
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/data/particles/particle.hpp"
 
 #include "amr/amr_constants.hpp"
 #include "amr/types/amr_types.hpp"
@@ -13,6 +14,7 @@
 
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/PatchData.h>
 #include <SAMRAI/hier/BoxOverlap.h>
@@ -72,6 +74,14 @@ namespace amr
      * local index relative to referenceAMRBox
      */
     NO_DISCARD SAMRAI::hier::IntVector localToAMRVector(SAMRAI::hier::Box const& referenceAMRBox);
+
+
+    template<std::size_t dim>
+    NO_DISCARD SAMRAI::hier::Box grow(SAMRAI::hier::Box const& box, int const by)
+    {
+        return SAMRAI::hier::Box::grow(box,
+                                       SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim}, by});
+    }
 
 
     /**
@@ -203,12 +213,14 @@ namespace amr
 
 
     NO_DISCARD auto inline getSameLevelNeighbors(SAMRAI::hier::Patch const& patch,
-                                                 SAMRAI::hier::PatchHierarchy const& hierarchy)
-    {
-        auto const lvlNbr = patch.getPatchLevelNumber();
-
-        return SAMRAI::hier::HierarchyNeighbors{hierarchy, lvlNbr, lvlNbr}.getSameLevelNeighbors(
-            patch.getBox(), lvlNbr);
+                                                 SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                                 int const width = 1)
+    { // with 1 == immediate neighbors no ghost box
+        auto const lvlNbr                 = patch.getPatchLevelNumber();
+        bool constexpr do_same_level_nbrs = true;
+        return SAMRAI::hier::HierarchyNeighbors{hierarchy, lvlNbr, lvlNbr, do_same_level_nbrs,
+                                                width}
+            .getSameLevelNeighbors(patch.getBox(), lvlNbr);
     }
 
     void inline noDomainOverlapsOn(SAMRAI::hier::PatchHierarchy const& hierarchy, int const ilvl)
@@ -233,16 +245,13 @@ namespace amr
     NO_DISCARD auto makeNonLevelGhostBoxFor(SAMRAI::hier::Patch const& patch,
                                             SAMRAI::hier::PatchHierarchy const& hierarchy)
     {
-        auto constexpr dimension       = GridLayoutT::dimension;
-        auto const lvlNbr              = patch.getPatchLevelNumber();
-        SAMRAI::hier::Box const domain = patch.getBox();
-        auto const domBox              = phare_box_from<dimension>(domain);
-        auto const particleGhostBox    = grow(domBox, GridLayoutT::nbrParticleGhosts());
-
-        auto const neighbors = getSameLevelNeighbors(patch, hierarchy);
-        std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
+        auto constexpr dimension    = GridLayoutT::dimension;
+        auto const domain           = phare_box_from<dimension>(patch.getBox());
+        auto const particleGhostBox = grow(domain, GridLayoutT::nbrParticleGhosts());
+        auto const neighbors        = getSameLevelNeighbors(patch, hierarchy);
+        std::vector<core::Box<int, dimension>> patchGhostLayerBoxes;
         patchGhostLayerBoxes.reserve(neighbors.size() + 1);
-        patchGhostLayerBoxes.emplace_back(domBox);
+        patchGhostLayerBoxes.emplace_back(domain);
         for (auto const& neighbox : neighbors)
             patchGhostLayerBoxes.emplace_back(
                 *(particleGhostBox * phare_box_from<dimension>(neighbox)));
@@ -250,12 +259,34 @@ namespace amr
         return patchGhostLayerBoxes;
     }
 
-    inline auto to_string(auto const& id)
+
+
+    // returns level ghost box areas for where this patch is considered the sole owner of the ghost
+    template<typename GridLayoutT>
+    NO_DISCARD auto makeLevelGhostParticleBoxFor(SAMRAI::hier::Patch const& patch,
+                                                 SAMRAI::hier::PatchHierarchy const& hierarchy)
     {
-        std::stringstream patchID;
-        patchID << id;
-        return patchID.str();
+        auto constexpr static ghosts    = static_cast<int>(GridLayoutT::nbrParticleGhosts());
+        auto constexpr static dimension = GridLayoutT::dimension;
+
+        auto const patch_box = phare_box_from<dimension>(patch.getBox());
+        auto const patch_idx = core::CellFlattener{patch_box}(patch_box.lower);
+
+        auto level_ghost_boxes
+            = SAMRAI::hier::BoxContainer{grow<dimension>(patch.getBox(), ghosts)};
+        level_ghost_boxes.removeIntersections(patch.getBox());
+
+        for (auto const& neighbox : getSameLevelNeighbors(patch, hierarchy, ghosts + 1))
+        {
+            auto const box = phare_box_from<dimension>(neighbox);
+            auto const idx = core::CellFlattener{box}(box.lower);
+            if (idx < patch_idx)
+                level_ghost_boxes.removeIntersections(grow<dimension>(neighbox, ghosts));
+        }
+
+        return level_ghost_boxes;
     }
+
 
     template<typename GridLayout, typename ResMan, typename Action, typename... Args>
     void visitLevel(SAMRAI_Types::level_t& level, ResMan& resman, Action&& action, Args&&... args)
@@ -264,7 +295,7 @@ namespace amr
         {
             auto guard        = resman.setOnPatch(*patch, args...);
             GridLayout layout = layoutFromPatch<GridLayout>(*patch);
-            action(layout, to_string(patch->getGlobalId()),
+            action(layout, core::to_string(patch->getGlobalId()),
                    static_cast<std::size_t>(level.getLevelNumber()));
         }
     }

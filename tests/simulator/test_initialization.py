@@ -681,13 +681,52 @@ class InitializationTest(SimulatorTest):
                     == coarse_particles.size() * sim.refined_particle_nbr
                 )
 
+                # gaboxes_list may have multiple entries per patch (one per ghost-area
+                # side), so deduplicate by identity to get one pdata per patch.
+                unique_pdatas = list(
+                    {id(g["pdata"]): g["pdata"] for g in gaboxes_list}.values()
+                )
                 for gabox in gaboxes_list:
-                    gabox_patchData = gabox["pdata"]
-
                     for ghostBox in gabox["boxes"]:
-                        part1 = gabox_patchData.dataset.select(ghostBox)
+                        # Each patch fills only its owned subset of the ghost region
+                        # to avoid duplicates, so aggregate across all unique patches.
+                        combined = None
+                        for pdata in unique_pdatas:
+                            parts = pdata.dataset.select(ghostBox)
+                            if parts.size() > 0:
+                                if combined is None:
+                                    combined = parts
+                                else:
+                                    combined.add(parts)
+                        if combined is None:
+                            continue
                         part2 = coarse_split_particles.select(ghostBox)
-                        self.assertEqual(part1, part2)
+                        self.assertEqual(combined, part2)
+
+        # check no duplicate level ghost particles across patch ghost boxes
+        for ilvl, particle_gaboxes in particle_level_ghost_boxes_per_level.items():
+            for pop_name, gaboxes_list in particle_gaboxes.items():
+                all_icells = []
+                all_deltas = []
+                for gabox in gaboxes_list:
+                    pdata = gabox["pdata"]
+                    for ghostBox in gabox["boxes"]:
+                        parts = pdata.dataset.select(ghostBox)
+                        if parts.size() > 0:
+                            all_icells.append(parts.iCells)
+                            all_deltas.append(parts.deltas)
+                if not all_icells:
+                    continue
+                combined_icells = np.concatenate(all_icells, axis=0)
+                combined_deltas = np.concatenate(all_deltas, axis=0)
+                combined = np.hstack([combined_icells, combined_deltas])
+                n_total = combined.shape[0]
+                n_unique = np.unique(combined, axis=0).shape[0]
+                self.assertEqual(
+                    n_unique,
+                    n_total,
+                    f"level {ilvl} pop {pop_name}: found {n_total - n_unique} duplicate level ghost particles across patch ghost boxes",
+                )
 
 
 if __name__ == "__main__":

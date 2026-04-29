@@ -70,7 +70,7 @@ void HybridTagger<HybridModel>::tag(PHARE::solver::IPhysicalModel<amr_t>& model,
         // These tags will be saved even if they are not used in diags during this advance
         // hybridModel.tags may contain vectors for patches and levels that no longer exist
         auto key = std::to_string(patch.getPatchLevelNumber()) + "_"
-                   + amr::to_string(patch.getGlobalId());
+                   + core::to_string(patch.getGlobalId());
 
         auto nCells = core::product(layout.nbrCells());
 
