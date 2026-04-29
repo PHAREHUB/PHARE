@@ -175,6 +175,13 @@ namespace core
         T var;
     };
 
+    auto to_string(auto const& obj)
+    {
+        std::stringstream ss;
+        ss << obj;
+        return ss.str();
+    }
+
     template<typename T>
     NO_DISCARD std::string to_string_with_precision(T const& a_value, std::size_t const len)
     {

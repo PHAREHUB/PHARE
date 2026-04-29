@@ -111,6 +111,22 @@ struct ParticleView
 };
 
 
+template<typename Box_t, typename RValue = std::size_t>
+struct CellFlattener
+{
+    template<typename Icell>
+    NO_DISCARD RValue operator()(Icell const& icell) const
+    {
+        if constexpr (Box_t::dimension == 2)
+            return icell[1] + icell[0] * shape[1];
+        if constexpr (Box_t::dimension == 3)
+            return icell[2] + icell[1] * shape[2] + icell[0] * shape[1] * shape[2];
+        return icell[0];
+    }
+
+    Box_t const box;
+    std::array<int, Box_t::dimension> shape = box.shape().toArray();
+};
 
 
 template<std::size_t dim, typename T>
