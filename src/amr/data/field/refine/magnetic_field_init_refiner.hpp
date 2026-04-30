@@ -48,15 +48,12 @@ public:
     // onto the 2 (1D), 4 (2/3D) colocated fine faces. This way the total flux on
     // these fine faces equals that on the overlaped coarse face.
     // see fujimoto et al. 2011 :  doi:10.1016/j.jcp.2011.08.002
-    template<typename FieldT>
-    void operator()(FieldT const& coarseField, FieldT& fineField,
-                    core::Point<int, dimension> fineIndex)
+
+    void operator()(auto const& coarseField, auto& fineField, auto const& fineIndex,
+                    auto const& coarseIndex, auto const& locFineIdx, auto const& locCoarseIdx,
+                    auto& fineVal, auto const& coarseVal)
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
-
-        auto locFineIdx   = AMRToLocal(fineIndex, fineBox_);
-        auto coarseIdx    = toCoarseIndex(fineIndex);
-        auto locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
 
         if constexpr (dimension == 1)
@@ -76,10 +73,9 @@ public:
             if (centerings_[0] == core::QtyCentering::primal)
             {
                 if (fineIndex[0] % 2 == 0)
-                {
-                    fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
-                }
+                    fineVal = coarseVal;
             }
+
             // dual case, By, Bz
             //          49           50             51
             //    o     +     o      +       o      +       o      Byz on coarse : +
@@ -89,9 +85,7 @@ public:
             // 100 takes 50 = 100/2
             // 101 takes 50 = 101/2
             else
-            {
-                fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
-            }
+                fineVal = coarseVal;
         }
 
 
@@ -107,8 +101,7 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                    fineVal = coarseVal;
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -119,8 +112,7 @@ public:
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                    fineVal = coarseVal;
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -129,18 +121,13 @@ public:
                 // Bz
                 // we're always on a coarse Z face since there is no dual in z
                 // all 4 fine Bz take the coarse Z value
-                fineField(locFineIdx[dirX], locFineIdx[dirY])
-                    = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                fineVal = coarseVal;
             }
         }
 
 
         else if constexpr (dimension == 3)
         {
-            auto ix = locCoarseIdx[dirX];
-            auto iy = locCoarseIdx[dirY];
-            auto iz = locCoarseIdx[dirZ];
-
             if (centerings_[dirX] == core::QtyCentering::primal
                 and centerings_[dirY] == core::QtyCentering::dual
                 and centerings_[dirZ] == core::QtyCentering::dual)
@@ -150,8 +137,7 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = coarseField(ix, iy, iz);
+                    fineVal = coarseVal;
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -163,8 +149,7 @@ public:
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = coarseField(ix, iy, iz);
+                    fineVal = coarseVal;
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -176,8 +161,7 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = coarseField(ix, iy, iz);
+                    fineVal = coarseVal;
                 }
             }
         }

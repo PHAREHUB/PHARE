@@ -35,23 +35,21 @@ public:
     void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
                     VecField const& J, VecField& Enew)
     {
-        using Pack = OhmPack<VecField, Field>;
-
         if (!this->hasLayout())
             throw std::runtime_error(
                 "Error - Ohm - GridLayout not set, cannot proceed to calculate ohm()");
 
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        layout_->evalOnBox(Exnew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::X>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
-        layout_->evalOnBox(Eynew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::Y>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
-        layout_->evalOnBox(Eznew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::Z>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
+        layout_->evalOnBox(
+            Exnew, [](auto&&... args) { E_Eq_<Component::X>(args...); }, n, Ve, Pe, B, J, Enew,
+            *this);
+        layout_->evalOnBox(
+            Eynew, [](auto&&... args) { E_Eq_<Component::Y>(args...); }, n, Ve, Pe, B, J, Enew,
+            *this);
+        layout_->evalOnBox(
+            Eznew, [](auto&&... args) { E_Eq_<Component::Z>(args...); }, n, Ve, Pe, B, J, Enew,
+            *this);
     }
 
 
@@ -62,33 +60,25 @@ private:
     double const nu_;
     HyperMode const hyper_mode;
 
-    template<typename VecField, typename Field>
-    struct OhmPack
-    {
-        VecField& Exyz;
-        Field const &n, &Pe;
-        VecField const &Ve, &B, &J;
-    };
 
-
-    template<auto Tag, typename OhmPack, typename... IDXs>
-    void E_Eq_(OhmPack&& pack, IDXs const&... ijk) const
+    template<auto Tag>
+    static void E_Eq_(auto const& ijk, auto&&... args)
     {
-        auto const& [E, n, Pe, Ve, B, J] = pack;
-        auto& Exyz                       = E(Tag);
+        auto const& [n, Ve, Pe, B, J, E, self] = std::forward_as_tuple(args...);
+        auto& Exyz                             = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        Exyz(ijk...) = ideal_<Tag>(Ve, B, {ijk...})      //
-                       + pressure_<Tag>(n, Pe, {ijk...}) //
-                       + resistive_<Tag>(J, {ijk...})    //
-                       + hyperresistive_<Tag>(J, B, n, {ijk...});
+        Exyz(ijk) = self.template ideal_<Tag>(Ve, B, ijk)      //
+                    + self.template pressure_<Tag>(n, Pe, ijk) //
+                    + self.template resistive_<Tag>(J, ijk)    //
+                    + self.template hyperresistive_<Tag>(J, B, n, ijk);
     }
 
 
 
     template<auto component, typename VecField>
-    auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
+    auto ideal_(VecField const& Ve, VecField const& B, auto const index) const
     {
         if constexpr (component == Component::X)
         {
@@ -139,7 +129,7 @@ private:
 
 
     template<auto component, typename Field>
-    auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
+    auto pressure_(Field const& n, Field const& Pe, auto const index) const
     {
         if constexpr (component == Component::X)
         {
@@ -189,7 +179,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto resistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    auto resistive_(VecField const& J, auto const index) const
     {
         auto const& Jxyx = J(component);
 
@@ -214,7 +204,7 @@ private:
 
     template<auto component, typename VecField, typename Field>
     auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                         MeshIndex<VecField::dimension> index) const
+                         auto const index) const
     {
         if (hyper_mode == HyperMode::constant)
             return constant_hyperresistive_<component>(J, index);
@@ -226,7 +216,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    auto constant_hyperresistive_(VecField const& J, auto const index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
         return -nu_ * layout_->laplacian(J(component), index);
     }
@@ -234,7 +224,7 @@ private:
 
     template<auto component, typename VecField, typename Field>
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                                 MeshIndex<VecField::dimension> index) const
+                                 auto const index) const
     {
         auto const lvlCoeff        = 1. / std::pow(4, layout_->levelNumber());
         auto constexpr min_density = 0.1;
@@ -263,7 +253,7 @@ private:
                                                  GridLayout::BzToEz, GridLayout::momentsToEz>();
         }
     }
-};
+}; // namespace PHARE::core
 
 
 } // namespace PHARE::core
