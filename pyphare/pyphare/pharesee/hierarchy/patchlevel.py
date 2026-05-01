@@ -27,3 +27,34 @@ class PatchLevel:
     @property
     def cell_width(self):
         return self.patches[0].layout.dl
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return patch_level_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return patch_level_array_function(self, func, types, args, kwargs)
+
+
+def patch_level_array_ufunc(patch_level, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    def extract(pidx):
+        return [x.patches[pidx] if type(x) is type(patch_level) else x for x in inputs]
+
+    out = [
+        getattr(ufunc, method)(*extract(pidx), **kwargs)
+        for pidx in range(len(patch_level.patches))
+    ]
+    return type(patch_level)(patch_level.level_number, out)
+
+
+def patch_level_array_function(patch_level, func, types, args, kwargs):
+    def extract(pidx):
+        return [x.patches[pidx] if type(x) is type(patch_level) else x for x in args]
+
+    out = [func(*extract(pidx), **kwargs) for pidx in range(len(patch_level.patches))]
+
+    if type(out[0]) is not type(patch_level[0]):
+        return out
+    return type(patch_level)(patch_level.level_number, out)

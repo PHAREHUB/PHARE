@@ -2,19 +2,10 @@
 #
 #
 
-from .hierarchy_utils import (
-    compute_hier_from,
-    compute_rename,
-    rename,
-    _compute_mul,
-    _compute_add,
-    _compute_sub,
-    _compute_truediv,
-    _compute_scalardiv,
-)
-from .scalarfield import ScalarField
-
 from . import tensorfield
+
+from . import compute as hc
+from . import hierarchy_utils as hootils
 
 
 class VectorField(tensorfield.AnyTensorField):
@@ -24,78 +15,64 @@ class VectorField(tensorfield.AnyTensorField):
 
     @classmethod
     def FROM(cls, hier):
-        renamed_hier = compute_hier_from(
-            compute_rename, hier, new_names=("x", "y", "z")
-        )
-        return super().FROM(cls, renamed_hier)
+        return super().FROM(cls, hier)
 
     def __mul__(self, other):
-        assert isinstance(other, (int, float))
-        h = compute_hier_from(_compute_mul, self, names=["x", "y", "z"], other=other)
-        return VectorField.FROM(h)
+        if type(other) is VectorField:
+            raise ValueError(
+                "VectorField * VectorField is ambiguous, use pyphare.pharesee.hierarchy.compute.dot or .prod"
+            )
+        return VectorField.FROM(
+            hootils.compute_hier_from(hc.compute_mul, self, **copy_kwargs(self, other))
+        )
 
     def __rmul__(self, other):
         return self.__mul__(other)
 
     def __add__(self, other):
-        names_self_kept = self.quantities()
-        names_other_kept = other.quantities()
-
-        if isinstance(other, VectorField):
-            names_self = ["self_x", "self_y", "self_z"]
-            names_other = ["other_x", "other_y", "other_z"]
-        else:
-            raise RuntimeError("type of hierarchy not yet considered")
-
-        h_self = rename(self, names_self)
-        h_other = rename(other, names_other)
-
-        h = compute_hier_from(
-            _compute_add,
-            (h_self, h_other),
+        return VectorField.FROM(
+            hootils.compute_hier_from(hc.compute_add, self, **copy_kwargs(self, other))
         )
 
-        self = rename(h_self, names_self_kept)  # needed ?
-        other = rename(h_other, names_other_kept)
-
-        return VectorField.FROM(h)
+    def __iadd__(self, other):
+        self = VectorField.FROM(
+            hootils.compute_hier_from(hc.compute_add, self, **copy_kwargs(self, other))
+        )
+        return self
 
     def __sub__(self, other):
-        names_self_kept = self.quantities()
-        names_other_kept = other.quantities()
-
-        if isinstance(other, VectorField):
-            names_self = ["self_x", "self_y", "self_z"]
-            names_other = ["other_x", "other_y", "other_z"]
-        else:
-            raise RuntimeError("type of hierarchy not yet considered")
-
-        h_self = rename(self, names_self)
-        h_other = rename(other, names_other)
-
-        h = compute_hier_from(
-            _compute_sub,
-            (h_self, h_other),
+        return VectorField.FROM(
+            hootils.compute_hier_from(hc.compute_sub, self, **copy_kwargs(self, other))
         )
 
-        self = rename(h_self, names_self_kept)
-        other = rename(h_other, names_other_kept)
-
-        return VectorField.FROM(h)
-
     def __truediv__(self, other):
-        if not isinstance(other, (ScalarField, int, float)):
-            raise RuntimeError("type of operand not considered")
+        return VectorField.FROM(
+            hootils.compute_hier_from(
+                hc.compute_truediv, self, **copy_kwargs(self, other)
+            )
+        )
 
-        if isinstance(other, ScalarField):
-            return VectorField.FROM(
-                compute_hier_from(
-                    _compute_truediv, (self, other), res_names=("x", "y", "z")
-                )
-            )
-        elif isinstance(other, (int, float)):
-            return VectorField.FROM(
-                compute_hier_from(
-                    _compute_scalardiv, (self,), res_names=("x", "y", "z"), scalar=other
-                )
-            )
+
+def copy_kwargs(vector_field, other=None):
+    if other:
+        return {"other": other, "key_map": key_map(vector_field, other)}
+    return {"key_map": key_map(vector_field)}
+
+
+def key_map(vector_field, other=None):
+    if len(vector_field.quantities()) != 3:
+        raise ValueError("Invalid VectorField 1!")
+
+    both_vecfields = other and type(vector_field) is type(other)
+    if both_vecfields and len(other.quantities()) != 3:
+        raise ValueError("Invalid VectorField 2!")
+
+    def _(field):
+        return {
+            field.quantities()[i]: field.names[i]
+            for i in range(len(field.quantities()))
+        }
+
+    this = _(vector_field)
+    that = _(other) if both_vecfields else {}
+    return {**this, **that}

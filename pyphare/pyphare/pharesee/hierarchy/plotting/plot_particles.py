@@ -1,7 +1,13 @@
+#
+#
+#
+
+import numpy as np
+from pyphare.core import phare_utilities as phut
+
+
 def hierarchy_dist_plot(hier, **kwargs):
     import copy
-    import numpy as np
-    from pyphare.core import phare_utilities as phut
 
     usr_lvls = kwargs.get("levels", (0,))
     finest = kwargs.get("finest", False)
@@ -63,10 +69,10 @@ def finest_part_data(hierarchy, time=None):
     Particles contained in the dict are those from
     the finest patches available at a given location
     """
-    import numpy as np
+
     from copy import deepcopy
     from pyphare.core import box as boxm
-    from pyphare.core import phare_utilities as phut
+
     from pyphare.pharesee.particles import remove
 
     i_ref = None
@@ -132,9 +138,8 @@ def amr_grid(hierarchy, time):
     """returns a non-uniform contiguous primal grid
     associated to the given hierarchy
     """
-    import numpy as np
+
     from pyphare.core import box as boxm
-    from pyphare.core import phare_utilities as phut
 
     lvlPatchBoxes = {ilvl: [] for ilvl in range(hierarchy.finest_level() + 1)}
     finalCells = {ilvl: None for ilvl in range(hierarchy.finest_level() + 1)}
@@ -226,7 +231,7 @@ def particles_dist_plot(particles, **kwargs):
 
     return value : fig,ax
     """
-    import numpy as np
+
     import matplotlib.pyplot as plt
     from matplotlib.colors import LogNorm, Normalize
     from pyphare.pharesee.particles import Particles, aggregate

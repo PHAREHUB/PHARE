@@ -71,6 +71,9 @@ class PatchHierarchy(object):
         self.ephemerals = ephemerals
         self.update()
 
+    def finest(self, time, qty=None):
+        return func.GetFinest(self, time, qty)
+
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things
         return phut.deep_copy(self, memo, no_copy_keys)
@@ -98,6 +101,14 @@ class PatchHierarchy(object):
                         )
                     else:
                         self.__dict__[qty].time_hier[time] = new_lvls
+
+    def __getattr__(self, key):
+        if key in self.__dict__:
+            return self.__dict__[key]
+        for k, v in self.__dict__.items():
+            if k.endswith(key) and type(v) is PatchHierarchy:
+                return v
+        raise ValueError("PatchHierarchy.__getattr__ cannot handle input", key)
 
     def nbytes(self):
         n = 0
@@ -275,12 +286,12 @@ class PatchHierarchy(object):
         first = True
         for ilvl, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
-                    m = np.nanmin(pd.dataset[:])
+                    m = np.nanmin(pd[:])
                     first = False
                 else:
-                    data_and_min = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_min = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmin(data_and_min)
 
         return m
@@ -290,22 +301,25 @@ class PatchHierarchy(object):
         first = True
         for _, lvl in self.levels(time).items():
             for patch in lvl.patches:
-                pd = patch.patch_datas[qty]
+                pd = patch[qty]
                 if first:
-                    m = np.nanmax(pd.dataset[:])
+                    m = np.nanmax(pd[:])
                     first = False
                 else:
-                    data_and_max = np.concatenate(([m], pd.dataset[:].flatten()))
+                    data_and_max = np.concatenate(([m], pd[:].flatten()))
                     m = np.nanmax(data_and_max)
 
         return m
+
+    def refined_box(self, level_number, box):
+        return boxm.refine(box, self.refinement_ratio**level_number)
 
     def refined_domain_box(self, level_number):
         """
         returns the domain box refined for a given level number
         """
         assert level_number >= 0
-        return boxm.refine(self.domain_box, self.refinement_ratio**level_number)
+        return self.refined_box(level_number, self.domain_box)
 
     def level_domain_box(self, level_number):
         if level_number == 0:
@@ -375,3 +389,49 @@ class PatchHierarchy(object):
         from .plotting.plot_particles import hierarchy_dist_plot
 
         return hierarchy_dist_plot(self, **kwargs)
+
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+        return hierarchy_array_ufunc(self, ufunc, method, *inputs, **kwargs)
+
+    def __array_function__(self, func, types, args, kwargs):
+        return hierarchy_array_function(self, func, types, args, kwargs)
+
+
+def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
+    if method != "__call__":
+        return NotImplemented
+
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in inputs]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    for time in hier.time_hier:
+        for ilvl in hier.levels(time):
+            ret.time_hier[time][ilvl] = getattr(ufunc, method)(
+                *extract(time, ilvl), **kwargs
+            )
+
+    return ret
+
+
+def hierarchy_array_function(hier, func, types, args, kwargs):
+    def extract(time, ilvl):
+        return [x.level(ilvl, time) if type(x) is type(hier) else x for x in args]
+
+    time_hier = {}
+    for time in hier.time_hier:
+        time_hier[time] = {}
+        for ilvl in hier.levels(time):
+            time_hier[time][ilvl] = func(*extract(time, ilvl), **kwargs)
+
+    any_level = next(iter(next(iter(time_hier.values())).values()))
+    if type(any_level[0]) is dict:
+        return time_hier  # return a dictionary of times[]
+
+    from copy import deepcopy
+
+    ret = deepcopy(hier)
+    ret.time_hier = time_hier
+    return ret
