@@ -4,6 +4,7 @@
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/logger.hpp"
+#include "core/data/vector.hpp"
 #include "core/data/field/field_box.hpp"
 
 #include "amr/samrai.hpp" // restarts
@@ -220,8 +221,8 @@ namespace amr
             if (transformation.getRotation() != NO_ROTATE)
                 throw std::runtime_error("Rotations are not supported in PHARE");
 
-            std::vector<value_type> buffer;
-            buffer.reserve(getDataStreamSize_(overlap) / sizeof(double));
+            auto const buffer_size = getDataStreamSize_(overlap) / sizeof(value_type);
+            auto& buffer           = tmp.reserve_and_clear(buffer_size)();
 
             for (auto const& box : fieldOverlap.getDestinationBoxContainer())
             {
@@ -265,7 +266,7 @@ namespace amr
                 throw std::runtime_error("Rotations are not supported in PHARE");
 
             // For unpacking we need to know how much element we will need to extract
-            std::vector<double> buffer(getDataStreamSize(overlap) / sizeof(value_type), 0.);
+            auto& buffer = tmp.get_no_copy(getDataStreamSize(overlap) / sizeof(value_type))();
 
             // We flush a portion of the stream on the buffer.
             stream.unpack(buffer.data(), buffer.size());
@@ -327,6 +328,7 @@ namespace amr
 
     private:
         PhysicalQuantity quantity_; ///! PhysicalQuantity used for this field data
+        static inline core::MinimizingVector<value_type> tmp; // LESS ALLOCATIONS
 
 
 
