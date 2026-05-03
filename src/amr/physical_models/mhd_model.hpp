@@ -23,9 +23,10 @@ namespace solver
     class MHDModel : public IPhysicalModel<AMR_Types>
     {
     public:
-        using patch_t   = typename AMR_Types::patch_t;
-        using level_t   = typename AMR_Types::level_t;
-        using Interface = IPhysicalModel<AMR_Types>;
+        using gridlayout_type = GridLayoutT;
+        using patch_t         = AMR_Types::patch_t;
+        using level_t         = AMR_Types::level_t;
+        using Interface       = IPhysicalModel<AMR_Types>;
 
         static constexpr std::string_view model_type_name = "MHDModel";
         static inline std::string const model_name{model_type_name};
