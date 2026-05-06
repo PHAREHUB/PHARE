@@ -71,6 +71,12 @@ class PatchHierarchy(object):
         self.ephemerals = ephemerals
         self.update()
 
+    def finest(self, time=None, qty=None):
+        from . import func
+
+        finest = func.GetFinest(self, time, qty)
+        return next(iter(finest.values())) if len(finest) == 1 else finest
+
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things
         return phut.deep_copy(self, memo, no_copy_keys)
