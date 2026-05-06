@@ -21,7 +21,7 @@ class UniformGrids:
         self.grids = grids
 
     def plot(self, qty, **kwargs):
-        self.grids[qty].plot(**kwargs)
+        self[qty].plot(**kwargs)
 
     def items(self):
         return self.grids.items()
@@ -36,7 +36,12 @@ class UniformGrids:
         return len(self.grids)
 
     def __getitem__(self, key):
-        return self.grids[key]
+        if key in self.grids:
+            return self.grids[key]
+        for k in self.grids:
+            if k.endswith(key):
+                return self.grids[k]
+        raise KeyError(f"No grid for key: {key} in {self.grids}")
 
     def __setitem__(self, key, val):
         self.grids[key] = val
