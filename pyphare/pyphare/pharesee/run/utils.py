@@ -383,9 +383,9 @@ def _compute_pressure(patch_datas, **kwargs):
     Myz = patch_datas["Myz"].dataset[:]
     Mzz = patch_datas["Mzz"].dataset[:]
     massDensity = patch_datas["value"].dataset[:]
-    Vix = patch_datas["Vx"].dataset[:]
-    Viy = patch_datas["Vy"].dataset[:]
-    Viz = patch_datas["Vz"].dataset[:]
+    Vix = patch_datas["x"].dataset[:]
+    Viy = patch_datas["y"].dataset[:]
+    Viz = patch_datas["z"].dataset[:]
 
     Pxx = Mxx - Vix * Vix * massDensity
     Pxy = Mxy - Vix * Viy * massDensity

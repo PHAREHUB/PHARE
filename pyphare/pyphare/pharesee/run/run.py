@@ -174,11 +174,11 @@ class Run:
         M = self._get_hierarchy(
             time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
         )
-        V = self.GetFlux(time, pop_name, **kwargs)
+        F = self.GetFlux(time, pop_name, **kwargs)
         N = self.GetN(time, pop_name, **kwargs)
         P = compute_hier_from(
             _compute_pop_pressure,
-            (M, V, N),
+            (M, F, N),
             popname=pop_name,
             mass=self.GetMass(pop_name, **kwargs),
         )
