@@ -1,6 +1,11 @@
-from dataclasses import dataclass, field
-from copy import deepcopy
+#
+#
+#
+
+
 import numpy as np
+from copy import deepcopy
+from dataclasses import dataclass, field
 
 from typing import Any, List, Tuple
 
@@ -850,15 +855,13 @@ def max_from(that, time=None, qty=None):
     raise RuntimeError("Cannot resolve type to max_from, consider updating if required")
 
 
-def min_max_patch_shape(hier, time, qty=None):
+def min_max_patch_shape(hier, time):
     time_hier = hier.levels(time)
-    val = {ilvl: [10000, 0] for ilvl in time_hier.keys()}
+    val = {ilvl: [np.iinfo(np.int32).max, 0] for ilvl in time_hier.keys()}
 
     for ilvl, lvl in time_hier.items():
         for patch in lvl:
-            for key, pd in patch.patch_datas.items():
-                if qty is None or key == qty:
-                    val[ilvl][0] = min(np.min(pd.dataset.shape), val[ilvl][0])
-                    val[ilvl][1] = max(np.max(pd.dataset.shape), val[ilvl][1])
+            val[ilvl][0] = min(np.min(patch.box.shape), val[ilvl][0])
+            val[ilvl][1] = max(np.max(patch.box.shape), val[ilvl][1])
 
     return val

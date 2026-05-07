@@ -1,17 +1,13 @@
 #!/usr/bin/env python3
 
-import os
 import sys
 from pathlib import Path
 
 from pyphare import cpp
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
-from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.simulator.simulator import startMPI
 from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
-
-
-from tests.simulator.test_advance import AdvanceTestBase
 
 
 if len(sys.argv) == 1:
@@ -22,11 +18,11 @@ diag_dir = sys.argv[1]
 
 ph.NO_GUI()
 DO_PLOTS = True  # global plot skip
-dpi=300
+dpi = 300
 
 
 def plot_file_for_qty(plot_dir, qty, time, extra=""):
-    return f"{plot_dir}/harris_t{"{:.10f}".format(time)}_{qty}_{extra}.png"
+    return f"{plot_dir}/harris_t{time:.10f}_{qty}_{extra}.png"
 
 
 def diff_ranks(run, plot_dir, time):
@@ -34,7 +30,7 @@ def diff_ranks(run, plot_dir, time):
         ranks = run.GetRanks(time)
         for ilvl in ranks.levels(time).keys():
             ranks.plot(
-                filename=plot_file_for_qty(plot_dir, f"ranks", time, f"L{ilvl}"),
+                filename=plot_file_for_qty(plot_dir, "ranks", time, f"L{ilvl}"),
                 plot_patches=True,
                 levels=(ilvl,),
                 dpi=dpi,
@@ -108,12 +104,12 @@ def diff_mass_density(run, plot_dir, time):
     if DO_PLOTS and hootils.has_non_zero(differ, time):
         for ilvl in differ.levels(time).keys():
             differ.plot(
-                filename=plot_file_for_qty(plot_dir, f"ionMass", time, f"L{ilvl}"),
+                filename=plot_file_for_qty(plot_dir, "ionMass", time, f"L{ilvl}"),
                 plot_patches=True,
                 vmin=0,
                 vmax=+1e-16,
                 levels=(ilvl,),
-                dpi=dpi
+                dpi=dpi,
             )
 
 
@@ -121,7 +117,7 @@ def check_diag(run, plot_dir, time, fn):
     try:
         fn(run, plot_dir, time)
 
-    except FileNotFoundError as e:
+    except FileNotFoundError:
         print("File not found for", fn.__name__)
     except Exception as e:
         import traceback
