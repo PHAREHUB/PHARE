@@ -24,7 +24,7 @@ namespace PHARE::amr
  * The fine faces values are set equal to that of the coarse shared one (order 0 interpolation).
  * inner fine faces are set by the MagneticRefinePatchStrategy
  */
-template<std::size_t dimension>
+template<std::size_t dimension, bool nan_check = true>
 class MagneticFieldRefiner
 {
 public:
@@ -50,8 +50,9 @@ public:
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
-        if (not std::isnan(fineVal)) // KEEP
-            return;
+        if constexpr (nan_check)
+            if (not std::isnan(fineVal)) // KEEP
+                return;
 
         if constexpr (dimension == 1)
         {
@@ -167,6 +168,12 @@ private:
     SAMRAI::hier::Box const coarseBox_;
     std::array<core::QtyCentering, dimension> const centerings_;
 };
+
+
+template<std::size_t dimension>
+using MagneticFieldInitRefiner = MagneticFieldRefiner<dimension, /*nan_check=*/false>;
+
+
 } // namespace PHARE::amr
 
 
