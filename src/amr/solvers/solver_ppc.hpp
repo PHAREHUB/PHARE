@@ -112,14 +112,10 @@ public:
 
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        return std::forward_as_tuple(Bold_, fluxSumE_);
-    }
+    { return std::forward_as_tuple(Bold_, fluxSumE_); }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        return std::forward_as_tuple(Bold_, fluxSumE_);
-    }
+    { return std::forward_as_tuple(Bold_, fluxSumE_); }
 
 
 private:
@@ -175,7 +171,7 @@ private:
         auto& rm = *model.resourcesManager;
         for (auto& patch : rm.enumerate(level, model.state.electrons))
             model.state.electrons.update(amr::layoutFromPatch<GridLayout>(*patch));
-    };
+    }
 
 
     using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
