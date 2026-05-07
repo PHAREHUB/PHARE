@@ -1,11 +1,12 @@
 #ifndef PHARE_SOLVER_SOLVER_PPC_MODEL_VIEW_HPP
 #define PHARE_SOLVER_SOLVER_PPC_MODEL_VIEW_HPP
 
+#include "core/numerics/ohm/ohm.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
-#include "core/numerics/ohm/ohm.hpp"
 
 #include "amr/solvers/solver.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 namespace PHARE::solver
 {
