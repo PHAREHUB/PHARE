@@ -39,58 +39,65 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        layout_->evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
-        layout_->evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
-        layout_->evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
-    }
+        auto const& layout = *layout_;
 
+        layout.evalOnGhostBox(
+            Bxnew, [](auto&&... args) { BxEq_(args...); }, Bx, E, Bxnew, layout, dt_);
+        layout.evalOnGhostBox(
+            Bynew, [](auto&&... args) { ByEq_(args...); }, By, E, Bynew, layout, dt_);
+        layout.evalOnGhostBox(
+            Bznew, [](auto&&... args) { BzEq_(args...); }, Bz, E, Bznew, layout, dt_);
+    }
 
 private:
     double dt_;
 
 
-    template<typename VecField, typename Field, typename... Indexes>
-    void BxEq_(Field const& Bx, VecField const& E, Field& Bxnew, Indexes const&... ijk) const
+    static void BxEq_(auto const& ijk, auto&&... args)
     {
-        auto const& [_, Ey, Ez] = E();
+        auto const& [Bx, E, Bxnew, layout, dt] = std::forward_as_tuple(args...);
+        auto const& [_, Ey, Ez]                = E();
 
         if constexpr (dimension == 1)
-            Bxnew(ijk...) = Bx(ijk...);
+            Bxnew(ijk) = Bx(ijk);
 
         if constexpr (dimension == 2)
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_->template deriv<Direction::Y>(Ez, {ijk...});
+            Bxnew(ijk) = Bx(ijk) - dt * layout.template deriv<Direction::Y>(Ez, ijk);
 
         if constexpr (dimension == 3)
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_->template deriv<Direction::Y>(Ez, {ijk...})
-                            + dt_ * layout_->template deriv<Direction::Z>(Ey, {ijk...});
+            Bxnew(ijk) = Bx(ijk) - dt * layout.template deriv<Direction::Y>(Ez, ijk)
+                         + dt * layout.template deriv<Direction::Z>(Ey, ijk);
     }
 
-    template<typename VecField, typename Field, typename... Indexes>
-    void ByEq_(Field const& By, VecField const& E, Field& Bynew, Indexes const&... ijk) const
+
+    static void ByEq_(auto const& ijk, auto&&... args)
     {
-        auto const& [Ex, _, Ez] = E();
+        auto const& [By, E, Bynew, layout, dt] = std::forward_as_tuple(args...);
+        auto const& [Ex, _, Ez]                = E();
 
         if constexpr (dimension == 1 || dimension == 2)
-            Bynew(ijk...) = By(ijk...) + dt_ * layout_->template deriv<Direction::X>(Ez, {ijk...});
+            Bynew(ijk) = By(ijk) + dt * layout.template deriv<Direction::X>(Ez, ijk);
 
         if constexpr (dimension == 3)
-            Bynew(ijk...) = By(ijk...) - dt_ * layout_->template deriv<Direction::Z>(Ex, {ijk...})
-                            + dt_ * layout_->template deriv<Direction::X>(Ez, {ijk...});
+            Bynew(ijk) = By(ijk) - dt * layout.template deriv<Direction::Z>(Ex, ijk)
+                         + dt * layout.template deriv<Direction::X>(Ez, ijk);
     }
 
-    template<typename VecField, typename Field, typename... Indexes>
-    void BzEq_(Field const& Bz, VecField const& E, Field& Bznew, Indexes const&... ijk) const
+
+    static void BzEq_(auto const& ijk, auto&&... args)
     {
-        auto const& [Ex, Ey, _] = E();
+        auto const& [Bz, E, Bznew, layout, dt] = std::forward_as_tuple(args...);
+        auto const& [Ex, Ey, _]                = E();
 
         if constexpr (dimension == 1)
-            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_->template deriv<Direction::X>(Ey, {ijk...});
+            Bznew(ijk) = Bz(ijk) - dt * layout.template deriv<Direction::X>(Ey, ijk);
 
         else
-            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_->template deriv<Direction::X>(Ey, {ijk...})
-                            + dt_ * layout_->template deriv<Direction::Y>(Ex, {ijk...});
+            Bznew(ijk) = Bz(ijk) - dt * layout.template deriv<Direction::X>(Ey, ijk)
+                         + dt * layout.template deriv<Direction::Y>(Ex, ijk);
     }
 };
+
 
 } // namespace PHARE::core
 
