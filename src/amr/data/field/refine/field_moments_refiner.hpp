@@ -4,8 +4,7 @@
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include "core/data/field/field.hpp"
-#include "core/utilities/constants.hpp"
+
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
@@ -14,7 +13,6 @@
 #include <SAMRAI/hier/Box.h>
 
 #include <array>
-#include <vector>
 
 
 namespace PHARE::amr

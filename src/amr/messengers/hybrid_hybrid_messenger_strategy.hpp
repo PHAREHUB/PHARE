@@ -11,28 +11,27 @@
 #include "refiner_pool.hpp"
 #include "synchronizer_pool.hpp"
 
-#include "amr/data/field/coarsening/moments_coarsener.hpp"
 #include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
-#include "amr/data/field/refine/field_moments_refiner.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
+#include "amr/data/field/field_variable_fill_pattern.hpp"
+#include "amr/data/field/refine/field_moments_refiner.hpp"
+#include "amr/data/field/coarsening/moments_coarsener.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
-#include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/electric_field_refiner.hpp"
-#include "amr/data/field/refine/magnetic_field_init_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 
-#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/Patch.h>
+#include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/hier/CoarseFineBoundary.h>
@@ -327,14 +326,10 @@ namespace amr
 
 
         std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() override
-        {
-            return std::make_unique<HybridMessengerInfo>();
-        }
+        { return std::make_unique<HybridMessengerInfo>(); }
 
         std::unique_ptr<IMessengerInfo> emptyInfoFromFiner() override
-        {
-            return std::make_unique<HybridMessengerInfo>();
-        }
+        { return std::make_unique<HybridMessengerInfo>(); }
 
         /**
          * @brief initLevel is used to initialize hybrid data on the level levelNumer at
