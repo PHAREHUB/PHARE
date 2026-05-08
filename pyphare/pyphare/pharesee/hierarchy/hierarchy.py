@@ -643,6 +643,7 @@ def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
             ret.time_hier[time][ilvl] = getattr(ufunc, method)(
                 *extract(time, ilvl), **kwargs
             )
+    ret.update()
     return ret
 
 
@@ -664,6 +665,7 @@ def hierarchy_array_function(hier, func, types, args, kwargs):
 
     ret = deepcopy(hier)
     ret.time_hier = time_hier
+    ret.update()
     return ret
 
 
