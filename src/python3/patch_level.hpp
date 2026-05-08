@@ -1,304 +1,167 @@
 #ifndef PHARE_PYTHON_PATCH_LEVEL_HPP
 #define PHARE_PYTHON_PATCH_LEVEL_HPP
 
-#include "phare_solver.hpp"
+
+
+#include "amr/wrappers/hierarchy.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
+
 #include "python3/patch_data.hpp"
+
+
 
 #include <string>
 #include <cstring>
 #include <cstddef>
 
 
+
 namespace PHARE::pydata
 {
-template<auto opts>
-class __attribute__((visibility("hidden"))) PatchLevel
+
+
+template<typename Model, typename Enable = void>
+class PatchLevel;
+
+template<typename Model_t>
+class AnyPatchLevel
 {
+    using GridLayout = Model_t::gridlayout_type;
+
+    static constexpr std::size_t dimension = GridLayout::dimension;
+
 public:
-    static constexpr std::size_t dimension = opts.dimension;
-
-    using PHARESolverTypes = solver::PHARE_Types<opts>;
-    using HybridModel      = PHARESolverTypes::HybridModel_t;
-    using GridLayout       = HybridModel::gridlayout_type;
-
-    PatchLevel(amr::Hierarchy& hierarchy, HybridModel& model, std::size_t lvl)
-        : lvl_(lvl)
-        , hierarchy_{hierarchy}
-        , model_{model}
+    AnyPatchLevel(amr::Hierarchy& hierarchy, Model_t& model, std::size_t lvl)
+        : lvl(lvl)
+        , hierarchy{hierarchy}
+        , model{model}
     {
     }
 
-    auto getDensity()
+
+protected:
+    auto getField(auto& field)
     {
-        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
-        auto& ions = model_.state.ions;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            setPatchDataFromField(patchDatas.emplace_back(), ions.chargeDensity(), grid, patchID);
+        std::vector<PatchData<py_array_t<double>, dimension>> patchDatas;
+        auto visit = [&](auto& grid, auto patchID, auto /*ilvl*/) {
+            setPyPatchDataFromField(patchDatas.emplace_back(), field, grid, patchID);
         };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, ions);
-
+        amr::visitLevel<GridLayout>(*hierarchy.getPatchLevel(lvl), rm, visit, field);
+        return patchDatas;
+    }
+    auto getVecFieldComponent(auto& vecfield, auto const component)
+    {
+        std::vector<PatchData<py_array_t<double>, dimension>> patchDatas;
+        auto visit = [&](auto& grid, auto patchID, auto /*ilvl*/) {
+            setPyPatchDataFromField(patchDatas.emplace_back(), vecfield(component), grid, patchID);
+        };
+        amr::visitLevel<GridLayout>(*hierarchy.getPatchLevel(lvl), rm, visit, vecfield);
         return patchDatas;
     }
 
-    auto getPopDensities()
+    auto static vecfield_component(std::string const& component)
     {
-        using Inner = decltype(getDensity());
-
-        std::unordered_map<std::string, Inner> pop_data;
-        auto& ions = model_.state.ions;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            for (auto const& pop : ions)
-            {
-                if (!pop_data.count(pop.name()))
-                    pop_data.emplace(pop.name(), Inner());
-
-                setPatchDataFromField(pop_data.at(pop.name()).emplace_back(), pop.chargeDensity(),
-                                      grid, patchID);
-            }
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, ions);
-
-        return pop_data;
+        return core::Components::componentMap().at(component);
     }
 
-    template<typename VecField, typename Map>
-    auto getVecFields(VecField& vecField, Map& container, GridLayout& grid, std::string patchID,
-                      std::string outer_key)
-    {
-        if (!container.count(outer_key))
-            container.emplace(outer_key, typename Map::mapped_type());
-
-        auto& inner = container.at(outer_key);
-
-        for (auto& [id, type] : core::Components::componentMap())
-        {
-            auto& field = vecField.getComponent(type);
-
-            if (!inner.count(field.name()))
-                inner.emplace(field.name(), decltype(getDensity())());
-
-            setPatchDataFromField(inner.at(field.name()).emplace_back(), field, grid, patchID);
-        }
-    }
-
-    auto getBulkVelocity()
-    {
-        decltype(getPopDensities()) bulkV;
-
-        auto& ions = model_.state.ions;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            for (auto& [id, type] : core::Components::componentMap())
-            {
-                auto& field = ions.velocity().getComponent(type);
-
-                if (!bulkV.count(field.name()))
-                    bulkV.emplace(field.name(), decltype(getDensity())());
-
-                setPatchDataFromField(bulkV.at(field.name()).emplace_back(), field, grid, patchID);
-            }
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, ions);
-
-        return bulkV;
-    }
-
-    auto getPopFlux()
-    {
-        using Inner = decltype(getPopDensities());
-
-        std::unordered_map<std::string, Inner> pop_data;
-
-        auto& ions = model_.state.ions;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            for (auto const& pop : ions)
-                getVecFields(pop.flux(), pop_data, grid, patchID, pop.name());
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, ions);
-
-        return pop_data;
-    }
-
-    auto getEM()
-    {
-        using Inner = decltype(getPopDensities());
-
-        std::unordered_map<std::string, Inner> em_data;
-
-        auto& em = model_.state.electromag;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            for (auto& vecFieldPtr : {&em.B, &em.E})
-            {
-                getVecFields(*vecFieldPtr, em_data, grid, patchID, vecFieldPtr->name());
-            }
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, em);
-
-        return em_data;
-    }
-
-
-    auto getB(std::string componentName)
-    {
-        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
-
-        auto& B = model_.state.electromag.B;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap().at(componentName);
-            setPatchDataFromField(patchDatas.emplace_back(), B.getComponent(compo), grid, patchID);
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, B);
-
-        return patchDatas;
-    }
-
-
-    auto getE(std::string componentName)
-    {
-        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
-
-        auto& E = model_.state.electromag.E;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap().at(componentName);
-            setPatchDataFromField(patchDatas.emplace_back(), E.getComponent(compo), grid, patchID);
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, E);
-
-        return patchDatas;
-    }
-
-
-
-    auto getVi(std::string componentName)
-    {
-        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
-
-        auto& V = model_.state.ions.velocity();
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap().at(componentName);
-            setPatchDataFromField(patchDatas.emplace_back(), V.getComponent(compo), grid, patchID);
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, V);
-
-        return patchDatas;
-    }
-
-
-
-    auto getPopFluxCompo(std::string component, std::string popName)
-    {
-        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
-
-        auto& ions = model_.state.ions;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            auto compo = PHARE::core::Components::componentMap().at(component);
-            for (auto const& pop : ions)
-                if (pop.name() == popName)
-                    setPatchDataFromField(patchDatas.emplace_back(), pop.flux().getComponent(compo),
-                                          grid, patchID);
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, ions);
-
-        return patchDatas;
-    }
-
-
-
-
-    auto getEx() { return getE("x"); }
-    auto getEy() { return getE("y"); }
-    auto getEz() { return getE("z"); }
-
-    auto getBx() { return getB("x"); }
-    auto getBy() { return getB("y"); }
-    auto getBz() { return getB("z"); }
-
-    auto getVix() { return getVi("x"); }
-    auto getViy() { return getVi("y"); }
-    auto getViz() { return getVi("z"); }
-
-    auto getFx(std::string pop) { return getPopFluxCompo("x", pop); }
-    auto getFy(std::string pop) { return getPopFluxCompo("y", pop); }
-    auto getFz(std::string pop) { return getPopFluxCompo("z", pop); }
-
-
-
-
-    auto getParticles(std::string userPopName)
-    {
-        using Nested = std::vector<PatchData<core::ContiguousParticles<dimension>, dimension>>;
-        using Inner  = std::unordered_map<std::string, Nested>;
-
-        std::unordered_map<std::string, Inner> pop_particles;
-
-        auto getParticleData = [&](Inner& inner, GridLayout& grid, std::string patchID,
-                                   std::string key, auto& particles) {
-            if (particles.size() == 0)
-                return;
-
-            if (!inner.count(key))
-                inner.emplace(key, Nested());
-
-            auto& patch_data = inner[key].emplace_back(particles.size());
-            setPatchDataFromGrid(patch_data, grid, patchID);
-            core::ParticlePacker<dimension>{particles}.pack(patch_data.data);
-        };
-
-        auto& ions = model_.state.ions;
-
-        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
-            for (auto& pop : ions)
-            {
-                if ((userPopName != "" and userPopName == pop.name()) or userPopName == "all")
-                {
-                    if (!pop_particles.count(pop.name()))
-                        pop_particles.emplace(pop.name(), Inner());
-
-                    auto& inner = pop_particles.at(pop.name());
-
-                    getParticleData(inner, grid, patchID, "domain", pop.domainParticles());
-                    getParticleData(inner, grid, patchID, "levelGhost", pop.levelGhostParticles());
-                }
-            }
-        };
-
-        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
-                                           *model_.resourcesManager, visit, ions);
-
-        return pop_particles;
-    }
-
-private:
-    std::size_t lvl_;
-    amr::Hierarchy& hierarchy_;
-    HybridModel& model_;
+protected:
+    std::size_t lvl;
+    amr::Hierarchy& hierarchy;
+    Model_t& model;
+    Model_t::resources_manager_type& rm = *model.resourcesManager;
 };
+
+
+template<typename Model>
+class __attribute__((visibility("hidden")))
+PatchLevel<Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>> : AnyPatchLevel<Model>
+{
+    using Super = AnyPatchLevel<Model>;
+
+public:
+    using Model_t                          = Model;
+    using GridLayout                       = Model_t::gridlayout_type;
+    static constexpr std::size_t dimension = GridLayout::dimension;
+
+    PatchLevel(amr::Hierarchy& hierarchy, Model& model, std::size_t lvl)
+        : Super(hierarchy, model, lvl)
+    {
+    }
+
+    auto getB(std::string const& component)
+    {
+        return this->getVecFieldComponent(this->model.state.electromag.B,
+                                          this->vecfield_component(component));
+    }
+
+    auto getE(std::string const& component)
+    {
+        return this->getVecFieldComponent(this->model.state.electromag.E,
+                                          this->vecfield_component(component));
+    }
+
+    auto& getIonPop(auto const& popName)
+    {
+        for (auto& pop : this->model.state.ions)
+            if (popName == pop.name())
+                return pop;
+        throw std::runtime_error("no population found named: " + popName);
+    }
+
+    auto getNi() { return this->getField(this->model.state.ions.massDensity()); }
+
+    auto getN(std::string const& popName)
+    {
+        return this->getField(getIonPop(popName).chargeDensity());
+    }
+
+    auto getVi(std::string const& component)
+    {
+        return this->getVecFieldComponent(this->model.state.ions.velocity(),
+                                          this->vecfield_component(component));
+    }
+
+    auto getFlux(std::string const& component, std::string const& popName)
+    {
+        return this->getVecFieldComponent(getIonPop(popName).flux(),
+                                          this->vecfield_component(component));
+    }
+
+    auto getParticles(std::string const& popName)
+    {
+        std::vector<PatchData<core::ParticleArray<dimension>*, dimension>> patchDatas;
+
+        auto& pop = getIonPop(popName);
+
+        auto visit = [&](auto& grid, auto patchID, auto /*ilvl*/) {
+            setPatchDataFromGrid(patchDatas.emplace_back(&pop.domainParticles()), grid, patchID);
+        };
+
+        amr::visitLevel<GridLayout>( //
+            *this->hierarchy.getPatchLevel(this->lvl), this->rm, visit, pop);
+
+        return patchDatas;
+    }
+};
+
+
+template<typename Model>
+class __attribute__((visibility("hidden")))
+PatchLevel<Model, std::enable_if_t<solver::is_mhd_model_v<Model>>> : AnyPatchLevel<Model>
+{
+    using Super = AnyPatchLevel<Model>;
+
+public:
+    using Model_t    = Model;
+    using GridLayout = Model_t::gridlayout_type;
+
+    PatchLevel(amr::Hierarchy& hierarchy, Model& model, std::size_t const lvl)
+        : Super(hierarchy, model, lvl)
+    {
+    }
+};
+
 
 
 } // namespace PHARE::pydata

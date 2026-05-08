@@ -59,33 +59,31 @@ void inline declare_etc(py::module& m)
     py::class_<DW, py::smart_holder>(m, name.c_str())
         .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def("sync_merge", &DW::sync_merge)
-        .def("getPatchLevel", &DW::getPatchLevel)
+        .def("sync", &DW::sync)
+        .def("getMHDPatchLevel", &DW::getMHDPatchLevel)
+        .def("getHybridPatchLevel", &DW::getHybridPatchLevel)
         .def("getNumberOfLevels", &DW::getNumberOfLevels);
 
-    using PL = PatchLevel<opts>;
-    name     = "PatchLevel";
-    py::class_<PL, py::smart_holder>(m, name.c_str())
-        .def("getEM", &PL::getEM)
-        .def("getE", &PL::getE)
-        .def("getB", &PL::getB)
-        .def("getBx", &PL::getBx)
-        .def("getBy", &PL::getBy)
-        .def("getBz", &PL::getBz)
-        .def("getEx", &PL::getEx)
-        .def("getEy", &PL::getEy)
-        .def("getEz", &PL::getEz)
-        .def("getVix", &PL::getVix)
-        .def("getViy", &PL::getViy)
-        .def("getViz", &PL::getViz)
-        .def("getDensity", &PL::getDensity)
-        .def("getBulkVelocity", &PL::getBulkVelocity)
-        .def("getPopDensities", &PL::getPopDensities)
-        .def("getPopFluxes", &PL::getPopFlux)
-        .def("getFx", &PL::getFx)
-        .def("getFy", &PL::getFy)
-        .def("getFz", &PL::getFz)
-        .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
+
+    using HybPL = PatchLevel<typename Sim::HybridModel>;
+    name        = "HybridPatchLevel";
+    if constexpr (core::defaultNbrRefinedParts(opts.dimension, opts.interp_order)
+                  == opts.nbRefinedPart) // register once!
+        py::class_<HybPL, py::smart_holder>(m, name.c_str())
+            .def("getB", &HybPL::getB, py::arg("component"))
+            .def("getE", &HybPL::getE, py::arg("component"))
+            .def("getVi", &HybPL::getVi, py::arg("component"))
+            .def("getN", &HybPL::getN, py::arg("pop_name"))
+            .def("getNi", &HybPL::getNi)
+            .def("getFlux", &HybPL::getFlux, py::arg("component"), py::arg("pop_name"))
+            .def("getParticles", &HybPL::getParticles, py::arg("pop_name"));
+
+
+    using MHDPL = PatchLevel<typename Sim::MHDModel>;
+    name        = "MHDPatchLevel";
+    if constexpr (core::defaultNbrRefinedParts(opts.dimension, opts.interp_order)
+                  == opts.nbRefinedPart)
+        py::class_<MHDPL, py::smart_holder>(m, name.c_str());
 
     using _Splitter
         = PHARE::amr::Splitter<core::DimConst<Sim::dimension>, core::InterpConst<Sim::interp_order>,
