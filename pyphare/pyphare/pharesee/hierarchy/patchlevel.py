@@ -54,6 +54,8 @@ def patch_level_array_function(patch_level, func, types, args, kwargs):
         return [x.patches[pidx] if type(x) is type(patch_level) else x for x in args]
 
     out = [func(*extract(pidx), **kwargs) for pidx in range(len(patch_level.patches))]
+    if not out:  # no patches
+        return type(patch_level)(patch_level.level_number, out)
     if type(out[0]) is not type(patch_level[0]):
         return out
     return type(patch_level)(patch_level.level_number, out)
