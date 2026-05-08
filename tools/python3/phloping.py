@@ -8,13 +8,13 @@ import numpy as np
 from dataclasses import dataclass, field
 
 from pyphare.pharesee.run import Run
-from phlop.timing import scope_timer as st
+import phlop.timing.scope_timer as phst
 
 substeps_per_finer_level = 4
 
 
 @dataclass
-class ScopeTimerFile(st.ScopeTimerFile):
+class ScopeTimerFile(phst.ScopeTimerFile):
     run: Run
     rank: str
     advances: list = field(default_factory=lambda: [])
@@ -87,6 +87,14 @@ class ScopeTimerFile(st.ScopeTimerFile):
         Count number of logs for SolverPPC::advanceLevel per substep per level
         This is mostly to be sure the logs match the number of levels in the diag
         """
+
+        inits = ["HybridLevelInitializer::initialize_level"]
+        for root in self.roots:
+            if self(root.k) == "Simulator::initialize":
+                if nlevels := sum(1 if self(c.k) in inits else 0 for c in root.c):
+                    return nlevels
+
+        # of if for some reason init logs are missing fallback
         first_advance = self.advances[0]  # all should be the same
         s = sum(1 for c in first_advance.c if self(c.k) == "SolverPPC::advanceLevel")
         if s == 1:
@@ -144,7 +152,7 @@ class ScopeTimerFile(st.ScopeTimerFile):
 
 
 def file_parser(run, rank, times_filepath):
-    supe = st.file_parser(times_filepath)
+    supe = phst.file_parser(times_filepath)
     return ScopeTimerFile(supe.id_keys, supe.roots, run, str(rank))
 
 
@@ -178,11 +186,44 @@ def print_variance_across(scope_timer_filepath=None):
         if not scope_timer_filepath:
             parser.print_help()
             sys.exit(1)
-    st.print_variance_across(scope_timer_filepath)
+    phst.print_variance_across(scope_timer_filepath)
+
+
+def _cli_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-f", "--file", default=None, help="timer file")
+    parser.add_argument(
+        "-F", "--filter", default=None, help="filter if function supports it"
+    )
+    return parser
+
+
+def print_scope_timings(scope_timer_filepath=None, sort_worst_first=True, root_id=None):
+    if scope_timer_filepath is None:  # assume cli
+        parser = _cli_args()
+        args = parser.parse_args()
+        scope_timer_filepath = args.file
+        if not scope_timer_filepath:
+            parser.print_help()
+            sys.exit(1)
+        if args.filter:
+            root_id = args.filter
+    phst.print_scope_timings(scope_timer_filepath, sort_worst_first, root_id)
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
+    if len(sys.argv) == 1:
+        print("usage: $function_name -h")
+        print(
+            "available functions:\n\t"
+            + "\n\t".join([k for k, v in globals().items() if k.startswith("print_")]),
+        )
+    elif len(sys.argv) > 1:
         fn = sys.argv[1]
         sys.argv = [sys.argv[0]] + sys.argv[2:]
-        globals()[fn]()
+        if fn not in globals():
+            raise ValueError("requested function does not exist")
+        try:
+            globals()[fn]()
+        except BrokenPipeError:
+            ...
