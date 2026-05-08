@@ -52,6 +52,12 @@ extensions = [
     "nbsphinx",
     "myst_parser",
 ]
+myst_enable_extensions = [
+    "colon_fence",
+    "dollarmath",
+    "amsmath",
+]
+
 
 autodoc_default_options = {
     "members": True,
