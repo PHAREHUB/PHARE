@@ -44,6 +44,10 @@ yee_centering = {
         "Pyz": "primal",
         "Pzz": "primal",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
     "y": {
         "Bx": "dual",
@@ -79,6 +83,10 @@ yee_centering = {
         "Pyz": "primal",
         "Pzz": "primal",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
     "z": {
         "Bx": "dual",
@@ -114,6 +122,10 @@ yee_centering = {
         "Pyz": "primal",
         "Pzz": "primal",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
 }
 yee_centering_lower = {
