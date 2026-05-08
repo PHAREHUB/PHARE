@@ -50,6 +50,7 @@ extensions = [
     "sphinx_gallery.load_style",
     "sphinx_codeautolink",
     "nbsphinx",
+    "sphinx_rtd_theme",
     "myst_parser",
 ]
 
@@ -72,10 +73,22 @@ nbsphinx_execute_arguments = [
 
 nbsphinx_execute = "never"
 
-
+# Tex extensions should belong to the following list https://docs.mathjax.org/en/latest/options/input/tex.html#tex-extension-options
+tex_extensions = ["ams", "physics"]
 mathjax3_config = {
-    "tex": {"tags": "ams", "useLabelIds": True},
+    "loader": {"load": [f"[tex]/{pkg}" for pkg in tex_extensions]},
+    "tex": {
+        "tags": "ams",
+        "tagSide": "right",
+        "useLabelIds": True,
+        "packages": {"[+]": tex_extensions}
+    },
 }
+
+# 3. Ensure these extensions are enabled
+myst_enable_extensions = [
+    "dollarmath", # Allows $...$ and $$...$$
+]
 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -84,7 +97,10 @@ templates_path = ["_templates"]
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
 #
-source_suffix = [".rst", ".md"]
+source_suffix = {
+    '.rst': 'restructuredtext',
+    '.md': 'markdown',
+}
 # source_suffix = ".rst"
 
 # The master toctree document.
@@ -125,6 +141,9 @@ html_theme = "sphinx_rtd_theme"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+# To put equation numbers on the right
+html_css_files = ["css/custom.css"] 
+
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
 #
@@ -143,8 +162,10 @@ htmlhelp_basename = "PHAREdoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
-
+preamble_lines = [rf"\usepackage{{{pkg}}}" for pkg in tex_extensions] \
++ [r"\AtBeginDocument{\RenewCommandCopy\qty\SI}"]
 latex_elements = {
+    'preamble': r" ".join(preamble_lines),
     # The paper size ('letterpaper' or 'a4paper').
     #
     # 'papersize': 'letterpaper',
