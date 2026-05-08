@@ -234,6 +234,33 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidWithEnumerate)
     std::apply(check, resourceUserCollection);
 }
 
+TYPED_TEST_P(aResourceUserCollection, hasPointersValidWithBracketOperator)
+{
+    TypeParam resourceUserCollection;
+
+    auto check = [this](auto& resourceUserPack) {
+        auto& hierarchy_   = this->hierarchy->hierarchy;
+        auto& resourceUser = resourceUserPack.user;
+        auto& rm           = this->resourcesManager;
+        for (int iLevel = 0; iLevel < hierarchy_->getNumberOfLevels(); ++iLevel)
+        {
+            auto patchLevel   = hierarchy_->getPatchLevel(iLevel);
+            auto level_looper = rm.enumerate(*patchLevel, resourceUser);
+
+            for (std::size_t i = 0; i < level_looper.size(); ++i)
+            {
+                auto const& _ = level_looper[i];
+                EXPECT_TRUE(resourceUser.isUsable());
+                EXPECT_FALSE(resourceUser.isSettable());
+            }
+            EXPECT_FALSE(resourceUser.isUsable());
+            EXPECT_TRUE(resourceUser.isSettable());
+        }
+    };
+
+    std::apply(check, resourceUserCollection);
+}
+
 
 TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
 {
@@ -268,7 +295,7 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
 
 
 REGISTER_TYPED_TEST_SUITE_P(aResourceUserCollection, hasPointersValidOnlyWithGuard,
-                            hasPointersValidWithEnumerate);
+                            hasPointersValidWithEnumerate, hasPointersValidWithBracketOperator);
 
 
 typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DOnly,

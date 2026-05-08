@@ -2,6 +2,7 @@
 #define PHARE_TEST_CORE_DATA_TEST_FIELD_FIXTURES_HPP
 
 #include "core/data/field/field.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
 
 namespace PHARE::core
 {

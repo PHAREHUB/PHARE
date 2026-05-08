@@ -14,9 +14,10 @@ namespace solver
     class SolverMHD : public ISolver<AMR_Types>
     {
     public:
-        using patch_t     = typename AMR_Types::patch_t;
-        using level_t     = typename AMR_Types::level_t;
-        using hierarchy_t = typename AMR_Types::hierarchy_t;
+        using patch_t          = AMR_Types::patch_t;
+        using level_t          = AMR_Types::level_t;
+        using hierarchy_t      = AMR_Types::hierarchy_t;
+        using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
 
         SolverMHD()
             : ISolver<AMR_Types>{"MHDSolver"}
@@ -34,46 +35,37 @@ namespace solver
         }
 
 
-        void registerResources(IPhysicalModel<AMR_Types>& /*model*/) override {}
+        void registerResources(IPhysicalModel_t& /*model*/) override {}
 
         // TODO make this a resourcesUser
-        void allocate(IPhysicalModel<AMR_Types>& /*model*/, patch_t& /*patch*/,
+        void allocate(IPhysicalModel_t& /*model*/, patch_t& /*patch*/,
                       double const /*allocateTime*/) const override
         {
         }
 
-        void prepareStep(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+        void prepareStep(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
                          double const currentTime) override
         {
         }
 
-        void accumulateFluxSum(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
+        void accumulateFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
                                double const coef) override
         {
         }
 
-        void resetFluxSum(IPhysicalModel<AMR_Types>& model,
-                          SAMRAI::hier::PatchLevel& level) override
-        {
-        }
+        void resetFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level) override {}
 
-        virtual void reflux(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
-                            amr::IMessenger<IPhysicalModel<AMR_Types>>& messenger,
+        virtual void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+                            amr::IMessenger<IPhysicalModel_t>& messenger,
                             double const time) override
         {
         }
 
         void advanceLevel(hierarchy_t const& /*hierarchy*/, int const /*levelNumber*/,
-                          ISolverModelView& /*view*/,
-                          amr::IMessenger<IPhysicalModel<AMR_Types>>& /*fromCoarser*/,
+                          IPhysicalModel_t& /*view*/,
+                          amr::IMessenger<IPhysicalModel_t>& /*fromCoarser*/,
                           double const /*currentTime*/, double const /*newTime*/) override
         {
-        }
-
-        std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&) override
-        {
-            throw std::runtime_error("Not implemented in mhd solver");
-            return nullptr;
         }
     };
 } // namespace solver

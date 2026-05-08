@@ -2,16 +2,14 @@
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
 #include "core/errors.hpp"
-#include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/mpi_utils.hpp"
-#include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/moments/moments.hpp"
-#include "core/data/grid/gridlayout_utils.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/solvers/solver_field_evolvers.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/level_initializer/level_initializer.hpp"
 
@@ -37,16 +35,18 @@ namespace solver
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::interp_order;
 
-        PHARE::core::Ohm<GridLayoutT> ohm_;
-        PHARE::core::Ampere<GridLayoutT> ampere_;
+        using Ampere_t = AmpereLevelTransformer<HybridModel>;
+        using Ohm_t    = OhmLevelTransformer<HybridModel>;
+        core::OhmInfo ohm_info;
 
         inline bool isRootLevel(int const levelNumber) const { return levelNumber == 0; }
 
     public:
         explicit HybridLevelInitializer(PHARE::initializer::PHAREDict const& dict)
-            : ohm_{dict["algo"]["ohm"]}
+            : ohm_info{core::OhmInfo::FROM(dict["algo"]["ohm"])}
         {
         }
+
         virtual void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
                                 std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
@@ -151,34 +151,22 @@ namespace solver
             if (!isRegriddingL0)
                 if (isRootLevel(levelNumber))
                 {
+                    TimeSetter setTime{level, hybridModel, 0.};
+
                     auto& B = hybridModel.state.electromag.B;
+                    auto& E = hybridModel.state.electromag.E;
                     auto& J = hybridModel.state.J;
 
-                    for (auto& patch : rm.enumerate(level, B, J))
-                    {
-                        auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                        auto __     = core::SetLayout(&layout, ampere_);
-                        ampere_(B, J);
-
-                        rm.setTime(J, *patch, 0.);
-                    }
+                    Ampere_t{level, hybridModel}(B, J);
+                    setTime(J);
                     hybMessenger.fillCurrentGhosts(J, level, 0.);
 
                     auto& electrons = hybridModel.state.electrons;
-                    auto& E         = hybridModel.state.electromag.E;
+                    for (auto& patch : rm.enumerate(level, electrons))
+                        electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
 
-                    for (auto& patch : rm.enumerate(level, B, E, J, electrons))
-                    {
-                        auto layout = PHARE::amr::layoutFromPatch<GridLayoutT>(*patch);
-                        electrons.update(layout);
-                        auto& Ve = electrons.velocity();
-                        auto& Ne = electrons.density();
-                        auto& Pe = electrons.pressure();
-                        auto __  = core::SetLayout(&layout, ohm_);
-                        ohm_(Ne, Ve, Pe, B, J, E);
-                        rm.setTime(E, *patch, 0.);
-                    }
-
+                    Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
+                    setTime(E);
                     hybMessenger.fillElectricGhosts(E, level, 0.);
                 }
 

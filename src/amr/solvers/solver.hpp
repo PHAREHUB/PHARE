@@ -13,20 +13,6 @@
 
 #include <string>
 
-namespace PHARE::solver
-{
-
-
-class ISolverModelView
-{
-public:
-    using This = ISolverModelView;
-
-    virtual ~ISolverModelView() = default;
-};
-
-
-} // namespace PHARE::solver
 
 
 
@@ -45,9 +31,10 @@ namespace solver
     class ISolver
     {
     public:
-        using patch_t     = typename AMR_Types::patch_t;
-        using level_t     = typename AMR_Types::level_t;
-        using hierarchy_t = typename AMR_Types::hierarchy_t;
+        using patch_t          = AMR_Types::patch_t;
+        using level_t          = AMR_Types::level_t;
+        using hierarchy_t      = AMR_Types::hierarchy_t;
+        using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
 
         /**
          * @brief return the name of the ISolver
@@ -69,7 +56,7 @@ namespace solver
          * IPhysicalModel
          * @param model
          */
-        virtual void registerResources(IPhysicalModel<AMR_Types>& model) = 0;
+        virtual void registerResources(IPhysicalModel_t& model) = 0;
 
 
 
@@ -87,40 +74,36 @@ namespace solver
          * called before the advanceLevel() method.
          *
          */
-        virtual void prepareStep(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
-                                 double const currentTime)
+        virtual void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime)
             = 0;
 
         /**
          * @brief accumulateFluxSum accumulates the flux sum(s) on the given PatchLevel for
          * refluxing later.
          */
-        virtual void accumulateFluxSum(IPhysicalModel<AMR_Types>& model,
-                                       SAMRAI::hier::PatchLevel& level, double const coef)
+        virtual void accumulateFluxSum(IPhysicalModel_t& model, level_t& level, double const coef)
             = 0;
 
 
         /**
          * @brief resetFluxSum resets the flux sum(s) on the given PatchLevel to zero.
          */
-        virtual void resetFluxSum(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level)
-            = 0;
+        virtual void resetFluxSum(IPhysicalModel_t& model, level_t& level) = 0;
 
 
         /**
          * @brief implements the reflux operations needed for a given solver.
          */
-        virtual void reflux(IPhysicalModel<AMR_Types>& model, SAMRAI::hier::PatchLevel& level,
-                            amr::IMessenger<IPhysicalModel<AMR_Types>>& messenger,
-                            double const time)
+        virtual void reflux(IPhysicalModel_t& model, level_t& level,
+                            amr::IMessenger<IPhysicalModel_t>& messenger, double const time)
             = 0;
 
         /**
          * @brief advanceLevel advances the given level from t to t+dt
          */
         virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
-                                  ISolverModelView& view,
-                                  amr::IMessenger<IPhysicalModel<AMR_Types>>& fromCoarser,
+                                  IPhysicalModel_t& view,
+                                  amr::IMessenger<IPhysicalModel_t>& fromCoarser,
                                   double const currentTime, double const newTime)
             = 0;
 
@@ -131,7 +114,7 @@ namespace solver
          * @brief allocate is used to allocate ISolver variables previously registered to the
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
-        virtual void allocate(IPhysicalModel<AMR_Types>& model, patch_t& patch,
+        virtual void allocate(IPhysicalModel_t& model, patch_t& patch,
                               double const allocateTime) const
             = 0;
 
@@ -142,9 +125,6 @@ namespace solver
 
         virtual ~ISolver() = default;
 
-
-        virtual std::shared_ptr<ISolverModelView> make_view(level_t&, IPhysicalModel<AMR_Types>&)
-            = 0;
 
     protected:
         explicit ISolver(std::string name)

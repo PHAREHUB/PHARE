@@ -1,28 +1,22 @@
+
+
+#include "core/data/grid/gridlayout.hpp"
+#include "core/utilities/index/index.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/numerics/faraday/faraday.hpp"
+#include "core/data/grid/gridlayoutimplyee.hpp"
+
+#include "tests/core/data/field/test_field.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <fstream>
-#include <memory>
 
-
-#include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/numerics/faraday/faraday.hpp"
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/index/index.hpp"
-#include "core/utilities/point/point.hpp"
-
-#include "tests/core/data/field/test_field.hpp"
-#include "tests/core/data/vecfield/test_vecfield.hpp"
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
-#include "tests/core/data/gridlayout/gridlayout_test.hpp"
 
 using namespace PHARE::core;
-
-
 
 
 struct GridLayoutMock1D
@@ -72,52 +66,20 @@ struct GridLayoutMock3D
 
 TEST(Faraday, canBe1D)
 {
-    Faraday<GridLayoutMock1D> faraday;
+    Faraday<GridLayoutMock1D> faraday{GridLayoutMock1D{}};
 }
 
 
 TEST(Faraday, canBe2D)
 {
-    Faraday<GridLayoutMock2D> faraday;
+    Faraday<GridLayoutMock2D> faraday{GridLayoutMock2D{}};
 }
 
 
 TEST(Faraday, canBe3D)
 {
-    Faraday<GridLayoutMock3D> faraday;
+    Faraday<GridLayoutMock3D> faraday{GridLayoutMock3D{}};
 }
-
-
-TEST(Faraday, shouldBeGivenAGridLayoutPointerToBeOperational)
-{
-    {
-        using GridLayout = GridLayout<GridLayoutImplYee<1, 1>>;
-        VecFieldMock<FieldMock<1>> B_1, E_1, Bnew_1;
-        Faraday<GridLayout> faraday1d;
-        auto layout1d = std::make_unique<TestGridLayout<GridLayout>>();
-        EXPECT_ANY_THROW(faraday1d(B_1, E_1, Bnew_1, 1.));
-        faraday1d.setLayout(layout1d.get());
-    }
-
-    {
-        using GridLayout = GridLayout<GridLayoutImplYee<2, 1>>;
-        VecFieldMock<FieldMock<2>> B_2, E_2, Bnew_2;
-        Faraday<GridLayout> faraday2d;
-        auto layout2d = std::make_unique<TestGridLayout<GridLayout>>();
-        EXPECT_ANY_THROW(faraday2d(B_2, E_2, Bnew_2, 1.));
-        faraday2d.setLayout(layout2d.get());
-    }
-
-    {
-        using GridLayout = GridLayout<GridLayoutImplYee<3, 1>>;
-        VecFieldMock<FieldMock<3>> B_3, E_3, Bnew_3;
-        Faraday<GridLayout> faraday3d;
-        auto layout3d = std::make_unique<TestGridLayout<GridLayout>>();
-        EXPECT_ANY_THROW(faraday3d(B_3, E_3, Bnew_3, 1.));
-        faraday3d.setLayout(layout3d.get());
-    }
-}
-
 
 
 
@@ -142,12 +104,11 @@ protected:
 
     using UsableVecFieldND = UsableVecField<dim>;
     using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
+    using Faraday_t        = Faraday<GridLayout<GridLayoutImpl>>;
 
     GridLayout<GridLayoutImpl> layout;
 
     UsableVecFieldND B, E, Bnew;
-
-    Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
     Faraday1DTest()
@@ -170,12 +131,11 @@ protected:
 
     using UsableVecFieldND = UsableVecField<dim>;
     using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
+    using Faraday_t        = Faraday<GridLayout<GridLayoutImpl>>;
 
     GridLayout<GridLayoutImpl> layout;
 
     UsableVecFieldND B, E, Bnew;
-
-    Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
     Faraday2DTest()
@@ -198,12 +158,10 @@ protected:
 
     using UsableVecFieldND = UsableVecField<dim>;
     using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
-
+    using Faraday_t        = Faraday<GridLayout<GridLayoutImpl>>;
     GridLayout<GridLayoutImpl> layout;
 
     UsableVecFieldND B, E, Bnew;
-
-    Faraday<GridLayout<GridLayoutImpl>> faraday;
 
 public:
     Faraday3DTest()
@@ -253,8 +211,7 @@ TEST_F(Faraday1DTest, Faraday1DCalculatedOk)
         Bz(ix) = std::tanh(point[0] - 5. / 2.);
     }
 
-    faraday.setLayout(&layout);
-    faraday(B, E, Bnew, 1.);
+    Faraday_t{layout}(B, E, Bnew, 1.);
 
     auto psi_d_X = this->layout.physicalStartIndex(QtyCentering::dual, Direction::X);
     auto pei_d_X = this->layout.physicalEndIndex(QtyCentering::dual, Direction::X);
@@ -358,8 +315,7 @@ TEST_F(Faraday2DTest, Faraday2DCalculatedOk)
         }
     }
 
-    faraday.setLayout(&layout);
-    faraday(B, E, Bnew, 1.);
+    Faraday_t{layout}(B, E, Bnew, 1.);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -528,8 +484,7 @@ TEST_F(Faraday3DTest, Faraday3DCalculatedOk)
         }
     }
 
-    faraday.setLayout(&layout);
-    faraday(B, E, Bnew, 1.);
+    Faraday_t{layout}(B, E, Bnew, 1.);
 
     auto psi_p_X = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto pei_p_X = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);

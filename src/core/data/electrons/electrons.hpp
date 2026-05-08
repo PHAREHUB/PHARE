@@ -1,16 +1,11 @@
 #ifndef PHARE_ELECTRONS_HPP
 #define PHARE_ELECTRONS_HPP
 
+#include "core/def.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/data/grid/gridlayout_utils.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/index/index.hpp"
-#include "core/def.hpp"
-#include "core/logger.hpp"
 
 #include "initializer/data_provider.hpp"
-#include <memory>
 
 
 namespace PHARE::core
@@ -293,7 +288,7 @@ private:
 
 
 template<typename Ions>
-class Electrons : public LayoutHolder<typename Ions::gridlayout_type>
+class Electrons
 {
     using VecField   = typename Ions::vecfield_type;
     using Field      = typename Ions::field_type;

@@ -1,21 +1,22 @@
+
+// #include "phare_core.hpp"
+//  #include "core/data/field/field.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+// #include "core/data/vecfield/vecfield.hpp"
+#include "core/numerics/ohm/ohm.hpp"
+// #include "core/utilities/index/index.hpp"
+
+
+#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+
+
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <fstream>
 #include <memory>
-
-
-#include "core/data/field/field.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/numerics/ohm/ohm.hpp"
-#include "core/utilities/index/index.hpp"
-
-#include "phare_core.hpp"
-
-#include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
 using namespace PHARE::core;
 
@@ -69,13 +70,15 @@ struct OhmTest : public ::testing::Test
     using GridYee          = GridLayout<GridLayoutImplYee<dim, interp>>;
     using UsableVecFieldND = UsableVecField<dim>;
     using Grid_t           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
-    GridYee layout         = NDlayout<dim, interp>::create();
+    using Ohm_t            = Ohm<GridYee>;
+
+    GridYee layout = NDlayout<dim, interp>::create();
 
     Grid_t n;
     Grid_t P;
     UsableVecFieldND V, B, J, Enew;
 
-    Ohm<GridYee> ohm;
+    OhmInfo ohm_info;
 
     OhmTest()
         : n{"n", HybridQuantity::Scalar::rho, layout.allocSize(HybridQuantity::Scalar::rho)}
@@ -84,7 +87,7 @@ struct OhmTest : public ::testing::Test
         , B{"B", layout, HybridQuantity::Vector::B}
         , J{"J", layout, HybridQuantity::Vector::J}
         , Enew{"Enew", layout, HybridQuantity::Vector::E}
-        , ohm{createDict()}
+        , ohm_info{OhmInfo::FROM(createDict())}
     {
         auto const& [Bx, By, Bz]          = B();
         auto const& [Jx, Jy, Jz]          = J();
@@ -292,35 +295,11 @@ TYPED_TEST_SUITE(OhmTest, OhmTupleInfos);
 
 
 
-TYPED_TEST(OhmTest, ThatOhmHasCtorWithDict)
+TYPED_TEST(OhmTest, ThatOhmInfoCanBeBuiltFromDict)
 {
-    TypeParam pair;
-    auto constexpr dim    = pair.first();
-    auto constexpr interp = pair.second();
-
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-
-    Ohm<GridYee> ohm(createDict());
+    auto info = OhmInfo::FROM(createDict());
 }
 
-
-
-
-TYPED_TEST(OhmTest, ShouldBeGivenAGridLayoutPointerToBeOperational)
-{
-    TypeParam pair;
-    auto constexpr dim    = pair.first();
-    auto constexpr interp = pair.second();
-
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-
-    auto layout = std::make_unique<GridYee>(NDlayout<dim, interp>::create());
-
-    // this->ohm.setLayout(layout.get());
-    EXPECT_ANY_THROW(
-        this->ohm(this->n, this->V, this->P, this->B, this->J,
-                  this->Enew)); // because the grid layout is not set (TODO issue #3392)
-}
 
 
 std::vector<double> read(std::string filename)
@@ -338,6 +317,8 @@ std::vector<double> read(std::string filename)
 
 TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
 {
+    using Ohm_t = TestFixture::Ohm_t;
+
     TypeParam pair;
     auto constexpr dim    = pair.first();
     auto constexpr interp = pair.second();
@@ -354,11 +335,9 @@ TYPED_TEST(OhmTest, ThatElectricFieldIsOkFromOhmsLaw)
     auto expected_ohmY = read(filenameY);
     auto expected_ohmZ = read(filenameZ);
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
-    auto layout   = std::make_unique<GridYee>(NDlayout<dim, interp>::create());
+    auto const layout = NDlayout<dim, interp>::create();
 
-    this->ohm.setLayout(layout.get());
-    this->ohm(this->n, this->V, this->P, this->B, this->J, this->Enew);
+    Ohm_t{this->ohm_info, layout}(this->n, this->V, this->P, this->B, this->J, this->Enew);
 
 
     auto const& [Exnew, Eynew, Eznew] = this->Enew();
