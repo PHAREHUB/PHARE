@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 
+#include <stdexcept>
 #include <string>
 #include <sstream>
 #include <iostream>
