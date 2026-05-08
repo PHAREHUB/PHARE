@@ -207,7 +207,7 @@ def amr_to_local(box, ref_box):
 
 
 def select(data, box):
-    return data[tuple([slice(l, u + 1) for l, u in zip(box.lower, box.upper)])]
+    return data[tuple([slice(lo, up + 1) for lo, up in zip(box.lower, box.upper)])]
 
 
 class DataSelector:

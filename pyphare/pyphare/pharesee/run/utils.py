@@ -1,5 +1,11 @@
-from pyphare.core.gridlayout import yee_centering
+#
+#
+#
+
 import numpy as np
+
+
+from pyphare.pharesee.hierarchy.interpolation import make_interpolator  # noqa: F401
 
 
 def _current1d(by, bz, xby, xbz):
@@ -59,44 +65,44 @@ def _current2d(bx, by, bz, dx, dy):
     return jx, jy, jz
 
 
-def _compute_current(patchdatas, **kwargs):
-    reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
+def _compute_current(patch, **kwargs):
+    reference_pd = patch["Bx"]  # take Bx as a reference, but could be any other
 
     ndim = reference_pd.box.ndim
     if ndim == 1:
-        By = patchdatas["By"].dataset[:]
-        xby = patchdatas["By"].x
-        Bz = patchdatas["Bz"].dataset[:]
-        xbz = patchdatas["Bz"].x
-        Jy, Jz = _current1d(By, Bz, xby, xbz)
+        By = patch["By"]
+        xby = By.x
+        Bz = patch["Bz"]
+        xbz = Bz.x
+        Jy, Jz = _current1d(By[:], Bz[:], xby, xbz)
         return (
-            {"name": "Jy", "data": Jy, "centering": "primal"},
-            {"name": "Jz", "data": Jz, "centering": "primal"},
+            {"name": "Jy", "data": By.copy_as(Jy, centering="primal")},
+            {"name": "Jz", "data": Bz.copy_as(Jz, centering="primal")},
         )
 
     elif ndim == 2:
-        Bx = patchdatas["Bx"].dataset[:]
-        By = patchdatas["By"].dataset[:]
-        Bz = patchdatas["Bz"].dataset[:]
+        Bx = patch["Bx"]
+        By = patch["By"]
+        Bz = patch["Bz"]
 
         dx, dy = reference_pd.dl
+        Jx, Jy, Jz = _current2d(Bx[:], By[:], Bz[:], dx, dy)
 
-        Jx, Jy, Jz = _current2d(Bx, By, Bz, dx, dy)
-
-        components = ("Jx", "Jy", "Jz")
         centering = {
             component: [
                 reference_pd.layout.centering[direction][component]
                 for direction in ("X", "Y")
             ]
-            for component in components
+            for component in ("Jx", "Jy", "Jz")
         }
 
         return (
-            {"name": "Jx", "data": Jx, "centering": centering["Jx"]},
-            {"name": "Jy", "data": Jy, "centering": centering["Jy"]},
-            {"name": "Jz", "data": Jz, "centering": centering["Jz"]},
+            {"name": "Jx", "data": Bx.copy_as(Jx, centering=centering["Jx"])},
+            {"name": "Jy", "data": By.copy_as(Jy, centering=centering["Jy"])},
+            {"name": "Jz", "data": Bz.copy_as(Jz, centering=centering["Jz"])},
         )
+
+    raise RuntimeError("dimension not implemented")
 
 
 def _divB2D(Bx, By, xBx, yBy):
@@ -105,259 +111,55 @@ def _divB2D(Bx, By, xBx, yBy):
     return dxbx + dyby
 
 
-def _compute_divB(patchdatas, **kwargs):
-    reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
+def _compute_divB(patch, **kwargs):
+    reference_pd = patch["Bx"]  # take Bx as a reference, but could be any other
     ndim = reference_pd.box.ndim
 
     if ndim == 1:
         raise ValueError("divB is 0 by construction in 1D")
 
-    elif ndim == 2:
-        By = patchdatas["By"].dataset[:]
-        Bx = patchdatas["Bx"].dataset[:]
-        xBx = patchdatas["Bx"].x
-        yBy = patchdatas["By"].y
-        divB = _divB2D(Bx, By, xBx, yBy)
+    centering = ["dual"] * ndim
 
-        return ({"name": "divB", "data": divB, "centering": ["dual", "dual"]},)
+    if ndim == 2:
+        By = patch["By"].dataset[:]
+        Bx = patch["Bx"].dataset[:]
+        xBx = patch["Bx"].x
+        yBy = patch["By"].y
+        divB = reference_pd.copy_as(_divB2D(Bx, By, xBx, yBy), centering=centering)
+        return ({"name": "divB", "data": divB},)
 
-    else:
-        raise RuntimeError("dimension not implemented")
-
-
-def _ppp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (primal,primal,primal) to (primal,primal,primal)
-    centering that is the centering of moments on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, _, _ = _inner_slices(nb_ghosts)
-
-    inner_all = tuple([inner] * ndim)
-    return inner_all, (inner_all,)
+    raise RuntimeError("dimension not implemented")
 
 
-def _pdd_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Bx on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
-    else:
-        raise RuntimeError("dimension not yet implemented")
+from pyphare.pharesee.hierarchy.primal import (  # noqa: F401, E402
+    _inner_slices,
+    _ppp_to_ppp_domain_slicing,
+    _pdd_to_ppp_domain_slicing,
+    _dpd_to_ppp_domain_slicing,
+    _ddp_to_ppp_domain_slicing,
+    _dpp_to_ppp_domain_slicing,
+    _pdp_to_ppp_domain_slicing,
+    _ppd_to_ppp_domain_slicing,
+    slices_to_primal_,
+    merge_centerings,
+    slices_to_primal,
+    _compute_to_primal_patch_data,
+    _compute_to_primal,
+)
 
 
-def _dpd_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of By on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_shift_left, inner_shift_right)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _ddp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Bz on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_shift_left, inner_shift_right)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (
-            (inner_shift_left, inner_shift_left),
-            (inner_shift_left, inner_shift_right),
-            (inner_shift_right, inner_shift_left),
-            (inner_shift_right, inner_shift_right),
-        )
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _dpp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ex on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_shift_left, inner_shift_right)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _pdp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ey on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _ppd_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ez on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, _, _ = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-slices_to_primal_ = {
-    "primal_primal_primal": _ppp_to_ppp_domain_slicing,
-    "primal_dual_dual": _pdd_to_ppp_domain_slicing,
-    "dual_primal_dual": _dpd_to_ppp_domain_slicing,
-    "dual_dual_primal": _ddp_to_ppp_domain_slicing,
-    "dual_primal_primal": _dpp_to_ppp_domain_slicing,
-    "primal_dual_primal": _pdp_to_ppp_domain_slicing,
-    "primal_primal_dual": _ppd_to_ppp_domain_slicing,
-}
-
-
-def merge_centerings(pdname):
-    from pyphare.core.gridlayout import directions
-
-    return "_".join([yee_centering[d][pdname] for d in directions])
-
-
-def slices_to_primal(pdname, **kwargs):
-    return slices_to_primal_[merge_centerings(pdname)](**kwargs)
-
-
-def _compute_to_primal(patchdatas, patch_id, **kwargs):
-    """
-    datasets have NaN in their ghosts... might need to be properly filled
-    with their neighbors already properly projected on primal
-    """
-
-    reference_name = next(iter(kwargs.values()))
-    reference_pd = patchdatas[reference_name]
-    nb_ghosts = reference_pd.layout.nbrGhosts(
-        reference_pd.layout.interp_order, "primal"
-    )
-    ndim = reference_pd.box.ndim
-
-    centerings = ["primal"] * ndim
-
-    pd_attrs = []
-    for name, pd_name in kwargs.items():
-        pd = patchdatas[pd_name]
-
-        ds = pd.dataset
-
-        ds_shape = list(ds.shape)
-        for i in range(ndim):
-            if pd.centerings[i] == "dual":
-                ds_shape[i] += 1
-
-        # should be something else than nan values when the ghosts cells
-        # will be filled with correct values coming from the neighbors
-        ds_all_primal = np.full(ds_shape, np.nan)
-        ds_ = np.zeros(ds_shape)
-
-        # inner is the slice containing the points that are updated
-        # in the all_primal dataset
-        # chunks is a tupls of all the slices coming from the initial dataset
-        # that are needed to calculate the average for the all_primal dataset
-        inner, chunks = slices_to_primal(pd_name, nb_ghosts=nb_ghosts, ndim=ndim)
-
-        for chunk in chunks:
-            ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-        ds_all_primal[inner] = ds_[inner]
-
-        pd_attrs.append({"name": name, "data": ds_all_primal, "centering": centerings})
-
-    return tuple(pd_attrs)
-
-
-def _inner_slices(nb_ghosts):
-    inner = slice(nb_ghosts, -nb_ghosts)
-    inner_shift_left = slice(nb_ghosts - 1, -nb_ghosts)
-    inner_shift_right = slice(nb_ghosts, -nb_ghosts + 1)
-
-    return inner, inner_shift_left, inner_shift_right
-
-
-def _get_rank(patchdatas, patch_id, **kwargs):
+def _get_rank(patch, **kwargs):
     """
     make a field dataset cell centered coding the MPI rank
     rank is obtained from patch global id == "rank#local_patch_id"
     """
     from pyphare.core.box import grow
 
-    reference_pd = patchdatas["Bx"]  # Bx as a ref, but could be any other
+    reference_pd = patch["Bx"]  # Bx as a ref, but could be any other
     ndim = reference_pd.box.ndim
 
     layout = reference_pd.layout
-    centering = "dual"
+    centering = ["dual"] * ndim
     nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
     shape = grow(reference_pd.box, [nbrGhosts] * 2).shape
 
@@ -365,42 +167,88 @@ def _get_rank(patchdatas, patch_id, **kwargs):
         pass
 
     elif ndim == 2:
-        data = np.zeros(shape) + int(patch_id.strip("p").split("#")[0])
-        return ({"name": "rank", "data": data, "centering": [centering] * 2},)
+        data = np.zeros(shape) + int(patch.id.strip("p").split("#")[0])
+        pd = reference_pd.copy_as(data, centering=centering)
+        return ({"name": "rank", "data": pd},)
     else:
         raise RuntimeError("Not Implemented yet")
 
 
-def _compute_pressure(patch_datas, **kwargs):
-    Mxx = patch_datas["Mxx"].dataset[:]
-    Mxy = patch_datas["Mxy"].dataset[:]
-    Mxz = patch_datas["Mxz"].dataset[:]
-    Myy = patch_datas["Myy"].dataset[:]
-    Myz = patch_datas["Myz"].dataset[:]
-    Mzz = patch_datas["Mzz"].dataset[:]
-    massDensity = patch_datas["value"].dataset[:]
-    Vix = patch_datas["Vx"].dataset[:]
-    Viy = patch_datas["Vy"].dataset[:]
-    Viz = patch_datas["Vz"].dataset[:]
+def _compute_pressure(patch, **kwargs):
+    Mxx = patch["Mxx"]
+    Mxy = patch["Mxy"]
+    Mxz = patch["Mxz"]
+    Myy = patch["Myy"]
+    Myz = patch["Myz"]
+    Mzz = patch["Mzz"]
+    massDensity = patch["rho"][:]
+    Vix = patch["Vx"][:]
+    Viy = patch["Vy"][:]
+    Viz = patch["Vz"][:]
 
-    Pxx = Mxx - Vix * Vix * massDensity
-    Pxy = Mxy - Vix * Viy * massDensity
-    Pxz = Mxz - Vix * Viz * massDensity
-    Pyy = Myy - Viy * Viy * massDensity
-    Pyz = Myz - Viy * Viz * massDensity
-    Pzz = Mzz - Viz * Viz * massDensity
+    Pxx = Mxx[:] - Vix * Vix * massDensity
+    Pxy = Mxy[:] - Vix * Viy * massDensity
+    Pxz = Mxz[:] - Vix * Viz * massDensity
+    Pyy = Myy[:] - Viy * Viy * massDensity
+    Pyz = Myz[:] - Viy * Viz * massDensity
+    Pzz = Mzz[:] - Viz * Viz * massDensity
 
     return (
-        {"name": "Pxx", "data": Pxx, "centering": ["primal", "primal"]},
-        {"name": "Pxy", "data": Pxy, "centering": ["primal", "primal"]},
-        {"name": "Pxz", "data": Pxz, "centering": ["primal", "primal"]},
-        {"name": "Pyy", "data": Pyy, "centering": ["primal", "primal"]},
-        {"name": "Pyz", "data": Pyz, "centering": ["primal", "primal"]},
-        {"name": "Pzz", "data": Pzz, "centering": ["primal", "primal"]},
+        {"name": "Pxx", "data": Mxx.copy_as(Pxx)},
+        {"name": "Pxy", "data": Mxy.copy_as(Pxy)},
+        {"name": "Pxz", "data": Mxz.copy_as(Pxz)},
+        {"name": "Pyy", "data": Myy.copy_as(Pyy)},
+        {"name": "Pyz", "data": Myz.copy_as(Pyz)},
+        {"name": "Pzz", "data": Mzz.copy_as(Pzz)},
     )
 
 
-def _compute_pop_pressure(patch_datas, **kwargs):
+def _compute_pop_pressure_xx(patch, mass, popname):
+    Mxx = patch[popname + "_Mxx"]
+    Fx = patch[popname + "_Fx"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pxx": Mxx.copy_as(Mxx[:] - Fx * Fx * mass / N)}
+
+
+def _compute_pop_pressure_xy(patch, mass, popname):
+    Mxy = patch[popname + "_Mxy"]
+    Fx = patch[popname + "_Fx"][:]
+    Fy = patch[popname + "_Fy"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pxy": Mxy.copy_as(Mxy[:] - Fx * Fy * mass / N)}
+
+
+def _compute_pop_pressure_xz(patch, mass, popname):
+    Mxz = patch[popname + "_Mxz"]
+    Fx = patch[popname + "_Fx"][:]
+    Fz = patch[popname + "_Fz"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pxz": Mxz.copy_as(Mxz[:] - Fx * Fz * mass / N)}
+
+
+def _compute_pop_pressure_yy(patch, mass, popname):
+    Myy = patch[popname + "_Myy"]
+    Fy = patch[popname + "_Fy"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pyy": Myy.copy_as(Myy[:] - Fy * Fy * mass / N)}
+
+
+def _compute_pop_pressure_yz(patch, mass, popname):
+    Myz = patch[popname + "_Myz"]
+    Fy = patch[popname + "_Fy"][:]
+    Fz = patch[popname + "_Fz"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pyz": Myz.copy_as(Myz[:] - Fy * Fz * mass / N)}
+
+
+def _compute_pop_pressure_zz(patch, mass, popname):
+    Mzz = patch[popname + "_Mzz"]
+    Fz = patch[popname + "_Fz"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pzz": Mzz.copy_as(Mzz[:] - Fz * Fz * mass / N)}
+
+
+def _compute_pop_pressure(patch, **kwargs):
     """
     computes the pressure tensor for a given population
     this method is different from _compute_pressure in that:
@@ -411,80 +259,31 @@ def _compute_pop_pressure(patch_datas, **kwargs):
         P = M - F*F/N * mass
     """
     popname = kwargs["popname"]
-    Mxx = patch_datas[popname + "_Mxx"].dataset[:]
-    Mxy = patch_datas[popname + "_Mxy"].dataset[:]
-    Mxz = patch_datas[popname + "_Mxz"].dataset[:]
-    Myy = patch_datas[popname + "_Myy"].dataset[:]
-    Myz = patch_datas[popname + "_Myz"].dataset[:]
-    Mzz = patch_datas[popname + "_Mzz"].dataset[:]
-    Fx = patch_datas["x"].dataset[:]
-    Fy = patch_datas["y"].dataset[:]
-    Fz = patch_datas["z"].dataset[:]
-    N = patch_datas["value"].dataset[:]
+    Mxx = patch[popname + "_Mxx"]
+    Mxy = patch[popname + "_Mxy"]
+    Mxz = patch[popname + "_Mxz"]
+    Myy = patch[popname + "_Myy"]
+    Myz = patch[popname + "_Myz"]
+    Mzz = patch[popname + "_Mzz"]
+    Fx = patch["x"][:]
+    Fy = patch["y"][:]
+    Fz = patch["z"][:]
+    N = patch["rho"][:]
 
     mass = kwargs["mass"]
 
-    Pxx = Mxx - Fx * Fx * mass / N
-    Pxy = Mxy - Fx * Fy * mass / N
-    Pxz = Mxz - Fx * Fz * mass / N
-    Pyy = Myy - Fy * Fy * mass / N
-    Pyz = Myz - Fy * Fz * mass / N
-    Pzz = Mzz - Fz * Fz * mass / N
+    Pxx = Mxx[:] - Fx * Fx * mass / N
+    Pxy = Mxy[:] - Fx * Fy * mass / N
+    Pxz = Mxz[:] - Fx * Fz * mass / N
+    Pyy = Myy[:] - Fy * Fy * mass / N
+    Pyz = Myz[:] - Fy * Fz * mass / N
+    Pzz = Mzz[:] - Fz * Fz * mass / N
 
     return (
-        {"name": popname + "_Pxx", "data": Pxx, "centering": ["primal", "primal"]},
-        {"name": popname + "_Pxy", "data": Pxy, "centering": ["primal", "primal"]},
-        {"name": popname + "_Pxz", "data": Pxz, "centering": ["primal", "primal"]},
-        {"name": popname + "_Pyy", "data": Pyy, "centering": ["primal", "primal"]},
-        {"name": popname + "_Pyz", "data": Pyz, "centering": ["primal", "primal"]},
-        {"name": popname + "_Pzz", "data": Pzz, "centering": ["primal", "primal"]},
+        {"name": popname + "_Pxx", "data": Mxx.copy_as(Pxx)},
+        {"name": popname + "_Pxy", "data": Mxy.copy_as(Pxy)},
+        {"name": popname + "_Pxz", "data": Mxz.copy_as(Pxz)},
+        {"name": popname + "_Pyy", "data": Myy.copy_as(Pyy)},
+        {"name": popname + "_Pyz", "data": Myz.copy_as(Pyz)},
+        {"name": popname + "_Pzz", "data": Mzz.copy_as(Pzz)},
     )
-
-
-def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
-    """
-    :param data: the values of the data that will be used for making
-    the interpolator, defined on coords
-    :param coords: coordinates where the data are known. they
-    can be define on an irregular grid (eg the finest)
-
-    finest_coords will be the structured coordinates defined on the
-    finest grid.
-    """
-    from pyphare.core.gridlayout import yeeCoordsFor
-
-    dim = coords.ndim
-
-    if dim == 1:
-        from scipy.interpolate import interp1d
-
-        interpolator = interp1d(
-            coords, data, kind=interp, fill_value="extrapolate", assume_sorted=False
-        )
-
-        nx = 1 + int(domain[0] / dl[0])
-
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x")
-        finest_coords = (x,)
-
-    elif dim == 2:
-        from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
-
-        if interp == "nearest":
-            interpolator = NearestNDInterpolator(coords, data)
-        elif interp == "bilinear":
-            interpolator = LinearNDInterpolator(coords, data)
-        else:
-            raise ValueError("interp can only be 'nearest' or 'bilinear'")
-
-        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
-        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
-        # x = np.arange(0, domain[0]+dl[0], dl[0])
-        # y = np.arange(0, domain[1]+dl[1], dl[1])
-        finest_coords = (x, y)
-
-    else:
-        raise ValueError("make_interpolator is not yet 3d")
-
-    return interpolator, finest_coords

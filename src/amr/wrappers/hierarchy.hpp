@@ -89,7 +89,9 @@ public:
     void closeRestartFile() { SamraiLifeCycle::getRestartManager()->closeRestartFile(); }
 
     NO_DISCARD bool isFromRestart() const
-    { return SamraiLifeCycle::getRestartManager()->isFromRestart(); }
+    {
+        return SamraiLifeCycle::getRestartManager()->isFromRestart();
+    }
 
 private:
     std::optional<std::string> static restartFilePath(auto const& dict)
