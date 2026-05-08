@@ -5,17 +5,18 @@ from pathlib import Path
 
 from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
+import pyphare.pharesee as phc
 from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator, startMPI
+
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
 
 
 time_step = 0.005
-final_time = 0.05
-time_step_nbr = int(final_time / time_step)
-timestamps = np.arange(0, final_time + 0.01, 0.05)
+final_time = 0.01
+timestamps = [0, time_step, final_time]
 diag_dir = "phare_outputs/test_run"
 plot_dir = Path(f"{diag_dir}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
@@ -168,6 +169,14 @@ def plot(diag_dir):
     run = Run(diag_dir)
     pop_name = "protons"
     for time in timestamps:
+        Bgaussian = phc.filters.gaussian(run.GetB(time, all_primal=False))
+        for c in ["Bx", "By", "Bz"]:
+            Bgaussian[c].plot(
+                filename=plot_file_for_qty(f"Bgaussian{c}", time), qty=f"B{c}"
+            )
+        Ngaussian = phc.filters.gaussian(run.GetN(time, pop_name=pop_name))
+        Ngaussian.plot(filename=plot_file_for_qty("Ngaussian", time))
+
         run.GetDivB(time).plot(
             filename=plot_file_for_qty("divb", time),
             plot_patches=True,
