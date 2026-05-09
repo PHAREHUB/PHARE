@@ -42,11 +42,10 @@ private:
     using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
-
-    using Faraday_t    = FaradayLevelTransformer<HybridModel>;
-    using Ampere_t     = AmpereLevelTransformer<HybridModel>;
-    using Ohm_t        = OhmLevelTransformer<HybridModel>;
-    using IonUpdater_t = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using Faraday_t        = FaradayLevelTransformer<HybridModel>;
+    using Ampere_t         = AmpereLevelTransformer<HybridModel>;
+    using Ohm_t            = OhmLevelTransformer<HybridModel>;
+    using IonUpdater_t     = PHARE::core::IonUpdater<Ions>;
 
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
@@ -112,10 +111,14 @@ public:
 
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
-    { return std::forward_as_tuple(Bold_, fluxSumE_); }
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
+    }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
-    { return std::forward_as_tuple(Bold_, fluxSumE_); }
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
+    }
 
 
 private:
@@ -153,7 +156,7 @@ private:
             if (auto [it, suc] = levelBoxing.try_emplace(
                     amr::to_string(patch->getGlobalId()),
                     Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, hierarchy)});
+                             amr::patchGhostBoxOverlaps<GridLayout>(*patch, hierarchy)});
                 !suc)
                 throw std::runtime_error("boxing map insertion failure");
     }
@@ -174,7 +177,7 @@ private:
     }
 
 
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using Boxing_t = core::UpdaterSelectionBoxing<GridLayout, ParticleArray>;
     std::unordered_map<int /*level*/, std::unordered_map<std::string /*patchid*/, Boxing_t>> boxing;
 
 
@@ -337,14 +340,14 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     average_(level, model, fromCoarser, newTime);
 
-    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::domain_only);
+    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::copy);
 
     predictor2_(level, model, fromCoarser, currentTime, newTime);
 
 
     average_(level, model, fromCoarser, newTime);
 
-    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::all);
+    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::ref);
 
     corrector_(level, model, fromCoarser, currentTime, newTime);
 }
@@ -535,9 +538,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     {
         auto dt = newTime - currentTime;
         for (auto& patch : rm.enumerate(level, ions, electromagAvg_))
-            ionUpdater_.updatePopulations(ions, electromagAvg_,
-                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt,
-                                          mode);
+            ionUpdater_.updatePopulations(mode, ions, electromagAvg_,
+                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt);
     }
     catch (core::DictionaryException const& ex)
     {
@@ -555,7 +557,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     fromCoarser.fillIonGhostParticles(model.state.ions, level, newTime);
 
     for (auto& patch : rm.enumerate(level, ions))
-        ionUpdater_.updateIons(ions);
+        ions.update();
 
     fromCoarser.fillIonBorders(model.state.ions, level, newTime);
 
