@@ -5,6 +5,8 @@
 
 #include "tools/bench/core/bench.hpp"
 
+#include "benchmark/benchmark.h"
+
 #include <cassert>
 
 namespace PHARE::amr::bench
