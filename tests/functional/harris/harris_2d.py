@@ -20,8 +20,8 @@ ph.NO_GUI()
 
 cells = (200, 100)
 time_step = 0.005
-final_time = 50
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
+final_time = 0.005
+timestamps = [final_time]  # np.arange(0, final_time + time_step, final_time / 5)
 diag_dir = "phare_outputs/harris"
 
 
