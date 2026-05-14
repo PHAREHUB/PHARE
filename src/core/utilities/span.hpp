@@ -26,7 +26,7 @@ struct Span
 {
     using value_type = std::decay_t<T>;
 
-    Span(T* ptr_ = nullptr, SIZE const s_ = 0)
+    Span(T* ptr_ = nullptr, SIZE s_ = 0)
         : ptr{ptr_}
         , s{s_}
     {
@@ -37,9 +37,9 @@ struct Span
     Span& operator=(Span&&)      = default;
     Span& operator=(Span const&) = default;
 
-    NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
-    NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
-    NO_DISCARD auto data() const { return ptr; }
+    NO_DISCARD auto& operator[](SIZE const i) { return ptr[i]; }
+    NO_DISCARD value_type const& operator[](SIZE const i) const { return ptr[i]; }
+    NO_DISCARD value_type const* data() const { return ptr; }
     NO_DISCARD auto data() { return ptr; }
     NO_DISCARD auto begin() { return ptr; }
     NO_DISCARD auto begin() const { return ptr; }
