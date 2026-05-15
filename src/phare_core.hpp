@@ -7,12 +7,13 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/electromag/electromag.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
+// #include "options/mhd_options.hpp"
+#include "options/hybrid_options.hpp"
 #include "phare_simulator_options.hpp"
 
 #include "dict.hpp"
@@ -30,28 +31,51 @@ struct PHARE_Types
     auto static constexpr dimension    = opts.dimension;
     auto static constexpr interp_order = opts.interp_order;
 
-    using Array_t          = NdArrayVector<dimension>;
-    using ArrayView_t      = NdArrayView<dimension>;
-    using Grid_t           = Grid<Array_t, HybridQuantity::Scalar>;
-    using Field_t          = Field<dimension, HybridQuantity::Scalar>;
-    using VecField_t       = VecField<Field_t, HybridQuantity>;
-    using SymTensorField_t = SymTensorField<Field_t, HybridQuantity>;
-    using Electromag_t     = Electromag<VecField_t>;
-    using YeeLayout_t      = GridLayoutImplYee<dimension, interp_order>;
-    using GridLayout_t     = GridLayout<YeeLayout_t>;
+    using Array_t     = NdArrayVector<dimension>;
+    using ArrayView_t = NdArrayView<dimension>;
 
-    using Particle_t      = Particle<dimension>;
-    using ParticleAoS_t   = ParticleArray<dimension>;
-    using ParticleArray_t = ParticleAoS_t;
-    using ParticleSoA_t   = ContiguousParticles<dimension>;
+    struct Hybrid
+    {
+        auto static constexpr field_options  = HybridFieldOptions<opts>{};
+        auto static constexpr hybrid_options = HybridOptions<field_options>{};
+        using Grid_t                         = Grid<Array_t, HybridQuantity::Scalar>;
+        using Field_t                        = Field<dimension, HybridQuantity::Scalar>;
+        using VecField_t                     = VecField<Field_t, HybridQuantity>;
+        using SymTensorField_t               = SymTensorField<Field_t, HybridQuantity>;
+        using Electromag_t                   = Electromag<VecField_t>;
+        using GridLayout_t                   = GridLayout<hybrid_options>;
 
-    using MaxwellianParticleInitializer_t
-        = MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
-    using IonPopulation_t = IonPopulation<ParticleArray_t, VecField_t, SymTensorField_t>;
-    using Ions_t          = Ions<IonPopulation_t, GridLayout_t>;
-    using Electrons_t     = Electrons<Ions_t>;
+        using Particle_t      = Particle<dimension>;
+        using ParticleAoS_t   = ParticleArray<dimension>;
+        using ParticleArray_t = ParticleAoS_t;
+        using ParticleSoA_t   = ContiguousParticles<dimension>;
 
-    using ParticleInitializerFactory_t = ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
+        using MaxwellianParticleInitializer_t
+            = MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
+        using IonPopulation_t = IonPopulation<ParticleArray_t, VecField_t, SymTensorField_t>;
+        using Ions_t          = Ions<IonPopulation_t, GridLayout_t>;
+        using Electrons_t     = Electrons<Ions_t>;
+
+        using ParticleInitializerFactory_t
+            = ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
+    };
+
+    // deprecated defaults
+    using Grid_t                          = Hybrid::Grid_t;
+    using Field_t                         = Hybrid::Field_t;
+    using VecField_t                      = Hybrid::VecField_t;
+    using SymTensorField_t                = Hybrid::SymTensorField_t;
+    using Electromag_t                    = Hybrid::Electromag_t;
+    using GridLayout_t                    = Hybrid::GridLayout_t;
+    using Particle_t                      = Hybrid::Particle_t;
+    using ParticleAoS_t                   = Hybrid::ParticleArray_t;
+    using ParticleArray_t                 = Hybrid::ParticleArray_t;
+    using ParticleSoA_t                   = Hybrid::ParticleSoA_t;
+    using IonPopulation_t                 = Hybrid::IonPopulation_t;
+    using Ions_t                          = Hybrid::Ions_t;
+    using Electrons_t                     = Hybrid::Electrons_t;
+    using MaxwellianParticleInitializer_t = Hybrid::MaxwellianParticleInitializer_t;
+    using ParticleInitializerFactory_t    = Hybrid::ParticleInitializerFactory_t;
 };
 
 struct PHARE_Sim_Types

@@ -1,11 +1,9 @@
 
-
-#include "core/data/grid/gridlayout.hpp"
+#include "phare_core.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/faraday/faraday.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
 
 #include "tests/core/data/field/test_field.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -103,10 +101,12 @@ protected:
     static constexpr auto interp_order = 1;
 
     using UsableVecFieldND = UsableVecField<dim>;
-    using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
-    using Faraday_t        = Faraday<GridLayout<GridLayoutImpl>>;
+    using GridLayout_t
+        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
 
-    GridLayout<GridLayoutImpl> layout;
+    using Faraday_t = Faraday<GridLayout_t>;
+
+    GridLayout_t layout;
 
     UsableVecFieldND B, E, Bnew;
 
@@ -130,10 +130,11 @@ protected:
     static constexpr auto interp_order = 1;
 
     using UsableVecFieldND = UsableVecField<dim>;
-    using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
-    using Faraday_t        = Faraday<GridLayout<GridLayoutImpl>>;
+    using GridLayout_t
+        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using Faraday_t = Faraday<GridLayout_t>;
 
-    GridLayout<GridLayoutImpl> layout;
+    GridLayout_t layout;
 
     UsableVecFieldND B, E, Bnew;
 
@@ -157,9 +158,10 @@ protected:
     static constexpr auto interp_order = 1;
 
     using UsableVecFieldND = UsableVecField<dim>;
-    using GridLayoutImpl   = GridLayoutImplYee<dim, interp_order>;
-    using Faraday_t        = Faraday<GridLayout<GridLayoutImpl>>;
-    GridLayout<GridLayoutImpl> layout;
+    using GridLayout_t
+        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using Faraday_t = Faraday<GridLayout_t>;
+    GridLayout_t layout;
 
     UsableVecFieldND B, E, Bnew;
 

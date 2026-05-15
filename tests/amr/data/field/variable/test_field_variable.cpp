@@ -1,6 +1,7 @@
 
-#include "core/def/phare_mpi.hpp"
 
+#include "core/def/phare_mpi.hpp"
+#include "phare_core.hpp"
 
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -10,12 +11,10 @@
 
 #include "amr/data/field/field_variable.hpp"
 #include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
-#include <string>
 #include <map>
+#include <string>
 
 
 using namespace PHARE::core;
@@ -49,8 +48,9 @@ struct FieldVariableTest : public ::testing::TestWithParam<FieldVariableTestPara
 
 
 template<std::size_t dim, std::size_t interporder>
-using FieldVar = FieldVariable<GridLayout<GridLayoutImplYee<dim, interporder>>,
-                               Grid<NdArrayVector<dim>, HybridQuantity::Scalar>>;
+using FieldVar = FieldVariable<
+    typename PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interporder}>::Hybrid::GridLayout_t,
+    Grid<NdArrayVector<dim>, HybridQuantity::Scalar>>;
 
 
 // The interp order is of no importance to know if a quantity

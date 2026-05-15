@@ -2,9 +2,15 @@
 #define PHARE_TESTS_AMR_FIELD_DATA_FIELD_DATA_TEST_PARAM_HPP
 
 
-#include <cmath>
-#include <string>
 #include "core/def/phare_mpi.hpp"
+
+#include "phare_core.hpp"
+#include "phare_simulator_options.hpp"
+
+#include "core/data/grid/grid.hpp"
+
+#include "amr/data/field/field_data.hpp"
+#include "amr/data/field/field_variable.hpp"
 
 #include <SAMRAI/pdat/CellData.h>
 #include <SAMRAI/pdat/CellDataFactory.h>
@@ -14,25 +20,21 @@
 #include <SAMRAI/pdat/NodeVariable.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
+#include <cmath>
+#include <string>
 
-#include "amr/data/field/field_data.hpp"
-#include "amr/data/field/field_overlap.hpp"
-#include "amr/data/field/field_variable.hpp"
-
-#include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/utilities/point/point.hpp"
-
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
-template<typename GridLayoutT, typename FieldImpl>
+template<auto opts>
 struct FieldDataTestParam
 {
+    using FieldImpl   = Grid<NdArrayVector<opts.dimension>, HybridQuantity::Scalar>;
+    using GridLayoutT = PHARE::core::PHARE_Types<opts>::Hybrid::GridLayout_t;
+
     FieldDataTestParam(std::string const& name, HybridQuantity::Scalar quantity,
                        SAMRAI::hier::Patch& patch_0, SAMRAI::hier::Patch& patch_1)
         : fieldDestinationVariable{name + std::string("_0"), quantity}
@@ -274,16 +276,9 @@ struct AFieldData1DCenteredOnEy : public ::testing::Test
 };
 
 
-// Using used later in test
-
-using Grid1D = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
-
-using FieldDataTest1DOrder1 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 1>>, Grid1D>;
-using FieldDataTest1DOrder2 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 2>>, Grid1D>;
-using FieldDataTest1DOrder3 = FieldDataTestParam<GridLayout<GridLayoutImplYee<1, 3>>, Grid1D>;
-
-using FieldDataTestList
-    = ::testing::Types<FieldDataTest1DOrder1, FieldDataTest1DOrder2, FieldDataTest1DOrder3>;
+using FieldDataTestList = ::testing::Types<FieldDataTestParam<PHARE::SimOpts{1, 1}>,
+                                           FieldDataTestParam<PHARE::SimOpts{1, 2}>,
+                                           FieldDataTestParam<PHARE::SimOpts{1, 3}>>;
 
 
 

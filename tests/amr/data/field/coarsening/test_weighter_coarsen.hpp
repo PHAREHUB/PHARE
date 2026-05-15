@@ -1,14 +1,13 @@
 #ifndef PHARE_TEST_WEIGHTER_COARSEN_HPP
 #define PHARE_TEST_WEIGHTER_COARSEN_HPP
 
-#include <numeric>
 
-#include "amr/data/field/coarsening/field_coarsen_index_weight.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
+#include "amr/data/field/coarsening/coarsen_weighter.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include <numeric>
 
 using testing::DoubleEq;
 using testing::DoubleNear;
@@ -38,7 +37,7 @@ TEST_P(AWeighter, hasSumOfWeightEqualToOne)
 }
 
 
-AWeighterData createWeighter(std::size_t nbrPoints)
+AWeighterData inline createWeighter(std::size_t nbrPoints)
 {
     AWeighterData weightData;
     weightData.weight = std::make_shared<CoarsenWeighter>(nbrPoints);

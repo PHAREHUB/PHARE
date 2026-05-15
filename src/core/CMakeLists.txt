@@ -62,8 +62,8 @@ endif(withPhlop)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C cppdict
-    PUBLIC ${PHARE_BASE_LIBS}
+target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C
+    PUBLIC cppdict ${PHARE_BASE_LIBS}
   )
 
 # skip mpicxx in compile command if not configured with configurator

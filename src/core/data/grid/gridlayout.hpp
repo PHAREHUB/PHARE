@@ -23,6 +23,10 @@ namespace PHARE
 {
 namespace core
 {
+    template<auto options>
+    concept HasInterpOrder = requires { options.interp_order; };
+
+
     template<typename T, typename Attempt = void>
     struct has_physicalQuantity : std::false_type
     {
@@ -74,8 +78,8 @@ namespace core
      * the physical domain indexes VS the ghost indexes for a grid.
      *
      * The specific knowledge of which quantity is where is encapsulated in the private
-     * GridLayout implementation GridLayoutImpl. For instance, the Yee lattice is
-     * the GridLayoutImplYee of such implementations.
+     * GridLayout implementation implT. For instance, the Yee lattice is
+     * the implTYee of such implementations.
      *
      * GridLayout in itself gathers many methods to manipulate discretized quantities.
      * All these methods only depend on the concept of primal and dual nodes.
@@ -84,23 +88,34 @@ namespace core
      * be (primal,dual), meaning that it will be found at cell corners in the X direction
      * , but offset by dy/2 in the Y direction.
      *
-     * GridLayout is templated by a specific implementation, such as GridLayoutImplYee.
+     * GridLayout is templated by a specific implementation, such as implTYee.
      * This implementation brings the dimensionality and the interpolation order compile-time
      * constants to the GridLayout.
      *
      */
-    template<typename GridLayoutImpl>
+    template<auto options>
     class GridLayout
     {
+        using Options      = decltype(options);
+        using FieldOptions = Options::FieldOptions;
+        using Scalar       = FieldOptions::Scalar;
+        using GridData     = Options::GridLayoutImpl::GridData;
+
     protected:
         GridLayout() = default;
 
     public:
-        static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
-        static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-        using This                                = GridLayout<GridLayoutImpl>;
-        using implT                               = GridLayoutImpl;
-        using AMRBox_t                            = Box<int, dimension>;
+        static constexpr std::size_t dimension    = options.dimension;
+        static constexpr std::size_t interp_order = []() constexpr {
+            if constexpr (HasInterpOrder<options>)
+                return options.interp_order;
+            else
+                return 0; // MHD layouts don't have interpolation order
+        }();
+
+        using This     = GridLayout<options>;
+        using implT    = Options::GridLayoutImpl;
+        using AMRBox_t = Box<int, dimension>;
 
         /**
          * @brief Constructor of a GridLayout
@@ -175,8 +190,9 @@ namespace core
 
 
         NO_DISCARD static std::size_t constexpr nbrParticleGhosts()
+            requires HasInterpOrder<options>
         {
-            return ghostWidthForParticles<interp_order>();
+            return ghostWidthForParticles<options.interp_order>();
         }
 
         template<typename Centering, typename Direction>
@@ -282,13 +298,13 @@ namespace core
 
 
 
-        NO_DISCARD std::uint32_t physicalStartIndex(HybridQuantity::Scalar const& hybridQuantity,
+        NO_DISCARD std::uint32_t physicalStartIndex(Scalar const& quantity,
                                                     Direction direction) const
         {
-            constexpr auto hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
-            auto const iQty                   = static_cast<std::uint32_t>(hybridQuantity);
-            auto const iDir                   = static_cast<std::uint32_t>(direction);
-            auto const iCentering = static_cast<std::uint32_t>(hybridQtyCentering[iQty][iDir]);
+            constexpr auto qtyCentering = implT::qtyCentering_;
+            auto const iQty             = static_cast<std::uint32_t>(quantity);
+            auto const iDir             = static_cast<std::uint32_t>(direction);
+            auto const iCentering       = static_cast<std::uint32_t>(qtyCentering[iQty][iDir]);
             return physicalStartIndexTable_[iCentering][iDir];
         }
 
@@ -323,13 +339,12 @@ namespace core
 
 
 
-        NO_DISCARD std::uint32_t physicalEndIndex(HybridQuantity::Scalar const& hybridQuantity,
-                                                  Direction direction) const
+        NO_DISCARD std::uint32_t physicalEndIndex(Scalar const& quantity, Direction direction) const
         {
-            std::uint32_t iQty                 = static_cast<std::uint32_t>(hybridQuantity);
-            std::uint32_t iDir                 = static_cast<std::uint32_t>(direction);
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
-            std::uint32_t iCentering = static_cast<std::uint32_t>(hybridQtyCentering[iQty][iDir]);
+            std::uint32_t iQty           = static_cast<std::uint32_t>(quantity);
+            std::uint32_t iDir           = static_cast<std::uint32_t>(direction);
+            constexpr auto& qtyCentering = implT::qtyCentering_;
+            std::uint32_t iCentering     = static_cast<std::uint32_t>(qtyCentering[iQty][iDir]);
 
             return physicalEndIndexTable_[iCentering][iDir];
         }
@@ -364,9 +379,8 @@ namespace core
         }
 
 
-        NO_DISCARD std::uint32_t
-        ghostStartIndex([[maybe_unused]] HybridQuantity::Scalar const& hybridQuantity,
-                        [[maybe_unused]] Direction direction) const
+        NO_DISCARD std::uint32_t ghostStartIndex([[maybe_unused]] Scalar const& quantity,
+                                                 [[maybe_unused]] Direction direction) const
         {
             // ghostStartIndex is always the first node
             return 0;
@@ -403,13 +417,12 @@ namespace core
 
 
 
-        NO_DISCARD std::uint32_t ghostEndIndex(HybridQuantity::Scalar const& hybridQuantity,
-                                               Direction direction) const
+        NO_DISCARD std::uint32_t ghostEndIndex(Scalar const& quantity, Direction direction) const
         {
-            std::uint32_t iQty                 = static_cast<std::uint32_t>(hybridQuantity);
-            std::uint32_t iDir                 = static_cast<std::uint32_t>(direction);
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
-            std::uint32_t iCentering = static_cast<std::uint32_t>(hybridQtyCentering[iQty][iDir]);
+            std::uint32_t iQty           = static_cast<std::uint32_t>(quantity);
+            std::uint32_t iDir           = static_cast<std::uint32_t>(direction);
+            constexpr auto& qtyCentering = implT::qtyCentering_;
+            std::uint32_t iCentering     = static_cast<std::uint32_t>(qtyCentering[iQty][iDir]);
             return ghostEndIndexTable_[iCentering][iDir];
         }
 
@@ -439,15 +452,14 @@ namespace core
         {
             constexpr std::uint32_t iDual = static_cast<std::uint32_t>(QtyCentering::dual);
 
-            auto const iQuantity = static_cast<std::uint32_t>(field.physicalQuantity());
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
+            auto const iQuantity         = static_cast<std::uint32_t>(field.physicalQuantity());
+            constexpr auto& qtyCentering = implT::qtyCentering_;
 
             Point<double, dimension> position;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                auto const centering
-                    = static_cast<std::uint32_t>(hybridQtyCentering[iQuantity][iDir]);
+                auto const centering = static_cast<std::uint32_t>(qtyCentering[iQuantity][iDir]);
 
                 double const halfCell = centering == iDual ? 0.5 : 0.0;
 
@@ -822,20 +834,19 @@ namespace core
         //                      LAYOUT SPECIFIC METHODS
         //
         // The methods below return results that need information specific to the
-        // layout that is used. They thus all refer to the GridLayoutImpl.
+        // layout that is used. They thus all refer to the implT.
         // ----------------------------------------------------------------------
 
 
-        NO_DISCARD std::string layoutName() const { return GridLayoutImpl::layoutName_; }
+        NO_DISCARD std::string layoutName() const { return implT::layoutName_; }
 
 
         /**
          * @brief returns the centering of a scalar hybrid quantity in each directions
          */
-        NO_DISCARD constexpr static std::array<QtyCentering, dimension>
-        centering(HybridQuantity::Scalar hybridQuantity)
+        NO_DISCARD constexpr static std::array<QtyCentering, dimension> centering(Scalar quantity)
         {
-            return GridLayoutImpl::centering(hybridQuantity);
+            return implT::centering(quantity);
         }
 
 
@@ -844,13 +855,13 @@ namespace core
          * @brief returns the centering of a vector hybrid quantity in each directions
          */
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 3>
-        centering(HybridQuantity::Vector hybridQuantity)
+        centering(HybridQuantity::Vector quantity)
         {
-            return GridLayoutImpl::centering(hybridQuantity);
+            return implT::centering(quantity);
         }
 
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 6>
-        centering(HybridQuantity::Tensor hybridQuantity)
+        centering(HybridQuantity::Tensor quantity)
         {
             return for_N_make_array<6>(
                 [](auto) { return ConstArray<QtyCentering, dimension>(QtyCentering::primal); });
@@ -866,25 +877,22 @@ namespace core
 
 
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::allocSize
+         * @brief GridLayout<implT::dim>::allocSize
          * @return An std::array<std::uint32_t, dim> object, containing the size to which allocate
          * arrays of an HybridQuantity::Quantity 'qty' in every directions.
          */
-        NO_DISCARD std::array<std::uint32_t, dimension> allocSize(HybridQuantity::Scalar qty) const
+        NO_DISCARD std::array<std::uint32_t, dimension> allocSize(Scalar qty) const
         {
             std::uint32_t iQty = static_cast<std::uint32_t>(qty);
 
-
-            // TODO: hybridQtyCentering should be defined per dimension so that we could simply do
-            // auto sizeArray = nodeNbrFromCentering_(hybridQtyCentering[iQty]);
-
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
+            // TODO: qtyCentering should be defined per dimension so that we could simply do
+            // auto sizeArray = nodeNbrFromCentering_(qtyCentering[iQty]);
 
             std::array<QtyCentering, dimension> qtyCentering;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                qtyCentering[iDir] = hybridQtyCentering[iQty][iDir];
+                qtyCentering[iDir] = implT::qtyCentering_[iQty][iDir];
             }
 
             return nodeNbrFromCentering_(qtyCentering);
@@ -895,7 +903,7 @@ namespace core
          * @brief allocSizeDerived returns the shape of the array to be allocated to store
          * the derivative of a given quantity in a given direction.
          */
-        NO_DISCARD std::array<std::uint32_t, dimension> allocSizeDerived(HybridQuantity::Scalar qty,
+        NO_DISCARD std::array<std::uint32_t, dimension> allocSizeDerived(Scalar qty,
                                                                          Direction dir) const
         {
             std::uint32_t iDerivedDir = static_cast<std::uint32_t>(dir);
@@ -904,13 +912,13 @@ namespace core
             // get the centering of the derivative of 'qty' in the direction of derivation
             QtyCentering newCentering = derivedCentering(qty, dir);
 
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
+            constexpr auto& qtyCentering = implT::qtyCentering_;
 
             std::array<QtyCentering, dimension> qtyCenterings;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                qtyCenterings[iDir] = hybridQtyCentering[iQty][iDir];
+                qtyCenterings[iDir] = qtyCentering[iQty][iDir];
             }
 
             // ...and permute the centering in the direction of derivation
@@ -927,11 +935,11 @@ namespace core
         template<typename Field_t>
         NO_DISCARD QtyCentering fieldCentering(Field_t const& field, Direction dir) const
         {
-            std::uint32_t iDir = static_cast<std::uint32_t>(dir);
-            std::uint32_t iQty = static_cast<std::uint32_t>(field.physicalQuantity());
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
+            std::uint32_t iDir           = static_cast<std::uint32_t>(dir);
+            std::uint32_t iQty           = static_cast<std::uint32_t>(field.physicalQuantity());
+            constexpr auto& qtyCentering = implT::qtyCentering_;
 
-            return hybridQtyCentering[iQty][iDir];
+            return qtyCentering[iQty][iDir];
         }
 
 
@@ -939,15 +947,13 @@ namespace core
          * @brief nbrPhysicalNodes returns the number of nodes in each direction, that are node
          * ghost nodes
          */
-        NO_DISCARD std::array<std::uint32_t, dimension>
-        nbrPhysicalNodes(HybridQuantity::Scalar hybQty) const
+        NO_DISCARD std::array<std::uint32_t, dimension> nbrPhysicalNodes(Scalar hybQty) const
         {
             std::array<QtyCentering, dimension> centerings;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                centerings[iDir]
-                    = GridLayoutImpl::hybridQtyCentering_[static_cast<std::uint32_t>(hybQty)][iDir];
+                centerings[iDir] = implT::qtyCentering_[static_cast<std::uint32_t>(hybQty)][iDir];
             }
 
             return this->physicalNodeNbrFromCentering_(centerings);
@@ -957,18 +963,18 @@ namespace core
         /**
          * @brief derivedCentering this function returns the
          * centering (primal or dual) of a quantity after a first order derivation. dual becomes
-         * primal and primal becomes dual. hybridQuantityCentering is used to know if the
+         * primal and primal becomes dual. quantityCentering is used to know if the
          * HybridQuantity::Quantity 'qty' is primal or dual in the Direction 'dir'
          */
-        NO_DISCARD QtyCentering derivedCentering(HybridQuantity::Scalar qty, Direction dir) const
+        NO_DISCARD QtyCentering derivedCentering(Scalar qty, Direction dir) const
         {
             std::uint32_t iField = static_cast<std::uint32_t>(qty);
             std::uint32_t idir   = static_cast<std::uint32_t>(dir);
 
 
-            constexpr auto& hybridQtyCentering = GridLayoutImpl::hybridQtyCentering_;
+            constexpr auto& qtyCentering = implT::qtyCentering_;
 
-            QtyCentering newCentering = changeCentering(hybridQtyCentering[iField][idir]);
+            QtyCentering newCentering = changeCentering(qtyCentering[iField][idir]);
 
             return newCentering;
         }
@@ -978,21 +984,21 @@ namespace core
          * @brief momentsToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project moments onto Ex.
          */
-        NO_DISCARD auto static constexpr momentsToEx() { return GridLayoutImpl::momentsToEx(); }
+        NO_DISCARD auto static constexpr momentsToEx() { return implT::momentsToEx(); }
 
 
         /**
          * @brief momentsToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project moments onto Ey.
          */
-        NO_DISCARD auto static constexpr momentsToEy() { return GridLayoutImpl::momentsToEy(); }
+        NO_DISCARD auto static constexpr momentsToEy() { return implT::momentsToEy(); }
 
 
         /**
          * @brief momentsToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project moments onto Ez.
          */
-        NO_DISCARD auto static constexpr momentsToEz() { return GridLayoutImpl::momentsToEz(); }
+        NO_DISCARD auto static constexpr momentsToEz() { return implT::momentsToEz(); }
 
 
 
@@ -1000,21 +1006,21 @@ namespace core
          * @brief BxToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bx onto moments.
          */
-        NO_DISCARD auto static constexpr BxToMoments() { return GridLayoutImpl::BxToMoments(); }
+        NO_DISCARD auto static constexpr BxToMoments() { return implT::BxToMoments(); }
 
 
         /**
          * @brief ByToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project By onto moments.
          */
-        NO_DISCARD auto static constexpr ByToMoments() { return GridLayoutImpl::ByToMoments(); }
+        NO_DISCARD auto static constexpr ByToMoments() { return implT::ByToMoments(); }
 
 
         /**
          * @brief BzToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bz onto moments.
          */
-        NO_DISCARD auto static constexpr BzToMoments() { return GridLayoutImpl::BzToMoments(); }
+        NO_DISCARD auto static constexpr BzToMoments() { return implT::BzToMoments(); }
 
 
 
@@ -1023,7 +1029,7 @@ namespace core
          * @brief ExToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ex onto moments.
          */
-        NO_DISCARD auto static constexpr ExToMoments() { return GridLayoutImpl::ExToMoments(); }
+        NO_DISCARD auto static constexpr ExToMoments() { return implT::ExToMoments(); }
 
 
 
@@ -1031,7 +1037,7 @@ namespace core
          * @brief EyToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ey onto moments.
          */
-        NO_DISCARD auto static constexpr EyToMoments() { return GridLayoutImpl::EyToMoments(); }
+        NO_DISCARD auto static constexpr EyToMoments() { return implT::EyToMoments(); }
 
 
 
@@ -1039,43 +1045,43 @@ namespace core
          * @brief EzToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ez onto moments.
          */
-        NO_DISCARD auto static constexpr EzToMoments() { return GridLayoutImpl::EzToMoments(); }
+        NO_DISCARD auto static constexpr EzToMoments() { return implT::EzToMoments(); }
 
 
         /**
          * @brief JxToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jx onto moments.
          */
-        NO_DISCARD auto static constexpr JxToMoments() { return GridLayoutImpl::JxToMoments(); }
+        NO_DISCARD auto static constexpr JxToMoments() { return implT::JxToMoments(); }
 
 
         /**
          * @brief JyToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jy onto moments.
          */
-        NO_DISCARD auto static constexpr JyToMoments() { return GridLayoutImpl::JyToMoments(); }
+        NO_DISCARD auto static constexpr JyToMoments() { return implT::JyToMoments(); }
 
 
         /**
          * @brief JzToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jz onto moments.
          */
-        NO_DISCARD auto static constexpr JzToMoments() { return GridLayoutImpl::JzToMoments(); }
+        NO_DISCARD auto static constexpr JzToMoments() { return implT::JzToMoments(); }
 
-        NO_DISCARD auto static constexpr BxToEx() { return GridLayoutImpl::BxToEx(); }
+        NO_DISCARD auto static constexpr BxToEx() { return implT::BxToEx(); }
 
         /**
          * @brief ByToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project By onto Ex.
          */
-        NO_DISCARD auto static constexpr ByToEx() { return GridLayoutImpl::ByToEx(); }
+        NO_DISCARD auto static constexpr ByToEx() { return implT::ByToEx(); }
 
 
         /**
          * @brief BzToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bz onto Ex.
          */
-        NO_DISCARD auto static constexpr BzToEx() { return GridLayoutImpl::BzToEx(); }
+        NO_DISCARD auto static constexpr BzToEx() { return implT::BzToEx(); }
 
 
 
@@ -1083,16 +1089,16 @@ namespace core
          * @brief BxToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bx onto Ey.
          */
-        NO_DISCARD auto static constexpr BxToEy() { return GridLayoutImpl::BxToEy(); }
+        NO_DISCARD auto static constexpr BxToEy() { return implT::BxToEy(); }
 
 
-        NO_DISCARD auto static constexpr ByToEy() { return GridLayoutImpl::ByToEy(); }
+        NO_DISCARD auto static constexpr ByToEy() { return implT::ByToEy(); }
 
         /**
          * @brief BzToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bz onto Ey.
          */
-        NO_DISCARD auto static constexpr BzToEy() { return GridLayoutImpl::BzToEy(); }
+        NO_DISCARD auto static constexpr BzToEy() { return implT::BzToEy(); }
 
 
 
@@ -1100,7 +1106,7 @@ namespace core
          * @brief BxToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bx onto Ez.
          */
-        NO_DISCARD auto static constexpr BxToEz() { return GridLayoutImpl::BxToEz(); }
+        NO_DISCARD auto static constexpr BxToEz() { return implT::BxToEz(); }
 
 
 
@@ -1108,9 +1114,9 @@ namespace core
          * @brief ByToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project By onto Ez.
          */
-        NO_DISCARD auto static constexpr ByToEz() { return GridLayoutImpl::ByToEz(); }
+        NO_DISCARD auto static constexpr ByToEz() { return implT::ByToEz(); }
 
-        NO_DISCARD auto static constexpr BzToEz() { return GridLayoutImpl::BzToEz(); }
+        NO_DISCARD auto static constexpr BzToEz() { return implT::BzToEz(); }
 
 
 
@@ -1118,7 +1124,7 @@ namespace core
          * @brief JxToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jx onto Ex.
          */
-        NO_DISCARD auto static constexpr JxToEx() { return GridLayoutImpl::JxToEx(); }
+        NO_DISCARD auto static constexpr JxToEx() { return implT::JxToEx(); }
 
 
 
@@ -1126,7 +1132,7 @@ namespace core
          * @brief JyToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jy onto Ey.
          */
-        NO_DISCARD auto static constexpr JyToEy() { return GridLayoutImpl::JyToEy(); }
+        NO_DISCARD auto static constexpr JyToEy() { return implT::JyToEy(); }
 
 
 
@@ -1134,7 +1140,7 @@ namespace core
          * @brief JzToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jz onto Ez.
          */
-        NO_DISCARD auto static constexpr JzToEz() { return GridLayoutImpl::JzToEz(); }
+        NO_DISCARD auto static constexpr JzToEz() { return implT::JzToEz(); }
 
 
 
@@ -1335,9 +1341,9 @@ namespace core
          */
         NO_DISCARD std::uint32_t constexpr static nbrDualGhosts_()
         {
-            static_assert(interp_order > 0 and interp_order < 4);
-            constexpr auto ghosts = std::array{2, 4, 4};
-            return ghosts[interp_order - 1];
+            // static_assert(interp_order > 0 and interp_order < 4);
+            // constexpr auto ghosts = std::array{2, 4, 4};
+            return options.ghost_width; // ghosts[interp_order - 1];
         }
 
 
@@ -1378,7 +1384,7 @@ namespace core
 
 
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::nodeNbrFromCentering_ returns an array containing
+         * @brief GridLayout<implT::dim>::nodeNbrFromCentering_ returns an array containing
          * the total number of nodes (ghosts + physical) in each direction.
          * The calculation is easy : there are nbrPhysicalCells + 1 nodes in the domain
          * + 2 times the number of ghost nodes.
@@ -1424,7 +1430,7 @@ namespace core
 
 
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::initPhysicalEnd intialize the table of indices
+         * @brief GridLayout<implT::dim>::initPhysicalEnd intialize the table of indices
          * corresponding to the last node for primal and dual centering.
          * The formula is simple : the last index is obtained from the first one
          * (which is physicalStartIndex of primal/dual in a given direction)
@@ -1471,7 +1477,7 @@ namespace core
 
 
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::initGhostEnd calculate and stores the index
+         * @brief GridLayout<implT::dim>::initGhostEnd calculate and stores the index
          * of the last primal and dual nodes in each direction. The formula simply
          * consists in starting at physicalEndIndex() and to add the number of ghost nodes.
          */
@@ -1514,7 +1520,7 @@ namespace core
         Point<double, dimension> origin_;
         std::array<std::uint32_t, dimension> nbrPhysicalCells_;
         std::array<double, dimension> inverseMeshSize_;
-        static constexpr gridDataT data{};
+        static constexpr GridData data{};
 
         // stores key indices in each direction (3) for primal and dual nodes (2)
         std::array<std::array<std::uint32_t, dimension>, 2> physicalStartIndexTable_;

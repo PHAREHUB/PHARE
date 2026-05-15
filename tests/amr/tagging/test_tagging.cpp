@@ -1,12 +1,11 @@
 
 
+#include "phare_solver.hpp"
+#include "amr/tagging/tagger_factory.hpp"
 
-#include "simulator/simulator.hpp"
-
-#include "tests/core/data/gridlayout/gridlayout_test.hpp"
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <cmath>
@@ -171,11 +170,12 @@ struct TestTagger : public ::testing::Test
     using Electromag  = phare_types::Electromag_t;
     using Ions        = phare_types::Ions_t;
     using Electrons   = phare_types::Electrons_t;
-    using GridLayoutT = GridLayout<GridLayoutImplYee<dim, interp_order>>;
+    using GridLayoutT
+        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
 
     struct SinglePatchHybridModel
     {
-        using gridlayout_type           = GridLayout<GridLayoutImplYee<dim, interp_order>>;
+        using gridlayout_type           = GridLayoutT;
         static auto constexpr dimension = dim;
         HybridState<Electromag, Ions, Electrons> state;
     };

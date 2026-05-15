@@ -1,4 +1,6 @@
-#include <type_traits>
+
+#include "phare_core.hpp"
+
 
 #include "core/def/phare_mpi.hpp"
 
@@ -18,6 +20,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 
 
+#include <type_traits>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
@@ -46,7 +49,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
-    using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee    = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     using GridND     = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using FieldDataT = FieldData<GridYee, GridND>;
 
@@ -160,7 +163,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
 
     auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
                                                                           layout);
@@ -243,7 +246,7 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
 
     auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
                                                                           layout);

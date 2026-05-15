@@ -1,27 +1,26 @@
 
 
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
+#include "phare_core.hpp"
+
 #include "core/utilities/box/box.hpp"
-#include "core/utilities/index/index.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
-
 
 using namespace PHARE::core;
 
+std::size_t constexpr static dim = 1;
+using GridLayoutT                = PHARE_Types<PHARE::SimOpts{dim, 1}>::Hybrid::GridLayout_t;
+
 TEST(GridLayout, isGivenAnAMRIndexBoxAtConstruction)
 {
-    GridLayout<GridLayoutImplYee<1, 1>> layout({0.1}, {50u}, {{0.}}, Box{Point{0}, Point{49}});
+    GridLayoutT layout({0.1}, {50u}, {{0.}}, Box{Point{0}, Point{49}});
 }
 
 
 auto badLayout()
 {
     auto nbrCells = 50;
-    return GridLayout<GridLayoutImplYee<1, 1>>{
+    return GridLayoutT{
         {0.1}, {static_cast<std::uint32_t>(nbrCells)}, {{0.}}, Box{Point{0}, Point{nbrCells}}};
 }
 
@@ -29,7 +28,7 @@ auto badLayout()
 auto goodLayout()
 {
     auto nbrCells = 50;
-    return GridLayout<GridLayoutImplYee<1, 1>>{
+    return GridLayoutT{
         {0.1}, {static_cast<std::uint32_t>(nbrCells)}, {{0.}}, Box{Point{0}, Point{nbrCells - 1}}};
 }
 
@@ -44,7 +43,7 @@ TEST(GridLayout, AMRBoxHasNbrCellsCells)
 
 TEST(GridLayout, canTransformALocalIndexIntoAnAMRIndex)
 {
-    GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
+    GridLayoutT layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
 
     int nGhosts = layout.nbrGhosts(QtyCentering::dual);
 
@@ -55,7 +54,7 @@ TEST(GridLayout, canTransformALocalIndexIntoAnAMRIndex)
 
 TEST(GridLayout, canTransformALocalBoxIntoAnAMRBox)
 {
-    GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
+    GridLayoutT layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
 
     int nGhosts         = layout.nbrGhosts(QtyCentering::dual);
     auto localBox       = Box{Point{nGhosts + 5}, Point{nGhosts + 15}};
@@ -68,7 +67,7 @@ TEST(GridLayout, canTransformALocalBoxIntoAnAMRBox)
 
 TEST(GridLayout, canTransformAnAMRIndexIntoALocalIndex)
 {
-    GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
+    GridLayoutT layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
 
     int nGhosts = layout.nbrGhosts(QtyCentering::dual);
     EXPECT_EQ(Point{nGhosts}, layout.AMRToLocal(Point{50}));
@@ -80,8 +79,7 @@ TEST(GridLayout, canTransformAnAMRIndexIntoALocalIndex)
 
 TEST(GridLayout, canTransformAnAMRBoxIntoALocalBox)
 {
-    std::size_t constexpr static dim = 1;
-    GridLayout<GridLayoutImplYee<dim, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
+    GridLayoutT layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
 
     std::uint32_t nGhosts = layout.nbrGhosts(QtyCentering::dual);
     auto AMRBox           = Box<int, dim>{Point<int, dim>{55}, Point<int, dim>{65}};

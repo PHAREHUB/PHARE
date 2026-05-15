@@ -1,29 +1,25 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <list>
-#include <random>
+
+#include "phare_core.hpp"
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
-#include "phare_core.hpp"
-#include "core/data/electromag/electromag.hpp"
-#include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/data/particles/particle.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+
+#include "gtest/gtest.h"
+
+#include <list>
+#include <array>
+#include <cmath>
+#include <random>
+#include <cstddef>
+#include <fstream>
+#include <algorithm>
+
+
 
 using namespace PHARE::core;
 
@@ -37,7 +33,7 @@ public:
     auto static constexpr dimension    = 1;
     auto static constexpr interp_order = Weighter::interp_order;
 
-    using GridLayout_t   = GridLayout<GridLayoutImplYee<dimension, interp_order>>;
+    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dimension, interp_order}>::Hybrid::GridLayout_t;
     using Interpolator_t = Interpolator<dimension, interp_order>;
 
 
@@ -221,7 +217,7 @@ public:
     // arbitrary number of cells
     static constexpr std::uint32_t nx = 50;
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using PHARE_TYPES      = PHARE_Types<opts>;
     using GridLayout_t     = PHARE_TYPES::GridLayout_t;
     using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
     using Electromag_t     = PHARE_TYPES::Electromag_t;
@@ -309,14 +305,14 @@ public:
     static constexpr std::uint32_t nx = 50;
     static constexpr std::uint32_t ny = 50;
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
-    using GridLayoutImpl   = GridLayoutImplYee<dimension, interp_order>;
+    using PHARE_TYPES  = PHARE_Types<opts>;
+    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dimension, interp_order}>::Hybrid::GridLayout_t;
     using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
     using Electromag_t     = PHARE_TYPES::Electromag_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
     Electromag_t em;
-    GridLayout<GridLayoutImpl> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
+    GridLayout_t layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
     constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
@@ -401,7 +397,7 @@ public:
     static constexpr std::uint32_t ny = 50;
     static constexpr std::uint32_t nz = 50;
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using PHARE_TYPES      = PHARE_Types<opts>;
     using GridLayout_t     = PHARE_TYPES::GridLayout_t;
     using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
     using Electromag_t     = PHARE_TYPES::Electromag_t;
@@ -497,7 +493,7 @@ class ACollectionOfParticles_1d : public ::testing::Test
     static constexpr auto interp_order = Interpolator::interp_order;
     constexpr static PHARE::SimOpts opts{dimension, interp_order};
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using PHARE_TYPES      = PHARE_Types<opts>;
     using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
     using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
     using Grid_t           = typename PHARE_TYPES::Grid_t;
@@ -693,7 +689,7 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     static constexpr auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
     constexpr static PHARE::SimOpts opts{dim, interp_order};
 
-    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using PHARE_TYPES      = PHARE_Types<opts>;
     using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
     using GridLayout_t     = PHARE_TYPES::GridLayout_t;
     using Grid_t           = PHARE_TYPES::Grid_t;
