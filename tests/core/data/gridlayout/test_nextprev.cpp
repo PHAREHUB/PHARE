@@ -1,25 +1,26 @@
 
 
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
+#include "phare_simulator_options.hpp"
 
-#include "gmock/gmock.h"
+#include "gridlayout_params.hpp"
+
 #include "gtest/gtest.h"
 
 using namespace PHARE::core;
 
 
-template<typename GridLayoutImpl>
+template<typename TestParam_t>
 class NextPrevTest : public ::testing::Test
 {
 protected:
-    using layoutType = GridLayout<GridLayoutImpl>;
+    using layoutType = TestParam_t::GridLayout_t;
 };
 
-using layoutImpls
-    = ::testing::Types<GridLayoutImplYee<1, 1>, GridLayoutImplYee<1, 2>, GridLayoutImplYee<1, 3>>;
+using layoutImpls1D
+    = ::testing::Types<TestParam<PHARE::SimOpts{1, 1}>, TestParam<PHARE::SimOpts{1, 2}>,
+                       TestParam<PHARE::SimOpts{1, 3}>>;
 
-TYPED_TEST_SUITE(NextPrevTest, layoutImpls);
+TYPED_TEST_SUITE(NextPrevTest, layoutImpls1D);
 
 
 

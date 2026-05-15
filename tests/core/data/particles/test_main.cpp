@@ -1,12 +1,12 @@
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
-#include "core/data/particles/particle.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/data/particles/particle_utilities.hpp"
+
+
+#include "phare_core.hpp"
+
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_utilities.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
@@ -29,14 +29,10 @@ public:
 
 
 TEST_F(AParticle, ParticleWeightIsWellInitialized)
-{
-    EXPECT_DOUBLE_EQ(0.01, part.weight);
-}
+{ EXPECT_DOUBLE_EQ(0.01, part.weight); }
 
 TEST_F(AParticle, ParticleChargeIsInitiliazedOK)
-{
-    EXPECT_DOUBLE_EQ(1., part.charge);
-}
+{ EXPECT_DOUBLE_EQ(1., part.charge); }
 
 
 TEST_F(AParticle, ParticleVelocityIsInitializedOk)
@@ -77,8 +73,8 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     Point<double, 3> origin;
     std::array<double, 3> meshSize{{0.2, 0.05, 0.4}};
     std::array<std::uint32_t, 3> nbrCells{{20, 30, 40}};
-    GridLayout<GridLayoutImplYee<3, 1>> layout{meshSize, nbrCells, origin,
-                                               Box{Point{40, 60, 80}, Point{59, 89, 119}}};
+    PHARE::core::PHARE_Types<PHARE::SimOpts{3, 1}>::Hybrid::GridLayout_t layout{
+        meshSize, nbrCells, origin, Box{Point{40, 60, 80}, Point{59, 89, 119}}};
 
     auto iCell            = part.iCell;
     auto p                = positionAsPoint(part, layout);

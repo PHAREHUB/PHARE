@@ -2,6 +2,7 @@
 #define PHARE_CORE_GRID_GRIDLAYOUTDEFS_HPP
 
 
+// #include "core/mhd/mhd_quantities.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 
@@ -36,7 +37,7 @@ namespace core
      * - ghost start/end indexes
      * - numbers of padding cells and physical cells
      */
-    struct gridDataT
+    struct HybridGridDataT
     {
         static constexpr Direction dirX = Direction::X;
         static constexpr Direction dirY = Direction::Y;
@@ -83,6 +84,11 @@ namespace core
 
         static constexpr std::uint32_t iP = static_cast<std::uint32_t>(HybridQuantity::Scalar::P);
     };
+
+
+    // struct MHDGridDataT // todo
+
+
 } // namespace core
 } // namespace PHARE
 
