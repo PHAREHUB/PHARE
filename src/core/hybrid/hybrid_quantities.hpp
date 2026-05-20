@@ -34,13 +34,27 @@ public:
         Myy,
         Myz,
         Mzz,
+        Mxxx, // momentum heat flux tensor components
+        Mxxy,
+        Mxxz,
+        Mxyy,
+        Mxyz,
+        Mxzz,
+        Myyy,
+        Myyz,
+        Myzz,
+        Mzzz,
         count
     };
     enum class Vector { B, E, J, V };
     enum class Tensor { M, count };
+    enum class SymRank3Tensor { M, count };
 
-    template<std::size_t rank, typename = std::enable_if_t<rank == 1 or rank == 2, void>>
-    using TensorType = std::conditional_t<rank == 1, Vector, Tensor>;
+    template<std::size_t rank>
+    struct TensorTyper;
+
+    template<std::size_t rank>
+    using TensorType = TensorTyper<rank>::value_type;
 
     NO_DISCARD static constexpr auto B() { return componentsQuantities(Vector::B); }
     NO_DISCARD static constexpr auto E() { return componentsQuantities(Vector::E); }
@@ -66,9 +80,15 @@ public:
 
     NO_DISCARD static constexpr std::array<Scalar, 6> componentsQuantities(Tensor qty)
     {
-        // no condition, for now there's only then momentum tensor M
         return {{Scalar::Mxx, Scalar::Mxy, Scalar::Mxz, Scalar::Myy, Scalar::Myz, Scalar::Mzz}};
     }
+
+    NO_DISCARD static constexpr std::array<Scalar, 10> componentsQuantities(SymRank3Tensor qty)
+    {
+        return {{Scalar::Mxxx, Scalar::Mxxy, Scalar::Mxxz, Scalar::Mxyy, Scalar::Mxyz, Scalar::Mxzz,
+                 Scalar::Myyy, Scalar::Myyz, Scalar::Myzz, Scalar::Mzzz}};
+    }
+
 
     NO_DISCARD static constexpr auto B_items()
     {
@@ -82,6 +102,23 @@ public:
         return std::make_tuple(std::make_pair("Ex", Ex), std::make_pair("Ey", Ey),
                                std::make_pair("Ez", Ez));
     }
+};
+
+
+template<>
+struct HybridQuantity::TensorTyper<1>
+{
+    using value_type = Vector;
+};
+template<>
+struct HybridQuantity::TensorTyper<2>
+{
+    using value_type = Tensor;
+};
+template<>
+struct HybridQuantity::TensorTyper<3>
+{
+    using value_type = SymRank3Tensor;
 };
 
 } // namespace PHARE::core

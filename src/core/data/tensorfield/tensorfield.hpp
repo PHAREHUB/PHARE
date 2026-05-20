@@ -16,11 +16,14 @@ namespace PHARE::core::detail
 template<std::size_t rank>
 constexpr static std::size_t tensor_field_dim_from_rank()
 {
-    static_assert(rank > 0 and rank < 3);
+    static_assert(rank > 0 and rank < 4);
     if constexpr (rank == 1) // Vector field
         return 3;
     else if constexpr (rank == 2) // symmetric 3x3 tensor field
         return 6;
+    else if constexpr (rank == 3) // symmetric 3x3x3 tensor field
+        return 10;
+    return 0; // nvcc complains about no return
 }
 
 template<std::size_t rank, typename R = std::array<std::string, tensor_field_dim_from_rank<rank>()>>
@@ -32,6 +35,10 @@ R static tensor_field_names(std::string const& name)
     else if constexpr (rank == 2)
         return {
             {name + "_xx", name + "_xy", name + "_xz", name + "_yy", name + "_yz", name + "_zz"}};
+
+    else if constexpr (rank == 3)
+        return {{name + "_xxx", name + "_xxy", name + "_xxz", name + "_xyy", name + "_xyz",
+                 name + "_xzz", name + "_yyy", name + "_yyz", name + "_yzz", name + "_zzz"}};
 }
 
 template<typename Field_t, std::size_t N, typename Qtys>
@@ -215,6 +222,10 @@ private:
             return val;
         else if constexpr (rank == 2)
             return val - detail::tensor_field_dim_from_rank<1>();
+        else if constexpr (rank == 3)
+            return val
+                   - (detail::tensor_field_dim_from_rank<1>()
+                      + detail::tensor_field_dim_from_rank<2>());
     }
 
 
@@ -235,7 +246,6 @@ private:
     std::array<field_type, N> components_;
     std::unordered_map<std::string, std::size_t> const nameToIndex_;
 };
-
 
 
 template<typename Field_t, typename PhysicalQuantity>

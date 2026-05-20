@@ -613,6 +613,74 @@ public:
     }
 };
 
+
+template<std::size_t dim, std::size_t interpOrder>
+class MomentumHeatFluxTensorInterpolator : public Interpolator<dim, interpOrder>
+{
+public:
+    template<typename ParticleRange, typename TensorField, typename GridLayout>
+    inline void operator()(ParticleRange&& particleRange, TensorField& momentumTensor,
+                           GridLayout const& layout, double mass = 1.)
+    {
+        auto begin                                               = particleRange.begin();
+        auto end                                                 = particleRange.end();
+        auto& startIndex_                                        = this->primal_startIndex_;
+        auto& weights_                                           = this->primal_weights_;
+        auto& [xxx, xxy, xxz, xyy, xyz, xzz, yyy, yyz, yzz, zzz] = momentumTensor();
+
+        PHARE_LOG_START(3, "ParticleToMesh::operator()");
+
+        for (auto currPart = begin; currPart != end; ++currPart)
+        {
+            this->template indexAndWeights_<QtyCentering, QtyCentering::primal>(
+                layout, currPart->iCell, currPart->delta);
+
+            this->particleToMesh_(
+                xxx, *currPart,
+                [](auto const& part) { return part.v()[0] * part.v()[0] * part.v()[0]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                xxy, *currPart,
+                [](auto const& part) { return part.v()[0] * part.v()[0] * part.v()[1]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                xxz, *currPart,
+                [](auto const& part) { return part.v()[0] * part.v()[0] * part.v()[2]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                xyy, *currPart,
+                [](auto const& part) { return part.v()[0] * part.v()[1] * part.v()[1]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                xyz, *currPart,
+                [](auto const& part) { return part.v()[0] * part.v()[1] * part.v()[2]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                xzz, *currPart,
+                [](auto const& part) { return part.v()[0] * part.v()[2] * part.v()[2]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                yyy, *currPart,
+                [](auto const& part) { return part.v()[1] * part.v()[1] * part.v()[1]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                yyz, *currPart,
+                [](auto const& part) { return part.v()[1] * part.v()[1] * part.v()[2]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                yzz, *currPart,
+                [](auto const& part) { return part.v()[1] * part.v()[2] * part.v()[2]; },
+                startIndex_, weights_, mass);
+            this->particleToMesh_(
+                zzz, *currPart,
+                [](auto const& part) { return part.v()[2] * part.v()[2] * part.v()[2]; },
+                startIndex_, weights_, mass);
+        }
+        PHARE_LOG_STOP(3, "ParticleToMesh::operator()");
+    }
+};
+
+
 } // namespace PHARE::core
 
 #endif

@@ -1,6 +1,7 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
@@ -66,9 +67,10 @@ namespace amr
         using IonsT             = HybridModel::ions_type;
         using ElectromagT       = HybridModel::electromag_type;
         using VecFieldT         = HybridModel::vecfield_type;
-        using TensorFieldT      = IonsT::tensorfield_type;
-        using GridLayoutT       = HybridModel::gridlayout_type;
         using FieldT            = VecFieldT::field_type;
+        using TensorFieldT      = IonsT::tensorfield_type;
+        using SymRank3TensorT   = core::TensorField<FieldT, core::HybridQuantity, 3>;
+        using GridLayoutT       = HybridModel::gridlayout_type;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::HybridQuantity>;
         using ResourcesManagerT = HybridModel::resources_manager_type;
         using IPhysicalModel    = HybridModel::Interface;
@@ -125,9 +127,10 @@ namespace amr
             resourcesManager_->registerResources(Jold_);
             resourcesManager_->registerResources(NiOld_);
             resourcesManager_->registerResources(ViOld_);
-            resourcesManager_->registerResources(sumVec_);
-            resourcesManager_->registerResources(sumField_);
-            resourcesManager_->registerResources(sumTensor_);
+            resourcesManager_->registerResources(tmpVec_);
+            resourcesManager_->registerResources(tmpField_);
+            resourcesManager_->registerResources(tmpTensor_);
+            resourcesManager_->registerResources(sumRank3Tensor_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -148,9 +151,10 @@ namespace amr
             resourcesManager_->allocate(Jold_, patch, allocateTime);
             resourcesManager_->allocate(NiOld_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
-            resourcesManager_->allocate(sumVec_, patch, allocateTime);
-            resourcesManager_->allocate(sumField_, patch, allocateTime);
-            resourcesManager_->allocate(sumTensor_, patch, allocateTime);
+            resourcesManager_->allocate(tmpVec_, patch, allocateTime);
+            resourcesManager_->allocate(tmpField_, patch, allocateTime);
+            resourcesManager_->allocate(tmpTensor_, patch, allocateTime);
+            resourcesManager_->allocate(sumRank3Tensor_, patch, allocateTime);
         }
 
 
@@ -434,17 +438,17 @@ namespace amr
             // execute the schedule onto that before copying it back onto the flux array
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpVec_))
                     for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
+                        std::memcpy(tmpVec_[c].data(), ions[i].flux()[c].data(),
                                     ions[i].flux()[c].size() * sizeof(value_type));
 
 
                 popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpVec_))
                     for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(ions[i].flux()[c].data(), sumVec_[c].data(),
+                        std::memcpy(ions[i].flux()[c].data(), tmpVec_[c].data(),
                                     ions[i].flux()[c].size() * sizeof(value_type));
             }
         }
@@ -459,29 +463,29 @@ namespace amr
 
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField_))
+                    std::memcpy(tmpField_.data(), ions[i].particleDensity().data(),
                                 ions[i].particleDensity().size() * sizeof(value_type));
 
 
                 popDensityBorderSumRefiners_[i * fieldsPerPop].fill(level.getLevelNumber(),
                                                                     fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField_))
+                    std::memcpy(ions[i].particleDensity().data(), tmpField_.data(),
                                 ions[i].particleDensity().size() * sizeof(value_type));
 
                 //
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].chargeDensity().data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField_))
+                    std::memcpy(tmpField_.data(), ions[i].chargeDensity().data(),
                                 ions[i].chargeDensity().size() * sizeof(value_type));
 
                 popDensityBorderSumRefiners_[i * fieldsPerPop + 1].fill(level.getLevelNumber(),
                                                                         fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].chargeDensity().data(), sumField_.data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField_))
+                    std::memcpy(ions[i].chargeDensity().data(), tmpField_.data(),
                                 ions[i].chargeDensity().size() * sizeof(value_type));
             }
         }
@@ -864,14 +868,14 @@ namespace amr
             for (auto const& vecfield : info->ghostFlux)
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumVec_.name(), vecfield, nullptr, sumVec_.name(),
+                        tmpVec_.name(), vecfield, nullptr, tmpVec_.name(),
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
 
             for (auto const& field : info->sumBorderFields)
                 popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumField_.name(), field, nullptr, sumField_.name(),
+                        tmpField_.name(), field, nullptr, tmpField_.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
 
@@ -1009,9 +1013,11 @@ namespace amr
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
 
-        TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
-        VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
-        FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
+        SymRank3TensorT sumRank3Tensor_{"PHARE_tmpRank3Tensor",
+                                        core::HybridQuantity::SymRank3Tensor::M};
+        TensorFieldT tmpTensor_{"PHARE_tmpTensor", core::HybridQuantity::Tensor::M};
+        VecFieldT tmpVec_{"PHARE_tmpVec", core::HybridQuantity::Vector::V};
+        FieldT tmpField_{"PHARE_tmpField", core::HybridQuantity::Scalar::rho};
 
 
 
