@@ -57,7 +57,7 @@ public:
         , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
         , particles{this->name(), layout.AMRBox()}
     {
-        auto&& [_F, _M, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
+        auto&& [_F, _M, S, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
         F.set_on(_F);
         M.set_on(_M);
         _pd.setBuffer(&particleDensity);

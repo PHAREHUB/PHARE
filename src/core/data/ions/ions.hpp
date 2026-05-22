@@ -5,6 +5,7 @@
 #include <functional>
 #include <iterator>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <cmath>
 #include <vector>
@@ -244,6 +245,14 @@ namespace core
             for (auto& pop : populations_)
                 ss << core::to_str(pop);
             return ss.str();
+        }
+
+        std::size_t pop_index(std::string const& name) const
+        {
+            for (std::size_t i = 0; i < size(); ++i)
+                if (name == populations_[i].name())
+                    return i;
+            throw std::runtime_error("No known population " + name);
         }
 
 

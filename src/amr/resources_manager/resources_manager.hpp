@@ -332,18 +332,12 @@ namespace amr
                 pdrm->registerPatchDataForRestart(id);
         }
 
-        // needed as long as we have different resource managers dealing with different physical
-        // quantities
-        // template<typename ResourcesView>
-        // void registerForRestarts(ResourcesView const& view) const
-        // {
-        //     auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
-
-        //     for (auto const& id : restart_patch_data_ids(view))
-        //         pdrm->registerPatchDataForRestart(id);
-        // }
-
-
+        void unregisterForRestarts() const
+        {
+            auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
+            for (auto const& id : restart_patch_data_ids())
+                pdrm->unregisterPatchDataForRestart(id);
+        }
 
 
         NO_DISCARD auto restart_patch_data_ids() const
