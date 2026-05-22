@@ -1,11 +1,13 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_HPP
 
+#include "amr/physical_models/hybrid_model.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
 
 #include "diagnostic/detail/h5typewriter.hpp"
+#include "diagnostic/computers/diagnostic_computers.hpp"
 
+#include <memory>
 #include <stdexcept>
 
 namespace PHARE::diagnostic::h5
@@ -63,11 +65,50 @@ public:
         std::size_t maxLevel) override;
 
 private:
+    struct HybridFluidComputers;
+
+
     auto isActiveDiag(DiagnosticProperties const& diagnostic, std::string const& tree,
                       std::string var)
     {
         return diagnostic.quantity == tree + var;
     };
+
+
+    std::unique_ptr<HybridFluidComputers> hybridComputers_;
+};
+
+template<typename H5Writer>
+struct FluidDiagnosticWriter<H5Writer>::HybridFluidComputers
+{
+    using Model_t         = H5Writer::ModelView_t::Model_t;
+    using IonPopulation_t = Model_t::ions_type::value_type;
+    using IonsFunctor     = std::function<void(H5Writer&)>;
+    using PopFunctor      = std::function<void(H5Writer&, IonPopulation_t&)>;
+
+    static HybridFluidComputers& getOrCreateFor(auto& fluid_writer)
+    {
+        if (!fluid_writer.hybridComputers_)
+            fluid_writer.hybridComputers_ = std::make_unique<HybridFluidComputers>(fluid_writer);
+        return *fluid_writer.hybridComputers_;
+    }
+
+    HybridFluidComputers(auto& fluid_writer)
+    {
+        for (auto& pop : fluid_writer.h5Writer_.modelView().getIons())
+        {
+            pop_functors["/ions/pop/" + pop.name() + "/momentum_tensor"]
+                = [](auto&&... args) { compute_pop_momentum_tensor(args...); };
+            pop_functors["/ions/pop/" + pop.name() + "/kinetic_energy_flux_vector"]
+                = [](auto&&... args) { compute_pop_kinetic_energy_flux_vector(args...); };
+        }
+    }
+
+    std::unordered_map<std::string, IonsFunctor> ion_functors{{
+        "/ions/momentum_tensor",
+        [](H5Writer& h5Writer) { compute_momentum_tensor(h5Writer); },
+    }};
+    std::unordered_map<std::string, PopFunctor> pop_functors;
 };
 
 
@@ -76,60 +117,28 @@ private:
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
-    core::MomentumTensorInterpolator<dimension, interp_order> interpolator;
+    using Model_t = H5Writer::ModelView_t::Model_t;
 
-    auto& h5Writer    = this->h5Writer_;
-    auto& modelView   = h5Writer.modelView();
-    auto& ions        = modelView.getIons();
-    auto const minLvl = this->h5Writer_.minLevel;
-    auto const maxLvl = this->h5Writer_.maxLevel;
-    // compute the momentum tensor for each population that requires it
-    // compute for all ions but that requires the computation of all pop
-
-    // dumps occur after the last substep but before the next first substep
-    // at this time, levelGhostPartsNew is emptied and not yet filled
-    // and the former levelGhostPartsNew has been moved to levelGhostPartsOld
-
-    auto const fill_schedules = [&](auto& lvl) {
-        for (std::size_t i = 0; i < ions.size(); ++i)
-            modelView.fillPopMomTensor(lvl, h5Writer.timestamp(), i);
-    };
-
-    auto const interpolate_pop = [&](auto& pop, auto& layout, auto&&...) {
-        auto& pop_momentum_tensor = pop.momentumTensor();
-        pop_momentum_tensor.zero();
-        interpolator(pop.domainParticles(), pop_momentum_tensor, layout, pop.mass());
-        interpolator(pop.levelGhostParticlesOld(), pop_momentum_tensor, layout, pop.mass());
-    };
-
-    if (isActiveDiag(diagnostic, "/ions/", "momentum_tensor"))
+    auto const qty = diagnostic.quantity;
+    if constexpr (solver::is_hybrid_model_v<Model_t>)
     {
-        auto const interpolate = [&](auto& layout, auto&&...) {
-            for (auto& pop : ions)
-                interpolate_pop(pop, layout);
-        };
-        modelView.visitHierarchy(interpolate, minLvl, maxLvl);
+        auto& computers     = HybridFluidComputers::getOrCreateFor(*this);
+        bool const ion_func = computers.ion_functors.contains(qty);
+        bool const pop_func = computers.pop_functors.contains(qty);
 
-        modelView.onLevels(fill_schedules, minLvl, maxLvl);
+        if (!ion_func and !pop_func)
+            return;
 
-        modelView.visitHierarchy( //
-            [&](auto&&...) { ions.computeFullMomentumTensor(); }, minLvl, maxLvl);
-    }
-    else // if not computing total momentum tensor, user may want to compute it for some pop
-    {
-        for (auto& pop : ions)
-        {
-            std::string const tree{"/ions/pop/" + pop.name() + "/"};
+        if (ion_func)
+            computers.ion_functors[qty](this->h5Writer_);
 
-            if (!isActiveDiag(diagnostic, tree, "momentum_tensor"))
-                continue;
-
-            auto const interpolate = [&](auto& layout, auto&&...) { interpolate_pop(pop, layout); };
-
-            modelView.visitHierarchy(interpolate, minLvl, maxLvl);
-
-            modelView.onLevels(fill_schedules, minLvl, maxLvl);
-        }
+        else
+            for (auto& pop : this->h5Writer_.modelView().getIons())
+                if (auto key = "/" + pop.name() + "/"; qty.find(key) != std::string::npos)
+                {
+                    computers.pop_functors[qty](this->h5Writer_, pop);
+                    return;
+                }
     }
 }
 
@@ -142,7 +151,7 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         checkCreateFileFor_(diagnostic, fileData_, tree, "density", "charge_density", "flux",
-                            "momentum_tensor");
+                            "momentum_tensor", "kinetic_energy_flux_vector");
     }
 
     std::string tree{"/ions/"};
@@ -200,6 +209,8 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
             infoVF(pop.flux(), "flux", popAttr);
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
             infoTF(pop.momentumTensor(), "momentum_tensor", popAttr);
+        if (isActiveDiag(diagnostic, tree, "kinetic_energy_flux_vector"))
+            infoVF(pop.kineticEnergyFlux(), "kinetic_energy_flux_vector", popAttr);
     }
 
     std::string tree{"/ions/"};
@@ -265,6 +276,8 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
                 initVF(path, attr[popId], "flux", null);
             if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
                 initTF(path, attr[popId], "momentum_tensor", null);
+            if (isActiveDiag(diagnostic, tree, "kinetic_energy_flux_vector"))
+                initVF(path, attr[popId], "kinetic_energy_flux_vector", null);
         }
 
         std::string tree{"/ions/"};
@@ -307,6 +320,8 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
             writeTF(path + "flux", pop.flux());
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
             writeTF(path + "momentum_tensor", pop.momentumTensor());
+        if (isActiveDiag(diagnostic, tree, "kinetic_energy_flux_vector"))
+            writeTF(path + "kinetic_energy_flux_vector", pop.kineticEnergyFlux());
     }
 
     std::string tree{"/ions/"};
@@ -343,6 +358,7 @@ void FluidDiagnosticWriter<H5Writer>::writeAttributes(
         checkWrite(tree, "charge_density", pop);
         checkWrite(tree, "flux", pop);
         checkWrite(tree, "momentum_tensor", pop);
+        checkWrite(tree, "kinetic_energy_flux_vector", pop);
     }
 
     writeAttributes_(diagnostic, h5file, fileAttributes, patchAttributes, maxLevel);

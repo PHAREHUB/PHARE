@@ -441,6 +441,48 @@ def _compute_pop_pressure(patch_datas, **kwargs):
     )
 
 
+def _compute_pop_heat_flux(patch_datas, **kwargs):
+    """computes the heat flux vector for a given population
+    q_i = S_i - trM*F_i/(2n) - (F.M_i)/n + m*F_i*|F|^2/n^2
+    where S_i=(m/2)<|v|^2 v_i>, M_ij=m<v_i v_j>, F_i=<v_i>, n=<1>, m=massDensity/n
+    """
+
+    popname = kwargs["popname"]
+    Sx = patch_datas[popname + "_Sx"].dataset[:]
+    Sy = patch_datas[popname + "_Sy"].dataset[:]
+    Sz = patch_datas[popname + "_Sz"].dataset[:]
+    Mxx = patch_datas[popname + "_Mxx"].dataset[:]
+    Mxy = patch_datas[popname + "_Mxy"].dataset[:]
+    Mxz = patch_datas[popname + "_Mxz"].dataset[:]
+    Myy = patch_datas[popname + "_Myy"].dataset[:]
+    Myz = patch_datas[popname + "_Myz"].dataset[:]
+    Mzz = patch_datas[popname + "_Mzz"].dataset[:]
+    Fx = patch_datas[popname + "_Fx"].dataset[:]
+    Fy = patch_datas[popname + "_Fy"].dataset[:]
+    Fz = patch_datas[popname + "_Fz"].dataset[:]
+    n = patch_datas[popname + "_rho"].dataset[:]
+    massDensity = patch_datas["rho"].dataset[:]
+
+    n2 = n**2
+    inv_n = 1.0 / n
+    mass = massDensity * inv_n  # particle mass; assumes single-species massDensity = m*n
+
+    F2 = Fx**2 + Fy**2 + Fz**2
+    trM = Mxx + Myy + Mzz
+    trM_over_2n = trM / (2 * n)
+    mF2_over_n2 = mass * F2 / n2
+
+    qx = Sx - trM_over_2n * Fx - (Fx * Mxx + Fy * Mxy + Fz * Mxz) * inv_n + mF2_over_n2 * Fx
+    qy = Sy - trM_over_2n * Fy - (Fx * Mxy + Fy * Myy + Fz * Myz) * inv_n + mF2_over_n2 * Fy
+    qz = Sz - trM_over_2n * Fz - (Fx * Mxz + Fy * Myz + Fz * Mzz) * inv_n + mF2_over_n2 * Fz
+
+    return (
+        {"name": popname + "_qx", "data": qx, "centering": ["primal", "primal"]},
+        {"name": popname + "_qy", "data": qy, "centering": ["primal", "primal"]},
+        {"name": popname + "_qz", "data": qz, "centering": ["primal", "primal"]},
+    )
+
+
 def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
     """
     :param data: the values of the data that will be used for making

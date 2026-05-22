@@ -613,6 +613,42 @@ public:
     }
 };
 
+
+template<std::size_t dim, std::size_t interpOrder>
+class HeatEnergyFluxVectorInterpolator : public Interpolator<dim, interpOrder>
+{
+public:
+    inline void operator()(auto& pop, auto const& particles, auto const& layout)
+    {
+        auto& startIndex_     = this->primal_startIndex_;
+        auto& weights_        = this->primal_weights_;
+        auto const& [x, y, z] = pop.kineticEnergyFlux()();
+        auto const coeff      = pop.mass() / 2;
+        PHARE_LOG_START(3, "HeatEnergyFluxVectorInterpolator::operator()");
+
+        for (auto const& particle : particles)
+        {
+            this->template indexAndWeights_<QtyCentering, QtyCentering::primal>(
+                layout, particle.iCell, particle.delta);
+
+            auto const v_squared = sum(generate([](auto const v) { return v * v; }, particle.v));
+            auto const scaled_v_sq_sum = v_squared * coeff;
+
+            this->particleToMesh_(
+                x, particle, [](auto const& part) { return part.v[0]; }, startIndex_, weights_,
+                scaled_v_sq_sum);
+            this->particleToMesh_(
+                y, particle, [](auto const& part) { return part.v[1]; }, startIndex_, weights_,
+                scaled_v_sq_sum);
+            this->particleToMesh_(
+                z, particle, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
+                scaled_v_sq_sum);
+        }
+        PHARE_LOG_STOP(3, "HeatEnergyFluxVectorInterpolator::operator()");
+    }
+};
+
+
 } // namespace PHARE::core
 
 #endif

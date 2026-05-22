@@ -38,9 +38,10 @@ class H5Writer
     static constexpr std::size_t timestamp_precision = 10;
 
 public:
-    using This       = H5Writer<ModelView>;
-    using GridLayout = typename ModelView::GridLayout;
-    using Attributes = typename ModelView::PatchProperties;
+    using This        = H5Writer<ModelView>;
+    using ModelView_t = ModelView;
+    using GridLayout  = ModelView::GridLayout;
+    using Attributes  = ModelView::PatchProperties;
 
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;

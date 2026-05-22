@@ -13,9 +13,8 @@ ph.NO_GUI()
 
 
 time_step = 0.005
-final_time = 0.05
-time_step_nbr = int(final_time / time_step)
-timestamps = np.arange(0, final_time + 0.01, 0.05)
+final_time = 0.005
+timestamps = [0, final_time]
 diag_dir = "phare_outputs/test_run"
 plot_dir = Path(f"{diag_dir}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
@@ -153,7 +152,8 @@ def config():
         quantity="domain", write_timestamps=timestamps, population_name=pop
     )
 
-    for quantity in ["density", "charge_density", "pressure_tensor"]:
+    pop_qties = ["density", "charge_density", "pressure_tensor", "heat_flux_vector"]
+    for quantity in pop_qties:
         ph.FluidDiagnostics(
             quantity=quantity, write_timestamps=timestamps, population_name=pop
         )
@@ -180,12 +180,21 @@ def plot(diag_dir):
         run.GetN(time, pop_name=pop_name).plot(
             filename=plot_file_for_qty("N", time), plot_patches=True
         )
+        B = run.GetB(time, all_primal=False)
         for c in ["x", "y", "z"]:
-            run.GetB(time, all_primal=False).plot(
+            B.plot(
                 filename=plot_file_for_qty(f"b{c}", time),
                 qty=f"B{c}",
                 plot_patches=True,
             )
+        q = run.Getq(time, pop_name)
+        for c in ["x", "y", "z"]:
+            q.plot(
+                filename=plot_file_for_qty(f"q{c}", time),
+                qty=f"{pop_name}_q{c}",
+                plot_patches=True,
+            )
+
         run.GetJ(time).plot(
             all_primal=False,
             filename=plot_file_for_qty("jz", time),

@@ -36,11 +36,10 @@ public:
     using TensorFieldT      = Model::ions_type::tensorfield_type;
     using ResMan            = Model::resources_manager_type;
     using Field             = Model::field_type;
+    using VecFieldData_t    = ResMan::template UserTensorField_t</*rank=*/1>::patch_data_type;
     using TensorFieldData_t = ResMan::template UserTensorField_t</*rank=*/2>::patch_data_type;
     static constexpr auto dimension = Model::dimension;
 
-
-public:
     using PatchProperties
         = cppdict::Dict<float, double, std::size_t, std::vector<int>, std::vector<std::uint32_t>,
                         std::vector<double>, std::vector<std::size_t>, std::string,
@@ -51,6 +50,7 @@ public:
         , hierarchy_{hierarchy}
     {
         declareMomentumTensorAlgos();
+        declareKineticEnergyFluxAlgos();
     }
 
     NO_DISCARD std::vector<VecField*> getElectromagFields() const
@@ -79,6 +79,29 @@ public:
             for (std::uint8_t c = 0; c < N; ++c)
                 std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+    }
+
+    void fillPopKineticEnergyFluxVector(auto& lvl, auto const time, auto const popidx)
+    {
+        using value_type = TensorFieldT::value_type;
+        auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
+
+        auto& rm   = *model_.resourcesManager;
+        auto& ions = model_.state.ions;
+
+        for (auto patch : rm.enumerate(lvl, ions, tmpVec_))
+            for (std::uint8_t c = 0; c < N; ++c)
+                std::memcpy(tmpVec_[c].data(), ions[popidx].kineticEnergyFlux()[c].data(),
+                            ions[popidx].kineticEnergyFlux()[c].size() * sizeof(value_type));
+
+        kineticEnergyFluxAlgos[popidx]
+            .getOrCreateSchedule(hierarchy_, lvl.getLevelNumber())
+            .fillData(time);
+
+        for (auto patch : rm.enumerate(lvl, ions, tmpVec_))
+            for (std::uint8_t c = 0; c < N; ++c)
+                std::memcpy(ions[popidx].kineticEnergyFlux()[c].data(), tmpVec_[c].data(),
+                            ions[popidx].kineticEnergyFlux()[c].size() * sizeof(value_type));
     }
 
 
@@ -216,7 +239,47 @@ protected:
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> MTschedules;
     };
 
+
+    void declareKineticEnergyFluxAlgos()
+    {
+        auto& rm            = *model_.resourcesManager;
+        auto const dst_name = tmpVec_.name();
+        for (auto& pop : model_.state.ions)
+        {
+            auto& kineticEnergyFluxAlgo = kineticEnergyFluxAlgos.emplace_back();
+            auto const src_name         = pop.kineticEnergyFlux().name();
+
+            auto&& [idDst, idSrc] = rm.getIDsList(dst_name, src_name);
+            kineticEnergyFluxAlgo.MTalgo->registerRefine(
+                idDst, idSrc, idDst, nullptr,
+                std::make_shared<
+                    amr::TensorFieldGhostInterpOverlapFillPattern<GridLayout, /*rank_=*/1>>());
+        }
+        // can't create schedules here as the hierarchy has no levels yet
+    }
+
+    struct KineticEnergyFluxAlgo
+    {
+        auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
+        {
+            using PlusEqualsOp = core::PlusEquals<typename VecField::value_type>;
+            if (not MTschedules.count(ilvl))
+                MTschedules.try_emplace(
+                    ilvl,
+                    MTalgo->createSchedule(
+                        hierarchy.getPatchLevel(ilvl), 0,
+                        std::make_shared<
+                            amr::FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>()));
+            return *MTschedules[ilvl];
+        }
+
+        std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> MTalgo
+            = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> MTschedules;
+    };
+
     std::vector<MTAlgo> MTAlgos;
+    std::vector<KineticEnergyFluxAlgo> kineticEnergyFluxAlgos;
     Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
     VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
     TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
