@@ -256,6 +256,7 @@ class FluidDiagnostics_(Diagnostics):
         "flux",
         "bulkVelocity",
         "momentum_tensor",
+        "kinetic_energy_flux_vector",
     ]
     type = "fluid"
 
@@ -316,6 +317,25 @@ class FluidDiagnostics:
                 needed_quantities = ["mass_density", "bulkVelocity", "momentum_tensor"]
             else:
                 needed_quantities = ["density", "flux", "momentum_tensor"]
+
+            for quantity in needed_quantities:
+                kwargs["quantity"] = quantity
+                FluidDiagnostics_(**kwargs)
+        elif kwargs["quantity"] == "heat_flux_vector":
+            if for_total_ions(**kwargs):
+                needed_quantities = [
+                    "mass_density",
+                    "bulkVelocity",
+                    "momentum_tensor",
+                    "kinetic_energy_flux_vector",
+                ]
+            else:
+                needed_quantities = [
+                    "flux",
+                    "density",
+                    "momentum_tensor",
+                    "kinetic_energy_flux_vector",
+                ]
 
             for quantity in needed_quantities:
                 kwargs["quantity"] = quantity

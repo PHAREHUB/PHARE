@@ -14,6 +14,7 @@ from .utils import (
     _compute_to_primal,
     _compute_pop_pressure,
     _compute_pressure,
+    _compute_pop_heat_flux,
     _compute_current,
     _compute_divB,
     _get_rank,
@@ -150,6 +151,20 @@ class Run:
         Pi = compute_hier_from(_compute_pressure, (M, massDensity, Vi))
         return self._get(Pi, time, merged, interp)  # should later be a TensorField
 
+    def Getq(self, time, pop_name, merged=False, interp="nearest", **kwargs):
+        S = self._get_hierarchy(
+            time, f"ions_pop_{pop_name}_kinetic_energy_flux_vector.h5", **kwargs
+        )
+        n = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
+        M = self._get_hierarchy(
+            time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
+        )
+        massDensity = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
+        V = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
+        return compute_hier_from(
+            _compute_pop_heat_flux, (S, n, M, massDensity, V), popname=pop_name
+        )
+
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
         hier = self._get_hierarchy(time, "ions_charge_density.h5")
 
@@ -220,7 +235,9 @@ class Run:
     def GetDomainSize(self, **kwargs):
         import h5py
 
-        data_file = h5py.File(self.available_diags[0], "r")  # That is the first file in th available diags
+        data_file = h5py.File(
+            self.available_diags[0], "r"
+        )  # That is the first file in th available diags
         root_cell_width = np.asarray(data_file.attrs["cell_width"])
 
         return (data_file.attrs["domain_box"] + 1) * root_cell_width

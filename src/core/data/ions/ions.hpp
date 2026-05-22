@@ -5,6 +5,7 @@
 #include <functional>
 #include <iterator>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <cmath>
 #include <vector>
@@ -27,11 +28,11 @@ namespace core
     {
     public:
         using value_type                = IonPopulation;
-        using field_type                = typename IonPopulation::field_type;
-        using vecfield_type             = typename IonPopulation::vecfield_type;
-        using Float                     = typename field_type::type;
-        using tensorfield_type          = typename IonPopulation::tensorfield_type;
-        using particle_array_type       = typename IonPopulation::particle_array_type;
+        using field_type                = IonPopulation::field_type;
+        using vecfield_type             = IonPopulation::vecfield_type;
+        using Float                     = field_type::type;
+        using tensorfield_type          = IonPopulation::tensorfield_type;
+        using particle_array_type       = IonPopulation::particle_array_type;
         using gridlayout_type           = GridLayout;
         static constexpr auto dimension = GridLayout::dimension;
 
@@ -244,6 +245,14 @@ namespace core
             for (auto& pop : populations_)
                 ss << core::to_str(pop);
             return ss.str();
+        }
+
+        std::size_t pop_index(std::string const& name) const
+        {
+            for (std::size_t i = 0; i < size(); ++i)
+                if (name == populations_[i].name())
+                    return i;
+            throw std::runtime_error("No known population " + name);
         }
 
 

@@ -88,6 +88,7 @@ public:
 
     ~Simulator()
     {
+        resman_ptr->unregisterForRestarts();
         if (coutbuf != nullptr)
             std::cout.rdbuf(coutbuf);
     }

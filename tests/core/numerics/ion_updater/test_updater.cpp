@@ -336,7 +336,7 @@ struct IonsBuffers
 
         auto& pops = ions.getRunTimeResourcesViewList();
         {
-            auto const& [F, M, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
+            auto const& [F, M, S, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
             d.setBuffer(&protonParticleDensity);
             c.setBuffer(&protonChargeDensity);
             protons_M.set_on(M);
@@ -345,7 +345,7 @@ struct IonsBuffers
         }
 
         {
-            auto const& [F, M, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
+            auto const& [F, M, S, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
             d.setBuffer(&alphaParticleDensity);
             c.setBuffer(&alphaChargeDensity);
             alpha_M.set_on(M);
