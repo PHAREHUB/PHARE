@@ -110,7 +110,14 @@ def populateDict(sim):
     add_double("simulation/time_step", sim.time_step)
     add_int("simulation/time_step_nbr", sim.time_step_nbr)
 
-    add_string("simulation/AMR/clustering", sim.clustering)
+    add_string("simulation/AMR/clustering", sim.clustering["method"])
+    if "tile_size" in sim.clustering:
+        add_vector_int("simulation/AMR/tile_size", sim.clustering["tile_size"])
+    if "allow_remote_tile_extent" in sim.clustering:
+        add_bool(
+            "simulation/AMR/allow_remote_tile_extent",
+            sim.clustering["allow_remote_tile_extent"],
+        )
     add_vector_int("simulation/AMR/nesting_buffer", sim.nesting_buffer)
     add_int("simulation/AMR/tag_buffer", sim.tag_buffer)
 
