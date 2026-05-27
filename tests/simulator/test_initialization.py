@@ -495,7 +495,6 @@ class InitializationTest(SimulatorTest):
                 nbr_part_per_cell=nbrpart,
                 diag_outputs=f"1overSqrtN/{ndim}/{interp_order}/{nbrpart}",
                 density=lambda *xyz: np.zeros(tuple(_.shape[0] for _ in xyz)) + 1.0,
-                smallest_patch_size=int(cells / 2),
                 largest_patch_size=int(cells / 2),
                 cells=cells,
                 dl=0.0125,

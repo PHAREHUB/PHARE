@@ -406,28 +406,20 @@ def check_refinement_boxes(ndim, **kwargs):
 
 
 def check_patch_size(ndim, **kwargs):
-    def get_max_ghosts():
-        from ..core.gridlayout import GridLayout
-
-        grid = GridLayout()
-        return max(
-            grid.nbrGhosts(kwargs["interp_order"], x) for x in ["primal", "dual"]
-        )
-
     interp = kwargs["interp_order"]
-    max_ghosts = get_max_ghosts()
-    small_invalid_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim)
-    largest_patch_size = kwargs.get("largest_patch_size", None)
-
-    # to prevent primal ghost box overlaps of non adjacent patches, we need smallest_patch_size * 2 + 1
-    smallest_patch_size = phare_utilities.np_array_ify(max_ghosts, ndim) * 2 + 1
-    # TORM next lines after https://github.com/llnl/SAMRAI/issues/311
-    min_per_interp = [6, 9, 9]  # SAMRAI BORDER BUG
-    smallest_patch_size = phare_utilities.np_array_ify(min_per_interp[interp - 1], ndim)
+    small_invalid_patch_size = 2
+    smallest_patch_size = small_invalid_patch_size + 1
+    smallest_patch_size = phare_utilities.np_array_ify(smallest_patch_size, ndim)
     if "smallest_patch_size" in kwargs and kwargs["smallest_patch_size"] is not None:
         smallest_patch_size = phare_utilities.np_array_ify(
             kwargs["smallest_patch_size"], ndim
         )
+        if interp == 1:
+            if any([v == 4 or v == 5 for v in smallest_patch_size]):
+                samrai_bug_url = "https://github.com/llnl/SAMRAI/issues/311"
+                raise ValueError(
+                    f"Error: smallest_patch_size cannot be 4 or 5 in interp 1 because of {samrai_bug_url}"
+                )
 
     cells = phare_utilities.np_array_ify(kwargs["cells"])
 
@@ -446,6 +438,7 @@ def check_patch_size(ndim, **kwargs):
             "Error - smallest_patch_size should be less than nbr of cells in all directions"
         )
 
+    largest_patch_size = kwargs.get("largest_patch_size", None)
     if largest_patch_size is not None:
         largest_patch_size = phare_utilities.np_array_ify(largest_patch_size, ndim)
 
