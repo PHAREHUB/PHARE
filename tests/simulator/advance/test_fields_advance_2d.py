@@ -46,36 +46,6 @@ class AdvanceTest2D(AdvanceTestBase):
         )
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
 
-    @unittest.skip("maybe invalid now?")
-    @data(
-        *per_interp({}),
-        *per_interp({"L0": [Box2D(10, 19)]}),
-    )
-    @unpack
-    def test_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts(
-        self, interp_order, refinement_boxes
-    ):
-        print(f"{self._testMethodName}_{ndim}d")
-        time_step_nbr = 3
-        time_step = 0.001
-        from pyphare.pharein.simulation import check_patch_size
-
-        largest_patch_size, smallest_patch_size = check_patch_size(
-            ndim, interp_order=interp_order, cells=[60] * ndim
-        )
-        datahier = self.getHierarchy(
-            ndim,
-            interp_order,
-            refinement_boxes,
-            "eb",
-            smallest_patch_size=smallest_patch_size,
-            largest_patch_size=smallest_patch_size,
-            time_step=time_step,
-            time_step_nbr=time_step_nbr,
-            nbr_part_per_cell=ppc,
-        )
-        self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
-
     @data(
         *per_interp(({"L0": {"B0": Box2D(10, 14)}})),
         *per_interp(({"L0": {"B0": Box2D(10, 14), "B1": Box2D(15, 19)}})),

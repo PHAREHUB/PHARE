@@ -46,39 +46,6 @@ class AdvanceTest3D(AdvanceTestBase):
         )
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
 
-    @unittest.skip("maybe invalid now?")
-    @data(
-        *per_interp({}),
-        *per_interp({"L0": [Box3D(2, 6)]}),
-    )
-    @unpack
-    def test_overlaped_fields_are_equal_with_min_max_patch_size_of_max_ghosts(
-        self, interp_order, refinement_boxes
-    ):
-        print(f"{self._testMethodName}_{ndim}d")
-        time_step_nbr = 3
-        time_step = 0.001
-        from pyphare.pharein.simulation import check_patch_size
-
-        cells = [18] * ndim
-
-        _, smallest_patch_size = check_patch_size(
-            ndim, interp_order=interp_order, cells=cells
-        )
-        datahier = self.getHierarchy(
-            ndim,
-            interp_order,
-            refinement_boxes,
-            "eb",
-            cells=cells,
-            smallest_patch_size=smallest_patch_size,
-            largest_patch_size=smallest_patch_size,
-            time_step=time_step,
-            time_step_nbr=time_step_nbr,
-            nbr_part_per_cell=ppc,
-        )
-        self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
-
     # needs updating tests/simulator/utilities/field_coarsening.py
     # @data(
     #     *per_interp(({"L0": {"B0": Box3D(10, 14)}})),
