@@ -31,7 +31,13 @@ public:
         auto const P   = u.P;
 
         auto const GeneralisedPressure = P + 0.5 * (B.x * B.x + B.y * B.y + B.z * B.z);
-        auto const TotalEnergy         = eosPToEtot(gamma_, rho, V.x, V.y, V.z, B.x, B.y, B.z, P);
+
+        // HD-only energy: kinetic + thermal. No magnetic terms.
+        // All magnetic energy transport (B²V - (V·B)B = E×B in ideal MHD) is
+        // provided by the CT Poynting correction in apply_poynting_correction().
+        // Including B² here would double-count with the Poynting flux.
+        auto const Ehd = 0.5 * rho * (V.x * V.x + V.y * V.y + V.z * V.z)
+                         + P / (gamma_ - 1.0);
 
         if constexpr (direction == Direction::X)
         {
@@ -42,8 +48,7 @@ public:
             auto F_Bx    = 0.0;
             auto F_By    = B.y * V.x - V.y * B.x;
             auto F_Bz    = B.z * V.x - V.z * B.x;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.x
-                          - B.x * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (Ehd + P) * V.x;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -56,8 +61,7 @@ public:
             auto F_Bx    = B.x * V.y - V.x * B.y;
             auto F_By    = 0.0;
             auto F_Bz    = B.z * V.y - V.z * B.y;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.y
-                          - B.y * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (Ehd + P) * V.y;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -70,8 +74,7 @@ public:
             auto F_Bx    = B.x * V.z - V.x * B.z;
             auto F_By    = B.y * V.z - V.y * B.z;
             auto F_Bz    = 0.0;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.z
-                          - B.z * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (Ehd + P) * V.z;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -154,19 +157,19 @@ private:
         {
             F_B.y += -JxB_z * invRho;
             F_B.z += JxB_y * invRho;
-            F_Etot += (BdotJ * B.x - BdotB * J.x) * invRho;
+            // Hall energy flux (BdotJ*Bx - BdotB*Jx)/rho is already captured by
+            // the CT Poynting correction via E×B where E includes the Hall term (J×B)/rho.
+            // Adding it here would double-count with apply_poynting_correction().
         }
         if constexpr (direction == Direction::Y)
         {
             F_B.x += JxB_z * invRho;
             F_B.z += -JxB_x * invRho;
-            F_Etot += (BdotJ * B.y - BdotB * J.y) * invRho;
         }
         if constexpr (direction == Direction::Z)
         {
             F_B.x += -JxB_y * invRho;
             F_B.y += JxB_x * invRho;
-            F_Etot += (BdotJ * B.z - BdotB * J.z) * invRho;
         }
     }
 };

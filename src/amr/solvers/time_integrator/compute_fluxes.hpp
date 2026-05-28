@@ -72,6 +72,8 @@ public:
         //
         ct_(level, model, state, fluxes);
 
+        fvm_.apply_poynting_correction(level, model, ct_.constrained_transport_, state, fluxes);
+
         // bc.fillElectricGhosts(state.E, level, newTime);
     }
 

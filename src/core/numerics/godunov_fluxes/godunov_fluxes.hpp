@@ -158,12 +158,6 @@ public:
 
                         ct.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
                                                     riemann_.uct_coefs, {indices...});
-
-                        // for energy ExB term
-                        if constexpr (Resistivity || HyperResistivity)
-                        {
-                            save_tranverse_magnetic_field_<direction>(uL, uR, {indices...});
-                        }
                         // }
                         // else // Resistivity only
                         // {
@@ -190,234 +184,159 @@ public:
                             = riemann_.template solve<direction>(uL, uR, fL, fR);
 
                         ct.template save<direction>(riemann_.vt, riemann_.uct_coefs, {indices...});
-
-                        // for energy ExB term
-                        if constexpr (Resistivity)
-                        {
-                            save_tranverse_magnetic_field_<direction>(uL, uR, {indices...});
-                        }
                     }
                 });
 
-            // adding resistive contributions to energy taking advantage of the already computed jt
-            // fluxes for the laplacian computation. This probably doesn't need the grow as the
-            // required quantities for ct are already saved.
-            if constexpr (Resistivity || HyperResistivity)
-            {
-                layout_->evalOnBox(
-                    fluxes.template expose_centering<direction>(), [&](auto&... indices) {
-                        auto& Jt      = ct.template getJt<direction>();
-                        auto& Bt      = getBt_<direction>();
-                        auto const& F = fluxes.template get_dir<direction>({indices...});
-                        auto& F_B     = F.B;
-                        auto& F_Etot  = F.Etot();
-
-                        auto const& Btidx = toPerIndexVector(Bt, {indices...});
-
-                        if constexpr (Resistivity)
-                        {
-                            // transverse B field components (probably a riemann operation).
-                            auto const& Jtidx = toPerIndexVector(Jt, {indices...});
-                            equations_.template resistive_contributions<direction>(
-                                eta_, Btidx, Jtidx, F_B, F_Etot);
-                        }
-                        if constexpr (HyperResistivity)
-                        {
-                            auto const vecLaplJ
-                                = transverse_laplacian_<direction>(Jt, {indices...});
-
-                            if (hyper_mode_ == HyperMode::constant)
-                                return constant_hyperresistive_<direction>(Btidx, vecLaplJ, F_B,
-                                                                           F_Etot);
-                            else if (hyper_mode_ == HyperMode::spatial)
-                            {
-                                auto const& Bn   = toPerIndexVector(state.B, {indices...});
-                                auto const& rhot = ct.template getRhot<direction>()(indices...);
-
-                                return spatial_hyperresistive_<direction>(Btidx, Bn, vecLaplJ, rhot,
-                                                                          F_B, F_Etot);
-                            }
-                            else
-                                throw std::runtime_error("Error - Ohm - unknown hyper_mode");
-                        }
-                    });
-            }
+            // Note: resistive contributions to F_B and F_Etot are now handled via CT:
+            // - B is updated by Faraday using E (which includes ηJ from CT)
+            // - Etot gets the resistive Poynting flux via E×B where E = E_ideal + ηJ
+            // The old resistive_contributions code was dead (F_B not used) and would
+            // double-count η(J×B) in F_Etot when combined with Poynting correction.
         });
     }
 
-    void registerResources(MHDModel& model)
-    {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            model.resourcesManager->registerResources(bt_x);
-            if constexpr (dimension >= 2)
-            {
-                model.resourcesManager->registerResources(bt_y);
-                if constexpr (dimension == 3)
-                {
-                    model.resourcesManager->registerResources(bt_z);
-                }
-            }
-        }
-    }
+    void registerResources(MHDModel& model) {}
 
-    void allocate(MHDModel& model, auto& patch, double const allocateTime) const
-    {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            model.resourcesManager->allocate(bt_x, patch, allocateTime);
-            if constexpr (dimension >= 2)
-            {
-                model.resourcesManager->allocate(bt_y, patch, allocateTime);
-                if constexpr (dimension == 3)
-                {
-                    model.resourcesManager->allocate(bt_z, patch, allocateTime);
-                }
-            }
-        }
-    }
+    void allocate(MHDModel& model, auto& patch, double const allocateTime) const {}
 
-    NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            if constexpr (dimension == 1)
-            {
-                return std::forward_as_tuple(bt_x);
-            }
-            else if constexpr (dimension == 2)
-            {
-                return std::forward_as_tuple(bt_x, bt_y);
-            }
-            else if constexpr (dimension == 3)
-            {
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
-            }
-        }
-        else
-            return std::forward_as_tuple();
-    }
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(); }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(); }
+
+    template<typename CT, typename State, typename Fluxes>
+    void apply_poynting_correction(CT const& ct, State const& state, Fluxes& fluxes)
     {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            if constexpr (dimension == 1)
-            {
-                return std::forward_as_tuple(bt_x);
-            }
-            else if constexpr (dimension == 2)
-            {
-                return std::forward_as_tuple(bt_x, bt_y);
-            }
-            else if constexpr (dimension == 3)
-            {
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
-            }
-        }
-        else
-            return std::forward_as_tuple();
+        // Apply Poynting flux correction to energy: ∂E/∂t -= ∇·(E×B)
+        // This must be called AFTER CT has computed both E and edge-B fields
+        // Uses edge-centered B from CT (guaranteed temporally consistent with E)
+        //
+        // The E field from CT includes resistive contributions (E = -V×B + ηJ + ...),
+        // so E×B automatically captures the resistive Poynting flux η(J×B).
+        if (!this->hasLayout())
+            throw std::runtime_error(
+                "Error - GodunovFluxes::apply_poynting_correction - GridLayout not set");
+
+        constexpr auto directions     = getDirections<dimension>();
+        constexpr auto num_directions = std::tuple_size_v<std::decay_t<decltype(directions)>>;
+
+        for_N<num_directions>([&](auto i) {
+            constexpr Direction direction = std::get<i>(directions);
+
+            layout_->evalOnBox(
+                fluxes.template expose_centering<direction>(), [&](auto&... indices) {
+                    auto& F_Etot = fluxes.template get_dir<direction>({indices...}).Etot();
+                    poynting_energy_flux_<direction>(ct, state.E, MeshIndex<dimension>{indices...},
+                                                     F_Etot);
+                });
+        });
     }
 
 private:
     template<auto direction>
-    auto save_tranverse_magnetic_field_(auto const& uL, auto const& uR, MeshIndex<dimension> idx)
+    void poynting_energy_flux_(auto const& ct, auto const& E, MeshIndex<dimension> const& index,
+                               auto& F_Etot) const
     {
-        auto Bidx = riemann_.vector_riemann_averaging(uL.B, uR.B);
+        // Compute magnetic energy flux via Poynting vector: S·n̂ = (E × B)·n̂
+        // E components live on edges (from CT)
+        // B components are edge-centered (from CT, temporally consistent with E)
+        //
+        // gPluto pattern: average E×B products perpendicular to the edge direction
+        // to bring the product from edge-centered to face-centered
 
-        auto& Bt = getBt_<direction>();
+        auto const& Ex = E(Component::X);
+        auto const& Ey = E(Component::Y);
+        auto const& Ez = E(Component::Z);
 
-        Bt(Component::X)(idx) = Bidx.x;
-        Bt(Component::Y)(idx) = Bidx.y;
-        Bt(Component::Z)(idx) = Bidx.z;
-    }
-
-    template<auto direction>
-    auto& getBt_() const
-    {
-        if constexpr (direction == Direction::X)
-            return bt_x;
-        else if constexpr (direction == Direction::Y)
-            return bt_y;
-        else if constexpr (direction == Direction::Z)
-            return bt_z;
-    }
-
-    template<auto direction>
-    void constant_hyperresistive_(auto const& Bt, auto const& vecLaplJ, auto& F_B,
-                                  auto& F_Etot) const
-    {
-        equations_.template resistive_contributions<direction>(-nu_, Bt, vecLaplJ, F_B, F_Etot);
-    }
-
-    template<auto direction>
-    void spatial_hyperresistive_(auto const& Bt, auto const& B, auto const& vecLaplJ,
-                                 auto const& rhot, auto& F_B, auto& F_Etot) const
-    {
-        auto minMeshSize = [&]() {
-            auto const meshSize = layout_->meshSize();
-            if constexpr (dimension == 1)
-                return meshSize[0];
-            else if constexpr (dimension == 2)
-                return std::min({meshSize[0], meshSize[1]});
-            else
-                return std::min({meshSize[0], meshSize[1], meshSize[2]});
-        }();
-
-
-        auto computeHR = [&](auto Bx, auto By, auto Bz) {
-            auto b          = std::sqrt(Bx * Bx + By * By + Bz * Bz);
-            auto const coef = -nu_ * minMeshSize * minMeshSize * (b / rhot + 1);
-            equations_.template resistive_contributions<direction>(coef, Bt, vecLaplJ, F_B, F_Etot);
-        };
-
-        if constexpr (direction == Direction::X)
+        if constexpr (direction == Direction::X && dimension >= 2)
         {
-            auto const Bx = B.x; // normal component
-            auto const By = Bt.y;
-            auto const Bz = Bt.z;
+            // X-flux face: Sx = Ey*Bz - Ez*By
+            // Ez lives at z-edge, By_at_Ez lives at z-edge -> average in y-direction
+            // Ey lives at y-edge (= x-face in 2D), Bz_at_Ey at same location
+            //   In 3D: average in z-direction; in 2D: no averaging needed (same face)
 
-            computeHR(Bx, By, Bz);
-        }
-        else if constexpr (direction == Direction::Y)
-        {
-            auto const Bx = Bt.x;
-            auto const By = B.y; // normal component
-            auto const Bz = Bt.z;
+            auto const& By_at_Ez = ct.getBy_at_Ez(); // gPluto: Bx2ez
+            auto const& Bz_at_Ey = ct.getBz_at_Ey(); // gPluto: Bx3ey (2D+)
 
-            computeHR(Bx, By, Bz);
-        }
-        else if constexpr (direction == Direction::Z)
-        {
-            auto const Bx = Bt.x;
-            auto const By = Bt.y;
-            auto const Bz = B.z; // normal component
+            double EzBy = 0.5
+                          * (Ez(index) * By_at_Ez(index)
+                             + Ez(layout_->template next<Direction::Y>(index))
+                                   * By_at_Ez(layout_->template next<Direction::Y>(index)));
 
-            computeHR(Bx, By, Bz);
-        }
-    }
+            double EyBz;
+            if constexpr (dimension == 2)
+            {
+                // In 2D, Ey lives at y-edges = x-faces: same location as x-flux face.
+                // No averaging needed.
+                EyBz = Ey(index) * Bz_at_Ey(index);
+            }
+            else // dimension == 3
+            {
+                // gPluto: EyBz = 0.5*(Ey(i,j,k)*Bz_y(i,j,k) + Ey(i,j,k+1)*Bz_y(i,j,k+1))
+                EyBz = 0.5
+                       * (Ey(index) * Bz_at_Ey(index)
+                          + Ey(layout_->template next<Direction::Z>(index))
+                                * Bz_at_Ey(layout_->template next<Direction::Z>(index)));
+            }
 
-    template<auto direction>
-    auto transverse_laplacian_(auto const& Jt, MeshIndex<dimension> index) const
-    {
-        if constexpr (direction == Direction::X)
-        {
-            auto const JyLapl = layout_->laplacian(Jt(Component::Y), index);
-            auto const JzLapl = layout_->laplacian(Jt(Component::Z), index);
-            return PerIndexVector<double>{std::nan(""), JyLapl, JzLapl};
+            F_Etot += EyBz - EzBy;
         }
-        else if constexpr (direction == Direction::Y)
+        else if constexpr (direction == Direction::Y && dimension >= 2)
         {
-            auto const JxLapl = layout_->laplacian(Jt(Component::X), index);
-            auto const JzLapl = layout_->laplacian(Jt(Component::Z), index);
-            return PerIndexVector<double>{JxLapl, std::nan(""), JzLapl};
+            // Y-flux face: Sy = Ez*Bx - Ex*Bz
+            // Ez lives at z-edge, Bx_at_Ez lives at z-edge -> average in x-direction
+            // Ex lives at x-edge (= y-face in 2D), Bz_at_Ex at same location
+            //   In 3D: average in z-direction; in 2D: no averaging needed
+
+            auto const& Bx_at_Ez = ct.getBx_at_Ez(); // gPluto: Bx1ez
+            auto const& Bz_at_Ex = ct.getBz_at_Ex(); // gPluto: Bx3ex (2D+)
+
+            double EzBx = 0.5
+                          * (Ez(index) * Bx_at_Ez(index)
+                             + Ez(layout_->template next<Direction::X>(index))
+                                   * Bx_at_Ez(layout_->template next<Direction::X>(index)));
+
+            double ExBz;
+            if constexpr (dimension == 2)
+            {
+                // In 2D, Ex lives at x-edges = y-faces: same location as y-flux face.
+                // No averaging needed.
+                ExBz = Ex(index) * Bz_at_Ex(index);
+            }
+            else // dimension == 3
+            {
+                // gPluto: ExBz = 0.5*(Ex(i,j,k)*Bz_x(i,j,k) + Ex(i,j,k+1)*Bz_x(i,j,k+1))
+                ExBz = 0.5
+                       * (Ex(index) * Bz_at_Ex(index)
+                          + Ex(layout_->template next<Direction::Z>(index))
+                                * Bz_at_Ex(layout_->template next<Direction::Z>(index)));
+            }
+
+            F_Etot += EzBx - ExBz;
         }
-        else if constexpr (direction == Direction::Z)
+        else if constexpr (direction == Direction::Z && dimension == 3)
         {
-            auto const JxLapl = layout_->laplacian(Jt(Component::X), index);
-            auto const JyLapl = layout_->laplacian(Jt(Component::Y), index);
-            return PerIndexVector<double>{JxLapl, JyLapl, std::nan("")};
+            // Z-flux face: Sz = Ex*By - Ey*Bx
+            // Ex lives at x-edge, By_at_Ex lives at x-edge -> average in y-direction
+            // Ey lives at y-edge, Bx_at_Ey lives at y-edge -> average in x-direction
+
+            auto const& By_at_Ex = ct.getBy_at_Ex(); // gPluto: Bx2ex
+            auto const& Bx_at_Ey = ct.getBx_at_Ey(); // gPluto: Bx1ey
+
+            // gPluto: ExBy = 0.5*(Ex(i,j,k)*By_x(i,j,k) + Ex(i,j+1,k)*By_x(i,j+1,k))
+            double ExBy = 0.5
+                          * (Ex(index) * By_at_Ex(index)
+                             + Ex(layout_->template next<Direction::Y>(index))
+                                   * By_at_Ex(layout_->template next<Direction::Y>(index)));
+
+            // gPluto: EyBx = 0.5*(Ey(i,j,k)*Bx_y(i,j,k) + Ey(i+1,j,k)*Bx_y(i+1,j,k))
+            double EyBx = 0.5
+                          * (Ey(index) * Bx_at_Ey(index)
+                             + Ey(layout_->template next<Direction::X>(index))
+                                   * Bx_at_Ey(layout_->template next<Direction::X>(index)));
+
+            F_Etot += ExBy - EyBx;
         }
+        // direction == X && dimension == 1: No Poynting correction (no transverse directions)
     }
 
 
@@ -428,10 +347,6 @@ private:
 
     Equations equations_;
     RiemannSolver_t riemann_;
-
-    MHDModel::vecfield_type bt_x{"b_t_x", MHDQuantity::Vector::VecFlux_x};
-    MHDModel::vecfield_type bt_y{"b_t_y", MHDQuantity::Vector::VecFlux_y};
-    MHDModel::vecfield_type bt_z{"b_t_z", MHDQuantity::Vector::VecFlux_z};
 };
 
 } // namespace PHARE::core

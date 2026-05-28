@@ -132,7 +132,10 @@ public:
     void _check() const
     {
         if (!isUsable())
-            throw std::runtime_error("Error - TensorField not usable");
+        {
+            auto msg = std::string("Error - TensorField '") + name_ + "' not usable";
+            throw std::runtime_error(msg);
+        }
     }
 
     NO_DISCARD field_type& getComponent(Component component)

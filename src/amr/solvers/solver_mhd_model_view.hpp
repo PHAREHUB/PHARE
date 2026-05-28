@@ -160,6 +160,21 @@ public:
         }
     }
 
+    template<typename MHDModel>
+    void apply_poynting_correction(MHDModel::level_t const& level, MHDModel& model, auto& ct,
+                                   MHDModel::state_type& state, auto& fluxes)
+    {
+        for (auto const& patch : level)
+        {
+            auto layout = PHARE::amr::layoutFromPatch<GridLayout>(*patch);
+            auto _sp = model.resourcesManager->setOnPatch(*patch, finite_volume_method_, ct, state,
+                                                          fluxes);
+            auto _sl = core::SetLayout(&layout, finite_volume_method_);
+
+            finite_volume_method_.apply_poynting_correction(ct, state, fluxes);
+        }
+    }
+
     core_type finite_volume_method_;
 };
 
