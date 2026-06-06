@@ -206,7 +206,6 @@ class FieldData(PatchData):
             f"centering not specified and cannot be inferred from field name : {field_name}"
         )
 
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
 

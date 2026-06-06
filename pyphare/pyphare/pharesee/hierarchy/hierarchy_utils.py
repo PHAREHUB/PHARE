@@ -208,7 +208,9 @@ def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     new_patches = []
     ref_patches = reference_hier.level(ilvl, time=t).patches
     for ip, ref_patch in enumerate(ref_patches):
-        patch = ref_patch.copy_as(patch_datas=extract_patchdatas(hierarchies, ilvl, t, ip))
+        patch = ref_patch.copy_as(
+            patch_datas=extract_patchdatas(hierarchies, ilvl, t, ip)
+        )
         hinfo = HierarchyAccessor(reference_hier, t, ilvl, ip)
         new_patches.append(
             ref_patch.copy_as(
