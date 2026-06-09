@@ -39,6 +39,8 @@ public:
     enum class Vector { B, E, J, V };
     enum class Tensor { M, count };
 
+    static constexpr auto all_primal_field = Scalar::rho;
+
     template<std::size_t rank, typename = std::enable_if_t<rank == 1 or rank == 2, void>>
     using TensorType = std::conditional_t<rank == 1, Vector, Tensor>;
 

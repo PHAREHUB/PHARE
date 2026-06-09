@@ -7,11 +7,12 @@
 
 #include "core/def.hpp"
 
-
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
+#include "amr/resources_manager/tensor_field_resource.hpp"
 
 #include "field_linear_refine.hpp"
+#include "field_refiner.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/RefineOperator.h>
@@ -126,7 +127,8 @@ public:
     static constexpr std::size_t dimension = GridLayoutT::dimension;
     using GridLayoutImpl                   = GridLayoutT::implT;
 
-    using TensorFieldDataT     = TensorFieldData<rank, GridLayoutT, FieldT, core::HybridQuantity>;
+    using Quantity         = extract_quantity_type<typename FieldT::physical_quantity_type>::type;
+    using TensorFieldDataT = TensorFieldData<rank, GridLayoutT, FieldT, Quantity>;
     using TensorFieldOverlap_t = TensorFieldOverlap<rank>;
 
     static constexpr std::size_t N = TensorFieldDataT::N;

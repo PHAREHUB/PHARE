@@ -9,7 +9,7 @@ import matplotlib
 from ddt import data, ddt, unpack
 from pyphare.core.box import Box3D
 
-from tests.simulator.test_initialization import InitializationTest
+from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
 
 matplotlib.use("Agg")  # for systems without GUI
 
@@ -23,7 +23,7 @@ def per_interp(dic):
 
 
 @ddt
-class Initialization3DTest(InitializationTest):
+class Initialization3DTest(HybridInitializationTest):
     @data(*interp_orders)
     def test_nbr_particles_per_cell_is_as_provided(self, interp_order):
         print(f"{self._testMethodName}_{ndim}d")
@@ -46,8 +46,8 @@ class Initialization3DTest(InitializationTest):
             self.getHierarchy(
                 ndim,
                 interp_order,
-                refinement_boxes,
                 "particles",
+                refinement_boxes,
                 cells=cells,
                 nbr_part_per_cell=ppc,
             )

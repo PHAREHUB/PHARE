@@ -14,17 +14,15 @@
 
 using namespace PHARE::amr;
 
-
-
 TEST(test_tagger, fromFactoryValid)
 {
     auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
     using phare_types          = PHARE::solver::PHARE_Types<opts>;
+    using hybrid_model         = phare_types::HybridModel_t;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]     = std::string{"HybridModel"};
-    dict["method"]    = std::string{"default"};
-    dict["threshold"] = 0.2;
-    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
+    dict["hybrid_method"] = std::string{"default"};
+    dict["threshold"]     = 0.2;
+    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
     EXPECT_TRUE(hybridTagger != nullptr);
 }
 
@@ -32,11 +30,11 @@ TEST(test_tagger, fromFactoryInvalid)
 {
     auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
     using phare_types          = PHARE::solver::PHARE_Types<opts>;
+    using hybrid_model         = phare_types::HybridModel_t;
     PHARE::initializer::PHAREDict dict;
-    dict["model"]     = std::string{"invalidModel"};
-    dict["method"]    = std::string{"invalidStrat"};
-    auto hybridTagger = TaggerFactory<phare_types>::make(dict);
-    auto badTagger    = TaggerFactory<phare_types>::make(dict);
+    dict["hybrid_method"] = std::string{"invalidStrat"};
+    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
+    auto badTagger        = TaggerFactory<hybrid_model>::make(dict);
     EXPECT_TRUE(badTagger == nullptr);
 }
 

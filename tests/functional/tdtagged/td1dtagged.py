@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
-from tests.simulator.test_advance import AdvanceTestBase
+from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 from tests.diagnostic import all_timestamps
 from pyphare import cpp
 
@@ -240,7 +240,7 @@ def make_figure():
         raise RuntimeError(f"x0 (={x0}) too far from 172")
 
 
-test = AdvanceTestBase()
+test = HybridAdvanceTest()
 
 
 def get_time(path, time):

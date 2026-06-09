@@ -271,6 +271,27 @@ def _ppd_to_ppp_domain_slicing(**kwargs):
         raise RuntimeError("dimension not yet implemented")
 
 
+def _ddd_to_ppp_domain_slicing(**kwargs):
+    """
+    return the slicing for (dual,dual,dual) to (primal,primal,primal)
+    centering that is the centering of MHD cell-centered quantities
+    """
+    nb_ghosts = kwargs["nb_ghosts"]
+    ndim = kwargs["ndim"]
+
+    inner, L, R = _inner_slices(nb_ghosts)
+
+    if ndim == 1:
+        return (inner,), (L, R)
+    elif ndim == 2:
+        return (inner, inner), ((L, L), (L, R), (R, L), (R, R))
+    else:
+        return (inner, inner, inner), (
+            (L, L, L), (L, L, R), (L, R, L), (L, R, R),
+            (R, L, L), (R, L, R), (R, R, L), (R, R, R),
+        )
+
+
 slices_to_primal_ = {
     "primal_primal_primal": _ppp_to_ppp_domain_slicing,
     "primal_dual_dual": _pdd_to_ppp_domain_slicing,
@@ -279,6 +300,7 @@ slices_to_primal_ = {
     "dual_primal_primal": _dpp_to_ppp_domain_slicing,
     "primal_dual_primal": _pdp_to_ppp_domain_slicing,
     "primal_primal_dual": _ppd_to_ppp_domain_slicing,
+    "dual_dual_dual": _ddd_to_ppp_domain_slicing,
 }
 
 
@@ -300,9 +322,6 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
 
     reference_name = next(iter(kwargs.values()))
     reference_pd = patchdatas[reference_name]
-    nb_ghosts = reference_pd.layout.nbrGhosts(
-        reference_pd.layout.interp_order, "primal"
-    )
     ndim = reference_pd.box.ndim
 
     centerings = ["primal"] * ndim
@@ -310,6 +329,7 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
     pd_attrs = []
     for name, pd_name in kwargs.items():
         pd = patchdatas[pd_name]
+        nb_ghosts = int(pd.ghosts_nbr[0])
 
         ds = pd.dataset
 
@@ -333,7 +353,7 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
             ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
         ds_all_primal[inner] = ds_[inner]
 
-        pd_attrs.append({"name": name, "data": ds_all_primal, "centering": centerings})
+        pd_attrs.append({"name": name, "data": ds_all_primal, "centering": centerings, "ghosts_nbr": [nb_ghosts] * ndim})
 
     return tuple(pd_attrs)
 
@@ -356,10 +376,9 @@ def _get_rank(patchdatas, patch_id, **kwargs):
     reference_pd = patchdatas["Bx"]  # Bx as a ref, but could be any other
     ndim = reference_pd.box.ndim
 
-    layout = reference_pd.layout
-    centering = "dual"
-    nbrGhosts = layout.nbrGhosts(layout.interp_order, centering)
-    shape = grow(reference_pd.box, [nbrGhosts] * 2).shape
+    centering = ["dual"] * ndim
+    nbrGhosts = int(reference_pd.ghosts_nbr[0])
+    shape = grow(reference_pd.box, [nbrGhosts] * ndim).shape
 
     if ndim == 1:
         pass
@@ -462,9 +481,9 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
             coords, data, kind=interp, fill_value="extrapolate", assume_sorted=False
         )
 
-        nx = 1 + int(domain[0] / dl[0])
+        nx = int(domain[0] / dl[0])
 
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x")
+        x = yeeCoordsFor([0] * dim, nbrGhosts[0], dl, [nx], qty, "x", withGhosts=True)
         finest_coords = (x,)
 
     elif dim == 2:
@@ -477,11 +496,9 @@ def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
         else:
             raise ValueError("interp can only be 'nearest' or 'bilinear'")
 
-        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
-        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
-        # x = np.arange(0, domain[0]+dl[0], dl[0])
-        # y = np.arange(0, domain[1]+dl[1], dl[1])
+        nCells = [int(d / dl) for d, dl in zip(domain, dl)]
+        x = yeeCoordsFor([0] * dim, nbrGhosts[0], dl, nCells, qty, "x", withGhosts=True)
+        y = yeeCoordsFor([0] * dim, nbrGhosts[1], dl, nCells, qty, "y", withGhosts=True)
         finest_coords = (x, y)
 
     else:

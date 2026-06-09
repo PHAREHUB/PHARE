@@ -4,44 +4,67 @@
 """
 
 import unittest
-
 import numpy as np
-import matplotlib
-from ddt import data, ddt
+from ddt import data, ddt, unpack
 
-from tests.simulator.test_initialization import InitializationTest
+import pyphare.pharein as ph
+from pyphare.core import phare_utilities as phut
 
-matplotlib.use("Agg")  # for systems without GUI
+from tests.simulator.initialize.test_init_mhd import MHDInitializationTest
+from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
+
+ph.NO_GUI()
 
 ndim = 3
 interp_orders = [1, 2, 3]
-ppc, cells = 10, 20
+cells = 20
+
+
+def permute_hybrid():
+    return [
+        dict(super_class=HybridInitializationTest, interp_order=interp_order)
+        for interp_order in interp_orders
+    ]
+
+
+def permute_mhd():  # interp_order hax todo
+    return [dict(super_class=MHDInitializationTest, interp_order=2)]
+
+
+def permute(hybrid=True, mhd=False):
+    return (permute_hybrid() if hybrid else []) + (permute_mhd() if mhd else [])
 
 
 @ddt
-class Initialization3DTest(InitializationTest):
-    @data(*interp_orders)
-    def test_B_is_as_provided_by_user(self, interp_order):
+class Initialization3DTest(MHDInitializationTest, HybridInitializationTest):
+    @data(*permute())
+    @unpack
+    def test_B_is_as_provided_by_user(self, super_class, **kwargs):
         print(f"\n{self._testMethodName}_{ndim}d")
-        self._test_B_is_as_provided_by_user(ndim, interp_order, ppc=ppc, cells=cells)
+        phut.cast_to(self, super_class)
+        self._test_B_is_as_provided_by_user(ndim, cells=cells, **kwargs)
 
-    @data(*interp_orders)
-    def test_bulkvel_is_as_provided_by_user(self, interp_order):
+    @data(*permute())
+    @unpack
+    def test_bulkvel_is_as_provided_by_user(self, super_class, **kwargs):
         print(f"\n{self._testMethodName}_{ndim}d")
-        self._test_bulkvel_is_as_provided_by_user(
-            ndim, interp_order, ppc=ppc, cells=cells
-        )
+        phut.cast_to(self, super_class)
+        self._test_bulkvel_is_as_provided_by_user(ndim, cells=cells, **kwargs)
 
-    @data(*interp_orders)
-    def test_density_is_as_provided_by_user(self, interp_order):
+    @data(*permute())
+    @unpack
+    def test_density_is_as_provided_by_user(self, super_class, **kwargs):
         print(f"\n{self._testMethodName}_{ndim}d")
-        self._test_density_is_as_provided_by_user(ndim, interp_order, cells=cells)
+        phut.cast_to(self, super_class)
+        self._test_density_is_as_provided_by_user(ndim, cells=cells, **kwargs)
 
-    @data(*interp_orders)  # uses too much RAM - to isolate somehow
-    def test_density_decreases_as_1overSqrtN(self, interp_order):
+    @data(*permute())
+    @unpack
+    def test_density_decreases_as_1overSqrtN(self, super_class, **kwargs):
         print(f"\n{self._testMethodName}_{ndim}d")
+        phut.cast_to(self, super_class)
         self._test_density_decreases_as_1overSqrtN(
-            ndim, interp_order, np.asarray([20, 50, 75]), cells=10
+            ndim, nbr_particles=np.asarray([20, 50, 75]), cells=10, **kwargs
         )
 
 

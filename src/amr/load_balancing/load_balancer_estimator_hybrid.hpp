@@ -8,7 +8,7 @@
 #include "amr/physical_models/physical_model.hpp"
 
 #include "load_balancer_estimator.hpp"
-#include "load_balancer_hybrid_strategy.hpp"
+#include "load_balancer_strategy.hpp"
 #include "load_balancer_hybrid_strategy_factory.hpp"
 
 
@@ -24,7 +24,7 @@ class LoadBalancerEstimatorHybrid : public LoadBalancerEstimator
 public:
     LoadBalancerEstimatorHybrid(std::string strategy_name, int const id)
         : LoadBalancerEstimator{id}
-        , strat_{LoadBalancerHybridStrategyFactory<PHARE_T>::create(strategy_name, id)}
+        , strat_{LoadBalancerHybridStrategyFactory<HybridModel>::create(strategy_name, id)}
     {
     }
 
@@ -38,7 +38,7 @@ public:
 
 
 private:
-    std::unique_ptr<LoadBalancerHybridStrategy<PHARE_T>> strat_;
+    std::unique_ptr<LoadBalancerStrategy<HybridModel>> strat_;
 };
 
 } // namespace PHARE::amr

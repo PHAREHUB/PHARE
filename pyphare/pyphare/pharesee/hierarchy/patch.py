@@ -38,7 +38,9 @@ class Patch:
         return self.__str__()
 
     def __getitem__(self, key):
-        return self.patch_datas[key]
+        if key in self.patch_datas:
+            return self.patch_datas[key]
+        raise KeyError(f"No patchdata for key: {key} in {self.patch_datas}")
 
     def copy(self):
         """does not copy patchdatas.datasets (see class PatchData)"""

@@ -42,6 +42,8 @@ namespace amr
 
         auto const& interiorFieldBox() const { return interiorFieldBox_; }
 
+        auto const& ghostFieldBox() const { return ghostFieldBox_; }
+
         SAMRAI::hier::Box const patchBox;
 
     protected:

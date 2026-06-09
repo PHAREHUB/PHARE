@@ -38,6 +38,15 @@ field_qties = {
     "mass_density": "rho",
     "charge_density": "rho",
     "tags": "tags",
+    "rho": "mhdRho",
+    "V_x": "mhdVx",
+    "V_y": "mhdVy",
+    "V_z": "mhdVz",
+    "P": "mhdP",
+    "rhoV_x": "mhdRhoVx",
+    "rhoV_y": "mhdRhoVy",
+    "rhoV_z": "mhdRhoVz",
+    "Etot": "mhdEtot",
 }
 
 
@@ -175,7 +184,8 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
     new_patch_datas = {}
     datas = compute(patchdatas, patch_id=id, **kwargs)
     for data in datas:
-        pd = FieldData(layout, data["name"], data["data"], centering=data["centering"])
+        extra = {k: data[k] for k in ("ghosts_nbr",) if k in data}
+        pd = FieldData(layout, data["name"], data["data"], centering=data["centering"], **extra)
         new_patch_datas[data["name"]] = pd
     return new_patch_datas
 
@@ -357,16 +367,9 @@ def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - neghosts
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[needed_points[0] : -needed_points[0]]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
+            pdata = patch[qty]
+            data = pdata[:]
+            x = pdata.x
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -397,20 +400,10 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - 1
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[
-                needed_points[0] : -needed_points[0],
-                needed_points[1] : -needed_points[1],
-            ]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
-            y = pdata.y[needed_points[1] : -needed_points[1]]
+            pdata = patch[qty]
+            data = pdata[:]
+            x = pdata.x
+            y = pdata.y
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 
@@ -441,9 +434,7 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
                 tmp_x = np.concatenate((tmp_x, finest_x))
                 tmp_y = np.concatenate((tmp_y, finest_y))
 
-    final_xy = np.stack((tmp_x, tmp_y), axis=1)
-
-    return final_data, final_xy
+    return final_data, np.stack((tmp_x, tmp_y), axis=1)
 
 
 def compute_rename(patch_datas, **kwargs):
@@ -451,11 +442,13 @@ def compute_rename(patch_datas, **kwargs):
     pd_attrs = []
 
     for new_name, pd_name in zip(new_names, patch_datas):
+        src = patch_datas[pd_name]
         pd_attrs.append(
             {
                 "name": new_name,
-                "data": patch_datas[pd_name].dataset,
-                "centering": patch_datas[pd_name].centerings,
+                "data": src.dataset,
+                "centering": src.centerings,
+                "ghosts_nbr": src.ghosts_nbr,
             }
         )
 
@@ -677,7 +670,7 @@ def single_patch_for_LO(hier, qties=None, skip=None):
                 continue
             if isinstance(v, FieldData):
                 l0_pds[k] = FieldData(
-                    layout, v.field_name, None, centering=v.centerings
+                    layout, v.field_name, None, centering=v.centerings, ghosts_nbr=v.ghosts_nbr
                 )
                 l0_pds[k].dataset = np.zeros(l0_pds[k].size)
                 patch_box = hier.level(0, t).patches[0].box

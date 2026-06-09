@@ -1,5 +1,4 @@
 import numpy as np
-
 from pyphare.core import gridlayout
 from pyphare.core.gridlayout import directions
 from pyphare.core.phare_utilities import refinement_ratio

@@ -1,6 +1,7 @@
 #
 #
 
+import os
 import unittest
 import numpy as np
 from datetime import datetime
@@ -78,8 +79,9 @@ def fn_periodic(sim, *xyz):
     from pyphare.pharein.global_vars import sim
 
     L = sim.simulation_domain()
-    _ = lambda i: 0.1 * np.cos(2 * np.pi * xyz[i] / L[i])
-    return np.asarray([_(i) for i, v in enumerate(xyz)]).prod(axis=0)
+    return np.asarray(
+        [0.1 * np.cos(2 * np.pi * xyz[i] / L[i]) for i, v in enumerate(xyz)]
+    ).prod(axis=0)
 
 
 def density_1d_periodic(sim, x):
@@ -252,13 +254,30 @@ class SimulatorTest(unittest.TestCase):
         self._outcome = result
         super().run(result)
 
-    def unique_diag_dir_for_test_case(self, base_path, ndim, interp, post_path=""):
+    def unique_diag_dir(self, sim):
         from pyphare import cpp
 
-        base = f"{base_path}/{self._testMethodName}/{cpp.mpi_size()}/{ndim}/{interp}"
-        if post_path:
-            return base + "/" + post_path
-        return base
+        return f"{self._testMethodName}/{cpp.mpi_size()}/{cpp.simulator_id(sim)}"
+
+    def simulation(self, interp_order=1, **kwargs):
+        """
+        Override diagnostics and restarts directories to prevent resuse across tests
+        This happens because we do not know the C++ simulation identifier (pybind module name)
+        Before we populate the python Simulation class
+        """
+        ph.global_vars.sim = None
+        sim = ph.Simulation(interp_order=interp_order, **kwargs)
+        base = sim.diag_options["options"]["dir"]
+        test_output = self.unique_diag_dir(sim)
+        if base.endswith(test_output):
+            return sim  # already applied!
+        test_output = f"{base}/{test_output}"
+        os.makedirs(test_output, exist_ok=True)
+        sim.diag_options["options"]["dir"] = test_output
+        self.register_diag_dir_for_cleanup(test_output)
+        if sim.restart_options:
+            sim.restart_options["dir"] = test_output
+        return sim
 
     def clean_up_diags_dirs(self):
         from pyphare import cpp

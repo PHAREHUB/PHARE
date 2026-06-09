@@ -12,6 +12,7 @@
 #include <vector>
 #include <cassert>
 #include <cstdint>
+#include <cassert>
 #include <iomanip>
 #include <numeric>
 #include <sstream>
@@ -246,8 +247,6 @@ namespace core
         return t;
     }
 
-
-
 } // namespace core
 } // namespace PHARE
 
@@ -395,6 +394,17 @@ auto constexpr any_in(auto const a, auto&&... ts)
 }
 
 
+template<typename... Ts>
+auto constexpr is_any_of(auto const& t)
+{
+    return ((std::is_same_v<Ts, std::decay_t<decltype(t)>>) || ...);
+}
+
+template<typename T, typename... Ts>
+auto constexpr is_any_of()
+{
+    return ((std::is_same_v<Ts, T>) || ...);
+}
 
 
 template<typename SignedInt, typename UnsignedInt>

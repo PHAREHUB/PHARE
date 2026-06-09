@@ -183,3 +183,8 @@ def deep_copy(item, memo, excludes=[]):
         else:
             setattr(that, key, deepcopy(value, memo))
     return that
+
+
+def cast_to(obj, cls):
+    obj.__class__ = cls
+    return obj

@@ -31,6 +31,13 @@ namespace PHARE::pydata
 {
 
 
+auto static constexpr resolve_simulator_options()
+{
+    using namespace PHARE::MHDOpts;
+    return SimOpts{PHARE_SIM_STR};
+}
+
+
 template<typename Simulator, typename PyClass>
 void declareSimulator(PyClass&& sim)
 {
@@ -51,12 +58,12 @@ void declareSimulator(PyClass&& sim)
 template<typename Sim>
 void inline declare_etc(py::module& m)
 {
-    constexpr auto opts = SimOpts{PHARE_SIM_STR};
+    constexpr auto opts = resolve_simulator_options();
 
     using DW         = DataWrangler<opts>;
     std::string name = "DataWrangler";
 
-    py::class_<DW, py::smart_holder>(m, name.c_str())
+    py::class_<DW, py::smart_holder>(m, name.c_str(), py::module_local())
         .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def("sync_merge", &DW::sync_merge)
@@ -65,7 +72,7 @@ void inline declare_etc(py::module& m)
 
     using PL = PatchLevel<opts>;
     name     = "PatchLevel";
-    py::class_<PL, py::smart_holder>(m, name.c_str())
+    py::class_<PL, py::smart_holder>(m, name.c_str(), py::module_local())
         .def("getEM", &PL::getEM)
         .def("getE", &PL::getE)
         .def("getB", &PL::getB)
@@ -92,7 +99,7 @@ void inline declare_etc(py::module& m)
                                core::RefinedParticlesConst<Sim::nbRefinedPart>>;
     name = "Splitter";
 
-    py::class_<_Splitter, py::smart_holder>(m, name.c_str())
+    py::class_<_Splitter, py::smart_holder>(m, name.c_str(), py::module_local())
         .def(py::init<>())
         .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
         .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
@@ -104,7 +111,7 @@ void inline declare_etc(py::module& m)
 
 void inline declare_macro_sim(py::module& m)
 {
-    using Sim = Simulator<SimOpts{PHARE_SIM_STR}>;
+    using Sim = Simulator<resolve_simulator_options()>;
 
     std::string name = "Simulator";
     declareSimulator<Sim>(

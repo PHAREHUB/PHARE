@@ -1,46 +1,58 @@
-#ifndef DEFAULT_HYBRID_TAGGER_STRATEGY_H
-#define DEFAULT_HYBRID_TAGGER_STRATEGY_H
+#ifndef DEFAULT_TAGGER_STRATEGY_H
+#define DEFAULT_TAGGER_STRATEGY_H
 
-#include "hybrid_tagger_strategy.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
-#include <cstddef>
+
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
+
 #include "initializer/data_provider.hpp"
+
+#include "tagger_strategy.hpp"
+
+#include <cstddef>
+#include <stdexcept>
 
 namespace PHARE::amr
 {
-template<typename HybridModel>
-class DefaultHybridTaggerStrategy : public HybridTaggerStrategy<HybridModel>
+template<typename Model>
+class DefaultTaggerStrategy : public TaggerStrategy<Model>
 {
-    using gridlayout_type           = typename HybridModel::gridlayout_type;
-    static auto constexpr dimension = HybridModel::dimension;
+    using gridlayout_type           = typename Model::gridlayout_type;
+    static auto constexpr dimension = Model::dimension;
 
 
 public:
-    DefaultHybridTaggerStrategy(initializer::PHAREDict const& dict)
+    DefaultTaggerStrategy(initializer::PHAREDict const& dict)
         : threshold_{cppdict::get_value(dict, "threshold", 0.1)}
     {
     }
-    void tag(HybridModel& model, gridlayout_type const& layout, int* tags) const override;
+    void tag(Model& model, gridlayout_type const& layout, int* tags) const override;
 
 private:
+    auto& getB(auto& model) const
+    {
+        if constexpr (solver::is_hybrid_model_v<Model>)
+            return model.state.electromag.B;
+        else if constexpr (solver::is_mhd_model_v<Model>)
+            return model.state.B;
+        else
+            static_assert(core::dependent_false_v<Model>);
+
+        throw std::runtime_error("DefaultTaggerStrategy::getB Shouldn't happen!");
+    }
+
     double threshold_ = 0.1;
 };
 
-template<typename HybridModel>
-void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
-                                                   gridlayout_type const& layout, int* tags) const
+template<typename Model>
+void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layout, int* tags) const
 {
-    auto& Bx = model.state.electromag.B.getComponent(PHARE::core::Component::X);
-    auto& By = model.state.electromag.B.getComponent(PHARE::core::Component::Y);
-    auto& Bz = model.state.electromag.B.getComponent(PHARE::core::Component::Z);
-
-    auto& N = model.state.ions.chargeDensity();
+    auto&& [Bx, By, Bz] = getB(model)();
 
     // we loop on cell indexes for all qties regardless of their centering
-    auto const& start_x
-        = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
+    auto const& start_x = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::X);
 
     // override end_x because the tag buffer does not have ghost cells
     // and physicalEnd will account for ghost cells
@@ -98,7 +110,7 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     if constexpr (dimension == 2)
     {
         auto const& start_y
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Y);
+            = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::Y);
 
         auto const& end_y = layout.nbrCells()[1] - 1;
 
@@ -138,9 +150,9 @@ void DefaultHybridTaggerStrategy<HybridModel>::tag(HybridModel& model,
     if constexpr (dimension == 3)
     {
         auto const& start_y
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Y);
+            = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::Y);
         auto const& start_z
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Z);
+            = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::Z);
 
         auto const& end_y = layout.nbrCells()[1] - 1;
         auto const& end_z = layout.nbrCells()[2] - 1;
