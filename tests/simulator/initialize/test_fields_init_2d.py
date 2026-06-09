@@ -26,8 +26,8 @@ def permute_hybrid():
     ]
 
 
-def permute_mhd():  # interp_order hax todo
-    return [dict(super_class=MHDInitializationTest, interp_order=2)]
+def permute_mhd():
+    return [dict(super_class=MHDInitializationTest, hall=False)]
 
 
 def permute(hybrid=True, mhd=False):

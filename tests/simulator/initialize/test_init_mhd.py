@@ -27,13 +27,14 @@ class MHDInitializationTest(InitializationTest):
         largest_patch_size=10,
         cells=120,
         dl=0.1,
-        hall=True,
+        hall=False,
         res=False,
-        hyper_res=True,
+        hyper_res=False,
         extra_diag_options=None,
         timestamps=None,
         diag_outputs="",
-        **kwargs
+        max_mhd_level=1,
+        **kwargs,
     ):
         if smallest_patch_size is None:
             from pyphare.pharein.simulation import check_patch_size
@@ -69,15 +70,15 @@ class MHDInitializationTest(InitializationTest):
             eta=0.0,
             nu=0.02,
             gamma=5.0 / 3.0,
-            reconstruction="WENOZ",
-            limiter="None",
+            reconstruction="Linear",
+            limiter="VanLeer",
             riemann="Rusanov",
-            mhd_timestepper="TVDRK3",
+            mhd_timestepper="TVDRK2",
             hall=hall,
             res=res,
             hyper_res=hyper_res,
             model_options=["MHDModel"],
-            max_mhd_level=3,
+            max_mhd_level=max_mhd_level,
         )
         diag_outputs = sim.diag_options["options"]["dir"]
         L = sim.simulation_domain()

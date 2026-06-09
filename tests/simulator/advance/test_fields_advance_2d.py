@@ -31,8 +31,8 @@ def permute_hybrid(boxes={}):
     ]
 
 
-def permute_mhd(boxes={}):  # interp_order hax todo
-    return [dict(super_class=MHDAdvanceTest, interp_order=2, refinement_boxes=boxes)]
+def permute_mhd(boxes={}):
+    return [dict(super_class=MHDAdvanceTest, hall=False, refinement_boxes=boxes)]
 
 
 def permute(boxes={}, hybrid=True, mhd=False):

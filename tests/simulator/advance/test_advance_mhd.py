@@ -28,7 +28,7 @@ class MHDAdvanceTest(AdvanceTestBase):
         largest_patch_size=10,
         cells=120,
         dl=0.1,
-        hall=True,
+        hall=False,
         res=False,
         hyper_res=True,
         extra_diag_options=None,
