@@ -28,6 +28,7 @@ quantities_per_file = {
     "EM_E": "E",
     "ions_bulkVelocity": "Vi",
     "ions_charge_density": "Ni",
+    "ions_mass_density": "rho",
     "particle_count": "nppc",
     "mhd_rho": "mhd_rho",
     "mhd_V": "mhd_V",
@@ -418,7 +419,7 @@ class Run:
             time = np.zeros(len(time_keys))
             for it, t in enumerate(time_keys):
                 time[it] = float(t)
-            ts[quantities_per_file[basename]] = time
+            ts[quantities_per_file.get(basename, basename)] = time
             ff.close()
         return ts
 

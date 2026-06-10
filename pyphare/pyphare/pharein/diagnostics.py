@@ -5,10 +5,17 @@ from . import global_vars
 
 
 def all_timestamps(sim):
+    # adaptive: no fixed step to build a dump grid from
+    if sim.time_stepper.mode != "constant":
+        raise RuntimeError(
+            "Error: with time_step={'mode': 'adaptive', ...}, diagnostics require explicit "
+            "'write_timestamps' (no default dump grid can be built without a fixed time_step)"
+        )
     init_time = sim.start_time()
+    stepper = sim.time_stepper
     # consume the authoritative integer step count rather than re-deriving it from
-    # final_time/dt (fp-fragile). last stamp = init + nbr*dt = sim.final_time exactly.
-    return sim.time_step * np.arange(sim.time_step_nbr + 1) + init_time
+    # final_time/dt (fp-fragile). last stamp = init + nbr*dt = final_time exactly.
+    return stepper.time_step * np.arange(stepper.time_step_nbr + 1) + init_time
 
 
 # ------------------------------------------------------------------------------
@@ -16,7 +23,7 @@ def all_timestamps(sim):
 
 def diagnostics_checker(func):
     def wrapper(diagnostics_object, name, **kwargs):
-        mandatory_keywords = ["write_timestamps", "quantity"]
+        mandatory_keywords = ["quantity"]
 
         # check if some mandatory keywords are not missing
         missing_mandatory_kwds = phare_utilities.check_mandatory_keywords(
@@ -28,14 +35,21 @@ def diagnostics_checker(func):
                 + ", ".join(missing_mandatory_kwds)
             )
 
-        one_of_required = ["elapsed_timestamps", "write_timestamps"]
+        # at least one way to schedule dumps must be given
+        one_of_required = ["write_timestamps", "elapsed_timestamps"]
         if not any([k in kwargs for k in one_of_required]):
             raise RuntimeError(
                 "Error: missing parameters - one required: "
                 + ", ".join(one_of_required)
             )
 
-        accepted_keywords = ["path", "population_name", "flush_every"]
+        accepted_keywords = [
+            "path",
+            "population_name",
+            "flush_every",
+            "elapsed_timestamps",
+            "write_timestamps",
+        ]
         accepted_keywords += mandatory_keywords
 
         # check that all passed keywords are in the accepted keyword list
@@ -46,7 +60,7 @@ def diagnostics_checker(func):
         try:
             # just take mandatory arguments from the dict
             # since if we arrived here we are sure they are there
-
+           
             kwargs["path"] = kwargs.get("path", "./")
 
             return func(diagnostics_object, name, **kwargs)
@@ -69,21 +83,26 @@ def validate_timestamps(clazz, key, **kwargs):
         timestamps = timestamps[timestamps >= init_time]
         print(f"Warning: some timestamps below ({init_time}) are filtered")
 
-    if np.any(timestamps > sim.final_time):
+    final_time = sim.time_stepper.final_time
+    if np.any(timestamps > final_time):
         raise RuntimeError(
-            f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))"
+            f"Error: timestamp({timestamps[timestamps > final_time]}) "
+            f"cannot be greater than simulation.final_time({final_time}))"
         )
     if not np.all(np.diff(timestamps) >= 0):
         raise RuntimeError(f"Error: {clazz}.{key} not in ascending order)")
-    def is_inconsistent():
-        if sim.final_time - init_time > 0:
-            return not np.all(
-                np.abs(
-                    timestamps / sim.time_step - np.rint(timestamps / sim.time_step) < 1e-9
-                )
-            )
 
-    if is_inconsistent():
+    if (
+        sim.time_stepper.mode == "constant"
+        and sim.time_stepper.time_step_nbr > 0
+        and not np.all(
+            np.abs(
+                timestamps / sim.time_stepper.time_step
+                - np.rint(timestamps / sim.time_stepper.time_step)
+                < 1e-9
+            )
+        )
+    ):
         raise RuntimeError(
             f"Error: {clazz}.{key} is inconsistent with simulation.time_step"
         )

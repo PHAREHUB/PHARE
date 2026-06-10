@@ -4,17 +4,15 @@
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
-#include "mpi/mpi_utils.hpp"
 
 #include "initializer/data_provider.hpp"
 
-#include "restarts_props.hpp"
+#include "mpi/mpi_utils.hpp"
 
+#include "restarts/restarts_props.hpp"
 
-#include <cmath>
 #include <memory>
 #include <utility>
-
 
 
 namespace PHARE::restarts
@@ -73,30 +71,43 @@ public:
     RestartsManager& operator=(RestartsManager&&)      = delete;
 
 private:
-    bool needsCadenceAction_(double const nextTime, double const timeStamp,
-                             double const timeStep) const
+    // Returns true if nextTime < timeStamp + timeStep
+    NO_DISCARD bool needsCadenceAction_(double const nextTime, double const timeStamp,
+                                        double const timeStep) const
     {
         // casting to float to truncate double to avoid trailing imprecision
-        return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
+        return static_cast<float>(nextTime - timeStamp) < static_cast<float>(timeStep);
     }
 
-    bool needsElapsedAction_(double const nextTime) const
+    // Advances id such as times[id] is past timeStamp + timeStep. If there is no such time, id =
+    // times.size() on return; returns true if any encountered id needs action.
+    NO_DISCARD bool needsCadenceActionAndAdvance_(std::vector<double> const& times, std::size_t& id,
+                                                  double const timeStamp,
+                                                  double const timeStep) const
+    {
+        bool acted = false;
+        while (id < times.size() and needsCadenceAction_(times[id], timeStamp, timeStep))
+        {
+            acted = true;
+            ++id;
+        }
+        return acted;
+    }
+
+    NO_DISCARD bool needsElapsedAction_(double const nextTime) const
     {
         return mpi::unix_timestamp_now() > nextTime;
     }
 
 
-    bool needsWrite_(RestartsProperties const& rest, double const timeStamp, double const timeStep)
+    NO_DISCARD bool needsWrite_(RestartsProperties const& rest, double const timeStamp,
+                                double const timeStep)
     {
-        auto const simUnit
-            = nextWriteSimUnit_ < rest.writeTimestamps.size()
-              and needsCadenceAction_(rest.writeTimestamps[nextWriteSimUnit_], timeStamp, timeStep);
+        auto const simUnit = needsCadenceActionAndAdvance_(rest.writeTimestamps, nextWriteSimUnit_,
+                                                           timeStamp, timeStep);
 
         auto const elapsed = nextWriteElapsed_ < rest.elapsedTimestamps.size()
                              and needsElapsedAction_(rest.elapsedTimestamps[nextWriteElapsed_]);
-
-        if (simUnit)
-            ++nextWriteSimUnit_;
         if (elapsed)
             ++nextWriteElapsed_;
 

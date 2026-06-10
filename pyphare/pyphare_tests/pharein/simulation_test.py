@@ -75,7 +75,7 @@ class TestSimulation(unittest.TestCase):
             domain_size=10,
             final_time=10,
         )
-        self.assertEqual(0.01, s.time_step)
+        self.assertEqual(0.01, s.time_stepper.time_step)
 
 
 if __name__ == "__main__":

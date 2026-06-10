@@ -11,15 +11,25 @@
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
+#include <limits>
 #include <string>
-
-
 
 
 namespace PHARE
 {
 namespace solver
 {
+    /**
+     * @brief Bundles the CFL coefficients scaling for the two stability criteria:
+     *   - wave: hyperbolic (incl. Hall whistler when active)
+     *   - diffusive: due to resistive diffusion
+     */
+    struct CFLNumbers
+    {
+        double wave;
+        double diffusive;
+    };
+
     /**
      * @brief The ISolver is an interface for a solver used by the MultiPHysicsIntegrator.
      *
@@ -95,8 +105,7 @@ namespace solver
          * @brief implements the reflux operations needed for a given solver.
          */
         virtual void reflux(IPhysicalModel_t& model, level_t& level,
-                            amr::IMessenger<IPhysicalModel_t>& messenger, double const time)
-            = 0;
+                            amr::IMessenger<IPhysicalModel_t>& messenger, double const time) = 0;
 
         /**
          * @brief advanceLevel advances the given level from t to t+dt
@@ -104,8 +113,7 @@ namespace solver
         virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
                                   IPhysicalModel_t& view,
                                   amr::IMessenger<IPhysicalModel_t>& fromCoarser,
-                                  double const currentTime, double const newTime)
-            = 0;
+                                  double const currentTime, double const newTime) = 0;
 
 
 
@@ -115,9 +123,17 @@ namespace solver
          * ResourcesManager of the given model, onto the given Patch, at the given time.
          */
         virtual void allocate(IPhysicalModel_t& model, patch_t& patch,
-                              double const allocateTime) const
-            = 0;
+                              double const allocateTime) const = 0;
 
+
+
+        /**
+         * @brief computeStableDt returns the level stable time step local to the mpi rank, based on
+         * the stability constraints expressed by the CFL numbers. The caller
+         * (MultiPhysicsIntegrator::computeStableDt) is responsible for the mpi reduction.
+         */
+        virtual double computeStableDt(IPhysicalModel_t& model, level_t& level,
+                                       CFLNumbers const& cflNumbers) = 0;
 
 
         virtual void onRegrid() {} // do what you need to do on regrid
@@ -157,7 +173,6 @@ namespace solver
     {
         return model.name() == solver.modelName();
     }
-
 
 } // namespace solver
 } // namespace PHARE

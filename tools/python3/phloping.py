@@ -111,8 +111,8 @@ class ScopeTimerFile(phst.ScopeTimerFile):
         """
         Get all substep timesteps for the particlular level
         """
-        final_time = self.sim.final_time
-        time_step = self.sim.time_step
+        final_time = self.sim.time_stepper.final_time
+        time_step = self.sim.time_stepper.time_step
         if i == 0:
             return np.arange(
                 time_step, final_time + time_step, final_time / (final_time / time_step)

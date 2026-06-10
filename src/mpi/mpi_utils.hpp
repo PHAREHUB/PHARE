@@ -24,6 +24,8 @@ NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size = 0);
 
 NO_DISCARD std::size_t max(std::size_t const local, int mpi_size = 0);
 
+NO_DISCARD double min(double const local);
+
 NO_DISCARD bool any(bool);
 NO_DISCARD bool any_errors();
 void log_error(std::string const key, std::string const val);

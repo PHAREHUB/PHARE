@@ -46,7 +46,7 @@ def plot_run_timer_data(diag_dir=None, rank=0):
         )
     ax.legend()
     plt.ylabel("time in ns")
-    plt.xlabel(f"timestep {res.sim.time_step}")
+    plt.xlabel(f"timestep {res.sim.time_stepper.time_step}")
     ax.set_xticks([L0X[0], L0X[-1]])
     fig.savefig(f"run_timer.{rank}.png")
 

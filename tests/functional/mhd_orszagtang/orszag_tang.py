@@ -11,26 +11,37 @@ from pyphare.simulator.simulator import Simulator, startMPI
 
 from tests.simulator import SimulatorTest
 
-os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
+os.environ.setdefault("PHARE_SCOPE_TIMING", "1")  # turn on scope timing
 
 ph.NO_GUI()
 
 final_time = 1.0
-# n_steps ~ final_time / 0.0007 (ideal CFL), divisible by 5 so dump times land on steps
-n_steps = 1430
-time_step = final_time / n_steps
 diag_dir = "phare_outputs/orszag_tang"
-
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
+timestamps = np.linspace(0, final_time, 6)
 
 hall = False
 
 
-def config():
+def config(time_step=None, with_diags=True):
+    if time_step is None:
+        time_step = {"mode": "adaptive", "cfl_wave": 0.8}
+
     cells = (256, 256)
     dl = (1.0 / cells[0], 1.0 / cells[1])
 
+    diag_kwargs = (
+        {
+            "diag_options": {
+                "format": "phareh5",
+                "options": {"dir": diag_dir, "mode": "overwrite"},
+            }
+        }
+        if with_diags
+        else {}
+    )
+
     sim = ph.Simulation(
+        smallest_patch_size=15,
         time_step=time_step,
         final_time=final_time,
         cells=cells,
@@ -40,10 +51,6 @@ def config():
         max_nbr_levels=1,
         hyper_resistivity=0.0,
         resistivity=0.0,
-        diag_options={
-            "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
-        },
         strict=True,
         nesting_buffer=1,
         hyper_mode="spatial",
@@ -56,6 +63,7 @@ def config():
         mhd_timestepper="TVDRK2",
         hall=hall,
         model_options=["MHDModel"],
+        **diag_kwargs,
     )
 
     B0 = 1.0 / (np.sqrt(4.0 * np.pi))
@@ -90,10 +98,11 @@ def config():
 
     ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
 
-    ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+    if with_diags:
+        ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
 
-    for quantity in ["rho", "V", "P"]:
-        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
+        for quantity in ["rho", "V", "P"]:
+            ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
     return sim
 
@@ -104,7 +113,7 @@ def plot_file_for_qty(plot_dir, qty, time):
 
 def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
-    for time in timestamps:
+    for time in run.times("B"):
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,

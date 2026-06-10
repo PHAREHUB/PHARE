@@ -1,20 +1,20 @@
 #ifndef PHARE_DIAGNOSTIC_MANAGER_HPP_
 #define PHARE_DIAGNOSTIC_MANAGER_HPP_
 
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+
 #include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
-#include "mpi/mpi_utils.hpp"
 
-#include "amr/physical_models/mhd_model.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
+#include "diagnostic/diagnostic_props.hpp"
 
 #include "initializer/data_provider.hpp"
 
-#include "diagnostic_props.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include <map>
-#include <cmath>
 #include <memory>
 #include <stdexcept>
 #include <utility>
@@ -121,18 +121,32 @@ public:
     DiagnosticsManager& operator=(DiagnosticsManager&&)      = delete;
 
 private:
-    NO_DISCARD bool needsAction_(double nextTime, double timeStamp, double timeStep)
+    // Returns true if nextTime < timeStamp + timeStep
+    NO_DISCARD bool needsAction_(double const nextTime, double const timeStamp,
+                                 double const timeStep) const
     {
         // casting to float to truncate double to avoid trailing imprecision
-        return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
+        return static_cast<float>(nextTime - timeStamp) < static_cast<float>(timeStep);
     }
 
-    bool needsElapsedAction_(double const nextTime) const
+    // Advances id such as times[id] is past timeStamp + timeStep. If there is no such time, id =
+    // times.size() on return; returned value true if any encountered id needs action.
+    NO_DISCARD bool needsActionAndAdvance_(std::vector<double> const& times, std::size_t& id,
+                                           double const timeStamp, double const timeStep) const
+    {
+        bool acted = false;
+        while (id < times.size() and needsAction_(times[id], timeStamp, timeStep))
+        {
+            acted = true;
+            ++id;
+        }
+        return acted;
+    }
+
+    NO_DISCARD bool needsElapsedAction_(double const nextTime) const
     {
         return mpi::unix_timestamp_now() > nextTime;
     }
-
-
 
     NO_DISCARD bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
@@ -141,15 +155,11 @@ private:
         auto& nextWriteElapsed   = nextWriteElapsed_[diag_key];
 
         auto const writeTimestampNow
-            = nextWriteTimestamp < diag.writeTimestamps.size()
-              and needsAction_(diag.writeTimestamps[nextWriteTimestamp], timeStamp, timeStep);
+            = needsActionAndAdvance_(diag.writeTimestamps, nextWriteTimestamp, timeStamp, timeStep);
 
         auto const writeElapsedNow
             = nextWriteElapsed < diag.elapsedTimestamps.size()
               and needsElapsedAction_(diag.elapsedTimestamps[nextWriteElapsed]);
-
-        if (writeTimestampNow)
-            ++nextWriteTimestamp;
         if (writeElapsedNow)
             ++nextWriteElapsed;
 
@@ -159,9 +169,8 @@ private:
 
     NO_DISCARD bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto nextCompute = nextCompute_[diag.type + diag.quantity];
-        return nextCompute < diag.computeTimestamps.size()
-               and needsAction_(diag.computeTimestamps[nextCompute], timeStamp, timeStep);
+        return needsActionAndAdvance_(diag.computeTimestamps,
+                                      nextCompute_[diag.type + diag.quantity], timeStamp, timeStep);
     }
 
 
@@ -228,17 +237,10 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     std::vector<DiagnosticProperties*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
-        auto diagID = diag.type + diag.quantity;
-
         if (needsCompute_(diag, timeStamp, timeStep))
-        {
             writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
-            nextCompute_[diagID]++;
-        }
         if (needsWrite_(diag, timeStamp, timeStep))
-        {
             activeDiagnostics.emplace_back(&diag);
-        }
     }
 
     if (activeDiagnostics.size() > 0)

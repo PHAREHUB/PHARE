@@ -114,7 +114,7 @@ int main(int argc, char** argv)
             return gSignalStatus;
 
         dump();
-        simulator->advance(simulator->timeStep());
+        simulator->advance();
     }
 
     dump();

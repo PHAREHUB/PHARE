@@ -109,7 +109,9 @@ class DiagnosticsTest(unittest.TestCase):
 
         dump_every = 1
         timestamps = np.arange(
-            0, sim.final_time + sim.time_step, dump_every * sim.time_step
+            0,
+            sim.time_stepper.final_time + sim.time_stepper.time_step,
+            dump_every * sim.time_stepper.time_step,
         )
         setup_model(10)
 

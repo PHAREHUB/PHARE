@@ -101,8 +101,8 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
 
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
-    dt = 1 * sim.time_step
-    nt = sim.final_time / dt + 1
+    dt = 1 * sim.time_stepper.time_step
+    nt = sim.time_stepper.final_time / dt + 1
     timestamps = dt * np.arange(nt)
 
     for quantity in ["E", "B"]:

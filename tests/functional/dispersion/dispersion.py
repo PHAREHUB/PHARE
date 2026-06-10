@@ -82,7 +82,8 @@ def fromNoise():
 
     sim = ph.global_vars.sim
 
-    timestamps = np.arange(0, sim.final_time + sim.time_step, sim.time_step)
+    stepper = sim.time_stepper
+    timestamps = np.arange(0, stepper.final_time + stepper.time_step, stepper.time_step)
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
@@ -166,7 +167,8 @@ def prescribedModes():
 
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
-    timestamps = np.arange(0, sim.final_time + sim.time_step, sim.time_step)
+    stepper = sim.time_stepper
+    timestamps = np.arange(0, stepper.final_time + stepper.time_step, stepper.time_step)
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(

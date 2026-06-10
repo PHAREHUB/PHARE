@@ -17,8 +17,7 @@ ph.NO_GUI()
 
 
 final_time = 0.15
-time_step = 0.0003
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
+timestamps = np.linspace(0, final_time, 6)
 diag_dir = "phare_outputs/rotor"
 
 
@@ -28,8 +27,7 @@ def config():
 
     sim = ph.Simulation(
         smallest_patch_size=15,
-        # largest_patch_size=25,
-        time_step=time_step,
+        time_step={"mode": "adaptive", "cfl_wave": 0.8},
         final_time=final_time,
         cells=cells,
         dl=dl,
@@ -128,7 +126,7 @@ def plot_file_for_qty(plot_dir, qty, time):
 
 def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
-    for time in timestamps:
+    for time in run.times("B"):
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
