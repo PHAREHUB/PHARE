@@ -3,7 +3,11 @@
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
+
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -12,6 +16,7 @@
 #include <map>
 #include <cmath>
 #include <memory>
+#include <stdexcept>
 #include <utility>
 
 namespace PHARE::diagnostic
@@ -23,7 +28,20 @@ enum class Mode { LIGHT, FULL };
 template<typename DiagManager>
 void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsParams)
 {
-    std::vector<std::string> const diagTypes = {"fluid", "electromag", "particle", "meta", "info"};
+    auto const diagTypes = []() {
+        using Model = DiagManager::Model_t;
+
+        if constexpr (solver::is_hybrid_model_v<Model>)
+            return std::vector<std::string>{"fluid", "electromag", "particle", "meta", "info"};
+
+        else if constexpr (solver::is_mhd_model_v<Model>)
+            return std::vector<std::string>{"mhd", "meta", "electromag"};
+
+        else
+            static_assert(core::dependent_false_v<Model>, "Unsupported model type");
+
+        throw std::runtime_error("registerDiagnostics: Shouldn't happen!");
+    }();
 
     for (auto& diagType : diagTypes)
     {
@@ -59,6 +77,8 @@ template<typename Writer>
 class DiagnosticsManager : public IDiagnosticsManager
 {
 public:
+    using Model_t = typename Writer::Model_t;
+
     bool dump(double timeStamp, double timeStep) override;
 
 
@@ -181,10 +201,9 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     diagProps.nAttributes = diagParams["n_attributes"].template to<std::size_t>();
     for (std::size_t i = 0; i < diagProps.nAttributes; ++i)
     {
-        std::string idx = std::to_string(i);
-        std::string key = diagParams["attribute_" + idx + "_key"].template to<std::string>();
-        std::string val = diagParams["attribute_" + idx + "_value"].template to<std::string>();
-        diagProps.fileAttributes[key] = val;
+        std::string const idx = std::to_string(i);
+        std::string const key = diagParams["attribute_" + idx + "_key"];
+        diagProps.forward_file_attribute(key, diagParams["attribute_" + idx + "_value"]);
     }
 
     return *this;

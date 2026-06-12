@@ -186,7 +186,7 @@ def build_patch_datas(domain_box, boxes, **kwargs):
             ghost_box = boxm.grow(box, [GHOST_NBR] * ndim)
             origin = box.lower * lvl_cell_width
             layout = GridLayout(
-                box, origin, lvl_cell_width, interp_order, field_ghosts_nbr=GHOST_NBR
+                box, origin, lvl_cell_width, interp_order, ghosts_nbr=[GHOST_NBR] * ndim
             )
 
             datas = {

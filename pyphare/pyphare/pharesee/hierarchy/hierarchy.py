@@ -455,6 +455,17 @@ class PatchHierarchy(object):
         if "filename" in kwargs:
             fig.savefig(kwargs["filename"])
 
+    def _pcolormesh_coords(self, pdat, box):
+        """Strip ghosts and return (x, y, data) with edge coordinates for pcolormesh."""
+        ng = pdat.ghosts_nbr
+        data = pdat[box] if np.any(ng != 0) else pdat.dataset[:]
+        sx = slice(ng[0], -ng[0] if ng[0] else None)
+        sy = slice(ng[1], -ng[1] if ng[1] else None)
+        x = np.copy(pdat.x[sx])
+        y = np.copy(pdat.y[sy])
+
+        return x, y, data
+
     def plot2d(self, **kwargs):
         from matplotlib.patches import Rectangle
         from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -493,25 +504,9 @@ class PatchHierarchy(object):
             if lvl_nbr not in usr_lvls:
                 continue
             for patch in self.level(lvl_nbr, time).patches:
-                pdat = patch.patch_datas[qty]
-                data = pdat.dataset[:]
-                nbrGhosts = pdat.ghosts_nbr
-                x = pdat.x
-                y = pdat.y
-
-                # if nbrGhosts is 0, we cannot do array[0,-0]
-                if np.all(nbrGhosts == np.zeros_like(nbrGhosts)):
-                    x = np.copy(x)
-                    y = np.copy(y)
-                else:
-                    data = pdat[patch.box]
-                    x = np.copy(x[nbrGhosts[0] : -nbrGhosts[0]])
-                    y = np.copy(y[nbrGhosts[1] : -nbrGhosts[1]])
-                dx, dy = pdat.layout.dl
-                x -= dx * 0.5
-                y -= dy * 0.5
-                x = np.append(x, x[-1] + dx)
-                y = np.append(y, y[-1] + dy)
+                pdat = patch[qty]
+                x, y, data = self._pcolormesh_coords(pdat, patch.box)
+                dx, dy = pdat.dl
                 im = ax.pcolormesh(
                     x,
                     y,
@@ -520,7 +515,6 @@ class PatchHierarchy(object):
                     vmin=kwargs.get("vmin", glob_min - 1e-6),
                     vmax=kwargs.get("vmax", glob_max + 1e-6),
                 )
-
                 if kwargs.get("plot_patches", False) is True:
                     r = Rectangle(
                         (patch.box.lower[0] * dx, patch.box.lower[1] * dy),

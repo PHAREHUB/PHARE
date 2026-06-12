@@ -12,6 +12,7 @@
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
+#include "amr/solvers/solver_hybrid_field_evolvers.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 
@@ -43,9 +44,10 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
-    using Faraday_t    = FaradayLevelTransformer<HybridModel>;
-    using Ampere_t     = AmpereLevelTransformer<HybridModel>;
-    using Ohm_t        = OhmLevelTransformer<HybridModel>;
+    using FE_t      = FieldEvolverDispatchers<HybridModel>;
+    using Faraday_t = FE_t::Faraday_t;
+    using Ampere_t  = FE_t::Ampere_t;
+    using Ohm_t     = OhmLevelTransformer<HybridModel>;
     using IonUpdater_t = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
     Electromag electromagPred_{"EMPred"};
@@ -98,7 +100,7 @@ public:
     void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
                 double const time) override;
 
-    void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& views,
+    void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
                       IMessenger& fromCoarserMessenger, double const currentTime,
                       double const newTime) override;
 

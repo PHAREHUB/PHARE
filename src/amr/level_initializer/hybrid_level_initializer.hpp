@@ -10,6 +10,7 @@
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
+#include "amr/solvers/solver_hybrid_field_evolvers.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/level_initializer/level_initializer.hpp"
 
@@ -35,7 +36,7 @@ namespace solver
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::interp_order;
 
-        using Ampere_t = AmpereLevelTransformer<HybridModel>;
+        using Ampere_t = FieldEvolverDispatchers<HybridModel>::Ampere_t;
         using Ohm_t    = OhmLevelTransformer<HybridModel>;
         core::OhmInfo ohm_info;
 
@@ -101,7 +102,7 @@ namespace solver
 
             for (auto& patch : rm.enumerate(level, ions))
             {
-                auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                 core::resetMoments(ions);
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
             }
@@ -119,7 +120,7 @@ namespace solver
             {
                 if (!isRootLevel(levelNumber))
                 {
-                    auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 

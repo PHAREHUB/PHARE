@@ -32,11 +32,17 @@ def get_all_available_quantities_from_h5(filepath, time=0, exclude=["tags"], hie
     return hier
 
 
-def make_layout(h5_patch_grp, cell_width, interp_order):
-    origin = h5_patch_grp.attrs["origin"]
+def make_amr_box(h5_patch_grp):
     upper = h5_patch_grp.attrs["upper"]
     lower = h5_patch_grp.attrs["lower"]
-    return GridLayout(Box(lower, upper), origin, cell_width, interp_order=interp_order)
+    return Box(lower, upper)
+
+
+def make_layout(h5_patch_grp, cell_width, interp_order, ghosts_nbr):
+    origin = h5_patch_grp.attrs["origin"]
+    return GridLayout(
+        make_amr_box(h5_patch_grp), origin, cell_width, interp_order, ghosts_nbr
+    )
 
 
 def is_pop_fluid_file(basename):
@@ -62,13 +68,20 @@ def pop_name(basename):
     return basename.strip(".h5").split("_")[2]
 
 
-def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
+def add_to_patchdata(patch_datas, h5_patch_grp, basename, interp_order, lvl_cell_width):
     """
     adds data in the h5_patch_grp in the given PatchData dict
     returns True if valid h5 patch found
     """
 
+    amr_box = make_amr_box(h5_patch_grp)
+
     if is_particle_file(basename):
+        particle_ghosts = [1, 2, 2][interp_order - 1]
+        layout = make_layout(
+            h5_patch_grp, lvl_cell_width, interp_order, [particle_ghosts] * amr_box.ndim
+        )
+
         v = np.asarray(h5_patch_grp["v"])
         s = v.size
         v = v[:].reshape(int(s / 3), 3)
@@ -103,7 +116,15 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, layout):
                     )
                 )
 
-            pdata = FieldData(layout, field_qties[dataset_name], dataset)
+            ghosts_nbr = [0] * amr_box.ndim
+            if "ghosts" in dataset.attrs:
+                g = int(dataset.attrs["ghosts"])
+                ghosts_nbr = np.array([g] * amr_box.ndim, dtype=int)
+
+            layout = make_layout(h5_patch_grp, lvl_cell_width, interp_order, ghosts_nbr)
+            pdata = FieldData(
+                layout, field_qties[dataset_name], dataset, ghosts_nbr=ghosts_nbr
+            )
 
             pdata_name = field_qties[dataset_name]
 
@@ -162,7 +183,7 @@ def patch_levels_from_h5(h5f, time, selection_box=None):
     """
 
     root_cell_width = h5f.attrs["cell_width"]
-    interp_order = h5f.attrs["interpOrder"]
+    interp_order = h5f.attrs["interpOrder"] if "interpOrder" in h5f.attrs else 0
     basename = os.path.basename(h5f.filename)
 
     patch_levels = {}
@@ -192,19 +213,21 @@ def patch_levels_from_h5(h5f, time, selection_box=None):
 
             if intersect is not None or selection_box is None:
                 patch_datas = {}
-                layout = make_layout(h5_patch, lvl_cell_width, interp_order)
+
                 if patch_has_datasets(h5_patch):
                     # we only add to patchdatas is there are datasets
                     # in the hdf5 patch group.
                     # but we do create a Patch (below) anyway since
                     # we want empty patches to be there as well to access their attributes.
-                    add_to_patchdata(patch_datas, h5_patch, basename, layout)
+                    add_to_patchdata(
+                        patch_datas, h5_patch, basename, interp_order, lvl_cell_width
+                    )
 
                 patches.append(
                     Patch(
                         patch_datas,
                         h5_patch.name.split("/")[-1],
-                        layout=layout,
+                        box=patch_box,
                         attrs={k: v for k, v in h5_patch.attrs.items()},
                     )
                 )

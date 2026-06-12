@@ -61,9 +61,12 @@ Return bz(Param x)
     return std::make_shared<core::VectorSpan<double>>(x);
 }
 
+Return pressure(Param x)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
 
 } // namespace PHARE::initializer::test_fn::func_1d
-
 
 namespace PHARE::initializer::test_fn::func_2d
 {
@@ -120,9 +123,12 @@ Return bz(Param x, Param /*y*/)
     return std::make_shared<core::VectorSpan<double>>(x);
 }
 
+Return pressure(Param x, Param /*y*/)
+{
+    return std::make_shared<core::VectorSpan<double>>(x);
+}
 
 } // namespace PHARE::initializer::test_fn::func_2d
-
 
 template<std::size_t dim>
 auto makeSharedPtr()
@@ -146,6 +152,5 @@ auto makeSharedPtr()
         };
     }
 }
-
 
 #endif // PHARE_TEST_INITIALIZER_INIT_FUNCTIONS_HPP
