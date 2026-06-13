@@ -1,7 +1,7 @@
 import numpy as np
 from pyphare.core import phare_utilities
 from pyphare.core.box import Box
-from pyphare.core.gridlayout import GridLayout
+from pyphare.core.gridlayout import HybridGridLayoutFor
 from pyphare.pharein import global_vars
 
 
@@ -202,7 +202,9 @@ class MaxwellianFluidModel(object):
 
     def validate1d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
-        layout = GridLayout(domain_box, domain_box.lower, sim.dl, sim.interp_order)
+        layout = HybridGridLayoutFor(
+            domain_box, domain_box.lower, sim.dl, sim.interp_order
+        )
         nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X"]
@@ -242,7 +244,9 @@ class MaxwellianFluidModel(object):
 
     def validate2d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
-        layout = GridLayout(domain_box, domain_box.lower, sim.dl, sim.interp_order)
+        layout = HybridGridLayoutFor(
+            domain_box, domain_box.lower, sim.dl, sim.interp_order
+        )
         nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X", "Y"]
@@ -314,7 +318,9 @@ class MaxwellianFluidModel(object):
 
     def validate3d(self, sim, atol):
         domain_box = Box([0] * sim.ndim, sim.cells)
-        layout = GridLayout(domain_box, domain_box.lower, sim.dl, sim.interp_order)
+        layout = HybridGridLayoutFor(
+            domain_box, domain_box.lower, sim.dl, sim.interp_order
+        )
         nbrDualGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X", "Y", "Z"]

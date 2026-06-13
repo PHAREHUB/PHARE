@@ -51,7 +51,16 @@ public:
             [&](auto i) { return components_[i]->interiorFieldBox(); });
     }
 
+    std::array<SAMRAI::hier::Box, N> ghostTensorFieldBox() const
+    {
+        return core::for_N<N, core::for_N_R_mode::make_array>(
+            [&](auto i) { return components_[i]->ghostFieldBox(); });
+    }
+
     SAMRAI::hier::Box const patchBox;
+
+    auto const& operator[](std::size_t i) { return *components_[i]; }
+    auto const& operator[](std::size_t i) const { return *components_[i]; }
 
 private:
     std::array<std::shared_ptr<FieldGeometryBase_t>, N> components_;

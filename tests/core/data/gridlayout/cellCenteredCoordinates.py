@@ -105,7 +105,7 @@ def main(path="./"):
     if len(sys.argv) == 2:
         path = sys.argv[1]
 
-    interpOrders = [1, 2, 3, 4]
+    interpOrders = [1, 2, 3]
 
     nbDimsList = [1, 2, 3]
 

@@ -89,9 +89,7 @@ def main(path="./"):
     if len(sys.argv) == 2:
         path = sys.argv[1]
 
-    interpOrders = [1, 2, 3, 4]
-
-    gl = gridlayout.GridLayout()
+    interpOrders = [1, 2, 3]
 
     quantities = [
         "Bx",
@@ -133,6 +131,7 @@ def main(path="./"):
         outFiles.append([open(f, "w") for f in filenames])
 
     for interpOrder, outFilesDim in zip(interpOrders, outFiles):
+        gl = gridlayout.GridLayout(interp_order=interpOrder)
         for dim, outFile, nbrCellX, nbrCellY, nbrCellZ, dx, dy, dz in zip(
             nbDimsList,
             outFilesDim,

@@ -57,7 +57,7 @@ def main(path="./"):
 
     # TODO: refactor this for all python since they are the same
 
-    interpOrders = [1, 2, 3, 4]
+    interpOrders = [1, 2, 3]
 
     nbDimsList = [1, 2, 3]
 

@@ -36,11 +36,12 @@ def test_deriv1D(path):
     # By is dual in X, and derived along X it should lie on Ez
     # Ez is primal in X, and derived along X it should lie on By
 
-    layout = gridlayout.GridLayout()  # yee layout
-
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         filename_dxBy = "dxBy_interpOrder_{}_1d.txt".format(interpOrder)
         filename_dxEz = "dxEz_interpOrder_{}_1d.txt".format(interpOrder)
 
@@ -91,11 +92,10 @@ def test_deriv1D(path):
 
 
 def test_deriv2D(path):
-    layout = gridlayout.GridLayout()  # yee layout
-
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
+        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
         filename_dxBy = "dxBy_interpOrder_{}_2d.txt".format(interpOrder)
         filename_dyBy = "dyBy_interpOrder_{}_2d.txt".format(interpOrder)
         filename_dxEz = "dxEz_interpOrder_{}_2d.txt".format(interpOrder)
@@ -212,11 +212,10 @@ def test_deriv2D(path):
 
 
 def test_deriv3D(path):
-    layout = gridlayout.GridLayout()  # yee layout
-
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
+        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
         filename_dxBy = "dxBy_interpOrder_{}_3d.txt".format(interpOrder)
         filename_dyBy = "dyBy_interpOrder_{}_3d.txt".format(interpOrder)
         filename_dzBy = "dzBy_interpOrder_{}_3d.txt".format(interpOrder)

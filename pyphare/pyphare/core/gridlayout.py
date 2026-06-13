@@ -43,7 +43,21 @@ yee_centering = {
         "Pyy": "primal",
         "Pyz": "primal",
         "Pzz": "primal",
+        # finite volume mhd quantities are 3ple dual
+        "mhdRho": "dual",
+        "mhdVx": "dual",
+        "mhdVy": "dual",
+        "mhdVz": "dual",
+        "mhdP": "dual",
+        "mhdRhoVx": "dual",
+        "mhdRhoVy": "dual",
+        "mhdRhoVz": "dual",
+        "mhdEtot": "dual",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
     "y": {
         "Bx": "dual",
@@ -78,7 +92,20 @@ yee_centering = {
         "Pyy": "primal",
         "Pyz": "primal",
         "Pzz": "primal",
+        "mhdRho": "dual",
+        "mhdVx": "dual",
+        "mhdVy": "dual",
+        "mhdVz": "dual",
+        "mhdP": "dual",
+        "mhdRhoVx": "dual",
+        "mhdRhoVy": "dual",
+        "mhdRhoVz": "dual",
+        "mhdEtot": "dual",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
     "z": {
         "Bx": "dual",
@@ -113,7 +140,20 @@ yee_centering = {
         "Pyy": "primal",
         "Pyz": "primal",
         "Pzz": "primal",
+        "mhdRho": "dual",
+        "mhdVx": "dual",
+        "mhdVy": "dual",
+        "mhdVz": "dual",
+        "mhdP": "dual",
+        "mhdRhoVx": "dual",
+        "mhdRhoVy": "dual",
+        "mhdRhoVz": "dual",
+        "mhdEtot": "dual",
         "tags": "dual",
+        "value": "primal",
+        "x": "primal",
+        "y": "primal",
+        "z": "primal",
     },
 }
 yee_centering_lower = {
@@ -165,17 +205,60 @@ def yeeCoordsFor(
         return origin[dim] + np.arange(size) * dl[dim] + offset
 
 
+def HybridGridLayoutFor(
+    box, origin, dl, interp_order, ghosts_nbr=None, is_particle_layout=False
+):
+    field_ghosts = [2, 4, 4]
+    particle_ghosts = [1, 2, 2]
+
+    if not ghosts_nbr:
+        ghosts_nbr = (
+            particle_ghosts[interp_order - 1]
+            if is_particle_layout
+            else field_ghosts[interp_order - 1]
+        )
+        ghosts_nbr = [ghosts_nbr] * box.ndim
+
+    return GridLayout(box, origin, dl, interp_order, ghosts_nbr)
+
+
+def MHDGridLayoutFor(box, origin, dl, reconstruction, ghosts_nbr=None):
+    if not ghosts_nbr:
+        ghosts_nbr = mhdGhostNbrFromReconstruction(reconstruction)
+
+    return GridLayout(box, origin, dl, 0, ghosts_nbr)
+
+
+def mhdGhostNbrFromReconstruction(reconstruction):
+    if reconstruction is None or reconstruction == "":
+        return None
+    return {
+        "constant": 2,
+        "linear": 4,
+        "weno3": 4,
+        "wenoz": 6,
+        "mp5": 6,
+    }.get(reconstruction)
+
+
 class GridLayout(object):
     """
-    field_ghosts_nbr is a parameter to support pyphare geometry tests having hard coded 5 ghosts
     initialized default to -1 as an invalid value allowing the override mechanism. Using None
     results in a pylint error elsewhere
     """
 
     def __init__(
-        self, box=Box(0, 0), origin=0, dl=0.1, interp_order=1, field_ghosts_nbr=-1
+        self, box=Box(0, 0), origin=0, dl=0.1, interp_order=1, ghosts_nbr=None
     ):
         self.box = box
+        self.ghosts_nbr = (  # default for tests TORM
+            ghosts_nbr
+            if ghosts_nbr is not None
+            else [[2, 4, 4][interp_order - 1]] * box.ndim
+        )
+
+        if len(self.ghosts_nbr) != box.ndim:
+            raise ValueError("Invalid ghosts!")
 
         self.dl = listify(dl)
         assert len(self.dl) == box.ndim
@@ -215,8 +298,6 @@ class GridLayout(object):
             "Z": self.yeeCentering.centerZ,
         }
 
-        self.field_ghosts_nbr = field_ghosts_nbr  # allows override
-
     @property
     def ndim(self):
         return self.box.ndim
@@ -227,16 +308,8 @@ class GridLayout(object):
     def particleGhostNbr(self, interp_order):
         return 1 if interp_order == 1 else 2
 
-    # The total number of ghosts is obtained using the required number of ghost for the interpolation
-    # ((interp_order + 1) / 2), to which we add one for the patchghost for particles that may leave
-    # the cells, and we then take the closest even number. This is because we are using the Toth and Roe
-    # (2002) formulas for magnetic refinement, so we want to have on refinement full coarse
-    # cell below the fine grid, which odd number of ghost nodes would not allow.
-    def nbrGhosts(self, interpOrder, centering):
-        if self.field_ghosts_nbr == -1:
-            nGhosts = int((interpOrder + 1) / 2) + self.particleGhostNbr(interpOrder)
-            return nGhosts if nGhosts % 2 == 0 else nGhosts + 1
-        return self.field_ghosts_nbr
+    def nbrGhosts(self, *args):
+        return self.ghosts_nbr[0]
 
     def nbrGhostsPrimal(self, interpOrder):
         return self.nbrGhosts(interpOrder, "primal")
@@ -247,8 +320,7 @@ class GridLayout(object):
     def isDual(self, centering):
         if centering == "dual":
             return 1
-        else:
-            return 0
+        return 0
 
     def ghostStartIndex(self):
         return 0
@@ -379,9 +451,15 @@ class GridLayout(object):
         else:
             centering = yee_centering[direction][qty]
 
+        # Use provided ghosts_nbr if available, otherwise compute from interp_order
+        if "ghosts_nbr" in kwargs:
+            ghosts_nbr = kwargs["ghosts_nbr"]
+        else:
+            ghosts_nbr = self.nbrGhosts(self.interp_order, centering)
+
         return yeeCoordsFor(
             self.origin,
-            self.nbrGhosts(self.interp_order, centering),
+            ghosts_nbr,
             self.dl,
             self.box.shape,
             qty,

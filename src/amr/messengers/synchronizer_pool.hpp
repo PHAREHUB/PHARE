@@ -25,20 +25,6 @@ public:
     }
 
 
-
-
-    void add(core::VecFieldNames const& descriptor,
-             std::shared_ptr<SAMRAI::hier::CoarsenOperator> const& coarsenOp, std::string key)
-    {
-        auto const [it, success] = synchronizers_.insert(
-            {key, Synchronizer<ResourcesManager>(descriptor, rm_, coarsenOp)});
-
-        if (!success)
-            throw std::runtime_error(key + " is already registered");
-    }
-
-
-
     void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                        std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
     {

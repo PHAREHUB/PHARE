@@ -32,11 +32,10 @@ class TestVariables(object):
 
 
 def test_laplacian_yee1D(path):
-    layout = gridlayout.GridLayout()  # yee layout
-
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
+        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
         Jx = np.zeros(
             layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
             dtype=np.float64,
@@ -114,11 +113,10 @@ def test_laplacian_yee1D(path):
 
 
 def test_laplacian_yee2D(path):
-    layout = gridlayout.GridLayout()  # yee layout
-
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
+        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
         Jx = np.zeros(
             [
                 layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
@@ -256,11 +254,10 @@ def test_laplacian_yee2D(path):
 
 
 def test_laplacian_yee3D(path):
-    layout = gridlayout.GridLayout()  # yee layout
-
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
+        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
         Jx = np.zeros(
             [
                 layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),

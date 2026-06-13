@@ -30,7 +30,7 @@ def permute(dic, expected_num_levels):
     ]
 
 
-def setup_model(ppc=100):
+def setup_model(sim, ppc=100):
     def density(x):
         return 1.0
 
@@ -41,7 +41,7 @@ def setup_model(ppc=100):
         return 0.5 * (1 + np.tanh((x - x0) / l))
 
     def by(x):
-        L = ph.global_vars.sim.simulation_domain()[0]
+        L = sim.simulation_domain()[0]
         v1, v2 = -1, 1.0
         return v1 + (v2 - v1) * (S(x, L * 0.25, 1) - S(x, L * 0.75, 1))
 
@@ -145,7 +145,6 @@ class RestartsTest(SimulatorTest):
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
-        ph.global_vars.sim = None
 
     def check_diags(self, diag_dir0, diag_dir1, pops, timestamps, expected_num_levels):
         if cpp.mpi_rank() > 0:
@@ -254,31 +253,28 @@ class RestartsTest(SimulatorTest):
         timestamps = [restart_time, time_step * time_step_nbr]
 
         # first simulation
-        local_out = self.unique_diag_dir_for_test_case(f"{out}/test", ndim, interp)
-        simput["restart_options"]["dir"] = local_out
         simput["restart_options"]["timestamps"] = [timestep * 4]
-        simput["diag_options"]["options"]["dir"] = local_out
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        assert "restart_time" not in ph.global_vars.sim.restart_options
-        model = setup_model()
+
+        sim = self.simulation(**simput)
+        assert "restart_time" not in sim.restart_options
+        model = setup_model(sim)
         dump_all_diags(model.populations, timestamps=np.array(timestamps))
-        Simulator(ph.global_vars.sim).run().reset()
-        self.register_diag_dir_for_cleanup(local_out)
-        diag_dir0 = local_out
+        Simulator(sim).run().reset()
+        diag_dir0 = sim.diag_options["options"]["dir"]
+        diag_dir1 = diag_dir0 + "_n2"
 
         # second restarted simulation
-        local_out = f"{local_out}_n2"
-        simput["diag_options"]["options"]["dir"] = local_out
+        simput["restart_options"]["dir"] = diag_dir0
         simput["restart_options"]["restart_time"] = restart_time
+        simput["diag_options"]["options"]["dir"] = diag_dir1
+
         ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        assert "restart_time" in ph.global_vars.sim.restart_options
-        model = setup_model()
+        sim = ph.Simulation(**simput)
+        assert "restart_time" in sim.restart_options
+        model = setup_model(sim)
         dump_all_diags(model.populations, timestamps=np.array(timestamps))
-        Simulator(ph.global_vars.sim).run().reset()
-        self.register_diag_dir_for_cleanup(local_out)
-        diag_dir1 = local_out
+        Simulator(sim).run().reset()
+        self.register_diag_dir_for_cleanup(diag_dir1)
 
         self.check_diags(
             diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels
@@ -318,47 +314,43 @@ class RestartsTest(SimulatorTest):
         timestamps = [time_step * time_step_nbr]
 
         # first simulation
-        local_out = self.unique_diag_dir_for_test_case(
-            f"{out}/elapsed_test", ndim, interp
-        )
-        diag_dir0 = local_out
-        diag_dir1 = f"{local_out}_n2"
 
         seconds = 1  # dump on first advance always!
         simput["restart_options"]["elapsed_timestamps"] = [
             datetime.timedelta(seconds=seconds)
         ]
-        simput["restart_options"]["dir"] = diag_dir0
-        simput["diag_options"]["options"]["dir"] = diag_dir0
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        self.assertEqual(
-            [seconds], ph.global_vars.sim.restart_options["elapsed_timestamps"]
-        )
 
-        assert "restart_time" not in ph.global_vars.sim.restart_options
-        model = setup_model()
+        sim = self.simulation(**simput)
+        diag_dir0 = sim.diag_options["options"]["dir"]
+        diag_dir1 = f"{diag_dir0}_n2"
+
+        self.assertEqual([seconds], sim.restart_options["elapsed_timestamps"])
+
+        assert "restart_time" not in sim.restart_options
+        model = setup_model(sim)
         dump_all_diags(model.populations, timestamps=np.array(timestamps))
 
         # autodump false to ignore possible init dump
-        simulator = Simulator(ph.global_vars.sim, auto_dump=False).initialize()
+        simulator = Simulator(sim, auto_dump=False).initialize()
 
         sleep(5)
         simulator.advance().dump()  # should trigger restart on "restart_idx" advance
         simulator.advance().dump()
         simulator.reset()
-        self.register_diag_dir_for_cleanup(diag_dir0)
 
         # second restarted simulation
+        simput["restart_options"]["dir"] = diag_dir0
         simput["diag_options"]["options"]["dir"] = diag_dir1
+        simput["restart_options"]["dir"] = diag_dir0
         simput["restart_options"]["restart_time"] = time_step
-        ph.global_vars.sim = None
+
         del simput["restart_options"]["elapsed_timestamps"]
-        ph.global_vars.sim = ph.Simulation(**simput)
-        assert "restart_time" in ph.global_vars.sim.restart_options
-        model = setup_model()
+        ph.global_vars.sim = None
+        sim = ph.Simulation(**simput)  # no output dir override!
+        assert "restart_time" in sim.restart_options
+        model = setup_model(sim)
         dump_all_diags(model.populations, timestamps=np.array(timestamps))
-        Simulator(ph.global_vars.sim).run().reset()
+        Simulator(sim).run().reset()
         self.register_diag_dir_for_cleanup(diag_dir1)
 
         self.check_diags(
@@ -372,22 +364,22 @@ class RestartsTest(SimulatorTest):
             simput[key] = [simput[key]] * ndim
 
         # first simulation
-        local_out = self.unique_diag_dir_for_test_case(f"{out}/conserve", ndim, interp)
-        self.register_diag_dir_for_cleanup(local_out)
-
-        simput["restart_options"]["dir"] = local_out
         simput["restart_options"]["timestamps"] = [timestep * 4]
-        ph.global_vars.sim = ph.Simulation(**simput)
-        self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 1)
-        self.assertEqual(ph.global_vars.sim.restart_options["timestamps"][0], 0.004)
-        setup_model()
-        Simulator(ph.global_vars.sim).run().reset()
+        sim = self.simulation(**simput)
+        diag_dir0 = sim.diag_options["options"]["dir"]
+        self.assertEqual(len(sim.restart_options["timestamps"]), 1)
+        self.assertEqual(sim.restart_options["timestamps"][0], 0.004)
+        setup_model(sim)
+        Simulator(sim).run().reset()
 
         # second simulation (not restarted)
-        ph.global_vars.sim = None
+        simput["restart_options"]["dir"] = diag_dir0
         simput["restart_options"]["mode"] = "conserve"
-        ph.global_vars.sim = ph.Simulation(**simput)
-        self.assertEqual(len(ph.global_vars.sim.restart_options["timestamps"]), 0)
+
+        sim = self.simulation(**simput)
+        diag_dir1 = sim.diag_options["options"]["dir"]
+        self.assertEqual(diag_dir0, diag_dir1)
+        self.assertEqual(len(sim.restart_options["timestamps"]), 0)
 
     def test_input_validation_trailing_slash(self):
         if cpp.mpi_size() > 1:
@@ -397,10 +389,9 @@ class RestartsTest(SimulatorTest):
         simulation_args["restart_options"]["dir"] += (
             simulation_args["restart_options"]["dir"] + "//"
         )
-        sim = ph.Simulation(**simulation_args)
-        setup_model()
+        sim = self.simulation(**simulation_args)
+        setup_model(sim)
         Simulator(sim).run().reset()
-        ph.global_vars.sim = None
 
     @data(
         ([timedelta(hours=1), timedelta(hours=2)], True),
@@ -414,8 +405,7 @@ class RestartsTest(SimulatorTest):
         simput["restart_options"]["elapsed_timestamps"] = elapsed_timestamps
 
         try:
-            ph.global_vars.sim = None
-            ph.Simulation(**simput.copy())
+            self.simulation(**simput.copy())
             self.assertTrue(valid)
         except Exception:
             self.assertTrue(not valid)
@@ -429,7 +419,6 @@ class RestartsTest(SimulatorTest):
          and assert the only files remaining are for 8,9 and 10th timestep
          and the next restart time is from the last/10th timestep
         """
-        ndim, interp = 1, 1
         print("test_advanced_restarts_options")
 
         simput = copy.deepcopy(
@@ -443,38 +432,36 @@ class RestartsTest(SimulatorTest):
             )
         )
 
-        simput["interp_order"] = interp
         time_step = simput["time_step"]
+        time_step_nbr = simput["time_step_nbr"]
 
-        timestamps = time_step * np.arange(simput["time_step_nbr"] + 1)
-        local_out = self.unique_diag_dir_for_test_case(f"{out}/test", ndim, interp)
-        simput["restart_options"]["dir"] = local_out
+        timestamps = time_step * np.arange(time_step_nbr + 1)
         simput["restart_options"]["keep_last"] = 3
         simput["restart_options"]["timestamps"] = timestamps
         simput["restart_options"]["restart_time"] = "auto"
 
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        model = setup_model()
+        sim = self.simulation(**simput)
+        model = setup_model(sim)
         self.assertTrue(model.validated)
-        Simulator(ph.global_vars.sim).run().reset()
-        self.register_diag_dir_for_cleanup(local_out)
+        Simulator(sim).run().reset()
 
         # restarted
         timestamps = time_step * np.arange(7, 11)
         simput["time_step_nbr"] = 3
         simput["restart_options"]["restart_time"] = "auto"
         simput["restart_options"]["timestamps"] = timestamps
+        simput["restart_options"]["dir"] = sim.diag_options["options"]["dir"]
 
         # if not binary equal we have a problem! C++/python float impl diff
         self.assertEqual(0.007, ph.restarts.restart_time(simput["restart_options"]))
-        ph.global_vars.sim = None
-        ph.global_vars.sim = ph.Simulation(**simput)
-        model = setup_model()
+
+        sim = self.simulation(**simput)
+        model = setup_model(sim)
         self.assertFalse(model.validated)
-        Simulator(ph.global_vars.sim).run().reset()
+        Simulator(sim).run().reset()
 
         dirs = []
+        local_out = sim.diag_options["options"]["dir"]
         for path_object in Path(local_out).iterdir():
             if path_object.is_dir():
                 try:

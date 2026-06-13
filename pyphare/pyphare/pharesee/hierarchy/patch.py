@@ -6,23 +6,23 @@ class Patch:
     A patch represents a hyper-rectangular region of space
     """
 
-    def __init__(self, patch_datas, patch_id="", layout=None, attrs=None):
+    def __init__(self, patch_datas, patch_id="", box=None, attrs=None):
         """
         :param patch_datas: a list of PatchData objects
         these are assumed to "belong" to the Patch so to
         share the same origin, mesh size and box.
         """
-        if layout is not None:
-            self.layout = layout
-            self.box = layout.box
-            self.origin = layout.origin
-            self.dl = layout.dl
-            self.patch_datas = patch_datas
-            self.id = patch_id
+
+        self.patch_datas = patch_datas
+        self.id = patch_id
+        self.box = box
+        self.origin = None
+        self.dl = None
+        self.layout = None
 
         if len(patch_datas):
             pdata0 = list(patch_datas.values())[0]  # 0 represents all others
-            self.layout = pdata0.layout
+            self.layout = pdata0.layout  # deprecated!
             self.box = pdata0.layout.box
             self.origin = pdata0.layout.origin
             self.dl = pdata0.layout.dl
@@ -38,7 +38,9 @@ class Patch:
         return self.__str__()
 
     def __getitem__(self, key):
-        return self.patch_datas[key]
+        if key in self.patch_datas:
+            return self.patch_datas[key]
+        raise KeyError(f"No patchdata for key: {key} in {self.patch_datas}")
 
     def copy(self):
         """does not copy patchdatas.datasets (see class PatchData)"""

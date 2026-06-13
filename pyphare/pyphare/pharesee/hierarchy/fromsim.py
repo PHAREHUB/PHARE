@@ -4,10 +4,22 @@ from .patch import Patch
 from .patchlevel import PatchLevel
 from .hierarchy import PatchHierarchy
 from ..particles import Particles
-from ...core.gridlayout import GridLayout
+from ...core import gridlayout  #  import GridLayout, HybridGridLayoutFor
 from ...core.box import Box
 
 import numpy as np
+
+
+def make_layout_for(simulator, patch, qty, dl):
+    model = "mhd" if str(qty).startswith("mhd") else "hybrid"
+    box = Box(patch.lower, patch.upper)
+    origin = patch.origin
+    if model == "hybrid":
+        # check for particle quantity?
+        return gridlayout.HybridGridLayoutFor(box, origin, dl, simulator.interp_order())
+    return gridlayout.MHDGridLayoutFor(
+        box, origin, dl, simulator.simulation.reconstruction
+    )
 
 
 def hierarchy_from_sim(simulator, qty, pop=""):
@@ -29,15 +41,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             wpatches = getters[qty]()
             for patch in wpatches:
                 patch_datas = {}
-                lower = patch.lower
-                upper = patch.upper
-                origin = patch.origin
-                layout = GridLayout(
-                    Box(lower, upper),
-                    origin,
-                    lvl_cell_width,
-                    interp_order=simulator.interporder(),
-                )
+                layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
                 pdata = FieldData(layout, field_qties[qty], patch.data)
                 patch_datas[qty] = pdata
                 patches[ilvl].append(Patch(patch_datas))
@@ -60,15 +64,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for patch in dom_dw_patches:
                 patch_datas = {}
 
-                lower = patch.lower
-                upper = patch.upper
-                origin = patch.origin
-                layout = GridLayout(
-                    Box(lower, upper),
-                    origin,
-                    lvl_cell_width,
-                    interp_order=simulator.interp_order(),
-                )
+                layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
                 v = np.asarray(patch.data.v).reshape(int(len(patch.data.v) / 3), 3)
 
                 domain_particles = Particles(

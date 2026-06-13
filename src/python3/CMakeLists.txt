@@ -7,14 +7,39 @@ if(NOT PHARE_PERMUTATIONS)
 endif()
 
 file(STRINGS ${PHARE_PERMUTATIONS} THIS_FILE)
+
 while(THIS_FILE)
     list(POP_FRONT THIS_FILE LINE)
+
+    # Skip empty lines and comments
+    string(STRIP "${LINE}" LINE)
+    if("${LINE}" STREQUAL "" OR "${LINE}" MATCHES "^#")
+        continue()
+    endif()
+
+    string(REPLACE "," ";" LINE_LIST ${LINE})
+    list(LENGTH LINE_LIST LINE_LENGTH)
+
+    SET(_OFFSET 3)
+    SET(_PREFIXES "TimeIntegratorType;ReconstructionType;SlopeLimiterType;RiemannSolverType")
+    foreach(PREFIX IN LISTS _PREFIXES)
+      if(LINE_LENGTH GREATER ${_OFFSET})
+          list(TRANSFORM LINE_LIST PREPEND "${PREFIX}::" AT ${_OFFSET})
+      endif()
+      MATH(EXPR _OFFSET "${_OFFSET}+1")
+    endforeach()
+
     string(REPLACE "," "_" OUT ${LINE})
     SET(MOD_STR "cpp_${OUT}")
+    list(JOIN LINE_LIST "," LINE) # semicolon separated list to csv
+
     pybind11_add_module(${MOD_STR} cpp_simulator.cpp)
-    target_link_libraries(${MOD_STR} PUBLIC phare_simulator )
+    target_link_libraries(${MOD_STR} PUBLIC phare_simulator)
     target_compile_options(${MOD_STR} PRIVATE
-        ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE} -DPHARE_SIM_ID=${OUT} -DPHARE_SIM_STR=${LINE}
+        ${PHARE_WERROR_FLAGS}
+        -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE}
+        -DPHARE_SIM_ID=${OUT}
+        "-DPHARE_SIM_STR=${LINE}"
     )
     set_target_properties(${MOD_STR}
         PROPERTIES
@@ -23,9 +48,7 @@ while(THIS_FILE)
     # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
     set_property(TARGET ${MOD_STR} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
     set_property(TARGET ${MOD_STR} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
-
 endwhile()
-
 
 # cpp_etc == everything not simulator related!
 pybind11_add_module(cpp_etc cpp_etc.cpp)
