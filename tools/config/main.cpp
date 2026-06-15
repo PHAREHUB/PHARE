@@ -9,11 +9,23 @@
 
 #if __has_include("hdf5.h")
 #include "hdf5.h"
+
+#include "H5pubconf.h" // may define H5_HAVE_SUBFILING_VFD
+
 constexpr static std::string_view hdf5_version = H5_VERSION;
+
+#if defined(H5_HAVE_SUBFILING_VFD)
+constexpr static std::string_view hdf5_subfiling = "true";
 #else
-constexpr static std::string_view hdf5_version     = "HDF5 was not found!";
-constexpr static std::string_view H5_HAVE_PARALLEL = false;
+constexpr static std::string_view hdf5_subfiling = "false";
+#endif // defined(H5_HAVE_SUBFILING_VFD)
+
+#else
+constexpr static std::string_view hdf5_version = "HDF5 was not found!";
+constexpr static bool H5_HAVE_PARALLEL         = false;
 #endif
+
+
 constexpr std::string_view hdf5_is_parallel()
 {
     if constexpr (H5_HAVE_PARALLEL)
@@ -40,10 +52,16 @@ void write_hdf5_is_parallel()
     write_string_to_file(std::string{hdf5_is_parallel()}, "PHARE_HDF5_is_parallel.txt");
 }
 
+void write_hdf5_has_subfiling()
+{
+    write_string_to_file(std::string{hdf5_subfiling}, "PHARE_HDF5_has_subfiling.txt");
+}
+
 void write_hdf5_info()
 {
     write_hdf5_version();
     write_hdf5_is_parallel();
+    write_hdf5_has_subfiling();
 }
 
 void config_mpi()
@@ -72,7 +90,7 @@ int main(int argc, char** argv)
         config_mpi();
         write_hdf5_info();
     }
-    catch (const std::exception& e)
+    catch (std::exception const& e)
     {
         std::cerr << e.what() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);
