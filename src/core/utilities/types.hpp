@@ -580,6 +580,13 @@ struct SetMax
     D& d;
 };
 
+template<typename D>
+struct PlusEqualsProduct
+{
+    void operator()(auto& d0, auto& o) { d += d0 * o; }
+    D& d;
+};
+
 } // namespace PHARE::core
 
 
