@@ -1,9 +1,8 @@
 cmake_minimum_required (VERSION 3.20.1)
 
-project(test-box)
+project(test-field)
 
-
-function(_box_test test_name)
+function(_field_test test_name)
 
   add_executable(${test_name} ${test_name}.cpp)
 
@@ -17,7 +16,7 @@ function(_box_test test_name)
 
   add_no_mpi_phare_test(${test_name} ${CMAKE_CURRENT_BINARY_DIR})
 
-endfunction(_box_test)
+endfunction(_field_test)
 
-_box_test(test_box)
-_box_test(test_box_span)
+_field_test(test_field_box_span)
+
