@@ -1,4 +1,6 @@
-#include <type_traits>
+
+#include "phare_core.hpp"
+
 
 #include "core/def/phare_mpi.hpp"
 
@@ -14,10 +16,11 @@
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayout_impl.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
 
+#include <type_traits>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
@@ -46,7 +49,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
-    using GridYee    = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee    = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     using GridND     = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using FieldDataT = FieldData<GridYee, GridND>;
 
@@ -64,7 +67,7 @@ struct aFieldLinearTimeInterpolate : public ::testing::Test
                              SAMRAI::tbox::SAMRAI_MPI::getSAMRAIWorld().getRank()};
 
     std::string const fieldName{"Bx"};
-    SAMRAI::hier::IntVector ghost{dimension, GridYee::nbrGhosts()};
+    SAMRAI::hier::IntVector ghost{dimension, GridYee::options.field_ghost_width};
     static auto constexpr dl = ConstArray<double, dim>(0.01);
 
     static constexpr auto nbrCells = ConstArray<std::uint32_t, dim>(upper - lower + 1);
@@ -160,14 +163,14 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveOldSrcForAlphaZero)
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
 
     auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
                                                                           layout);
 
     auto ghostBox_{this->domain};
     ghostBox_.grow(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
-                                           static_cast<int>(GridYee::nbrGhosts())});
+                                           static_cast<int>(GridYee::options.field_ghost_width)});
     auto ghostBox
         = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostBox_, this->qty, layout);
 
@@ -243,14 +246,14 @@ TYPED_TEST(aFieldLinearTimeInterpolate, giveNewSrcForAlphaOne)
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
 
     auto box = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(this->domain, this->qty,
                                                                           layout);
 
     auto ghostBox_{this->domain};
     ghostBox_.grow(SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim},
-                                           static_cast<int>(GridYee::nbrGhosts())});
+                                           static_cast<int>(GridYee::options.field_ghost_width)});
     auto ghostBox
         = FieldGeometry<GridYee, HybridQuantity::Scalar>::toFieldBox(ghostBox_, this->qty, layout);
 

@@ -12,7 +12,7 @@
 
 
 #include "core/def.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
 #include "particle_initializers/particle_initializer_factory.hpp"
@@ -27,11 +27,11 @@ namespace core
     {
     public:
         using value_type                = IonPopulation;
-        using field_type                = typename IonPopulation::field_type;
-        using vecfield_type             = typename IonPopulation::vecfield_type;
-        using Float                     = typename field_type::type;
-        using tensorfield_type          = typename IonPopulation::tensorfield_type;
-        using particle_array_type       = typename IonPopulation::particle_array_type;
+        using field_type                = IonPopulation::field_type;
+        using vecfield_type             = IonPopulation::vecfield_type;
+        using Float                     = field_type::type;
+        using tensorfield_type          = IonPopulation::tensorfield_type;
+        using particle_array_type       = IonPopulation::particle_array_type;
         using gridlayout_type           = GridLayout;
         static constexpr auto dimension = GridLayout::dimension;
 

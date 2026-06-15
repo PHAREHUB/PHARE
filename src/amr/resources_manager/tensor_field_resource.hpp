@@ -1,6 +1,7 @@
 #ifndef PHARE_TENSOR_FIELD_RESOURCE_HPP
 #define PHARE_TENSOR_FIELD_RESOURCE_HPP
 
+
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_variable.hpp"
 
@@ -8,21 +9,6 @@ namespace PHARE
 {
 namespace amr
 {
-    // This doesn't really feel like it should be there, maybe find a better place for it?
-    template<typename ScalarQuantityType>
-    struct extract_quantity_type;
-
-    template<>
-    struct extract_quantity_type<core::HybridQuantity::Scalar>
-    {
-        using type = core::HybridQuantity;
-    };
-
-    template<>
-    struct extract_quantity_type<core::MHDQuantity::Scalar>
-    {
-        using type = core::MHDQuantity;
-    };
 
     /** @brief tells SAMRAI which kind of variable, patchdata are used for a Field Resource
      * also says the type of the actual data buffer

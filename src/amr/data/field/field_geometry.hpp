@@ -59,9 +59,9 @@ namespace amr
     class FieldGeometry : public FieldGeometryBase<GridLayoutT::dimension>
     {
     public:
-        using Super                               = FieldGeometryBase<GridLayoutT::dimension>;
-        static constexpr std::size_t dimension    = GridLayoutT::dimension;
-        static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+        using Super                            = FieldGeometryBase<GridLayoutT::dimension>;
+        static constexpr std::size_t dimension = GridLayoutT::dimension;
+
 
         /** \brief Construct a FieldGeometry on a region, for a specific quantity,
          * with a temporary gridlayout
@@ -69,10 +69,11 @@ namespace amr
         FieldGeometry(SAMRAI::hier::Box const& box, GridLayoutT const& layout,
                       PhysicalQuantity const qty)
             : Super(box,
-                    toFieldBox(SAMRAI::hier::Box::grow(
-                                   box, SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
-                                                                GridLayoutT::nbrGhosts()}),
-                               qty, layout),
+                    toFieldBox(
+                        SAMRAI::hier::Box::grow(
+                            box, SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dimension},
+                                                         GridLayoutT::options.field_ghost_width}),
+                        qty, layout),
                     toFieldBox(box, qty, layout), GridLayoutT::centering(qty))
             , layout_{layout}
             , quantity_{qty}

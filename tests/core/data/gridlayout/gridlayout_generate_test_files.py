@@ -4,7 +4,7 @@ import allocSizes
 import gridIndexing
 import cellCenteredCoordinates
 import fieldNodeCoordinates
-import test_linear_combinaisons_yee
+import test_linear_combinations_yee
 import test_deriv
 import test_laplacian
 
@@ -16,7 +16,7 @@ def main():
     fieldNodeCoordinates.main("./")
     test_deriv.main("./")
     test_laplacian.main("./")
-    test_linear_combinaisons_yee.main("./")
+    test_linear_combinations_yee.main("./")
 
 
 if __name__ == "__main__":

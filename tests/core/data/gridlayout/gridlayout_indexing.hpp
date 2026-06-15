@@ -12,20 +12,20 @@
 
 using namespace PHARE::core;
 
-template<typename GridLayoutImpl>
+template<auto options>
 struct GridLayoutIndexingParam
 {
-    GridLayoutTestParam<GridLayoutImpl> base;
+    GridLayoutTestParam<options> base;
 
-    std::array<std::uint32_t, GridLayoutImpl::dimension> actualPSI;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> actualPEI;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> actualGSI;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> actualGEI;
+    std::array<std::uint32_t, options.dimension> actualPSI;
+    std::array<std::uint32_t, options.dimension> actualPEI;
+    std::array<std::uint32_t, options.dimension> actualGSI;
+    std::array<std::uint32_t, options.dimension> actualGEI;
 
-    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedPSI;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedPEI;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedGSI;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> expectedGEI;
+    std::array<std::uint32_t, options.dimension> expectedPSI;
+    std::array<std::uint32_t, options.dimension> expectedPEI;
+    std::array<std::uint32_t, options.dimension> expectedGSI;
+    std::array<std::uint32_t, options.dimension> expectedGEI;
 
 
     void init()
@@ -36,18 +36,18 @@ struct GridLayoutIndexingParam
 
         field = base.makeMyField_(layout->allocSize(currentQuantity));
 
-        std::array<Direction, GridLayoutImpl::dimension> directions;
+        std::array<Direction, options.dimension> directions;
         directions[0] = Direction::X;
-        if (GridLayoutImpl::dimension > 1)
+        if (options.dimension > 1)
         {
             directions[1] = Direction::Y;
         }
-        if (GridLayoutImpl::dimension > 2)
+        if (options.dimension > 2)
         {
             directions[2] = Direction::Z;
         }
 
-        for (std::uint32_t iDim = 0; iDim < GridLayoutImpl::dimension; ++iDim)
+        for (std::uint32_t iDim = 0; iDim < options.dimension; ++iDim)
         {
             actualPSI[iDim] = layout->physicalStartIndex(*field, directions[iDim]);
             actualPEI[iDim] = layout->physicalEndIndex(*field, directions[iDim]);
@@ -58,17 +58,17 @@ struct GridLayoutIndexingParam
 };
 
 
-template<typename GridLayoutImpl>
+template<auto options>
 auto createIndexingParam()
 {
-    std::vector<GridLayoutIndexingParam<GridLayoutImpl>> params;
+    std::vector<GridLayoutIndexingParam<options>> params;
 
     std::string path{"./"};
     std::string baseName{"gridIndexing"};
 
 
-    std::string fullName{path + baseName + "_" + std::to_string(GridLayoutImpl::dimension) + "d_O"
-                         + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
+    std::string fullName{path + baseName + "_" + std::to_string(options.dimension) + "d_O"
+                         + std::to_string(options.interp_order) + ".txt"};
     std::ifstream inputFile{fullName};
 
 
@@ -84,15 +84,15 @@ auto createIndexingParam()
     std::uint32_t iQuantity;
     while (inputFile >> iQuantity)
     {
-        std::array<std::uint32_t, GridLayoutImpl::dimension> numberCells;
-        std::array<double, GridLayoutImpl::dimension> dl;
+        std::array<std::uint32_t, options.dimension> numberCells;
+        std::array<double, options.dimension> dl;
 
         writeToArray(inputFile, numberCells);
         writeToArray(inputFile, dl);
 
         params.emplace_back();
-        params.back().base = createParam<GridLayoutImpl>(
-            dl, numberCells, Point<double, GridLayoutImpl::dimension>{});
+        params.back().base
+            = createParam<options>(dl, numberCells, Point<double, options.dimension>{});
 
         writeToArray(inputFile, params.back().expectedPSI);
         writeToArray(inputFile, params.back().expectedPEI);

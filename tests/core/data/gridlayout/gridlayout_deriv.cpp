@@ -1,8 +1,10 @@
 
 
-#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "gridlayout_deriv.hpp"
+#include "gridlayout_params.hpp"
+
+#include "gmock/gmock.h"
 
 #include <math.h>
 #include <string>
@@ -25,7 +27,8 @@ std::vector<double> read(std::string const filename)
 // -----------------------------------------------------------------------------
 
 using layoutImpls1D
-    = ::testing::Types<GridLayoutImplYee<1, 1>, GridLayoutImplYee<1, 2>, GridLayoutImplYee<1, 3>>;
+    = ::testing::Types<TestParam<PHARE::SimOpts{1, 1}>, TestParam<PHARE::SimOpts{1, 2}>,
+                       TestParam<PHARE::SimOpts{1, 3}>>;
 
 TYPED_TEST_SUITE(a1DDerivative, layoutImpls1D);
 
@@ -33,8 +36,8 @@ TYPED_TEST_SUITE(a1DDerivative, layoutImpls1D);
 
 TYPED_TEST(a1DDerivative, DXBY1D)
 {
-    auto const filename = std::string("dxBy_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
+    auto const filename    = std::string("dxBy_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
     auto const expDerValue = read(filename);
 
 
@@ -55,8 +58,8 @@ TYPED_TEST(a1DDerivative, DXBY1D)
 
 TYPED_TEST(a1DDerivative, DXEZ1D)
 {
-    auto const filename = std::string("dxEz_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
+    auto const filename    = std::string("dxEz_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_1d.txt");
     auto const expDerValue = read(filename);
 
     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
@@ -79,7 +82,8 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
 // // -----------------------------------------------------------------------------
 
 using layoutImpls2D
-    = ::testing::Types<GridLayoutImplYee<2, 1>, GridLayoutImplYee<2, 2>, GridLayoutImplYee<2, 3>>;
+    = ::testing::Types<TestParam<PHARE::SimOpts{2, 1}>, TestParam<PHARE::SimOpts{2, 2}>,
+                       TestParam<PHARE::SimOpts{2, 3}>>;
 
 TYPED_TEST_SUITE(a2DDerivative, layoutImpls2D);
 
@@ -87,8 +91,8 @@ TYPED_TEST_SUITE(a2DDerivative, layoutImpls2D);
 
 TYPED_TEST(a2DDerivative, DXBY2D)
 {
-    auto const filename = std::string("dxBy_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const filename    = std::string("dxBy_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto const expDerValue = read(filename);
 
 
@@ -112,8 +116,8 @@ TYPED_TEST(a2DDerivative, DXBY2D)
 
 TYPED_TEST(a2DDerivative, DYBY2D)
 {
-    auto const filename = std::string("dyBy_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const filename    = std::string("dyBy_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto const expDerValue = read(filename);
 
 
@@ -136,8 +140,8 @@ TYPED_TEST(a2DDerivative, DYBY2D)
 
 TYPED_TEST(a2DDerivative, DXEZ2D)
 {
-    auto const filename = std::string("dxEz_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const filename    = std::string("dxEz_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto const expDerValue = read(filename);
 
 
@@ -160,8 +164,8 @@ TYPED_TEST(a2DDerivative, DXEZ2D)
 
 TYPED_TEST(a2DDerivative, DYEZ2D)
 {
-    auto const filename = std::string("dyEz_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
+    auto const filename    = std::string("dyEz_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_2d.txt");
     auto const expDerValue = read(filename);
 
 
@@ -188,7 +192,8 @@ TYPED_TEST(a2DDerivative, DYEZ2D)
 // // -----------------------------------------------------------------------------
 
 using layoutImpls3D
-    = ::testing::Types<GridLayoutImplYee<3, 1>, GridLayoutImplYee<3, 2>, GridLayoutImplYee<3, 3>>;
+    = ::testing::Types<TestParam<PHARE::SimOpts{3, 1}>, TestParam<PHARE::SimOpts{3, 2}>,
+                       TestParam<PHARE::SimOpts{3, 3}>>;
 
 TYPED_TEST_SUITE(a3DDerivative, layoutImpls3D);
 
@@ -196,8 +201,8 @@ TYPED_TEST_SUITE(a3DDerivative, layoutImpls3D);
 
 TYPED_TEST(a3DDerivative, DXBY3D)
 {
-    auto const filename = std::string("dxBy_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const filename    = std::string("dxBy_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto const expDerValue = read(filename);
 
 
@@ -222,8 +227,8 @@ TYPED_TEST(a3DDerivative, DXBY3D)
 
 TYPED_TEST(a3DDerivative, DYBY3D)
 {
-    auto const filename = std::string("dyBy_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const filename    = std::string("dyBy_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto const expDerValue = read(filename);
 
     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
@@ -247,8 +252,8 @@ TYPED_TEST(a3DDerivative, DYBY3D)
 
 TYPED_TEST(a3DDerivative, DZBY3D)
 {
-    auto const filename = std::string("dzBy_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const filename    = std::string("dzBy_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto const expDerValue = read(filename);
 
     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->By))
@@ -272,8 +277,8 @@ TYPED_TEST(a3DDerivative, DZBY3D)
 
 TYPED_TEST(a3DDerivative, DXEZ3D)
 {
-    auto const filename = std::string("dxEz_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const filename    = std::string("dxEz_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto const expDerValue = read(filename);
 
     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
@@ -297,8 +302,8 @@ TYPED_TEST(a3DDerivative, DXEZ3D)
 
 TYPED_TEST(a3DDerivative, DYEZ3D)
 {
-    auto const filename = std::string("dyEz_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const filename    = std::string("dyEz_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto const expDerValue = read(filename);
 
     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))
@@ -322,8 +327,8 @@ TYPED_TEST(a3DDerivative, DYEZ3D)
 
 TYPED_TEST(a3DDerivative, DZEZ3D)
 {
-    auto const filename = std::string("dzEz_interpOrder_")
-                          + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
+    auto const filename    = std::string("dzEz_interpOrder_")
+                             + std::to_string(TestFixture::interp_order) + std::string("_3d.txt");
     auto const expDerValue = read(filename);
 
     for (auto const [amr_idx, lcl_idx] : this->layout.ghost_amr_lcl_idx(this->Ez))

@@ -20,7 +20,7 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, PackStreamLikeANodeData)
     int lower = 6;
     int upper = 9;
 
-    if (destinationLayout.interp_order >= 2)
+    if (destinationLayout.options.interp_order >= 2)
     {
         upper = 15;
     }

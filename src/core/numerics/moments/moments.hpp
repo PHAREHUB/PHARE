@@ -32,10 +32,8 @@ namespace core
     };
 
 
-    template<typename Ions, typename GridLayout, typename DepositTag>
-    void depositParticles(Ions& ions, GridLayout& layout,
-                          Interpolator<GridLayout::dimension, GridLayout::interp_order> interpolate,
-                          DepositTag)
+    template<typename DepositTag>
+    void depositParticles(auto& ions, auto& layout, auto interpolate, DepositTag)
     {
         for (auto& pop : ions)
         {

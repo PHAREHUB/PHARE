@@ -1,3 +1,6 @@
+
+#include "phare_core.hpp"
+
 #include <type_traits>
 
 
@@ -22,7 +25,7 @@ using namespace PHARE::initializer;
 class AMaxwellianParticleInitializer1D : public ::testing::Test
 {
 private:
-    using GridLayoutT       = GridLayout<GridLayoutImplYee<1, 1>>;
+    using GridLayoutT       = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
     using ParticleArrayT    = ParticleArray<1>;
     using InitFunctionArray = std::array<InitFunction<1>, 3>;
 

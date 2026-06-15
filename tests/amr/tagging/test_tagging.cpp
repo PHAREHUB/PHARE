@@ -1,12 +1,11 @@
 
 
+#include "phare_solver.hpp"
+#include "amr/tagging/tagger_factory.hpp"
 
-#include "simulator/simulator.hpp"
-
-#include "tests/core/data/gridlayout/gridlayout_test.hpp"
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <cmath>
@@ -166,14 +165,15 @@ struct TestTagger : public ::testing::Test
     auto static constexpr opts           = PHARE::SimOpts{dim, interp_order, refinedPartNbr};
 
     using phare_types = PHARE::solver::PHARE_Types<opts>;
-    using Electromag  = phare_types::Electromag_t;
-    using Ions        = phare_types::Ions_t;
-    using Electrons   = phare_types::Electrons_t;
-    using GridLayoutT = GridLayout<GridLayoutImplYee<dim, interp_order>>;
+    using Electromag  = phare_types::Hybrid::Electromag_t;
+    using Ions        = phare_types::Hybrid::Ions_t;
+    using Electrons   = phare_types::Hybrid::Electrons_t;
+    using GridLayoutT
+        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
 
     struct SinglePatchHybridModel
     {
-        using gridlayout_type           = GridLayout<GridLayoutImplYee<dim, interp_order>>;
+        using gridlayout_type           = GridLayoutT;
         static auto constexpr dimension = dim;
         HybridState<Electromag, Ions, Electrons> state;
     };
@@ -190,7 +190,7 @@ struct TestTagger : public ::testing::Test
         , B{"EM_B", layout, HybridQuantity::Vector::B}
         , E{"EM_E", layout, HybridQuantity::Vector::E}
         , model{createDict<dim>()}
-        , tags(20 + layout.nbrGhosts(PHARE::core::QtyCentering::dual))
+        , tags(20 + layout.options.field_ghost_width)
     {
         B.set_on(model.state.electromag.B);
         E.set_on(model.state.electromag.E);

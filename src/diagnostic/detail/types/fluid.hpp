@@ -36,8 +36,7 @@ public:
     using GridLayout = H5Writer::GridLayout;
     using FloatType  = H5Writer::FloatType;
 
-    static constexpr auto dimension    = GridLayout::dimension;
-    static constexpr auto interp_order = GridLayout::interp_order;
+    static constexpr auto dimension = GridLayout::dimension;
 
 
     FluidDiagnosticWriter(H5Writer& h5Writer)
@@ -76,6 +75,7 @@ private:
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
+    static constexpr auto interp_order = GridLayout::options.interp_order;
     core::MomentumTensorInterpolator<dimension, interp_order> interpolator;
 
     auto& h5Writer    = this->h5Writer_;

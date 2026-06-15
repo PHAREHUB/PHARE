@@ -9,7 +9,7 @@
 #include "core/def.hpp"
 #include "particle_pack.hpp"
 #include "initializer/data_provider.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 namespace PHARE
 {

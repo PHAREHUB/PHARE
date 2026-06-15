@@ -4,7 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "amr/samrai.hpp"
 
@@ -112,16 +112,16 @@ namespace amr
      *
      */
 
-    template<typename GridLayoutT, typename Grid_t>
+    // TODO drop interp_order and swich to arbitrary type support like on tiling branch for
+    template<typename GridLayoutT, typename Grid_t, std::size_t interp_order_ = 0>
     class ResourcesManager
     {
-        using This = ResourcesManager<GridLayoutT, Grid_t>;
-        using QuantityType =
-            typename extract_quantity_type<typename Grid_t::physical_quantity_type>::type;
+        using This         = ResourcesManager<GridLayoutT, Grid_t, interp_order_>;
+        using QuantityType = decltype(GridLayoutT::options.field_options)::Quantity;
 
     public:
         static constexpr std::size_t dimension    = GridLayoutT::dimension;
-        static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+        static constexpr std::size_t interp_order = interp_order_;
 
         using UserField_t = UserFieldType<Grid_t, GridLayoutT>;
 

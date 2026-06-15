@@ -35,7 +35,8 @@ public:
         return std::make_pair(uL, uR);
     }
 
-    template<auto direction, auto ProjectionX, auto ProjectionY, auto ProjectionZ, typename VecField>
+    template<auto direction, auto ProjectionX, auto ProjectionY, auto ProjectionZ,
+             typename VecField>
     static auto center_reconstruct(VecField const& U, MeshIndex<VecField::dimension> index)
     {
         auto const& Ux = U(Component::X);
@@ -56,11 +57,11 @@ public:
     static constexpr auto projection()
     {
         if constexpr (direction == Direction::X)
-            return GridLayout::faceXToCellCenter();
+            return GridLayout::implT::faceXToCellCenter();
         else if constexpr (direction == Direction::Y)
-            return GridLayout::faceYToCellCenter();
+            return GridLayout::implT::faceYToCellCenter();
         else if constexpr (direction == Direction::Z)
-            return GridLayout::faceZToCellCenter();
+            return GridLayout::implT::faceZToCellCenter();
     }
 
     // The normal direction for B is already face centered, so we only reconstruct the transverse
@@ -106,15 +107,15 @@ public:
         auto const& Jz = J(Component::Z);
 
         auto const& [laplJxL, laplJxR]
-            = reconstructed_laplacian_component_<direction, GridLayout::edgeXToCellCenter>(
+            = reconstructed_laplacian_component_<direction, GridLayout::implT::edgeXToCellCenter>(
                 inverseMeshSize, Jx, index);
 
         auto const& [laplJyL, laplJyR]
-            = reconstructed_laplacian_component_<direction, GridLayout::edgeYToCellCenter>(
+            = reconstructed_laplacian_component_<direction, GridLayout::implT::edgeYToCellCenter>(
                 inverseMeshSize, Jy, index);
 
         auto const& [laplJzL, laplJzR]
-            = reconstructed_laplacian_component_<direction, GridLayout::edgeZToCellCenter>(
+            = reconstructed_laplacian_component_<direction, GridLayout::implT::edgeZToCellCenter>(
                 inverseMeshSize, Jz, index);
 
         return std::make_tuple(PerIndexVector{laplJxL, laplJyL, laplJzL},

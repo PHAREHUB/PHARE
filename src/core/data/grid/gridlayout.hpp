@@ -12,7 +12,6 @@
 #include "gridlayoutdefs.hpp"
 
 #include <array>
-#include <cmath>
 #include <tuple>
 #include <cstddef>
 #include <optional>
@@ -23,6 +22,10 @@ namespace PHARE
 {
 namespace core
 {
+    template<auto options>
+    concept HasInterpOrder = requires { options.interp_order; };
+
+
     template<typename T, typename Attempt = void>
     struct has_physicalQuantity : std::false_type
     {
@@ -36,16 +39,20 @@ namespace core
     template<typename T>
     constexpr bool has_physicalQuantity_v = has_physicalQuantity<T>::value;
 
+
     NO_DISCARD constexpr int centering2int(QtyCentering c)
     {
         return static_cast<int>(c);
     }
+
 
     template<std::size_t interpOrder>
     NO_DISCARD std::uint32_t constexpr ghostWidthForParticles()
     {
         return (interpOrder % 2 == 0 ? interpOrder / 2 + 1 : (interpOrder + 1) / 2);
     }
+
+
 
     template<typename T, std::size_t s>
     NO_DISCARD auto boxFromNbrCells(std::array<T, s> nbrCells)
@@ -70,8 +77,8 @@ namespace core
      * the physical domain indexes VS the ghost indexes for a grid.
      *
      * The specific knowledge of which quantity is where is encapsulated in the private
-     * GridLayout implementation GridLayoutImpl. For instance, the Yee lattice is
-     * the GridLayoutImplYee of such implementations.
+     * GridLayout implementation implT. For instance, the Yee lattice is
+     * the implTYee of such implementations.
      *
      * GridLayout in itself gathers many methods to manipulate discretized quantities.
      * All these methods only depend on the concept of primal and dual nodes.
@@ -80,26 +87,31 @@ namespace core
      * be (primal,dual), meaning that it will be found at cell corners in the X direction
      * , but offset by dy/2 in the Y direction.
      *
-     * GridLayout is templated by a specific implementation, such as GridLayoutImplYee.
+     * GridLayout is templated by a specific implementation, such as implTYee.
      * This implementation brings the dimensionality and the interpolation order compile-time
      * constants to the GridLayout.
      *
      */
-    template<typename GridLayoutImpl>
+    template<auto options_>
     class GridLayout
     {
+        using Options      = decltype(options_);
+        using FieldOptions = Options::FieldOptions;
+        using Scalar       = FieldOptions::Scalar;
+        using Vector       = FieldOptions::Vector;
+        using Tensor       = FieldOptions::Tensor;
+        using GridData     = Options::GridLayoutImpl::GridData;
+
     protected:
         GridLayout() = default;
 
     public:
-        static constexpr std::size_t dimension    = GridLayoutImpl::dimension;
-        static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
-        using This                                = GridLayout<GridLayoutImpl>;
-        using implT                               = GridLayoutImpl;
-        using AMRBox_t                            = Box<int, dimension>;
-        using Quantity                            = GridLayoutImpl::quantity_type;
-        using ScalarQuantity                      = Quantity::Scalar;
+        auto static constexpr options          = options_;
+        static constexpr std::size_t dimension = options.dimension;
 
+        using This     = GridLayout<options>;
+        using implT    = Options::GridLayoutImpl;
+        using AMRBox_t = Box<int, dimension>;
 
         /**
          * @brief Constructor of a GridLayout
@@ -126,14 +138,18 @@ namespace core
             inverseMeshSize_ = generate([](auto const e) { return 1. / e; }, meshSize_);
         }
 
+
         GridLayout(GridLayout const& that) = default;
         GridLayout(GridLayout&& source)    = default;
+
 
         /**
          * @brief origin return the lower point of the grid described by the GridLayout
          * in physical coordinates
          */
         NO_DISCARD Point<double, dimension> origin() const noexcept { return origin_; }
+
+
 
         /**
          * @brief returns the mesh size in the 'dim' dimensions
@@ -143,15 +159,21 @@ namespace core
             return meshSize_;
         }
 
+
+
         NO_DISCARD double inverseMeshSize(Direction direction) const noexcept
         {
             return inverseMeshSize_[static_cast<std::uint32_t>(direction)];
         }
 
+
+
         NO_DISCARD std::array<double, dimension> inverseMeshSize() const noexcept
         {
             return inverseMeshSize_;
         }
+
+
 
         /**
          * @brief nbrCells returns the number of cells in the physical domain
@@ -159,13 +181,10 @@ namespace core
          */
         NO_DISCARD auto& nbrCells() const { return nbrPhysicalCells_; }
 
+
         NO_DISCARD auto const& AMRBox() const { return AMRBox_; }
 
 
-        NO_DISCARD static std::size_t constexpr nbrParticleGhosts()
-        {
-            return ghostWidthForParticles<interp_order>();
-        }
 
         template<typename Centering, typename Direction>
         NO_DISCARD auto ghostStartToEnd(Centering const& centering, Direction const direction) const
@@ -188,13 +207,12 @@ namespace core
                                    physicalEndIndex(centering, direction));
         }
 
+
         template<typename Field, std::enable_if_t<has_physicalQuantity_v<Field>, bool> = 0>
         NO_DISCARD auto physicalStartToEnd(Field const& field, Direction direction) const
         {
             return physicalStartToEnd(field.physicalQuantity(), direction);
         }
-
-
 
 
         template<typename T>
@@ -219,6 +237,8 @@ namespace core
             else
                 return coordsFn(*this, indexes...);
         }
+
+
 
         template<bool WithField = false, typename Indices, typename Centering, typename CoordsFn>
         NO_DISCARD auto indexesToCoordVectors(Indices const& indices, Centering const& centering,
@@ -246,6 +266,7 @@ namespace core
             return xyz;
         }
 
+
         NO_DISCARD double cellVolume() const
         {
             return std::accumulate(meshSize().begin(), meshSize().end(), 1.0,
@@ -264,15 +285,19 @@ namespace core
             return physicalStartIndexTable_[icentering][iDir];
         }
 
-        NO_DISCARD std::uint32_t physicalStartIndex(ScalarQuantity const& quantity,
+
+
+        NO_DISCARD std::uint32_t physicalStartIndex(Scalar const& quantity,
                                                     Direction direction) const
         {
-            constexpr auto qtyCentering = GridLayoutImpl::_QtyCentering_;
+            constexpr auto qtyCentering = implT::qtyCentering_;
             auto const iQty             = static_cast<std::uint32_t>(quantity);
             auto const iDir             = static_cast<std::uint32_t>(direction);
             auto const iCentering       = static_cast<std::uint32_t>(qtyCentering[iQty][iDir]);
             return physicalStartIndexTable_[iCentering][iDir];
         }
+
+
 
         template<typename Field_t>
         NO_DISCARD std::uint32_t physicalStartIndex(Field_t const& field, Direction direction) const
@@ -280,11 +305,14 @@ namespace core
             return physicalStartIndex(field.physicalQuantity(), direction);
         }
 
+
         NO_DISCARD auto physicalStartIndex(QtyCentering centering) const
         {
             std::uint32_t icentering = static_cast<std::uint32_t>(centering);
             return physicalStartIndexTable_[icentering];
         }
+
+
 
         /**
          * @brief physicalEndIndex returns the index of the last node of a given
@@ -298,16 +326,19 @@ namespace core
             return physicalEndIndexTable_[icentering][iDir];
         }
 
-        NO_DISCARD std::uint32_t physicalEndIndex(ScalarQuantity const& quantity,
-                                                  Direction direction) const
+
+
+        NO_DISCARD std::uint32_t physicalEndIndex(Scalar const& quantity, Direction direction) const
         {
-            std::uint32_t iQty            = static_cast<std::uint32_t>(quantity);
-            std::uint32_t iDir            = static_cast<std::uint32_t>(direction);
-            constexpr auto& _QtyCentering = GridLayoutImpl::_QtyCentering_;
-            std::uint32_t iCentering      = static_cast<std::uint32_t>(_QtyCentering[iQty][iDir]);
+            std::uint32_t iQty           = static_cast<std::uint32_t>(quantity);
+            std::uint32_t iDir           = static_cast<std::uint32_t>(direction);
+            constexpr auto& qtyCentering = implT::qtyCentering_;
+            std::uint32_t iCentering     = static_cast<std::uint32_t>(qtyCentering[iQty][iDir]);
 
             return physicalEndIndexTable_[iCentering][iDir];
         }
+
+
 
         template<typename Field_t>
         NO_DISCARD std::uint32_t physicalEndIndex(Field_t const& field, Direction direction) const
@@ -315,30 +346,35 @@ namespace core
             return physicalEndIndex(field.physicalQuantity(), direction);
         }
 
+
         NO_DISCARD auto physicalEndIndex(QtyCentering centering) const
         {
             std::uint32_t icentering = static_cast<std::uint32_t>(centering);
             return physicalStartIndexTable_[icentering];
         }
 
+
+
         /**
          * @brief ghostStartIndex retuns the index of the first ghost node of a given centering
          * in a given direction. This is always zero by convention. This function exists only
          * for readibility reasons, not to have literal '0' in the code.
          */
-        NO_DISCARD std::uint32_t ghostStartIndex(QtyCentering /*centering*/,
-                                                 Direction /*direction*/) const
+        NO_DISCARD std::uint32_t ghostStartIndex([[maybe_unused]] QtyCentering centering,
+                                                 [[maybe_unused]] Direction direction) const
         {
             // ghostStartIndex is always the first node
             return 0;
         }
 
-        NO_DISCARD std::uint32_t ghostStartIndex(ScalarQuantity const& /*quantity*/,
-                                                 Direction /*direction*/) const
+
+        NO_DISCARD std::uint32_t ghostStartIndex([[maybe_unused]] Scalar const& quantity,
+                                                 [[maybe_unused]] Direction direction) const
         {
             // ghostStartIndex is always the first node
             return 0;
         }
+
 
         template<typename Field_t>
         NO_DISCARD std::uint32_t ghostStartIndex(Field_t const& /*field*/,
@@ -348,10 +384,13 @@ namespace core
             return 0;
         }
 
+
         NO_DISCARD auto ghostStartIndex(QtyCentering /*centering*/) const
         {
             return std::array<std::uint32_t, dimension>{};
         }
+
+
 
         /**
          * @brief ghostEndIndex returns the index of the last ghost node of a given centering
@@ -365,15 +404,18 @@ namespace core
             return ghostEndIndexTable_[iCentering][iDir];
         }
 
-        NO_DISCARD std::uint32_t ghostEndIndex(ScalarQuantity const& quantity,
-                                               Direction direction) const
+
+
+        NO_DISCARD std::uint32_t ghostEndIndex(Scalar const& quantity, Direction direction) const
         {
-            std::uint32_t iQty            = static_cast<std::uint32_t>(quantity);
-            std::uint32_t iDir            = static_cast<std::uint32_t>(direction);
-            constexpr auto& _QtyCentering = GridLayoutImpl::_QtyCentering_;
-            std::uint32_t iCentering      = static_cast<std::uint32_t>(_QtyCentering[iQty][iDir]);
+            std::uint32_t iQty           = static_cast<std::uint32_t>(quantity);
+            std::uint32_t iDir           = static_cast<std::uint32_t>(direction);
+            constexpr auto& qtyCentering = implT::qtyCentering_;
+            std::uint32_t iCentering     = static_cast<std::uint32_t>(qtyCentering[iQty][iDir]);
             return ghostEndIndexTable_[iCentering][iDir];
         }
+
+
 
         template<typename Field_t>
         NO_DISCARD std::uint32_t ghostEndIndex(Field_t const& field, Direction direction) const
@@ -381,11 +423,13 @@ namespace core
             return ghostEndIndex(field.physicalQuantity(), direction);
         }
 
+
         NO_DISCARD auto ghostEndIndex(QtyCentering centering) const
         {
             std::uint32_t iCentering = static_cast<std::uint32_t>(centering);
             return ghostEndIndexTable_[iCentering];
         }
+
 
         /**
          * @brief fieldNodeCoordinates returns the coordinate of a multidimensional index
@@ -398,7 +442,7 @@ namespace core
             constexpr std::uint32_t iDual = static_cast<std::uint32_t>(QtyCentering::dual);
 
             auto const iQuantity         = static_cast<std::uint32_t>(field.physicalQuantity());
-            constexpr auto& qtyCentering = GridLayoutImpl::_QtyCentering_;
+            constexpr auto& qtyCentering = implT::qtyCentering_;
 
             Point<double, dimension> position;
 
@@ -467,31 +511,15 @@ namespace core
             return cellCenteredCoordinates(Point<int, dimension>{index...});
         }
 
-        /**
-         * @brief the number of ghost nodes on each side of the mesh for a given centering
-         */
-        NO_DISCARD std::uint32_t static constexpr nbrGhosts(
-            QtyCentering /*centering*/ = QtyCentering::primal)
-        { // Both dual and primal ghosts are the same!
-            static_assert(nbrDualGhosts_() == nbrPrimalGhosts_());
 
-            return nbrPrimalGhosts_();
-        }
 
-        template<typename Centering, Centering centering>
-        NO_DISCARD std::uint32_t static constexpr nbrGhosts()
-        {
-            if constexpr (centering == QtyCentering::dual)
-                return nbrDualGhosts_();
-            else
-                return nbrPrimalGhosts_();
-        }
 
         template<typename Quantity>
         NO_DISCARD auto static constexpr nDNbrGhosts(Quantity /*centering*/ = QtyCentering::primal)
         { // Both dual and primal ghosts are the same!
-            return ConstArray<std::uint32_t, dimension>(nbrGhosts());
+            return ConstArray<std::uint32_t, dimension>(options.field_ghost_width);
         }
+
 
         /**
          * @brief changeCentering changes primal into dual and vice versa.
@@ -508,6 +536,7 @@ namespace core
             return newCentering;
         }
 
+
         /**
          * @brief nextIndex returns the index of the next node of a given centering
          * from an index of the opposite centering.
@@ -523,6 +552,7 @@ namespace core
             return indexCenter + nextIndexTable_[centering2int(centering)];
         }
 
+
         /**
          * @brief prevIndex does the same thing as nextIndex but returns the index
          * of the node of a given centering just to the left of indexCenter.
@@ -531,6 +561,7 @@ namespace core
         {
             return indexCenter + prevIndexTable_[centering2int(centering)];
         }
+
 
         /** @brief returns the local 1st order derivative of the Field operand
          * at a multidimensional index and in a given direction.
@@ -597,6 +628,7 @@ namespace core
                 }
             }
         }
+
 
         /** @brief returns the local laplacian of the Field operand
          * at a multidimensional index.
@@ -667,6 +699,7 @@ namespace core
             }
         }
 
+
         /**
          * @brief localToAMR returns the AMR index associated with the given local one.
          * This method only deals with **cell** indexes.
@@ -688,6 +721,7 @@ namespace core
             return pointAMR;
         }
 
+
         /**
          * @brief localToAMR returns the AMR box associated with the given local one.
          * This method only deals with **cell** indexes.
@@ -703,6 +737,7 @@ namespace core
 
             return AMRBox;
         }
+
 
         /**
          * @brief AMRToLocal returns the local index associated with the given AMR one.
@@ -726,6 +761,7 @@ namespace core
             }
             return localPoint;
         }
+
 
         /**
          * @brief AMRToLocal returns the local Box associated with the given AMR one.
@@ -759,33 +795,44 @@ namespace core
             return result;
         }
 
+
+
         // ----------------------------------------------------------------------
         //                      LAYOUT SPECIFIC METHODS
         //
         // The methods below return results that need information specific to the
-        // layout that is used. They thus all refer to the GridLayoutImpl.
+        // layout that is used. They thus all refer to the implT.
         // ----------------------------------------------------------------------
 
-        NO_DISCARD std::string layoutName() const { return GridLayoutImpl::layoutName_; }
+
+        NO_DISCARD std::string layoutName() const { return implT::layoutName_; }
+
 
         /**
-         * @brief returns the centering of a scalar quantity in each directions
+         * @brief returns the centering of a scalar hybrid quantity in each directions
          */
-        NO_DISCARD constexpr static std::array<QtyCentering, dimension>
-        centering(ScalarQuantity quantity)
+        NO_DISCARD constexpr static std::array<QtyCentering, dimension> centering(Scalar quantity)
         {
-            return GridLayoutImpl::centering(quantity);
+            return implT::centering(quantity);
         }
 
+
+
         /**
-         * @brief returns the centering of a vector quantity in each directions
+         * @brief returns the centering of a vector hybrid quantity in each directions
          */
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 3>
-        centering(typename Quantity::Vector quantity)
+        centering(Vector quantity)
         {
-            return GridLayoutImpl::centering(quantity);
+            return implT::centering(quantity);
         }
 
+        NO_DISCARD constexpr static std::array<std::array<QtyCentering, dimension>, 6>
+        centering(Tensor quantity)
+        {
+            return for_N_make_array<6>(
+                [](auto) { return ConstArray<QtyCentering, dimension>(QtyCentering::primal); });
+        }
 
         template<typename HasQuantity>
         NO_DISCARD constexpr static auto centering(HasQuantity const& hasQuantity)
@@ -797,34 +844,33 @@ namespace core
 
 
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::allocSize
+         * @brief GridLayout<implT::dim>::allocSize
          * @return An std::array<std::uint32_t, dim> object, containing the size to which allocate
-         * arrays of an Quantity::Quantity 'qty' in every directions.
+         * arrays of an HybridQuantity::Quantity 'qty' in every directions.
          */
-        NO_DISCARD std::array<std::uint32_t, dimension> allocSize(ScalarQuantity qty) const
+        NO_DISCARD std::array<std::uint32_t, dimension> allocSize(Scalar qty) const
         {
             std::uint32_t iQty = static_cast<std::uint32_t>(qty);
 
-            // TODO: _QtyCentering should be defined per dimension so that we could simply do
-            // auto sizeArray = nodeNbrFromCentering_(_QtyCentering[iQty]);
-
-            constexpr auto& _QtyCentering = GridLayoutImpl::_QtyCentering_;
+            // TODO: qtyCentering should be defined per dimension so that we could simply do
+            // auto sizeArray = nodeNbrFromCentering_(qtyCentering[iQty]);
 
             std::array<QtyCentering, dimension> qtyCentering;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                qtyCentering[iDir] = _QtyCentering[iQty][iDir];
+                qtyCentering[iDir] = implT::qtyCentering_[iQty][iDir];
             }
 
             return nodeNbrFromCentering_(qtyCentering);
         }
 
+
         /**
          * @brief allocSizeDerived returns the shape of the array to be allocated to store
          * the derivative of a given quantity in a given direction.
          */
-        NO_DISCARD std::array<std::uint32_t, dimension> allocSizeDerived(ScalarQuantity qty,
+        NO_DISCARD std::array<std::uint32_t, dimension> allocSizeDerived(Scalar qty,
                                                                          Direction dir) const
         {
             std::uint32_t iDerivedDir = static_cast<std::uint32_t>(dir);
@@ -833,13 +879,13 @@ namespace core
             // get the centering of the derivative of 'qty' in the direction of derivation
             QtyCentering newCentering = derivedCentering(qty, dir);
 
-            constexpr auto& _QtyCentering = GridLayoutImpl::_QtyCentering_;
+            constexpr auto& qtyCentering = implT::qtyCentering_;
 
             std::array<QtyCentering, dimension> qtyCenterings;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                qtyCenterings[iDir] = _QtyCentering[iQty][iDir];
+                qtyCenterings[iDir] = qtyCentering[iQty][iDir];
             }
 
             // ...and permute the centering in the direction of derivation
@@ -849,72 +895,77 @@ namespace core
             return nodeNbrFromCentering_(qtyCenterings);
         }
 
+
+
         /** @brief return the centering of a given Field along a given direction
          */
         template<typename Field_t>
         NO_DISCARD QtyCentering fieldCentering(Field_t const& field, Direction dir) const
         {
-            std::uint32_t iDir            = static_cast<std::uint32_t>(dir);
-            std::uint32_t iQty            = static_cast<std::uint32_t>(field.physicalQuantity());
-            constexpr auto& _QtyCentering = GridLayoutImpl::_QtyCentering_;
+            std::uint32_t iDir           = static_cast<std::uint32_t>(dir);
+            std::uint32_t iQty           = static_cast<std::uint32_t>(field.physicalQuantity());
+            constexpr auto& qtyCentering = implT::qtyCentering_;
 
-            return _QtyCentering[iQty][iDir];
+            return qtyCentering[iQty][iDir];
         }
+
 
         /**
          * @brief nbrPhysicalNodes returns the number of nodes in each direction, that are node
          * ghost nodes
          */
-        NO_DISCARD std::array<std::uint32_t, dimension>
-        nbrPhysicalNodes(ScalarQuantity quantity) const
+        NO_DISCARD std::array<std::uint32_t, dimension> nbrPhysicalNodes(Scalar hybQty) const
         {
             std::array<QtyCentering, dimension> centerings;
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                centerings[iDir]
-                    = GridLayoutImpl::_QtyCentering_[static_cast<std::uint32_t>(quantity)][iDir];
+                centerings[iDir] = implT::qtyCentering_[static_cast<std::uint32_t>(hybQty)][iDir];
             }
 
             return this->physicalNodeNbrFromCentering_(centerings);
         }
 
+
         /**
          * @brief derivedCentering this function returns the
          * centering (primal or dual) of a quantity after a first order derivation. dual becomes
          * primal and primal becomes dual. quantityCentering is used to know if the
-         * Quantity::Quantity 'qty' is primal or dual in the Direction 'dir'
+         * HybridQuantity::Quantity 'qty' is primal or dual in the Direction 'dir'
          */
-        NO_DISCARD QtyCentering derivedCentering(ScalarQuantity qty, Direction dir) const
+        NO_DISCARD QtyCentering derivedCentering(Scalar qty, Direction dir) const
         {
             std::uint32_t iField = static_cast<std::uint32_t>(qty);
             std::uint32_t idir   = static_cast<std::uint32_t>(dir);
 
-            constexpr auto& _QtyCentering = GridLayoutImpl::_QtyCentering_;
 
-            QtyCentering newCentering = changeCentering(_QtyCentering[iField][idir]);
+            constexpr auto& qtyCentering = implT::qtyCentering_;
+
+            QtyCentering newCentering = changeCentering(qtyCentering[iField][idir]);
 
             return newCentering;
         }
+
 
         /**
          * @brief momentsToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project moments onto Ex.
          */
-        NO_DISCARD auto static constexpr momentsToEx() { return GridLayoutImpl::momentsToEx(); }
+        NO_DISCARD auto static constexpr momentsToEx() { return implT::momentsToEx(); }
+
 
         /**
          * @brief momentsToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project moments onto Ey.
          */
-        NO_DISCARD auto static constexpr momentsToEy() { return GridLayoutImpl::momentsToEy(); }
+        NO_DISCARD auto static constexpr momentsToEy() { return implT::momentsToEy(); }
+
 
         /**
          * @brief momentsToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project moments onto Ez.
          */
-        NO_DISCARD auto static constexpr momentsToEz() { return GridLayoutImpl::momentsToEz(); }
-
+        NO_DISCARD auto static constexpr momentsToEz() { return implT::momentsToEz(); }
 
 
 
@@ -922,21 +973,21 @@ namespace core
          * @brief BxToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bx onto moments.
          */
-        NO_DISCARD auto static constexpr BxToMoments() { return GridLayoutImpl::BxToMoments(); }
+        NO_DISCARD auto static constexpr BxToMoments() { return implT::BxToMoments(); }
 
 
         /**
          * @brief ByToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project By onto moments.
          */
-        NO_DISCARD auto static constexpr ByToMoments() { return GridLayoutImpl::ByToMoments(); }
+        NO_DISCARD auto static constexpr ByToMoments() { return implT::ByToMoments(); }
 
 
         /**
          * @brief BzToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bz onto moments.
          */
-        NO_DISCARD auto static constexpr BzToMoments() { return GridLayoutImpl::BzToMoments(); }
+        NO_DISCARD auto static constexpr BzToMoments() { return implT::BzToMoments(); }
 
 
 
@@ -945,167 +996,119 @@ namespace core
          * @brief ExToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ex onto moments.
          */
-        NO_DISCARD auto static constexpr ExToMoments() { return GridLayoutImpl::ExToMoments(); }
+        NO_DISCARD auto static constexpr ExToMoments() { return implT::ExToMoments(); }
+
+
 
         /**
          * @brief EyToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ey onto moments.
          */
-        NO_DISCARD auto static constexpr EyToMoments() { return GridLayoutImpl::EyToMoments(); }
+        NO_DISCARD auto static constexpr EyToMoments() { return implT::EyToMoments(); }
+
+
 
         /**
          * @brief EzToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Ez onto moments.
          */
-        NO_DISCARD auto static constexpr EzToMoments() { return GridLayoutImpl::EzToMoments(); }
+        NO_DISCARD auto static constexpr EzToMoments() { return implT::EzToMoments(); }
+
 
         /**
          * @brief JxToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jx onto moments.
          */
-        NO_DISCARD auto static constexpr JxToMoments() { return GridLayoutImpl::JxToMoments(); }
+        NO_DISCARD auto static constexpr JxToMoments() { return implT::JxToMoments(); }
+
 
         /**
          * @brief JyToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jy onto moments.
          */
-        NO_DISCARD auto static constexpr JyToMoments() { return GridLayoutImpl::JyToMoments(); }
+        NO_DISCARD auto static constexpr JyToMoments() { return implT::JyToMoments(); }
+
 
         /**
          * @brief JzToMoments return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jz onto moments.
          */
-        NO_DISCARD auto static constexpr JzToMoments() { return GridLayoutImpl::JzToMoments(); }
+        NO_DISCARD auto static constexpr JzToMoments() { return implT::JzToMoments(); }
 
-        NO_DISCARD auto static constexpr BxToEx() { return GridLayoutImpl::BxToEx(); }
+        NO_DISCARD auto static constexpr BxToEx() { return implT::BxToEx(); }
 
         /**
          * @brief ByToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project By onto Ex.
          */
-        NO_DISCARD auto static constexpr ByToEx() { return GridLayoutImpl::ByToEx(); }
+        NO_DISCARD auto static constexpr ByToEx() { return implT::ByToEx(); }
+
 
         /**
          * @brief BzToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bz onto Ex.
          */
-        NO_DISCARD auto static constexpr BzToEx() { return GridLayoutImpl::BzToEx(); }
+        NO_DISCARD auto static constexpr BzToEx() { return implT::BzToEx(); }
+
+
 
         /**
          * @brief BxToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bx onto Ey.
          */
-        NO_DISCARD auto static constexpr BxToEy() { return GridLayoutImpl::BxToEy(); }
+        NO_DISCARD auto static constexpr BxToEy() { return implT::BxToEy(); }
 
-        NO_DISCARD auto static constexpr ByToEy() { return GridLayoutImpl::ByToEy(); }
+
+        NO_DISCARD auto static constexpr ByToEy() { return implT::ByToEy(); }
 
         /**
          * @brief BzToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bz onto Ey.
          */
-        NO_DISCARD auto static constexpr BzToEy() { return GridLayoutImpl::BzToEy(); }
+        NO_DISCARD auto static constexpr BzToEy() { return implT::BzToEy(); }
+
+
 
         /**
          * @brief BxToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project Bx onto Ez.
          */
-        NO_DISCARD auto static constexpr BxToEz() { return GridLayoutImpl::BxToEz(); }
+        NO_DISCARD auto static constexpr BxToEz() { return implT::BxToEz(); }
+
+
 
         /**
          * @brief ByToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project By onto Ez.
          */
-        NO_DISCARD auto static constexpr ByToEz() { return GridLayoutImpl::ByToEz(); }
+        NO_DISCARD auto static constexpr ByToEz() { return implT::ByToEz(); }
 
-        NO_DISCARD auto static constexpr BzToEz() { return GridLayoutImpl::BzToEz(); }
+        NO_DISCARD auto static constexpr BzToEz() { return implT::BzToEz(); }
+
+
 
         /**
          * @brief JxToEx return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jx onto Ex.
          */
-        NO_DISCARD auto static constexpr JxToEx() { return GridLayoutImpl::JxToEx(); }
+        NO_DISCARD auto static constexpr JxToEx() { return implT::JxToEx(); }
+
+
 
         /**
          * @brief JyToEy return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jy onto Ey.
          */
-        NO_DISCARD auto static constexpr JyToEy() { return GridLayoutImpl::JyToEy(); }
+        NO_DISCARD auto static constexpr JyToEy() { return implT::JyToEy(); }
+
+
 
         /**
          * @brief JzToEz return the indexes and associated coef to compute the linear
          * interpolation necessary to project Jz onto Ez.
          */
-        NO_DISCARD auto static constexpr JzToEz() { return GridLayoutImpl::JzToEz(); }
+        NO_DISCARD auto static constexpr JzToEz() { return implT::JzToEz(); }
 
-
-        // MHD projections
-        NO_DISCARD auto static constexpr faceXToCellCenter()
-        {
-            return GridLayoutImpl::faceXToCellCenter();
-        }
-
-        NO_DISCARD auto static constexpr faceYToCellCenter()
-        {
-            return GridLayoutImpl::faceYToCellCenter();
-        }
-
-        NO_DISCARD auto static constexpr faceZToCellCenter()
-        {
-            return GridLayoutImpl::faceZToCellCenter();
-        }
-
-        NO_DISCARD auto static constexpr edgeXToCellCenter()
-        {
-            return GridLayoutImpl::edgeXToCellCenter();
-        }
-
-        NO_DISCARD auto static constexpr edgeYToCellCenter()
-        {
-            return GridLayoutImpl::edgeYToCellCenter();
-        }
-
-        NO_DISCARD auto static constexpr edgeZToCellCenter()
-        {
-            return GridLayoutImpl::edgeZToCellCenter();
-        }
-
-        NO_DISCARD auto static constexpr cellCenterToFullPrimal()
-        {
-            return GridLayoutImpl::cellCenterToFullPrimal();
-        }
-
-        NO_DISCARD auto static constexpr cellCenterToEdgeX()
-        {
-            return GridLayoutImpl::cellCenterToEdgeX();
-        }
-
-        NO_DISCARD auto static constexpr cellCenterToEdgeY()
-        {
-            return GridLayoutImpl::cellCenterToEdgeY();
-        }
-
-        NO_DISCARD auto static constexpr cellCenterToEdgeZ()
-        {
-            return GridLayoutImpl::cellCenterToEdgeZ();
-        }
-
-        // essentially box form of allocSize(...)
-        template<typename Field>
-        Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
-        {
-            return BoxFor(field, [&](auto const& centering, auto const direction) {
-                return this->ghostStartToEnd(centering, direction);
-            });
-        }
-
-
-        template<typename Field>
-        Box<std::uint32_t, dimension> domainBoxFor(Field const& field) const
-        {
-            return BoxFor(field, [&](auto const& centering, auto const direction) {
-                return this->physicalStartToEnd(centering, direction);
-            });
-        }
 
 
         auto AMRBoxFor(auto const& field) const
@@ -1117,12 +1120,11 @@ namespace core
             return box;
         }
 
-
         auto AMRGhostBoxFor(auto const& field) const
         {
             auto const centerings = centering(field);
             return grow(AMRBoxFor(field), for_N_make_array<dimension>(
-                                              [&](auto i) { return nbrGhosts(centerings[i]); }));
+                                              [&](auto i) { return options.field_ghost_width; }));
         }
 
 
@@ -1196,7 +1198,6 @@ namespace core
             }
         }
 
-
         template<typename Field, typename Fn>
         void evalOnBox(Field& field, Fn&& fn) const
         {
@@ -1241,7 +1242,6 @@ namespace core
 
             evalOnBox_(field, fn, indices);
         }
-
         auto levelNumber() const { return levelNumber_; }
 
 
@@ -1319,85 +1319,31 @@ namespace core
          * returning 0 means that the next primal has the same index as the current dual.
          * returning 1 means that the next primal index is the current dual + 1
          */
-        NO_DISCARD constexpr static auto nextPrimal_()
-        {
-            if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
-            {
-                return 0;
-            }
-            else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
-            {
-                return 1;
-            }
-        }
+        NO_DISCARD constexpr static auto nextPrimal_() { return 1; }
+
 
         /**
          * @brief prevPrimal_ does the same as nextPrimal_ but for the previous primal
          */
-        NO_DISCARD constexpr static auto prevPrimal_()
-        {
-            if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
-            {
-                return -1;
-            }
-            else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
-            {
-                return 0;
-            }
-        }
+        NO_DISCARD constexpr static auto prevPrimal_() { return 0; }
+
 
         /**
          * @brief nextDual_ is identical to nextPrimal for dual nodes
          */
-        NO_DISCARD constexpr static auto nextDual_()
-        {
-            if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
-            {
-                return 1;
-            }
-            else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
-            {
-                return 0;
-            }
-        }
+        NO_DISCARD constexpr static auto nextDual_() { return 0; }
+
 
         /**
          * @brief prevDual_ is identical to prevPrimal_ for dual nodes.
          */
-        NO_DISCARD constexpr static auto prevDual_()
-        {
-            if constexpr (nbrDualGhosts_() > nbrPrimalGhosts_())
-            {
-                return 0;
-            }
-            else if constexpr (nbrDualGhosts_() == nbrPrimalGhosts_())
-            {
-                return -1;
-            }
-        }
+        NO_DISCARD constexpr static auto prevDual_() { return -1; }
 
-        /**
-         * @brief nbrDualGhosts_ returns the number of ghost nodes on each side for dual quantities.
-         * The exact value is provided directly by the layout implementation so Hybrid and MHD
-         * can reserve different widths while keeping the public GridLayout interface stable.
-         */
-        NO_DISCARD std::uint32_t constexpr static nbrDualGhosts_()
-        {
-            return GridLayoutImpl::ghost_width;
-        }
 
-        /**
-         * @brief nbrPrimalGhosts_ returns the number of primal ghost nodes.
-         * Contrary to dual ghost nodes, the formula to get the number of primal ghost nodes depend
-         * on the interpolation order. If based only on the particle-mesh interaction, order1 would
-         * not need primal ghost nodes. But there is a minimum of 1 ghost node for primal that is
-         * linked to the possibility of calculating second order derivatives of primal quantities
-         * (e.g. laplacian of J for a yee lattice). Dual ghosts don't have this issue since they
-         * always have at least 1 ghost.
-         */
-        NO_DISCARD std::uint32_t constexpr static nbrPrimalGhosts_() { return nbrDualGhosts_(); }
+
 
         NO_DISCARD std::uint32_t static constexpr dualOffset_() noexcept { return 1; }
+
 
         /**
          * @brief physicalNodeNbrFromCentering_ returns the number of physical nodes for all
@@ -1417,8 +1363,10 @@ namespace core
             return nodeNbr;
         }
 
+
+
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::nodeNbrFromCentering_ returns an array containing
+         * @brief GridLayout<implT::dim>::nodeNbrFromCentering_ returns an array containing
          * the total number of nodes (ghosts + physical) in each direction.
          * The calculation is easy : there are nbrPhysicalCells + 1 nodes in the domain
          * + 2 times the number of ghost nodes.
@@ -1431,11 +1379,12 @@ namespace core
 
             for (std::size_t iDir = 0; iDir < dimension; ++iDir)
             {
-                nbrNodes[iDir] += 2 * nbrGhosts(qtyCenterings[iDir]);
+                nbrNodes[iDir] += 2 * options.field_ghost_width;
             }
 
             return nbrNodes;
         }
+
 
         NO_DISCARD auto initPhysicalStart_()
         {
@@ -1444,25 +1393,26 @@ namespace core
             std::uint32_t iprimal = static_cast<std::uint32_t>(data.primal);
             std::uint32_t idual   = static_cast<std::uint32_t>(data.dual);
 
-            physicalStartIndexTable[iprimal][data.idirX] = nbrPrimalGhosts_();
-            physicalStartIndexTable[idual][data.idirX]   = nbrDualGhosts_();
+            physicalStartIndexTable[iprimal][data.idirX] = options.field_ghost_width;
+            physicalStartIndexTable[idual][data.idirX]   = options.field_ghost_width;
 
             if constexpr (dimension > 1)
             {
-                physicalStartIndexTable[iprimal][data.idirY] = nbrPrimalGhosts_();
-                physicalStartIndexTable[idual][data.idirY]   = nbrDualGhosts_();
+                physicalStartIndexTable[iprimal][data.idirY] = options.field_ghost_width;
+                physicalStartIndexTable[idual][data.idirY]   = options.field_ghost_width;
 
                 if constexpr (dimension > 2)
                 {
-                    physicalStartIndexTable[iprimal][data.idirZ] = nbrPrimalGhosts_();
-                    physicalStartIndexTable[idual][data.idirZ]   = nbrDualGhosts_();
+                    physicalStartIndexTable[iprimal][data.idirZ] = options.field_ghost_width;
+                    physicalStartIndexTable[idual][data.idirZ]   = options.field_ghost_width;
                 }
             }
             return physicalStartIndexTable;
         }
 
+
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::initPhysicalEnd intialize the table of indices
+         * @brief GridLayout<implT::dim>::initPhysicalEnd intialize the table of indices
          * corresponding to the last node for primal and dual centering.
          * The formula is simple : the last index is obtained from the first one
          * (which is physicalStartIndex of primal/dual in a given direction)
@@ -1477,6 +1427,7 @@ namespace core
 
             physicalEndIndexTable[iprimal][data.idirX]
                 = physicalStartIndexTable_[iprimal][data.idirX] + nbrPhysicalCells_[data.idirX];
+
 
             physicalEndIndexTable[idual][data.idirX] = physicalStartIndexTable_[idual][data.idirX]
                                                        + nbrPhysicalCells_[data.idirX]
@@ -1505,8 +1456,10 @@ namespace core
             return physicalEndIndexTable;
         }
 
+
+
         /**
-         * @brief GridLayout<GridLayoutImpl::dim>::initGhostEnd calculate and stores the index
+         * @brief GridLayout<implT::dim>::initGhostEnd calculate and stores the index
          * of the last primal and dual nodes in each direction. The formula simply
          * consists in starting at physicalEndIndex() and to add the number of ghost nodes.
          */
@@ -1518,26 +1471,26 @@ namespace core
             std::uint32_t idual   = static_cast<std::uint32_t>(data.dual);
 
             ghostEndIndexTable[iprimal][data.idirX]
-                = physicalEndIndexTable_[iprimal][data.idirX] + nbrPrimalGhosts_();
+                = physicalEndIndexTable_[iprimal][data.idirX] + options.field_ghost_width;
 
             ghostEndIndexTable[idual][data.idirX]
-                = physicalEndIndexTable_[idual][data.idirX] + nbrDualGhosts_();
+                = physicalEndIndexTable_[idual][data.idirX] + options.field_ghost_width;
 
             if constexpr (dimension > 1)
             {
                 ghostEndIndexTable[iprimal][data.idirY]
-                    = physicalEndIndexTable_[iprimal][data.idirY] + nbrPrimalGhosts_();
+                    = physicalEndIndexTable_[iprimal][data.idirY] + options.field_ghost_width;
 
                 ghostEndIndexTable[idual][data.idirY]
-                    = physicalEndIndexTable_[idual][data.idirY] + nbrDualGhosts_();
+                    = physicalEndIndexTable_[idual][data.idirY] + options.field_ghost_width;
 
                 if constexpr (dimension > 2)
                 {
                     ghostEndIndexTable[iprimal][data.idirZ]
-                        = physicalEndIndexTable_[iprimal][data.idirZ] + nbrPrimalGhosts_();
+                        = physicalEndIndexTable_[iprimal][data.idirZ] + options.field_ghost_width;
 
                     ghostEndIndexTable[idual][data.idirZ]
-                        = physicalEndIndexTable_[idual][data.idirZ] + nbrDualGhosts_();
+                        = physicalEndIndexTable_[idual][data.idirZ] + options.field_ghost_width;
                 }
             }
             return ghostEndIndexTable;
@@ -1549,7 +1502,7 @@ namespace core
         Point<double, dimension> origin_;
         std::array<std::uint32_t, dimension> nbrPhysicalCells_;
         std::array<double, dimension> inverseMeshSize_;
-        static constexpr gridDataT data{};
+        static constexpr GridData data{};
 
         // stores key indices in each direction (3) for primal and dual nodes (2)
         std::array<std::array<std::uint32_t, dimension>, 2> physicalStartIndexTable_;
@@ -1565,6 +1518,7 @@ namespace core
 
         int levelNumber_ = 0;
     };
+
 
 } // namespace core
 } // namespace PHARE

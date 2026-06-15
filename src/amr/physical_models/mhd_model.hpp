@@ -75,7 +75,7 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
-        , resourcesManager{std::move(_resourcesManager)}
+        , resourcesManager{_resourcesManager}
     {
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);

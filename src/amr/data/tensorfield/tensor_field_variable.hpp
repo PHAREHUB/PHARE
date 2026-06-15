@@ -3,14 +3,12 @@
 
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "amr/data/tensorfield/tensor_field_data_factory.hpp"
 
 #include <SAMRAI/hier/Variable.h>
 
-#include <utility>
 
 
 namespace PHARE::amr
@@ -22,8 +20,8 @@ class TensorFieldVariable : public SAMRAI::hier::Variable
     using tensor_t = PhysicalQuantity::template TensorType<rank>;
 
 public:
-    static constexpr std::size_t dimension    = GridLayoutT::dimension;
-    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+    static constexpr std::size_t dimension = GridLayoutT::dimension;
+
 
     /** \brief Construct a new variable with an unique name, and a specific PhysicalQuantity
      *

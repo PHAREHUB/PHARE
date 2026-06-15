@@ -1,13 +1,8 @@
 
-// #include "phare_core.hpp"
-//  #include "core/data/field/field.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-// #include "core/data/vecfield/vecfield.hpp"
-#include "core/numerics/ohm/ohm.hpp"
-// #include "core/utilities/index/index.hpp"
+#include "phare_core.hpp"
 
+#include "core/numerics/ohm/ohm.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
@@ -16,7 +11,6 @@
 #include "gtest/gtest.h"
 
 #include <fstream>
-#include <memory>
 
 using namespace PHARE::core;
 
@@ -26,7 +20,7 @@ class NDlayout
 {
     NDlayout() {}
 
-    using nDL = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using nDL = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
 
 public:
     static nDL create()
@@ -67,7 +61,7 @@ struct OhmTest : public ::testing::Test
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
-    using GridYee          = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     using UsableVecFieldND = UsableVecField<dim>;
     using Grid_t           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using Ohm_t            = Ohm<GridYee>;
@@ -205,16 +199,16 @@ struct OhmTest : public ::testing::Test
                         auto point = this->layout.fieldNodeCoordinates(
                             n, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
-                        n(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
-                                        * std::cosh(0.5 * point[2]);
+                        n(ix, iy, iz)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
+                                         * std::cosh(0.5 * point[2]);
                         Vx(ix, iy, iz) = std::sinh(0.2 * point[0]) * std::sinh(0.2 * point[1])
                                          * std::sinh(0.2 * point[2]);
                         Vy(ix, iy, iz) = std::sinh(0.3 * point[0]) * std::sinh(0.3 * point[1])
                                          * std::sinh(0.3 * point[2]);
                         Vz(ix, iy, iz) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1])
                                          * std::sinh(0.4 * point[2]);
-                        P(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
-                                        * std::cosh(0.5 * point[2]);
+                        P(ix, iy, iz)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
+                                         * std::cosh(0.5 * point[2]);
                     }
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {

@@ -1,30 +1,24 @@
 
-#include <memory>
-#include <string>
-#include <stdlib.h>
 
+#include "phare_core.hpp"
+
+#include "core/data/particles/particle_array.hpp"
 
 #include "initializer/data_provider.hpp"
 #include "initializer/python_data_provider.hpp"
 #include "initializer/restart_data_provider.hpp"
 
+#include <memory>
+#include <string>
+#include <stdlib.h>
 
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/index/index.hpp"
-#include "core/data/electromag/electromag.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
-#include "core/data/particles/particle_array.hpp"
-
+#include "gtest/gtest.h"
 
 
 using namespace PHARE::initializer;
 
-using GridLayoutT    = PHARE::core::GridLayout<PHARE::core::GridLayoutImplYee<1, 1>>;
+using GridLayoutT    = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
 using ParticleArrayT = PHARE::core::ParticleArray<1>;
-
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
 
 
