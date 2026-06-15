@@ -1,10 +1,9 @@
 #ifndef PHARE_TEST_CORE_DATA_TEST_FIELD_FIXTURES_MHD_HPP
 #define PHARE_TEST_CORE_DATA_TEST_FIELD_FIXTURES_MHD_HPP
 
-
-#include "core/mhd/mhd_quantities.hpp"
-#include "core/data/field/field.hpp"
 #include "core/data/grid/grid.hpp"
+#include "core/data/field/field.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 
 namespace PHARE::core
 {

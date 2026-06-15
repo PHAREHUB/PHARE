@@ -1,13 +1,10 @@
 #ifndef PHARE_UPWIND_CONSTRAINED_TRANSPORT_HPP
 #define PHARE_UPWIND_CONSTRAINED_TRANSPORT_HPP
 
-#include "core/def.hpp"
 #include "core/numerics/ohm/ohm.hpp"
-#include "core/mhd/mhd_quantities.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/numerics/constrained_transport/upwind_constrained_transport_utils.hpp"
 
 
 #include <cmath>
@@ -399,19 +396,19 @@ private:
         {
             return computeHR
                 .template operator()<GridLayout::BxToEx, GridLayout::ByToEx, GridLayout::BzToEx,
-                                     GridLayout::cellCenterToEdgeX>();
+                                     GridLayout::implT::cellCenterToEdgeX>();
         }
         if constexpr (component == Component::Y)
         {
             return computeHR
                 .template operator()<GridLayout::BxToEy, GridLayout::ByToEy, GridLayout::BzToEy,
-                                     GridLayout::cellCenterToEdgeY>();
+                                     GridLayout::implT::cellCenterToEdgeY>();
         }
         if constexpr (component == Component::Z)
         {
             return computeHR
                 .template operator()<GridLayout::BxToEz, GridLayout::ByToEz, GridLayout::BzToEz,
-                                     GridLayout::cellCenterToEdgeZ>();
+                                     GridLayout::implT::cellCenterToEdgeZ>();
         }
     }
 

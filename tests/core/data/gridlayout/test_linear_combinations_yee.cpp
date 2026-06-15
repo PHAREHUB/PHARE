@@ -1,5 +1,15 @@
 
-#include "test_linear_combinaisons_yee.hpp"
+
+#include "phare_core.hpp"
+#include "phare_simulator_options.hpp"
+
+#include "test_linear_combinations_yee.hpp"
+
+#include "gtest/gtest.h"
+
+#include <algorithm>
+
+using namespace PHARE::core;
 
 template<auto dimension>
 struct Ordered
@@ -77,10 +87,10 @@ void compareCombi(auto const& combi, ActualContainer const& actual)
 template<int Dim, int Order, typename Callable>
 void tryDispatch(int dim, int order, Callable&& call, auto const& combi)
 {
+    using GridLayoutT = PHARE_Types<PHARE::SimOpts{Dim, Order}>::Hybrid::GridLayout_t;
     if (dim == Dim && order == Order)
     {
-        using Layout = GridLayout<GridLayoutImplYee<Dim, Order>>;
-        auto actual  = call.template operator()<Layout>();
+        auto actual = call.template operator()<GridLayoutT>();
         compareCombi<Dim>(combi, actual);
     }
 }
@@ -88,9 +98,9 @@ void tryDispatch(int dim, int order, Callable&& call, auto const& combi)
 template<typename Callable>
 void runTestFile(std::string const& filename, Callable&& call)
 {
-    auto expectedCombinaisons = readFile(filename);
+    auto expectedCombinations = readFile(filename);
 
-    for (auto const& combi : expectedCombinaisons)
+    for (auto const& combi : expectedCombinations)
     {
         int dim   = combi.dimension;
         int order = combi.interpOrder;
@@ -109,116 +119,116 @@ void runTestFile(std::string const& filename, Callable&& call)
     }
 }
 
-TEST(MomentToEx, combinaisonOk)
+TEST(MomentToEx, combinationOk)
 {
     runTestFile("linear_coefs_yee_momentToEx.txt",
                 []<typename Layout>() { return Layout::momentsToEx(); });
 }
 
-TEST(MomentToEy, combinaisonOk)
+TEST(MomentToEy, combinationOk)
 {
     runTestFile("linear_coefs_yee_momentToEy.txt",
                 []<typename Layout>() { return Layout::momentsToEy(); });
 }
 
-TEST(MomentToEz, combinaisonOk)
+TEST(MomentToEz, combinationOk)
 {
     runTestFile("linear_coefs_yee_momentToEz.txt",
                 []<typename Layout>() { return Layout::momentsToEz(); });
 }
 
-TEST(ExToMoment, combinaisonOk)
+TEST(ExToMoment, combinationOk)
 {
     runTestFile("linear_coefs_yee_ExToMoment.txt",
                 []<typename Layout>() { return Layout::ExToMoments(); });
 }
 
-TEST(EyToMoment, combinaisonOk)
+TEST(EyToMoment, combinationOk)
 {
     runTestFile("linear_coefs_yee_EyToMoment.txt",
                 []<typename Layout>() { return Layout::EyToMoments(); });
 }
 
-TEST(EzToMoment, combinaisonOk)
+TEST(EzToMoment, combinationOk)
 {
     runTestFile("linear_coefs_yee_EzToMoment.txt",
                 []<typename Layout>() { return Layout::EzToMoments(); });
 }
 
-TEST(JxToMoment, combinaisonOk)
+TEST(JxToMoment, combinationOk)
 {
     runTestFile("linear_coefs_yee_JxToMoment.txt",
                 []<typename Layout>() { return Layout::JxToMoments(); });
 }
 
-TEST(JyToMoment, combinaisonOk)
+TEST(JyToMoment, combinationOk)
 {
     runTestFile("linear_coefs_yee_JyToMoment.txt",
                 []<typename Layout>() { return Layout::JyToMoments(); });
 }
 
-TEST(JzToMoment, combinaisonOk)
+TEST(JzToMoment, combinationOk)
 {
     runTestFile("linear_coefs_yee_JzToMoment.txt",
                 []<typename Layout>() { return Layout::JzToMoments(); });
 }
 
-TEST(ByToEx, combinaisonOk)
+TEST(ByToEx, combinationOk)
 {
     runTestFile("linear_coefs_yee_ByToEx.txt", []<typename Layout>() { return Layout::ByToEx(); });
 }
 
-TEST(BzToEx, combinaisonOk)
+TEST(BzToEx, combinationOk)
 {
     runTestFile("linear_coefs_yee_BzToEx.txt", []<typename Layout>() { return Layout::BzToEx(); });
 }
 
-TEST(BxToEy, combinaisonOk)
+TEST(BxToEy, combinationOk)
 {
     runTestFile("linear_coefs_yee_BxToEy.txt", []<typename Layout>() { return Layout::BxToEy(); });
 }
 
-TEST(BzToEy, combinaisonOk)
+TEST(BzToEy, combinationOk)
 {
     runTestFile("linear_coefs_yee_BzToEy.txt", []<typename Layout>() { return Layout::BzToEy(); });
 }
 
-TEST(BxToEz, combinaisonOk)
+TEST(BxToEz, combinationOk)
 {
     runTestFile("linear_coefs_yee_BxToEz.txt", []<typename Layout>() { return Layout::BxToEz(); });
 }
 
-TEST(ByToEz, combinaisonOk)
+TEST(ByToEz, combinationOk)
 {
     runTestFile("linear_coefs_yee_ByToEz.txt", []<typename Layout>() { return Layout::ByToEz(); });
 }
 
-TEST(JxToEx, combinaisonOk)
+TEST(JxToEx, combinationOk)
 {
     runTestFile("linear_coefs_yee_JxToEx.txt", []<typename Layout>() { return Layout::JxToEx(); });
 }
 
-TEST(JyToEy, combinaisonOk)
+TEST(JyToEy, combinationOk)
 {
     runTestFile("linear_coefs_yee_JyToEy.txt", []<typename Layout>() { return Layout::JyToEy(); });
 }
 
-TEST(JzToEz, combinaisonOk)
+TEST(JzToEz, combinationOk)
 {
     runTestFile("linear_coefs_yee_JzToEz.txt", []<typename Layout>() { return Layout::JzToEz(); });
 }
 
-TEST(BxToEx, combinaisonOk)
+TEST(BxToEx, combinationOk)
 {
     runTestFile("linear_coefs_yee_BxToEx.txt", []<typename Layout>() { return Layout::BxToEx(); });
 }
 
-TEST(ByToEy, combinaisonOk)
+TEST(ByToEy, combinationOk)
 {
     runTestFile("linear_coefs_yee_ByToEy.txt", []<typename Layout>() { return Layout::ByToEy(); });
 }
 
-TEST(BzToEz, combinaisonOk)
+TEST(BzToEz, combinationOk)
 {
     runTestFile("linear_coefs_yee_BzToEz.txt", []<typename Layout>() { return Layout::BzToEz(); });
 }

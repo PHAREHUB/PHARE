@@ -1,41 +1,41 @@
 
-#include "gridlayout_cell_centered_coord.hpp"
-#include "gridlayout_params.hpp"
+
 #include "gridlayout_test.hpp"
+#include "gridlayout_cell_centered_coord.hpp"
 
 
 using namespace PHARE::core;
 
 using GridLayoutCellCenteredCoordinate1DO1
-    = GridLayoutTest<GridLayoutImplYee<1, 1>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{1, 1}, GridLayoutCellCenteringParam>;
 
 using GridLayoutCellCenteredCoordinate1DO2
-    = GridLayoutTest<GridLayoutImplYee<1, 2>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{1, 2}, GridLayoutCellCenteringParam>;
 
 using GridLayoutCellCenteredCoordinate1DO3
-    = GridLayoutTest<GridLayoutImplYee<1, 3>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{1, 3}, GridLayoutCellCenteringParam>;
 
 
 
 using GridLayoutCellCenteredCoordinate2DO1
-    = GridLayoutTest<GridLayoutImplYee<2, 1>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{2, 1}, GridLayoutCellCenteringParam>;
 
 using GridLayoutCellCenteredCoordinate2DO2
-    = GridLayoutTest<GridLayoutImplYee<2, 2>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{2, 2}, GridLayoutCellCenteringParam>;
 
 using GridLayoutCellCenteredCoordinate2DO3
-    = GridLayoutTest<GridLayoutImplYee<2, 3>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{2, 3}, GridLayoutCellCenteringParam>;
 
 
 
 using GridLayoutCellCenteredCoordinate3DO1
-    = GridLayoutTest<GridLayoutImplYee<3, 1>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{3, 1}, GridLayoutCellCenteringParam>;
 
 using GridLayoutCellCenteredCoordinate3DO2
-    = GridLayoutTest<GridLayoutImplYee<3, 2>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{3, 2}, GridLayoutCellCenteringParam>;
 
 using GridLayoutCellCenteredCoordinate3DO3
-    = GridLayoutTest<GridLayoutImplYee<3, 3>, GridLayoutCellCenteringParam>;
+    = GridLayoutTest<PHARE::SimOpts{3, 3}, GridLayoutCellCenteringParam>;
 
 
 
@@ -92,34 +92,34 @@ TEST_P(GridLayoutCellCenteredCoordinate3DO3, CoordinateIsOK)
 
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate1DO1,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<1, 1>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{1, 1}>()));
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate1DO2,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<1, 2>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{1, 2}>()));
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate1DO3,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<1, 3>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{1, 3}>()));
 
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate2DO1,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<2, 1>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{2, 1}>()));
 
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate2DO2,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<2, 2>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{2, 2}>()));
 
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate2DO3,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<2, 3>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{2, 3}>()));
 
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate3DO1,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<3, 1>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{3, 1}>()));
 
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate3DO2,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<3, 2>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{3, 2}>()));
 
 
 INSTANTIATE_TEST_SUITE_P(CenteredCoordinateTest, GridLayoutCellCenteredCoordinate3DO3,
-                         ::testing::ValuesIn(createCellCenteringParam<GridLayoutImplYee<3, 3>>()));
+                         ::testing::ValuesIn(createCellCenteringParam<PHARE::SimOpts{3, 3}>()));

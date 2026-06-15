@@ -3,7 +3,7 @@
 
 #include "core/utilities/types.hpp"
 #include "core/data/field/field.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
 #include "gtest/gtest.h" // EXPECT_FLOAT_EQ

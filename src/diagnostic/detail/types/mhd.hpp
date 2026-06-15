@@ -30,8 +30,7 @@ public:
     using GridLayout = typename H5Writer::GridLayout;
     using FloatType  = typename H5Writer::FloatType;
 
-    static constexpr auto dimension    = GridLayout::dimension;
-    static constexpr auto interp_order = GridLayout::interp_order;
+    static constexpr auto dimension = GridLayout::dimension;
 
     MHDDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}

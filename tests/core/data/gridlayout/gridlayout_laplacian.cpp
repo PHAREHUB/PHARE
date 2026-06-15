@@ -1,17 +1,21 @@
 
+
+#include "phare_simulator_options.hpp"
+
+#include "gridlayout_params.hpp"
+#include "gridlayout_laplacian.hpp"
+
 #include <math.h>
 
-#include "gridlayout_laplacian.hpp"
-#include "gridlayout_params.hpp"
-#include "gridlayout_test.hpp"
-
+#include "gmock/gmock.h"
 
 // -----------------------------------------------------------------------------
 //              1D case
 // -----------------------------------------------------------------------------
 
 using layoutImpls1D
-    = ::testing::Types<GridLayoutImplYee<1, 1>, GridLayoutImplYee<1, 2>, GridLayoutImplYee<1, 3>>;
+    = ::testing::Types<TestParam<PHARE::SimOpts{1, 1}>, TestParam<PHARE::SimOpts{1, 2}>,
+                       TestParam<PHARE::SimOpts{1, 3}>>;
 
 TYPED_TEST_SUITE(a1DLaplacian, layoutImpls1D);
 
@@ -108,7 +112,8 @@ TYPED_TEST(a1DLaplacian, LaplacianJz1D)
 // -----------------------------------------------------------------------------
 
 using layoutImpls2D
-    = ::testing::Types<GridLayoutImplYee<2, 1>, GridLayoutImplYee<2, 2>, GridLayoutImplYee<2, 3>>;
+    = ::testing::Types<TestParam<PHARE::SimOpts{2, 1}>, TestParam<PHARE::SimOpts{2, 2}>,
+                       TestParam<PHARE::SimOpts{2, 3}>>;
 
 TYPED_TEST_SUITE(a2DLaplacian, layoutImpls2D);
 
@@ -249,7 +254,8 @@ TYPED_TEST(a2DLaplacian, LaplacianJz2D)
 // -----------------------------------------------------------------------------
 
 using layoutImpls3D
-    = ::testing::Types<GridLayoutImplYee<3, 1>, GridLayoutImplYee<3, 2>, GridLayoutImplYee<3, 3>>;
+    = ::testing::Types<TestParam<PHARE::SimOpts{3, 1}>, TestParam<PHARE::SimOpts{3, 2}>,
+                       TestParam<PHARE::SimOpts{3, 3}>>;
 
 TYPED_TEST_SUITE(a3DLaplacian, layoutImpls3D);
 

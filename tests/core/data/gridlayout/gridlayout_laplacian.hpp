@@ -3,28 +3,25 @@
 
 
 #include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "gridlayout_base_params.hpp"
-#include "gridlayout_params.hpp"
-#include "gridlayout_utilities.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
-using namespace PHARE;
+using namespace PHARE::core;
 
 std::vector<double> read(std::string filename);
 
 
 
-template<typename GridLayoutImpl>
+template<typename TestParam_t>
 class a1DLaplacian : public ::testing::Test
 {
+    auto constexpr static options = TestParam_t::field_options;
+
 protected:
-    GridLayout<GridLayoutImpl> layout;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    TestParam_t::GridLayout_t layout;
+    static constexpr std::size_t interp_order = options.interp_order;
     Grid<NdArrayVector<1>, HybridQuantity::Scalar> Jx;
     Grid<NdArrayVector<1>, HybridQuantity::Scalar> Jy;
     Grid<NdArrayVector<1>, HybridQuantity::Scalar> Jz;
@@ -41,12 +38,14 @@ public:
 
 
 
-template<typename GridLayoutImpl>
+template<typename TestParam_t>
 class a2DLaplacian : public ::testing::Test
 {
+    auto constexpr static options = TestParam_t::field_options;
+
 protected:
-    GridLayout<GridLayoutImpl> layout;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    TestParam_t::GridLayout_t layout;
+    static constexpr std::size_t interp_order = options.interp_order;
     Grid<NdArrayVector<2>, HybridQuantity::Scalar> Jx;
     Grid<NdArrayVector<2>, HybridQuantity::Scalar> Jy;
     Grid<NdArrayVector<2>, HybridQuantity::Scalar> Jz;
@@ -63,12 +62,14 @@ public:
 
 
 
-template<typename GridLayoutImpl>
+template<typename TestParam_t>
 class a3DLaplacian : public ::testing::Test
 {
+    auto constexpr static options = TestParam_t::field_options;
+
 protected:
-    GridLayout<GridLayoutImpl> layout;
-    static constexpr std::size_t interp_order = GridLayoutImpl::interp_order;
+    TestParam_t::GridLayout_t layout;
+    static constexpr std::size_t interp_order = options.interp_order;
     Grid<NdArrayVector<3>, HybridQuantity::Scalar> Jx;
     Grid<NdArrayVector<3>, HybridQuantity::Scalar> Jy;
     Grid<NdArrayVector<3>, HybridQuantity::Scalar> Jz;

@@ -82,9 +82,14 @@ private:
         auto const& By = B(Component::Y);
         auto const& Bz = B(Component::Z);
 
-        auto const bx = GridLayout::template project<GridLayout::faceXToCellCenter>(Bx, index);
-        auto const by = GridLayout::template project<GridLayout::faceYToCellCenter>(By, index);
-        auto const bz = GridLayout::template project<GridLayout::faceZToCellCenter>(Bz, index);
+
+
+        auto const bx
+            = GridLayout::template project<GridLayout::implT::faceXToCellCenter>(Bx, index);
+        auto const by
+            = GridLayout::template project<GridLayout::implT::faceYToCellCenter>(By, index);
+        auto const bz
+            = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
 
         Etot(index)
             = eosPToEtot(gamma, rho(index), Vx(index), Vy(index), Vz(index), bx, by, bz, P(index));

@@ -1,3 +1,6 @@
+
+
+#include "phare_core.hpp"
 #include "initializer/data_provider.hpp"
 
 #include "core/data/electrons/electrons.hpp"
@@ -101,7 +104,7 @@ class NDlayout
 {
     NDlayout() {}
 
-    using nDL = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using nDL = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
 
 public:
     static nDL create()
@@ -130,7 +133,7 @@ struct ElectronsTest : public ::testing::Test
     static constexpr auto interp = typename TypeInfo::second_type{}();
 
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
 
     using GridND           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using FieldND          = Field<dim, HybridQuantity::Scalar>;
@@ -398,9 +401,9 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualIonVelocityMinusJ)
 {
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
-    using GridYee                = GridLayout<GridLayoutImplYee<dim, interp>>;
-    auto& electrons              = this->electrons;
-    auto& layout                 = this->layout;
+    using GridYee   = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
+    auto& electrons = this->electrons;
+    auto& layout    = this->layout;
     electrons.update(layout);
     auto& Ne = electrons.density();
 

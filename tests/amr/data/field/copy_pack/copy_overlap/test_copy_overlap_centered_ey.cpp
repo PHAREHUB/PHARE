@@ -14,7 +14,7 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyWithOverlapLikeANodeData)
 
     auto const& destinationLayout = this->param.destinationFieldData->gridLayout;
 
-    if (destinationLayout.interp_order >= 2)
+    if (destinationLayout.options.interp_order >= 2)
     {
         upper = 15;
     }

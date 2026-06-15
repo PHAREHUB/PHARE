@@ -1,10 +1,11 @@
 #ifndef PHARE_TEST_CORE_DATA_MHDSTATE_MHDSTATE_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_MHDSTATE_MHDSTATE_FIXTURES_HPP
 
-#include "core/mhd/mhd_quantities.hpp"
 #include "core/models/mhd_state.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+
 #include "initializer/data_provider.hpp"
-#include "tests/core/data/field/test_field_fixtures_mhd.hpp"
+
 #include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
 
 namespace PHARE::core

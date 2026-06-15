@@ -13,7 +13,7 @@ set(SOURCES_INC
   gridlayout_params.hpp
   gridlayout_test.hpp
   gridlayout_utilities.hpp
-  test_linear_combinaisons_yee.hpp
+  test_linear_combinations_yee.hpp
    )
 
 set(SOURCES_CPP
@@ -24,8 +24,7 @@ set(SOURCES_CPP
   gridlayout_laplacian.cpp
   gridlayout_field_centered_coord.cpp
   gridlayout_indexing.cpp
-  test_linear_combinaisons_yee.cpp
-  test_nextprev.cpp
+  test_linear_combinations_yee.cpp
   test_main.cpp
    )
 add_executable(${PROJECT_NAME} ${SOURCES_INC} ${SOURCES_CPP})

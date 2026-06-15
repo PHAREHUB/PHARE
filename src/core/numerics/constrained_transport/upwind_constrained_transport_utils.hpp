@@ -2,9 +2,9 @@
 #define PHARE_UPWIND_CONSTRAINED_TRANSPORT_UTILS_HPP
 
 #include "core/def.hpp"
-#include "core/mhd/mhd_quantities.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core

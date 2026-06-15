@@ -41,13 +41,12 @@ class H5Writer
 
 public:
     using This       = H5Writer<ModelView>;
-    using Model_t    = typename ModelView::Model_t;
-    using GridLayout = typename ModelView::GridLayout;
-    using Attributes = typename ModelView::PatchProperties;
+    using Model_t    = ModelView::Model_t;
+    using GridLayout = ModelView::GridLayout;
+    using Attributes = ModelView::PatchProperties;
 
-    static constexpr auto dimension   = GridLayout::dimension;
-    static constexpr auto interpOrder = GridLayout::interp_order;
-    static constexpr auto READ_WRITE  = HiFile::AccessMode::OpenOrCreate;
+    static constexpr auto dimension  = GridLayout::dimension;
+    static constexpr auto READ_WRITE = HiFile::AccessMode::OpenOrCreate;
 
     // flush_never: disables manual file closing, but still occurrs via RAII
     static constexpr std::size_t flush_never = 0;
@@ -248,8 +247,9 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
                                double timestamp)
 {
     timestamp_                     = timestamp;
-    fileAttributes_["dimension"]   = dimension;
-    fileAttributes_["interpOrder"] = interpOrder;
+    fileAttributes_["dimension"] = dimension;
+    if constexpr (solver::is_hybrid_model_v<Model_t>)
+        fileAttributes_["interpOrder"] = GridLayout::options.interp_order;
     fileAttributes_["layoutType"]  = modelView_.getLayoutTypeString();
     fileAttributes_["domain_box"]  = modelView_.domainBox();
     fileAttributes_["cell_width"]  = modelView_.cellWidth();

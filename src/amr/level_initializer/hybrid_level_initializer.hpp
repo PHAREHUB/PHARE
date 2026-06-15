@@ -34,7 +34,7 @@ namespace solver
         using HybridMessenger              = amr::HybridMessenger<HybridModel>;
         using GridLayoutT                  = typename HybridModel::gridlayout_type;
         static constexpr auto dimension    = GridLayoutT::dimension;
-        static constexpr auto interp_order = GridLayoutT::interp_order;
+        static constexpr auto interp_order = GridLayoutT::options.interp_order;
 
         using Ampere_t = FieldEvolverDispatchers<HybridModel>::Ampere_t;
         using Ohm_t    = OhmLevelTransformer<HybridModel>;

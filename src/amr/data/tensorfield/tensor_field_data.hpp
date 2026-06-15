@@ -27,16 +27,16 @@ namespace PHARE::amr
 /**
  * @brief TensorFieldData is the specialization of SAMRAI::hier::PatchData to TensorField objects
  */
-template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
+template<std::size_t rank_, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
 class TensorFieldData : public SAMRAI::hier::PatchData
 {
-    using This  = TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>;
+    using This  = TensorFieldData<rank_, GridLayoutT, Grid_t, PhysicalQuantity>;
     using Super = SAMRAI::hier::PatchData;
 
     static constexpr auto NO_ROTATE = SAMRAI::hier::Transformation::NO_ROTATE;
 
-    using tensor_t             = typename PhysicalQuantity::template TensorType<rank>;
-    using TensorFieldOverlap_t = TensorFieldOverlap<rank>;
+    using tensor_t             = typename PhysicalQuantity::template TensorType<rank_>;
+    using TensorFieldOverlap_t = TensorFieldOverlap<rank_>;
 
 public:
     using value_type = Grid_t::value_type;
@@ -54,12 +54,13 @@ private:
     }
 
 public:
-    static constexpr std::size_t dimension    = GridLayoutT::dimension;
-    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
-    static constexpr auto N                   = core::detail::tensor_field_dim_from_rank<rank>();
+    static constexpr auto dimension = GridLayoutT::dimension;
+    static constexpr auto rank      = rank_;
+    static constexpr auto N         = core::detail::tensor_field_dim_from_rank<rank>();
 
     using Geometry        = TensorFieldGeometry<rank, GridLayoutT, PhysicalQuantity>;
     using gridlayout_type = GridLayoutT;
+    using grid_type       = Grid_t;
 
     /*** \brief Construct a TensorFieldData from information associated to a patch
      *

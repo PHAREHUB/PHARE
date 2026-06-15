@@ -4,7 +4,7 @@
 #include <string>
 #include <tuple>
 
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/def.hpp"

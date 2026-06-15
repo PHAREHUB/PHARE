@@ -37,7 +37,7 @@ def fine_layout_from(field):
         boxm.refine(field.box, refinement_ratio),
         field.origin,
         field.layout.dl / refinement_ratio,
-        interp_order=field.layout.interp_order,
+        interp_order=field.layout.options.interp_order,
     )
 
 

@@ -56,8 +56,9 @@ void setPatchDataFromField(PatchData& pdata, Field const& field, GridLayout& gri
                            std::string patchID)
 {
     setPatchDataFromGrid(pdata, grid, patchID);
-    pdata.nGhosts = static_cast<std::size_t>(
-        GridLayout::nbrGhosts(GridLayout::centering(field.physicalQuantity())[0]));
+    pdata.nGhosts = GridLayout::options.field_ghost_width;
+    // static_cast<std::size_t>(
+    //     GridLayout::nbrGhosts(GridLayout::centering(field.physicalQuantity())[0]));
     pdata.data.assign(field.data(), field.data() + field.size());
 }
 

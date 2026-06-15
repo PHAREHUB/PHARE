@@ -6,32 +6,22 @@
 #include "initializer/data_provider.hpp"
 
 #include "core/errors.hpp"
-#include "core/mhd/mhd_quantities.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/utilities/index/index.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
+#include "core/utilities/index/index.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+#include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 
 #include "amr/solvers/solver.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
-#include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "amr/solvers/solver_mhd_field_evolvers.hpp"
 #include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 
 
-#include <array>
 #include <cmath>
 #include <tuple>
 #include <vector>
-#include <stdexcept>
-#include <functional>
-#include <type_traits>
 
 namespace PHARE::solver
 {

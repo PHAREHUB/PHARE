@@ -1,21 +1,20 @@
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_PARAMS_HPP
 #define TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_PARAMS_HPP
 
-#include <algorithm>
-#include <cassert>
-#include <fstream>
-#include <map>
-#include <memory>
-#include <string>
-#include <type_traits>
-
 
 #include "core/data/grid/gridlayout.hpp"
-#include "gridlayout_base_params.hpp"
-#include "gridlayout_utilities.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/models/options/hybrid_options.hpp"
+
+#include "phare_simulator_options.hpp"
+
+#include "gridlayout_base_params.hpp"
 
 
+#include <memory>
+#include <string>
+#include <cassert>
+#include <fstream>
 
 using namespace PHARE::core;
 
@@ -23,6 +22,14 @@ using namespace PHARE::core;
  */
 /* void PrintTo(GridLayoutTestParam<Layout::Yee, 1> const& param, ::std::ostream& os); */
 
+
+template<PHARE::SimOpts opts>
+struct TestParam
+{
+    PHARE::HybridFieldOptions<opts> constexpr static field_options{};
+
+    using GridLayout_t = GridLayout<PHARE::HybridOptions<field_options>{}>;
+};
 
 inline HybridQuantity::Scalar getQuantity(std::uint32_t iQuantity)
 {
@@ -50,13 +57,14 @@ inline HybridQuantity::Scalar getQuantity(std::uint32_t iQuantity)
 
 
 
-template<typename GridLayoutImpl>
-auto createParam(std::array<double, GridLayoutImpl::dimension> const& dxdydz,
-                 std::array<std::uint32_t, GridLayoutImpl::dimension> const& nbCellXYZ,
-                 Point<double, GridLayoutImpl::dimension> const& origin)
+template<auto options>
+auto createParam(std::array<double, options.dimension> const& dxdydz,
+                 std::array<std::uint32_t, options.dimension> const& nbCellXYZ,
+                 Point<double, options.dimension> const& origin)
 {
-    GridLayoutTestParam<GridLayoutImpl> param{};
-    param.layout    = std::make_shared<GridLayout<GridLayoutImpl>>(dxdydz, nbCellXYZ, origin);
+    using GridLayout_t = TestParam<options>::GridLayout_t;
+    GridLayoutTestParam<options> param{};
+    param.layout    = std::make_shared<GridLayout_t>(dxdydz, nbCellXYZ, origin);
     param.dxdydz    = dxdydz;
     param.nbCellXYZ = nbCellXYZ;
     param.origin    = origin;

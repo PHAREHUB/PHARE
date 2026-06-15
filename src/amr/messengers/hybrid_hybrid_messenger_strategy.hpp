@@ -4,8 +4,7 @@
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/types.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include "refiner_pool.hpp"
@@ -16,7 +15,6 @@
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/refine/field_refiner.hpp"
-#include "amr/data/field/refine/field_moments_refiner.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
@@ -74,7 +72,7 @@ namespace amr
         using IPhysicalModel    = HybridModel::Interface;
 
         static constexpr std::size_t dimension   = GridLayoutT::dimension;
-        static constexpr std::size_t interpOrder = GridLayoutT::interp_order;
+        static constexpr std::size_t interpOrder = GridLayoutT::options.interp_order;
 
         using InteriorParticleRefineOp = RefinementParams::InteriorParticleRefineOp;
         using CoarseToFineRefineOpOld  = RefinementParams::CoarseToFineRefineOpOld;
@@ -84,7 +82,7 @@ namespace amr
         using FieldRefineOp = FieldRefineOperator<GridLayoutT, GridT, Policy>;
 
         template<typename Policy>
-        using VecFieldRefineOp = VecFieldRefineOperator<GridLayoutT, GridT, Policy>;
+        using VecFieldRefineOp = VecFieldRefineOperator<VectorFieldDataT, Policy>;
 
         using DefaultFieldRefineOp    = FieldRefineOp<DefaultFieldRefiner<dimension>>;
         using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;

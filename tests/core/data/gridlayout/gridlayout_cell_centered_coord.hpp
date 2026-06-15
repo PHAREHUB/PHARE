@@ -13,15 +13,15 @@
 using namespace PHARE::core;
 
 
-template<typename GridLayoutImpl>
+template<auto options>
 struct GridLayoutCellCenteringParam
 {
-    GridLayoutTestParam<GridLayoutImpl> base;
+    GridLayoutTestParam<options> base;
 
-    std::vector<Point<int, GridLayoutImpl::dimension>> iCellForCentering;
-    std::vector<std::array<double, GridLayoutImpl::dimension>> expectedPosition;
+    std::vector<Point<int, options.dimension>> iCellForCentering;
+    std::vector<std::array<double, options.dimension>> expectedPosition;
 
-    std::vector<std::array<double, GridLayoutImpl::dimension>> actualPosition;
+    std::vector<std::array<double, options.dimension>> actualPosition;
 
 
     void init()
@@ -41,29 +41,29 @@ struct GridLayoutCellCenteringParam
 };
 
 
-template<typename GridLayoutImpl>
+template<auto options>
 auto createCellCenteringParam()
 {
-    std::vector<GridLayoutCellCenteringParam<GridLayoutImpl>> params;
+    std::vector<GridLayoutCellCenteringParam<options>> params;
 
     std::string summaryName{"centeredCoords_summary"};
     std::string valueName{"centeredCoords_values"};
 
     std::string path{"./"};
 
-    std::string summaryPath{path + summaryName + "_" + std::to_string(GridLayoutImpl::dimension)
-                            + "d_O" + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
-    std::string valuePath{path + valueName + "_" + std::to_string(GridLayoutImpl::dimension) + "d_O"
-                          + std::to_string(GridLayoutImpl::interp_order) + ".txt"};
+    std::string summaryPath{path + summaryName + "_" + std::to_string(options.dimension) + "d_O"
+                            + std::to_string(options.interp_order) + ".txt"};
+    std::string valuePath{path + valueName + "_" + std::to_string(options.dimension) + "d_O"
+                          + std::to_string(options.interp_order) + ".txt"};
 
     std::ifstream summary{summaryPath};
     std::ifstream value{valuePath};
 
-    std::array<std::uint32_t, GridLayoutImpl::dimension> nbCell;
-    std::array<double, GridLayoutImpl::dimension> dl;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> iStart;
-    std::array<std::uint32_t, GridLayoutImpl::dimension> iEnd;
-    std::array<double, GridLayoutImpl::dimension> origin;
+    std::array<std::uint32_t, options.dimension> nbCell;
+    std::array<double, options.dimension> dl;
+    std::array<std::uint32_t, options.dimension> iStart;
+    std::array<std::uint32_t, options.dimension> iEnd;
+    std::array<double, options.dimension> origin;
 
     writeToArray(summary, nbCell);
     writeToArray(summary, dl);
@@ -73,10 +73,10 @@ auto createCellCenteringParam()
 
     params.emplace_back();
 
-    params.back().base = createParam<GridLayoutImpl>(dl, nbCell, Point{origin});
+    params.back().base = createParam<options>(dl, nbCell, Point{origin});
 
-    std::array<std::uint32_t, GridLayoutImpl::dimension> icell;
-    std::array<double, GridLayoutImpl::dimension> realPosition;
+    std::array<std::uint32_t, options.dimension> icell;
+    std::array<double, options.dimension> realPosition;
 
     while (writeToArray(value, icell) && writeToArray(value, realPosition))
     {

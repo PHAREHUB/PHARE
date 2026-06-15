@@ -1,6 +1,6 @@
 
 #include "core/def/phare_mpi.hpp"
-
+#include "phare_core.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
@@ -74,7 +74,7 @@ TYPED_TEST(aFieldRefineOperator, canBeCreated)
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
 
-    using GridYee = GridLayout<GridLayoutImplYee<dim, interp>>;
+    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     using GridT   = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
     FieldRefineOperator<GridYee, GridT, DefaultFieldRefiner<dim>> linearRefine{};

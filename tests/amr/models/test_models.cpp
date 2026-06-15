@@ -1,8 +1,8 @@
+
+#include "phare_core.hpp"
 #include "amr/types/amr_types.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/electromag/electromag.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/ions.hpp"
 #include "core/data/electrons/electrons.hpp"
@@ -10,16 +10,13 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "initializer/data_provider.hpp"
-#include "amr/messengers/hybrid_messenger.hpp"
-#include "amr/messengers/messenger.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
-#include "amr/physical_models/mhd_model.hpp"
+// #include "amr/physical_models/mhd_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
@@ -37,9 +34,8 @@ using Field_t          = Field<1, HybridQuantity::Scalar>;
 using Grid1D           = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
 using VecField1D       = VecField<Field_t, HybridQuantity>;
 using SymTensorField1D = SymTensorField<Field_t, HybridQuantity>;
-using GridImplYee1D    = GridLayoutImplYee<dim, interpOrder>;
 using ParticleArray1D  = ParticleArray<dim>;
-using GridYee1D        = GridLayout<GridImplYee1D>;
+using GridYee1D = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interpOrder}>::Hybrid::GridLayout_t;
 
 using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray1D, GridYee1D>;
 
@@ -49,8 +45,8 @@ using Electromag1D = Electromag<VecField1D>;
 using Electrons1D  = Electrons<Ions1D>;
 using HybridModelT
     = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types, Grid1D>;
-using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types, Grid1D>;
-using ResourcesManagerT = ResourcesManager<GridYee1D, Grid1D>;
+// using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types, Grid1D>;
+using ResourcesManagerT = ResourcesManager<GridYee1D, Grid1D, interpOrder>;
 
 
 using InitFunctionT = PHARE::initializer::InitFunction<1>;

@@ -1,5 +1,5 @@
 
-
+#include "phare_core.hpp"
 #include "core/data/field/field.hpp"
 #include "core/data/grid/gridlayout.hpp"
 #include "core/utilities/index/index.hpp"
@@ -102,10 +102,10 @@ protected:
     static constexpr std::size_t dim          = 1;
     static constexpr std::size_t interp_order = 1;
     using UsableVecFieldND                    = UsableVecField<dim>;
-    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
-    using Ampere_t                            = Ampere<GridLayout<GridLayoutImpl>>;
+    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using Ampere_t     = Ampere<GridLayout_t>;
 
-    GridLayout<GridLayoutImpl> layout;
+    GridLayout_t layout;
 
     UsableVecFieldND B, J;
 
@@ -125,10 +125,10 @@ protected:
     static constexpr std::size_t dim          = 2;
     static constexpr std::size_t interp_order = 1;
     using UsableVecFieldND                    = UsableVecField<dim>;
-    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
-    using Ampere_t                            = Ampere<GridLayout<GridLayoutImpl>>;
+    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using Ampere_t     = Ampere<GridLayout_t>;
 
-    GridLayout<GridLayoutImpl> layout;
+    GridLayout_t layout;
 
     UsableVecFieldND B, J;
 
@@ -148,10 +148,10 @@ protected:
     static constexpr std::size_t dim          = 3;
     static constexpr std::size_t interp_order = 1;
     using UsableVecFieldND                    = UsableVecField<dim>;
-    using GridLayoutImpl                      = GridLayoutImplYee<dim, interp_order>;
-    using Ampere_t                            = Ampere<GridLayout<GridLayoutImpl>>;
+    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using Ampere_t     = Ampere<GridLayout_t>;
 
-    GridLayout<GridLayoutImpl> layout;
+    GridLayout_t layout;
 
     UsableVecFieldND B, J;
 

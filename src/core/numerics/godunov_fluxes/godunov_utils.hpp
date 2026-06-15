@@ -2,13 +2,13 @@
 #define CORE_NUMERICS_GODUNOV_GODUNOV_UTILS_HPP
 
 #include "core/data/field/field.hpp"
-#include "core/data/tensorfield/tensorfield.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "core/mhd/mhd_quantities.hpp"
-#include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+#include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
+
 #include <cassert>
 #include <cstddef>
 

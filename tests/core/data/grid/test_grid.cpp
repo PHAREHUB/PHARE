@@ -2,7 +2,7 @@
 
 #include "core/data/grid/grid.hpp"
 #include <core/utilities/algorithm.hpp>
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 
 

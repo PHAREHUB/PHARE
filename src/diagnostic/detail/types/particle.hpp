@@ -35,8 +35,9 @@ public:
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
+    using GridLayout                  = H5Writer::GridLayout;
     static constexpr auto dimension   = H5Writer::dimension;
-    static constexpr auto interpOrder = H5Writer::interpOrder;
+    static constexpr auto interpOrder = GridLayout::options.interp_order;
     using Attributes                  = typename Super::Attributes;
     using Packer                      = core::ParticlePacker<dimension>;
     using FloatType                   = typename H5Writer::FloatType;

@@ -22,8 +22,7 @@ namespace amr
     class FieldVariable : public SAMRAI::hier::Variable
     {
     public:
-        static constexpr std::size_t dimension    = GridLayoutT::dimension;
-        static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+        static constexpr std::size_t dimension = GridLayoutT::dimension;
 
         /** \brief Construct a new variable with an unique name, and a specific PhysicalQuantity
          *

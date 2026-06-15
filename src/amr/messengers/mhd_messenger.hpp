@@ -2,9 +2,9 @@
 #define PHARE_MHD_MESSENGER_HPP
 
 #include "core/def/phare_mpi.hpp"
-#include "core/mhd/mhd_quantities.hpp"
-#include "core/data/vecfield/vecfield.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 
+#include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/mhd_flux_coarsener.hpp"
@@ -769,7 +769,7 @@ namespace amr
         using FieldRefineOp = FieldRefineOperator<GridLayoutT, GridT, Policy>;
 
         template<typename Policy>
-        using VecFieldRefineOp = VecFieldRefineOperator<GridLayoutT, GridT, Policy>;
+        using VecFieldRefineOp = VecFieldRefineOperator<VectorFieldDataT, Policy>;
 
         using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;
         using MagneticFieldRefineOp   = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;

@@ -1,5 +1,5 @@
 
-
+#include "phare_core.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/span.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -25,7 +25,7 @@ using namespace PHARE::initializer;
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
 
-using GridLayoutT    = GridLayout<GridLayoutImplYee<1, 1>>;
+using GridLayoutT    = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
 using ParticleArrayT = ParticleArray<1>;
 
 

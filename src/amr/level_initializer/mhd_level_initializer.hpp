@@ -20,8 +20,7 @@ class MHDLevelInitializer : public LevelInitializer<typename MHDModel::amr_types
     using IMessengerT                  = amr::IMessenger<IPhysicalModelT>;
     using MHDMessenger                 = amr::MHDMessenger<MHDModel>;
     using GridLayoutT                  = typename MHDModel::gridlayout_type;
-    static constexpr auto dimension    = GridLayoutT::dimension;
-    static constexpr auto interp_order = GridLayoutT::interp_order;
+    static constexpr auto dimension = GridLayoutT::dimension;
 
     inline bool isRootLevel(int levelNumber) const { return levelNumber == 0; }
 

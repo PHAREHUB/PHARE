@@ -1,25 +1,16 @@
 #ifndef PHARE_FIELD_REFINE_OPERATOR_HPP
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
-
-
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include "core/def.hpp"
-
 #include "amr/data/field/field_data.hpp"
-#include "amr/data/tensorfield/tensor_field_data.hpp"
-#include "amr/resources_manager/tensor_field_resource.hpp"
-
-#include "field_linear_refine.hpp"
-#include "field_refiner.hpp"
+#include "amr/data/tensorfield/tensor_field_overlap.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/RefineOperator.h>
 
-
 #include <cstddef>
-
 
 namespace PHARE::amr
 {
@@ -120,22 +111,22 @@ public:
 };
 
 
-template<std::size_t rank, typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
+template<typename TensorFieldData_t, typename FieldRefinerPolicy>
 class TensorFieldRefineOperator : public SAMRAI::hier::RefineOperator
 {
 public:
+    using GridLayoutT                      = TensorFieldData_t::gridlayout_type;
+    using FieldT                           = TensorFieldData_t::grid_type::field_type;
     static constexpr std::size_t dimension = GridLayoutT::dimension;
     using GridLayoutImpl                   = GridLayoutT::implT;
 
-    using Quantity         = extract_quantity_type<typename FieldT::physical_quantity_type>::type;
-    using TensorFieldDataT = TensorFieldData<rank, GridLayoutT, FieldT, Quantity>;
-    using TensorFieldOverlap_t = TensorFieldOverlap<rank>;
+    using TensorFieldDataT     = TensorFieldData_t;
+    using TensorFieldOverlap_t = TensorFieldOverlap<TensorFieldData_t::rank>;
 
     static constexpr std::size_t N = TensorFieldDataT::N;
 
     TensorFieldRefineOperator()
         : SAMRAI::hier::RefineOperator{"TensorFieldRefineOperator"}
-
     {
     }
 
@@ -208,9 +199,8 @@ public:
     }
 };
 
-template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
-using VecFieldRefineOperator
-    = TensorFieldRefineOperator</*rank=*/1, GridLayoutT, FieldT, FieldRefinerPolicy>;
+template<typename VectorFieldDataT, typename FieldRefinerPolicy>
+using VecFieldRefineOperator = TensorFieldRefineOperator<VectorFieldDataT, FieldRefinerPolicy>;
 
 
 } // namespace PHARE::amr

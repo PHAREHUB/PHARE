@@ -1,7 +1,9 @@
 #ifndef PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 
+#include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+
 #include <amr/utilities/box/amr_box.hpp>
 
 #include <SAMRAI/pdat/CellOverlap.h>
@@ -93,7 +95,7 @@ public:
         for (auto const& box : cell_overlap.getDestinationBoxContainer())
         {
             auto const ghost_overlap
-                = grow(phare_box_from<dim>(box), GridLayout_t::nbrParticleGhosts());
+                = grow(phare_box_from<dim>(box), GridLayout_t::options.particle_ghost_width);
             auto const domain_overlap = ghost_overlap * phare_box_from<dim>(dst_patch_box);
             boxes.pushBack(samrai_box_from(*domain_overlap));
         }

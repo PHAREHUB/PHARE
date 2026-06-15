@@ -1,4 +1,3 @@
-#include "gtest/gtest.h"
 
 #include "phare_core.hpp"
 
@@ -7,12 +6,14 @@
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/tensorfield/test_tensorfield_fixtures.hpp"
 
+#include "gtest/gtest.h"
+
+
 using namespace PHARE::core;
 
 
-
 using Param  = std::vector<double> const&;
-using Return = std::shared_ptr<PHARE::core::Span<double>>;
+using Return = std::shared_ptr<Span<double>>;
 
 Return density(Param x)
 {
@@ -169,7 +170,7 @@ template<std::size_t dim, std::size_t interp_order>
 struct ElectromagBuffers
 {
     constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes       = PHARE::core::PHARE_Types<opts>;
+    using PHARETypes       = PHARE_Types<opts>;
     using Grid             = typename PHARETypes::Grid_t;
     using GridLayout       = typename PHARETypes::GridLayout_t;
     using Electromag       = typename PHARETypes::Electromag_t;
@@ -205,7 +206,7 @@ template<std::size_t dim, std::size_t interp_order>
 struct IonsBuffers
 {
     constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes                 = PHARE::core::PHARE_Types<opts>;
+    using PHARETypes                 = PHARE_Types<opts>;
     using UsableVecFieldND           = UsableVecField<dim>;
     using Grid                       = typename PHARETypes::Grid_t;
     using GridLayout                 = typename PHARETypes::GridLayout_t;
@@ -364,15 +365,15 @@ struct IonUpdaterTest : public ::testing::Test
     static constexpr auto dim          = DimInterpT::dimension;
     static constexpr auto interp_order = DimInterpT::interp_order;
     constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes    = PHARE::core::PHARE_Types<opts>;
-    using Ions          = typename PHARETypes::Ions_t;
-    using Electromag    = typename PHARETypes::Electromag_t;
-    using GridLayout    = typename PHARE::core::GridLayout<GridLayoutImplYee<dim, interp_order>>;
-    using ParticleArray = typename PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory_t;
+    using PHARETypes    = PHARE_Types<opts>;
+    using Ions          = PHARETypes::Ions_t;
+    using Electromag    = PHARETypes::Electromag_t;
+    using GridLayout    = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using ParticleArray = PHARETypes::ParticleArray_t;
+    using ParticleInitializerFactory = PHARETypes::ParticleInitializerFactory_t;
 
-    using IonUpdater = typename PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
-    using Boxing_t   = PHARE::core::UpdaterSelectionBoxing<IonUpdater, GridLayout>;
+    using IonUpdater_t = IonUpdater<Ions, Electromag, GridLayout>;
+    using Boxing_t     = UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
 
 
     double dt{0.01};
@@ -381,7 +382,8 @@ struct IonUpdaterTest : public ::testing::Test
     std::array<int, dim> ncells;
     GridLayout layout;
     // assumes no level ghost cells
-    Boxing_t const boxing{layout, {grow(layout.AMRBox(), GridLayout::nbrParticleGhosts())}};
+    Boxing_t const boxing{layout,
+                          {grow(layout.AMRBox(), GridLayout::options.particle_ghost_width)}};
 
 
     // data for electromagnetic fields
@@ -513,12 +515,10 @@ struct IonUpdaterTest : public ::testing::Test
 
             } // end 1D
         } // end pop loop
-        PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
-                                      PHARE::core::DomainDeposit{});
+        depositParticles(ions, layout, Interpolator<dim, interp_order>{}, DomainDeposit{});
 
 
-        PHARE::core::depositParticles(ions, layout, Interpolator<dim, interp_order>{},
-                                      PHARE::core::LevelGhostDeposit{});
+        depositParticles(ions, layout, Interpolator<dim, interp_order>{}, LevelGhostDeposit{});
 
 
         ions.computeChargeDensity();
@@ -529,7 +529,7 @@ struct IonUpdaterTest : public ::testing::Test
 
     void fillIonsMomentsGhosts()
     {
-        using Interpolator = typename IonUpdater::Interpolator;
+        using Interpolator = IonUpdater_t::Interpolator;
         Interpolator interpolate;
 
         for (auto& pop : this->ions)
@@ -666,7 +666,7 @@ TYPED_TEST_SUITE(IonUpdaterTest, DimInterps, );
 
 TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 }
 
@@ -743,7 +743,7 @@ TYPED_TEST(IonUpdaterTest, loadsLevelGhostParticlesOnLeftGhostArea)
 
 TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
@@ -789,7 +789,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 // TYPED_TEST(IonUpdaterTest, particlesAreChangedInParticlesAndMomentsMode)
 //{
-//    typename IonUpdaterTest<TypeParam>::IonUpdater
+//    typename IonUpdaterTest<TypeParam>::IonUpdater_t
 //    ionUpdater{init_dict["simulation"]["pusher"]};
 //
 //    IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
@@ -814,7 +814,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
@@ -834,7 +834,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
 TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
@@ -854,7 +854,7 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
 TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 {
-    typename IonUpdaterTest<TypeParam>::IonUpdater ionUpdater{
+    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
     ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,

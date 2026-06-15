@@ -2,7 +2,7 @@
 #define PHARE_ELECTRONS_HPP
 
 #include "core/def.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"
