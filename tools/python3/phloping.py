@@ -186,7 +186,7 @@ def print_variance_across(scope_timer_filepath=None, root_id=None):
             sys.exit(1)
         if args.filter:
             root_id = args.filter
-    phst.print_variance_across(scope_timer_filepath)
+    phst.print_variance_across(scope_timer_filepath, root_id)
 
 
 def print_scope_timings(scope_timer_filepath=None, sort_worst_first=True, root_id=None):
