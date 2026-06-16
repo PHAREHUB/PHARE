@@ -88,9 +88,7 @@ def patch_array_ufunc(patch, ufunc, method, *inputs, **kwargs):
         key: getattr(ufunc, method)(*extract(key), **kwargs)
         for key in patch.patch_datas
     }
-    return type(patch)(
-        patch_datas, patch_id=patch.id, layout=patch.layout, attrs=patch.attrs
-    )
+    return type(patch)(patch_datas, patch_id=patch.id, box=patch.box, attrs=patch.attrs)
 
 
 def patch_array_function(patch, func, types, args, kwargs):
@@ -104,4 +102,4 @@ def patch_array_function(patch, func, types, args, kwargs):
     if type(any_patch_data) is not type(any_data):
         return final
 
-    return type(patch)(final, patch_id=patch.id, layout=patch.layout, attrs=patch.attrs)
+    return type(patch)(final, patch_id=patch.id, box=patch.box, attrs=patch.attrs)
