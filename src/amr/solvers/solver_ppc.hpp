@@ -2,8 +2,8 @@
 #define PHARE_SOLVER_PPC_HPP
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/utilities/algorithm.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
@@ -44,10 +44,10 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
-    using FE_t      = FieldEvolverDispatchers<HybridModel>;
-    using Faraday_t = FE_t::Faraday_t;
-    using Ampere_t  = FE_t::Ampere_t;
-    using Ohm_t     = OhmLevelTransformer<HybridModel>;
+    using FE_t         = FieldEvolverDispatchers<HybridModel>;
+    using Faraday_t    = FE_t::Faraday_t;
+    using Ampere_t     = FE_t::Ampere_t;
+    using Ohm_t        = OhmLevelTransformer<HybridModel>;
     using IonUpdater_t = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
 
     Electromag electromagPred_{"EMPred"};
@@ -114,10 +114,14 @@ public:
 
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
-    { return std::forward_as_tuple(Bold_, fluxSumE_); }
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
+    }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
-    { return std::forward_as_tuple(Bold_, fluxSumE_); }
+    {
+        return std::forward_as_tuple(Bold_, fluxSumE_);
+    }
 
 
 private:
@@ -264,25 +268,11 @@ void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& mode
     PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
+    auto& Eavg        = electromagAvg_.E;
+    auto& rm          = *hybridModel.resourcesManager;
 
-    for (auto& patch : level)
-    {
-        auto& Eavg         = electromagAvg_.E;
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _             = hybridModel.resourcesManager->setOnPatch(*patch, fluxSumE_, Eavg);
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::X)(args...) += Eavg(core::Component::X)(args...) * coef;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Y), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Y)(args...) += Eavg(core::Component::Y)(args...) * coef;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Z), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Z)(args...) += Eavg(core::Component::Z)(args...) * coef;
-        });
-    }
+    for (auto& patch : rm.enumerate(level, fluxSumE_, Eavg))
+        core::operate<core::PlusEqualsProduct>(fluxSumE_, Eavg, coef);
 }
 
 

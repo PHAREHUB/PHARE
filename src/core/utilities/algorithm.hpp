@@ -161,6 +161,16 @@ auto& convert_to_fortran_primal(               //
 }
 
 
+template<template<typename> typename Op, typename Field_t, typename PQ, std::size_t rank>
+void operate(TensorField<Field_t, PQ, rank>& dst, TensorField<Field_t, PQ, rank> const& src,
+             auto&&... args)
+{
+    using Operator = Op<typename Field_t::type>;
+    for (std::size_t ci = 0; ci < dst.size(); ++ci)
+        for (std::size_t i = 0; i < dst[ci].size(); ++i)
+            Operator{dst[ci].data()[i]}(src[ci].data()[i], args...);
+}
+
 
 } // namespace PHARE::core
 
