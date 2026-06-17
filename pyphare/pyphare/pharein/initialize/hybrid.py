@@ -1,10 +1,15 @@
+#
+#
+#
+
+from typing import Callable
+
 import pybindlibs.dictator as pp
 
 from .general import add_double, add_int, add_size_t, add_string, fn_wrapper
 
 
 def populateDict(sim):
-
     addInitFunction = getattr(pp, "addInitFunction{:d}".format(sim.ndim) + "D")
 
     if sim.refinement == "tagging":
@@ -60,8 +65,22 @@ def populateDict(sim):
     if sim.electrons is None:
         raise RuntimeError("Error - no electrons registered to this Simulation")
     else:
+        # print(type(simulation.electrons.dict_path()))
+        # print(simulation.electrons.dict_path())
+        # for item in simulation.electrons.dict_path():
+        #     if (item[0] == 'electrons/pressure_closure/name/'):
+        #         name_ = item[1]
+        # if name_ == 'isothermal':
+        #     pass
+        # if name_ == 'polytropic':
+        #     pass
+
         for item in sim.electrons.dict_path():
             if isinstance(item[1], str):
                 add_string("simulation/" + item[0], item[1])
-            else:
+            elif isinstance(item[1], float):
                 add_double("simulation/" + item[0], item[1])
+            elif isinstance(item[1], Callable):
+                addInitFunction("simulation/" + item[0], fn_wrapper(item[1]))
+            else:
+                raise ValueError(f"acceptable entries should be int, float or collable")

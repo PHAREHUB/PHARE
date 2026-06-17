@@ -134,7 +134,11 @@ def config():
         bz=bz,
         protons={"charge": 1, "density": density, **vvv, "init": {"seed": 12334}},
     )
-    ph.ElectronModel(closure="isothermal", Te=0.0)
+
+    def Te(x, y):
+        return 1 * x
+
+    ph.ElectronModel(closure="polytropic", Pe=Te)
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)

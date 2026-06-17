@@ -38,6 +38,10 @@ namespace core
         {
         }
 
+        IonPopulation(IonPopulation const&) = default;
+        IonPopulation(IonPopulation&&)      = default;
+        IonPopulation& operator=(IonPopulation const&) = default;
+        IonPopulation& operator=(IonPopulation&&)      = default;
 
         NO_DISCARD double mass() const { return mass_; }
 
@@ -136,7 +140,7 @@ namespace core
         field_type particleDensity_;
         field_type chargeDensity_;
         ParticlesPack<ParticleArray> particles_;
-        initializer::PHAREDict const& particleInitializerInfo_;
+        initializer::PHAREDict particleInitializerInfo_;
     };
 } // namespace core
 } // namespace PHARE

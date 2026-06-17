@@ -172,11 +172,11 @@ private:
         return *level;
     }
 
-    void update_electrons(auto& level, auto& model)
+    void update_electrons(auto& level, auto& model, auto const dt)
     {
         auto& rm = *model.resourcesManager;
         for (auto& patch : rm.enumerate(level, model.state.electrons))
-            model.state.electrons.update(amr::layoutFromPatch<GridLayout>(*patch));
+            model.state.electrons.update(amr::layoutFromPatch<GridLayout>(*patch), dt);
     }
 
 
@@ -374,7 +374,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ohm");
-        update_electrons(level, model);
+        auto dt = newTime - currentTime;
+        update_electrons(level, model, dt);
         ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
@@ -410,7 +411,8 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ohm");
-        update_electrons(level, model);
+        auto dt = newTime - currentTime;
+        update_electrons(level, model, dt);
         ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
@@ -450,8 +452,8 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ohm");
-
-        update_electrons(level, model);
+        auto dt = newTime - currentTime;
+        update_electrons(level, model, dt);
         ohm(electromag.B, electromag.E, model.state.electrons);
         setTime(model.state.electromag.E);
 

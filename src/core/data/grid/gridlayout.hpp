@@ -536,6 +536,9 @@ namespace core
          * at a multidimensional index and in a given direction.
          * The function can perform 1D, 2D and 3D 1st order derivatives, depending
          * on the dimensionality of the GridLayout.
+         * This function then gives a derivative value at 'index' which centering
+         * is the opposite of the centering of 'operand'
+         * if 'operand' is primal, the derivative is at the dual 'index' location
          */
         template<auto direction, typename Field>
         NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index) const
@@ -597,6 +600,72 @@ namespace core
                 }
             }
         }
+
+
+        /** @brief returns the local 1st order derivative of the Field operand
+         * at a multidimensional index and in a given direction.
+         * The function can perform 1D, 2D and 3D 1st order derivatives, depending
+         * on the dimensionality of the GridLayout.
+         * This function then gives a derivative value at 'index' which centering
+         * is the same as the centering of 'operand'
+         * if 'operand' is primal, the derivative is at the primal 'index' location
+         */
+        template<auto direction, typename Field>
+        NO_DISCARD auto derivOnSameCentering(Field const& operand,
+                                             MeshIndex<Field::dimension> index)
+        {
+            auto fieldCentering = centering(operand.physicalQuantity());
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
+
+            if constexpr (Field::dimension == 1)
+            {
+                auto next = operand(index[0] + 1);
+                auto prev = operand(index[0] - 1);
+                return 0.5 * inverseMeshSize_[dirX] * (next - prev);
+            }
+
+            else if constexpr (Field::dimension == 2)
+            {
+                if constexpr (direction == Direction::X)
+                {
+                    auto next = operand(index[0] + 1, index[1]);
+                    auto prev = operand(index[0] - 1, index[1]);
+                    return 0.5 * inverseMeshSize_[dirX] * (next - prev);
+                }
+
+                else if constexpr (direction == Direction::Y)
+                {
+                    auto next = operand(index[0], index[1] + 1);
+                    auto prev = operand(index[0], index[1] - 1);
+                    return 0.5 * inverseMeshSize_[dirY] * (next - prev);
+                }
+            }
+            else if constexpr (Field::dimension == 3)
+            {
+                if constexpr (direction == Direction::X)
+                {
+                    auto next = operand(index[0] + 1, index[1], index[2]);
+                    auto prev = operand(index[0] - 1, index[1], index[2]);
+                    return 0.5 * inverseMeshSize_[dirX] * (next - prev);
+                }
+
+                else if constexpr (direction == Direction::Y)
+                {
+                    auto next = operand(index[0], index[1] + 1, index[2]);
+                    auto prev = operand(index[0], index[1] - 1, index[2]);
+                    return 0.5 * inverseMeshSize_[dirY] * (next - prev);
+                }
+                else if constexpr (direction == Direction::Z)
+                {
+                    auto next = operand(index[0], index[1], index[2] + 1);
+                    auto prev = operand(index[0], index[1], index[2] - 1);
+                    return 0.5 * inverseMeshSize_[dirZ] * (next - prev);
+                }
+            }
+        }
+
 
         /** @brief returns the local laplacian of the Field operand
          * at a multidimensional index.
@@ -896,6 +965,8 @@ namespace core
 
             return newCentering;
         }
+
+
 
         /**
          * @brief momentsToEx return the indexes and associated coef to compute the linear

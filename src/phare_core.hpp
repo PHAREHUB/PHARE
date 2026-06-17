@@ -55,7 +55,8 @@ struct PHARE_Types
         = MaxwellianParticleInitializer<ParticleArray_t, GridLayout_t>;
     using IonPopulation_t = IonPopulation<ParticleArray_t, VecField_t, SymTensorField_t>;
     using Ions_t          = Ions<IonPopulation_t, GridLayout_t>;
-    using Electrons_t     = Electrons<Ions_t>;
+    using StandardHybridElectronFluxComputer_t = StandardHybridElectronFluxComputer<Ions_t>;
+    using Electrons_t                          = Electrons<StandardHybridElectronFluxComputer_t>;
 
     using ParticleInitializerFactory_t = ParticleInitializerFactory<ParticleArray_t, GridLayout_t>;
 

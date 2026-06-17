@@ -46,7 +46,7 @@ using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleAr
 using IonsPop1D    = IonPopulation<ParticleArray1D, VecField1D, SymTensorField1D>;
 using Ions1D       = Ions<IonsPop1D, GridYee1D>;
 using Electromag1D = Electromag<VecField1D>;
-using Electrons1D  = Electrons<Ions1D>;
+using Electrons1D  = Electrons<StandardHybridElectronFluxComputer<Ions1D>>;
 using HybridModelT
     = HybridModel<GridYee1D, Electromag1D, Ions1D, Electrons1D, SAMRAI_Types, Grid1D>;
 using MHDModelT         = MHDModel<GridYee1D, VecField1D, SAMRAI_Types, Grid1D>;

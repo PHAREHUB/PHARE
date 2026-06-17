@@ -1,6 +1,9 @@
 #ifndef PHARE_CORE_DEF_HPP
 #define PHARE_CORE_DEF_HPP
 
+#include "core/logger.hpp"
+
+
 #include <type_traits>
 
 #define NO_DISCARD [[nodiscard]]
@@ -18,6 +21,30 @@
 #define PHARE_STR_CAT(x, y) PHARE_TOKEN_PASTE(x, y)
 
 
+
+namespace PHARE::core::detail
+{
+template<typename Resource>
+auto get_resource_name(Resource const& res) -> decltype(std::declval<Resource>().name())
+{
+    return res.name();
+}
+
+template<typename Resource>
+auto get_resource_name(Resource const* res) -> decltype(std::declval<Resource>()->name())
+{
+    return res->name();
+}
+
+template<typename... Args>
+auto get_resource_name(auto const&...)
+{
+    return std::string{"unknown resource"};
+}
+
+} // namespace PHARE::core::detail
+
+
 namespace PHARE::core
 {
 
@@ -30,10 +57,16 @@ concept FloatingPoint = std::is_floating_point_v<T>;
 NO_DISCARD bool isUsable(auto const&... args)
 {
     auto check = [](auto const& arg) {
+        bool usable = true;
         if constexpr (std::is_pointer_v<std::decay_t<decltype(arg)>>)
-            return arg != nullptr;
+            usable = arg != nullptr;
         else
-            return arg.isUsable();
+            usable = arg.isUsable();
+        PHARE_DEBUG_DO({
+            if (!usable)
+                PHARE_LOG_LINE_SS(detail::get_resource_name(arg) << " not usable!");
+        })
+        return usable;
     };
     return (check(args) && ...);
 }
@@ -42,10 +75,16 @@ NO_DISCARD bool isUsable(auto const&... args)
 NO_DISCARD bool isSettable(auto const&... args)
 {
     auto check = [](auto const& arg) {
+        bool settable = true;
         if constexpr (std::is_pointer_v<std::decay_t<decltype(arg)>>)
-            return arg == nullptr;
+            settable = arg == nullptr;
         else
-            return arg.isSettable();
+            settable = arg.isSettable();
+        PHARE_DEBUG_DO({
+            if (!settable)
+                PHARE_LOG_LINE_SS(detail::get_resource_name(arg) << " not settable!");
+        })
+        return settable;
     };
     return (check(args) && ...);
 }
