@@ -147,11 +147,14 @@ def populateDict(sim):
     if refinement_boxes is not None and sim.refinement == "boxes":
         as_paths(refinement_boxes)
     elif sim.refinement == "tagging":
-        add_string("simulation/AMR/refinement/tagging/method", "auto")
-        # the two following params are hard-coded for now
-        # they will become configurable when we have multi-models or several methods
-        # per model
-        add_double("simulation/AMR/refinement/tagging/threshold", sim.tagging_threshold)
+        tagging = sim.tagging
+        add_string("simulation/AMR/refinement/tagging/method", tagging["method"])
+        quantities = tagging["quantities"]
+        add_int("simulation/AMR/refinement/tagging/nbr_quantities", len(quantities))
+        for i, (name, threshold) in enumerate(quantities):
+            q_path = f"simulation/AMR/refinement/tagging/Q{i}/"
+            add_string(q_path + "name", name)
+            add_double(q_path + "threshold", threshold)
     else:
         add_string(
             "simulation/AMR/refinement/tagging/method", "none"

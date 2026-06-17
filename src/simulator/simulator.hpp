@@ -13,7 +13,7 @@
 #include "core/utilities/timestamps.hpp"
 
 #include "amr/wrappers/integrator.hpp"
-#include "amr/tagging/tagger_factory.hpp"
+#include "amr/tagging/concrete_tagger.hpp"
 #include "amr/load_balancing/load_balancer_details.hpp"
 #include "amr/load_balancing/load_balancer_manager.hpp"
 #include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
@@ -297,7 +297,7 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
         if (dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
             != "none")
         {
-            auto hybridTagger_ = amr::TaggerFactory<HybridModel>::make(
+            auto hybridTagger_ = std::make_unique<amr::ConcreteTagger<HybridModel>>(
                 dict["simulation"]["AMR"]["refinement"]["tagging"]);
             multiphysInteg_->registerTagger(maxMHDLevel_, maxLevelNumber_ - 1,
                                             std::move(hybridTagger_));
@@ -365,7 +365,7 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
         if (dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
             != "none")
         {
-            auto mhdTagger_ = amr::TaggerFactory<MHDModel>::make(
+            auto mhdTagger_ = std::make_unique<amr::ConcreteTagger<MHDModel>>(
                 dict["simulation"]["AMR"]["refinement"]["tagging"]);
             multiphysInteg_->registerTagger(0, maxMHDLevel_ - 1, std::move(mhdTagger_));
         }

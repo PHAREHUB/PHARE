@@ -2,6 +2,8 @@
 
 
 #include "simulator/simulator.hpp"
+#include "amr/tagging/concrete_tagger.hpp"
+#include "amr/tagging/tagging_criteria.hpp"
 
 #include "tests/core/data/gridlayout/gridlayout_test.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -10,32 +12,105 @@
 #include "gtest/gtest.h"
 
 #include <cmath>
+#include <vector>
 #include <algorithm>
 
 using namespace PHARE::amr;
 
-TEST(test_tagger, fromFactoryValid)
+// dict in the runtime contract: method + nbr_quantities + Q{i}/{name,threshold}
+PHARE::initializer::PHAREDict taggingDict(std::string const& method,
+                                          std::vector<std::pair<std::string, double>> const& qtys)
 {
-    auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
-    using phare_types          = PHARE::solver::PHARE_Types<opts>;
-    using hybrid_model         = phare_types::HybridModel_t;
     PHARE::initializer::PHAREDict dict;
-    dict["hybrid_method"] = std::string{"default"};
-    dict["threshold"]     = 0.2;
-    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
-    EXPECT_TRUE(hybridTagger != nullptr);
+    dict["method"]         = method;
+    dict["nbr_quantities"] = static_cast<int>(qtys.size());
+    for (std::size_t i = 0; i < qtys.size(); ++i)
+    {
+        auto const path        = "Q" + std::to_string(i);
+        dict[path]["name"]      = qtys[i].first;
+        dict[path]["threshold"] = qtys[i].second;
+    }
+    return dict;
 }
 
-TEST(test_tagger, fromFactoryInvalid)
+TEST(test_tagger, constructsWithValidMethodAndQuantity)
 {
     auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
     using phare_types          = PHARE::solver::PHARE_Types<opts>;
     using hybrid_model         = phare_types::HybridModel_t;
-    PHARE::initializer::PHAREDict dict;
-    dict["hybrid_method"] = std::string{"invalidStrat"};
-    auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
-    auto badTagger        = TaggerFactory<hybrid_model>::make(dict);
-    EXPECT_TRUE(badTagger == nullptr);
+    auto dict                  = taggingDict("default", {{"B", 0.2}});
+    EXPECT_NO_THROW((ConcreteTagger<hybrid_model>{dict}));
+    auto dictLohner = taggingDict("lohner", {{"B", 0.2}});
+    EXPECT_NO_THROW((ConcreteTagger<hybrid_model>{dictLohner}));
+}
+
+TEST(test_tagger, throwsOnUnknownMethod)
+{
+    auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
+    using phare_types          = PHARE::solver::PHARE_Types<opts>;
+    using hybrid_model         = phare_types::HybridModel_t;
+    auto dict                  = taggingDict("invalidStrat", {{"B", 0.2}});
+    EXPECT_THROW((ConcreteTagger<hybrid_model>{dict}), std::runtime_error);
+}
+
+TEST(test_tagger, throwsOnHybridRho)
+{
+    auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
+    using phare_types          = PHARE::solver::PHARE_Types<opts>;
+    using hybrid_model         = phare_types::HybridModel_t;
+    auto dict                  = taggingDict("default", {{"rho", 0.1}});
+    EXPECT_THROW((ConcreteTagger<hybrid_model>{dict}), std::runtime_error);
+}
+
+
+// minimal 1D field for testing the pure criteria functions directly
+struct MockField1D
+{
+    std::vector<double> data;
+    double operator()(std::uint32_t i) const { return data[i]; }
+};
+
+TEST(test_criteria, lohnerSeparatesStepFromFlat)
+{
+    // tanh step centered at cell 20 over 40 cells
+    std::size_t const n = 40;
+    MockField1D f;
+    f.data.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+        f.data[i] = std::tanh((static_cast<double>(i) - 20.) / 1.5);
+
+    std::vector<MockField1D const*> comps{&f};
+
+    // Sample a flank of the step (cell 18), NOT the center: lohner is a second-
+    // difference estimator and vanishes at the inflection point of a symmetric
+    // tanh (a_p = -a_m, a_0 = 0). Curvature, and thus the indicator, is maximal
+    // on the flanks.
+    auto const atStep = lohnerIndicator<1>(comps, {18u});
+    auto const atFlat = lohnerIndicator<1>(comps, {5u});
+    EXPECT_GT(atStep, atFlat);
+    EXPECT_GT(atStep, 10. * atFlat);
+}
+
+TEST(test_criteria, defaultSeparatesStepFromFlat)
+{
+    std::size_t const n = 40;
+    MockField1D f;
+    f.data.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+        f.data[i] = std::tanh((static_cast<double>(i) - 20.) / 1.5);
+
+    std::vector<MockField1D const*> comps{&f};
+
+    auto const atStep = defaultIndicator<1>(comps, {20u});
+    auto const atFlat = defaultIndicator<1>(comps, {5u});
+    EXPECT_GT(atStep, atFlat);
+}
+
+TEST(test_criteria, parseTaggingMethod)
+{
+    EXPECT_EQ(parseTaggingMethod("default"), TaggingMethod::Default);
+    EXPECT_EQ(parseTaggingMethod("lohner"), TaggingMethod::Lohner);
+    EXPECT_THROW(parseTaggingMethod("nope"), std::runtime_error);
 }
 
 

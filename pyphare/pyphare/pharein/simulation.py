@@ -571,7 +571,61 @@ def validate_restart_options(sim):
 
 
 def check_refinement(**kwargs):
-    return kwargs.get("refinement", "boxes")
+    refinement = kwargs.get("refinement", "boxes")
+    # tagging can be requested either as the legacy string "tagging" or as a
+    # dict {"tagging": {...}}; both normalize to the "tagging" refinement mode.
+    if isinstance(refinement, dict):
+        return "tagging"
+    return refinement
+
+
+def check_tagging(**kwargs):
+    """Normalize tagging configuration into {"method", "quantities":[(name, thr)]}.
+
+    Returns None when refinement is not tagging. Accepts two forms:
+      - dict: refinement={"tagging": {"method": "lohner",
+                                      "quantities": {("rho", 0.1), ("B", 0.4)}}}
+      - legacy string: refinement="tagging" (+ optional tagging_threshold),
+        which maps to method "default" on B.
+    """
+    valid_methods = ("default", "lohner")
+    valid_quantities = ("B", "rho")
+
+    refinement = kwargs.get("refinement", "boxes")
+
+    if isinstance(refinement, dict):
+        if set(refinement.keys()) != {"tagging"}:
+            raise ValueError(
+                "Error: refinement dict must have a single 'tagging' key"
+            )
+        spec = refinement["tagging"]
+        if "method" not in spec or "quantities" not in spec:
+            raise ValueError(
+                "Error: tagging dict requires both 'method' and 'quantities'"
+            )
+        method = spec["method"]
+        if method not in valid_methods:
+            raise ValueError(
+                f"Error: invalid tagging method '{method}', expected one of {valid_methods}"
+            )
+        quantities = []
+        for name, threshold in spec["quantities"]:
+            if name not in valid_quantities:
+                raise ValueError(
+                    f"Error: invalid tagging quantity '{name}', expected one of {valid_quantities}"
+                )
+            quantities.append((name, float(threshold)))
+        if len(quantities) == 0:
+            raise ValueError("Error: tagging 'quantities' cannot be empty")
+        return {"method": method, "quantities": quantities}
+
+    if refinement == "tagging":
+        threshold = kwargs.get("tagging_threshold", 0.1)
+        if threshold is None:
+            threshold = 0.1
+        return {"method": "default", "quantities": [("B", float(threshold))]}
+
+    return None
 
 
 def check_nesting_buffer(ndim, **kwargs):
@@ -799,6 +853,7 @@ def checker(func):
 
         kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
 
+        kwargs["tagging"] = check_tagging(**kwargs)
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
             (
