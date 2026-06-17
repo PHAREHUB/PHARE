@@ -2,7 +2,8 @@
 #define PHARE_SRC_AMR_DATA_PARTICLES_PARTICLES_DATA_HPP
 
 
-#include "core/def.hpp"           // IWYU pragma: keep
+#include "core/def.hpp" // IWYU pragma: keep
+#include "core/data/vector.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
@@ -309,8 +310,6 @@ namespace amr
         void pack_from_cell_overlap(SAMRAI::tbox::MessageStream& stream,
                                     SAMRAI::pdat::CellOverlap const& pOverlap) const
         {
-            std::vector<Particle_t> outBuffer;
-
             if (pOverlap.isOverlapEmpty())
             {
                 constexpr std::size_t zero = 0;
@@ -318,10 +317,7 @@ namespace amr
             }
             else
             {
-                SAMRAI::hier::Transformation const& transformation = pOverlap.getTransformation();
-                SAMRAI::hier::BoxContainer const& boxContainer
-                    = pOverlap.getDestinationBoxContainer();
-                pack_(pOverlap, transformation, outBuffer);
+                auto& outBuffer = pack_(pOverlap);
                 stream << outBuffer.size();
                 stream.growBufferAsNeeded();
                 stream.pack(outBuffer.data(), outBuffer.size());
@@ -471,6 +467,8 @@ namespace amr
         //! physical end index"
         SAMRAI::hier::Box interiorLocalBox_;
         std::string name_;
+        static inline core::MinimizingVector<Particle_t> tmp; // LESS ALLOCATIONS
+
 
         void copy_(SAMRAI::hier::Box const& overlapBox, ParticlesData const& sourceData)
         {
@@ -650,9 +648,7 @@ namespace amr
 
 
 
-        void pack_(SAMRAI::pdat::CellOverlap const& overlap,
-                   SAMRAI::hier::Transformation const& transformation,
-                   std::vector<Particle_t>& outBuffer) const
+        auto& pack_(SAMRAI::pdat::CellOverlap const& overlap) const
         {
             PHARE_LOG_SCOPE(3, "ParticleData::pack_");
             // we want to put particles from our domain and patchghost arrays
@@ -662,6 +658,7 @@ namespace amr
             // destination space.  Therefore we need to inverse transform the
             // overlap box into our index space, intersect each of them with
             // our ghost box and put export them with the transformation offset
+            SAMRAI::hier::Transformation const& transformation = overlap.getTransformation();
             auto overlapBoxes = overlap.getDestinationBoxContainer();
             auto offset       = transformation.getOffset();
             std::size_t size  = 0;
@@ -680,7 +677,7 @@ namespace amr
                 auto toTakeFrom_p = phare_box_from<dim>(toTakeFrom);
                 size += domainParticles.nbr_particles_in(toTakeFrom_p);
             }
-            outBuffer.reserve(size);
+            auto& outBuffer = tmp.reserve_and_clear(size)();
             for (auto const& box : overlapBoxes)
             {
                 auto toTakeFrom{box};
@@ -688,6 +685,7 @@ namespace amr
                 auto toTakeFrom_p = phare_box_from<dim>(toTakeFrom);
                 domainParticles.export_particles(toTakeFrom_p, outBuffer, offseter);
             }
+            return outBuffer;
         }
     };
 
@@ -739,7 +737,7 @@ void ParticlesData<ParticleArray_t>::pack_from_ghost(SAMRAI::tbox::MessageStream
         return;
     }
 
-    std::vector<Particle_t> outBuffer;
+    auto& outBuffer     = tmp.clear()();
     auto& src_particles = patchGhostParticles;
     auto const& offset  = as_point<dim>(pOverlap.getTransformation());
     auto const& noffset = offset * -1;
@@ -772,7 +770,7 @@ void ParticlesData<ParticleArray_t>::unpack_from_ghost(SAMRAI::tbox::MessageStre
 
     std::size_t numberParticles = 0;
     stream >> numberParticles;
-    std::vector<Particle_t> particleArray(numberParticles);
+    auto& particleArray = *tmp.get(numberParticles);
     stream.unpack(particleArray.data(), numberParticles);
 
     domainParticles.reserve(domainParticles.size() + numberParticles);
