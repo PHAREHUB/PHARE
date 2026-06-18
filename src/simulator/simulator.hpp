@@ -424,7 +424,7 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     , maxMHDLevel_{dict["simulation"]["AMR"]["max_mhd_level"].template to<int>()}
     , dt_{dict["simulation"]["time_step"].template to<double>()}
     , timeStepNbr_{dict["simulation"]["time_step_nbr"].template to<int>()}
-    , finalTime_{dt_ * timeStepNbr_}
+    , finalTime_{dict["simulation"]["final_time"].template to<double>()}
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
 {
@@ -432,7 +432,8 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
         throw std::runtime_error("NO HIERARCHY!");
 
     currentTime_ = restart_time(dict);
-    finalTime_ += currentTime_; // final time is from timestep * timestep_nbr!
+    // finalTime_ is computed in Python as start_time + time_step_nbr * time_step
+    // (start_time == restart_time), so it already accounts for the restart offset.
 
 
     // we would need a different restart manager for mhd and hybrid if both models are used

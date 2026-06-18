@@ -187,8 +187,9 @@ def check_time(**kwargs):
         return 0, 0, final_time
 
     if final_and_dt:
-        time_step_nbr = int(total_time / kwargs["time_step"])
-        time_step = total_time / time_step_nbr
+        # dt is sacred: keep the user value bit-exact, never recompute it.
+        time_step = kwargs["time_step"]
+        time_step_nbr = int(round(total_time / time_step))
 
     elif final_and_nsteps:
         time_step = total_time / kwargs["time_step_nbr"]
@@ -197,6 +198,10 @@ def check_time(**kwargs):
     else:  # must be nsteps_and_dt
         time_step = kwargs["time_step"]
         time_step_nbr = kwargs["time_step_nbr"]
+
+    # final_time is a derived output, identical to C++ finalTime_ = restart_time + dt*nbr.
+    # The simulation may end slightly short of / past the user's requested final_time.
+    final_time = start_time + time_step_nbr * time_step
 
     return time_step_nbr, time_step, final_time
 

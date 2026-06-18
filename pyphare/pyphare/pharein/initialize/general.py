@@ -109,6 +109,7 @@ def populateDict(sim):
     add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
     add_double("simulation/time_step", sim.time_step)
     add_int("simulation/time_step_nbr", sim.time_step_nbr)
+    add_double("simulation/final_time", sim.final_time)
 
     add_string("simulation/AMR/clustering", sim.clustering)
     add_vector_int("simulation/AMR/nesting_buffer", sim.nesting_buffer)
