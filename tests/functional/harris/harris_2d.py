@@ -21,16 +21,29 @@ ph.NO_GUI()
 cells = (200, 100)
 time_step = 0.005
 final_time = 50
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
+chunk_time = final_time / 5  # 10.0 — each run covers this duration
+timestamps = np.arange(0, final_time + time_step, chunk_time)
 diag_dir = "phare_outputs/harris"
 
 
-def config():
+def config(restart_time=None):
     L = 0.5
+    t_end = (restart_time if restart_time is not None else 0) + chunk_time
+    if restart_time is not None:
+        window_timestamps = timestamps[
+            (timestamps > restart_time) & (timestamps <= t_end)
+        ]
+    else:
+        window_timestamps = timestamps[timestamps <= t_end]
+
+    restart_opts = {"dir": diag_dir, "mode": "overwrite", "keep_last": 1}
+    if t_end < final_time:
+        restart_opts["timestamps"] = [float(t_end)]
+    restart_opts["restart_time"] = "auto"
 
     sim = ph.Simulation(
         time_step=time_step,
-        final_time=final_time,
+        final_time=t_end,
         cells=cells,
         dl=(0.40, 0.40),
         refinement="tagging",
@@ -39,8 +52,9 @@ def config():
         resistivity=0.001,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": diag_dir, "mode": "overwrite"},
+            "options": {"dir": diag_dir},
         },
+        restart_options=restart_opts,
         strict=True,
         nesting_buffer=1,
     )
@@ -137,13 +151,15 @@ def config():
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
     for quantity in ["E", "B"]:
-        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
+        ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=window_timestamps)
     for quantity in ["mass_density", "bulkVelocity"]:
-        ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
+        ph.FluidDiagnostics(quantity=quantity, write_timestamps=window_timestamps)
 
     for quantity in ["density", "pressure_tensor"]:
         ph.FluidDiagnostics(
-            quantity=quantity, write_timestamps=timestamps, population_name="protons"
+            quantity=quantity,
+            write_timestamps=window_timestamps,
+            population_name="protons",
         )
 
     ph.InfoDiagnostics(quantity="particle_count")
@@ -217,6 +233,9 @@ class HarrisTest(SimulatorTest):
     def test_run(self):
         self.register_diag_dir_for_cleanup(diag_dir)
         Simulator(config()).run().reset()
+        for t in np.arange(chunk_time, final_time, chunk_time):
+            ph.global_vars.sim = None
+            Simulator(config(t)).run().reset()
         if cpp.mpi_rank() == 0:
             plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
             plot_dir.mkdir(parents=True, exist_ok=True)
@@ -226,7 +245,7 @@ class HarrisTest(SimulatorTest):
 
 
 if ph.PHARE_EXE:
-    config()
+    config(0)
 
 elif __name__ == "__main__":
     startMPI()
