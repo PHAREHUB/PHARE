@@ -187,7 +187,7 @@ def check_time(**kwargs):
         return 0, 0, final_time
 
     if final_and_dt:
-        time_step_nbr = int(total_time / kwargs["time_step"])
+        time_step_nbr = round(total_time / kwargs["time_step"])
         time_step = total_time / time_step_nbr
 
     elif final_and_nsteps:
