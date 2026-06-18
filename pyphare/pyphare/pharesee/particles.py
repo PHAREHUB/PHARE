@@ -273,13 +273,16 @@ def _arg_sort(particles):
     if particles.ndim == 1:
         return np.argsort(x1)
 
-    if particles.ndim > 1:
-        y1 = particles.iCells[:, 1] + particles.deltas[:, 1]
-        return np.argsort(np.sqrt((x1**2 + y1**2)) / (x1 / y1))
+    y1 = particles.iCells[:, 1] + particles.deltas[:, 1]
+
+    if particles.ndim == 2:
+        return np.lexsort((y1, x1))
 
     if particles.ndim == 3:
         z1 = particles.iCells[:, 2] + particles.deltas[:, 2]
-        return np.argsort(np.sqrt((x1**2 + y1**2 + z1**2)) / (x1 / y1 / z1))
+        return np.lexsort((z1, y1, x1))
+
+    raise ValueError(f"Unsupported dimension: {particles.ndim}")
 
 
 def single_patch_per_level_per_pop_from(hier, only_keep_L0=True):  # dragons
