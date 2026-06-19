@@ -28,7 +28,9 @@ class PatchData:
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["dataset"]  # do not copy these things
-        return phut.deep_copy(self, memo, no_copy_keys)
+        cpy = phut.deep_copy(self, memo, no_copy_keys)
+        cpy.dataset = self.dataset
+        return cpy
 
 
 class FieldData(PatchData):
@@ -67,9 +69,11 @@ class FieldData(PatchData):
         return self.__str__()
 
     def compare(self, that, atol=1e-16):
-        return self.field_name == that.field_name and phut.fp_any_all_close(
-            self.dataset[:], that.dataset[:], atol=atol
-        )
+        try:
+            phut.assert_fp_any_all_close(self.dataset[:], that.dataset[:], atol=atol)
+        except AssertionError as e:
+            return phut.EqualityCheck(False, str(e))
+        return self.field_name == that.field_name
 
     def __eq__(self, that):
         return self.compare(that)
@@ -153,6 +157,13 @@ class FieldData(PatchData):
         if select is not None:
             return tuple(g[select] for g in mesh)
         return mesh
+
+    def copy_as(self, data=None, **kwargs):
+        data = data if data is not None else self.dataset
+        name = kwargs.get("name", self.field_name)
+        kwargs["centering"] = kwargs.get("centering", self.centerings)
+        kwargs["ghosts_nbr"] = kwargs.get("ghosts_nbr", self.ghosts_nbr)
+        return FieldData(self.layout, name, data, **kwargs)
 
     def yeeCoordsFor(self, idx):
         return self.layout.yeeCoordsFor(
