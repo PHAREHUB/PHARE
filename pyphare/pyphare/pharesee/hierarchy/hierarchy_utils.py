@@ -184,9 +184,12 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
     new_patch_datas = {}
     datas = compute(patchdatas, patch_id=id, **kwargs)
     for data in datas:
+        pd_layout = layout
+        if "ghosts_nbr" in data:
+            pd_layout = layout.copy_as(ghosts_nbr=data["ghosts_nbr"])
         extra = {k: data[k] for k in ("ghosts_nbr",) if k in data}
         pd = FieldData(
-            layout, data["name"], data["data"], centering=data["centering"], **extra
+            pd_layout, data["name"], data["data"], centering=data["centering"], **extra
         )
         new_patch_datas[data["name"]] = pd
     return new_patch_datas
@@ -272,10 +275,7 @@ def overlap_mask_1d(x, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        ghosts_nbr = pdata.ghosts_nbr
-
-        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
-
+        (fine_x,) = pdata.meshCoords()
         fine_dl = pdata.dl
         local_dl = dl
 
@@ -309,11 +309,7 @@ def overlap_mask_2d(x, y, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        ghosts_nbr = pdata.ghosts_nbr
-
-        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
-        fine_y = pdata.y[ghosts_nbr[1] - 1 : -ghosts_nbr[1] + 1]
-
+        fine_x, fine_y = pdata.meshCoords()
         fine_dl = pdata.dl
         local_dl = dl
 
@@ -369,16 +365,9 @@ def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - neghosts
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[needed_points[0] : -needed_points[0]]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
+            pdata = patch[qty]
+            data = pdata[:]
+            x = pdata.x
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -409,20 +398,10 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
         patches = lvl[ilvl].patches
 
         for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - 1
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[
-                needed_points[0] : -needed_points[0],
-                needed_points[1] : -needed_points[1],
-            ]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
-            y = pdata.y[needed_points[1] : -needed_points[1]]
+            pdata = patch[qty]
+            data = pdata[:]
+            x = pdata.x
+            y = pdata.y
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 

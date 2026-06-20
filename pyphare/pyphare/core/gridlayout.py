@@ -247,6 +247,15 @@ class GridLayout(object):
     results in a pylint error elsewhere
     """
 
+    def copy_as(self, **kwargs):
+        return GridLayout(
+            kwargs.get("box", self.box),
+            kwargs.get("origin", self.origin),
+            kwargs.get("dl", self.dl),
+            kwargs.get("interp_order", self.interp_order),
+            ghosts_nbr=kwargs.get("ghosts_nbr", self.ghosts_nbr),
+        )
+
     def __init__(
         self, box=Box(0, 0), origin=0, dl=0.1, interp_order=1, ghosts_nbr=None
     ):

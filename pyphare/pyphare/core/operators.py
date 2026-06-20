@@ -96,7 +96,7 @@ def dot(hier_left, hier_right, **kwargs):
         (hl, hr),
     )
 
-    return ScalarField(h)
+    return ScalarField.FROM(h)
 
 
 def cross(hier_left, hier_right, **kwargs):
@@ -115,7 +115,7 @@ def cross(hier_left, hier_right, **kwargs):
         (hl, hr),
     )
 
-    return VectorField(h)
+    return VectorField.FROM(h)
 
 
 def sqrt(hier, **kwargs):
@@ -124,7 +124,7 @@ def sqrt(hier, **kwargs):
         hier,
     )
 
-    return ScalarField(h)
+    return ScalarField.FROM(h)
 
 
 def modulus(hier):
@@ -138,4 +138,4 @@ def grad(hier, **kwargs):
     nb_ghosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr[0]
     h = compute_hier_from(_compute_grad, hier, nb_ghosts=nb_ghosts)
 
-    return VectorField(h)
+    return VectorField.FROM(h)

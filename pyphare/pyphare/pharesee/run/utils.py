@@ -343,11 +343,6 @@ def slices_to_primal(pdname, **kwargs):
 
 
 def _compute_to_primal(patchdatas, patch_id, **kwargs):
-    """
-    datasets have NaN in their ghosts... might need to be properly filled
-    with their neighbors already properly projected on primal
-    """
-
     reference_name = next(iter(kwargs.values()))
     reference_pd = patchdatas[reference_name]
     ndim = reference_pd.box.ndim
@@ -366,27 +361,19 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
             if pd.centerings[i] == "dual":
                 ds_shape[i] += 1
 
-        # should be something else than nan values when the ghosts cells
-        # will be filled with correct values coming from the neighbors
-        ds_all_primal = np.full(ds_shape, np.nan)
         ds_ = np.zeros(ds_shape)
 
-        # inner is the slice containing the points that are updated
-        # in the all_primal dataset
-        # chunks is a tupls of all the slices coming from the initial dataset
-        # that are needed to calculate the average for the all_primal dataset
         inner, chunks = slices_to_primal(pd_name, nb_ghosts=nb_ghosts, ndim=ndim)
 
         for chunk in chunks:
             ds_[inner] = np.add(ds_[inner], ds[chunk] / len(chunks))
-        ds_all_primal[inner] = ds_[inner]
 
         pd_attrs.append(
             {
                 "name": name,
-                "data": ds_all_primal,
+                "data": ds_[inner],
                 "centering": centerings,
-                "ghosts_nbr": [nb_ghosts] * ndim,
+                "ghosts_nbr": [0] * ndim,
             }
         )
 
@@ -411,7 +398,6 @@ def _get_rank(patchdatas, patch_id, **kwargs):
     reference_pd = patchdatas["Bx"]  # Bx as a ref, but could be any other
     ndim = reference_pd.box.ndim
 
-    layout = reference_pd.layout
     centering = "dual"
     nbrGhosts = reference_pd.ghosts_nbr[0]
     shape = grow(reference_pd.box, [nbrGhosts] * 2).shape
@@ -426,7 +412,7 @@ def _get_rank(patchdatas, patch_id, **kwargs):
                 "name": "rank",
                 "data": data,
                 "centering": [centering] * 2,
-                # "ghosts_nbr": reference_pd.ghosts_nbr,
+                "ghosts_nbr": reference_pd.ghosts_nbr,
             },
         )
     else:
@@ -503,50 +489,119 @@ def _compute_pop_pressure(patch_datas, **kwargs):
     )
 
 
-def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
-    """
-    :param data: the values of the data that will be used for making
-    the interpolator, defined on coords
-    :param coords: coordinates where the data are known. they
-    can be define on an irregular grid (eg the finest)
-
-    finest_coords will be the structured coordinates defined on the
-    finest grid.
-    """
-    from pyphare.core.gridlayout import yeeCoordsFor
-
+def make_interpolator(data, coords, interp):
+    """Build a scipy interpolator from flat field data and coordinates."""
     dim = coords.ndim
 
     if dim == 1:
         from scipy.interpolate import interp1d
 
-        interpolator = interp1d(
+        return interp1d(
             coords, data, kind=interp, fill_value="extrapolate", assume_sorted=False
         )
-
-        nx = 1 + int(domain[0] / dl[0])
-
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x")
-        finest_coords = (x,)
 
     elif dim == 2:
         from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
 
         if interp == "nearest":
-            interpolator = NearestNDInterpolator(coords, data)
+            return NearestNDInterpolator(coords, data)
         elif interp == "bilinear":
-            interpolator = LinearNDInterpolator(coords, data)
+            return LinearNDInterpolator(coords, data)
         else:
             raise ValueError("interp can only be 'nearest' or 'bilinear'")
-
-        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
-        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
-        # x = np.arange(0, domain[0]+dl[0], dl[0])
-        # y = np.arange(0, domain[1]+dl[1], dl[1])
-        finest_coords = (x, y)
 
     else:
         raise ValueError("make_interpolator is not yet 3d")
 
-    return interpolator, finest_coords
+
+def finest_coords_for(domain, dl, qty, nbrGhosts, origin=None):
+    """Return coordinate arrays for the finest-level output grid."""
+    from pyphare.core.gridlayout import yeeCoordsFor
+
+    dim = len(dl)
+    if origin is None:
+        origin = [0] * dim
+
+    if dim == 1:
+        nx = int(domain[0] / dl[0])
+        return (
+            yeeCoordsFor(origin, nbrGhosts[0], dl, [nx], qty, "x", withGhosts=True),
+        )
+
+    elif dim == 2:
+        nCells = [int(d / dl_i) for d, dl_i in zip(domain, dl)]
+        x = yeeCoordsFor(origin, nbrGhosts[0], dl, nCells, qty, "x", withGhosts=True)
+        y = yeeCoordsFor(origin, nbrGhosts[1], dl, nCells, qty, "y", withGhosts=True)
+        return (x, y)
+
+    else:
+        raise ValueError("finest_coords_for is not yet 3d")
+
+
+def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
+    """
+    Interpolate a hierarchy onto a uniform finest-level grid, returning UniformGrids.
+
+    box: optional Box with physical coordinates to restrict the output domain.
+         If None, uses hier.selection_box if one is set (and it differs from the
+         full domain_box), otherwise the full domain is used.
+    """
+    from copy import deepcopy
+    from pyphare.core.box import Box
+    from pyphare.pharesee.hierarchy import uniformgrid as uniform
+    from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
+    from pyphare.pharesee.hierarchy.func import GetDl, GetDomainSize
+
+    if isinstance(box, (list, tuple)):
+        raise ValueError("interpolate_hierarchy takes a single box; call it once per box")
+
+    times = hier.times()
+    if len(times) > 1:
+        raise ValueError("interpolate_hierarchy does not support multiple times")
+    time = times[0]
+
+    if 0 not in hier.levels(time):
+        raise ValueError("interpolate_hierarchy only supports coarse timesteps")
+
+    dl = GetDl(hier, time)
+
+    if box is None and hier.selection_box is not None:
+        candidate = hier.selection_box.get(time)
+        if candidate is not None and candidate != hier.domain_box:
+            box = candidate
+
+    nlevels = len(hier.levels(time))
+
+    if box is not None:
+        origin = np.array(box.lower, dtype=float)
+        domain = np.array(box.upper - box.lower, dtype=float)
+        n_cells = np.round(domain / dl).astype(int)
+        layout_box = Box(np.zeros(hier.ndim, dtype=int), n_cells - 1)
+    else:
+        origin = np.zeros(hier.ndim)
+        domain = GetDomainSize(hier)
+        layout_box = hier.level_domain_box(nlevels - 1)
+
+    nbrGhosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr
+
+    cpy = deepcopy(hier)
+    patch0 = cpy.levels(time)[0].patches[0]
+    patch0.layout.dl = dl
+    patch0.layout.box = layout_box
+    patch0.layout.origin = list(origin)
+
+    datas = {}
+    for qty in [quantity] if quantity else hier.quantities():
+        data, coords = hootils.flat_finest_field(hier, qty, time=time)
+        interpolator = make_interpolator(data, coords, interp)
+        finest_coords = finest_coords_for(domain, dl, qty, nbrGhosts, origin)
+        mesh = np.meshgrid(*finest_coords, indexing="ij")
+        datas[qty] = uniform.UniformGrid(
+            layout=patch0.layout,
+            field_name=patch0[qty].name,
+            data=interpolator(*mesh),
+            ghosts_nbr=nbrGhosts,
+            centering=patch0[qty].centerings,
+        )
+
+    return uniform.UniformGrids(datas)

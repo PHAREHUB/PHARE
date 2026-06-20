@@ -7,6 +7,7 @@ from pyphare.pharesee.hierarchy import ScalarField, VectorField
 
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+from pyphare.pharesee.hierarchy import hierarchy_compute as hc
 from pyphare.core.phare_utilities import listify
 
 from pyphare.logger import getLogger
@@ -18,6 +19,7 @@ from .utils import (
     _compute_divB,
     _get_rank,
     make_interpolator,
+    finest_coords_for,
 )
 
 
@@ -65,30 +67,28 @@ class Run:
         return _get_hier(hier)
 
     # TODO maybe transform that so multiple times can be accepted
-    def _get(self, hierarchy, time, merged, interp):
+    def _get(self, hierarchy, time, merged, interp, drop_ghosts=False):
         """
-        if merged=True, will return an interpolator and a tuple of 1d arrays
-        with the coordinates of the finest grid where the interpolator
-        can be calculated (that is the return of flat_finest_field)
+        if merged=True, returns {qty: (interpolator, finest_coords)} where
+        interpolator is a callable scipy interpolator and finest_coords is a
+        tuple of 1d coordinate arrays at the finest grid resolution.
         """
         if merged:
             domain = self.GetDomainSize()
             dl = self.GetDl(time=time)
-
-            # assumes all qties in the hierarchy have the same ghost width
-            # so take the first patch data of the first patch of the first level....
             nbrGhosts = list(hierarchy.level(0).patches[0].patch_datas.values())[
                 0
             ].ghosts_nbr
             merged_qties = {}
             for qty in hierarchy.quantities():
                 data, coords = flat_finest_field(hierarchy, qty, time=time)
-                merged_qties[qty] = make_interpolator(
-                    data, coords, interp, domain, dl, qty, nbrGhosts
+                merged_qties[qty] = (
+                    make_interpolator(data, coords, interp),
+                    finest_coords_for(domain, dl, qty, nbrGhosts),
                 )
             return merged_qties
         else:
-            return hierarchy
+            return compute_hier_from(hc.drop_ghosts, hierarchy) if drop_ghosts else hierarchy
 
     def GetTags(self, time, merged=False, **kwargs):
         hier = self._get_hierarchy(time, "tags.h5")
@@ -102,7 +102,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Bx", y="By", z="Bz")
-        return VectorField(h)
+        return VectorField.FROM(h)
 
     def GetE(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -112,27 +112,27 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
-        return VectorField(h)
+        return VectorField.FROM(h)
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
+        return ScalarField.FROM(self._get(hier, time, merged, interp))
 
     def GetNi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
+        return ScalarField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
+        return ScalarField.FROM(self._get(hier, time, merged, interp))
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
-        return VectorField(self._get(hier, time, merged, interp))
+        return VectorField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
-        return VectorField(self._get(hier, time, merged, interp))
+        return VectorField.FROM(self._get(hier, time, merged, interp))
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(
@@ -163,8 +163,8 @@ class Run:
         if not all_primal:
             return Te * self._get(hier, time, merged, interp)
 
-        h = compute_hier_from(_compute_to_primal, hier, scalar="rho")
-        return ScalarField(h) * Te
+        h = compute_hier_from(hc.drop_ghosts, hier)
+        return ScalarField.FROM(h) * Te
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -174,12 +174,12 @@ class Run:
         if not all_primal:
             return self._get(J, time, merged, interp)
         h = compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
-        return VectorField(h)
+        return VectorField.FROM(h)
 
     def GetDivB(self, time, merged=False, interp="nearest", **kwargs):
         B = self.GetB(time, all_primal=False, **kwargs)
         db = compute_hier_from(_compute_divB, B)
-        return ScalarField(self._get(db, time, merged, interp))
+        return ScalarField.FROM(self._get(db, time, merged, interp))
 
     def GetMHDrho(
         self, time, merged=False, interp="nearest", all_primal=True, **kwargs
@@ -191,7 +191,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, value="mhdRho")
-        return ScalarField(h)
+        return ScalarField.FROM(h)
 
     def GetMHDV(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -201,7 +201,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="mhdVx", y="mhdVy", z="mhdVz")
-        return VectorField(h)
+        return VectorField.FROM(h)
 
     def GetMHDP(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -211,7 +211,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, value="mhdP")
-        return ScalarField(h)
+        return ScalarField.FROM(h)
 
     def GetMHDrhoV(
         self, time, merged=False, interp="nearest", all_primal=True, **kwargs
@@ -225,7 +225,7 @@ class Run:
         h = compute_hier_from(
             _compute_to_primal, hier, x="mhdRhoVx", y="mhdRhoVy", z="mhdRhoVz"
         )
-        return VectorField(h)
+        return VectorField.FROM(h)
 
     def GetMHDEtot(
         self, time, merged=False, interp="nearest", all_primal=True, **kwargs
@@ -237,7 +237,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, value="mhdEtot")
-        return ScalarField(h)
+        return ScalarField.FROM(h)
 
     def GetMagneticFlux(
         self, time, interp="nearest", xn=None, yn=None, Xn=None, Yn=None
@@ -322,7 +322,7 @@ class Run:
         """
         B = self.GetB(time, all_primal=False, **kwargs)
         ranks = compute_hier_from(_get_rank, B)
-        return ScalarField(self._get(ranks, time, merged, interp))
+        return ScalarField.FROM(self._get(ranks, time, merged, interp))
 
     def GetParticles(self, time, pop_name, hier=None, **kwargs):
         def filename(name):
@@ -357,7 +357,8 @@ class Run:
     def GetDomainSize(self, **kwargs):
         import h5py
 
-        data_file = h5py.File(self.available_diags[0], "r")  # That is the first file in th available diags
+        # That is the first file in the available diags
+        data_file = h5py.File(self.available_diags[0], "r")
         root_cell_width = np.asarray(data_file.attrs["cell_width"])
 
         return (data_file.attrs["domain_box"] + 1) * root_cell_width
@@ -402,7 +403,7 @@ class Run:
                 return root_cell_width / fac
 
             except KeyError:
-                ...  # time may not be avilaable for given quantity
+                ...  # time may not be available for given quantity
 
         raise RuntimeError("Unable toGetDl")
 
@@ -418,7 +419,8 @@ class Run:
             time = np.zeros(len(time_keys))
             for it, t in enumerate(time_keys):
                 time[it] = float(t)
-            ts[quantities_per_file[basename]] = time
+            if basename in quantities_per_file:
+                ts[quantities_per_file[basename]] = time
             ff.close()
         return ts
 
