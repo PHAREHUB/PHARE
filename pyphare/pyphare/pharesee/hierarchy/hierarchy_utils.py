@@ -180,6 +180,7 @@ def compute_hier_from(compute, hierarchies, **kwargs):
         domain_box,
         refinement_ratio,
         times=reference_hier.times(),
+        data_files=reference_hier.data_files,
     )
 
 
