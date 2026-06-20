@@ -140,16 +140,41 @@ class FieldData(PatchData):
                 self.offset[i] = 0.5 * self.dl[i]
 
         self.dataset = data
+        self._is_consistent()
 
-    def meshgrid(self, select=None):
-        def grid():
-            if self.ndim == 1:
-                return [self.x]
-            if self.ndim == 2:
-                return np.meshgrid(self.x, self.y, indexing="ij")
-            return np.meshgrid(self.x, self.y, self.z, indexing="ij")
+    def _is_consistent(self):
+        if not all(self.layout.ghosts_nbr == self.ghosts_nbr):
+            raise ValueError(
+                f"FieldData.ghosts_nbr is inconsistent with layout, ({self.layout.ghosts_nbr} != {self.ghosts_nbr})"
+            )
 
-        mesh = grid()
+    def copy_as(self, data=None, **kwargs):
+        data = data if data is not None else self.dataset
+        name = kwargs.get("name", self.field_name)
+        layout = self.layout
+        if "ghosts_nbr" in kwargs:
+            layout = self.layout.copy_as(ghosts_nbr=kwargs["ghosts_nbr"])
+        kwargs.setdefault("centering", self.centerings)
+        return FieldData(layout, name, data, **kwargs)
+
+    def meshCoords(self, withGhosts=False):
+        def _trim(arr, g):
+            return arr if (withGhosts or g == 0) else arr[g - 1 : -g + 1]
+
+        x = _trim(self.x, self.ghosts_nbr[0])
+        if self.ndim == 1:
+            return (x,)
+        y = _trim(self.y, self.ghosts_nbr[1])
+        if self.ndim == 2:
+            return x, y
+        return x, y, _trim(self.z, self.ghosts_nbr[2])
+
+    def meshgrid(self, select=None, withGhosts=True):
+        coords = self.meshCoords(withGhosts=withGhosts)
+        if self.ndim == 1:
+            x = coords[0]
+            return (x[select],) if select is not None else (x,)
+        mesh = np.meshgrid(*coords, indexing="ij")
         if select is not None:
             return tuple(g[select] for g in mesh)
         return mesh

@@ -18,6 +18,8 @@ class AnyTensorField(PatchHierarchy):
             hier.refinement_ratio,
             hier.times(),
             hier.data_files,
+            hier.selection_box,
+            hier.ephemerals,
         )
 
     def __getitem__(self, input):

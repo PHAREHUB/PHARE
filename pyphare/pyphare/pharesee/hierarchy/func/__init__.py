@@ -3,10 +3,6 @@
 #
 
 
-import numpy as np
-from copy import deepcopy
-
-
 def GetDomainSize(hier, **kwargs):
     root_cell_width = hier.level(0).cell_width
     domain_box = hier.domain_box
@@ -27,6 +23,7 @@ def GetTime(hier):
 
 def GetFinest(hier, time, qty=None, interp="nearest"):
     from pyphare.pharesee.hierarchy import uniformgrid as uniform
+    from pyphare.pharesee.run import utils as rutils
 
     if not hier.ephemerals:
         hier.ephemerals = {}
@@ -42,57 +39,7 @@ def GetFinest(hier, time, qty=None, interp="nearest"):
     else:
         hier.ephemerals[time][finest] = uniform.UniformGrids({})
 
-    selection_box = None  # todo
-    datas = get_interpolated_selection_from(hier, selection_box, qty, interp)
-    for k, v in datas.items():
+    grids = rutils.interpolate_hierarchy(hier, quantity=qty, interp=interp)
+    for k, v in grids.items():
         hier.ephemerals[time][finest][k] = v
     return hier.ephemerals[time][finest]
-
-
-def get_interpolated_selection_from(hier, selection, quantity=None, interp="nearest"):
-    """selection to become selection box or slice etc"""
-
-    times = hier.times()
-    if len(times) > 1:
-        raise ValueError("Error: interpolation does not support multiple times")
-
-    from pyphare.pharesee.run import utils as rutils
-    from pyphare.pharesee.hierarchy import uniformgrid as uniform
-    from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
-
-    time = times[0]
-    if 0 not in hier.levels(time):
-        raise ValueError("Error: interpolation only supports coarse timesteps")
-
-    dl = GetDl(hier, time)
-    domain = GetDomainSize(hier)
-
-    cpy = deepcopy(hier)
-    levels = cpy.levels(time)
-    level0 = levels[0]
-    patch0 = level0.patches[0]
-    patch0.layout.box = hier.level_domain_box(len(levels) - 1)  # hax todo etc
-    patch0.layout.dl = dl
-    patch0.layout.origin = dl * 0
-    nbrGhosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr
-
-    datas = {}
-
-    for qty in [quantity] if quantity else hier.quantities():
-        data, coords = hootils.flat_finest_field(hier, qty, time=time)
-
-        interpolator, finest_coords = rutils.make_interpolator(
-            data, coords, interp, domain, dl, qty, nbrGhosts
-        )
-
-        mesh = np.meshgrid(*finest_coords, indexing="ij")
-
-        datas[qty] = uniform.UniformGrid(
-            layout=patch0.layout,
-            field_name=patch0[qty].name,
-            data=interpolator(*mesh),
-            ghosts_nbr=nbrGhosts,
-            centering=patch0[qty].centerings,
-        )
-
-    return datas

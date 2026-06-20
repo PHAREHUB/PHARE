@@ -22,10 +22,8 @@ plot_dir = Path(f"{diag_dir}_plots")
 plot_dir.mkdir(parents=True, exist_ok=True)
 
 
-def config():
-    L = 0.5
-
-    sim = ph.Simulation(
+def sim_kwargs():
+    return dict(
         time_step=time_step,
         final_time=final_time,
         cells=(40, 40),
@@ -42,6 +40,10 @@ def config():
             "options": {"dir": diag_dir, "mode": "overwrite"},
         },
     )
+
+
+def setup_physics(sim):
+    L = 0.5
 
     def density(x, y):
         Ly = sim.simulation_domain()[1]
@@ -158,7 +160,6 @@ def config():
         ph.FluidDiagnostics(
             quantity=quantity, write_timestamps=timestamps, population_name=pop
         )
-    return sim
 
 
 def plot_file_for_qty(qty, time):
@@ -254,11 +255,12 @@ class RunTest(SimulatorTest):
         ph.global_vars.sim = None
 
     def test_run(self):
-        sim = config()
-        self.register_diag_dir_for_cleanup(diag_dir)
+        sim = self.simulation(**sim_kwargs())
+        setup_physics(sim)
+        actual_diag_dir = sim.diag_options["options"]["dir"]
         Simulator(sim).run().reset()
 
-        run = Run(diag_dir)
+        run = Run(actual_diag_dir)
         B = run.GetB(timestamps[-1], all_primal=False)
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
@@ -266,7 +268,7 @@ class RunTest(SimulatorTest):
         self.assertTrue(B.levels()[0].patches[0].attrs)
 
         if cpp.mpi_rank() == 0:
-            plot(diag_dir)
+            plot(actual_diag_dir)
 
             for time in timestamps:
                 for q in ["divb", "Ranks", "N", "jz"]:
@@ -278,6 +280,56 @@ class RunTest(SimulatorTest):
                     )
 
         cpp.mpi_barrier()
+
+    def test_finest_selection(self):
+        from pyphare.core.box import Box
+        from pyphare.pharesee.run.utils import interpolate_hierarchy
+        from pyphare.pharesee.filters import gaussian_filter_uniform_grid
+
+        sim = self.simulation(**sim_kwargs())
+        setup_physics(sim)
+        actual_diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(sim).run().reset()
+
+        run = Run(actual_diag_dir)
+        time = timestamps[-1]
+
+        domain = run.GetDomainSize()
+        lo = [int(d * 0.25) for d in domain]
+        hi = [int(d * 0.75) for d in domain]
+        box = Box(lo, hi)
+
+        B = run.GetB(time)
+        grids = interpolate_hierarchy(B["x"], box=box)
+        Bx_smooth = gaussian_filter_uniform_grid(grids["x"])
+
+        # grid extends beyond selection box by ghost cells (+1 for primal directions)
+        tol = [(Bx_smooth.ghosts_nbr[i] + 1) * Bx_smooth.dl[i] for i in range(2)]
+        self.assertGreaterEqual(Bx_smooth.x.min(), lo[0] - tol[0])
+        self.assertLessEqual(Bx_smooth.x.max(), hi[0] + tol[0])
+        self.assertGreaterEqual(Bx_smooth.y.min(), lo[1] - tol[1])
+        self.assertLessEqual(Bx_smooth.y.max(), hi[1] + tol[1])
+        # selection should be smaller than the full domain
+        self.assertLess(Bx_smooth.x.max() - Bx_smooth.x.min(), domain[0])
+        self.assertLess(Bx_smooth.y.max() - Bx_smooth.y.min(), domain[1])
+
+    def test_finest_no_nans(self):
+        from pyphare.pharesee.run.utils import interpolate_hierarchy
+        from pyphare.pharesee.filters import gaussian_filter_uniform_grid
+
+        sim = self.simulation(**sim_kwargs())
+        setup_physics(sim)
+        actual_diag_dir = sim.diag_options["options"]["dir"]
+        Simulator(sim).run().reset()
+
+        run = Run(actual_diag_dir)
+        time = timestamps[-1]
+
+        B = run.GetB(time)
+        grids = interpolate_hierarchy(B["x"])
+        Bx_smooth = gaussian_filter_uniform_grid(grids["x"])
+
+        self.assertFalse(np.isnan(Bx_smooth.dataset).any())
 
 
 if __name__ == "__main__":
