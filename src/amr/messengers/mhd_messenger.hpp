@@ -5,6 +5,7 @@
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 
+#include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/mhd_flux_coarsener.hpp"
