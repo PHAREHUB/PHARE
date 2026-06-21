@@ -5,6 +5,7 @@
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/box/box_span.hpp"
 
+#include "amr/amr_constants.hpp"
 #include "amr/data/field/field_data.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
@@ -85,7 +86,7 @@ void refine_field(core::FieldBox<Field_t>& dst, core::FieldBox<Field_t const>& s
                 refiner(src.field, dst.field, d_amr_point, s_amr_point, d_lcl_point, s_lcl_point,
                         d_span[dst_idx], s_span[src_idx]);
 
-                if (d_amr_point[IDX] % 2 != 0)
+                if (d_amr_point[IDX] % refinementRatio != 0)
                 {
                     ++src_idx;
                     ++s_lcl_point[IDX];
@@ -96,14 +97,14 @@ void refine_field(core::FieldBox<Field_t>& dst, core::FieldBox<Field_t const>& s
                 ++d_lcl_point[IDX];
             }
 
-            if (span_idx % 2 != 0)
+            if (span_idx % refinementRatio != 0)
             {
                 ++s_f_spans;
                 ++s_b_spans;
             }
         }
 
-        if (slab_idx % 2 != 0)
+        if (slab_idx % refinementRatio != 0)
         {
             ++s_f_slabs;
             ++s_b_slabs;
