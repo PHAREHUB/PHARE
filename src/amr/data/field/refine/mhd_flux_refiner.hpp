@@ -37,15 +37,11 @@ public:
 
     // electric field refinement strategy follows
     // fujimoto et al. 2011 :  doi:10.1016/j.jcp.2011.08.002
-    template<typename FieldT>
-    void operator()(FieldT const& coarseField, FieldT& fineField,
-                    core::Point<int, dimension> fineIndex)
+    void operator()(auto const& coarseField, auto& fineField, auto const& fineIndex,
+                    auto const& coarseIndex, auto const& locFineIdx, auto const& locCoarseIdx,
+                    auto& fineVal, auto const& coarseVal)
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
-
-        auto const locFineIdx   = AMRToLocal(fineIndex, fineBox_);
-        auto const coarseIdx    = toCoarseIndex(fineIndex);
-        auto const locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
         if constexpr (dimension == 1)
             refine1D_(coarseField, fineField, locFineIdx, locCoarseIdx);

@@ -9,6 +9,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   add_subdirectory(tests/core/data/minimizing_vector)
   add_subdirectory(tests/core/data/ndarray)
+  add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/core/data/grid)
   add_subdirectory(tests/core/data/gridlayout)
   add_subdirectory(tests/core/data/vecfield)
