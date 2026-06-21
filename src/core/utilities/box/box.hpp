@@ -74,23 +74,19 @@ struct Box
     }
 
 
-    void grow(Type const& size)
-    {
-        for (auto& c : lower)
-        {
-            c -= size;
-        }
-        for (auto& c : upper)
-        {
-            c += size;
-        }
-    }
-
-    template<typename Size>
-    auto& grow(std::array<Size, dim> const& size)
+    template<typename Modifier>
+    auto& grow(Modifier const& size)
     {
         lower -= size;
         upper += size;
+        return *this;
+    }
+
+    template<typename Modifier>
+    auto& shrink(Modifier const& size)
+    {
+        lower += size;
+        upper -= size;
         return *this;
     }
 
@@ -330,6 +326,15 @@ Box<Type, dim> grow(Box<Type, dim> const& box, OType const& size)
     copy.grow(size);
     return copy;
 }
+
+template<typename Type, std::size_t dim, typename T2>
+NO_DISCARD Box<Type, dim> shrink(Box<Type, dim> const& box, T2 const& size)
+{
+    auto copy{box};
+    copy.shrink(size);
+    return copy;
+}
+
 
 template<typename Type, std::size_t dim, typename Shifter>
 NO_DISCARD Box<Type, dim> shift(Box<Type, dim> const& box, Shifter const& offset)
