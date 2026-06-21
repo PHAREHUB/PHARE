@@ -183,7 +183,7 @@ def patch_levels_from_h5(h5f, time, selection_box=None):
     """
 
     root_cell_width = h5f.attrs["cell_width"]
-    interp_order = h5f.attrs["interpOrder"] if "interpOrder" in h5f.attrs else 0
+    interp_order = int(h5f.attrs["interpOrder"]) if "interpOrder" in h5f.attrs else 0
     basename = os.path.basename(h5f.filename)
 
     patch_levels = {}
