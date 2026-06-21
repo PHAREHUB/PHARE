@@ -26,13 +26,27 @@ concept Spannable = requires(T t) {
 template<typename T, typename SIZE = std::size_t>
 struct Span
 {
-    using value_type = T;
+    using value_type = std::decay_t<T>;
+
+    Span(T* ptr_ = nullptr, SIZE s_ = 0)
+        : ptr{ptr_}
+        , s{s_}
+    {
+    }
+
+    Span(Span&&)                 = default;
+    Span(Span const&)            = default;
+    Span& operator=(Span&&)      = default;
+    Span& operator=(Span const&) = default;
 
     NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
-    NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
-    NO_DISCARD T* data() const { return ptr; }
-    NO_DISCARD T* begin() const { return ptr; }
-    NO_DISCARD T* end() const { return ptr + s; }
+    NO_DISCARD value_type const& operator[](SIZE i) const { return ptr[i]; }
+    NO_DISCARD value_type const* data() const { return ptr; }
+    NO_DISCARD auto data() { return ptr; }
+    NO_DISCARD auto begin() { return ptr; }
+    NO_DISCARD auto begin() const { return ptr; }
+    NO_DISCARD auto end() { return ptr + s; }
+    NO_DISCARD auto end() const { return ptr + s; }
     NO_DISCARD SIZE const& size() const { return s; }
 
     T* ptr = nullptr;
