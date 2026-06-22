@@ -3,6 +3,7 @@
 #
 
 import operator
+import numpy as np
 from copy import deepcopy
 
 
@@ -95,3 +96,40 @@ def _compute_copy_op(patch, op, hinfo, other, reverse=False):
 
 def _compute_copy_rop(patch, op, hinfo, other):
     return _compute_copy_op(patch, op, hinfo, other, reverse=True)
+
+
+def _compute_gaussian_filter_on_scalarfield(patch, **kwargs):
+    from scipy.ndimage import gaussian_filter
+
+    ref_pd = patch["value"]
+    ndim = ref_pd.box.ndim
+    nb_ghosts = ref_pd.ghosts_nbr[0]
+    sigma = kwargs["sigma"]
+    ds = np.asarray(ref_pd[:])
+
+    ds_ = np.full(list(ds.shape), np.nan)
+    gf_ = gaussian_filter(ds, sigma=sigma)
+    select = tuple([slice(nb_ghosts, -nb_ghosts) for _ in range(ndim)])
+    ds_[select] = np.asarray(gf_[select])
+
+    return ({"name": "value", "data": ref_pd.copy_as(ds_)},)
+
+
+def _compute_gaussian_filter_on_vectorfield(patch, **kwargs):
+    from scipy.ndimage import gaussian_filter
+
+    ref_name = next(iter(patch.patch_datas.keys()))
+    ref_pd = patch[ref_name]
+    ndim = ref_pd.box.ndim
+    nb_ghosts = ref_pd.ghosts_nbr[0]
+    sigma = kwargs["sigma"]
+    select = tuple([slice(nb_ghosts, -nb_ghosts) for _ in range(ndim)])
+
+    results = []
+    for comp in ("x", "y", "z"):
+        ds = np.asarray(patch[comp][:])
+        ds_ = np.full(list(ds.shape), np.nan)
+        ds_[select] = np.asarray(gaussian_filter(ds, sigma=sigma)[select])
+        results.append({"name": comp, "data": patch[comp].copy_as(ds_)})
+
+    return tuple(results)

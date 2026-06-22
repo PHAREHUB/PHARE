@@ -8,6 +8,15 @@ from dataclasses import dataclass, field
 
 from typing import Any, List, Tuple
 
+from .interpolation import (  # noqa: F401
+    FlatField,
+    flat_finest_field,
+    flat_finest_field_1d,
+    flat_finest_field_2d,
+    overlap_mask_1d,
+    overlap_mask_2d,
+)
+
 from .hierarchy import PatchHierarchy, format_timestamp
 from .patchdata import FieldData, ParticleData
 from .patchlevel import PatchLevel
@@ -169,10 +178,10 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     patch_levels_per_time = []
     for t in reference_hier.times():
         patch_levels = {}
-        for ilvl in range(reference_hier.levelNbr()):
-            patch_levels[ilvl] = PatchLevel(
-                ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
-            )
+        for ilvl in reference_hier.levels(t).keys():
+            patches = new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
+            if patches:
+                patch_levels[ilvl] = PatchLevel(ilvl, patches)
         patch_levels_per_time.append(patch_levels)
 
     return PatchHierarchy(
@@ -205,6 +214,9 @@ def new_patchdatas_from(compute, patch, **kwargs):
 
 def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     reference_hier = hierarchies[0]
+    if ilvl not in reference_hier.levels(t):
+        return []
+
     new_patches = []
     ref_patches = reference_hier.level(ilvl, time=t).patches
     for ip, ref_patch in enumerate(ref_patches):
@@ -267,205 +279,6 @@ def isFieldQty(qty):
         "momentumTensor_yz",
         "momentumTensor_zz",
     )
-
-
-def overlap_mask_1d(x, dl, level, qty):
-    """
-    return the mask for x where x is overlaped by the qty patch datas
-    on the given level, assuming that this level is finer than the one of x
-
-    :param x: 1d array containing the [x] position
-    :param dl: list containing the grid steps where x is defined
-    :param level: a given level associated to a hierarchy
-    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
-    """
-
-    is_overlaped = np.ones(x.shape[0], dtype=bool) * False
-
-    for patch in level.patches:
-        pdata = patch.patch_datas[qty]
-        ghosts_nbr = pdata.ghosts_nbr
-
-        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
-
-        fine_dl = pdata.dl
-        local_dl = dl
-
-        if fine_dl[0] < local_dl[0]:
-            xmin, xmax = fine_x.min(), fine_x.max()
-
-            overlaped_idx = np.where((x > xmin) & (x < xmax))[0]
-
-            is_overlaped[overlaped_idx] = True
-
-        else:
-            raise ValueError("level needs to have finer grid resolution than that of x")
-
-    return is_overlaped
-
-
-def overlap_mask_2d(x, y, dl, level, qty):
-    """
-    return the mask for x & y where ix & y are overlaped by the qty patch datas
-    on the given level, assuming that this level is finer than the one of x & y
-    important note : this mask is flatten
-
-    :param x: 1d array containing the [x] position
-    :param y: 1d array containing the [y] position
-    :param dl: list containing the grid steps where x and y are defined
-    :param level: a given level associated to a hierarchy
-    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
-    """
-
-    is_overlaped = np.ones([x.shape[0] * y.shape[0]], dtype=bool) * False
-
-    for patch in level.patches:
-        pdata = patch.patch_datas[qty]
-        ghosts_nbr = pdata.ghosts_nbr
-
-        fine_x = pdata.x[ghosts_nbr[0] - 1 : -ghosts_nbr[0] + 1]
-        fine_y = pdata.y[ghosts_nbr[1] - 1 : -ghosts_nbr[1] + 1]
-
-        fine_dl = pdata.dl
-        local_dl = dl
-
-        if (fine_dl[0] < local_dl[0]) and (fine_dl[1] < local_dl[1]):
-            xmin, xmax = fine_x.min(), fine_x.max()
-            ymin, ymax = fine_y.min(), fine_y.max()
-
-            xv, yv = np.meshgrid(x, y, indexing="ij")
-            xf = xv.flatten()
-            yf = yv.flatten()
-
-            overlaped_idx = np.where(
-                (xf > xmin) & (xf < xmax) & (yf > ymin) & (yf < ymax)
-            )[0]
-
-            is_overlaped[overlaped_idx] = True
-
-        else:
-            raise ValueError(
-                "level needs to have finer grid resolution than that of x or y"
-            )
-
-    return is_overlaped
-
-
-def flat_finest_field(hierarchy, qty, time=None, neghosts=1):
-    """
-    returns 2 flattened arrays containing the data (with shape [Npoints])
-    and the coordinates (with shape [Npoints, Ndim]) for the given
-    hierarchy of qty.
-
-    :param hierarchy: the hierarchy where qty is defined
-    :param qty: the field (eg "Bx") that we want
-    """
-
-    dim = hierarchy.ndim
-
-    if dim == 1:
-        return flat_finest_field_1d(hierarchy, qty, time, neghosts)
-    elif dim == 2:
-        return flat_finest_field_2d(hierarchy, qty, time)
-    elif dim == 3:
-        raise RuntimeError("Not implemented")
-        # return flat_finest_field_3d(hierarchy, qty, time)
-    else:
-        raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
-
-
-def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
-    lvl = hierarchy.levels(time)
-
-    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
-        patches = lvl[ilvl].patches
-
-        for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - neghosts
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[needed_points[0] : -needed_points[0]]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
-
-            if ilvl == hierarchy.finest_level(time):
-                if ip == 0:
-                    final_data = data
-                    final_x = x
-                else:
-                    final_data = np.concatenate((final_data, data))
-                    final_x = np.concatenate((final_x, x))
-
-            else:
-                is_overlaped = overlap_mask_1d(
-                    x, pdata.dl, hierarchy.level(ilvl + 1, time), qty
-                )
-
-                finest_data = data[~is_overlaped]
-                finest_x = x[~is_overlaped]
-
-                final_data = np.concatenate((final_data, finest_data))
-                final_x = np.concatenate((final_x, finest_x))
-
-    return final_data, final_x
-
-
-def flat_finest_field_2d(hierarchy, qty, time=None):
-    lvl = hierarchy.levels(time)
-
-    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
-        patches = lvl[ilvl].patches
-
-        for ip, patch in enumerate(patches):
-            pdata = patch.patch_datas[qty]
-
-            # all but 1 ghost nodes are removed in order to limit
-            # the overlapping, but to keep enough point to avoid
-            # any extrapolation for the interpolator
-            needed_points = pdata.ghosts_nbr - 1
-
-            # data = pdata.dataset[patch.box] # TODO : once PR 551 will be merged...
-            data = pdata.dataset[
-                needed_points[0] : -needed_points[0],
-                needed_points[1] : -needed_points[1],
-            ]
-            x = pdata.x[needed_points[0] : -needed_points[0]]
-            y = pdata.y[needed_points[1] : -needed_points[1]]
-
-            xv, yv = np.meshgrid(x, y, indexing="ij")
-
-            data_f = data.flatten()
-            xv_f = xv.flatten()
-            yv_f = yv.flatten()
-
-            if ilvl == hierarchy.finest_level(time):
-                if ip == 0:
-                    final_data = data_f
-                    tmp_x = xv_f
-                    tmp_y = yv_f
-                else:
-                    final_data = np.concatenate((final_data, data_f))
-                    tmp_x = np.concatenate((tmp_x, xv_f))
-                    tmp_y = np.concatenate((tmp_y, yv_f))
-
-            else:
-                is_overlaped = overlap_mask_2d(
-                    x, y, pdata.dl, hierarchy.level(ilvl + 1, time), qty
-                )
-
-                finest_data = data_f[~is_overlaped]
-                finest_x = xv_f[~is_overlaped]
-                finest_y = yv_f[~is_overlaped]
-
-                final_data = np.concatenate((final_data, finest_data))
-                tmp_x = np.concatenate((tmp_x, finest_x))
-                tmp_y = np.concatenate((tmp_y, finest_y))
-
-    return final_data, np.stack((tmp_x, tmp_y), axis=1)
 
 
 @dataclass

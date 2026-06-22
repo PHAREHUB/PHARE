@@ -1,5 +1,7 @@
 #
 
+from typing import Any
+
 
 class Patch:
     """
@@ -37,9 +39,24 @@ class Patch:
     def __repr__(self):
         return self.__str__()
 
+    def __iter__(self):
+        return self.patch_datas.items().__iter__()
+
     def __getitem__(self, key):
+        if key is Any:
+            return next(iter(self.patch_datas.values()))
+        if key == 0:
+            if len(self.patch_datas) != 1:
+                raise ValueError(
+                    "too many patch_datas to access by int, only allowed if len(patch_datas)== 1",
+                    self.patch_datas.keys(),
+                )
+            return next(iter(self.patch_datas.values()))
         if key in self.patch_datas:
             return self.patch_datas[key]
+        for k in self.patch_datas.keys():
+            if k.endswith(key):
+                return self.patch_datas[k]
         raise KeyError(f"No patchdata for key: {key} in {self.patch_datas}")
 
     def copy(self):

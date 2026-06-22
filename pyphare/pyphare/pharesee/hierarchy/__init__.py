@@ -4,16 +4,13 @@
 
 from .scalarfield import ScalarField
 from .vectorfield import VectorField
+from .tensorfield import TensorField
 from .hierarchy import PatchHierarchy
-
-
 from pyphare.core import phare_utilities as phut
+from . import func
 
-__all__ = [
-    "ScalarField",
-    "VectorField",
-    "PatchHierarchy",
-]
+
+__all__ = ["ScalarField", "VectorField", "TensorField", "PatchHierarchy", "func"]
 
 
 def hierarchy_from(
@@ -23,7 +20,7 @@ def hierarchy_from(
     h5_filename=None,
     times=None,
     hier=None,
-    func=None,
+    from_func=None,
     **kwargs,
 ):
     from .fromh5 import hierarchy_fromh5
@@ -57,8 +54,8 @@ def hierarchy_from(
     if simulator is not None and qty is not None:
         return hierarchy_from_sim(simulator, qty, pop=pop)
 
-    if func is not None and hier is not None:
-        return hierarchy_from_func(func, hier, **kwargs)
+    if from_func is not None and hier is not None:
+        return hierarchy_from_func(from_func, hier, **kwargs)
 
     raise ValueError("can't make hierarchy")
 

@@ -5,7 +5,7 @@
 import numpy as np
 
 
-from pyphare.core.gridlayout import yee_centering
+from pyphare.pharesee.hierarchy.interpolation import make_interpolator  # noqa: F401
 
 
 def _current1d(by, bz, xby, xbz):
@@ -131,255 +131,21 @@ def _compute_divB(patch, **kwargs):
     raise RuntimeError("dimension not implemented")
 
 
-def _ppp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (primal,primal,primal) to (primal,primal,primal)
-    centering that is the centering of moments on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, _, _ = _inner_slices(nb_ghosts)
-
-    inner_all = tuple([inner] * ndim)
-    return inner_all, (inner_all,)
-
-
-def _pdd_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Bx on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-
-    if ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
-
-    raise RuntimeError("dimension not yet implemented")
-
-
-def _dpd_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of By on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_shift_left, inner_shift_right)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _ddp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Bz on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_shift_left, inner_shift_right)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (
-            (inner_shift_left, inner_shift_left),
-            (inner_shift_left, inner_shift_right),
-            (inner_shift_right, inner_shift_left),
-            (inner_shift_right, inner_shift_right),
-        )
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _dpp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ex on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_shift_left, inner_shift_right)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner_shift_left, inner), (inner_shift_right, inner))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _pdp_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ey on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, inner_shift_left, inner_shift_right = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, ((inner, inner_shift_left), (inner, inner_shift_right))
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _ppd_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,primal,primal) to (primal,primal,primal)
-    centering that is the centering of Ez on a Yee grid
-    """
-
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, _, _ = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    elif ndim == 2:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    else:
-        raise RuntimeError("dimension not yet implemented")
-
-
-def _ddd_to_ppp_domain_slicing(**kwargs):
-    """
-    return the slicing for (dual,dual,dual) to (primal,primal,primal)
-    centering that is the centering of MHD cell-centered quantities
-    """
-    nb_ghosts = kwargs["nb_ghosts"]
-    ndim = kwargs["ndim"]
-
-    inner, L, R = _inner_slices(nb_ghosts)
-
-    if ndim == 1:
-        return (inner,), (L, R)
-    elif ndim == 2:
-        return (inner, inner), ((L, L), (L, R), (R, L), (R, R))
-    else:
-        return (inner, inner, inner), (
-            (L, L, L),
-            (L, L, R),
-            (L, R, L),
-            (L, R, R),
-            (R, L, L),
-            (R, L, R),
-            (R, R, L),
-            (R, R, R),
-        )
-
-
-slices_to_primal_ = {
-    "primal_primal_primal": _ppp_to_ppp_domain_slicing,
-    "primal_dual_dual": _pdd_to_ppp_domain_slicing,
-    "dual_primal_dual": _dpd_to_ppp_domain_slicing,
-    "dual_dual_primal": _ddp_to_ppp_domain_slicing,
-    "dual_primal_primal": _dpp_to_ppp_domain_slicing,
-    "primal_dual_primal": _pdp_to_ppp_domain_slicing,
-    "primal_primal_dual": _ppd_to_ppp_domain_slicing,
-    "dual_dual_dual": _ddd_to_ppp_domain_slicing,
-}
-
-
-def merge_centerings(pdname):
-    from pyphare.core.gridlayout import directions
-
-    return "_".join([yee_centering[d][pdname] for d in directions])
-
-
-def slices_to_primal(pdname, **kwargs):
-    return slices_to_primal_[merge_centerings(pdname)](**kwargs)
-
-
-def _compute_to_primal(patch, **kwargs):
-    """
-    datasets have NaN in their ghosts... might need to be properly filled
-    with their neighbors already properly projected on primal
-    """
-
-    ndim = patch.box.ndim
-
-    pd_attrs = []
-    for name, ref_pd in patch.patch_datas.items():
-        nb_ghosts = ref_pd.layout.nbrGhosts(ref_pd.layout.interp_order, "primal")
-        ref_ds = ref_pd.dataset
-
-        should_skip = all(  # vtkhdf is all primal with no ghosts
-            [ref_pd.centerings == ["primal"] * ndim, not any(ref_pd.ghosts_nbr)]
-        )
-        if should_skip:
-            pd_attrs.append({"name": name, "data": ref_pd})
-            continue
-
-        ds_shape = list(ref_ds.shape)
-        for i in range(ndim):
-            if ref_pd.centerings[i] == "dual":
-                ds_shape[i] += 1
-
-        # should be something else than nan values when the ghosts cells
-        # will be filled with correct values coming from the neighbors
-        ds_ = np.zeros(ds_shape)
-
-        # inner is the slice containing the points that are updated
-        # in the all_primal dataset
-        # chunks is a tupls of all the slices coming from the initial dataset
-        # that are needed to calculate the average for the all_primal dataset
-        inner, chunks = slices_to_primal(name, nb_ghosts=nb_ghosts, ndim=ndim)
-
-        for chunk in chunks:
-            ds_[inner] = np.add(ds_[inner], ref_ds[chunk] / len(chunks))
-
-        copy_pd = ref_pd.copy_as(
-            ds_[inner], centering=["primal"] * ndim, ghosts_nbr=[0] * ndim
-        )
-
-        pd_attrs.append({"name": name, "data": copy_pd})
-
-    return tuple(pd_attrs)
-
-
-def _inner_slices(nb_ghosts):
-    inner = slice(nb_ghosts, -nb_ghosts)
-    inner_shift_left = slice(nb_ghosts - 1, -nb_ghosts)
-    inner_shift_right = slice(nb_ghosts, -nb_ghosts + 1)
-
-    return inner, inner_shift_left, inner_shift_right
+from pyphare.pharesee.hierarchy.primal import (  # noqa: F401, E402
+    _inner_slices,
+    _ppp_to_ppp_domain_slicing,
+    _pdd_to_ppp_domain_slicing,
+    _dpd_to_ppp_domain_slicing,
+    _ddp_to_ppp_domain_slicing,
+    _dpp_to_ppp_domain_slicing,
+    _pdp_to_ppp_domain_slicing,
+    _ppd_to_ppp_domain_slicing,
+    slices_to_primal_,
+    merge_centerings,
+    slices_to_primal,
+    _compute_to_primal_patch_data,
+    _compute_to_primal,
+)
 
 
 def _get_rank(patch, **kwargs):
@@ -415,7 +181,7 @@ def _compute_pressure(patch, **kwargs):
     Myy = patch["Myy"]
     Myz = patch["Myz"]
     Mzz = patch["Mzz"]
-    massDensity = patch["value"][:]
+    massDensity = patch["rho"][:]
     Vix = patch["Vx"][:]
     Viy = patch["Vy"][:]
     Viz = patch["Vz"][:]
@@ -435,6 +201,51 @@ def _compute_pressure(patch, **kwargs):
         {"name": "Pyz", "data": Myz.copy_as(Pyz)},
         {"name": "Pzz", "data": Mzz.copy_as(Pzz)},
     )
+
+
+def _compute_pop_pressure_xx(patch, mass, popname):
+    Mxx = patch[popname + "_Mxx"]
+    Fx = patch[popname + "_Fx"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pxx": Mxx.copy_as(Mxx[:] - Fx * Fx * mass / N)}
+
+
+def _compute_pop_pressure_xy(patch, mass, popname):
+    Mxy = patch[popname + "_Mxy"]
+    Fx = patch[popname + "_Fx"][:]
+    Fy = patch[popname + "_Fy"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pxy": Mxy.copy_as(Mxy[:] - Fx * Fy * mass / N)}
+
+
+def _compute_pop_pressure_xz(patch, mass, popname):
+    Mxz = patch[popname + "_Mxz"]
+    Fx = patch[popname + "_Fx"][:]
+    Fz = patch[popname + "_Fz"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pxz": Mxz.copy_as(Mxz[:] - Fx * Fz * mass / N)}
+
+
+def _compute_pop_pressure_yy(patch, mass, popname):
+    Myy = patch[popname + "_Myy"]
+    Fy = patch[popname + "_Fy"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pyy": Myy.copy_as(Myy[:] - Fy * Fy * mass / N)}
+
+
+def _compute_pop_pressure_yz(patch, mass, popname):
+    Myz = patch[popname + "_Myz"]
+    Fy = patch[popname + "_Fy"][:]
+    Fz = patch[popname + "_Fz"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pyz": Myz.copy_as(Myz[:] - Fy * Fz * mass / N)}
+
+
+def _compute_pop_pressure_zz(patch, mass, popname):
+    Mzz = patch[popname + "_Mzz"]
+    Fz = patch[popname + "_Fz"][:]
+    N = patch[popname + "_rho"][:]
+    return {popname + "_Pzz": Mzz.copy_as(Mzz[:] - Fz * Fz * mass / N)}
 
 
 def _compute_pop_pressure(patch, **kwargs):
@@ -457,7 +268,7 @@ def _compute_pop_pressure(patch, **kwargs):
     Fx = patch["x"][:]
     Fy = patch["y"][:]
     Fz = patch["z"][:]
-    N = patch["value"][:]
+    N = patch["rho"][:]
 
     mass = kwargs["mass"]
 
@@ -476,52 +287,3 @@ def _compute_pop_pressure(patch, **kwargs):
         {"name": popname + "_Pyz", "data": Myz.copy_as(Pyz)},
         {"name": popname + "_Pzz", "data": Mzz.copy_as(Pzz)},
     )
-
-
-def make_interpolator(data, coords, interp, domain, dl, qty, nbrGhosts):
-    """
-    :param data: the values of the data that will be used for making
-    the interpolator, defined on coords
-    :param coords: coordinates where the data are known. they
-    can be define on an irregular grid (eg the finest)
-
-    finest_coords will be the structured coordinates defined on the
-    finest grid.
-    """
-    from pyphare.core.gridlayout import yeeCoordsFor
-
-    dim = coords.ndim
-
-    if dim == 1:
-        from scipy.interpolate import interp1d
-
-        interpolator = interp1d(
-            coords, data, kind=interp, fill_value="extrapolate", assume_sorted=False
-        )
-
-        nx = 1 + int(domain[0] / dl[0])
-
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, [nx], qty, "x")
-        finest_coords = (x,)
-
-    elif dim == 2:
-        from scipy.interpolate import LinearNDInterpolator, NearestNDInterpolator
-
-        if interp == "nearest":
-            interpolator = NearestNDInterpolator(coords, data)
-        elif interp == "bilinear":
-            interpolator = LinearNDInterpolator(coords, data)
-        else:
-            raise ValueError("interp can only be 'nearest' or 'bilinear'")
-
-        nCells = [1 + int(d / dl) for d, dl in zip(domain, dl)]
-        x = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "x")
-        y = yeeCoordsFor([0] * dim, nbrGhosts, dl, nCells, qty, "y")
-        # x = np.arange(0, domain[0]+dl[0], dl[0])
-        # y = np.arange(0, domain[1]+dl[1], dl[1])
-        finest_coords = (x, y)
-
-    else:
-        raise ValueError("make_interpolator is not yet 3d")
-
-    return interpolator, finest_coords
