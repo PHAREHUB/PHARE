@@ -1,4 +1,3 @@
-// #include "core/data/grid/gridlayout.hpp"
 #include "phare_core.hpp"
 #include <gtest/gtest.h>
 

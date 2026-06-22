@@ -31,7 +31,6 @@ class GridLayoutImplYee
     using Scalar  = Options::Scalar;
 
     static constexpr std::size_t dim = options.dimension;
-    // auto static constexpr field_options = options.field_options;
 
 public:
     struct GridData;
