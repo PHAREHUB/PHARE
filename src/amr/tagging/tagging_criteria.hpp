@@ -21,11 +21,14 @@ namespace PHARE::amr
 //  which matters for cell-centered (ddd) fields like the MHD mass density.
 //
 //  The criteria are evaluated per cell and produce a cell-centered indicator.
-//  Components are co-indexed on the same cell index regardless of their true
-//  centering (B is primal in its own direction, rho is cell-/node-centered):
-//  this is the legacy behavior and is exact for cell-centered quantities; for
-//  primal components it carries a harmless half-cell offset in the vector norm.
-//  Tagging is only a refinement hint, so we deliberately avoid any projection.
+//  Components must be sampled AT the cell center: a component is generally
+//  staggered (B is primal in its own direction, hybrid rho is all-primal, MHD
+//  rho is all-dual), so reading it at the dual cell index would offset it half a
+//  cell in every primal direction and break the symmetry of the centered stencil.
+//  CellCenteredSampler (below) projects each component onto the cell center on the
+//  fly (order-2 averaging of the bracketing primal nodes, dual directions read
+//  directly) with no temporary buffer. The criteria below are centering-agnostic:
+//  they call elem(i...) on whatever sampler they are given.
 //
 //  The criteria generalize over an arbitrary list of field components
 //  (B -> 3 components, rho -> 1) and combine over directions by max.
@@ -57,6 +60,65 @@ double at(Field const& f, std::array<std::uint32_t, dim> const& idx)
 {
     return std::apply([&](auto... i) { return static_cast<double>(f(i...)); }, idx);
 }
+
+
+// Samples a (possibly staggered) field AT the cell center, projecting on the fly:
+// in each PRIMAL direction it averages the two bracketing nodes (order-2,
+// PrimalToDual: at dual cell i -> 0.5*(F[i] + F[i+1])); DUAL directions are read
+// directly. No temporary buffer. An all-dual mask is an exact passthrough.
+//
+// The +1 reach in primal directions stacks with the criteria's +/-1 centered
+// stencil: a primal-in-d component touches [i-1, i+2] in d, so the top physical
+// cell needs nbrGhosts >= 2 (the caller guards this).
+template<std::size_t dim, typename Field>
+class CellCenteredSampler
+{
+public:
+    CellCenteredSampler(Field const& f, std::array<bool, dim> const& isPrimal)
+        : f_{&f}
+        , isPrimal_{isPrimal}
+    {
+    }
+
+    template<typename... Indices>
+    double operator()(Indices... is) const
+    {
+        static_assert(sizeof...(Indices) == dim, "index count must match dimension");
+        std::array<std::uint32_t, dim> const idx{static_cast<std::uint32_t>(is)...};
+
+        // tensor product over the bracketing nodes: dual dirs contribute {offset 0,
+        // coef 1}; primal dirs contribute {offset 0 and +1, coef 0.5 each}.
+        double acc = 0.0;
+        for (unsigned mask = 0; mask < (1u << dim); ++mask)
+        {
+            double coef = 1.0;
+            auto j      = idx;
+            bool valid  = true;
+            for (std::size_t d = 0; d < dim; ++d)
+            {
+                bool const bit = (mask >> d) & 1u;
+                if (isPrimal_[d])
+                {
+                    coef *= 0.5;
+                    if (bit)
+                        j[d] += 1;
+                }
+                else if (bit)
+                {
+                    valid = false; // dual direction has no +1 corner
+                    break;
+                }
+            }
+            if (valid)
+                acc += coef * at<dim>(*f_, j);
+        }
+        return acc;
+    }
+
+private:
+    Field const* f_;
+    std::array<bool, dim> isPrimal_;
+};
 
 
 // "default" criterion: centered analog of the legacy per-component smoothness

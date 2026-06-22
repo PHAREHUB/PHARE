@@ -571,61 +571,60 @@ def validate_restart_options(sim):
 
 
 def check_refinement(**kwargs):
-    refinement = kwargs.get("refinement", "boxes")
-    # tagging can be requested either as the legacy string "tagging" or as a
-    # dict {"tagging": {...}}; both normalize to the "tagging" refinement mode.
-    if isinstance(refinement, dict):
-        return "tagging"
-    return refinement
+    return kwargs.get("refinement", "boxes")
 
 
 def check_tagging(**kwargs):
     """Normalize tagging configuration into {"method", "quantities":[(name, thr)]}.
 
-    Returns None when refinement is not tagging. Accepts two forms:
-      - dict: refinement={"tagging": {"method": "lohner",
-                                      "quantities": {("rho", 0.1), ("B", 0.4)}}}
-      - legacy string: refinement="tagging" (+ optional tagging_threshold),
-        which maps to method "default" on B.
+    Returns None when refinement is not "tagging". Configuration is carried by the
+    optional `tagging` kwarg, e.g.
+
+        refinement="tagging",
+        tagging={"method": "default", "quantities": {"B": 0.1, "rho": 0.4}}
+
+    where `quantities` maps a field name to its own threshold (a cell is tagged if
+    ANY quantity's indicator exceeds its threshold). Both keys are optional:
+    `method` defaults to "default"; when `quantities` is omitted (or no `tagging`
+    dict is given at all) the criterion falls back to B at `tagging_threshold`
+    (kept for backward compatibility, default 0.1).
+
+    Quantity names are not restricted here: the C++ tagger resolves them against
+    the model's field tree and throws if a name matches nothing.
     """
     valid_methods = ("default", "lohner")
-    valid_quantities = ("B", "rho")
 
-    refinement = kwargs.get("refinement", "boxes")
+    if kwargs.get("refinement", "boxes") != "tagging":
+        return None
 
-    if isinstance(refinement, dict):
-        if set(refinement.keys()) != {"tagging"}:
-            raise ValueError(
-                "Error: refinement dict must have a single 'tagging' key"
-            )
-        spec = refinement["tagging"]
-        if "method" not in spec or "quantities" not in spec:
-            raise ValueError(
-                "Error: tagging dict requires both 'method' and 'quantities'"
-            )
-        method = spec["method"]
-        if method not in valid_methods:
-            raise ValueError(
-                f"Error: invalid tagging method '{method}', expected one of {valid_methods}"
-            )
-        quantities = []
-        for name, threshold in spec["quantities"]:
-            if name not in valid_quantities:
-                raise ValueError(
-                    f"Error: invalid tagging quantity '{name}', expected one of {valid_quantities}"
-                )
-            quantities.append((name, float(threshold)))
-        if len(quantities) == 0:
-            raise ValueError("Error: tagging 'quantities' cannot be empty")
-        return {"method": method, "quantities": quantities}
+    threshold = kwargs.get("tagging_threshold", 0.1)
+    if threshold is None:
+        threshold = 0.1
+    threshold = float(threshold)
 
-    if refinement == "tagging":
-        threshold = kwargs.get("tagging_threshold", 0.1)
-        if threshold is None:
-            threshold = 0.1
-        return {"method": "default", "quantities": [("B", float(threshold))]}
+    spec = kwargs.get("tagging", None)
+    if spec is None:
+        spec = {}
+    if not isinstance(spec, dict):
+        raise ValueError("Error: 'tagging' must be a dict {'method':..., 'quantities':...}")
 
-    return None
+    method = spec.get("method", "default")
+    if method not in valid_methods:
+        raise ValueError(
+            f"Error: invalid tagging method '{method}', expected one of {valid_methods}"
+        )
+
+    quantities = spec.get("quantities", None)
+    if quantities:
+        # accept the {name: threshold} mapping (preferred) or an iterable of
+        # (name, threshold) pairs.
+        items = quantities.items() if isinstance(quantities, dict) else quantities
+        quantities = [(str(name), float(thr)) for name, thr in items]
+    else:
+        # no quantities specified -> criterion applies to B at tagging_threshold
+        quantities = [("B", threshold)]
+
+    return {"method": method, "quantities": quantities}
 
 
 def check_nesting_buffer(ndim, **kwargs):
@@ -775,6 +774,7 @@ def checker(func):
             "diag_export_format",
             "refinement_boxes",
             "refinement",
+            "tagging",
             "tagging_threshold",
             "clustering",
             "smallest_patch_size",
