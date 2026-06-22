@@ -31,9 +31,6 @@ template<SimOpts opts>
 struct PHARE_Types
 {
     auto static constexpr dimension = opts.dimension;
-    // auto static constexpr interp_order = opts.interp_order;
-    // static constexpr auto mhd_reconstruction_nghosts
-    //     = MHDOpts::reconstruction_nghosts_v<opts.reconstruction_type>;
 
     using Array_t     = NdArrayVector<dimension>;
     using ArrayView_t = NdArrayView<dimension>;
