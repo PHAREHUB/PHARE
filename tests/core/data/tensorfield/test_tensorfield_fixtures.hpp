@@ -3,7 +3,7 @@
 
 #include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
 #include "tests/core/data/field/test_field_fixtures.hpp"

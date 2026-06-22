@@ -1,10 +1,11 @@
 #ifndef PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_HPP
 #define PHARE_TEST_CORE_DATA_TEST_VECFIELD_FIXTURES_HPP
 
-#include "tests/core/data/field/test_field_fixtures_mhd.hpp"
-#include "tests/core/data/tensorfield/test_tensorfield_fixtures_mhd.hpp"
-#include "core/mhd/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+
+#include "tests/core/data/tensorfield/test_tensorfield_fixtures_mhd.hpp"
+#include "tests/core/data/field/test_field_fixtures_mhd.hpp"
 
 namespace PHARE::core
 {

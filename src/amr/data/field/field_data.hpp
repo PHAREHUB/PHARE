@@ -30,7 +30,8 @@ namespace amr
              typename PhysicalQuantity = decltype(std::declval<Grid_t>().physicalQuantity())>
     class FieldData : public SAMRAI::hier::PatchData
     {
-        using Super = SAMRAI::hier::PatchData;
+        using Super                     = SAMRAI::hier::PatchData;
+        static constexpr auto NO_ROTATE = SAMRAI::hier::Transformation::NO_ROTATE;
 
     public:
         using value_type = Grid_t::value_type;
@@ -40,11 +41,9 @@ namespace amr
         auto constexpr static NaN = std::numeric_limits<value_type>::quiet_NaN();
 
     public:
-        static constexpr std::size_t dimension    = GridLayoutT::dimension;
-        static constexpr std::size_t interp_order = GridLayoutT::interp_order;
-        using Geometry                            = FieldGeometry<GridLayoutT, PhysicalQuantity>;
-        using gridlayout_type                     = GridLayoutT;
-        static constexpr auto NO_ROTATE           = SAMRAI::hier::Transformation::NO_ROTATE;
+        static constexpr std::size_t dimension = GridLayoutT::dimension;
+        using Geometry                         = FieldGeometry<GridLayoutT, PhysicalQuantity>;
+        using gridlayout_type                  = GridLayoutT;
 
 
         /*** \brief Construct a FieldData from information associated to a patch

@@ -28,7 +28,7 @@ class IonUpdater
 
 public:
     static constexpr auto dimension    = GridLayout::dimension;
-    static constexpr auto interp_order = GridLayout::interp_order;
+    static constexpr auto interp_order = GridLayout::options.interp_order;
 
     using Box               = PHARE::core::Box<int, dimension>;
     using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
@@ -119,7 +119,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
 template<typename IonUpdater_t, typename GridLayout>
 struct UpdaterSelectionBoxing
 {
-    auto constexpr static partGhostWidth = GridLayout::nbrParticleGhosts();
+    auto constexpr static partGhostWidth = GridLayout::options.particle_ghost_width;
     using GridLayout_t                   = GridLayout;
     using Box_t                          = IonUpdater_t::Box;
     using Selector_t                     = IonUpdater_t::Pusher::ParticleSelector;

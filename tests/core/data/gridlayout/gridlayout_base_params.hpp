@@ -1,27 +1,31 @@
 #ifndef PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_BASE_PARAMS_HPP
 #define PHARE_TESTS_CORE_DATA_GRIDLAYOUT_GRIDLAYOUT_BASE_PARAMS_HPP
 
-#include <memory>
 
 
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/point/point.hpp"
+
+#include "core/models/options/hybrid_options.hpp"
 
 #include "gridlayout_utilities.hpp"
 
+#include <memory>
+
 using namespace PHARE::core;
 
-template<typename GridLayoutImpl>
+template<auto options>
 struct GridLayoutTestParam
 {
-    static constexpr std::size_t dim         = GridLayoutImpl::dimension;
-    static constexpr std::size_t interpOrder = GridLayoutImpl::interp_order;
+    PHARE::HybridFieldOptions<options> constexpr static field_options{};
+    using GridLayout_t                       = GridLayout<PHARE::HybridOptions<field_options>{}>;
+    static constexpr std::size_t dim         = options.dimension;
+    static constexpr std::size_t interpOrder = options.interp_order;
     using Grid_t = Grid<decltype(getNdArrayVecImpl(SelectorDim<dim>{})), HybridQuantity::Scalar>;
 
-    std::shared_ptr<GridLayout<GridLayoutImpl>> layout;
+
+    std::shared_ptr<GridLayout_t> layout;
     std::array<double, dim> dxdydz;
     std::array<std::uint32_t, dim> nbCellXYZ;
 

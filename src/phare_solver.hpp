@@ -12,7 +12,7 @@
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/level_initializer/level_initializer_factory.hpp"
-#include <python3/mhd_resolver.hpp>
+#include "python3/mhd_resolver.hpp"
 
 namespace PHARE::solver
 {
@@ -26,25 +26,31 @@ struct PHARE_Types
     // core deps
     using core_types = PHARE::core::PHARE_Types<opts>;
 
-    // Hybrid
-    using VecField_t   = typename core_types::VecField_t;
-    using Grid_t       = typename core_types::Grid_t;
-    using Electromag_t = typename core_types::Electromag_t;
-    using Ions_t       = typename core_types::Ions_t;
-    using GridLayout_t = typename core_types::GridLayout_t;
-    using Electrons_t  = typename core_types::Electrons_t;
+    struct Hybrid
+    {
+        using VecField_t   = core_types::VecField_t;
+        using Grid_t       = core_types::Grid_t;
+        using Electromag_t = core_types::Electromag_t;
+        using Ions_t       = core_types::Ions_t;
+        using GridLayout_t = core_types::GridLayout_t;
+        using Electrons_t  = core_types::Electrons_t;
+        using Model_t      = HybridModel< //
+            GridLayout_t, Electromag_t, Ions_t, Electrons_t, amr::SAMRAI_Types, Grid_t>;
+    };
 
-    // MHD
-    using Grid_MHD       = typename core_types::Grid_MHD;
-    using VecField_MHD   = typename core_types::VecField_MHD;
-    using GridLayout_MHD = typename core_types::GridLayout_MHD;
-    // core deps
+    struct MHD
+    {
+        using Grid_t       = core_types::MHD::Grid_t;
+        using VecField_t   = core_types::MHD::VecField_t;
+        using GridLayout_t = core_types::MHD::GridLayout_t;
+        using Model_t      = MHDModel<GridLayout_t, VecField_t, amr::SAMRAI_Types, Grid_t>;
+    };
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
-    using HybridModel_t  = PHARE::solver::HybridModel<GridLayout_t, Electromag_t, Ions_t,
-                                                      Electrons_t, PHARE::amr::SAMRAI_Types, Grid_t>;
-    using MHDModel_t
-        = PHARE::solver::MHDModel<GridLayout_MHD, VecField_MHD, PHARE::amr::SAMRAI_Types, Grid_MHD>;
+
+
+    using HybridModel_t = typename Hybrid::Model_t;
+    using MHDModel_t    = typename MHD::Model_t;
 
     using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
     using SolverMHD_t

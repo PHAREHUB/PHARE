@@ -1,5 +1,11 @@
 
+
+#include "phare_core.hpp"
 #include "core/def/phare_mpi.hpp"
+
+#include "core/data/grid/grid.hpp"
+
+#include "amr/data/field/field_variable.hpp"
 
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/pdat/CellGeometry.h>
@@ -8,14 +14,9 @@
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
 
-#include "amr/data/field/field_geometry.hpp"
-#include "amr/data/field/field_variable.hpp"
-#include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "gmock/gmock.h"
 
 using testing::Eq;
 
@@ -143,7 +144,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
     auto& destinationLayout = param.destinationFieldData->gridLayout;
     auto centering          = destinationLayout.centering(HybridQuantity::Scalar::Ex);
     auto ghosts             = SAMRAI::hier::IntVector::getZero(dim);
-    ghosts[0]               = destinationLayout.nbrGhosts(centering[0]);
+    ghosts[0]               = destinationLayout.options.field_ghost_width;
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> destinationCellGeometry
         = std::make_shared<SAMRAI::pdat::CellGeometry>(destinationPatch.getBox(), ghosts);
@@ -155,7 +156,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsCellGeometryForEx)
     int upper = 11;
 
     // We want here to get the ghost for interp order >=2
-    if (destinationLayout.interp_order >= 2)
+    if (destinationLayout.options.interp_order >= 2)
     {
         upper = 12;
     }
@@ -227,7 +228,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 
     auto ghosts = SAMRAI::hier::IntVector::getZero(dim);
 
-    ghosts[0] = destinationLayout.nbrGhosts(centering[0]);
+    ghosts[0] = destinationLayout.options.field_ghost_width;
 
 
     std::shared_ptr<SAMRAI::hier::BoxGeometry> node0Geom
@@ -240,7 +241,7 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
     int upper = 11;
 
     // We want here to get the ghost for interp order >=2
-    if (destinationLayout.interp_order >= 2)
+    if (destinationLayout.options.interp_order >= 2)
     {
         upper = 12;
     }
@@ -295,9 +296,15 @@ TYPED_TEST_P(FieldGeometry1D, IsSameAsNodeGeometryForEy)
 
 REGISTER_TYPED_TEST_SUITE_P(FieldGeometry1D, IsSameAsCellGeometryForEx, IsSameAsNodeGeometryForEy);
 
-using FieldGeometryTest1DOrder1 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 1>>, Grid1D>;
-using FieldGeometryTest1DOrder2 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 2>>, Grid1D>;
-using FieldGeometryTest1DOrder3 = FieldGeometryParam<GridLayout<GridLayoutImplYee<1, 3>>, Grid1D>;
+using FieldGeometryTest1DOrder1
+    = FieldGeometryParam<PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t,
+                         Grid1D>;
+using FieldGeometryTest1DOrder2
+    = FieldGeometryParam<PHARE::core::PHARE_Types<PHARE::SimOpts{1, 2}>::Hybrid::GridLayout_t,
+                         Grid1D>;
+using FieldGeometryTest1DOrder3
+    = FieldGeometryParam<PHARE::core::PHARE_Types<PHARE::SimOpts{1, 3}>::Hybrid::GridLayout_t,
+                         Grid1D>;
 
 using FieldGeometry1DTestList
     = ::testing::Types<FieldGeometryTest1DOrder1, FieldGeometryTest1DOrder2,

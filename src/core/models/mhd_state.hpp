@@ -2,13 +2,11 @@
 #define PHARE_MHD_STATE_HPP
 
 #include "core/def.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
-#include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
-#include "core/data/field/initializers/field_user_initializer.hpp"
-#include "core/data/vecfield/vecfield_initializer.hpp"
-#include "core/mhd/mhd_quantities.hpp"
 #include "core/models/physical_state.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+#include "core/data/vecfield/vecfield_initializer.hpp"
+#include "core/data/field/initializers/field_user_initializer.hpp"
+#include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 
 #include "initializer/data_provider.hpp"
 

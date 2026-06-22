@@ -2,7 +2,7 @@
 #define DIAGNOSTIC_MODEL_VIEW_HPP
 
 #include "core/def.hpp"
-#include "core/mhd/mhd_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/utilities/mpi_utils.hpp"
 
 #include "amr/amr_constants.hpp"

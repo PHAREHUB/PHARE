@@ -237,7 +237,7 @@ namespace amr
         auto const lvlNbr              = patch.getPatchLevelNumber();
         SAMRAI::hier::Box const domain = patch.getBox();
         auto const domBox              = phare_box_from<dimension>(domain);
-        auto const particleGhostBox    = grow(domBox, GridLayoutT::nbrParticleGhosts());
+        auto const particleGhostBox    = grow(domBox, GridLayoutT::options.particle_ghost_width);
 
         auto const neighbors = getSameLevelNeighbors(patch, hierarchy);
         std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;

@@ -86,7 +86,7 @@ void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layo
         // at interporder 1 we choose not to tag the last patch cell since
         // the 5 points stencil may go beyond the last ghost node.
         // for interp order 2 and 3 this is ok
-        auto constexpr doLastCell = gridlayout_type::nbrGhosts() > 2;
+        auto constexpr doLastCell = gridlayout_type::options.field_ghost_width > 2;
         std::size_t oneOrZero     = doLastCell ? 1 : 0;
         for (auto iCell = 0u, ix = start_x; iCell < end_x + oneOrZero; ++ix, ++iCell)
         {

@@ -37,7 +37,7 @@ TEST_P(AWeighter, hasSumOfWeightEqualToOne)
 }
 
 
-AWeighterData createWeighter(std::size_t nbrPoints)
+AWeighterData inline createWeighter(std::size_t nbrPoints)
 {
     AWeighterData weightData;
     weightData.weight = std::make_shared<CoarsenWeighter>(nbrPoints);

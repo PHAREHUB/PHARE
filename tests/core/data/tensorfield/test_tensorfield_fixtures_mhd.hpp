@@ -2,9 +2,8 @@
 #define PHARE_TEST_CORE_DATA_TEST_TENSORFIELD_FIXTURES_HPP
 
 #include "core/data/grid/grid.hpp"
-#include "core/data/field/field.hpp"
-#include "core/mhd/mhd_quantities.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 
 #include "tests/core/data/field/test_field_fixtures_mhd.hpp"
 

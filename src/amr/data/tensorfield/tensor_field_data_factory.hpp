@@ -2,11 +2,10 @@
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_FACTORY_HPP
 
 
-#include "core/def/phare_mpi.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include <amr/data/tensorfield/tensor_field_data.hpp>
-#include <amr/data/tensorfield/tensor_field_geometry.hpp>
+#include "amr/data/tensorfield/tensor_field_data.hpp"
+#include "amr/data/tensorfield/tensor_field_geometry.hpp"
 
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchDataFactory.h>
@@ -19,17 +18,18 @@
 
 namespace PHARE::amr
 {
-template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
+template<std::size_t rank_, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
 class TensorFieldDataFactory : public SAMRAI::hier::PatchDataFactory
 {
-    static constexpr std::size_t n_ghosts
-        = GridLayoutT::template nbrGhosts<core::QtyCentering, core::QtyCentering::dual>();
+    static constexpr std::size_t n_ghosts = GridLayoutT::options.field_ghost_width;
 
-    using tensor_t = typename PhysicalQuantity::template TensorType<rank>;
+    using tensor_t = typename PhysicalQuantity::template TensorType<rank_>;
 
 public:
-    static constexpr std::size_t dimension    = GridLayoutT::dimension;
-    static constexpr std::size_t interp_order = GridLayoutT::interp_order;
+    using grid_type                 = Grid_t;
+    using gridlayout_type           = GridLayoutT;
+    static constexpr auto dimension = GridLayoutT::dimension;
+    static constexpr auto rank      = rank_;
 
 
     TensorFieldDataFactory(bool fineBoundaryRepresentsVariable, bool dataLivesOnPatchBorder,

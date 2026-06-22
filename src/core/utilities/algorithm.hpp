@@ -12,6 +12,8 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
+#include "core/models/quantities/mhd_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include <string>
 #include <algorithm>
@@ -106,7 +108,7 @@ auto convert_to_primal(        //
     if constexpr (std::is_same_v<PhysicalQuantity, MHDQuantity::Scalar>)
     {
         // if we are not the magnetic field, then all scalars and vectors are cell-centered in MHD
-        return GridLayout::template project<GridLayout::cellCenterToFullPrimal>(src, lix);
+        return GridLayout::template project<GridLayout::implT::cellCenterToFullPrimal>(src, lix);
     }
 
     throw std::runtime_error("Quantity not supported for conversion to primal.");

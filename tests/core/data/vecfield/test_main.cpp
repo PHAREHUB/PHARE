@@ -7,7 +7,7 @@
 #include "core/data/field/field.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield.hpp"
-#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 
 
 using namespace PHARE::core;
@@ -19,9 +19,9 @@ class VecFieldGeneric : public ::testing::Test
 {
 public:
     VecFieldGeneric()
-        : vf2{
-            vf2_name,
-            {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By, HybridQuantity::Scalar::Bz}}}
+        : vf2{vf2_name,
+              {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By,
+                HybridQuantity::Scalar::Bz}}}
     {
     }
 
@@ -91,9 +91,9 @@ protected:
         B3D_[2].setBuffer(nullptr);
     }
 
-    static const std::uint32_t nx;
-    static const std::uint32_t ny;
-    static const std::uint32_t nz;
+    static std::uint32_t const nx;
+    static std::uint32_t const ny;
+    static std::uint32_t const nz;
     Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bx1d_;
     Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> by1d_;
     Grid<NdArrayVector<1>, typename HybridQuantity::Scalar> bz1d_;
@@ -111,9 +111,9 @@ protected:
     VecField_t<3> B3D_;
 };
 
-const std::uint32_t VecFieldTest::nx = 10;
-const std::uint32_t VecFieldTest::ny = 20;
-const std::uint32_t VecFieldTest::nz = 30;
+std::uint32_t const VecFieldTest::nx = 10;
+std::uint32_t const VecFieldTest::ny = 20;
+std::uint32_t const VecFieldTest::nz = 30;
 
 
 TEST_F(VecFieldTest, isNotInitiallyUsable1D)
@@ -236,7 +236,9 @@ TEST_F(VecFieldTest, SizeIsOkAfterSet3D)
 
 TEST_F(VecFieldTest, VecFieldsHaveBeginAndEnd)
 {
-    for ([[maybe_unused]] auto const& component : B1D_) {}
+    for ([[maybe_unused]] auto const& component : B1D_)
+    {
+    }
 }
 
 

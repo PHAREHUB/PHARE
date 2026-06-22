@@ -67,8 +67,8 @@ struct GodunovInfo : public OhmInfo
 };
 
 
-template<typename GridLayout, template<typename> typename Reconstruction,
-         typename RiemannSolver, typename Equations>
+template<typename GridLayout, template<typename> typename Reconstruction, typename RiemannSolver,
+         typename Equations>
 class Godunov : public GodunovInfo
 {
     using Super                     = GodunovInfo;
@@ -116,8 +116,9 @@ public:
                             = Reconstructor_t::template reconstruct<direction>(state, {indices...});
 
                         auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, GridLayout::edgeXToCellCenter, GridLayout::edgeYToCellCenter,
-                            GridLayout::edgeZToCellCenter>(state.J, {indices...});
+                            direction, GridLayout::implT::edgeXToCellCenter,
+                            GridLayout::implT::edgeYToCellCenter,
+                            GridLayout::implT::edgeZToCellCenter>(state.J, {indices...});
 
                         auto&& u      = std::forward_as_tuple(uL, uR);
                         auto const& j = std::forward_as_tuple(jL, jR);
@@ -195,8 +196,9 @@ public:
                                                                            F_Etot);
                             else if (hyper_mode == HyperMode::spatial)
                             {
-                                auto const& Bn   = toPerIndexVector(state.B, {indices...});
-                                auto const& rhot = ct_state.template getRhot<direction>()(indices...);
+                                auto const& Bn = toPerIndexVector(state.B, {indices...});
+                                auto const& rhot
+                                    = ct_state.template getRhot<direction>()(indices...);
 
                                 return spatial_hyperresistive_<direction>(Btidx, Bn, vecLaplJ, rhot,
                                                                           F_B, F_Etot);

@@ -16,7 +16,7 @@ TYPED_TEST_P(AFieldData1DCenteredOnEx, CopyWithOverlapLikeACellData)
     auto const& destinationLayout = this->param.destinationFieldData->gridLayout;
 
     // in case we are at in interp order > 1 we want to see ghost region
-    if (destinationLayout.interp_order >= 2)
+    if (destinationLayout.options.interp_order >= 2)
     {
         upper = 12;
     }

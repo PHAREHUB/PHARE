@@ -1,7 +1,7 @@
 #ifndef CORE_NUMERICS_RIEMANN_SOLVERS_HLLD_HPP
 #define CORE_NUMERICS_RIEMANN_SOLVERS_HLLD_HPP
 
-#include "core/mhd/mhd_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 
