@@ -128,11 +128,9 @@ def main():
             r = Run("shock_{}".format(interp_order))
             for it, t in enumerate(times):
                 fig, ax = plt.subplots()
-                B = r.GetB(t, merged=True)
+                pd = r.GetB(t)[:].level(0).patches[0]["By"]
                 title = "interp order {} - t = {:06.3f}".format(interp_order, t)
-                x = B["By"][1][0]
-                By = B["By"][0]
-                ax.plot(x, By(x), color="k")
+                ax.plot(pd.x, pd[:], color="k")
                 ax.set_title(title)
                 ax.set_ylim((-0.2, 5))
                 ax.set_xlim((0, 250))
@@ -161,10 +159,8 @@ def main():
         colors = ["k", "r", "b"]
         for r, color, interp_order in zip(runs, colors, (1, 2, 3)):
             print(r.path)
-            B = r.GetB(t, merged=True)
-            x = B["By"][1][0]
-            By = B["By"][0]
-            ax.plot(x, By(x), color=color, label=f"interp order {interp_order}")
+            pd = r.GetB(t)[:].level(0).patches[0]["By"]
+            ax.plot(pd.x, pd[:], color=color, label=f"interp order {interp_order}")
         title = "interp order {} - t = {:06.3f}".format(interp_order, t)
         ax.set_title(title)
         ax.set_ylim((-0.2, 5))
