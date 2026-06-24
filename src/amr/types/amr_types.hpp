@@ -1,13 +1,13 @@
 #ifndef PHARE_AMR_TYPES_HPP
 #define PHARE_AMR_TYPES_HPP
 
+#include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "SAMRAI/hier/Patch.h"
 #include "SAMRAI/hier/PatchHierarchy.h"
 #include "SAMRAI/hier/PatchLevel.h"
 #include "SAMRAI/hier/PatchHierarchy.h"
-#include "core/def.hpp"
 
 namespace PHARE
 {
