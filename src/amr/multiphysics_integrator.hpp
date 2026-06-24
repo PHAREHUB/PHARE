@@ -339,12 +339,17 @@ namespace solver
             else if (isRegridding)
             {
                 // regriding the current level has broken schedules for which
-                // this level is the source or destination
-                // we therefore need to rebuild them
+                // this level is the source or destination. A regridded level is
+                // the coarse source not only for its immediate child but for
+                // every finer level whose interlevel ghost fill reaches into
+                // it through a recursive coarse-interp chain. This happens for example when
+                // a finer level refinement stencil reaches outside the box of the immediate next
+                // coarser: SAMRAI builds a fill chain that reaches past the immediate parent into a
+                // grandparent (or deeper). Re-register all finer levels so none keep a stale
+                // shared_ptr to the pre-regrid PatchData of this level.
                 auto const finestLvlNbr = hierarchy->getFinestLevelNumber();
-                auto nextFiner = (levelNumber == finestLvlNbr) ? levelNumber : levelNumber + 1;
 
-                for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
+                for (auto ilvl = levelNumber; ilvl <= finestLvlNbr; ++ilvl)
                 {
                     messenger.registerLevel(hierarchy, ilvl);
                 }
