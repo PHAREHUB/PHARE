@@ -20,6 +20,10 @@
 #include <algorithm>
 #include <unordered_map>
 
+#ifndef PHARE_VTK_HDF5_VERSION // defined in vtkh5_type_writer.hpp
+#error                         // unexpected state cannot continue
+#endif
+
 namespace PHARE::diagnostic::vtkh5
 {
 using namespace hdf5::h5;
@@ -122,10 +126,11 @@ public:
     }
 
 
-    auto makeFile(DiagnosticProperties const& diagnostic)
+    auto makeFile(DiagnosticProperties const& diagnostic, bool parallel = false)
     {
         return std::make_unique<HighFiveFile>(filePath_ + "/" + fileString(diagnostic.quantity),
-                                              file_flags[diagnostic.type + diagnostic.quantity]);
+                                              file_flags[diagnostic.type + diagnostic.quantity],
+                                              parallel);
     }
 
     template<typename Dict>
@@ -197,6 +202,8 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
         if (!file_flags.count(diagnostic->type + diagnostic->quantity))
             file_flags[diagnostic->type + diagnostic->quantity] = this->flags;
 
+#if PHARE_VTK_HDF5_VERSION == 0 // normal collective
+
     for (auto* diagnostic : diagnostics) // all collective calls first!
     {
         auto& type_writer = *typeWriters_.at(diagnostic->type);
@@ -204,15 +211,48 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
         type_writer.writeFileAttributes(*diagnostic, fileAttributes_);
     }
 
+#elif PHARE_VTK_HDF5_VERSION == 1 // ONLY RANK 0 DOES CREATE STUFF!
+
+    // Collectively close any parallel file left open from a previous dump (e.g. flush_every > 1).
+    // Must happen on ALL ranks before rank 0 re-initialises the file via POSIX, because
+    // closing a parallel HDF5 file triggers an internal MPI_Barrier — doing it on rank 0
+    // alone causes a deadlock.
+    for (auto* diagnostic : diagnostics)
+        typeWriters_.at(diagnostic->type)->closeFile(*diagnostic);
+
+    if (core::mpi::rank() == 0)
+        for (auto* diagnostic : diagnostics)
+        {
+            auto& type_writer = *typeWriters_.at(diagnostic->type);
+            type_writer.setup(*diagnostic);
+            type_writer.writeFileAttributes(*diagnostic, fileAttributes_);
+            type_writer.closeFile(*diagnostic); // release POSIX lock before barrier
+        }
+
+    core::mpi::barrier(); // rank 0 POSIX lock released; all ranks ready
+
+    for (auto* diagnostic : diagnostics)
+    {
+        file_flags[diagnostic->type + diagnostic->quantity] = READ_WRITE;
+        typeWriters_.at(diagnostic->type)->reopenFile(*diagnostic); // collective MPI-IO open
+    }
+
+#endif
+
     for (auto* diagnostic : diagnostics)
         typeWriters_.at(diagnostic->type)->write(*diagnostic);
 
+    for (auto* diagnostic : diagnostics)
+        typeWriters_.at(diagnostic->type)->finalize(*diagnostic);
+
+#if PHARE_VTK_HDF5_VERSION == 0 // normal collective
     for (auto* diagnostic : diagnostics)
     {
         typeWriters_.at(diagnostic->type)->finalize(*diagnostic);
         // don't truncate past first dump
         file_flags[diagnostic->type + diagnostic->quantity] = READ_WRITE;
     }
+#endif
 }
 
 template<typename ModelView>

@@ -89,7 +89,7 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
         [&](auto const& level) {
             auto const ilvl = level.getLevelNumber();
 
-            VTKFileWriter writer{diagnostic, this, info.offset_per_level[ilvl]};
+            VTKFileWriter writer{diagnostic, this, info.offset_per_level[ilvl], ilvl};
 
             auto const write_quantity = [&](auto& layout, auto const&, auto const) {
                 PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::write_quantity");

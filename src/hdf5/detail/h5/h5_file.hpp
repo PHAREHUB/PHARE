@@ -121,6 +121,11 @@ public:
         createGroupsToDataSet(path);
         HighFive::DataSetCreateProps props;
         props.add(HighFive::Chunking{chunk});
+        // Pre-allocate all chunk storage on resize, not lazily on first write.
+        // Without this, parallel independent H5Dwrite calls that trigger lazy chunk
+        // allocation each fire H5AC__run_sync_point → MPI_Barrier; with different ranks
+        // owning different patch counts the barrier counts diverge → permanent deadlock.
+        props.add(HighFive::AllocationTime{H5D_ALLOC_TIME_EARLY});
         return h5file_.createDataSet(path, dataspace, HighFive::create_datatype<Type>(), props);
     }
 
@@ -174,9 +179,9 @@ public:
         // assumes all keyPaths and values are identical, and no null patches
         // clang-format off
         PHARE_DEBUG_DO(
-            auto const paths = core::mpi::collect(keyPath, core::mpi::size());
-            if (!core::all(paths, [&](auto const& path) { return path == paths[0]; }))
-                throw std::runtime_error("Function does not support different paths per mpi core");
+            // auto const paths = core::mpi::collect(keyPath, core::mpi::size());
+            // if (!core::all(paths, [&](auto const& path) { return path == paths[0]; }))
+            //     throw std::runtime_error("Function does not support different paths per mpi core");
         )
         // clang-format on
 
@@ -277,7 +282,12 @@ public:
     auto getDataSet(std::string const& s)
     {
         if (!exist(s))
-            throw std::runtime_error("Dataset does not exist: " + s);
+        {
+            PHARE_LOG_LINE_SS("Dataset does not exist: " << s
+                                                         << " - in file: " << h5file_.getName());
+            throw std::runtime_error("Dataset does not exist: " + s
+                                     + " - in file: " + h5file_.getPath());
+        }
         return h5file_.getDataSet(s);
     }
 
@@ -285,6 +295,7 @@ public:
     HighFiveFile(HighFiveFile&&)                 = delete;
     HighFiveFile& operator=(HighFiveFile const&) = delete;
     HighFiveFile& operator=(HighFiveFile&&)      = delete;
+
 
 private:
     HighFive::FileAccessProps fapl_;
