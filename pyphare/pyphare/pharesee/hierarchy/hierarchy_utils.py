@@ -215,20 +215,40 @@ def is_root_lvl(patch_level):
 def quantidic(ilvl, wrangler):
     pl = wrangler.getPatchLevel(ilvl)
 
+    if wrangler.modelsPerLevel[ilvl] == "MHD":
+        return {
+            "rho":    pl.getRho,
+            "P":      pl.getP,
+            "Etot":   pl.getEtot,
+            "EM_B_x": lambda: pl.getB("x"),
+            "EM_B_y": lambda: pl.getB("y"),
+            "EM_B_z": lambda: pl.getB("z"),
+            "EM_E_x": lambda: pl.getE("x"),
+            "EM_E_y": lambda: pl.getE("y"),
+            "EM_E_z": lambda: pl.getE("z"),
+            "V_x":    lambda: pl.getV("x"),
+            "V_y":    lambda: pl.getV("y"),
+            "V_z":    lambda: pl.getV("z"),
+            "rhoV_x": lambda: pl.getRhoV("x"),
+            "rhoV_y": lambda: pl.getRhoV("y"),
+            "rhoV_z": lambda: pl.getRhoV("z"),
+        }
+
     return {
-        "density": pl.getDensity,
-        "bulkVelocity_x": pl.getVix,
-        "bulkVelocity_y": pl.getViy,
-        "bulkVelocity_z": pl.getViz,
-        "EM_B_x": pl.getBx,
-        "EM_B_y": pl.getBy,
-        "EM_B_z": pl.getBz,
-        "EM_E_x": pl.getEx,
-        "EM_E_y": pl.getEy,
-        "EM_E_z": pl.getEz,
-        "flux_x": pl.getFx,
-        "flux_y": pl.getFy,
-        "flux_z": pl.getFz,
+        "density": pl.getNi,
+        "Vi": pl.getVi,
+        "EM_B_x": lambda: pl.getB("x"),
+        "EM_B_y": lambda: pl.getB("y"),
+        "EM_B_z": lambda: pl.getB("z"),
+        "EM_E_x": lambda: pl.getE("x"),
+        "EM_E_y": lambda: pl.getE("y"),
+        "EM_E_z": lambda: pl.getE("z"),
+        "bulkVelocity_x": lambda: pl.getVi("x"),
+        "bulkVelocity_y": lambda: pl.getVi("y"),
+        "bulkVelocity_z": lambda: pl.getVi("z"),
+        "flux_x": lambda pop: pl.getFlux("x", pop),
+        "flux_y": lambda pop: pl.getFlux("y", pop),
+        "flux_z": lambda pop: pl.getFlux("z", pop),
         "particles": pl.getParticles,
     }
 
@@ -254,6 +274,16 @@ def isFieldQty(qty):
         "momentumTensor_yy",
         "momentumTensor_yz",
         "momentumTensor_zz",
+        # MHD
+        "rho",
+        "P",
+        "Etot",
+        "V_x",
+        "V_y",
+        "V_z",
+        "rhoV_x",
+        "rhoV_y",
+        "rhoV_z",
     )
 
 

@@ -191,6 +191,21 @@ class Particles:
         ]
 
 
+class LiveParticles:
+    """
+    Wraps a live C++ ParticleArray by reference
+    """
+
+    def __init__(self, cpp_particles):
+        self._cpp = cpp_particles
+
+    def __iter__(self):
+        return iter(self._cpp)
+
+    def size(self):
+        return np.asarray(self._cpp.size())
+
+
 def all_assert_sorted(part1, part2):
     idx1 = _arg_sort(part1)
     idx2 = _arg_sort(part2)
