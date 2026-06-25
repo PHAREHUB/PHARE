@@ -342,6 +342,13 @@ def _compute_to_primal(patch, **kwargs):
         nb_ghosts = ref_pd.layout.nbrGhosts(ref_pd.layout.interp_order, "primal")
         ref_ds = ref_pd.dataset
 
+        should_skip = all(  # vtkhdf is all primal with no ghosts
+            [ref_pd.centerings == ["primal"] * ndim, not any(ref_pd.ghosts_nbr)]
+        )
+        if should_skip:
+            pd_attrs.append(ref_pd)
+            continue
+
         ds_shape = list(ref_ds.shape)
         for i in range(ndim):
             if ref_pd.centerings[i] == "dual":
