@@ -48,6 +48,12 @@ class Patch:
 
         return deepcopy(self)
 
+    def copy_as(self, patch_datas=None, patch_id=None, attrs=None):
+        patch_datas = patch_datas if patch_datas is not None else self.patch_datas
+        patch_id = patch_id if patch_id is not None else self.id
+        attrs = attrs if attrs is not None else self.attrs
+        return type(self)(patch_datas, patch_id, box=self.box, attrs=attrs)
+
     def __copy__(self):
         return self.copy()
 

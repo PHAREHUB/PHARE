@@ -23,7 +23,7 @@ def toFieldBox(box, patch_data):
 
     directions = ["X", "Y", "Z"][: box.ndim]  # drop unused directions
     for i, direction in enumerate(directions):
-        if patch_data.layout.centering[direction][patch_data.field_name] == "primal":
+        if patch_data.layout.centering[direction][patch_data.name] == "primal":
             box.upper[i] = box.upper[i] + 1
 
     return box
