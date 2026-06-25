@@ -282,3 +282,19 @@ class ParticleData(PatchData):
 
     def __eq__(self, that):
         return self.compare(that)
+
+
+class LiveParticleData(PatchData):
+    """
+    PatchData wrapping a LiveParticles (C++ reference, no SoA copy).
+    """
+
+    def __init__(self, layout, data, pop_name):
+        super().__init__(layout, "particles")
+        self.dataset = data
+        self.pop_name = pop_name
+        self.name = pop_name
+        self.ndim = layout.box.ndim
+
+    def size(self):
+        return self.dataset.size()
