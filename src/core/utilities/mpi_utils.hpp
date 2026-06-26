@@ -38,7 +38,15 @@ NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
 NO_DISCARD std::int64_t unix_timestamp_now();
 
-inline bool is_init()
+auto inline sum_on_rank_0(std::size_t const s)
+{
+    std::size_t localsum[1]  = {s};
+    std::size_t globalsum[1] = {0};
+    MPI_Reduce(localsum, globalsum, 1, MPI_UINT64_T, MPI_SUM, 0, MPI_COMM_WORLD);
+    return static_cast<std::size_t>(globalsum[0]);
+}
+
+inline bool initialized()
 {
     int flag = 0;
     MPI_Initialized(&flag);
@@ -66,6 +74,11 @@ NO_DISCARD auto mpi_type_for()
         return MPI_CHAR;
 
     // don't return anything = compile failure if tried to use this function
+}
+
+auto mpi_type_for(auto const& val)
+{
+    return mpi_type_for<std::decay_t<decltype(val)>>();
 }
 
 
