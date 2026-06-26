@@ -38,10 +38,11 @@ public:
         for (auto& patch : rm.enumerate(level, state))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout, gamma}(state.rho, state.V, state.B, state.P, state.rhoV, state.Etot);
+            core_type{layout, gamma}(state.rho, state.V, state.B1, state.P, state.rhoV,
+                                     state.Etot1);
         }
 
-        setTime(state.rho, state.V, state.P, state.rhoV, state.Etot);
+        setTime(state.rho, state.V, state.P, state.rhoV, state.Etot1);
     }
 
     level_t& level;
@@ -75,10 +76,11 @@ public:
         for (auto& patch : rm.enumerate(level, state))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout}(gamma, state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
+            core_type{layout}(gamma, state.rho, state.rhoV, state.B1, state.Etot1, state.V,
+                              state.P);
         }
 
-        setTime(state.rho, state.rhoV, state.Etot, state.V, state.P);
+        setTime(state.rho, state.rhoV, state.Etot1, state.V, state.P);
     }
 
     level_t& level;
@@ -124,11 +126,11 @@ public:
         TimeSetter setTime{level, model, newTime};
 
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes))
+        for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes, model.B0_))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type finite_volume_method{info, layout};
-            finite_volume_method(fvm_state, ct_state, state, fluxes);
+            finite_volume_method(fvm_state, ct_state, state, model.B0_, fluxes);
         }
 
         setTime(state.rho, state.V, state.P, state.J);
@@ -167,7 +169,7 @@ public:
             core_type{layout}(state, statenew, fluxes, dt);
         }
 
-        setTime(state.rho, state.rhoV, state.Etot);
+        setTime(state.rho, state.rhoV, state.Etot1);
     }
 
 
@@ -202,11 +204,11 @@ public:
     void operator()(auto& ct_state, auto& mhd_state)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, mhd_state))
+        for (auto& patch : rm.enumerate(level, ct_state, mhd_state, model.B0_))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type constrained_transport_{info, layout};
-            constrained_transport_(ct_state, mhd_state);
+            constrained_transport_(ct_state, mhd_state, model.B0_);
         }
     }
 
@@ -242,7 +244,7 @@ public:
             core_type{layout}(res, pairs...);
         }
 
-        setTime(res.rho, res.rhoV, res.Etot);
+        setTime(res.rho, res.rhoV, res.Etot1);
     }
 
 

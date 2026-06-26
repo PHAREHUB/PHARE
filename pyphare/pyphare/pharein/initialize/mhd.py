@@ -57,6 +57,19 @@ def populateDict(sim):
         "simulation/mhd_state/magnetic/initializer/z_component",
         fn_wrapper(modelDict["bz"]),
     )
+    # static background field B0 of the B = B0 + B1 split (defaults to zero)
+    addInitFunction(
+        "simulation/mhd_state/external_magnetic/initializer/x_component",
+        fn_wrapper(modelDict["b0x"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/external_magnetic/initializer/y_component",
+        fn_wrapper(modelDict["b0y"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/external_magnetic/initializer/z_component",
+        fn_wrapper(modelDict["b0z"]),
+    )
     addInitFunction(
         "simulation/mhd_state/pressure/initializer", fn_wrapper(modelDict["p"])
     )

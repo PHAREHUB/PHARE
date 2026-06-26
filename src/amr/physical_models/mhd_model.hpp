@@ -4,6 +4,7 @@
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/mhd_state.hpp"
+#include "core/models/external_magnetic_field.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
@@ -39,12 +40,21 @@ public:
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
 
+    using external_magnetic_field_type = core::ExternalMagneticField<vecfield_type>;
+
     state_type state;
+    // The static background field B0 of the B = B0 + B1 split. Held once and shared by every RK
+    // stage (B0 does not change between stages, so it is never copied around).
+    external_magnetic_field_type B0_;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
     // diagnostics buffers
     vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     field_type P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
+    // total fields reconstructed from the B0 + B1 split for output
+    vecfield_type BTotal_diag_{"diagnostics_BTotal_", core::MHDQuantity::Vector::B};
+    field_type EtotTotal_diag_{"diagnostics_EtotTotal_", core::MHDQuantity::Scalar::Etot};
+    field_type divB_diag_{"diagnostics_divB_", core::MHDQuantity::Scalar::divB};
 
     // maybe these could have a single allocation shared for hybrid and mhd, as they are strictly
     // temporaries. Right now the hybrid version is in the hybrid_hybrid_messenger_strategy.hpp
@@ -53,12 +63,29 @@ public:
 
     void initialize(level_t& level) override;
 
+    // (Re-)evaluate the static background B0 analytically on every patch of a level. B0 is never
+    // interpolated across levels: each level (including levels created/changed by a regrid)
+    // evaluates B0 at its own coordinates. Called after init/regrid of non-root levels.
+    void updateExternalFields(level_t& level)
+    {
+        for (auto& patch : level)
+        {
+            auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+            auto _      = resourcesManager->setOnPatch(*patch, B0_);
+            B0_.update(layout);
+        }
+    }
+
 
     void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
+        resourcesManager->allocate(B0_, patch, allocateTime);
         resourcesManager->allocate(V_diag_, patch, allocateTime);
         resourcesManager->allocate(P_diag_, patch, allocateTime);
+        resourcesManager->allocate(BTotal_diag_, patch, allocateTime);
+        resourcesManager->allocate(EtotTotal_diag_, patch, allocateTime);
+        resourcesManager->allocate(divB_diag_, patch, allocateTime);
         resourcesManager->allocate(tmpField_, patch, allocateTime);
         resourcesManager->allocate(tmpVec_, patch, allocateTime);
     }
@@ -75,10 +102,15 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
+        , B0_{dict["mhd_state"]}
         , resourcesManager{std::move(_resourcesManager)}
     {
+        resourcesManager->registerResources(B0_);
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
+        resourcesManager->registerResources(BTotal_diag_);
+        resourcesManager->registerResources(EtotTotal_diag_);
+        resourcesManager->registerResources(divB_diag_);
         resourcesManager->registerResources(tmpField_);
         resourcesManager->registerResources(tmpVec_);
     }
@@ -90,13 +122,16 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return state.isUsable(); }
+    NO_DISCARD bool isUsable() const { return state.isUsable() and B0_.isUsable(); }
 
-    NO_DISCARD bool isSettable() const { return state.isSettable(); }
+    NO_DISCARD bool isSettable() const { return state.isSettable() and B0_.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(state, B0_);
+    }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state, B0_); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -111,9 +146,12 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
     for (auto& patch : level)
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        auto _      = this->resourcesManager->setOnPatch(*patch, state);
+        auto _      = this->resourcesManager->setOnPatch(*patch, state, B0_);
 
-        state.initialize(layout);
+        // evaluate the static background B0 (and all its analytic samples) first, then the
+        // dynamic state, which subtracts B0 from the prescribed total field to form B1.
+        B0_.update(layout);
+        state.initialize(layout, B0_.B0);
     }
 }
 
@@ -125,10 +163,10 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
 
     MHDInfo.modelDensity     = state.rho.name();
     MHDInfo.modelVelocity    = state.V.name();
-    MHDInfo.modelMagnetic    = state.B.name();
+    MHDInfo.modelMagnetic    = state.B1.name();
     MHDInfo.modelPressure    = state.P.name();
     MHDInfo.modelMomentum    = state.rhoV.name();
-    MHDInfo.modelTotalEnergy = state.Etot.name();
+    MHDInfo.modelTotalEnergy = state.Etot1.name();
     MHDInfo.modelElectric    = state.E.name();
     MHDInfo.modelCurrent     = state.J.name();
 

@@ -349,7 +349,7 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
-            magMaxModelRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
+            magMaxModelRefiners_.fill(mhdModel.state.B1, level->getLevelNumber(), initDataTime);
 
             densityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             momentumInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -406,7 +406,7 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, mhdModel.state.rho, mhdModel.state.V, mhdModel.state.P,
-                    mhdModel.state.rhoV, mhdModel.state.Etot, mhdModel.state.J, rhoOld_, Vold_,
+                    mhdModel.state.rhoV, mhdModel.state.Etot1, mhdModel.state.J, rhoOld_, Vold_,
                     Pold_, rhoVold_, EtotOld_, Jold_);
 
                 resourcesManager_->setTime(rhoOld_, *patch, currentTime);
@@ -420,7 +420,7 @@ namespace amr
                 Vold_.copyData(mhdModel.state.V);
                 Pold_.copyData(mhdModel.state.P);
                 rhoVold_.copyData(mhdModel.state.rhoV);
-                EtotOld_.copyData(mhdModel.state.Etot);
+                EtotOld_.copyData(mhdModel.state.Etot1);
                 Jold_.copyData(mhdModel.state.J);
             }
         }
@@ -458,10 +458,10 @@ namespace amr
         {
             setNaNsOnFieldGhosts(state.rho, level);
             setNaNsOnVecfieldGhosts(state.rhoV, level);
-            setNaNsOnFieldGhosts(state.Etot, level);
+            setNaNsOnFieldGhosts(state.Etot1, level);
             rhoGhostsRefiners_.fill(state.rho, level.getLevelNumber(), fillTime);
             momentumGhostsRefiners_.fill(state.rhoV, level.getLevelNumber(), fillTime);
-            totalEnergyGhostsRefiners_.fill(state.Etot, level.getLevelNumber(), fillTime);
+            totalEnergyGhostsRefiners_.fill(state.Etot1, level.getLevelNumber(), fillTime);
         }
 
         void fillMagneticFluxesXGhosts(VecFieldT& Fx_B, level_t const& level, double const fillTime)

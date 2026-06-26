@@ -53,8 +53,8 @@ public:
 
         if constexpr (Hall || Resistivity || HyperResistivity)
         {
-            Ampere_t{level, model}(state.B, state.J);
-            TimeSetter{level, model, newTime}(state.B, state.J);
+            Ampere_t{level, model}(state.B1, state.J);
+            TimeSetter{level, model, newTime}(state.B1, state.J);
         }
 
         FVMethod_t{level, model, fVMethodInfo_}(fvm_, ct_, state, fluxes, newTime);

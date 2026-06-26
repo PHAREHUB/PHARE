@@ -20,7 +20,21 @@ class MHDModel(object):
             return lambda x, y, z: value
 
     def __init__(
-        self, density=None, vx=None, vy=None, vz=None, bx=None, by=None, bz=None, p=None
+        self,
+        density=None,
+        vx=None,
+        vy=None,
+        vz=None,
+        bx=None,
+        by=None,
+        bz=None,
+        p=None,
+        b0x=None,
+        b0y=None,
+        b0z=None,
+        b1x=None,
+        b1y=None,
+        b1z=None,
     ):
         if global_vars.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
@@ -34,10 +48,29 @@ class MHDModel(object):
         vx = self.defaulter(vx, 1.0)
         vy = self.defaulter(vy, 0.0)
         vz = self.defaulter(vz, 0.0)
-        bx = self.defaulter(bx, 1.0)
-        by = self.defaulter(by, 0.0)
-        bz = self.defaulter(bz, 0.0)
         p = self.defaulter(p, 1.0)
+        # b0x, b0y, b0z prescribe the static background field B0 (default zero, which reduces the
+        # split formulation to classical MHD).
+        b0x = self.defaulter(b0x, 0.0)
+        b0y = self.defaulter(b0y, 0.0)
+        b0z = self.defaulter(b0z, 0.0)
+        # The grid stores the TOTAL field B = B0 + B1 under "bx/by/bz" (the C++ initializes B1 with
+        # it, then subtracts B0). The user prescribes EITHER the total field directly (bx/by/bz) OR
+        # the perturbation (b1x/b1y/b1z), in which case the total is B0 + B1.
+        b1_given = any(b is not None for b in (b1x, b1y, b1z))
+        if b1_given:
+            if any(b is not None for b in (bx, by, bz)):
+                raise ValueError("MHDModel: provide either (bx,by,bz) or (b1x,b1y,b1z), not both")
+            b1x = self.defaulter(b1x, 0.0)
+            b1y = self.defaulter(b1y, 0.0)
+            b1z = self.defaulter(b1z, 0.0)
+            bx = lambda *xyz: b0x(*xyz) + b1x(*xyz)
+            by = lambda *xyz: b0y(*xyz) + b1y(*xyz)
+            bz = lambda *xyz: b0z(*xyz) + b1z(*xyz)
+        else:
+            bx = self.defaulter(bx, 1.0)
+            by = self.defaulter(by, 0.0)
+            bz = self.defaulter(bz, 0.0)
 
         self.model_dict = {}
 
@@ -51,6 +84,9 @@ class MHDModel(object):
                 "by": by,
                 "bz": bz,
                 "p": p,
+                "b0x": b0x,
+                "b0y": b0y,
+                "b0z": b0z,
             }
         )
 

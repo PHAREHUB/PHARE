@@ -26,9 +26,11 @@ public:
     {
         FiniteVolumeEuler_t{level, model}(newTime, state, statenew, fluxes, dt);
 
-        Faraday_t{level, model}(state.B, E, statenew.B, dt);
+        // Faraday evolves only the perturbation B1; the static background B0 lives in the model
+        // and is shared by every stage (no per-stage copy).
+        Faraday_t{level, model}(state.B1, E, statenew.B1, dt);
 
-        bc.fillMagneticGhosts(statenew.B, level, newTime);
+        bc.fillMagneticGhosts(statenew.B1, level, newTime);
 
         bc.fillMomentsGhosts(statenew, level, newTime);
     }

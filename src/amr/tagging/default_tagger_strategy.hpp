@@ -36,7 +36,7 @@ private:
         if constexpr (solver::is_hybrid_model_v<Model>)
             return model.state.electromag.B;
         else if constexpr (solver::is_mhd_model_v<Model>)
-            return model.state.B;
+            return model.state.B1;
         else
             static_assert(core::dependent_false_v<Model>);
 

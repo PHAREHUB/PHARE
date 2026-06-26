@@ -163,6 +163,9 @@ FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const ilvl
         return file_initializer.initFieldFileLevel(ilvl);
     if (isActiveDiag(diagnostic, tree, "V"))
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
+    if constexpr (requires { modelView.getEtot1(); })
+        if (isActiveDiag(diagnostic, tree, "Etot1"))
+            return file_initializer.initFieldFileLevel(ilvl);
 
     return std::nullopt;
 }
@@ -267,6 +270,11 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
         file_writer.writeField(P, layout);
     else if (isActiveDiag(diagnostic, tree, "V"))
         file_writer.template writeTensorField<1>(V, layout);
+    else if constexpr (requires { modelView.getEtot1(); })
+    {
+        if (isActiveDiag(diagnostic, tree, "Etot1"))
+            file_writer.writeField(modelView.getEtot1(), layout);
+    }
 }
 
 
@@ -315,14 +323,40 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
     auto minLvl     = writer->h5Writer_.minLevel;
     auto maxLvl     = writer->h5Writer_.maxLevel;
 
-    auto& rho  = modelView.getRho();
-    auto& V    = modelView.getV();
-    auto& B    = modelView.getB();
-    auto& P    = modelView.getP();
-    auto& rhoV = modelView.getRhoV();
-    auto& Etot = modelView.getEtot();
+    auto& rho       = modelView.getRho();
+    auto& V         = modelView.getV();
+    auto& B         = modelView.getB();    // total-field output buffer (reconstructed below)
+    auto& P         = modelView.getP();
+    auto& rhoV      = modelView.getRhoV();
+    auto& Etot      = modelView.getEtot(); // total-energy output buffer (reconstructed below)
+    auto const& B1  = modelView.getB1();
+    auto const& B0  = modelView.getB0();
+    auto const& E1  = modelView.getEtot1();
 
     std::string tree{"/mhd/"};
+
+    // Reconstruct total B = B1 + B0 and total energy from the B0 + B1 split into the output
+    // buffers (so the vtk dump exposes the physical total fields).
+    auto reconstructTotals = [&](GridLayout& layout, std::string, std::size_t) {
+        auto& Bx        = B(core::Component::X);
+        auto& By        = B(core::Component::Y);
+        auto& Bz        = B(core::Component::Z);
+        auto const& B1x = B1(core::Component::X);
+        auto const& B1y = B1(core::Component::Y);
+        auto const& B1z = B1(core::Component::Z);
+        auto const& B0x = B0(core::Component::X);
+        auto const& B0y = B0(core::Component::Y);
+        auto const& B0z = B0(core::Component::Z);
+
+        layout.evalOnGhostBox(Etot, [&](auto&... args) mutable {
+            Bx(args...)   = B1x(args...) + B0x(args...);
+            By(args...)   = B1y(args...) + B0y(args...);
+            Bz(args...)   = B1z(args...) + B0z(args...);
+            Etot(args...) = core::etot1ToEtot(E1(args...), B1x(args...), B1y(args...), B1z(args...),
+                                              B0x(args...), B0y(args...), B0z(args...));
+        });
+    };
+    modelView.visitHierarchy(reconstructTotals, minLvl, maxLvl);
 
     if (isActiveDiag(diagnostic, tree, "V"))
     {
@@ -341,7 +375,7 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
                                        .template to<double>(); // or FloatType if we want to expose
                                                                // that to DiagnosticProperties
                 core::ToPrimitiveConverter<GridLayout> toPrim{layout};
-                toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
+                toPrim.eosEtot1ToPOnGhostBox(gamma, rho, rhoV, B1, E1, P);
             },
             minLvl, maxLvl);
     }
