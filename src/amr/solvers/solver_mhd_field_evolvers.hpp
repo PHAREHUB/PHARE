@@ -126,11 +126,11 @@ public:
         TimeSetter setTime{level, model, newTime};
 
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes, model.B0_))
+        for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes, model.B0))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type finite_volume_method{info, layout};
-            finite_volume_method(fvm_state, ct_state, state, model.B0_, fluxes);
+            finite_volume_method(fvm_state, ct_state, state, model.B0, fluxes);
         }
 
         setTime(state.rho, state.V, state.P, state.J);
@@ -204,11 +204,11 @@ public:
     void operator()(auto& ct_state, auto& mhd_state)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, mhd_state, model.B0_))
+        for (auto& patch : rm.enumerate(level, ct_state, mhd_state, model.B0))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type constrained_transport_{info, layout};
-            constrained_transport_(ct_state, mhd_state, model.B0_);
+            constrained_transport_(ct_state, mhd_state, model.B0);
         }
     }
 

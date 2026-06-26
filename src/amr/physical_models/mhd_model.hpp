@@ -4,7 +4,7 @@
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/mhd_state.hpp"
-#include "core/models/external_magnetic_field.hpp"
+#include "core/data/vecfield/vecfield_initializer.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
@@ -40,12 +40,14 @@ public:
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
 
-    using external_magnetic_field_type = core::ExternalMagneticField<vecfield_type>;
-
     state_type state;
-    // The static background field B0 of the B = B0 + B1 split. Held once and shared by every RK
-    // stage (B0 does not change between stages, so it is never copied around).
-    external_magnetic_field_type B0_;
+    // The static background field B0 of the B = B0 + B1 split: a single face-centered vector field
+    // (same Yee centering as B1). Held once and shared by every RK stage (B0 does not change
+    // between stages, so it is never copied around). B0 is re-evaluated analytically per patch
+    // (never interpolated across AMR levels); the numerics linearly interpolate it from this native
+    // face-centered storage onto the EMF edges / Riemann faces where they consume it.
+    vecfield_type B0{model_name + "_B0", core::MHDQuantity::Vector::B0};
+    core::VecFieldInitializer<dimension> B0init_;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
     // diagnostics buffers
@@ -71,8 +73,8 @@ public:
         for (auto& patch : level)
         {
             auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto _      = resourcesManager->setOnPatch(*patch, B0_);
-            B0_.update(layout);
+            auto _      = resourcesManager->setOnPatch(*patch, B0);
+            B0init_.initialize(B0, layout);
         }
     }
 
@@ -80,7 +82,7 @@ public:
     void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
-        resourcesManager->allocate(B0_, patch, allocateTime);
+        resourcesManager->allocate(B0, patch, allocateTime);
         resourcesManager->allocate(V_diag_, patch, allocateTime);
         resourcesManager->allocate(P_diag_, patch, allocateTime);
         resourcesManager->allocate(BTotal_diag_, patch, allocateTime);
@@ -102,10 +104,10 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
-        , B0_{dict["mhd_state"]}
+        , B0init_{dict["mhd_state"]["external_magnetic"]["initializer"]}
         , resourcesManager{std::move(_resourcesManager)}
     {
-        resourcesManager->registerResources(B0_);
+        resourcesManager->registerResources(B0);
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
         resourcesManager->registerResources(BTotal_diag_);
@@ -122,16 +124,16 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return state.isUsable() and B0_.isUsable(); }
+    NO_DISCARD bool isUsable() const { return state.isUsable() and B0.isUsable(); }
 
-    NO_DISCARD bool isSettable() const { return state.isSettable() and B0_.isSettable(); }
+    NO_DISCARD bool isSettable() const { return state.isSettable() and B0.isSettable(); }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(state, B0_);
+        return std::forward_as_tuple(state, B0);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state, B0_); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state, B0); }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -146,12 +148,12 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
     for (auto& patch : level)
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        auto _      = this->resourcesManager->setOnPatch(*patch, state, B0_);
+        auto _      = this->resourcesManager->setOnPatch(*patch, state, B0);
 
-        // evaluate the static background B0 (and all its analytic samples) first, then the
-        // dynamic state, which subtracts B0 from the prescribed total field to form B1.
-        B0_.update(layout);
-        state.initialize(layout, B0_.B0);
+        // evaluate the static background B0 first, then the dynamic state, which subtracts B0 from
+        // the prescribed total field to form B1.
+        B0init_.initialize(B0, layout);
+        state.initialize(layout, B0);
     }
 }
 

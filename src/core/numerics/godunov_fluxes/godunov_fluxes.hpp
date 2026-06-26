@@ -200,7 +200,7 @@ public:
                             {
                                 // total field B = B1 + B0 at the cell (B0 shares B1's centering)
                                 auto const b1v = toPerIndexVector(state.B1, {indices...});
-                                auto const b0v = toPerIndexVector(b0.B0, {indices...});
+                                auto const b0v = toPerIndexVector(b0, {indices...});
                                 auto const Bn  = PerIndexVector<std::decay_t<decltype(b1v.x)>>{
                                     b1v.x + b0v.x, b1v.y + b0v.y, b1v.z + b0v.z};
                                 auto const& rhot = ct_state.template getRhot<direction>()(indices...);

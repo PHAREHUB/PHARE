@@ -20,7 +20,7 @@ namespace core
     // The dynamic MHD state of the B = B0 + B1 split. It holds the evolved perturbation field B1
     // (the user prescribes the total field B; B1 = B - B0 at init) and the conserved perturbation
     // energy Etot1 (kinetic + thermal + 1/2|B1|^2). The static background B0 is NOT stored here:
-    // it lives in a single ExternalMagneticField held by the model and shared by every RK stage.
+    // it is a single face-centered vector field held by the model and shared by every RK stage.
     template<typename VecFieldT>
     class MHDState : public IPhysicalState
     {

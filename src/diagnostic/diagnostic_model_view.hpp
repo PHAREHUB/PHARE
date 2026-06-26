@@ -288,7 +288,7 @@ public:
 
     NO_DISCARD const VecField& getB1() const { return this->model_.state.B1; }
 
-    NO_DISCARD const VecField& getB0() const { return this->model_.B0_.B0; }
+    NO_DISCARD const VecField& getB0() const { return this->model_.B0; }
 
     NO_DISCARD const Field& getEtot1() const { return this->model_.state.Etot1; }
 
@@ -308,7 +308,7 @@ public:
 
     NO_DISCARD VecField& getB1() { return this->model_.state.B1; }
 
-    NO_DISCARD VecField& getB0() { return this->model_.B0_.B0; }
+    NO_DISCARD VecField& getB0() { return this->model_.B0; }
 
     NO_DISCARD Field& getEtot1() { return this->model_.state.Etot1; }
 

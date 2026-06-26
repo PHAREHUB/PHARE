@@ -865,6 +865,81 @@ namespace core
             return directionalInterp<dirY, InterpDir::DualToPrimal>();
         }
 
+        // Transverse magnetic components interpolated onto a Riemann face (B0 splitting): a face
+        // quantity is moved from its native face centering to another face's centering. Used to
+        // read the static background B0 at a face without re-sampling it analytically.
+        NO_DISCARD auto static consteval ByToFaceX()
+        {
+            // By is dual primal dual (Dpd), Bx face is primal dual dual (Pdd)
+            // operation is Dpd to Pdd: shift X DualToPrimal, Y PrimalToDual
+
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
+
+            return tensorProduct<dirX, dirY>(directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                                             directionalInterp<dirY, InterpDir::PrimalToDual>());
+        }
+
+        NO_DISCARD auto static consteval BzToFaceX()
+        {
+            // Bz is dual dual primal (Ddp), Bx face is primal dual dual (Pdd)
+            // operation is Ddp to Pdd: shift X DualToPrimal, Z PrimalToDual
+
+            using PHARE::core::dirX;
+            using PHARE::core::dirZ;
+
+            return tensorProduct<dirX, dirZ>(directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                                             directionalInterp<dirZ, InterpDir::PrimalToDual>());
+        }
+
+        NO_DISCARD auto static consteval BxToFaceY()
+        {
+            // Bx is primal dual dual (Pdd), By face is dual primal dual (Dpd)
+            // operation is Pdd to Dpd: shift X PrimalToDual, Y DualToPrimal
+
+            using PHARE::core::dirX;
+            using PHARE::core::dirY;
+
+            return tensorProduct<dirX, dirY>(directionalInterp<dirX, InterpDir::PrimalToDual>(),
+                                             directionalInterp<dirY, InterpDir::DualToPrimal>());
+        }
+
+        NO_DISCARD auto static consteval BzToFaceY()
+        {
+            // Bz is dual dual primal (Ddp), By face is dual primal dual (Dpd)
+            // operation is Ddp to Dpd: shift Y DualToPrimal, Z PrimalToDual
+
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
+
+            return tensorProduct<dirY, dirZ>(directionalInterp<dirY, InterpDir::DualToPrimal>(),
+                                             directionalInterp<dirZ, InterpDir::PrimalToDual>());
+        }
+
+        NO_DISCARD auto static consteval BxToFaceZ()
+        {
+            // Bx is primal dual dual (Pdd), Bz face is dual dual primal (Ddp)
+            // operation is Pdd to Ddp: shift X PrimalToDual, Z DualToPrimal
+
+            using PHARE::core::dirX;
+            using PHARE::core::dirZ;
+
+            return tensorProduct<dirX, dirZ>(directionalInterp<dirX, InterpDir::PrimalToDual>(),
+                                             directionalInterp<dirZ, InterpDir::DualToPrimal>());
+        }
+
+        NO_DISCARD auto static consteval ByToFaceZ()
+        {
+            // By is dual primal dual (Dpd), Bz face is dual dual primal (Ddp)
+            // operation is Dpd to Ddp: shift Y PrimalToDual, Z DualToPrimal
+
+            using PHARE::core::dirY;
+            using PHARE::core::dirZ;
+
+            return tensorProduct<dirY, dirZ>(directionalInterp<dirY, InterpDir::PrimalToDual>(),
+                                             directionalInterp<dirZ, InterpDir::DualToPrimal>());
+        }
+
         NO_DISCARD auto static consteval cellCenterToEdgeX()
         {
             // cellcenter is dual dual dual

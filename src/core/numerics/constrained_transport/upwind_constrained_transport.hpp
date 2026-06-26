@@ -35,12 +35,11 @@ public:
     }
 
     // Split-field constrained transport. The motional EMF uses the total field B = B1 + B0:
-    // only the perturbation B1 is reconstructed at the EMF edge; the static background B0 is read
-    // from analytic per-edge samples (mhd_state.B0*_E*) and added as a single value (same on L/R),
-    // so it cancels in the upwind dissipation and the EMF is well-balanced w.r.t. grad B0. B0 is
-    // never interpolated. The edge samples are static, hence valid on RK-intermediate states too
-    // (the time integrator copies them from the model state alongside B0).
-    void operator()(auto& ct_state, auto& mhd_state, auto const& b0) const
+    // only the perturbation B1 is reconstructed at the EMF edge; the static background B0 is
+    // linearly interpolated from its native face-centered storage onto the edge and added as a
+    // single value (same on L/R), so it cancels in the upwind dissipation and the EMF is
+    // well-balanced w.r.t. grad B0. B0 is a single field shared by every RK stage.
+    void operator()(auto& ct_state, auto& mhd_state, auto const& B0) const
     {
         auto& E        = mhd_state.E;
         auto const& B1 = mhd_state.B1;
@@ -49,22 +48,12 @@ public:
         auto& Ey = E(Component::Y);
         auto& Ez = E(Component::Z);
 
-        auto const& B0x_Ez = b0.B0x_Ez;
-        auto const& B0y_Ez = b0.B0y_Ez;
-        auto const& B0y_Ex = b0.B0y_Ex;
-        auto const& B0z_Ex = b0.B0z_Ex;
-        auto const& B0x_Ey = b0.B0x_Ey;
-        auto const& B0z_Ey = b0.B0z_Ey;
-
-        layout_.evalOnBox(Ex, [&](auto&... args) mutable {
-            ExEq_(ct_state, Ex, B1, B0y_Ex, B0z_Ex, {args...});
-        });
-        layout_.evalOnBox(Ey, [&](auto&... args) mutable {
-            EyEq_(ct_state, Ey, B1, B0x_Ey, B0z_Ey, {args...});
-        });
-        layout_.evalOnBox(Ez, [&](auto&... args) mutable {
-            EzEq_(ct_state, Ez, B1, B0x_Ez, B0y_Ez, {args...});
-        });
+        layout_.evalOnBox(Ex,
+                          [&](auto&... args) mutable { ExEq_(ct_state, Ex, B1, B0, {args...}); });
+        layout_.evalOnBox(Ey,
+                          [&](auto&... args) mutable { EyEq_(ct_state, Ey, B1, B0, {args...}); });
+        layout_.evalOnBox(Ez,
+                          [&](auto&... args) mutable { EzEq_(ct_state, Ez, B1, B0, {args...}); });
 
         if constexpr (Resistivity || HyperResistivity)
         {
@@ -87,7 +76,6 @@ public:
             if constexpr (HyperResistivity)
             {
                 auto const& rho = mhd_state.rho;
-                auto const& B0  = b0.B0;
 
                 // The hyper-resistive diffusion coefficient uses |B| as a magnitude; it is built
                 // from the total field B = B1 + B0 (the static background contributes to |B|).
@@ -105,25 +93,27 @@ public:
     }
 
 private:
-    // Reconstruct only the perturbation B1 along `dir`, then add the single analytic edge value of
-    // B0 (same on left/right). The dissipation term still cancels B0; for uniform V the motional
-    // EMF reproduces -V x (B0 + B1) exactly regardless of grad B0.
-    template<auto dir, typename VecField, typename EdgeField>
-    static auto reconstructTotal_(VecField const& B1, EdgeField const& b0edge, Component component,
+    // Reconstruct only the perturbation B1 along `dir`, then add the single value of B0 linearly
+    // interpolated onto the EMF edge via `Projection` (same on left/right). The dissipation term
+    // still cancels B0; for uniform V the motional EMF reproduces -V x (B0 + B1) exactly.
+    template<auto dir, auto Projection, typename VecField>
+    static auto reconstructTotal_(VecField const& B1, VecField const& B0, Component component,
                                   MeshIndex<dimension> const& idx)
     {
         auto const [B1L, B1R] = Reconstruction_t::template reconstruct<dir>(B1(component), idx);
-        auto const b0         = b0edge(idx);
+        auto const b0         = GridLayout::template project<Projection>(B0(component), idx);
         return std::make_pair(B1L + b0, B1R + b0);
     }
 
-    void ExEq_(auto& ct_state, auto& Ex, auto const& B1, auto const& B0y_Ex, auto const& B0z_Ex,
+    void ExEq_(auto& ct_state, auto& Ex, auto const& B1, auto const& B0,
                MeshIndex<dimension> idx) const
     {
         if constexpr (dimension == 2)
         {
-            auto [BzL, BzR] = reconstructTotal_<Direction::Y>(B1, B0z_Ex, Component::Z, idx);
-            auto const By   = B1(Component::Y)(idx) + B0y_Ex(idx);
+            auto [BzL, BzR]
+                = reconstructTotal_<Direction::Y, GridLayout::BzToEx>(B1, B0, Component::Z, idx);
+            auto const By = B1(Component::Y)(idx)
+                            + GridLayout::template project<GridLayout::ByToEx>(B0(Component::Y), idx);
 
             auto FL = BzL * ct_state.vt_y(Component::Y)(idx) - By * ct_state.vt_y(Component::Z)(idx);
             auto FR = BzR * ct_state.vt_y(Component::Y)(idx) - By * ct_state.vt_y(Component::Z)(idx);
@@ -179,8 +169,10 @@ private:
             auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
                 ct_state.vt_y(Component::Z), idx);
 
-            auto [BzS, BzN] = reconstructTotal_<Direction::Y>(B1, B0z_Ex, Component::Z, idx);
-            auto [ByB, ByT] = reconstructTotal_<Direction::Z>(B1, B0y_Ex, Component::Y, idx);
+            auto [BzS, BzN]
+                = reconstructTotal_<Direction::Y, GridLayout::BzToEx>(B1, B0, Component::Z, idx);
+            auto [ByB, ByT]
+                = reconstructTotal_<Direction::Z, GridLayout::ByToEx>(B1, B0, Component::Y, idx);
 
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
@@ -203,13 +195,15 @@ private:
         }
     }
 
-    void EyEq_(auto& ct_state, auto& Ey, auto const& B1, auto const& B0x_Ey, auto const& B0z_Ey,
+    void EyEq_(auto& ct_state, auto& Ey, auto const& B1, auto const& B0,
                MeshIndex<dimension> idx) const
     {
         if constexpr (dimension <= 2)
         {
-            auto [BzL, BzR] = reconstructTotal_<Direction::X>(B1, B0z_Ey, Component::Z, idx);
-            auto const Bx   = B1(Component::X)(idx) + B0x_Ey(idx);
+            auto [BzL, BzR]
+                = reconstructTotal_<Direction::X, GridLayout::BzToEy>(B1, B0, Component::Z, idx);
+            auto const Bx = B1(Component::X)(idx)
+                            + GridLayout::template project<GridLayout::BxToEy>(B0(Component::X), idx);
 
             auto FL = BzL * ct_state.vt_x(Component::X)(idx) - Bx * ct_state.vt_x(Component::Z)(idx);
             auto FR = BzR * ct_state.vt_x(Component::X)(idx) - Bx * ct_state.vt_x(Component::Z)(idx);
@@ -264,8 +258,10 @@ private:
                 ct_state.vt_z(Component::X), idx);
             auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
                 ct_state.vt_x(Component::Z), idx);
-            auto [BzW, BzE] = reconstructTotal_<Direction::X>(B1, B0z_Ey, Component::Z, idx);
-            auto [BxB, BxT] = reconstructTotal_<Direction::Z>(B1, B0x_Ey, Component::X, idx);
+            auto [BzW, BzE]
+                = reconstructTotal_<Direction::X, GridLayout::BzToEy>(B1, B0, Component::Z, idx);
+            auto [BxB, BxT]
+                = reconstructTotal_<Direction::Z, GridLayout::BxToEy>(B1, B0, Component::X, idx);
 
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
@@ -286,13 +282,15 @@ private:
         }
     }
 
-    void EzEq_(auto& ct_state, auto& Ez, auto const& B1, auto const& B0x_Ez, auto const& B0y_Ez,
+    void EzEq_(auto& ct_state, auto& Ez, auto const& B1, auto const& B0,
                MeshIndex<dimension> idx) const
     {
         if constexpr (dimension == 1)
         {
-            auto [ByL, ByR] = reconstructTotal_<Direction::X>(B1, B0y_Ez, Component::Y, idx);
-            auto const Bx   = B1(Component::X)(idx) + B0x_Ez(idx);
+            auto [ByL, ByR]
+                = reconstructTotal_<Direction::X, GridLayout::ByToEz>(B1, B0, Component::Y, idx);
+            auto const Bx = B1(Component::X)(idx)
+                            + GridLayout::template project<GridLayout::BxToEz>(B0(Component::X), idx);
 
             auto FL = ByL * ct_state.vt_x(Component::X)(idx) - Bx * ct_state.vt_x(Component::Y)(idx);
             auto FR = ByR * ct_state.vt_x(Component::X)(idx) - Bx * ct_state.vt_x(Component::Y)(idx);
@@ -348,8 +346,10 @@ private:
             auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
                 ct_state.vt_y(Component::X), idx);
 
-            auto [BxS, BxN] = reconstructTotal_<Direction::Y>(B1, B0x_Ez, Component::X, idx);
-            auto [ByW, ByE] = reconstructTotal_<Direction::X>(B1, B0y_Ez, Component::Y, idx);
+            auto [BxS, BxN]
+                = reconstructTotal_<Direction::Y, GridLayout::BxToEz>(B1, B0, Component::X, idx);
+            auto [ByW, ByE]
+                = reconstructTotal_<Direction::X, GridLayout::ByToEz>(B1, B0, Component::Y, idx);
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);

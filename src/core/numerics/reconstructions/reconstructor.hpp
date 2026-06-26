@@ -104,30 +104,36 @@ public:
         return std::make_pair(BL, BR);
     }
 
-    // B0 is not reconstructed: read it once at the Riemann face (single value). The normal
+    // B0 is not reconstructed: it is read once at the Riemann face (single value). The normal
     // component is naturally face-centered (read directly from B0); the transverse components are
-    // read from analytic samples taken at the face location (state.B0*_Face*) — B0 is a known
-    // function and is never interpolated.
-    template<auto direction, typename ExternalB>
-    static auto B0_at_face(ExternalB const& b0, MeshIndex<GridLayout::dimension> index)
+    // linearly interpolated from the native face-centered B0 onto this face. B0 stays out of the
+    // Riemann jump (single value, same on L/R), keeping a static equilibrium well-balanced.
+    template<auto direction, typename VecField>
+    static auto B0_at_face(VecField const& b0, MeshIndex<GridLayout::dimension> index)
     {
-        using value_type = typename std::decay_t<decltype(b0.B0(Component::X))>::value_type;
+        using value_type = typename std::decay_t<decltype(b0(Component::X))>::value_type;
         PerIndexVector<value_type> B0f;
-        B0f(direction) = b0.B0(static_cast<Component>(direction))(index);
+        B0f(direction) = b0(static_cast<Component>(direction))(index);
         if constexpr (direction == Direction::X)
         {
-            B0f(Component::Y) = b0.B0y_FaceX(index);
-            B0f(Component::Z) = b0.B0z_FaceX(index);
+            B0f(Component::Y)
+                = GridLayout::template project<GridLayout::ByToFaceX>(b0(Component::Y), index);
+            B0f(Component::Z)
+                = GridLayout::template project<GridLayout::BzToFaceX>(b0(Component::Z), index);
         }
         else if constexpr (direction == Direction::Y)
         {
-            B0f(Component::X) = b0.B0x_FaceY(index);
-            B0f(Component::Z) = b0.B0z_FaceY(index);
+            B0f(Component::X)
+                = GridLayout::template project<GridLayout::BxToFaceY>(b0(Component::X), index);
+            B0f(Component::Z)
+                = GridLayout::template project<GridLayout::BzToFaceY>(b0(Component::Z), index);
         }
         else // Direction::Z
         {
-            B0f(Component::X) = b0.B0x_FaceZ(index);
-            B0f(Component::Y) = b0.B0y_FaceZ(index);
+            B0f(Component::X)
+                = GridLayout::template project<GridLayout::BxToFaceZ>(b0(Component::X), index);
+            B0f(Component::Y)
+                = GridLayout::template project<GridLayout::ByToFaceZ>(b0(Component::Y), index);
         }
         return B0f;
     }
