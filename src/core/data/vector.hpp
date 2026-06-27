@@ -1,17 +1,35 @@
 #ifndef PHARE_CORE_DATA_VECTOR_HPP
 #define PHARE_CORE_DATA_VECTOR_HPP
 
-
+#include "core/utilities/allocators.hpp"
 
 #include <vector>
 #include <cstdint>
 
 namespace PHARE::core
 {
+template<typename T>
+auto constexpr default_allocator()
+{
+    if constexpr (std::is_same_v<double, T>)
+        return NonConstructingHugePageAllocator<T>{};
+    else
+        return std::allocator<T>{};
+};
+
+template<typename T>
+struct DefaultAllocator
+{
+    using value_type = decltype(default_allocator<T>());
+};
+
+template<typename T>
+using DefaultAllocator_t = DefaultAllocator<T>::value_type;
+
 
 // Will automagically shrink itself if the requested sizes are
 //  below a threshold for some number of requests
-template<typename T>
+template<typename T, typename Allocator = DefaultAllocator_t<T>>
 struct MinimizingVector
 {
     using vector_t = std::vector<T>;

@@ -34,6 +34,7 @@ namespace PHARE
 {
 
 
+
 class ISimulator
 {
 public:
@@ -585,8 +586,6 @@ double Simulator<opts>::advance(double dt)
             throw std::runtime_error(*error);
         throw std::runtime_error("forcing error");
     }
-
-
 
     return dt;
 }

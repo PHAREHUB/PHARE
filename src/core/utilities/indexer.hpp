@@ -49,7 +49,7 @@ public:
     // void trim(std::size_t max_empty);
 
     // to use if an item in an indexed array is moved at another index
-    void updateIndex(std::size_t oldIndex, std::size_t newIndex)
+    void updateIndex(std::size_t const oldIndex, std::size_t const newIndex)
     {
         //
         auto it = std::find(std::begin(indexes_), std::end(indexes_), oldIndex);
@@ -57,6 +57,18 @@ public:
         {
             *it = newIndex;
         }
+    }
+
+    void update(std::size_t const offset, std::size_t const index) { indexes_[offset] = index; }
+
+    auto& findIndex(std::size_t const index) const
+    {
+        // assumes exists
+        return *std::find(std::begin(indexes_), std::end(indexes_), index);
+    }
+    auto position(std::size_t const index) const
+    {
+        return std::distance(indexes_.data(), &findIndex(index));
     }
 
     // empty the bucketlist, but leaves the capacity untouched

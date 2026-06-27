@@ -85,6 +85,8 @@ public:
         return const_cast<Field&>(*this)(std::forward<Args>(args)...);
     }
 
+    template<std::size_t, typename, typename>
+    friend std::ostream& operator<<(std::ostream& out, Field const&);
 
 private:
     std::string name_{"No Name"};
@@ -94,6 +96,67 @@ private:
     Super const& super() const { return *this; }
 };
 
+
+
+
+void print_1d_field(auto& out, auto const& comp)
+{
+    auto const& shape = comp.shape();
+
+    std::size_t idx = -1;
+    for (std::size_t i = 0; i < shape[0]; ++i)
+        out << comp.data()[++idx] << ", ";
+    out << std::endl;
+}
+
+void print_2d_field(auto& out, auto const& comp)
+{
+    auto const& shape = comp.shape();
+
+    std::size_t idx = -1;
+    for (std::size_t i = 0; i < shape[0]; ++i)
+    {
+        for (std::size_t j = 0; j < shape[1]; ++j)
+            out << comp.data()[++idx] << ", ";
+
+        out << std::endl;
+    }
+    out << std::endl;
+}
+
+void print_3d_field(auto& out, auto const& comp)
+{
+    auto const& shape = comp.shape();
+
+    std::size_t idx = -1;
+    for (std::size_t i = 0; i < shape[0]; ++i)
+    {
+        for (std::size_t j = 0; j < shape[1]; ++j)
+        {
+            for (std::size_t k = 0; k < shape[2]; ++k)
+                out << comp.data()[++idx] << ", ";
+
+            out << std::endl;
+        }
+        out << std::endl;
+    }
+    out << std::endl;
+}
+
+template<std::size_t dim, typename PQ, typename Data_t>
+inline std::ostream& operator<<(std::ostream& out, Field<dim, PQ, Data_t> const& f)
+{
+    out << f.name() << std::endl;
+
+    if constexpr (dim == 1)
+        print_1d_field(out, f);
+    if constexpr (dim == 2)
+        print_2d_field(out, f);
+    if constexpr (dim == 3)
+        print_3d_field(out, f);
+
+    return out;
+}
 
 
 } // namespace PHARE::core

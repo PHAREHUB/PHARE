@@ -100,6 +100,9 @@ def refine_electric(field, **kwargs):
             fine_data[::2, 1::2] = 0.5 * (coarse_data[:, 1:] + coarse_data[:, :-1])
             fine_data[1::2, 1::2] = 0.5 * (coarse_data[:, 1:] + coarse_data[:, :-1])
 
+    elif field.box.ndim == 3:
+        raise NotImplementedError("3D electric field refinement not implemented")
+
     return cropToFieldData(fine_data, field)
 
 
@@ -170,8 +173,10 @@ def refine_magnetic(field, **kwargs):
             fine_data[1::2, ::2] = fine_data[::2, ::2]
             fine_data[1::2, 1::2] = fine_data[::2, ::2]
 
-        else:
-            raise RuntimeError("impossible layout for a magnetic field")
+    elif field.box.ndim == 3:
+        raise NotImplementedError("3D magnetic field refinement not implemented")
+    else:
+        raise RuntimeError("impossible layout for a magnetic field")
 
     return cropToFieldData(fine_data, field)
 

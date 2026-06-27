@@ -10,7 +10,6 @@ import unittest
 import numpy as np
 from ddt import ddt
 
-
 from pyphare import cpp
 import pyphare.core.box as boxm
 from pyphare.core.box import Box

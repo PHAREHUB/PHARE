@@ -17,7 +17,7 @@ class LoadBalancer:
     tol: float = field(default_factory=lambda: 0.05)
 
     # whether to rebalance/check imbalance on init
-    on_init: bool = field(default_factory=lambda: True)
+    on_init: bool = field(default_factory=lambda: False)
 
     # if auto, other values are not used if active
     auto: bool = field(default_factory=lambda: False)

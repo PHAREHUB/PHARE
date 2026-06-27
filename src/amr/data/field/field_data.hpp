@@ -106,7 +106,7 @@ namespace amr
          */
         void copy(SAMRAI::hier::PatchData const& source) final
         {
-            PHARE_LOG_SCOPE(3, "FieldData::copy");
+            PHARE_LOG_SCOPE(2, "FieldData::copy");
 
             // After checking that source and *this have the same number of dimension
             // We will try to cast source as a FieldData, if it succeed we can continue
@@ -163,7 +163,7 @@ namespace amr
         void copy(SAMRAI::hier::PatchData const& source,
                   SAMRAI::hier::BoxOverlap const& overlap) final
         {
-            PHARE_LOG_SCOPE(3, "FieldData::copy");
+            PHARE_LOG_SCOPE(2, "FieldData::copy");
 
             // casts throw on failure
             auto& fieldSource  = dynamic_cast<FieldData const&>(source);
@@ -213,7 +213,7 @@ namespace amr
         void packStream(SAMRAI::tbox::MessageStream& stream,
                         SAMRAI::hier::BoxOverlap const& overlap) const final
         {
-            PHARE_LOG_SCOPE(3, "packStream");
+            PHARE_LOG_SCOPE(2, "FieldData::packStream");
 
             auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 
@@ -258,7 +258,7 @@ namespace amr
         void unpackStream(SAMRAI::tbox::MessageStream& stream,
                           SAMRAI::hier::BoxOverlap const& overlap, Grid_t& dst_grid)
         {
-            PHARE_LOG_SCOPE(3, "unpackStream");
+            PHARE_LOG_SCOPE(2, "FieldData::unpackStream");
 
             auto& fieldOverlap = dynamic_cast<FieldOverlap const&>(overlap);
 

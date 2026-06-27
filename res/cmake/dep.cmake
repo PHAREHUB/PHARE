@@ -18,6 +18,9 @@ function(phare_github_get_or_update name dir repo branch)
   phare_git_get_or_update(${name} ${dir} https://github.com/${repo} ${branch})
 endfunction(phare_github_get_or_update)
 
+# Phlop - enabled with -DwithPhlop
+include("${PHARE_PROJECT_DIR}/res/cmake/dep/phlop.cmake")
+
 # cppdict
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/cppdict.cmake")
 
@@ -35,7 +38,3 @@ include("${PHARE_PROJECT_DIR}/res/cmake/dep/caliper.cmake")
 
 # pybind
 include("${PHARE_PROJECT_DIR}/res/cmake/dep/pybind.cmake")
-
-
-# Phlop - enabled with -DwithPhlop
-include("${PHARE_PROJECT_DIR}/res/cmake/dep/phlop.cmake")

@@ -298,6 +298,15 @@ class GridLayout(object):
             "Z": self.yeeCentering.centerZ,
         }
 
+    def copy_as(self, **kwargs):
+        return GridLayout(
+            kwargs.get("box", self.box),
+            kwargs.get("origin", self.origin),
+            kwargs.get("dl", self.dl),
+            kwargs.get("interp_order", self.interp_order),
+            ghosts_nbr=kwargs.get("ghosts_nbr", self.ghosts_nbr),
+        )
+
     @property
     def ndim(self):
         return self.box.ndim
@@ -446,17 +455,10 @@ class GridLayout(object):
         ):
             qty = qty[0].upper() + qty[1:]
 
-        if "centering" in kwargs:
-            centering = kwargs["centering"]
-        else:
-            centering = yee_centering[direction][qty]
-
-        # Use provided ghosts_nbr if available, otherwise compute from interp_order
-        if "ghosts_nbr" in kwargs:
-            ghosts_nbr = kwargs["ghosts_nbr"]
-        else:
-            ghosts_nbr = self.nbrGhosts(self.interp_order, centering)
-
+        centering = kwargs.get("centering") or yee_centering[direction][qty]
+        ghosts_nbr = kwargs.get("ghosts_nbr") or self.nbrGhosts(
+            self.interp_order, centering
+        )
         return yeeCoordsFor(
             self.origin,
             ghosts_nbr,

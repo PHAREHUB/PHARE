@@ -127,7 +127,7 @@ private:
                             SAMRAI::hier::Box const& patch_box, SAMRAI::hier::Box const& data_box,
                             SAMRAI::hier::PatchDataFactory const& pdf) const override
     {
-        PHARE_LOG_SCOPE(2, "ParticleDomainFromGhostFillPattern::computeFillBoxesOverlap");
+        PHARE_LOG_SCOPE(3, "ParticleDomainFromGhostFillPattern::computeFillBoxesOverlap");
 
         throw std::runtime_error("no refinement supported or expected");
     }

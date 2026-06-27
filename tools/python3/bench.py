@@ -88,6 +88,7 @@ def _parse_level_info(level):
     stats = LevelStats(
         ilvl, patches, cells, p_ghosts_cells, l_ghosts_cells, particles, ratio
     )
+    # print("LevelStats", stats)
     return stats
 
 
@@ -121,20 +122,21 @@ def average_L0_advance_time_from(timer_files):
 def max_memory_required_from(stat_files):
     ret = 0
     for file in stat_files:
-        for snapshot in file.snapshots:
-            ret = max(ret, snapshot.mem_used_mb)
+        if file.snapshots:  # might be empty if interval is too high
+            for snapshot in file.snapshots:
+                ret = max(ret, snapshot.mem_used_mb)
     return ret
 
 
 def _print_stats(summary_file, timer_files, stat_files):
     pc_refined = percent_level_refined(summary_file)
-    # tags = {k: v for k, v in summary_file.kwargs.items() if k.startswith("tag")}
     time = average_L0_advance_time_from(timer_files)
     max_mem = max_memory_required_from(stat_files)
     ppp, push_time = summary_file.normalized_nanoseconds_for_time_per_push(
         time, len(timer_files)
     )
     cell_ratios = ",".join([f"{lvl.cell_ratio:.2f}" for lvl in summary_file.levels])
+
     print(
         f"% refined:{pc_refined}",
         f"N particles:{summary_file.particles}",

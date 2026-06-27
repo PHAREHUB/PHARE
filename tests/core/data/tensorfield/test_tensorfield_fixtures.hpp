@@ -3,6 +3,7 @@
 
 #include "core/data/grid/grid.hpp"
 #include "core/data/field/field.hpp"
+#include "core/utilities/equality.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
@@ -23,6 +24,11 @@ template<std::size_t dim, std::size_t rank_ = 2>
 class UsableTensorField : public TensorField<Field_t<dim>, HybridQuantity, rank_>
 {
     auto constexpr static N_elements = detail::tensor_field_dim_from_rank<rank_>();
+    void _set()
+    {
+        for (std::size_t i = 0; i < N_elements; ++i)
+            super()[i].setBuffer(&xyz[i]);
+    }
 
 public:
     auto static constexpr dimension = dim;
@@ -31,12 +37,29 @@ public:
     using tensor_t                  = typename Super::tensor_t;
 
     template<typename GridLayout>
-    UsableTensorField(std::string const& name, GridLayout const& layout, tensor_t qty)
+    UsableTensorField(std::string const& name, GridLayout const& layout, tensor_t qty,
+                      std::optional<double> v = std::nullopt)
         : Super{name, qty}
         , xyz{make_grids(Super::componentNames(), layout, qty)}
     {
-        for (std::size_t i = 0; i < N_elements; ++i)
-            super()[i].setBuffer(&xyz[i]);
+        if (v)
+            for (std::size_t i = 0; i < N_elements; ++i)
+                xyz[i].fill(*v);
+        _set();
+    }
+
+    UsableTensorField(UsableTensorField&& that)
+        : Super{std::forward<Super>(that)}
+        , xyz{std::move(that.xyz)}
+    {
+        _set();
+    }
+
+    UsableTensorField(UsableTensorField const& that)
+        : Super{that}
+        , xyz{that.xyz}
+    {
+        _set();
     }
 
     void set_on(Super& tensorfield)
@@ -60,6 +83,38 @@ protected:
 
     std::array<Grid_t, N_elements> xyz;
 };
+
+
+
+
+template<typename T, typename PhysicalQuantity, std::size_t rank>
+EqualityReport compare_tensor_fields(TensorField<T, PhysicalQuantity, rank> const& ref,
+                                     TensorField<T, PhysicalQuantity, rank> const& cmp,
+                                     double const diff)
+{
+    auto constexpr static N_elements = detail::tensor_field_dim_from_rank<rank>();
+
+    if (ref.componentNames() != cmp.componentNames())
+        return EqualityReport{false, "Tensorfield component mismatch"};
+
+    auto const same_sizes = [&]() {
+        return core::for_N_all<N_elements>([&](auto i) { return ref[i].size() == cmp[i].size(); });
+    }();
+
+    if (!same_sizes)
+        return EqualityReport{false, "Tensorfield shape/size mismatch"};
+
+    std::stringstream log;
+    log << std::endl;
+    for (std::size_t ci = 0; ci < N_elements; ++ci)
+        if (auto eqr = compare_fields(ref[ci], cmp[ci], diff); !eqr)
+            return eqr;
+        else
+            log << eqr.what() << std::endl;
+
+    return EqualityReport{true, log.str()};
+}
+
 
 
 } // namespace PHARE::core

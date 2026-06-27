@@ -2,18 +2,20 @@
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_HPP
 
 
-#include <cstddef>
-#include <utility>
-#include <vector>
-
 #include "core/def.hpp"
-#include "core/logger.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/cellmap.hpp"
 #include "core/utilities/range/range.hpp"
 
 #include "particle.hpp"
+
+
+#include <vector>
+#include <cstddef>
+#include <utility>
+
+
 
 namespace PHARE::core
 {
@@ -41,7 +43,7 @@ public:
 
 
 public:
-    ParticleArray(box_t box)
+    ParticleArray(box_t box = {})
         : box_{box}
         , cellMap_{box_}
     {
@@ -74,6 +76,9 @@ public:
 
     NO_DISCARD auto const& operator[](std::size_t i) const { return particles_[i]; }
     NO_DISCARD auto& operator[](std::size_t i) { return particles_[i]; }
+
+    auto& operator()(auto const& idx) { return cellMap_(idx); }
+    auto const& operator()(auto const& idx) const { return cellMap_(idx); }
 
     NO_DISCARD bool operator==(ParticleArray<dim> const& that) const
     {
@@ -146,6 +151,7 @@ public:
     void empty_map() { cellMap_.empty(); }
 
 
+
     NO_DISCARD auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
 
     using cell_t = std::array<int, dim>;
@@ -164,8 +170,8 @@ public:
         cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
     }
 
-    template<typename Fn>
-    void export_particles(box_t const& box, std::vector<Particle_t>& dest, Fn&& fn) const
+    template<typename Fn, typename Dst>
+    void export_particles(box_t const& box, Dst& dest, Fn&& fn) const
     {
         PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (box, vector, Fn)");
         cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
@@ -180,12 +186,20 @@ public:
 
 
     template<typename Cell>
-    void change_icell(Cell const& newCell, std::size_t particleIndex)
+    void change_icell(Particle_t& /*particle*/, Cell const& oldCell,
+                      std::size_t const particleIndex)
     {
-        auto oldCell                    = particles_[particleIndex].iCell;
+        if (auto const box_is_valid = box_.size() > 1)
+            cellMap_.update(particles_, particleIndex, oldCell);
+    }
+
+
+    template<typename Cell>
+    void change_icell(Cell const& newCell, std::size_t const particleIndex)
+    {
+        auto const oldCell              = particles_[particleIndex].iCell;
         particles_[particleIndex].iCell = newCell;
-        auto const box_is_valid         = box_.size() > 1;
-        if (box_is_valid)
+        if (auto const box_is_valid = box_.size() > 1)
             cellMap_.update(particles_, particleIndex, oldCell);
     }
 

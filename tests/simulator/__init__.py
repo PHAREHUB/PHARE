@@ -7,6 +7,7 @@ import numpy as np
 from datetime import datetime
 
 import pyphare.pharein as ph
+from pyphare.core.box import Box
 from pyphare.pharein import ElectronModel
 
 
@@ -170,8 +171,6 @@ def populate_simulation(dim, interp, **input):
 
 
 def diff_boxes(slice1, slice2, box, atol=None):
-    from pyphare.core.box import Box
-
     if atol is not None:
         ignore = np.isclose(slice1, slice2, atol=atol, rtol=0)
 

@@ -1,4 +1,6 @@
 import numpy as np
+
+from pyphare import cpp
 from pyphare.core import phare_utilities
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import HybridGridLayoutFor
@@ -238,7 +240,9 @@ class MaxwellianFluidModel(object):
                 is_periodic &= np.allclose(f(xL), f(xR), atol=atol, rtol=0)
 
         if not is_periodic:
-            print("Warning: Simulation is periodic but some functions are not")
+            cpp.print_rank0(
+                "Warning: Simulation is periodic but some functions are not"
+            )
             if sim.strict:
                 raise RuntimeError("Simulation is not periodic")
 
@@ -397,7 +401,7 @@ class MaxwellianFluidModel(object):
                         is_periodic &= check
 
         if not is_periodic:
-            print(
+            cpp.print_rank0(
                 "Warning: Simulation is periodic but some functions are not : ",
                 not_periodic,
             )

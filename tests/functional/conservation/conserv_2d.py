@@ -145,7 +145,7 @@ def mag_energy(B, lvlNbr=0):
     """
     return the total magnetic energy on a given level
     """
-    from pyphare.core.operators import dot
+    from pyphare.pharesee.hierarchy.compute import dot
 
     nrj = 0.5 * dot(B, B)
     tot = 0.0

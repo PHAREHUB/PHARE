@@ -24,6 +24,10 @@ test = AdvanceTestBase(rethrow=True)  # change to False for debugging images
 L0_diags = "phare_outputs/test_x_homo_0"
 L0L1_diags = "phare_outputs/test_x_homo_1"
 
+test = AdvanceTestBase(rethrow=True)  # change to False for debugging images
+L0_diags = "phare_outputs/test_x_homo_0"
+L0L1_diags = "phare_outputs/test_x_homo_1"
+
 
 def config(diag_outputs, model_init={}, refinement_boxes=None):
     ph.global_vars.sim = None

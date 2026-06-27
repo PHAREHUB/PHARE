@@ -350,7 +350,20 @@ namespace amr
             orMissing(ilvl);
     }
 
+    template<std::size_t dim>
+    auto removeIntersections(core::Box<int, dim> const& box, core::Box<int, dim> const& remove)
+    {
+        return generate([&](auto const& rem) { return phare_box_from<dim>(rem); },
+                        samrai_box_from(box).removeIntersections(samrai_box_from(remove)));
+    }
 
+    template<std::size_t dim>
+    auto removeIntersections(core::Box<std::uint32_t, dim> const& box,
+                             core::Box<uint32_t, dim> const& remove)
+    {
+        return generate([&](auto const& rem) { return as_unsigned_phare_box<dim>(rem); },
+                        samrai_box_from(box).removeIntersections(samrai_box_from(remove)));
+    }
 
 } // namespace amr
 } // namespace PHARE

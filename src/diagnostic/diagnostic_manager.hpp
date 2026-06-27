@@ -136,7 +136,7 @@ private:
 
     NO_DISCARD bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto const& diag_key     = diag.type + diag.quantity;
+        auto const& diag_key     = diag.type + diag.fileKey();
         auto& nextWriteTimestamp = nextWrite_[diag_key];
         auto& nextWriteElapsed   = nextWriteElapsed_[diag_key];
 
@@ -159,7 +159,7 @@ private:
 
     NO_DISCARD bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto nextCompute = nextCompute_[diag.type + diag.quantity];
+        auto nextCompute = nextCompute_[diag.type + diag.fileKey()];
         return nextCompute < diag.computeTimestamps.size()
                and needsAction_(diag.computeTimestamps[nextCompute], timeStamp, timeStep);
     }
@@ -198,6 +198,9 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     diagProps.computeTimestamps
         = diagParams["compute_timestamps"].template to<std::vector<double>>();
 
+    if (diagParams.contains("file_key"))
+        diagProps.file_key = diagParams["file_key"].template to<std::string>();
+
     diagProps.nAttributes = diagParams["n_attributes"].template to<std::size_t>();
     for (std::size_t i = 0; i < diagProps.nAttributes; ++i)
     {
@@ -228,7 +231,7 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     std::vector<DiagnosticProperties*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
-        auto diagID = diag.type + diag.quantity;
+        auto diagID = diag.type + diag.fileKey();
 
         if (needsCompute_(diag, timeStamp, timeStep))
         {

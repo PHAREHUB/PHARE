@@ -106,6 +106,18 @@ class VtkFile:
         return self.file.attrs["dimension"]
 
     @property
+    def slice_box(self):
+        """Returns (lo, up) int lists if this file has a 2D slice attribute, else None."""
+        for key in self.file.attrs:
+            if "_slice_" in key:
+                val = self.file.attrs[key]
+                lo_str, up_str = val.split("_")
+                lo = [int(x) for x in lo_str.split(",")]
+                up = [int(x) for x in up_str.split(",")]
+                return lo, up
+        return None
+
+    @property
     def interp_order(self):
         return self.file.attrs["interpOrder"]
 
@@ -402,6 +414,7 @@ def new_from_h5(filepath, times, **kwargs):
         times,
         vtk_file.file,
         selection_box=selection_box,
+        slice_box=vtk_file.slice_box,
     )
 
     return hier

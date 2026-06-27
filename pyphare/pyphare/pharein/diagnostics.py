@@ -34,7 +34,7 @@ def diagnostics_checker(func):
                 + ", ".join(one_of_required)
             )
 
-        accepted_keywords = ["path", "population_name", "flush_every"]
+        accepted_keywords = ["path", "population_name", "flush_every", "component_properties"]
         accepted_keywords += mandatory_keywords
 
         # check that all passed keywords are in the accepted keyword list
@@ -153,6 +153,12 @@ class Diagnostics(object):
             "GIT_HASH", "git hash not available"
         )
 
+        self.component_properties = kwargs.get("component_properties", {})
+        for component, modifiers in self.component_properties.items():
+            for i, modifier in enumerate(modifiers):
+                key, value = modifier(component, i)
+                self.attributes[f"component_properties_{key}"] = value
+
         for dep, dep_ver in Diagnostics.cpp_dep_vers.items():
             self.attributes[f"{dep}_version"] = dep_ver
 
@@ -161,9 +167,17 @@ class Diagnostics(object):
 
         self.quantity = None  # set in next line, stops pylint complaining
         self._setSubTypeAttributes(**kwargs)
-        self.flush_every = kwargs.get(
-            "flush_every", 1
-        )  # flushes every dump, safe, but costly
+
+        # Build file_key: quantity + any slice/modifier suffixes so that
+        # differently-sliced diagnostics for the same quantity get distinct files.
+        self.file_key = self.quantity
+        for component, modifiers in self.component_properties.items():
+            for i, modifier in enumerate(modifiers):
+                key, _ = modifier(component, i)
+                self.file_key = self.file_key + "_" + key
+
+        # flushes every dump, safe, but costly
+        self.flush_every = kwargs.get("flush_every", 1)
 
         if self.flush_every < 0:
             raise RuntimeError(
@@ -176,7 +190,7 @@ class Diagnostics(object):
         addIt = True
         registered_diags = global_vars.sim.diagnostics
         for diagname, diag in registered_diags.items():
-            if self.quantity == diag.quantity:
+            if self.file_key == diag.file_key:
                 print(
                     f"{diag.name} already registered {self.quantity}, merging timestamps"
                 )
@@ -473,3 +487,14 @@ class InfoDiagnostics(Diagnostics):
 
     def to_dict(self):
         return super().to_dict(type(self).type)
+
+
+class FieldDiagnosticSlice:
+    def __init__(self, lo, up):
+        self.lo = lo
+        self.up = up
+
+    def __call__(self, component, i):
+        lo_str = ",".join(str(v) for v in self.lo)
+        up_str = ",".join(str(v) for v in self.up)
+        return f"{component}_slice_{i}", f"{lo_str}_{up_str}"
