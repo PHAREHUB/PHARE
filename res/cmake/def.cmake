@@ -106,6 +106,7 @@ if(NOT DEFINED PHARE_PYTEST_SIMULATORS)
 endif(NOT DEFINED PHARE_PYTEST_SIMULATORS)
 
 function(phare_sanitize_ san cflags )
+  # MPI and ASAN can fail without `OMPI_MCA_memory=^patcher`
   set(CMAKE_REQUIRED_FLAGS ${san})
   check_cxx_compiler_flag( ${san} ADDRESS_SANITIZER)
   if (${ADDRESS_SANITIZER})

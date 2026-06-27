@@ -128,6 +128,51 @@ public:
 //                             definitions
 //-------------------------------------------------------------------------
 
+struct TensorFieldMinMax
+{
+    std::string const key;
+    std::vector<double> min{}, max{};
+
+    static auto GET(auto& rm, auto& tf, auto& lvl)
+    {
+        TensorFieldMinMax mm;
+        // auto& [min, maxE, minB, maxB] = mm;
+        for (auto const& _ : rm.enumerate(lvl, tf))
+            for (std::size_t i = 0; i < tf.size(); ++i)
+            {
+                mm.min[i] = std::min(mm.min[i], *std::min_element(tf[i].begin(), tf[i].end()));
+                mm.max[i] = std::max(mm.max[i], *std::max_element(tf[i].begin(), tf[i].end()));
+            }
+
+        return mm;
+    }
+
+    auto collect() const
+    {
+        auto mm = *this;
+        for (std::size_t i = 0; i < min.size(); ++i)
+        {
+            mm.min[i] = core::mpi::min_on_rank0(min[i]);
+            mm.max[i] = core::mpi::max_on_rank0(max[i]);
+        }
+        return mm;
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& out, TensorFieldMinMax const& mm)
+{
+    std::uint8_t constexpr static precision = 2;
+
+    out << std::setprecision(precision) << mm.key << " min(" << mm.min[0];
+    for (std::size_t i = 1; i < mm.min.size(); ++i)
+        out << "," << mm.min[i];
+
+    out << std::setprecision(precision) << mm.key << " max(" << mm.max[0];
+    for (std::size_t i = 1; i < mm.max.size(); ++i)
+        out << "," << mm.max[i];
+
+    return out;
+}
 
 template<typename GridLayoutT>
 struct LevelStats

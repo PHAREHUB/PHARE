@@ -23,8 +23,6 @@ using core::dirY;
 using core::dirZ;
 
 
-
-
 template<typename ResMan, typename TensorFieldDataT>
 class MagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
 {

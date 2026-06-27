@@ -29,7 +29,7 @@ public:
         auto& Jy = J(Component::Y);
         auto& Jz = J(Component::Z);
 
-        auto const shrink = ConstArray<std::size_t, dimension>(1);
+        auto const shrink = ConstArray<std::uint32_t, dimension>(1);
 
         layout_.evalOnShrinkedGhostBox(
             Jx, shrink, [](auto&&... args) { JxEq_(args...); }, Jx, B, layout_);

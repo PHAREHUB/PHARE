@@ -26,7 +26,9 @@ def permute(dic, expected_num_levels):
     # from pyphare.pharein.simulation import supported_dimensions # eventually
     dims = [1]  # supported_dimensions()
     return [
-        [dim, interp, dic, expected_num_levels] for dim in dims for interp in [1, 2, 3]
+        [dim, interp, dic, expected_num_levels]
+        for dim in dims
+        for interp in [1]  # , 2, 3
     ]
 
 

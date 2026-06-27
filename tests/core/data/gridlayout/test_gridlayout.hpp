@@ -1,15 +1,21 @@
+
 #ifndef TESTS_CORE_DATA_GRIDLAYOUT_TEST_GRIDLAYOUT_HPP
 #define TESTS_CORE_DATA_GRIDLAYOUT_TEST_GRIDLAYOUT_HPP
 
 #include "core/utilities/types.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/point/point.hpp"
 
 
 template<typename GridLayout>
-class TestGridLayout : public GridLayout
-{ // to expose a default constructor
+class TestGridLayout : public GridLayout // to expose a default constructor
+{
+    auto constexpr static dimension    = GridLayout::dimension;
+    double constexpr static level_0_dx = .1;
+
 public:
+    using Super = GridLayout;
+
     auto static constexpr dim = GridLayout::dimension;
 
     TestGridLayout() = default;
@@ -32,19 +38,23 @@ public:
     {
     }
 
-    auto static make(std::uint32_t cells) { return TestGridLayout{cells}; }
-    auto static make(PHARE::core::Box<int, dim> const box, double const dl = .1)
+    TestGridLayout(PHARE::core::Box<int, dim> const& amrbox, double const dl = .1)
+        : GridLayout{PHARE::core::ConstArray<double, dim>(dl),
+                     amrbox.shape().template toArray<std::uint32_t>(),
+                     PHARE::core::Point<double, dim>{PHARE::core::ConstArray<double, dim>(0)},
+                     amrbox}
     {
-        using namespace PHARE::core;
-
-        auto const shape = for_N_make_array<dim>(
-            [&](auto i) -> std::uint32_t { return box.upper[i] - box.lower[i] + 1; });
-
-        auto const origin
-            = for_N_make_array<dim>([&](auto i) -> double { return box.lower[i] * dl; });
-
-        return TestGridLayout{PHARE::core::ConstArray<double, dim>(dl), shape, origin, box};
     }
+
+    template<typename... Args>
+    TestGridLayout(Args&&... args)
+        requires(std::is_constructible_v<GridLayout, Args...>)
+        : GridLayout{args...}
+    {
+    }
+
+    Super& operator*() { return *this; }
+    Super const& operator*() const { return *this; }
 };
 
 

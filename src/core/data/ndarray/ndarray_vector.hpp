@@ -3,9 +3,9 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/allocators.hpp"
 
 #include <array>
-#include <memory>
 #include <vector>
 #include <cstdint>
 #include <numeric>
@@ -231,11 +231,16 @@ auto make_array_view(DataType const* const data, std::array<std::uint32_t, dim> 
 template<std::size_t dim, typename DataType = double, bool c_ordering = true>
 class NdArrayVector
 {
+    using Allocator_t
+        = std::conditional_t<std::is_same_v<DataType, double>,
+                             NonConstructingHugePageAllocator<DataType>, std::allocator<DataType>>;
+    using Vec_t = std::vector<DataType, Allocator_t>;
+
     auto init_optional(std::size_t const size, std::optional<DataType> const& value)
     {
         if (value)
-            return std::vector<DataType>(size, *value);
-        return std::vector<DataType>(size);
+            return Vec_t(size, *value);
+        return Vec_t(size);
     }
 
 public:
@@ -312,6 +317,13 @@ public:
         return MaskedView{*this, std::forward<Mask>(mask)};
     }
 
+    void zero() { fill(0); }
+    auto& fill(DataType const& v)
+    {
+        std::fill(begin(), end(), v);
+        return *this;
+    }
+
 
     NO_DISCARD auto& vector() { return data_; }
     NO_DISCARD auto& vector() const { return data_; }
@@ -319,7 +331,7 @@ public:
 
 private:
     std::array<std::uint32_t, dim> nCells_;
-    std::vector<DataType> data_;
+    Vec_t data_;
 };
 
 

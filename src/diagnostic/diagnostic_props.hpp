@@ -20,7 +20,12 @@ struct DiagnosticProperties
     using FileAttributes = cppdict::Dict<std::string, double>;
 
     std::vector<double> writeTimestamps, computeTimestamps, elapsedTimestamps;
-    std::string type, quantity;
+    std::string type, quantity, file_key;
+
+    NO_DISCARD std::string const& fileKey() const
+    {
+        return file_key.empty() ? quantity : file_key;
+    }
 
     Params params{}; // supports arbitrary values for specific diagnostic writers
                      // for instance "flushEvery" for H5 file writers

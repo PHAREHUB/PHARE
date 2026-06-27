@@ -220,8 +220,8 @@ def main():
     def assert_close_enough(h, H):
         for lvl_h, lvl_H in zip(h.levels(time).values(), H.levels(time).values()):
             for patch_h, patch_H in zip(lvl_h.patches, lvl_H.patches):
-                pd_h = patch_h.patch_datas["value"]
-                pd_H = patch_H.patch_datas["value"]
+                pd_h = patch_h[0]
+                pd_H = patch_H[0]
 
                 dset_h = pd_h[patch_h.box]
                 dset_H = pd_H[patch_H.box]
@@ -242,13 +242,13 @@ def main():
 
     H1 = hierarchy_from(
         hier=h1,
-        func=fromfunc.ions_mass_density_func1d,
+        from_func=fromfunc.ions_mass_density_func1d,
         masses=masses,
         densities=(densityMain_1d, densityBeam_1d),
     )
     H2 = hierarchy_from(
         hier=h2,
-        func=fromfunc.ions_charge_density_func1d,
+        from_func=fromfunc.ions_charge_density_func1d,
         charges=charges,
         densities=(densityMain_1d, densityBeam_1d),
     )
@@ -277,13 +277,13 @@ def main():
 
     H1 = hierarchy_from(
         hier=h1,
-        func=fromfunc.ions_mass_density_func2d,
+        from_func=fromfunc.ions_mass_density_func2d,
         masses=masses,
         densities=(densityMain_2d, densityBeam_2d),
     )
     H2 = hierarchy_from(
         hier=h2,
-        func=fromfunc.ions_charge_density_func2d,
+        from_func=fromfunc.ions_charge_density_func2d,
         charges=charges,
         densities=(densityMain_2d, densityBeam_2d),
     )

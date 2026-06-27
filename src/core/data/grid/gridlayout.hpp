@@ -111,7 +111,7 @@ namespace core
         GridLayout(std::array<double, dimension> const& meshSize,
                    std::array<std::uint32_t, dimension> const& nbrCells,
                    Point<double, dimension> const& origin,
-                   std::optional<AMRBox_t> const AMRBox = std::nullopt, int level_number = 0)
+                   std::optional<AMRBox_t> const AMRBox = std::nullopt, int const level_number = 0)
             : meshSize_{meshSize}
             , origin_{origin}
             , nbrPhysicalCells_{nbrCells}
@@ -1090,41 +1090,9 @@ namespace core
             return GridLayoutImpl::cellCenterToEdgeZ();
         }
 
-        // essentially box form of allocSize(...)
-        template<typename Field>
-        Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
-        {
-            return boxFor(field, [&](auto&&... args) { return this->ghostStartToEnd(args...); });
-        }
-
-
-        template<typename Field>
-        Box<std::uint32_t, dimension> domainBoxFor(Field const& field) const
-        {
-            return boxFor(field, [&](auto&&... args) { return this->physicalStartToEnd(args...); });
-        }
-
-        auto FieldBoxFor(auto const& field, Box<int, dimension> box) const
-        {
-            auto const centerings = centering(field);
-
-            for (std::uint8_t i = 0; i < dimension; ++i)
-                box.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
-            return box;
-        }
-
-        auto AMRBoxFor(auto const& field) const { return FieldBoxFor(field, AMRBox_); }
-
-        auto AMRGhostBoxFor(auto const& field) const
-        {
-            auto const centerings = centering(field);
-            return grow(AMRBoxFor(field), for_N_make_array<dimension>(
-                                              [&](auto i) { return nbrGhosts(centerings[i]); }));
-        }
-
 
         template<auto direction>
-        static MeshIndex<dimension> next(MeshIndex<dimension> index)
+        static MeshIndex<dimension> next(auto const& index)
         {
             if constexpr (dimension == 1)
             {
@@ -1159,7 +1127,7 @@ namespace core
         }
 
         template<auto direction>
-        static MeshIndex<dimension> previous(MeshIndex<dimension> index)
+        static MeshIndex<dimension> previous(auto const& index)
         {
             if constexpr (dimension == 1)
             {
@@ -1191,6 +1159,38 @@ namespace core
                     return make_index(index[0], index[1], index[2] - 1);
                 }
             }
+        }
+
+        // essentially box form of allocSize(...)
+        template<typename Field>
+        Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
+        {
+            return boxFor(field, [&](auto&&... args) { return this->ghostStartToEnd(args...); });
+        }
+
+
+        template<typename Field>
+        Box<std::uint32_t, dimension> domainBoxFor(Field const& field) const
+        {
+            return boxFor(field, [&](auto&&... args) { return this->physicalStartToEnd(args...); });
+        }
+
+        auto FieldBoxFor(auto const& field, Box<int, dimension> box) const
+        {
+            auto const centerings = centering(field);
+
+            for (std::uint8_t i = 0; i < dimension; ++i)
+                box.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
+            return box;
+        }
+
+        auto AMRBoxFor(auto const& field) const { return FieldBoxFor(field, AMRBox_); }
+
+        auto AMRGhostBoxFor(auto const& field) const
+        {
+            auto const centerings = centering(field);
+            return grow(AMRBoxFor(field), for_N_make_array<dimension>(
+                                              [&](auto i) { return nbrGhosts(centerings[i]); }));
         }
 
 

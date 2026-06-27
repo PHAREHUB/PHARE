@@ -115,7 +115,7 @@ class Simulator:
 
             if self.log_to_file:
                 self._log_to_file()
-            ph.populateDict()
+            ph.populateDict(self.simulation)
 
             self.cpp_lib = cpp.cpp_lib(self.simulation)
             self.cpp_hier = cpp.cpp_etc_lib().make_hierarchy()

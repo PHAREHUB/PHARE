@@ -70,7 +70,7 @@ class FieldData(PatchData):
 
     def compare(self, that, atol=1e-16):
         try:
-            phut.assert_fp_any_all_close(self.dataset[:], that.dataset[:], atol=atol)
+            phut.assert_fp_any_all_close(self[:], that[:], atol=atol)
         except AssertionError as e:
             return phut.EqualityCheck(False, str(e))
         return self.name == that.name
@@ -143,6 +143,14 @@ class FieldData(PatchData):
                 self.offset[i] = 0.5 * self.dl[i]
 
         self.dataset = data
+        self._is_consistent()
+
+    def _is_consistent(self):
+        self.layout.ghosts_nbr = self.ghosts_nbr
+        if not all(self.layout.ghosts_nbr == self.ghosts_nbr):
+            raise ValueError(
+                f"FieldData.ghosts_nbr is inconsistent with layout, ({self.layout.ghosts_nbr} != {self.ghosts_nbr})"
+            )
 
     def meshgrid(self, select=None):
         def grid():
@@ -159,10 +167,11 @@ class FieldData(PatchData):
 
     def copy_as(self, data=None, **kwargs):
         data = data if data is not None else self.dataset
-        name = kwargs.pop("name", self.name)
+        kwargs["name"] = kwargs.get("name", self.name)
         kwargs["centering"] = kwargs.get("centering", self.centerings)
         kwargs["ghosts_nbr"] = kwargs.get("ghosts_nbr", self.ghosts_nbr)
-        return FieldData(self.layout, name, data, **kwargs)
+        kwargs["layout"] = kwargs.get("layout", self.layout)
+        return FieldData(data=data, **kwargs)
 
     def yeeCoordsFor(self, idx):
         return self.layout.yeeCoordsFor(
@@ -219,7 +228,7 @@ def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
     out_ = getattr(ufunc, method)(*in_, **kwargs)
 
     if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
-        return type(patch_data)(
+        return patch_data.copy_as(
             layout=patch_data.layout,
             name=patch_data.name,
             data=out_,
@@ -235,7 +244,7 @@ def field_data_array_function(patch_data, func, types, args, kwargs):
     out_ = func(*in_, **kwargs)
 
     if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
-        return type(patch_data)(
+        return patch_data.copy_as(
             layout=patch_data.layout,
             name=patch_data.name,
             data=out_,

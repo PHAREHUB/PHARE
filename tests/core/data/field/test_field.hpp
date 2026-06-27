@@ -50,6 +50,7 @@ bool valid_ghost_box(PQ const physicalQuantity)
         // cause last ghost can have no interpolation
         return not any_in(physicalQuantity, rho, Vx, Vy, Vz);
     }
+
     throw std::runtime_error("No other impl");
 }
 

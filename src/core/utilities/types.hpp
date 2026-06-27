@@ -597,6 +597,7 @@ struct SetMax
     D& d;
 };
 
+
 template<typename D>
 struct PlusEqualsProduct
 {

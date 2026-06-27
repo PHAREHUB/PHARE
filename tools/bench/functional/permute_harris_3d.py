@@ -1,6 +1,12 @@
 #
 #
-#
+# how to use
+"""
+PHARE_SCOPE_TIMING=1 python3 -Ou tools/bench/functional/permute_harris_3d.py
+python3 tools/python3/bench.py print_summary -i .phare_bench/20260528-151026.tar.gz > perms
+python3 -c "from tools.bench.functional.permutor import sort_summaries as sort; sort('perms')"
+python3 tools/bench/functional/plot_permutations.py
+"""
 
 
 import shutil
@@ -23,7 +29,7 @@ MAKE_TAR_FILE = True
 log_dir = Path(".log")
 local_dir = Path(".phare")
 out_dir = Path(f".phare_bench/{datetime_now()}")
-monitoring_options = MonitoringOptions(interval=5, rank_modulo=1)
+monitoring_options = MonitoringOptions(interval=1, rank_modulo=1)
 
 ### test defaults
 ndim = 3
@@ -46,10 +52,10 @@ permutables = [
     ("interp_order", [1]),
     ("cells", _cells()),
     ("ppc", [100]),
-    ("max_nbr_levels", [2]),
+    ("max_nbr_levels", [1]),
     ("tag_buffer", [3, 4]),  # , 5
     ("tagging_threshold", [0.1]),  # , 0.2, 0.3, 0.4
-    ("tile_size", [3]),  # , 4 , 5, 6, 7, 8
+    ("tile_size", [3, 4]),  # , 4 , 5, 6, 7, 8
 ]
 
 

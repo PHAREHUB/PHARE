@@ -155,8 +155,8 @@ public:
 
         if (flushEvery != Writer::flush_never and diagnostic.dumpIdx % flushEvery == 0)
         {
-            fileData_.erase(diagnostic.quantity);
-            assert(fileData_.count(diagnostic.quantity) == 0);
+            fileData_.erase(diagnostic.fileKey());
+            assert(fileData_.count(diagnostic.fileKey()) == 0);
         }
     }
 
@@ -169,13 +169,13 @@ protected:
     auto& getOrCreateH5File(DiagnosticProperties const& diagnostic)
     {
         if (!fileExistsFor(diagnostic))
-            fileData_.emplace(diagnostic.quantity, this->h5Writer_.makeFile(diagnostic));
-        return *fileData_.at(diagnostic.quantity);
+            fileData_.emplace(diagnostic.fileKey(), this->h5Writer_.makeFile(diagnostic));
+        return *fileData_.at(diagnostic.fileKey());
     }
 
     bool fileExistsFor(DiagnosticProperties const& diagnostic) const
     {
-        return fileData_.count(diagnostic.quantity);
+        return fileData_.count(diagnostic.fileKey());
     }
 
 
@@ -189,7 +189,12 @@ void H5TypeWriter<Writer>::writeFileAttributes(DiagnosticProperties const& prop,
                                                Attributes const& attrs)
 {
     if (fileExistsFor(prop)) // otherwise qty not supported (yet)
-        h5Writer_.writeGlobalAttributeDict(*fileData_.at(prop.quantity), attrs, "/");
+    {
+        h5Writer_.writeGlobalAttributeDict(*fileData_.at(prop.fileKey()), attrs, "/");
+        if (prop.nAttributes > 0)
+            h5Writer_.writeGlobalAttributeDict(*fileData_.at(prop.fileKey()),
+                                               prop.fileAttributes, "/");
+    }
 }
 
 
@@ -211,6 +216,14 @@ public:
         return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(ilvl);
     }
 
+    template<std::size_t rank = 2>
+    std::size_t initTensorFieldFileLevelWithSlice(auto const ilvl,
+                                                   auto const& amr_slice_box)
+    {
+        return initAnyFieldLevelSliced<core::detail::tensor_field_dim_from_rank<rank>()>(
+            ilvl, amr_slice_box);
+    }
+
 private:
     auto level_spacing(int const lvl) const
     {
@@ -229,11 +242,26 @@ private:
         return data_offset;
     }
 
+    template<std::size_t N = 1>
+    std::size_t initAnyFieldLevelSliced(auto const ilvl,
+                                         auto const& amr_slice_box)
+    {
+        h5file.create_resizable_2d_data_set<FloatType, N>(level_data_path(ilvl));
+        initFileLevel(ilvl);
+        resize_boxes_sliced(ilvl, amr_slice_box);
+        resize_data_sliced<N>(ilvl, amr_slice_box);
+        return data_offset;
+    }
 
     template<std::size_t N = 1>
     void resize_data(int const ilvl);
 
+    template<std::size_t N = 1>
+    void resize_data_sliced(int const ilvl, auto const& amr_slice_box);
+
     void resize_boxes(int const ilvl);
+
+    void resize_boxes_sliced(int const ilvl, auto const& amr_slice_box);
 
     bool const newFile;
     DiagnosticProperties const& diagnostic;
@@ -259,6 +287,10 @@ public:
 
     template<std::size_t rank = 2>
     void writeTensorField(auto const& tf, auto const& layout);
+
+    template<std::size_t rank = 2>
+    void writeTensorFieldSlice(auto const& tf, auto const& layout,
+                                auto const& amr_slice_box);
 
 
 
@@ -476,6 +508,182 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::3");
     amrbox_ds.select({box_offset, 0}, {rank_boxes[core::mpi::rank()].size(), dimension * 2})
         .write(hier_data.flattened_lcl_level_boxes[ilvl]);
+}
+
+
+template<typename Writer>
+template<std::size_t N>
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_data_sliced(
+    int const ilvl, auto const& amr_slice_box)
+{
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data_sliced");
+
+    auto const& hier_data  = HierData::INSTANCE();
+    auto const lvl         = std::to_string(ilvl);
+    auto const data_path   = level_data_path(ilvl);
+    auto point_data_ds     = h5file.getDataSet(data_path);
+    data_offset            = point_data_ds.getDimensions()[0];
+
+    {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data_sliced::0");
+        auto ds             = h5file.getDataSet(step_level + lvl + "/PointDataOffset/data");
+        auto const old_size = ds.getDimensions()[0];
+        ds.resize({old_size + 1});
+        ds.select({old_size}, {1}).write(data_offset);
+    }
+
+    auto const& rank_boxes = hier_data.level_boxes_per_rank[ilvl];
+    std::vector<int> rank_data_sizes(core::mpi::size(), 0);
+    for (int r = 0; r < core::mpi::size(); ++r)
+        for (auto box : rank_boxes[r])
+        {
+            box.upper += 1; // all primal
+            if (auto const isect = box * amr_slice_box)
+            {
+                // AMRBox uses cell indices; a degenerate primal dim (lo==hi) maps to 1 cell = 2 pts
+                std::size_t primal_count = 1;
+                for (std::size_t i = 0; i < dimension; ++i)
+                    primal_count *= static_cast<std::size_t>(
+                        std::max(isect->lower[i] + 1, isect->upper[i]) - isect->lower[i] + 1);
+                rank_data_sizes[r] += static_cast<int>(primal_count) * HierData::X_TIMES;
+            }
+        }
+
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data_sliced::1");
+    auto const level_data_size = core::sum(rank_data_sizes);
+    auto const new_size        = data_offset + static_cast<std::size_t>(level_data_size);
+    point_data_ds.resize({new_size, N});
+    for (int r = 0; r < core::mpi::rank(); ++r)
+        data_offset += static_cast<std::size_t>(rank_data_sizes[r]);
+}
+
+
+template<typename Writer>
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes_sliced(
+    int const ilvl, auto const& amr_slice_box)
+{
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes_sliced");
+
+    constexpr auto dim     = Writer::dimension;
+    auto const& hier_data  = HierData::INSTANCE();
+    auto const lvl         = std::to_string(ilvl);
+    auto const& rank_boxes = hier_data.level_boxes_per_rank[ilvl];
+
+    auto primal_isect = [&](auto box) { return (box.upper += 1, box) * amr_slice_box; };
+
+    std::vector<int> n_isect_per_rank(core::mpi::size(), 0);
+    for (int r = 0; r < core::mpi::size(); ++r)
+        for (auto const& box : rank_boxes[r])
+            if (primal_isect(box))
+                ++n_isect_per_rank[r];
+    auto const total_isect = core::sum(n_isect_per_rank);
+
+    {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes_sliced::0");
+        auto ds             = h5file.getDataSet(step_level + lvl + "/NumberOfAMRBox");
+        auto const old_size = ds.getDimensions()[0];
+        ds.resize({old_size + 1});
+        ds.select({old_size}, {1}).write(total_isect);
+    }
+
+    auto amrbox_ds  = h5file.getDataSet(level_base + lvl + "/AMRBox");
+    auto box_offset = static_cast<int>(amrbox_ds.getDimensions()[0]);
+
+    {
+        PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes_sliced::1");
+        auto ds             = h5file.getDataSet(step_level + lvl + "/AMRBoxOffset");
+        auto const old_size = ds.getDimensions()[0];
+        ds.resize({old_size + 1});
+        ds.select({old_size}, {1}).write(box_offset);
+    }
+
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes_sliced::2");
+    amrbox_ds.resize({static_cast<std::size_t>(box_offset + total_isect), boxValsIn3D});
+    for (int r = 0; r < core::mpi::rank(); ++r)
+        box_offset += n_isect_per_rank[r];
+
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes_sliced::3");
+    std::vector<std::array<int, dim * 2>> isect_boxes;
+    for (auto const& box : rank_boxes[core::mpi::rank()])
+        if (auto const isect = primal_isect(box))
+        {
+            std::array<int, dim * 2> arr{};
+            for (std::size_t i = 0; i < dim; ++i)
+            {
+                // AMRBox uses cell indices: cell_hi = primal_hi - 1
+                // For degenerate dims (primal lo==hi) clamp to lo so cell box has 1 cell
+                arr[i * 2 + 0] = (*isect).lower[i];
+                arr[i * 2 + 1] = std::max((*isect).lower[i], (*isect).upper[i] - 1);
+            }
+            isect_boxes.push_back(arr);
+        }
+
+    if (!isect_boxes.empty())
+        amrbox_ds
+            .select({static_cast<std::size_t>(box_offset), 0}, {isect_boxes.size(), dim * 2})
+            .write(isect_boxes);
+}
+
+
+template<typename Writer>
+template<std::size_t rank>
+void H5TypeWriter<Writer>::VTKFileWriter::writeTensorFieldSlice(
+    auto const& tf, auto const& layout, auto const& amr_slice_box)
+{
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorFieldSlice");
+
+    constexpr auto dim      = Writer::dimension;
+    auto static constexpr N = core::detail::tensor_field_dim_from_rank<rank>();
+
+    auto const amr_patch_box = layout.AMRBoxFor(primal_qty);
+    auto const maybe_isect   = amr_patch_box * amr_slice_box;
+    if (!maybe_isect)
+        return;
+
+    auto const& frimal
+        = core::convert_to_fortran_primal(modelView.template tmpTensorField<rank>(), tf, layout);
+
+    auto const lcl_full  = layout.AMRToLocal(amr_patch_box);
+    auto const lcl_isect = layout.AMRToLocal(*maybe_isect);
+    auto const shape     = *lcl_full.shape();
+    auto const zero_lo   = lcl_isect.lower - lcl_full.lower;
+    // Cell-align: a degenerate primal dim (lo==hi) maps to 1 cell, so extend hi by 1
+    auto zero_up = lcl_isect.upper - lcl_full.lower;
+    for (std::size_t i = 0; i < dim; ++i)
+        if (zero_up[i] == zero_lo[i])
+            zero_up[i] = zero_lo[i] + 1;
+    std::size_t size = 1;
+    for (std::size_t i = 0; i < dim; ++i)
+        size *= static_cast<std::size_t>(zero_up[i] - zero_lo[i] + 1);
+
+    auto ds = h5file.getDataSet(level_data_path(layout.levelNumber()));
+
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorFieldSlice::0");
+    for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
+    {
+        for (std::uint32_t c = 0; c < N; ++c)
+        {
+            auto const fview = core::make_array_view<false>(frimal[c].data(), shape);
+            std::vector<FloatType> sliced(size);
+            std::size_t idx = 0;
+
+            if constexpr (dim == 1)
+                for (auto ix = zero_lo[0]; ix <= zero_up[0]; ++ix)
+                    sliced[idx++] = static_cast<FloatType>(fview(ix));
+            else if constexpr (dim == 2)
+                for (auto iy = zero_lo[1]; iy <= zero_up[1]; ++iy)
+                    for (auto ix = zero_lo[0]; ix <= zero_up[0]; ++ix)
+                        sliced[idx++] = static_cast<FloatType>(fview(ix, iy));
+            else
+                for (auto iz = zero_lo[2]; iz <= zero_up[2]; ++iz)
+                    for (auto iy = zero_lo[1]; iy <= zero_up[1]; ++iy)
+                        for (auto ix = zero_lo[0]; ix <= zero_up[0]; ++ix)
+                            sliced[idx++] = static_cast<FloatType>(fview(ix, iy, iz));
+
+            ds.select({data_offset, c}, {size, 1}).write_raw(sliced.data());
+        }
+        data_offset += size;
+    }
 }
 
 

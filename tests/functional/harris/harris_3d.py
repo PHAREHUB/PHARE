@@ -1,15 +1,11 @@
 #
 
 import numpy as np
-from pathlib import Path
 
 from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 from pyphare.simulator.simulator import startMPI
-
-from tests.simulator import SimulatorTest
 
 
 ph.NO_GUI()
@@ -20,7 +16,7 @@ cells = (40, 80, 20)
 dl = (0.4, 0.4, 0.4)
 diag_dir = "phare_outputs/harris_3d"
 time_step = 0.001
-final_time = 0.005
+final_time = 0.001
 timestamps = []
 
 hs = hour_seconds = 3600.0
@@ -28,7 +24,7 @@ elapsed_restart_timestamps = [hs * 1, hs * 3, hs * 6]
 ppc = 100
 
 
-def config():
+def config(**kwargs):
     L = 0.5
 
     sim = ph.Simulation(
@@ -54,7 +50,7 @@ def config():
             "restart_time": "auto",
         },
         write_reports=False,
-        strict=False,
+        strict=True,
         tag_buffer=3,
     )
 

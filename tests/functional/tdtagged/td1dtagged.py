@@ -3,6 +3,7 @@
 
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
+from pyphare.simulator.simulator import startMPI
 from pyphare.pharesee.run import Run
 
 
@@ -142,6 +143,7 @@ def noRefinement(diagdir):
 
 def make_figure():
     from scipy.optimize import curve_fit
+    from pyphare.pharesee.hierarchy.plotting.plot_particles import zoom_effect
 
     rwT = Run("./withTagging")
     rNoRef = Run("./noRefinement")
@@ -150,19 +152,15 @@ def make_figure():
     v = 2
 
     BH = rwT.GetB(plot_time)
-    BwT = rwT.GetB(plot_time, merged=True, interp="linear")
-    BNoRef = rNoRef.GetB(plot_time, merged=True, interp="linear")
-    JwT = rwT.GetJ(plot_time, merged=True, interp="linear")
-    JNoRef = rNoRef.GetJ(plot_time, merged=True, interp="linear")
+    bywT_pd = rwT.GetB(plot_time).finest()["By"]
+    byNoRef_pd = rNoRef.GetB(plot_time).finest()["By"]
+    jzwT_pd = rwT.GetJ(plot_time).finest()["Jz"]
+    jzNoRef_pd = rNoRef.GetJ(plot_time).finest()["Jz"]
 
-    xbywT = BwT["By"][1][0]
-    bywT = BwT["By"][0](xbywT)
-    xbyNoRef = BNoRef["By"][1][0]
-    byNoRef = BNoRef["By"][0](xbyNoRef)
-    xjzwT = JwT["Jz"][1][0]
-    jzwT = JwT["Jz"][0](xjzwT)
-    xjzNoRef = JNoRef["Jz"][1][0]
-    jzNoRef = JNoRef["Jz"][0](xjzNoRef)
+    xbywT, bywT = bywT_pd.x, bywT_pd[:]
+    xbyNoRef, byNoRef = byNoRef_pd.x, byNoRef_pd[:]
+    xjzwT, jzwT = jzwT_pd.x, jzwT_pd[:]
+    xjzNoRef, jzNoRef = jzNoRef_pd.x, jzNoRef_pd[:]
 
     fig, axarr = plt.subplots(nrows=3, figsize=(8, 8))
 
@@ -208,8 +206,6 @@ def make_figure():
                     ymin=ilvl / 4,
                     ymax=(ilvl + 1) / 4,
                 )
-
-    from pyphare.pharesee.plotting import zoom_effect
 
     zoom_effect(ax0, ax1, wT0, 195)
 
@@ -275,4 +271,5 @@ def main():
 
 
 if __name__ == "__main__":
+    startMPI()
     main()

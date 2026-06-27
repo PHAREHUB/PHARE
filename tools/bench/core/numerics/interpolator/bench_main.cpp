@@ -3,6 +3,8 @@
 #include "core/numerics/interpolator/interpolator.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
+#include "benchmark/benchmark.h"
+
 template<std::size_t dim, std::size_t interp>
 void interpolate(benchmark::State& state)
 {

@@ -6,7 +6,10 @@ from ..core import box as boxm
 from .hierarchy.patchdata import FieldData
 from .hierarchy.hierarchy_utils import is_root_lvl
 
+from pyphare.logger import getLogger
 from pyphare.core.phare_utilities import listify, is_scalar
+
+logger = getLogger(__name__)
 
 
 def toFieldBox(box, patch_data):
@@ -34,6 +37,7 @@ def shift_patch(patch, offset):
     for pdata in patch.patch_datas.values():
         pdata.box = boxm.shift(pdata.box, offset)
         pdata.ghost_box = boxm.shift(pdata.ghost_box, offset)
+
     return patch
 
 
@@ -77,6 +81,7 @@ def border_shifted_patches_for(patch, domain_box):
 
     ndim = domain_box.ndim
     gbox = boxm.grow(patch.box, [1] * ndim)
+
     shifted_patches = []
     for shift in periodic_shifts_for(domain_box):
         shifted_box = boxm.shift(gbox, shift)

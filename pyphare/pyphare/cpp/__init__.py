@@ -2,6 +2,7 @@
 #
 #
 
+import os
 import json
 import importlib
 from . import validate
@@ -64,3 +65,19 @@ def mpi_size():
 
 def mpi_barrier():
     return getattr(cpp_etc_lib(), "mpi_barrier")()
+
+
+def print_rank0(s, *args, **kwargs):
+    def should_print():
+        try:
+            if cpp_etc_lib().mpi_initialized():
+                return mpi_rank() == 0
+        except ImportError:
+            envs = ["OMPI_COMM_WORLD_RANK", "SLURM_PROCID"]
+            for env in envs:
+                if env in os.environ:
+                    return int(os.environ[env]) == 0
+        return True  # FALL BACK ALWAYS PRINT
+
+    if should_print():
+        print(s, *args, **kwargs)

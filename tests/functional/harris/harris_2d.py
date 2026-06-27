@@ -4,10 +4,9 @@
 import numpy as np
 from pathlib import Path
 
-import pyphare.pharein as ph
 
 from pyphare import cpp
-
+import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 from pyphare.simulator.simulator import startMPI
@@ -22,7 +21,7 @@ cells = (200, 100)
 time_step = 0.005
 final_time = 50
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
-diag_dir = "phare_outputs/harris"
+diag_dir = "phare_outputs/harris_2d"
 
 
 def config():

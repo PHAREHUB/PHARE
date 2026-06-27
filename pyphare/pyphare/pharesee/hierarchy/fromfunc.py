@@ -44,7 +44,6 @@ def hierarchy_from_func1d(func, hier, **kwargs):
         new_patch_data = patch[ref_name].copy_as(
             func(x_, **kwargs), name="value", ghosts_nbr=patch[ref_name].ghosts_nbr
         )
-
         return (new_patch_data,)
 
     return compute_hier_from(compute_, hier, **kwargs)
@@ -91,7 +90,6 @@ def hierarchy_from_func2d(func, hier, **kwargs):
         new_patch_data = patch[ref_name].copy_as(
             func(x_, y_, **kwargs), name="value", ghosts_nbr=patch[ref_name].ghosts_nbr
         )
-
         return (new_patch_data,)
 
     return compute_hier_from(compute_, hier, **kwargs)

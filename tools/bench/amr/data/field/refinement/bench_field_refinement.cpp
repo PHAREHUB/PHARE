@@ -49,8 +49,8 @@ int test()
     std::size_t constexpr static FOR = 100;
 
     GridLayout_t coarse_layout{.1, 300ul};
-    GridLayout_t fine_layout = GridLayout_t::make(
-        Box<int, ndim>{core::ConstArray<int, ndim>(10), core::ConstArray<int, ndim>(590)}, .1 / 2);
+    GridLayout_t fine_layout{
+        Box<int, ndim>{core::ConstArray<int, ndim>(10), core::ConstArray<int, ndim>(590)}, .1 / 2};
 
     SAMRAI::hier::Box const coarse_box = samrai_box_from(coarse_layout.AMRBox());
     SAMRAI::hier::Box const fine_box   = samrai_box_from(fine_layout.AMRBox());
