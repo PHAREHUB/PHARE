@@ -19,33 +19,41 @@ class UpwindConstrainedTransportState
 public:
     UpwindConstrainedTransportState() = default;
 
+    // Edge-B buffers (Bt_*_at_E*) carry upwind-averaged transverse B at E-field edge
+    // locations for the CT Poynting energy correction. Bt_z_at_Ey / Bt_y_at_Ez are needed
+    // in all dimensions; Bt_x_at_Ez / Bt_z_at_Ex in 2D+; Bt_x_at_Ey / Bt_y_at_Ex in 3D.
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
         if constexpr (dimension == 1)
         {
             if constexpr (Hall || Resistivity)
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, Bt_z_at_Ey,
+                                             Bt_y_at_Ez);
             else
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, Bt_z_at_Ey, Bt_y_at_Ez);
         }
         else if constexpr (dimension == 2)
         {
             if constexpr (Hall || Resistivity)
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
-                                             aR_y, dL_y, dR_y, jt_y, rhot_y);
+                                             aR_y, dL_y, dR_y, jt_y, rhot_y, Bt_z_at_Ey, Bt_y_at_Ez,
+                                             Bt_x_at_Ez, Bt_z_at_Ex);
             else
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
-                                             dR_y);
+                                             dR_y, Bt_z_at_Ey, Bt_y_at_Ez, Bt_x_at_Ez, Bt_z_at_Ex);
         }
         else if constexpr (dimension == 3)
         {
             if constexpr (Hall || Resistivity)
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
                                              aR_y, dL_y, dR_y, jt_y, rhot_y, vt_z, aL_z, aR_z, dL_z,
-                                             dR_z, jt_z, rhot_z);
+                                             dR_z, jt_z, rhot_z, Bt_z_at_Ey, Bt_y_at_Ez, Bt_x_at_Ez,
+                                             Bt_z_at_Ex, Bt_x_at_Ey, Bt_y_at_Ex);
             else
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
-                                             dR_y, vt_z, aL_z, aR_z, dL_z, dR_z);
+                                             dR_y, vt_z, aL_z, aR_z, dL_z, dR_z, Bt_z_at_Ey,
+                                             Bt_y_at_Ez, Bt_x_at_Ez, Bt_z_at_Ex, Bt_x_at_Ey,
+                                             Bt_y_at_Ex);
         }
         else
             throw std::runtime_error(
@@ -57,33 +65,46 @@ public:
         if constexpr (dimension == 1)
         {
             if constexpr (Hall || Resistivity)
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, Bt_z_at_Ey,
+                                             Bt_y_at_Ez);
             else
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, Bt_z_at_Ey, Bt_y_at_Ez);
         }
         else if constexpr (dimension == 2)
         {
             if constexpr (Hall || Resistivity)
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
-                                             aR_y, dL_y, dR_y, jt_y, rhot_y);
+                                             aR_y, dL_y, dR_y, jt_y, rhot_y, Bt_z_at_Ey, Bt_y_at_Ez,
+                                             Bt_x_at_Ez, Bt_z_at_Ex);
             else
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
-                                             dR_y);
+                                             dR_y, Bt_z_at_Ey, Bt_y_at_Ez, Bt_x_at_Ez, Bt_z_at_Ex);
         }
         else if constexpr (dimension == 3)
         {
             if constexpr (Hall || Resistivity)
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
                                              aR_y, dL_y, dR_y, jt_y, rhot_y, vt_z, aL_z, aR_z, dL_z,
-                                             dR_z, jt_z, rhot_z);
+                                             dR_z, jt_z, rhot_z, Bt_z_at_Ey, Bt_y_at_Ez, Bt_x_at_Ez,
+                                             Bt_z_at_Ex, Bt_x_at_Ey, Bt_y_at_Ex);
             else
                 return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
-                                             dR_y, vt_z, aL_z, aR_z, dL_z, dR_z);
+                                             dR_y, vt_z, aL_z, aR_z, dL_z, dR_z, Bt_z_at_Ey,
+                                             Bt_y_at_Ez, Bt_x_at_Ez, Bt_z_at_Ex, Bt_x_at_Ey,
+                                             Bt_y_at_Ex);
         }
         else
             throw std::runtime_error(
                 "Error - UpwindConstrainedTransportState - dimension not supported");
     }
+
+    // Getters for edge-centered B fields (CT Poynting energy correction).
+    auto const& getBx_at_Ez() const { return Bt_x_at_Ez; }
+    auto const& getBy_at_Ez() const { return Bt_y_at_Ez; }
+    auto const& getBz_at_Ey() const { return Bt_z_at_Ey; }
+    auto const& getBx_at_Ey() const { return Bt_x_at_Ey; }
+    auto const& getBz_at_Ex() const { return Bt_z_at_Ex; }
+    auto const& getBy_at_Ex() const { return Bt_y_at_Ex; }
 
     template<auto direction>
     auto& getJt()
@@ -185,6 +206,15 @@ public:
         aR_z{"aR_z", MHDQuantity::Scalar::ScalarFlux_z},
         dL_z{"dL_z", MHDQuantity::Scalar::ScalarFlux_z},
         dR_z{"dR_z", MHDQuantity::Scalar::ScalarFlux_z};
+
+    // Edge-centered B fields for the Poynting energy correction, stored at the E-field
+    // edge locations where they are computed during CT.
+    Field Bt_x_at_Ez{"Bx1ez", MHDQuantity::Scalar::Ez}; // Bx at z-edge
+    Field Bt_y_at_Ez{"Bx2ez", MHDQuantity::Scalar::Ez}; // By at z-edge
+    Field Bt_z_at_Ey{"Bx3ey", MHDQuantity::Scalar::Ey}; // Bz at y-edge (x-face in 2D)
+    Field Bt_z_at_Ex{"Bx3ex", MHDQuantity::Scalar::Ex}; // Bz at x-edge (y-face in 2D)
+    Field Bt_x_at_Ey{"Bx1ey", MHDQuantity::Scalar::Ey}; // Bx at y-edge (3D only)
+    Field Bt_y_at_Ex{"Bx2ex", MHDQuantity::Scalar::Ex}; // By at x-edge (3D only)
 };
 
 } // namespace PHARE::core
