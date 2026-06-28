@@ -108,14 +108,14 @@ public:
     }
 
 
-    void operator()(auto& ct_state, auto& dissipative_electric_state, auto& state, auto& fluxes)
+    void operator()(auto& ct_state, auto& state, auto& fluxes)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, state, fluxes))
+        for (auto& patch : rm.enumerate(level, ct_state, state, fluxes))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type finite_volume_method{info, layout};
-            finite_volume_method(ct_state, dissipative_electric_state, state, fluxes);
+            finite_volume_method(ct_state, state, fluxes);
         }
     }
 
@@ -234,6 +234,46 @@ public:
 
 
 
+// Applies the CT-based magnetic energy (Poynting) correction to the energy flux. Must run
+// AFTER the ConstrainedTransport step so state.E and the CT edge-B buffers (in ct_state) are
+// available and temporally consistent. Reuses the FVMethod (Godunov) core, which carries
+// apply_poynting_correction.
+template<typename Model, typename FVMethod>
+class PoyntingCorrectionTransformer
+{
+    using GridLayout = Model::gridlayout_type;
+    using level_t    = Model::amr_types::level_t;
+    using core_type  = FVMethod;
+
+public:
+    using info_type = core_type::Info_t;
+
+    explicit PoyntingCorrectionTransformer(level_t& level, auto& model, info_type const& info)
+        : level{level}
+        , model{model}
+        , info{info}
+    {
+    }
+
+    void operator()(auto& ct_state, auto& state, auto& fluxes)
+    {
+        auto& rm = *model.resourcesManager;
+        for (auto& patch : rm.enumerate(level, ct_state, state, fluxes))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            core_type finite_volume_method{info, layout};
+            finite_volume_method.apply_poynting_correction(ct_state, state, fluxes);
+        }
+    }
+
+    level_t& level;
+    Model& model;
+    info_type const& info;
+};
+
+
+
+
 template<typename Model>
 class RKUtilsTransformer
 {
@@ -270,6 +310,9 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
 
     template<typename FVMethodStrategy>
     using FVMethod_t = FVMethodTransformer<Model, FVMethodStrategy>;
+
+    template<typename FVMethodStrategy>
+    using PoyntingCorrection_t = PoyntingCorrectionTransformer<Model, FVMethodStrategy>;
 
     using FiniteVolumeEuler_t = FiniteVolumeEulerTransformer<Model>;
 

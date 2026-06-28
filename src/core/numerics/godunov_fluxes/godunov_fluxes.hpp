@@ -3,6 +3,7 @@
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -95,8 +96,7 @@ public:
     }
 
     template<typename State, typename Fluxes>
-    void operator()(auto& ct_state, auto const& dissipative_electric_state, State& state,
-                    Fluxes& fluxes)
+    void operator()(auto& ct_state, State& state, Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
 
@@ -146,15 +146,34 @@ public:
                     }
                 });
 
-            if (is_resistive_ || is_hyper_resistive_)
-                layout_.evalOnBox(fluxes.template expose_centering<direction>(),
-                                  [&](auto&... indices) {
-                                      auto F = fluxes.template get_dir<direction>({indices...});
-                                      auto const [Et, Bt] = transverse_on_face_<direction>(
-                                          dissipative_electric_state.E(), state.B, {indices...});
-                                      equations_.template dissipative_contributions<direction>(
-                                          Et, Bt, F.B, F.Etot());
-                                  });
+            // Note: resistive contributions to F_B and F_Etot are now handled via CT:
+            // - B is updated by Faraday using E (which includes ηJ from CT)
+            // - Etot gets the resistive Poynting flux via E×B where E = E_ideal + ηJ
+            // The old resistive_contributions code was dead (F_B is never consumed by the
+            // finite-volume update) and would double-count η(J×B) in F_Etot once combined
+            // with the Poynting correction.
+        });
+    }
+
+    template<typename CTState, typename State, typename Fluxes>
+    void apply_poynting_correction(CTState const& ct_state, State const& state, Fluxes& fluxes)
+    {
+        // Apply Poynting flux correction to energy: ∂E/∂t -= ∇·(E×B)
+        // Must be called AFTER CT has computed both E and the edge-B fields, so the
+        // edge-centered B from CT is temporally consistent with E. Because E from CT
+        // includes resistive (ηJ) and hyper-resistive terms, E×B automatically captures
+        // the resistive Poynting flux.
+        constexpr auto directions     = getDirections<dimension>();
+        constexpr auto num_directions = std::tuple_size_v<std::decay_t<decltype(directions)>>;
+
+        for_N<num_directions>([&](auto i) {
+            constexpr Direction direction = std::get<i>(directions);
+
+            layout_.evalOnBox(fluxes.template expose_centering<direction>(), [&](auto&... indices) {
+                auto& F_Etot = fluxes.template get_dir<direction>({indices...}).Etot();
+                poynting_energy_flux_<direction>(ct_state, state.E,
+                                                 MeshIndex<dimension>{indices...}, F_Etot);
+            });
         });
     }
 
@@ -163,41 +182,91 @@ public:
 
 private:
     template<auto direction>
-    auto transverse_on_face_(auto const& E, auto const& B, MeshIndex<dimension> idx) const
+    void poynting_energy_flux_(auto const& ct_state, auto const& E,
+                               MeshIndex<dimension> const& index, auto& F_Etot) const
     {
-        using implT        = GridLayout::implT;
-        auto constexpr nan = std::numeric_limits<double>::quiet_NaN();
+        // Magnetic energy flux through the face: S.n = (E x B).n. Since S_i = eps_ijk E_j B_k,
+        // a face never needs its own E component, which leaves exactly two products per face.
+        // E and the CT edge-B buffers are point values living on edges; each product is formed
+        // on the edge it lives on, then projected onto the flux face across the single axis
+        // separating the two locations (primal -> dual in every case).
+        //
+        // directionalInterp returns the identity stencil for an axis the simulation does not
+        // have, which is what collapses the lower dimensional cases: in 2D Ey already sits on
+        // the x-face, and in 1D both products already sit on the x-face.
+        using InterpDir = typename GridLayout::implT::InterpDir;
+
+        // Same as GridLayout::project, but for an expression rather than a stored field: the
+        // integrand is a product of two fields, and since both are point values the product
+        // must be formed on the edge before being projected onto the face. Projecting the
+        // factors separately and multiplying on the face would be a different (and, beyond
+        // order 2, wrong) discretisation.
+        auto project_on_face = [&](auto const& stencil, auto&& integrand) {
+            std::decay_t<decltype(integrand(index))> result = 0.;
+
+            for (auto const& wp : stencil)
+                result += wp.coef * integrand(index + wp.indexes);
+
+            return result;
+        };
 
         auto const& Ex = E(Component::X);
         auto const& Ey = E(Component::Y);
         auto const& Ez = E(Component::Z);
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
 
         if constexpr (direction == Direction::X)
-            return std::make_pair(
-                PerIndexVector<double>{nan,
-                                       GridLayout::template project<implT::edgeYToFaceX>(Ey, idx),
-                                       GridLayout::template project<implT::edgeZToFaceX>(Ez, idx)},
-                PerIndexVector<double>{nan, GridLayout::template project<implT::ByToFaceX>(By, idx),
-                                       GridLayout::template project<implT::BzToFaceX>(Bz, idx)});
+        {
+            constexpr auto zEdgeToXFace
+                = GridLayout::implT::template directionalInterp<dirY, InterpDir::PrimalToDual>();
+            constexpr auto yEdgeToXFace
+                = GridLayout::implT::template directionalInterp<dirZ, InterpDir::PrimalToDual>();
+
+            auto const& By_at_Ez = ct_state.getBy_at_Ez();
+            auto const& Bz_at_Ey = ct_state.getBz_at_Ey();
+
+            auto const EzBy
+                = project_on_face(zEdgeToXFace, [&](auto const& i) { return Ez(i) * By_at_Ez(i); });
+            auto const EyBz
+                = project_on_face(yEdgeToXFace, [&](auto const& i) { return Ey(i) * Bz_at_Ey(i); });
+
+            F_Etot += EyBz - EzBy;
+        }
         else if constexpr (direction == Direction::Y)
-            return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<implT::edgeXToFaceY>(Ex, idx),
-                                       nan,
-                                       GridLayout::template project<implT::edgeZToFaceY>(Ez, idx)},
-                PerIndexVector<double>{GridLayout::template project<implT::BxToFaceY>(Bx, idx), nan,
-                                       GridLayout::template project<implT::BzToFaceY>(Bz, idx)});
-        else
-            return std::make_pair(
-                PerIndexVector<double>{GridLayout::template project<implT::edgeXToFaceZ>(Ex, idx),
-                                       GridLayout::template project<implT::edgeYToFaceZ>(Ey, idx),
-                                       nan},
-                PerIndexVector<double>{GridLayout::template project<implT::BxToFaceZ>(Bx, idx),
-                                       GridLayout::template project<implT::ByToFaceZ>(By, idx),
-                                       nan});
+        {
+            constexpr auto zEdgeToYFace
+                = GridLayout::implT::template directionalInterp<dirX, InterpDir::PrimalToDual>();
+            constexpr auto xEdgeToYFace
+                = GridLayout::implT::template directionalInterp<dirZ, InterpDir::PrimalToDual>();
+
+            auto const& Bx_at_Ez = ct_state.getBx_at_Ez();
+            auto const& Bz_at_Ex = ct_state.getBz_at_Ex();
+
+            auto const EzBx
+                = project_on_face(zEdgeToYFace, [&](auto const& i) { return Ez(i) * Bx_at_Ez(i); });
+            auto const ExBz
+                = project_on_face(xEdgeToYFace, [&](auto const& i) { return Ex(i) * Bz_at_Ex(i); });
+
+            F_Etot += EzBx - ExBz;
+        }
+        else if constexpr (direction == Direction::Z)
+        {
+            constexpr auto xEdgeToZFace
+                = GridLayout::implT::template directionalInterp<dirY, InterpDir::PrimalToDual>();
+            constexpr auto yEdgeToZFace
+                = GridLayout::implT::template directionalInterp<dirX, InterpDir::PrimalToDual>();
+
+            auto const& By_at_Ex = ct_state.getBy_at_Ex();
+            auto const& Bx_at_Ey = ct_state.getBx_at_Ey();
+
+            auto const ExBy
+                = project_on_face(xEdgeToZFace, [&](auto const& i) { return Ex(i) * By_at_Ex(i); });
+            auto const EyBx
+                = project_on_face(yEdgeToZFace, [&](auto const& i) { return Ey(i) * Bx_at_Ey(i); });
+
+            F_Etot += ExBy - EyBx;
+        }
     }
+
 
     GridLayout layout_;
     bool const is_resistive_;
