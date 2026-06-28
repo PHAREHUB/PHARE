@@ -1,8 +1,12 @@
 #ifndef PHARE_CORE_NUMERICS_BASE_MHD_TIMESTEPPER_HPP
 #define PHARE_CORE_NUMERICS_BASE_MHD_TIMESTEPPER_HPP
 
-#include "initializer/data_provider.hpp"
+#include "core/utilities/algorithm.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+
+#include "initializer/data_provider.hpp"
+
+#include "amr/resources_manager/amr_utils.hpp"
 
 namespace PHARE::solver
 {
@@ -64,63 +68,30 @@ public:
 protected:
     void resetButcherFluxes_(MHDModel& model, auto& level)
     {
-        for (auto& patch : level)
+        auto& rm = *model.resourcesManager;
+        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_))
         {
-            auto const& layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto _ = model.resourcesManager->setOnPatch(*patch, butcherFluxes_, butcherE_);
-
-            evalFluxesOnGhostBox(
-                layout, [&](auto& left, auto const&... args) mutable { left(args...) = 0.0; },
-                butcherFluxes_);
-
-            layout.evalOnGhostBox(butcherE_(core::Component::X), [&](auto const&... args) mutable {
-                butcherE_(core::Component::X)(args...) = 0.0;
-            });
-
-            layout.evalOnGhostBox(butcherE_(core::Component::Y), [&](auto const&... args) mutable {
-                butcherE_(core::Component::Y)(args...) = 0.0;
-            });
-
-            layout.evalOnGhostBox(butcherE_(core::Component::Z), [&](auto const&... args) mutable {
-                butcherE_(core::Component::Z)(args...) = 0.0;
-            });
+            butcherFluxes_.zero();
+            butcherE_.zero();
         }
     }
 
     void accumulateButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
                                   double const coef = 1.0)
     {
-        for (auto& patch : level)
+        auto& rm = *model.resourcesManager;
+        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_, fluxes, E))
         {
-            auto const& layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto _
-                = model.resourcesManager->setOnPatch(*patch, butcherFluxes_, butcherE_, fluxes, E);
-
-            evalFluxesOnGhostBox(
-                layout,
-                [&](auto& left, auto const& right, auto const&... args) mutable {
-                    left(args...) += right(args...) * coef;
-                },
-                butcherFluxes_, fluxes);
-
-
-            layout.evalOnGhostBox(butcherE_(core::Component::X), [&](auto const&... args) mutable {
-                butcherE_(core::Component::X)(args...) += E(core::Component::X)(args...) * coef;
-            });
-
-            layout.evalOnGhostBox(butcherE_(core::Component::Y), [&](auto const&... args) mutable {
-                butcherE_(core::Component::Y)(args...) += E(core::Component::Y)(args...) * coef;
-            });
-
-            layout.evalOnGhostBox(butcherE_(core::Component::Z), [&](auto const&... args) mutable {
-                butcherE_(core::Component::Z)(args...) += E(core::Component::Z)(args...) * coef;
-            });
+            core::operate<core::PlusEqualsProduct>(butcherFluxes_, fluxes, coef);
+            core::operate<core::PlusEqualsProduct>(butcherE_, E, coef);
         }
     }
 
     core::AllFluxes<FieldT, VecFieldT> butcherFluxes_;
     VecFieldT butcherE_;
 };
+
+
 } // namespace PHARE::solver
 
 #endif
