@@ -156,10 +156,11 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
         {
             return initializer.template initTensorFieldFileLevel<1>(level);
         }
-        if (isActiveDiag(diagnostic, "/", "EM_E"))
-        {
-            return initializer.template initTensorFieldFileLevel<1>(level);
-        }
+        if constexpr (requires { modelView.getE(); })
+            if (isActiveDiag(diagnostic, "/", "EM_E"))
+            {
+                return initializer.template initTensorFieldFileLevel<1>(level);
+            }
         if constexpr (requires { modelView.getB1(); })
             if (isActiveDiag(diagnostic, "/", "EM_B1"))
             {
@@ -208,11 +209,12 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
                     auto& B = this->h5Writer_.modelView().getB();
                     writer.template writeTensorField<1>(B, layout);
                 }
-                if (isActiveDiag(diagnostic, "/", "EM_E"))
-                {
-                    auto& E = this->h5Writer_.modelView().getE();
-                    writer.template writeTensorField<1>(E, layout);
-                }
+                if constexpr (requires { modelView.getE(); })
+                    if (isActiveDiag(diagnostic, "/", "EM_E"))
+                    {
+                        auto& E = this->h5Writer_.modelView().getE();
+                        writer.template writeTensorField<1>(E, layout);
+                    }
                 if constexpr (requires { modelView.getB1(); })
                     if (isActiveDiag(diagnostic, "/", "EM_B1"))
                     {

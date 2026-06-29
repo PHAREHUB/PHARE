@@ -37,6 +37,13 @@ public:
         auto const [hydro_speedL, hydro_speedR, mag_speedL, mag_speedR]
             = hll_speeds_<direction>(uL, uR, jL, jR);
 
+        // Convert to conservative BEFORE splitting the tuple: as_reduced_conservative_tuple()
+        // expects conservative state (momentum/total energy), so on still-primitive uL/uR it would
+        // feed velocity as momentum and pressure as total energy (cf. the no-current overload and
+        // rusanov.hpp).
+        uL.to_conservative(gamma_);
+        uR.to_conservative(gamma_);
+
         auto split_state = [](auto const& a) {
             auto const reduced = a.as_reduced_conservative_tuple();
             auto hydro = std::make_tuple(std::get<0>(reduced), std::get<1>(reduced),

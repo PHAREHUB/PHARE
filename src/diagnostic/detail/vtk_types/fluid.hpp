@@ -348,10 +348,20 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
         auto const& B0y = B0(core::Component::Y);
         auto const& B0z = B0(core::Component::Z);
 
+        // Reconstruct each magnetic component on its OWN (face-centered) ghost box. Iterating the
+        // cell-centered Etot box here would leave each component's last primal face unwritten (NaN).
+        auto const rebuildComponent
+            = [&](auto& dst, auto const& perturbed, auto const& background) {
+                  layout.evalOnGhostBox(dst, [&](auto&... args) mutable {
+                      dst(args...) = perturbed(args...) + background(args...);
+                  });
+              };
+        rebuildComponent(Bx, B1x, B0x);
+        rebuildComponent(By, B1y, B0y);
+        rebuildComponent(Bz, B1z, B0z);
+
+        // Etot is cell-centered; reconstruct it on its own box.
         layout.evalOnGhostBox(Etot, [&](auto&... args) mutable {
-            Bx(args...)   = B1x(args...) + B0x(args...);
-            By(args...)   = B1y(args...) + B0y(args...);
-            Bz(args...)   = B1z(args...) + B0z(args...);
             Etot(args...) = core::etot1ToEtot(E1(args...), B1x(args...), B1y(args...), B1z(args...),
                                               B0x(args...), B0y(args...), B0z(args...));
         });

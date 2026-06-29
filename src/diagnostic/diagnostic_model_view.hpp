@@ -292,10 +292,9 @@ public:
 
     NO_DISCARD const Field& getEtot1() const { return this->model_.state.Etot1; }
 
-    NO_DISCARD const VecField& getE() const
-    {
-        throw std::runtime_error("E not currently available in MHD diagnostics");
-    }
+    // No getE() for MHD: E is not a diagnostic quantity here. Its absence lets the electromag
+    // diagnostic writers SFINAE-skip EM_E for MHD (via `requires { modelView.getE(); }`), the same
+    // idiom used for the MHD-only getB1()/getDivB().
 
     // for setBuffer function in visitHierarchy
     NO_DISCARD Field& getRho() { return this->model_.state.rho; }
@@ -311,11 +310,6 @@ public:
     NO_DISCARD VecField& getB0() { return this->model_.B0; }
 
     NO_DISCARD Field& getEtot1() { return this->model_.state.Etot1; }
-
-    NO_DISCARD VecField& getE()
-    {
-        throw std::runtime_error("E not currently available in MHD diagnostics");
-    }
 
     // diag only
     NO_DISCARD VecField& getV() { return V_diag_; }

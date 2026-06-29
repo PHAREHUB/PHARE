@@ -53,6 +53,10 @@ public:
 
         if constexpr (Hall || Resistivity || HyperResistivity)
         {
+            // NOTE: J is built as curl(B1) only, so the static background contributes curl(B0) = 0
+            // to the current. This is exact for a curl-free B0 (the usual background). For a
+            // current-carrying B0 (curl(B0) != 0) the Hall/resistive/hyper-resistive terms would
+            // miss curl(B0); to support that, thread model.B0 here and compute J = curl(B1 + B0).
             Ampere_t{level, model}(state.B1, state.J);
             TimeSetter{level, model, newTime}(state.B1, state.J);
         }

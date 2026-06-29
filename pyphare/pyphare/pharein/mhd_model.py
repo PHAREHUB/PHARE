@@ -68,7 +68,9 @@ class MHDModel(object):
         vz = self.defaulter(vz, 0.0)
         p = self.defaulter(p, 1.0)
         # b0x, b0y, b0z prescribe the static background field B0 (default zero, which reduces the
-        # split formulation to classical MHD).
+        # split formulation to classical MHD). Capture whether a component B0 was given before it
+        # is defaulted, so a b0-only run keeps B1 = 0 (see the field-handling below).
+        b0_given = any(b is not None for b in (b0x, b0y, b0z))
         b0x = self.defaulter(b0x, 0.0)
         b0y = self.defaulter(b0y, 0.0)
         b0z = self.defaulter(b0z, 0.0)
@@ -100,11 +102,20 @@ class MHDModel(object):
             bx = lambda *xyz: b0x(*xyz) + b1x(*xyz)
             by = lambda *xyz: b0y(*xyz) + b1y(*xyz)
             bz = lambda *xyz: b0z(*xyz) + b1z(*xyz)
+        elif b0_from_potential:
+            # B0 from a potential: the stored field is B1 directly (no subtraction); an unspecified
+            # field means no perturbation.
+            bx = self.defaulter(bx, 0.0)
+            by = self.defaulter(by, 0.0)
+            bz = self.defaulter(bz, 0.0)
+        elif b0_given and not b_total_given:
+            # Only a component background B0 was given (no total bx/by/bz): the total equals B0, so
+            # B1 = total - B0 = 0. (Falling through to the classical default below would set bx=1
+            # and spuriously make B1 = (1,0,0) - B0.)
+            bx, by, bz = b0x, b0y, b0z
         else:
-            # When B0 comes from a potential the stored field is B1 (no subtraction), so an
-            # unspecified field means no perturbation (default 0); otherwise it is the classical
-            # total field whose default is a uniform Bx = 1.
-            bx = self.defaulter(bx, 0.0 if b0_from_potential else 1.0)
+            # Classical default total field: uniform Bx = 1.
+            bx = self.defaulter(bx, 1.0)
             by = self.defaulter(by, 0.0)
             bz = self.defaulter(bz, 0.0)
 
