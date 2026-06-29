@@ -298,5 +298,10 @@ def populateDict(sim):
                 restarts_path + "write_timestamps", restart_options["timestamps"]
             )
 
+        add_size_t(
+            restarts_path + "write_niter_period",
+            restart_options.get("write_niter_period", 0),
+        )
+
         add_string(restarts_path + "serialized_simulation", serialized_sim)
     #### restarts added

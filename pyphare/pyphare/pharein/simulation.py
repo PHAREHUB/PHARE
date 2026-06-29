@@ -600,6 +600,8 @@ def check_restart_options(**kwargs):
         "dir",
         "elapsed_timestamps",
         "timestamps",
+        "time_period",  # write a restart every time_period (built into timestamps)
+        "niter_period",  # write a restart every niter_period coarse steps (C++ cadence)
         "mode",
         "restart_time",  # number or "auto"
         "keep_last",  # delete obsolete
