@@ -199,6 +199,7 @@ def populateDict(sim):
         add_string(name_path + "/" + "type", diag.type)
         add_string(name_path + "/" + "quantity", diag.quantity)
         add_size_t(name_path + "/" + "flush_every", diag.flush_every)
+        add_size_t(name_path + "/" + "write_niter_period", diag.write_niter_period)
         pp.add_array_as_vector(
             name_path + "/" + "write_timestamps", diag.write_timestamps
         )
