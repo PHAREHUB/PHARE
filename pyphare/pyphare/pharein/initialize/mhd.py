@@ -73,3 +73,18 @@ def populateDict(sim):
     addInitFunction(
         "simulation/mhd_state/pressure/initializer", fn_wrapper(modelDict["p"])
     )
+
+    # vector-potential init (2D): B0 = curl(a0z z_hat), B1 = curl(a1z z_hat). The mode strings
+    # tell the C++ side which fields to build from their potential instead of from the component
+    # functions above. The potential functions are always provided (zero by default) so the dict
+    # keys exist regardless of mode.
+    add_string("simulation/mhd_state/b0_init_mode", modelDict["b0_init_mode"])
+    add_string("simulation/mhd_state/b1_init_mode", modelDict["b1_init_mode"])
+    addInitFunction(
+        "simulation/mhd_state/external_magnetic/initializer/potential_z",
+        fn_wrapper(modelDict["a0z"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/perturbed_magnetic/initializer/potential_z",
+        fn_wrapper(modelDict["a1z"]),
+    )

@@ -12,10 +12,51 @@
 
 #include "initializer/data_provider.hpp"
 
+#include <stdexcept>
+
 namespace PHARE
 {
 namespace core
 {
+    // 2D-only: fill Bout = curl(A_z z_hat) = (dA_z/dy, -dA_z/dx, 0) over the ghost box.
+    // A_z is sampled at E_z (edge) centring into the Az scratch field, then the discrete `deriv`
+    // (the same operator Faraday uses) yields a face-centred B with discrete div B = 0 to machine
+    // precision (div . curl = 0), unlike a component-wise init sampled at face centres. Az is the
+    // caller's E_z buffer (overwritten before its real use by the constrained transport).
+    template<typename GridLayout, typename VecField, typename ScalarField>
+    void initBFromPotentialAz(initializer::InitFunction<GridLayout::dimension> const& aInit,
+                              VecField& Bout, ScalarField& Az, GridLayout const& layout)
+    {
+        if constexpr (GridLayout::dimension == 2)
+        {
+            FieldUserFunctionInitializer::initialize(Az, layout, aInit);
+
+            auto& Bx = Bout(Component::X);
+            auto& By = Bout(Component::Y);
+            auto& Bz = Bout(Component::Z);
+
+            // Fill the full ghost box so B0 ghosts (read by the flux reconstruction and refreshed
+            // each substep by updateExternalFields) and B1 ghosts are not left NaN. A_z is filled
+            // over its own ghost box, so the discrete deriv is exact on the domain; the outermost
+            // ghost layer is approximate but finite.
+            layout.evalOnGhostBox(Bx, [&](auto&... args) {
+                Bx(args...) = layout.template deriv<Direction::Y>(Az, {args...});
+            });
+            layout.evalOnGhostBox(By, [&](auto&... args) {
+                By(args...) = -layout.template deriv<Direction::X>(Az, {args...});
+            });
+            layout.evalOnGhostBox(Bz, [&](auto&... args) { Bz(args...) = 0.0; });
+        }
+        else
+        {
+            (void)aInit;
+            (void)Bout;
+            (void)Az;
+            (void)layout;
+            throw std::runtime_error(
+                "MHD vector-potential init (a0z/a1z) is only supported in 2D");
+        }
+    }
 
     // The dynamic MHD state of the B = B0 + B1 split. It holds the evolved perturbation field B1
     // (the user prescribes the total field B; B1 = B - B0 at init) and the conserved perturbation
@@ -36,25 +77,26 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return rho.isUsable() and V.isUsable() and B1.isUsable() and P.isUsable()
-                   and rhoV.isUsable() and Etot1.isUsable() and J.isUsable() and E.isUsable();
+            return rho.isUsable() and V.isUsable() and B1.isUsable() and B.isUsable()
+                   and P.isUsable() and rhoV.isUsable() and Etot1.isUsable() and J.isUsable()
+                   and E.isUsable();
         }
 
         NO_DISCARD bool isSettable() const
         {
-            return rho.isSettable() and V.isSettable() and B1.isSettable() and P.isSettable()
-                   and rhoV.isSettable() and Etot1.isSettable() and J.isSettable()
-                   and E.isSettable();
+            return rho.isSettable() and V.isSettable() and B1.isSettable() and B.isSettable()
+                   and P.isSettable() and rhoV.isSettable() and Etot1.isSettable()
+                   and J.isSettable() and E.isSettable();
         }
 
         NO_DISCARD auto getCompileTimeResourcesViewList() const
         {
-            return std::forward_as_tuple(rho, V, B1, P, rhoV, Etot1, J, E);
+            return std::forward_as_tuple(rho, V, B1, B, P, rhoV, Etot1, J, E);
         }
 
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            return std::forward_as_tuple(rho, V, B1, P, rhoV, Etot1, J, E);
+            return std::forward_as_tuple(rho, V, B1, B, P, rhoV, Etot1, J, E);
         }
 
         //-------------------------------------------------------------------------
@@ -65,6 +107,7 @@ namespace core
             : rho{dict["name"].template to<std::string>() + "_" + "rho", MHDQuantity::Scalar::rho}
             , V{dict["name"].template to<std::string>() + "_" + "V", MHDQuantity::Vector::V}
             , B1{dict["name"].template to<std::string>() + "_" + "B1", MHDQuantity::Vector::B1}
+            , B{dict["name"].template to<std::string>() + "_" + "B", MHDQuantity::Vector::B}
             , P{dict["name"].template to<std::string>() + "_" + "P", MHDQuantity::Scalar::P}
 
 
@@ -85,13 +128,25 @@ namespace core
             , Pinit_{dict["pressure"]["initializer"]
                          .template to<initializer::InitFunction<dimension>>()}
             , gamma_{dict["to_conservative_init"]["heat_capacity_ratio"].template to<double>()}
+            , b0FromPotential_{cppdict::get_value(dict, "b0_init_mode", std::string{"components"})
+                               == "potential"}
+            , b1FromPotential_{cppdict::get_value(dict, "b1_init_mode", std::string{"components"})
+                               == "potential"}
         {
+            // Vector-potential init (2D): the potential function is read only when B1 is in
+            // "potential" mode, so dicts that predate this feature (e.g. C++ unit-test dicts) need
+            // not provide the potential_z key. b0FromPotential_ is needed only to skip the
+            // B1 = total - B0 subtraction below (the Python total cannot fold a potential B0).
+            if (b1FromPotential_)
+                a1zInit_ = dict["perturbed_magnetic"]["initializer"]["potential_z"]
+                               .template to<initializer::InitFunction<dimension>>();
         }
 
         MHDState(std::string name)
             : rho{name + "_" + "rho", MHDQuantity::Scalar::rho}
             , V{name + "_" + "V", MHDQuantity::Vector::V}
             , B1{name + "_" + "B1", MHDQuantity::Vector::B1}
+            , B{name + "_" + "B", MHDQuantity::Vector::B}
             , P{name + "_" + "P", MHDQuantity::Scalar::P}
 
 
@@ -114,16 +169,38 @@ namespace core
         {
             FieldUserFunctionInitializer::initialize(rho, layout, rhoinit_);
             Vinit_.initialize(V, layout);
-            totalBInit_.initialize(B1, layout);
             FieldUserFunctionInitializer::initialize(P, layout, Pinit_);
 
-            for (auto const& component : {Component::X, Component::Y, Component::Z})
+            if (b1FromPotential_)
             {
-                auto& B1c       = B1(component);
-                auto const& B0c = B0(component);
-                layout.evalOnGhostBox(B1c,
-                                      [&](auto&... args) mutable { B1c(args...) -= B0c(args...); });
+                // B1 = curl(a1z z_hat), built directly as the perturbation (no subtraction).
+                initBFromPotentialAz(a1zInit_, B1, E(Component::Z), layout);
             }
+            else
+            {
+                totalBInit_.initialize(B1, layout);
+                // In component mode dict["magnetic"] holds the total field B0 + B1, so subtract the
+                // analytic B0 to recover B1. When B0 itself comes from a vector potential the Python
+                // side could not fold it into the total, so dict["magnetic"] already equals the
+                // perturbation and no subtraction is needed.
+                if (!b0FromPotential_)
+                    for (auto const& component : {Component::X, Component::Y, Component::Z})
+                    {
+                        auto& B1c       = B1(component);
+                        auto const& B0c = B0(component);
+                        layout.evalOnGhostBox(
+                            B1c, [&](auto&... args) mutable { B1c(args...) -= B0c(args...); });
+                    }
+            }
+
+            // The B1 potential init used E_z as an A_z scratch buffer; clear E so t=0 diagnostics
+            // and the first read see 0 (constrained transport recomputes E before its real use).
+            if (b1FromPotential_)
+                for (auto const& component : {Component::X, Component::Y, Component::Z})
+                {
+                    auto& Ec = E(component);
+                    layout.evalOnGhostBox(Ec, [&](auto&... args) mutable { Ec(args...) = 0.0; });
+                }
 
             ToConservativeConverter{layout, gamma_}(
                 rho, V, B1, P, rhoV, Etot1); // initial to conservative conversion because we
@@ -133,6 +210,7 @@ namespace core
         field_type rho;
         VecFieldT V;
         VecFieldT B1;
+        VecFieldT B;
         field_type P;
 
         VecFieldT rhoV;
@@ -148,6 +226,13 @@ namespace core
         initializer::InitFunction<dimension> Pinit_;
 
         double const gamma_;
+
+        // Vector-potential init (2D): build B1 from an out-of-plane potential A_z so that div B = 0
+        // discretely. b0FromPotential_ only governs the B1 = total - B0 subtraction. Defaults keep
+        // the legacy component-wise init.
+        bool b0FromPotential_ = false;
+        bool b1FromPotential_ = false;
+        initializer::InitFunction<dimension> a1zInit_;
     };
 } // namespace core
 } // namespace PHARE

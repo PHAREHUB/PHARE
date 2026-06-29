@@ -33,6 +33,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/core/numerics/ohm)
   add_subdirectory(tests/core/numerics/ion_updater)
   add_subdirectory(tests/core/numerics/mhd_well_balanced)
+  add_subdirectory(tests/core/numerics/mhd_vector_potential_init)
 
 
   add_subdirectory(tests/initializer)
@@ -68,6 +69,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/harris)
 
   add_subdirectory(tests/functional/mhd_alfven2d)
+  add_subdirectory(tests/functional/mhd_2d_vector_potential_init)
   add_subdirectory(tests/functional/mhd_convergence)
   add_subdirectory(tests/functional/mhd_multidimensional_convergence)
   add_subdirectory(tests/functional/mhd_dispersion)

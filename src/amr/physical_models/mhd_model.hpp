@@ -48,6 +48,11 @@ public:
     // face-centered storage onto the EMF edges / Riemann faces where they consume it.
     vecfield_type B0{model_name + "_B0", core::MHDQuantity::Vector::B0};
     core::VecFieldInitializer<dimension> B0init_;
+    // Vector-potential init (2D): when set, B0 = curl(a0z z_hat) is built with the discrete curl
+    // (div B0 = 0 to machine precision) instead of from the component functions B0init_. Defaults
+    // keep the legacy component-wise init.
+    bool b0FromPotential_ = false;
+    PHARE::initializer::InitFunction<dimension> a0zInit_;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
     // diagnostics buffers
@@ -73,11 +78,34 @@ public:
         for (auto& patch : level)
         {
             auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            auto _      = resourcesManager->setOnPatch(*patch, B0);
-            B0init_.initialize(B0, layout);
+            if (b0FromPotential_)
+            {
+                // B0 = curl(a0z z_hat), built with the discrete curl using E_z as the A_z scratch.
+                auto _ = resourcesManager->setOnPatch(*patch, B0, state.E);
+                core::initBFromPotentialAz(a0zInit_, B0, state.E(core::Component::Z), layout);
+                clearEScratch_(layout);
+            }
+            else
+            {
+                auto _ = resourcesManager->setOnPatch(*patch, B0);
+                B0init_.initialize(B0, layout);
+            }
         }
     }
 
+
+    // Zero the E_z scratch reused as the A_z buffer during a vector-potential B0 init, so t=0
+    // diagnostics and the first read see 0 (constrained transport recomputes E before its real
+    // use). Requires state.E set on the patch.
+    template<typename GridLayout>
+    void clearEScratch_(GridLayout const& layout)
+    {
+        for (auto const& component : {core::Component::X, core::Component::Y, core::Component::Z})
+        {
+            auto& Ec = state.E(component);
+            layout.evalOnGhostBox(Ec, [&](auto&... args) mutable { Ec(args...) = 0.0; });
+        }
+    }
 
     void allocate(patch_t& patch, double const allocateTime) override
     {
@@ -105,8 +133,17 @@ public:
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
         , B0init_{dict["mhd_state"]["external_magnetic"]["initializer"]}
+        , b0FromPotential_{cppdict::get_value(dict["mhd_state"], "b0_init_mode",
+                                              std::string{"components"})
+                           == "potential"}
         , resourcesManager{std::move(_resourcesManager)}
     {
+        // Vector-potential init (2D): read the out-of-plane potential only in "potential" mode so
+        // dicts that predate this feature need not provide the potential_z key.
+        if (b0FromPotential_)
+            a0zInit_ = dict["mhd_state"]["external_magnetic"]["initializer"]["potential_z"]
+                           .template to<PHARE::initializer::InitFunction<dimension>>();
+
         resourcesManager->registerResources(B0);
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
@@ -152,7 +189,15 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
 
         // evaluate the static background B0 first, then the dynamic state, which subtracts B0 from
         // the prescribed total field to form B1.
-        B0init_.initialize(B0, layout);
+        if (b0FromPotential_)
+        {
+            // B0 = curl(a0z z_hat) via the discrete curl, using E_z as the A_z scratch. Clear E
+            // before state.initialize so a component-mode B1 leaves no A_z residue in E.
+            core::initBFromPotentialAz(a0zInit_, B0, state.E(core::Component::Z), layout);
+            clearEScratch_(layout);
+        }
+        else
+            B0init_.initialize(B0, layout);
         state.initialize(layout, B0);
     }
 }
