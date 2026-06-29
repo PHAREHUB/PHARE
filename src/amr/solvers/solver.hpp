@@ -11,6 +11,7 @@
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
+#include <limits>
 #include <string>
 
 
@@ -118,6 +119,26 @@ namespace solver
                               double const allocateTime) const
             = 0;
 
+
+
+        /**
+         * @brief computeStableDt returns the level's GLOBAL stable time step, already reduced
+         * across every rank the level is distributed over (so the value is identical on all ranks).
+         *
+         * It combines two stability buckets, each scaled by its own coefficient (both normalized so
+         * that 1 is the stability limit independent of dimension; choose in (0, 1]):
+         *   - advective (hyperbolic, incl. Hall whistler when active), scaled by @p cfl
+         *   - resistive (parabolic diffusion), scaled by @p fourier (Fourier number Fo =
+         *     eta*dt/dx^2)
+         * and returns their min.
+         *
+         * If not overriden by the actual Solver implementation, returns a very big double.
+         */
+        virtual double computeStableDt(IPhysicalModel_t& model, level_t& level, double const cfl,
+                                       double const fourier)
+        {
+            return std::numeric_limits<double>::max();
+        }
 
 
         virtual void onRegrid() {} // do what you need to do on regrid

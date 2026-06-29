@@ -33,6 +33,9 @@
 #include "core/logger.hpp"
 #include "core/utilities/algorithm.hpp"
 
+#include <limits>
+#include <algorithm>
+
 #include "load_balancing/load_balancer_manager.hpp"
 #include "load_balancing/load_balancer_estimator.hpp"
 #include "phare_core.hpp"
@@ -450,6 +453,48 @@ namespace solver
         }
 
 
+
+
+        /**
+         * @brief computeStableDt returns the adaptive coarse-level (L0) time step satisfying the
+         * CFL constraint on every existing level.
+         *
+         * Each level i is advanced with dt_i = dt_0 / prod_{j<=i} ratio_j^2 (the rigid cascade
+         * enforced by getMaxFinerLevelDt). Stability on level i therefore requires
+         * dt_0 <= dt_i^stable * prod_{j<=i} ratio_j^2. The tightest such bound wins, hence the min.
+         *
+         * Each solver.computeStableDt(...) already applies the cfl/fourier coefficients and reduces
+         * across ranks, returning its level's GLOBAL stable dt; the loop below is pure local
+         * arithmetic (projection + min) and yields the same dt_0 on every rank.
+         */
+        double computeStableDt(SAMRAI::hier::PatchHierarchy& hierarchy, double const cfl,
+                               double const fourier)
+        {
+            double dt0 = std::numeric_limits<double>::max();
+
+            // factor converting a level-i stable dt into its equivalent bound on the L0 dt:
+            // l0ProjectionFactor = prod_{j<=i} ratio_j^2  (so dt_0 <= dt_i^stable * factor)
+            double l0ProjectionFactor = 1.0;
+
+            for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
+            {
+                auto level = hierarchy.getPatchLevel(iLevel);
+
+                if (iLevel > 0)
+                {
+                    auto const r = static_cast<double>(level->getRatioToCoarserLevel().max());
+                    l0ProjectionFactor *= r * r;
+                }
+
+                // global per-level stable dt (solver applies cfl/fourier + cross-rank reduction)
+                auto const levelDt
+                    = getSolver_(iLevel).computeStableDt(getModel_(iLevel), *level, cfl, fourier);
+
+                dt0 = std::min(dt0, levelDt * l0ProjectionFactor);
+            }
+
+            return dt0;
+        }
 
 
         void dump_(int iLevel)

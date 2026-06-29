@@ -39,15 +39,51 @@ private:
     std::size_t idx_ = 0;
 };
 
+// Accumulates the (possibly varying) dt actually used at each step, for adaptive time stepping.
+class VariableTimeStamper : public ITimeStamper
+{
+public:
+    VariableTimeStamper(double const& dt, double const& init_time = 0)
+        : dt_{dt}
+        , last_change_{init_time}
+        , last_time_(init_time)
+    {
+    }
+
+    double operator+=(double const& new_dt) noexcept override
+    {
+        assert(new_dt > 0);
+
+        if (new_dt != dt_) // not sure if safe, possibly
+        {
+            dt_          = new_dt;
+            last_change_ = last_time_;
+            n_same_      = 0;
+        }
+        return (last_time_ = last_change_ + (dt_ * ++n_same_));
+    }
+
+private:
+    std::size_t n_same_ = 0;
+    double dt_          = 0;
+    double last_change_ = 0;
+    double last_time_   = 0;
+};
+
 struct TimeStamperFactory
 {
     NO_DISCARD static std::unique_ptr<ITimeStamper> create(initializer::PHAREDict const& dict)
     {
-        assert(dict.contains("time_step"));
-        auto time_step  = dict["time_step"].template to<double>();
+        auto const& time_step_dict = dict["time_step"];
+        if (time_step_dict.contains("mode")
+            && time_step_dict["mode"].template to<std::string>() == "adaptive")
+            // dt_ seed is irrelevant: the first (varying) dt resets it on the first step
+            return std::make_unique<VariableTimeStamper>(0.);
+
+        assert(time_step_dict.contains("value"));
+        auto time_step  = time_step_dict["value"].template to<double>();
         std::size_t idx = 0;
 
-        // only option for the moment https://github.com/PHAREHUB/PHARE/issues/475
         return std::make_unique<ConstantTimeStamper>(time_step, idx);
     }
 };
