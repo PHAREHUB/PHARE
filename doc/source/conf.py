@@ -162,10 +162,7 @@ htmlhelp_basename = "PHAREdoc"
 
 
 # -- Options for LaTeX output ------------------------------------------------
-# tex_extensions holds MathJax extension names (used for HTML output above) and
-# must not be reused as LaTeX package names: there is no "ams" LaTeX package
-# (it is amsmath/amssymb), so \usepackage{ams} would break PDF builds. List the
-# real LaTeX packages here instead.
+
 preamble_lines = [
     r"\usepackage{amsmath}",
     r"\usepackage{amssymb}",
