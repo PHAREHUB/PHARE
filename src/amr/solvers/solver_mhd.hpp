@@ -292,6 +292,8 @@ template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy,
 void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::prepareStep(
     IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, double const currentTime)
 {
+    PHARE_LOG_SCOPE(1, "SolverMHD::prepareStep");
+
     oldTime_[level.getLevelNumber()] = currentTime;
 
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
