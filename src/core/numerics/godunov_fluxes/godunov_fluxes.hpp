@@ -67,8 +67,8 @@ struct GodunovInfo : public OhmInfo
 };
 
 
-template<typename GridLayout, template<typename> typename Reconstruction,
-         typename RiemannSolver, typename Equations>
+template<typename GridLayout, template<typename> typename Reconstruction, typename RiemannSolver,
+         typename Equations>
 class Godunov : public GodunovInfo
 {
     using Super                     = GodunovInfo;
@@ -170,11 +170,11 @@ public:
             {
                 layout_.evalOnBox(
                     fluxes.template expose_centering<direction>(), [&](auto&... indices) {
-                        auto& Jt      = ct_state.template getJt<direction>();
-                        auto& Bt      = getBt_<direction>(fvm_state);
-                        auto const& F = fluxes.template get_dir<direction>({indices...});
-                        auto& F_B     = F.B;
-                        auto& F_Etot  = F.Etot();
+                        auto& Jt     = ct_state.template getJt<direction>();
+                        auto& Bt     = getBt_<direction>(fvm_state);
+                        auto F       = fluxes.template get_dir<direction>({indices...});
+                        auto& F_B    = F.B;
+                        auto& F_Etot = F.Etot();
 
                         auto const& Btidx = toPerIndexVector(Bt, {indices...});
 
@@ -195,8 +195,9 @@ public:
                                                                            F_Etot);
                             else if (hyper_mode == HyperMode::spatial)
                             {
-                                auto const& Bn   = toPerIndexVector(state.B, {indices...});
-                                auto const& rhot = ct_state.template getRhot<direction>()(indices...);
+                                auto const& Bn = toPerIndexVector(state.B, {indices...});
+                                auto const& rhot
+                                    = ct_state.template getRhot<direction>()(indices...);
 
                                 return spatial_hyperresistive_<direction>(Btidx, Bn, vecLaplJ, rhot,
                                                                           F_B, F_Etot);

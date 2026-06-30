@@ -176,7 +176,7 @@ struct AllFluxes
     }
 
     template<auto direction>
-    auto get_dir(MeshIndex<Field::dimension> index) const
+    auto get_dir(MeshIndex<Field::dimension> index)
         requires((!ViewVector<Field>) && (!ViewVector<VecField>))
     {
         using Float = typename Field::value_type;
