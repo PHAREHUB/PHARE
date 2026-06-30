@@ -17,9 +17,7 @@ contribution of macro-particles in the following way is the base of the so-calle
 
 
 .. math::
-   \begin{equation}
    f_p(\mathbf{r}, \mathbf{v}, t) = \sum_m^{N_p} w_m S(\mathbf{r} - \mathbf{r}_m(t))\delta(\mathbf{v}-\mathbf{v}_m(t))
-   \end{equation}
 
 
 
