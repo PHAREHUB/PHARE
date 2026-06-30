@@ -161,6 +161,15 @@ auto& convert_to_fortran_primal(               //
 }
 
 
+template<template<typename> typename Op, std::size_t dim, typename PhysicalQuantity, typename Data_t>
+void operate(Field<dim, PhysicalQuantity, Data_t>& dst,
+             Field<dim, PhysicalQuantity, Data_t> const& src, auto&&... args)
+{
+    using Operator = Op<Data_t>;
+    for (std::size_t i = 0; i < dst.size(); ++i)
+        Operator{dst.data()[i]}(src.data()[i], args...);
+}
+
 template<template<typename> typename Op, typename Field_t, typename PQ, std::size_t rank>
 void operate(TensorField<Field_t, PQ, rank>& dst, TensorField<Field_t, PQ, rank> const& src,
              auto&&... args)

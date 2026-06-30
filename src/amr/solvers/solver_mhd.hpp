@@ -2,6 +2,7 @@
 #define PHARE_SOLVER_MHD_HPP
 
 
+#include "core/def.hpp"
 #include "initializer/data_provider.hpp"
 
 #include "core/errors.hpp"
@@ -11,6 +12,7 @@
 #include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "core/utilities/algorithm.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 
 #include "amr/solvers/solver.hpp"
@@ -326,39 +328,17 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::accumula
     PHARE_LOG_SCOPE(1, "SolverMHD::accumulateFluxSum");
 
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
+    auto& rm       = *mhdModel.resourcesManager;
 
-    for (auto& patch : level)
+    // MacOS clang still unhappy with structured bindings captures in lambdas
+    auto&& tf          = evolve_.exposeFluxes();
+    auto& timeFluxes   = std::get<0>(tf);
+    auto& timeElectric = std::get<1>(tf);
+
+    for (auto& _ : rm.enumerate(level, fluxSum_, fluxSumE_, timeFluxes, timeElectric))
     {
-        // MacOS clang still unhappy with structured bindings captures in lambdas
-        auto&& tf          = evolve_.exposeFluxes();
-        auto& timeFluxes   = std::get<0>(tf);
-        auto& timeElectric = std::get<1>(tf);
-
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _ = mhdModel.resourcesManager->setOnPatch(*patch, fluxSum_, fluxSumE_, timeFluxes,
-                                                       timeElectric);
-
-        evalFluxesOnGhostBox(
-            layout,
-            [&](auto& left, auto const& right, auto const&... args) mutable {
-                left(args...) += right(args...) * coef;
-            },
-            fluxSum_, timeFluxes);
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::X)(args...)
-                += timeElectric(core::Component::X)(args...) * coef;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Y), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Y)(args...)
-                += timeElectric(core::Component::Y)(args...) * coef;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Z), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Z)(args...)
-                += timeElectric(core::Component::Z)(args...) * coef;
-        });
+        core::operate<core::PlusEqualsProduct>(fluxSum_, timeFluxes, coef);
+        core::operate<core::PlusEqualsProduct>(fluxSumE_, timeElectric, coef);
     }
 }
 
@@ -367,27 +347,12 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::resetFlu
     IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level)
 {
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
+    auto& rm       = *mhdModel.resourcesManager;
 
-    for (auto& patch : level)
+    for (auto& _ : rm.enumerate(level, fluxSum_, fluxSumE_))
     {
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _             = mhdModel.resourcesManager->setOnPatch(*patch, fluxSum_, fluxSumE_);
-
-        evalFluxesOnGhostBox(
-            layout, [&](auto& left, auto const&... args) mutable { left(args...) = 0.0; },
-            fluxSum_);
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::X), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::X)(args...) = 0.0;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Y), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Y)(args...) = 0.0;
-        });
-
-        layout.evalOnGhostBox(fluxSumE_(core::Component::Z), [&](auto const&... args) mutable {
-            fluxSumE_(core::Component::Z)(args...) = 0.0;
-        });
+        fluxSum_.zero();
+        fluxSumE_.zero();
     }
 }
 
@@ -420,7 +385,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::advanceL
     {
         evolve_(mhdModel, mhdModel.state, fluxes_, fromCoarser, *level, currentTime, newTime);
 
-        mhdNaNCheck_(mhdModel, *level, currentTime);
+        PHARE_DEBUG_DO({ mhdNaNCheck_(mhdModel, *level, currentTime); })
     }
     catch (core::DictionaryException& ex)
     {

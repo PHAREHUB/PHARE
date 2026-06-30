@@ -7,6 +7,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
+#include "core/utilities/algorithm.hpp"
 #include "core/utilities/index/index.hpp"
 #include <cassert>
 #include <cstddef>
@@ -244,6 +245,28 @@ struct AllFluxes
             throw std::runtime_error("Error - AllFluxes - dimension not supported");
     }
 
+    void zero()
+    {
+        rho_fx.zero();
+        rhoV_fx.zero();
+        B_fx.zero();
+        Etot_fx.zero();
+        if constexpr (dimension >= 2)
+        {
+            rho_fy.zero();
+            rhoV_fy.zero();
+            B_fy.zero();
+            Etot_fy.zero();
+        }
+        if constexpr (dimension == 3)
+        {
+            rho_fz.zero();
+            rhoV_fz.zero();
+            B_fz.zero();
+            Etot_fz.zero();
+        }
+    }
+
     Field rho_fx;
     VecField rhoV_fx;
     VecField B_fx;
@@ -297,65 +320,6 @@ struct AllFluxesNames
     }
 };
 
-// maybe we could want something more general than this, and use class iterators instead.
-// if not, we could consider using concepts to make sure this is not used in the wrong context
-template<typename Layout, typename Fn, typename First, typename... Fluxes>
-void evalFluxesOnGhostBox(Layout& layout, Fn&& fn, First& first, Fluxes&... fluxes)
-{
-    auto static constexpr dimension = std::decay_t<decltype(layout)>::dimension;
-
-    auto evalField = [&](auto& firstField, auto&... fluxFields) {
-        layout.evalOnGhostBox(firstField, [&](auto const&... args) mutable {
-            if constexpr (sizeof...(Fluxes) > 0)
-            {
-                fn(firstField, fluxFields..., args...);
-            }
-            else
-            {
-                fn(firstField, args...);
-            }
-        });
-    };
-
-    evalField(first.rho_fx, fluxes.rho_fx...);
-    evalField(first.rhoV_fx(core::Component::X), fluxes.rhoV_fx(core::Component::X)...);
-    evalField(first.rhoV_fx(core::Component::Y), fluxes.rhoV_fx(core::Component::Y)...);
-    evalField(first.rhoV_fx(core::Component::Z), fluxes.rhoV_fx(core::Component::Z)...);
-
-    evalField(first.B_fx(core::Component::X), fluxes.B_fx(core::Component::X)...);
-    evalField(first.B_fx(core::Component::Y), fluxes.B_fx(core::Component::Y)...);
-    evalField(first.B_fx(core::Component::Z), fluxes.B_fx(core::Component::Z)...);
-
-    evalField(first.Etot_fx, fluxes.Etot_fx...);
-
-    if constexpr (dimension >= 2)
-    {
-        evalField(first.rho_fy, fluxes.rho_fy...);
-        evalField(first.rhoV_fy(core::Component::X), fluxes.rhoV_fy(core::Component::X)...);
-        evalField(first.rhoV_fy(core::Component::Y), fluxes.rhoV_fy(core::Component::Y)...);
-        evalField(first.rhoV_fy(core::Component::Z), fluxes.rhoV_fy(core::Component::Z)...);
-
-        evalField(first.B_fy(core::Component::X), fluxes.B_fy(core::Component::X)...);
-        evalField(first.B_fy(core::Component::Y), fluxes.B_fy(core::Component::Y)...);
-        evalField(first.B_fy(core::Component::Z), fluxes.B_fy(core::Component::Z)...);
-
-        evalField(first.Etot_fy, fluxes.Etot_fy...);
-
-        if constexpr (dimension == 3)
-        {
-            evalField(first.rho_fz, fluxes.rho_fz...);
-            evalField(first.rhoV_fz(core::Component::X), fluxes.rhoV_fz(core::Component::X)...);
-            evalField(first.rhoV_fz(core::Component::Y), fluxes.rhoV_fz(core::Component::Y)...);
-            evalField(first.rhoV_fz(core::Component::Z), fluxes.rhoV_fz(core::Component::Z)...);
-
-            evalField(first.B_fz(core::Component::X), fluxes.B_fz(core::Component::X)...);
-            evalField(first.B_fz(core::Component::Y), fluxes.B_fz(core::Component::Y)...);
-            evalField(first.B_fz(core::Component::Z), fluxes.B_fz(core::Component::Z)...);
-
-            evalField(first.Etot_fz, fluxes.Etot_fz...);
-        }
-    }
-}
 
 template<typename VecField, typename Equations>
 class GodunovState
@@ -402,6 +366,31 @@ public:
     VecField bt_y{"b_t_y", MHDQuantity::Vector::VecFlux_y};
     VecField bt_z{"b_t_z", MHDQuantity::Vector::VecFlux_z};
 };
+
+
+template<template<typename> typename Op, typename Field, typename VecField>
+void operate(AllFluxes<Field, VecField>& dst, AllFluxes<Field, VecField> const& src, auto&&... args)
+{
+    operate<Op>(dst.rho_fx, src.rho_fx, args...);
+    operate<Op>(dst.rhoV_fx, src.rhoV_fx, args...);
+    operate<Op>(dst.B_fx, src.B_fx, args...);
+    operate<Op>(dst.Etot_fx, src.Etot_fx, args...);
+
+    if constexpr (AllFluxes<Field, VecField>::dimension >= 2)
+    {
+        operate<Op>(dst.rho_fy, src.rho_fy, args...);
+        operate<Op>(dst.rhoV_fy, src.rhoV_fy, args...);
+        operate<Op>(dst.B_fy, src.B_fy, args...);
+        operate<Op>(dst.Etot_fy, src.Etot_fy, args...);
+    }
+    if constexpr (AllFluxes<Field, VecField>::dimension == 3)
+    {
+        operate<Op>(dst.rho_fz, src.rho_fz, args...);
+        operate<Op>(dst.rhoV_fz, src.rhoV_fz, args...);
+        operate<Op>(dst.B_fz, src.B_fz, args...);
+        operate<Op>(dst.Etot_fz, src.Etot_fz, args...);
+    }
+}
 
 } // namespace PHARE::core
 
