@@ -173,19 +173,19 @@ $$
 The derivative of $E$ is related to $E_1$'s one following
 
 $$
-\begin{align*}
+\begin{aligned}
 \pdv{E}{t} & = \pdv{E_1}{t} + \vb{B}_0 \cdot \pdv{\vb{B}_0}{t} + \vb{B}_0 \cdot \pdv{\vb{B}_1}{t} + \pdv{\vb{B}_0}{t} \cdot \vb{B}_1 \\
 & = \pdv{E_1}{t} + \vb{B}_0 \cdot \pdv*{\vb{B}}{t} + \pdv{\vb{B}_0}{t} \cdot \vb{B}_1
-\end{align*}
+\end{aligned}
 $$
 
 Moreover the term $\vb{B}_0 \cdot \pdv*{\vb{B}}{t}$ can be expanded using the induction equation as:
 
 $$
-\begin{align*}
+\begin{aligned}
 \vb{B}_0 \cdot \pdv*{\vb{B}}{t} &= - \vb{B}_0 \cdot \left( \curl \vb{E} \right) \\
 &= - \div(\vb{E} \cross \vb{B}_0) - \vb{E} \cdot \underbrace{ \left( \curl \vb{B}_0\right)}_{ = \vb{j}_0  = \vb{0}}
-\end{align*} 
+\end{aligned} 
 $$
 The rotational of $\vb{B}_0$ is zero because it is external; the currents generating it are located outside of the computational domain.
 

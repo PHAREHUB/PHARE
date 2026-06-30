@@ -37,10 +37,12 @@ velocity :math:`\mathbf{u_i}`
 
 
 .. math::
-   \begin{eqnarray}
-   n_i(\mathbf{r},t) &= & \sum_p \int f_p(\mathbf{r}, \mathbf{v}, t) d\mathbf{v} \label{eq:density}\\
-   \mathbf{u}_i(\mathbf{r},t) &= & \frac{1}{n_i}\sum_p \int \mathbf{v} f_p(\mathbf{r}, \mathbf{v}, t) d\mathbf{v} \label{eq:bulk}\\
-   \end{eqnarray}
+   :nowrap:
+
+   \begin{align}
+   n_i(\mathbf{r},t) &= \sum_p \int f_p(\mathbf{r}, \mathbf{v}, t) d\mathbf{v} \\
+   \mathbf{u}_i(\mathbf{r},t) &= \frac{1}{n_i}\sum_p \int \mathbf{v} f_p(\mathbf{r}, \mathbf{v}, t) d\mathbf{v}
+   \end{align}
 
 
 The electron momentum equation
@@ -56,9 +58,7 @@ The electron momentum equation is:
 
 
 .. math::
-    \begin{equation}
      m_en_e \frac{d\mathbf{u_e}}{dt} = -\nabla\cdot \mathbf{P_e} - e n_e(\mathbf{E} + \mathbf{u_e}\times\mathbf{B})
-     \end{equation}
 
 
 
@@ -72,10 +72,7 @@ We just use the Maxwell-Faraday equation:
 
 
 .. math::
-   \begin{equation}
    \frac{\partial \mathbf{B}}{\partial t} = -\nabla\times\mathbf{E}
-   \label{eq:electronmomentum}
-   \end{equation}
 
 
 
@@ -87,10 +84,7 @@ Thus, the momentum equation is re-written:
 
 
 .. math::
-   \begin{equation}
    \mathbf{E} = -\mathbf{u_e}\times\mathbf{B} - \frac{1}{en_e}\nabla\cdot \mathbf{P_e}  +\frac{m_e}{e}\frac{d\mathbf{u_e}}{dt}
-   \label{eq:ohmelectron}
-   \end{equation}
 
 
 
@@ -109,9 +103,7 @@ bulk velocity  and the electric current density:
 
 
 .. math::
-   \begin{equation}
    \mathbf{u_e} = \mathbf{u_i} - \frac{\mathbf{j}}{en}
-   \end{equation}
 
 
 The total current density is obtained from the static Maxwell-Ampere equation,
@@ -119,19 +111,14 @@ meaning we neglect the displacement current:
 
 
 .. math::
-   \begin{equation}
    \mu_0 \mathbf{j} = \nabla\times\mathbf{B}
-   \end{equation}
 
 
 The electric field is now equal to
 
 .. math::
 
-   \begin{equation}
    \mathbf{E} = -\mathbf{u_e}\times\mathbf{B} - \frac{1}{en}\nabla\cdot \mathbf{P_e}  +\frac{m_e}{e}\frac{d\mathbf{u_e}}{dt}
-   \label{eq:ohmelectron2}
-   \end{equation}
 
 
 
@@ -149,10 +136,7 @@ which now reads:
 
 .. math::
 
-    \begin{equation}
     \mathbf{E} = -\mathbf{u_e}\times\mathbf{B} - \frac{1}{en}\nabla\cdot \mathbf{P_e}
-    \label{eq:ohmelectron3}
-    \end{equation}
 
 
 
@@ -174,10 +158,7 @@ the density by some scalar constant that we call "the electron temperature".
 
 .. math::
 
-    \begin{equation}
     P_e= nT_e
-    \label{eq:isothermal}
-    \end{equation}
 
 
 Dissipative terms
@@ -204,10 +185,7 @@ PHARE include these two terms and the electric field is obtained via :
 
 .. math::
 
-    \begin{equation}
     \mathbf{E} = -\mathbf{u_e}\times\mathbf{B} - \frac{1}{en}\nabla P_e +\eta\mathbf{j} - \nu\nabla^2\mathbf{j}
-    \label{eq:ohmelectron4}
-    \end{equation}
 
 
 
