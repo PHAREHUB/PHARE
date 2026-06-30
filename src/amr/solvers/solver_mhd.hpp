@@ -133,12 +133,12 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_, evolve_);
+        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_, evolve_);
+        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_);
     }
 
 private:

@@ -25,13 +25,10 @@ struct SimOpts
 
     std::size_t nbRefinedPart = core::defaultNbrRefinedParts(dimension, interp_order);
 
-    MHDOpts::TimeIntegratorType time_integrator_type = MHDOpts::TimeIntegratorType::Default;
-    MHDOpts::ReconstructionType reconstruction_type  = MHDOpts::ReconstructionType::Default;
-    MHDOpts::SlopeLimiterType slope_limiter_type     = MHDOpts::SlopeLimiterType::None;
-    MHDOpts::RiemannSolverType riemann_solver_type   = MHDOpts::RiemannSolverType::Default;
-    bool Hall                                        = false;
-    bool Resistivity                                 = false;
-    bool HyperResistivity                            = false;
+    MHDOpts::ReconstructionType reconstruction_type = MHDOpts::ReconstructionType::Default;
+    MHDOpts::SlopeLimiterType slope_limiter_type    = MHDOpts::SlopeLimiterType::None;
+    MHDOpts::RiemannSolverType riemann_solver_type  = MHDOpts::RiemannSolverType::Default;
+    bool Hall                                       = false;
 };
 
 

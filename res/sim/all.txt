@@ -30,32 +30,22 @@
 3,3,6
 3,3,12
 3,3,27
-# MHD permutations: dim,interp,refined,timestepper,reconstruction,limiter,riemann,hall,res,hyper_res
-# --- one line per single-run functional test ---
-# mhd_harris (higher-order, kept)
-2,1,4,TVDRK3,WENOZ,None,Rusanov,true,false,true
-# mhd_harris_3d (higher-order, kept)
-3,1,6,TVDRK3,WENOZ,None,Rusanov,true,true,true
-# mhd_alfven2d, mhd_rotor, mhd_orszagtang (ideal)
-2,1,4,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
-# mhd_shock
-1,1,2,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
-# mhd_dispersion (whistler1d, Hall)
-1,1,2,TVDRK2,Linear,VanLeer,Rusanov,true,false,false
-# mhd_orszagtang_3d
-3,1,6,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
-# --- mhd_convergence (1D): all reconstructions @ SSPRK4_5 ---
-1,1,2,SSPRK4_5,Constant,None,Rusanov,false,false,false
-1,1,2,SSPRK4_5,Linear,VanLeer,Rusanov,false,false,false
-1,1,2,SSPRK4_5,WENO3,None,Rusanov,false,false,false
-1,1,2,SSPRK4_5,WENOZ,None,Rusanov,false,false,false
-1,1,2,SSPRK4_5,MP5,None,Rusanov,false,false,false
-# --- mhd_multidimensional_convergence (3D): order-2 reconstructions @ SSPRK4_5 ---
-3,1,6,SSPRK4_5,Linear,VanLeer,Rusanov,false,false,false
-3,1,6,SSPRK4_5,WENO3,None,Rusanov,false,false,false
-3,1,6,SSPRK4_5,WENOZ,None,Rusanov,false,false,false
-3,1,6,SSPRK4_5,MP5,None,Rusanov,false,false,false
-# --- coverage-only: gaps not hit by any test ---
-1,1,2,Euler,Linear,MinMod,Rusanov,false,false,false
-1,1,2,Euler,Constant,None,HLL,false,false,false
-1,1,2,Euler,Constant,None,HLLD,false,false,false
+# MHD permutations: dim,interp,refined,reconstruction,limiter,riemann,hall
+# (time integrator, resistivity and hyper-resistivity are now runtime selections,
+#  no longer part of the compile-time permutation)
+2,1,4,WENOZ,None,Rusanov,true
+3,1,6,WENOZ,None,Rusanov,true
+2,1,4,Linear,VanLeer,Rusanov,false
+1,1,2,Linear,VanLeer,Rusanov,false
+1,1,2,Linear,VanLeer,Rusanov,true
+3,1,6,Linear,VanLeer,Rusanov,false
+1,1,2,Constant,None,Rusanov,false
+1,1,2,WENO3,None,Rusanov,false
+1,1,2,WENOZ,None,Rusanov,false
+1,1,2,MP5,None,Rusanov,false
+3,1,6,WENO3,None,Rusanov,false
+3,1,6,WENOZ,None,Rusanov,false
+3,1,6,MP5,None,Rusanov,false
+1,1,2,Linear,MinMod,Rusanov,false
+1,1,2,Constant,None,HLL,false
+1,1,2,Constant,None,HLLD,false
