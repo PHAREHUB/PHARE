@@ -444,7 +444,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     auto& electromag = model.state.electromag;
     Faraday_t faraday{level, model};
     {
-        PHARE_LOG_SCOPE(3, "SolverPPC::corrector_.faraday");
+        PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.faraday");
         auto dt = newTime - currentTime;
         faraday(electromag.B, electromagAvg_.E, electromag.B, dt);
         setTime(model.state.electromag.B);
