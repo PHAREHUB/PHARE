@@ -74,17 +74,33 @@ def populateDict(sim):
         "simulation/mhd_state/pressure/initializer", fn_wrapper(modelDict["p"])
     )
 
-    # vector-potential init (2D): B0 = curl(a0z z_hat), B1 = curl(a1z z_hat). The mode strings
-    # tell the C++ side which fields to build from their potential instead of from the component
-    # functions above. The potential functions are always provided (zero by default) so the dict
-    # keys exist regardless of mode.
+    # vector-potential init: B0 = curl(a0), B1 = curl(a1) with full 3D vector potentials. The mode
+    # strings tell the C++ side which fields to build from their potential instead of from the
+    # component functions above. The potential components are always provided (zero by default) so
+    # the dict keys exist regardless of mode; they are read as a VecFieldInitializer.
     add_string("simulation/mhd_state/b0_init_mode", modelDict["b0_init_mode"])
     add_string("simulation/mhd_state/b1_init_mode", modelDict["b1_init_mode"])
     addInitFunction(
-        "simulation/mhd_state/external_magnetic/initializer/potential_z",
+        "simulation/mhd_state/external_magnetic/initializer/potential/x_component",
+        fn_wrapper(modelDict["a0x"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/external_magnetic/initializer/potential/y_component",
+        fn_wrapper(modelDict["a0y"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/external_magnetic/initializer/potential/z_component",
         fn_wrapper(modelDict["a0z"]),
     )
     addInitFunction(
-        "simulation/mhd_state/perturbed_magnetic/initializer/potential_z",
+        "simulation/mhd_state/perturbed_magnetic/initializer/potential/x_component",
+        fn_wrapper(modelDict["a1x"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/perturbed_magnetic/initializer/potential/y_component",
+        fn_wrapper(modelDict["a1y"]),
+    )
+    addInitFunction(
+        "simulation/mhd_state/perturbed_magnetic/initializer/potential/z_component",
         fn_wrapper(modelDict["a1z"]),
     )

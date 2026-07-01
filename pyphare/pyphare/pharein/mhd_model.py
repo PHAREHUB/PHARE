@@ -35,7 +35,14 @@ class MHDModel(object):
         b1x=None,
         b1y=None,
         b1z=None,
+        ax=None,
+        ay=None,
+        az=None,
+        a0x=None,
+        a0y=None,
         a0z=None,
+        a1x=None,
+        a1y=None,
         a1z=None,
     ):
         if global_vars.sim is None:
@@ -46,21 +53,32 @@ class MHDModel(object):
 
         self.dim = global_vars.sim.ndim
 
-        # --- vector-potential init (2D only) -------------------------------------
-        # B = curl(A_z z_hat): Bx = dA_z/dy, By = -dA_z/dx, Bz = 0. Computed on the C++ side with
-        # the discrete curl so that div B = 0 to machine precision. a0z drives B0, a1z drives B1;
-        # either, both, or neither may be given (independent modes), with the component-wise init
-        # as the default fallback.
-        b0_from_potential = a0z is not None
-        b1_from_potential = a1z is not None
-        if (b0_from_potential or b1_from_potential) and self.dim != 2:
+        # --- vector-potential init -----------------------------------------------
+        # B = curl(A) with a full 3D vector potential A = (Ax, Ay, Az), computed on the C++ side
+        # with the discrete curl so that div B = 0 to machine precision. This mirrors the direct-B
+        # interface:
+        #   a0x/a0y/a0z -> B0 = curl(a0)   (background; exclusive with b0x/b0y/b0z)
+        #   a1x/a1y/a1z -> B1 = curl(a1)   (perturbation; exclusive with bx/by/bz and b1x/b1y/b1z)
+        #   ax/ay/az    -> plain alias for the perturbation with B0 = 0 (folded into a1; exclusive
+        #                  with a0*/a1*)
+        # Either, both, or neither of a0/a1 may be given (independent modes), with the component-
+        # wise init as the default fallback. The legacy 2D scalar keys a0z/a1z are just the
+        # z-component (x/y default to zero), so pre-existing 2D scripts are unchanged.
+        a_given = any(a is not None for a in (ax, ay, az))
+        a0_given = any(a is not None for a in (a0x, a0y, a0z))
+        a1_given = any(a is not None for a in (a1x, a1y, a1z))
+        if a_given and (a0_given or a1_given):
             raise ValueError(
-                "MHDModel vector-potential init (a0z/a1z) is only supported in 2D"
+                "MHDModel: plain (ax,ay,az) is exclusive with a0*/a1* (it is the perturbation "
+                "potential with B0 = 0)"
             )
-        if b0_from_potential and any(b is not None for b in (b0x, b0y)):
-            raise ValueError(
-                "MHDModel: a0z (B0 from vector potential) is exclusive with b0x/b0y"
-            )
+        if a_given:
+            # Plain a is the perturbation potential with no background: fold it into a1, keep B0 = 0.
+            a1x, a1y, a1z = ax, ay, az
+            a1_given = True
+
+        b0_from_potential = a0_given
+        b1_from_potential = a1_given
 
         density = self.defaulter(density, 1.0)
         vx = self.defaulter(vx, 1.0)
@@ -71,10 +89,18 @@ class MHDModel(object):
         # split formulation to classical MHD). Capture whether a component B0 was given before it
         # is defaulted, so a b0-only run keeps B1 = 0 (see the field-handling below).
         b0_given = any(b is not None for b in (b0x, b0y, b0z))
+        if b0_from_potential and b0_given:
+            raise ValueError(
+                "MHDModel: a0 (B0 from vector potential) is exclusive with b0x/b0y/b0z"
+            )
         b0x = self.defaulter(b0x, 0.0)
         b0y = self.defaulter(b0y, 0.0)
         b0z = self.defaulter(b0z, 0.0)
+        a0x = self.defaulter(a0x, 0.0)
+        a0y = self.defaulter(a0y, 0.0)
         a0z = self.defaulter(a0z, 0.0)
+        a1x = self.defaulter(a1x, 0.0)
+        a1y = self.defaulter(a1y, 0.0)
         a1z = self.defaulter(a1z, 0.0)
         # The grid stores the TOTAL field B = B0 + B1 under "bx/by/bz" (the C++ initializes B1 with
         # it, then subtracts B0). The user prescribes EITHER the total field directly (bx/by/bz) OR
@@ -85,10 +111,10 @@ class MHDModel(object):
         b_total_given = any(b is not None for b in (bx, by, bz))
         if b1_from_potential and (b1_given or b_total_given):
             raise ValueError(
-                "MHDModel: a1z (B1 from vector potential) is exclusive with bx/by/bz and b1x/b1y/b1z"
+                "MHDModel: a1 (B1 from vector potential) is exclusive with bx/by/bz and b1x/b1y/b1z"
             )
         if b1_from_potential:
-            # B1 is built on the C++ side from a1z; the "magnetic" dict is unused for B1 but its
+            # B1 is built on the C++ side from a1; the "magnetic" dict is unused for B1 but its
             # keys must exist, so fill them with zeros.
             bx = self.defaulter(None, 0.0)
             by = self.defaulter(None, 0.0)
@@ -134,7 +160,11 @@ class MHDModel(object):
                 "b0x": b0x,
                 "b0y": b0y,
                 "b0z": b0z,
+                "a0x": a0x,
+                "a0y": a0y,
                 "a0z": a0z,
+                "a1x": a1x,
+                "a1y": a1y,
                 "a1z": a1z,
                 "b0_init_mode": "potential" if b0_from_potential else "components",
                 "b1_init_mode": "potential" if b1_from_potential else "components",

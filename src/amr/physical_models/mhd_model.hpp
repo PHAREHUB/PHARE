@@ -48,11 +48,11 @@ public:
     // face-centered storage onto the EMF edges / Riemann faces where they consume it.
     vecfield_type B0{model_name + "_B0", core::MHDQuantity::Vector::B0};
     core::VecFieldInitializer<dimension> B0init_;
-    // Vector-potential init (2D): when set, B0 = curl(a0z z_hat) is built with the discrete curl
-    // (div B0 = 0 to machine precision) instead of from the component functions B0init_. Defaults
-    // keep the legacy component-wise init.
+    // Vector-potential init: when set, B0 = curl(A0) is built from a full 3D vector potential with
+    // the discrete curl (div B0 = 0 to machine precision) instead of from the component functions
+    // B0init_. Defaults keep the legacy component-wise init.
     bool b0FromPotential_ = false;
-    PHARE::initializer::InitFunction<dimension> a0zInit_;
+    core::VecFieldInitializer<dimension> a0Init_;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
     // diagnostics buffers
@@ -80,9 +80,10 @@ public:
             auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
             if (b0FromPotential_)
             {
-                // B0 = curl(a0z z_hat), built with the discrete curl using E_z as the A_z scratch.
+                // B0 = curl(A0), built with the discrete curl using the full E vecfield as the A
+                // scratch.
                 auto _ = resourcesManager->setOnPatch(*patch, B0, state.E);
-                core::initBFromPotentialAz(a0zInit_, B0, state.E(core::Component::Z), layout);
+                core::initBFromPotential(a0Init_, B0, state.E, layout);
                 clearEScratch_(layout);
             }
             else
@@ -138,11 +139,11 @@ public:
                            == "potential"}
         , resourcesManager{std::move(_resourcesManager)}
     {
-        // Vector-potential init (2D): read the out-of-plane potential only in "potential" mode so
-        // dicts that predate this feature need not provide the potential_z key.
+        // Vector-potential init: read the vector potential only in "potential" mode so dicts that
+        // predate this feature need not provide the potential key.
         if (b0FromPotential_)
-            a0zInit_ = dict["mhd_state"]["external_magnetic"]["initializer"]["potential_z"]
-                           .template to<PHARE::initializer::InitFunction<dimension>>();
+            a0Init_ = core::VecFieldInitializer<dimension>{
+                dict["mhd_state"]["external_magnetic"]["initializer"]["potential"]};
 
         resourcesManager->registerResources(B0);
         resourcesManager->registerResources(V_diag_);
@@ -191,9 +192,9 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
         // the prescribed total field to form B1.
         if (b0FromPotential_)
         {
-            // B0 = curl(a0z z_hat) via the discrete curl, using E_z as the A_z scratch. Clear E
-            // before state.initialize so a component-mode B1 leaves no A_z residue in E.
-            core::initBFromPotentialAz(a0zInit_, B0, state.E(core::Component::Z), layout);
+            // B0 = curl(A0) via the discrete curl, using the full E vecfield as the A scratch.
+            // Clear E before state.initialize so a component-mode B1 leaves no A residue in E.
+            core::initBFromPotential(a0Init_, B0, state.E, layout);
             clearEScratch_(layout);
         }
         else

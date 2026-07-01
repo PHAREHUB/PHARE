@@ -18,44 +18,57 @@ namespace PHARE
 {
 namespace core
 {
-    // 2D-only: fill Bout = curl(A_z z_hat) = (dA_z/dy, -dA_z/dx, 0) over the ghost box.
-    // A_z is sampled at E_z (edge) centring into the Az scratch field, then the discrete `deriv`
-    // (the same operator Faraday uses) yields a face-centred B with discrete div B = 0 to machine
-    // precision (div . curl = 0), unlike a component-wise init sampled at face centres. Az is the
-    // caller's E_z buffer (overwritten before its real use by the constrained transport).
-    template<typename GridLayout, typename VecField, typename ScalarField>
-    void initBFromPotentialAz(initializer::InitFunction<GridLayout::dimension> const& aInit,
-                              VecField& Bout, ScalarField& Az, GridLayout const& layout)
+    // Fill Bout = curl(A) over the ghost box, where A = (Ax, Ay, Az) is a full 3D vector potential.
+    // A is sampled at E (edge) centring into the A scratch vecfield, then the discrete `deriv` (the
+    // same operator Faraday uses) yields a face-centred B with discrete div B = 0 to machine
+    // precision (div . curl = 0), unlike a component-wise init sampled at face centres. A is the
+    // caller's E buffer (overwritten before its real use by the constrained transport).
+    //   Bx = dAz/dy - dAy/dz   (2D: dAz/dy ; 1D: 0)
+    //   By = dAx/dz - dAz/dx   (1D/2D: -dAz/dx)
+    //   Bz = dAy/dx - dAx/dy   (1D: dAy/dx)
+    // The per-dimension terms mirror Faraday's curl(E); dropping a purely-out-of-plane A (only Az,
+    // 2D) recovers the legacy (dAz/dy, -dAz/dx, 0).
+    template<typename GridLayout, typename VecField>
+    void initBFromPotential(VecFieldInitializer<GridLayout::dimension>& aInit, VecField& Bout,
+                            VecField& A, GridLayout const& layout)
     {
-        if constexpr (GridLayout::dimension == 2)
-        {
-            FieldUserFunctionInitializer::initialize(Az, layout, aInit);
+        aInit.initialize(A, layout);
 
-            auto& Bx = Bout(Component::X);
-            auto& By = Bout(Component::Y);
-            auto& Bz = Bout(Component::Z);
+        auto const& Ax = A(Component::X);
+        auto const& Ay = A(Component::Y);
+        auto const& Az = A(Component::Z);
 
-            // Fill the full ghost box so B0 ghosts (read by the flux reconstruction and refreshed
-            // each substep by updateExternalFields) and B1 ghosts are not left NaN. A_z is filled
-            // over its own ghost box, so the discrete deriv is exact on the domain; the outermost
-            // ghost layer is approximate but finite.
-            layout.evalOnGhostBox(Bx, [&](auto&... args) {
+        auto& Bx = Bout(Component::X);
+        auto& By = Bout(Component::Y);
+        auto& Bz = Bout(Component::Z);
+
+        // Fill the full ghost box so B0 ghosts (read by the flux reconstruction and refreshed each
+        // substep by updateExternalFields) and B1 ghosts are not left NaN. A is filled over its own
+        // ghost box, so the discrete deriv is exact on the domain; the outermost ghost layer is
+        // approximate but finite.
+        layout.evalOnGhostBox(Bx, [&](auto&... args) {
+            if constexpr (GridLayout::dimension == 1)
+                Bx(args...) = 0.0;
+            else if constexpr (GridLayout::dimension == 2)
                 Bx(args...) = layout.template deriv<Direction::Y>(Az, {args...});
-            });
-            layout.evalOnGhostBox(By, [&](auto&... args) {
+            else
+                Bx(args...) = layout.template deriv<Direction::Y>(Az, {args...})
+                              - layout.template deriv<Direction::Z>(Ay, {args...});
+        });
+        layout.evalOnGhostBox(By, [&](auto&... args) {
+            if constexpr (GridLayout::dimension == 3)
+                By(args...) = layout.template deriv<Direction::Z>(Ax, {args...})
+                              - layout.template deriv<Direction::X>(Az, {args...});
+            else
                 By(args...) = -layout.template deriv<Direction::X>(Az, {args...});
-            });
-            layout.evalOnGhostBox(Bz, [&](auto&... args) { Bz(args...) = 0.0; });
-        }
-        else
-        {
-            (void)aInit;
-            (void)Bout;
-            (void)Az;
-            (void)layout;
-            throw std::runtime_error(
-                "MHD vector-potential init (a0z/a1z) is only supported in 2D");
-        }
+        });
+        layout.evalOnGhostBox(Bz, [&](auto&... args) {
+            if constexpr (GridLayout::dimension == 1)
+                Bz(args...) = layout.template deriv<Direction::X>(Ay, {args...});
+            else
+                Bz(args...) = layout.template deriv<Direction::X>(Ay, {args...})
+                              - layout.template deriv<Direction::Y>(Ax, {args...});
+        });
     }
 
     // The dynamic MHD state of the B = B0 + B1 split. It holds the evolved perturbation field B1
@@ -133,13 +146,13 @@ namespace core
             , b1FromPotential_{cppdict::get_value(dict, "b1_init_mode", std::string{"components"})
                                == "potential"}
         {
-            // Vector-potential init (2D): the potential function is read only when B1 is in
-            // "potential" mode, so dicts that predate this feature (e.g. C++ unit-test dicts) need
-            // not provide the potential_z key. b0FromPotential_ is needed only to skip the
-            // B1 = total - B0 subtraction below (the Python total cannot fold a potential B0).
+            // Vector-potential init: the potential is read only when B1 is in "potential" mode, so
+            // dicts that predate this feature (e.g. C++ unit-test dicts) need not provide the
+            // potential key. b0FromPotential_ is needed only to skip the B1 = total - B0
+            // subtraction below (the Python total cannot fold a potential B0).
             if (b1FromPotential_)
-                a1zInit_ = dict["perturbed_magnetic"]["initializer"]["potential_z"]
-                               .template to<initializer::InitFunction<dimension>>();
+                a1Init_ = VecFieldInitializer<dimension>{
+                    dict["perturbed_magnetic"]["initializer"]["potential"]};
         }
 
         MHDState(std::string name)
@@ -173,8 +186,9 @@ namespace core
 
             if (b1FromPotential_)
             {
-                // B1 = curl(a1z z_hat), built directly as the perturbation (no subtraction).
-                initBFromPotentialAz(a1zInit_, B1, E(Component::Z), layout);
+                // B1 = curl(A1), built directly as the perturbation (no subtraction). E is the
+                // (edge-centred) A scratch buffer, cleared below before its real use.
+                initBFromPotential(a1Init_, B1, E, layout);
             }
             else
             {
@@ -193,7 +207,7 @@ namespace core
                     }
             }
 
-            // The B1 potential init used E_z as an A_z scratch buffer; clear E so t=0 diagnostics
+            // The B1 potential init used E as the A scratch buffer; clear E so t=0 diagnostics
             // and the first read see 0 (constrained transport recomputes E before its real use).
             if (b1FromPotential_)
                 for (auto const& component : {Component::X, Component::Y, Component::Z})
@@ -227,12 +241,12 @@ namespace core
 
         double const gamma_;
 
-        // Vector-potential init (2D): build B1 from an out-of-plane potential A_z so that div B = 0
-        // discretely. b0FromPotential_ only governs the B1 = total - B0 subtraction. Defaults keep
-        // the legacy component-wise init.
+        // Vector-potential init: build B1 = curl(A1) from a full 3D vector potential so that
+        // div B = 0 discretely. b0FromPotential_ only governs the B1 = total - B0 subtraction.
+        // Defaults keep the legacy component-wise init.
         bool b0FromPotential_ = false;
         bool b1FromPotential_ = false;
-        initializer::InitFunction<dimension> a1zInit_;
+        VecFieldInitializer<dimension> a1Init_;
     };
 } // namespace core
 } // namespace PHARE
