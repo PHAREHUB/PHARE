@@ -27,8 +27,6 @@ set( SOURCES_INC
      numerics/boundary_condition/boundary_condition.hpp
      numerics/interpolator/interpolator.hpp
      numerics/pusher/boris.hpp
-     numerics/pusher/pusher.hpp
-     numerics/pusher/pusher_factory.hpp
      numerics/ampere/ampere.hpp
      numerics/faraday/faraday.hpp
      numerics/ohm/ohm.hpp
@@ -57,7 +55,9 @@ set( SOURCES_CPP
 
 set( CORE_EXTRA_SOURCES_CPP )
 if (withPhlop)
-  set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp )
+  set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp
+                              ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/common_threaded_timer.cpp
+   )
 endif(withPhlop)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )

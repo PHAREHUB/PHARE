@@ -83,6 +83,7 @@ PYBIND11_MODULE(cpp_etc, m)
     m.def("mpi_size", []() { return core::mpi::size(); });
     m.def("mpi_rank", []() { return core::mpi::rank(); });
     m.def("mpi_barrier", []() { core::mpi::barrier(); });
+    m.def("mpi_initialized", []() { return core::mpi::initialized(); });
 
     py::class_<SamraiLifeCycle, std::shared_ptr<SamraiLifeCycle>>(m, "SamraiLifeCycle")
         .def(py::init<>())

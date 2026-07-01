@@ -6,12 +6,17 @@
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/box/box.hpp"
 
+#include "amr/amr_constants.hpp"
 
 #include "SAMRAI/hier/Box.h"
+
+#include <cmath>
 
 
 namespace PHARE::amr
 {
+
+
 template<typename Type, std::size_t dim>
 NO_DISCARD auto samrai_box_from(PHARE::core::Box<Type, dim> const& box, int samrai_blockId = 0)
 {
@@ -128,6 +133,23 @@ NO_DISCARD core::Box<Type, dim> shift(core::Box<Type, dim> const& box,
 {
     return core::shift(box, as_point<dim>(tform));
 }
+
+
+template<typename Box_t>
+NO_DISCARD Box_t refine_box(Box_t const& box)
+{
+    return Box_t{((box.lower) * refinementRatio) + 1, ((box.upper) * refinementRatio) + 1};
+}
+
+template<typename Type, std::size_t dim>
+NO_DISCARD core::Box<Type, dim> refine_box(core::Box<Type, dim> const& box, int const level)
+{
+    Type const ratio = static_cast<Type>(std::pow(refinementRatio, level));
+    return {box.lower * ratio, box.upper * ratio};
+}
+
+
+
 
 } // namespace PHARE::amr
 

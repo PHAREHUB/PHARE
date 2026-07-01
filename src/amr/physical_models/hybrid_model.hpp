@@ -3,17 +3,25 @@
 
 
 #include "core/def.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/types.hpp"
+#include "core/utilities/mpi_utils.hpp"
 #include "core/models/hybrid_state.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 
 #include "initializer/data_provider.hpp"
 
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 
+#include <iomanip>
 #include <string>
+#include <sstream>
+#include <algorithm>
+
 
 namespace PHARE::solver
 {
@@ -92,6 +100,8 @@ public:
 
     virtual ~HybridModel() override {}
 
+    std::string summarize(auto& hierarchy, std::string const& format = "");
+
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
@@ -117,6 +127,146 @@ public:
 //-------------------------------------------------------------------------
 //                             definitions
 //-------------------------------------------------------------------------
+
+struct TensorFieldMinMax
+{
+    std::string const key;
+    std::vector<double> min{}, max{};
+
+    static auto GET(auto& rm, auto& tf, auto& lvl)
+    {
+        TensorFieldMinMax mm;
+        // auto& [min, maxE, minB, maxB] = mm;
+        for (auto const& _ : rm.enumerate(lvl, tf))
+            for (std::size_t i = 0; i < tf.size(); ++i)
+            {
+                mm.min[i] = std::min(mm.min[i], *std::min_element(tf[i].begin(), tf[i].end()));
+                mm.max[i] = std::max(mm.max[i], *std::max_element(tf[i].begin(), tf[i].end()));
+            }
+
+        return mm;
+    }
+
+    auto collect() const
+    {
+        auto mm = *this;
+        for (std::size_t i = 0; i < min.size(); ++i)
+        {
+            mm.min[i] = core::mpi::min_on_rank0(min[i]);
+            mm.max[i] = core::mpi::max_on_rank0(max[i]);
+        }
+        return mm;
+    }
+};
+
+inline std::ostream& operator<<(std::ostream& out, TensorFieldMinMax const& mm)
+{
+    std::uint8_t constexpr static precision = 2;
+
+    out << std::setprecision(precision) << mm.key << " min(" << mm.min[0];
+    for (std::size_t i = 1; i < mm.min.size(); ++i)
+        out << "," << mm.min[i];
+
+    out << std::setprecision(precision) << mm.key << " max(" << mm.max[0];
+    for (std::size_t i = 1; i < mm.max.size(); ++i)
+        out << "," << mm.max[i];
+
+    return out;
+}
+
+template<typename GridLayoutT>
+struct LevelStats
+{
+    std::size_t patches = 0, cells = 0, patch_ghosts = 0, level_ghosts = 0;
+
+    static auto GET(auto& rm, auto& V, auto& lvl, auto& hierarchy)
+    {
+        using namespace PHARE::core;
+
+        auto const& Vx = V[0]; // Any is fine, all primal!
+
+        LevelStats stats;
+        for (auto const& patch : rm.enumerate(lvl, V))
+        {
+            auto const layout    = amr::layoutFromPatch<GridLayoutT>(*patch);
+            auto const box       = layout.AMRBoxFor(Vx);
+            auto const ghost_box = layout.AMRGhostBoxFor(Vx);
+
+            auto const cells  = box.size();
+            auto const ghosts = ghost_box.size() - cells;
+            auto const patch_ghost_cells
+                = sum_from(patchGhostBoxOverlaps<GridLayoutT>(*patch, hierarchy), [](auto box) {
+                      box.upper += 1;
+                      return box.size();
+                  });
+
+            stats.cells += cells;
+            stats.patch_ghosts += patch_ghost_cells;
+            stats.level_ghosts += ghosts - patch_ghost_cells;
+            ++stats.patches;
+        }
+
+        return stats;
+    }
+
+    auto collect() const
+    {
+        using namespace PHARE::core;
+        LevelStats stats;
+        stats.cells        = mpi::sum_on_rank_0(cells);
+        stats.patch_ghosts = mpi::sum_on_rank_0(patch_ghosts);
+        stats.level_ghosts = mpi::sum_on_rank_0(level_ghosts);
+        stats.patches      = mpi::sum_on_rank_0(patches);
+        return stats;
+    }
+};
+
+template<typename GridLayoutT>
+inline std::ostream& operator<<(std::ostream& out, LevelStats<GridLayoutT> const& stats)
+{
+    out << stats.patches << ",";
+    out << stats.cells << ",";
+    out << stats.patch_ghosts << ",";
+    out << stats.level_ghosts;
+
+    return out;
+}
+
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(
+    auto& hierarchy, std::string const& format)
+{
+    auto& rm = *this->resourcesManager;
+
+    std::stringstream ss;
+
+    std::size_t total = 0;
+
+    amr::onLevels(hierarchy, [&](auto& lvl) mutable {
+        auto const lcl = core::sum_from(rm.enumerate(lvl, state.ions), [&](auto const&) {
+            return core::sum_from(state.ions,
+                                  [](auto const& pop) { return pop.domainParticles().size(); });
+        });
+
+        auto const on_lvl = core::mpi::sum_on_rank_0(lcl);
+        total += on_lvl;
+
+        auto const level_stats
+            = LevelStats<GridLayoutT>::GET(rm, state.ions.velocity(), lvl, hierarchy).collect();
+
+        if (core::mpi::rank() == 0)
+            ss << "lvl:" << lvl.getLevelNumber() << " (" << level_stats << ") " // << minmax
+               << " parts(" << on_lvl << "), " << std::endl;
+    });
+
+    if (core::mpi::rank() == 0)
+        ss << "tot:" << total;
+
+    return ss.str();
+}
 
 
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,

@@ -124,8 +124,8 @@ public:
 
     auto makeFile(DiagnosticProperties const& diagnostic)
     {
-        return std::make_unique<HighFiveFile>(filePath_ + "/" + fileString(diagnostic.quantity),
-                                              file_flags[diagnostic.type + diagnostic.quantity]);
+        return std::make_unique<HighFiveFile>(filePath_ + "/" + fileString(diagnostic.fileKey()),
+                                              file_flags[diagnostic.type + diagnostic.fileKey()]);
     }
 
     template<typename Dict>
@@ -194,8 +194,8 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     HierarchyData<dimension>::reset(*this);
 
     for (auto* diagnostic : diagnostics)
-        if (!file_flags.count(diagnostic->type + diagnostic->quantity))
-            file_flags[diagnostic->type + diagnostic->quantity] = this->flags;
+        if (!file_flags.count(diagnostic->type + diagnostic->fileKey()))
+            file_flags[diagnostic->type + diagnostic->fileKey()] = this->flags;
 
     for (auto* diagnostic : diagnostics) // all collective calls first!
     {
@@ -211,7 +211,7 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     {
         typeWriters_.at(diagnostic->type)->finalize(*diagnostic);
         // don't truncate past first dump
-        file_flags[diagnostic->type + diagnostic->quantity] = READ_WRITE;
+        file_flags[diagnostic->type + diagnostic->fileKey()] = READ_WRITE;
     }
 }
 

@@ -1,6 +1,7 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
+#include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
 
@@ -12,14 +13,15 @@
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
 
 #include <array>
-#include <cmath>
 #include <cassert>
+#include <type_traits>
 
 namespace PHARE::amr
 {
 using core::dirX;
 using core::dirY;
 using core::dirZ;
+
 
 template<typename ResMan, typename TensorFieldDataT>
 class MagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
@@ -56,18 +58,20 @@ public:
     }
 
 
-    void preprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
-                          SAMRAI::hier::Box const& fine_box,
-                          SAMRAI::hier::IntVector const& ratio) override
+    void preprocessRefine(SAMRAI::hier::Patch& /*fine*/, SAMRAI::hier::Patch const& /*coarse*/,
+                          SAMRAI::hier::Box const& /*fine_box*/,
+                          SAMRAI::hier::IntVector const& /*ratio*/) override
     {
     }
 
     // We compute the values of the new fine magnetic faces using what was already refined, ie
     // the values on the old coarse faces.
-    void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
+    void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& /*coarse*/,
                            SAMRAI::hier::Box const& fine_box,
-                           SAMRAI::hier::IntVector const& ratio) override
+                           SAMRAI::hier::IntVector const& /*ratio*/) override
     {
+        PHARE_LOG_SCOPE(2, "MagneticRefinePatchStrategy::postprocessRefine");
+
         assertIDsSet();
 
         auto& fields       = TensorFieldDataT::getFields(fine, b_id_);
@@ -79,8 +83,9 @@ public:
         auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
             using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
 
-            return FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
-                fine_box, fields[i].physicalQuantity(), fineBoxLayout);
+            return phare_box_from<dimension>(
+                FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
+                    fine_box, fields[i].physicalQuantity(), fineBoxLayout));
         });
 
         if constexpr (dimension == 1)
@@ -88,7 +93,7 @@ public:
             // if we ever go to c++23 we could use std::views::zip to iterate both on the local and
             // global indices instead of passing the box to do an amr to local inside the function,
             // which is not obvious at call site
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
+            for (auto const& i : fine_field_box[dirX])
             {
                 postprocessBx1d(bx, layout, i);
             }
@@ -96,12 +101,12 @@ public:
 
         else if constexpr (dimension == 2)
         {
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
+            for (auto const& i : fine_field_box[dirX])
             {
                 postprocessBx2d(bx, by, layout, i);
             }
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
+            for (auto const& i : fine_field_box[dirY])
             {
                 postprocessBy2d(bx, by, layout, i);
             }
@@ -111,20 +116,20 @@ public:
         {
             auto meshSize = layout.meshSize();
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
-            {
-                postprocessBx3d(bx, by, bz, meshSize, layout, i);
-            }
+            for (auto const& slab : core::make_box_span(fine_field_box[dirX]))
+                for (auto const& [point, size] : slab)
+                    for (std::size_t i = 0; i < size; ++i, ++point[dimension - 1])
+                        postprocessBx3d(bx, by, bz, meshSize, layout, point);
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
-            {
-                postprocessBy3d(bx, by, bz, meshSize, layout, i);
-            }
+            for (auto const& slab : core::make_box_span(fine_field_box[dirY]))
+                for (auto const& [point, size] : slab)
+                    for (std::size_t i = 0; i < size; ++i, ++point[dimension - 1])
+                        postprocessBy3d(bx, by, bz, meshSize, layout, point);
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirZ]))
-            {
-                postprocessBz3d(bx, by, bz, meshSize, layout, i);
-            }
+            for (auto const& slab : core::make_box_span(fine_field_box[dirZ]))
+                for (auto const& [point, size] : slab)
+                    for (std::size_t i = 0; i < size; ++i, ++point[dimension - 1])
+                        postprocessBz3d(bx, by, bz, meshSize, layout, point);
         }
     }
 
@@ -136,7 +141,7 @@ public:
         return amrIdx[dir] % 2 != 0;
     }
 
-    static void postprocessBx1d(auto& bx, auto const& layout, core::Point<int, dimension> idx)
+    static void postprocessBx1d(auto& bx, auto const& layout, auto const& idx)
     {
         auto const locIdx = layout.AMRToLocal(idx);
         auto const ix     = locIdx[dirX];
@@ -144,8 +149,7 @@ public:
             bx(ix) = 0.5 * (bx(ix - 1) + bx(ix + 1));
     }
 
-    static void postprocessBx2d(auto& bx, auto& by, auto const& layout,
-                                core::Point<int, dimension> idx)
+    static void postprocessBx2d(auto& bx, auto& by, auto const& layout, auto const& idx)
     {
         auto const locIdx = layout.AMRToLocal(idx);
         auto const ix     = locIdx[dirX];
@@ -171,8 +175,7 @@ public:
         }
     }
 
-    static void postprocessBy2d(auto& bx, auto& by, auto const& layout,
-                                core::Point<int, dimension> idx)
+    static void postprocessBy2d(auto& bx, auto& by, auto const& layout, auto const& idx)
     {
         auto const locIdx = layout.AMRToLocal(idx);
         auto const ix     = locIdx[dirX];
@@ -195,7 +198,7 @@ public:
     }
 
     static void postprocessBx3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                auto const& layout, core::Point<int, dimension> idx)
+                                auto const& layout, auto const& idx)
     {
         auto const Dx = meshSize[dirX];
         auto const Dy = meshSize[dirY];
@@ -254,7 +257,7 @@ public:
     };
 
     static void postprocessBy3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                auto const& layout, core::Point<int, dimension> idx)
+                                auto const& layout, auto const& idx)
     {
         auto const Dx = meshSize[dirX];
         auto const Dy = meshSize[dirY];
@@ -313,7 +316,7 @@ public:
     };
 
     static void postprocessBz3d(auto& bx, auto& by, auto& bz, auto const& meshSize,
-                                auto const& layout, core::Point<int, dimension> idx)
+                                auto const& layout, auto const& idx)
     {
         auto const Dx = meshSize[dirX];
         auto const Dy = meshSize[dirY];

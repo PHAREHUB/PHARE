@@ -8,7 +8,7 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
 endif()
 
 if(HighFive)
-
-  ## These test use dump diagnostics so require HighFive!
-  phare_python3_exec(11, test-alfven-wave alfven_wave1d.py ${CMAKE_CURRENT_BINARY_DIR})
+  if(testMPI)
+    phare_mpi_python3_exec(11 4 test-alfven-wave alfven_wave1d.py ${CMAKE_CURRENT_BINARY_DIR})
+  endif(testMPI)
 endif()

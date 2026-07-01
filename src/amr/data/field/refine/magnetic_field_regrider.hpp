@@ -2,7 +2,7 @@
 #define PHARE_MAGNETIC_FIELD_REGRIDER_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -45,19 +45,15 @@ public:
     // onto the 2 (1D), 4 (2/3D) colocated fine faces. This way the total flux on
     // these fine faces equals that on the overlaped coarse face.
     // see fujimoto et al. 2011 :  doi:10.1016/j.jcp.2011.08.002
-    template<typename FieldT>
-    void operator()(FieldT const& coarseField, FieldT& fineField,
-                    core::Point<int, dimension> fineIndex)
+    void operator()(auto const& coarseField, auto& fineField, auto const& fineIndex,
+                    auto const& coarseIndex, auto const& locFineIdx, auto const& locCoarseIdx,
+                    auto& fineVal, auto const& coarseVal)
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
         using core::dirX;
         using core::dirY;
         using core::dirZ;
-
-        auto const locFineIdx   = AMRToLocal(fineIndex, fineBox_);
-        auto const coarseIdx    = toCoarseIndex(fineIndex);
-        auto const locCoarseIdx = AMRToLocal(coarseIdx, coarseBox_);
 
 
         if constexpr (dimension == 1)

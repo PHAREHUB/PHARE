@@ -2,9 +2,12 @@ import math
 import numpy as np
 
 
+from pyphare import cpp
+
+
 def debug_print(*args):
     if __debug__:
-        print(*args)
+        cpp.print_rank0(*args)
 
 
 def all_iterables(*args):
@@ -120,6 +123,18 @@ class FloatingPoint_comparator:
 
     def __ge__(self, other):
         return fp_gtr_equal(self.fp, other.fp, self.atol)
+
+
+class EqualityCheck:
+    def __init__(self, eq, msg=""):
+        self.eq = eq
+        self.msg = msg
+
+    def __bool__(self):
+        return self.eq
+
+    def __repr__(self):
+        return self.msg
 
 
 def is_fp32(item):

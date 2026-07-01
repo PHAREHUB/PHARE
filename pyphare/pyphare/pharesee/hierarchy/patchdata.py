@@ -28,7 +28,9 @@ class PatchData:
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["dataset"]  # do not copy these things
-        return phut.deep_copy(self, memo, no_copy_keys)
+        cpy = phut.deep_copy(self, memo, no_copy_keys)
+        cpy.dataset = self.dataset
+        return cpy
 
 
 class FieldData(PatchData):
@@ -60,16 +62,18 @@ class FieldData(PatchData):
 
     def __str__(self):
         return "FieldData: (box=({}, {}), key={})".format(
-            self.layout.box, self.layout.box.shape, self.field_name
+            self.layout.box, self.layout.box.shape, self.name
         )
 
     def __repr__(self):
         return self.__str__()
 
     def compare(self, that, atol=1e-16):
-        return self.field_name == that.field_name and phut.fp_any_all_close(
-            self.dataset[:], that.dataset[:], atol=atol
-        )
+        try:
+            phut.assert_fp_any_all_close(self[:], that[:], atol=atol)
+        except AssertionError as e:
+            return phut.EqualityCheck(False, str(e))
+        return self.name == that.name
 
     def __eq__(self, that):
         return self.compare(that)
@@ -109,10 +113,10 @@ class FieldData(PatchData):
     def __setitem__(self, box_or_slice, val):
         self.__getitem__(box_or_slice)[:] = val
 
-    def __init__(self, layout, field_name, data, **kwargs):
+    def __init__(self, layout, name, data, **kwargs):
         """
         :param layout: A GridLayout representing the domain on which data is defined
-        :param field_name: the name of the field (e.g. "Bx")
+        :param name: the name of the field (e.g. "Bx")
         :param data: the dataset from which data can be accessed
         """
         super().__init__(layout, "field")
@@ -121,8 +125,7 @@ class FieldData(PatchData):
         self._z = None
 
         self.dl = np.asarray(layout.dl)
-        self.field_name = field_name
-        self.name = field_name
+        self.name = name
         self.ndim = layout.box.ndim
 
         self.centerings = self._resolve_centering(**kwargs)
@@ -140,6 +143,14 @@ class FieldData(PatchData):
                 self.offset[i] = 0.5 * self.dl[i]
 
         self.dataset = data
+        self._is_consistent()
+
+    def _is_consistent(self):
+        self.layout.ghosts_nbr = self.ghosts_nbr
+        if not all(self.layout.ghosts_nbr == self.ghosts_nbr):
+            raise ValueError(
+                f"FieldData.ghosts_nbr is inconsistent with layout, ({self.layout.ghosts_nbr} != {self.ghosts_nbr})"
+            )
 
     def meshgrid(self, select=None):
         def grid():
@@ -154,11 +165,19 @@ class FieldData(PatchData):
             return tuple(g[select] for g in mesh)
         return mesh
 
+    def copy_as(self, data=None, **kwargs):
+        data = data if data is not None else self.dataset
+        kwargs["name"] = kwargs.get("name", self.name)
+        kwargs["centering"] = kwargs.get("centering", self.centerings)
+        kwargs["ghosts_nbr"] = kwargs.get("ghosts_nbr", self.ghosts_nbr)
+        kwargs["layout"] = kwargs.get("layout", self.layout)
+        return FieldData(data=data, **kwargs)
+
     def yeeCoordsFor(self, idx):
         return self.layout.yeeCoordsFor(
-            self.field_name,
+            self.name,
             gridlayout.directions[idx],
-            withGhosts=any(self.ghosts_nbr) and self.field_name != "tags",
+            withGhosts=any(self.ghosts_nbr) and self.name != "tags",
             centering=self.centerings[idx],
             ghosts_nbr=self.ghosts_nbr[idx],
         )
@@ -167,13 +186,13 @@ class FieldData(PatchData):
         layout = self.layout
         ghosts_nbr = kwargs.get("ghosts_nbr", np.zeros(self.ndim, dtype=int))
         if "ghosts_nbr" not in kwargs:
-            if self.field_name != "tags":
+            if self.name != "tags":
                 for i, centering in enumerate(self.centerings):
                     ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
         return phut.np_array_ify(ghosts_nbr, layout.box.ndim)
 
     def _resolve_centering(self, **kwargs):
-        field_name = self.field_name
+        name = self.name
         if "centering" in kwargs:
             if isinstance(kwargs["centering"], list):
                 assert len(kwargs["centering"]) == self.ndim
@@ -185,16 +204,14 @@ class FieldData(PatchData):
                     )
                 return phut.listify(kwargs["centering"])
 
-        if field_name in self.layout.centering["X"]:
+        if name in self.layout.centering["X"]:
             directions = ["X", "Y", "Z"][: self.ndim]  # drop unused directions
             return [
-                self.layout.qtyCentering(field_name, direction)
-                for direction in directions
+                self.layout.qtyCentering(name, direction) for direction in directions
             ]
         raise ValueError(
-            f"centering not specified and cannot be inferred from field name : {field_name}"
+            f"centering not specified and cannot be inferred from field name : {name}"
         )
-
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
@@ -211,9 +228,9 @@ def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
     out_ = getattr(ufunc, method)(*in_, **kwargs)
 
     if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
-        return type(patch_data)(
+        return patch_data.copy_as(
             layout=patch_data.layout,
-            field_name=patch_data.field_name,
+            name=patch_data.name,
             data=out_,
             centering=patch_data.centerings,
             ghosts_nbr=patch_data.ghosts_nbr,
@@ -227,9 +244,9 @@ def field_data_array_function(patch_data, func, types, args, kwargs):
     out_ = func(*in_, **kwargs)
 
     if isinstance(out_, np.ndarray) and out_.shape == patch_data.dataset.shape:
-        return type(patch_data)(
+        return patch_data.copy_as(
             layout=patch_data.layout,
-            field_name=patch_data.field_name,
+            name=patch_data.name,
             data=out_,
             centering=patch_data.centerings,
             ghosts_nbr=patch_data.ghosts_nbr,
