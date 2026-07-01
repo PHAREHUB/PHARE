@@ -50,8 +50,8 @@ private:
     static auto getFieldTuples_(State& state)
     {
         return std::forward_as_tuple(state.rho, state.rhoV(Component::X), state.rhoV(Component::Y),
-                                     state.rhoV(Component::Z), state.B(Component::X),
-                                     state.B(Component::Y), state.B(Component::Z), state.Etot);
+                                     state.rhoV(Component::Z), state.B1(Component::X),
+                                     state.B1(Component::Y), state.B1(Component::Z), state.Etot1);
     }
 
     template<typename ReturnState, typename WeightsTuple, typename StatesTuple, typename IndexType>

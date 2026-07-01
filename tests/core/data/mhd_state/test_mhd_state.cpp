@@ -1,10 +1,10 @@
-#include <type_traits>
-
 #include "core/data/field/field.hpp"
+#include "core/data/vecfield/vecfield.hpp"
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/models/mhd_state.hpp"
+#include "core/numerics/primite_conservative_converter/mhd_conversion.hpp"
+
 #include "initializer/data_provider.hpp"
-#include "core/data/vecfield/vecfield.hpp"
 
 #include "gtest/gtest.h"
 
@@ -80,6 +80,42 @@ TEST_F(AnMHDState, hasTupleResourceList)
     EXPECT_FALSE(etot.isUsable());
     EXPECT_FALSE(j.isUsable());
     EXPECT_FALSE(e.isUsable());
+}
+
+TEST(MHDConversion, reconstructsTotalMagneticField)
+{
+    auto const& [bx, by, bz] = totalMagneticComponents(1.0, -2.0, 0.5, 0.25, 1.5, -1.0);
+
+    EXPECT_DOUBLE_EQ(bx, 1.25);
+    EXPECT_DOUBLE_EQ(by, -0.5);
+    EXPECT_DOUBLE_EQ(bz, -0.5);
+}
+
+TEST(MHDConversion, convertsReducedAndTotalEnergy)
+{
+    auto constexpr gamma = 5. / 3.;
+    auto constexpr rho   = 4.0;
+    auto constexpr vx    = 1.0;
+    auto constexpr vy    = -0.5;
+    auto constexpr vz    = 0.25;
+    auto constexpr b1x   = 0.3;
+    auto constexpr b1y   = -0.4;
+    auto constexpr b1z   = 0.5;
+    auto constexpr b0x   = 1.5;
+    auto constexpr b0y   = -0.25;
+    auto constexpr b0z   = 0.75;
+    auto constexpr p     = 2.0;
+
+    auto reducedEnergy     = eosPToEtot1(gamma, rho, vx, vy, vz, b1x, b1y, b1z, p);
+    auto totalEnergy       = etot1ToEtot(reducedEnergy, b1x, b1y, b1z, b0x, b0y, b0z);
+    auto reducedEnergyBack = etotToEtot1(totalEnergy, b1x, b1y, b1z, b0x, b0y, b0z);
+    auto pressureBack      = eosEtot1ToP(gamma, rho, vx, vy, vz, b1x, b1y, b1z, reducedEnergyBack);
+    auto const& [bx, by, bz] = totalMagneticComponents(b1x, b1y, b1z, b0x, b0y, b0z);
+    auto totalEnergyDirect   = eosPToEtot(gamma, rho, vx, vy, vz, bx, by, bz, p);
+
+    EXPECT_DOUBLE_EQ(reducedEnergyBack, reducedEnergy);
+    EXPECT_DOUBLE_EQ(pressureBack, p);
+    EXPECT_DOUBLE_EQ(totalEnergy, totalEnergyDirect);
 }
 
 int main(int argc, char** argv)

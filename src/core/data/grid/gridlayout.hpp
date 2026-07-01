@@ -1038,6 +1038,15 @@ namespace core
         NO_DISCARD auto static constexpr JzToEz() { return GridLayoutImpl::JzToEz(); }
 
 
+        // transverse magnetic component projected from its native face onto another face
+        // (B0 splitting: read background B0 at a Riemann face without re-sampling analytically)
+        NO_DISCARD auto static constexpr ByToFaceX() { return GridLayoutImpl::ByToFaceX(); }
+        NO_DISCARD auto static constexpr BzToFaceX() { return GridLayoutImpl::BzToFaceX(); }
+        NO_DISCARD auto static constexpr BxToFaceY() { return GridLayoutImpl::BxToFaceY(); }
+        NO_DISCARD auto static constexpr BzToFaceY() { return GridLayoutImpl::BzToFaceY(); }
+        NO_DISCARD auto static constexpr BxToFaceZ() { return GridLayoutImpl::BxToFaceZ(); }
+        NO_DISCARD auto static constexpr ByToFaceZ() { return GridLayoutImpl::ByToFaceZ(); }
+
         // MHD projections
         NO_DISCARD auto static constexpr faceXToCellCenter()
         {

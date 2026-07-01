@@ -43,6 +43,39 @@ namespace core
         initializer::InitFunction<dimension> z_;
     };
 
+
+    // Like VecFieldInitializer but for space+time component functions f(x,t). Used to (re-)stamp a
+    // time-dependent background field B0(x,t) (or its time derivative dB0/dt) at a given time.
+    template<std::size_t dimension>
+    class SpaceTimeVecFieldInitializer
+    {
+    public:
+        SpaceTimeVecFieldInitializer() = default;
+
+        SpaceTimeVecFieldInitializer(initializer::PHAREDict const& dict)
+            : x_{dict["x_component"].template to<initializer::SpaceTimeFunction<dimension>>()}
+            , y_{dict["y_component"].template to<initializer::SpaceTimeFunction<dimension>>()}
+            , z_{dict["z_component"].template to<initializer::SpaceTimeFunction<dimension>>()}
+        {
+        }
+
+        template<typename VecField, typename GridLayout>
+        void initialize(VecField& v, GridLayout const& layout, double time)
+        {
+            static_assert(GridLayout::dimension == VecField::dimension,
+                          "dimension mismatch between vecfield and gridlayout");
+
+            FieldUserFunctionInitializer::initialize(v.getComponent(Component::X), layout, x_, time);
+            FieldUserFunctionInitializer::initialize(v.getComponent(Component::Y), layout, y_, time);
+            FieldUserFunctionInitializer::initialize(v.getComponent(Component::Z), layout, z_, time);
+        }
+
+    private:
+        initializer::SpaceTimeFunction<dimension> x_;
+        initializer::SpaceTimeFunction<dimension> y_;
+        initializer::SpaceTimeFunction<dimension> z_;
+    };
+
 } // namespace core
 
 } // namespace PHARE

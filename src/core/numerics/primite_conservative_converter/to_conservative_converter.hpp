@@ -4,6 +4,7 @@
 
 #include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/primite_conservative_converter/mhd_conversion.hpp"
 
 namespace PHARE::core
 {
@@ -15,16 +16,6 @@ inline auto vToRhoV(auto const& rho, auto const& Vx, auto const& Vy, auto const&
 
     return std::make_tuple(rhoVx, rhoVy, rhoVz);
 }
-
-inline auto eosPToEtot(double const gamma, auto const& rho, auto const& vx, auto const& vy,
-                       auto const& vz, auto const& bx, auto const& by, auto const& bz,
-                       auto const& p)
-{
-    auto const v2 = vx * vx + vy * vy + vz * vz;
-    auto const b2 = bx * bx + by * by + bz * bz;
-    return p / (gamma - 1.0) + 0.5 * rho * v2 + 0.5 * b2;
-}
-
 
 template<typename GridLayout>
 class ToConservativeConverter
@@ -38,15 +29,18 @@ public:
     {
     }
 
+    // Split-field conversion: the conserved energy Etot1 stores only the B1 (perturbation)
+    // magnetic energy; the background B0 energy is added back on output (see
+    // mhd_conversion.hpp::etot1ToEtot), so B0 is not needed here.
     template<typename Field, typename VecField>
-    void operator()(Field const& rho, VecField const& V, VecField const& B, Field const& P,
-                    VecField& rhoV, Field& Etot) const
+    void operator()(Field const& rho, VecField const& V, VecField const& B1, Field const& P,
+                    VecField& rhoV, Field& Etot1) const
     {
         layout_.evalOnGhostBox(rho,
                                [&](auto&... args) mutable { vToRhoV_(rho, V, rhoV, {args...}); });
 
         layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
-            eosPToEtot_(gamma_, rho, V, B, P, Etot, {args...});
+            eosPToEtot1_(gamma_, rho, V, B1, P, Etot1, {args...});
         });
     }
 
@@ -70,24 +64,24 @@ private:
     }
 
     template<typename Field, typename VecField>
-    static void eosPToEtot_(double const gamma, Field const& rho, VecField const& V,
-                            VecField const& B, Field const& P, Field& Etot,
-                            MeshIndex<Field::dimension> index)
+    static void eosPToEtot1_(double const gamma, Field const& rho, VecField const& V,
+                             VecField const& B1, Field const& P, Field& Etot1,
+                             MeshIndex<Field::dimension> index)
     {
         auto const& Vx = V(Component::X);
         auto const& Vy = V(Component::Y);
         auto const& Vz = V(Component::Z);
 
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
+        auto const& B1x = B1(Component::X);
+        auto const& B1y = B1(Component::Y);
+        auto const& B1z = B1(Component::Z);
 
-        auto const bx = GridLayout::template project<GridLayout::faceXToCellCenter>(Bx, index);
-        auto const by = GridLayout::template project<GridLayout::faceYToCellCenter>(By, index);
-        auto const bz = GridLayout::template project<GridLayout::faceZToCellCenter>(Bz, index);
+        auto const b1x = GridLayout::template project<GridLayout::faceXToCellCenter>(B1x, index);
+        auto const b1y = GridLayout::template project<GridLayout::faceYToCellCenter>(B1y, index);
+        auto const b1z = GridLayout::template project<GridLayout::faceZToCellCenter>(B1z, index);
 
-        Etot(index)
-            = eosPToEtot(gamma, rho(index), Vx(index), Vy(index), Vz(index), bx, by, bz, P(index));
+        Etot1(index) = eosPToEtot1(gamma, rho(index), Vx(index), Vy(index), Vz(index), b1x, b1y,
+                                   b1z, P(index));
     }
 
 private:

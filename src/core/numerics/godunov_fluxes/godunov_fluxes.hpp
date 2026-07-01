@@ -96,8 +96,9 @@ public:
     {
     }
 
-    template<typename GState, typename State, typename Fluxes>
-    void operator()(GState& fvm_state, auto& ct_state, State& state, Fluxes& fluxes)
+    template<typename GState, typename State, typename ExternalB, typename Fluxes>
+    void operator()(GState& fvm_state, auto& ct_state, State& state, ExternalB const& b0,
+                    Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
 
@@ -113,7 +114,8 @@ public:
                     if constexpr (Hall || Resistivity || HyperResistivity)
                     {
                         auto&& [uL, uR]
-                            = Reconstructor_t::template reconstruct<direction>(state, {indices...});
+                            = Reconstructor_t::template reconstruct<direction>(state, b0,
+                                                                               {indices...});
 
                         auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
                             direction, GridLayout::edgeXToCellCenter, GridLayout::edgeYToCellCenter,
@@ -142,7 +144,8 @@ public:
                     else // Ideal
                     {
                         auto&& [uL, uR]
-                            = Reconstructor_t::template reconstruct<direction>(state, {indices...});
+                            = Reconstructor_t::template reconstruct<direction>(state, b0,
+                                                                               {indices...});
 
                         auto&& u = std::forward_as_tuple(uL, uR);
 
@@ -173,7 +176,7 @@ public:
                         auto& Jt      = ct_state.template getJt<direction>();
                         auto& Bt      = getBt_<direction>(fvm_state);
                         auto const& F = fluxes.template get_dir<direction>({indices...});
-                        auto& F_B     = F.B;
+                        auto& F_B     = F.B1;
                         auto& F_Etot  = F.Etot();
 
                         auto const& Btidx = toPerIndexVector(Bt, {indices...});
@@ -195,7 +198,11 @@ public:
                                                                            F_Etot);
                             else if (hyper_mode == HyperMode::spatial)
                             {
-                                auto const& Bn   = toPerIndexVector(state.B, {indices...});
+                                // total field B = B1 + B0 at the cell (B0 shares B1's centering)
+                                auto const b1v = toPerIndexVector(state.B1, {indices...});
+                                auto const b0v = toPerIndexVector(b0, {indices...});
+                                auto const Bn  = PerIndexVector<std::decay_t<decltype(b1v.x)>>{
+                                    b1v.x + b0v.x, b1v.y + b0v.y, b1v.z + b0v.z};
                                 auto const& rhot = ct_state.template getRhot<direction>()(indices...);
 
                                 return spatial_hyperresistive_<direction>(Btidx, Bn, vecLaplJ, rhot,
@@ -214,7 +221,7 @@ private:
     auto save_tranverse_magnetic_field_(auto& fvm_state, auto const& uL, auto const& uR,
                                         MeshIndex<dimension> idx)
     {
-        auto Bidx = riemann_.vector_riemann_averaging(uL.B, uR.B);
+        auto Bidx = riemann_.vector_riemann_averaging(uL.totalB(), uR.totalB());
 
         auto& Bt = getBt_<direction>(fvm_state);
 

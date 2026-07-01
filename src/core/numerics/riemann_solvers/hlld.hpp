@@ -4,14 +4,11 @@
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
-
 #include <cstdlib>
 #include <type_traits>
 
 namespace PHARE::core
 {
-
-
 template<bool Hall>
 class HLLD
 {
@@ -24,6 +21,25 @@ public:
     template<auto direction>
     auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR)
     {
+        // static auto const min_value = std::sqrt(1024 * std::numeric_limits<double>::min());
+        //
+        // if (uL.P < min_value)
+        // {
+        //     uL.P = min_value;
+        // }
+        // if (uR.P < min_value)
+        // {
+        //     uR.P = min_value;
+        // }
+        // if (uL.rho < min_value)
+        // {
+        //     uL.rho = min_value;
+        // }
+        // if (uR.rho < min_value)
+        // {
+        //     uR.rho = min_value;
+        // }
+
         auto hlld_speeds = hlld_speeds_<direction>(uL, uR);
 
         auto const [uL_s, uL_ss, uR_ss, uR_s]
@@ -33,8 +49,10 @@ public:
         uR.to_conservative(gamma_);
 
         auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
-            = hlld_(uL.as_tuple(), uL_s.as_tuple(), uL_ss.as_tuple(), uR_ss.as_tuple(),
-                    uR_s.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hlld_speeds);
+            = hlld_(uL.as_reduced_conservative_tuple(), uL_s.as_reduced_conservative_tuple(),
+                    uL_ss.as_reduced_conservative_tuple(), uR_ss.as_reduced_conservative_tuple(),
+                    uR_s.as_reduced_conservative_tuple(), uR.as_reduced_conservative_tuple(),
+                    fL.as_tuple(), fR.as_tuple(), hlld_speeds);
 
         return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
     }
@@ -51,8 +69,10 @@ public:
         uR.to_conservative(gamma_);
 
         auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
-            = hlld_(uL.as_tuple(), uL_s.as_tuple(), uL_ss.as_tuple(), uR_ss.as_tuple(),
-                    uR_s.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hlld_speeds);
+            = hlld_(uL.as_reduced_conservative_tuple(), uL_s.as_reduced_conservative_tuple(),
+                    uL_ss.as_reduced_conservative_tuple(), uR_ss.as_reduced_conservative_tuple(),
+                    uR_s.as_reduced_conservative_tuple(), uR.as_reduced_conservative_tuple(),
+                    fL.as_tuple(), fR.as_tuple(), hlld_speeds);
 
         return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
     }
@@ -89,8 +109,10 @@ private:
     template<auto direction>
     auto hlld_speeds_(auto const& uL, auto const& uR)
     {
-        auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
-        auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
+        auto const BtL    = uL.totalB();
+        auto const BtR    = uR.totalB();
+        auto const BdotBL = BtL.x * BtL.x + BtL.y * BtL.y + BtL.z * BtL.z;
+        auto const BdotBR = BtR.x * BtR.x + BtR.y * BtR.y + BtR.z * BtR.z;
 
         auto compute_hll_speeds
             = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
@@ -137,13 +159,13 @@ private:
 
         if constexpr (direction == Direction::X)
             return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x,
-                                       uL.B.x, uR.B.x);
+                                       BtL.x, BtR.x);
         else if constexpr (direction == Direction::Y)
             return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y,
-                                       uL.B.y, uR.B.y);
+                                       BtL.y, BtR.y);
         else if constexpr (direction == Direction::Z)
             return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z,
-                                       uL.B.z, uR.B.z);
+                                       BtL.z, BtR.z);
     }
 
     // need some optimization, the star states should only be computed if we are in a star region
@@ -153,14 +175,21 @@ private:
     {
         auto& [SL, SL_s, SM, SR_s, SR] = hlld_speeds;
 
+        // The HLLD wave algebra is expressed in the total field B = B1 + B0 (formed by
+        // addition). The intermediate states it produces are converted back to the
+        // perturbation B1 just before constructing the conserved PerIndex (the single
+        // localized B - B0, Guo 2016 eq. 26); B0 is single-valued at the face (uL.B0 == uR.B0).
+        auto const BtL = uL.totalB();
+        auto const BtR = uR.totalB();
+
         auto const etotL
-            = eosPToEtot(gamma_, uL.rho, uL.V.x, uL.V.y, uL.V.z, uL.B.x, uL.B.y, uL.B.z, uL.P);
+            = eosPToEtot(gamma_, uL.rho, uL.V.x, uL.V.y, uL.V.z, BtL.x, BtL.y, BtL.z, uL.P);
 
         auto const etotR
-            = eosPToEtot(gamma_, uR.rho, uR.V.x, uR.V.y, uR.V.z, uR.B.x, uR.B.y, uR.B.z, uR.P);
+            = eosPToEtot(gamma_, uR.rho, uR.V.x, uR.V.y, uR.V.z, BtR.x, BtR.y, BtR.z, uR.P);
 
-        auto const p_tot_L = uL.P + 0.5 * (uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z);
-        auto const p_tot_R = uR.P + 0.5 * (uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z);
+        auto const p_tot_L = uL.P + 0.5 * (BtL.x * BtL.x + BtL.y * BtL.y + BtL.z * BtL.z);
+        auto const p_tot_R = uR.P + 0.5 * (BtR.x * BtR.x + BtR.y * BtR.y + BtR.z * BtR.z);
 
 
         auto constexpr transverse = [&]() {
@@ -176,7 +205,7 @@ private:
 
         auto compute_tranverse_magnetic_s_hllc = [&](auto const tdir) {
             auto const Bhll
-                = (SR * uR.B(tdir) - SL * uL.B(tdir) + fL.B(tdir) - fR.B(tdir)) / (SR - SL);
+                = (SR * BtR(tdir) - SL * BtL(tdir) + fL.B1(tdir) - fR.B1(tdir)) / (SR - SL);
 
             return Bhll;
         };
@@ -188,12 +217,13 @@ private:
             auto const vn = SM;
             // this should probably not be reconstructed in the normal direction as B is already
             // face centered there
-            auto const Bn = uL.B(direction); // should be the same on both sides
-            // auto const Bn = (SR * uR.B(direction) - SL * uL.B(direction)) / (SR - SL);
+            auto const Bn = BtL(direction); // should be the same on both sides
+            // auto const Bn = (SR * BtR(direction) - SL * BtL(direction)) / (SR - SL);
 
 
             auto compute_tranverse_magnetic_s = [&](auto const u, auto const S, auto const tdir) {
-                auto const Bt_s = u.B(tdir)
+                auto const Bt    = u.totalB();
+                auto const Bt_s  = Bt(tdir)
                                   * (u.rho * (S - u.V(direction)) * (S - u.V(direction)) - Bn * Bn)
                                   / (u.rho * (S - u.V(direction)) * (S - SM) - Bn * Bn);
 
@@ -235,16 +265,16 @@ private:
 
             auto const vt0L_s
                 = uL.V(transverse[0])
-                  - Bn * (Bt0L_s - uL.B(transverse[0])) / (uL.rho * (SL - uL.V(direction)));
+                  - Bn * (Bt0L_s - BtL(transverse[0])) / (uL.rho * (SL - uL.V(direction)));
             auto const vt1L_s
                 = uL.V(transverse[1])
-                  - Bn * (Bt1L_s - uL.B(transverse[1])) / (uL.rho * (SL - uL.V(direction)));
+                  - Bn * (Bt1L_s - BtL(transverse[1])) / (uL.rho * (SL - uL.V(direction)));
             auto const vt0R_s
                 = uR.V(transverse[0])
-                  - Bn * (Bt0R_s - uR.B(transverse[0])) / (uR.rho * (SR - uR.V(direction)));
+                  - Bn * (Bt0R_s - BtR(transverse[0])) / (uR.rho * (SR - uR.V(direction)));
             auto const vt1R_s
                 = uR.V(transverse[1])
-                  - Bn * (Bt1R_s - uR.B(transverse[1])) / (uR.rho * (SR - uR.V(direction)));
+                  - Bn * (Bt1R_s - BtR(transverse[1])) / (uR.rho * (SR - uR.V(direction)));
 
 
             auto const p_tot_s
@@ -257,15 +287,15 @@ private:
             auto const EtotL_s
                 = ((SL - uL.V(direction)) * etotL - p_tot_L * uL.V(direction) + p_tot_s * SM
                    + Bn
-                         * (Bn * uL.V(direction) + uL.B(transverse[0]) * uL.V(transverse[0])
-                            + uL.B(transverse[1]) * uL.V(transverse[1])
+                         * (Bn * uL.V(direction) + BtL(transverse[0]) * uL.V(transverse[0])
+                            + BtL(transverse[1]) * uL.V(transverse[1])
                             - (Bn * vn + vt0L_s * Bt0L_s + vt1L_s * Bt1L_s)))
                   / (SL - SM);
             auto const EtotR_s
                 = ((SR - uR.V(direction)) * etotR - p_tot_R * uR.V(direction) + p_tot_s * SM
                    + Bn
-                         * (Bn * uR.V(direction) + uR.B(transverse[0]) * uR.V(transverse[0])
-                            + uR.B(transverse[1]) * uR.V(transverse[1])
+                         * (Bn * uR.V(direction) + BtR(transverse[0]) * uR.V(transverse[0])
+                            + BtR(transverse[1]) * uR.V(transverse[1])
                             - (Bn * vn + vt0R_s * Bt0R_s + vt1R_s * Bt1R_s)))
                   / (SR - SM);
 
@@ -325,10 +355,22 @@ private:
             BR_ss(transverse[0]) = Bt0_ss;
             BR_ss(transverse[1]) = Bt1_ss;
 
-            auto const uL_s  = PerIndex{rhoL_s, rhoVL_s, BL_s, EtotL_s};
-            auto const uR_s  = PerIndex{rhoR_s, rhoVR_s, BR_s, EtotR_s};
-            auto const uL_ss = PerIndex{rhoL_s, rhoVL_ss, BL_ss, EtotL_ss};
-            auto const uR_ss = PerIndex{rhoR_s, rhoVR_ss, BR_ss, EtotR_ss};
+            // BL_s, BR_s, BL_ss, BR_ss are total intermediate fields. PerIndex stores the
+            // perturbation, so subtract the (single, face-centered) B0 here — the one
+            // localized B - B0 in the whole scheme (Guo 2016 eq. 26).
+            auto toB1 = [](auto const& Btot, auto const& B0) {
+                return PerIndexVector<std::decay_t<decltype(Btot.x)>>{Btot.x - B0.x, Btot.y - B0.y,
+                                                                      Btot.z - B0.z};
+            };
+
+            auto const uL_s
+                = PerIndex{rhoL_s, rhoVL_s, toB1(BL_s, uL.B0), EtotL_s, uL.B0};
+            auto const uR_s
+                = PerIndex{rhoR_s, rhoVR_s, toB1(BR_s, uR.B0), EtotR_s, uR.B0};
+            auto const uL_ss
+                = PerIndex{rhoL_s, rhoVL_ss, toB1(BL_ss, uL.B0), EtotL_ss, uL.B0};
+            auto const uR_ss
+                = PerIndex{rhoR_s, rhoVR_ss, toB1(BR_ss, uR.B0), EtotR_ss, uR.B0};
 
             return std::make_tuple(uL_s, uL_ss, uR_ss, uR_s);
         };
@@ -523,8 +565,10 @@ private:
     template<auto direction>
     auto hlld_speeds_(auto const& uL, auto const& uR, auto const& jL, auto const& jR)
     {
-        auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
-        auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
+        auto const BtL    = uL.totalB();
+        auto const BtR    = uR.totalB();
+        auto const BdotBL = BtL.x * BtL.x + BtL.y * BtL.y + BtL.z * BtL.z;
+        auto const BdotBR = BtR.x * BtR.x + BtR.y * BtR.y + BtR.z * BtR.z;
 
         auto compute_hll_speeds
             = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
@@ -571,13 +615,13 @@ private:
 
         if constexpr (direction == Direction::X)
             return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x,
-                                       uL.B.x, uR.B.x);
+                                       BtL.x, BtR.x);
         else if constexpr (direction == Direction::Y)
             return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y,
-                                       uL.B.y, uR.B.y);
+                                       BtL.y, BtR.y);
         else if constexpr (direction == Direction::Z)
             return compute_hlld_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z,
-                                       uL.B.z, uR.B.z);
+                                       BtL.z, BtR.z);
     }
 
     auto hlld_(auto const uL, auto const uL_s, auto const uL_ss, auto const uR_ss, auto const uR_s,

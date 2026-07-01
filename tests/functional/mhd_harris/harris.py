@@ -17,7 +17,7 @@ ph.NO_GUI()
 
 cells = (150, 75)
 time_step = 0.005
-final_time = 50
+final_time = 0.2
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
 diag_dir = "phare_outputs/mhd_harris"
 
@@ -113,10 +113,38 @@ def config():
     def bz(x, y):
         return 0.0
 
+    # Out-of-plane vector potential A_z whose discrete curl reproduces (bx, by):
+    # B = curl(A_z z_hat) = (dA_z/dy, -dA_z/dx, 0), so the initial B is divergence-free to
+    # machine precision (unlike the component-wise bx/by sampled at the face centres).
+    #   - sheet part (bx depends only on y, by = 0): A_z = integral of bx dy
+    #       int(v1) dy = v1 y ; int((v2-v1) S(y,y0,L)) dy = (v2-v1) * 0.5 * L * logcosh((y-y0)/L)
+    #     with v1=-1, v2=1 -> (v2-v1)*0.5*L = L
+    #   - Gaussian islands: each dB*exp(-(x0^2+yk^2)/sigma^2) pair is curl(dB*sigma^2*exp(...))
+    def a1z(x, y):
+        Lx = sim.simulation_domain()[0]
+        Ly = sim.simulation_domain()[1]
+        sigma = 1.0
+        dB = 0.1
+        v1 = -1.0
+
+        x0 = x - 0.5 * Lx
+        y1 = y - 0.3 * Ly
+        y2 = y - 0.7 * Ly
+
+        # numerically stable log(cosh(z)) = logaddexp(z, -z) - log(2)
+        def logcosh(z):
+            return np.logaddexp(z, -z) - np.log(2.0)
+
+        sheet = v1 * y + L * (logcosh(y1 / L) - logcosh(y2 / L))
+        islands = dB * sigma**2 * (
+            np.exp(-(x0**2 + y1**2) / sigma**2) - np.exp(-(x0**2 + y2**2) / sigma**2)
+        )
+        return sheet + islands
+
     def p(x, y):
         return 1.0 - (bx(x, y) ** 2 + by(x, y) ** 2) / 2.0
 
-    ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
+    ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, a1z=a1z, p=p)
 
     ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
 

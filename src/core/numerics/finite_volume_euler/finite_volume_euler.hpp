@@ -44,7 +44,7 @@ public:
             fve(rhoVx, rhoVxnew, rhoVx_fx);
             fve(rhoVy, rhoVynew, rhoVy_fx);
             fve(rhoVz, rhoVznew, rhoVz_fx);
-            fve(state.Etot, statenew.Etot, fluxes.Etot_fx);
+            fve(state.Etot1, statenew.Etot1, fluxes.Etot_fx);
         }
 
         if constexpr (dimension >= 2)
@@ -59,7 +59,7 @@ public:
                 fve(rhoVx, rhoVxnew, rhoVx_fx, rhoVx_fy);
                 fve(rhoVy, rhoVynew, rhoVy_fx, rhoVy_fy);
                 fve(rhoVz, rhoVznew, rhoVz_fx, rhoVz_fy);
-                fve(state.Etot, statenew.Etot, fluxes.Etot_fx, fluxes.Etot_fy);
+                fve(state.Etot1, statenew.Etot1, fluxes.Etot_fx, fluxes.Etot_fy);
             }
             if constexpr (dimension == 3)
             {
@@ -71,7 +71,7 @@ public:
                 fve(rhoVx, rhoVxnew, rhoVx_fx, rhoVx_fy, rhoVx_fz);
                 fve(rhoVy, rhoVynew, rhoVy_fx, rhoVy_fy, rhoVy_fz);
                 fve(rhoVz, rhoVznew, rhoVz_fx, rhoVz_fy, rhoVz_fz);
-                fve(state.Etot, statenew.Etot, fluxes.Etot_fx, fluxes.Etot_fy, fluxes.Etot_fz);
+                fve(state.Etot1, statenew.Etot1, fluxes.Etot_fx, fluxes.Etot_fy, fluxes.Etot_fz);
             }
         }
     }

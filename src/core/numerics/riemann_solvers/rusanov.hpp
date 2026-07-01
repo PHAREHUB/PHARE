@@ -27,7 +27,8 @@ public:
         uR.to_conservative(gamma_);
 
         auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
-            = rusanov_(uL.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hydro_speed);
+            = rusanov_(uL.as_reduced_conservative_tuple(), uR.as_reduced_conservative_tuple(),
+                       fL.as_tuple(), fR.as_tuple(), hydro_speed);
 
         return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
     }
@@ -42,17 +43,28 @@ public:
 
         auto const [hydro_speed, mag_speed] = speeds;
 
-        auto split = [](auto const& a) {
-            auto hydro = std::make_tuple(a.rho, a.rhoV().x, a.rhoV().y, a.rhoV().z);
-            auto mag   = std::make_tuple(a.B.x, a.B.y, a.B.z, a.Etot());
+        auto split_state = [](auto const& a) {
+            auto const reduced = a.as_reduced_conservative_tuple();
+            auto hydro = std::make_tuple(std::get<0>(reduced), std::get<1>(reduced),
+                                         std::get<2>(reduced), std::get<3>(reduced));
+            auto mag   = std::make_tuple(std::get<4>(reduced), std::get<5>(reduced),
+                                         std::get<6>(reduced), std::get<7>(reduced));
+            return std::make_pair(hydro, mag);
+        };
+        auto split_flux = [](auto const& a) {
+            auto const raw = a.as_tuple();
+            auto hydro = std::make_tuple(std::get<0>(raw), std::get<1>(raw), std::get<2>(raw),
+                                         std::get<3>(raw));
+            auto mag
+                = std::make_tuple(std::get<4>(raw), std::get<5>(raw), std::get<6>(raw), std::get<7>(raw));
             return std::make_pair(hydro, mag);
         };
 
-        auto [uLhydro, uLmag] = split(uL);
-        auto [uRhydro, uRmag] = split(uR);
+        auto [uLhydro, uLmag] = split_state(uL);
+        auto [uRhydro, uRmag] = split_state(uR);
 
-        auto const [fLhydro, fLmag] = split(fL);
-        auto const [fRhydro, fRmag] = split(fR);
+        auto const [fLhydro, fLmag] = split_flux(fL);
+        auto const [fRhydro, fRmag] = split_flux(fR);
 
         auto [Frho, FrhoVx, FrhoVy, FrhoVz]
             = rusanov_(uLhydro, uRhydro, fLhydro, fRhydro, hydro_speed);
@@ -84,8 +96,10 @@ private:
     template<auto direction>
     auto rusanov_speeds_(auto const& uL, auto const& uR)
     {
-        auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
-        auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
+        auto const BtL    = uL.totalB();
+        auto const BtR    = uR.totalB();
+        auto const BdotBL = BtL.x * BtL.x + BtL.y * BtL.y + BtL.z * BtL.z;
+        auto const BdotBR = BtR.x * BtR.x + BtR.y * BtR.y + BtR.z * BtR.z;
 
         auto compute_speeds = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR,
                                   auto VcompL, auto VcompR, auto BcompL, auto BcompR) {
@@ -100,20 +114,22 @@ private:
 
         if constexpr (direction == Direction::X)
             return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x,
-                                  uL.B.x, uR.B.x);
+                                  BtL.x, BtR.x);
         else if constexpr (direction == Direction::Y)
             return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y,
-                                  uL.B.y, uR.B.y);
+                                  BtL.y, BtR.y);
         else if constexpr (direction == Direction::Z)
             return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z,
-                                  uL.B.z, uR.B.z);
+                                  BtL.z, BtR.z);
     }
 
     template<auto direction>
     auto rusanov_speeds_(auto const& uL, auto const& uR, auto const& jL, auto const& jR)
     {
-        auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
-        auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
+        auto const BtL    = uL.totalB();
+        auto const BtR    = uR.totalB();
+        auto const BdotBL = BtL.x * BtL.x + BtL.y * BtL.y + BtL.z * BtL.z;
+        auto const BdotBR = BtR.x * BtR.x + BtR.y * BtR.y + BtR.z * BtR.z;
 
         auto compute_speeds = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR,
                                   auto VcompL, auto VcompR, auto BcompL, auto BcompR) {
@@ -136,13 +152,13 @@ private:
 
         if constexpr (direction == Direction::X)
             return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x,
-                                  uL.B.x, uR.B.x);
+                                  BtL.x, BtR.x);
         else if constexpr (direction == Direction::Y)
             return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y,
-                                  uL.B.y, uR.B.y);
+                                  BtL.y, BtR.y);
         else if constexpr (direction == Direction::Z)
             return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z,
-                                  uL.B.z, uR.B.z);
+                                  BtL.z, BtR.z);
     }
 
     auto rusanov_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,

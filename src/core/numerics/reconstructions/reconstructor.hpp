@@ -4,6 +4,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include <type_traits>
 #include <utility>
 
 namespace PHARE::core
@@ -14,8 +15,9 @@ struct Reconstructor
 public:
     using GridLayout = Reconstruction::GridLayout_t;
 
-    template<auto direction, typename State>
-    static auto reconstruct(State const& S, MeshIndex<GridLayout::dimension> index)
+    template<auto direction, typename State, typename ExternalB>
+    static auto reconstruct(State const& S, ExternalB const& b0,
+                            MeshIndex<GridLayout::dimension> index)
     {
         auto [rhoL, rhoR] = Reconstruction::template reconstruct<direction>(S.rho, index);
         auto [VxL, VxR] = Reconstruction::template reconstruct<direction>(S.V(Component::X), index);
@@ -23,14 +25,19 @@ public:
         auto [VzL, VzR] = Reconstruction::template reconstruct<direction>(S.V(Component::Z), index);
         auto [PL, PR]   = Reconstruction::template reconstruct<direction>(S.P, index);
 
-        // auto [BL, BR] = center_reconstruct<direction>(S.B, GridLayout::faceXToCellCenter(),
-        //                                               GridLayout::faceYToCellCenter(),
-        //                                               GridLayout::faceZToCellCenter(), index);
+        // Only the perturbation B1 is reconstructed.
+        auto [B1L, B1R] = transverse_reconstruct<direction>(S.B1, index);
 
-        auto [BL, BR] = transverse_reconstruct<direction>(S.B, index);
+        // B0 is not reconstructed: it is read once at the Riemann face (single value) and stored
+        // alongside the reconstructed perturbation B1. The total field is formed by addition only,
+        // where needed. This keeps B0 out of the Riemann jump (B1R - B1L) and makes a static
+        // equilibrium well-balanced.
+        auto const B0f = B0_at_face<direction>(b0, index);
 
-        PerIndex uL{rhoL, {VxL, VyL, VzL}, BL, PL};
-        PerIndex uR{rhoR, {VxR, VyR, VzR}, BR, PR};
+        using Float = std::decay_t<decltype(rhoL)>;
+
+        PerIndex<Float> uL{rhoL, PerIndexVector<Float>{VxL, VyL, VzL}, B1L, PL, B0f};
+        PerIndex<Float> uR{rhoR, PerIndexVector<Float>{VxR, VyR, VzR}, B1R, PR, B0f};
 
         return std::make_pair(uL, uR);
     }
@@ -95,6 +102,40 @@ public:
         BR(transverse[1]) = Bt1R;
 
         return std::make_pair(BL, BR);
+    }
+
+    // B0 is not reconstructed: it is read once at the Riemann face (single value). The normal
+    // component is naturally face-centered (read directly from B0); the transverse components are
+    // linearly interpolated from the native face-centered B0 onto this face. B0 stays out of the
+    // Riemann jump (single value, same on L/R), keeping a static equilibrium well-balanced.
+    template<auto direction, typename VecField>
+    static auto B0_at_face(VecField const& b0, MeshIndex<GridLayout::dimension> index)
+    {
+        using value_type = typename std::decay_t<decltype(b0(Component::X))>::value_type;
+        PerIndexVector<value_type> B0f;
+        B0f(direction) = b0(static_cast<Component>(direction))(index);
+        if constexpr (direction == Direction::X)
+        {
+            B0f(Component::Y)
+                = GridLayout::template project<GridLayout::ByToFaceX>(b0(Component::Y), index);
+            B0f(Component::Z)
+                = GridLayout::template project<GridLayout::BzToFaceX>(b0(Component::Z), index);
+        }
+        else if constexpr (direction == Direction::Y)
+        {
+            B0f(Component::X)
+                = GridLayout::template project<GridLayout::BxToFaceY>(b0(Component::X), index);
+            B0f(Component::Z)
+                = GridLayout::template project<GridLayout::BzToFaceY>(b0(Component::Z), index);
+        }
+        else // Direction::Z
+        {
+            B0f(Component::X)
+                = GridLayout::template project<GridLayout::BxToFaceZ>(b0(Component::X), index);
+            B0f(Component::Y)
+                = GridLayout::template project<GridLayout::ByToFaceZ>(b0(Component::Y), index);
+        }
+        return B0f;
     }
 
     template<auto direction, typename VecField>
