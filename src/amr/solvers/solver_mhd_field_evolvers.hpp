@@ -7,6 +7,8 @@
 #include "core/numerics/constrained_transport/upwind_constrained_transport.hpp"
 #include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
+#include "core/utilities/index/index.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 
@@ -225,6 +227,95 @@ public:
 
 
 
+// Computes the body-source terms of the time-dependent B = B0(x,t) + B1 split (see theory/mhd.md)
+// and writes them into a per-stage MHDSources buffer (does NOT touch the state). With B0 frozen
+// across the RK stages of a step:
+//   B1_source   = -dB0/dt                 (face-centered, added to the B1 induction equation)
+//   Etot_source = -dB0/dt . B1_stage      (cell-centered, added to the reduced-energy equation)
+// The energy source uses the current stage's B1. When B0 is static (b0TimeDependent_ == false) the
+// buffer is zero-filled so the Butcher accumulation/apply is an exact no-op.
+template<typename Model>
+class ExternalFieldSourceTransformer
+{
+    using GridLayout                = Model::gridlayout_type;
+    using level_t                   = Model::amr_types::level_t;
+    static constexpr auto dimension = GridLayout::dimension;
+
+public:
+    explicit ExternalFieldSourceTransformer(level_t& level, auto& model)
+        : level{level}
+        , model{model}
+    {
+    }
+
+    void operator()(typename Model::state_type& state, auto& sources)
+    {
+        auto& rm = *model.resourcesManager;
+
+        if (not model.b0TimeDependent_)
+        {
+            for (auto& patch : rm.enumerate(level, sources))
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                for (auto const& c : {core::Component::X, core::Component::Y, core::Component::Z})
+                {
+                    auto& s = sources.B1_source(c);
+                    layout.evalOnBox(s, [&](auto const&... args) mutable { s(args...) = 0.0; });
+                }
+                layout.evalOnBox(sources.Etot_source, [&](auto const&... args) mutable {
+                    sources.Etot_source(args...) = 0.0;
+                });
+            }
+            return;
+        }
+
+        for (auto& patch : rm.enumerate(level, state, sources, model.dB0dt))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            // B1_source = -dB0/dt, co-located with B1 (same face centering).
+            for (auto const& c : {core::Component::X, core::Component::Y, core::Component::Z})
+            {
+                auto& s        = sources.B1_source(c);
+                auto const& dc = model.dB0dt(c);
+                layout.evalOnBox(s, [&](auto&... args) mutable { s(args...) = -dc(args...); });
+            }
+            // Etot_source = -(dB0/dt . B1); both face-centered fields projected to the cell center
+            // exactly as the B1^2/2 magnetic energy is (ToConservativeConverter), for consistency.
+            layout.evalOnBox(sources.Etot_source, [&](auto&... args) mutable {
+                energySource_(model.dB0dt, state.B1, sources.Etot_source, {args...});
+            });
+        }
+    }
+
+private:
+    template<typename VecField, typename Field>
+    static void energySource_(VecField const& dB0dt, VecField const& B1, Field& Etot_source,
+                              core::MeshIndex<dimension> index)
+    {
+        auto const& dx = dB0dt(core::Component::X);
+        auto const& dy = dB0dt(core::Component::Y);
+        auto const& dz = dB0dt(core::Component::Z);
+        auto const& bx = B1(core::Component::X);
+        auto const& by = B1(core::Component::Y);
+        auto const& bz = B1(core::Component::Z);
+
+        auto const db0x = GridLayout::template project<GridLayout::faceXToCellCenter>(dx, index);
+        auto const db0y = GridLayout::template project<GridLayout::faceYToCellCenter>(dy, index);
+        auto const db0z = GridLayout::template project<GridLayout::faceZToCellCenter>(dz, index);
+        auto const b1x  = GridLayout::template project<GridLayout::faceXToCellCenter>(bx, index);
+        auto const b1y  = GridLayout::template project<GridLayout::faceYToCellCenter>(by, index);
+        auto const b1z  = GridLayout::template project<GridLayout::faceZToCellCenter>(bz, index);
+
+        Etot_source(index) = -(db0x * b1x + db0y * b1y + db0z * b1z);
+    }
+
+    level_t& level;
+    Model& model;
+};
+
+
+
+
 template<typename Model>
 class RKUtilsTransformer
 {
@@ -267,6 +358,8 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
     using FVMethod_t = FVMethodTransformer<Model, FVMethodStrategy>;
 
     using FiniteVolumeEuler_t = FiniteVolumeEulerTransformer<Model>;
+
+    using ExternalFieldSource_t = ExternalFieldSourceTransformer<Model>;
 
     template<template<typename> typename Reconstruction, auto Hall, auto Resistivity,
              auto HyperResistivity>

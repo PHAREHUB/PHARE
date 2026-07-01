@@ -54,6 +54,10 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
 
     core::AllFluxes<FieldT, VecFieldT> fluxes_;
+    // Per-stage body sources (time-dependent B0(x,t) split); zero for a static B0. Threaded through
+    // the integrator alongside `fluxes_` and accumulated in the Butcher source buffer.
+    core::MHDSources<FieldT, VecFieldT> sources_{{"B1_source", MHDQuantity::Vector::B},
+                                                 {"Etot_source", MHDQuantity::Scalar::Etot1}};
 
     TimeIntegratorStrategy evolve_;
 
@@ -133,12 +137,12 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_, evolve_);
+        return std::forward_as_tuple(fluxes_, sources_, fluxSum_, fluxSumE_, stateOld_, evolve_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_, evolve_);
+        return std::forward_as_tuple(fluxes_, sources_, fluxSum_, fluxSumE_, stateOld_, evolve_);
     }
 
 private:
@@ -196,6 +200,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::register
     }
     mhdmodel.resourcesManager->registerResources(fluxSumE_);
 
+    mhdmodel.resourcesManager->registerResources(sources_);
+
     mhdmodel.resourcesManager->registerResources(stateOld_);
 
     evolve_.registerResources(mhdmodel);
@@ -250,6 +256,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::allocate
         }
     }
     mhdmodel.resourcesManager->allocate(fluxSumE_, patch, allocateTime);
+
+    mhdmodel.resourcesManager->allocate(sources_, patch, allocateTime);
 
     mhdmodel.resourcesManager->allocate(stateOld_, patch, allocateTime);
 
@@ -400,9 +408,13 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::reflux(
     auto& bc                          = dynamic_cast<Messenger&>(messenger);
     auto& mhdModel                    = dynamic_cast<MHDModel&>(model);
     auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
+    auto& timeSources                 = evolve_.exposeSources();
 
-    reflux_euler_(mhdModel, stateOld_, mhdModel.state, timeElectric, timeFluxes, bc, level, time,
-                  time - oldTime_[level.getLevelNumber()]);
+    // Reflux re-applies the whole step from stateOld_ with the coarse-fine-corrected Butcher
+    // fluxes; the Butcher sources must ride along so refluxed patches keep the B0(x,t) source
+    // contribution (zero for a static background).
+    reflux_euler_(mhdModel, stateOld_, mhdModel.state, timeElectric, timeFluxes, timeSources, bc,
+                  level, time, time - oldTime_[level.getLevelNumber()]);
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger>
@@ -418,9 +430,17 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::advanceL
 
     try
     {
-        evolve_(mhdModel, mhdModel.state, fluxes_, fromCoarser, *level, currentTime, newTime);
+        evolve_(mhdModel, mhdModel.state, fluxes_, sources_, fromCoarser, *level, currentTime,
+                newTime);
 
         mhdNaNCheck_(mhdModel, *level, currentTime);
+
+        // A time-dependent external field B0(x,t) is held frozen (at currentTime) across the RK
+        // stages of the step just taken; re-stamp B0 and dB0/dt to newTime, once per full timestep.
+        // The -dB0/dt source applied during the step cancels this B0 increment so the total field
+        // B = B0 + B1 obeys pure Faraday (see theory/mhd.md, time-dependent split).
+        if (mhdModel.b0TimeDependent_)
+            mhdModel.updateExternalFields(*level, newTime);
     }
     catch (core::DictionaryException& ex)
     {

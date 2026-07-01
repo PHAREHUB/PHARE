@@ -292,6 +292,30 @@ struct AllFluxes
     Field Etot_fz;
 };
 
+// Body-source terms of the semi-discrete MHD RHS (dU/dt = -div F + S). Only the non-zero sources of
+// the time-dependent B = B0(x,t) + B1 split are stored: the reduced-energy source -dB0/dt . B1
+// (cell-centered, added to Etot1) and the induction source -dB0/dt (face-centered, added to B1).
+// Accumulated per RK stage in a Butcher buffer exactly like AllFluxes, then applied by the final
+// Butcher-flux Euler.
+template<typename Field, typename VecField>
+struct MHDSources
+{
+    static constexpr auto dimension = Field::dimension;
+
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(B1_source, Etot_source);
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(B1_source, Etot_source);
+    }
+
+    VecField B1_source;
+    Field Etot_source;
+};
+
 struct AllFluxesNames
 {
     std::string rho_fx;

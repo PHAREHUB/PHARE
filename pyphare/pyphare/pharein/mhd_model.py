@@ -19,6 +19,24 @@ class MHDModel(object):
         if self.dim == 3:
             return lambda x, y, z: value
 
+    def st_defaulter(self, input, value):
+        # like defaulter, but for space+time functions f(x[,y[,z]], t): dim spatial args + time
+        if input is not None:
+            import inspect
+
+            params = list(inspect.signature(input).parameters.values())
+            assert len(params)
+            param_per_dim = len(params) == self.dim + 1
+            has_vargs = params[0].kind == inspect.Parameter.VAR_POSITIONAL
+            assert param_per_dim or has_vargs
+            return input
+        if self.dim == 1:
+            return lambda x, t: value + x * 0
+        if self.dim == 2:
+            return lambda x, y, t: value
+        if self.dim == 3:
+            return lambda x, y, z, t: value
+
     def __init__(
         self,
         density=None,
@@ -44,6 +62,12 @@ class MHDModel(object):
         a1x=None,
         a1y=None,
         a1z=None,
+        db0x_dt=None,
+        db0y_dt=None,
+        db0z_dt=None,
+        da0x_dt=None,
+        da0y_dt=None,
+        da0z_dt=None,
     ):
         if global_vars.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
@@ -80,6 +104,27 @@ class MHDModel(object):
         b0_from_potential = a0_given
         b1_from_potential = a1_given
 
+        # --- time-dependent external field B0(x,t) -------------------------------
+        # The presence of the analytic time-derivative kwargs toggles the time-dependent mode
+        # (explicit and unambiguous). In that mode b0x/b0y/b0z (or a0x/a0y/a0z) are read as space
+        # +time functions f(x,t), the C++ re-stamps B0 once per timestep, and the split gains the
+        # sources -dB0/dt (on B1) and -dB0/dt . B1 (on the reduced energy). B0 must stay curl-free
+        # at all times; the potential path guarantees this by construction.
+        db0_given = any(d is not None for d in (db0x_dt, db0y_dt, db0z_dt))
+        da0_given = any(d is not None for d in (da0x_dt, da0y_dt, da0z_dt))
+        b0_time_dependent = db0_given or da0_given
+        if db0_given and da0_given:
+            raise ValueError(
+                "MHDModel: time-dependent components (db0*_dt) are exclusive with the "
+                "time-dependent potential (da0*_dt)"
+            )
+        if db0_given and b0_from_potential:
+            raise ValueError(
+                "MHDModel: db0*_dt is the derivative of a component B0; in potential mode use da0*_dt"
+            )
+        if da0_given and not a0_given:
+            raise ValueError("MHDModel: da0*_dt requires the vector potential a0x/a0y/a0z")
+
         density = self.defaulter(density, 1.0)
         vx = self.defaulter(vx, 1.0)
         vy = self.defaulter(vy, 0.0)
@@ -93,12 +138,35 @@ class MHDModel(object):
             raise ValueError(
                 "MHDModel: a0 (B0 from vector potential) is exclusive with b0x/b0y/b0z"
             )
-        b0x = self.defaulter(b0x, 0.0)
-        b0y = self.defaulter(b0y, 0.0)
-        b0z = self.defaulter(b0z, 0.0)
-        a0x = self.defaulter(a0x, 0.0)
-        a0y = self.defaulter(a0y, 0.0)
-        a0z = self.defaulter(a0z, 0.0)
+        if b0_time_dependent and not b0_from_potential:
+            # component-mode time-dependent B0: b0* are f(x,t); build space-only views at the
+            # initial time (t=0) so the total field B = B0(.,0) + B1 can still be assembled below.
+            b0x = self.st_defaulter(b0x, 0.0)
+            b0y = self.st_defaulter(b0y, 0.0)
+            b0z = self.st_defaulter(b0z, 0.0)
+            db0x_dt = self.st_defaulter(db0x_dt, 0.0)
+            db0y_dt = self.st_defaulter(db0y_dt, 0.0)
+            db0z_dt = self.st_defaulter(db0z_dt, 0.0)
+            b0x_s = lambda *xyz: b0x(*xyz, 0.0)
+            b0y_s = lambda *xyz: b0y(*xyz, 0.0)
+            b0z_s = lambda *xyz: b0z(*xyz, 0.0)
+        else:
+            b0x = self.defaulter(b0x, 0.0)
+            b0y = self.defaulter(b0y, 0.0)
+            b0z = self.defaulter(b0z, 0.0)
+            b0x_s, b0y_s, b0z_s = b0x, b0y, b0z
+
+        if b0_time_dependent and b0_from_potential:
+            a0x = self.st_defaulter(a0x, 0.0)
+            a0y = self.st_defaulter(a0y, 0.0)
+            a0z = self.st_defaulter(a0z, 0.0)
+            da0x_dt = self.st_defaulter(da0x_dt, 0.0)
+            da0y_dt = self.st_defaulter(da0y_dt, 0.0)
+            da0z_dt = self.st_defaulter(da0z_dt, 0.0)
+        else:
+            a0x = self.defaulter(a0x, 0.0)
+            a0y = self.defaulter(a0y, 0.0)
+            a0z = self.defaulter(a0z, 0.0)
         a1x = self.defaulter(a1x, 0.0)
         a1y = self.defaulter(a1y, 0.0)
         a1z = self.defaulter(a1z, 0.0)
@@ -125,9 +193,9 @@ class MHDModel(object):
             b1x = self.defaulter(b1x, 0.0)
             b1y = self.defaulter(b1y, 0.0)
             b1z = self.defaulter(b1z, 0.0)
-            bx = lambda *xyz: b0x(*xyz) + b1x(*xyz)
-            by = lambda *xyz: b0y(*xyz) + b1y(*xyz)
-            bz = lambda *xyz: b0z(*xyz) + b1z(*xyz)
+            bx = lambda *xyz: b0x_s(*xyz) + b1x(*xyz)
+            by = lambda *xyz: b0y_s(*xyz) + b1y(*xyz)
+            bz = lambda *xyz: b0z_s(*xyz) + b1z(*xyz)
         elif b0_from_potential:
             # B0 from a potential: the stored field is B1 directly (no subtraction); an unspecified
             # field means no perturbation.
@@ -138,7 +206,7 @@ class MHDModel(object):
             # Only a component background B0 was given (no total bx/by/bz): the total equals B0, so
             # B1 = total - B0 = 0. (Falling through to the classical default below would set bx=1
             # and spuriously make B1 = (1,0,0) - B0.)
-            bx, by, bz = b0x, b0y, b0z
+            bx, by, bz = b0x_s, b0y_s, b0z_s
         else:
             # Classical default total field: uniform Bx = 1.
             bx = self.defaulter(bx, 1.0)
@@ -168,7 +236,18 @@ class MHDModel(object):
                 "a1z": a1z,
                 "b0_init_mode": "potential" if b0_from_potential else "components",
                 "b1_init_mode": "potential" if b1_from_potential else "components",
+                "b0_time_dependent": b0_time_dependent,
             }
         )
+
+        if b0_time_dependent:
+            if b0_from_potential:
+                self.model_dict.update(
+                    {"da0x_dt": da0x_dt, "da0y_dt": da0y_dt, "da0z_dt": da0z_dt}
+                )
+            else:
+                self.model_dict.update(
+                    {"db0x_dt": db0x_dt, "db0y_dt": db0y_dt, "db0z_dt": db0z_dt}
+                )
 
         global_vars.sim.set_model(self)

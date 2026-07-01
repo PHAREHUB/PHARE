@@ -54,6 +54,33 @@ class fn_wrapper(py_fn_wrapper):
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
 
 
+# Wrap calls to user space+time functions f(x[,y[,z]], t): turns C++ vectors to
+#  ndarrays, forwards the scalar time, and returns a C++ span.
+class space_time_fn_wrapper(py_fn_wrapper):
+    def __init__(self, fn):
+        super().__init__(fn)
+
+    def __call__(self, *args):
+        from pyphare.cpp import cpp_etc_lib
+
+        *xyz, t = args
+        xyz = [np.asarray(arg) for arg in xyz]
+        ret = self.fn(*xyz, float(t))
+        if isinstance(ret, list):
+            ret = np.asarray(ret)
+        if is_scalar(ret):
+            ret = np.full(len(xyz[-1]), ret)  # broadcast scalar-in-space to node count
+        return cpp_etc_lib().makePyArrayWrapper(ret)
+
+
+def addSpaceTimeFunction(path, fn, ndim):
+    {
+        1: pp.addSpaceTimeFunction1D,
+        2: pp.addSpaceTimeFunction2D,
+        3: pp.addSpaceTimeFunction3D,
+    }[ndim](path, space_time_fn_wrapper(fn))
+
+
 # pybind complains if receiving wrong type
 def add_int(path, val):
     pp.add_int(path, int(val))

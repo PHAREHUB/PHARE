@@ -71,6 +71,50 @@ namespace core
         });
     }
 
+    // Time-dependent overload: A = A(x,t) is sampled at the given time before taking the discrete
+    // curl. Applied to both A0(t) -> B0 = curl(A0) and dA0/dt(t) -> dB0/dt = curl(dA0/dt), so the
+    // time derivative of B0 uses exactly the same discrete curl as B0 itself (hence discretely
+    // div-free and consistent). The body is identical to the static overload aside from the timed
+    // sampling of A.
+    template<typename GridLayout, typename VecField>
+    void initBFromPotential(SpaceTimeVecFieldInitializer<GridLayout::dimension>& aInit,
+                            VecField& Bout, VecField& A, GridLayout const& layout, double time)
+    {
+        aInit.initialize(A, layout, time);
+
+        auto const& Ax = A(Component::X);
+        auto const& Ay = A(Component::Y);
+        auto const& Az = A(Component::Z);
+
+        auto& Bx = Bout(Component::X);
+        auto& By = Bout(Component::Y);
+        auto& Bz = Bout(Component::Z);
+
+        layout.evalOnGhostBox(Bx, [&](auto&... args) {
+            if constexpr (GridLayout::dimension == 1)
+                Bx(args...) = 0.0;
+            else if constexpr (GridLayout::dimension == 2)
+                Bx(args...) = layout.template deriv<Direction::Y>(Az, {args...});
+            else
+                Bx(args...) = layout.template deriv<Direction::Y>(Az, {args...})
+                              - layout.template deriv<Direction::Z>(Ay, {args...});
+        });
+        layout.evalOnGhostBox(By, [&](auto&... args) {
+            if constexpr (GridLayout::dimension == 3)
+                By(args...) = layout.template deriv<Direction::Z>(Ax, {args...})
+                              - layout.template deriv<Direction::X>(Az, {args...});
+            else
+                By(args...) = -layout.template deriv<Direction::X>(Az, {args...});
+        });
+        layout.evalOnGhostBox(Bz, [&](auto&... args) {
+            if constexpr (GridLayout::dimension == 1)
+                Bz(args...) = layout.template deriv<Direction::X>(Ay, {args...});
+            else
+                Bz(args...) = layout.template deriv<Direction::X>(Ay, {args...})
+                              - layout.template deriv<Direction::Y>(Ax, {args...});
+        });
+    }
+
     // The dynamic MHD state of the B = B0 + B1 split. It holds the evolved perturbation field B1
     // (the user prescribes the total field B; B1 = B - B0 at init) and the conserved perturbation
     // energy Etot1 (kinetic + thermal + 1/2|B1|^2). The static background B0 is NOT stored here:

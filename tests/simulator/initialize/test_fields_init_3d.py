@@ -100,6 +100,14 @@ class Initialization3DTest(MHDInitializationTest, HybridInitializationTest):
         print(f"\n{self._testMethodName}_{ndim}d")
         self._test_mhd_potential_is_divergence_free(ndim)
 
+    def test_mhd_time_dependent_uniform_B0(self):
+        print(f"\n{self._testMethodName}_{ndim}d")
+        self._test_mhd_time_dependent_uniform_B0(ndim)
+
+    def test_mhd_time_dependent_potential_B0(self):
+        print(f"\n{self._testMethodName}_{ndim}d")
+        self._test_mhd_time_dependent_potential_B0(ndim)
+
 
 if __name__ == "__main__":
     unittest.main()

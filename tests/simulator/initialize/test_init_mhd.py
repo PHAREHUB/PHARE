@@ -296,6 +296,86 @@ class MHDInitializationTest(InitializationTest):
             )
             return mom_hier
 
+    def getMHDHierarchiesAfterSteps(
+        self,
+        ndim,
+        model_kwargs,
+        diag_outputs,
+        time_step,
+        time_step_nbr,
+        quantities=("B0", "B1"),
+        interp_order=1,
+        cells=None,
+        dl=None,
+    ):
+        """Like getMHDHierarchies, but advances time_step_nbr steps and dumps the requested raw
+        electromag quantities at the final time. Used to exercise the time-dependent B0(x,t) restamp
+        and the -dB0/dt split sources."""
+        if cells is None:
+            cells = {1: 40, 2: 20, 3: 16}[ndim]
+        if dl is None:
+            dl = 1.0 / cells
+
+        from pyphare.pharein.simulation import check_patch_size
+
+        _, smallest_patch_size = check_patch_size(
+            ndim, interp_order=interp_order, cells=cells
+        )
+
+        base_diag_dir = os.path.join("phare_outputs/init_mhd", diag_outputs)
+        sim = self.simulation(
+            smallest_patch_size=smallest_patch_size,
+            largest_patch_size=10,
+            time_step_nbr=time_step_nbr,
+            time_step=time_step,
+            boundary_types=["periodic"] * ndim,
+            cells=phut.np_array_ify(cells, ndim),
+            dl=phut.np_array_ify(dl, ndim),
+            interp_order=interp_order,
+            refinement_boxes={},
+            diag_options={
+                "format": "phareh5",
+                "options": {"dir": base_diag_dir, "mode": "overwrite"},
+            },
+            strict=True,
+            nesting_buffer=1,
+            hyper_mode="spatial",
+            eta=0.0,
+            nu=0.0,
+            gamma=5.0 / 3.0,
+            reconstruction="Linear",
+            limiter="VanLeer",
+            riemann="Rusanov",
+            mhd_timestepper="TVDRK2",
+            hall=False,
+            res=False,
+            hyper_res=False,
+            model_options=["MHDModel"],
+            max_mhd_level=1,
+        )
+        diag_dir = sim.diag_options["options"]["dir"]
+        final_time = time_step * time_step_nbr
+
+        fns = dict(
+            density=_const(1.0),
+            vx=_const(0.0),
+            vy=_const(0.0),
+            vz=_const(0.0),
+            p=_const(1.0),
+        )
+        fns.update(model_kwargs)
+        ph.MHDModel(**fns)
+
+        for q in quantities:
+            ph.ElectromagDiagnostics(quantity=q, write_timestamps=[final_time])
+
+        Simulator(sim).run().reset()
+
+        # the diagnostics dump only at final_time, so a plain read returns that single time
+        return {
+            q: hierarchy_from(h5_filename=diag_dir + f"/EM_{q}.h5") for q in quantities
+        }
+
     def getMHDHierarchies(
         self,
         ndim,
@@ -457,3 +537,79 @@ class MHDInitializationTest(InitializationTest):
         )
         self._assert_mhd_div_free(hiers["B0"], "B0", dim, atol=1e-11)
         self._assert_mhd_div_free(hiers["B1"], "B1", dim, atol=1e-11)
+
+    def _test_mhd_time_dependent_uniform_B0(self, dim):
+        """Manufactured solution for a time-dependent external field B0(x,t).
+
+        Take a spatially UNIFORM B0(t) = B0_0 + t * rate (trivially curl-free) on a plasma at rest
+        (V = 0) with periodic boundaries and uniform rho/P. Then J = curl(B1) = 0, E = 0, so the
+        total field obeys dB/dt = -curl E = 0 and stays at B0_0. The split therefore predicts, at
+        every time t:
+            B0(t) = B0_0 + t * rate         (re-stamped once per step by the solver)
+            B1(t) = B - B0 = -t * rate      (built up by the -dB0/dt induction source)
+        The plasma stays at rest, so this isolates and checks exactly the new restamp + source path.
+        """
+        B0_0 = (0.3, 0.2, 0.1)
+        rate = (0.1, -0.2, 0.05)
+        time_step = 0.001
+        time_step_nbr = 5
+        tf = time_step * time_step_nbr
+
+        def b0(i):
+            return lambda *args: B0_0[i] + args[-1] * rate[i] + 0.0 * args[0]
+
+        def db0(i):
+            return lambda *args: rate[i] + 0.0 * args[0]
+
+        model_kwargs = dict(
+            b0x=b0(0), b0y=b0(1), b0z=b0(2),
+            db0x_dt=db0(0), db0y_dt=db0(1), db0z_dt=db0(2),
+        )
+        hiers = self.getMHDHierarchiesAfterSteps(
+            dim,
+            model_kwargs,
+            diag_outputs=f"tdep_b0/{dim}/{self.ddt_test_id()}",
+            time_step=time_step,
+            time_step_nbr=time_step_nbr,
+        )
+        expected_b0 = tuple(B0_0[i] + tf * rate[i] for i in range(3))
+        expected_b1 = tuple(-tf * rate[i] for i in range(3))
+        # uniform fields: exact to round-off, no ghost stripping needed
+        self._assert_mhd_field(hiers["B0"], "B0", expected_b0, dim, atol=1e-12, strip_ghosts=False)
+        self._assert_mhd_field(hiers["B1"], "B1", expected_b1, dim, atol=1e-12, strip_ghosts=False)
+
+    def _test_mhd_time_dependent_potential_B0(self, dim):
+        """Same manufactured solution as the component test, but B0 comes from a time-dependent
+        vector potential A0(x,t) = t * A_lin(x). Since A_lin is linear, B0(t) = curl(A0) = t * B_lin
+        is uniform, and dB0/dt = curl(dA0/dt) = curl(A_lin) = B_lin. This exercises the potential
+        restamp path (B0 = curl(A0(t)), dB0/dt = curl(dA0/dt(t)) via the same discrete curl). With a
+        plasma at rest the total field stays at B0(0) = 0, so B1(tf) = -tf * B_lin.
+        """
+        (ax, ay, az), B_lin = linear_potential({"xz": 0.2, "yx": 0.3, "zy": 0.1}, dim)
+        a_fns = (ax, ay, az)
+        time_step = 0.001
+        time_step_nbr = 5
+        tf = time_step * time_step_nbr
+
+        def a0(i):
+            return lambda *args: args[-1] * a_fns[i](*args[:-1]) + 0.0 * args[0]
+
+        def da0(i):
+            return lambda *args: a_fns[i](*args[:-1]) + 0.0 * args[0]
+
+        model_kwargs = dict(
+            a0x=a0(0), a0y=a0(1), a0z=a0(2),
+            da0x_dt=da0(0), da0y_dt=da0(1), da0z_dt=da0(2),
+        )
+        hiers = self.getMHDHierarchiesAfterSteps(
+            dim,
+            model_kwargs,
+            diag_outputs=f"tdep_b0_pot/{dim}/{self.ddt_test_id()}",
+            time_step=time_step,
+            time_step_nbr=time_step_nbr,
+        )
+        expected_b0 = tuple(tf * B_lin[i] for i in range(3))
+        expected_b1 = tuple(-tf * B_lin[i] for i in range(3))
+        # linear-potential curl is exact on the domain but approximate in the outermost ghost
+        self._assert_mhd_field(hiers["B0"], "B0", expected_b0, dim, atol=1e-11, strip_ghosts=True)
+        self._assert_mhd_field(hiers["B1"], "B1", expected_b1, dim, atol=1e-11, strip_ghosts=True)

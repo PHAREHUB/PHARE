@@ -3,7 +3,7 @@
 
 #include "initializer/data_provider.hpp"
 #include "amr/solvers/time_integrator/base_mhd_timestepper.hpp"
-#include "amr/solvers/time_integrator/compute_fluxes.hpp"
+#include "amr/solvers/time_integrator/compute_fluxes_and_sources.hpp"
 #include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 #include "amr/solvers/solver_mhd_field_evolvers.hpp"
 #include "amr/solvers/time_integrator/euler.hpp"
@@ -31,25 +31,29 @@ public:
     SSPRK4_5Integrator(PHARE::initializer::PHAREDict const& dict)
         : Super{dict}
         , euler_{dict}
-        , compute_fluxes_{dict}
+        , compute_fluxes_and_sources_{dict}
     {
     }
 
     // Butcher fluxes are used to accumulate fluxes over multiple stages, the corresponding buffer
     // should only contain the fluxes over one time step. The accumulation over all substeps is
     // delegated to the solver.
-    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
-                    double const currentTime, double const newTime)
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& sources, auto& bc,
+                    level_t& level, double const currentTime, double const newTime)
     {
         this->resetButcherFluxes_(model, level);
+        this->resetButcherSources_(model, level);
 
         auto const dt = newTime - currentTime;
 
         // U1 = Un + w0_*dt*F(Un)
-        euler_(model, state, state1_, fluxes, bc, level, currentTime, newTime, w0_ * dt);
+        euler_(model, state, state1_, fluxes, sources, bc, level, currentTime, newTime, w0_ * dt);
 
         this->accumulateButcherFluxes_(
             model, state.E, fluxes, level,
+            (w0_ * w11_ * w21_ * w31_ * w43_ + w0_ * w11_ * w21_ * w41_ + w0_ * w11_ * w40_));
+        this->accumulateButcherSources_(
+            model, sources, level,
             (w0_ * w11_ * w21_ * w31_ * w43_ + w0_ * w11_ * w21_ * w41_ + w0_ * w11_ * w40_));
 
         // U2 = w10_*Un + w11_*U1 + w12_*dt*F(U1)
@@ -58,13 +62,16 @@ public:
         RKUtils_t{level, model}(newTime, state2_, RKPair_t{w10_, state}, RKPair_t{w11_, state1_});
 
         // U2 = U2 + w12_*dt*F(U1)
-        compute_fluxes_(model, state1_, fluxes, bc, level, newTime);
+        compute_fluxes_and_sources_(model, state1_, fluxes, sources, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state2_, state2_, state1_.E, fluxes, bc, level, newTime,
-                                    w12_ * dt);
+        euler_using_butcher_fluxes_(model, state2_, state2_, state1_.E, fluxes, sources, bc, level,
+                                    newTime, w12_ * dt);
 
         this->accumulateButcherFluxes_(
             model, state1_.E, fluxes, level,
+            (w12_ * w21_ * w31_ * w43_ + w12_ * w21_ * w41_ + w12_ * w40_));
+        this->accumulateButcherSources_(
+            model, sources, level,
             (w12_ * w21_ * w31_ * w43_ + w12_ * w21_ * w41_ + w12_ * w40_));
 
         // U3 = w20_*Un + w21_*U2 + w22_*dt*F(U2)
@@ -73,13 +80,14 @@ public:
         RKUtils_t{level, model}(newTime, state3_, RKPair_t{w20_, state}, RKPair_t{w21_, state2_});
 
         // U3 = U3 + w22_*dt*F(U2)
-        compute_fluxes_(model, state2_, fluxes, bc, level, newTime);
+        compute_fluxes_and_sources_(model, state2_, fluxes, sources, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state3_, state3_, state2_.E, fluxes, bc, level, newTime,
-                                    w22_ * dt);
+        euler_using_butcher_fluxes_(model, state3_, state3_, state2_.E, fluxes, sources, bc, level,
+                                    newTime, w22_ * dt);
 
         this->accumulateButcherFluxes_(model, state2_.E, fluxes, level,
                                        (w22_ * w31_ * w43_ + w22_ * w41_));
+        this->accumulateButcherSources_(model, sources, level, (w22_ * w31_ * w43_ + w22_ * w41_));
 
         // U4 = w30_*Un + w31_*U3 + w32_*dt*F(U3)
         //
@@ -89,19 +97,21 @@ public:
         // U4 = U4 + w32_*dt*F(U3)
         // if we were not using butcher formulation, we would need a separate flux buffer for F(U3)
         // for the final step
-        compute_fluxes_(model, state3_, fluxes, bc, level, newTime);
+        compute_fluxes_and_sources_(model, state3_, fluxes, sources, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state4_, state4_, state3_.E, fluxes, bc, level, newTime,
-                                    w32_ * dt);
+        euler_using_butcher_fluxes_(model, state4_, state4_, state3_.E, fluxes, sources, bc, level,
+                                    newTime, w32_ * dt);
 
         this->accumulateButcherFluxes_(model, state3_.E, fluxes, level, (w32_ * w43_ + w42_));
+        this->accumulateButcherSources_(model, sources, level, (w32_ * w43_ + w42_));
 
-        compute_fluxes_(model, state4_, fluxes, bc, level, newTime);
+        compute_fluxes_and_sources_(model, state4_, fluxes, sources, bc, level, newTime);
 
         this->accumulateButcherFluxes_(model, state4_.E, fluxes, level, w44_);
+        this->accumulateButcherSources_(model, sources, level, w44_);
 
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, dt);
+        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_,
+                                    this->butcherSources_, bc, level, newTime, dt);
 
         // Un+1 = w40_*U2 + w41_*U3 + w42_*F(U3) + w43_*U4 + w44_*dt*F(U4)
     }
@@ -179,7 +189,7 @@ private:
     static constexpr auto w44_{0.226007483236906};
 
     Euler<FVMethodStrategy, MHDModel> euler_;
-    ComputeFluxes<FVMethodStrategy, MHDModel> compute_fluxes_;
+    ComputeFluxesAndSources<FVMethodStrategy, MHDModel> compute_fluxes_and_sources_;
     EulerUsingComputedFlux<MHDModel> euler_using_butcher_fluxes_;
 
     MHDStateT state1_{"state1"};

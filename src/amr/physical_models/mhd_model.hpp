@@ -53,6 +53,17 @@ public:
     // B0init_. Defaults keep the legacy component-wise init.
     bool b0FromPotential_ = false;
     core::VecFieldInitializer<dimension> a0Init_;
+    // Time-dependent external field B0(x,t): when enabled the background is re-stamped once per
+    // full timestep and the split gains the sources -dB0/dt (on B1) and -dB0/dt . B1 (on the
+    // reduced energy). dB0dt holds the analytic time derivative (same face-centering as B0), frozen
+    // across the RK stages of a step. The ST initializers evaluate the user f(x,t) at a given time;
+    // in potential mode B0 = curl(A0(t)) and dB0dt = curl(dA0/dt(t)) share the discrete curl.
+    bool b0TimeDependent_ = false;
+    vecfield_type dB0dt{model_name + "_dB0dt", core::MHDQuantity::Vector::B0};
+    core::SpaceTimeVecFieldInitializer<dimension> B0initST_;
+    core::SpaceTimeVecFieldInitializer<dimension> dB0dtInitST_;
+    core::SpaceTimeVecFieldInitializer<dimension> a0InitST_;
+    core::SpaceTimeVecFieldInitializer<dimension> da0dtInitST_;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
     // diagnostics buffers
@@ -73,12 +84,31 @@ public:
     // (Re-)evaluate the static background B0 analytically on every patch of a level. B0 is never
     // interpolated across levels: each level (including levels created/changed by a regrid)
     // evaluates B0 at its own coordinates. Called after init/regrid of non-root levels.
-    void updateExternalFields(level_t& level)
+    void updateExternalFields(level_t& level, double time = 0.)
     {
         for (auto& patch : level)
         {
             auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            if (b0FromPotential_)
+            if (b0TimeDependent_)
+            {
+                if (b0FromPotential_)
+                {
+                    // B0 = curl(A0(t)) and dB0/dt = curl(dA0/dt(t)) via the same discrete curl,
+                    // both using the E vecfield as the A scratch (cleared after each).
+                    auto _ = resourcesManager->setOnPatch(*patch, B0, dB0dt, state.E);
+                    core::initBFromPotential(a0InitST_, B0, state.E, layout, time);
+                    clearEScratch_(layout);
+                    core::initBFromPotential(da0dtInitST_, dB0dt, state.E, layout, time);
+                    clearEScratch_(layout);
+                }
+                else
+                {
+                    auto _ = resourcesManager->setOnPatch(*patch, B0, dB0dt);
+                    B0initST_.initialize(B0, layout, time);
+                    dB0dtInitST_.initialize(dB0dt, layout, time);
+                }
+            }
+            else if (b0FromPotential_)
             {
                 // B0 = curl(A0), built with the discrete curl using the full E vecfield as the A
                 // scratch.
@@ -112,6 +142,7 @@ public:
     {
         resourcesManager->allocate(state, patch, allocateTime);
         resourcesManager->allocate(B0, patch, allocateTime);
+        resourcesManager->allocate(dB0dt, patch, allocateTime);
         resourcesManager->allocate(V_diag_, patch, allocateTime);
         resourcesManager->allocate(P_diag_, patch, allocateTime);
         resourcesManager->allocate(BTotal_diag_, patch, allocateTime);
@@ -133,19 +164,47 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
-        , B0init_{dict["mhd_state"]["external_magnetic"]["initializer"]}
         , b0FromPotential_{cppdict::get_value(dict["mhd_state"], "b0_init_mode",
                                               std::string{"components"})
                            == "potential"}
+        , b0TimeDependent_{cppdict::get_value(dict["mhd_state"]["external_magnetic"],
+                                              "time_dependent", false)}
         , resourcesManager{std::move(_resourcesManager)}
     {
+        // Static component B0: the initializer components are InitFunctions. In time-dependent mode
+        // they are SpaceTimeFunctions instead (read into B0initST_ below), so B0init_ must not be
+        // built from them then (to<InitFunction> would throw "invalid type").
+        if (not b0TimeDependent_)
+            B0init_ = core::VecFieldInitializer<dimension>{
+                dict["mhd_state"]["external_magnetic"]["initializer"]};
+
         // Vector-potential init: read the vector potential only in "potential" mode so dicts that
         // predate this feature need not provide the potential key.
-        if (b0FromPotential_)
+        if (b0FromPotential_ and not b0TimeDependent_)
             a0Init_ = core::VecFieldInitializer<dimension>{
                 dict["mhd_state"]["external_magnetic"]["initializer"]["potential"]};
 
+        // Time-dependent B0: read the space+time initializers and the analytic derivative for the
+        // active mode only, so static dicts (no derivative subtree) are unaffected.
+        if (b0TimeDependent_)
+        {
+            auto const& extB = dict["mhd_state"]["external_magnetic"];
+            if (b0FromPotential_)
+            {
+                a0InitST_ = core::SpaceTimeVecFieldInitializer<dimension>{
+                    extB["initializer"]["potential"]};
+                da0dtInitST_ = core::SpaceTimeVecFieldInitializer<dimension>{
+                    extB["derivative"]["potential"]};
+            }
+            else
+            {
+                B0initST_ = core::SpaceTimeVecFieldInitializer<dimension>{extB["initializer"]};
+                dB0dtInitST_ = core::SpaceTimeVecFieldInitializer<dimension>{extB["derivative"]};
+            }
+        }
+
         resourcesManager->registerResources(B0);
+        resourcesManager->registerResources(dB0dt);
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
         resourcesManager->registerResources(BTotal_diag_);
@@ -162,16 +221,25 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return state.isUsable() and B0.isUsable(); }
+    NO_DISCARD bool isUsable() const
+    {
+        return state.isUsable() and B0.isUsable() and dB0dt.isUsable();
+    }
 
-    NO_DISCARD bool isSettable() const { return state.isSettable() and B0.isSettable(); }
+    NO_DISCARD bool isSettable() const
+    {
+        return state.isSettable() and B0.isSettable() and dB0dt.isSettable();
+    }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(state, B0);
+        return std::forward_as_tuple(state, B0, dB0dt);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state, B0); }
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(state, B0, dB0dt);
+    }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -186,19 +254,45 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
     for (auto& patch : level)
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        auto _      = this->resourcesManager->setOnPatch(*patch, state, B0);
+        auto _      = this->resourcesManager->setOnPatch(*patch, state, B0, dB0dt);
 
-        // evaluate the static background B0 first, then the dynamic state, which subtracts B0 from
-        // the prescribed total field to form B1.
-        if (b0FromPotential_)
+        // evaluate the background B0 first, then the dynamic state, which subtracts B0 from the
+        // prescribed total field to form B1. The initial stamp is at time 0: the Python total field
+        // was assembled with B0(.,0), so B1 = total - B0(.,0). The solver re-stamps B0/dB0dt to the
+        // new time at the end of each timestep.
+        if (b0TimeDependent_)
         {
-            // B0 = curl(A0) via the discrete curl, using the full E vecfield as the A scratch.
-            // Clear E before state.initialize so a component-mode B1 leaves no A residue in E.
-            core::initBFromPotential(a0Init_, B0, state.E, layout);
-            clearEScratch_(layout);
+            if (b0FromPotential_)
+            {
+                core::initBFromPotential(a0InitST_, B0, state.E, layout, 0.);
+                clearEScratch_(layout);
+                core::initBFromPotential(da0dtInitST_, dB0dt, state.E, layout, 0.);
+                clearEScratch_(layout);
+            }
+            else
+            {
+                B0initST_.initialize(B0, layout, 0.);
+                dB0dtInitST_.initialize(dB0dt, layout, 0.);
+            }
         }
         else
-            B0init_.initialize(B0, layout);
+        {
+            if (b0FromPotential_)
+            {
+                // B0 = curl(A0) via the discrete curl, using the full E vecfield as the A scratch.
+                // Clear E before state.initialize so a component-mode B1 leaves no A residue in E.
+                core::initBFromPotential(a0Init_, B0, state.E, layout);
+                clearEScratch_(layout);
+            }
+            else
+                B0init_.initialize(B0, layout);
+            // dB0/dt is unused for a static B0; zero it so the allocated field is well-defined.
+            for (auto const& component : {core::Component::X, core::Component::Y, core::Component::Z})
+            {
+                auto& dc = dB0dt(component);
+                layout.evalOnGhostBox(dc, [&](auto&... args) mutable { dc(args...) = 0.0; });
+            }
+        }
         state.initialize(layout, B0);
     }
 }

@@ -41,9 +41,10 @@ public:
             PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
             PHARE_LOG_START(3, "mhdLevelInitializer::initialize : regriding block");
             messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
-            // the messenger interpolates the perturbation B1 from the coarser level; the static
-            // background B0 is re-evaluated analytically on the new patches (never interpolated).
-            mhdModel.updateExternalFields(level);
+            // the messenger interpolates the perturbation B1 from the coarser level; the
+            // background B0 is re-evaluated analytically on the new patches (never interpolated),
+            // at the regrid time for a time-dependent B0(x,t).
+            mhdModel.updateExternalFields(level, initDataTime);
             PHARE_LOG_STOP(3, "mhdLevelInitializer::initialize : regriding block");
         }
         else
@@ -59,8 +60,9 @@ public:
             {
                 PHARE_LOG_START(3, "mhdLevelInitializer::initialize : initlevel");
                 messenger.initLevel(model, level, initDataTime);
-                // B0 evaluated analytically on the freshly initialized fine level
-                mhdModel.updateExternalFields(level);
+                // B0 evaluated analytically on the freshly initialized fine level (at initDataTime
+                // for a time-dependent B0(x,t))
+                mhdModel.updateExternalFields(level, initDataTime);
                 PHARE_LOG_STOP(3, "mhdLevelInitializer::initialize : initlevel");
             }
         }

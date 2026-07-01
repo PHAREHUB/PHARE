@@ -36,31 +36,36 @@ public:
     // Butcher fluxes are used to accumulate fluxes over multiple stages, the corresponding buffer
     // should only contain the fluxes over one time step. The accumulation over all substeps is
     // delegated to the solver.
-    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
-                    double const currentTime, double const newTime)
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& sources, auto& bc,
+                    level_t& level, double const currentTime, double const newTime)
     {
         this->resetButcherFluxes_(model, level);
+        this->resetButcherSources_(model, level);
 
         // U1 = Euler(Un)
-        euler_(model, state, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state1_, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state.E, fluxes, level, w01_ * w11_);
+        this->accumulateButcherSources_(model, sources, level, w01_ * w11_);
 
         // U1 = Euler(U1)
-        euler_(model, state1_, state1_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state1_, state1_, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state1_.E, fluxes, level, w01_ * w11_);
+        this->accumulateButcherSources_(model, sources, level, w01_ * w11_);
 
         // U2 = 0.75*Un + 0.25*U1
         RKUtils_t{level, model}(newTime, state2_, RKPair_t{w00_, state}, RKPair_t{w01_, state1_});
 
         // U2 = Euler(U2)
-        euler_(model, state2_, state2_, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state2_, state2_, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state2_.E, fluxes, level, w11_);
+        this->accumulateButcherSources_(model, sources, level, w11_);
 
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, newTime - currentTime);
+        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_,
+                                    this->butcherSources_, bc, level, newTime,
+                                    newTime - currentTime);
 
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
         // tvdrk3_step_(level, model, newTime, state, RKPair_t{w10_, state}, RKPair_t{w11_,

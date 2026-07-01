@@ -25,12 +25,14 @@ struct DefaultTimeIntegrator
                          {"timeB_fz", core::MHDQuantity::Vector::VecFlux_z},
                          {"timeEtot_fz", core::MHDQuantity::Scalar::ScalarFlux_z}}
         , butcherE_{"timeE", core::MHDQuantity::Vector::E}
+        , butcherSources_{{"timeB1_source", core::MHDQuantity::Vector::B},
+                          {"timeEtot_source", core::MHDQuantity::Scalar::Etot1}}
     {
     }
 
     void operator()(MHDModel& /*model*/, MHDModel::state_type& /*state*/, auto& /*fluxes*/,
-                    auto& /*fromCoarser*/, auto& /*level*/, double const /*currentTime*/,
-                    double const /*newTime*/)
+                    auto& /*sources*/, auto& /*fromCoarser*/, auto& /*level*/,
+                    double const /*currentTime*/, double const /*newTime*/)
     {
     }
 
@@ -44,8 +46,14 @@ struct DefaultTimeIntegrator
 
     auto exposeFluxes() const { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
 
+    auto& exposeSources() { return butcherSources_; }
+
+    auto const& exposeSources() const { return butcherSources_; }
+
     core::AllFluxes<typename MHDModel::field_type, typename MHDModel::vecfield_type> butcherFluxes_;
     MHDModel::vecfield_type butcherE_;
+    core::MHDSources<typename MHDModel::field_type, typename MHDModel::vecfield_type>
+        butcherSources_;
 };
 
 template<typename GridLayout, typename SlopeLimiter>

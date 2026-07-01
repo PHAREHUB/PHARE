@@ -33,6 +33,29 @@ public:
                 [&](auto&... args) { field(layout.AMRToLocal(Point{args...})) = grid[cell_idx]; },
                 indices[cell_idx]);
     }
+
+    // Space+time variant: same node sampling, but the user function f(x[,y[,z]], t) is evaluated
+    // at the given time. Used to (re-)stamp a time-dependent background field B0(x,t).
+    template<typename Field, typename GridLayout>
+    void static initialize(Field& field, GridLayout const& layout,
+                           initializer::SpaceTimeFunction<GridLayout::dimension> const& init,
+                           double time)
+    {
+        auto const indices = layout.indices(layout.AMRGhostBoxFor(field));
+        auto const coords  = layout.template indexesToCoordVectors</*WithField=*/true>(
+            indices, field, [](auto& gridLayout, auto& field_, auto const&... args) {
+                return gridLayout.fieldNodeCoordinates(field_, args...);
+            });
+
+        std::shared_ptr<Span<double>> gridPtr // keep grid data alive
+            = std::apply([&](auto&... args) { return init(args..., time); }, coords);
+        Span<double>& grid = *gridPtr;
+
+        for (std::size_t cell_idx = 0; cell_idx < indices.size(); cell_idx++)
+            std::apply(
+                [&](auto&... args) { field(layout.AMRToLocal(Point{args...})) = grid[cell_idx]; },
+                indices[cell_idx]);
+    }
 };
 
 } // namespace PHARE::core
