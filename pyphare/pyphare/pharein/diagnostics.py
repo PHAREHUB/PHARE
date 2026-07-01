@@ -6,8 +6,9 @@ from . import global_vars
 
 def all_timestamps(sim):
     init_time = sim.start_time()
-    nbr_dump_step = int((sim.final_time - init_time) / sim.time_step) + 1
-    return (sim.time_step * np.arange(nbr_dump_step)) + init_time
+    # consume the authoritative integer step count rather than re-deriving it from
+    # final_time/dt (fp-fragile). last stamp = init + nbr*dt = sim.final_time exactly.
+    return sim.time_step * np.arange(sim.time_step_nbr + 1) + init_time
 
 
 # ------------------------------------------------------------------------------
