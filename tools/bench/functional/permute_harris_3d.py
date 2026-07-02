@@ -185,7 +185,7 @@ def config(**kwargs):
 
 
 if __name__ == "__main__":
-    from permutor import execute
+    from tools.bench.functional.permutor import execute
 
     startMPI()
 
