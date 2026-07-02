@@ -6,6 +6,7 @@
 #include <cstddef>
 #include <sstream>
 #include <ostream>
+#include <type_traits>
 
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/def.hpp"
@@ -258,6 +259,27 @@ namespace core
                 return as<std::int32_t>();
             // else no return cause not yet handled
         }
+
+
+        template<auto direction, auto offset>
+        NO_DISCARD constexpr auto neighbor() const
+        {
+            constexpr size_t d = static_cast<size_t>(direction);
+            static_assert(std::is_integral_v<decltype(offset)>,
+                          "'offset' template parameter must have an integral type.");
+
+            Point<Type, dim> result = *this;
+            result[d] += static_cast<Type>(offset);
+            return result;
+        }
+
+        NO_DISCARD constexpr Point<Type, dim> neighbor(std::size_t d, int offset) const
+        {
+            Point<Type, dim> result = *this;
+            result[d] += static_cast<Type>(offset);
+            return result;
+        }
+
 
     private:
         std::array<Type, dim> r{};

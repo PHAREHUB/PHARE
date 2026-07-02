@@ -30,7 +30,7 @@ public:
 
         bc.fillMagneticGhosts(statenew.B, level, newTime);
 
-        bc.fillMomentsGhosts(statenew, level, newTime);
+        bc.fillMomentsGhosts(statenew, level, newTime, dt);
     }
 };
 
