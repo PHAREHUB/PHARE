@@ -12,6 +12,8 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
+#include "core/numerics/riemann_solvers/mhd_speeds.hpp"
+#include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
 
 #include "amr/solvers/solver.hpp"
 #include "amr/messengers/messenger.hpp"
@@ -66,6 +68,11 @@ private:
 
     std::unordered_map<std::size_t, double> oldTime_;
 
+    // adaptive-timestep coefficients (read from the algo dict, mirror ComputeFluxes/CT keys)
+    double const gamma_; // adiabatic index (advective fast speed)
+    double const eta_;   // resistivity (parabolic / Fourier bucket)
+    bool const hall_;    // Hall active -> add whistler speed to the advective bucket
+
 public:
     SolverMHD(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"MHDSolver"}
@@ -98,6 +105,9 @@ public:
                    {"sumRhoV_fz", MHDQuantity::Vector::VecFlux_z},
                    {"sumB_fz", MHDQuantity::Vector::VecFlux_z},
                    {"sumEtot_fz", MHDQuantity::Scalar::ScalarFlux_z}}
+        , gamma_{dict["to_primitive"]["heat_capacity_ratio"].template to<double>()}
+        , eta_{dict["constrained_transport"]["resistivity"].template to<double>()}
+        , hall_{cppdict::get_value(dict, "fv_method/hall", false)}
     {
     }
 
@@ -127,6 +137,9 @@ public:
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
                       IMessenger& fromCoarserMessenger, double const currentTime,
                       double const newTime) override;
+
+    double computeStableDt(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+                           double const cfl, double const fourier) override;
 
     void onRegrid() override {}
 
@@ -429,6 +442,86 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::advanceL
 
     if (core::mpi::any_errors())
         throw core::DictionaryException{}("ID", "SolverMHD::advanceLevel");
+}
+
+template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger>
+double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::computeStableDt(
+    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, double const cfl,
+    double const fourier)
+{
+    PHARE_LOG_SCOPE(1, "SolverMHD::computeStableDt");
+
+    auto& mhdModel = dynamic_cast<MHDModel&>(model);
+    auto& rho      = mhdModel.state.rho;
+    auto& rhoV     = mhdModel.state.rhoV;
+    auto& B        = mhdModel.state.B;
+    auto& Etot     = mhdModel.state.Etot;
+
+    // Two stability buckets, combined by min. Both coefficients are normalized so that the value
+    // 1 sits exactly on the (forward-Euler / SSP-RK) stability limit, independent of dimension, so
+    // cfl, fourier are meant to be chosen in (0, 1]:
+    //   - advective: dt = cfl / sum_d (|v_d| + c_fast_d [+ c_whistler_d if Hall]) / dx_d
+    //   - resistive: dt = fourier / (2 * eta * sum_d 1/dx_d^2)   (eta uniform)
+    // The level's patches are distributed across ranks, so the local min below is reduced across
+    // ranks before returning. The inter-level projection is applied by the caller.
+    double dt = std::numeric_limits<double>::max();
+
+    for (auto& patch : level)
+    {
+        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto _             = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot);
+
+        auto const meshSize = layout.meshSize();
+
+        // resistive (Fourier) bucket: eta uniform -> one value per patch, no cell loop needed
+        if (eta_ > 0)
+        {
+            double invdx2 = 0;
+            for (std::size_t d = 0; d < dimension; ++d)
+                invdx2 += 1.0 / (meshSize[d] * meshSize[d]);
+            dt = std::min(dt, fourier / (2.0 * eta_ * invdx2));
+        }
+
+        auto const& rhoVx = rhoV(core::Component::X);
+        auto const& rhoVy = rhoV(core::Component::Y);
+        auto const& rhoVz = rhoV(core::Component::Z);
+        auto const& Bx    = B(core::Component::X);
+        auto const& By    = B(core::Component::Y);
+        auto const& Bz    = B(core::Component::Z);
+
+        // advective (+ Hall whistler) bucket: per cell, sum-of-speeds form
+        layout.evalOnBox(rho, [&](auto&... args) mutable {
+            core::MeshIndex<dimension> const index{args...};
+
+            auto const r  = rho(index);
+            auto const vx = rhoVx(index) / r;
+            auto const vy = rhoVy(index) / r;
+            auto const vz = rhoVz(index) / r;
+            // cell-center the face-centered (Yee) fields, same idiom as ToPrimitiveConverter
+            auto const bx = GridLayout::template project<GridLayout::faceXToCellCenter>(Bx, index);
+            auto const by = GridLayout::template project<GridLayout::faceYToCellCenter>(By, index);
+            auto const bz = GridLayout::template project<GridLayout::faceZToCellCenter>(Bz, index);
+
+            auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
+            auto const BdotB = bx * bx + by * by + bz * bz;
+
+            std::array<double, 3> const v{vx, vy, vz};
+            std::array<double, 3> const b{bx, by, bz};
+
+            // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
+            double invDtAdv = 0;
+            for (std::size_t d = 0; d < dimension; ++d)
+            {
+                auto const cfast = core::compute_fast_magnetosonic_(gamma_, r, b[d], BdotB, P);
+                // Hall whistler
+                auto const cw = hall_ ? core::compute_whistler_(1.0 / meshSize[d], r, BdotB) : 0.0;
+                invDtAdv += (std::abs(v[d]) + cfast + cw) / meshSize[d];
+            }
+            dt = std::min(dt, cfl / invDtAdv);
+        });
+    }
+
+    return core::mpi::min(dt); // reduce across the ranks the level is distributed over
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger>

@@ -26,6 +26,8 @@
 #include <stdexcept>
 #include <vector>
 #include <string>
+#include <limits>
+#include <algorithm>
 
 
 
@@ -101,7 +103,20 @@ public:
 
     NO_DISCARD double startTime() override { return startTime_; }
     NO_DISCARD double endTime() override { return finalTime_; }
-    NO_DISCARD double timeStep() override { return dt_; }
+    NO_DISCARD double timeStep() override
+    {
+        if (timeStepType_ != "adaptive")
+            return dt_;
+
+        // recompute the CFL-stable dt once per coarse step (timeStep() is queried from several
+        // Python sites at the same currentTime_); clamp the final step to land on finalTime_.
+        if (cachedDtTime_ != currentTime_)
+        {
+            cachedDt_     = multiphysInteg_->computeStableDt(*hierarchy_, cfl_, fourier_);
+            cachedDtTime_ = currentTime_;
+        }
+        return std::min(cachedDt_, finalTime_ - currentTime_);
+    }
     NO_DISCARD double currentTime() override { return currentTime_; }
 
     void initialize() override;
@@ -181,10 +196,16 @@ private:
     int maxLevelNumber_;
     int maxMHDLevel_;
     double dt_;
-    int timeStepNbr_           = 0;
-    double startTime_          = 0;
-    double finalTime_          = 0;
-    double currentTime_        = 0;
+    std::string timeStepType_ = "constant";
+    double cfl_               = 0; // advective CFL coefficient (adaptive)
+    double fourier_           = 0; // resistive Fourier number Fo = eta*dt/dx^2 (adaptive)
+    int timeStepNbr_          = 0;
+    double startTime_         = 0;
+    double finalTime_         = 0;
+    double currentTime_       = 0;
+    // adaptive-dt memo: recompute the stable dt once per coarse step (per distinct currentTime_)
+    double cachedDt_           = 0;
+    double cachedDtTime_       = std::numeric_limits<double>::lowest();
     std::size_t fineDumpLvlMax = 0;
     bool isInitialized         = false;
 
@@ -422,8 +443,13 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     , messengerFactory_{descriptors_}
     , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
     , maxMHDLevel_{dict["simulation"]["AMR"]["max_mhd_level"].template to<int>()}
-    , dt_{dict["simulation"]["time_step"].template to<double>()}
-    , timeStepNbr_{dict["simulation"]["time_step_nbr"].template to<int>()}
+    // time_step/value and time_step_nbr are absent in the adaptive case (see ctor body for
+    // finalTime_)
+    , dt_{cppdict::get_value(dict, "simulation/time_step/value", 0.)}
+    , timeStepType_{cppdict::get_value(dict, "simulation/time_step/mode", std::string{"constant"})}
+    , cfl_{cppdict::get_value(dict, "simulation/time_step/cfl", 0.)}
+    , fourier_{cppdict::get_value(dict, "simulation/time_step/fourier", 0.)}
+    , timeStepNbr_{cppdict::get_value(dict, "simulation/time_step_nbr", 0)}
     , finalTime_{dt_ * timeStepNbr_}
     , functors_{functors_setup(dict)}
     , multiphysInteg_{std::make_shared<MultiPhysicsIntegrator>(dict["simulation"], functors_)}
@@ -432,7 +458,11 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
         throw std::runtime_error("NO HIERARCHY!");
 
     currentTime_ = restart_time(dict);
-    finalTime_ += currentTime_; // final time is from timestep * timestep_nbr!
+    if (timeStepType_ == "adaptive")
+        // dt is computed each step; the run is bounded by final_time directly
+        finalTime_ = currentTime_ + dict["simulation"]["final_time"].template to<double>();
+    else
+        finalTime_ += currentTime_; // final time is from timestep * timestep_nbr!
 
 
     // we would need a different restart manager for mhd and hybrid if both models are used

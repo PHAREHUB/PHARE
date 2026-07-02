@@ -36,6 +36,14 @@ std::size_t max(std::size_t const local, int mpi_size)
 }
 
 
+double min(double const local)
+{
+    double global;
+    MPI_Allreduce(&local, &global, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
+    return global;
+}
+
+
 
 bool any(bool b)
 {

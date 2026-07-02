@@ -57,7 +57,7 @@ TEST(APythonDataProvider, providesAValidTree)
     auto simulationName = input["simulation"]["name"].to<std::string>();
     auto dim            = input["simulation"]["dimension"].to<int>();
     auto interp_order   = input["simulation"]["interp_order"].to<int>();
-    auto dt             = input["simulation"]["time_step"].to<double>();
+    auto dt             = input["simulation"]["time_step"]["value"].to<double>();
 
     auto layout = input["simulation"]["grid"]["layout_type"].to<std::string>();
     auto nx     = input["simulation"]["grid"]["nbr_cells"]["x"].to<int>();

@@ -36,6 +36,12 @@ struct DiagnosticProperties
     void forward_file_attribute(std::string const& key, auto& dict_node);
 
     std::size_t nAttributes = 0, dumpIdx = 0;
+
+    // Dump every writeNiterPeriod coarse iterations (0 = disabled, use the timestamp arrays).
+    // Iteration-based cadence is the only way to schedule dumps under adaptive dt, where the
+    // absolute dump times are unknown ahead of the run.
+    std::size_t writeNiterPeriod = 0;
+
     FileAttributes fileAttributes{};
 };
 

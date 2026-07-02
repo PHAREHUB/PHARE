@@ -82,6 +82,29 @@ def find_latest_time_from_restarts(restart_options):
 def validate(sim):
     restart_options = sim.restart_options
 
+    # period-based cadence (mutually exclusive with an explicit timestamps array):
+    #  - time_period  -> absolute target times (works for constant and adaptive dt)
+    #  - niter_period -> empty timestamps + a coarse-step cadence honoured by the C++ side
+    #    (the only timestamp-free option valid under adaptive dt)
+    cadence = [k for k in ("timestamps", "time_period", "niter_period") if k in restart_options]
+    if len(cadence) > 1:
+        raise RuntimeError(
+            "Error: restart_options timestamps, time_period, niter_period are mutually exclusive"
+        )
+    if "time_period" in restart_options:
+        period = float(restart_options.pop("time_period"))
+        if period <= 0:
+            raise RuntimeError("Error: restart_options time_period must be > 0")
+        phare_utilities.warn_dump_period_vs_dt(sim, period, "restart_options time_period")
+        init = sim.start_time()
+        nbr = int(np.floor((sim.final_time - init) / period + 1e-9)) + 1
+        restart_options["timestamps"] = init + period * np.arange(nbr)
+    elif "niter_period" in restart_options:
+        period = int(restart_options.pop("niter_period"))
+        if period <= 0:
+            raise RuntimeError("Error: restart_options niter_period must be > 0")
+        restart_options["write_niter_period"] = period
+
     if "elapsed_timestamps" in restart_options:
         import datetime
 
@@ -116,7 +139,7 @@ def validate(sim):
             raise RuntimeError(
                 "Error: restart_options timestamps not in ascending order)"
             )
-        if not np.all(
+        if sim.time_step is not None and not np.all(
             np.abs(
                 timestamps / sim.time_step - np.rint(timestamps / sim.time_step) < 1e-9
             )

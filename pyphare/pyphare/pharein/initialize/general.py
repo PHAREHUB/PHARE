@@ -107,8 +107,16 @@ def populateDict(sim):
 
     add_int("simulation/interp_order", sim.interp_order)
     add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
-    add_double("simulation/time_step", sim.time_step)
-    add_int("simulation/time_step_nbr", sim.time_step_nbr)
+    # mirror the public `time_step` dict shape (mode + per-mode params) on the C++ side
+    add_string("simulation/time_step/mode", sim.time_step_type)
+    if sim.time_step_type == "adaptive":
+        # dt is computed each step on the C++ side; bound the run by final_time
+        add_double("simulation/time_step/cfl", sim.time_step_cfl)
+        add_double("simulation/time_step/fourier", sim.time_step_fourier)
+        add_double("simulation/final_time", sim.final_time)
+    else:
+        add_double("simulation/time_step/value", sim.time_step)
+        add_int("simulation/time_step_nbr", sim.time_step_nbr)
 
     add_string("simulation/AMR/clustering", sim.clustering)
     add_vector_int("simulation/AMR/nesting_buffer", sim.nesting_buffer)
@@ -191,6 +199,7 @@ def populateDict(sim):
         add_string(name_path + "/" + "type", diag.type)
         add_string(name_path + "/" + "quantity", diag.quantity)
         add_size_t(name_path + "/" + "flush_every", diag.flush_every)
+        add_size_t(name_path + "/" + "write_niter_period", diag.write_niter_period)
         pp.add_array_as_vector(
             name_path + "/" + "write_timestamps", diag.write_timestamps
         )
@@ -288,6 +297,11 @@ def populateDict(sim):
             pp.add_array_as_vector(
                 restarts_path + "write_timestamps", restart_options["timestamps"]
             )
+
+        add_size_t(
+            restarts_path + "write_niter_period",
+            restart_options.get("write_niter_period", 0),
+        )
 
         add_string(restarts_path + "serialized_simulation", serialized_sim)
     #### restarts added

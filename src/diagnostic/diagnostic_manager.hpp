@@ -121,10 +121,33 @@ public:
     DiagnosticsManager& operator=(DiagnosticsManager&&)      = delete;
 
 private:
-    NO_DISCARD bool needsAction_(double nextTime, double timeStamp, double timeStep)
+    // A scheduled time is "reached" if it lies before the next step boundary: scheduledTime is
+    // within (or behind) the current step [timeStamp, timeStamp+timeStep). Compared as
+    // (scheduledTime - timeStamp) < timeStep with a float cast to truncate trailing fp imprecision
+    // (same robustness as the historical |nextTime-timeStamp| < timeStep): a time exactly one step
+    // ahead (scheduledTime == timeStamp+timeStep) is NOT consumed now -- it belongs to the next
+    // step. There is no abs(): a time already behind timeStamp yields a large negative difference,
+    // so it stays "reached" and the catch-up loop keeps advancing instead of freezing.
+    NO_DISCARD bool reached_(double scheduledTime, double timeStamp, double timeStep) const
     {
-        // casting to float to truncate double to avoid trailing imprecision
-        return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
+        return static_cast<float>(scheduledTime - timeStamp) < static_cast<float>(timeStep);
+    }
+
+    // Advance idx past every scheduled time the current step has reached; return true if any.
+    // The while-loop (vs a single ++) keeps the cadence from freezing when one step overshoots
+    // several scheduled times (dt > period, or adaptive dt growing past the period): a single ++
+    // would let nextTime fall more than a step behind currentTime, after which
+    // |nextTime-currentTime| never drops below dt again and all remaining dumps are silently lost.
+    NO_DISCARD bool catchUp_(std::vector<double> const& times, std::size_t& idx, double timeStamp,
+                             double timeStep) const
+    {
+        bool acted = false;
+        while (idx < times.size() and reached_(times[idx], timeStamp, timeStep))
+        {
+            acted = true;
+            ++idx;
+        }
+        return acted;
     }
 
     bool needsElapsedAction_(double const nextTime) const
@@ -141,15 +164,12 @@ private:
         auto& nextWriteElapsed   = nextWriteElapsed_[diag_key];
 
         auto const writeTimestampNow
-            = nextWriteTimestamp < diag.writeTimestamps.size()
-              and needsAction_(diag.writeTimestamps[nextWriteTimestamp], timeStamp, timeStep);
+            = catchUp_(diag.writeTimestamps, nextWriteTimestamp, timeStamp, timeStep);
 
         auto const writeElapsedNow
             = nextWriteElapsed < diag.elapsedTimestamps.size()
               and needsElapsedAction_(diag.elapsedTimestamps[nextWriteElapsed]);
 
-        if (writeTimestampNow)
-            ++nextWriteTimestamp;
         if (writeElapsedNow)
             ++nextWriteElapsed;
 
@@ -159,9 +179,8 @@ private:
 
     NO_DISCARD bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto nextCompute = nextCompute_[diag.type + diag.quantity];
-        return nextCompute < diag.computeTimestamps.size()
-               and needsAction_(diag.computeTimestamps[nextCompute], timeStamp, timeStep);
+        return catchUp_(diag.computeTimestamps, nextCompute_[diag.type + diag.quantity], timeStamp,
+                        timeStep);
     }
 
 
@@ -170,6 +189,8 @@ private:
     std::map<std::string, std::size_t> nextCompute_;
     std::map<std::string, std::size_t> nextWrite_;
     std::map<std::string, std::size_t> nextWriteElapsed_;
+
+    std::size_t iteration_ = 0; ///< coarse-step counter for writeNiterPeriod cadence
 
     std::time_t const start_time_{core::mpi::unix_timestamp_now()};
 };
@@ -194,6 +215,9 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
     }
 
     diagProps["flush_every"] = diagParams["flush_every"].template to<std::size_t>();
+
+    if (diagParams.contains("write_niter_period"))
+        diagProps.writeNiterPeriod = diagParams["write_niter_period"].template to<std::size_t>();
 
     diagProps.computeTimestamps
         = diagParams["compute_timestamps"].template to<std::vector<double>>();
@@ -228,14 +252,18 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     std::vector<DiagnosticProperties*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
-        auto diagID = diag.type + diag.quantity;
+        // iteration-based cadence: fires (compute + write) every writeNiterPeriod coarse steps.
+        // Used by write_niter_period (the only timestamp-free option valid under adaptive dt).
+        bool const niterNow
+            = diag.writeNiterPeriod > 0 and (iteration_ % diag.writeNiterPeriod == 0);
 
-        if (needsCompute_(diag, timeStamp, timeStep))
-        {
+        // needsCompute_ advances its own timestamp index (catch-up), so call it unconditionally
+        bool const computeNow = needsCompute_(diag, timeStamp, timeStep);
+        if (computeNow or niterNow)
             writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
-            nextCompute_[diagID]++;
-        }
-        if (needsWrite_(diag, timeStamp, timeStep))
+        // call needsWrite_ unconditionally so its timestamp index still advances
+        bool const writeNow = needsWrite_(diag, timeStamp, timeStep);
+        if (writeNow or niterNow)
         {
             activeDiagnostics.emplace_back(&diag);
         }
@@ -247,6 +275,7 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
         writer_->dump(activeDiagnostics, timeStamp);
     }
 
+    ++iteration_;
     return activeDiagnostics.size() > 0;
 }
 

@@ -5,6 +5,11 @@ from . import global_vars
 
 
 def all_timestamps(sim):
+    if sim.time_step is None:  # adaptive: no fixed step to build a dump grid from
+        raise RuntimeError(
+            "Error: with time_step_type='adaptive', diagnostics require explicit "
+            "'write_timestamps' (no default dump grid can be built without a fixed time_step)"
+        )
     init_time = sim.start_time()
     nbr_dump_step = int((sim.final_time - init_time) / sim.time_step) + 1
     return (sim.time_step * np.arange(nbr_dump_step)) + init_time
@@ -13,9 +18,45 @@ def all_timestamps(sim):
 # ------------------------------------------------------------------------------
 
 
+# the three mutually exclusive ways to schedule dumps
+_DUMP_CADENCE_KEYS = ["write_timestamps", "write_niter_period", "write_time_period"]
+
+
+def _resolve_dump_cadence(kwargs):
+    """Turn a write_time_period / write_niter_period option into the data the rest of the pipeline
+    expects: an explicit `write_timestamps` array and a `write_niter_period` (0 = disabled).
+
+    - write_time_period -> absolute target times np.arange(init, final, period); works for both
+      constant and adaptive dt (the C++ side matches by time within a dt tolerance).
+    - write_niter_period -> empty write_timestamps + a niter period the C++ side honours by dumping
+      every N coarse steps; the only timestamp-free option valid under adaptive dt.
+    """
+    sim = global_vars.sim
+
+    if "write_time_period" in kwargs:
+        period = float(kwargs.pop("write_time_period"))
+        if period <= 0:
+            raise RuntimeError("Error: write_time_period must be > 0")
+        phare_utilities.warn_dump_period_vs_dt(sim, period, "write_time_period")
+        init = sim.start_time()
+        nbr = int(np.floor((sim.final_time - init) / period + 1e-9)) + 1
+        kwargs["write_timestamps"] = init + period * np.arange(nbr)
+        kwargs["write_niter_period"] = 0
+    elif "write_niter_period" in kwargs:
+        period = int(kwargs.pop("write_niter_period"))
+        if period <= 0:
+            raise RuntimeError("Error: write_niter_period must be > 0")
+        kwargs["write_timestamps"] = np.array([])
+        kwargs["write_niter_period"] = period
+    else:
+        kwargs["write_niter_period"] = 0
+
+    return kwargs
+
+
 def diagnostics_checker(func):
     def wrapper(diagnostics_object, name, **kwargs):
-        mandatory_keywords = ["write_timestamps", "quantity"]
+        mandatory_keywords = ["quantity"]
 
         # check if some mandatory keywords are not missing
         missing_mandatory_kwds = phare_utilities.check_mandatory_keywords(
@@ -27,14 +68,27 @@ def diagnostics_checker(func):
                 + ", ".join(missing_mandatory_kwds)
             )
 
-        one_of_required = ["elapsed_timestamps", "write_timestamps"]
+        # at least one way to schedule dumps must be given
+        one_of_required = ["elapsed_timestamps"] + _DUMP_CADENCE_KEYS
         if not any([k in kwargs for k in one_of_required]):
             raise RuntimeError(
                 "Error: missing parameters - one required: "
                 + ", ".join(one_of_required)
             )
 
-        accepted_keywords = ["path", "population_name", "flush_every"]
+        # write_timestamps / write_niter_period / write_time_period are mutually exclusive
+        cadence_given = [k for k in _DUMP_CADENCE_KEYS if k in kwargs]
+        if len(cadence_given) > 1:
+            raise RuntimeError(
+                "Error: " + ", ".join(_DUMP_CADENCE_KEYS) + " are mutually exclusive"
+            )
+
+        accepted_keywords = [
+            "path",
+            "population_name",
+            "flush_every",
+            "elapsed_timestamps",
+        ] + _DUMP_CADENCE_KEYS
         accepted_keywords += mandatory_keywords
 
         # check that all passed keywords are in the accepted keyword list
@@ -43,10 +97,8 @@ def diagnostics_checker(func):
             raise RuntimeError("Error: invalid arguments - " + " ".join(wrong_kwds))
 
         try:
-            # just take mandatory arguments from the dict
-            # since if we arrived here we are sure they are there
-
             kwargs["path"] = kwargs.get("path", "./")
+            kwargs = _resolve_dump_cadence(kwargs)
 
             return func(diagnostics_object, name, **kwargs)
 
@@ -74,7 +126,9 @@ def validate_timestamps(clazz, key, **kwargs):
         )
     if not np.all(np.diff(timestamps) >= 0):
         raise RuntimeError(f"Error: {clazz}.{key} not in ascending order)")
-    if not np.all(
+    # with adaptive dt there is no fixed time_step to be a multiple of; dumps fire on a
+    # tolerance window (C++ DiagnosticsManager::reached_) instead.
+    if sim.time_step is not None and not np.all(
         np.abs(timestamps / sim.time_step - np.rint(timestamps / sim.time_step) < 1e-9)
     ):
         raise RuntimeError(
@@ -145,6 +199,9 @@ class Diagnostics(object):
         # later this parameter can evolve to allow for different timestamps
         # that will depend on the type of diagnostics.
         self.compute_timestamps = self.write_timestamps
+
+        # iteration-based dump cadence (0 = disabled); the C++ side dumps every N coarse steps.
+        self.write_niter_period = kwargs.get("write_niter_period", 0)
 
         self.attributes = kwargs.get("attributes", {})
 
