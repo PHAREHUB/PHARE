@@ -22,6 +22,8 @@ def populateDict(sim):
     add_string("simulation/algo/constrained_transport/hyper_mode", sim.hyper_mode)
 
     add_string("simulation/mhd_state/name", "mhd_state")
+    add_string("simulation/mhd_state/eos", sim.eos)
+    add_double("simulation/mhd_state/heat_capacity_ratio", sim.gamma)
 
     add_double(
         "simulation/mhd_state/to_conservative_init/heat_capacity_ratio", sim.gamma

@@ -21,6 +21,7 @@
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/data/field/refine/field_refine_patch_strategy.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
@@ -31,6 +32,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 
 namespace PHARE
 {
@@ -51,7 +53,11 @@ namespace amr
         using GridLayoutT       = MHDModel::gridlayout_type;
         using GridT             = MHDModel::grid_type;
         using ResourcesManagerT = MHDModel::resources_manager_type;
+        using BoundaryManagerT  = MHDModel::boundary_manager_type;
+        using FieldDataT        = FieldData<GridLayoutT, GridT, core::MHDQuantity::Scalar>;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::MHDQuantity>;
+        using scalar_id_map_type = std::unordered_map<core::MHDQuantity::Scalar, int>;
+        using vector_id_map_type = std::unordered_map<core::MHDQuantity::Vector, int>;
 
         static constexpr auto dimension = MHDModel::dimension;
 
@@ -59,9 +65,10 @@ namespace amr
         static constexpr std::size_t rootLevelNumber = 0;
         static inline std::string const stratName    = "MHDModel-MHDModel";
 
-        MHDMessenger(std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager,
-                     int const firstLevel)
+        MHDMessenger(std::shared_ptr<ResourcesManagerT> resourcesManager,
+                     std::shared_ptr<BoundaryManagerT> boundaryManager, int const firstLevel)
             : resourcesManager_{std::move(resourcesManager)}
+            , boundaryManager_{std::move(boundaryManager)}
             , firstLevel_{firstLevel}
         {
             // moment ghosts are primitive quantities
@@ -107,7 +114,8 @@ namespace amr
                     "MHDMessengerStrategy: missing magnetic field variable IDs");
             }
 
-            magneticRefinePatchStrategy_.registerIDs(*b_id);
+            magneticRefinePatchStrategy_.registerIDs(*b_id, {},
+                                                     {{core::MHDQuantity::Vector::B, *b_id}});
 
             BalgoPatchGhost.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
                                            nonOverwriteInteriorTFfillPattern);
@@ -272,6 +280,7 @@ namespace amr
                                                    EfieldRefineOp_,
                                                    nonOverwriteInteriorTFfillPattern);
 
+            buildFieldIdMaps_(mhdInfo);
             registerGhostComms_(mhdInfo);
             registerInitComms_(mhdInfo);
         }
@@ -454,8 +463,17 @@ namespace amr
             // quantities, the ghosts are filled in the end of the euler step anyways.
         }
 
-        void fillMomentsGhosts(MHDStateT& state, level_t const& level, double const fillTime)
+        void fillMomentsGhosts(MHDStateT& state, level_t const& level, double const fillTime,
+                               double const dt)
         {
+            // state-aware BCs need dt; the field-refine patch strategies own it.
+            for (auto& strat : rhoPatchStrats)
+                strat->setDt(dt);
+            for (auto& strat : momentumPatchStrats)
+                strat->setDt(dt);
+            for (auto& strat : totalEnergyPatchStrats)
+                strat->setDt(dt);
+
             setNaNsOnFieldGhosts(state.rho, level);
             setNaNsOnVecfieldGhosts(state.rhoV, level);
             setNaNsOnFieldGhosts(state.Etot, level);
@@ -517,36 +535,41 @@ namespace amr
             // refine on regrid, the post regrid state is not up to date (in our case it will be nan
             // since we nan-initialise) and thus is is better to rely on static refinement, which
             // uses the state after computation of ampere or CT.
-            elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
-                                                  info->ghostElectric,
-                                                  nonOverwriteInteriorTFfillPattern);
+            // The refiners for the electric field only serve for filling ghosts at physical
+            // boundaries.
+            registerGhostRefinePatchStrategies_(elecPatchStrats, info->ghostElectric);
+            for (size_t i = 0; i < info->ghostElectric.size(); ++i)
+                elecGhostsRefiners_.addStaticRefiner(
+                    info->ghostElectric[i], EfieldRefineOp_, info->ghostElectric[i],
+                    nonOverwriteInteriorTFfillPattern, elecPatchStrats[i]);
 
             currentGhostsRefiners_.addStaticRefiners(info->ghostCurrent, EfieldRefineOp_,
                                                      info->ghostCurrent,
                                                      nonOverwriteInteriorTFfillPattern);
 
 
-            rhoGhostsRefiners_.addTimeRefiners(info->ghostDensity, info->modelDensity,
-                                               rhoOld_.name(), mhdFieldRefineOp_, fieldTimeOp_,
-                                               nonOverwriteFieldFillPattern);
+            // each ghost refiner gets its own patch strategy so that physical-boundary
+            // ghosts are filled by the registered boundary conditions during schedule fills
+            registerGhostRefinePatchStrategies_(rhoPatchStrats, info->ghostDensity);
+            for (size_t i = 0; i < info->ghostDensity.size(); ++i)
+                rhoGhostsRefiners_.addTimeRefiner(info->ghostDensity[i], info->modelDensity,
+                                                  rhoOld_.name(), mhdFieldRefineOp_, fieldTimeOp_,
+                                                  info->ghostDensity[i],
+                                                  nonOverwriteFieldFillPattern, rhoPatchStrats[i]);
 
+            registerGhostRefinePatchStrategies_(momentumPatchStrats, info->ghostMomentum);
+            for (size_t i = 0; i < info->ghostMomentum.size(); ++i)
+                momentumGhostsRefiners_.addTimeRefiner(
+                    info->ghostMomentum[i], info->modelMomentum, rhoVold_.name(),
+                    mhdVecFieldRefineOp_, vecFieldTimeOp_, info->ghostMomentum[i],
+                    nonOverwriteInteriorTFfillPattern, momentumPatchStrats[i]);
 
-            // velGhostsRefiners_.addTimeRefiners(info->ghostVelocity, info->modelVelocity,
-            //                                    Vold_.name(), mhdVecFieldRefineOp_,
-            //                                    vecFieldTimeOp_,
-            //                                    nonOverwriteInteriorTFfillPattern);
-            //
-            // pressureGhostsRefiners_.addTimeRefiners(info->ghostPressure, info->modelPressure,
-            //                                         Pold_.name(), mhdFieldRefineOp_,
-            //                                         fieldTimeOp_, nonOverwriteFieldFillPattern);
-
-            momentumGhostsRefiners_.addTimeRefiners(
-                info->ghostMomentum, info->modelMomentum, rhoVold_.name(), mhdVecFieldRefineOp_,
-                vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
-
-            totalEnergyGhostsRefiners_.addTimeRefiners(
-                info->ghostTotalEnergy, info->modelTotalEnergy, EtotOld_.name(), mhdFieldRefineOp_,
-                fieldTimeOp_, nonOverwriteFieldFillPattern);
+            registerGhostRefinePatchStrategies_(totalEnergyPatchStrats, info->ghostTotalEnergy);
+            for (size_t i = 0; i < info->ghostTotalEnergy.size(); ++i)
+                totalEnergyGhostsRefiners_.addTimeRefiner(
+                    info->ghostTotalEnergy[i], info->modelTotalEnergy, EtotOld_.name(),
+                    mhdFieldRefineOp_, fieldTimeOp_, info->ghostTotalEnergy[i],
+                    nonOverwriteFieldFillPattern, totalEnergyPatchStrats[i]);
 
             magFluxesXGhostRefiners_.addStaticRefiners(
                 info->ghostMagneticFluxesX, mhdVecFluxRefineOp_, info->ghostMagneticFluxesX,
@@ -562,33 +585,13 @@ namespace amr
 
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
-            magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<
-                    MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
-                    result;
-
-                result.reserve(info->ghostMagnetic.size());
-
-                for (auto const& key : info->ghostMagnetic)
-                {
-                    auto&& [id] = resourcesManager_->getIDsList(key);
-
-                    auto patch_strat = std::make_shared<
-                        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
-                        *resourcesManager_);
-
-                    patch_strat->registerIDs(id);
-
-                    result.push_back(patch_strat);
-                }
-                return result;
-            }();
+            registerGhostRefinePatchStrategies_(magPatchStrats, info->ghostMagnetic);
 
             for (size_t i = 0; i < info->ghostMagnetic.size(); ++i)
             {
                 magGhostsRefiners_.addStaticRefiner(
                     info->ghostMagnetic[i], BfieldRegridOp_, info->ghostMagnetic[i],
-                    nonOverwriteInteriorTFfillPattern, magneticPatchStratPerGhostRefiner_[i]);
+                    nonOverwriteInteriorTFfillPattern, magPatchStrats[i]);
 
                 magMaxRefiners_.addStaticRefiner(
                     info->ghostMagnetic[i], info->ghostMagnetic[i], nullptr, info->ghostMagnetic[i],
@@ -603,6 +606,87 @@ namespace amr
         }
 
 
+
+
+        void buildFieldIdMaps_(std::unique_ptr<MHDMessengerInfo> const& info)
+        {
+            auto resolveID = [&](std::string const& name) {
+                auto id = resourcesManager_->getID(name);
+                if (!id)
+                    throw std::runtime_error("MHDMessenger: cannot resolve ID for " + name);
+                return *id;
+            };
+
+            // The conserved fields (rho, momentum, B, total energy) are pushed once per
+            // integrator sub-state, so their ghost-name vectors share the same length. Pressure
+            // is a single derived field (one grid) and the electric field carries an extra
+            // reflux entry, so those vectors have different lengths; index them defensively.
+            auto const nStates = info->ghostDensity.size();
+            auto at = [](auto const& vec, std::size_t i) -> std::string const& {
+                return vec[std::min(i, vec.size() - 1)];
+            };
+            allScalarIdMaps_.resize(nStates);
+            allVectorIdMaps_.resize(nStates);
+
+            for (std::size_t i = 0; i < nStates; ++i)
+            {
+                allScalarIdMaps_[i] = {
+                    {core::MHDQuantity::Scalar::rho, resolveID(info->ghostDensity[i])},
+                    {core::MHDQuantity::Scalar::Etot, resolveID(info->ghostTotalEnergy[i])},
+                    // single shared pressure field, same id for every sub-state
+                    {core::MHDQuantity::Scalar::P, resolveID(at(info->ghostPressure, i))},
+                };
+
+                allVectorIdMaps_[i] = {
+                    {core::MHDQuantity::Vector::B, resolveID(info->ghostMagnetic[i])},
+                    {core::MHDQuantity::Vector::rhoV, resolveID(info->ghostMomentum[i])},
+                    {core::MHDQuantity::Vector::E, resolveID(at(info->ghostElectric, i))},
+                };
+            }
+
+            // Shadow id-map for the previous substage state. Only quantities for which the
+            // messenger keeps an `*Old_` buffer are exposed; other quantities will fall through
+            // to "not registered" in the accessor and throw on access.
+            oldScalarIdMap_ = {
+                {core::MHDQuantity::Scalar::rho, resolveID(rhoOld_.name())},
+                {core::MHDQuantity::Scalar::P, resolveID(Pold_.name())},
+                {core::MHDQuantity::Scalar::Etot, resolveID(EtotOld_.name())},
+            };
+            oldVectorIdMap_ = {
+                {core::MHDQuantity::Vector::rhoV, resolveID(rhoVold_.name())},
+            };
+        }
+
+
+        /**
+         * @brief Register a list of refine patch strategy pointers corresponding to a list of
+         * keys.
+         *
+         * @tparam RefinePatchStrategyT type inheriting from SAMRAI's `RefinePatchStrategy`
+         * @param patchStrategies the list of refine patch strategy pointers.
+         * @param keys the list of keys.
+         */
+        template<typename RefinePatchStrategyT>
+        void registerGhostRefinePatchStrategies_(
+            std::vector<std::shared_ptr<RefinePatchStrategyT>>& patchStrategies,
+            std::vector<std::string> const& keys)
+        {
+            patchStrategies.reserve(keys.size());
+            for (std::size_t i = 0; i < keys.size(); ++i)
+            {
+                // some ghost lists (e.g. the electric field with its extra reflux entry) are
+                // longer than the per-sub-state id-map count; clamp to the last valid map.
+                auto const mi = allScalarIdMaps_.empty()
+                                    ? std::size_t{0}
+                                    : std::min(i, allScalarIdMaps_.size() - 1);
+                auto&& [id] = resourcesManager_->getIDsList(keys[i]);
+                auto patchStrat
+                    = std::make_shared<RefinePatchStrategyT>(*resourcesManager_, *boundaryManager_);
+                patchStrat->registerIDs(id, allScalarIdMaps_[mi], allVectorIdMaps_[mi],
+                                        oldScalarIdMap_, oldVectorIdMap_);
+                patchStrategies.push_back(patchStrat);
+            }
+        }
 
 
         // should this use conservative quantities ? When should we do the initial conversion ?
@@ -694,6 +778,7 @@ namespace amr
 
         using rm_t = typename MHDModel::resources_manager_type;
         std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
+        std::shared_ptr<BoundaryManagerT> boundaryManager_;
         int const firstLevel_;
 
         using InitRefinerPool             = RefinerPool<rm_t, RefinerType::InitField>;
@@ -827,12 +912,32 @@ namespace amr
         CoarsenOp_ptr mhdVecFluxCoarseningOp_{std::make_shared<MHDVecFluxCoarsenOp>()};
         CoarsenOp_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
-        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
-            magneticRefinePatchStrategy_{*resourcesManager_};
+        using FieldRefinePatchStrategyT
+            = FieldRefinePatchStrategy<ResourcesManagerT, FieldDataT, BoundaryManagerT>;
+        using VectorFieldRefinePatchStrategyT
+            = FieldRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT, BoundaryManagerT>;
+        using MagneticRefinePatchStrategyT
+            = MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT, BoundaryManagerT>;
+        using FieldRefinePatchStrategyList
+            = std::vector<std::shared_ptr<FieldRefinePatchStrategyT>>;
+        using VectorFieldRefinePatchStrategyList
+            = std::vector<std::shared_ptr<VectorFieldRefinePatchStrategyT>>;
+        using MagneticRefinePatchStrategyList
+            = std::vector<std::shared_ptr<MagneticRefinePatchStrategyT>>;
 
-        std::vector<
-            std::shared_ptr<MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
-            magneticPatchStratPerGhostRefiner_;
+        std::vector<scalar_id_map_type> allScalarIdMaps_;
+        std::vector<vector_id_map_type> allVectorIdMaps_;
+        scalar_id_map_type oldScalarIdMap_;
+        vector_id_map_type oldVectorIdMap_;
+
+        MagneticRefinePatchStrategyT magneticRefinePatchStrategy_{*resourcesManager_,
+                                                                  *boundaryManager_};
+
+        FieldRefinePatchStrategyList rhoPatchStrats;
+        FieldRefinePatchStrategyList totalEnergyPatchStrats;
+        VectorFieldRefinePatchStrategyList momentumPatchStrats;
+        VectorFieldRefinePatchStrategyList elecPatchStrats;
+        MagneticRefinePatchStrategyList magPatchStrats;
     };
 
 } // namespace amr

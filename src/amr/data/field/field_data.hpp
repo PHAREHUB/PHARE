@@ -44,6 +44,8 @@ namespace amr
         static constexpr std::size_t interp_order = GridLayoutT::interp_order;
         using Geometry                            = FieldGeometry<GridLayoutT, PhysicalQuantity>;
         using gridlayout_type                     = GridLayoutT;
+        using grid_type                           = Grid_t;
+        using physical_quantity_type              = PhysicalQuantity;
         static constexpr auto NO_ROTATE           = SAMRAI::hier::Transformation::NO_ROTATE;
 
 
@@ -304,13 +306,20 @@ namespace amr
 
         static Grid_t& getField(SAMRAI::hier::Patch const& patch, int id)
         {
-            auto const& patchData
-                = std::dynamic_pointer_cast<FieldData<GridLayoutT, Grid_t>>(patch.getPatchData(id));
-            if (!patchData)
+            auto const& patchData = patch.getPatchData(id);
+            if (patchData == nullptr)
+            {
+                throw std::runtime_error("no patch data for the corresponding id "
+                                         + std::to_string(id) + " on patch "
+                                         + std::to_string(patch.getLocalId().getValue()));
+            }
+            auto const& fieldData
+                = std::dynamic_pointer_cast<FieldData<GridLayoutT, Grid_t>>(patchData);
+            if (!fieldData)
             {
                 throw std::runtime_error("cannot cast to FieldData");
             }
-            return patchData->field;
+            return fieldData->field;
         }
 
 
