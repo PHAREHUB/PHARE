@@ -102,6 +102,8 @@ For system library requirements see the following [Docker File](https://github.c
 - [Philip Deegan](https://github.com/PhilipDeegan)
 - [Roch Smets](https://github.com/rochsmets)
 - [Andrea Ciardi](https://sites.google.com/site/andreaciardihomepage/home)
+- [Ulysse Caromel](https://github.com/UCaromel)
+- [Ivan Girault](https://github.com/igirault)
 
 
 ### Former collaborators
