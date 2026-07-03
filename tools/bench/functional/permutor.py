@@ -66,10 +66,11 @@ def post_sim(summary, kwargs):
     with open(log, "w") as f:
         f.write(f"{kwargs}\n")
         f.write(summary)
-    to = out_dir / datetime_now()
-    shutil.copytree(log_dir, to / log_dir.name)
-    shutil.copytree(local_dir, to / local_dir.name)
-    make_tarfile(to)
+    if MAKE_TAR_FILE and cpp.mpi_rank() == 0:
+        outfile = out_dir / datetime_now()
+        args = ["tar", "czf", f"{outfile}.tar.gz", str(log_dir), str(local_dir)]
+        ec = subprocess.call(args)
+        assert ec == 0, f"{ec}"
 
 
 def execute_permutation(config_fn, keys, permutation):
