@@ -154,12 +154,13 @@ double defaultIndicator(std::vector<Field const*> const& comps,
 // "lohner" criterion: Loehner scale-invariant second-difference estimator, the
 // centered form (port of tools/tagging_study lohner, combine=max). Per
 // direction d, over components: N = ||a_p - 2 a_0 + a_m||,
-//   D = || |a_p-a_0| + |a_0-a_m| || + eps * || |a_m| + 2|a_0| + |a_p| || + eps_abs,
+//   D = || |a_p-a_0| + |a_0-a_m| || + reltol * || |a_m| + 2|a_0| + |a_p| || + abstol,
 //   crit_d = N / D ; final indicator = max over directions.
+// reltol is Loehner's eps (noise filter weight), abstol an absolute denominator floor.
 template<std::size_t dim, typename Field>
 double lohnerIndicator(std::vector<Field const*> const& comps,
-                       std::array<std::uint32_t, dim> const& idx, double eps = 0.02,
-                       double eps_abs = 1e-30)
+                       std::array<std::uint32_t, dim> const& idx, double reltol = 0.02,
+                       double abstol = 1e-30)
 {
     double crit = 0.0;
     for (std::size_t d = 0; d < dim; ++d)
@@ -180,7 +181,8 @@ double lohnerIndicator(std::vector<Field const*> const& comps,
             d1sq += d1c * d1c;
             fltsq += fltc * fltc;
         }
-        auto const val = std::sqrt(num2) / (std::sqrt(d1sq) + eps * std::sqrt(fltsq) + eps_abs);
+        auto const val
+            = std::sqrt(num2) / (std::sqrt(d1sq) + reltol * std::sqrt(fltsq) + abstol);
         crit           = std::max(crit, val);
     }
     return crit;

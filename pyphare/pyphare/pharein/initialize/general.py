@@ -155,6 +155,8 @@ def populateDict(sim):
             q_path = f"simulation/AMR/refinement/tagging/Q{i}/"
             add_string(q_path + "name", name)
             add_double(q_path + "threshold", threshold)
+        for name, value in tagging.get("params", {}).items():
+            add_double(f"simulation/AMR/refinement/tagging/params/{name}", value)
     else:
         add_string(
             "simulation/AMR/refinement/tagging/method", "none"

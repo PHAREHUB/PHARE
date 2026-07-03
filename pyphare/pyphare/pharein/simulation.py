@@ -575,24 +575,33 @@ def check_refinement(**kwargs):
 
 
 def check_tagging(**kwargs):
-    """Normalize tagging configuration into {"method", "quantities":[(name, thr)]}.
+    """Normalize tagging configuration into
+    {"method", "quantities":[(name, thr)], "params":{...}}.
 
     Returns None when refinement is not "tagging". Configuration is carried by the
     optional `tagging` kwarg, e.g.
 
         refinement="tagging",
-        tagging={"method": "default", "quantities": {"B": 0.1, "rho": 0.4}}
+        tagging={"method": "lohner", "quantities": {"B": 0.1, "rho": 0.4},
+                 "params": {"reltol": 0.02}}
 
     where `quantities` maps a field name to its own threshold (a cell is tagged if
-    ANY quantity's indicator exceeds its threshold). Both keys are optional:
+    ANY quantity's indicator exceeds its threshold). All keys are optional:
     `method` defaults to "default"; when `quantities` is omitted (or no `tagging`
     dict is given at all) the criterion falls back to B at `tagging_threshold`
     (kept for backward compatibility, default 0.1).
+
+    `params` carries method-specific numbers:
+    - lohner: `reltol` (Loehner's eps, default 0.02) weights the noise filter in
+      the denominator of the estimator (damps the indicator where the field
+      variation is small relative to its magnitude); `abstol` (default 1e-30) is
+      an absolute denominator floor.
 
     Quantity names are not restricted here: the C++ tagger resolves them against
     the model's field tree and throws if a name matches nothing.
     """
     valid_methods = ("default", "lohner")
+    valid_params = {"default": (), "lohner": ("reltol", "abstol")}
 
     if kwargs.get("refinement", "boxes") != "tagging":
         return None
@@ -614,6 +623,17 @@ def check_tagging(**kwargs):
             f"Error: invalid tagging method '{method}', expected one of {valid_methods}"
         )
 
+    params = spec.get("params", None) or {}
+    if not isinstance(params, dict):
+        raise ValueError("Error: tagging 'params' must be a dict {name: value}")
+    unknown = set(params) - set(valid_params[method])
+    if unknown:
+        raise ValueError(
+            f"Error: invalid tagging params {sorted(unknown)} for method '{method}',"
+            f" expected keys among {valid_params[method]}"
+        )
+    params = {str(name): float(value) for name, value in params.items()}
+
     quantities = spec.get("quantities", None)
     if quantities:
         # accept the {name: threshold} mapping (preferred) or an iterable of
@@ -624,7 +644,7 @@ def check_tagging(**kwargs):
         # no quantities specified -> criterion applies to B at tagging_threshold
         quantities = [("B", threshold)]
 
-    return {"method": method, "quantities": quantities}
+    return {"method": method, "quantities": quantities, "params": params}
 
 
 def check_nesting_buffer(ndim, **kwargs):

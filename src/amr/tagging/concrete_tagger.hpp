@@ -20,7 +20,6 @@
 
 #include <array>
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 #include <stdexcept>
@@ -152,6 +151,16 @@ public:
             double const threshold = dict[path]["threshold"].template to<double>();
             quantities_.push_back({name, threshold});
         }
+
+        // method-specific params, all optional (Python's check_tagging validates the keys)
+        if (dict.contains("params"))
+        {
+            auto const& params = dict["params"];
+            if (params.contains("reltol"))
+                lohnerReltol_ = params["reltol"].template to<double>();
+            if (params.contains("abstol"))
+                lohnerAbstol_ = params["abstol"].template to<double>();
+        }
     }
 
     // criterion on a single patch (writes the SAMRAI tag buffer, no ghosts).
@@ -168,6 +177,8 @@ private:
 
     TaggingMethod method_;
     std::vector<QuantityTag> quantities_;
+    double lohnerReltol_ = 0.02;
+    double lohnerAbstol_ = 1e-30;
 };
 
 
@@ -292,8 +303,9 @@ void ConcreteTaggerKernel<Model>::tagCells_(Model& model, gridlayout_type const&
             sampPtrs.push_back(&s);
 
         auto const indicator = [&](std::array<std::uint32_t, dimension> const& idx) {
-            return method_ == TaggingMethod::Lohner ? lohnerIndicator<dimension>(sampPtrs, idx)
-                                                    : defaultIndicator<dimension>(sampPtrs, idx);
+            return method_ == TaggingMethod::Lohner
+                       ? lohnerIndicator<dimension>(sampPtrs, idx, lohnerReltol_, lohnerAbstol_)
+                       : defaultIndicator<dimension>(sampPtrs, idx);
         };
 
         if constexpr (dimension == 1)

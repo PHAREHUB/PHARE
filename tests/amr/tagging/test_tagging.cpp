@@ -21,9 +21,10 @@ using namespace PHARE::amr;
 using namespace PHARE::core;
 
 
-// runtime dict contract: method + nbr_quantities + Q{i}/{name,threshold}
-PHARE::initializer::PHAREDict taggingDict(std::string const& method,
-                                          std::vector<std::pair<std::string, double>> const& qtys)
+// runtime dict contract: method + nbr_quantities + Q{i}/{name,threshold} + optional params/*
+PHARE::initializer::PHAREDict
+taggingDict(std::string const& method, std::vector<std::pair<std::string, double>> const& qtys,
+            std::vector<std::pair<std::string, double>> const& params = {})
 {
     PHARE::initializer::PHAREDict dict;
     dict["method"]         = method;
@@ -34,6 +35,8 @@ PHARE::initializer::PHAREDict taggingDict(std::string const& method,
         dict[path]["name"]      = qtys[i].first;
         dict[path]["threshold"] = qtys[i].second;
     }
+    for (auto const& [name, value] : params)
+        dict["params"][name] = value;
     return dict;
 }
 
@@ -108,6 +111,27 @@ TEST(test_criteria, defaultSeparatesStepFromFlat)
     auto const atStep = defaultIndicator<1>(comps, {20u});
     auto const atFlat = defaultIndicator<1>(comps, {5u});
     EXPECT_GT(atStep, atFlat);
+}
+
+TEST(test_criteria, lohnerReltolDampsIndicator)
+{
+    // larger reltol weighs the |field|-magnitude filter term more in the
+    // denominator, damping the indicator on the same data.
+    std::size_t const n = 40;
+    MockField1D f;
+    f.data.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+        f.data[i] = std::tanh((static_cast<double>(i) - 20.) / 1.5);
+
+    std::vector<MockField1D const*> comps{&f};
+
+    auto const sharp  = lohnerIndicator<1>(comps, {18u}, 0.02);
+    auto const damped = lohnerIndicator<1>(comps, {18u}, 10.0);
+    EXPECT_GT(sharp, 10. * damped);
+
+    // abstol floors the denominator: huge abstol crushes the indicator entirely
+    auto const floored = lohnerIndicator<1>(comps, {18u}, 0.02, 1e6);
+    EXPECT_LT(floored, 1e-5);
 }
 
 TEST(test_criteria, parseTaggingMethod)
@@ -190,6 +214,16 @@ void fillRamp(Field& f, Layout const& layout, Qty qty)
     for (std::size_t ix = 0; ix < alloc[0]; ++ix)
         for (std::size_t iy = 0; iy < alloc[1]; ++iy)
             f(ix, iy) = static_cast<double>(ix);
+}
+
+// tanh front along x, centered mid-domain -> curvature for the lohner estimator
+template<typename Field, typename Layout, typename Qty>
+void fillTanhX(Field& f, Layout const& layout, Qty qty)
+{
+    auto const alloc = layout.allocSize(qty);
+    for (std::size_t ix = 0; ix < alloc[0]; ++ix)
+        for (std::size_t iy = 0; iy < alloc[1]; ++iy)
+            f(ix, iy) = std::tanh((static_cast<double>(ix) - alloc[0] / 2.) / 1.5);
 }
 
 template<typename Field, typename Layout, typename Qty>
@@ -291,6 +325,37 @@ TEST(TagFields, UnionTagsIfAnyQuantityExceeds)
     auto tagsv             = NdArrayView<dim, int, fortran>(tags.data(), ncells);
     for (auto const& p : boxFromNbrCells(ncells))
         EXPECT_EQ(tagsv(p.toArray()), 1) << "union should tag via E even though B is flat";
+}
+
+
+TEST(TagFields, LohnerParamsFlowFromDict)
+{
+    constexpr std::size_t dim = ib_tagger_dim;
+    auto const layout         = TestGridLayout<IBTaggerGridLayout>::make(20);
+
+    // tanh front in E_y: with the default reltol the front tags; a huge reltol
+    // weighs the magnitude filter enough to damp the indicator below threshold.
+    UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
+    UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
+    fillTanhX(E.getComponent(PHARE::core::Component::Y), layout, HybridQuantity::Scalar::Ey);
+
+    TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
+    auto const ncells = layout.nbrCells();
+
+    auto const countTags = [&](auto const& dict) {
+        std::vector<int> tags(ncells[0] * ncells[1], 0);
+        ConcreteTaggerKernel<TagFieldsMockModel>{dict}.tagFields(model, layout, tags.data());
+        return std::count(tags.begin(), tags.end(), 1);
+    };
+
+    auto const sharp  = countTags(taggingDict("lohner", {{"E", 0.1}}));
+    auto const damped = countTags(taggingDict("lohner", {{"E", 0.1}}, {{"reltol", 10.0}}));
+    EXPECT_GT(sharp, 0);
+    EXPECT_EQ(damped, 0);
+
+    auto const floored
+        = countTags(taggingDict("lohner", {{"E", 0.1}}, {{"abstol", 1e6}}));
+    EXPECT_EQ(floored, 0);
 }
 
 
