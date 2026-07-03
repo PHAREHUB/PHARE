@@ -34,7 +34,7 @@ namespace PHARE::amr
 //  (B -> 3 components, rho -> 1) and combine over directions by max.
 //-----------------------------------------------------------------------------
 
-enum class TaggingMethod { Default, Lohner };
+enum class TaggingMethod { Default, Lohner, Wavelet };
 
 inline TaggingMethod parseTaggingMethod(std::string const& s)
 {
@@ -42,7 +42,17 @@ inline TaggingMethod parseTaggingMethod(std::string const& s)
         return TaggingMethod::Default;
     if (s == "lohner")
         return TaggingMethod::Lohner;
-    throw std::runtime_error("unknown tagging method '" + s + "' (expected 'default' or 'lohner')");
+    if (s == "wavelet")
+        return TaggingMethod::Wavelet;
+    throw std::runtime_error("unknown tagging method '" + s
+                             + "' (expected 'default', 'lohner' or 'wavelet')");
+}
+
+// stencil reach of the criterion itself (the cell-center projection adds +1 in
+// primal directions on top of this; the tagging loop guards both).
+constexpr int stencilReach(TaggingMethod m)
+{
+    return m == TaggingMethod::Wavelet ? 3 : 1;
 }
 
 
@@ -184,6 +194,87 @@ double lohnerIndicator(std::vector<Field const*> const& comps,
         auto const val
             = std::sqrt(num2) / (std::sqrt(d1sq) + reltol * std::sqrt(fltsq) + abstol);
         crit           = std::max(crit, val);
+    }
+    return crit;
+}
+
+
+// "wavelet" criterion: multiresolution (MR) detail coefficient, after Domingues
+// et al. 2019 (10.1016/j.compfluid.2019.06.025, AMROC). The cell value is compared
+// to its prediction from a virtual coarser level built on the fly:
+//   projection : coarse cell = average of its 2^dim children (Eq. 3)
+//   prediction : Harten third-order interpolation from the parent and its nearest
+//                uncles, tensor product in multi-D (Eqs. 4-5):
+//                  Qt_{2i}   = Qb_i - 1/8 (Qb_{i+1} - Qb_{i-1})
+//                  Qt_{2i+1} = Qb_i + 1/8 (Qb_{i+1} - Qb_{i-1})
+//   detail     : d = Q - Qt (Eq. 6); indicator = max over components of |d|.
+// The detail is the local interpolation error: it vanishes identically on data that
+// is polynomial of degree <= 2 and is large at steep gradients or discontinuities.
+// It is ABSOLUTE (units of Q), unlike default/lohner which are dimensionless: the
+// per-quantity threshold carries the scale (see the level-scaled threshold in
+// ConcreteTaggerKernel).
+//
+// parity[d] selects the even (0) or odd (1) child weights; it must be the GLOBAL
+// (AMR) parity of idx in direction d so that sibling pairing matches the actual
+// coarser grid. The paper transforms cell averages; we feed cell-center point
+// values (via CellCenteredSampler), which preserves the degree<=2 annihilation.
+// Reach: coarse neighbours c-1..c+1 each span 2 fine cells -> +/-3 fine cells.
+template<std::size_t dim, typename Field>
+double waveletIndicator(std::vector<Field const*> const& comps,
+                        std::array<std::uint32_t, dim> const& idx,
+                        std::array<std::uint32_t, dim> const& parity)
+{
+    double crit = 0.0;
+    for (auto const* fp : comps)
+    {
+        auto const& f = *fp;
+
+        // coarse value at coarse offset o from the parent of idx: average of the
+        // 2^dim fine children of that coarse cell; the sibling block containing
+        // idx starts at idx - parity.
+        auto const coarse = [&](std::array<int, dim> const& o) {
+            double acc = 0.0;
+            for (unsigned m = 0; m < (1u << dim); ++m)
+            {
+                auto j = idx;
+                for (std::size_t d = 0; d < dim; ++d)
+                    j[d] = static_cast<std::uint32_t>(static_cast<int>(idx[d])
+                                                      - static_cast<int>(parity[d]) + 2 * o[d]
+                                                      + static_cast<int>((m >> d) & 1u));
+                acc += at<dim>(f, j);
+            }
+            return acc / static_cast<double>(1u << dim);
+        };
+
+        // tensor product of the 1D weights w(0)=1, w(+/-1)=-/+1/8 (sign flipped for
+        // an odd child), over the 3^dim coarse neighbourhood.
+        int constexpr npts = [] {
+            int n = 1;
+            for (std::size_t d = 0; d < dim; ++d)
+                n *= 3;
+            return n;
+        }();
+
+        double pred = 0.0;
+        for (int k = 0; k < npts; ++k)
+        {
+            int kk   = k;
+            double w = 1.0;
+            std::array<int, dim> off;
+            for (std::size_t d = 0; d < dim; ++d)
+            {
+                off[d] = kk % 3 - 1;
+                kk /= 3;
+                if (off[d] != 0)
+                {
+                    double const g = (parity[d] == 0 ? -1.0 : 1.0) / 8.0;
+                    w *= (off[d] == 1) ? g : -g;
+                }
+            }
+            pred += w * coarse(off);
+        }
+
+        crit = std::max(crit, std::abs(at<dim>(f, idx) - pred));
     }
     return crit;
 }

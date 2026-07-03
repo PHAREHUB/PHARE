@@ -18,7 +18,9 @@
 
 #include <SAMRAI/pdat/CellData.h>
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -140,8 +142,9 @@ private:
     };
 
 public:
-    ConcreteTaggerKernel(initializer::PHAREDict const& dict)
+    ConcreteTaggerKernel(initializer::PHAREDict const& dict, int maxLevelNumber = 1)
         : method_{parseTaggingMethod(dict["method"].template to<std::string>())}
+        , finestLevel_{maxLevelNumber - 1}
     {
         auto const nbrQuantities = dict["nbr_quantities"].template to<int>();
         for (int i = 0; i < nbrQuantities; ++i)
@@ -160,6 +163,8 @@ public:
                 lohnerReltol_ = params["reltol"].template to<double>();
             if (params.contains("abstol"))
                 lohnerAbstol_ = params["abstol"].template to<double>();
+            if (params.contains("level_scaling"))
+                levelScaling_ = params["level_scaling"].template to<double>() != 0.;
         }
     }
 
@@ -176,9 +181,11 @@ private:
     static std::vector<field_type const*> defaultBComponents_(Model& model);
 
     TaggingMethod method_;
+    int finestLevel_;
     std::vector<QuantityTag> quantities_;
     double lohnerReltol_ = 0.02;
     double lohnerAbstol_ = 1e-30;
+    bool levelScaling_   = true;
 };
 
 
@@ -196,9 +203,9 @@ class ConcreteTagger : public Tagger
     using gridlayout_type = typename Model::gridlayout_type;
 
 public:
-    ConcreteTagger(initializer::PHAREDict const& dict)
+    ConcreteTagger(initializer::PHAREDict const& dict, int maxLevelNumber = 1)
         : Tagger{Model::model_name == "HybridModel" ? "HybridTagger" : "MHDTagger"}
-        , kernel_{dict}
+        , kernel_{dict, maxLevelNumber}
     {
     }
 
@@ -271,14 +278,36 @@ void ConcreteTaggerKernel<Model>::tagCells_(Model& model, gridlayout_type const&
     if constexpr (dimension > 2)
         start[2] = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::Z);
 
-    // The cell-center projection reaches +1 and the centered stencil reaches +/-1, so a
-    // primal-in-d component touches up to i+2 in d. The bottom cell is always safe; the top
-    // cell needs nbrGhosts >= 2. Skip the outermost physical cell per direction otherwise.
-    auto nLoop = nbrCells;
-    if constexpr (gridlayout_type::nbrGhosts() < 2)
-        for (std::size_t d = 0; d < dimension; ++d)
-            if (nLoop[d] > 0)
-                nLoop[d] -= 1;
+    // The criterion reaches +/-stencilReach(method_) and the cell-center projection adds
+    // +1 upward in primal directions, so a primal-in-d component touches [i-reach, i+reach+1]
+    // in d. Skip the physical cells whose stencil would leave the allocated ghost box:
+    // shaveLo at the bottom (needs reach ghosts), shaveHi at the top (needs reach+1).
+    int constexpr nghost = static_cast<int>(gridlayout_type::nbrGhosts());
+    int const reach      = stencilReach(method_);
+    auto const shaveLo   = static_cast<std::uint32_t>(std::max(0, reach - nghost));
+    auto const shaveHi   = static_cast<std::uint32_t>(std::max(0, reach + 1 - nghost));
+
+    std::array<std::uint32_t, dimension> loopLo;
+    std::array<std::uint32_t, dimension> loopHi; // [loopLo, loopHi) in 0-based cell index
+    for (std::size_t d = 0; d < dimension; ++d)
+    {
+        loopLo[d] = shaveLo;
+        loopHi[d] = nbrCells[d] > shaveHi ? nbrCells[d] - shaveHi : 0;
+    }
+
+    // level-scaled threshold (wavelet only): Harten's strategy (Domingues et al. 2019,
+    // Eq. 7) eps_l = eps / |O| * 2^{dim (l - L)} with |O| the cell volume on this level
+    // and L the finest level, so refinement is triggered more eagerly on coarse levels
+    // (controls the L1 norm of the discarded details).
+    double thresholdScale = 1.0;
+    if (method_ == TaggingMethod::Wavelet and levelScaling_)
+        thresholdScale = std::pow(2.0, static_cast<int>(dimension)
+                                           * (layout.levelNumber() - finestLevel_))
+                         / layout.cellVolume();
+
+    // wavelet sibling pairing must follow the GLOBAL (AMR) grid: parity of cell c in
+    // direction d is (AMRBox.lower[d] + c) & 1.
+    auto const& amrLower = layout.AMRBox().lower;
 
     using sampler_t = CellCenteredSampler<dimension, field_type>;
 
@@ -302,31 +331,49 @@ void ConcreteTaggerKernel<Model>::tagCells_(Model& model, gridlayout_type const&
         for (auto const& s : samplers)
             sampPtrs.push_back(&s);
 
-        auto const indicator = [&](std::array<std::uint32_t, dimension> const& idx) {
-            return method_ == TaggingMethod::Lohner
-                       ? lohnerIndicator<dimension>(sampPtrs, idx, lohnerReltol_, lohnerAbstol_)
-                       : defaultIndicator<dimension>(sampPtrs, idx);
+        // `cell` is the 0-based physical cell index (also the tag buffer index)
+        auto const indicator = [&](std::array<std::uint32_t, dimension> const& cell) {
+            std::array<std::uint32_t, dimension> idx;
+            for (std::size_t d = 0; d < dimension; ++d)
+                idx[d] = start[d] + cell[d];
+
+            switch (method_)
+            {
+                case TaggingMethod::Lohner:
+                    return lohnerIndicator<dimension>(sampPtrs, idx, lohnerReltol_,
+                                                      lohnerAbstol_);
+                case TaggingMethod::Wavelet: {
+                    std::array<std::uint32_t, dimension> parity;
+                    for (std::size_t d = 0; d < dimension; ++d)
+                        parity[d] = static_cast<std::uint32_t>(
+                            (amrLower[d] + static_cast<int>(cell[d])) & 1);
+                    return waveletIndicator<dimension>(sampPtrs, idx, parity);
+                }
+                default: return defaultIndicator<dimension>(sampPtrs, idx);
+            }
         };
+
+        auto const threshold = q.threshold * thresholdScale;
 
         if constexpr (dimension == 1)
         {
-            for (std::uint32_t iCell = 0; iCell < nLoop[0]; ++iCell)
-                if (indicator({start[0] + iCell}) > q.threshold)
+            for (std::uint32_t iCell = loopLo[0]; iCell < loopHi[0]; ++iCell)
+                if (indicator({iCell}) > threshold)
                     tagsv(iCell) = 1;
         }
         else if constexpr (dimension == 2)
         {
-            for (std::uint32_t ix = 0; ix < nLoop[0]; ++ix)
-                for (std::uint32_t iy = 0; iy < nLoop[1]; ++iy)
-                    if (indicator({start[0] + ix, start[1] + iy}) > q.threshold)
+            for (std::uint32_t ix = loopLo[0]; ix < loopHi[0]; ++ix)
+                for (std::uint32_t iy = loopLo[1]; iy < loopHi[1]; ++iy)
+                    if (indicator({ix, iy}) > threshold)
                         tagsv(ix, iy) = 1;
         }
         else if constexpr (dimension == 3)
         {
-            for (std::uint32_t ix = 0; ix < nLoop[0]; ++ix)
-                for (std::uint32_t iy = 0; iy < nLoop[1]; ++iy)
-                    for (std::uint32_t iz = 0; iz < nLoop[2]; ++iz)
-                        if (indicator({start[0] + ix, start[1] + iy, start[2] + iz}) > q.threshold)
+            for (std::uint32_t ix = loopLo[0]; ix < loopHi[0]; ++ix)
+                for (std::uint32_t iy = loopLo[1]; iy < loopHi[1]; ++iy)
+                    for (std::uint32_t iz = loopLo[2]; iz < loopHi[2]; ++iz)
+                        if (indicator({ix, iy, iz}) > threshold)
                             tagsv(ix, iy, iz) = 1;
         }
     }

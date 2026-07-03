@@ -298,7 +298,7 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
             != "none")
         {
             auto hybridTagger_ = std::make_unique<amr::ConcreteTagger<HybridModel>>(
-                dict["simulation"]["AMR"]["refinement"]["tagging"]);
+                dict["simulation"]["AMR"]["refinement"]["tagging"], maxLevelNumber_);
             multiphysInteg_->registerTagger(maxMHDLevel_, maxLevelNumber_ - 1,
                                             std::move(hybridTagger_));
         }
@@ -366,7 +366,7 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
             != "none")
         {
             auto mhdTagger_ = std::make_unique<amr::ConcreteTagger<MHDModel>>(
-                dict["simulation"]["AMR"]["refinement"]["tagging"]);
+                dict["simulation"]["AMR"]["refinement"]["tagging"], maxLevelNumber_);
             multiphysInteg_->registerTagger(0, maxMHDLevel_ - 1, std::move(mhdTagger_));
         }
     }

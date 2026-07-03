@@ -596,12 +596,23 @@ def check_tagging(**kwargs):
       the denominator of the estimator (damps the indicator where the field
       variation is small relative to its magnitude); `abstol` (default 1e-30) is
       an absolute denominator floor.
+    - wavelet: multiresolution detail criterion (Domingues et al. 2019,
+      10.1016/j.compfluid.2019.06.025). The indicator is the ABSOLUTE prediction
+      error |Q - Qpredicted| (units of Q), so thresholds are not comparable with
+      default/lohner ones. By default the threshold follows Harten's level
+      scaling eps_l = eps / cell_volume * 2^{dim (l - L)} (L the finest level),
+      refining coarse levels more eagerly; `level_scaling` (default 1) set to 0
+      uses the per-quantity threshold unscaled on every level.
 
     Quantity names are not restricted here: the C++ tagger resolves them against
     the model's field tree and throws if a name matches nothing.
     """
-    valid_methods = ("default", "lohner")
-    valid_params = {"default": (), "lohner": ("reltol", "abstol")}
+    valid_methods = ("default", "lohner", "wavelet")
+    valid_params = {
+        "default": (),
+        "lohner": ("reltol", "abstol"),
+        "wavelet": ("level_scaling",),
+    }
 
     if kwargs.get("refinement", "boxes") != "tagging":
         return None

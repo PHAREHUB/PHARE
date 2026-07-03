@@ -138,7 +138,38 @@ TEST(test_criteria, parseTaggingMethod)
 {
     EXPECT_EQ(parseTaggingMethod("default"), TaggingMethod::Default);
     EXPECT_EQ(parseTaggingMethod("lohner"), TaggingMethod::Lohner);
+    EXPECT_EQ(parseTaggingMethod("wavelet"), TaggingMethod::Wavelet);
     EXPECT_THROW(parseTaggingMethod("nope"), std::runtime_error);
+}
+
+// the MR detail is the local interpolation error of Harten's third-order
+// prediction: it must vanish (to roundoff) on data polynomial of degree <= 2,
+// for both even and odd children.
+TEST(test_criteria, waveletDetailVanishesOnQuadratic)
+{
+    std::size_t const n = 40;
+    MockField1D f;
+    f.data.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+        f.data[i] = 3.0 + 0.05 * i + 0.01 * static_cast<double>(i) * i;
+
+    std::vector<MockField1D const*> comps{&f};
+    for (std::uint32_t i = 4; i < 36; ++i)
+        EXPECT_LT(waveletIndicator<1>(comps, {i}, {i & 1u}), 1e-12) << "at cell " << i;
+}
+
+TEST(test_criteria, waveletDetailFlagsStep)
+{
+    std::size_t const n = 40;
+    MockField1D f;
+    f.data.resize(n);
+    for (std::size_t i = 0; i < n; ++i)
+        f.data[i] = std::tanh((static_cast<double>(i) - 20.) / 1.5);
+
+    std::vector<MockField1D const*> comps{&f};
+    auto const atJump = waveletIndicator<1>(comps, {20u}, {20u & 1u});
+    auto const atFlat = waveletIndicator<1>(comps, {6u}, {6u & 1u});
+    EXPECT_GT(atJump, 100. * atFlat);
 }
 
 // A field PRIMAL in x sampled at the dual cell index sits half a cell off, which
@@ -356,6 +387,60 @@ TEST(TagFields, LohnerParamsFlowFromDict)
     auto const floored
         = countTags(taggingDict("lohner", {{"E", 0.1}}, {{"abstol", 1e6}}));
     EXPECT_EQ(floored, 0);
+}
+
+
+TEST(TagFields, WaveletTagsFrontOnly)
+{
+    constexpr std::size_t dim = ib_tagger_dim;
+    auto const layout         = TestGridLayout<IBTaggerGridLayout>::make(20);
+
+    UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
+    UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
+    fillTanhX(E.getComponent(PHARE::core::Component::Y), layout, HybridQuantity::Scalar::Ey);
+
+    TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
+    auto const ncells = layout.nbrCells();
+
+    // level_scaling off -> the per-quantity threshold applies directly to the detail
+    std::vector<int> tags(ncells[0] * ncells[1], 0);
+    ConcreteTaggerKernel<TagFieldsMockModel>{
+        taggingDict("wavelet", {{"E", 0.01}}, {{"level_scaling", 0.0}})}
+        .tagFields(model, layout, tags.data());
+
+    auto const count = std::count(tags.begin(), tags.end(), 1);
+    EXPECT_GT(count, 0);
+    EXPECT_LT(count, static_cast<long>(tags.size()) / 2) << "detail must be localized";
+}
+
+
+TEST(TagFields, WaveletLevelScalingRefinesCoarseLevelsMoreEagerly)
+{
+    constexpr std::size_t dim = ib_tagger_dim;
+    auto const layout         = TestGridLayout<IBTaggerGridLayout>::make(20);
+
+    UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
+    UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
+    fillTanhX(E.getComponent(PHARE::core::Component::Y), layout, HybridQuantity::Scalar::Ey);
+
+    TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
+    auto const ncells = layout.nbrCells();
+
+    // Harten scaling: eps_l = eps / cellVolume * 2^{dim (l - L)}. This layout is
+    // level 0; a deeper hierarchy (larger L) lowers the effective threshold on
+    // level 0, so it must tag at least as much.
+    auto const countTags = [&](int maxLevelNumber) {
+        std::vector<int> tags(ncells[0] * ncells[1], 0);
+        ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("wavelet", {{"E", 1e-4}}),
+                                                 maxLevelNumber}
+            .tagFields(model, layout, tags.data());
+        return std::count(tags.begin(), tags.end(), 1);
+    };
+
+    auto const shallow = countTags(1); // L = 0 -> scale = 1/cellVolume
+    auto const deep    = countTags(3); // L = 2 -> scale = 2^-4/cellVolume
+    EXPECT_GT(deep, 0);
+    EXPECT_GE(deep, shallow);
 }
 
 
