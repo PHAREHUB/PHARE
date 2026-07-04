@@ -1,7 +1,7 @@
 from pyphare import cpp
 from pyphare.pharesee.hierarchy.hierarchy_utils import (
     isFieldQty,
-    field_qties,
+    field_quantity_name_override,
     quantidic,
     refinement_ratio,
 )
@@ -61,10 +61,10 @@ def hierarchy_from_sim(simulator, qty, pop="", hier=None, sync=False):
 
             for patch_data in patch_datas:
                 layout = make_layout_for(simulator, patch_data, qty, lvl_cell_width)
-
-                patches[ilvl].append(
-                    Patch({qty: FieldData(layout, field_qties[qty], patch_data.data)})
+                pd = FieldData(
+                    layout, field_quantity_name_override(qty), patch_data.data
                 )
+                patches[ilvl].append(Patch({qty: pd}))
 
         elif qty == "particles":  # domain only!
             if sync:
@@ -90,4 +90,4 @@ def hierarchy_from_sim(simulator, qty, pop="", hier=None, sync=False):
                 patch.patch_datas = {**patch.patch_datas, **new_level[ip].patch_datas}
 
         return hier
-    return PatchHierarchy(patch_levels, domain_box, time=simulator.currentTime())
+    return PatchHierarchy(patch_levels, domain_box, times=simulator.currentTime())

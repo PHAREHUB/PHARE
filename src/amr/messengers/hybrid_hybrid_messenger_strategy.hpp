@@ -378,7 +378,7 @@ namespace amr
         void fillMagneticGhosts(VecFieldT& B, level_t const& level, double const fillTime) override
         {
             {
-                PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillMagneticGhosts::naning");
+                PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::fillMagneticGhosts::naning");
 
                 setNaNsOnVecfieldGhosts(B, level);
             }
@@ -595,7 +595,7 @@ namespace amr
                        std::shared_ptr<hierarchy_t> const& /*hierarchy*/, double const currentTime,
                        double const prevCoarserTime, double const newCoarserTime) override
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::firstStep");
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::firstStep");
 
             auto levelNumber = level.getLevelNumber();
             if (newCoarserTime < prevCoarserTime)
@@ -631,7 +631,7 @@ namespace amr
             if (level.getLevelNumber() == 0)
                 return;
 
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::lastStep");
 
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
@@ -667,7 +667,7 @@ namespace amr
          */
         void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) override
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::prepareStep");
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::prepareStep");
 
             auto& hybridModel = static_cast<HybridModel&>(model);
             for (auto& patch : level)
@@ -723,7 +723,7 @@ namespace amr
 
         void synchronize(level_t& level) override
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::synchronize");
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::synchronize");
 
             auto levelNumber = level.getLevelNumber();
             PHARE_LOG_LINE_STR("synchronizing level " + std::to_string(levelNumber));

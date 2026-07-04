@@ -514,7 +514,7 @@ namespace solver
 
             if (firstStep)
             {
-                PHARE_LOG_SCOPE(3, "Multiphys::advanceLevel.firstStep");
+                PHARE_LOG_SCOPE(2, "Multiphys::advanceLevel.firstStep");
                 fromCoarser.firstStep(model, *level, hierarchy, currentTime,
                                       subcycleStartTimes_[iLevel - 1],
                                       subcycleEndTimes_[iLevel - 1]);
@@ -522,14 +522,17 @@ namespace solver
                 solver.resetFluxSum(model, *level);
             }
 
-            solver.prepareStep(model, *level, currentTime);
-            fromCoarser.prepareStep(model, *level, currentTime);
+            {
+                PHARE_LOG_SCOPE(2, "Multiphys::advanceLevel.prepareStep");
+                solver.prepareStep(model, *level, currentTime);
+                fromCoarser.prepareStep(model, *level, currentTime);
+            }
 
             solver.advanceLevel(*hierarchy, iLevel, model, fromCoarser, currentTime, newTime);
 
             if (lastStep)
             {
-                PHARE_LOG_SCOPE(3, "Multiphys::advanceLevel.lastStep");
+                PHARE_LOG_SCOPE(2, "Multiphys::advanceLevel.lastStep");
                 fromCoarser.lastStep(model, *level);
             }
 
@@ -547,7 +550,10 @@ namespace solver
                 solver.accumulateFluxSum(model, *level, coef);
             }
 
-            load_balancer_manager_->estimate(*level, model);
+            {
+                PHARE_LOG_SCOPE(2, "Multiphys::advanceLevel.load_balancer_estimate");
+                load_balancer_manager_->estimate(*level, model);
+            }
 
             return newTime;
         }
@@ -577,8 +583,11 @@ namespace solver
                 auto& coarseSolver = getSolver_(iCoarseLevel);
                 auto& coarseModel  = getModel_(iCoarseLevel);
 
-                toCoarser.reflux(iCoarseLevel, ilvl, syncTime);
-                coarseSolver.reflux(coarseModel, coarseLevel, toCoarser, syncTime);
+                {
+                    PHARE_LOG_SCOPE(2, "Multiphys::standardLevelSynchronization.reflux");
+                    toCoarser.reflux(iCoarseLevel, ilvl, syncTime);
+                    coarseSolver.reflux(coarseModel, coarseLevel, toCoarser, syncTime);
+                }
 
                 // Now the fluxSum includes the contributions of the finer levels thanks to
                 // toCoarser.reflux(). We can now accumulate the fluxSum that will be used for the
@@ -592,7 +601,10 @@ namespace solver
                 }
 
                 // recopy (patch) ghosts
-                toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);
+                {
+                    PHARE_LOG_SCOPE(2, "Multiphys::standardLevelSynchronization.postSynchronize");
+                    toCoarser.postSynchronize(coarseModel, coarseLevel, syncTime);
+                }
 
                 // advancing all but the finest includes synchronization of the finer
                 dump_(iCoarseLevel);

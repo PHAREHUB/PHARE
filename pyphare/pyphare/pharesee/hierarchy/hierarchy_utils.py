@@ -57,6 +57,12 @@ field_qties = {
 }
 
 
+def field_quantity_name_override(name):
+    if name in field_qties:
+        return field_qties[name]
+    return name
+
+
 def nbr_ranks(hier):
     """
     returns the number of mpi ranks used in the given hierarchy
@@ -233,18 +239,18 @@ def quantidic(ilvl, wrangler):
 
     if wrangler.modelsPerLevel[ilvl] == "MHD":
         return {
-            "rho":    pl.getRho,
-            "P":      pl.getP,
-            "Etot":   pl.getEtot,
+            "rho": pl.getRho,
+            "P": pl.getP,
+            "Etot": pl.getEtot,
             "EM_B_x": lambda: pl.getB("x"),
             "EM_B_y": lambda: pl.getB("y"),
             "EM_B_z": lambda: pl.getB("z"),
             "EM_E_x": lambda: pl.getE("x"),
             "EM_E_y": lambda: pl.getE("y"),
             "EM_E_z": lambda: pl.getE("z"),
-            "V_x":    lambda: pl.getV("x"),
-            "V_y":    lambda: pl.getV("y"),
-            "V_z":    lambda: pl.getV("z"),
+            "V_x": lambda: pl.getV("x"),
+            "V_y": lambda: pl.getV("y"),
+            "V_z": lambda: pl.getV("z"),
             "rhoV_x": lambda: pl.getRhoV("x"),
             "rhoV_y": lambda: pl.getRhoV("y"),
             "rhoV_z": lambda: pl.getRhoV("z"),

@@ -209,9 +209,9 @@ class FieldData(PatchData):
             return [
                 self.layout.qtyCentering(name, direction) for direction in directions
             ]
-        raise ValueError(
-            f"centering not specified and cannot be inferred from field name : {name}"
-        )
+
+        # default to all primal
+        return ["primal"] * self.box.ndim
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)

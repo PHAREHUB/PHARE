@@ -121,7 +121,7 @@ private:
 template<typename Ions>
 void IonUpdater1<Ions>::updatePopulations(UpdaterMode const mode, auto& ions, auto&&... args)
 {
-    PHARE_LOG_SCOPE(3, "IonUpdater1::updatePopulations");
+    PHARE_LOG_SCOPE(2, "IonUpdater1::updatePopulations");
 
     resetMoments(ions);
 
