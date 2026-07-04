@@ -31,21 +31,21 @@ public:
         else if constexpr (dimension == 2)
         {
             if constexpr (Hall || Resistivity)
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y,
-                                             aL_y, aR_y, dL_y, dR_y, jt_y, rhot_y);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
+                                             aR_y, dL_y, dR_y, jt_y, rhot_y);
             else
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y,
-                                             dL_y, dR_y);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
+                                             dR_y);
         }
         else if constexpr (dimension == 3)
         {
             if constexpr (Hall || Resistivity)
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y,
-                                             aL_y, aR_y, dL_y, dR_y, jt_y, rhot_y, vt_z, aL_z,
-                                             aR_z, dL_z, dR_z, jt_z, rhot_z);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
+                                             aR_y, dL_y, dR_y, jt_y, rhot_y, vt_z, aL_z, aR_z, dL_z,
+                                             dR_z, jt_z, rhot_z);
             else
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y,
-                                             dL_y, dR_y, vt_z, aL_z, aR_z, dL_z, dR_z);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
+                                             dR_y, vt_z, aL_z, aR_z, dL_z, dR_z);
         }
         else
             throw std::runtime_error(
@@ -64,21 +64,21 @@ public:
         else if constexpr (dimension == 2)
         {
             if constexpr (Hall || Resistivity)
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y,
-                                             aL_y, aR_y, dL_y, dR_y, jt_y, rhot_y);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
+                                             aR_y, dL_y, dR_y, jt_y, rhot_y);
             else
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y,
-                                             dL_y, dR_y);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
+                                             dR_y);
         }
         else if constexpr (dimension == 3)
         {
             if constexpr (Hall || Resistivity)
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y,
-                                             aL_y, aR_y, dL_y, dR_y, jt_y, rhot_y, vt_z, aL_z,
-                                             aR_z, dL_z, dR_z, jt_z, rhot_z);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, jt_x, rhot_x, vt_y, aL_y,
+                                             aR_y, dL_y, dR_y, jt_y, rhot_y, vt_z, aL_z, aR_z, dL_z,
+                                             dR_z, jt_z, rhot_z);
             else
-                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y,
-                                             dL_y, dR_y, vt_z, aL_z, aR_z, dL_z, dR_z);
+                return std::forward_as_tuple(vt_x, aL_x, aR_x, dL_x, dR_x, vt_y, aL_y, aR_y, dL_y,
+                                             dR_y, vt_z, aL_z, aR_z, dL_z, dR_z);
         }
         else
             throw std::runtime_error(
@@ -86,7 +86,7 @@ public:
     }
 
     template<auto direction>
-    auto& getJt() const
+    auto& getJt()
     {
         if constexpr (direction == Direction::X)
             return jt_x;
