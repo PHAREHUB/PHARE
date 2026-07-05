@@ -280,7 +280,7 @@ template<auto opts>
 void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
 {
     hybridModel_ = std::make_shared<HybridModel>(dict["simulation"], hyb_resman_ptr);
-    hyb_resman_ptr->registerResources(hybridModel_->state); // still valid, never moved
+    hybridModel_->registerResources();
 
     // we register the hybrid model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
@@ -349,7 +349,7 @@ template<auto opts>
 void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 {
     mhdModel_ = std::make_shared<MHDModel>(dict["simulation"], mhd_resman_ptr);
-    mhd_resman_ptr->registerResources(mhdModel_->state);
+    mhdModel_->registerResources();
 
     // we register the mhd model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver

@@ -19,10 +19,9 @@ enum class RefinerType {
     LevelBorderField,
     LevelBorderParticles,
     PatchGhostField,
-    PatchFieldBorderSum,
-    PatchVecFieldBorderSum,
+    PatchIonPopBorderSum,
+    PatchIonPopBorderMax,
     PatchTensorFieldBorderSum,
-    PatchFieldBorderMax,
     PatchVecFieldBorderMax,
     ExteriorGhostParticles
 };
@@ -83,16 +82,20 @@ public:
             }
 
 
-            // schedule used to += density and flux for populations
-            // on incomplete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchFieldBorderSum)
+            // schedule used to += flux and density for populations on incomplete overlapped
+            // ghost box nodes. Flux (VecFieldData_t) and both density fields (FieldData_t) can
+            // be registered together onto this single algorithm (see add_resource()); the
+            // transaction factory resolves each item's concrete PatchData type at runtime so
+            // they are all communicated together in a single set of MPI messages.
+            else if constexpr (Type == RefinerType::PatchIonPopBorderSum)
             {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<FieldData_t, PlusEqualsOp>>()),
-                          levelNumber);
+                this->add(
+                    algo,
+                    algo->createSchedule(
+                        level, patchStrat_.get(),
+                        std::make_shared<MultiFieldBorderOpTransactionFactory<
+                            PlusEqualsOp, FieldData_t, VecFieldData_t>>()),
+                    levelNumber);
             }
 
 
@@ -108,26 +111,20 @@ public:
             }
 
 
-            else if constexpr (Type == RefinerType::PatchVecFieldBorderSum)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>()),
-                          levelNumber);
-            }
-
-
-            // schedule used to == max of density and flux for populations
-            // on complete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchFieldBorderMax)
+            // schedule used to == max of density and bulk velocity on complete overlapped
+            // ghost box nodes. Density (FieldData_t) and bulk velocity (VecFieldData_t) can be
+            // registered together onto this single algorithm (see add_resource()); the
+            // transaction factory resolves each item's concrete PatchData type at runtime so
+            // they are all communicated together in a single set of MPI messages.
+            else if constexpr (Type == RefinerType::PatchIonPopBorderMax)
             {
                 this->add(
                     algo,
                     algo->createSchedule(
                         level, patchStrat_.get(),
-                        std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, SetMaxOp>>()),
+                        std::make_shared<
+                            MultiFieldBorderOpTransactionFactory<SetMaxOp, FieldData_t,
+                                                                 VecFieldData_t>>()),
                     levelNumber);
             }
 
@@ -308,6 +305,30 @@ public:
             std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp)
         : Refiner{name, name, rm, refineOp}
     {
+    }
+
+
+    /**
+     * @brief creates an empty Refiner with no resource registered yet. Resources are added one
+     * at a time via add_resource(), all sharing the same underlying algorithm/schedule so that
+     * they end up being communicated together in a single set of MPI messages.
+     */
+    Refiner() = default;
+
+
+    /**
+     * @brief adds a resource to the single shared algorithm of this Refiner, alongside any
+     * resource previously added via add_resource(). Unlike register_resource(), which creates a
+     * new algorithm (and thus a new schedule) on every call, this reuses the same algorithm so
+     * that heterogeneous resources (e.g. a scalar Field and a VecField) fuse into one schedule.
+     */
+    auto& add_resource(auto& rm, auto& dst, auto& src, auto& scratch, auto&&... args)
+    {
+        if (this->algos.empty())
+            this->add_algorithm();
+        auto&& [idDst, idSrc, idScrtch] = rm->getIDsList(dst, src, scratch);
+        this->algos[0]->registerRefine(idDst, idSrc, idScrtch, args...);
+        return *this;
     }
 
 

@@ -541,8 +541,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     // this needs to be done before calling the messenger
     setTime(ions);
 
-    fromCoarser.fillFluxBorders(model.state.ions, level, newTime);
-    fromCoarser.fillDensityBorders(model.state.ions, level, newTime);
+    fromCoarser.fillIonPopBorders(model.state.ions, level, newTime);
     fromCoarser.fillIonPopMomentGhosts(model.state.ions, level, newTime);
     fromCoarser.fillIonGhostParticles(model.state.ions, level, newTime);
 

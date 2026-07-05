@@ -54,6 +54,15 @@ public:
     void initialize(level_t& level) override;
 
 
+    void registerResources() override
+    {
+        resourcesManager->registerResources(*this);
+        resourcesManager->registerResources(V_diag_);
+        resourcesManager->registerResources(P_diag_);
+        resourcesManager->registerResources(tmpField_);
+        resourcesManager->registerResources(tmpVec_);
+    }
+
     void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
@@ -77,10 +86,6 @@ public:
         , state{dict["mhd_state"]}
         , resourcesManager{std::move(_resourcesManager)}
     {
-        resourcesManager->registerResources(V_diag_);
-        resourcesManager->registerResources(P_diag_);
-        resourcesManager->registerResources(tmpField_);
-        resourcesManager->registerResources(tmpVec_);
     }
 
     ~MHDModel() override = default;

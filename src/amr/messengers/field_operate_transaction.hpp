@@ -8,7 +8,9 @@
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 
+#include <memory>
 #include <stdexcept>
+#include <type_traits>
 
 namespace PHARE::amr
 {
@@ -237,6 +239,69 @@ public:
     {
         PHARE_LOG_SCOPE(3, "FieldBorderOpTransactionFactory::preprocessScratchSpace");
 
+        // noop
+    }
+};
+
+
+/** @brief MultiFieldBorderOpTransactionFactory generalizes FieldBorderOpTransactionFactory to a
+ * schedule that mixes several PatchData types (e.g. a scalar Field and a vector/tensor Field)
+ * registered on the same RefineAlgorithm.
+ *
+ * FieldBorderOpTransactionFactory is templated on a single, compile-time FieldData_t, so a
+ * schedule built from it can only carry items of that one PatchData type. This factory instead
+ * resolves the concrete PatchData type of each registered item at runtime (from its scratch
+ * patch data), so physical quantities with different PatchData C++ types can be fused into a
+ * single schedule, and thus a single set of MPI messages, instead of one schedule per quantity.
+ */
+template<typename Operation, typename... FieldDatas>
+class MultiFieldBorderOpTransactionFactory : public SAMRAI::xfer::RefineTransactionFactory
+{
+public:
+    std::shared_ptr<SAMRAI::tbox::Transaction>
+    allocate(std::shared_ptr<SAMRAI::hier::PatchLevel> const& dst_level,
+             std::shared_ptr<SAMRAI::hier::PatchLevel> const& src_level,
+             std::shared_ptr<SAMRAI::hier::BoxOverlap> const& overlap,
+             SAMRAI::hier::Box const& dst_node, SAMRAI::hier::Box const& src_node,
+             SAMRAI::xfer::RefineClasses::Data const** refine_data, int item_id,
+             SAMRAI::hier::Box const& box, bool use_time_interpolation) const override
+    {
+        NULL_USE(box);
+        NULL_USE(use_time_interpolation);
+
+        TBOX_ASSERT(dst_level);
+        TBOX_ASSERT(src_level);
+        TBOX_ASSERT(overlap);
+        TBOX_ASSERT(dst_node.getLocalId() >= 0);
+        TBOX_ASSERT(src_node.getLocalId() >= 0);
+        TBOX_ASSERT(refine_data != 0);
+        TBOX_ASSERT_OBJDIM_EQUALITY4(*dst_level, *src_level, dst_node, src_node);
+
+        PHARE_LOG_SCOPE(3, "MultiFieldBorderOpTransactionFactory::allocate");
+
+        auto const& scratchData = dst_level->getPatch(dst_node.getGlobalId())
+                                       ->getPatchData(refine_data[item_id]->d_scratch);
+
+        std::shared_ptr<SAMRAI::tbox::Transaction> transaction;
+        auto const tryType = [&](auto* typeTag) {
+            using FieldData_t = std::decay_t<decltype(*typeTag)>;
+            if (!transaction && std::dynamic_pointer_cast<FieldData_t>(scratchData))
+                transaction = std::make_shared<FieldBorderOpTransaction<FieldData_t, Operation>>(
+                    dst_level, src_level, overlap, dst_node, src_node, refine_data, item_id);
+        };
+        (tryType(static_cast<FieldDatas*>(nullptr)), ...);
+
+        if (!transaction)
+            throw std::runtime_error(
+                "MultiFieldBorderOpTransactionFactory::allocate: unhandled patch data type");
+
+        return transaction;
+    }
+
+    void
+    preprocessScratchSpace(std::shared_ptr<SAMRAI::hier::PatchLevel> const& level, double fill_time,
+                           SAMRAI::hier::ComponentSelector const& preprocess_vector) const override
+    {
         // noop
     }
 };
