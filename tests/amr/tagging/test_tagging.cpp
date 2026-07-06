@@ -282,11 +282,11 @@ TEST(TagFields, EquantityTagsOnEOnly)
     TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
     auto const ncells = layout.nbrCells();
 
-    std::vector<int> tagsB(ncells[0] * ncells[1], 0);
+    std::vector<int> tagsB(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("default", {{"B", 0.1}})}.tagFields(
         model, layout, tagsB.data());
 
-    std::vector<int> tagsE(ncells[0] * ncells[1], 0);
+    std::vector<int> tagsE(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("default", {{"E", 0.1}})}.tagFields(
         model, layout, tagsE.data());
 
@@ -314,11 +314,11 @@ TEST(TagFields, BxCompactNameSelectsSingleComponent)
     TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
     auto const ncells = layout.nbrCells();
 
-    std::vector<int> tagsBx(ncells[0] * ncells[1], 0);
+    std::vector<int> tagsBx(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("default", {{"Bx", 0.1}})}.tagFields(
         model, layout, tagsBx.data());
 
-    std::vector<int> tagsBy(ncells[0] * ncells[1], 0);
+    std::vector<int> tagsBy(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("default", {{"By", 0.1}})}.tagFields(
         model, layout, tagsBy.data());
 
@@ -348,7 +348,7 @@ TEST(TagFields, UnionTagsIfAnyQuantityExceeds)
     TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
     auto const ncells = layout.nbrCells();
 
-    std::vector<int> tags(ncells[0] * ncells[1], 0);
+    std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("default", {{"B", 0.1}, {"E", 0.1}})}.tagFields(
         model, layout, tags.data());
 
@@ -374,7 +374,7 @@ TEST(TagFields, LohnerParamsFlowFromDict)
     auto const ncells = layout.nbrCells();
 
     auto const countTags = [&](auto const& dict) {
-        std::vector<int> tags(ncells[0] * ncells[1], 0);
+        std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
         ConcreteTaggerKernel<TagFieldsMockModel>{dict}.tagFields(model, layout, tags.data());
         return std::count(tags.begin(), tags.end(), 1);
     };
@@ -403,7 +403,7 @@ TEST(TagFields, WaveletTagsFrontOnly)
     auto const ncells = layout.nbrCells();
 
     // level_scaling off -> the per-quantity threshold applies directly to the detail
-    std::vector<int> tags(ncells[0] * ncells[1], 0);
+    std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{
         taggingDict("wavelet", {{"E", 0.01}}, {{"level_scaling", 0.0}})}
         .tagFields(model, layout, tags.data());
@@ -430,7 +430,7 @@ TEST(TagFields, WaveletLevelScalingRefinesCoarseLevelsMoreEagerly)
     // level 0; a deeper hierarchy (larger L) lowers the effective threshold on
     // level 0, so it must tag at least as much.
     auto const countTags = [&](int maxLevelNumber) {
-        std::vector<int> tags(ncells[0] * ncells[1], 0);
+        std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
         ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("wavelet", {{"E", 1e-4}}),
                                                  maxLevelNumber}
             .tagFields(model, layout, tags.data());
@@ -456,7 +456,7 @@ TEST(TagFields, UnknownQuantityNameThrows)
     ConcreteTaggerKernel<TagFieldsMockModel> tagger{
         taggingDict("default", {{"bogus_does_not_exist", 0.1}})};
     auto const ncells = layout.nbrCells();
-    std::vector<int> tags(ncells[0] * ncells[1], 0);
+    std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
 
     EXPECT_THROW(tagger.tagFields(model, layout, tags.data()), std::runtime_error);
 }
