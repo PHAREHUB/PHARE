@@ -334,25 +334,6 @@ struct ResourceUser
 };
 
 
-TEST(usingResources, test_variants_helpers)
-{
-    using Resources = std::variant<FieldResource, VecFieldResource>;
-
-    std::vector<Resources> resources{FieldResource{}, VecFieldResource{}};
-
-    {
-        auto const&& [rho, B] = get_as_tuple_or_throw<FieldResource, VecFieldResource>(resources);
-    }
-    {
-        auto& rho = get_as_ref_or_throw<FieldResource>(resources);
-        EXPECT_EQ(&rho, &std::get<FieldResource>(resources[0]));
-    }
-    {
-        auto& B = get_as_ref_or_throw<VecFieldResource>(resources);
-        EXPECT_EQ(&B, &std::get<VecFieldResource>(resources[1]));
-    }
-}
-
 
 TEST(usingResources, test_variants_resource_helpers)
 {

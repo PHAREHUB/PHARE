@@ -50,13 +50,11 @@ template<typename... Ts>
 using unique_tuple = typename unique<std::tuple<>, Ts...>::type;
 
 
-
 template<typename... Args>
 auto constexpr visit_ptr_overloads()
 {
     return _visit_ptr_overloads(static_cast<unique_tuple<Args...>*>(nullptr));
 }
-
 
 
 template<typename Type, typename Variants>
@@ -70,36 +68,6 @@ auto& get_as_ref_or_throw(Variants& variants, std::size_t const start = 0)
 }
 
 
-// ARGS MUST BE IN THE SAME ORDER AS VARIANT LIST TYPES!!!!!
-template<typename... Args, typename Variants>
-auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
-{
-    using Tuple               = std::tuple<Args...>;
-    auto constexpr tuple_size = std::tuple_size_v<Tuple>;
-
-    auto ptr_or_null = visit_ptr_overloads<Args...>();
-
-    auto pointer_tuple = for_N<tuple_size>([&](auto i) mutable {
-        using Type = std::tuple_element_t<i, Tuple>;
-
-        for (std::size_t idx = start; idx < variants.size(); ++idx)
-            if (auto ptr = std::visit(ptr_or_null, variants[idx]))
-            {
-                ++start;
-                return reinterpret_cast<Type*>(ptr);
-            }
-        return static_cast<Type*>(nullptr);
-    });
-
-    for_N<tuple_size>([&](auto i) {
-        if (std::get<i>(pointer_tuple) == nullptr)
-            throw std::runtime_error("No element in variant for type");
-    });
-
-    return for_N<tuple_size, for_N_R_mode::forward_tuple>(
-        [&](auto i) -> auto& { return *std::get<i>(pointer_tuple); });
-}
-
 template<typename Type>
 auto& get_from_variants(auto& variants, Type& arg)
 {
@@ -112,8 +80,7 @@ auto& get_from_variants(auto& variants, Type& arg)
         ++start;
     }
 
-    if (start == variants.size())
-        throw std::runtime_error("Required name not found in variants: " + arg.name());
+    throw std::runtime_error("Required name not found in variants: " + arg.name());
 }
 
 
@@ -123,8 +90,6 @@ auto get_from_variants(auto& variants, Args&... args)
 {
     return std::forward_as_tuple(get_from_variants(variants, args)...);
 }
-
-
 
 
 } // namespace PHARE::core

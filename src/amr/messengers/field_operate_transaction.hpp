@@ -279,8 +279,14 @@ public:
 
         PHARE_LOG_SCOPE(3, "MultiFieldBorderOpTransactionFactory::allocate");
 
-        auto const& scratchData = dst_level->getPatch(dst_node.getGlobalId())
-                                       ->getPatchData(refine_data[item_id]->d_scratch);
+        auto const myRank = dst_level->getBoxLevel()->getMPI().getRank();
+        std::shared_ptr<SAMRAI::hier::PatchData> scratchData;
+        if (dst_node.getOwnerRank() == myRank)
+            scratchData = dst_level->getPatch(dst_node.getGlobalId())
+                              ->getPatchData(refine_data[item_id]->d_scratch);
+        else
+            scratchData = src_level->getPatch(src_node.getGlobalId())
+                              ->getPatchData(refine_data[item_id]->d_src);
 
         std::shared_ptr<SAMRAI::tbox::Transaction> transaction;
         auto const tryType = [&](auto* typeTag) {
