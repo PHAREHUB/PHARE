@@ -68,6 +68,37 @@ auto& get_as_ref_or_throw(Variants& variants, std::size_t const start = 0)
 }
 
 
+// ARGS MUST BE IN THE SAME ORDER AS VARIANT LIST TYPES!!!!!
+template<typename... Args, typename Variants>
+auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
+{
+    using Tuple               = std::tuple<Args...>;
+    auto constexpr tuple_size = std::tuple_size_v<Tuple>;
+
+    auto ptr_or_null = visit_ptr_overloads<Args...>();
+
+    auto pointer_tuple = for_N<tuple_size>([&](auto i) mutable {
+        using Type = std::tuple_element_t<i, Tuple>;
+
+        for (std::size_t idx = start; idx < variants.size(); ++idx)
+            if (auto ptr = std::visit(ptr_or_null, variants[idx]))
+            {
+                ++start;
+                return reinterpret_cast<Type*>(ptr);
+            }
+        return static_cast<Type*>(nullptr);
+    });
+
+    for_N<tuple_size>([&](auto i) {
+        if (std::get<i>(pointer_tuple) == nullptr)
+            throw std::runtime_error("No element in variant for type");
+    });
+
+    return for_N<tuple_size, for_N_R_mode::forward_tuple>(
+        [&](auto i) -> auto& { return *std::get<i>(pointer_tuple); });
+}
+
+
 template<typename Type>
 auto& get_from_variants(auto& variants, Type& arg)
 {
