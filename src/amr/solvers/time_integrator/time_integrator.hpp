@@ -1,8 +1,11 @@
 #ifndef PHARE_SOLVER_TIME_INTEGRATOR_HPP
 #define PHARE_SOLVER_TIME_INTEGRATOR_HPP
 
+#include <algorithm>
+#include <cctype>
 #include <memory>
 #include <stdexcept>
+#include <string>
 
 #include "initializer/data_provider.hpp"
 #include "phare_simulator_options.hpp"
@@ -17,12 +20,14 @@ namespace PHARE::solver
 
 namespace detail
 {
-inline MHDOpts::TimeIntegratorType parse_time_integrator_type(std::string const& s)
+inline MHDOpts::TimeIntegratorType parse_time_integrator_type(std::string s)
 {
-    if (s == "Euler" || s == "euler") return MHDOpts::TimeIntegratorType::Euler;
-    if (s == "TVDRK2" || s == "tvdrk2") return MHDOpts::TimeIntegratorType::TVDRK2;
-    if (s == "TVDRK3" || s == "tvdrk3") return MHDOpts::TimeIntegratorType::TVDRK3;
-    if (s == "SSPRK4_5" || s == "ssprk4_5") return MHDOpts::TimeIntegratorType::SSPRK4_5;
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    if (s == "euler") return MHDOpts::TimeIntegratorType::Euler;
+    if (s == "tvdrk2") return MHDOpts::TimeIntegratorType::TVDRK2;
+    if (s == "tvdrk3") return MHDOpts::TimeIntegratorType::TVDRK3;
+    if (s == "ssprk4_5") return MHDOpts::TimeIntegratorType::SSPRK4_5;
     throw std::runtime_error("Unknown time integrator type: " + s);
 }
 } // namespace detail

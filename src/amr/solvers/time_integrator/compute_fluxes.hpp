@@ -48,12 +48,16 @@ public:
     {
         ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_, newTime);
 
+        auto const needsCurrent = fVMethodInfo_.eta != 0.0 || fVMethodInfo_.nu != 0.0
+                                  || constrainedTransportInfo_.eta != 0.0
+                                  || constrainedTransportInfo_.nu != 0.0;
+
         if constexpr (Hall)
         {
             Ampere_t{level, model}(state.B, state.J);
             TimeSetter{level, model, newTime}(state.B, state.J);
         }
-        else if (fVMethodInfo_.eta != 0.0 || fVMethodInfo_.nu != 0.0)
+        else if (needsCurrent)
         {
             Ampere_t{level, model}(state.B, state.J);
             TimeSetter{level, model, newTime}(state.B, state.J);
