@@ -25,14 +25,16 @@ public:
     // Butcher fluxes are used to accumulate fluxes over multiple stages, the corresponding buffer
     // should only contain the fluxes over one time step. The accumulation over all substeps is
     // delegated to the solver.
-    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, auto& level,
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& sources, auto& bc, auto& level,
                     double const currentTime, double const newTime)
     {
         this->resetButcherFluxes_(model, level);
+        this->resetButcherSources_(model, level);
 
-        euler_(model, state, state, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state.E, fluxes, level);
+        this->accumulateButcherSources_(model, sources, level);
     }
 
     void registerResources(MHDModel& model)

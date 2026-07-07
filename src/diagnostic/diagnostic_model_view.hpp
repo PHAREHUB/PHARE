@@ -280,28 +280,36 @@ public:
 
     NO_DISCARD const VecField& getRhoV() const { return this->model_.state.rhoV; }
 
-    NO_DISCARD const VecField& getB() const { return this->model_.state.B; }
+    // total field B = B1 + B0 and total energy, reconstructed into diagnostic buffers at dump
+    // time (see MHDDiagnosticWriter::compute). The B = B0 + B1 split stores only B1 / Etot1.
+    NO_DISCARD const VecField& getB() const { return BTotal_; }
 
-    NO_DISCARD const Field& getEtot() const { return this->model_.state.Etot; }
+    NO_DISCARD const Field& getEtot() const { return EtotTotal_; }
 
-    NO_DISCARD const VecField& getE() const
-    {
-        throw std::runtime_error("E not currently available in MHD diagnostics");
-    }
+    NO_DISCARD const VecField& getB1() const { return this->model_.state.B1; }
+
+    NO_DISCARD const VecField& getB0() const { return this->model_.B0; }
+
+    NO_DISCARD const Field& getEtot1() const { return this->model_.state.Etot1; }
+
+    // No getE() for MHD: E is not a diagnostic quantity here. Its absence lets the electromag
+    // diagnostic writers SFINAE-skip EM_E for MHD (via `requires { modelView.getE(); }`), the same
+    // idiom used for the MHD-only getB1()/getDivB().
 
     // for setBuffer function in visitHierarchy
     NO_DISCARD Field& getRho() { return this->model_.state.rho; }
 
     NO_DISCARD VecField& getRhoV() { return this->model_.state.rhoV; }
 
-    NO_DISCARD VecField& getB() { return this->model_.state.B; }
+    NO_DISCARD VecField& getB() { return BTotal_; }
 
-    NO_DISCARD Field& getEtot() { return this->model_.state.Etot; }
+    NO_DISCARD Field& getEtot() { return EtotTotal_; }
 
-    NO_DISCARD VecField& getE()
-    {
-        throw std::runtime_error("E not currently available in MHD diagnostics");
-    }
+    NO_DISCARD VecField& getB1() { return this->model_.state.B1; }
+
+    NO_DISCARD VecField& getB0() { return this->model_.B0; }
+
+    NO_DISCARD Field& getEtot1() { return this->model_.state.Etot1; }
 
     // diag only
     NO_DISCARD VecField& getV() { return V_diag_; }
@@ -312,14 +320,21 @@ public:
 
     NO_DISCARD const Field& getP() const { return P_diag_; }
 
+    // cell-centered divergence of the total field B = B1 + B0 (computed at dump time)
+    NO_DISCARD Field& getDivB() { return divB_diag_; }
+
+    NO_DISCARD const Field& getDivB() const { return divB_diag_; }
+
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(V_diag_, P_diag_, tmpField_, tmpVec_);
+        return std::forward_as_tuple(V_diag_, P_diag_, BTotal_, EtotTotal_, divB_diag_, tmpField_,
+                                     tmpVec_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(V_diag_, P_diag_, tmpField_, tmpVec_);
+        return std::forward_as_tuple(V_diag_, P_diag_, BTotal_, EtotTotal_, divB_diag_, tmpField_,
+                                     tmpVec_);
     }
 
     auto& tmpField() { return tmpField_; }
@@ -339,6 +354,11 @@ protected:
     // model
     VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
+
+    // total fields reconstructed from the B0 + B1 split for output (B = B1 + B0, total energy)
+    VecField BTotal_{"diagnostics_BTotal_", core::MHDQuantity::Vector::B};
+    Field EtotTotal_{"diagnostics_EtotTotal_", core::MHDQuantity::Scalar::Etot};
+    Field divB_diag_{"diagnostics_divB_", core::MHDQuantity::Scalar::divB};
 
     Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
     VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};

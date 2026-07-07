@@ -31,12 +31,34 @@ public:
     void tag(Model& model, gridlayout_type const& layout, int* tags) const override;
 
 private:
-    auto& getB(auto& model) const
+    auto& getB(Model& model, gridlayout_type const& layout) const
     {
         if constexpr (solver::is_hybrid_model_v<Model>)
             return model.state.electromag.B;
         else if constexpr (solver::is_mhd_model_v<Model>)
+        {
+            auto& B         = model.state.B;
+            auto& B1        = model.state.B1;
+            auto& B0        = model.B0;
+            auto& Bx        = B(core::Component::X);
+            auto& By        = B(core::Component::Y);
+            auto& Bz        = B(core::Component::Z);
+            auto const& B1x = B1(core::Component::X);
+            auto const& B1y = B1(core::Component::Y);
+            auto const& B1z = B1(core::Component::Z);
+            auto const& B0x = B0(core::Component::X);
+            auto const& B0y = B0(core::Component::Y);
+            auto const& B0z = B0(core::Component::Z);
+
+            layout.evalOnGhostBox(
+                Bx, [&](auto&... args) { Bx(args...) = B1x(args...) + B0x(args...); });
+            layout.evalOnGhostBox(
+                By, [&](auto&... args) { By(args...) = B1y(args...) + B0y(args...); });
+            layout.evalOnGhostBox(
+                Bz, [&](auto&... args) { Bz(args...) = B1z(args...) + B0z(args...); });
+
             return model.state.B;
+        }
         else
             static_assert(core::dependent_false_v<Model>);
 
@@ -49,7 +71,7 @@ private:
 template<typename Model>
 void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layout, int* tags) const
 {
-    auto&& [Bx, By, Bz] = getB(model)();
+    auto&& [Bx, By, Bz] = getB(model, layout)();
 
     // we loop on cell indexes for all qties regardless of their centering
     auto const& start_x = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::X);

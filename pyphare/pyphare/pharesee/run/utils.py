@@ -120,6 +120,13 @@ def _divB2D(Bx, By, xBx, yBy):
     return dxbx + dyby
 
 
+def _divB3D(Bx, By, Bz, xBx, yBy, zBz):
+    dxbx = (Bx[1:, :, :] - Bx[:-1, :, :]) / (xBx[1] - xBx[0])
+    dyby = (By[:, 1:, :] - By[:, :-1, :]) / (yBy[1] - yBy[0])
+    dzbz = (Bz[:, :, 1:] - Bz[:, :, :-1]) / (zBz[1] - zBz[0])
+    return dxbx + dyby + dzbz
+
+
 def _compute_divB(patchdatas, **kwargs):
     reference_pd = patchdatas["Bx"]  # take Bx as a reference, but could be any other
     ndim = reference_pd.box.ndim
@@ -140,6 +147,23 @@ def _compute_divB(patchdatas, **kwargs):
                 "data": divB,
                 "centering": ["dual", "dual"],
                 # "ghosts_nbr": reference_pd.ghosts_nbr,
+            },
+        )
+
+    elif ndim == 3:
+        Bx = patchdatas["Bx"].dataset[:]
+        By = patchdatas["By"].dataset[:]
+        Bz = patchdatas["Bz"].dataset[:]
+        xBx = patchdatas["Bx"].x
+        yBy = patchdatas["By"].y
+        zBz = patchdatas["Bz"].z
+        divB = _divB3D(Bx, By, Bz, xBx, yBy, zBz)
+
+        return (
+            {
+                "name": "divB",
+                "data": divB,
+                "centering": ["dual", "dual", "dual"],
             },
         )
 

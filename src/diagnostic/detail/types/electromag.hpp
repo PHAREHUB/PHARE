@@ -64,7 +64,9 @@ template<typename H5Writer>
 void ElectromagDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
     std::string tree = "/";
-    checkCreateFileFor_(diagnostic, fileData_, tree, "EM_B", "EM_E");
+    // EM_B1 / EM_B0 are MHD-only (the B = B0 + B1 split); the file is created only for the
+    // active quantity, so listing them here for non-MHD models is harmless.
+    checkCreateFileFor_(diagnostic, fileData_, tree, "EM_B", "EM_E", "EM_B1", "EM_B0");
 }
 
 
@@ -97,11 +99,26 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
         auto& B = h5Writer.modelView().getB();
         infoVF(B, "EM_B", patchAttributes[lvlPatchID]);
     }
-    if (isActiveDiag(diagnostic, "/", "EM_E"))
-    {
-        auto& E = h5Writer.modelView().getE();
-        infoVF(E, "EM_E", patchAttributes[lvlPatchID]);
-    }
+    if constexpr (requires { h5Writer.modelView().getE(); })
+        if (isActiveDiag(diagnostic, "/", "EM_E"))
+        {
+            auto& E = h5Writer.modelView().getE();
+            infoVF(E, "EM_E", patchAttributes[lvlPatchID]);
+        }
+    // MHD B = B0 + B1 split: B1 (perturbation) and B0 (background) are raw fields (no
+    // reconstruction), unlike the total EM_B.
+    if constexpr (requires { h5Writer.modelView().getB1(); })
+        if (isActiveDiag(diagnostic, "/", "EM_B1"))
+        {
+            auto& B1 = h5Writer.modelView().getB1();
+            infoVF(B1, "EM_B1", patchAttributes[lvlPatchID]);
+        }
+    if constexpr (requires { h5Writer.modelView().getB0(); })
+        if (isActiveDiag(diagnostic, "/", "EM_B0"))
+        {
+            auto& B0 = h5Writer.modelView().getB0();
+            infoVF(B0, "EM_B0", patchAttributes[lvlPatchID]);
+        }
 }
 
 
@@ -136,8 +153,15 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
 
         if (isActiveDiag(diagnostic, tree, "EM_B"))
             initVF(path, attr, "EM_B", null);
-        if (isActiveDiag(diagnostic, tree, "EM_E"))
-            initVF(path, attr, "EM_E", null);
+        if constexpr (requires { h5Writer.modelView().getE(); })
+            if (isActiveDiag(diagnostic, tree, "EM_E"))
+                initVF(path, attr, "EM_E", null);
+        if constexpr (requires { h5Writer.modelView().getB1(); })
+            if (isActiveDiag(diagnostic, tree, "EM_B1"))
+                initVF(path, attr, "EM_B1", null);
+        if constexpr (requires { h5Writer.modelView().getB0(); })
+            if (isActiveDiag(diagnostic, tree, "EM_B0"))
+                initVF(path, attr, "EM_B0", null);
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -159,11 +183,24 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
         auto& B = h5Writer.modelView().getB();
         h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B", B);
     }
-    if (isActiveDiag(diagnostic, tree, "EM_E"))
-    {
-        auto& E = h5Writer.modelView().getE();
-        h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_E", E);
-    }
+    if constexpr (requires { h5Writer.modelView().getE(); })
+        if (isActiveDiag(diagnostic, tree, "EM_E"))
+        {
+            auto& E = h5Writer.modelView().getE();
+            h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_E", E);
+        }
+    if constexpr (requires { h5Writer.modelView().getB1(); })
+        if (isActiveDiag(diagnostic, tree, "EM_B1"))
+        {
+            auto& B1 = h5Writer.modelView().getB1();
+            h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B1", B1);
+        }
+    if constexpr (requires { h5Writer.modelView().getB0(); })
+        if (isActiveDiag(diagnostic, tree, "EM_B0"))
+        {
+            auto& B0 = h5Writer.modelView().getB0();
+            h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B0", B0);
+        }
 }
 
 

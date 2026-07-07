@@ -103,11 +103,28 @@ namespace core
         static constexpr std::uint32_t iVy = static_cast<std::uint32_t>(MHDQuantity::Scalar::Vy);
         static constexpr std::uint32_t iVz = static_cast<std::uint32_t>(MHDQuantity::Scalar::Vz);
 
+        static constexpr std::uint32_t iB1x
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1x);
+        static constexpr std::uint32_t iB1y
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1y);
+        static constexpr std::uint32_t iB1z
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1z);
+
         static constexpr std::uint32_t iBx = static_cast<std::uint32_t>(MHDQuantity::Scalar::Bx);
         static constexpr std::uint32_t iBy = static_cast<std::uint32_t>(MHDQuantity::Scalar::By);
         static constexpr std::uint32_t iBz = static_cast<std::uint32_t>(MHDQuantity::Scalar::Bz);
 
+        static constexpr std::uint32_t iB0x
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::B0x);
+        static constexpr std::uint32_t iB0y
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::B0y);
+        static constexpr std::uint32_t iB0z
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::B0z);
+
         static constexpr std::uint32_t iP = static_cast<std::uint32_t>(MHDQuantity::Scalar::P);
+
+        static constexpr std::uint32_t iEtot1
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::Etot1);
 
         static constexpr std::uint32_t iEtot
             = static_cast<std::uint32_t>(MHDQuantity::Scalar::Etot);
@@ -154,6 +171,9 @@ namespace core
             = static_cast<std::uint32_t>(MHDQuantity::Scalar::VecFluxY_z);
         static constexpr std::uint32_t iVecFluxZ_z
             = static_cast<std::uint32_t>(MHDQuantity::Scalar::VecFluxZ_z);
+
+        static constexpr std::uint32_t idivB
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::divB);
 
         static constexpr std::uint32_t iScalarAllPrimal
             = static_cast<std::uint32_t>(MHDQuantity::Scalar::ScalarAllPrimal);
