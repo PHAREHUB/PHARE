@@ -754,6 +754,7 @@ def checker(func):
             "refinement",
             "tagging_threshold",
             "clustering",
+            "allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
             "smallest_patch_size",
             "largest_patch_size",
             "diag_options",
@@ -797,6 +798,9 @@ def checker(func):
 
         kwargs["description"] = kwargs.get("description", None)
 
+        kwargs["allow_patches_smaller_than_minimum_size_to_prevent_overlaps"] = kwargs.get(
+            "allow_patches_smaller_than_minimum_size_to_prevent_overlaps", False
+        )
         kwargs["clustering"] = check_clustering(**kwargs)
 
         kwargs["restart_options"] = check_restart_options(**kwargs)

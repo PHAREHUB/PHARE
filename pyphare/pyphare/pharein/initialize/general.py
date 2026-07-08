@@ -90,6 +90,9 @@ def populateDict(sim):
     if sim.largest_patch_size is not None:
         add_vector_int("simulation/AMR/largest_patch_size", sim.largest_patch_size)
 
+    add_bool("simulation/AMR/allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
+             sim.allow_patches_smaller_than_minimum_size_to_prevent_overlaps)
+
     add_string("simulation/grid/layout_type", sim.layout)
     add_int("simulation/grid/nbr_cells/x", sim.cells[0])
     add_double("simulation/grid/meshsize/x", sim.dl[0])
