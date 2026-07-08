@@ -49,6 +49,11 @@ def populate_amr(dp, sim):
     if sim.largest_patch_size is not None:
         dp.add_vector_int("simulation/AMR/largest_patch_size", sim.largest_patch_size)
 
+    dp.add_bool(
+        "simulation/AMR/allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
+        sim.allow_patches_smaller_than_minimum_size_to_prevent_overlaps,
+    )
+
     dp.add_string("simulation/AMR/clustering", sim.clustering["method"])
     if "tile_size" in sim.clustering:
         dp.add_vector_int("simulation/AMR/tile_size", sim.clustering["tile_size"])
