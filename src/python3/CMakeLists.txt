@@ -2,53 +2,56 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(phare_python3)
 
-if(NOT PHARE_PERMUTATIONS)
-  set(PHARE_PERMUTATIONS "${PHARE_PROJECT_DIR}/res/sim/all.txt")
-endif()
+if(NOT GODULE) # make module per simulator permutation
 
-file(STRINGS ${PHARE_PERMUTATIONS} THIS_FILE)
-
-while(THIS_FILE)
-    list(POP_FRONT THIS_FILE LINE)
-
-    # Skip empty lines and comments
-    string(STRIP "${LINE}" LINE)
-    if("${LINE}" STREQUAL "" OR "${LINE}" MATCHES "^#")
-        continue()
+    if(NOT PHARE_PERMUTATIONS)
+      set(PHARE_PERMUTATIONS "${PHARE_PROJECT_DIR}/res/sim/all.txt")
     endif()
 
-    string(REPLACE "," ";" LINE_LIST ${LINE})
-    list(LENGTH LINE_LIST LINE_LENGTH)
+    file(STRINGS ${PHARE_PERMUTATIONS} THIS_FILE)
 
-    SET(_OFFSET 3)
-    SET(_PREFIXES "TimeIntegratorType;ReconstructionType;SlopeLimiterType;RiemannSolverType")
-    foreach(PREFIX IN LISTS _PREFIXES)
-      if(LINE_LENGTH GREATER ${_OFFSET})
-          list(TRANSFORM LINE_LIST PREPEND "${PREFIX}::" AT ${_OFFSET})
-      endif()
-      MATH(EXPR _OFFSET "${_OFFSET}+1")
-    endforeach()
+    while(THIS_FILE)
+        list(POP_FRONT THIS_FILE LINE)
 
-    string(REPLACE "," "_" OUT ${LINE})
-    SET(MOD_STR "cpp_${OUT}")
-    list(JOIN LINE_LIST "," LINE) # semicolon separated list to csv
+        # Skip empty lines and comments
+        string(STRIP "${LINE}" LINE)
+        if("${LINE}" STREQUAL "" OR "${LINE}" MATCHES "^#")
+            continue()
+        endif()
 
-    pybind11_add_module(${MOD_STR} cpp_simulator.cpp)
-    target_link_libraries(${MOD_STR} PUBLIC phare_simulator)
-    target_compile_options(${MOD_STR} PRIVATE
-        ${PHARE_WERROR_FLAGS}
-        -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE}
-        -DPHARE_SIM_ID=${OUT}
-        "-DPHARE_SIM_STR=${LINE}"
-    )
-    set_target_properties(${MOD_STR}
-        PROPERTIES
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
-    )
-    # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
-    set_property(TARGET ${MOD_STR} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
-    set_property(TARGET ${MOD_STR} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
-endwhile()
+        string(REPLACE "," ";" LINE_LIST ${LINE})
+        list(LENGTH LINE_LIST LINE_LENGTH)
+
+        SET(_OFFSET 3)
+        SET(_PREFIXES "TimeIntegratorType;ReconstructionType;SlopeLimiterType;RiemannSolverType")
+        foreach(PREFIX IN LISTS _PREFIXES)
+          if(LINE_LENGTH GREATER ${_OFFSET})
+              list(TRANSFORM LINE_LIST PREPEND "${PREFIX}::" AT ${_OFFSET})
+          endif()
+          MATH(EXPR _OFFSET "${_OFFSET}+1")
+        endforeach()
+
+        string(REPLACE "," "_" OUT ${LINE})
+        SET(MOD_STR "cpp_${OUT}")
+        list(JOIN LINE_LIST "," LINE) # semicolon separated list to csv
+
+        pybind11_add_module(${MOD_STR} cpp_simulator.cpp)
+        target_link_libraries(${MOD_STR} PUBLIC phare_simulator)
+        target_compile_options(${MOD_STR} PRIVATE
+            ${PHARE_WERROR_FLAGS}
+            -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE}
+            -DPHARE_SIM_ID=${OUT}
+            "-DPHARE_SIM_STR=${LINE}"
+        )
+        set_target_properties(${MOD_STR}
+            PROPERTIES
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
+        )
+        # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
+        set_property(TARGET ${MOD_STR} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
+        set_property(TARGET ${MOD_STR} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
+    endwhile()
+endif(NOT GODULE)
 
 # cpp_etc == everything not simulator related!
 pybind11_add_module(cpp_etc cpp_etc.cpp)

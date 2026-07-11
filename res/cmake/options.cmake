@@ -108,6 +108,7 @@ option(SAMRAI_BUILD_SHARED_LIBS "Build SAMRAI shared libraries" ON)
 #-DPHARE_EXE=OFF
 option(PHARE_EXE "Build PHARE EXE" OFF)
 
+option(GODULE "Build only one module" ON)
 
 # print options
 function(print_phare_options)

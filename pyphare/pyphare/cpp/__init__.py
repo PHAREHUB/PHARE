@@ -26,8 +26,14 @@ def simulator_id(sim):
 
 
 def cpp_lib(sim):
-    global _libs
+    sim_str = simulator_id(sim)
+    try:
+        mod_str = f"pybindlibs.cpp_sims.cpp_{sim_str}"
+        return importlib.import_module(mod_str)
+    except ImportError:
+        ...
 
+    global _libs
     mod_str = f"pybindlibs.cpp_{simulator_id(sim)}"
     if mod_str not in _libs:
         _libs[mod_str] = importlib.import_module(mod_str)

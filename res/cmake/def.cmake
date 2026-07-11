@@ -51,6 +51,15 @@ set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 set (PHARE_MPIRUN_POSTFIX ${PHARE_MPIRUN_POSTFIX})
 
+if(GODULE)
+  execute_process(
+    COMMAND python3 tools/godule.py "${CMAKE_BINARY_DIR}" "${PHARE_PERMUTATIONS}"
+    WORKING_DIRECTORY ${PHARE_PROJECT_DIR}
+    COMMAND_ERROR_IS_FATAL ANY
+  )
+  include("${CMAKE_BINARY_DIR}/.godule.cmake")
+endif(GODULE)
+
 # now we see if we are running with configurator
 if (phare_configurator)
   execute_process(

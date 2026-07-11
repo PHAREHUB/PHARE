@@ -24,6 +24,8 @@
 #include "python3/patch_level.hpp"   // IWYU pragma: keep
 #include "python3/data_wrangler.hpp" // IWYU pragma: keep
 
+#include <utility>
+
 
 namespace py = pybind11;
 
@@ -55,10 +57,17 @@ void declareSimulator(PyClass&& sim)
         .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"));
 }
 
-template<typename Sim>
+template<typename T>
+bool inline declare_once()
+{
+    static bool declared = false;
+    return !std::exchange(declared, true);
+}
+
+template<SimOpts opts>
 void inline declare_etc(py::module& m)
 {
-    constexpr auto opts = resolve_simulator_options();
+    using Sim = Simulator<opts>;
 
     using DW         = DataWrangler<opts>;
     std::string name = "DataWrangler";
@@ -99,19 +108,25 @@ void inline declare_etc(py::module& m)
                                core::RefinedParticlesConst<Sim::nbRefinedPart>>;
     name = "Splitter";
 
-    py::class_<_Splitter, py::smart_holder>(m, name.c_str(), py::module_local())
-        .def(py::init<>())
-        .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
-        .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
+    // permutations sharing (dimension, interp_order, nbRefinedPart) share this type,
+    //  which may only be registered once per python module
+    if (declare_once<_Splitter>())
+        py::class_<_Splitter, py::smart_holder>(m, name.c_str(), py::module_local())
+            .def(py::init<>())
+            .def_property_readonly_static("weight", [](py::object) { return _Splitter::weight; })
+            .def_property_readonly_static("delta", [](py::object) { return _Splitter::delta; });
+    else
+        m.attr(name.c_str()) = py::type::of<_Splitter>();
 
     name = "split_pyarray_particles";
     m.def(name.c_str(), splitPyArrayParticles<_Splitter>);
 }
 
 
-void inline declare_macro_sim(py::module& m)
+template<SimOpts opts>
+void inline declare_sim(py::module& m)
 {
-    using Sim = Simulator<resolve_simulator_options()>;
+    using Sim = Simulator<opts>;
 
     std::string name = "Simulator";
     declareSimulator<Sim>(
@@ -128,7 +143,12 @@ void inline declare_macro_sim(py::module& m)
     });
 
 
-    declare_etc<Sim>(m);
+    declare_etc<opts>(m);
+}
+
+void inline declare_macro_sim(py::module& m)
+{
+    declare_sim<resolve_simulator_options()>(m);
 }
 
 
