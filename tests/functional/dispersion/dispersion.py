@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator
 
 
 import matplotlib as mpl
 import numpy as np
 
 mpl.use("Agg")
+
+diag_dir = "phare_outputs/hybrid_dispersion"
 
 
 def fromNoise():
@@ -16,8 +17,6 @@ def fromNoise():
     # will be visible
 
     sim = ph.Simulation(
-        smallest_patch_size=20,
-        largest_patch_size=20,
         # the following time step number
         # and final time mean that the
         # smallest frequency will be 2/100
@@ -31,7 +30,7 @@ def fromNoise():
         dl=0.2,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": "dispersion", "mode": "overwrite"},
+            "options": {"dir": diag_dir, "mode": "overwrite"},
         },
     )
 
@@ -87,6 +86,8 @@ def fromNoise():
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
+    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
+
     return sim
 
 
@@ -111,7 +112,7 @@ def prescribedModes():
         dl=0.2,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": "dispersion", "mode": "overwrite"},
+            "options": {"dir": diag_dir, "mode": "overwrite"},
         },
     )
 
@@ -176,11 +177,41 @@ def prescribedModes():
             quantity=quantity, write_timestamps=timestamps, flush_every=0
         )
 
+    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
+
     return sim
 
 
 def main():
+    from pyphare import cpp
+    from pyphare.simulator.simulator import Simulator, startMPI
+
+    startMPI()
     Simulator(fromNoise()).run()
+
+    if cpp.mpi_rank() == 0:
+        from matplotlib.pyplot import colorbar, imshow, savefig
+        from numpy.fft import fft2
+        from numpy import abs, log
+        from pyphare.pharesee.run import Run
+        from pyphare.pharesee.hierarchy.hierarchy_utils import (
+            hierarchy_as_single_L0_patch,
+        )
+
+        run = Run(diag_dir)
+        data = []
+        t_i = 0
+
+        for time in run.times("B"):
+            t_i += 1
+            if t_i % 200 != 0:
+                continue
+
+            Bz = hierarchy_as_single_L0_patch(run.GetB(time))["z"]
+            data.append(Bz[Bz.box])
+
+        colorbar(imshow(log(abs(fft2(data)))[-250:, :250], aspect="auto"))
+        savefig("Bz2.png", dpi=200)
 
 
 if __name__ == "__main__":

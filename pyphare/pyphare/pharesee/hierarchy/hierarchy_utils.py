@@ -166,6 +166,7 @@ def compute_hier_from(compute, hierarchies, **kwargs):
         domain_box,
         refinement_ratio,
         times=reference_hier.times(),
+        data_files=reference_hier.data_files,
     )
 
 
@@ -715,3 +716,7 @@ def single_patch_for_LO(hier, qties=None, skip=None):
                 else:
                     raise RuntimeError("unexpected state")
     return cier
+
+
+def hierarchy_as_single_L0_patch(hier, qties=None, skip=None):
+    return single_patch_for_LO(hier, qties, skip).levels()[0].patches[0]
