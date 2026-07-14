@@ -76,6 +76,10 @@ public:
         auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
         auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
 
+        assert(core::for_N_all<dimension>([&](auto i) {
+            return layout.AMRBox().shape()[i] % 2 == 0;
+        }) && "MagneticRefinePatchStrategy: layout AMRBox shape must be even in each direction");
+
         auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
             using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
 
