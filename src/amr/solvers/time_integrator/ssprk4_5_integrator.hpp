@@ -11,10 +11,11 @@
 
 namespace PHARE::solver
 {
-template<typename FVMethodStrategy, typename MHDModel>
-class SSPRK4_5Integrator : public BaseMHDTimestepper<MHDModel>
+template<typename FVMethodStrategy, typename MHDModel,
+         typename MessengerT = amr::MHDMessenger<MHDModel>>
+class SSPRK4_5Integrator : public BaseMHDTimestepper<MHDModel, MessengerT>
 {
-    using Super = BaseMHDTimestepper<MHDModel>;
+    using Super = BaseMHDTimestepper<MHDModel, MessengerT>;
 
     using GridLayoutT = MHDModel::gridlayout_type;
     using VecFieldT   = MHDModel::vecfield_type;

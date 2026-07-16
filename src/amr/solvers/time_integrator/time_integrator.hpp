@@ -32,10 +32,11 @@ inline MHDOpts::TimeIntegratorType parse_time_integrator_type(std::string s)
 }
 } // namespace detail
 
-template<typename FVMethodStrategy, typename MHDModel>
+template<typename FVMethodStrategy, typename MHDModel,
+         typename MessengerT = amr::MHDMessenger<MHDModel>>
 class TimeIntegrator
 {
-    using Base_t = BaseMHDTimestepper<MHDModel>;
+    using Base_t = BaseMHDTimestepper<MHDModel, MessengerT>;
 
     static std::unique_ptr<Base_t> make_(MHDOpts::TimeIntegratorType t,
                                          PHARE::initializer::PHAREDict const& dict)
@@ -43,13 +44,17 @@ class TimeIntegrator
         switch (t)
         {
             case MHDOpts::TimeIntegratorType::Euler:
-                return std::make_unique<EulerIntegrator<FVMethodStrategy, MHDModel>>(dict);
+                return std::make_unique<EulerIntegrator<FVMethodStrategy, MHDModel, MessengerT>>(
+                    dict);
             case MHDOpts::TimeIntegratorType::TVDRK2:
-                return std::make_unique<TVDRK2Integrator<FVMethodStrategy, MHDModel>>(dict);
+                return std::make_unique<TVDRK2Integrator<FVMethodStrategy, MHDModel, MessengerT>>(
+                    dict);
             case MHDOpts::TimeIntegratorType::TVDRK3:
-                return std::make_unique<TVDRK3Integrator<FVMethodStrategy, MHDModel>>(dict);
+                return std::make_unique<TVDRK3Integrator<FVMethodStrategy, MHDModel, MessengerT>>(
+                    dict);
             case MHDOpts::TimeIntegratorType::SSPRK4_5:
-                return std::make_unique<SSPRK4_5Integrator<FVMethodStrategy, MHDModel>>(dict);
+                return std::make_unique<SSPRK4_5Integrator<FVMethodStrategy, MHDModel, MessengerT>>(
+                    dict);
             default:
                 throw std::runtime_error("TimeIntegrator: unsupported time integrator type");
         }
@@ -58,6 +63,8 @@ class TimeIntegrator
     std::unique_ptr<Base_t> impl_;
 
 public:
+    using Messenger = MessengerT;
+
     TimeIntegrator(PHARE::initializer::PHAREDict const& dict)
         : impl_{make_(
               detail::parse_time_integrator_type(

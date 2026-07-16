@@ -36,9 +36,12 @@
 namespace PHARE::solver
 {
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy,
-         typename Messenger = amr::MHDMessenger<MHDModel>>
+         typename Messenger = typename TimeIntegratorStrategy::Messenger>
 class SolverMHD : public ISolver<AMR_Types>
 {
+    static_assert(std::is_same_v<Messenger, typename TimeIntegratorStrategy::Messenger>,
+                  "SolverMHD messenger must match the time integrator's messenger");
+
 private:
     static constexpr auto dimension = MHDModel::dimension;
 

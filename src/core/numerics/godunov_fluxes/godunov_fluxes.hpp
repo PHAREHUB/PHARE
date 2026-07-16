@@ -89,7 +89,7 @@ public:
         , layout_{layout}
         , resistivity_{info.eta != 0.0}
         , hyper_resistivity_{info.nu != 0.0}
-        , equations_{gamma, eta, nu}
+        , equations_{gamma}
         , riemann_{gamma}
     {
     }

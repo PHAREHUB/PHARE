@@ -4,6 +4,8 @@
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/utilities/algorithm.hpp"
 
+#include "initializer/data_provider.hpp"
+
 #include <SAMRAI/hier/Patch.h>
 #include <vector>
 

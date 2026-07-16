@@ -10,10 +10,11 @@ namespace PHARE::solver
 {
 
 
-template<typename FVMethodStrategy, typename MHDModel>
-class EulerIntegrator : public BaseMHDTimestepper<MHDModel>
+template<typename FVMethodStrategy, typename MHDModel,
+         typename MessengerT = amr::MHDMessenger<MHDModel>>
+class EulerIntegrator : public BaseMHDTimestepper<MHDModel, MessengerT>
 {
-    using Super = BaseMHDTimestepper<MHDModel>;
+    using Super = BaseMHDTimestepper<MHDModel, MessengerT>;
 
 public:
     EulerIntegrator(PHARE::initializer::PHAREDict const& dict)
