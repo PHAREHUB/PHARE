@@ -600,9 +600,10 @@ def check_tagging(**kwargs):
       10.1016/j.compfluid.2019.06.025). The indicator is the ABSOLUTE prediction
       error |Q - Qpredicted| (units of Q), so thresholds are not comparable with
       default/lohner ones. By default the threshold follows Harten's level
-      scaling eps_l = eps / cell_volume * 2^{dim (l - L)} (L the finest level),
-      refining coarse levels more eagerly; `level_scaling` (default 1) set to 0
-      uses the per-quantity threshold unscaled on every level.
+      scaling eps_l = eps / |Omega| * 2^{dim (l - L)} (|Omega| the physical
+      domain volume, L the finest level), refining coarse levels more eagerly;
+      `level_scaling` (default 1) set to 0 uses the per-quantity threshold
+      unscaled on every level.
 
     Quantity names are not restricted here: the C++ tagger resolves them against
     the model's field tree and throws if a name matches nothing.

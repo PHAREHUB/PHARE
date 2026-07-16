@@ -22,9 +22,11 @@ using namespace PHARE::core;
 
 
 // runtime dict contract: method + nbr_quantities + Q{i}/{name,threshold} + optional params/*
+// + optional domain_volume (injected by Python; the kernel defaults it to 1)
 PHARE::initializer::PHAREDict
 taggingDict(std::string const& method, std::vector<std::pair<std::string, double>> const& qtys,
-            std::vector<std::pair<std::string, double>> const& params = {})
+            std::vector<std::pair<std::string, double>> const& params = {},
+            double domainVolume = 0.)
 {
     PHARE::initializer::PHAREDict dict;
     dict["method"]         = method;
@@ -37,6 +39,8 @@ taggingDict(std::string const& method, std::vector<std::pair<std::string, double
     }
     for (auto const& [name, value] : params)
         dict["params"][name] = value;
+    if (domainVolume > 0.)
+        dict["domain_volume"] = domainVolume;
     return dict;
 }
 
@@ -426,21 +430,28 @@ TEST(TagFields, WaveletLevelScalingRefinesCoarseLevelsMoreEagerly)
     TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
     auto const ncells = layout.nbrCells();
 
-    // Harten scaling: eps_l = eps / cellVolume * 2^{dim (l - L)}. This layout is
-    // level 0; a deeper hierarchy (larger L) lowers the effective threshold on
-    // level 0, so it must tag at least as much.
-    auto const countTags = [&](int maxLevelNumber) {
+    // Harten scaling: eps_l = eps / |Omega| * 2^{dim (l - L)}, |Omega| the (constant)
+    // physical domain volume. This layout is level 0; a deeper hierarchy (larger L)
+    // lowers the effective threshold on level 0, so it must tag at least as much.
+    auto const countTags = [&](int maxLevelNumber, double domainVolume = 0.) {
         std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
-        ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("wavelet", {{"E", 1e-4}}),
-                                                 maxLevelNumber}
+        ConcreteTaggerKernel<TagFieldsMockModel>{
+            taggingDict("wavelet", {{"E", 1e-4}}, {}, domainVolume), maxLevelNumber}
             .tagFields(model, layout, tags.data());
         return std::count(tags.begin(), tags.end(), 1);
     };
 
-    auto const shallow = countTags(1); // L = 0 -> scale = 1/cellVolume
-    auto const deep    = countTags(3); // L = 2 -> scale = 2^-4/cellVolume
+    auto const shallow = countTags(1); // L = 0 -> scale = 1
+    auto const deep    = countTags(3); // L = 2 -> scale = 2^-4
     EXPECT_GT(deep, 0);
     EXPECT_GE(deep, shallow);
+
+    // |Omega| divides the threshold: a large domain can only tag more, a tiny one less.
+    auto const bigDomain  = countTags(1, 1e3);
+    auto const tinyDomain = countTags(1, 1e-3);
+    EXPECT_GE(bigDomain, shallow);
+    EXPECT_LE(tinyDomain, shallow);
+    EXPECT_GT(bigDomain, tinyDomain) << "domain_volume must rescale the wavelet threshold";
 }
 
 

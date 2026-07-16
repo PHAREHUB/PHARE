@@ -157,6 +157,11 @@ def populateDict(sim):
             add_double(q_path + "threshold", threshold)
         for name, value in tagging.get("params", {}).items():
             add_double(f"simulation/AMR/refinement/tagging/params/{name}", value)
+        # |Omega| for the wavelet level-scaled threshold (Domingues et al. 2019, Eq. 7)
+        add_double(
+            "simulation/AMR/refinement/tagging/domain_volume",
+            float(np.prod(sim.simulation_domain())),
+        )
     else:
         add_string(
             "simulation/AMR/refinement/tagging/method", "none"

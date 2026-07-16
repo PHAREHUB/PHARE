@@ -166,6 +166,11 @@ public:
             if (params.contains("level_scaling"))
                 levelScaling_ = params["level_scaling"].template to<double>() != 0.;
         }
+
+        // physical domain volume |Omega|, used by the wavelet level-scaled threshold;
+        // injected by Python (populateDict), absent in unit-test dicts (then 1).
+        if (dict.contains("domain_volume"))
+            domainVolume_ = dict["domain_volume"].template to<double>();
     }
 
     // criterion on a single patch (writes the SAMRAI tag buffer, no ghosts).
@@ -186,6 +191,7 @@ private:
     double lohnerReltol_ = 0.02;
     double lohnerAbstol_ = 1e-30;
     bool levelScaling_   = true;
+    double domainVolume_ = 1.0;
 };
 
 
@@ -296,14 +302,14 @@ void ConcreteTaggerKernel<Model>::tagCells_(Model& model, gridlayout_type const&
     }
 
     // level-scaled threshold (wavelet only): Harten's strategy (Domingues et al. 2019,
-    // Eq. 7) eps_l = eps / |O| * 2^{dim (l - L)} with |O| the cell volume on this level
-    // and L the finest level, so refinement is triggered more eagerly on coarse levels
-    // (controls the L1 norm of the discarded details).
+    // Eq. 7) eps_l = eps / |O| * 2^{dim (l - L)} with |O| the PHYSICAL DOMAIN volume
+    // (constant across levels) and L the finest level, so refinement is triggered more
+    // eagerly on coarse levels (controls the L1 norm of the discarded details).
     double thresholdScale = 1.0;
     if (method_ == TaggingMethod::Wavelet and levelScaling_)
         thresholdScale = std::pow(2.0, static_cast<int>(dimension)
                                            * (layout.levelNumber() - finestLevel_))
-                         / layout.cellVolume();
+                         / domainVolume_;
 
     // wavelet sibling pairing must follow the GLOBAL (AMR) grid: parity of cell c in
     // direction d is (AMRBox.lower[d] + c) & 1.
