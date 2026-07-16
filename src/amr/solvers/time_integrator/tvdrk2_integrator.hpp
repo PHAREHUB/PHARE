@@ -4,9 +4,7 @@
 #include "initializer/data_provider.hpp"
 #include "amr/solvers/time_integrator/base_mhd_timestepper.hpp"
 #include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
-#include "amr/solvers/solver_mhd_field_evolvers.hpp"
 #include "amr/solvers/time_integrator/euler.hpp"
-#include "core/numerics/time_integrator_utils.hpp"
 
 namespace PHARE::solver
 {
@@ -16,10 +14,6 @@ class TVDRK2Integrator : public BaseMHDTimestepper<MHDModel, MessengerT>
 {
     using Super = BaseMHDTimestepper<MHDModel, MessengerT>;
 
-    using GridLayoutT   = MHDModel::gridlayout_type;
-    using Dispatchers_t = Dispatchers<MHDModel>;
-    using RKUtils_t     = Dispatchers_t::RKUtils_t;
-
 public:
     TVDRK2Integrator(PHARE::initializer::PHAREDict const& dict)
         : Super{dict, /*n_extra_states=*/1}
@@ -27,9 +21,8 @@ public:
     {
     }
 
-    void operator()(MHDModel& model, Super::MHDStateT& state,
-                    Super::FluxT& fluxes, Super::Messenger& bc,
-                    Super::level_t& level, double const currentTime,
+    void operator()(MHDModel& model, Super::MHDStateT& state, Super::FluxT& fluxes,
+                    Super::Messenger& bc, Super::level_t& level, double const currentTime,
                     double const newTime) override
     {
         auto& state1 = this->extra_states_[0];
@@ -39,7 +32,7 @@ public:
         // U1 = Euler(Un)
         euler_(model, state, state1, fluxes, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level, w1_);
+        this->accumulateButcherFluxes_(model, state.E, fluxes, level, w0_);
 
         // U1 = Euler(U1)
         euler_(model, state1, state1, fluxes, bc, level, currentTime, newTime);

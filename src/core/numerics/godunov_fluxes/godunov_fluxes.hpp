@@ -87,8 +87,8 @@ public:
     explicit Godunov(GodunovInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , resistivity_{info.eta != 0.0}
-        , hyper_resistivity_{info.nu != 0.0}
+        , resistivity_{info.resistive()}
+        , hyper_resistivity_{info.hyperResistive()}
         , equations_{gamma}
         , riemann_{gamma}
     {

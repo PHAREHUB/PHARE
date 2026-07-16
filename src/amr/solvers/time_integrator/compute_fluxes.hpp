@@ -5,6 +5,8 @@
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "amr/solvers/solver_mhd_field_evolvers.hpp"
 
+#include <cassert>
+
 namespace PHARE::solver
 {
 template<typename FVMethodStrategy, typename MHDModel>
@@ -24,7 +26,7 @@ class ComputeFluxes
     template<typename T>
     using Rec = FVMethod_t::template Rec<T>;
 
-    using ConstrainedTransport_t = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
+    using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
@@ -40,7 +42,11 @@ public:
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
         , to_conservative_gamma_{dict["to_conservative"]["heat_capacity_ratio"]}
+        , needsCurrent_{Hall || fVMethodInfo_.resistive() || fVMethodInfo_.hyperResistive()}
     {
+        // eta/nu are duplicated into both info structs
+        assert(fVMethodInfo_.eta == constrainedTransportInfo_.eta
+               && fVMethodInfo_.nu == constrainedTransportInfo_.nu);
     }
 
     void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
@@ -48,16 +54,7 @@ public:
     {
         ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_, newTime);
 
-        auto const needsCurrent = fVMethodInfo_.eta != 0.0 || fVMethodInfo_.nu != 0.0
-                                  || constrainedTransportInfo_.eta != 0.0
-                                  || constrainedTransportInfo_.nu != 0.0;
-
-        if constexpr (Hall)
-        {
-            Ampere_t{level, model}(state.B, state.J);
-            TimeSetter{level, model, newTime}(state.B, state.J);
-        }
-        else if (needsCurrent)
+        if (needsCurrent_)
         {
             Ampere_t{level, model}(state.B, state.J);
             TimeSetter{level, model, newTime}(state.B, state.J);
@@ -94,6 +91,7 @@ private:
     // ToConservativeConverter_t to_conservative_;
     double to_primitive_gamma_;
     double to_conservative_gamma_;
+    bool needsCurrent_;
 };
 } // namespace PHARE::solver
 

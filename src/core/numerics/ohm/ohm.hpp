@@ -20,6 +20,9 @@ struct OhmInfo
     double const nu;
     HyperMode const hyper_mode;
 
+    bool resistive() const { return eta != 0.0; }
+    bool hyperResistive() const { return nu != 0.0; }
+
     OhmInfo static FROM(initializer::PHAREDict const& dict)
     {
         return {dict["resistivity"].template to<double>(),
