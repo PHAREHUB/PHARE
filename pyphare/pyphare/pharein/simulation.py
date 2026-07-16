@@ -797,7 +797,7 @@ def checker(func):
 
         kwargs["nesting_buffer"] = check_nesting_buffer(ndim, **kwargs)
 
-        kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
+        kwargs["tag_buffer"] = kwargs.get("tag_buffer", 3)
 
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":

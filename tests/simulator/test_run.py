@@ -31,8 +31,6 @@ def config():
         refinement="tagging",
         max_nbr_levels=3,
         nesting_buffer=1,
-        clustering="tile",
-        tag_buffer="1",
         hyper_resistivity=0.002,
         resistivity=0.001,
         diag_options={
