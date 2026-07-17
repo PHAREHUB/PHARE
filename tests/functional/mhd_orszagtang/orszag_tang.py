@@ -24,8 +24,6 @@ diag_dir = "phare_outputs/orszag_tang"
 timestamps = np.arange(0, final_time + time_step, final_time / 5)
 
 hall = False
-res = False
-hyper_res = False
 
 
 def config():
@@ -57,8 +55,6 @@ def config():
         riemann="Rusanov",
         mhd_timestepper="TVDRK2",
         hall=hall,
-        res=res,
-        hyper_res=hyper_res,
         model_options=["MHDModel"],
     )
 

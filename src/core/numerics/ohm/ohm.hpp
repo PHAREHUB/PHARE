@@ -3,16 +3,31 @@
 
 
 #include "core/utilities/index/index.hpp"
+#include "core/utilities/meta/string_enum.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"
+
+#include <array>
+#include <string_view>
+#include <utility>
 
 
 namespace PHARE::core
 {
 
 enum class HyperMode { constant, spatial };
+
+template<>
+struct EnumTraits<HyperMode>
+{
+    static constexpr std::string_view label = "hyper mode";
+    static constexpr std::array<std::pair<std::string_view, HyperMode>, 2> names{{
+        {"constant", HyperMode::constant},
+        {"spatial", HyperMode::spatial},
+    }};
+};
 
 struct OhmInfo
 {
@@ -25,11 +40,10 @@ struct OhmInfo
 
     OhmInfo static FROM(initializer::PHAREDict const& dict)
     {
-        return {dict["resistivity"].template to<double>(),
-                dict["hyper_resistivity"].template to<double>(),
-                cppdict::get_value(dict, "hyper_mode", std::string{"constant"}) == "constant"
-                    ? HyperMode::constant
-                    : HyperMode::spatial};
+        return {
+            dict["resistivity"].template to<double>(),
+            dict["hyper_resistivity"].template to<double>(),
+            fromString<HyperMode>(cppdict::get_value(dict, "hyper_mode", std::string{"constant"}))};
     }
 };
 

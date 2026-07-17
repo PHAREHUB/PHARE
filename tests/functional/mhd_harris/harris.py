@@ -22,8 +22,6 @@ timestamps = np.arange(0, final_time + time_step, final_time / 5)
 diag_dir = "phare_outputs/mhd_harris"
 
 hall = True
-res = False
-hyper_res = True
 
 
 def config():
@@ -53,8 +51,6 @@ def config():
         riemann="Rusanov",
         mhd_timestepper="TVDRK3",
         hall=hall,
-        res=res,
-        hyper_res=hyper_res,
         model_options=["MHDModel"],
     )
 

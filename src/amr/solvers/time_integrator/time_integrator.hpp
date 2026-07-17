@@ -18,20 +18,6 @@
 namespace PHARE::solver
 {
 
-namespace detail
-{
-inline MHDOpts::TimeIntegratorType parse_time_integrator_type(std::string s)
-{
-    std::transform(s.begin(), s.end(), s.begin(),
-                   [](unsigned char c) { return std::tolower(c); });
-    if (s == "euler") return MHDOpts::TimeIntegratorType::Euler;
-    if (s == "tvdrk2") return MHDOpts::TimeIntegratorType::TVDRK2;
-    if (s == "tvdrk3") return MHDOpts::TimeIntegratorType::TVDRK3;
-    if (s == "ssprk4_5") return MHDOpts::TimeIntegratorType::SSPRK4_5;
-    throw std::runtime_error("Unknown time integrator type: " + s);
-}
-} // namespace detail
-
 template<typename FVMethodStrategy, typename MHDModel,
          typename MessengerT = amr::MHDMessenger<MHDModel>>
 class TimeIntegrator
@@ -55,8 +41,7 @@ class TimeIntegrator
             case MHDOpts::TimeIntegratorType::SSPRK4_5:
                 return std::make_unique<SSPRK4_5Integrator<FVMethodStrategy, MHDModel, MessengerT>>(
                     dict);
-            default:
-                throw std::runtime_error("TimeIntegrator: unsupported time integrator type");
+            default: throw std::runtime_error("TimeIntegrator: unsupported time integrator type");
         }
     }
 
@@ -66,16 +51,14 @@ public:
     using Messenger = MessengerT;
 
     TimeIntegrator(PHARE::initializer::PHAREDict const& dict)
-        : impl_{make_(
-              detail::parse_time_integrator_type(
-                  cppdict::get_value(dict, "time_integrator_type", std::string{"TVDRK3"})),
-              dict)}
+        : impl_{make_(core::fromString<MHDOpts::TimeIntegratorType>(
+                          cppdict::get_value(dict, "time_integrator_type", std::string{"TVDRK3"})),
+                      dict)}
     {
     }
 
-    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc,
-                    MHDModel::level_t& level, double const currentTime,
-                    double const newTime)
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, MHDModel::level_t& level,
+                    double const currentTime, double const newTime)
     {
         (*impl_)(model, state, fluxes, bc, level, currentTime, newTime);
     }
