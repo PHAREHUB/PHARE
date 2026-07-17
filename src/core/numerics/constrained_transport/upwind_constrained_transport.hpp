@@ -30,8 +30,8 @@ public:
     UpwindConstrainedTransport(UpwindConstrainedTransportInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , resistivity_{info.resistive()}
-        , hyper_resistivity_{info.hyperResistive()}
+        , is_resistive_{info.isResistive()}
+        , is_hyper_resistive_{info.isHyperResistive()}
     {
     }
 
@@ -48,7 +48,7 @@ public:
         layout_.evalOnBox(Ey, [&](auto&... args) mutable { EyEq_(ct_state, Ey, B, {args...}); });
         layout_.evalOnBox(Ez, [&](auto&... args) mutable { EzEq_(ct_state, Ez, B, {args...}); });
 
-        if (resistivity_ || hyper_resistivity_)
+        if (is_resistive_ || is_hyper_resistive_)
         {
             auto const& J = mhd_state.J;
 
@@ -56,7 +56,7 @@ public:
             auto& Jy = J(Component::Y);
             auto& Jz = J(Component::Z);
 
-            if (resistivity_)
+            if (is_resistive_)
             {
                 layout_.evalOnBox(
                     Ex, [&](auto&... args) mutable { resistive_contribution_(Ex, Jx, {args...}); });
@@ -66,7 +66,7 @@ public:
                     Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
             }
 
-            if (hyper_resistivity_)
+            if (is_hyper_resistive_)
             {
                 auto const& rho = mhd_state.rho;
 
@@ -418,8 +418,8 @@ private:
 
 
     GridLayout layout_;
-    bool const resistivity_;
-    bool const hyper_resistivity_;
+    bool const is_resistive_;
+    bool const is_hyper_resistive_;
 };
 } // namespace PHARE::core
 

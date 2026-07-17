@@ -16,6 +16,7 @@
 #include <tuple>
 #include <cstddef>
 #include <cstdint>
+#include <variant>
 
 namespace PHARE::core
 {
@@ -37,7 +38,7 @@ constexpr auto getDirections()
 }
 
 template<auto direction, size_t dim>
-auto getGrow(int const nghosts)
+auto getGrow(int const nghosts, bool const hyperResistivity)
 {
     Point<std::uint32_t, dim> p{};
 
@@ -47,9 +48,11 @@ auto getGrow(int const nghosts)
         if (i != dir)
             p[i] = nghosts;
 
-    // always allocate the extra layer in the direction of the flux laplacian computation
-    // (hyper-resistivity), since resistivity/hyper-resistivity are now runtime selections
-    p[dir] += 1;
+    // add one extra layer in the direction of the flux laplacian computation. Maybe some later
+    // optimisation would let us just compute for uct and have the extra layer only reconstructed
+    // for j
+    if (hyperResistivity)
+        p[dir] += 1;
 
     return p;
 }
@@ -87,8 +90,8 @@ public:
     explicit Godunov(GodunovInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , resistivity_{info.resistive()}
-        , hyper_resistivity_{info.hyperResistive()}
+        , is_resistive_{info.isResistive()}
+        , is_hyper_resistive_{info.isHyperResistive()}
         , equations_{gamma}
         , riemann_{gamma}
     {
@@ -104,68 +107,75 @@ public:
         for_N<num_directions>([&](auto i) {
             constexpr Direction direction = std::get<i>(directions);
 
-            layout_.evalOnBiggerBox(
-                fluxes.template expose_centering<direction>(),
-                getGrow<direction, dimension>(Reconstruction_t::nghosts),
-                [&](auto&... indices) {
-                    if constexpr (Hall)
-                    {
-                        auto&& [uL, uR]
-                            = Reconstructor_t::template reconstruct<direction>(state, {indices...});
+            auto fillHyperbolicFluxes = [&](auto mustSaveBtT) {
+                constexpr bool mustSaveBt = decltype(mustSaveBtT)::value;
+                layout_.evalOnBiggerBox(
+                    fluxes.template expose_centering<direction>(),
+                    getGrow<direction, dimension>(Reconstruction_t::nghosts, is_hyper_resistive_),
+                    [&](auto&... indices) {
+                        if constexpr (Hall)
+                        {
+                            auto&& [uL, uR] = Reconstructor_t::template reconstruct<direction>(
+                                state, {indices...});
 
-                        auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, GridLayout::edgeXToCellCenter, GridLayout::edgeYToCellCenter,
-                            GridLayout::edgeZToCellCenter>(state.J, {indices...});
+                            auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
+                                direction, GridLayout::edgeXToCellCenter,
+                                GridLayout::edgeYToCellCenter, GridLayout::edgeZToCellCenter>(
+                                state.J, {indices...});
 
-                        auto&& u      = std::forward_as_tuple(uL, uR);
-                        auto const& j = std::forward_as_tuple(jL, jR);
+                            auto&& u      = std::forward_as_tuple(uL, uR);
+                            auto const& j = std::forward_as_tuple(jL, jR);
 
 
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u),
-                                                                          std::get<i>(j));
-                        });
+                            auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
+                                return equations_.template compute<direction>(std::get<i>(u),
+                                                                              std::get<i>(j));
+                            });
 
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
+                            fluxes.template get_dir<direction>({indices...})
+                                = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
 
-                        ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
-                                                          riemann_.uct_coefs, {indices...});
+                            ct_state.template save<direction>(riemann_.vt, riemann_.jt,
+                                                              riemann_.rhot, riemann_.uct_coefs,
+                                                              {indices...});
 
-                        // for energy ExB term
-                        if (resistivity_ || hyper_resistivity_)
-                            save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
-                                                                      {indices...});
-                    }
-                    else // Ideal
-                    {
-                        auto&& [uL, uR]
-                            = Reconstructor_t::template reconstruct<direction>(state, {indices...});
+                            // for energy ExB term
+                            if constexpr (mustSaveBt)
+                                save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
+                                                                          {indices...});
+                        }
+                        else // Ideal
+                        {
+                            auto&& [uL, uR] = Reconstructor_t::template reconstruct<direction>(
+                                state, {indices...});
 
-                        auto&& u = std::forward_as_tuple(uL, uR);
+                            auto&& u = std::forward_as_tuple(uL, uR);
 
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u));
-                        });
+                            auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
+                                return equations_.template compute<direction>(std::get<i>(u));
+                            });
 
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR);
+                            fluxes.template get_dir<direction>({indices...})
+                                = riemann_.template solve<direction>(uL, uR, fL, fR);
 
-                        ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
-                                                          {indices...});
+                            ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
+                                                              {indices...});
 
-                        // for energy ExB term
-                        if (resistivity_ || hyper_resistivity_)
-                            save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
-                                                                      {indices...});
-                    }
-                });
+                            // for energy ExB term
+                            if constexpr (mustSaveBt)
+                                save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
+                                                                          {indices...});
+                        }
+                    });
+            };
 
             // adding resistive contributions to energy taking advantage of the already computed jt
             // fluxes for the laplacian computation. This probably doesn't need the grow as the
             // required quantities for ct are already saved.
-            if (resistivity_ || hyper_resistivity_)
-            {
+            auto addResistiveContributions = [&](auto doResistiveT, auto doHyperT, auto hyperT) {
+                constexpr bool doResistive = decltype(doResistiveT)::value;
+                constexpr bool doHyper     = decltype(doHyperT)::value;
+                constexpr HyperMode hyper  = decltype(hyperT)::value;
                 layout_.evalOnBox(
                     fluxes.template expose_centering<direction>(), [&](auto&... indices) {
                         auto& Jt     = ct_state.template getJt<direction>();
@@ -176,22 +186,22 @@ public:
 
                         auto const& Btidx = toPerIndexVector(Bt, {indices...});
 
-                        if (resistivity_)
+                        if constexpr (doResistive)
                         {
                             // transverse B field components (probably a riemann operation).
                             auto const& Jtidx = toPerIndexVector(Jt, {indices...});
                             equations_.template resistive_contributions<direction>(
                                 eta, Btidx, Jtidx, F_B, F_Etot);
                         }
-                        if (hyper_resistivity_)
+                        if constexpr (doHyper)
                         {
                             auto const vecLaplJ
                                 = transverse_laplacian_<direction>(Jt, {indices...});
 
-                            if (hyper_mode == HyperMode::constant)
+                            if constexpr (hyper == HyperMode::constant)
                                 return constant_hyperresistive_<direction>(Btidx, vecLaplJ, F_B,
                                                                            F_Etot);
-                            else if (hyper_mode == HyperMode::spatial)
+                            else // HyperMode::spatial
                             {
                                 auto const& Bn = toPerIndexVector(state.B, {indices...});
                                 auto const& rhot
@@ -200,16 +210,49 @@ public:
                                 return spatial_hyperresistive_<direction>(Btidx, Bn, vecLaplJ, rhot,
                                                                           F_B, F_Etot);
                             }
-                            else
-                                throw std::runtime_error("Error - Ohm - unknown hyper_mode");
                         }
                     });
-            }
+            };
+
+            // lift the runtime flags and hyper_mode into compile-time tag variants, then a single
+            // std::visit fans out every combination flat: the visitor is called with one tag from
+            // each variant, so the fill and resistive bodies branch only via if constexpr.
+            auto asBoolTag = [](bool const value) -> std::variant<std::false_type, std::true_type> {
+                if (value)
+                    return std::true_type{};
+                return std::false_type{};
+            };
+            auto asHyperModeTag = [](HyperMode const value)
+                -> std::variant<std::integral_constant<HyperMode, HyperMode::constant>,
+                                std::integral_constant<HyperMode, HyperMode::spatial>> {
+                switch (value)
+                {
+                    case HyperMode::constant:
+                        return std::integral_constant<HyperMode, HyperMode::constant>{};
+                    case HyperMode::spatial:
+                        return std::integral_constant<HyperMode, HyperMode::spatial>{};
+                }
+                throw std::runtime_error("Error - Ohm - unknown hyper_mode");
+            };
+
+            std::visit(
+                [&](auto isResistiveTag, auto isHyperResistiveTag, auto hyperModeTag) {
+                    constexpr bool isResistive      = decltype(isResistiveTag)::value;
+                    constexpr bool isHyperResistive = decltype(isHyperResistiveTag)::value;
+
+                    fillHyperbolicFluxes(std::bool_constant < isResistive || isHyperResistive > {});
+
+                    if constexpr (isResistive || isHyperResistive)
+                        addResistiveContributions(isResistiveTag, isHyperResistiveTag,
+                                                  hyperModeTag);
+                },
+                asBoolTag(is_resistive_), asBoolTag(is_hyper_resistive_),
+                asHyperModeTag(hyper_mode));
         });
     }
 
-    bool resistivity() const { return resistivity_; }
-    bool hyper_resistivity() const { return hyper_resistivity_; }
+    bool isResistive() const { return is_resistive_; }
+    bool isHyperResistive() const { return is_hyper_resistive_; }
 
 private:
     template<auto direction>
@@ -315,8 +358,8 @@ private:
 
 
     GridLayout layout_;
-    bool const resistivity_;
-    bool const hyper_resistivity_;
+    bool const is_resistive_;
+    bool const is_hyper_resistive_;
     Equations equations_;
     RiemannSolver_t riemann_;
 };

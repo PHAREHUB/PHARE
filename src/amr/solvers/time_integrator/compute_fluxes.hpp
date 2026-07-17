@@ -42,7 +42,7 @@ public:
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
         , to_conservative_gamma_{dict["to_conservative"]["heat_capacity_ratio"]}
-        , needsCurrent_{Hall || fVMethodInfo_.resistive() || fVMethodInfo_.hyperResistive()}
+        , needsCurrent_{Hall || fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()}
     {
         // eta/nu are duplicated into both info structs
         assert(fVMethodInfo_.eta == constrainedTransportInfo_.eta

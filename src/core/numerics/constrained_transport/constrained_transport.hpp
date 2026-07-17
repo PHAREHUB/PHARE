@@ -25,8 +25,8 @@ public:
         , eta_{eta}
         , nu_{nu}
         , hyper_mode_{hyper_mode}
-        , resistivity_{eta != 0.0}
-        , hyper_resistivity_{nu != 0.0}
+        , is_resistive_{eta > 0.0}
+        , is_hyper_resistive_{nu > 0.0}
     {
     }
 
@@ -51,7 +51,7 @@ public:
 
             layout_.evalOnBox(Ez, [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x); });
 
-            if (resistivity_)
+            if (is_resistive_)
             {
                 layout_.evalOnBox(
                     Ey, [&](auto&... args) mutable { resistive_contribution_(Ey, Jy, {args...}); });
@@ -59,7 +59,7 @@ public:
                     Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
             }
 
-            if (hyper_resistivity_)
+            if (is_hyper_resistive_)
             {
                 layout_.evalOnBox(Ey, [&](auto&... args) mutable {
                     hyperresistive_contribution_<Component::Y>(Ey, Jy, B, rho, {args...});
@@ -98,7 +98,7 @@ public:
                                   [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x, Bx_y); });
             }
 
-            if (resistivity_)
+            if (is_resistive_)
             {
                 layout_.evalOnBox(
                     Ex, [&](auto&... args) mutable { resistive_contribution_(Ex, Jx, {args...}); });
@@ -108,7 +108,7 @@ public:
                     Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
             }
 
-            if (hyper_resistivity_)
+            if (is_hyper_resistive_)
             {
                 layout_.evalOnBox(Ex, [&](auto&... args) mutable {
                     hyperresistive_contribution_<Component::X>(Ex, Jx, B, rho, {args...});
@@ -128,8 +128,8 @@ private:
     double const eta_;
     double const nu_;
     HyperMode const hyper_mode_;
-    bool const resistivity_;
-    bool const hyper_resistivity_;
+    bool const is_resistive_;
+    bool const is_hyper_resistive_;
 
     template<typename Field, typename... Fluxes>
     void ExEq_(Field& Ex, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
