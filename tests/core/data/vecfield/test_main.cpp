@@ -19,9 +19,9 @@ class VecFieldGeneric : public ::testing::Test
 {
 public:
     VecFieldGeneric()
-        : vf2{
-            vf2_name,
-            {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By, HybridQuantity::Scalar::Bz}}}
+        : vf2{vf2_name,
+              {{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By,
+                HybridQuantity::Scalar::Bz}}}
     {
     }
 
@@ -205,9 +205,9 @@ TEST_F(VecFieldTest, isNotSettableAfterSet3D)
 TEST_F(VecFieldTest, SizeIsOkAfterSet1D)
 {
     this->setBuffers();
-    EXPECT_EQ(nx, B1D_.getComponent(Component::X).size());
-    EXPECT_EQ(nx, B1D_.getComponent(Component::Y).size());
-    EXPECT_EQ(nx, B1D_.getComponent(Component::Z).size());
+    EXPECT_EQ(nx, B1D_(Component::X).size());
+    EXPECT_EQ(nx, B1D_(Component::Y).size());
+    EXPECT_EQ(nx, B1D_(Component::Z).size());
     this->unsetBuffers();
 }
 

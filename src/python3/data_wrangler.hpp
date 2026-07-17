@@ -1,33 +1,39 @@
 #ifndef PHARE_PYTHON_DATA_WRANGLER_HPP
 #define PHARE_PYTHON_DATA_WRANGLER_HPP
 
+
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
 #include "amr/wrappers/hierarchy.hpp"
 
+#include "core/utilities/types.hpp"
 #include "initializer/data_provider.hpp"
 
 #include "python3/patch_data.hpp"
 #include "python3/patch_level.hpp"
 
+#include "python3/pybind_def.hpp"
 #include "simulator/simulator.hpp"
 
 #include "dict.hpp"
+
 
 #include <array>
 #include <memory>
 #include <vector>
 #include <cstddef>
 #include <iterator>
-#include <stdexcept>
 #include <algorithm>
+#include <stdexcept>
+
+
 
 namespace PHARE::pydata
 {
 template<auto opts>
-class SimulatorCaster
+class __attribute__((visibility("hidden"))) SimulatorCaster
 {
 public:
     using Simulator_t = Simulator<opts>;
@@ -71,6 +77,8 @@ public:
 
     using Simulator   = PHARE::Simulator<opts>;
     using HybridModel = Simulator::HybridModel;
+    using MHDModel    = Simulator::MHDModel;
+
 
 
     DataWrangler(std::shared_ptr<Simulator> const& simulator,
@@ -90,89 +98,61 @@ public:
 
     auto getNumberOfLevels() const { return hierarchy_->getNumberOfLevels(); }
 
-    auto getPatchLevel(size_t lvl)
+    auto getMHDPatchLevel(size_t lvl)
     {
-        return PatchLevel<opts>{*hierarchy_, *simulator_.getHybridModel(), lvl};
+        return PatchLevel<MHDModel>{*hierarchy_, *simulator_.getMHDModel(), lvl};
     }
 
-    auto sort_merge_1d(std::vector<PatchData<std::vector<double>, dimension>> const&& input,
-                       bool shared_patch_border = false)
+    auto getHybridPatchLevel(size_t lvl)
     {
-        std::vector<std::pair<double, PatchData<std::vector<double>, dimension> const*>> sorted;
-        for (auto const& data : input)
-            sorted.emplace_back(core::Point<double, 1>::fromString(data.origin)[0], &data);
-        std::sort(sorted.begin(), sorted.end(), [](auto& a, auto& b) { return a.first < b.first; });
-        std::vector<double> ret;
-        for (size_t i = 0; i < sorted.size(); i++)
-        { // skip empty patches in case of unequal patches across MPI domains
-            if (!sorted[i].second->data.size())
-                continue;
-            auto& data   = sorted[i].second->data;
-            auto& ghosts = sorted[i].second->nGhosts;
-            auto end     = ghosts;
-            // primal nodes share a cell wall when patches touch so drop duplicate value if so
-            if (shared_patch_border)
-                end = i == sorted.size() - 1 ? end : end + 1;
-            ret.insert(std::end(ret), std::begin(data) + ghosts, std::end(data) - end);
-        }
-        return ret;
+        return PatchLevel<HybridModel>{*hierarchy_, *simulator_.getHybridModel(), lvl};
     }
 
-    auto sync(std::vector<PatchData<std::vector<double>, dimension>> const& input)
+
+    auto sync(std::vector<PatchData<py_array_t<double>, dimension>> const& input)
     {
+        // collect all data on rank 0!
+
         auto const mpi_size = core::mpi::size();
-        std::vector<PatchData<std::vector<double>, dimension>> collected;
+        std::vector<PatchData<py_array_t<double>, dimension>> collected;
 
-        auto const reinterpret_array = [&](auto& py_array) {
-            return reinterpret_cast<std::array<std::size_t, dimension>&>(
-                *static_cast<std::size_t*>(py_array.request().ptr));
-        };
-
-        auto const collect = [&](PatchData<std::vector<double>, dimension> const& patch_data) {
+        auto const collect = [&](PatchData<py_array_t<double>, dimension> const& patch_data) {
             auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
-            auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
-            auto lower    = core::mpi::collect_raw(makeSpan(patch_data.lower), mpi_size);
-            auto upper    = core::mpi::collect_raw(makeSpan(patch_data.upper), mpi_size);
+            auto shapes   = core::mpi::collectArrays(shape<dimension>(patch_data.data), mpi_size);
+            auto origins  = core::mpi::collect(makeSpan(patch_data.origin), mpi_size);
+            auto lower    = core::mpi::collect(makeSpan(patch_data.lower), mpi_size);
+            auto upper    = core::mpi::collect(makeSpan(patch_data.upper), mpi_size);
             auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
-            auto datas    = core::mpi::collect(patch_data.data, mpi_size);
+            auto datas    = core::mpi::collect(makeSpan(patch_data.data), mpi_size);
 
-            for (int i = 0; i < mpi_size; i++)
-            {
-                auto& data = collected.emplace_back();
-                setPatchData(data, patchIDs[i], origins[i], lower[i], upper[i]);
-                data.nGhosts = ghosts[i];
-                data.data    = std::move(datas[i]);
-            }
+            if (core::mpi::rank() == 0)
+                for (int i = 0; i < mpi_size; ++i)
+                {
+                    if (datas[i].size() == 0) // missing patch on rank
+                        continue;
+
+                    auto& data = collected.emplace_back(shapes[i], strides_from<double>(shapes[i]));
+                    auto const span = makeSpan(data.data);
+                    std::memcpy(span.data(), datas[i].data(), span.size() * sizeof(double));
+                    setPatchData(data, patchIDs[i], origins[i], lower[i], upper[i]);
+                    data.nGhosts = ghosts[i];
+                }
         };
 
         auto const max = core::mpi::max(input.size());
 
-        PatchData<std::vector<double>, dimension> empty;
+        PatchData<py_array_t<double>, dimension> empty{core::ConstArray<int, dimension>()};
 
-        for (size_t i = 0; i < max; i++)
-        {
-            if (i < input.size())
-                collect(input[i]);
-            else
-                collect(empty);
-        }
+        for (std::size_t i = 0; i < max; ++i)
+            collect(i < input.size() ? input[i] : empty);
+
         return collected;
     }
 
-    auto sync_merge(std::vector<PatchData<std::vector<double>, dimension>> const& input,
-                    [[maybe_unused]] bool primal)
-    {
-        if constexpr (dimension == 1)
-            return sort_merge_1d(sync(input), primal);
-
-        throw std::runtime_error("Not handled for >1 dim");
-    }
 
 private:
     Simulator& simulator_;
     std::shared_ptr<amr::Hierarchy> hierarchy_;
-
-
 
 
     static Simulator& cast_simulator(std::shared_ptr<ISimulator> const& simulator)

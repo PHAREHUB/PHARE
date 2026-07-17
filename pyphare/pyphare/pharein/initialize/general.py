@@ -1,4 +1,5 @@
 import os
+import threading
 
 import numpy as np
 import pybindlibs.dictator as pp
@@ -29,6 +30,8 @@ def _serialized_simulation_string(restart_file_dir):
 class py_fn_wrapper:
     def __init__(self, fn):
         self.fn = fn
+        self.ret = {}
+        self.lock = threading.Lock()
 
     def __call__(self, *xyz):
         args = [np.asarray(arg) for arg in xyz]
@@ -37,6 +40,9 @@ class py_fn_wrapper:
             ret = np.asarray(ret)
         if is_scalar(ret):
             ret = np.full(len(args[-1]), ret)
+        # assert threading.get_native_id() not in self.ret
+        # with self.lock:
+        #     self.ret[threading.get_native_id()] = ret  # keep alive
         return ret
 
 
@@ -49,8 +55,7 @@ class fn_wrapper(py_fn_wrapper):
     def __call__(self, *xyz):
         from pyphare.cpp import cpp_etc_lib
 
-        # convert numpy array to C++ SubSpan
-        # couples vector init functions to C++
+        # return cpp_etc_lib().makeSpan(super().__call__(*xyz))
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
 
 

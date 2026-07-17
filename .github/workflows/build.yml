@@ -1,0 +1,126 @@
+name: build
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  cmake:
+    runs-on: ${{ matrix.os }}
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest]
+        cc: [gcc, clang]
+    steps:
+    - name: Build Info
+      run: |
+        uname -a
+        gcc -v
+        clang -v
+    - name: CCache
+      id: cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.ccache
+        key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
+        restore-keys: ${{ runner.os }}-ccache-
+    - uses: actions/checkout@v6
+    - name: Ensure ccache uses ~/.ccache
+      run: |
+          mkdir -p ~/.ccache
+          ccache --set-config=cache_dir=~/.ccache
+          ccache --get-config=cache_dir
+    - name: Configure CMake
+      run: |
+        set -ex
+        export CC=gcc CXX=g++
+        [ "${{ matrix.cc }}" = "clang" ] && export CC=clang CXX=clang++
+        . /.venv/bin/activate;
+        mkdir -p build && cd build
+        cmake .. -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
+              -DSAMRAI_ROOT=/usr/local \
+              -DCMAKE_BUILD_TYPE=Debug -Dasan=OFF \
+              -DCMAKE_C_COMPILER_LAUNCHER=ccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=ccache \
+              -DPHARE_PYTEST_SIMULATORS=1 -DdevMode=ON -Dbench=ON \
+              -DCMAKE_CXX_FLAGS="-O3 -DPHARE_DIAG_DOUBLES=1" -Dphare_configurator=ON
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; cmake --build . -j 2
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; ctest -j 2 --output-on-failure
+
+  kokkos:
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install
+      run: apt-get update && apt-get install -y curl sudo
+    - name: Build
+      run: |
+        . /.venv/bin/activate;
+        mkdir -p build && cd build
+        cmake .. -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
+              -DSAMRAI_ROOT=/usr/local -DCMAKE_BUILD_TYPE=Debug \
+              -DPHARE_PYTEST_SIMULATORS=1 -DdevMode=ON -DwithKokkos=ON \
+              -DCMAKE_CXX_FLAGS="-O3 -DPHARE_DIAG_DOUBLES=1" -Dphare_configurator=ON
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; cmake --build . -j 2
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; ctest -j 2 --output-on-failure
+
+  mkn:
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install
+      run: apt-get update && apt-get install -y curl sudo
+    - name: "setup"
+      run: |
+        curl -Lo mkn https://github.com/mkn/mkn/releases/download/latest/mkn_nix
+        chmod +x mkn && mv mkn /.venv/bin/mkn
+        mkdir /mkn
+    - name: "Build/Test"
+      run: |
+        . /.venv/bin/activate
+        PROPS="samrai.ver=installed,HDF5_PTH=/usr/lib/x86_64-linux-gnu/hdf5/openmpi,HDF5_INC=/usr/include/hdf5/openmpi"
+        CARGS="-P ${PROPS}" ./mkn.sh -O
+
+  mkn_cmake:
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    steps:
+    - uses: actions/checkout@v6
+    - name: Install
+      run: apt-get update && apt-get install -y curl sudo
+    - name: Build
+      run: |
+        . /.venv/bin/activate;
+        python3 -m pip install phlop -U
+        mkdir -p build && (
+          cd build && cmake .. -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON --fresh \
+                -DSAMRAI_ROOT=/usr/local -DCMAKE_BUILD_TYPE=Debug \
+                -DPHARE_PYTEST_SIMULATORS=1 -DdevMode=ON -DwithMkn=ON \
+                -DCMAKE_CXX_FLAGS="-O3 -DPHARE_DIAG_DOUBLES=1 -DPHARE_HAVE_THRUST=0 -DMKN_GPU_CPU=1" \
+                -Dphare_configurator=ON
+        )
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; cmake --build . -j 2
+    - name: Test
+      working-directory: ${{github.workspace}}
+      run: . /.venv/bin/activate; python3 -um phlop.run.test_cases -i build --cmake -c 2

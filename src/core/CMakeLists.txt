@@ -27,8 +27,6 @@ set( SOURCES_INC
      numerics/boundary_condition/boundary_condition.hpp
      numerics/interpolator/interpolator.hpp
      numerics/pusher/boris.hpp
-     numerics/pusher/pusher.hpp
-     numerics/pusher/pusher_factory.hpp
      numerics/ampere/ampere.hpp
      numerics/faraday/faraday.hpp
      numerics/ohm/ohm.hpp
@@ -63,9 +61,9 @@ if (withPhlop)
 endif(withPhlop)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
-target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C cppdict
-    PUBLIC ${PHARE_BASE_LIBS}
+target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
+target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C
+    PUBLIC ${PHARE_BASE_LIBS} cppdict magic_enum
   )
 
 # skip mpicxx in compile command if not configured with configurator

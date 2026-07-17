@@ -29,6 +29,10 @@ public:
     void compute(DiagnosticProperties&) override {}
 
 private:
+    // using Super::field_reducer;
+    // using Super::tensor_field_reducer;
+    // using Super::vec_field_reducer;
+
     struct Info
     {
         std::vector<std::size_t> offset_per_level = std::vector<std::size_t>(amr::MAX_LEVEL_IDX);

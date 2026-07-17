@@ -1,6 +1,7 @@
 #ifndef PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_HPP
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_HPP
 
+
 #include "core/data/vector.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
@@ -30,16 +31,15 @@ namespace PHARE::amr
 template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
 class TensorFieldData : public SAMRAI::hier::PatchData
 {
-    using This  = TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>;
-    using Super = SAMRAI::hier::PatchData;
-
     static constexpr auto NO_ROTATE = SAMRAI::hier::Transformation::NO_ROTATE;
-
-    using tensor_t             = typename PhysicalQuantity::template TensorType<rank>;
-    using TensorFieldOverlap_t = TensorFieldOverlap<rank>;
+    using This                      = TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>;
+    using Super                     = SAMRAI::hier::PatchData;
+    using tensor_t                  = PhysicalQuantity::template TensorType<rank>;
+    using TensorFieldOverlap_t      = TensorFieldOverlap<rank>;
+    using field_type                = Grid_t::field_type;
 
 public:
-    using value_type = Grid_t::value_type;
+    using value_type = Grid_t::type;
 
 private:
     using SetEqualOp          = core::SetEqual<value_type>;
@@ -48,7 +48,7 @@ private:
     template<typename ComponentNames, typename GridLayout>
     auto static make_grids(ComponentNames const& compNames, GridLayout const& layout, tensor_t qty)
     {
-        auto qts = PhysicalQuantity::componentsQuantities(qty);
+        auto const qts = PhysicalQuantity::componentsQuantities(qty);
         return core::for_N_make_array<N>(
             [&](auto i) { return Grid_t{compNames[i], layout, qts[i], NaN}; });
     }
@@ -60,6 +60,7 @@ public:
 
     using Geometry        = TensorFieldGeometry<rank, GridLayoutT, PhysicalQuantity>;
     using gridlayout_type = GridLayoutT;
+    using data_type       = core::TensorField<field_type, PhysicalQuantity, rank>;
 
     /*** \brief Construct a TensorFieldData from information associated to a patch
      *
@@ -76,28 +77,31 @@ public:
     {
     }
 
-
     TensorFieldData()                                  = delete;
     TensorFieldData(TensorFieldData const&)            = delete;
     TensorFieldData(TensorFieldData&&)                 = default;
     TensorFieldData& operator=(TensorFieldData const&) = delete;
 
-
-
     void getFromRestart(std::shared_ptr<SAMRAI::tbox::Database> const& restart_db) override
     {
         Super::getFromRestart(restart_db);
 
-        for (std::uint16_t c = 0; c < N; ++c)
-            getVectorFromRestart(*restart_db, "field_" + grids[c].name(), grids[c].vector());
+        if constexpr (core::is_field_tile_set_v<Grid_t>)
+            throw std::runtime_error("finish");
+        else
+            for (std::uint16_t c = 0; c < N; ++c)
+                getVectorFromRestart(*restart_db, "field_" + grids[c].name(), grids[c].vector());
     }
 
     void putToRestart(std::shared_ptr<SAMRAI::tbox::Database> const& restart_db) const override
     {
         Super::putToRestart(restart_db);
 
-        for (std::uint16_t c = 0; c < N; ++c)
-            putVectorToRestart(*restart_db, "field_" + grids[c].name(), grids[c].vector());
+        if constexpr (core::is_field_tile_set_v<Grid_t>)
+            throw std::runtime_error("finish");
+        else
+            for (std::uint16_t c = 0; c < N; ++c)
+                putVectorToRestart(*restart_db, "field_" + grids[c].name(), grids[c].vector());
     };
 
 
@@ -226,6 +230,13 @@ public:
     void packStream(SAMRAI::tbox::MessageStream& stream,
                     SAMRAI::hier::BoxOverlap const& overlap) const final
     {
+        packStream(stream, overlap, grids);
+    }
+
+    template<typename Operator = SetEqualOp>
+    void packStream(SAMRAI::tbox::MessageStream& stream, SAMRAI::hier::BoxOverlap const& overlap,
+                    auto const& src) const
+    {
         PHARE_LOG_SCOPE(3, "TensorFieldData::packStream");
 
         std::size_t const expectedSize = getDataStreamSize_(overlap) / sizeof(value_type);
@@ -241,7 +252,7 @@ public:
         for (std::size_t c = 0; c < N; ++c)
             for (auto const& box : tFieldOverlap[c]->getDestinationBoxContainer())
             {
-                auto const& source = grids[c];
+                auto const& source = src[c];
                 SAMRAI::hier::Box packBox{box};
 
                 // Since the transformation, allow to transform the source box,
@@ -252,7 +263,7 @@ public:
 
                 auto const finalBox = phare_box_from<dimension>(packBox);
                 core::FieldBox<Grid_t const> src{source, gridLayout, finalBox};
-                src.append_to(buffer);
+                src.template append_to<Operator>(buffer);
             }
 
         // Once we have fill the buffer, we send it on the stream
@@ -301,9 +312,15 @@ public:
             {
                 auto& dst_grid = dst_grids[c];
                 auto const box = phare_box_from<dimension>(sambox);
-                core::FieldBox<Grid_t> dst{dst_grid, gridLayout, box};
-                dst.template set_from<Operator>(buffer, seek);
-                seek += box.size();
+                auto const view
+                    = core::make_array_view(buffer.data() + seek, *box.shape().as_unsigned());
+                using NdArray = decltype(view);
+
+                core::FieldBox<Grid_t>{dst_grid, gridLayout, box}.template op<Operator>(
+                    core::FieldBox<NdArray>{
+                        view, box,
+                        core::box_from_zero_to_upper_minus_one(*box.shape().as_unsigned())});
+                seek += sambox.size();
             }
         }
     }
@@ -332,7 +349,12 @@ public:
 
 
     template<typename Operation>
-    void operate(SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap);
+    void operate(auto const& src, SAMRAI::hier::BoxOverlap const& overlap);
+
+    template<typename Operation>
+    void packStreamAnd(SAMRAI::tbox::MessageStream& stream,
+                       SAMRAI::hier::BoxOverlap const& overlap);
+
     template<typename Operation>
     void unpackStreamAnd(SAMRAI::tbox::MessageStream& stream,
                          SAMRAI::hier::BoxOverlap const& overlap);
@@ -351,9 +373,9 @@ private:
     /*** \brief copy data from the intersection box
      *
      */
-    template<typename Operator = SetEqualOp>
+    template<typename Operator = SetEqualOp, typename SrcGrid>
     void copy_(SAMRAI::hier::Box const& intersectBox, SAMRAI::hier::Box const& src_box,
-               SAMRAI::hier::Box const& dst_box, Grid_t const& src_grid, Grid_t& dst_grid,
+               SAMRAI::hier::Box const& dst_box, SrcGrid const& src_grid, Grid_t& dst_grid,
                GridLayoutT const& src_layout, GridLayoutT const& dst_layout)
     {
         // First we represent the intersection that is defined in AMR space to the local
@@ -364,7 +386,7 @@ private:
         core::FieldBox<Grid_t> dst{
             dst_grid, dst_layout,
             as_unsigned_phare_box<dimension>(AMRToLocal(intersectBox, dst_box))};
-        core::FieldBox<Grid_t const> const src{
+        core::FieldBox<SrcGrid const> const src{
             src_grid, src_layout,
             as_unsigned_phare_box<dimension>(AMRToLocal(intersectBox, src_box))};
         operate_on_fields<Operator>(dst, src);
@@ -376,8 +398,8 @@ private:
         copy_(source, overlaps, *this);
     }
 
-    template<typename Operator = SetEqualOp>
-    void copy_(TensorFieldData const& source, TensorFieldOverlap_t const& overlaps,
+    template<typename Operator = SetEqualOp, typename... T0>
+    void copy_(TensorFieldData<rank, T0...> const& source, TensorFieldOverlap_t const& overlaps,
                TensorFieldData& dst)
     {
         // Here the first step is to get the transformation from the overlap
@@ -387,57 +409,57 @@ private:
         // intersection with the source box, the destinationBox, and the box from the
         // destinationBoxContainer.
 
-
         SAMRAI::hier::Transformation const& transformation = overlaps.getTransformation();
 
-        if (transformation.getRotation() == SAMRAI::hier::Transformation::NO_ROTATE)
+        if (transformation.getRotation() != SAMRAI::hier::Transformation::NO_ROTATE)
+            throw std::runtime_error("copy with rotate not implemented");
+
+        SAMRAI::hier::IntVector const zeroOffset{
+            SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension{dimension})};
+
+        if (transformation.getBeginBlock() == transformation.getEndBlock())
         {
-            SAMRAI::hier::IntVector const zeroOffset{
-                SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension{dimension})};
+            auto const& offset = as_point<dimension>(transformation);
 
             for (std::size_t c = 0; c < N; ++c)
             {
-                auto& overlap                             = overlaps[c];
-                SAMRAI::hier::BoxContainer const& boxList = overlap->getDestinationBoxContainer();
+                auto& overlap = overlaps[c];
 
-                if (transformation.getBeginBlock() == transformation.getEndBlock())
+                for (auto const& box : overlap->getDestinationBoxContainer())
                 {
-                    for (auto const& box : boxList)
+                    auto const& source_qty = source.grids[c].physicalQuantity();
+                    auto const& dst_qty    = dst.grids[c].physicalQuantity();
+
+                    using SourceQty      = std::decay_t<decltype(source_qty)>;
+                    using DestinationQty = std::decay_t<decltype(dst_qty)>;
+
+                    SAMRAI::hier::Box const sourceBox
+                        = FieldGeometry<GridLayoutT, SourceQty>::toFieldBox(
+                            source.getGhostBox(), source_qty, source.gridLayout);
+
+                    SAMRAI::hier::Box const destinationBox
+                        = FieldGeometry<GridLayoutT, DestinationQty>::toFieldBox(
+                            dst.getGhostBox(), dst_qty, dst.gridLayout);
+
+                    SAMRAI::hier::Box transformedSource{sourceBox};
+                    transformation.transform(transformedSource);
+
+                    SAMRAI::hier::Box const intersectionBox{box * transformedSource
+                                                            * destinationBox};
+
+                    if (!intersectionBox.empty())
                     {
-                        auto const& source_qty = source.grids[c].physicalQuantity();
-                        auto const& dst_qty    = dst.grids[c].physicalQuantity();
+                        core::FieldBox d{dst.grids[c], dst.gridLayout,
+                                         as_unsigned_phare_box<dimension>(
+                                             AMRToLocal(intersectionBox, destinationBox))};
+                        core::FieldBox s{source.grids[c], source.gridLayout,
+                                         as_unsigned_phare_box<dimension>(
+                                             AMRToLocal(intersectionBox, transformedSource))};
 
-                        using SourceQty      = std::decay_t<decltype(source_qty)>;
-                        using DestinationQty = std::decay_t<decltype(dst_qty)>;
-
-                        SAMRAI::hier::Box sourceBox
-                            = FieldGeometry<GridLayoutT, SourceQty>::toFieldBox(
-                                source.getGhostBox(), source_qty, source.gridLayout);
-
-
-                        SAMRAI::hier::Box destinationBox
-                            = FieldGeometry<GridLayoutT, DestinationQty>::toFieldBox(
-                                dst.getGhostBox(), dst_qty, dst.gridLayout);
-
-
-                        SAMRAI::hier::Box transformedSource{sourceBox};
-                        transformation.transform(transformedSource);
-
-
-                        SAMRAI::hier::Box intersectionBox{box * transformedSource * destinationBox};
-
-
-                        if (!intersectionBox.empty())
-                            copy_<Operator>(intersectionBox, transformedSource, destinationBox,
-                                            source.grids[c], dst.grids[c], source.gridLayout,
-                                            dst.gridLayout);
+                        operate_on_fields<Operator>(d, s.offset(offset));
                     }
                 }
             }
-        }
-        else
-        {
-            throw std::runtime_error("copy with rotate not implemented");
         }
     }
 
@@ -476,7 +498,13 @@ private:
 
 }; // namespace PHARE
 
-
+template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
+template<typename Operation>
+void TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>::packStreamAnd(
+    SAMRAI::tbox::MessageStream& stream, SAMRAI::hier::BoxOverlap const& overlap)
+{
+    packStream<Operation>(stream, overlap, grids);
+}
 
 template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
 template<typename Operation>
@@ -490,15 +518,15 @@ void TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>::unpackStreamA
 template<std::size_t rank, typename GridLayoutT, typename Grid_t, typename PhysicalQuantity>
 template<typename Operation>
 void TensorFieldData<rank, GridLayoutT, Grid_t, PhysicalQuantity>::operate(
-    SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap)
+    auto const& src, SAMRAI::hier::BoxOverlap const& overlap)
 {
     TBOX_ASSERT_OBJDIM_EQUALITY2(*this, src);
 
     auto& fieldOverlap = dynamic_cast<TensorFieldOverlap_t const&>(overlap);
-    auto& fieldSource  = dynamic_cast<TensorFieldData const&>(src);
 
-    copy_<Operation>(fieldSource, fieldOverlap, *this);
+    copy_<Operation>(src, fieldOverlap, *this);
 }
+
 
 
 } // namespace PHARE::amr

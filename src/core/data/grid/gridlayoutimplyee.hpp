@@ -4,10 +4,12 @@
 
 #include "core/def.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/utilities/types.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/utilities/ghost_width_calculator.hpp"
 
 #include "gridlayoutdefs.hpp"
+
 
 #include <array>
 
@@ -128,7 +130,7 @@ namespace core
         // ------------------------------------------------------------------------
     public:
         NO_DISCARD constexpr static std::array<QtyCentering, dim>
-        centering(HybridQuantity::Scalar _Quantity)
+        centering(HybridQuantity::Scalar _Quantity) _PHARE_ALL_FN_
         {
             constexpr gridDataT gridData_{};
             if constexpr (dim == 1)
@@ -334,12 +336,13 @@ namespace core
                     default: throw std::runtime_error("Wrong _Quantity");
                 }
             }
+            return ConstArray<QtyCentering, dim>(core::QtyCentering::primal); // ignored anyway.
         }
 
 
 
         NO_DISCARD constexpr static std::array<std::array<QtyCentering, dim>, 3>
-        centering(HybridQuantity::Vector _Quantity)
+        centering(HybridQuantity::Vector _Quantity) _PHARE_ALL_FN_
         {
             switch (_Quantity)
             {
@@ -366,6 +369,8 @@ namespace core
                 default: throw std::runtime_error("Wrong _Quantity");
             }
         }
+
+
 
 
         enum class InterpDir { DualToPrimal = 0, PrimalToDual = 1 };

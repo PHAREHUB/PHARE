@@ -6,6 +6,7 @@ import numpy as np
 
 import pyphare.pharein as ph
 import pyphare.core.box as boxm
+from pyphare.pharesee.run import Run
 from pyphare.core import phare_utilities as phut
 from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy import hierarchy_from
@@ -26,7 +27,7 @@ class HybridAdvanceTest(AdvanceTestBase):
         nbr_part_per_cell=100,
         density=None,
         smallest_patch_size=None,
-        largest_patch_size=20,
+        largest_patch_size=None,
         cells=120,
         time_step=0.001,
         model_init=None,
@@ -36,6 +37,9 @@ class HybridAdvanceTest(AdvanceTestBase):
         timestamps=None,
         block_merging_particles=False,
         diag_outputs="",
+        sim_setup_kwargs={},
+        as_run=False,
+        **kwargs
     ):
         if smallest_patch_size is None:
             from pyphare.pharein.simulation import check_patch_size
@@ -65,6 +69,7 @@ class HybridAdvanceTest(AdvanceTestBase):
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5", "options": extra_diag_options},
             strict=True,
+            **kwargs,
         )
         diag_outputs = sim.diag_options["options"]["dir"]
 
@@ -162,7 +167,10 @@ class HybridAdvanceTest(AdvanceTestBase):
                     quantity=quantity, write_timestamps=timestamps, population_name=pop
                 )
 
-        Simulator(sim).run().reset()
+        Simulator(sim).setup(**sim_setup_kwargs).run().reset()
+
+        if as_run:
+            return Run(diag_outputs)
 
         eb_hier = None
         if qty in ["e", "eb", "fields"]:
@@ -261,7 +269,7 @@ class HybridAdvanceTest(AdvanceTestBase):
                         self.assertEqual(part1, part2)
 
     def _test_L0_particle_number_conservation(
-        self, ndim, interp_order, ppc=100, cells=120
+        self, ndim, interp_order, ppc=100, cells=120, **kwargs
     ):
         time_step_nbr = 10
         time_step = 0.001
@@ -272,11 +280,11 @@ class HybridAdvanceTest(AdvanceTestBase):
             ndim,
             interp_order,
             "particles",
-            None,
             time_step=time_step,
             time_step_nbr=time_step_nbr,
             nbr_part_per_cell=ppc,
             cells=cells,
+            **kwargs,
         )
 
         for time_step_idx in range(time_step_nbr + 1):

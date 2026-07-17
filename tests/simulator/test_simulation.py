@@ -12,7 +12,7 @@ simArgs = dict(
     time_step_nbr=1,  # avoid regrid for refinement boxes https://github.com/LLNL/SAMRAI/issues/199
     time_step=0.001,
     boundary_types="periodic",
-    cells=np.array([20]),
+    cells=20,
     dl=0.3,
 )
 

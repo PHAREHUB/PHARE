@@ -6,9 +6,17 @@
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield.hpp"
-#include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/numerics/ion_updater/ion_updaters.hpp"
+#include "core/data/particles/particle_array_def.hpp"
+#include "core/numerics/ion_updater/ion_updater_def.hpp"
+#include "core/numerics/ion_updater/ion_updater_multi_ts.hpp"
+
 
 #include "amr/solvers/solver.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
@@ -17,15 +25,31 @@
 #include "amr/messengers/hybrid_messenger_info.hpp"
 
 #include <SAMRAI/hier/Patch.h>
-#include "SAMRAI/hier/PatchLevel.h"
 
-#include <tuple>
+#include <stdexcept>
 #include <unordered_map>
 
 
 namespace PHARE::solver
 {
 // -----------------------------------------------------------------------------
+
+
+template<typename GridLayout, typename Boxing_t>
+auto make_selection_boxes_for(auto const& hierarchy, auto& level)
+{
+    std::unordered_map<std::string, Boxing_t> levelBoxing;
+    for (auto const& patch : level)
+        if (auto [it, suc] = levelBoxing.try_emplace(
+                core::to_string(patch->getGlobalId()),
+                Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
+                         amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, hierarchy)});
+            !suc)
+            throw std::runtime_error("boxing map insertion failure");
+
+    return levelBoxing;
+}
+
 
 template<typename HybridModel, typename AMR_Types>
 class SolverPPC : public ISolver<AMR_Types>
@@ -44,11 +68,12 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
-    using FE_t         = FieldEvolverDispatchers<HybridModel>;
-    using Faraday_t    = FE_t::Faraday_t;
-    using Ampere_t     = FE_t::Ampere_t;
-    using Ohm_t        = OhmLevelTransformer<HybridModel>;
-    using IonUpdater_t = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using Faraday_t = FaradayLevelTransformer<HybridModel>;
+    using Ampere_t  = AmpereLevelTransformer<HybridModel>;
+    using Ohm_t     = OhmLevelTransformer<HybridModel>;
+
+    using IonUpdater_t = core::IonUpdaterImplResolver<Ions, Electromag, GridLayout>::IonUpdater_t;
+
 
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
@@ -61,6 +86,7 @@ private:
     IonUpdater_t ionUpdater_;
 
 
+
 public:
     using patch_t     = AMR_Types::patch_t;
     using level_t     = AMR_Types::level_t;
@@ -70,7 +96,7 @@ public:
     explicit SolverPPC(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"PPC"}
         , ohm_info{core::OhmInfo::FROM(dict["ohm"])}
-        , ionUpdater_{dict["ion_updater"]}
+        , ionUpdater_{}
 
     {
     }
@@ -110,7 +136,6 @@ public:
         boxing.clear();
         ionUpdater_.reset();
     }
-
 
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
@@ -153,15 +178,8 @@ private:
         if (boxing.count(lvlNbr))
             return;
 
-        auto& levelBoxing = boxing[lvlNbr]; // creates if missing
-
-        for (auto const& patch : level)
-            if (auto [it, suc] = levelBoxing.try_emplace(
-                    amr::to_string(patch->getGlobalId()),
-                    Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, hierarchy)});
-                !suc)
-                throw std::runtime_error("boxing map insertion failure");
+        boxing.try_emplace(lvlNbr,
+                           make_selection_boxes_for<GridLayout, Boxing_t>(hierarchy, level));
     }
 
     auto& setup_level(hierarchy_t const& hierarchy, int const levelNumber)
@@ -180,7 +198,8 @@ private:
     }
 
 
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using Boxing_t
+        = std::decay_t<decltype(*core::selection_boxing_impl<IonUpdater_t, GridLayout>())>;
     std::unordered_map<int /*level*/, std::unordered_map<std::string /*patchid*/, Boxing_t>> boxing;
 
 
@@ -239,6 +258,7 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 }
 
 
+
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::prepareStep(IPhysicalModel_t& model,
                                                     SAMRAI::hier::PatchLevel& level,
@@ -276,6 +296,7 @@ void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& mode
 }
 
 
+
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
                                                      SAMRAI::hier::PatchLevel& level)
@@ -283,14 +304,9 @@ void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
     PHARE_LOG_SCOPE(1, "SolverPPC::resetFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
-
-    for (auto& patch : level)
-    {
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _             = hybridModel.resourcesManager->setOnPatch(*patch, fluxSumE_);
-
+    auto& rm          = *hybridModel.resourcesManager;
+    for (auto& patch : rm.enumerate(level, fluxSumE_))
         fluxSumE_.zero();
-    }
 }
 
 
@@ -332,7 +348,6 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
     moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::domain_only);
 
     predictor2_(level, model, fromCoarser, currentTime, newTime);
-
 
     average_(level, model, fromCoarser, newTime);
 
@@ -540,21 +555,32 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
                                                   Messenger& fromCoarser, double const currentTime,
                                                   double const newTime, core::UpdaterMode mode)
 {
+    using enum core::LayoutMode;
+    using ParticleArray_t = Ions::particle_array_type;
+
     PHARE_DEBUG_DO(_debug_log_move_ions(level, model);)
 
     TimeSetter setTime{level, model, newTime};
-    auto& rm                = *model.resourcesManager;
+    auto& rm = *model.resourcesManager;
+
     auto const& levelBoxing = boxing[level.getLevelNumber()];
 
     auto& ions = model.state.ions;
     try
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons");
-        auto dt = newTime - currentTime;
-        for (auto& patch : rm.enumerate(level, ions, electromagAvg_))
-            ionUpdater_.updatePopulations(ions, electromagAvg_,
-                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt,
-                                          mode);
+        auto const dt = newTime - currentTime;
+        if constexpr (ParticleArray_t::layout_mode == AoSMapped)
+            for (auto& patch : rm.enumerate(level, ions, electromagAvg_))
+                ionUpdater_.updatePopulations(ions, electromagAvg_,
+                                              levelBoxing.at(core::to_string(patch->getGlobalId())),
+                                              dt, mode);
+
+        else
+        {
+            auto accessor = amr::make_model_level_accessor(level, model, ions, electromagAvg_);
+            ionUpdater_.updatePopulations(accessor, levelBoxing, dt, mode);
+        }
     }
     catch (core::DictionaryException const& ex)
     {
@@ -567,16 +593,16 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     setTime(ions);
 
     {
+        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
+        fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
+    }
+    {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillFluxBorders");
         fromCoarser.fillFluxBorders(ions, level, newTime);
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillDensityBorders");
         fromCoarser.fillDensityBorders(ions, level, newTime);
-    }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
-        fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
     }
 
     if (mode != core::UpdaterMode::domain_only)
@@ -599,10 +625,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
 }
 
 
-
 } // namespace PHARE::solver
-
-
 
 
 #endif

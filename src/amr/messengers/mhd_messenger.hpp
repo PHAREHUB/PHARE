@@ -18,6 +18,7 @@
 #include "amr/messengers/refiner.hpp"
 #include "amr/messengers/refiner_pool.hpp"
 #include "amr/messengers/synchronizer_pool.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
@@ -52,6 +53,10 @@ namespace amr
         using GridT             = MHDModel::grid_type;
         using ResourcesManagerT = MHDModel::resources_manager_type;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::MHDQuantity>;
+
+        using BorderMaxOp = core::FieldBorderMaxOp<typename VecFieldT::value_type>;
+        using VecFieldBorderMaxTransactionFactory_t
+            = FieldBorderOpTransactionFactory<VectorFieldDataT, BorderMaxOp>;
 
         static constexpr auto dimension = MHDModel::dimension;
 
@@ -312,8 +317,12 @@ namespace amr
             magFluxesZGhostRefiners_.registerLevel(hierarchy, level);
 
             magGhostsRefiners_.registerLevel(hierarchy, level);
-            magMaxRefiners_.registerLevel(hierarchy, level);
-            magMaxModelRefiners_.registerLevel(hierarchy, level);
+
+            {
+                auto border_max_factory = std::make_shared<VecFieldBorderMaxTransactionFactory_t>();
+                magMaxRefiners_.registerLevel(hierarchy, level, border_max_factory);
+                magMaxModelRefiners_.registerLevel(hierarchy, level, border_max_factory);
+            }
 
             if (levelNumber != rootLevelNumber)
             {

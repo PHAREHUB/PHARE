@@ -1,17 +1,14 @@
 #ifndef PHARE_FIELD_REFINE_OPERATOR_HPP
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
-
-
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/def.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/resources_manager/tensor_field_resource.hpp"
 
-#include "field_linear_refine.hpp"
+// #include "field_linear_refine.hpp"
 #include "field_refiner.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
@@ -19,15 +16,11 @@
 
 
 #include <cstddef>
+#include <stdexcept>
 
 
 namespace PHARE::amr
 {
-
-using core::dirX;
-using core::dirY;
-using core::dirZ;
-
 
 
 template<typename Dst>
@@ -36,6 +29,35 @@ void refine_field(Dst& destinationField, auto& sourceField, auto& intersectionBo
     for (auto const bix : phare_box_from<Dst::dimension>(intersectionBox))
         refiner(sourceField, destinationField, bix);
 }
+
+template<typename Refiner, typename FieldT>
+void refine_field(FieldT& dst, auto const& dstBox, auto const& dstLayout, FieldT const& src,
+                  auto const& srcBox, auto& overlap, auto ratio)
+// requires(not core::is_field_tile_set_v<FieldT>)
+{
+    auto const& qty = dst.physicalQuantity();
+
+    Refiner refiner{dstLayout.centering(qty), dstBox, srcBox, ratio};
+
+    for (auto const& box : overlap.getDestinationBoxContainer())
+    {
+        // we compute the intersection with the destination,
+        // and then we apply the refine operation on each fine index.
+        auto intersectionBox = dstBox * box;
+        refine_field(dst, src, intersectionBox, refiner);
+    }
+}
+
+// template<typename Refiner, typename FieldT>
+// void refine_field(FieldT& dst, auto const& dstBox, auto const& dstLayout, FieldT const& src,
+//                   auto const& srcBox, auto& overlap, auto ratio)
+//     requires(core::is_field_tile_set_v<FieldT>)
+// {
+//     auto const& qty = dst.physicalQuantity();
+
+//     throw std::runtime_error("finish");
+// }
+
 
 
 template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
@@ -107,15 +129,8 @@ public:
         auto const sourceFieldBox
             = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
-        FieldRefinerPolicy refiner{destLayout.centering(qty), destFieldBox, sourceFieldBox, ratio};
-
-        for (auto const& box : overlapBoxes)
-        {
-            // we compute the intersection with the destination,
-            // and then we apply the refine operation on each fine index.
-            auto intersectionBox = destFieldBox * box;
-            refine_field(destinationField, sourceField, intersectionBox, refiner);
-        }
+        refine_field<FieldRefinerPolicy>(destinationField, destFieldBox, destLayout, sourceField,
+                                         sourceFieldBox, destinationFieldOverlap, ratio);
     }
 };
 
@@ -194,16 +209,9 @@ public:
             auto const sourceFieldBox
                 = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
-            FieldRefinerPolicy refiner{destLayout.centering(qty), destFieldBox, sourceFieldBox,
-                                       ratio};
-
-            for (auto const& box : overlapBoxes)
-            {
-                // we compute the intersection with the destination,
-                // and then we apply the refine operation on each fine index.
-                auto const intersectionBox = destFieldBox * box;
-                refine_field(destinationFields[c], sourceFields[c], intersectionBox, refiner);
-            }
+            refine_field<FieldRefinerPolicy>(destinationFields[c], destFieldBox, destLayout,
+                                             sourceFields[c], sourceFieldBox,
+                                             *destinationTensorFieldOverlap[c], ratio);
         }
     }
 };

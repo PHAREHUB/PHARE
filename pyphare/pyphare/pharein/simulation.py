@@ -797,7 +797,7 @@ def checker(func):
 
         kwargs["nesting_buffer"] = check_nesting_buffer(ndim, **kwargs)
 
-        kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
+        kwargs["tag_buffer"] = kwargs.get("tag_buffer", 3)
 
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
@@ -1128,6 +1128,9 @@ class Simulation(object):
     def __setstate__(self, state):
         vars(self).update(state)
 
+    def __repr__(self):
+        return print_simulation(self)
+
     # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
@@ -1195,6 +1198,25 @@ class Simulation(object):
 
 
 # ------------------------------------------------------------------------------
+
+
+def print_simulation(sim):
+    """:meta private:"""
+    import json
+
+    def default(o):
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        if callable(o):
+            return getattr(o, "__name__", str(o))
+        if hasattr(o, "__dict__"):
+            return o.__dict__
+        return str(o)
+
+    try:
+        return json.dumps(vars(sim), default=default, indent=2, sort_keys=True)
+    except (TypeError, ValueError) as e:
+        return f"<Simulation repr failed: {e}>"
 
 
 def serialize(sim):

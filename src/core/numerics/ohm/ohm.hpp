@@ -2,7 +2,10 @@
 #define PHARE_OHM_HPP
 
 
-#include "core/utilities/index/index.hpp"
+#include "core/data/grid/grid_tiles.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
+#include "core/def.hpp"
+#include "core/utilities/index/index.cpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
@@ -11,14 +14,14 @@
 
 namespace PHARE::core
 {
+enum class HyperMode : std::uint8_t { constant = 0, spatial, LAST };
 
-enum class HyperMode { constant, spatial };
 
 struct OhmInfo
 {
     double const eta;
     double const nu;
-    HyperMode const hyper_mode;
+    HyperMode const hyper_mode = HyperMode::spatial;
 
     OhmInfo static FROM(initializer::PHAREDict const& dict)
     {
@@ -29,7 +32,6 @@ struct OhmInfo
                     : HyperMode::spatial};
     }
 };
-
 
 template<typename GridLayout>
 class Ohm : public OhmInfo
@@ -46,53 +48,45 @@ public:
 
     template<typename VecField, typename Field>
     void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
-                    VecField const& J, VecField& Enew)
+                    VecField const& J, VecField& Enew) const _PHARE_ALL_FN_
     {
-        using Pack = OhmPack<VecField, Field>;
-
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
-        layout_.evalOnBox(Exnew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::X>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
-        layout_.evalOnBox(Eynew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::Y>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
-        layout_.evalOnBox(Eznew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::Z>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
+        layout_.evalOnBox(
+            Exnew, [] _PHARE_ALL_FN_(auto&&... args) { E_Eq_<Component::X>(args...); }, n, Ve, Pe,
+            B, J, Enew, *this);
+        layout_.evalOnBox(
+            Eynew, [] _PHARE_ALL_FN_(auto&&... args) { E_Eq_<Component::Y>(args...); }, n, Ve, Pe,
+            B, J, Enew, *this);
+        layout_.evalOnBox(
+            Eznew, [] _PHARE_ALL_FN_(auto&&... args) { E_Eq_<Component::Z>(args...); }, n, Ve, Pe,
+            B, J, Enew, *this);
     }
 
 private:
-    GridLayout layout_;
+    GridLayout layout_; // GPU copy needs object not pointer!
 
-    template<typename VecField, typename Field>
-    struct OhmPack
+
+    template<auto Tag>
+    static void E_Eq_(auto const& ijk, auto&&... args) _PHARE_ALL_FN_
     {
-        VecField& Exyz;
-        Field const &n, &Pe;
-        VecField const &Ve, &B, &J;
-    };
-
-
-    template<auto Tag, typename OhmPack, typename... IDXs>
-    void E_Eq_(OhmPack&& pack, IDXs const&... ijk) const
-    {
-        auto const& [E, n, Pe, Ve, B, J] = pack;
-        auto& Exyz                       = E(Tag);
+        auto const& [n, Ve, Pe, B, J, E, self] = std::forward_as_tuple(args...);
+        auto& Exyz                             = E(Tag);
 
         static_assert(Components::check<Tag>());
 
-        Exyz(ijk...) = ideal_<Tag>(Ve, B, {ijk...})      //
-                       + pressure_<Tag>(n, Pe, {ijk...}) //
-                       + resistive_<Tag>(J, {ijk...})    //
-                       + hyperresistive_<Tag>(J, B, n, {ijk...});
+        Exyz(ijk) = self.template ideal_<Tag>(Ve, B, ijk)      //
+                    + self.template pressure_<Tag>(n, Pe, ijk) //
+                    + self.template resistive_<Tag>(J, ijk)    //
+                    + self.template hyperresistive_<Tag>(J, B, n, ijk);
     }
+
 
 
 
     template<auto component, typename VecField>
-    auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
+    auto ideal_(VecField const& Ve, VecField const& B,
+                MeshIndex<dimension> index) const _PHARE_ALL_FN_
     {
         if constexpr (component == Component::X)
         {
@@ -142,8 +136,9 @@ private:
     }
 
 
+
     template<auto component, typename Field>
-    auto pressure_(Field const& n, Field const& Pe, MeshIndex<Field::dimension> index) const
+    auto pressure_(Field const& n, Field const& Pe, MeshIndex<dimension> index) const _PHARE_ALL_FN_
     {
         if constexpr (component == Component::X)
         {
@@ -156,7 +151,7 @@ private:
 
         else if constexpr (component == Component::Y)
         {
-            if constexpr (Field::dimension >= 2)
+            if constexpr (dimension >= 2)
             {
                 auto const nOnEy = GridLayout::template project<GridLayout::momentsToEy>(n, index);
 
@@ -173,7 +168,7 @@ private:
 
         else if constexpr (component == Component::Z)
         {
-            if constexpr (Field::dimension >= 3)
+            if constexpr (dimension >= 3)
             {
                 auto const nOnEz = GridLayout::template project<GridLayout::momentsToEz>(n, index);
 
@@ -193,7 +188,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto resistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    auto resistive_(VecField const& J, MeshIndex<dimension> index) const _PHARE_ALL_FN_
     {
         auto const& Jxyx = J(component);
 
@@ -218,19 +213,22 @@ private:
 
     template<auto component, typename VecField, typename Field>
     auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                         MeshIndex<VecField::dimension> index) const
+                         MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     {
+        // if compile error, fix this function
+        static_assert(static_cast<std::underlying_type_t<HyperMode>>(HyperMode::LAST) == 2);
+
         if (hyper_mode == HyperMode::constant)
             return constant_hyperresistive_<component>(J, index);
-        else if (hyper_mode == HyperMode::spatial)
-            return spatial_hyperresistive_<component>(J, B, n, index);
-        else // should not happen but otherwise -Wreturn-type fails with Werror
-            throw std::runtime_error("Error - Ohm - unknown hyper_mode");
+
+        // else
+        return spatial_hyperresistive_<component>(J, B, n, index);
     }
 
 
     template<auto component, typename VecField>
-    auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    auto constant_hyperresistive_(VecField const& J,
+                                  MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
         return -nu * layout_.laplacian(J(component), index);
     }
@@ -240,7 +238,8 @@ private:
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
                                  MeshIndex<VecField::dimension> index) const
     {
-        auto const lvlCoeff        = 1. / std::pow(4, layout_.levelNumber());
+        auto const lvlCoeff = 1. / std::pow(4, layout_.levelNumber());
+
         auto constexpr min_density = 0.1;
         auto computeHR             = [&]<auto BxProj, auto ByProj, auto BzProj, auto nProj>() {
             auto const BxOnE = GridLayout::template project<BxProj>(B(Component::X), index);
@@ -248,25 +247,81 @@ private:
             auto const BzOnE = GridLayout::template project<BzProj>(B(Component::Z), index);
             auto const nOnE  = GridLayout::template project<nProj>(n, index);
             auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
+
             return -nu * (b / (nOnE + min_density) + 1) * lvlCoeff
                    * layout_.laplacian(J(component), index);
         };
         if constexpr (component == Component::X)
-        {
             return computeHR.template operator()<GridLayout::BxToEx, GridLayout::ByToEx,
                                                  GridLayout::BzToEx, GridLayout::momentsToEx>();
-        }
+
         if constexpr (component == Component::Y)
-        {
             return computeHR.template operator()<GridLayout::BxToEy, GridLayout::ByToEy,
                                                  GridLayout::BzToEy, GridLayout::momentsToEy>();
-        }
+
         if constexpr (component == Component::Z)
-        {
             return computeHR.template operator()<GridLayout::BxToEz, GridLayout::ByToEz,
                                                  GridLayout::BzToEz, GridLayout::momentsToEz>();
-        }
     }
+};
+
+
+class OhmSingleTransformer
+{
+    using info_type = OhmInfo;
+
+    template<typename V_t>
+    V_t static tt(auto& vf, auto i)
+    {
+        return vf.template as<V_t>([&](auto& c) { return c()[i](); });
+    }
+
+public:
+    explicit OhmSingleTransformer(info_type const& info)
+        : info_{info}
+    {
+    }
+
+    template<typename GridLayout, typename VecField, typename Field>
+    void operator()(GridLayout const& layout, Field const& n, VecField const& Ve, Field const& Pe,
+                    VecField const& B, VecField const& J, VecField& Enew)
+    {
+        PHARE_LOG_SCOPE(2, "OhmLevelTransformer");
+
+        // check_field(n);
+        // check_field(Pe);
+        // check_tensor_field(Ve, layout);
+        // check_tensor_field(B);
+        // check_tensor_field(J);
+
+        if constexpr (is_field_tile_set_v<Field>)
+        {
+            using Tile_vt = Field::value_type::value_type;
+            static_assert(is_field_v<Tile_vt>);
+            using V_t = basic::TensorField<Tile_vt, 1>;
+
+            for (std::size_t tidx = 0; tidx < n().size(); ++tidx)
+            {
+                auto Enw             = Enew.template as<V_t>([&](auto& c) { return c()[tidx](); });
+                auto const& tile_lay = n()[tidx].layout();
+                using TL             = std::remove_cvref_t<decltype(tile_lay)>;
+                Ohm<TL>{info_, tile_lay}(n()[tidx](), tt<V_t>(Ve, tidx), Pe()[tidx](),
+                                         tt<V_t>(B, tidx), tt<V_t>(J, tidx), Enw);
+            }
+            PHARE_LOG_SCOPE(2, "OhmLevelTransformer::sync");
+            for (std::uint8_t i = 0; i < 3; ++i)
+                Enew[i].sync_inner_ghosts();
+        }
+        else
+        {
+            Ohm<GridLayout>{info_, layout}(n, Ve, Pe, B, J, Enew);
+        }
+
+        check_tensor_field(Enew, layout);
+    }
+
+
+    info_type info_;
 };
 
 

@@ -1,22 +1,24 @@
 #ifndef PHARE_IONS_HPP
 #define PHARE_IONS_HPP
 
-#include <algorithm>
-#include <functional>
-#include <iterator>
-#include <sstream>
-#include <string>
-#include <cmath>
-#include <vector>
-#include <array>
-
 
 #include "core/def.hpp"
+#include "core/utilities/algorithm.hpp"
+#include "initializer/data_provider.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "initializer/data_provider.hpp"
-#include "particle_initializers/particle_initializer_factory.hpp"
-#include "core/utilities/algorithm.hpp"
+// #include "particle_initializers/particle_initializer_factory.hpp"
+
+
+
+#include <array>
+#include <cmath>
+#include <vector>
+#include <string>
+#include <sstream>
+#include <iterator>
+#include <functional>
+
 
 namespace PHARE
 {
@@ -27,11 +29,11 @@ namespace core
     {
     public:
         using value_type                = IonPopulation;
-        using field_type                = typename IonPopulation::field_type;
-        using vecfield_type             = typename IonPopulation::vecfield_type;
-        using Float                     = typename field_type::type;
-        using tensorfield_type          = typename IonPopulation::tensorfield_type;
-        using particle_array_type       = typename IonPopulation::particle_array_type;
+        using field_type                = IonPopulation::field_type;
+        using vecfield_type             = IonPopulation::vecfield_type;
+        using Float                     = field_type::type;
+        using tensorfield_type          = IonPopulation::tensorfield_type;
+        using particle_array_type       = IonPopulation::particle_array_type;
         using gridlayout_type           = GridLayout;
         static constexpr auto dimension = GridLayout::dimension;
 
@@ -44,7 +46,7 @@ namespace core
             : massDensity_{massDensityName(), HybridQuantity::Scalar::rho}
             , chargeDensity_{chargeDensityName(), HybridQuantity::Scalar::rho}
             , bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
-            , populations_{generate(
+            , populations_{generate_from(
                   [&dict](auto ipop) { //
                       return IonPopulation{dict["pop" + std::to_string(ipop)]};
                   },
@@ -83,14 +85,13 @@ namespace core
                 // have to account for the field dimensionality.
 
                 auto& popDensity = pop.chargeDensity();
-                std::transform(std::begin(chargeDensity_), std::end(chargeDensity_),
-                               std::begin(popDensity), std::begin(chargeDensity_),
-                               std::plus<Float>{});
+                core::transform(chargeDensity_, popDensity, chargeDensity_, std::plus<Float>{});
             }
         }
 
         void computeMassDensity()
         {
+            check();
             massDensity_.zero();
 
             for (auto const& pop : populations_)
@@ -100,9 +101,8 @@ namespace core
                 // have to account for the field dimensionality.
 
                 auto& popDensity = pop.particleDensity();
-                std::transform(
-                    std::begin(massDensity_), std::end(massDensity_), std::begin(popDensity),
-                    std::begin(massDensity_),
+                core::transform(
+                    massDensity_, popDensity, massDensity_,
                     [&pop](auto const& n, auto const& pop_n) { return n + pop_n * pop.mass(); });
             }
         }
@@ -110,6 +110,7 @@ namespace core
 
         void computeBulkVelocity()
         {
+            check();
             computeMassDensity();
 
             bulkVelocity_.zero();
@@ -123,41 +124,33 @@ namespace core
                 std::function<Float(Float, Float)> plusMass
                     = [&pop](Float const& v, Float const& f) { return v + f * pop.mass(); };
 
-                auto const& flux    = pop.flux();
-                auto&& [fx, fy, fz] = flux();
+                auto&& [fx, fy, fz] = pop.flux()();
 
-                std::transform(std::begin(vx), std::end(vx), std::begin(fx), std::begin(vx),
-                               plusMass);
-                std::transform(std::begin(vy), std::end(vy), std::begin(fy), std::begin(vy),
-                               plusMass);
-                std::transform(std::begin(vz), std::end(vz), std::begin(fz), std::begin(vz),
-                               plusMass);
+                core::transform(vy, fy, vy, plusMass);
+                core::transform(vx, fx, vx, plusMass);
+                core::transform(vz, fz, vz, plusMass);
             }
 
-
-            std::transform(std::begin(vx), std::end(vx), std::begin(massDensity_), std::begin(vx),
-                           std::divides<Float>{});
-            std::transform(std::begin(vy), std::end(vy), std::begin(massDensity_), std::begin(vy),
-                           std::divides<Float>{});
-            std::transform(std::begin(vz), std::end(vz), std::begin(massDensity_), std::begin(vz),
-                           std::divides<Float>{});
+            core::transform(vx, massDensity_, vx, std::divides<Float>{});
+            core::transform(vy, massDensity_, vy, std::divides<Float>{});
+            core::transform(vz, massDensity_, vz, std::divides<Float>{});
         }
 
 
         void computeFullMomentumTensor()
         {
+            assert(momentumTensor_.isUsable());
             momentumTensor_.zero();
             auto& mom = momentumTensor_;
 
             for (auto& pop : populations_)
             {
+                assert(pop.momentumTensor().isUsable());
                 auto& p_mom = pop.momentumTensor();
-                for (auto p_mij = p_mom.begin(), mij = mom.begin(); p_mij != p_mom.end();
-                     ++p_mij, ++mij)
-                {
-                    std::transform(std::begin(*mij), std::end(*mij), std::begin(*p_mij),
-                                   std::begin(*mij), std::plus<typename field_type::type>{});
-                }
+                auto p_mij  = p_mom.begin();
+                auto mij    = mom.begin();
+                for (; p_mij != p_mom.end(); ++p_mij, ++mij)
+                    core::transform(*mij, *p_mij, *mij, std::plus<typename field_type::type>{});
             }
         }
 
@@ -185,13 +178,10 @@ namespace core
         // because it is for internal use only so no object will ever need to access it.
         NO_DISCARD bool isUsable() const
         {
-            bool usable = chargeDensity_.isUsable() and bulkVelocity_.isUsable()
-                          and momentumTensor_.isUsable() and massDensity_.isUsable();
-
+            auto usable
+                = core::isUsable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_);
             for (auto const& pop : populations_)
-            {
-                usable = usable and pop.isUsable();
-            }
+                usable &= usable and pop.isUsable();
             return usable;
         }
 
@@ -199,13 +189,10 @@ namespace core
 
         NO_DISCARD bool isSettable() const
         {
-            bool settable = massDensity_.isSettable() and chargeDensity_.isSettable()
-                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
-
+            auto settable
+                = core::isSettable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_);
             for (auto const& pop : populations_)
-            {
                 settable = settable and pop.isSettable();
-            }
             return settable;
         }
 
@@ -247,10 +234,21 @@ namespace core
         }
 
 
-        auto& operator[](std::size_t const i) const { return populations_[i]; }
         auto& operator[](std::size_t const i) { return populations_[i]; }
+        auto& operator[](std::size_t const i) const { return populations_[i]; }
+
 
     private:
+        void check() const
+        {
+            // assert(no_nans(massDensity_));
+            // assert(no_nans(chargeDensity_));
+            // assert(no_nans(bulkVelocity_[0]));
+            // assert(no_nans(bulkVelocity_[1]));
+            // assert(no_nans(bulkVelocity_[2]));
+        }
+
+
         field_type massDensity_;
         field_type chargeDensity_;
         vecfield_type bulkVelocity_;

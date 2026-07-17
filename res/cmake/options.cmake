@@ -109,6 +109,22 @@ option(SAMRAI_BUILD_SHARED_LIBS "Build SAMRAI shared libraries" ON)
 option(PHARE_EXE "Build PHARE EXE" OFF)
 
 
+# -DwithKokkos=OFF
+option(withKokkos "Use Kokkos Tooling" OFF)
+
+
+# -DwithRaja=OFF
+option(withRaja "Use RAJA Tooling" OFF)
+# -DwithUmpire=OFF
+option(withUmpire "Use Umpire Tooling" OFF)
+
+
+# -DwithMkn=OFF
+option(withMkn "Use mkn::gpu" OFF)
+
+
+
+
 # print options
 function(print_phare_options)
 

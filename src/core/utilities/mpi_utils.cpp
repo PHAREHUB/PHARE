@@ -1,4 +1,4 @@
-//
+#if !defined(PHARE_SKIP_MPI_IN_CORE)
 
 #include "core/errors.hpp"
 
@@ -64,6 +64,8 @@ void log_error(std::string const key, std::string const val)
 #endif
 }
 
+
+
 void barrier()
 {
     MPI_Barrier(MPI_COMM_WORLD);
@@ -71,7 +73,7 @@ void barrier()
 
 
 
-std::string date_time(std::string format)
+std::string date_time(std::string const& format)
 {
     std::time_t t = std::time(NULL);
     char buffer[80];
@@ -88,3 +90,5 @@ std::int64_t unix_timestamp_now()
 }
 
 } // namespace PHARE::core::mpi
+
+#endif

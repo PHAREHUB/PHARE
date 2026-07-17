@@ -1,0 +1,51 @@
+CartesianGridGeometry
+{
+    domain_boxes = [ (0, 0, 0) , (8, 8, 8) ]
+    x_lo = 0.0, 0.0, 0.0
+    x_up = 1.0, 1.0, 1.0
+    periodic_dimension = 1, 1, 1
+}
+Main
+{
+    dim = 1
+}
+PatchHierarchy
+{
+    max_levels  =   2
+    proper_nesting_buffer = 2
+    // vector of coarse ratio with dim dimension
+    ratio_to_coarser
+    {
+        level_1 =   2, 2, 2
+    }
+    smallest_patch_size
+    {
+        level_0 =   5, 5, 5
+        // All finer level will use same values in as level_0
+     }
+}
+ChopAndPackLoadBalancer
+{
+    bin_pack_method = "SPATIAL"
+}
+StandardTagAndInitialize
+{
+    at_0
+    {
+        cycle = 0
+        tag_0
+        {
+            tagging_method = "REFINE_BOXES"
+            level_0
+            {
+                boxes = [ (1, 1, 1) , (3, 3, 3)]
+            }
+        }
+    }
+}
+TileClustering
+{
+}
+GriddingAlgorithm
+{
+}

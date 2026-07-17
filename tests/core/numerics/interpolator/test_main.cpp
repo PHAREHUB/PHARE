@@ -1,31 +1,58 @@
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
 
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <list>
-#include <random>
 
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/range/range.hpp"
 #include "phare_core.hpp"
-#include "core/data/electromag/electromag.hpp"
 #include "core/data/field/field.hpp"
+#include "core/utilities/box/box.hpp"
 #include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/data/particles/particle.hpp"
-#include "core/data/particles/particle_array.hpp"
+#include "core/utilities/range/range.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/particles/particle.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/electromag/electromag.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/particles/particle_array.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 
+#include "gtest/gtest.h"
+
+#include <list>
+#include <array>
+#include <cmath>
+#include <random>
+#include <cstddef>
+#include <fstream>
+#include <algorithm>
+
+
 using namespace PHARE::core;
+
+
+
+template<std::size_t dim, std::size_t interpOrder>
+struct TestablesBase
+{
+    static constexpr auto interp_order = interpOrder;
+    static constexpr auto dimension    = dim;
+
+    using Interpolator_t = Interpolator<dim, interp_order>;
+};
+
+template<std::size_t dim, std::size_t interpOrder>
+struct Testables : public TestablesBase<dim, interpOrder>
+{
+    // using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interpOrder>;
+    using ParticleArray_t = AoSParticleArray<dim>;
+};
+
+template<std::size_t dim, std::size_t interpOrder>
+struct Testables_SOA : public TestablesBase<dim, interpOrder>
+{
+    // using PHARE_TYPES     = PHARE::core::PHARE_Types<dim, interpOrder>;
+    using ParticleArray_t = SoAParticleArray<dim>;
+};
 
 
 
@@ -61,8 +88,7 @@ public:
             auto delta = normalizedPositions[i] - icell;
             auto startIndex
                 = icell
-                  - Interpolator_t::template computeStartLeftShift<QtyCentering,
-                                                                   QtyCentering::primal>(delta);
+                  - Interpolator_t::template computeStartLeftShift<QtyCentering::primal>(delta);
             this->weighter.computeWeight(normalizedPositions[i], startIndex, weights_[i]);
         }
 
@@ -170,8 +196,7 @@ void check_bspline(Weighter& weighter, std::string centering_id)
     {
         auto delta = static_cast<double>(ipos) * dx;
 
-        auto startIndex
-            = icell - Interpolator_t::template computeStartLeftShift<Centering, centering>(delta);
+        auto startIndex = icell - Interpolator_t::template computeStartLeftShift<centering>(delta);
 
         double normalizedPosition = icell + delta;
         if constexpr (centering == QtyCentering::dual)
@@ -211,10 +236,13 @@ TYPED_TEST(AWeighter, computesDualBSplineWeightsForAnyParticlePosition)
 }
 
 
-template<typename InterpolatorT>
+template<typename Testables>
 class A1DInterpolator : public ::testing::Test
 {
 public:
+    using InterpolatorT   = Testables::Interpolator_t;
+    using ParticleArray_t = Testables::ParticleArray_t;
+
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
     constexpr static PHARE::SimOpts opts{dimension, interp_order};
@@ -223,15 +251,13 @@ public:
 
     using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
     using GridLayout_t     = PHARE_TYPES::GridLayout_t;
-    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
     using Electromag_t     = PHARE_TYPES::Electromag_t;
-    using UsableVecFieldND = UsableVecField<dimension>;
+    using UsableVecFieldND = UsableVecField<GridLayout_t>;
 
     Electromag_t em;
     GridLayout_t layout{{0.1}, {nx}, {0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
-    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     UsableVecFieldND B, E;
 
@@ -244,7 +270,7 @@ public:
 
     A1DInterpolator()
         : em{"EM"}
-        , particles{grow(layout.AMRBox(), safeLayer), 1}
+        , particles{1ull}
         , B{"EM_B", layout, HybridQuantity::Vector::B}
         , E{"EM_E", layout, HybridQuantity::Vector::E}
     {
@@ -261,8 +287,8 @@ public:
 
         for (auto& part : particles)
         {
-            part.iCell[0] = 5;
-            part.delta[0] = 0.32;
+            part.iCell()[0] = 5;
+            part.delta()[0] = 0.32;
         }
 
         B.set_on(em.B);
@@ -274,7 +300,8 @@ public:
 
 
 using Interpolators1D
-    = ::testing::Types<Interpolator<1, 1>, Interpolator<1, 2>, Interpolator<1, 3>>;
+    = ::testing::Types<Testables<1, 1>, Testables<1, 2>, Testables<1, 3>, //
+                       Testables_SOA<1, 1>, Testables_SOA<1, 2>, Testables_SOA<1, 3>>;
 
 TYPED_TEST_SUITE(A1DInterpolator, Interpolators1D);
 
@@ -282,10 +309,11 @@ TYPED_TEST_SUITE(A1DInterpolator, Interpolators1D);
 
 TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
 {
-    for (auto const& part : this->particles)
+    for (std::size_t i = 0; i < this->particles.size(); ++i)
     {
-        auto const [E, B]        = this->interp(part, this->em, this->layout);
+        auto const [E, B]        = this->interp.m2p(this->particles, this->em, this->layout, i);
         auto const& [Ex, Ey, Ez] = E;
+
         auto const& [Bx, By, Bz] = B;
         EXPECT_NEAR(Ex, this->ex0, 1e-8);
         EXPECT_NEAR(Ey, this->ey0, 1e-8);
@@ -297,11 +325,13 @@ TYPED_TEST(A1DInterpolator, canComputeAllEMfieldsAtParticle)
 }
 
 
-
-template<typename InterpolatorT>
+template<typename Testables>
 class A2DInterpolator : public ::testing::Test
 {
 public:
+    using InterpolatorT   = Testables::Interpolator_t;
+    using ParticleArray_t = Testables::ParticleArray_t;
+
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
     constexpr static PHARE::SimOpts opts{dimension, interp_order};
@@ -310,16 +340,14 @@ public:
     static constexpr std::uint32_t ny = 50;
 
     using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
-    using GridLayoutImpl   = GridLayoutImplYee<dimension, interp_order>;
-    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
     using Electromag_t     = PHARE_TYPES::Electromag_t;
-    using UsableVecFieldND = UsableVecField<dimension>;
+    using UsableVecFieldND = UsableVecField<GridLayout_t>;
 
     Electromag_t em;
-    GridLayout<GridLayoutImpl> layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
+    GridLayout_t layout{{0.1, 0.1}, {nx, ny}, {0., 0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
-    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     UsableVecFieldND B, E;
 
@@ -332,7 +360,7 @@ public:
 
     A2DInterpolator()
         : em{"EM"}
-        , particles{grow(layout.AMRBox(), safeLayer), 1}
+        , particles{1ull}
         , B{"EM_B", layout, HybridQuantity::Vector::B}
         , E{"EM_E", layout, HybridQuantity::Vector::E}
     {
@@ -351,8 +379,8 @@ public:
 
         for (auto& part : particles)
         {
-            part.iCell[0] = 5;
-            part.delta[0] = 0.32;
+            part.iCell()[0] = 5;
+            part.delta()[0] = 0.32;
         }
 
         B.set_on(em.B);
@@ -364,7 +392,8 @@ public:
 
 
 using Interpolators2D
-    = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
+    = ::testing::Types<Testables<2, 1>, Testables<2, 2>, Testables<2, 3>, //
+                       Testables_SOA<2, 1>, Testables_SOA<2, 2>, Testables_SOA<2, 3>>;
 
 TYPED_TEST_SUITE(A2DInterpolator, Interpolators2D);
 
@@ -372,10 +401,11 @@ TYPED_TEST_SUITE(A2DInterpolator, Interpolators2D);
 
 TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
 {
-    for (auto const& part : this->particles)
+    for (std::size_t i = 0; i < this->particles.size(); ++i)
     {
-        auto const [E, B]        = this->interp(part, this->em, this->layout);
+        auto const [E, B]        = this->interp.m2p(this->particles, this->em, this->layout, i);
         auto const& [Ex, Ey, Ez] = E;
+
         auto const& [Bx, By, Bz] = B;
         EXPECT_NEAR(Ex, this->ex0, 1e-8);
         EXPECT_NEAR(Ey, this->ey0, 1e-8);
@@ -389,10 +419,13 @@ TYPED_TEST(A2DInterpolator, canComputeAllEMfieldsAtParticle)
 
 
 
-template<typename InterpolatorT>
+template<typename Testables>
 class A3DInterpolator : public ::testing::Test
 {
 public:
+    using InterpolatorT   = Testables::Interpolator_t;
+    using ParticleArray_t = Testables::ParticleArray_t;
+
     static constexpr auto dimension    = InterpolatorT::dimension;
     static constexpr auto interp_order = InterpolatorT::interp_order;
     constexpr static PHARE::SimOpts opts{dimension, interp_order};
@@ -403,15 +436,13 @@ public:
 
     using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
     using GridLayout_t     = PHARE_TYPES::GridLayout_t;
-    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
     using Electromag_t     = PHARE_TYPES::Electromag_t;
-    using UsableVecFieldND = UsableVecField<dimension>;
+    using UsableVecFieldND = UsableVecField<GridLayout_t>;
 
     Electromag_t em;
     GridLayout_t layout{{0.1, 0.1, 0.1}, {nx, ny, nz}, {0., 0., 0.}};
     ParticleArray_t particles;
     InterpolatorT interp;
-    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
 
     UsableVecFieldND B, E;
 
@@ -424,7 +455,7 @@ public:
 
     A3DInterpolator()
         : em{"EM"}
-        , particles{grow(layout.AMRBox(), safeLayer), 1}
+        , particles{1ull}
         , B{"EM_B", layout, HybridQuantity::Vector::B}
         , E{"EM_E", layout, HybridQuantity::Vector::E}
     {
@@ -446,8 +477,8 @@ public:
 
         for (auto& part : particles)
         {
-            part.iCell[0] = 5;
-            part.delta[0] = 0.32;
+            part.iCell()[0] = 5;
+            part.delta()[0] = 0.32;
         }
 
         B.set_on(em.B);
@@ -459,7 +490,9 @@ public:
 
 
 using Interpolators3D
-    = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
+    = ::testing::Types<Testables<3, 1>, Testables<3, 2>, Testables<3, 3>, //
+                       Testables_SOA<3, 1>, Testables_SOA<3, 2>, Testables_SOA<3, 3>>;
+
 
 TYPED_TEST_SUITE(A3DInterpolator, Interpolators3D);
 
@@ -467,10 +500,11 @@ TYPED_TEST_SUITE(A3DInterpolator, Interpolators3D);
 
 TYPED_TEST(A3DInterpolator, canComputeAllEMfieldsAtParticle)
 {
-    for (auto const& part : this->particles)
+    for (std::size_t i = 0; i < this->particles.size(); ++i)
     {
-        auto const [E, B]        = this->interp(part, this->em, this->layout);
+        auto const [E, B]        = this->interp.m2p(this->particles, this->em, this->layout, i);
         auto const& [Ex, Ey, Ez] = E;
+
         auto const& [Bx, By, Bz] = B;
         EXPECT_NEAR(Ex, this->ex0, 1e-8);
         EXPECT_NEAR(Ey, this->ey0, 1e-8);
@@ -498,11 +532,11 @@ class ACollectionOfParticles_1d : public ::testing::Test
     constexpr static PHARE::SimOpts opts{dimension, interp_order};
 
     using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
-    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
-    using Grid_t           = typename PHARE_TYPES::Grid_t;
-    using Particle_t       = typename ParticleArray_t::Particle_t;
-    using UsableVecFieldND = UsableVecField<dimension>;
+    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
+    using Grid_t           = PHARE_TYPES::Grid_t;
+    using Particle_t       = ParticleArray_t::Particle_t;
+    using UsableVecFieldND = UsableVecField<GridLayout_t>;
 
 public:
     static constexpr std::uint32_t nx        = 30;
@@ -540,118 +574,118 @@ public:
         v.zero();
         if constexpr (Interpolator::interp_order == 1)
         {
-            part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 1.0;
-            part.charge   = 2.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 19; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 1.0;
+            part.charge()   = 2.0;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 0.4;
-            part.charge   = 1.85;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 20; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 0.4;
+            part.charge()   = 1.85;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 0.6;
-            part.charge   = 2.1;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 20; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 0.6;
+            part.charge()   = 2.1;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
         }
 
         if constexpr (Interpolator::interp_order == 2)
         {
-            part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.0;
-            part.weight   = 1.0;
-            part.charge   = 2.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 19; // AMR index
+            part.delta()[0] = 0.0;
+            part.weight()   = 1.0;
+            part.charge()   = 2.0;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.0;
-            part.weight   = 0.2;
-            part.charge   = 3.2;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 20; // AMR index
+            part.delta()[0] = 0.0;
+            part.weight()   = 0.2;
+            part.charge()   = 3.2;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.0;
-            part.weight   = 0.8;
-            part.charge   = 1.7;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 20; // AMR index
+            part.delta()[0] = 0.0;
+            part.weight()   = 0.8;
+            part.charge()   = 1.7;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.0;
-            part.weight   = 1.0;
-            part.charge   = 2.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 21; // AMR index
+            part.delta()[0] = 0.0;
+            part.weight()   = 1.0;
+            part.charge()   = 2.0;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
         }
 
         if constexpr (Interpolator::interp_order == 3)
         {
-            part.iCell[0] = 18; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 1.0;
-            part.charge   = 2.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 18; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 1.0;
+            part.charge()   = 2.0;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 19; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 1.0;
-            part.charge   = 2.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 19; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 1.0;
+            part.charge()   = 2.0;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 20; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 1.0;
-            part.charge   = 2.0;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 20; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 1.0;
+            part.charge()   = 2.0;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 0.1;
-            part.charge   = 3.35;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 21; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 0.1;
+            part.charge()   = 3.35;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
 
-            part.iCell[0] = 21; // AMR index
-            part.delta[0] = 0.5;
-            part.weight   = 0.9;
-            part.charge   = 1.85;
-            part.v[0]     = +2.;
-            part.v[1]     = -1.;
-            part.v[2]     = +1.;
+            part.iCell()[0] = 21; // AMR index
+            part.delta()[0] = 0.5;
+            part.weight()   = 0.9;
+            part.charge()   = 1.85;
+            part.v()[0]     = +2.;
+            part.v()[1]     = -1.;
+            part.v()[2]     = +1.;
             particles.push_back(part);
         }
         interpolator(makeIndexRange(particles), rho, rho_c, v, layout);
@@ -688,16 +722,16 @@ struct ACollectionOfParticles_2d : public ::testing::Test
 {
     static constexpr auto interp_order = Interpolator::interp_order;
     static constexpr std::size_t dim   = 2;
+    constexpr static PHARE::SimOpts opts{dim, interp_order};
     static constexpr std::uint32_t nx = 15, ny = 15;
     static constexpr int start = 0, end = 5;
     static constexpr auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
 
     using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
     using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
     using GridLayout_t     = PHARE_TYPES::GridLayout_t;
     using Grid_t           = PHARE_TYPES::Grid_t;
-    using UsableVecFieldND = UsableVecField<dim>;
+    using UsableVecFieldND = UsableVecField<GridLayout_t>;
 
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};
     ParticleArray_t particles;
@@ -718,13 +752,13 @@ struct ACollectionOfParticles_2d : public ::testing::Test
         for (int i = start; i < end; i++)
             for (int j = start; j < end; j++)
             {
-                auto& part  = particles.emplace_back();
-                part.iCell  = {i, j};
-                part.delta  = ConstArray<double, dim>(.5);
-                part.weight = 1.;
-                part.v[0]   = +2.;
-                part.v[1]   = -1.;
-                part.v[2]   = +1.;
+                auto& part    = particles.emplace_back();
+                part.iCell()  = {i, j};
+                part.delta()  = ConstArray<double, dim>(.5);
+                part.weight() = 1.;
+                part.v()[0]   = +2.;
+                part.v()[1]   = -1.;
+                part.v()[2]   = +1.;
             }
         interpolator(makeIndexRange(particles), rho, rho_c, v, layout);
     }
@@ -749,6 +783,77 @@ REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_2d, DepositCorrectlyTheirWeig
 using My2dTypes = ::testing::Types<Interpolator<2, 1>, Interpolator<2, 2>, Interpolator<2, 3>>;
 INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_2d, My2dTypes);
 
+
+
+/*********************************************************************************************/
+template<typename Interpolator>
+struct ACollectionOfParticles_3d : public ::testing::Test
+{
+    static constexpr auto interp_order = Interpolator::interp_order;
+    static constexpr std::size_t dim   = 3;
+    constexpr static PHARE::SimOpts opts{dim, interp_order};
+
+    static constexpr std::uint32_t nx = 15, ny = 15, nz = 15;
+    static constexpr int start = 0, end = 5;
+    constexpr static auto safeLayer = static_cast<int>(1 + ghostWidthForParticles<interp_order>());
+
+    using PHARE_TYPES      = PHARE::core::PHARE_Types<opts>;
+    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
+    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
+    using Grid_t           = typename PHARE_TYPES::Grid_t;
+    using UsableVecFieldND = UsableVecField<GridLayout_t>;
+
+    GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny, nz}, ConstArray<double, dim>(0)};
+    ParticleArray_t particles;
+    Grid_t rho;
+    Grid_t rho_c;
+    UsableVecFieldND v;
+    Interpolator interpolator;
+
+    ACollectionOfParticles_3d()
+        : particles{grow(layout.AMRBox(), safeLayer)}
+        , rho{"field", HybridQuantity::Scalar::rho, nx, ny, nz}
+        , rho_c{"field", HybridQuantity::Scalar::rho, nx, ny, nz}
+        , v{"v", layout, HybridQuantity::Vector::V}
+    {
+        double weight = [](auto const& meshSize) {
+            return std::accumulate(meshSize.begin(), meshSize.end(), 1.0,
+                                   std::multiplies<double>());
+        }(layout.meshSize());
+
+        for (int i = start; i < end; i++)
+            for (int j = start; j < end; j++)
+                for (int k = start; k < end; k++)
+                {
+                    auto& part    = particles.emplace_back();
+                    part.iCell()  = {i, j, k};
+                    part.delta()  = ConstArray<double, dim>(.5);
+                    part.weight() = weight;
+                    part.v()[0]   = +2.;
+                    part.v()[1]   = -1.;
+                    part.v()[2]   = +1.;
+                }
+
+        interpolator(makeIndexRange(particles), rho, rho_c, v, layout);
+    }
+};
+TYPED_TEST_SUITE_P(ACollectionOfParticles_3d);
+
+
+TYPED_TEST_P(ACollectionOfParticles_3d, DepositCorrectlyTheirWeight_3d)
+{
+    // auto const& [vx, vy, vz] = this->v();
+    // EXPECT_DOUBLE_EQ(this->rho(7, 7, 7), 1.0);
+    // EXPECT_DOUBLE_EQ(vx(7, 7, 7), 2.0);
+    // EXPECT_DOUBLE_EQ(vy(7, 7, 7), -1.0);
+    // EXPECT_DOUBLE_EQ(vz(7, 7, 7), 1.0);
+}
+REGISTER_TYPED_TEST_SUITE_P(ACollectionOfParticles_3d, DepositCorrectlyTheirWeight_3d);
+
+
+using My3dTypes = ::testing::Types<Interpolator<3, 1>, Interpolator<3, 2>, Interpolator<3, 3>>;
+INSTANTIATE_TYPED_TEST_SUITE_P(testInterpolator, ACollectionOfParticles_3d, My3dTypes);
+/*********************************************************************************************/
 
 int main(int argc, char** argv)
 {

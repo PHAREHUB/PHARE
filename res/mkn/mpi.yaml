@@ -1,0 +1,40 @@
+super: base
+
+property:
+  cxx_flags: >-
+    -fPIC -std=c++20 -DPHARE_DIAG_DOUBLES=1 -DPHARE_FORCE_LOG_LINE=1
+    -DPHARE_HAVE_THRUST=0 -DMKN_GPU_CPU=1
+
+#sys.arch: ${ARCH}
+#-DPHARE_LOG_SCOPE_PRINT=1 -DPHARE_LOG_LEVEL=2 -fsanitize=address -fno-omit-frame-pointer
+# -fsanitize-memory-track-origins -fsanitize=memory -DPHARE_FORCE_LOG_LINE=1
+# -emit-llvm -Xclang -disable-llvm-passes
+
+local:
+  repo: /mkn/r
+  mod-repo: /mkn/m
+remote:
+  repo: git@github.com:mkn/
+  mod-repo: git@github.com:mkn-mod/
+
+# env: |
+#  OMPI_CXX=clang++
+
+#   PATH=/opt/mpi/host/bin:${PATH}
+
+#PATH=/opt/c/gcc-15.1.0/bin:/opt/mpi/host/bin:${PATH}
+
+#  OMPI_CXX=clang++
+
+
+compiler:
+  mask:
+    g++:
+      mpicxx
+
+file:
+  - type: cpp:cxx:cc
+    archiver: ar -cr
+    compiler: mpicxx ${cxx_flags}
+    linker: mpicxx ${cxx_flags}
+

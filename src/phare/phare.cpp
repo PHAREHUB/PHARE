@@ -1,27 +1,18 @@
 
 
+
 #include "amr/samrai.hpp"
-#include "simulator/simulator.hpp"
 #include "amr/wrappers/hierarchy.hpp"
+
+#include "simulator/simulator.hpp"
 #include "initializer/python_data_provider.hpp"
 
 #include <atomic>
 #include <csignal>
 #include <algorithm>
 
-namespace
-{
-std::atomic<int> gSignalStatus = 0;
-}
-
-void signal_handler(int signal)
-{
-    gSignalStatus = signal;
-}
-
 namespace PHARE
 {
-
 std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
 {
     PHARE::initializer::PHAREDict const& theDict
@@ -33,8 +24,6 @@ std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hier
     return core::makeAtRuntime<SimulatorMaker>(dim, interpOrder, nbRefinedPart,
                                                SimulatorMaker{hierarchy});
 }
-
-} // namespace PHARE
 
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
@@ -56,6 +45,22 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
     }
     return nullptr;
 }
+
+} /* namespace PHARE */
+
+
+namespace
+{
+std::atomic<int> gSignalStatus = 0;
+}
+
+void signal_handler(int signal)
+{
+    gSignalStatus = signal;
+}
+
+
+
 
 int main(int argc, char** argv)
 {
@@ -82,7 +87,7 @@ int main(int argc, char** argv)
     PHARE::SamraiLifeCycle slc{argc, argv};
 
     std::cerr << "creating python data provider\n";
-    auto provider = fromCommandLine(argc, argv);
+    auto provider = PHARE::fromCommandLine(argc, argv);
 
     std::cerr << "reading user inputs...";
     provider->read();

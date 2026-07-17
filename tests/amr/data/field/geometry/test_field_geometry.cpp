@@ -1,18 +1,19 @@
 
 #include "core/def/phare_mpi.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
+
+#include "core/data/grid/grid.hpp"
+#include "core/data/grid/gridlayout.hpp"
+#include "core/data/grid/gridlayout_impl.hpp"
+
+#include "amr/data/field/field_geometry.hpp"
+#include "amr/data/field/field_variable.hpp"
 
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/pdat/CellGeometry.h>
 #include <SAMRAI/pdat/NodeGeometry.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
-
-
-#include "amr/data/field/field_geometry.hpp"
-#include "amr/data/field/field_variable.hpp"
-#include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"

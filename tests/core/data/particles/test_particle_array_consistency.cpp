@@ -10,8 +10,8 @@
 
 namespace PHARE::core
 {
-std::size_t static constexpr cells = 3;
-std::size_t static constexpr ppc   = 10;
+std::uint32_t static constexpr cells = 3;
+std::size_t static constexpr ppc     = 10;
 
 
 template<std::size_t dim, typename ICell>
@@ -47,12 +47,10 @@ struct ParticleArrayConsistencyTest : public ::testing::Test
 };
 
 
-
-using Permutations_t = testing::Types<ParticleArray<1>>;
+using Permutations_t = testing::Types<ParticleArray<ParticleArrayOptions{1}>>;
 
 
 TYPED_TEST_SUITE(ParticleArrayConsistencyTest, Permutations_t, );
-
 
 
 TYPED_TEST(ParticleArrayConsistencyTest, test_is_consistent_after_swap_copy)
@@ -60,13 +58,13 @@ TYPED_TEST(ParticleArrayConsistencyTest, test_is_consistent_after_swap_copy)
     using ParticleArray_t     = TestFixture::ParticleArray_t;
     auto static constexpr dim = ParticleArray_t::dimension;
 
-    auto levelGhostParticles = ParticleArray<dim>{this->layout.AMRBox()};
+    auto levelGhostParticles = ParticleArray_t{this->layout.AMRBox()};
     add_particles_in(levelGhostParticles, this->layout.AMRBox());
 
-    auto levelGhostParticlesNew = ParticleArray<dim>{this->layout.AMRBox()};
+    auto levelGhostParticlesNew = ParticleArray_t{this->layout.AMRBox()};
     add_particles_in(levelGhostParticlesNew, this->layout.AMRBox());
 
-    auto levelGhostParticlesOld = ParticleArray<dim>{this->layout.AMRBox()};
+    auto levelGhostParticlesOld = ParticleArray_t{this->layout.AMRBox()};
     add_particles_in(levelGhostParticlesOld, this->layout.AMRBox());
 
     std::swap(levelGhostParticlesNew, levelGhostParticlesOld);

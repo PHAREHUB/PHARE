@@ -131,6 +131,34 @@ public:
         return derived().getCompileTimeResourcesViewList();
     }
 
+    auto operator()() const { return model_.getCompileTimeResourcesViewList(); }
+
+
+    auto& field_reducer(auto& f)
+        requires(core::is_field_tile_set_v<Field>)
+    {
+        return core::reduce_single(Model::tmpField, f);
+    }
+    auto& field_reducer(auto& f) { return f; }
+
+    auto& vec_field_reducer(auto& tf_in)
+        requires(core::is_field_tile_set_v<Field>)
+    {
+        for (std::size_t i = 0; i < 3; ++i)
+            core::reduce_single(Model::tmpVec[i], tf_in[i]);
+        return Model::tmpVec;
+    }
+    auto& vec_field_reducer(auto& f) { return f; }
+
+    auto& tensor_field_reducer(auto& f)
+        requires(core::is_field_tile_set_v<Field>)
+    {
+        for (std::size_t i = 0; i < 6; ++i)
+            core::reduce_single(Model::tmpTensor[i], f[i]);
+        return Model::tmpTensor;
+    }
+    auto& tensor_field_reducer(auto& f) { return f; }
+
 protected:
     Model& model_;
     Hierarchy& hierarchy_;
@@ -170,18 +198,28 @@ public:
 
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 
-    auto& tmpField() { return tmpField_; }
+    auto& tmpField() { return Model::tmpField; }
 
-    auto& tmpVecField() { return tmpVec_; }
+    auto& tmpVecField() { return Model::tmpVec; }
 
     template<std::size_t rank = 2>
     auto& tmpTensorField()
     {
         static_assert(rank > 0 and rank < 3);
         if constexpr (rank == 1)
-            return tmpVec_;
+            return Model::tmpVec;
         else
-            return tmpTensor_;
+            return Model::tmpTensor;
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(Model::tmpField, Model::tmpVec, Model::tmpTensor);
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(Model::tmpField, Model::tmpVec, Model::tmpTensor);
     }
 
     void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
@@ -192,35 +230,26 @@ public:
         auto& rm   = *this->model_.resourcesManager;
         auto& ions = this->model_.state.ions;
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, Model::tmpTensor))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(tmpTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
+                std::memcpy(Model::tmpTensor[c].data(), ions[popidx].momentumTensor()[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
 
         MTAlgos[popidx].getOrCreateSchedule(this->hierarchy_, lvl.getLevelNumber()).fillData(time);
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, Model::tmpTensor))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
+                std::memcpy(ions[popidx].momentumTensor()[c].data(), Model::tmpTensor[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        return std::forward_as_tuple(tmpField_, tmpVec_, tmpTensor_);
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        return std::forward_as_tuple(tmpField_, tmpVec_, tmpTensor_);
-    }
 
 protected:
     void declareMomentumTensorAlgos()
     {
         auto& rm = *this->model_.resourcesManager;
 
-        auto const dst_name = tmpTensor_.name();
+        auto const dst_name = Model::tmpTensor.name();
 
         for (auto& pop : this->model_.state.ions)
         {
@@ -258,9 +287,6 @@ protected:
     };
 
     std::vector<MTAlgo> MTAlgos;
-    Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
-    VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
-    TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
 };
 
 
@@ -334,8 +360,7 @@ public:
     }
 
 protected:
-    // these quantities are not always up to date in the calculations but we can compute them from
-    // the conservative variables when needed their registration and allocation are handled in the
+    // not always current; computed from conservative vars when needed; registered/allocated in
     // model
     VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};

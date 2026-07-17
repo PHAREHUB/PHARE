@@ -36,12 +36,11 @@ if(HighFive)
   _add_diagnostics_test(test-diagnostics_2d)
   _add_diagnostics_test(test-diagnostics_3d)
 
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job_1d.py.in ${CMAKE_CURRENT_BINARY_DIR}/job_1d.py @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job_2d.py.in ${CMAKE_CURRENT_BINARY_DIR}/job_2d.py @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job_3d.py.in ${CMAKE_CURRENT_BINARY_DIR}/job_3d.py @ONLY)
-  configure_file(${CMAKE_CURRENT_SOURCE_DIR}/__init__.py ${CMAKE_CURRENT_BINARY_DIR}/__init__.py @ONLY)
+  if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+    file(GLOB PYFILES "*.py")
+    file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 
   message(STATUS "diagnostic working directory " ${PHARE_PROJECT_DIR})
 
 endif()
-

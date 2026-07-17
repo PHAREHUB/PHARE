@@ -1,9 +1,15 @@
 
-#include "amr/samrai.hpp" // IWYU pragma: keep
 
+#include "tests/core/data/particles/test_particles.hpp"
+
+#ifndef PHARE_HAS_HIGHFIVE
+#define PHARE_HAS_HIGHFIVE 0
+#endif
+
+#include "amr/samrai.hpp"
 #include "amr/data/particles/particles_data.hpp"
 
-#include "tools/bench/core/bench.hpp"
+#include "benchmark/benchmark.h" // IWYU pragma: keep
 
 #include <cassert>
 
@@ -27,7 +33,8 @@ public:
 
         assert(sourceBox == data->sourceDomain);
 
-        data->sourceData.domainParticles = PHARE::core::bench::make_particles<dim>(ppc, sourceBox);
+        // data->sourceData.domainParticles = PHARE::core::make_particles<dim>(ppc, sourceBox);
+        core::add_particles_in(data->sourceData.domainParticles, sourceBox, ppc);
         assert(data->sourceData.domainParticles.size() == ppc * sourceBox.size());
         assert(data->destData.domainParticles.size() == 0);
     }

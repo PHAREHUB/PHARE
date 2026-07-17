@@ -3,6 +3,7 @@
 # formatted with black
 
 from ddt import data, ddt
+
 from pyphare.core.box import Box, Box2D
 from pyphare.simulator.simulator import Simulator
 

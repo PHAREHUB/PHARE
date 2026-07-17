@@ -1,15 +1,24 @@
 #ifndef PHARE_TEST_DIAGNOSTIC_INCLUDE_HPP
 #define PHARE_TEST_DIAGNOSTIC_INCLUDE_HPP
 
-#include "tests/simulator/per_test.hpp"
+#include "core/data/grid/grid_tiles.hpp"
+// #include "tests/simulator/per_test.hpp"
 
-#include "diagnostic/diagnostic_model_view.hpp"
+// #include "core/data/ndarray/ndarray_view.hpp"
+// #include "core/hybrid/hybrid_quantities.hpp"
 #include "diagnostic/detail/h5writer.hpp"
-#include "diagnostic/detail/types/electromag.hpp"
-#include "diagnostic/detail/types/particle.hpp"
-#include "diagnostic/detail/types/fluid.hpp"
+#include "diagnostic/diagnostic_manager.hpp"
+#include "diagnostic/diagnostic_model_view.hpp"
+// #include "diagnostic/detail/types/electromag.hpp"
+// #include "diagnostic/detail/types/particle.hpp"
+// #include "diagnostic/detail/types/fluid.hpp"
 
-#include <functional>
+// #include <functional>
+// #include "tests/core/data/field/test_field.hpp"
+#include "tests/core/data/field/test_field_fixtures.hpp"
+
+
+#include "gtest/gtest.h"
 
 
 using namespace PHARE;
@@ -18,17 +27,30 @@ using namespace PHARE::diagnostic::h5;
 
 constexpr auto NEW_HI5_FILE = HighFive::File::AccessMode::Overwrite;
 
+using FloatType = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
+
 
 template<typename GridLayout, typename Field>
-auto checkField(HighFiveFile const& hifile, GridLayout const& layout, Field const& field,
+void checkField(HighFiveFile const& hifile, GridLayout const& layout, Field const& field,
                 std::string const path)
 {
     constexpr auto dim = GridLayout::dimension;
     static_assert(dim >= 1 and dim <= 3, "Invalid dimension.");
 
-    auto fieldV = hifile.read_data_set_flat<float, dim>(path);
-    PHARE::core::test(layout, field, fieldV);
-    return fieldV; // possibly unused
+    auto const fieldV = hifile.read_data_set_flat<FloatType, dim>(path);
+
+    auto const& field1 = core::make_field_from(field, fieldV.data());
+
+    auto compare = [&](auto& a, auto& b) {
+        auto const eq = core::compare_fields(a, b, 1e-12);
+        EXPECT_TRUE(eq) << "Failure for " << path << " " << eq.why();
+    };
+
+    if constexpr (core::is_field_tile_set_v<Field>)
+        compare(*reduce_single(field), field1);
+
+    else
+        compare(field, field1);
 }
 
 template<typename GridLayout, typename VecField>
@@ -104,13 +126,13 @@ template<typename Simulator, typename Hi5Diagnostic>
 void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
     using namespace std::string_literals;
-    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
+    using GridLayout = Simulator::PHARETypes::GridLayout_t;
 
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& field) {
         auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
-        auto&& data = checkField(*hifile, layout, field, path + name);
+        checkField(*hifile, layout, field, path + name);
     };
 
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
@@ -165,40 +187,84 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
 template<typename Simulator, typename Hi5Diagnostic>
 void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
-    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
+    using GridLayout   = typename Simulator::PHARETypes::GridLayout_t;
+    auto constexpr dim = GridLayout::dimension;
 
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkParticles = [&](auto& hifile, auto& particles, auto path) {
+        using ParticleArray_t = std::decay_t<decltype(particles)>;
+
         if (!particles.size())
             return;
-        auto weightV = hifile.template read_data_set_flat<float, 2>(path + "weight");
-        auto chargeV = hifile.template read_data_set_flat<float, 2>(path + "charge");
-        auto vV      = hifile.template read_data_set_flat<float, 2>(path + "v");
-        auto iCellV  = hifile.template read_data_set_flat<float, 2>(path + "iCell");
-        auto deltaV  = hifile.template read_data_set_flat<float, 2>(path + "delta");
 
-        core::ParticlePacker packer{particles};
+        auto weightV = hifile.template read_data_set_flat<FloatType, 2>(path + "weight");
+        auto chargeV = hifile.template read_data_set_flat<FloatType, 2>(path + "charge");
+        auto vV      = hifile.template read_data_set<FloatType, 2>(path + "v");
+        auto iCellV  = hifile.template read_data_set<int, 2>(path + "iCell");
+        auto deltaV  = hifile.template read_data_set<FloatType, 2>(path + "delta");
 
-        auto first            = packer.empty();
-        std::size_t iCellSize = std::get<2>(first).size();
-        std::size_t deltaSize = std::get<3>(first).size();
-        std::size_t vSize     = std::get<4>(first).size();
-        std::size_t part_idx  = 0;
-        while (packer.hasNext())
+        auto check = [&](auto const pi, auto iCell, auto delta, auto v) {
+            for (std::size_t i = 0; i < dim; i++)
+                EXPECT_EQ(iCellV[pi][i], iCell[i]);
+
+            for (std::size_t i = 0; i < dim; i++)
+                EXPECT_FLOAT_EQ(deltaV[pi][i], delta[i]);
+
+            for (std::size_t i = 0; i < 3; i++)
+                EXPECT_FLOAT_EQ(vV[pi][i], v[i]);
+        };
+
+        if constexpr (ParticleArray_t::layout_mode == core::LayoutMode::SoA)
         {
-            auto next = packer.next();
+            for (std::size_t pi = 0; pi < particles.size(); ++pi)
+            {
+                check(pi, particles.iCell(pi), particles.delta(pi), particles.v(pi));
+                // auto& iCell = particles.iCell(pi);
+                // for (std::size_t i = 0; i < iCell.size(); i++)
+                //     EXPECT_EQ(iCellV[pi][i], iCell[i]);
 
-            for (std::size_t i = 0; i < iCellSize; i++)
-                EXPECT_EQ(iCellV[(part_idx * iCellSize) + i], std::get<2>(next)[i]);
+                // auto& delta = particles.delta(pi);
+                // for (std::size_t i = 0; i < delta.size(); i++)
+                //     EXPECT_FLOAT_EQ(deltaV[pi][i], delta[i]);
 
-            for (std::size_t i = 0; i < deltaSize; i++)
-                EXPECT_FLOAT_EQ(deltaV[(part_idx * deltaSize) + i], std::get<3>(next)[i]);
+                // auto& v = particles.v(pi);
+                // for (std::size_t i = 0; i < v.size(); i++)
+                //     EXPECT_FLOAT_EQ(vV[pi][i], v[i]);
+            }
+        }
+        if constexpr (ParticleArray_t::layout_mode == core::LayoutMode::AoSTS)
+        {
+            std::size_t pi = 0;
+            for (auto const& tile : particles())
+                for (auto const& p : tile())
+                    check(pi++, p.iCell(), p.delta(), p.v());
+            EXPECT_EQ(pi, particles.size());
+        }
+        else
+        {
+            core::ParticlePacker packer{particles};
 
-            for (std::size_t i = 0; i < vSize; i++)
-                EXPECT_FLOAT_EQ(vV[(part_idx * vSize) + i], std::get<4>(next)[i]);
+            auto first            = packer.empty();
+            std::size_t iCellSize = std::get<2>(first).size();
+            std::size_t deltaSize = std::get<3>(first).size();
+            std::size_t vSize     = std::get<4>(first).size();
+            std::size_t part_idx  = 0;
+            while (packer.hasNext())
+            {
+                auto next = packer.next();
 
-            part_idx++;
+                for (std::size_t i = 0; i < iCellSize; i++)
+                    EXPECT_EQ(iCellV[part_idx][i], std::get<2>(next)[i]);
+
+                for (std::size_t i = 0; i < deltaSize; i++)
+                    EXPECT_FLOAT_EQ(deltaV[part_idx][i], std::get<3>(next)[i]);
+
+                for (std::size_t i = 0; i < vSize; i++)
+                    EXPECT_FLOAT_EQ(vV[part_idx][i], std::get<4>(next)[i]);
+
+                part_idx++;
+            }
         }
     };
 

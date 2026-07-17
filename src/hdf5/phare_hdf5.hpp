@@ -4,6 +4,7 @@
 
 #if PHARE_HAS_HIGHFIVE
 
+#include "hdf5/detail/h5/h5_file.hpp"
 #include "highfive/H5Version.hpp"
 
 #ifndef HIGHFIVE_VERSION_STRING

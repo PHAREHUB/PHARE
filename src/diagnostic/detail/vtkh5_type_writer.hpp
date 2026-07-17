@@ -7,6 +7,9 @@
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+#include "core/mhd/mhd_quantities.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+
 
 #include "amr/resources_manager/amr_utils.hpp"
 
@@ -179,6 +182,26 @@ protected:
     }
 
 
+
+    // template<typename Field_t>
+    // auto& field_reducer(auto& f, bool const reduce = true)
+    // {
+    //     return this->h5Writer_.modelView().field_reducer(f, reduce);
+    // }
+
+    // template<typename TField_t>
+    // auto& vec_field_reducer(TField_t& f, bool const reduce = true)
+    // {
+    //     return this->h5Writer_.modelView().vec_field_reducer(f, reduce);
+    // }
+
+    // template<typename TField_t>
+    // auto& tensor_field_reducer(TField_t& f, bool const reduce = true)
+    // {
+    //     return this->h5Writer_.modelView().tensor_field_reducer(f, reduce);
+    // }
+
+
     Writer& h5Writer_;
     std::unordered_map<std::string, std::unique_ptr<HighFiveFile>> fileData_;
 };
@@ -342,9 +365,10 @@ void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto con
 {
     PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField");
 
-    auto const& frimal = core::convert_to_fortran_primal(modelView.tmpField(), field, layout);
-    auto const size    = local_box(layout).size();
-    auto ds            = h5file.getDataSet(level_data_path(layout.levelNumber()));
+    auto const size     = local_box(layout).size();
+    auto const& reduced = modelView.field_reducer(field);
+    auto const& frimal = core::convert_to_fortran_primal(modelView.tmpField(), reduced, layout);
+    auto ds             = h5file.getDataSet(level_data_path(layout.levelNumber()));
 
     PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField::0");
     for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
@@ -359,13 +383,21 @@ template<typename Writer>
 template<std::size_t rank>
 void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto const& layout)
 {
+    auto static constexpr N = core::detail::tensor_field_dim_from_rank<rank>();
+
     PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField");
 
-    auto static constexpr N = core::detail::tensor_field_dim_from_rank<rank>();
-    auto const& frimal
-        = core::convert_to_fortran_primal(modelView.template tmpTensorField<rank>(), tf, layout);
-    auto const size = local_box(layout).size();
-    auto ds         = h5file.getDataSet(level_data_path(layout.levelNumber()));
+    auto& reduced = [&]() -> auto& {
+        if constexpr (rank == 1)
+            return modelView.vec_field_reducer(tf);
+        else if (rank == 2)
+            return modelView.tensor_field_reducer(tf);
+    }();
+
+    auto const& frimal = core::convert_to_fortran_primal(
+        modelView.template tmpTensorField<rank>(), reduced, layout);
+    auto const size    = local_box(layout).size();
+    auto ds            = h5file.getDataSet(level_data_path(layout.levelNumber()));
 
     PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField::0");
     for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)

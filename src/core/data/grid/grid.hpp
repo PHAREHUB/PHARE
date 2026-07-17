@@ -4,12 +4,14 @@
 
 #include "core/def.hpp"
 #include "core/data/field/field.hpp"
-
+#include "core/def/phare_config.hpp"
 
 #include <array>
 #include <string>
 #include <cassert>
 #include <optional>
+#include <algorithm>
+
 
 namespace PHARE::core
 {
@@ -25,13 +27,14 @@ convenience, Grid can spawn its own Field view.
 template<typename NdArrayImpl, typename PhysicalQuantity>
 class Grid : public NdArrayImpl
 {
-    using Super = NdArrayImpl;
-
 public:
+    using Super                      = NdArrayImpl;
+    auto constexpr static dimension  = NdArrayImpl::dimension;
+    auto constexpr static alloc_mode = NdArrayImpl::allocator_mode;
+
     using value_type             = typename NdArrayImpl::type;
     using physical_quantity_type = PhysicalQuantity;
-    using NdArrayImpl::dimension;
-    using field_type = Field<dimension, PhysicalQuantity, value_type>;
+    using field_type             = Field<dimension, PhysicalQuantity, value_type, alloc_mode>;
 
 
     Grid()                              = delete;
@@ -90,12 +93,46 @@ public:
     NO_DISCARD auto operator&() { return &field_; }
     NO_DISCARD auto operator&() const { return &field_; }
 
+    NO_DISCARD operator field_type&() { return field_; }
+    NO_DISCARD auto& operator*() { return field_; }
+    NO_DISCARD auto& operator*() const { return field_; }
+
+    template<typename, typename>
+    friend std::ostream& operator<<(std::ostream& out, Grid const&);
+
 private:
     std::string name_{"No Name"};
     PhysicalQuantity qty_;
     field_type field_{name_, qty_, Super::data(), Super::shape()};
 };
 
+
+
+
+template<typename Arr, typename PQ>
+struct is_field<Grid<Arr, PQ>> : std::true_type
+{
+};
+
+
+template<typename Arr, typename PQ>
+inline std::ostream& operator<<(std::ostream& out, Grid<Arr, PQ> const& f)
+{
+    out << *f;
+    return out;
+}
+
+template<typename Arr, typename PQ>
+inline auto sum_field(Grid<Arr, PQ> const& f)
+{
+    return sum_field(*f);
+}
+
+template<typename Arr, typename PQ>
+inline auto sum_not_nan(Grid<Arr, PQ> const& f)
+{
+    return sum_not_nan(*f);
+}
 
 
 } // namespace PHARE::core

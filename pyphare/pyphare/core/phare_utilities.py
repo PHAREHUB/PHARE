@@ -1,5 +1,64 @@
+#
+#
+#
+
+
 import math
 import numpy as np
+from dataclasses import dataclass, field
+
+from typing import Any, List, Tuple
+
+
+class EqualityCheck:
+    def __init__(self, eq, msg=""):
+        self.eq = eq
+        self.msg = msg
+
+    def __bool__(self):
+        return self.eq
+
+    def __repr__(self):
+        return self.msg
+
+
+@dataclass
+class EqualityReport:
+    atol: float
+    passed: List[Tuple[str, Any, Any]] = field(default_factory=lambda: [])
+    failed: List[Tuple[str, Any, Any]] = field(default_factory=lambda: [])
+
+    def __bool__(self):
+        return not self.failed
+
+    def __repr__(self):
+        return "\n".join(
+            ["KO: " + self.failed[i][0] for i in range(len(self.failed))]
+            + ["OK: " + self.passed[i][0] for i in range(len(self.passed))]
+        )
+
+    def add(self, ok, reason, ref=None, cmp=None):
+        if ok:
+            self.OK(reason, ref, cmp)
+        else:
+            self.KO(reason, ref, cmp)
+
+    def OK(self, reason, ref=None, cmp=None):
+        self.passed.append((reason, ref, cmp))
+        return self
+
+    def KO(self, reason, ref=None, cmp=None):
+        self.failed.append((reason, ref, cmp))
+        return self
+
+    def __getitem__(self, idx):
+        return (self.failed[idx][1], self.failed[idx][2])
+
+    def __iter__(self):
+        return self.failed.__iter__()
+
+    def __reversed__(self):
+        return reversed(self.failed)
 
 
 def debug_print(*args):
@@ -7,19 +66,24 @@ def debug_print(*args):
         print(*args)
 
 
+def is_nd_array(arg):
+    return isinstance(arg, np.ndarray)
+
+
 def all_iterables(*args):
     """
     return true if all arguments are either lists or tuples
     """
-    return all([isinstance(arg, list) or isinstance(arg, tuple) for arg in args])
+    return all([isinstance(arg, (tuple, list)) or is_nd_array(arg) for arg in args])
 
 
 def none_iterable(*args):
     """
     return true if none of the arguments are either lists or tuples
     """
+
     return all(
-        [not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args]
+        [not isinstance(arg, (tuple, list)) and not is_nd_array(arg) for arg in args]
     )
 
 
@@ -52,11 +116,7 @@ def listify(arg):
 
 
 def is_scalar(arg):
-    return not isinstance(arg, (list, tuple)) and not is_nd_array(arg)
-
-
-def is_nd_array(arg):
-    return isinstance(arg, np.ndarray)
+    return none_iterable(arg)
 
 
 def np_array_ify(arg, size=1):
@@ -183,6 +243,12 @@ def deep_copy(item, memo, excludes=[]):
         else:
             setattr(that, key, deepcopy(value, memo))
     return that
+
+
+def NO_GUI():
+    import matplotlib as mpl
+
+    mpl.use("Agg")
 
 
 def cast_to(obj, cls):

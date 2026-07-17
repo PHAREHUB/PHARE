@@ -183,3 +183,15 @@ def is_restartable_compared_to(curr_sim, prev_sim):
             print(f"{key} current({curr}) {op.__name__} previous({prev})")
 
     return not failed
+
+
+def get_restart_time(dir):
+    from pathlib import Path
+
+    file_list = []  # A list for storing files existing in directories
+
+    for x in Path(dir).iterdir():
+        if x.is_dir():
+            file_list.append(x)
+
+    return file_list

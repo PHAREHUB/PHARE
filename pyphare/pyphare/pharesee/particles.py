@@ -1,5 +1,10 @@
+#
+#
+#
+
+
 import numpy as np
-from ..core.phare_utilities import refinement_ratio, print_trace
+from ..core import phare_utilities as phut
 
 
 class Particles:
@@ -75,26 +80,14 @@ class Particles:
     def size(self):
         return len(self.weights)
 
+    def __repr__(self):
+        return f"Particles(size: {self.size()}, id: {id(self)})"
+
+    def compare(self, that, atol=1e-12):
+        return compare_particles(self, that, atol)
+
     def __eq__(self, that):
-        if isinstance(that, Particles):
-            if self.size() != that.size():
-                print(
-                    f"particles.py:Particles::eq size diff: {self.size()} != {that.size()}"
-                )
-                return False
-            # fails on OSX for some reason
-            set_check = set(self.as_tuples()) == set(that.as_tuples())
-            if set_check:
-                return True
-            try:
-                all_assert_sorted(self, that)
-                return True
-            except AssertionError as ex:
-                print(f"particles.py:Particles::eq failed with: {ex}")
-                print_trace()
-                return False
-        print(f"particles.py:Particles::eq bad type: {type(that)}")
-        return False
+        return self.compare(that)
 
     def __ne__(self, that):
         return not (self == that)
@@ -173,7 +166,7 @@ class Particles:
             weights=split_pyarrays[2].reshape(int(len(split_pyarrays[2])), 1),
             charges=split_pyarrays[3].reshape(int(len(split_pyarrays[3])), 1),
             v=split_pyarrays[4].reshape(int(len(split_pyarrays[4]) / 3), 3),
-            dl=self.dl[0] / refinement_ratio
+            dl=self.dl[0] / phut.refinement_ratio
             + np.zeros((split_pyarrays[2].size, self.ndim)),
         )
 
@@ -191,25 +184,69 @@ class Particles:
         ]
 
 
-def all_assert_sorted(part1, part2):
-    idx1 = _arg_sort(part1)
-    idx2 = _arg_sort(part2)
+def compare_particles(part1, part2, atol=1e-12):
+    if isinstance(part2, Particles):
+        if part1.size() != part2.size():
+            return phut.EqualityCheck(
+                False, f"size diff: {part1.size()} != {part2.size()}"
+            )
+        if part1.iCells.shape != part2.iCells.shape:
+            return phut.EqualityCheck(
+                False,
+                f"icell shape mistmatch: {part1.iCells.shape} != {part2.iCells.shape}",
+            )
+        if part1.deltas.shape != part2.deltas.shape:
+            return phut.EqualityCheck(
+                False,
+                f"deltas shape mistmatch: {part1.deltas.shape} != {part2.deltas.shape}",
+            )
 
-    np.testing.assert_equal(part1.ndim, part2.ndim)
-    np.testing.assert_equal(part1.size(), part2.size())
+        if part1.v.shape != part2.v.shape:
+            return phut.EqualityCheck(
+                False, f"v shape mistmatch: {part1.v.shape} != {part2.v.shape}"
+            )
 
-    deltol = (
-        1e-6
-        if any([part.deltas.dtype == np.float32 for part in [part1, part2]])
-        else 1e-12
-    )
+        # fails on OSX for some reason
+        set_check = set(part1.as_tuples()) == set(part2.as_tuples())
+        if set_check:
+            return True
+        try:
+            idx1 = _arg_sort(part1)
+            idx2 = _arg_sort(part2)
 
-    np.testing.assert_array_equal(part1.iCells[idx1], part2.iCells[idx2])
-    np.testing.assert_allclose(part1.deltas[idx1], part2.deltas[idx2], atol=deltol)
+            msg = "bad dim"
+            np.testing.assert_equal(part1.ndim, part2.ndim)
 
-    np.testing.assert_allclose(part1.v[idx1, 0], part2.v[idx2, 0], atol=1e-12)
-    np.testing.assert_allclose(part1.v[idx1, 1], part2.v[idx2, 1], atol=1e-12)
-    np.testing.assert_allclose(part1.v[idx1, 2], part2.v[idx2, 2], atol=1e-12)
+            msg = "bad size"
+            np.testing.assert_equal(part1.size(), part2.size())
+
+            msg = "bad icells"
+            np.testing.assert_array_equal(
+                part1.iCells[idx1], part2.iCells[idx2], verbose=True
+            )
+
+            msg = "bad v"
+            np.testing.assert_allclose(
+                part1.v[idx1, 0], part2.v[idx2, 0], atol=atol, rtol=0
+            )
+            np.testing.assert_allclose(
+                part1.v[idx1, 1], part2.v[idx2, 1], atol=atol, rtol=0
+            )
+            np.testing.assert_allclose(
+                part1.v[idx1, 2], part2.v[idx2, 2], atol=atol, rtol=0
+            )
+
+            msg = "bad delta"
+            np.testing.assert_allclose(
+                part1.deltas[idx1], part2.deltas[idx2], atol=atol, rtol=0
+            )
+
+            return True
+        except AssertionError as ex:
+            return phut.EqualityCheck(False, msg + str(ex))
+
+    msg = f"particles.py:Particles::eq bad type: {type(part2)}"
+    return phut.EqualityCheck(False, msg)
 
 
 def any_assert(part1, part2):
@@ -273,13 +310,16 @@ def _arg_sort(particles):
     if particles.ndim == 1:
         return np.argsort(x1)
 
-    if particles.ndim > 1:
-        y1 = particles.iCells[:, 1] + particles.deltas[:, 1]
-        return np.argsort(np.sqrt((x1**2 + y1**2)) / (x1 / y1))
+    y1 = particles.iCells[:, 1] + particles.deltas[:, 1]
+
+    if particles.ndim == 2:
+        return np.lexsort((y1, x1))
 
     if particles.ndim == 3:
         z1 = particles.iCells[:, 2] + particles.deltas[:, 2]
-        return np.argsort(np.sqrt((x1**2 + y1**2 + z1**2)) / (x1 / y1 / z1))
+        return np.lexsort((z1, y1, x1))
+
+    raise ValueError(f"Unsupported dimension: {particles.ndim}")
 
 
 def single_patch_per_level_per_pop_from(hier, only_keep_L0=True):  # dragons

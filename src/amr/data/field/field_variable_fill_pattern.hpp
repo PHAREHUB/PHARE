@@ -4,7 +4,7 @@
 #include "core/logger.hpp"
 #include "core/def/phare_mpi.hpp"
 #include "core/utilities/types.hpp"
-#include <core/hybrid/hybrid_quantities.hpp>
+// #include "core/hybrid/hybrid_quantities.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
 #include "amr/utilities/box/amr_box.hpp"
@@ -62,6 +62,7 @@ public:
 
                                              transformation);
     }
+
 
     /*
      *************************************************************************
@@ -188,7 +189,7 @@ public:
         auto& toverlap = dynamic_cast<TensorFieldOverlap<rank_> const&>(*basic_overlap);
         auto&& interiorTensorFieldBox = casted.interiorTensorFieldBox();
 
-        auto overlaps = for_N_make_array<N>([&](auto i) {
+        auto overlaps = core::for_N_make_array<N>([&](auto i) {
             auto& overlap          = toverlap[i];
             auto& interiorFieldBox = interiorTensorFieldBox[i];
             auto destinationBoxes  = overlap->getDestinationBoxContainer();
@@ -258,6 +259,7 @@ class FieldGhostInterpOverlapFillPattern : public SAMRAI::xfer::VariableFillPatt
     std::size_t constexpr static dim = Gridlayout_t::dimension;
     using FieldGeometry_t            = FieldGeometryBase<dim>;
 
+
 public:
     FieldGhostInterpOverlapFillPattern() {}
     ~FieldGhostInterpOverlapFillPattern() override {}
@@ -265,6 +267,7 @@ public:
     std::shared_ptr<SAMRAI::hier::BoxOverlap>
     calculateOverlap(SAMRAI::hier::BoxGeometry const& _dst_geometry,
                      SAMRAI::hier::BoxGeometry const& _src_geometry,
+
                      SAMRAI::hier::Box const& dst_patch_box, SAMRAI::hier::Box const& src_mask,
                      SAMRAI::hier::Box const& fill_box, bool const overwrite_interior,
                      SAMRAI::hier::Transformation const& transformation) const override
@@ -329,6 +332,7 @@ private:
     }
 };
 
+
 template<typename Gridlayout_t, std::size_t rank_ = 1> // ASSUMED ALL PRIMAL!
 class TensorFieldGhostInterpOverlapFillPattern : public SAMRAI::xfer::VariableFillPattern
 {
@@ -353,7 +357,7 @@ public:
         // Skip if src and dst are the same
         if (phare_box_from<dim>(dst_patch_box) == phare_box_from<dim>(src_mask))
         {
-            auto overlaps = for_N_make_array<N>([&](auto /*i*/) {
+            auto overlaps = core::for_N_make_array<N>([&](auto /*i*/) {
                 return std::make_shared<FieldOverlap>(SAMRAI::hier::BoxContainer{}, transformation);
             });
             return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
@@ -361,7 +365,7 @@ public:
 
         if (dynamic_cast<TensorFieldGeometry_t const*>(&_dst_geometry))
         {
-            auto overlaps = for_N_make_array<N>([&](auto i) {
+            auto overlaps = core::for_N_make_array<N>([&](auto i) {
                 auto overlap = FieldGhostInterpOverlapFillPattern<Gridlayout_t>::calculateOverlap(
                     dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry)[i],
                     dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry)[i], dst_patch_box,

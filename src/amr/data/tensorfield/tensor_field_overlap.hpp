@@ -2,10 +2,10 @@
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_OVERLAP_HPP
 
 #include "core/def/phare_mpi.hpp"
-
 #include "core/data/tensorfield/tensorfield.hpp"
 
 #include "amr/data/field/field_overlap.hpp"
+
 
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/hier/BoxOverlap.h>

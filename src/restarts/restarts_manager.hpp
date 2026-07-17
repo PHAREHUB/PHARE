@@ -50,9 +50,9 @@ public:
     make_unique(Hierarchy& hier, ResourceManager_t& resman, initializer::PHAREDict const& dict)
     {
         auto rMan = std::make_unique<RestartsManager>(Writer::make_unique(hier, resman, dict));
-        auto restarts_are_written = core::any(
-            core::generate([&](auto const& v) { return dict.contains(v); },
-                           std::vector<std::string>{"write_timestamps", "elapsed_timestamps"}));
+        auto restarts_are_written = core::any(core::generate_from(
+            [&](auto const& v) { return dict.contains(v); },
+            std::vector<std::string>{"write_timestamps", "elapsed_timestamps"}));
         if (restarts_are_written) // else is only loading not saving restarts
             rMan->addRestartDict(dict);
         return rMan;

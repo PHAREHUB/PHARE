@@ -1,15 +1,19 @@
 #ifndef HIGHFIVEDIAGNOSTICWRITER_HPP
 #define HIGHFIVEDIAGNOSTICWRITER_HPP
 
-#include <string>
-#include <algorithm>
-#include <unordered_map>
 
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/utilities/mpi_utils.hpp"
+#include "core/data/field/field_box.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 
 #include "diagnostic/diagnostic_writer.hpp"
 
 #include "hdf5/detail/h5/h5_file.hpp"
+
+
+#include <string>
+#include <unordered_map>
 
 
 namespace PHARE::diagnostic::h5
@@ -77,6 +81,7 @@ protected:
     {
         for (std::size_t lvl = h5Writer_.minLevel; lvl <= maxLevel; lvl++)
         {
+            assert(patchIDs.count(lvl));
             auto& lvlPatches       = patchIDs.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
             std::size_t maxPatches = core::mpi::max(patchNbr);
@@ -96,6 +101,7 @@ protected:
     {
         for (std::size_t lvl = h5Writer_.minLevel; lvl <= maxLevel; lvl++)
         {
+            assert(patchAttributes.count(lvl));
             auto& lvlPatches       = patchAttributes.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
             std::size_t maxPatches = core::mpi::max(patchNbr);
@@ -142,6 +148,7 @@ protected:
     }
 
 
+
     auto& h5FileForQuantity(DiagnosticProperties& diagnostic)
     {
         if (!fileData_.count(diagnostic.quantity))
@@ -149,6 +156,25 @@ protected:
 
         return *fileData_.at(diagnostic.quantity);
     }
+
+
+    // template<typename Field_t>
+    // auto& field_reducer(Field_t& f, bool const reduce = true)
+    // {
+    //     return this->h5Writer_.modelView().field_reducer(f, reduce);
+    // }
+
+    // template<typename TField_t>
+    // auto& vec_field_reducer(TField_t& f, bool const reduce = true)
+    // {
+    //     return this->h5Writer_.modelView().vec_field_reducer(f, reduce);
+    // }
+
+    // template<typename TField_t>
+    // auto& tensor_field_reducer(TField_t& f, bool const reduce = true)
+    // {
+    //     return this->h5Writer_.modelView().tensor_field_reducer(f, reduce);
+    // }
 
 
     Writer& h5Writer_;

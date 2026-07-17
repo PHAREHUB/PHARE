@@ -12,30 +12,34 @@
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
-#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 
-#include "SAMRAI/tbox/RestartManager.h"
-#include "SAMRAI/hier/PatchDataRestartManager.h"
-
-
-#include "amr/messengers/messenger.hpp"
-#include "amr/tagging/tagger.hpp"
-#include "amr/physical_models/hybrid_model.hpp"
-#include "amr/physical_models/mhd_model.hpp"
-#include "amr/physical_models/physical_model.hpp"
-#include "amr/solvers/solver.hpp"
-#include "amr/messenger_registration.hpp"
-#include "amr/level_initializer/level_initializer.hpp"
-#include "amr/solvers/solver_mhd.hpp"
-#include "amr/solvers/solver_ppc.hpp"
-
+#include "phare_core.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/algorithm.hpp"
 
+
+#include "amr/tagging/tagger.hpp"
+#include "amr/messengers/messenger.hpp"
+#include "amr/messenger_registration.hpp"
+#include "amr/physical_models/mhd_model.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
+#include "amr/physical_models/physical_model.hpp"
+#include "amr/level_initializer/level_initializer.hpp"
+
+#include "amr/solvers/solver.hpp"
+#include "amr/solvers/solver_mhd.hpp"
+#include "amr/solvers/solver_ppc.hpp"
+
+
 #include "load_balancing/load_balancer_manager.hpp"
 #include "load_balancing/load_balancer_estimator.hpp"
-#include "phare_core.hpp"
+
+
+#include "SAMRAI/tbox/RestartManager.h"
+#include "SAMRAI/hier/PatchDataRestartManager.h"
+#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
+#include <SAMRAI/algs/TimeRefinementLevelStrategy.h>
+
 
 
 namespace PHARE

@@ -1,8 +1,11 @@
-from dataclasses import dataclass, field
-from copy import deepcopy
-import numpy as np
+#
+#
+#
 
-from typing import Any, List, Tuple
+
+import numpy as np
+from copy import deepcopy
+
 
 from .hierarchy import PatchHierarchy, format_timestamp
 from .patchdata import FieldData, ParticleData
@@ -156,10 +159,9 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     patch_levels_per_time = []
     for t in reference_hier.times():
         patch_levels = {}
-        for ilvl in range(reference_hier.levelNbr()):
-            patch_levels[ilvl] = PatchLevel(
-                ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
-            )
+        for ilvl in reference_hier.levels(t):
+            new_patches = new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
+            patch_levels[ilvl] = PatchLevel(ilvl, new_patches)
         patch_levels_per_time.append(patch_levels)
     return PatchHierarchy(
         patch_levels_per_time,
@@ -195,6 +197,8 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
 def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     reference_hier = hierarchies[0]
     new_patches = []
+    if ilvl not in reference_hier.levels(time=t):
+        return new_patches
     ref_patches = reference_hier.level(ilvl, time=t).patches
     for ip, current_patch in enumerate(ref_patches):
         layout = current_patch.layout
@@ -216,19 +220,20 @@ def quantidic(ilvl, wrangler):
     pl = wrangler.getPatchLevel(ilvl)
 
     return {
-        "density": pl.getDensity,
-        "bulkVelocity_x": pl.getVix,
-        "bulkVelocity_y": pl.getViy,
-        "bulkVelocity_z": pl.getViz,
-        "EM_B_x": pl.getBx,
-        "EM_B_y": pl.getBy,
-        "EM_B_z": pl.getBz,
-        "EM_E_x": pl.getEx,
-        "EM_E_y": pl.getEy,
-        "EM_E_z": pl.getEz,
-        "flux_x": pl.getFx,
-        "flux_y": pl.getFy,
-        "flux_z": pl.getFz,
+        "density": pl.getNi,
+        "Vi": pl.getVi,
+        "EM_B_x": lambda: pl.getB("x"),
+        "EM_B_y": lambda: pl.getB("y"),
+        "EM_B_z": lambda: pl.getB("z"),
+        "EM_E_x": lambda: pl.getE("x"),
+        "EM_E_y": lambda: pl.getE("y"),
+        "EM_E_z": lambda: pl.getE("z"),
+        "bulkVelocity_x": lambda: pl.getVi("x"),
+        "bulkVelocity_y": lambda: pl.getVi("y"),
+        "bulkVelocity_z": lambda: pl.getVi("z"),
+        "flux_x": lambda pop: pl.getFlux("x", pop),
+        "flux_y": lambda pop: pl.getFlux("y", pop),
+        "flux_z": lambda pop: pl.getFlux("z", pop),
         "particles": pl.getParticles,
     }
 
@@ -593,39 +598,8 @@ def _compute_scalardiv(patch_datas, **kwargs):
     return tuple(pd_attrs)
 
 
-@dataclass
-class EqualityReport:
-    failed: List[Tuple[str, Any, Any]] = field(default_factory=lambda: [])
-
-    def __bool__(self):
-        return not self.failed
-
-    def __repr__(self):
-        for msg, ref, cmp in self:
-            print(msg)
-            try:
-                if type(ref) is FieldData:
-                    phut.assert_fp_any_all_close(ref[:], cmp[:], atol=1e-16)
-            except AssertionError as e:
-                print(e)
-        return self.failed[0][0]
-
-    def __call__(self, reason, ref=None, cmp=None):
-        self.failed.append((reason, ref, cmp))
-        return self
-
-    def __getitem__(self, idx):
-        return (self.failed[idx][1], self.failed[idx][2])
-
-    def __iter__(self):
-        return self.failed.__iter__()
-
-    def __reversed__(self):
-        return reversed(self.failed)
-
-
 def hierarchy_compare(this, that, atol=1e-16):
-    eqr = EqualityReport()
+    eqr = phut.EqualityReport(atol)
 
     if not isinstance(this, PatchHierarchy) or not isinstance(that, PatchHierarchy):
         return eqr("class type mismatch")
@@ -640,6 +614,8 @@ def hierarchy_compare(this, that, atol=1e-16):
         patch_levels_ref = this.time_hier[tidx]
         patch_levels_cmp = that.time_hier[tidx]
 
+        base = f"time: {tidx},"
+
         if patch_levels_ref.keys() != patch_levels_cmp.keys():
             return eqr("levels mismatch")
 
@@ -647,23 +623,28 @@ def hierarchy_compare(this, that, atol=1e-16):
             patch_level_ref = patch_levels_ref[level_idx]
             patch_level_cmp = patch_levels_cmp[level_idx]
 
+            pre_level = base + f"level: {level_idx},"
             for patch_idx in range(len(patch_level_cmp.patches)):
                 patch_ref = patch_level_ref.patches[patch_idx]
                 patch_cmp = patch_level_cmp.patches[patch_idx]
 
+                if patch_ref.box != patch_cmp.box:
+                    return eqr("patch box mismatch", patch_ref.box, patch_cmp.box)
+
                 if patch_ref.patch_datas.keys() != patch_cmp.patch_datas.keys():
                     return eqr("data keys mismatch")
+
+                per_patch = pre_level + f"patch: {patch_idx},"
 
                 for patch_data_key in patch_ref.patch_datas.keys():
                     patch_data_ref = patch_ref.patch_datas[patch_data_key]
                     patch_data_cmp = patch_cmp.patch_datas[patch_data_key]
+                    ret = patch_data_ref.compare(patch_data_cmp, atol=atol)
 
-                    if not patch_data_cmp.compare(patch_data_ref, atol=atol):
-                        msg = f"data mismatch: {type(patch_data_ref).__name__} {patch_data_key}"
-                        eqr(msg, patch_data_cmp, patch_data_ref)
-
-                if not eqr:
-                    return eqr
+                    msg = per_patch + f" qty: {patch_data_key}"
+                    if type(ret) is phut.EqualityCheck:
+                        msg += "\n" + str(ret)
+                    eqr.add(bool(ret), msg, patch_data_cmp, patch_data_ref)
 
     return eqr
 

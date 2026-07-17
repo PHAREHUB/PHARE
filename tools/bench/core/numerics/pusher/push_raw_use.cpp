@@ -6,14 +6,14 @@ template<std::size_t dim, std::size_t interp>
 void push()
 {
     auto static constexpr opts    = PHARE::SimOpts{dim, interp};
-    constexpr std::uint32_t cells = 65;
+    constexpr std::uint32_t cells = 15;
     // constexpr std::uint32_t n_parts = 1e7;
 
     using PHARE_Types       = PHARE::core::PHARE_Types<opts>;
     using GridLayout_t      = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using Interpolator      = PHARE::core::Interpolator<dim, interp>;
     using BoundaryCondition = PHARE::core::BoundaryCondition<dim, interp>;
-    using Electromag_t      = PHARE::core::UsableElectromag<dim>;
+    using Electromag_t      = PHARE::core::UsableElectromag<GridLayout_t>;
     using Ions_t            = PHARE_Types::Ions_t;
     using ParticleArray     = Ions_t::particle_array_type;
     using ParticleRange     = PHARE::core::IndexRange<ParticleArray>;
@@ -27,7 +27,7 @@ void push()
 
     std::stringstream ss;
     ss << "unsorted_particles_" << dim << ".raw";
-    PHARE::core::bench::read_raw_from_file(domainParticles, ss.str());
+    PHARE::core::read_raw_from_file(domainParticles, ss.str());
 
     // std::sort(domainParticles);
 

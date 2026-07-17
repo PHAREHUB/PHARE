@@ -13,11 +13,16 @@ namespace core
     template<typename Iterator>
     struct Range
     {
+        using iterator          = Iterator;
         using iterator_category = typename Iterator::iterator_category;
         using value_type        = typename Iterator::value_type;
         using difference_type   = typename Iterator::difference_type;
         using reference         = typename Iterator::reference;
         using pointer           = typename Iterator::pointer;
+
+        Range()             = default;
+        Range(Range&&)      = default;
+        Range(Range const&) = default;
 
         template<class Container>
         explicit Range(Container const& c)
@@ -84,6 +89,9 @@ namespace core
         // auto const& operator[](std::size_t idx) const { return (*array_)[first_ + idx]; }
 
 
+        auto& operator[](std::size_t i) { return *(first_ + i); }
+        auto& operator[](std::size_t i) const { return *(first_ + i); }
+
     private:
         Index first_;
         Index end_;
@@ -126,5 +134,38 @@ namespace core
 
 } // namespace core
 } // namespace PHARE
+
+namespace PHARE::core
+{
+template<typename Box, typename Iterator>
+struct BoxRange
+{
+    using iterator = Iterator;
+
+
+    BoxRange& operator=(BoxRange const&) = default;
+    BoxRange& operator=(BoxRange&&)      = default;
+    BoxRange(BoxRange&&)                 = default;
+    BoxRange(BoxRange const&)            = default;
+
+    BoxRange(Box box, Iterator begin, Iterator end)
+        : box_{box}
+        , first_{begin}
+        , end_{end}
+    {
+    }
+
+    auto& begin() const { return first_; }
+    auto& end() const { return end_; }
+    auto& box() const { return box_; }
+    auto size() const { return std::distance(first_, end_); }
+
+private:
+    Box box_;
+    Iterator first_;
+    Iterator end_;
+};
+} // namespace PHARE::core
+
 
 #endif // RANGE_HPP

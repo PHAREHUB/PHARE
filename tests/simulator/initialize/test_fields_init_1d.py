@@ -3,11 +3,13 @@ This file exists independently from test_initialization.py to isolate dimension
   test cases and allow each to be overridden in some way if required.
 """
 
+import itertools
 import unittest
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
+from pyphare.cpp import supported_particle_layouts
 
 from tests.simulator.initialize.test_init_mhd import MHDInitializationTest
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
@@ -20,8 +22,14 @@ interp_orders = [1, 2, 3]
 
 def permute_hybrid():
     return [
-        dict(super_class=HybridInitializationTest, interp_order=interp_order)
-        for interp_order in interp_orders
+        dict(
+            super_class=HybridInitializationTest,
+            interp_order=interp_order,
+            sim_setup_kwargs=dict(layout=layout),
+        )
+        for interp_order, layout in itertools.product(
+            interp_orders, supported_particle_layouts()
+        )
     ]
 
 
@@ -51,7 +59,6 @@ class HybridInitialization1DTest(HybridInitializationTest):
     @unpack
     def test_density_is_as_provided_by_user(self, super_class, **kwargs):
         print(f"{self._testMethodName}_{ndim}d")
-        phut.cast_to(self, super_class)
         self._test_density_is_as_provided_by_user(ndim, **kwargs)
 
     @data(*permute_hybrid())

@@ -5,11 +5,12 @@
 
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
+#include "messenger_info.hpp"
 
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
-#include "messenger_info.hpp"
+#include <string>
 
 
 namespace PHARE

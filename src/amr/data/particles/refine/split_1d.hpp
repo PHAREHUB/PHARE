@@ -1,3 +1,4 @@
+// IWYU pragma: private, include "amr/data/particles/refine/split.hpp"
 /*
 Splitting reference material can be found @
   https://github.com/PHAREHUB/PHARE/wiki/SplitPattern

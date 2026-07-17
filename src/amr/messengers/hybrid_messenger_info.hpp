@@ -59,6 +59,7 @@ namespace amr
 
         // below are the descriptions of the vector fields that for which
         // ghosts need to be filled at some point.
+
         std::vector<std::string> ghostFlux;
         std::vector<std::string> sumBorderFields;
         std::vector<std::string> ghostMagnetic;

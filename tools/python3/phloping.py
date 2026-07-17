@@ -94,7 +94,8 @@ class ScopeTimerFile(phst.ScopeTimerFile):
         inits = ["HybridLevelInitializer::initialize_level"]
         for root in self.roots:
             if self(root.k) == "Simulator::initialize":
-                return sum(1 if self(c.k) in inits else 0 for c in root.c)
+                if nlevels := sum(1 if self(c.k) in inits else 0 for c in root.c):
+                    return nlevels
 
         # of if for some reason init logs are missing fallback
         first_advance = self.advances[0]  # all should be the same

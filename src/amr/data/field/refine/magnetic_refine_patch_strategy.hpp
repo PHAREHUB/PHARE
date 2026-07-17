@@ -1,8 +1,11 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
+
 #include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/data/grid/grid_tiles.hpp"
+
 
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_geometry.hpp"
@@ -24,6 +27,17 @@ using core::dirZ;
 template<typename ResMan, typename TensorFieldDataT>
 class MagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
 {
+    auto make_fine_field_boxes(auto& fields, auto& fine_box, auto& layout, auto& fineLayout) const
+    {
+        return core::for_N_make_array<N>([&](auto i) {
+            using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
+
+            return phare_box_from<dimension>(
+                FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
+                    fine_box, fields[i].physicalQuantity(), fineLayout));
+        });
+    }
+
 public:
     using Geometry        = TensorFieldDataT::Geometry;
     using gridlayout_type = TensorFieldDataT::gridlayout_type;
@@ -75,58 +89,85 @@ public:
 
         auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
         auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
+        auto const fine_field_boxes
+            = make_fine_field_boxes(fields, fine_box, layout, fineBoxLayout);
 
-        auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
-            using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
+        using Field_t = std::decay_t<decltype(bx)>;
+        if constexpr (core::is_field_tile_set_v<Field_t>)
+        {
+            for (std::size_t ti = 0; ti < bx().size(); ++ti)
+            {
+                auto& bx_tile = bx()[ti];
+                auto& by_tile = by()[ti];
+                auto& bz_tile = bz()[ti];
 
-            return FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
-                fine_box, fields[i].physicalQuantity(), fineBoxLayout);
-        });
+                auto const xoverlap = fine_field_boxes[dirX] * bx_tile.ghost_box();
+                auto const yoverlap = fine_field_boxes[dirY] * by_tile.ghost_box();
+                auto const zoverlap = fine_field_boxes[dirZ] * bz_tile.ghost_box();
 
+                if (!xoverlap && !yoverlap && !zoverlap)
+                    continue;
+
+                auto const& tile_layout          = bx_tile.layout();
+                auto const tile_fine_field_boxes = std::array{
+                    xoverlap.value_or(bx_tile.ghost_box()),
+                    yoverlap.value_or(by_tile.ghost_box()),
+                    zoverlap.value_or(bz_tile.ghost_box()),
+                };
+
+                fix(bx_tile(), by_tile(), bz_tile(), tile_layout, tile_fine_field_boxes);
+            }
+        }
+        else
+        {
+            fix(bx, by, bz, layout, fine_field_boxes);
+        }
+
+        // check_field(*bx);
+        // check_field(*by);
+        // check_field(*bz);
+    }
+
+
+    void fix(auto& bx, auto& by, auto& bz, auto& layout, auto& fine_field_boxes)
+    {
         if constexpr (dimension == 1)
         {
             // if we ever go to c++23 we could use std::views::zip to iterate both on the local and
             // global indices instead of passing the box to do an amr to local inside the function,
             // which is not obvious at call site
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
-            {
+            for (auto const& i : fine_field_boxes[dirX])
                 postprocessBx1d(bx, layout, i);
-            }
         }
 
         else if constexpr (dimension == 2)
         {
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
-            {
+            for (auto const& i : fine_field_boxes[dirX])
                 postprocessBx2d(bx, by, layout, i);
-            }
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
-            {
+
+            for (auto const& i : fine_field_boxes[dirY])
                 postprocessBy2d(bx, by, layout, i);
-            }
         }
 
         else if constexpr (dimension == 3)
         {
             auto meshSize = layout.meshSize();
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirX]))
-            {
+            for (auto const& i : fine_field_boxes[dirX])
                 postprocessBx3d(bx, by, bz, meshSize, layout, i);
-            }
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirY]))
-            {
+
+            for (auto const& i : fine_field_boxes[dirY])
                 postprocessBy3d(bx, by, bz, meshSize, layout, i);
-            }
 
-            for (auto const& i : phare_box_from<dimension>(fine_field_box[dirZ]))
-            {
+
+            for (auto const& i : fine_field_boxes[dirZ])
                 postprocessBz3d(bx, by, bz, meshSize, layout, i);
-            }
         }
     }
+
+
 
 
     static auto isNewFineFace(auto const& amrIdx, auto const dir)

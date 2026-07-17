@@ -27,17 +27,17 @@ struct PHARE_Types
     using core_types = PHARE::core::PHARE_Types<opts>;
 
     // Hybrid
-    using VecField_t   = typename core_types::VecField_t;
-    using Grid_t       = typename core_types::Grid_t;
-    using Electromag_t = typename core_types::Electromag_t;
-    using Ions_t       = typename core_types::Ions_t;
-    using GridLayout_t = typename core_types::GridLayout_t;
-    using Electrons_t  = typename core_types::Electrons_t;
+    using VecField_t   = core_types::VecField_t;
+    using Grid_t       = core_types::Grid_t;
+    using Electromag_t = core_types::Electromag_t;
+    using Ions_t       = core_types::Ions_t;
+    using GridLayout_t = core_types::GridLayout_t;
+    using Electrons_t  = core_types::Electrons_t;
 
     // MHD
-    using Grid_MHD       = typename core_types::Grid_MHD;
-    using VecField_MHD   = typename core_types::VecField_MHD;
-    using GridLayout_MHD = typename core_types::GridLayout_MHD;
+    using Grid_MHD       = core_types::Grid_MHD;
+    using VecField_MHD   = core_types::VecField_MHD;
+    using GridLayout_MHD = core_types::GridLayout_MHD;
     // core deps
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;

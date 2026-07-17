@@ -2,10 +2,14 @@
 #define PHARE_AMR_INCLUDE_HPP
 
 
+#include "phare_core.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 
-#include "phare_core.hpp"
+#include "amr/amr_constants.hpp"
+#include "amr/types/amr_types.hpp"
 #include "amr/wrappers/hierarchy.hpp"
+#include "amr/wrappers/integrator.hpp"
+#include "amr/messengers/messenger_factory.hpp"
 #include "amr/data/particles/refine/splitter.hpp"
 #include "amr/data/particles/refine/particles_data_split.hpp"
 
@@ -27,18 +31,20 @@
 
 
 
-
 namespace PHARE::amr
 {
+
+
 template<SimOpts opts>
 struct PHARE_Types
 {
-    auto static constexpr dimension     = opts.dimension;
-    auto static constexpr interp_order  = opts.interp_order;
-    auto static constexpr nbRefinedPart = opts.nbRefinedPart;
+    auto static constexpr dimension      = opts.dimension;
+    auto static constexpr interp_order   = opts.interp_order;
+    auto static constexpr layout_mode    = opts.layout_mode;
+    auto static constexpr allocator_mode = opts.alloc_mode;
+    auto static constexpr nbRefinedPart  = opts.nbRefinedPart;
 
-    using core_types = PHARE::core::PHARE_Types<opts>;
-
+    using core_types  = core::PHARE_Types<opts>;
     using hierarchy_t = PHARE::amr::Hierarchy;
 
     using Splitter_t = PHARE::amr::Splitter<PHARE::core::DimConst<dimension>,

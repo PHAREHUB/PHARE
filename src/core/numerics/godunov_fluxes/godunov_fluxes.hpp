@@ -176,12 +176,12 @@ public:
                         auto& F_B    = F.B;
                         auto& F_Etot = F.Etot();
 
-                        auto const& Btidx = toPerIndexVector(Bt, {indices...});
+                        auto Btidx = toPerIndexVector(Bt, {indices...});
 
                         if constexpr (Resistivity)
                         {
                             // transverse B field components (probably a riemann operation).
-                            auto const& Jtidx = toPerIndexVector(Jt, {indices...});
+                            auto Jtidx = toPerIndexVector(Jt, {indices...});
                             equations_.template resistive_contributions<direction>(
                                 eta, Btidx, Jtidx, F_B, F_Etot);
                         }

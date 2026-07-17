@@ -21,6 +21,7 @@
 #include "diagnostic/detail/types/mhd.hpp"
 
 
+
 #if !defined(PHARE_DIAG_DOUBLES)
 #error // PHARE_DIAG_DOUBLES not defined
 #endif
@@ -41,9 +42,9 @@ class H5Writer
 
 public:
     using This       = H5Writer<ModelView>;
-    using Model_t    = typename ModelView::Model_t;
-    using GridLayout = typename ModelView::GridLayout;
-    using Attributes = typename ModelView::PatchProperties;
+    using GridLayout = ModelView::GridLayout;
+    using Attributes = ModelView::PatchProperties;
+    using Model_t    = ModelView::Model_t;
 
     static constexpr auto dimension   = GridLayout::dimension;
     static constexpr auto interpOrder = GridLayout::interp_order;

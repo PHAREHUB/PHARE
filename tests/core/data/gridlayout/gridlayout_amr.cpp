@@ -58,8 +58,8 @@ TEST(GridLayout, canTransformALocalBoxIntoAnAMRBox)
     GridLayout<GridLayoutImplYee<1, 1>> layout{{0.1}, {50u}, {{0.}}, Box{Point{50}, Point{99}}};
 
     int nGhosts         = layout.nbrGhosts(QtyCentering::dual);
-    auto localBox       = Box{Point{nGhosts + 5}, Point{nGhosts + 15}};
-    auto expectedAMRBox = Box{Point{55}, Point{65}};
+    auto localBox       = Box<std::uint32_t, 1>{Point{nGhosts + 5}, Point{nGhosts + 15}};
+    auto expectedAMRBox = Box<int, 1>{Point{55}, Point{65}};
 
     EXPECT_EQ(expectedAMRBox, layout.localToAMR(localBox));
 }

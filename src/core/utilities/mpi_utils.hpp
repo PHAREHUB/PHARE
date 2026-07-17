@@ -1,10 +1,13 @@
 #ifndef PHARE_CORE_UTILITIES_MPI_HPP
 #define PHARE_CORE_UTILITIES_MPI_HPP
 
+#if !defined(PHARE_SKIP_MPI_IN_CORE) // sometimes we just don't need it in core
+
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
+
 
 #include <vector>
 #include <string>
@@ -34,7 +37,7 @@ NO_DISCARD int rank();
 
 void barrier();
 
-NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
+NO_DISCARD std::string date_time(std::string const& format = "%Y-%m-%d-%H:%M:%S");
 
 NO_DISCARD std::int64_t unix_timestamp_now();
 
@@ -66,6 +69,11 @@ NO_DISCARD auto mpi_type_for()
         return MPI_CHAR;
 
     // don't return anything = compile failure if tried to use this function
+}
+
+auto mpi_type_for(auto const& val)
+{
+    return mpi_type_for<std::decay_t<decltype(val)>>();
 }
 
 
@@ -111,9 +119,9 @@ auto all_get_from_rank_0(Fn&& fn, Args&&... args)
 }
 
 
-template<typename Data>
-void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
-              std::size_t const sendcount = 1, std::size_t const recvcount = 1)
+template<typename Data, typename RcvBuff>
+void _collect(Data const* const sendbuf, RcvBuff& rcvBuff, std::size_t const sendcount = 1,
+              std::size_t const recvcount = 1)
 {
     auto mpi_type = mpi_type_for<Data>();
 
@@ -132,7 +140,7 @@ void _collect(Data const* const sendbuf, std::vector<Data>& rcvBuff,
 
 template<typename Data, typename SendBuff, typename RcvBuff>
 void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int> const& recvcounts,
-                     std::vector<int> const& displs, int const mpi_size)
+                     std::vector<int> const& displs, [[maybe_unused]] int const mpi_size)
 {
     auto mpi_type = mpi_type_for<Data>();
 
@@ -150,10 +158,11 @@ void _collect_vector(SendBuff const& sendBuff, RcvBuff& rcvBuff, std::vector<int
     );
 }
 
-template<typename Vector>
-NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_size = 0)
+
+template<typename Vector, typename Return_t = std::vector<Vector>>
+NO_DISCARD Return_t collectVector(Vector const& sendBuff, int mpi_size = 0)
 {
-    using Data = typename Vector::value_type;
+    using Data = Vector::value_type;
 
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -164,7 +173,7 @@ NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_siz
     _collect_vector<Data>(sendBuff, rcvBuff, perMPISize, displs, mpi_size);
 
     std::size_t offset = 0;
-    std::vector<Vector> collected;
+    Return_t collected;
     for (int i = 0; i < mpi_size; ++i)
     {
         if (perMPISize[i] == 0) // NO OUT OF BOUNDS ON LAST RANK
@@ -199,13 +208,12 @@ NO_DISCARD auto collectArrays(std::array<T, size> const& arr, int mpi_size)
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    std::size_t maxMPISize = arr.size();
-    std::vector<Data> datas(maxMPISize * mpi_size);
-    _collect(arr.data(), datas, arr.size(), maxMPISize);
+    std::vector<Data> datas(size * mpi_size);
+    _collect(arr.data(), datas, size, size);
 
     std::vector<Array> values(mpi_size);
     for (int i = 0; i < mpi_size; i++)
-        std::memcpy(&values[i], &datas[maxMPISize * i], maxMPISize);
+        std::memcpy(&values[i], &datas[size * i], size * sizeof(T));
 
     return values;
 }
@@ -218,6 +226,20 @@ NO_DISCARD SpanSet<typename Vector::value_type, int> collect_raw(Vector const& d
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
     return collectSpanSet<typename Vector::value_type>(data, mpi_size);
+}
+
+
+template<typename T>
+NO_DISCARD auto collect(Span<T> const& sendBuff, int mpi_size = 0)
+{
+    using V = Span<T>::value_type;
+    return collectVector<Span<T>, std::vector<std::vector<V>>>(sendBuff, mpi_size);
+}
+
+template<typename Span, std::enable_if_t<core::is_span_like_v<Span>, bool> = 0>
+void collect(Span const& in, Span& out)
+{
+    PHARE::core::mpi::_collect(in.data(), out, in.size(), in.size());
 }
 
 
@@ -238,7 +260,10 @@ NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size)
         return values;
     }
 }
+
 } // namespace PHARE::core::mpi
 
+
+#endif // !defined(PHARE_SKIP_MPI_IN_CORE)
 
 #endif /* PHARE_CORE_UTILITIES_MPI_H */

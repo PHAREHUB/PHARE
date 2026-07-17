@@ -2,9 +2,8 @@
 #define PHARE_TESTS_AMR_FIELD_DATA_FIELD_DATA_TEST_PARAM_HPP
 
 
-#include <cmath>
-#include <string>
 #include "core/def/phare_mpi.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 
 #include <SAMRAI/pdat/CellData.h>
 #include <SAMRAI/pdat/CellDataFactory.h>
@@ -26,6 +25,9 @@
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+
+#include <cmath>
+#include <string>
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

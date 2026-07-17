@@ -1,12 +1,12 @@
 #ifndef VECFIELD_INITIALIZER_HPP
 #define VECFIELD_INITIALIZER_HPP
 
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
+#include "core/data/vecfield/vecfield_component.hpp"
 #include "core/data/field/initializers/field_user_initializer.hpp"
 
-#include <array>
+#include <cstddef>
+
 
 namespace PHARE
 {

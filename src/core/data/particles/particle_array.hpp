@@ -1,360 +1,672 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_HPP
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_HPP
 
-
-#include <cstddef>
-#include <utility>
-#include <vector>
-
 #include "core/def.hpp"
-#include "core/logger.hpp"
-#include "core/utilities/span.hpp"
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/cellmap.hpp"
-#include "core/utilities/range/range.hpp"
+#include "core/data/particles/particle_array_def.hpp"
+#include "core/data/particles/particle_array_detail.hpp"
+#include "core/data/particles/particle_array_sorter.hpp"
+#include "core/data/particles/particle_array_selector.hpp"
+#include "core/data/particles/particle_array_partitioner.hpp"
 
-#include "particle.hpp"
+#include "core/utilities/equality.hpp"
+#include "core/utilities/monitoring.hpp"
+#include "core/utilities/span.hpp"
+
+#include <tuple>
+#include <utility>
+#include <sstream>
+#include <type_traits>
 
 namespace PHARE::core
 {
-template<std::size_t dim>
-class ParticleArray
+
+template<auto opts /* defaulted in details header */>
+class ParticleArray : public ResolvedParticleArray_t<opts>
 {
+    using This      = ParticleArray<opts>;
+    using internals = ParticleArrayResolver<opts>;
+
+
+    template<typename... Args>
+    bool consteval static require()
+    {
+        using Tup = std::tuple<Args...>;
+
+        bool constexpr base = std::is_constructible_v<Super, Args&&...>;
+        if constexpr (std::tuple_size_v<Tup> > 0)
+        {
+            bool constexpr isself
+                = std::is_same_v<std::decay_t<std::tuple_element_t<0, Tup>>, This>;
+            // static_assert(!isself);
+            return !isself and base;
+        }
+        else
+            return base;
+    }
+
 public:
-    static constexpr bool is_contiguous = false;
-    static constexpr auto dimension     = dim;
-    using This                          = ParticleArray<dim>;
-    using Particle_t                    = Particle<dim>;
-    using Vector                        = std::vector<Particle_t>;
+    using Super      = ResolvedParticleArray_t<opts>;
+    using value_type = ParticleDefaults<opts.dim>::Particle_t;
+    using view_t     = ParticleArray<opts.with_storage(StorageMode::SPAN)>;
 
-private:
-    using CellMap_t   = CellMap<dim, int>;
-    using IndexRange_ = IndexRange<This>;
+    auto static constexpr options      = opts;
+    auto static constexpr dimension    = opts.dim;
+    auto static constexpr alloc_mode   = opts.alloc_mode;
+    auto static constexpr layout_mode  = opts.layout_mode;
+    auto static constexpr storage_mode = opts.storage_mode;
+    auto static constexpr type_id      = internals::type_id;
+    // auto static constexpr is_mapped    = internals::is_mapped; // torm
+    auto static inline mon = MemoryMonitor{std::string{type_id}};
 
+    std::string static id() { return std::string{type_id}; }
 
-public:
-    using value_type     = Particle_t;
-    using box_t          = Box<int, dim>;
-    using iterator       = typename Vector::iterator;
-    using const_iterator = typename Vector::const_iterator;
-
-
-
-public:
-    ParticleArray(box_t box)
-        : box_{box}
-        , cellMap_{box_}
+    ParticleArray(ParticleArray&& that)
+        : Super{std::forward<Super>(that)}
     {
-        assert(box_.size() > 0);
+        mon.move();
+    }
+    ParticleArray(ParticleArray const& that)
+        : Super{that}
+    {
+        mon.copy();
     }
 
-    ParticleArray(box_t box, std::size_t size)
-        : particles_(size)
-        , box_{box}
-        , cellMap_{box_}
+    ParticleArray& operator=(ParticleArray&& that)
     {
-        assert(box_.size() > 0);
+        mon.move_assign();
+        super() = std::move(that.super());
+        return *this;
+    }
+    ParticleArray& operator=(ParticleArray const& that)
+    {
+        mon.copy_assign();
+        super() = that.super();
+        return *this;
     }
 
-    ParticleArray(ParticleArray const& from)            = default;
-    ParticleArray(ParticleArray&& from)                 = default;
-    ParticleArray& operator=(ParticleArray&& from)      = default;
-    ParticleArray& operator=(ParticleArray const& from) = default;
-
-    NO_DISCARD std::size_t size() const { return particles_.size(); }
-    NO_DISCARD std::size_t capacity() const { return particles_.capacity(); }
-
-    void clear()
+    template<typename... Args>
+    ParticleArray(Args&&... args)
+        requires(require<Args...>())
+    _PHARE_ALL_FN_ : Super{std::forward<Args>(args)...}
     {
-        particles_.clear();
-        cellMap_.clear();
-    }
-    void reserve(std::size_t newSize) { return particles_.reserve(newSize); }
-    void resize(std::size_t newSize) { return particles_.resize(newSize); }
-
-    NO_DISCARD auto const& operator[](std::size_t i) const { return particles_[i]; }
-    NO_DISCARD auto& operator[](std::size_t i) { return particles_[i]; }
-
-    NO_DISCARD bool operator==(ParticleArray<dim> const& that) const
-    {
-        return (this->particles_ == that.particles_);
-    }
-
-    NO_DISCARD auto begin() const { return particles_.begin(); }
-    NO_DISCARD auto begin() { return particles_.begin(); }
-
-    NO_DISCARD auto end() const { return particles_.end(); }
-    NO_DISCARD auto end() { return particles_.end(); }
-
-    template<class InputIterator>
-    void insert(iterator position, InputIterator first, InputIterator last)
-    {
-        particles_.insert(position, first, last);
-    }
-
-    NO_DISCARD auto back() { return particles_.back(); }
-    NO_DISCARD auto front() { return particles_.front(); }
-
-
-    auto erase(IndexRange_ range) { cellMap_.erase(range); }
-
-    iterator erase(iterator first, iterator last)
-    {
-        // should we erase particles indexes associated with these iterators from the cellmap?
-        // probably it does not matter if not. The reason is that
-        // particles erased from the particlearray are so because they left
-        // the patch cells to an outside cell.
-        // But in principle that cell will never be accessed because it is outside the patch.
-        // The only thing "bad" if these indexes are not deleted is that the
-        // size of the cellmap becomes unequal to the size of the particleArray.
-        // but  ¯\_(ツ)_/¯
-        return particles_.erase(first, last);
-    }
-
-
-    Particle_t& emplace_back()
-    {
-        auto& part = particles_.emplace_back();
-        cellMap_.add(particles_, particles_.size() - 1);
-        return part;
+        mon.create();
     }
 
 
 
-    Particle_t& emplace_back(Particle_t&& p)
+    auto view() { return view_t{*this}; }
+    auto view() const { return view_t{*this}; }
+
+    auto view(std::size_t i) // to take only i particles and ignore the rest
     {
-        auto& part = particles_.emplace_back(std::forward<Particle_t>(p));
-        cellMap_.add(particles_, particles_.size() - 1);
-        return part;
+        view_t v{*this};
+        v.super().resize(i);
+        return v;
     }
 
-    void push_back(Particle_t const& p)
+    auto view(std::size_t const start, std::size_t const size)
     {
-        particles_.push_back(p);
-        cellMap_.add(particles_, particles_.size() - 1);
+        return view_t{*this, start, size};
     }
 
-    void push_back(Particle_t&& p)
-    {
-        particles_.push_back(std::forward<Particle_t>(p));
-        cellMap_.add(particles_, particles_.size() - 1);
-    }
+    auto operator*() { return view(); }
+    auto operator*() const { return view(); }
 
+    Super& super() _PHARE_ALL_FN_ { return *this; }
+    Super const& super() const { return *this; }
 
-
-    void map_particles() const { cellMap_.add(particles_); }
-    void empty_map() { cellMap_.empty(); }
-
-
-    NO_DISCARD auto nbr_particles_in(box_t const& box) const { return cellMap_.size(box); }
-
-    using cell_t = std::array<int, dim>;
-    auto nbr_particles_in(cell_t const& cell) const { return cellMap_.size(cell); }
-
-    void export_particles(box_t const& box, ParticleArray<dim>& dest) const
-    {
-        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles");
-        cellMap_.export_to(box, particles_, dest);
-    }
-
-    template<typename Fn>
-    void export_particles(box_t const& box, ParticleArray<dim>& dest, Fn&& fn) const
-    {
-        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (Fn)");
-        cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
-    }
-
-    template<typename Fn>
-    void export_particles(box_t const& box, std::vector<Particle_t>& dest, Fn&& fn) const
-    {
-        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (box, vector, Fn)");
-        cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
-    }
-
-    template<typename Predicate>
-    void export_particles(ParticleArray& dest, Predicate&& pred) const
-    {
-        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (Fn,vector)");
-        cellMap_.export_if(particles_.data(), dest, std::forward<Predicate>(pred));
-    }
-
-
-    template<typename Cell>
-    void change_icell(Cell const& newCell, std::size_t particleIndex)
-    {
-        auto oldCell                    = particles_[particleIndex].iCell;
-        particles_[particleIndex].iCell = newCell;
-        auto const box_is_valid         = box_.size() > 1;
-        if (box_is_valid)
-            cellMap_.update(particles_, particleIndex, oldCell);
-    }
-
-
-    template<typename Predicate>
-    auto partition(Predicate&& pred)
-    {
-        return cellMap_.partition(makeIndexRange(*this), std::forward<Predicate>(pred));
-    }
-
-    template<typename Range_t, typename Predicate>
-    auto partition(Range_t&& range, Predicate&& pred)
-    {
-        auto const ret = cellMap_.partition(range, std::forward<Predicate>(pred));
-        assert(ret.size() <= range.size());
-        return ret;
-    }
-
-    template<typename CellIndex>
-    void print(CellIndex const& cell) const
-    {
-        cellMap_.print(cell);
-    }
-
-
-    NO_DISCARD bool is_consistent() const
-    {
-        if (particles_.size() != cellMap_.size())
-            return false;
-
-        for (std::size_t pidx = 0; pidx < particles_.size(); ++pidx)
-            if (!cellMap_(particles_[pidx].iCell).is_indexed(pidx))
-                return false;
-
-        return true;
-    }
-
-    void sortMapping() const { cellMap_.sort(); }
-
-    NO_DISCARD auto& vector() { return particles_; }
-    NO_DISCARD auto& vector() const { return particles_; }
-
-    auto& box() const { return box_; }
-
-
-private:
-    Vector particles_;
-    box_t box_;
-    mutable CellMap_t cellMap_;
+    template<auto _opts>
+    friend std::ostream& operator<<(std::ostream& out, ParticleArray<_opts> const&);
 };
 
-} // namespace PHARE::core
+template<std::size_t dim>
+using AoSParticleArray = ParticleArray<ParticleArrayOptions{dim, LayoutMode::AoS}>;
 
 
-namespace PHARE
+template<std::size_t dim>
+using AoSMappedParticleArray = ParticleArray<ParticleArrayOptions{dim, LayoutMode::AoSMapped}>;
+
+template<std::size_t dim>
+using SoAParticleArray = ParticleArray<ParticleArrayOptions{dim, LayoutMode::SoA}>;
+
+
+template<auto opts>
+std::ostream& operator<<(std::ostream& out, ParticleArray<opts> const& arr)
 {
-namespace core
-{
-
-
-    template<std::size_t dim, bool OwnedState = true>
-    struct ContiguousParticles
+    if constexpr (ParticleArray<opts>::layout_mode == LayoutMode::SoAPC)
     {
-        static constexpr bool is_contiguous    = true;
-        static constexpr std::size_t dimension = dim;
-        using ContiguousParticles_             = ContiguousParticles<dim, OwnedState>;
+    }
+    else
+        for (auto const& p : arr)
+            out << p.copy();
+    return out;
+}
 
-        template<typename T>
-        using container_t = std::conditional_t<OwnedState, std::vector<T>, Span<T>>;
 
-        template<bool OS = OwnedState, typename = std::enable_if_t<OS>>
-        ContiguousParticles(std::size_t s)
-            : iCell(s * dim)
-            , delta(s * dim)
-            , weight(s)
-            , charge(s)
-            , v(s * 3)
+
+
+template<auto opts>
+void empty(ParticleArray<opts>& array)
+{
+    array.clear();
+}
+
+
+template<auto opts>
+void swap(ParticleArray<opts>& array1, ParticleArray<opts>& array2)
+{
+    array1.swap(array2);
+}
+
+template<typename P0, typename P1>
+EqualityReport particle_compare(P0 const& p0, P1 const& p1, std::size_t const i = 0,
+                                double const atol = 1e-15)
+{
+    std::string idx = std::to_string(i);
+    if (p0.iCell() != p1.iCell())
+        return EqualityReport{false, "icell mismatch at index: " + idx, i};
+
+    if (!float_equals(p0.v(), p1.v(), atol))
+        return EqualityReport{false, "v mismatch at index: " + idx, i};
+    if (!float_equals(p0.delta(), p1.delta(), atol))
+        return EqualityReport{false, "delta mismatch at index: " + idx, i};
+
+
+    return EqualityReport{true};
+}
+
+
+template<typename P0, typename P1>
+EqualityReport particles_equals(P0 const& ref, P1 const& cmp, double const atol = 1e-15)
+{
+    if (ref.size() != cmp.size())
+        return EqualityReport{false, "different sizes: " + std::to_string(ref.size()) + " vs "
+                                         + std::to_string(cmp.size())};
+
+    auto rit      = ref.begin();
+    auto cit      = cmp.begin();
+    std::size_t i = 0;
+
+    for (; rit != ref.end(); ++rit, ++cit, ++i)
+        if (auto const eq = particle_compare(*rit, *cit, i, atol); !eq)
+            return eq;
+
+    return EqualityReport{true};
+}
+
+template<auto o>
+EqualityReport operator==(ParticleArray<o> const& p0, ParticleArray<o> const& p1)
+{
+    auto report = particles_equals(p0, p1);
+    if (!report)
+    {
+        PHARE_LOG_LINE_STR(p0[report.idx].copy());
+        PHARE_LOG_LINE_STR(p1[report.idx].copy());
+    }
+    return report;
+}
+
+template<auto o>
+EqualityReport operator==(ParticleArray<o> const& p0, std::vector<Particle<o>> const& p1)
+{
+    return particles_equals(p0, p1);
+}
+
+
+
+template<typename ParticleArray_t>
+auto constexpr base_layout_type()
+{
+    using enum LayoutMode;
+    auto constexpr layout_mode = ParticleArray_t::layout_mode;
+    if constexpr (any_in(layout_mode, AoS, AoSMapped, AoSPC, AoSTS, AoSCMTS, AoSPCTS))
+        return AoS;
+    return SoA;
+}
+
+
+
+template<auto o>
+void per_particle(ParticleArray<o> const& particles, auto const fn)
+{
+    using enum LayoutMode;
+    if constexpr (is_tiled(o.layout_mode))
+        for (auto& tile : particles())
+            for (auto& p : tile())
+                fn(p);
+    else
+        for (auto& p : particles)
+            fn(p);
+}
+
+template<auto o>
+void check_particles(ParticleArray<o> const& particles, [[maybe_unused]] bool const print = false)
+{
+    using enum LayoutMode;
+
+    PHARE_DEBUG_DO({
+        if constexpr (is_tiled(o.layout_mode))
+            particles.check();
+    })
+}
+
+
+template<auto o>
+void check_particles_views(ParticleArray<o>& particles, [[maybe_unused]] bool const print = false)
+{
+    using enum LayoutMode;
+
+    PHARE_DEBUG_DO({ check_particles(*particles); })
+}
+
+template<auto o>
+void particle_array_domain_is_valid(ParticleArray<o> const& particles, auto const& domain_box)
+{
+    std::size_t in_domain_box = 0, not_in_domain_box = 0;
+
+    if constexpr (o.layout_mode == LayoutMode::AoSPCTS)
+    {
+        for (auto const& tile : particles())
         {
-        }
+            auto const& pc = tile();
 
-        template<typename Container_int, typename Container_double>
-        ContiguousParticles(Container_int&& _iCell, Container_double&& _delta,
-                            Container_double&& _weight, Container_double&& _charge,
-                            Container_double&& _v)
-            : iCell{_iCell}
-            , delta{_delta}
-            , weight{_weight}
-            , charge{_charge}
-            , v{_v}
-        {
-        }
-
-        NO_DISCARD std::size_t size() const { return weight.size(); }
-
-        template<std::size_t S, typename T>
-        NO_DISCARD static std::array<T, S>* _array_cast(T const* array)
-        {
-            return reinterpret_cast<std::array<T, S>*>(const_cast<T*>(array));
-        }
-
-        template<typename Return>
-        NO_DISCARD Return _to(std::size_t i)
-        {
-            return {
-                *const_cast<double*>(weight.data() + i),     //
-                *const_cast<double*>(charge.data() + i),     //
-                *_array_cast<dim>(iCell.data() + (dim * i)), //
-                *_array_cast<dim>(delta.data() + (dim * i)), //
-                *_array_cast<3>(v.data() + (3 * i)),
-            };
-        }
-
-        NO_DISCARD auto copy(std::size_t i) { return _to<Particle<dim>>(i); }
-        NO_DISCARD auto view(std::size_t i) { return _to<ParticleView<dim>>(i); }
-
-        NO_DISCARD auto operator[](std::size_t i) const { return view(i); }
-        NO_DISCARD auto operator[](std::size_t i) { return view(i); }
-
-        struct iterator
-        {
-            iterator(ContiguousParticles_* particles)
+            // every particle bucketed anywhere in this tile's ghost box (domain +
+            // halo) must actually sit inside the tile itself, and must be filed
+            // under the same cell its own iCell() maps to
+            for (auto const& bix : pc.ghost_box())
             {
-                for (std::size_t i = 0; i < particles->size(); i++)
-                    views.emplace_back((*particles)[i]);
+                auto const local           = pc.local_cell(bix);
+                auto const& cell_particles = pc(local);
+                for (std::size_t i = 0; i < cell_particles.size(); ++i)
+                {
+                    auto const& p = cell_particles[i];
+                    if (not isIn(p, tile))
+                    {
+                        std::ostringstream oss;
+                        oss << "particle_array_domain is not valid: particle outside tile"
+                            << " storage_mode=" << static_cast<int>(o.storage_mode)
+                            << " tile_box=" << tile << " bix=" << Point{bix}
+                            << " local=" << Point{local} << " iCell=" << Point{p.iCell()};
+                        throw std::runtime_error(oss.str());
+                    }
+                    if (not array_equals(pc.local_cell(p.iCell()), local))
+                    {
+                        std::ostringstream oss;
+                        oss << "particle_array_domain is not valid: particle iCell does not "
+                               "match its per-cell bucket"
+                            << " storage_mode=" << static_cast<int>(o.storage_mode)
+                            << " tile_box=" << tile << " bix=" << Point{bix}
+                            << " local=" << Point{local} << " iCell=" << Point{p.iCell()};
+                        throw std::runtime_error(oss.str());
+                    }
+                }
             }
-
-            iterator& operator++()
-            {
-                ++curr_pos;
-                return *this;
-            }
-
-            NO_DISCARD bool operator!=(iterator const& other) const
-            {
-                return curr_pos != views.size();
-            }
-            NO_DISCARD auto& operator*() { return views[curr_pos]; }
-            NO_DISCARD auto& operator*() const { return views[curr_pos]; }
-
-            std::size_t curr_pos = 0;
-            std::vector<ParticleView<dim>> views;
-        };
-
-        NO_DISCARD auto as_tuple()
-        {
-            return std::forward_as_tuple(weight, charge, iCell, delta, v);
         }
-        NO_DISCARD auto as_tuple() const
+    }
+    else if constexpr (is_tiled(o.layout_mode))
+    {
+        for (auto const& tile : particles())
+            for (auto const& p : tile())
+                if (not isIn(p, tile))
+                    throw std::runtime_error("particle_array_domain is not valid");
+    }
+
+    per_particle(particles, [&](auto const& p) {
+        if (isIn(p, domain_box))
+            ++in_domain_box;
+        else
+            ++not_in_domain_box;
+    });
+
+    if (not(not_in_domain_box == 0 and in_domain_box == particles.size()))
+        throw std::runtime_error("Invalid particles");
+
+    // recurse once into the SPAN view so both storage sides are checked
+    if constexpr (o.storage_mode == StorageMode::VECTOR)
+        particle_array_domain_is_valid(*particles, domain_box);
+}
+
+template<auto o>
+void particle_array_ghost_is_valid(ParticleArray<o> const& particles, auto const& domain_box,
+                                   auto const& ghost_box)
+{
+    std::size_t in_ghost_layer = 0, not_in_ghost_layer = 0, outside_gb = 0;
+
+    per_particle(particles, [&](auto const& p) {
+        auto const ingb = isIn(p, ghost_box);
+        auto const indb = isIn(p, domain_box);
+
+        if (!ingb)
+            ++outside_gb;
+        else if (ingb and not indb)
+            ++in_ghost_layer;
+        else
+            ++not_in_ghost_layer;
+    });
+
+    if constexpr (o.layout_mode == LayoutMode::AoSPCTS)
+    {
+        for (auto const& tile : particles())
         {
-            return std::forward_as_tuple(weight, charge, iCell, delta, v);
+            auto const& pc = tile();
+
+            // every particle bucketed anywhere in this tile's ghost box (domain +
+            // halo) must actually sit in the halo, i.e. outside the patch's own
+            // domain box, and must be filed under the same cell its own iCell() maps to
+            for (auto const& bix : pc.ghost_box())
+            {
+                auto const local           = pc.local_cell(bix);
+                auto const& cell_particles = pc(local);
+                for (std::size_t i = 0; i < cell_particles.size(); ++i)
+                {
+                    auto const& p = cell_particles[i];
+                    if (isIn(p, domain_box))
+                    {
+                        std::ostringstream oss;
+                        oss << "particle_array_ghost is not valid: particle inside domain box"
+                            << " storage_mode=" << static_cast<int>(o.storage_mode)
+                            << " tile_box=" << tile << " bix=" << Point{bix}
+                            << " local=" << Point{local} << " iCell=" << Point{p.iCell()};
+                        throw std::runtime_error(oss.str());
+                    }
+                    if (not array_equals(pc.local_cell(p.iCell()), local))
+                    {
+                        std::ostringstream oss;
+                        oss << "particle_array_ghost is not valid: particle iCell does not "
+                               "match its per-cell bucket"
+                            << " storage_mode=" << static_cast<int>(o.storage_mode)
+                            << " tile_box=" << tile << " bix=" << Point{bix}
+                            << " local=" << Point{local} << " iCell=" << Point{p.iCell()};
+                        throw std::runtime_error(oss.str());
+                    }
+                }
+            }
+        }
+    }
+    else if constexpr (is_tiled(o.layout_mode))
+    {
+        for (std::size_t tidx = 0; tidx < particles().size(); ++tidx)
+        {
+            auto const& tile = particles()[tidx];
+            for (std::size_t i = 0; i < tile().size(); ++i)
+                if (isIn(tile()[i], domain_box))
+                    throw std::runtime_error("particle_array_ghost is not valid");
+        }
+    }
+
+    if (not(outside_gb == 0 and not_in_ghost_layer == 0 and in_ghost_layer == particles.size()))
+        throw std::runtime_error("Invalid particles");
+}
+
+
+// resolves to the final, most nested ParticleArray-like type for a given layout:
+// itself if flat, a tile's particles if tiled, a cell's particles if per-cell
+// (recursing once more into the tile's own per-cell particles for AoSPCTS).
+template<auto o>
+auto constexpr chunk_type_helper()
+{
+    using enum LayoutMode;
+    if constexpr (any_in(o.layout_mode, AoSPC, SoAPC))
+        return std::type_identity<typename ParticleArray<o>::per_cell_particles>{};
+    else if constexpr (o.layout_mode == AoSPCTS)
+    {
+        using PerTile = typename ParticleArray<o>::per_tile_particles;
+        using CellIt  = decltype(std::declval<PerTile&>().local_box().begin());
+        return std::type_identity<std::remove_reference_t<decltype(std::declval<PerTile&>()(
+            *std::declval<CellIt&>()))>>{};
+    }
+    else if constexpr (any_in(o.layout_mode, AoSTS, AoSCMTS, SoATS, SoAVXTS))
+        return std::type_identity<typename ParticleArray<o>::per_tile_particles>{};
+    else
+        return std::type_identity<ParticleArray<o>>{};
+}
+
+template<auto o>
+using ParticleArrayChunk_t = typename decltype(chunk_type_helper<o>())::type;
+
+
+template<typename ParticleArray_t>
+auto constexpr final_nested_type_helper()
+{
+    return chunk_type_helper<ParticleArray_t::options>();
+}
+
+template<typename ParticleArray_t>
+using MostNestedParticleArray_t =
+    typename decltype(final_nested_type_helper<ParticleArray_t>())::type;
+
+
+// a view over a contiguous run of tiles that dereferences straight through to
+// each tile's particles, so it can be range-for'd like a Span<Chunk> without
+// copying anything out of the tiles themselves
+template<typename Tile_t, typename Chunk_t>
+class TileChunkSpan
+{
+public:
+    class iterator
+    {
+    public:
+        iterator(Tile_t* ptr, Tile_t* end)
+            : ptr_{ptr}
+            , end_{end}
+        {
         }
 
-        NO_DISCARD auto begin() { return iterator(this); }
-        NO_DISCARD auto cbegin() const { return iterator(this); }
+        Chunk_t& operator*() const
+        {
+            assert(ptr_ != end_);
+            return (*ptr_)();
+        }
 
-        NO_DISCARD auto end() { return iterator(this); }
-        NO_DISCARD auto cend() const { return iterator(this); }
+        iterator& operator++()
+        {
+            assert(ptr_ != end_); // don't walk the tile pointer past its own array
+            ++ptr_;
+            return *this;
+        }
 
-        container_t<int> iCell;
-        container_t<double> delta;
-        container_t<double> weight, charge, v;
+        bool operator!=(iterator const& that) const { return ptr_ != that.ptr_; }
+
+    private:
+        Tile_t* ptr_;
+        Tile_t* end_;
     };
 
+    TileChunkSpan(Tile_t* tiles, std::size_t size)
+        : tiles_{tiles}
+        , size_{size}
+    {
+    }
 
-    template<std::size_t dim>
-    using ContiguousParticlesView = ContiguousParticles<dim, /*OwnedState=*/false>;
+    auto begin() const { return iterator{tiles_, tiles_ + size_}; }
+    auto end() const { return iterator{tiles_ + size_, tiles_ + size_}; }
 
-} // namespace core
-} // namespace PHARE
+private:
+    Tile_t* tiles_;
+    std::size_t size_;
+};
+
+
+// like TileChunkSpan, but keeps the tile itself alongside its particles, for
+// callers that also need tile metadata (box, layout):
+//   for (auto [tile, particles] : enumerate_tiles(ps)) { ... }
+template<typename Tile_t, typename Chunk_t>
+class TileSpan
+{
+public:
+    class iterator
+    {
+    public:
+        iterator(Tile_t* ptr, Tile_t* end)
+            : ptr_{ptr}
+            , end_{end}
+        {
+        }
+
+        std::pair<Tile_t&, Chunk_t&> operator*() const
+        {
+            assert(ptr_ != end_);
+            return {*ptr_, (*ptr_)()};
+        }
+
+        iterator& operator++()
+        {
+            assert(ptr_ != end_);
+            ++ptr_;
+            return *this;
+        }
+
+        bool operator!=(iterator const& that) const { return ptr_ != that.ptr_; }
+
+    private:
+        Tile_t* ptr_;
+        Tile_t* end_;
+    };
+
+    TileSpan(Tile_t* tiles, std::size_t size)
+        : tiles_{tiles}
+        , size_{size}
+    {
+    }
+
+    auto begin() const { return iterator{tiles_, tiles_ + size_}; }
+    auto end() const { return iterator{tiles_ + size_, tiles_ + size_}; }
+
+private:
+    Tile_t* tiles_;
+    std::size_t size_;
+};
+
+
+// enumerates at the tile level (one level of unwrapping only, unlike
+// enumerate() which flattens all the way to leaf chunks) so callers that need
+// tile metadata (box, layout) alongside its particles can get both:
+//   for (auto [tile, particles] : enumerate_tiles(ps)) { tile.layout(); ... }
+template<auto o>
+auto enumerate_tiles(ParticleArray<o>& particles)
+{
+    using enum LayoutMode;
+    static_assert(any_in(o.layout_mode, AoSTS, AoSCMTS, SoATS, SoAVXTS, AoSPCTS),
+                  "enumerate_tiles() only makes sense for tiled layouts");
+
+    using Chunk  = typename ParticleArray<o>::per_tile_particles;
+    using Tile_t = std::remove_pointer_t<decltype(particles().data())>;
+    return TileSpan<Tile_t, Chunk>{particles().data(), particles().size()};
+}
+
+
+// for AoSPCTS: a tile's own particles are themselves per-cell, so this
+// iterates a TileChunkSpan of tiles (yielding each tile's per-cell container)
+// and, for each one, walks that container's own cells (domain + halo) --
+// flattening both levels of nesting down to the leaf particle chunks, with no
+// allocation.
+template<typename Tile_t, typename PerTileContainer_t, typename Chunk_t>
+class PerCellTileChunkSpan
+{
+    using Outer   = TileChunkSpan<Tile_t, PerTileContainer_t>;
+    using OuterIt = typename Outer::iterator;
+    using CellBox = decltype(std::declval<PerTileContainer_t&>().local_box());
+    using CellIt  = decltype(std::declval<CellBox&>().begin());
+
+public:
+    class iterator
+    {
+    public:
+        iterator(OuterIt outer_it, OuterIt outer_end)
+            : outer_it_{outer_it}
+            , outer_end_{outer_end}
+        {
+            enter_tile();
+        }
+
+        Chunk_t& operator*() const
+        {
+            assert(outer_it_ != outer_end_);
+            return (*outer_it_)(*cell_it_);
+        }
+
+        iterator& operator++()
+        {
+            assert(outer_it_ != outer_end_);
+            ++cell_it_;
+            if (*cell_it_ == *cell_end_)
+            {
+                ++outer_it_;
+                enter_tile();
+            }
+            return *this;
+        }
+
+        bool operator!=(iterator const& that) const { return outer_it_ != that.outer_it_; }
+
+    private:
+        // advance outer_it_ to the next tile with at least one cell (full local box:
+        // domain + halo, so ghost-content arrays are enumerated too, not just domain
+        // ones), positioning cell_it_/cell_end_ on it; stops at outer_end_ if none left
+        void enter_tile()
+        {
+            for (; outer_it_ != outer_end_; ++outer_it_)
+            {
+                auto& pc  = *outer_it_;
+                cell_box_ = pc.local_box();
+                cell_it_  = cell_box_.begin();
+                cell_end_ = cell_box_.end();
+                if (cell_it_ != cell_end_)
+                    return;
+            }
+        }
+
+        OuterIt outer_it_, outer_end_;
+        CellBox cell_box_{};
+        // box_iterator has no default ctor; seed both from cell_box_ (declared just
+        // above) -- enter_tile() overwrites all three with real values regardless
+        CellIt cell_it_{cell_box_.begin()};
+        CellIt cell_end_{cell_box_.end()};
+    };
+
+    PerCellTileChunkSpan(Tile_t* tiles, std::size_t size)
+        : outer_{tiles, size}
+    {
+    }
+
+    auto begin() const { return iterator{outer_.begin(), outer_.end()}; }
+    auto end() const { return iterator{outer_.end(), outer_.end()}; }
+
+private:
+    Outer outer_;
+};
+
+
+// enumerates the leaf-level particle chunks of a (possibly tiled/per-cell)
+// ParticleArray, so callers don't need to know if the array is tiled to loop
+// over its particles. Never allocates: it's a thin view over storage the
+// particle array already owns (the tile/per-cell array itself, or the whole
+// array when it's already flat).
+template<auto o>
+auto enumerate(ParticleArray<o>& particles)
+{
+    using enum LayoutMode;
+    using Chunk = ParticleArrayChunk_t<o>;
+
+    if constexpr (any_in(o.layout_mode, AoSPC, SoAPC))
+        return Span<Chunk>{particles.data(), particles.size()};
+    else if constexpr (o.layout_mode == AoSPCTS)
+    {
+        using Tile_t  = std::remove_pointer_t<decltype(particles().data())>;
+        using PerTile = typename ParticleArray<o>::per_tile_particles;
+        return PerCellTileChunkSpan<Tile_t, PerTile, Chunk>{particles().data(), particles().size()};
+    }
+    else if constexpr (any_in(o.layout_mode, AoSTS, AoSCMTS, SoATS, SoAVXTS))
+    {
+        using Tile_t = std::remove_pointer_t<decltype(particles().data())>;
+        return TileChunkSpan<Tile_t, Chunk>{particles().data(), particles().size()};
+    }
+    else // flat: AoS, AoSMapped, SoA, SoAVX
+        return Span<Chunk>{&particles, 1};
+}
+
+
+} // namespace PHARE::core
 
 
 #endif

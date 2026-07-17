@@ -4,11 +4,13 @@
 """
 
 import unittest
+import itertools
 
 import matplotlib
 from ddt import data, ddt, unpack
 from pyphare.core.box import Box3D
 from pyphare.core import phare_utilities as phut
+from pyphare.cpp import supported_particle_layouts
 
 from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
@@ -27,8 +29,11 @@ def permute_hybrid(boxes={}):
             interp_order=interp_order,
             refinement_boxes=boxes,
             nbr_part_per_cell=ppc,
+            sim_setup_kwargs=dict(layout=layout),
         )
-        for interp_order in interp_orders
+        for interp_order, layout in itertools.product(
+            interp_orders, supported_particle_layouts()
+        )
     ]
 
 

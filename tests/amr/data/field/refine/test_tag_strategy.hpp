@@ -3,16 +3,14 @@
 
 #include "core/def/phare_mpi.hpp"
 
-#include <SAMRAI/hier/RefineOperator.h>
-#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
-#include <SAMRAI/xfer/RefineAlgorithm.h>
-
-#include "amr/data/field/field_data.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/constants.hpp"
+#include "amr/data/field/field_data.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
+#include <SAMRAI/hier/RefineOperator.h>
+#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/mesh/StandardTagAndInitStrategy.h>
 #include "SAMRAI/xfer/BoxGeometryVariableFillPattern.h"
 
 #include <map>
@@ -165,6 +163,15 @@ public:
 
         if (levelNumber == 0)
         {
+            auto const _set = [](auto& field, auto const& layout, auto const& dataId) {
+                for (auto const amr_idx : layout.AMRGhostBoxFor(field))
+                {
+                    auto position      = layout.fieldNodeCoordinates(field, amr_idx);
+                    auto const lcl_idx = layout.AMRToLocal(amr_idx);
+                    field(lcl_idx)     = affineFill(position, dataId);
+                }
+            };
+
             auto level = hierarchy->getPatchLevel(levelNumber);
             for (auto& patch : *level)
             {
@@ -174,15 +181,14 @@ public:
                     auto fieldData     = std::dynamic_pointer_cast<FieldData<GridLayoutT, FieldT>>(
                         patch->getPatchData(dataId));
 
-                    auto& layout = fieldData->gridLayout;
-                    auto& field  = fieldData->field;
+                    auto& field = fieldData->field;
 
-                    for (auto const amr_idx : layout.AMRGhostBoxFor(field))
-                    {
-                        auto position      = layout.fieldNodeCoordinates(field, amr_idx);
-                        auto const lcl_idx = layout.AMRToLocal(amr_idx);
-                        field(lcl_idx)     = affineFill(position, dataId);
-                    }
+                    if constexpr (PHARE::core::is_field_tile_set_v<FieldT>)
+                        for (auto& tile : field())
+                            _set(tile(), tile.layout(), dataId);
+
+                    else
+                        _set(field, fieldData->gridLayout, dataId);
                 }
             }
         }

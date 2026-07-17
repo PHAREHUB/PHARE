@@ -2,7 +2,7 @@
 #define MOMENTS_HPP
 
 
-#include "core/numerics/interpolator/interpolator.hpp"
+#include <type_traits>
 
 #include <stdexcept>
 
@@ -32,10 +32,8 @@ namespace core
     };
 
 
-    template<typename Ions, typename GridLayout, typename DepositTag>
-    void depositParticles(Ions& ions, GridLayout& layout,
-                          Interpolator<GridLayout::dimension, GridLayout::interp_order> interpolate,
-                          DepositTag)
+    template<typename Ions, typename GridLayout, typename Interpolater_t, typename DepositTag>
+    void depositParticles(Ions& ions, GridLayout& layout, Interpolater_t interpolate, DepositTag)
     {
         for (auto& pop : ions)
         {
@@ -44,15 +42,12 @@ namespace core
             auto& flux            = pop.flux();
 
             if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
-            {
-                auto& partArray = pop.domainParticles();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
-            }
+                interpolate(pop.domainParticles(), particleDensity, chargeDensity, flux, layout);
+
             else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
-            {
-                auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
-            }
+                interpolate( //
+                    pop.levelGhostParticlesOld(), particleDensity, chargeDensity, flux, layout);
+
             else
                 throw std::runtime_error("unknown deposit tag");
         }

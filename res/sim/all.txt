@@ -1,61 +1,61 @@
-1,1,2
-1,1,3
-1,2,2
-1,2,3
-1,2,4
-1,3,2
-1,3,3
-1,3,4
-1,3,5
-2,1,4
-2,1,5
-2,1,8
-2,1,9
-2,2,4
-2,2,5
-2,2,8
-2,2,9
-2,2,16
-2,3,4
-2,3,5
-2,3,8
-2,3,9
-2,3,25
-3,1,6
-3,1,12
-3,1,27
-3,2,6
-3,2,12
-3,2,27
-3,3,6
-3,3,12
-3,3,27
+1,1,2,AoSMapped,CPU
+1,1,3,AoSMapped,CPU
+1,2,2,AoSMapped,CPU
+1,2,3,AoSMapped,CPU
+1,2,4,AoSMapped,CPU
+1,3,2,AoSMapped,CPU
+1,3,3,AoSMapped,CPU
+1,3,4,AoSMapped,CPU
+1,3,5,AoSMapped,CPU
+2,1,4,AoSMapped,CPU
+2,1,5,AoSMapped,CPU
+2,1,8,AoSMapped,CPU
+2,1,9,AoSMapped,CPU
+2,2,4,AoSMapped,CPU
+2,2,5,AoSMapped,CPU
+2,2,8,AoSMapped,CPU
+2,2,9,AoSMapped,CPU
+2,2,16,AoSMapped,CPU
+2,3,4,AoSMapped,CPU
+2,3,5,AoSMapped,CPU
+2,3,8,AoSMapped,CPU
+2,3,9,AoSMapped,CPU
+2,3,25,AoSMapped,CPU
+3,1,6,AoSMapped,CPU
+3,1,12,AoSMapped,CPU
+3,1,27,AoSMapped,CPU
+3,2,6,AoSMapped,CPU
+3,2,12,AoSMapped,CPU
+3,2,27,AoSMapped,CPU
+3,3,6,AoSMapped,CPU
+3,3,12,AoSMapped,CPU
+3,3,27,AoSMapped,CPU
 # MHD permutations: dim,interp,refined,timestepper,reconstruction,limiter,riemann,hall,res,hyper_res
 # --- one line per single-run functional test ---
 # mhd_harris (higher-order, kept)
-2,1,4,TVDRK3,WENOZ,None,Rusanov,true,false,true
+2,1,4,AoSMapped,CPU,TVDRK3,WENOZ,None,Rusanov,true,false,true
 # mhd_harris_3d (higher-order, kept)
-3,1,6,TVDRK3,WENOZ,None,Rusanov,true,true,true
+3,1,6,AoSMapped,CPU,TVDRK3,WENOZ,None,Rusanov,true,true,true
 # mhd_alfven2d, mhd_rotor, mhd_orszagtang (ideal)
-2,1,4,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
+2,1,4,AoSMapped,CPU,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
 # mhd_shock
-1,1,2,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
+1,1,2,AoSMapped,CPU,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
 # mhd_dispersion (whistler1d, Hall)
-1,1,2,TVDRK2,Linear,VanLeer,Rusanov,true,false,false
+1,1,2,AoSMapped,CPU,TVDRK2,Linear,VanLeer,Rusanov,true,false,false
 # mhd_orszagtang_3d
-3,1,6,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
+3,1,6,AoSMapped,CPU,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
 # --- mhd_convergence (1D): all reconstructions @ SSPRK4_5 ---
-1,1,2,SSPRK4_5,Constant,None,Rusanov,false,false,false
-1,1,2,SSPRK4_5,Linear,VanLeer,Rusanov,false,false,false
-1,1,2,SSPRK4_5,WENO3,None,Rusanov,false,false,false
-1,1,2,SSPRK4_5,WENOZ,None,Rusanov,false,false,false
-1,1,2,SSPRK4_5,MP5,None,Rusanov,false,false,false
+1,1,2,AoSMapped,CPU,SSPRK4_5,Constant,None,Rusanov,false,false,false
+1,1,2,AoSMapped,CPU,SSPRK4_5,Linear,VanLeer,Rusanov,false,false,false
+1,1,2,AoSMapped,CPU,SSPRK4_5,WENO3,None,Rusanov,false,false,false
+1,1,2,AoSMapped,CPU,SSPRK4_5,WENOZ,None,Rusanov,false,false,false
+1,1,2,AoSMapped,CPU,SSPRK4_5,MP5,None,Rusanov,false,false,false
 # --- mhd_multidimensional_convergence (3D): order-2 reconstructions @ SSPRK4_5 ---
-3,1,6,SSPRK4_5,Linear,VanLeer,Rusanov,false,false,false
-3,1,6,SSPRK4_5,WENO3,None,Rusanov,false,false,false
-3,1,6,SSPRK4_5,WENOZ,None,Rusanov,false,false,false
-3,1,6,SSPRK4_5,MP5,None,Rusanov,false,false,false
+3,1,6,AoSMapped,CPU,SSPRK4_5,Linear,VanLeer,Rusanov,false,false,false
+3,1,6,AoSMapped,CPU,SSPRK4_5,WENO3,None,Rusanov,false,false,false
+3,1,6,AoSMapped,CPU,SSPRK4_5,WENOZ,None,Rusanov,false,false,false
+3,1,6,AoSMapped,CPU,SSPRK4_5,MP5,None,Rusanov,false,false,false
 # --- coverage-only: gaps not hit by any test ---
-1,1,2,Euler,Linear,MinMod,Rusanov,false,false,false
-1,1,2,Euler,Constant,None,HLL,false,false,false
-1,1,2,Euler,Constant,None,HLLD,false,false,false
+1,1,2,AoSMapped,CPU,Euler,Linear,MinMod,Rusanov,false,false,false
+1,1,2,AoSMapped,CPU,Euler,Constant,None,HLL,false,false,false
+1,1,2,AoSMapped,CPU,Euler,Constant,None,HLLD,false,false,false

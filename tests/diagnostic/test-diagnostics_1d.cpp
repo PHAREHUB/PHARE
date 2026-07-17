@@ -1,6 +1,7 @@
 
 #include "core/def/phare_mpi.hpp"
 
+#include "tests/simulator/per_test.hpp"
 #include "test_diagnostics.ipp"
 
 static std::string const job_file = "job_1d";

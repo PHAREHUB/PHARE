@@ -5,6 +5,7 @@
 #include <vector>
 #include <random>
 #include <cmath>
+#include <array>
 
 #include "core/utilities/cellmap.hpp"
 #include "core/utilities/indexer.hpp"
@@ -22,20 +23,23 @@ struct Obj
 };
 
 template<std::size_t dim>
-struct Particle
+struct AParticle
 {
-    std::array<int, dim> iCell;
+    std::array<int, dim> iCell_;
     double delta;
-    bool operator==(Particle const& other) const
+    bool operator==(AParticle const& other) const
     {
         bool equal = true;
         for (auto i = 0u; i < dim; ++i)
         {
-            equal &= (iCell[i] == other.iCell[i]);
+            equal &= (iCell_[i] == other.iCell_[i]);
         }
         equal &= (std::abs(delta - other.delta) < 1e-12);
         return delta;
     }
+
+    auto& iCell() { return iCell_; }
+    auto& iCell() const { return iCell_; }
 };
 
 
@@ -45,7 +49,7 @@ TEST(CellMap, sizeIsNbrOfElements)
 {
     auto constexpr dim = 2u;
     Box<int, 2> b{{10, 12}, {30, 32}};
-    CellMap<dim, int> cm{b};
+    CellMap<CellMapOptions{dim}> cm{b};
     std::cout << "adding\n";
     cm.addToCell(std::array<int, 2>{14, 27}, 0);
     std::cout << "added\n";
@@ -60,7 +64,7 @@ TEST(CellMap, canSortCells)
 {
     auto constexpr dim = 2u;
     Box<int, 2> b{{10, 12}, {30, 32}};
-    CellMap<dim, int> cm{b};
+    CellMap<CellMapOptions{dim}> cm{b};
 
     // add indexes not in order
     // in two different cells
@@ -98,14 +102,15 @@ TEST(CellMap, canSortCells)
 
 TEST(CellMap, itemCanBeRemoved)
 {
-    std::array<Particle<2>, 2> particles;
-    particles[0].iCell[0] = 14;
-    particles[0].iCell[1] = 27;
-    particles[1].iCell[0] = 14;
-    particles[1].iCell[1] = 26;
-    auto constexpr dim    = 2u;
+    // std::array<AParticle<2>, 2> particles;
+    std::array<AParticle<2>, 2> particles;
+    particles[0].iCell_[0] = 14;
+    particles[0].iCell_[1] = 27;
+    particles[1].iCell_[0] = 14;
+    particles[1].iCell_[1] = 26;
+    auto constexpr dim     = 2u;
     Box<int, 2> b{{10, 12}, {30, 32}};
-    CellMap<dim, int> cm{b};
+    CellMap<CellMapOptions{dim}> cm{b};
     cm.addToCell(std::array<int, 2>{14, 27}, 0);
     EXPECT_EQ(cm.size(), 1);
     cm.addToCell(Point{14, 26}, 1);
@@ -122,7 +127,7 @@ TEST(CellMap, itemCanBeRemoved)
 //     auto constexpr dim         = 2u;
 //     auto constexpr bucket_size = 99u;
 //     Box<int, 2> b{{10, 12}, {30, 32}};
-//     CellMap<dim, bucket_size, int, Point<int, 2>> cm{b};
+//     CellMap<CellMapOptions{dim}, bucket_size, int, Point<int, 2>> cm{b};
 //     cm.addToCell(std::array<int, 2>{14, 27}, 0);
 //     cm.addToCell(Point{14, 26}, 1);
 //     cm.clear();
@@ -132,7 +137,7 @@ TEST(CellMap, itemCanBeRemoved)
 template<std::size_t dim>
 auto make_particles_in(PHARE::core::Box<int, dim> box, std::size_t nppc)
 {
-    std::vector<Particle<dim>> particles;
+    std::vector<AParticle<dim>> particles;
     particles.reserve(box.size() * nppc);
     std::random_device rd;
     std::mt19937 gen(rd());
@@ -141,10 +146,10 @@ auto make_particles_in(PHARE::core::Box<int, dim> box, std::size_t nppc)
     {
         for (auto ip = 0u; ip < nppc; ++ip)
         {
-            Particle<dim> p;
+            AParticle<dim> p;
             for (auto idim = 0u; idim < dim; ++idim)
             {
-                p.iCell[idim] = cell[idim];
+                p.iCell_[idim] = cell[idim];
             }
             p.delta = dis(gen);
             particles.push_back(p);
@@ -160,7 +165,7 @@ TEST(CellMap, canStoreItemCollection)
 {
     auto constexpr dim = 2u;
     Box<int, dim> patchbox{{10, 11}, {20, 21}};
-    CellMap<dim> cm{patchbox};
+    CellMap<CellMapOptions{dim}> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     EXPECT_EQ(patchbox.size() * nppc, particles.size());
@@ -176,7 +181,7 @@ TEST(CellMap, canStoreItemCollectionFromIterators)
 {
     auto constexpr dim = 2u;
     Box<int, dim> patchbox{{10, 11}, {20, 21}};
-    CellMap<dim> cm{patchbox};
+    CellMap<CellMapOptions{dim}> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     EXPECT_EQ(patchbox.size() * nppc, particles.size());
@@ -189,11 +194,11 @@ TEST(CellMap, canStoreItemCollectionFromIterators)
 
 
 
-TEST(CellMap, givesAccessToAllParticlesInACell)
+TEST(CellMap, givesAccessToAllAParticlesInACell)
 {
     auto constexpr dim = 2u;
     Box<int, 2> patchbox{{10, 20}, {25, 42}};
-    CellMap<dim> cm{patchbox};
+    CellMap<CellMapOptions{dim}> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     cm.add(particles);
@@ -204,7 +209,7 @@ TEST(CellMap, givesAccessToAllParticlesInACell)
         EXPECT_EQ(blist.size(), nppc);
         for (auto particleIndex : blist)
         {
-            EXPECT_EQ(Point{particles[particleIndex].iCell}, cell);
+            EXPECT_EQ(Point{particles[particleIndex].iCell()}, cell);
         }
     }
 }
@@ -215,7 +220,7 @@ TEST(CellMap, emptyLeavesCapacityButZeroSize)
 {
     auto constexpr dim = 2u;
     Box<int, 2> patchbox{{10, 20}, {25, 42}};
-    CellMap<dim> cm{patchbox};
+    CellMap<CellMapOptions{dim}> cm{patchbox};
     auto nppc      = 100u;
     auto particles = make_particles_in(patchbox, nppc);
     cm.add(particles);
@@ -234,7 +239,7 @@ TEST(CellMap, emptyLeavesCapacityButZeroSize)
 //     auto constexpr dim         = 2u;
 //     auto constexpr bucket_size = 100u;
 //     Box<int, 2> patchbox{{10, 20}, {25, 42}};
-//     CellMap<dim, bucket_size, int, Point<int, dim>> cm;
+//     CellMap<CellMapOptions{dim}, bucket_size, int, Point<int, dim>> cm;
 //     auto nppc      = 200u;
 //     auto particles = make_particles_in(patchbox, nppc);
 //     cm.add(particles);
@@ -263,7 +268,7 @@ TEST(CellMap, emptyLeavesCapacityButZeroSize)
 //     auto constexpr dim         = 2u;
 //     auto constexpr bucket_size = 100u;
 //     Box<int, 2> patchbox{{10, 20}, {25, 42}};
-//     using cellmap_t = CellMap<dim, bucket_size, int, Point<int, 2>>;
+//     using cellmap_t = CellMap<CellMapOptions{dim}, bucket_size, int, Point<int, 2>>;
 //     cellmap_t cm;
 //     auto nppc      = 600u;
 //     auto particles = make_particles_in(patchbox, nppc);
@@ -291,17 +296,17 @@ public:
 protected:
     static std::size_t constexpr dim  = 2;
     static std::size_t constexpr nppc = 100;
-    using cellmap_t                   = CellMap<dim, int>;
+    using cellmap_t                   = CellMap<CellMapOptions{dim}>;
     Box<int, dim> patchbox{{10, 20}, {25, 42}};
     cellmap_t cm{patchbox};
-    std::vector<Particle<dim>> particles;
+    std::vector<AParticle<dim>> particles;
 };
 
 
 TEST_F(CellMapExportFix, exportItems)
 {
     Box<int, 2> selectionBox{{14, 28}, {18, 37}};
-    std::vector<Particle<dim>> selected;
+    std::vector<AParticle<dim>> selected;
 
     auto capa = cm.size(selectionBox);
     selected.reserve(capa);
@@ -314,21 +319,21 @@ TEST_F(CellMapExportFix, exportItems)
     EXPECT_EQ(selected.size(), selected.capacity());
     for (auto const& p : selected)
     {
-        EXPECT_TRUE(isIn(Point{p.iCell}, selectionBox));
+        EXPECT_TRUE(isIn(Point{p.iCell()}, selectionBox));
     }
 }
 
 TEST_F(CellMapExportFix, exportWithTransform)
 {
     Box<int, 2> selectionBox{{14, 28}, {18, 37}};
-    std::vector<Particle<dim>> selected;
+    std::vector<AParticle<dim>> selected;
     auto capa = cm.size(selectionBox);
     selected.reserve(capa);
     EXPECT_EQ(selected.size(), 0u);
     EXPECT_EQ(selected.capacity(), capa);
     cm.export_to(selectionBox, particles, selected, [&](auto const& part) {
         auto copy{part};
-        copy.iCell[0] += 100;
+        copy.iCell()[0] += 100;
         return copy;
     });
     EXPECT_EQ(selected.size(), selected.capacity());
@@ -337,7 +342,7 @@ TEST_F(CellMapExportFix, exportWithTransform)
     offsetedSelectionBox.upper[0] += 100;
     for (auto const& p : selected)
     {
-        EXPECT_TRUE(isIn(Point{p.iCell}, offsetedSelectionBox));
+        EXPECT_TRUE(isIn(Point{p.iCell()}, offsetedSelectionBox));
     }
 }
 
@@ -345,19 +350,19 @@ TEST_F(CellMapExportFix, exportWithTransform)
 TEST_F(CellMapExportFix, exportWithPredicate)
 {
     Box<int, 2> selectionBox{{14, 28}, {18, 37}};
-    std::vector<Particle<dim>> selected;
+    std::vector<AParticle<dim>> selected;
     cm.export_if(particles, selected, [&](auto const& cell) { return isIn(cell, selectionBox); });
     for (auto const& p : selected)
     {
-        EXPECT_TRUE(isIn(Point{p.iCell}, selectionBox));
+        EXPECT_TRUE(isIn(Point{p.iCell()}, selectionBox));
     }
 }
 
 
-class CellMappedParticleBox : public ::testing::Test
+class CellMappedAParticleBox : public ::testing::Test
 {
 public:
-    CellMappedParticleBox()
+    CellMappedAParticleBox()
         : patchBox{{10, 20, 30}, {25, 42, 54}}
         , ghostBox{grow(patchBox, 2)}
         , outBox{grow(patchBox, 4)}
@@ -386,29 +391,29 @@ public:
 protected:
     static std::size_t constexpr dim  = 3;
     static std::size_t constexpr nppc = 1;
-    using cellmap_t                   = CellMap<dim, int>;
+    using cellmap_t                   = CellMap<CellMapOptions{dim}>;
     Box<int, 3> patchBox;
     Box<int, 3> ghostBox;
     Box<int, 3> outBox;
-    std::vector<Particle<dim>> particles;
+    std::vector<AParticle<dim>> particles;
     cellmap_t cm;
 };
 
 
 
 
-TEST_F(CellMappedParticleBox, trackParticle)
+TEST_F(CellMappedAParticleBox, trackAParticle)
 {
     EXPECT_EQ(cm.size(), particles.size());
     // pretends the particle change cell in x
-    auto oldcell = particles[200].iCell;
-    particles[200].iCell[0] += 1;
+    auto oldcell = particles[200].iCell();
+    particles[200].iCell()[0] += 1;
 
     cm.update(particles, 200, oldcell);
 
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto& blist = cm(particles[200].iCell);
+    auto& blist = cm(particles[200].iCell());
     auto found  = false;
     for (auto particleIndex : blist)
     {
@@ -421,7 +426,7 @@ TEST_F(CellMappedParticleBox, trackParticle)
 
 
 
-TEST_F(CellMappedParticleBox, partitionsParticlesInPatchBox)
+TEST_F(CellMappedAParticleBox, partitionsAParticlesInPatchBox)
 {
     EXPECT_EQ(cm.size(), particles.size());
 
@@ -434,21 +439,21 @@ TEST_F(CellMappedParticleBox, partitionsParticlesInPatchBox)
 
     for (std::size_t idx = inPatchRange.ibegin(); idx < inPatchRange.iend(); ++idx)
     {
-        EXPECT_TRUE(isIn(Point{particles[idx].iCell}, patchBox));
+        EXPECT_TRUE(isIn(Point{particles[idx].iCell()}, patchBox));
     }
     for (std::size_t idx = inPatchRange.iend(); idx < particles.size(); ++idx)
     {
-        EXPECT_FALSE(isIn(Point{particles[idx].iCell}, patchBox));
+        EXPECT_FALSE(isIn(Point{particles[idx].iCell()}, patchBox));
     }
 }
 
-TEST_F(CellMappedParticleBox, allButOneParticleSatisfyPredicate)
+TEST_F(CellMappedAParticleBox, allButOneAParticleSatisfyPredicate)
 {
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto doNotTakeThatParticle = [&](auto const& cell) { return Point{cell} != patchBox.lower; };
-    auto allParts              = makeIndexRange(particles);
-    auto singleParticleRange   = cm.partition(allParts, doNotTakeThatParticle);
+    auto doNotTakeThatAParticle = [&](auto const& cell) { return Point{cell} != patchBox.lower; };
+    auto allParts               = makeIndexRange(particles);
+    auto singleParticleRange    = cm.partition(allParts, doNotTakeThatAParticle);
 
     EXPECT_EQ(singleParticleRange.size(), particles.size() - 1);
     EXPECT_EQ(singleParticleRange.ibegin(), 0);
@@ -456,18 +461,18 @@ TEST_F(CellMappedParticleBox, allButOneParticleSatisfyPredicate)
 
     for (std::size_t idx = singleParticleRange.ibegin(); idx < singleParticleRange.iend(); ++idx)
     {
-        EXPECT_NE(Point{particles[idx].iCell}, patchBox.lower);
+        EXPECT_NE(Point{particles[idx].iCell()}, patchBox.lower);
     }
 }
 
-TEST_F(CellMappedParticleBox, allButLastAlreadySatisfyPredicate)
+TEST_F(CellMappedAParticleBox, allButLastAlreadySatisfyPredicate)
 {
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto lastParticleCell      = particles[particles.size() - 1].iCell;
-    auto doNotTakeThatParticle = [&](auto const& cell) { return cell != lastParticleCell; };
-    auto allParts              = makeIndexRange(particles);
-    auto singleParticleRange   = cm.partition(allParts, doNotTakeThatParticle);
+    auto lastAParticleCell      = particles[particles.size() - 1].iCell();
+    auto doNotTakeThatAParticle = [&](auto const& cell) { return cell != lastAParticleCell; };
+    auto allParts               = makeIndexRange(particles);
+    auto singleParticleRange    = cm.partition(allParts, doNotTakeThatAParticle);
 
     EXPECT_EQ(singleParticleRange.size(), particles.size() - 1);
     EXPECT_EQ(singleParticleRange.ibegin(), 0);
@@ -475,37 +480,37 @@ TEST_F(CellMappedParticleBox, allButLastAlreadySatisfyPredicate)
 
     for (std::size_t idx = singleParticleRange.ibegin(); idx < singleParticleRange.iend(); ++idx)
     {
-        EXPECT_NE(Point{particles[idx].iCell}, lastParticleCell);
+        EXPECT_NE(Point{particles[idx].iCell()}, lastAParticleCell);
     }
 }
 
-TEST_F(CellMappedParticleBox, allOfTheParticlesSatisfyPredicate)
+TEST_F(CellMappedAParticleBox, allOfTheAParticlesSatisfyPredicate)
 {
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto takeNoParticle    = [&](auto const& cell) { return true; };
-    auto allParts          = makeIndexRange(particles);
-    auto allParticlesRange = cm.partition(allParts, takeNoParticle);
+    auto takeNoAParticle    = [&](auto const& cell) { return true; };
+    auto allParts           = makeIndexRange(particles);
+    auto allAParticlesRange = cm.partition(allParts, takeNoAParticle);
 
-    EXPECT_EQ(allParticlesRange.size(), particles.size());
-    EXPECT_EQ(allParticlesRange.ibegin(), 0);
-    EXPECT_EQ(allParticlesRange.iend(), particles.size());
+    EXPECT_EQ(allAParticlesRange.size(), particles.size());
+    EXPECT_EQ(allAParticlesRange.ibegin(), 0);
+    EXPECT_EQ(allAParticlesRange.iend(), particles.size());
 }
 
-TEST_F(CellMappedParticleBox, noneOfTheParticlesSatisfyPredicate)
+TEST_F(CellMappedAParticleBox, noneOfTheAParticlesSatisfyPredicate)
 {
     EXPECT_EQ(cm.size(), particles.size());
 
-    auto takeNoParticle  = [&](auto const& cell) { return false; };
-    auto allParts        = makeIndexRange(particles);
-    auto noParticleRange = cm.partition(allParts, takeNoParticle);
+    auto takeNoAParticle  = [&](auto const& cell) { return false; };
+    auto allParts         = makeIndexRange(particles);
+    auto noAParticleRange = cm.partition(allParts, takeNoAParticle);
 
-    EXPECT_EQ(noParticleRange.size(), 0);
-    EXPECT_EQ(noParticleRange.ibegin(), 0);
-    EXPECT_EQ(noParticleRange.iend(), 0);
+    EXPECT_EQ(noAParticleRange.size(), 0);
+    EXPECT_EQ(noAParticleRange.ibegin(), 0);
+    EXPECT_EQ(noAParticleRange.iend(), 0);
 }
 
-TEST_F(CellMappedParticleBox, rangeBasedPartition)
+TEST_F(CellMappedAParticleBox, rangeBasedPartition)
 {
     auto partRange = makeRange(particles, 0, particles.size() / 2);
     auto inpatch   = cm.partition(partRange, isInPatch());
@@ -515,17 +520,17 @@ TEST_F(CellMappedParticleBox, rangeBasedPartition)
 
     for (std::size_t idx = inpatch.ibegin(); idx < inpatch.iend(); ++idx)
     {
-        EXPECT_TRUE(isIn(Point{partRange.array()[idx].iCell}, patchBox));
+        EXPECT_TRUE(isIn(Point{partRange.array()[idx].iCell()}, patchBox));
     }
     for (std::size_t idx = inpatch.iend(); idx < partRange.iend(); ++idx)
     {
-        EXPECT_FALSE(isIn(Point{partRange.array()[idx].iCell}, patchBox));
+        EXPECT_FALSE(isIn(Point{partRange.array()[idx].iCell()}, patchBox));
     }
 }
 
 
 
-TEST_F(CellMappedParticleBox, getPatchParticlesFromNonLeavingPartition)
+TEST_F(CellMappedAParticleBox, getPatchAParticlesFromNonLeavingPartition)
 {
     auto allParts = makeIndexRange(particles);
 
@@ -537,18 +542,18 @@ TEST_F(CellMappedParticleBox, getPatchParticlesFromNonLeavingPartition)
     EXPECT_EQ(inGhostBoxRange.size(), nppc * ghostBox.size());
     for (auto idx = inGhostBoxRange.ibegin(); idx < inGhostBoxRange.iend(); ++idx)
     {
-        EXPECT_TRUE(isIn(Point{particles[idx].iCell}, ghostBox));
+        EXPECT_TRUE(isIn(Point{particles[idx].iCell()}, ghostBox));
     }
 
     for (auto idx = inGhostBoxRange.iend(); idx < particles.size(); ++idx)
     {
-        EXPECT_TRUE(isIn(Point{particles[idx].iCell}, outBox)
-                    and !isIn(Point{particles[idx].iCell}, ghostBox));
+        EXPECT_TRUE(isIn(Point{particles[idx].iCell()}, outBox)
+                    and !isIn(Point{particles[idx].iCell()}, ghostBox));
     }
 
     for (auto idx = inPatchRange.ibegin(); idx < inPatchRange.iend(); ++idx)
     {
-        EXPECT_TRUE(isIn(Point{particles[idx].iCell}, patchBox));
+        EXPECT_TRUE(isIn(Point{particles[idx].iCell()}, patchBox));
     }
 
     EXPECT_EQ(0, inPatchRange.ibegin());
@@ -556,7 +561,7 @@ TEST_F(CellMappedParticleBox, getPatchParticlesFromNonLeavingPartition)
 }
 
 
-TEST_F(CellMappedParticleBox, eraseOutOfPatchRange)
+TEST_F(CellMappedAParticleBox, eraseOutOfPatchRange)
 {
     auto allParts = makeIndexRange(particles);
     auto inpatch  = cm.partition(allParts, isInPatch());
@@ -564,7 +569,7 @@ TEST_F(CellMappedParticleBox, eraseOutOfPatchRange)
     cm.erase(toErase);
 
     for (auto const& part : particles)
-        EXPECT_TRUE(isIn(Point{part.iCell}, patchBox));
+        EXPECT_TRUE(isIn(Point{part.iCell()}, patchBox));
 
     EXPECT_EQ(particles.size(), patchBox.size() * nppc);
 }
@@ -578,7 +583,7 @@ TEST(CellMap, sortArray)
 {
     auto constexpr dim         = 3u;
     auto constexpr bucket_size = 100;
-    using cellmap_t            = CellMap<dim, bucket_size, int, Point<int, dim>>;
+    using cellmap_t            = CellMap<CellMapOptions{dim}, bucket_size, int, Point<int, dim>>;
     Box<int, 3> patchbox{{10, 20, 30}, {25, 42, 54}};
     cellmap_t cm;
     auto nppc      = 100u;
@@ -595,7 +600,7 @@ TEST(CellMap, sortArray)
         }
     }
     EXPECT_NE(patchbox.size() - 1, cell_jumps);
-    std::vector<Particle<3>> sorted(particles.size());
+    std::vector<AParticle<3>> sorted(particles.size());
     get_sorted(cm, patchbox, sorted);
 
     cell_jumps = 0;

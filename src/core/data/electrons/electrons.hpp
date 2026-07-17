@@ -2,10 +2,15 @@
 #define PHARE_ELECTRONS_HPP
 
 #include "core/def.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 #include "core/hybrid/hybrid_quantities.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"
+
+
+#include <tuple>
 
 
 namespace PHARE::core
@@ -97,34 +102,63 @@ public:
     }
 
 
-    void computeDensity() {}
+    void computeChargeDensity() {}
+
+
+
+    void static Vxyz(auto const& layout, auto const& Ne, auto&&... args)
+    {
+        auto&& [J, Vi, Ve] = std::forward_as_tuple(args...);
+        auto const& Jx     = J(Component::X);
+        auto const& Jy     = J(Component::Y);
+        auto const& Jz     = J(Component::Z);
+        auto const& Vix    = Vi(Component::X);
+        auto const& Viy    = Vi(Component::Y);
+        auto const& Viz    = Vi(Component::Z);
+        auto& Vex          = Ve(Component::X);
+        auto& Vey          = Ve(Component::Y);
+        auto& Vez          = Ve(Component::Z);
+
+        layout.evalGrownOnBox(Ne, 1, [=] _PHARE_ALL_FN_(auto const& ijk) mutable {
+            auto const JxOnVx = GridLayout::template project<GridLayout::JxToMoments>(Jx, ijk);
+            auto const JyOnVy = GridLayout::template project<GridLayout::JyToMoments>(Jy, ijk);
+            auto const JzOnVz = GridLayout::template project<GridLayout::JzToMoments>(Jz, ijk);
+
+            Vex(ijk) = Vix(ijk) - JxOnVx / Ne(ijk);
+            Vey(ijk) = Viy(ijk) - JyOnVy / Ne(ijk);
+            Vez(ijk) = Viz(ijk) - JzOnVz / Ne(ijk);
+        });
+    }
+
+    template<typename V_t>
+    V_t static tt(auto& vf, auto i)
+    {
+        return vf.template as<V_t>([&](auto& c) { return c()[i](); });
+    }
 
     void computeBulkVelocity(GridLayout const& layout)
     {
-        auto const& Jx  = J_(Component::X);
-        auto const& Jy  = J_(Component::Y);
-        auto const& Jz  = J_(Component::Z);
-        auto const& Vix = ions_.velocity()(Component::X);
-        auto const& Viy = ions_.velocity()(Component::Y);
-        auto const& Viz = ions_.velocity()(Component::Z);
-        auto const& Ne  = ions_.chargeDensity();
+        check_field(ions_.chargeDensity(), layout);
+        check_tensor_field(ions_.velocity(), layout);
+        check_tensor_field(J_, layout);
 
-        auto& Vex = Ve_(Component::X);
-        auto& Vey = Ve_(Component::Y);
-        auto& Vez = Ve_(Component::Z);
+        if constexpr (is_field_tile_set_v<Field>)
+        {
+            using Tile_vt = Field::value_type::value_type;
+            using V_t     = basic::TensorField<Tile_vt, 1>;
+            for (std::size_t tidx = 0; tidx < J_[0]().size(); ++tidx)
+            {
+                auto Ve = Ve_.template as<V_t>([&](auto& c) { return c()[tidx](); });
+                Vxyz(J_[0]()[tidx].layout(), ions_.chargeDensity()()[tidx](), tt<V_t>(J_, tidx),
+                     tt<V_t>(ions_.velocity(), tidx), Ve);
+            }
+        }
+        else
+        {
+            Vxyz(layout, ions_.chargeDensity(), J_, ions_.velocity(), Ve_);
+        }
 
-        // from Ni because all components defined on primal
-        layout.evalOnBox(Ne, [&](auto const&... args) {
-            auto arr = std::array{args...};
-
-            auto const JxOnVx = GridLayout::template project<GridLayout::JxToMoments>(Jx, arr);
-            auto const JyOnVy = GridLayout::template project<GridLayout::JyToMoments>(Jy, arr);
-            auto const JzOnVz = GridLayout::template project<GridLayout::JzToMoments>(Jz, arr);
-
-            Vex(arr) = Vix(arr) - JxOnVx / Ne(arr);
-            Vey(arr) = Viy(arr) - JyOnVy / Ne(arr);
-            Vez(arr) = Viz(arr) - JzOnVz / Ne(arr);
-        });
+        check_tensor_field(Ve_, layout);
     }
 
 
@@ -201,14 +235,13 @@ public:
 
     void computePressure(GridLayout const& /*layout*/)
     {
-        static_assert(Field::is_contiguous, "Error - assumes Field date is contiguous");
+        // static_assert(Field::is_contiguous, "Error - assumes Field date is contiguous");
 
         if (!Pe_.isUsable())
             throw std::runtime_error("Error - isothermal closure pressure not usable");
 
         auto const& Ne_ = ions_.chargeDensity();
-        std::transform(std::begin(Ne_), std::end(Ne_), std::begin(Pe_),
-                       [this](auto n) { return n * Te_; });
+        transform(Ne_, Pe_, [this](auto n) { return n * Te_; });
     }
 
 private:
@@ -276,7 +309,7 @@ public:
 
 
 
-    void computeDensity() { fluxComput_.computeDensity(); }
+    void computeChargeDensity() { fluxComput_.computeChargeDensity(); }
     void computeBulkVelocity(GridLayout const& layout) { fluxComput_.computeBulkVelocity(layout); }
     void computePressure(GridLayout const& layout) { pressureClosure_.computePressure(layout); }
 
@@ -305,7 +338,7 @@ public:
     {
         if (isUsable())
         {
-            momentModel_.computeDensity();
+            momentModel_.computeChargeDensity();
             momentModel_.computeBulkVelocity(layout);
             momentModel_.computePressure(layout);
         }

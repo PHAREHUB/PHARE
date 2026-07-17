@@ -1,9 +1,12 @@
 #ifndef PHARE_CORE_UTILITIES_META_META_UTILITIES_HPP
 #define PHARE_CORE_UTILITIES_META_META_UTILITIES_HPP
 
-
 #include "core/utilities/types.hpp"
 
+
+#include <tuple>
+#include <cassert>
+#include <iterator>
 #include <type_traits>
 
 
@@ -111,6 +114,7 @@ namespace core
 
         return nbRefinedPart;
     }
+
 
 
 

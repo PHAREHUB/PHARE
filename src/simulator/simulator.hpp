@@ -68,9 +68,11 @@ template<auto opts>
 class Simulator : public ISimulator
 {
 public:
-    std::size_t static constexpr dimension     = opts.dimension;
-    std::size_t static constexpr interp_order  = opts.interp_order;
-    std::size_t static constexpr nbRefinedPart = opts.nbRefinedPart;
+    auto static constexpr dimension      = opts.dimension;
+    auto static constexpr interp_order   = opts.interp_order;
+    auto static constexpr nbRefinedPart  = opts.nbRefinedPart;
+    auto static constexpr layout_mode    = opts.layout_mode;
+    auto static constexpr allocator_mode = opts.alloc_mode;
 
     using SAMRAITypes            = PHARE::amr::SAMRAI_Types;
     using PHARETypes             = PHARE_Types<opts>;
@@ -87,6 +89,7 @@ public:
 
     using HybridResourceManager_t = HybridModel::resources_manager_type;
     using MHDResourceManager_t    = MHDModel::resources_manager_type;
+
 
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
@@ -129,6 +132,7 @@ public:
             return rMan->dump(timestamp, timestep);
         return false;
     }
+
 
 
 protected:
@@ -570,6 +574,7 @@ double Simulator<opts>::advance(double dt)
             throw std::runtime_error(*error);
         throw std::runtime_error("forcing error");
     }
+
 
 
 

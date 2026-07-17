@@ -1,43 +1,36 @@
 cmake_minimum_required (VERSION 3.20.1) # released April 8, 2021 - https://www.kitware.com/cmake-3-20-1-available-for-download/
 
 project(PHARE VERSION 0.1 LANGUAGES CXX C)
+set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+
+include("${PHARE_PROJECT_DIR}/res/cmake/policies.cmake" NO_POLICY_SCOPE)
+include(CheckCXXCompilerFlag)
 
 # Release mode default
 if(NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE "Release" CACHE STRING "" FORCE)
 endif()
 
-set(CMAKE_POLICY_VERSION_MINIMUM 3.5) # TORM after https://github.com/LLNL/SAMRAI/issues/266
-
-if (POLICY CMP0074) # hides warning about ${PACKAGE}_ROOT variables
-  cmake_policy(SET CMP0074 NEW)
-endif()
-if (POLICY CMP0069) # allow LTO if available, requires cmake 3.9 (released August 2017)
-  cmake_policy(SET CMP0069 NEW)
-endif()
-
-# Enables -fPIC  typically required for shared libraries with dependencies. e.g. pybind modules
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-
-include(CheckCXXCompilerFlag)
-find_program(Git git REQUIRED)
-find_package(Python 3.8 COMPONENTS Interpreter Development REQUIRED)
-
-set(PHARE_PROJECT_DIR ${CMAKE_CURRENT_SOURCE_DIR})
-set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+find_package(Python 3.10 COMPONENTS Interpreter Development REQUIRED)
 
 if(EXISTS "${PHARE_PROJECT_DIR}/release.ver.txt") # delete file to use newer deps
   include("${PHARE_PROJECT_DIR}/res/cmake/release.cmake")
 endif()
 
-include_directories(${PHARE_PROJECT_DIR}/src)
-
 include("${PHARE_PROJECT_DIR}/res/cmake/options.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/def.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
+
+# Enables -fPIC  typically required for shared libraries with dependencies. e.g. pybind modules
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
+
+include_directories(${PHARE_PROJECT_DIR}/src)
+
 include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
 
+# set standard after dependencies to avoid potential conflicts
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 

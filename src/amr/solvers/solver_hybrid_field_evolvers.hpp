@@ -9,22 +9,26 @@ namespace PHARE::solver
 
 
 template<typename Model>
-class OhmLevelTransformer
+class OhmLevelTransformer : public core::OhmSingleTransformer
 {
+    using Super      = OhmSingleTransformer;
     using GridLayout = Model::gridlayout_type;
     using level_t    = Model::amr_types::level_t;
     using info_type  = core::OhmInfo;
-    using core_type  = core::Ohm<GridLayout>;
+
+    template<typename V_t>
+    V_t static tt(auto& vf, auto i)
+    {
+        return vf.template as<V_t>([&](auto& c) { return c()[i](); });
+    }
 
 public:
     explicit OhmLevelTransformer(info_type const& info, level_t& level, Model& model)
-        : info_{info}
+        : Super{info}
         , level_{level}
         , model_{model}
     {
     }
-
-    void operator()(GridLayout& layout, auto&&... args) { core_type{info_, layout}(args...); }
 
     void operator()(auto& B, auto& J, auto& E, auto& electrons)
     {
@@ -35,13 +39,12 @@ public:
             auto& n     = electrons.density();
             auto& Ve    = electrons.velocity();
             auto& Pe    = electrons.pressure();
-            (*this)(layout, n, Ve, Pe, B, J, E);
+            Super::operator()(layout, n, Ve, Pe, B, J, E);
         }
     }
 
     void operator()(auto& B, auto& E, auto& electrons) { (*this)(B, model_.state.J, E, electrons); }
 
-    info_type info_;
     level_t& level_;
     Model& model_;
 };
@@ -49,7 +52,6 @@ public:
 template<typename Model>
 OhmLevelTransformer(core::OhmInfo, typename Model::amr_types::level_t&, Model&)
     -> OhmLevelTransformer<Model>;
-
 
 } // namespace PHARE::solver
 
