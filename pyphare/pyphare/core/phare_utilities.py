@@ -2,9 +2,12 @@ import math
 import numpy as np
 
 
+from pyphare import cpp
+
+
 def debug_print(*args):
     if __debug__:
-        print(*args)
+        cpp.print_rank0(*args)
 
 
 def all_iterables(*args):
