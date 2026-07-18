@@ -1230,10 +1230,19 @@ namespace core
         }
 
     private:
+        // calls fn(point, args...) once per point of box, walking it span by span
+        // (see core/utilities/box/box_span.hpp) rather than allocating one Point
+        // per cell: `point` is reused and incremented in place along the fastest
+        // dimension for the length of each span.
+        //
+        // Note: although the loop binds `[point, _]` through a `const&`, `point`
+        // itself stays mutable — the span dereference returns a tuple of
+        // references (Point&, size const&), and a structured binding preserves
+        // the referenced type's own constness rather than adding one.
         template<typename... Args>
         void evalOnAnyBox(auto const& box, auto&& fn, Args&&... args) const
         {
-            auto constexpr static IDX = dimension - 1; // Fast index
+            auto constexpr static IDX = dimension - 1; // fastest-varying dimension
 
             for (auto const& slab : make_box_span(box))
                 for (auto const& [point, _] : slab)

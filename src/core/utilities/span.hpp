@@ -20,6 +20,14 @@ concept Spannable = requires(T t) {
 };
 
 
+/** @brief Non-owning view over a contiguous range of T.
+ *
+ * Constness of the viewed data is carried by T itself (T const for a read-only
+ * span, T otherwise) rather than always storing a `T const*` internally: this
+ * lets the same template represent both a mutable and a read-only span (e.g.
+ * FieldBoxSpans picks value_type = T const only when the underlying field is
+ * const, see field_box_span.hpp), instead of needing two separate types.
+ */
 template<typename T, typename SIZE = std::size_t>
 struct Span
 {

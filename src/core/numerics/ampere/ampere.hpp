@@ -31,6 +31,9 @@ public:
 
         auto const shrink = ConstArray<std::size_t, dimension>(1);
 
+        // evalOnShrinkedGhostBox calls fn(point, trailingArgs...); trailing args
+        // (Jx, B, layout_) are passed through it rather than captured, so the
+        // lambdas stay capture-free and JxEq_/JyEq_/JzEq_ can remain static
         layout_.evalOnShrinkedGhostBox(
             Jx, shrink, [](auto&&... args) { JxEq_(args...); }, Jx, B, layout_);
         layout_.evalOnShrinkedGhostBox(

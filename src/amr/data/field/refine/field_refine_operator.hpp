@@ -3,7 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/box/box_span.hpp"
+#include "core/data/field/field_box.hpp"
 
 #include "amr/amr_constants.hpp"
 #include "amr/data/field/field_data.hpp"
@@ -24,94 +24,6 @@ namespace PHARE::amr
 using core::dirX;
 using core::dirY;
 using core::dirZ;
-
-template<typename Field_t>
-struct CrossLevelIndices
-{
-    auto constexpr static dim = Field_t::dimension;
-    using FieldRow_t          = core::FieldBoxPointSpans<Field_t>;
-    using FieldRow_ct         = core::FieldBoxPointSpans<Field_t const>;
-
-    core::FieldBox<Field_t>& dst;
-    core::FieldBox<Field_t const> const& src;
-
-    core::FieldBoxSpan<Field_t, FieldRow_t> dst_lcl_span
-        = core::make_field_box_point_span(dst.lcl_box, dst.field);
-    core::FieldBoxSpan<Field_t const, FieldRow_ct> src_lcl_span
-        = core::make_field_box_point_span(src.lcl_box, src.field);
-
-    core::BoxSpan<int, dim> dst_amr_span = core::make_box_span(dst.amr_box);
-    core::BoxSpan<int, dim> src_amr_span = core::make_box_span(src.amr_box);
-};
-
-
-
-
-template<typename Field_t>
-void refine_field(core::FieldBox<Field_t>& dst, core::FieldBox<Field_t const>& src, auto& refiner)
-{
-    auto constexpr static IDX = Field_t::dimension - 1;
-
-    CrossLevelIndices<Field_t> indices{dst, src};
-
-    auto d_f_slabs = indices.dst_lcl_span.begin();
-    auto d_b_slabs = indices.dst_amr_span.begin();
-    auto s_f_slabs = indices.src_lcl_span.begin();
-    auto s_b_slabs = indices.src_amr_span.begin();
-
-    auto slab_idx = indices.dst_amr_span.slab_begin();
-
-    for (; d_f_slabs != indices.dst_lcl_span.end(); ++d_f_slabs, ++d_b_slabs, ++slab_idx)
-    {
-        auto d_f_spans = d_f_slabs.begin();
-        auto s_f_spans = s_f_slabs.begin();
-        auto d_b_spans = d_b_slabs.begin();
-        auto s_b_spans = s_b_slabs.begin();
-
-        auto span_idx = d_b_slabs.span_begin();
-        for (; d_f_spans != d_f_slabs.end(); ++d_f_spans, ++d_b_spans, ++span_idx)
-        {
-            auto&& [d_amr_point, d_size] = *d_b_spans;
-            auto&& [s_amr_point, s_size] = *s_b_spans;
-
-            auto&& [d_span, d_lcl_point] = *d_f_spans;
-            auto&& [s_span, s_lcl_point] = *s_f_spans;
-
-            std::size_t dst_idx = 0;
-            std::size_t src_idx = 0;
-            for (; dst_idx < d_span.size(); ++dst_idx)
-            {
-                assert(s_amr_point == toCoarseIndex(d_amr_point));
-
-                refiner(src.field, dst.field, d_amr_point, s_amr_point, d_lcl_point, s_lcl_point,
-                        d_span[dst_idx], s_span[src_idx]);
-
-                if (d_amr_point[IDX] % refinementRatio != 0)
-                {
-                    ++src_idx;
-                    ++s_lcl_point[IDX];
-                    ++s_amr_point[IDX];
-                }
-
-                ++d_amr_point[IDX];
-                ++d_lcl_point[IDX];
-            }
-
-            if (span_idx % refinementRatio != 0)
-            {
-                ++s_f_spans;
-                ++s_b_spans;
-            }
-        }
-
-        if (slab_idx % refinementRatio != 0)
-        {
-            ++s_f_slabs;
-            ++s_b_slabs;
-        }
-    }
-}
-
 
 template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
 class FieldRefineOperator : public SAMRAI::hier::RefineOperator
@@ -188,10 +100,10 @@ public:
         {
             // we compute the intersection with the destination,
             // and then we apply the refine operation on each fine index.
-            auto const dst_overlap = phare_box_from<dimension>(destFieldBox * box);
-            core::FieldBox dst{destinationField, destLayout, dst_overlap};
-            core::FieldBox src{sourceField, srcLayout, coarsen_box(dst_overlap)};
-            refine_field(dst, src, refiner);
+            auto const fine_overlap = phare_box_from<dimension>(destFieldBox * box);
+            core::FieldBox fine{destinationField, destLayout, fine_overlap};
+            core::FieldBox coarse{sourceField, srcLayout, coarsen_box(fine_overlap)};
+            core::operator_across_adjacent_levels(coarse, fine, refinementRatio, refiner);
         }
     }
 };
@@ -280,13 +192,13 @@ public:
             {
                 // we compute the intersection with the destination,
                 // and then we apply the refine operation on each fine index.
-                auto const dst_overlap = phare_box_from<dimension>(destFieldBox * box);
-                core::FieldBox dst{destinationFields[c], destLayout, dst_overlap};
+                auto const fine_overlap = phare_box_from<dimension>(destFieldBox * box);
+                core::FieldBox fine{destinationFields[c], destLayout, fine_overlap};
 
-                auto const src_overlap
-                    = *(coarsen_box(dst_overlap) * srcLayout.AMRGhostBoxFor(sourceFields[c]));
-                core::FieldBox src{sourceFields[c], srcLayout, src_overlap};
-                refine_field(dst, src, refiner);
+                auto const coarse_overlap
+                    = *(coarsen_box(fine_overlap) * srcLayout.AMRGhostBoxFor(sourceFields[c]));
+                core::FieldBox coarse{sourceFields[c], srcLayout, coarse_overlap};
+                core::operator_across_adjacent_levels(coarse, fine, refinementRatio, refiner);
             }
         }
     }
