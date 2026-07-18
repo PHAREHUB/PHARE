@@ -129,7 +129,7 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, interp_order, lvl_cell
             if is_pop_fluid_file(basename):
                 pdata_name = pop_name(basename) + "_" + pdata_name
 
-            if dataset_name in patch_datas:
+            if pdata_name in patch_datas:
                 raise ValueError(f"error - {dataset_name} already in patchdata")
 
             patch_datas[pdata_name] = pdata
@@ -149,13 +149,11 @@ def h5_filename_from(diagInfo):
 def get_times_from_h5(filepath, as_float=True):
     import h5py  # see doc/conventions.md section 2.1.1
 
-    f = h5py.File(filepath, "r")
-    if as_float:
-        times = np.array(sorted([float(s) for s in list(f[h5_time_grp_key].keys())]))
-    else:
+    with h5py.File(filepath, "r") as f:
         times = list(f[h5_time_grp_key].keys())
-    f.close()
-    return times
+        if as_float:
+            times = np.array(sorted([float(s) for s in times]))
+        return times
 
 
 def pop_attribute_from_h5(path, pop_name, attribute):
