@@ -42,6 +42,10 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
+        // evalOnBox calls fn(point, trailingArgs...); the trailing args here
+        // (Bx/By/Bz, E, Bxnew/Bynew/Bznew, layout_, dt_) are passed through
+        // rather than captured, so BxEq_/ByEq_/BzEq_ stay static. Their order
+        // must match the std::forward_as_tuple unpacking inside each *Eq_.
         layout_.evalOnBox(
             Bxnew, [](auto&&... args) { BxEq_(args...); }, Bx, E, Bxnew, layout_, dt_);
         layout_.evalOnBox(

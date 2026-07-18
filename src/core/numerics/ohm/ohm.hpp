@@ -68,6 +68,10 @@ private:
     {
         auto const& [Exnew, Eynew, Eznew] = Enew();
 
+        // evalOnBox calls fn(point, trailingArgs...); the trailing args here
+        // (n, Ve, Pe, B, J, Enew, *this) are passed through rather than captured,
+        // so E_Eq_ stays static. Their order must match the std::forward_as_tuple
+        // unpacking inside E_Eq_.
         layout_.evalOnBox(
             Exnew,
             [](auto&&... args) { E_Eq_<Component::X, isResistive, isHyperResistive>(args...); }, n,

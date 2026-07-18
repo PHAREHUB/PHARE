@@ -43,6 +43,9 @@ public:
 
         auto const amount = ConstArray<std::size_t, dimension>(box.amount);
 
+        // evalOn* calls fn(point, trailingArgs...); trailing args (Jc, B, layout_)
+        // are passed through it rather than captured, so the lambdas stay
+        // capture-free and JxEq_/JyEq_/JzEq_ can remain static
         auto const eval = [&](auto& Jc, auto&& fn) {
             if constexpr (box.mode == AmpereMode::ShrinkedGhost)
                 layout_.evalOnShrinkedGhostBox(Jc, amount, fn, Jc, B, layout_);
