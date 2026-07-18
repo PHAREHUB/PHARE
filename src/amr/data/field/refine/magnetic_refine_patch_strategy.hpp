@@ -118,18 +118,20 @@ public:
         {
             auto meshSize = layout.meshSize();
 
+            // `point` is a reference to the span's starting point, incremented in
+            // place to walk the span rather than recomputed for each of its cells
             for (auto const& slab : core::make_box_span(fine_field_box[dirX]))
-                for (auto const& [point, size] : slab)
+                for (auto&& [point, size] : slab)
                     for (std::size_t i = 0; i < size; ++i, ++point[dimension - 1])
                         postprocessBx3d(bx, by, bz, meshSize, layout, point);
 
             for (auto const& slab : core::make_box_span(fine_field_box[dirY]))
-                for (auto const& [point, size] : slab)
+                for (auto&& [point, size] : slab)
                     for (std::size_t i = 0; i < size; ++i, ++point[dimension - 1])
                         postprocessBy3d(bx, by, bz, meshSize, layout, point);
 
             for (auto const& slab : core::make_box_span(fine_field_box[dirZ]))
-                for (auto const& [point, size] : slab)
+                for (auto&& [point, size] : slab)
                     for (std::size_t i = 0; i < size; ++i, ++point[dimension - 1])
                         postprocessBz3d(bx, by, bz, meshSize, layout, point);
         }

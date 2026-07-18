@@ -12,6 +12,9 @@
 namespace PHARE::core
 {
 
+/** @brief Like BoxSpans, but dereferencing yields a Span<value_type> over the
+ * underlying array's data for the current span, instead of a (point, size) pair.
+ */
 template<typename Array_t>
 class FieldBoxSpans : public BoxSpans<std::uint32_t, Array_t::dimension>
 {
@@ -42,6 +45,11 @@ private:
 };
 
 
+/** @brief Like FieldBoxSpans, but dereferencing also yields the current span's
+ * starting point alongside its data Span, for callers that need to track the
+ * box index in step with the field data (e.g. cross-level refinement, which
+ * must know where each span sits on both the coarse and fine grids).
+ */
 template<typename Array_t>
 class FieldBoxPointSpans : public FieldBoxSpans<Array_t>
 {
@@ -53,20 +61,20 @@ public:
 
     FieldBoxPointSpans(auto&&... args)
         : Super{args...}
-        , tup{std::forward_as_tuple(*super(), Super::_point)}
+        , span_and_point{std::forward_as_tuple(*super(), Super::_point)}
     {
     }
 
     Super& super() { return *this; }
     auto& operator*()
     {
-        std::get<0>(tup) = *super();
-        std::get<1>(tup) = this->point();
-        return tup;
+        std::get<0>(span_and_point) = *super();
+        std::get<1>(span_and_point) = this->point();
+        return span_and_point;
     }
 
 private:
-    std::tuple<Span<value_type>&, Point<std::uint32_t, dim>&> tup;
+    std::tuple<Span<value_type>&, Point<std::uint32_t, dim>&> span_and_point;
 };
 
 
@@ -162,15 +170,15 @@ auto make_field_box_span(Box<std::uint32_t, dim> const box, Array_t const& arr)
 template<typename Array_t, std::size_t dim>
 auto make_field_box_point_span(Box<std::uint32_t, dim> const box, Array_t& arr)
 {
-    using Row_t = FieldBoxPointSpans<Array_t>;
-    return FieldBoxSpan<Array_t, Row_t>{arr, box};
+    using PointSpans_t = FieldBoxPointSpans<Array_t>;
+    return FieldBoxSpan<Array_t, PointSpans_t>{arr, box};
 }
 
 template<typename Array_t, std::size_t dim>
 auto make_field_box_point_span(Box<std::uint32_t, dim> const box, Array_t const& arr)
 {
-    using Row_t = FieldBoxPointSpans<Array_t const>;
-    return FieldBoxSpan<Array_t const, Row_t>{arr, box};
+    using PointSpans_t = FieldBoxPointSpans<Array_t const>;
+    return FieldBoxSpan<Array_t const, PointSpans_t>{arr, box};
 }
 
 } // namespace PHARE::core

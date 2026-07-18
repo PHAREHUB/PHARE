@@ -37,14 +37,19 @@ public:
 
     // electric field refinement strategy follows
     // fujimoto et al. 2011 :  doi:10.1016/j.jcp.2011.08.002
+    //
+    // operator() parameters follow the FieldRefinerPolicy contract documented on
+    // DefaultFieldRefiner::operator() in field_refiner.hpp
     void operator()(auto const& coarseField, auto& fineField, auto const& fineIndex,
                     auto const& coarseIndex, auto const& locFineIdx, auto const& locCoarseIdx,
                     auto& fineVal, auto const& coarseVal)
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
+        // KEEP: don't overwrite a fine cell a previous pass (or a boundary
+        // condition) already filled in; NaN means "not yet set"
         if (not std::isnan(fineVal))
-            return; // KEEP!
+            return;
 
         if constexpr (dimension == 1)
             fineVal = coarseVal;

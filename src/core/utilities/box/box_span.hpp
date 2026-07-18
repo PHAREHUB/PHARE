@@ -9,6 +9,34 @@
 namespace PHARE::core
 {
 
+/*
+Span-wise iteration over an N dimensional Box.
+
+Instead of visiting the box point by point, the box is decomposed into:
+  - slabs: one per index of the slowest-varying dimension (3D only,
+           1D/2D boxes are a single slab)
+  - spans: within a slab, one per index of the second-fastest dimension;
+           each span is the contiguous run of cells along the last
+           (fastest-varying) dimension
+
+    for (auto const& slab : make_box_span(box))   // 3D: one slab per x index
+        for (auto const& [start, size] : slab)    // one span per y index
+            ...  // span covers cells [start, start + size) along z
+
+This gives callers whole contiguous spans to work with (memcpy, vectorizable
+inner loops) rather than a callback per point.
+*/
+
+
+/** @brief Iterator over the spans of one slab.
+ *
+ * Dereferencing yields a (start point, span length) tuple, where the returned
+ * point references internal storage recomputed on each dereference: it is
+ * invalidated by the next dereference or increment.
+ *
+ * Comparison operators only inspect span_idx, so comparing iterators made
+ * from different boxes or slabs is meaningless.
+ */
 template<typename T, std::size_t dim_>
 class BoxSpans
 {
@@ -49,6 +77,8 @@ public:
         return copy;
     }
 
+    // starting point of the current span: fastest-varying coordinate is always
+    // box.lower[dim - 1], since a span walks that whole dimension contiguously
     auto& point()
     {
         if constexpr (dim == 1)
@@ -78,6 +108,7 @@ protected:
 };
 
 
+/** @brief One slab of a box: a fixed slowest-varying index, iterated over its spans. */
 template<typename T, std::size_t dim_>
 class BoxSlab
 {
@@ -148,6 +179,9 @@ protected:
     T slab_idx;
 };
 
+/** @brief Entry point of the span-wise iteration: iterates the slabs of a box.
+ * See make_box_span() for the usual way to construct one.
+ */
 template<typename T, std::size_t dim_>
 class BoxSpan
 {
@@ -180,6 +214,7 @@ public:
         return 1;
     }
 
+    // number of slabs (not the number of cells in the box)
     std::uint32_t size() const
     {
         auto s = slab_end() - slab_begin();
@@ -194,7 +229,9 @@ protected:
 
 template<typename T, std::size_t dim>
 auto make_box_span(Box<T, dim> const box)
-{ return BoxSpan<T, dim>{box}; }
+{
+    return BoxSpan<T, dim>{box};
+}
 
 
 } // namespace PHARE::core

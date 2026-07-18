@@ -33,6 +33,9 @@ public:
     }
 
     auto static make(std::uint32_t cells) { return TestGridLayout{cells}; }
+
+    // builds a layout whose AMRBox is exactly `box`, for tests that need a
+    // layout not starting at the origin (e.g. a fine layout offset from a coarse one)
     auto static make(PHARE::core::Box<int, dim> const box, double const dl = .1)
     {
         using namespace PHARE::core;

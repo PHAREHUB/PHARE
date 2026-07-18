@@ -54,6 +54,26 @@ namespace amr
          * - the weights are pre-computed by the FieldRefineIndexesAndWeights object
          * - we just have to know which one to use, depending on where the fineIndex is in the
          * coarse cell
+         *
+         * This is the FieldRefinerPolicy contract shared by every refiner class in this
+         * directory (ElectricFieldRefiner, MagneticFieldRefiner, ...):
+         * core::operator_across_adjacent_levels() (in core/data/field/field_box.hpp)
+         * calls operator() once per fine cell it visits with:
+         *  - coarseField, fineField   : the whole coarse/fine arrays, for policies that
+         *                               need to read neighboring cells (e.g. averaging)
+         *  - fineIndex, coarseIndex   : that cell's AMR index on the fine grid, and its
+         *                               coarse counterpart (fineIndex divided by the
+         *                               refinement ratio)
+         *  - locFineIdx, locCoarseIdx : the same two indices, translated to each field's
+         *                               local (ghost-box-relative) storage index
+         *  - fineVal, coarseVal       : references to fineField(locFineIdx) and
+         *                               coarseField(locCoarseIdx) themselves, passed
+         *                               through so a policy can read/write the cell
+         *                               value directly instead of re-indexing the field
+         *
+         * A policy must not overwrite a fine cell that was already set (by a boundary
+         * condition or an earlier pass): guard with `if (not std::isnan(fineVal)) return;`
+         * before writing, since NaN is the sentinel for "not yet set".
          */
         void operator()(auto const& coarseField, auto& fineField, auto fineIndex,
                         auto const& coarseIndex, auto const& locFineIdx, auto const& locCoarseIdx,

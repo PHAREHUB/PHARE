@@ -3,8 +3,9 @@
 #include "core/utilities/types.hpp"
 
 #include "amr/utilities/box/amr_box.hpp"
-#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/amr_constants.hpp"
 #include "amr/data/field/refine/magnetic_field_init_refiner.hpp"
+#include "core/data/field/field_box.hpp"
 
 #include "phare_core.hpp"
 
@@ -56,27 +57,25 @@ int test()
     SAMRAI::hier::Box const fine_box   = samrai_box_from(fine_layout.AMRBox());
     SAMRAI::hier::IntVector const ratio{SAMRAI::tbox::Dimension{ndim}, 2};
 
-    Grid_t dst{"rho", fine_layout, core::HybridQuantity::Scalar::rho, 1};
-    Grid_t const src{"rho", coarse_layout, core::HybridQuantity::Scalar::rho, 1};
-    auto const& qty = dst.physicalQuantity();
+    Grid_t fine{"rho", fine_layout, core::HybridQuantity::Scalar::rho, 1};
+    Grid_t const coarse{"rho", coarse_layout, core::HybridQuantity::Scalar::rho, 1};
+    auto const& qty = fine.physicalQuantity();
 
     {
-        auto const dst_domain_box = fine_layout.AMRBoxFor(dst);
+        auto const fine_domain_box = fine_layout.AMRBoxFor(fine);
         ScopeTimer timer{FOR};
         for (std::size_t L = 0; L < FOR; ++L)
         {
             Refiner refiner{fine_layout.centering(qty), fine_box, coarse_box, ratio};
-            // refine_field(dst, src, fine_box, refiner);
-            //             core::FieldBox;
-            core::FieldBox d{dst, fine_layout, dst_domain_box};
-            core::FieldBox s{src, coarse_layout, coarsen_box(dst_domain_box)};
-            refine_field(d, s, refiner);
+            core::FieldBox f{fine, fine_layout, fine_domain_box};
+            core::FieldBox c{coarse, coarse_layout, coarsen_box(fine_domain_box)};
+            core::operator_across_adjacent_levels(c, f, refinementRatio, refiner);
         }
     }
 
-    PRINT("RHO SUM: " << core::to_string_with_precision(sum(dst), 20));
-    auto const mid = dst.size() / 2;
-    return dst.data()[mid - 1] != dst.data()[mid + 1];
+    PRINT("RHO SUM: " << core::to_string_with_precision(sum(fine), 20));
+    auto const mid = fine.size() / 2;
+    return fine.data()[mid - 1] != fine.data()[mid + 1];
 }
 
 } // namespace PHARE::amr::bench
