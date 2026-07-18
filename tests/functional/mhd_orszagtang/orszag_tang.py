@@ -113,7 +113,7 @@ def plot_file_for_qty(plot_dir, qty, time):
 
 def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
-    for time in run.times("B"):
+    for time in run.times("EM_B"):
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
