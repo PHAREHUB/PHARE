@@ -40,10 +40,11 @@ class H5Writer
     static constexpr std::size_t timestamp_precision = 10;
 
 public:
-    using This       = H5Writer<ModelView>;
-    using Model_t    = ModelView::Model_t;
-    using GridLayout = ModelView::GridLayout;
-    using Attributes = ModelView::PatchProperties;
+    using This        = H5Writer<ModelView>;
+    using ModelView_t = ModelView;
+    using Model_t     = ModelView::Model_t;
+    using GridLayout  = ModelView::GridLayout;
+    using Attributes  = ModelView::PatchProperties;
 
     static constexpr auto dimension  = GridLayout::dimension;
     static constexpr auto READ_WRITE = HiFile::AccessMode::OpenOrCreate;
@@ -246,14 +247,14 @@ template<typename ModelView>
 void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnostics,
                                double timestamp)
 {
-    timestamp_                     = timestamp;
+    timestamp_                   = timestamp;
     fileAttributes_["dimension"] = dimension;
     if constexpr (solver::is_hybrid_model_v<Model_t>)
         fileAttributes_["interpOrder"] = GridLayout::options.interp_order;
-    fileAttributes_["layoutType"]  = modelView_.getLayoutTypeString();
-    fileAttributes_["domain_box"]  = modelView_.domainBox();
-    fileAttributes_["cell_width"]  = modelView_.cellWidth();
-    fileAttributes_["origin"]      = modelView_.origin();
+    fileAttributes_["layoutType"] = modelView_.getLayoutTypeString();
+    fileAttributes_["domain_box"] = modelView_.domainBox();
+    fileAttributes_["cell_width"] = modelView_.cellWidth();
+    fileAttributes_["origin"]     = modelView_.origin();
 
     fileAttributes_["boundary_conditions"] = modelView_.boundaryConditions();
 

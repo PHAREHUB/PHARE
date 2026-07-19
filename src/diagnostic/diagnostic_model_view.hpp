@@ -153,13 +153,13 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Mod
     : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
 {
     using Super          = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
-    using GridLayout     = Super::GridLayout;
     using Field          = Model::field_type;
     using VecField       = Model::vecfield_type;
     using VecFieldData_t = Super::VecFieldData_t;
     using TensorFieldT   = Model::ions_type::tensorfield_type;
 
 public:
+    using GridLayout             = Super::GridLayout;
     using Model_t                = Model;
     using physical_quantity_type = Model::physical_quantity_type;
 
@@ -305,7 +305,7 @@ protected:
             auto const src_name         = pop.kineticEnergyFlux().name();
 
             auto&& [idDst, idSrc] = rm.getIDsList(dst_name, src_name);
-            kineticEnergyFluxAlgo.MTalgo->registerRefine(
+            kineticEnergyFluxAlgo.KEFalgo->registerRefine(
                 idDst, idSrc, idDst, nullptr,
                 std::make_shared<
                     amr::TensorFieldGhostInterpOverlapFillPattern<GridLayout, /*rank_=*/1>>());
