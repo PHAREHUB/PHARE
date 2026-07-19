@@ -130,8 +130,9 @@ class ShockTest(SimulatorTest):
 
     def test_run(self):
         self.register_diag_dir_for_cleanup(diag_dir)
-        Simulator(config()).run().reset()
-        if cpp.mpi_rank() == 0:
+        sim = config()
+        Simulator(sim).run().reset()
+        if not sim.dry_run and cpp.mpi_rank() == 0:
             plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
             plot_dir.mkdir(parents=True, exist_ok=True)
             plot(diag_dir, plot_dir)

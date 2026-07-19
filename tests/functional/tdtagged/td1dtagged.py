@@ -262,7 +262,8 @@ def post_advance(new_time):
 
 
 def main():
-    Simulator(noRefinement(diagdir="noRefinement")).run().reset()
+    sim = noRefinement(diagdir="noRefinement")
+    Simulator(sim).run().reset()
     ph.global_vars.sim = None
 
     Simulator(
@@ -270,7 +271,7 @@ def main():
     ).run().reset()
     ph.global_vars.sim = None
 
-    if cpp.mpi_rank() == 0:
+    if not sim.dry_run and cpp.mpi_rank() == 0:
         make_figure()
 
 

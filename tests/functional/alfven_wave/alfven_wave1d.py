@@ -135,7 +135,11 @@ def phase_speed(run_path, ampl, xmax):
 def main():
     from pyphare import cpp
 
-    Simulator(config()).run()
+    sim = config()
+    Simulator(sim).run()
+
+    if sim.dry_run:
+        return
 
     if cpp.mpi_rank() == 0:
         vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)

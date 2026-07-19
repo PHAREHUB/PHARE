@@ -128,7 +128,10 @@ def run_convergence(reconstruction, limiter):
 
     while Dx > Dx0 / 32.0 and Nx < 1600:
         ph.global_vars.sim = None
-        Simulator(config(Nx, Dx, reconstruction, limiter)).run().reset()
+        sim = config(Nx, Dx, reconstruction, limiter)
+        Simulator(sim).run().reset()
+        if sim.dry_run:
+            return
         run = Run(diag_dir)
         error = compute_error(run, final_time, Nx, Dx, ghosts)
         dx_values.append(Dx)

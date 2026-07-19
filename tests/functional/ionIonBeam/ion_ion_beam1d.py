@@ -173,7 +173,11 @@ def main():
     # until the time at which the B value gets the greater... but is rather before with an offset
     # given by time_offset : the exponential fit is performed on [0, times[imax] - time_offset]
 
-    Simulator(config()).run()
+    sim = config()
+    Simulator(sim).run()
+
+    if sim.dry_run:
+        return
 
     if cpp.mpi_rank() == 0:
         times, first_mode, ampl, gamma, damped_mode, omega = growth_b_right_hand(

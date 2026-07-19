@@ -139,6 +139,11 @@ endif(ubsan)
 
 # public test functions
 #
+# add_phare_test/add_python3_test/add_no_mpi_phare_test/add_no_mpi_python3_test/
+# add_mpi_python3_test take no explicit level (unlike phare_exec/phare_python3_exec)
+# and are implicitly registered at PHARE_UNLEVELED_TEST_LEVEL (10): they are skipped
+# when PHARE_EXEC_LEVEL_MIN >= 1 or PHARE_EXEC_LEVEL_MAX < 11.
+#
 #   add_phare_test($binary $directory)
 #    execute binary in target directory, with mpirun when -DtestMPI=ON
 #
@@ -166,6 +171,12 @@ endif(ubsan)
 
 if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
+  # add_phare_test/add_python3_test/add_no_mpi_*/add_mpi_python3_test do not
+  # take an explicit level (unlike phare_exec/phare_python3_exec), so they are
+  # implicitly treated as this level - set PHARE_EXEC_LEVEL_MIN > this value
+  # (or PHARE_EXEC_LEVEL_MAX < this value) to skip them all.
+  set(PHARE_UNLEVELED_TEST_LEVEL 1)
+
   if (NOT DEFINED PHARE_MPI_PROCS)
     set(PHARE_MPI_PROCS 1)
     if(testMPI)
@@ -180,8 +191,20 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
   endfunction(set_exe_paths_)
 
-  function(add_phare_test_ binary directory)
+  # prevents building a target even when added via "add_executable"
+  function(skip_building binary)
+    set_target_properties(${binary} PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
+  endfunction(skip_building)
+
+  # applies unconditionally to any binary that will actually be built - must
+  # never be skipped by the PHARE_UNLEVELED_TEST_LEVEL check below, else the
+  # binary silently builds with default (non-Werror, missing -DPHARE_HAS_HIGHFIVE) flags.
+  function(add_phare_test_build_flags_ binary)
     target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
+  endfunction(add_phare_test_build_flags_)
+
+  # ctest-registration decoration only - assumes add_test() was already called
+  function(add_phare_test_ binary directory)
     set_exe_paths_(${binary})
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT PHARE_MPI_PROCS=${PHARE_MPI_PROCS})
@@ -196,16 +219,25 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   endfunction(add_phare_test_)
 
   function(add_no_mpi_phare_test binary directory)
+    if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
+      # test inactive at this level - don't waste time building it either,
+      # rather than building it and silently skipping its compile flags
+      skip_building(${binary})
+      return()
+    endif()
     if(NOT testMPI OR (testMPI AND forceSerialTests))
+      add_phare_test_build_flags_(${binary})
       add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary} ${directory})
     else()
-      # this prevents building targets even when added via "add_executable"
-      set_target_properties(${binary} PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
+      skip_building(${binary})
     endif()
   endfunction(add_no_mpi_phare_test)
 
   function(add_no_mpi_python3_test name file directory)
+    if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
+      return()
+    endif()
     if(NOT testMPI OR (testMPI AND forceSerialTests))
       add_test(NAME py3_${name} COMMAND ${Python_EXECUTABLE} -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
@@ -214,16 +246,29 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   if(testMPI)
     function(add_phare_test binary directory)
+      if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
+        # test inactive at this level - don't waste time building it either,
+        # rather than building it and silently skipping its compile flags
+        skip_building(${binary})
+        return()
+      endif()
+      add_phare_test_build_flags_(${binary})
       add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} ./${binary} WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary} ${directory})
     endfunction(add_phare_test)
 
     function(add_python3_test name file directory)
+      if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
+        return()
+      endif()
       add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
 
     function(add_mpi_python3_test N name file directory)
+      if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
+        return()
+      endif()
       add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name}_mpi_n_${N})
     endfunction(add_mpi_python3_test)

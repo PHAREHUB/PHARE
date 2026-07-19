@@ -190,10 +190,15 @@ def main():
     nbrcells = [100, 200]
     nbrdts = [25000, 100000]
 
+    sim = None
     for vth in cases:
         for dl, nbrcell, nbrdt in zip(dls, nbrcells, nbrdts):
-            Simulator(uniform(vth, dl, nbrcell, nbrdt)).run()
+            sim = uniform(vth, dl, nbrcell, nbrdt)
+            Simulator(sim).run()
             ph.global_vars.sim = None
+
+    if sim.dry_run:
+        return
 
     paths = glob("*vth*")
     runs_vth = {}

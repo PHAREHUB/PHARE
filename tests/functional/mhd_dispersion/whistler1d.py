@@ -35,7 +35,10 @@ def create_settings(cells, dl, m, nbr_periods, timestep, diag_dir):
     settings["final_time"] = (2 * np.pi / settings["w"]) * settings["nbr_periods"]
     # np.arrange() looked like it had some precision issues
     settings["nsteps"] = int(np.round(settings["final_time"] / settings["timestep"]))
-    settings["timestamps"] = np.linspace(0, settings["final_time"], settings["nsteps"])
+    # timestamps must be exact multiples of timestep (dt is kept bit-exact by
+    # Simulation), not a linspace over final_time whose spacing generally
+    # differs from timestep.
+    settings["timestamps"] = settings["timestep"] * np.arange(settings["nsteps"] + 1)
     return settings
 
 

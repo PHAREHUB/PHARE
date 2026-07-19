@@ -117,11 +117,13 @@ def main():
     import subprocess
     import matplotlib.pyplot as plt
 
+    dry_run = False
     for interp_order in (1, 2, 3):
         sim = config(interp_order)
         Simulator(sim).run()
+        dry_run = sim.dry_run
 
-        if cpp.mpi_rank() == 0:
+        if not dry_run and cpp.mpi_rank() == 0:
             dt = 10 * sim.time_step
             nt = sim.final_time / dt + 1
             times = dt * np.arange(nt)
@@ -150,6 +152,10 @@ def main():
             subprocess.call(cmd)
 
         ph.global_vars.sim = None
+
+    if dry_run:
+        return
+
     pngs = glob.glob("shock*/*.png")
     for png in pngs:
         os.remove(png)

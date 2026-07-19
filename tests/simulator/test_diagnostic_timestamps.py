@@ -122,6 +122,9 @@ class DiagnosticsTest(unittest.TestCase):
 
         Simulator(simulation).run()
 
+        if sim.dry_run:
+            return
+
         def make_time(stamp):
             return "{:.10f}".format(stamp)
 
@@ -165,6 +168,9 @@ class DiagnosticsTest(unittest.TestCase):
                     )
 
                 Simulator(simulation).run()
+
+                if simulation.dry_run:
+                    return
 
                 for diagname, diagInfo in simulation.diagnostics.items():
                     h5_filename = os.path.join(diag_outputs, h5_filename_from(diagInfo))
