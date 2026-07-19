@@ -80,7 +80,7 @@ private:
 template<typename H5Writer>
 struct FluidDiagnosticWriter<H5Writer>::HybridFluidComputers
 {
-    using Model_t         = H5Writer::ModelView_t::Model_t;
+    using Model_t         = H5Writer::Model_t;
     using IonPopulation_t = Model_t::ions_type::value_type;
     using IonsFunctor     = std::function<void(H5Writer&)>;
     using PopFunctor      = std::function<void(H5Writer&, IonPopulation_t&)>;
@@ -116,7 +116,7 @@ struct FluidDiagnosticWriter<H5Writer>::HybridFluidComputers
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
-    using Model_t = H5Writer::ModelView_t::Model_t;
+    using Model_t = H5Writer::Model_t;
 
     auto const qty = diagnostic.quantity;
     if constexpr (solver::is_hybrid_model_v<Model_t>)
