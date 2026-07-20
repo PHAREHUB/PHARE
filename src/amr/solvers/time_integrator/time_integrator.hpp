@@ -6,6 +6,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "initializer/data_provider.hpp"
 #include "phare_simulator_options.hpp"
@@ -74,7 +75,7 @@ public:
 
     auto exposeFluxes() { return impl_->exposeFluxes(); }
 
-    auto exposeFluxes() const { return impl_->exposeFluxes(); }
+    auto exposeFluxes() const { return std::as_const(*impl_).exposeFluxes(); }
 };
 
 } // namespace PHARE::solver

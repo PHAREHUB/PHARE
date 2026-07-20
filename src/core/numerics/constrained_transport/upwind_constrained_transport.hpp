@@ -1,14 +1,10 @@
 #ifndef PHARE_UPWIND_CONSTRAINED_TRANSPORT_HPP
 #define PHARE_UPWIND_CONSTRAINED_TRANSPORT_HPP
 
-#include "core/def.hpp"
-#include "core/numerics/ohm/ohm.hpp"
-#include "core/mhd/mhd_quantities.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/numerics/constrained_transport/upwind_constrained_transport_utils.hpp"
-
+#include "core/numerics/ohm/ohm.hpp"
+#include "core/utilities/index/index.hpp"
 
 #include <cmath>
 
@@ -44,9 +40,9 @@ public:
         auto& Ey = E(Component::Y);
         auto& Ez = E(Component::Z);
 
-        layout_.evalOnBox(Ex, [&](auto&... args) mutable { ExEq_(ct_state, Ex, B, {args...}); });
-        layout_.evalOnBox(Ey, [&](auto&... args) mutable { EyEq_(ct_state, Ey, B, {args...}); });
-        layout_.evalOnBox(Ez, [&](auto&... args) mutable { EzEq_(ct_state, Ez, B, {args...}); });
+        layout_.evalOnBox(Ex, [&](auto&... args) { ExEq_(ct_state, Ex, B, {args...}); });
+        layout_.evalOnBox(Ey, [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}); });
+        layout_.evalOnBox(Ez, [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}); });
 
         if (is_resistive_ || is_hyper_resistive_)
         {
@@ -59,24 +55,24 @@ public:
             if (is_resistive_)
             {
                 layout_.evalOnBox(
-                    Ex, [&](auto&... args) mutable { resistive_contribution_(Ex, Jx, {args...}); });
+                    Ex, [&](auto&... args) { resistive_contribution_(Ex, Jx, {args...}); });
                 layout_.evalOnBox(
-                    Ey, [&](auto&... args) mutable { resistive_contribution_(Ey, Jy, {args...}); });
+                    Ey, [&](auto&... args) { resistive_contribution_(Ey, Jy, {args...}); });
                 layout_.evalOnBox(
-                    Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
+                    Ez, [&](auto&... args) { resistive_contribution_(Ez, Jz, {args...}); });
             }
 
             if (is_hyper_resistive_)
             {
                 auto const& rho = mhd_state.rho;
 
-                layout_.evalOnBox(Ex, [&](auto&... args) mutable {
+                layout_.evalOnBox(Ex, [&](auto&... args) {
                     hyperresistive_contribution_<Component::X>(Ex, Jx, B, rho, {args...});
                 });
-                layout_.evalOnBox(Ey, [&](auto&... args) mutable {
+                layout_.evalOnBox(Ey, [&](auto&... args) {
                     hyperresistive_contribution_<Component::Y>(Ey, Jy, B, rho, {args...});
                 });
-                layout_.evalOnBox(Ez, [&](auto&... args) mutable {
+                layout_.evalOnBox(Ez, [&](auto&... args) {
                     hyperresistive_contribution_<Component::Z>(Ez, Jz, B, rho, {args...});
                 });
             }
@@ -101,11 +97,13 @@ private:
 
             if constexpr (Hall)
             {
-                auto invRho  = 1.0 / ct_state.rhot_y(idx);
-                auto JxB_x_L = ct_state.jt_y(Component::Y)(idx) * BzL
-                               - ct_state.jt_y(Component::Z)(idx) * B(Component::Y)(idx);
-                auto JxB_x_R = ct_state.jt_y(Component::Y)(idx) * BzR
-                               - ct_state.jt_y(Component::Z)(idx) * B(Component::Y)(idx);
+                auto invRho  = 1.0 / ct_state.template getRhot<Direction::Y>()(idx);
+                auto JxB_x_L = ct_state.template getJt<Direction::Y>()(Component::Y)(idx)*BzL
+                               - ct_state.template getJt<Direction::Y>()(Component::Z)(idx)*B(
+                                   Component::Y)(idx);
+                auto JxB_x_R = ct_state.template getJt<Direction::Y>()(Component::Y)(idx)*BzR
+                               - ct_state.template getJt<Direction::Y>()(Component::Z)(idx)*B(
+                                   Component::Y)(idx);
 
                 auto HallL = -JxB_x_L * invRho;
                 auto HallR = -JxB_x_R * invRho;
@@ -158,14 +156,14 @@ private:
             if constexpr (Hall)
             {
                 auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.jt_z(Component::Y), idx);
+                    ct_state.template getJt<Direction::Z>()(Component::Y), idx);
                 auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.jt_y(Component::Z), idx);
+                    ct_state.template getJt<Direction::Y>()(Component::Z), idx);
 
-                auto [rhoS, rhoN]
-                    = Reconstruction_t::template reconstruct<Direction::Y>(ct_state.rhot_z, idx);
-                auto [rhoB, rhoT]
-                    = Reconstruction_t::template reconstruct<Direction::Z>(ct_state.rhot_y, idx);
+                auto [rhoS, rhoN] = Reconstruction_t::template reconstruct<Direction::Y>(
+                    ct_state.template getRhot<Direction::Z>(), idx);
+                auto [rhoB, rhoT] = Reconstruction_t::template reconstruct<Direction::Z>(
+                    ct_state.template getRhot<Direction::Y>(), idx);
 
                 Ex(idx) += -(aB * jzB * ByB / rhoB + aT * jzT * ByT / rhoT)
                            + (aS * jyS * BzS / rhoS + aN * jyN * BzN / rhoN);
@@ -190,11 +188,13 @@ private:
 
             if constexpr (Hall)
             {
-                auto invRho  = 1.0 / ct_state.rhot_x(idx);
-                auto JxB_y_L = ct_state.jt_x(Component::Z)(idx) * B(Component::X)(idx)
-                               - ct_state.jt_x(Component::X)(idx) * BzL;
-                auto JxB_y_R = ct_state.jt_x(Component::Z)(idx) * B(Component::X)(idx)
-                               - ct_state.jt_x(Component::X)(idx) * BzR;
+                auto invRho  = 1.0 / ct_state.template getRhot<Direction::X>()(idx);
+                auto JxB_y_L = ct_state.template getJt<Direction::X>()(Component::Z)(idx)*B(
+                                   Component::X)(idx)
+                               - ct_state.template getJt<Direction::X>()(Component::X)(idx)*BzL;
+                auto JxB_y_R = ct_state.template getJt<Direction::X>()(Component::Z)(idx)*B(
+                                   Component::X)(idx)
+                               - ct_state.template getJt<Direction::X>()(Component::X)(idx)*BzR;
 
                 auto HallL = JxB_y_L * invRho;
                 auto HallR = JxB_y_R * invRho;
@@ -246,13 +246,13 @@ private:
             if constexpr (Hall)
             {
                 auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.jt_z(Component::X), idx);
+                    ct_state.template getJt<Direction::Z>()(Component::X), idx);
                 auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.jt_x(Component::Z), idx);
-                auto [rhoW, rhoE]
-                    = Reconstruction_t::template reconstruct<Direction::X>(ct_state.rhot_z, idx);
-                auto [rhoB, rhoT]
-                    = Reconstruction_t::template reconstruct<Direction::Z>(ct_state.rhot_x, idx);
+                    ct_state.template getJt<Direction::X>()(Component::Z), idx);
+                auto [rhoW, rhoE] = Reconstruction_t::template reconstruct<Direction::X>(
+                    ct_state.template getRhot<Direction::Z>(), idx);
+                auto [rhoB, rhoT] = Reconstruction_t::template reconstruct<Direction::Z>(
+                    ct_state.template getRhot<Direction::X>(), idx);
                 Ey(idx) += -(aW * jxW * BzW / rhoW + aE * jxE * BzE / rhoE)
                            + (aB * jzB * BxB / rhoB + aT * jzT * BxT / rhoT);
             }
@@ -276,11 +276,13 @@ private:
 
             if constexpr (Hall)
             {
-                auto invRho  = 1.0 / ct_state.rhot_x(idx);
-                auto JxB_z_L = ct_state.jt_x(Component::X)(idx) * ByL
-                               - ct_state.jt_x(Component::Y)(idx) * B(Component::X)(idx);
-                auto JxB_z_R = ct_state.jt_x(Component::X)(idx) * ByR
-                               - ct_state.jt_x(Component::Y)(idx) * B(Component::X)(idx);
+                auto invRho  = 1.0 / ct_state.template getRhot<Direction::X>()(idx);
+                auto JxB_z_L = ct_state.template getJt<Direction::X>()(Component::X)(idx)*ByL
+                               - ct_state.template getJt<Direction::X>()(Component::Y)(idx)*B(
+                                   Component::X)(idx);
+                auto JxB_z_R = ct_state.template getJt<Direction::X>()(Component::X)(idx)*ByR
+                               - ct_state.template getJt<Direction::X>()(Component::Y)(idx)*B(
+                                   Component::X)(idx);
 
                 auto HallL = -JxB_z_L * invRho;
                 auto HallR = -JxB_z_R * invRho;
@@ -333,14 +335,14 @@ private:
             if constexpr (Hall)
             {
                 auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.jt_x(Component::Y), idx);
+                    ct_state.template getJt<Direction::X>()(Component::Y), idx);
                 auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.jt_y(Component::X), idx);
+                    ct_state.template getJt<Direction::Y>()(Component::X), idx);
 
-                auto [rhoS, rhoN]
-                    = Reconstruction_t::template reconstruct<Direction::Y>(ct_state.rhot_x, idx);
-                auto [rhoW, rhoE]
-                    = Reconstruction_t::template reconstruct<Direction::X>(ct_state.rhot_y, idx);
+                auto [rhoS, rhoN] = Reconstruction_t::template reconstruct<Direction::Y>(
+                    ct_state.template getRhot<Direction::X>(), idx);
+                auto [rhoW, rhoE] = Reconstruction_t::template reconstruct<Direction::X>(
+                    ct_state.template getRhot<Direction::Y>(), idx);
 
                 Ez(idx) += (aW * jxW * ByW / rhoW + aE * jxE * ByE / rhoE)
                            - (aS * jyS * BxS / rhoS + aN * jyN * BxN / rhoN);

@@ -2,7 +2,7 @@
 #define PHARE_SIMULATOR_OPTIONS_HPP
 
 #include "core/utilities/meta/meta_utilities.hpp"
-#include "core/utilities/meta/string_enum.hpp"
+#include "core/utilities/meta/enum.hpp"
 
 #include <array>
 #include <cstddef>

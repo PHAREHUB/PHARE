@@ -112,7 +112,7 @@ public:
     {
         Super::registerResources(model);
         euler_.registerResources(model);
-        compute_fluxes_.registerResources(model);
+        // no need to register compute_fluxes_, as it shares its resources with euler_
     }
 
     void allocate(MHDModel& model, SAMRAI::hier::Patch& patch,
@@ -120,7 +120,7 @@ public:
     {
         Super::allocate(model, patch, allocateTime);
         euler_.allocate(model, patch, allocateTime);
-        compute_fluxes_.allocate(model, patch, allocateTime);
+        // no need to allocate compute_fluxes_, as it shares its resources with euler_
     }
 
     using Super::exposeFluxes;

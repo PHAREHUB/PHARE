@@ -3,6 +3,7 @@
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -144,7 +145,7 @@ public:
                                 save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
                                                                           {indices...});
                         }
-                        else // Ideal
+                        else // if (!Hall)
                         {
                             auto&& [uL, uR] = Reconstructor_t::template reconstruct<direction>(
                                 state, {indices...});
@@ -158,13 +159,26 @@ public:
                             fluxes.template get_dir<direction>({indices...})
                                 = riemann_.template solve<direction>(uL, uR, fL, fR);
 
-                            ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
-                                                              {indices...});
-
-                            // for energy ExB term
                             if constexpr (mustSaveBt)
+                            {
+                                auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
+                                    direction, GridLayout::edgeXToCellCenter,
+                                    GridLayout::edgeYToCellCenter, GridLayout::edgeZToCellCenter>(
+                                    state.J, {indices...});
+
+                                auto const jt   = riemann_.vector_riemann_averaging(jL, jR);
+                                auto const rhot = riemann_.riemann_averaging(uL.rho, uR.rho);
+
+                                ct_state.template save<direction>(riemann_.vt, jt, rhot,
+                                                                  riemann_.uct_coefs, {indices...});
+
+                                // for energy ExB term
                                 save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
                                                                           {indices...});
+                            }
+                            else // ideal mhd
+                                ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
+                                                                  {indices...});
                         }
                     });
             };
@@ -214,27 +228,7 @@ public:
                     });
             };
 
-            // lift the runtime flags and hyper_mode into compile-time tag variants, then a single
-            // std::visit fans out every combination flat: the visitor is called with one tag from
-            // each variant, so the fill and resistive bodies branch only via if constexpr.
-            auto asBoolTag = [](bool const value) -> std::variant<std::false_type, std::true_type> {
-                if (value)
-                    return std::true_type{};
-                return std::false_type{};
-            };
-            auto asHyperModeTag = [](HyperMode const value)
-                -> std::variant<std::integral_constant<HyperMode, HyperMode::constant>,
-                                std::integral_constant<HyperMode, HyperMode::spatial>> {
-                switch (value)
-                {
-                    case HyperMode::constant:
-                        return std::integral_constant<HyperMode, HyperMode::constant>{};
-                    case HyperMode::spatial:
-                        return std::integral_constant<HyperMode, HyperMode::spatial>{};
-                }
-                throw std::runtime_error("Error - Ohm - unknown hyper_mode");
-            };
-
+            // loop at compile time to avoid runtime checks in compute loops
             std::visit(
                 [&](auto isResistiveTag, auto isHyperResistiveTag, auto hyperModeTag) {
                     constexpr bool isResistive      = decltype(isResistiveTag)::value;
@@ -246,8 +240,8 @@ public:
                         addResistiveContributions(isResistiveTag, isHyperResistiveTag,
                                                   hyperModeTag);
                 },
-                asBoolTag(is_resistive_), asBoolTag(is_hyper_resistive_),
-                asHyperModeTag(hyper_mode));
+                asBoolConstant(is_resistive_), asBoolConstant(is_hyper_resistive_),
+                asEnumConstant(hyper_mode));
         });
     }
 
@@ -271,12 +265,7 @@ private:
     template<auto direction>
     auto& getBt_(auto& fvm_state) const
     {
-        if constexpr (direction == Direction::X)
-            return fvm_state.bt_x;
-        else if constexpr (direction == Direction::Y)
-            return fvm_state.bt_y;
-        else if constexpr (direction == Direction::Z)
-            return fvm_state.bt_z;
+        return fvm_state.template getBt<direction>();
     }
 
     template<auto direction>
