@@ -4,11 +4,19 @@
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "initializer/data_provider.hpp"
 
+namespace PHARE::amr
+{
+template<typename MHDModel>
+class MHDMessenger;
+} // namespace PHARE::amr
+
 namespace PHARE
 {
-template<typename FVmethod, typename MHDModel>
+template<typename FVmethod, typename MHDModel, typename MessengerT = amr::MHDMessenger<MHDModel>>
 struct DefaultTimeIntegrator
 {
+    using Messenger = MessengerT;
+
     DefaultTimeIntegrator(PHARE::initializer::PHAREDict const& /*dict*/)
         : butcherFluxes_{{"timeRho_fx", core::MHDQuantity::Scalar::ScalarFlux_x},
                          {"timeRhoV_fx", core::MHDQuantity::Vector::VecFlux_x},
@@ -58,7 +66,7 @@ struct DefaultRiemannSolver
 {
 };
 
-template<bool Hall, bool Resistivity, bool HyperResistivity>
+template<bool Hall>
 struct DefaultEquations
 {
 };

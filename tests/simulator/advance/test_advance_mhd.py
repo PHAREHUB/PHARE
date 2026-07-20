@@ -29,8 +29,6 @@ class MHDAdvanceTest(AdvanceTestBase):
         cells=120,
         dl=0.1,
         hall=False,
-        res=False,
-        hyper_res=True,
         extra_diag_options=None,
         timestamps=None,
         diag_outputs="",
@@ -75,8 +73,6 @@ class MHDAdvanceTest(AdvanceTestBase):
             riemann="Rusanov",
             mhd_timestepper="TVDRK3",
             hall=hall,
-            res=res,
-            hyper_res=hyper_res,
             model_options=["MHDModel"],
             max_mhd_level=3,
         )

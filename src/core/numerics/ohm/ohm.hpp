@@ -3,10 +3,17 @@
 
 
 #include "core/utilities/index/index.hpp"
+#include "core/utilities/meta/enum.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"
+
+#include <array>
+#include <string_view>
+#include <utility>
+#include <variant>
 
 
 namespace PHARE::core
@@ -14,19 +21,31 @@ namespace PHARE::core
 
 enum class HyperMode { constant, spatial };
 
+template<>
+struct EnumTraits<HyperMode>
+{
+    static constexpr std::string_view label = "hyper mode";
+    static constexpr std::array<std::pair<std::string_view, HyperMode>, 2> names{{
+        {"constant", HyperMode::constant},
+        {"spatial", HyperMode::spatial},
+    }};
+};
+
 struct OhmInfo
 {
     double const eta;
     double const nu;
     HyperMode const hyper_mode;
 
+    bool isResistive() const { return eta > 0.0; }
+    bool isHyperResistive() const { return nu > 0.0; }
+
     OhmInfo static FROM(initializer::PHAREDict const& dict)
     {
-        return {dict["resistivity"].template to<double>(),
-                dict["hyper_resistivity"].template to<double>(),
-                cppdict::get_value(dict, "hyper_mode", std::string{"constant"}) == "constant"
-                    ? HyperMode::constant
-                    : HyperMode::spatial};
+        return {
+            dict["resistivity"].template to<double>(),
+            dict["hyper_resistivity"].template to<double>(),
+            fromString<HyperMode>(cppdict::get_value(dict, "hyper_mode", std::string{"constant"}))};
     }
 };
 
@@ -48,23 +67,42 @@ public:
     void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
                     VecField const& J, VecField& Enew)
     {
-        using Pack = OhmPack<VecField, Field>;
-
-        auto const& [Exnew, Eynew, Eznew] = Enew();
-
-        layout_.evalOnBox(Exnew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::X>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
-        layout_.evalOnBox(Eynew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::Y>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
-        layout_.evalOnBox(Eznew, [&](auto&... args) mutable {
-            this->template E_Eq_<Component::Z>(Pack{Enew, n, Pe, Ve, B, J}, args...);
-        });
+        // lift the resistive / hyper-resistive runtime flags into compile-time tags, then a
+        // single std::visit dispatches once to the matching specialization: the per-cell E_Eq_
+        // branches only via if constexpr, skipping the projection / laplacian when eta or nu is
+        // zero without ever testing the flags inside the evalOnBox loop.
+        std::visit(
+            [&](auto isResistiveTag, auto isHyperResistiveTag) {
+                solve_<decltype(isResistiveTag)::value, decltype(isHyperResistiveTag)::value>(
+                    n, Ve, Pe, B, J, Enew);
+            },
+            asBoolConstant(isResistive()), asBoolConstant(isHyperResistive()));
     }
 
 private:
     GridLayout layout_;
+
+    template<bool isResistive, bool isHyperResistive, typename VecField, typename Field>
+    void solve_(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
+                VecField const& J, VecField& Enew) const
+    {
+        using Pack = OhmPack<VecField, Field>;
+
+        auto const& [Exnew, Eynew, Eznew] = Enew();
+
+        layout_.evalOnBox(Exnew, [&](auto&... args) {
+            this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
+                Pack{Enew, n, Pe, Ve, B, J}, args...);
+        });
+        layout_.evalOnBox(Eynew, [&](auto&... args) {
+            this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
+                Pack{Enew, n, Pe, Ve, B, J}, args...);
+        });
+        layout_.evalOnBox(Eznew, [&](auto&... args) {
+            this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
+                Pack{Enew, n, Pe, Ve, B, J}, args...);
+        });
+    }
 
     template<typename VecField, typename Field>
     struct OhmPack
@@ -75,7 +113,7 @@ private:
     };
 
 
-    template<auto Tag, typename OhmPack, typename... IDXs>
+    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename... IDXs>
     void E_Eq_(OhmPack&& pack, IDXs const&... ijk) const
     {
         auto const& [E, n, Pe, Ve, B, J] = pack;
@@ -83,10 +121,14 @@ private:
 
         static_assert(Components::check<Tag>());
 
-        Exyz(ijk...) = ideal_<Tag>(Ve, B, {ijk...})      //
-                       + pressure_<Tag>(n, Pe, {ijk...}) //
-                       + resistive_<Tag>(J, {ijk...})    //
-                       + hyperresistive_<Tag>(J, B, n, {ijk...});
+        auto E_ = ideal_<Tag>(Ve, B, {ijk...}) + pressure_<Tag>(n, Pe, {ijk...});
+
+        if constexpr (isResistive)
+            E_ += resistive_<Tag>(J, {ijk...});
+        if constexpr (isHyperResistive)
+            E_ += hyperresistive_<Tag>(J, B, n, {ijk...});
+
+        Exyz(ijk...) = E_;
     }
 
 

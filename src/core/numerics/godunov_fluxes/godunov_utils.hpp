@@ -3,7 +3,6 @@
 
 #include "core/data/field/field.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
-#include "core/data/vecfield/vecfield.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/mhd/mhd_quantities.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
@@ -324,47 +323,43 @@ struct AllFluxesNames
 template<typename VecField, typename Equations>
 class GodunovState
 {
-    using Field                            = VecField::field_type;
-    constexpr static auto dimension        = VecField::dimension;
-    constexpr static auto Resistivity      = Equations::resistivity;
-    constexpr static auto HyperResistivity = Equations::hyperResistivity;
+    using Field                     = VecField::field_type;
+    constexpr static auto dimension = VecField::dimension;
 
 public:
     GodunovState() = default;
-
-    NO_DISCARD auto getCompileTimeResourcesViewList()
+    GodunovState(bool const isResistive, bool const isHyperResistive)
     {
-        if constexpr (Resistivity || HyperResistivity)
+        // bt (transverse magnetic field for the energy ExB term) is only needed when resistivity
+        // or hyper-resistivity is active, so it is registered / allocated only then, through a
+        // runtime resource list. That list is a reference to this persistent vector, so the
+        // resource manager sets buffers on these members and not on temporaries.
+        if (isResistive || isHyperResistive)
         {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(bt_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(bt_x, bt_y);
-            else if constexpr (dimension == 3)
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
+            bt_.emplace_back("b_t_x", MHDQuantity::Vector::VecFlux_x);
+            if constexpr (dimension >= 2)
+                bt_.emplace_back("b_t_y", MHDQuantity::Vector::VecFlux_y);
+            if constexpr (dimension >= 3)
+                bt_.emplace_back("b_t_z", MHDQuantity::Vector::VecFlux_z);
         }
-        else
-            return std::forward_as_tuple();
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    NO_DISCARD std::vector<VecField>& getRunTimeResourcesViewList() { return bt_; }
+    NO_DISCARD std::vector<VecField> const& getRunTimeResourcesViewList() const { return bt_; }
+
+    template<auto direction>
+    auto& getBt()
     {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(bt_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(bt_x, bt_y);
-            else if constexpr (dimension == 3)
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
-        }
-        else
-            return std::forward_as_tuple();
+        if constexpr (direction == Direction::X)
+            return bt_[0];
+        else if constexpr (direction == Direction::Y)
+            return bt_[1];
+        else if constexpr (direction == Direction::Z)
+            return bt_[2];
     }
 
-    VecField bt_x{"b_t_x", MHDQuantity::Vector::VecFlux_x};
-    VecField bt_y{"b_t_y", MHDQuantity::Vector::VecFlux_y};
-    VecField bt_z{"b_t_z", MHDQuantity::Vector::VecFlux_z};
+private:
+    std::vector<VecField> bt_;
 };
 
 

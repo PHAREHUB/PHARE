@@ -1,9 +1,15 @@
 #ifndef PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_HPP
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_HPP
 
-#include "initializer/data_provider.hpp"
-#include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "amr/solvers/solver_mhd_field_evolvers.hpp"
+
+#include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "core/numerics/constrained_transport/upwind_constrained_transport_utils.hpp"
+
+#include "initializer/data_provider.hpp"
+
+#include <cassert>
+#include <stdexcept>
 
 namespace PHARE::solver
 {
@@ -19,15 +25,12 @@ class ComputeFluxes
     using FVMethod_t     = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
     using FVMethodInfo_t = FVMethod_t::info_type;
 
-    constexpr static auto Hall             = FVMethod_t::Hall;
-    constexpr static auto Resistivity      = FVMethod_t::Resistivity;
-    constexpr static auto HyperResistivity = FVMethod_t::HyperResistivity;
+    constexpr static auto Hall = FVMethod_t::Hall;
 
     template<typename T>
     using Rec = FVMethod_t::template Rec<T>;
 
-    using ConstrainedTransport_t
-        = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall, Resistivity, HyperResistivity>;
+    using ConstrainedTransport_t     = Dispatchers_t::template ConstrainedTransport_t<Rec, Hall>;
     using ConstrainedTransportInfo_t = ConstrainedTransport_t::info_type;
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
@@ -43,7 +46,17 @@ public:
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
         , to_conservative_gamma_{dict["to_conservative"]["heat_capacity_ratio"]}
+        , needsCurrent_{Hall || fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()}
     {
+        // eta/nu are duplicated into both info structs
+        assert(fVMethodInfo_.eta == constrainedTransportInfo_.eta
+               && fVMethodInfo_.nu == constrainedTransportInfo_.nu);
+
+        // hyper-resistivity is only meaningful alongside the Hall term
+        if constexpr (!Hall)
+            if (fVMethodInfo_.isHyperResistive())
+                throw std::runtime_error(
+                    "Error - hyper-resistivity (nu > 0) requires the Hall term to be enabled");
     }
 
     void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
@@ -51,7 +64,7 @@ public:
     {
         ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_, newTime);
 
-        if constexpr (Hall || Resistivity || HyperResistivity)
+        if (needsCurrent_)
         {
             Ampere_t{level, model}(state.B, state.J);
             TimeSetter{level, model, newTime}(state.B, state.J);
@@ -82,12 +95,14 @@ private:
     ConstrainedTransportInfo_t constrainedTransportInfo_;
 
     // Ampere_t ampere_;
-    core::GodunovState<VecField, Equations_t> fvm_{};
-    core::UpwindConstrainedTransportState<VecField, Hall, Resistivity> ct_{};
+    core::GodunovState<VecField, Equations_t> fvm_{fVMethodInfo_.isResistive(),
+                                                   fVMethodInfo_.isHyperResistive()};
+    core::UpwindConstrainedTransportState<VecField> ct_{Hall, fVMethodInfo_.isResistive()};
     // ToPrimitiveConverter_t to_primitive_;
     // ToConservativeConverter_t to_conservative_;
     double to_primitive_gamma_;
     double to_conservative_gamma_;
+    bool needsCurrent_;
 };
 } // namespace PHARE::solver
 

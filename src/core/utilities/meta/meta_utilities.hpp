@@ -5,6 +5,7 @@
 #include "core/utilities/types.hpp"
 
 #include <type_traits>
+#include <variant>
 
 
 namespace PHARE
@@ -63,6 +64,18 @@ namespace core
     constexpr void allsame([[maybe_unused]] T arg, T2 arg2, Ts... args)
     {
         allsame(arg2, args...);
+    }
+
+
+    /** @brief lifts a runtime bool into a compile-time std::bool_constant (std::false_type /
+     * std::true_type) wrapped in a variant, so std::visit can fan out both cases and let the
+     * visitor branch via `if constexpr`.
+     */
+    inline std::variant<std::false_type, std::true_type> asBoolConstant(bool const value)
+    {
+        if (value)
+            return std::true_type{};
+        return std::false_type{};
     }
 
 

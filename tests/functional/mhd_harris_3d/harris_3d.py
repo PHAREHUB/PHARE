@@ -31,8 +31,6 @@ hs = hour_seconds = 3600.0
 elapsed_restart_timestamps = [hs * 1, hs * 2, hs * 4, hs * 9, hs * 12, hs * 15, hs * 23]
 
 hall = True
-res = True
-hyper_res = True
 
 
 def config():
@@ -71,8 +69,6 @@ def config():
         riemann="Rusanov",
         mhd_timestepper="TVDRK3",
         hall=hall,
-        res=res,
-        hyper_res=hyper_res,
         model_options=["MHDModel"],
     )
 

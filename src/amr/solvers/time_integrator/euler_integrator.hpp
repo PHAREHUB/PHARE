@@ -10,23 +10,23 @@ namespace PHARE::solver
 {
 
 
-template<typename FVMethodStrategy, typename MHDModel>
-class EulerIntegrator : public BaseMHDTimestepper<MHDModel>
+template<typename FVMethodStrategy, typename MHDModel,
+         typename MessengerT = amr::MHDMessenger<MHDModel>>
+class EulerIntegrator : public BaseMHDTimestepper<MHDModel, MessengerT>
 {
-    using Super = BaseMHDTimestepper<MHDModel>;
+    using Super = BaseMHDTimestepper<MHDModel, MessengerT>;
 
 public:
     EulerIntegrator(PHARE::initializer::PHAREDict const& dict)
-        : Super{dict}
+        : Super{dict, /*n_extra_states=*/0}
         , euler_{dict}
     {
     }
 
-    // Butcher fluxes are used to accumulate fluxes over multiple stages, the corresponding buffer
-    // should only contain the fluxes over one time step. The accumulation over all substeps is
-    // delegated to the solver.
-    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, auto& level,
-                    double const currentTime, double const newTime)
+    void operator()(MHDModel& model, Super::MHDStateT& state,
+                    Super::FluxT& fluxes, Super::Messenger& bc,
+                    Super::level_t& level, double const currentTime,
+                    double const newTime) override
     {
         this->resetButcherFluxes_(model, level);
 
@@ -35,21 +35,20 @@ public:
         this->accumulateButcherFluxes_(model, state.E, fluxes, level);
     }
 
-    void registerResources(MHDModel& model)
+    void registerResources(MHDModel& model) override
     {
         Super::registerResources(model);
         euler_.registerResources(model);
     }
 
-    void allocate(MHDModel& model, auto& patch, double const allocateTime) const
+    void allocate(MHDModel& model, SAMRAI::hier::Patch& patch,
+                  double const allocateTime) const override
     {
         Super::allocate(model, patch, allocateTime);
         euler_.allocate(model, patch, allocateTime);
     }
 
     using Super::exposeFluxes;
-    using Super::fillMessengerInfo;
-    using Super::getCompileTimeResourcesViewList;
 
 private:
     Euler<FVMethodStrategy, MHDModel> euler_;

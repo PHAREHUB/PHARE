@@ -13,7 +13,7 @@
 namespace PHARE::core
 {
 
-template<typename GridLayout, bool Resistivity, bool HyperResistivity>
+template<typename GridLayout>
 class ConstrainedTransport
 {
     constexpr static auto dimension = GridLayout::dimension;
@@ -25,6 +25,8 @@ public:
         , eta_{eta}
         , nu_{nu}
         , hyper_mode_{hyper_mode}
+        , is_resistive_{eta > 0.0}
+        , is_hyper_resistive_{nu > 0.0}
     {
     }
 
@@ -49,7 +51,7 @@ public:
 
             layout_.evalOnBox(Ez, [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x); });
 
-            if constexpr (Resistivity)
+            if (is_resistive_)
             {
                 layout_.evalOnBox(
                     Ey, [&](auto&... args) mutable { resistive_contribution_(Ey, Jy, {args...}); });
@@ -57,7 +59,7 @@ public:
                     Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
             }
 
-            if constexpr (HyperResistivity)
+            if (is_hyper_resistive_)
             {
                 layout_.evalOnBox(Ey, [&](auto&... args) mutable {
                     hyperresistive_contribution_<Component::Y>(Ey, Jy, B, rho, {args...});
@@ -96,7 +98,7 @@ public:
                                   [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x, Bx_y); });
             }
 
-            if constexpr (Resistivity)
+            if (is_resistive_)
             {
                 layout_.evalOnBox(
                     Ex, [&](auto&... args) mutable { resistive_contribution_(Ex, Jx, {args...}); });
@@ -106,7 +108,7 @@ public:
                     Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
             }
 
-            if constexpr (HyperResistivity)
+            if (is_hyper_resistive_)
             {
                 layout_.evalOnBox(Ex, [&](auto&... args) mutable {
                     hyperresistive_contribution_<Component::X>(Ex, Jx, B, rho, {args...});
@@ -126,6 +128,8 @@ private:
     double const eta_;
     double const nu_;
     HyperMode const hyper_mode_;
+    bool const is_resistive_;
+    bool const is_hyper_resistive_;
 
     template<typename Field, typename... Fluxes>
     void ExEq_(Field& Ex, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
