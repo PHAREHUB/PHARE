@@ -66,7 +66,7 @@ class MHDInitializationTest(InitializationTest):
             nesting_buffer=1,
             hyper_mode="spatial",
             eta=0.0,
-            nu=0.02,
+            nu=0.0,
             gamma=5.0 / 3.0,
             reconstruction="Linear",
             limiter="VanLeer",
