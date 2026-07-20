@@ -313,7 +313,7 @@ class MaxwellianFluidModel(object):
                         is_periodic &= check
 
         if not is_periodic:
-            print(
+            phare_utilities.debug_print(
                 "Warning: Simulation is periodic but some functions are not : ",
                 not_periodic,
             )

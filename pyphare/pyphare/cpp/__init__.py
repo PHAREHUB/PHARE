@@ -67,17 +67,23 @@ def mpi_barrier():
     return getattr(cpp_etc_lib(), "mpi_barrier")()
 
 
-def print_rank0(s, *args, **kwargs):
+def mpi_initialized():
+    return getattr(cpp_etc_lib(), "mpi_initialized")()
+
+
+def print_rank0(*args, **kwargs):
     def should_print():
         try:
-            if cpp_etc_lib().mpi_initialized():
+            if mpi_initialized():
                 return mpi_rank() == 0
         except ImportError:
-            envs = ["OMPI_COMM_WORLD_RANK", "SLURM_PROCID"]
-            for env in envs:
-                if env in os.environ:
-                    return int(os.environ[env]) == 0
+            # missing module or mpi not initialized
+            ...
+        envs = ["OMPI_COMM_WORLD_RANK", "SLURM_PROCID"]
+        for env in envs:
+            if env in os.environ:
+                return int(os.environ[env]) == 0
         return True  # FALL BACK ALWAYS PRINT
 
     if should_print():
-        print(s, *args, **kwargs)
+        print(*args, **kwargs)
