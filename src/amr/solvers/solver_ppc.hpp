@@ -32,7 +32,6 @@ class SolverPPC : public ISolver<AMR_Types>
 {
 private:
     static constexpr auto dimension = HybridModel::dimension;
-    // static constexpr auto interp_order = HybridModel::gridlayout_type::interp_order;
 
     using Electromag       = HybridModel::electromag_type;
     using Ions             = HybridModel::ions_type;

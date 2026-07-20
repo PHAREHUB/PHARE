@@ -6,7 +6,6 @@
 #include "core/data/grid/impl/yee/gridlayout_mhd_yee.hpp"
 #include "core/numerics/reconstructions/reconstruction_nghosts.hpp"
 
-#include <cstddef>
 
 namespace PHARE
 {
@@ -22,10 +21,10 @@ struct MHDFieldOptions
     auto static constexpr opts      = opts_;
     auto static constexpr dimension = opts.dimension;
 
-    static constexpr auto reconstruction_nghosts
+    auto static constexpr reconstruction_nghosts
         = MHDOpts::reconstruction_nghosts_v<opts.reconstruction_type>;
 
-    static constexpr std::uint32_t field_ghost_width
+    auto static constexpr field_ghost_width
         = core::nbrGhostsFromReconstruction<reconstruction_nghosts>();
 };
 
@@ -36,9 +35,9 @@ struct MHDOptions
     using GridLayoutImpl = core::mhd::GridLayoutImplYee<opts>;
     using FieldOptions   = decltype(opts);
 
-    auto static constexpr field_options = opts;
-    auto static constexpr dimension     = opts.dimension;
-    std::size_t field_ghost_width       = opts.field_ghost_width;
+    auto static constexpr field_options     = opts;
+    auto static constexpr dimension         = opts.dimension;
+    auto static constexpr field_ghost_width = opts.field_ghost_width;
 };
 
 

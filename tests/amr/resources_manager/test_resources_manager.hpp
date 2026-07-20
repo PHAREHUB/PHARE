@@ -32,9 +32,13 @@ template<typename ResourcesUsers>
 class aResourceUserCollection : public ::testing::Test
 {
 public:
-    using Grid_t = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
+    std::size_t constexpr static dimension    = 1;
+    std::size_t constexpr static interp_order = 1;
+    using Grid_t = Grid<NdArrayVector<dimension>, HybridQuantity::Scalar>;
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t, Grid_t>
+    ResourcesManager<
+        PHARE::core::PHARE_Types<PHARE::SimOpts{dimension, interp_order}>::Hybrid::GridLayout_t,
+        Grid_t, interp_order>
         resourcesManager;
 
     ResourcesUsers users;

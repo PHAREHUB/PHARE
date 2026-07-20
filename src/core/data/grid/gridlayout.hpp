@@ -805,8 +805,6 @@ namespace core
         // ----------------------------------------------------------------------
 
 
-        NO_DISCARD std::string layoutName() const { return implT::layoutName_; }
-
 
         /**
          * @brief returns the centering of a scalar hybrid quantity in each directions
@@ -1122,7 +1120,6 @@ namespace core
 
         auto AMRGhostBoxFor(auto const& field) const
         {
-            auto const centerings = centering(field);
             return grow(AMRBoxFor(field), for_N_make_array<dimension>(
                                               [&](auto i) { return options.field_ghost_width; }));
         }

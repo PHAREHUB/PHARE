@@ -11,7 +11,6 @@
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "initializer/data_provider.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
-// #include "amr/physical_models/mhd_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>

@@ -112,7 +112,7 @@ namespace amr
      *
      */
 
-    // TODO drop interp_order and swich to arbitrary type support like on tiling branch for
+    // TODO drop interp_order and swich to arbitrary type support like on tiling branch
     template<typename GridLayoutT, typename Grid_t, std::size_t interp_order_ = 0>
     class ResourcesManager
     {
