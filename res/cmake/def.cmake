@@ -141,8 +141,8 @@ endif(ubsan)
 #
 # add_phare_test/add_python3_test/add_no_mpi_phare_test/add_no_mpi_python3_test/
 # add_mpi_python3_test take no explicit level (unlike phare_exec/phare_python3_exec)
-# and are implicitly registered at PHARE_UNLEVELED_TEST_LEVEL (10): they are skipped
-# when PHARE_EXEC_LEVEL_MIN >= 1 or PHARE_EXEC_LEVEL_MAX < 11.
+# and are implicitly registered at PHARE_UNLEVELED_TEST_LEVEL (1): they are skipped
+# when PHARE_EXEC_LEVEL_MIN > 1.
 #
 #   add_phare_test($binary $directory)
 #    execute binary in target directory, with mpirun when -DtestMPI=ON
