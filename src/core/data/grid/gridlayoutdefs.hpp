@@ -12,8 +12,9 @@ namespace PHARE
 {
 namespace core
 {
-    enum class Direction { X, Y, Z };
+    enum class Direction { X = 0, Y = 1, Z = 2 };
 
+    enum class Side { Lower = -1, Upper = 1 };
 
     enum class QtyCentering : std::uint16_t { primal = 0, dual = 1 };
 
@@ -52,6 +53,19 @@ namespace core
         static constexpr std::uint32_t iBx = static_cast<std::uint32_t>(HybridQuantity::Scalar::Bx);
         static constexpr std::uint32_t iBy = static_cast<std::uint32_t>(HybridQuantity::Scalar::By);
         static constexpr std::uint32_t iBz = static_cast<std::uint32_t>(HybridQuantity::Scalar::Bz);
+
+        static constexpr std::uint32_t iFaceCenteredX
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::FaceCenteredX);
+        static constexpr std::uint32_t iFaceCenteredY
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::FaceCenteredY);
+        static constexpr std::uint32_t iFaceCenteredZ
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::FaceCenteredZ);
+        static constexpr std::uint32_t iEdgeCenteredX
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::EdgeCenteredX);
+        static constexpr std::uint32_t iEdgeCenteredY
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::EdgeCenteredY);
+        static constexpr std::uint32_t iEdgeCenteredZ
+            = static_cast<std::uint32_t>(HybridQuantity::Scalar::EdgeCenteredZ);
 
         static constexpr std::uint32_t iEx = static_cast<std::uint32_t>(HybridQuantity::Scalar::Ex);
         static constexpr std::uint32_t iEy = static_cast<std::uint32_t>(HybridQuantity::Scalar::Ey);
@@ -108,6 +122,23 @@ namespace core
         static constexpr std::uint32_t iBz = static_cast<std::uint32_t>(MHDQuantity::Scalar::Bz);
 
         static constexpr std::uint32_t iP = static_cast<std::uint32_t>(MHDQuantity::Scalar::P);
+
+        static constexpr std::uint32_t iFaceCenteredX
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::FaceCenteredX);
+        static constexpr std::uint32_t iFaceCenteredY
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::FaceCenteredY);
+        static constexpr std::uint32_t iFaceCenteredZ
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::FaceCenteredZ);
+        static constexpr std::uint32_t iNodeCentered
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::NodeCentered);
+        static constexpr std::uint32_t iCellCentered
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::CellCentered);
+        static constexpr std::uint32_t iEdgeCenteredX
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::EdgeCenteredX);
+        static constexpr std::uint32_t iEdgeCenteredY
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::EdgeCenteredY);
+        static constexpr std::uint32_t iEdgeCenteredZ
+            = static_cast<std::uint32_t>(MHDQuantity::Scalar::EdgeCenteredZ);
 
         static constexpr std::uint32_t iEtot
             = static_cast<std::uint32_t>(MHDQuantity::Scalar::Etot);

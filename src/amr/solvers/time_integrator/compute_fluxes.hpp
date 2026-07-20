@@ -2,7 +2,10 @@
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_HPP
 
 #include "initializer/data_provider.hpp"
+#include "core/inner_boundary/inner_bc_context.hpp"
+#include "core/inner_boundary/inner_boundary_defs.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_mhd_field_evolvers.hpp"
 
 namespace PHARE::solver
@@ -10,9 +13,12 @@ namespace PHARE::solver
 template<typename FVMethodStrategy, typename MHDModel>
 class ComputeFluxes
 {
-    using level_t = MHDModel::level_t;
-    // using Layout        = MHDModel::gridlayout_type;
-    using Dispatchers_t = Dispatchers<MHDModel>;
+    using level_t                     = MHDModel::level_t;
+    using gridlayout_type             = MHDModel::gridlayout_type;
+    using state_type                  = MHDModel::state_type;
+    using resources_manager_type      = MHDModel::resources_manager_type;
+    using inner_boundary_manager_type = MHDModel::inner_boundary_manager_type;
+    using Dispatchers_t               = Dispatchers<MHDModel>;
 
     using Ampere_t = Dispatchers_t::Ampere_t;
 
@@ -63,6 +69,36 @@ public:
         ToConservativeConverter_t{level, model}(state, to_conservative_gamma_, newTime);
 
         ConstrainedTransport_t{level, model, constrainedTransportInfo_}(ct_, state);
+
+        if (model.hasInnerBoundary())
+        {
+            resources_manager_type& rm       = *model.resourcesManager;
+            inner_boundary_manager_type& ibm = *model.innerBoundaryManager;
+            core::InnerBCContext<state_type> ctx{state, state, newTime};
+            amr::visitLevel<gridlayout_type>(
+                level, rm,
+                [&](auto& layout, auto&&, auto&&) {
+                    ibm.applyBC(state.E, layout, ctx);
+
+                    // Pin E to 0 in inactive cells (deep inside the body) so the large CT
+                    // values there neither pollute diagnostics nor leak into the cut-cell
+                    // Faraday stencil that consumes E next. Done per component centering.
+                    auto& meshData = ibm.getMeshData();
+                    auto zeroE     = [&](auto component) {
+                        auto centering = layout.centering(state.E(component).physicalQuantity());
+                        auto& status   = meshData.getStatusFieldFromCentering(centering);
+                        layout.evalOnBox(state.E(component), [&](auto&... args) {
+                            auto idx = core::MeshIndex<gridlayout_type::dimension>{args...};
+                            if (status(idx) == core::toDouble(core::ElemStatus::Inactive))
+                                state.E(component)(idx) = 0.0;
+                        });
+                    };
+                    zeroE(core::Component::X);
+                    zeroE(core::Component::Y);
+                    zeroE(core::Component::Z);
+                },
+                ibm, state);
+        }
     }
 
     void registerResources(MHDModel& model)

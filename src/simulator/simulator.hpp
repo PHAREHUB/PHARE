@@ -497,6 +497,15 @@ void Simulator<opts>::initialize()
             throw std::runtime_error("Error - Simulator has no integrator");
 
         integrator_->initialize();
+
+        // On restart, SAMRAI restores saved patch-data but the level initializer is NOT invoked
+        // for restored levels, so non-saved / derived state is missing: re-establish the
+        // inner-boundary classification + safe state per restored level. The restored conserved
+        // fields (rho/rhoV/B/Etot) are left untouched.
+        if (mhdModel_ and hierarchy_->isFromRestart())
+            for (int ilvl = 0; ilvl < hierarchy_->getNumberOfLevels(); ++ilvl)
+                mhdModel_->reinitializeAfterRestart(SAMRAITypes::getLevel(*hierarchy_, ilvl),
+                                                    currentTime_);
     }
     catch (core::DictionaryException const& ex)
     {

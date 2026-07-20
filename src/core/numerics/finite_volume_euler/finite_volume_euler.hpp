@@ -20,9 +20,9 @@ public:
     {
     }
 
-    template<typename State, typename Fluxes>
-    void operator()(State const& state, State& statenew, Fluxes const& fluxes,
-                    double const dt) const
+    template<typename State, typename Fluxes, typename Pred = UpdateAllCells>
+    void operator()(State const& state, State& statenew, Fluxes const& fluxes, double const dt,
+                    Pred const& shouldUpdate = {}) const
     {
         auto const fve = FiniteVolumeEulerPerField{layout_, dt};
 
@@ -40,11 +40,11 @@ public:
 
         if constexpr (dimension == 1)
         {
-            fve(state.rho, statenew.rho, fluxes.rho_fx);
-            fve(rhoVx, rhoVxnew, rhoVx_fx);
-            fve(rhoVy, rhoVynew, rhoVy_fx);
-            fve(rhoVz, rhoVznew, rhoVz_fx);
-            fve(state.Etot, statenew.Etot, fluxes.Etot_fx);
+            fve(state.rho, statenew.rho, shouldUpdate, fluxes.rho_fx);
+            fve(rhoVx, rhoVxnew, shouldUpdate, rhoVx_fx);
+            fve(rhoVy, rhoVynew, shouldUpdate, rhoVy_fx);
+            fve(rhoVz, rhoVznew, shouldUpdate, rhoVz_fx);
+            fve(state.Etot, statenew.Etot, shouldUpdate, fluxes.Etot_fx);
         }
 
         if constexpr (dimension >= 2)
@@ -55,11 +55,11 @@ public:
 
             if constexpr (dimension == 2)
             {
-                fve(state.rho, statenew.rho, fluxes.rho_fx, fluxes.rho_fy);
-                fve(rhoVx, rhoVxnew, rhoVx_fx, rhoVx_fy);
-                fve(rhoVy, rhoVynew, rhoVy_fx, rhoVy_fy);
-                fve(rhoVz, rhoVznew, rhoVz_fx, rhoVz_fy);
-                fve(state.Etot, statenew.Etot, fluxes.Etot_fx, fluxes.Etot_fy);
+                fve(state.rho, statenew.rho, shouldUpdate, fluxes.rho_fx, fluxes.rho_fy);
+                fve(rhoVx, rhoVxnew, shouldUpdate, rhoVx_fx, rhoVx_fy);
+                fve(rhoVy, rhoVynew, shouldUpdate, rhoVy_fx, rhoVy_fy);
+                fve(rhoVz, rhoVznew, shouldUpdate, rhoVz_fx, rhoVz_fy);
+                fve(state.Etot, statenew.Etot, shouldUpdate, fluxes.Etot_fx, fluxes.Etot_fy);
             }
             if constexpr (dimension == 3)
             {
@@ -67,11 +67,11 @@ public:
                 auto const& rhoVy_fz = fluxes.rhoV_fz(Component::Y);
                 auto const& rhoVz_fz = fluxes.rhoV_fz(Component::Z);
 
-                fve(state.rho, statenew.rho, fluxes.rho_fx, fluxes.rho_fy, fluxes.rho_fz);
-                fve(rhoVx, rhoVxnew, rhoVx_fx, rhoVx_fy, rhoVx_fz);
-                fve(rhoVy, rhoVynew, rhoVy_fx, rhoVy_fy, rhoVy_fz);
-                fve(rhoVz, rhoVznew, rhoVz_fx, rhoVz_fy, rhoVz_fz);
-                fve(state.Etot, statenew.Etot, fluxes.Etot_fx, fluxes.Etot_fy, fluxes.Etot_fz);
+                fve(state.rho, statenew.rho, shouldUpdate, fluxes.rho_fx, fluxes.rho_fy, fluxes.rho_fz);
+                fve(rhoVx, rhoVxnew, shouldUpdate, rhoVx_fx, rhoVx_fy, rhoVx_fz);
+                fve(rhoVy, rhoVynew, shouldUpdate, rhoVy_fx, rhoVy_fy, rhoVy_fz);
+                fve(rhoVz, rhoVznew, shouldUpdate, rhoVz_fx, rhoVz_fy, rhoVz_fz);
+                fve(state.Etot, statenew.Etot, shouldUpdate, fluxes.Etot_fx, fluxes.Etot_fy, fluxes.Etot_fz);
             }
         }
     }

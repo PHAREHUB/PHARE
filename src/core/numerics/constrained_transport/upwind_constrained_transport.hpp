@@ -1,6 +1,7 @@
 #ifndef PHARE_UPWIND_CONSTRAINED_TRANSPORT_HPP
 #define PHARE_UPWIND_CONSTRAINED_TRANSPORT_HPP
 
+#include "core/numerics/reconstructions/constant.hpp"
 #include "core/def.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/mhd/mhd_quantities.hpp"
@@ -82,13 +83,49 @@ public:
         }
     }
 
+    /**
+     * @brief Inner-boundary degraded-E correction (second pass).
+     *
+     * Recompute E with first-order (piecewise-constant) reconstruction and an ideal Ohm's law at
+     * the edges near an under-resolved inner boundary, consistently with the degraded hydro
+     * fluxes. The edge lists are keyed by the E-component centering and are empty on resolved
+     * levels, so this is a no-op there.
+     */
+    template<typename MeshData>
+    void degrade_E_near_inner_boundary(auto& ct_state, auto& mhd_state,
+                                       MeshData const& meshData) const
+    {
+        auto& E       = mhd_state.E;
+        auto const& B = mhd_state.B;
+
+        using Constant = ConstantReconstruction<GridLayout>;
+
+        auto degradeComp = [&](auto& Ecomp, auto&& recompute) {
+            auto const centering = layout_.centering(Ecomp.physicalQuantity());
+            auto const& degraded = meshData.getDegradedElemsFromCentering(centering);
+            for (auto const& elem : degraded)
+                recompute(elem.index.template as<std::size_t>());
+        };
+
+        degradeComp(E(Component::X), [&](auto const& idx) {
+            ExEq_<Constant, true>(ct_state, E(Component::X), B, idx);
+        });
+        degradeComp(E(Component::Y), [&](auto const& idx) {
+            EyEq_<Constant, true>(ct_state, E(Component::Y), B, idx);
+        });
+        degradeComp(E(Component::Z), [&](auto const& idx) {
+            EzEq_<Constant, true>(ct_state, E(Component::Z), B, idx);
+        });
+    }
+
 private:
+    template<typename Rec = Reconstruction_t, bool IdealOnly = false>
     void ExEq_(auto& ct_state, auto& Ex, auto const& B, MeshIndex<dimension> idx) const
     {
         if constexpr (dimension == 2)
         {
             auto [BzL, BzR]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::Z), idx);
+                = Rec::template reconstruct<Direction::Y>(B(Component::Z), idx);
 
             auto FL = BzL * ct_state.vt_y(Component::Y)(idx)
                       - B(Component::Y)(idx) * ct_state.vt_y(Component::Z)(idx);
@@ -98,7 +135,7 @@ private:
             Ex(idx) = -(ct_state.aL_y(idx) * FL + ct_state.aR_y(idx) * FR)
                       + (ct_state.dR_y(idx) * BzR - ct_state.dL_y(idx) * BzL);
 
-            if constexpr (Hall)
+            if constexpr (Hall && !IdealOnly)
             {
                 auto invRho  = 1.0 / ct_state.rhot_y(idx);
                 auto JxB_x_L = ct_state.jt_y(Component::Y)(idx) * BzL
@@ -141,30 +178,30 @@ private:
                       * (ct_state.dR_z(idx)
                          + ct_state.dR_z(layout_.template previous<Direction::Y>(idx)));
 
-            auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
+            auto [vyS, vyN] = Rec::template reconstruct<Direction::Y>(
                 ct_state.vt_z(Component::Y), idx);
-            auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
+            auto [vzB, vzT] = Rec::template reconstruct<Direction::Z>(
                 ct_state.vt_y(Component::Z), idx);
 
             auto [BzS, BzN]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::Z), idx);
+                = Rec::template reconstruct<Direction::Y>(B(Component::Z), idx);
             auto [ByB, ByT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B(Component::Y), idx);
+                = Rec::template reconstruct<Direction::Z>(B(Component::Y), idx);
 
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
 
-            if constexpr (Hall)
+            if constexpr (Hall && !IdealOnly)
             {
-                auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
+                auto [jyS, jyN] = Rec::template reconstruct<Direction::Y>(
                     ct_state.jt_z(Component::Y), idx);
-                auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
+                auto [jzB, jzT] = Rec::template reconstruct<Direction::Z>(
                     ct_state.jt_y(Component::Z), idx);
 
                 auto [rhoS, rhoN]
-                    = Reconstruction_t::template reconstruct<Direction::Y>(ct_state.rhot_z, idx);
+                    = Rec::template reconstruct<Direction::Y>(ct_state.rhot_z, idx);
                 auto [rhoB, rhoT]
-                    = Reconstruction_t::template reconstruct<Direction::Z>(ct_state.rhot_y, idx);
+                    = Rec::template reconstruct<Direction::Z>(ct_state.rhot_y, idx);
 
                 Ex(idx) += -(aB * jzB * ByB / rhoB + aT * jzT * ByT / rhoT)
                            + (aS * jyS * BzS / rhoS + aN * jyN * BzN / rhoN);
@@ -172,12 +209,13 @@ private:
         }
     }
 
+    template<typename Rec = Reconstruction_t, bool IdealOnly = false>
     void EyEq_(auto& ct_state, auto& Ey, auto const& B, MeshIndex<dimension> idx) const
     {
         if constexpr (dimension <= 2)
         {
             auto [BzL, BzR]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Z), idx);
+                = Rec::template reconstruct<Direction::X>(B(Component::Z), idx);
 
             auto FL = BzL * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Z)(idx);
@@ -187,7 +225,7 @@ private:
             Ey(idx) = (ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       - (ct_state.dR_x(idx) * BzR - ct_state.dL_x(idx) * BzL);
 
-            if constexpr (Hall)
+            if constexpr (Hall && !IdealOnly)
             {
                 auto invRho  = 1.0 / ct_state.rhot_x(idx);
                 auto JxB_y_L = ct_state.jt_x(Component::Z)(idx) * B(Component::X)(idx)
@@ -230,40 +268,41 @@ private:
                       * (ct_state.dR_z(idx)
                          + ct_state.dR_z(layout_.template previous<Direction::X>(idx)));
 
-            auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
+            auto [vxW, vxE] = Rec::template reconstruct<Direction::X>(
                 ct_state.vt_z(Component::X), idx);
-            auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
+            auto [vzB, vzT] = Rec::template reconstruct<Direction::Z>(
                 ct_state.vt_x(Component::Z), idx);
             auto [BzW, BzE]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Z), idx);
+                = Rec::template reconstruct<Direction::X>(B(Component::Z), idx);
             auto [BxB, BxT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B(Component::X), idx);
+                = Rec::template reconstruct<Direction::Z>(B(Component::X), idx);
 
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
 
-            if constexpr (Hall)
+            if constexpr (Hall && !IdealOnly)
             {
-                auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
+                auto [jxW, jxE] = Rec::template reconstruct<Direction::X>(
                     ct_state.jt_z(Component::X), idx);
-                auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
+                auto [jzB, jzT] = Rec::template reconstruct<Direction::Z>(
                     ct_state.jt_x(Component::Z), idx);
                 auto [rhoW, rhoE]
-                    = Reconstruction_t::template reconstruct<Direction::X>(ct_state.rhot_z, idx);
+                    = Rec::template reconstruct<Direction::X>(ct_state.rhot_z, idx);
                 auto [rhoB, rhoT]
-                    = Reconstruction_t::template reconstruct<Direction::Z>(ct_state.rhot_x, idx);
+                    = Rec::template reconstruct<Direction::Z>(ct_state.rhot_x, idx);
                 Ey(idx) += -(aW * jxW * BzW / rhoW + aE * jxE * BzE / rhoE)
                            + (aB * jzB * BxB / rhoB + aT * jzT * BxT / rhoT);
             }
         }
     }
 
+    template<typename Rec = Reconstruction_t, bool IdealOnly = false>
     void EzEq_(auto& ct_state, auto& Ez, auto const& B, MeshIndex<dimension> idx) const
     {
         if constexpr (dimension == 1)
         {
             auto [ByL, ByR]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Y), idx);
+                = Rec::template reconstruct<Direction::X>(B(Component::Y), idx);
 
             auto FL = ByL * ct_state.vt_x(Component::X)(idx)
                       - B(Component::X)(idx) * ct_state.vt_x(Component::Y)(idx);
@@ -273,7 +312,7 @@ private:
             Ez(idx) = -(ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       + (ct_state.dR_x(idx) * ByR - ct_state.dL_x(idx) * ByL);
 
-            if constexpr (Hall)
+            if constexpr (Hall && !IdealOnly)
             {
                 auto invRho  = 1.0 / ct_state.rhot_x(idx);
                 auto JxB_z_L = ct_state.jt_x(Component::X)(idx) * ByL
@@ -316,30 +355,30 @@ private:
                       * (ct_state.dR_y(idx)
                          + ct_state.dR_y(layout_.template previous<Direction::X>(idx)));
 
-            auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
+            auto [vyS, vyN] = Rec::template reconstruct<Direction::Y>(
                 ct_state.vt_x(Component::Y), idx);
-            auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
+            auto [vxW, vxE] = Rec::template reconstruct<Direction::X>(
                 ct_state.vt_y(Component::X), idx);
 
             auto [BxS, BxN]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::X), idx);
+                = Rec::template reconstruct<Direction::Y>(B(Component::X), idx);
             auto [ByW, ByE]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Y), idx);
+                = Rec::template reconstruct<Direction::X>(B(Component::Y), idx);
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);
 
-            if constexpr (Hall)
+            if constexpr (Hall && !IdealOnly)
             {
-                auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
+                auto [jyS, jyN] = Rec::template reconstruct<Direction::Y>(
                     ct_state.jt_x(Component::Y), idx);
-                auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
+                auto [jxW, jxE] = Rec::template reconstruct<Direction::X>(
                     ct_state.jt_y(Component::X), idx);
 
                 auto [rhoS, rhoN]
-                    = Reconstruction_t::template reconstruct<Direction::Y>(ct_state.rhot_x, idx);
+                    = Rec::template reconstruct<Direction::Y>(ct_state.rhot_x, idx);
                 auto [rhoW, rhoE]
-                    = Reconstruction_t::template reconstruct<Direction::X>(ct_state.rhot_y, idx);
+                    = Rec::template reconstruct<Direction::X>(ct_state.rhot_y, idx);
 
                 Ez(idx) += (aW * jxW * ByW / rhoW + aE * jxE * ByE / rhoE)
                            - (aS * jyS * BxS / rhoS + aN * jyN * BxN / rhoN);

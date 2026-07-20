@@ -53,9 +53,22 @@ public:
         VecAllPrimalY,
         VecAllPrimalZ,
 
+        FaceCenteredX,
+        FaceCenteredY,
+        FaceCenteredZ,
+
+        NodeCentered,
+
+        CellCentered,
+
+        EdgeCenteredX,
+        EdgeCenteredY,
+        EdgeCenteredZ,
+
         count
     };
-    enum class Vector { V, B, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal };
+    enum class Vector { V, B, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal,
+                        FaceCentered, NodeCentered, CellCentered, EdgeCentered };
     enum class Tensor { count };
 
     static constexpr auto all_primal_field = Scalar::ScalarAllPrimal;
@@ -77,6 +90,18 @@ public:
     NO_DISCARD static constexpr auto VecAllPrimal()
     {
         return componentsQuantities(Vector::VecAllPrimal);
+    }
+    NO_DISCARD static constexpr auto FaceCentered()
+    {
+        return componentsQuantities(Vector::FaceCentered);
+    }
+    NO_DISCARD static constexpr auto NodeCentered()
+    {
+        return componentsQuantities(Vector::NodeCentered);
+    }
+    NO_DISCARD static constexpr auto EdgeCentered()
+    {
+        return componentsQuantities(Vector::EdgeCentered);
     }
 
     NO_DISCARD static constexpr std::array<Scalar, 3> componentsQuantities(Vector qty)
@@ -109,6 +134,18 @@ public:
 
         if (qty == Vector::VecAllPrimal)
             return {{Scalar::VecAllPrimalX, Scalar::VecAllPrimalY, Scalar::VecAllPrimalZ}};
+
+        if (qty == Vector::FaceCentered)
+            return {{Scalar::FaceCenteredX, Scalar::FaceCenteredY, Scalar::FaceCenteredZ}};
+
+        if (qty == Vector::NodeCentered)
+            return {{Scalar::NodeCentered, Scalar::NodeCentered, Scalar::NodeCentered}};
+
+        if (qty == Vector::CellCentered)
+            return {{Scalar::CellCentered, Scalar::CellCentered, Scalar::CellCentered}};
+
+        if (qty == Vector::EdgeCentered)
+            return {{Scalar::EdgeCenteredX, Scalar::EdgeCenteredY, Scalar::EdgeCenteredZ}};
 
         throw std::runtime_error("Error - invalid Vector");
     }

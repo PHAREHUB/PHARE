@@ -1,0 +1,60 @@
+cmake_minimum_required (VERSION 3.20.1)
+
+project(test-inner_boundary)
+
+set(SOURCES
+    test_inner_boundary.cpp
+    test_inner_boundary_mesh_classifier.cpp)
+
+add_executable(${PROJECT_NAME} ${SOURCES})
+
+target_include_directories(${PROJECT_NAME} PRIVATE
+  ${GTEST_INCLUDE_DIRS}
+  )
+
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  phare_core
+  phare_simulator
+  ${GTEST_LIBS})
+
+add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-field_neumann_inner_boundary_condition test_field_neumann_inner_boundary_condition.cpp)
+target_include_directories(test-field_neumann_inner_boundary_condition PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-field_neumann_inner_boundary_condition PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-field_neumann_inner_boundary_condition ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-field_dirichlet_inner_boundary_condition test_field_dirichlet_inner_boundary_condition.cpp)
+target_include_directories(test-field_dirichlet_inner_boundary_condition PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-field_dirichlet_inner_boundary_condition PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-field_dirichlet_inner_boundary_condition ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-field_symmetric_inner_boundary_condition test_field_symmetric_inner_boundary_condition.cpp)
+target_include_directories(test-field_symmetric_inner_boundary_condition PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-field_symmetric_inner_boundary_condition PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-field_symmetric_inner_boundary_condition ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-field_antisymmetric_inner_boundary_condition test_field_antisymmetric_inner_boundary_condition.cpp)
+target_include_directories(test-field_antisymmetric_inner_boundary_condition PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-field_antisymmetric_inner_boundary_condition PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-field_antisymmetric_inner_boundary_condition ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-inner_boundary_manager test_inner_boundary_manager.cpp)
+target_include_directories(test-inner_boundary_manager PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-inner_boundary_manager PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-inner_boundary_manager ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-field_total_energy_from_pressure_inner_boundary_condition test_field_total_energy_from_pressure_inner_boundary_condition.cpp)
+target_include_directories(test-field_total_energy_from_pressure_inner_boundary_condition PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-field_total_energy_from_pressure_inner_boundary_condition PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-field_total_energy_from_pressure_inner_boundary_condition ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-field_adaptive_dirichlet_or_neumann_inner_boundary_condition test_field_adaptive_dirichlet_or_neumann_inner_boundary_condition.cpp)
+target_include_directories(test-field_adaptive_dirichlet_or_neumann_inner_boundary_condition PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-field_adaptive_dirichlet_or_neumann_inner_boundary_condition PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-field_adaptive_dirichlet_or_neumann_inner_boundary_condition ${CMAKE_CURRENT_BINARY_DIR})
+
+add_executable(test-field_ionospheric_convection_momentum_inner_boundary_condition test_field_ionospheric_convection_momentum_inner_boundary_condition.cpp)
+target_include_directories(test-field_ionospheric_convection_momentum_inner_boundary_condition PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-field_ionospheric_convection_momentum_inner_boundary_condition PRIVATE phare_core phare_simulator ${GTEST_LIBS})
+add_no_mpi_phare_test(test-field_ionospheric_convection_momentum_inner_boundary_condition ${CMAKE_CURRENT_BINARY_DIR})

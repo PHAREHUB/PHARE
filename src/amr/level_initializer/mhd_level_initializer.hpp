@@ -59,6 +59,10 @@ public:
                 PHARE_LOG_STOP(3, "mhdLevelInitializer::initialize : initlevel");
             }
         }
+
+        // Inner-boundary setup (classify + safe state + moment BCs). Shared with the restart path
+        // (MHDModel::reinitializeAfterRestart) so both fresh and restored runs establish it.
+        mhdModel.setupInnerBoundaryState(level, initDataTime);
     }
 };
 

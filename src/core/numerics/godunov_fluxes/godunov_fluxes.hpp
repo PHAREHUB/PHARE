@@ -8,6 +8,7 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "core/numerics/reconstructions/constant.hpp"
 #include "core/numerics/reconstructions/reconstructor.hpp"
 
 #include "initializer/data_provider.hpp"
@@ -74,6 +75,8 @@ class Godunov : public GodunovInfo
     using Super                     = GodunovInfo;
     using Reconstruction_t          = Reconstruction<GridLayout>;
     using Reconstructor_t           = Reconstructor<Reconstruction_t>;
+    // First-order, ideal reconstruction used by the inner-boundary degraded flux correction.
+    using ConstantReconstructor_t   = Reconstructor<ConstantReconstruction<GridLayout>>;
     using RiemannSolver_t           = RiemannSolver;
     constexpr static auto dimension = GridLayout::dimension;
 
@@ -206,6 +209,49 @@ public:
                                 throw std::runtime_error("Error - Ohm - unknown hyper_mode");
                         }
                     });
+            }
+        });
+    }
+
+    /**
+     * @brief Inner-boundary degraded-flux correction (second pass).
+     *
+     * On levels that under-resolve the inner boundary, recompute the hydro flux at the listed
+     * faces with first-order (piecewise-constant) reconstruction and the ideal (no-J) flux —
+     * overwriting both the flux array and the saved CT upwind coefficients so the subsequent
+     * constrained-transport E recompute is consistent. The face lists are keyed by the flux
+     * field centering and are empty on resolved levels, so this is a no-op there.
+     */
+    template<typename CTState, typename MeshData, typename State, typename Fluxes>
+    void degrade_fluxes_near_inner_boundary(CTState& ct_state, MeshData const& meshData,
+                                            State& state, Fluxes& fluxes)
+    {
+        constexpr auto directions     = getDirections<dimension>();
+        constexpr auto num_directions = std::tuple_size_v<std::decay_t<decltype(directions)>>;
+
+        for_N<num_directions>([&](auto i) {
+            constexpr Direction direction = std::get<i>(directions);
+
+            auto const centering = layout_.centering(
+                fluxes.template expose_centering<direction>().physicalQuantity());
+            auto const& degraded = meshData.getDegradedElemsFromCentering(centering);
+
+            for (auto const& elem : degraded)
+            {
+                auto const idx = elem.index.template as<std::size_t>();
+
+                auto&& [uL, uR]
+                    = ConstantReconstructor_t::template reconstruct<direction>(state, idx);
+                auto&& u = std::forward_as_tuple(uL, uR);
+
+                auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto k) {
+                    return equations_.template compute<direction>(std::get<k>(u));
+                });
+
+                fluxes.template get_dir<direction>(idx)
+                    = riemann_.template solve<direction>(uL, uR, fL, fR);
+
+                ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs, idx);
             }
         });
     }

@@ -3,14 +3,20 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/inner_boundary/inner_bc_context.hpp"
+#include "core/inner_boundary/inner_boundary_manager.hpp"
 #include "core/models/mhd_state.hpp"
+#include "core/numerics/thermo/thermo.hpp"
+#include "core/numerics/thermo/thermo_factory.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 #include <SAMRAI/hier/PatchLevel.h>
 
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -35,12 +41,16 @@ public:
     using gridlayout_type        = GridLayoutT;
     using grid_type              = Grid_t;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
+    using inner_boundary_manager_type
+        = core::InnerBoundaryManager<physical_quantity_type, field_type, gridlayout_type,
+                                     state_type>;
 
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
 
     state_type state;
     std::shared_ptr<resources_manager_type> resourcesManager;
+    std::shared_ptr<core::Thermo> thermo;
 
     // diagnostics buffers
     vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
@@ -50,6 +60,8 @@ public:
     // temporaries. Right now the hybrid version is in the hybrid_hybrid_messenger_strategy.hpp
     field_type tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
     vecfield_type tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
+
+    std::unique_ptr<inner_boundary_manager_type> innerBoundaryManager;
 
     void initialize(level_t& level) override;
 
@@ -61,6 +73,8 @@ public:
         resourcesManager->allocate(P_diag_, patch, allocateTime);
         resourcesManager->allocate(tmpField_, patch, allocateTime);
         resourcesManager->allocate(tmpVec_, patch, allocateTime);
+        if (innerBoundaryManager)
+            resourcesManager->allocate(*innerBoundaryManager, patch, allocateTime);
     }
 
 
@@ -76,14 +90,68 @@ public:
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
         , resourcesManager{std::move(_resourcesManager)}
+        , thermo{core::makeThermo(dict["mhd_state"])}
     {
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
         resourcesManager->registerResources(tmpField_);
         resourcesManager->registerResources(tmpVec_);
+
+        std::vector<core::MHDQuantity::Scalar> scalarQuantities
+            = {core::MHDQuantity::Scalar::rho, core::MHDQuantity::Scalar::Etot};
+        std::vector<core::MHDQuantity::Vector> vectorQuantities = {
+            core::MHDQuantity::Vector::B,
+            core::MHDQuantity::Vector::E,
+            core::MHDQuantity::Vector::rhoV,
+        };
+
+        innerBoundaryManager
+            = inner_boundary_manager_type::create(dict, scalarQuantities, vectorQuantities, thermo);
+        if (innerBoundaryManager)
+            resourcesManager->registerResources(*innerBoundaryManager);
     }
 
     ~MHDModel() override = default;
+
+    bool hasInnerBoundary() const { return innerBoundaryManager != nullptr; }
+
+    // Inner-boundary setup: classify the mesh, pin inactive cells to the safe state, and apply the
+    // moment BCs. Factored out of MHDLevelInitializer so it can also be run on restart, where the
+    // level initializer is bypassed (the ghostElems classification is a computed, non-saved field).
+    void setupInnerBoundaryState(level_t& level, double time)
+    {
+        if (!hasInnerBoundary())
+            return;
+
+        auto& rm  = *resourcesManager;
+        auto& ibm = *innerBoundaryManager;
+
+        amr::visitLevel<gridlayout_type>(
+            level, rm, [&](auto& layout, auto&&, auto&&) { ibm.classify(layout); }, ibm);
+
+        amr::visitLevel<gridlayout_type>(
+            level, rm,
+            [&](auto& layout, auto&&, auto&&) {
+                ibm.setSafeState(state.B, layout);
+                ibm.setSafeState(state.rho, layout);
+                ibm.setSafeState(state.rhoV, layout);
+                ibm.setSafeState(state.Etot, layout);
+            },
+            ibm, state);
+
+        core::InnerBCContext<state_type> ctx{state, state, time, 0.0};
+        amr::visitLevel<gridlayout_type>(
+            level, rm, [&](auto& layout, auto&&, auto&&) { ibm.applyToMoments(layout, ctx); }, ibm,
+            state);
+    }
+
+    // Restart entry point: re-establish the inner-boundary classification and safe state, without
+    // touching the restored conserved fields. On restart the level initializer that normally does
+    // this is not invoked for restored levels.
+    void reinitializeAfterRestart(level_t& level, double time)
+    {
+        setupInnerBoundaryState(level, time);
+    }
 
 
     //-------------------------------------------------------------------------

@@ -9,6 +9,7 @@
 #include "amr/samrai.hpp"
 
 #include "field_resource.hpp"
+#include "ghost_elem_resource.hpp"
 #include "resources_guards.hpp"
 #include "particle_resource.hpp"
 #include "tensor_field_resource.hpp"
@@ -127,6 +128,9 @@ namespace amr
 
         template<typename ResourcesView>
         using UserParticle_t = UserParticleType<ResourcesView, interp_order>;
+
+        template<typename ResourcesView>
+        using UserGhostElem_t = UserGhostElemType<ResourcesView>;
 
         template<std::size_t rank>
         using UserTensorField_t = UserTensorFieldType<rank, Grid_t, GridLayoutT, QuantityType>;

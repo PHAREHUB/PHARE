@@ -704,6 +704,124 @@ def check_mhd_parameters(**kwargs):
     return reconstruction, limiter, riemann, mhd_timestepper
 
 
+
+# ------------------------------------------------------------------------------
+
+
+def check_inner_boundary(ndim, **kwargs):
+    inner_boundary = kwargs.get("inner_boundary", None)
+    if inner_boundary is None:
+        return None
+
+    if not isinstance(inner_boundary, dict):
+        raise ValueError("Error: inner_boundary must be a dictionary")
+
+    for key in ("shape", "name"):
+        if key not in inner_boundary:
+            raise ValueError(f"Error: inner_boundary requires a '{key}' key")
+
+    shape = inner_boundary["shape"]
+    valid_shapes = {"sphere", "plane"}
+    if shape not in valid_shapes:
+        raise ValueError(
+            f"Error: inner_boundary shape '{shape}' is invalid, valid shapes are {valid_shapes}"
+        )
+
+    valid_condition_types = {"reflective", "ionospheric-convection"}
+    condition_type = inner_boundary.get("condition_type", "reflective")
+    if condition_type not in valid_condition_types:
+        raise ValueError(
+            f"Error: inner_boundary condition_type '{condition_type}' is invalid, "
+            f"valid types are {valid_condition_types}"
+        )
+
+    # per-type extra keys (prescribed reservoir values the user must provide)
+    condition_keys = {
+        "ionospheric-convection": {"density", "pressure"},
+    }.get(condition_type, set())
+
+    common_keys = {"shape", "name", "condition_type", "inactive_safe_state"} | condition_keys
+    shape_keys = {"sphere": {"center", "radius"}, "plane": {"point", "normal"}}
+    unknown = set(inner_boundary.keys()) - (common_keys | shape_keys[shape])
+    if unknown:
+        raise ValueError(
+            f"Error: invalid inner_boundary keys for {shape}: {sorted(unknown)}"
+        )
+
+    result = {"shape": shape, "name": inner_boundary["name"], "condition_type": condition_type}
+
+    # safe state pinned into inactive (inside-body) cells. Optional; defaults reproduce the
+    # historical hardcoded reset. velocity is a 3-list; B accepts a scalar (broadcast) or 3-list.
+    safe_in = inner_boundary.get("inactive_safe_state", {})
+    if not isinstance(safe_in, dict):
+        raise ValueError("Error: inner_boundary 'inactive_safe_state' must be a dictionary")
+    safe_unknown = set(safe_in.keys()) - {"density", "pressure", "velocity", "B"}
+    if safe_unknown:
+        raise ValueError(
+            f"Error: invalid inactive_safe_state keys: {sorted(safe_unknown)}"
+        )
+
+    def _vec3(v):
+        vv = phare_utilities.listify(v)
+        if len(vv) == 1:  # scalar broadcast
+            vv = [vv[0]] * 3
+        if len(vv) != 3:
+            raise ValueError("Error: inactive_safe_state vector must have length 1 or 3")
+        return [float(x) for x in vv]
+
+    safe_density = float(safe_in.get("density", 1.0))
+    safe_pressure = float(safe_in.get("pressure", 1.0))
+    if safe_density <= 0 or safe_pressure <= 0:
+        raise ValueError("Error: inactive_safe_state density and pressure must be > 0")
+    result["inactive_safe_state"] = {
+        "density": safe_density,
+        "pressure": safe_pressure,
+        "velocity": _vec3(safe_in.get("velocity", [0.0, 0.0, 0.0])),
+        "B": _vec3(safe_in.get("B", 0.0)),
+    }
+
+    if condition_type == "ionospheric-convection":
+        for key in ("density", "pressure"):
+            if key not in inner_boundary:
+                raise ValueError(
+                    "Error: inner_boundary condition_type 'ionospheric-convection' "
+                    f"requires '{key}'"
+                )
+            value = float(inner_boundary[key])
+            if value <= 0:
+                raise ValueError(f"Error: inner_boundary '{key}' must be > 0")
+            result[key] = value
+
+    if shape == "sphere":
+        if "center" not in inner_boundary or "radius" not in inner_boundary:
+            raise ValueError("Error: sphere inner_boundary requires both 'center' and 'radius'")
+        center = phare_utilities.listify(inner_boundary["center"])
+        if len(center) != ndim:
+            raise ValueError(
+                f"Error: sphere center must have length {ndim}, got {len(center)}"
+            )
+        radius = float(inner_boundary["radius"])
+        if radius <= 0:
+            raise ValueError("Error: sphere radius must be > 0")
+        result.update({"center": [float(v) for v in center], "radius": radius})
+
+    else:  # plane
+        if "point" not in inner_boundary or "normal" not in inner_boundary:
+            raise ValueError("Error: plane inner_boundary requires both 'point' and 'normal'")
+        point = phare_utilities.listify(inner_boundary["point"])
+        normal = phare_utilities.listify(inner_boundary["normal"])
+        if len(point) != ndim:
+            raise ValueError(f"Error: plane point must have length {ndim}, got {len(point)}")
+        if len(normal) != ndim:
+            raise ValueError(f"Error: plane normal must have length {ndim}, got {len(normal)}")
+        normal = [float(v) for v in normal]
+        if np.linalg.norm(np.asarray(normal)) == 0:
+            raise ValueError("Error: plane normal cannot be the zero vector")
+        result.update({"point": [float(v) for v in point], "normal": normal})
+
+    return result
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -752,6 +870,7 @@ def checker(func):
             "limiter",
             "riemann",
             "mhd_timestepper",
+            "inner_boundary",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -791,6 +910,7 @@ def checker(func):
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
+        kwargs["inner_boundary"] = check_inner_boundary(ndim, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
         kwargs["diag_export_format"] = kwargs.get("diag_export_format", "hdf5")

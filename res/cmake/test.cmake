@@ -25,6 +25,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/core/utilities/indexer)
   add_subdirectory(tests/core/utilities/cellmap)
   add_subdirectory(tests/core/utilities/ghost_width_calculator)
+  add_subdirectory(tests/core/utilities/inner_boundary)
   #add_subdirectory(tests/core/numerics/boundary_condition)
   add_subdirectory(tests/core/numerics/interpolator)
   add_subdirectory(tests/core/numerics/pusher)
@@ -74,6 +75,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/mhd_harris_3d)
   add_subdirectory(tests/functional/mhd_orszagtang)
   add_subdirectory(tests/functional/mhd_orszagtang_3d)
+  add_subdirectory(tests/functional/mhd_inner_boundary)
   add_subdirectory(tests/functional/mhd_rotor)
   add_subdirectory(tests/functional/mhd_shock)
 

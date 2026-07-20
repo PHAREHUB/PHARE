@@ -2,6 +2,7 @@
 #define PHARE_AMR_SOLVERS_SOLVER_MHD_FIELD_EVOLVERS_HPP
 
 
+#include "core/inner_boundary/inner_boundary_defs.hpp"
 #include "core/numerics/time_integrator_utils.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/constrained_transport/upwind_constrained_transport.hpp"
@@ -124,11 +125,28 @@ public:
         TimeSetter setTime{level, model, newTime};
 
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes))
+        if (model.hasInnerBoundary())
         {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type finite_volume_method{info, layout};
-            finite_volume_method(fvm_state, ct_state, state, fluxes);
+            auto& ibm = *model.innerBoundaryManager;
+            for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes, ibm))
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                core_type finite_volume_method{info, layout};
+                finite_volume_method(fvm_state, ct_state, state, fluxes);
+                // Recompute the hydro flux with a first-order, ideal scheme at the faces near an
+                // under-resolved inner boundary; no-op (empty list) on resolved levels.
+                finite_volume_method.degrade_fluxes_near_inner_boundary(ct_state, ibm.getMeshData(),
+                                                                        state, fluxes);
+            }
+        }
+        else
+        {
+            for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes))
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                core_type finite_volume_method{info, layout};
+                finite_volume_method(fvm_state, ct_state, state, fluxes);
+            }
         }
 
         setTime(state.rho, state.V, state.P, state.J);
@@ -161,10 +179,31 @@ public:
         TimeSetter setTime{level, model, newTime};
 
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, state, statenew, fluxes))
+        if (model.hasInnerBoundary())
         {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout}(state, statenew, fluxes, dt);
+            // Only evolve genuine FV cells (Fluid / Cut). Inner-boundary Ghost and Inactive
+            // cells are owned by the inner BC and the safe-state; evolving them by flux
+            // divergence injects a meaningless conserved update that the BC may fail to
+            // reclaim (non-interpolable mirror), producing negative pressure -> NaN.
+            auto& ibm = *model.innerBoundaryManager;
+            for (auto& patch : rm.enumerate(level, state, statenew, fluxes, ibm))
+            {
+                auto const layout      = amr::layoutFromPatch<GridLayout>(*patch);
+                auto const& cellStatus = ibm.getMeshData().cellStatusField();
+                core_type{layout}(state, statenew, fluxes, dt, [&cellStatus](auto const& idx) {
+                    auto const s = cellStatus(idx);
+                    return s != core::toDouble(core::ElemStatus::Ghost)
+                           && s != core::toDouble(core::ElemStatus::Inactive);
+                });
+            }
+        }
+        else
+        {
+            for (auto& patch : rm.enumerate(level, state, statenew, fluxes))
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                core_type{layout}(state, statenew, fluxes, dt);
+            }
         }
 
         setTime(state.rho, state.rhoV, state.Etot);
@@ -202,11 +241,28 @@ public:
     void operator()(auto& ct_state, auto& mhd_state)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, mhd_state))
+        if (model.hasInnerBoundary())
         {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type constrained_transport_{info, layout};
-            constrained_transport_(ct_state, mhd_state);
+            auto& ibm = *model.innerBoundaryManager;
+            for (auto& patch : rm.enumerate(level, ct_state, mhd_state, ibm))
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                core_type constrained_transport_{info, layout};
+                constrained_transport_(ct_state, mhd_state);
+                // Recompute E with a first-order, ideal Ohm's law at the edges near an
+                // under-resolved inner boundary; no-op (empty list) on resolved levels.
+                constrained_transport_.degrade_E_near_inner_boundary(ct_state, mhd_state,
+                                                                     ibm.getMeshData());
+            }
+        }
+        else
+        {
+            for (auto& patch : rm.enumerate(level, ct_state, mhd_state))
+            {
+                auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+                core_type constrained_transport_{info, layout};
+                constrained_transport_(ct_state, mhd_state);
+            }
         }
     }
 
