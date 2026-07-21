@@ -345,4 +345,19 @@ namespace amr
 } // namespace amr
 } // namespace PHARE
 
+namespace PHARE::amr
+{
+
+/** @brief Projects a box expressed on the fine AMR grid down onto the coarse grid
+ * underneath it, by coarsening its lower and upper corners (see toCoarseIndex()).
+ */
+template<typename Box_t>
+NO_DISCARD Box_t coarsen_box(Box_t const& box)
+{
+    return Box_t{toCoarseIndex(box.lower), toCoarseIndex(box.upper)};
+}
+
+} // namespace PHARE::amr
+
+
 #endif // UTILS_HPP

@@ -1,18 +1,15 @@
 #ifndef PHARE_FIELD_REFINE_OPERATOR_HPP
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
-
-
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-
 #include "core/def.hpp"
+#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "core/data/field/field_box.hpp"
 
+#include "amr/amr_constants.hpp"
 #include "amr/data/field/field_data.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/resources_manager/tensor_field_resource.hpp"
-
-#include "field_linear_refine.hpp"
-#include "field_refiner.hpp"
 
 #include <SAMRAI/tbox/Dimension.h>
 #include <SAMRAI/hier/RefineOperator.h>
@@ -27,16 +24,6 @@ namespace PHARE::amr
 using core::dirX;
 using core::dirY;
 using core::dirZ;
-
-
-
-template<typename Dst>
-void refine_field(Dst& destinationField, auto& sourceField, auto& intersectionBox, auto& refiner)
-{
-    for (auto const bix : phare_box_from<Dst::dimension>(intersectionBox))
-        refiner(sourceField, destinationField, bix);
-}
-
 
 template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
 class FieldRefineOperator : public SAMRAI::hier::RefineOperator
@@ -113,8 +100,10 @@ public:
         {
             // we compute the intersection with the destination,
             // and then we apply the refine operation on each fine index.
-            auto intersectionBox = destFieldBox * box;
-            refine_field(destinationField, sourceField, intersectionBox, refiner);
+            auto const fine_overlap = phare_box_from<dimension>(destFieldBox * box);
+            core::FieldBox fine{destinationField, destLayout, fine_overlap};
+            core::FieldBox coarse{sourceField, srcLayout, coarsen_box(fine_overlap)};
+            core::operator_across_adjacent_levels(coarse, fine, refinementRatio, refiner);
         }
     }
 };
@@ -180,6 +169,8 @@ public:
         auto const& sourceFields = TensorFieldDataT::getFields(source, sourceId);
         auto const& srcLayout    = TensorFieldDataT::getLayout(source, sourceId);
 
+        PHARE_LOG_SCOPE(2, "TensorFieldRefineOperator::refine::" + sourceFields[0].name());
+
         // We assume that quantity are all the same.
         // Note that an assertion will be raised in refineIt operator
         for (std::uint16_t c = 0; c < N; ++c)
@@ -201,8 +192,13 @@ public:
             {
                 // we compute the intersection with the destination,
                 // and then we apply the refine operation on each fine index.
-                auto const intersectionBox = destFieldBox * box;
-                refine_field(destinationFields[c], sourceFields[c], intersectionBox, refiner);
+                auto const fine_overlap = phare_box_from<dimension>(destFieldBox * box);
+                core::FieldBox fine{destinationFields[c], destLayout, fine_overlap};
+
+                auto const coarse_overlap
+                    = *(coarsen_box(fine_overlap) * srcLayout.AMRGhostBoxFor(sourceFields[c]));
+                core::FieldBox coarse{sourceFields[c], srcLayout, coarse_overlap};
+                core::operator_across_adjacent_levels(coarse, fine, refinementRatio, refiner);
             }
         }
     }
