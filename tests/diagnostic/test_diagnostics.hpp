@@ -9,7 +9,6 @@
 #include "diagnostic/detail/types/particle.hpp"
 #include "diagnostic/detail/types/fluid.hpp"
 
-#include <functional>
 
 
 using namespace PHARE;
@@ -104,7 +103,11 @@ template<typename Simulator, typename Hi5Diagnostic>
 void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
     using namespace std::string_literals;
-    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
+    std::size_t static constexpr dimension = Simulator::dimension;
+    auto constexpr static opts
+        = SimOpts{dimension, Simulator::interp_order, Simulator::nbRefinedPart};
+
+    using GridLayout = core::PHARE_Types<opts>::Hybrid::GridLayout_t;
 
     auto& hybridModel = *sim.getHybridModel();
 
@@ -142,7 +145,11 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
 template<typename Simulator, typename Hi5Diagnostic>
 void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
-    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
+    std::size_t static constexpr dimension = Simulator::dimension;
+    auto constexpr static opts
+        = SimOpts{dimension, Simulator::interp_order, Simulator::nbRefinedPart};
+
+    using GridLayout = core::PHARE_Types<opts>::Hybrid::GridLayout_t;
 
     auto& hybridModel = *sim.getHybridModel();
 
@@ -165,7 +172,11 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
 template<typename Simulator, typename Hi5Diagnostic>
 void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 {
-    using GridLayout = typename Simulator::PHARETypes::GridLayout_t;
+    std::size_t static constexpr dimension = Simulator::dimension;
+    auto constexpr static opts
+        = SimOpts{dimension, Simulator::interp_order, Simulator::nbRefinedPart};
+
+    using GridLayout = core::PHARE_Types<opts>::Hybrid::GridLayout_t;
 
     auto& hybridModel = *sim.getHybridModel();
 
@@ -224,8 +235,12 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
 template<typename Simulator, typename Hi5Diagnostic>
 void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
 {
-    using GridLayout                           = typename Simulator::PHARETypes::GridLayout_t;
-    constexpr auto dimension                   = Simulator::dimension;
+    std::size_t static constexpr dimension = Simulator::dimension;
+    auto constexpr static opts
+        = SimOpts{dimension, Simulator::interp_order, Simulator::nbRefinedPart};
+
+    using GridLayout = core::PHARE_Types<opts>::Hybrid::GridLayout_t;
+
     constexpr std::size_t expectedPopNbr       = 2;
     constexpr std::size_t expectedPopAttrFiles = 5;
 

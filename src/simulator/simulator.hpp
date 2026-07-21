@@ -2,8 +2,8 @@
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
 
-#include "phare_core.hpp"
-#include "phare_types.hpp"
+#include "phare_solver.hpp"
+
 
 #include "core/def.hpp"
 #include "core/errors.hpp"
@@ -12,8 +12,10 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
 
+#include "amr/wrappers/hierarchy.hpp"
 #include "amr/wrappers/integrator.hpp"
 #include "amr/tagging/tagger_factory.hpp"
+#include "amr/messengers/messenger_factory.hpp"
 #include "amr/load_balancing/load_balancer_details.hpp"
 #include "amr/load_balancing/load_balancer_manager.hpp"
 #include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
@@ -73,14 +75,14 @@ public:
     std::size_t static constexpr nbRefinedPart = opts.nbRefinedPart;
 
     using SAMRAITypes            = PHARE::amr::SAMRAI_Types;
-    using PHARETypes             = PHARE_Types<opts>;
+    using PHARETypes             = solver::PHARE_Types<opts>;
     using IPhysicalModel         = PHARE::solver::IPhysicalModel<SAMRAITypes>;
     using HybridModel            = PHARETypes::HybridModel_t;
     using MHDModel               = PHARETypes::MHDModel_t;
     using SolverMHD              = PHARETypes::SolverMHD_t;
     using SolverPPC              = PHARETypes::SolverPPC_t;
     using MessengerFactory       = PHARETypes::MessengerFactory;
-    using MultiPhysicsIntegrator = PHARETypes::MultiPhysicsIntegrator;
+    using MultiPhysicsIntegrator = PHARETypes::MultiPhysicsIntegrator_t;
     using SimFunctorParams       = core::PHARE_Sim_Types::SimFunctorParams;
     using SimFunctors            = core::PHARE_Sim_Types::SimulationFunctors;
     using Integrator             = PHARE::amr::Integrator<dimension>;

@@ -1,7 +1,11 @@
 #ifndef PHARE_TEST_SIMULATOR_PER_TEST_HPP
 #define PHARE_TEST_SIMULATOR_PER_TEST_HPP
 
+#include "phare_solver.hpp"
+
 #include "amr/samrai.hpp"
+
+
 #include "simulator/simulator.hpp"
 #include "initializer/python_data_provider.hpp"
 #include "tests/core/data/field/test_field.hpp"
@@ -41,7 +45,7 @@ struct SimulatorTestParam : private HierarchyMaker<opts.dimension>, public PHARE
     static constexpr std::size_t dim = opts.dimension;
 
     using Simulator   = PHARE::Simulator<opts>;
-    using PHARETypes  = PHARE::PHARE_Types<opts>;
+    using PHARETypes  = PHARE::solver::PHARE_Types<opts>;
     using Hierarchy   = PHARE::amr::Hierarchy;
     using HybridModel = PHARETypes::HybridModel_t;
     using MHDModel    = PHARETypes::MHDModel_t;
