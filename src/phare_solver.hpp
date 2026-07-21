@@ -28,12 +28,12 @@ struct PHARE_Types
 
     struct Hybrid
     {
-        using VecField_t   = core_types::VecField_t;
-        using Grid_t       = core_types::Grid_t;
-        using Electromag_t = core_types::Electromag_t;
-        using Ions_t       = core_types::Ions_t;
-        using GridLayout_t = core_types::GridLayout_t;
-        using Electrons_t  = core_types::Electrons_t;
+        using VecField_t   = core_types::Hybrid::VecField_t;
+        using Grid_t       = core_types::Hybrid::Grid_t;
+        using Electromag_t = core_types::Hybrid::Electromag_t;
+        using Ions_t       = core_types::Hybrid::Ions_t;
+        using GridLayout_t = core_types::Hybrid::GridLayout_t;
+        using Electrons_t  = core_types::Hybrid::Electrons_t;
         using Model_t      = HybridModel< //
             GridLayout_t, Electromag_t, Ions_t, Electrons_t, amr::SAMRAI_Types, Grid_t>;
     };
@@ -47,10 +47,8 @@ struct PHARE_Types
     };
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
-
-
-    using HybridModel_t = typename Hybrid::Model_t;
-    using MHDModel_t    = typename MHD::Model_t;
+    using HybridModel_t  = Hybrid::Model_t;
+    using MHDModel_t     = MHD::Model_t;
 
     using SolverPPC_t = PHARE::solver::SolverPPC<HybridModel_t, PHARE::amr::SAMRAI_Types>;
     using SolverMHD_t
