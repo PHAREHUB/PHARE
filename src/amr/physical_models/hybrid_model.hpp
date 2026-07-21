@@ -4,6 +4,8 @@
 
 #include "core/def.hpp"
 #include "core/models/hybrid_state.hpp"
+#include "core/hybrid/hybrid_quantities.hpp"
+#include "core/boundary/boundary_manager.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 
 #include "initializer/data_provider.hpp"
@@ -42,6 +44,8 @@ public:
     using ions_type              = Ions;
     using particle_array_type    = Ions::particle_array_type;
     using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
+    using boundary_manager_type
+        = core::BoundaryManager<core::HybridQuantity, field_type, gridlayout_type>;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
@@ -51,6 +55,7 @@ public:
 
     core::HybridState<Electromag, Ions, Electrons> state;
     std::shared_ptr<resources_manager_type> resourcesManager;
+    std::shared_ptr<boundary_manager_type> boundaryManager;
 
 
     void initialize(level_t& level) override;
@@ -87,6 +92,16 @@ public:
         , state{dict}
         , resourcesManager{std::move(_resourcesManager)}
     {
+        // inert manager: no quantity has a registered field BC for the hybrid model yet,
+        // but the messenger wiring dereferences this BoundaryManager unconditionally
+        // (magneticRefinePatchStrategy_), so it must never be null. When the config carries no
+        // boundary_conditions (hand-built C++ test dicts), build it from an empty dict: the
+        // manager then registers no boundaries and stays inert.
+        auto const has_bcs = dict.contains("grid") && dict["grid"].contains("boundary_conditions");
+        boundaryManager    = std::make_shared<boundary_manager_type>(
+            has_bcs ? dict["grid"]["boundary_conditions"] : PHARE::initializer::PHAREDict{},
+            std::vector<core::HybridQuantity::Scalar>{},
+            std::vector<core::HybridQuantity::Vector>{});
     }
 
 

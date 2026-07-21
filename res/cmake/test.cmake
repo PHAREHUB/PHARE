@@ -6,7 +6,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   configure_file(${CMAKE_SOURCE_DIR}/tests/__init__.py ${CMAKE_BINARY_DIR}/tests/__init__.py @ONLY)
 
-
+  add_subdirectory(tests/core/boundary/boundary_manager)
   add_subdirectory(tests/core/data/minimizing_vector)
   add_subdirectory(tests/core/data/ndarray)
   add_subdirectory(tests/core/data/grid)
@@ -25,13 +25,14 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/core/utilities/indexer)
   add_subdirectory(tests/core/utilities/cellmap)
   add_subdirectory(tests/core/utilities/ghost_width_calculator)
-  #add_subdirectory(tests/core/numerics/boundary_condition)
+  add_subdirectory(tests/core/numerics/boundary_condition)
   add_subdirectory(tests/core/numerics/interpolator)
   add_subdirectory(tests/core/numerics/pusher)
   add_subdirectory(tests/core/numerics/ampere)
   add_subdirectory(tests/core/numerics/faraday)
   add_subdirectory(tests/core/numerics/ohm)
   add_subdirectory(tests/core/numerics/ion_updater)
+  add_subdirectory(tests/core/numerics/thermo)
 
 
   add_subdirectory(tests/initializer)
@@ -71,11 +72,15 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/mhd_multidimensional_convergence)
   add_subdirectory(tests/functional/mhd_dispersion)
   add_subdirectory(tests/functional/mhd_harris)
+  add_subdirectory(tests/functional/mhd_harris_with_boundaries)
   add_subdirectory(tests/functional/mhd_harris_3d)
   add_subdirectory(tests/functional/mhd_orszagtang)
   add_subdirectory(tests/functional/mhd_orszagtang_3d)
   add_subdirectory(tests/functional/mhd_rotor)
   add_subdirectory(tests/functional/mhd_shock)
+  add_subdirectory(tests/functional/mhd_shock_with_super_magnetofast_inflow)
+  add_subdirectory(tests/functional/mhd_shock_with_super_alfvenic_inflow)
+  add_subdirectory(tests/functional/mhd_shock_with_timevarying_inflow)
 
   add_subdirectory(pyphare/pyphare_tests/test_pharesee/)
   add_subdirectory(pyphare/pyphare_tests/pharein/)

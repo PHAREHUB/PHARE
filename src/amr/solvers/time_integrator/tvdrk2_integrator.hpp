@@ -74,6 +74,7 @@ public:
     void fillMessengerInfo(auto& info) const
     {
         info.ghostDensity.push_back(state1_.rho.name());
+        info.ghostPressure.push_back(state1_.P.name());
         info.ghostMomentum.push_back(state1_.rhoV.name());
         info.ghostTotalEnergy.push_back(state1_.Etot.name());
         info.ghostElectric.push_back(state1_.E.name());

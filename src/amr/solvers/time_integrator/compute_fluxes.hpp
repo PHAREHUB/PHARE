@@ -63,6 +63,12 @@ public:
         ToConservativeConverter_t{level, model}(state, to_conservative_gamma_, newTime);
 
         ConstrainedTransport_t{level, model, constrainedTransportInfo_}(ct_, state);
+
+        // Apply the physical electric-field boundary conditions on the freshly computed E
+        // before Faraday consumes it on the ghost box: antisymmetric E at reflective walls
+        // (keeps the wall-normal B frozen through constrained transport), Dirichlet motional
+        // E = -v x B at inflow. This is the sole trigger of the outer E boundary conditions.
+        bc.fillElectricGhosts(state.E, level, newTime);
     }
 
     void registerResources(MHDModel& model)

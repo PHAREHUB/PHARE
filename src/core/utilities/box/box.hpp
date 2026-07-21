@@ -18,6 +18,8 @@ namespace PHARE::core
 template<typename Type, std::size_t dim>
 class box_iterator;
 
+template<typename Type, std::size_t dim>
+class box_reverse_iterator;
 
 
 /** Represents a 1D, 2D or 3D box of integer or floating point
@@ -28,6 +30,7 @@ struct Box
 {
     using value_type                = Type;
     using iterator                  = box_iterator<Type, dim>;
+    using reverse_iterator          = box_reverse_iterator<Type, dim>;
     static constexpr auto dimension = dim;
 
 
@@ -139,6 +142,24 @@ struct Box
         }
     }
 
+    NO_DISCARD auto rbegin() { return reverse_iterator{this, upper}; }
+    NO_DISCARD auto rbegin() const { return reverse_iterator{this, upper}; }
+
+    NO_DISCARD auto rend()
+    {
+        // Point precisely to the index that index_[0]-- creates after passing 'lower'
+        auto end_idx = lower;
+        end_idx[0]--;
+        return reverse_iterator{this, end_idx};
+    }
+
+    NO_DISCARD auto rend() const
+    {
+        // Point precisely to the index that index_[0]-- creates after passing 'lower'
+        auto end_idx = lower;
+        end_idx[0]--;
+        return reverse_iterator{this, end_idx};
+    }
 
     NO_DISCARD constexpr static std::size_t nbrRemainBoxes()
     {
@@ -200,6 +221,68 @@ private:
     Point<Type, dim> index_;
 };
 
+
+template<typename Type, std::size_t dim>
+class box_reverse_iterator
+{
+public:
+    box_reverse_iterator(Box<Type, dim> const* box, Point<Type, dim> index = Point<Type, dim>{})
+        : box_{box}
+        , index_{index}
+    {
+    }
+
+    // Return by reference is okay here because we are NOT using std::reverse_iterator's temporary
+    // shift
+    auto const& operator*() const { return index_; }
+    auto const* operator->() const { return &index_; }
+
+    void decrement(std::size_t idim)
+    {
+        // If we are at the lower bound for this specific dimension
+        if (index_[idim] == box_->lower[idim])
+        {
+            if (idim == 0)
+            {
+                // We have finished the entire box.
+                // Underflow X so it matches the rend() sentinel.
+                index_[0]--;
+                return;
+            }
+
+            // Try to decrement the parent dimension
+            decrement(idim - 1);
+
+            // ONLY reset this dimension to 'upper' if the parent
+            // didn't just underflow past its own lower bound.
+            using signed_t = std::make_signed_t<Type>;
+            if (static_cast<signed_t>(index_[0]) >= static_cast<signed_t>(box_->lower[0]))
+            {
+                index_[idim] = box_->upper[idim];
+            }
+            // If parent IS invalid, we leave index_[idim] at lower[idim]
+            // to keep the point consistent for the rend() comparison.
+        }
+        else
+        {
+            index_[idim]--;
+        }
+    }
+    box_reverse_iterator& operator++()
+    {
+        decrement(dim - 1);
+        return *this;
+    }
+
+    bool operator!=(box_reverse_iterator const& other) const
+    {
+        return box_ != other.box_ or index_ != other.index_;
+    }
+
+private:
+    Box<Type, dim> const* box_;
+    Point<Type, dim> index_;
+};
 
 template<typename T, std::size_t s>
 Box(Point<T, s> lower, Point<T, s> upper) -> Box<T, s>;

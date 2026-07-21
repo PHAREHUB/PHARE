@@ -84,10 +84,12 @@ public:
     {
         if (messengerName == HybridHybridMessengerStrategy_t::stratName)
         {
-            auto& resourcesManager = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
+            auto& hybridCoarseModel = dynamic_cast<HybridModel const&>(coarseModel);
+            auto& resourcesManager  = hybridCoarseModel.resourcesManager;
+            auto& boundaryManager   = hybridCoarseModel.boundaryManager;
 
-            auto messengerStrategy
-                = std::make_unique<HybridHybridMessengerStrategy_t>(resourcesManager, firstLevel);
+            auto messengerStrategy = std::make_unique<HybridHybridMessengerStrategy_t>(
+                resourcesManager, boundaryManager, firstLevel);
 
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
@@ -113,9 +115,12 @@ public:
 
         else if (messengerName == MHDMessenger<MHDModel>::stratName)
         {
-            auto& mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
+            auto& mhdCoarseModel      = dynamic_cast<MHDModel const&>(coarseModel);
+            auto& mhdResourcesManager = mhdCoarseModel.resourcesManager;
+            auto& mhdBoundaryManager  = mhdCoarseModel.boundaryManager;
 
-            return std::make_unique<MHDMessenger<MHDModel>>(mhdResourcesManager, firstLevel);
+            return std::make_unique<MHDMessenger<MHDModel>>(mhdResourcesManager, mhdBoundaryManager,
+                                                            firstLevel);
         }
         else
             return {};

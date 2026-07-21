@@ -20,6 +20,21 @@ auto compute_fast_magnetosonic_(auto gamma, auto const& rho, auto const& B, auto
                      + std::sqrt((c02 + cA2) * (c02 + cA2) - 4.0 * c02 * cAdir2) * 0.5);
 }
 
+// Same fast-magnetosonic speed as compute_fast_magnetosonic_ but parameterized by an
+// already-known sound speed instead of (gamma, P). Useful where a Thermo object exposes
+// soundSpeed() but not gamma — keeps the EOS abstraction intact. @c Bn is the
+// boundary-normal magnetic component, @c BdotB the total |B|^2 (both co-located with rho).
+auto compute_fast_magnetosonic_from_cs_(auto const& cs, auto const& rho, auto const& Bn,
+                                        auto const& BdotB)
+{
+    auto const c02    = cs * cs;
+    auto const cA2    = BdotB / rho;
+    auto const cAdir2 = Bn * Bn / rho;
+
+    return std::sqrt((c02 + cA2) * 0.5
+                     + std::sqrt((c02 + cA2) * (c02 + cA2) - 4.0 * c02 * cAdir2) * 0.5);
+}
+
 auto compute_whistler_(auto const& invMeshSize, auto const& rho, auto const& BdotB)
 {
     auto const vw = std::sqrt(1 + 0.25 * invMeshSize * invMeshSize) + 0.5 * invMeshSize;

@@ -40,6 +40,8 @@
 2,1,4,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
 # mhd_shock
 1,1,2,TVDRK2,Linear,VanLeer,Rusanov,false,false,false
+# mhd_shock_with_super_magnetofast_inflow (outer physical BC, E-mediated inflow B)
+1,2,2,TVDRK3,WENOZ,None,Rusanov,false,false,false
 # mhd_dispersion (whistler1d, Hall)
 1,1,2,TVDRK2,Linear,VanLeer,Rusanov,true,false,false
 # mhd_orszagtang_3d

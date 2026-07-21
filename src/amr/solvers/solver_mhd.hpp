@@ -285,9 +285,6 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::fillMess
     mhdInfo.refluxElectric  = timeElectric.name();
     mhdInfo.fluxSum         = core::AllFluxesNames{fluxSum_};
     mhdInfo.fluxSumElectric = fluxSumE_.name();
-
-    // for the faraday in reflux
-    mhdInfo.ghostElectric.emplace_back(timeElectric.name());
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy, typename Messenger>

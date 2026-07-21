@@ -65,8 +65,8 @@ def config():
         Ly = sim.simulation_domain()[1]
         return (
             0.4
-            + 1.0 / np.cosh((y - Ly * 0.3) / L) ** 2
-            + 1.0 / np.cosh((y - Ly * 0.7) / L) ** 2
+            + 1.0 / np.cosh((y - Ly * 0.25) / L) ** 2
+            + 1.0 / np.cosh((y - Ly * 0.75) / L) ** 2
         )
 
     def vx(x, y):
@@ -85,15 +85,15 @@ def config():
         dB = 0.1
 
         x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
+        y1 = y - 0.25 * Ly
+        y2 = y - 0.75 * Ly
 
         dBx1 = -2 * dB * y1 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
         dBx2 = 2 * dB * y2 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
 
         v1 = -1
         v2 = 1.0
-        return v1 + (v2 - v1) * (S(y, Ly * 0.3, L) - S(y, Ly * 0.7, L)) + dBx1 + dBx2
+        return v1 + (v2 - v1) * (S(y, Ly * 0.25, L) - S(y, Ly * 0.75, L)) + dBx1 + dBx2
 
     def by(x, y):
         Lx = sim.simulation_domain()[0]
@@ -102,8 +102,8 @@ def config():
         dB = 0.1
 
         x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
+        y1 = y - 0.25 * Ly
+        y2 = y - 0.75 * Ly
 
         dBy1 = 2 * dB * x0 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
         dBy2 = -2 * dB * x0 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)

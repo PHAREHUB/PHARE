@@ -54,6 +54,26 @@ class fn_wrapper(py_fn_wrapper):
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
 
 
+# Wrap user functions of space AND time: fn(x[, y[, z]], t).
+# C++ passes (*spatial_vectors, t) where spatial args are vectors (one value per node)
+# and t is a scalar float. A scalar-in-space return is broadcast to the node count.
+class space_time_fn_wrapper(py_fn_wrapper):
+    def __init__(self, fn):
+        super().__init__(fn)
+
+    def __call__(self, *args):
+        from pyphare.cpp import cpp_etc_lib
+
+        *xyz, t = args
+        xyz = [np.asarray(arg) for arg in xyz]
+        ret = self.fn(*xyz, float(t))
+        if isinstance(ret, list):
+            ret = np.asarray(ret)
+        if is_scalar(ret):
+            ret = np.full(len(xyz[-1]), ret)  # broadcast scalar-in-space to node count
+        return cpp_etc_lib().makePyArrayWrapper(ret)
+
+
 # pybind complains if receiving wrong type
 def add_int(path, val):
     pp.add_int(path, int(val))
@@ -81,6 +101,48 @@ def add_vector_int(path, val):
 add_string = pp.add_string
 
 
+def addSpaceTimeFunction(path, fn, ndim):
+    {
+        1: pp.addSpaceTimeFunction1D,
+        2: pp.addSpaceTimeFunction2D,
+        3: pp.addSpaceTimeFunction3D,
+    }[ndim](path, space_time_fn_wrapper(fn))
+
+
+# Route a boundary-condition data value: a callable becomes a space/time function,
+# anything else a constant double.
+def _add_bc_value(path, val, ndim):
+    if callable(val):
+        addSpaceTimeFunction(path, val, ndim)
+    else:
+        add_double(path, float(val))
+
+
+def _add_inflow_scalar(bc_path, data, key, ndim):
+    """Serialise a prescribable inflow scalar: a constant double or a space-time function,
+    tagged by '<key>_is_function'."""
+    val = data[key]
+    add_bool(f"{bc_path}/data/{key}_is_function", callable(val))
+    _add_bc_value(f"{bc_path}/data/{key}", val, ndim)
+
+
+def _add_inflow_vector(bc_path, data, key, ndim):
+    """Serialise a prescribable inflow 3-vector: each component a constant double or a
+    space-time function, tagged by '<key>_is_function' (true if any component is callable).
+
+    When tagged as a function, every component slot must hold a function (the C++
+    parseDimXYZType<SpaceTimeFunction,3> reader requires it): constant components are lifted
+    to constant space-time callables before serialisation.
+    """
+    comps = list(data[key])
+    is_fn = any(callable(c) for c in comps)
+    add_bool(f"{bc_path}/data/{key}_is_function", is_fn)
+    if is_fn:
+        comps = [c if callable(c) else (lambda *a, _c=float(c): _c) for c in comps]
+    for axis, c in zip("xyz", comps):
+        _add_bc_value(f"{bc_path}/data/{key}/{axis}", c, ndim)
+
+
 def populateDict(sim):
     add_string("simulation/name", "simulation_test")
     add_int("simulation/dimension", sim.ndim)
@@ -104,6 +166,30 @@ def populateDict(sim):
             add_int("simulation/grid/nbr_cells/z", sim.cells[2])
             add_double("simulation/grid/meshsize/z", sim.dl[2])
             add_string("simulation/grid/boundary_type/z", sim.boundary_types[2])
+
+    if sim.boundary_conditions is not None:
+        directions = "x", "y", "z"
+        sides = "lower", "upper"
+        for direction in directions[: sim.ndim]:
+            for side in sides:
+                location = f"{direction}{side}"
+                bc = sim.boundary_conditions[location]
+                bc_path = f"simulation/grid/boundary_conditions/{location}"
+                add_string(f"{bc_path}/type", bc["type"])
+                if bc["type"] == "super-magnetofast-inflow":
+                    data = bc["data"]
+                    _add_inflow_scalar(bc_path, data, "density", sim.ndim)
+                    _add_inflow_scalar(bc_path, data, "pressure", sim.ndim)
+                    _add_inflow_vector(bc_path, data, "velocity", sim.ndim)
+                    _add_inflow_vector(bc_path, data, "B", sim.ndim)
+                elif bc["type"] == "free-pressure-inflow":
+                    data = bc["data"]
+                    _add_inflow_scalar(bc_path, data, "density", sim.ndim)
+                    _add_inflow_vector(bc_path, data, "velocity", sim.ndim)
+                    _add_inflow_vector(bc_path, data, "B", sim.ndim)
+                elif bc["type"] == "fixed-pressure-outflow":
+                    data = bc["data"]
+                    add_double(f"{bc_path}/data/pressure", data["pressure"])
 
     add_int("simulation/interp_order", sim.interp_order)
     add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
