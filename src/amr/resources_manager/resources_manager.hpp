@@ -112,21 +112,19 @@ namespace amr
      *
      */
 
-    // TODO drop interp_order and swich to arbitrary type support like on tiling branch
-    template<typename GridLayoutT, typename Grid_t, std::size_t interp_order_ = 0>
+    template<typename GridLayoutT, typename Grid_t>
     class ResourcesManager
     {
-        using This         = ResourcesManager<GridLayoutT, Grid_t, interp_order_>;
+        using This         = ResourcesManager<GridLayoutT, Grid_t>;
         using QuantityType = decltype(GridLayoutT::options.field_options)::Quantity;
 
     public:
-        static constexpr std::size_t dimension    = GridLayoutT::dimension;
-        static constexpr std::size_t interp_order = interp_order_;
+        static constexpr std::size_t dimension = GridLayoutT::dimension;
 
         using UserField_t = UserFieldType<Grid_t, GridLayoutT>;
 
         template<typename ResourcesView>
-        using UserParticle_t = UserParticleType<ResourcesView, interp_order>;
+        using UserParticle_t = UserParticleType<ResourcesView, GridLayoutT>;
 
         template<std::size_t rank>
         using UserTensorField_t = UserTensorFieldType<rank, Grid_t, GridLayoutT, QuantityType>;

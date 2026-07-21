@@ -38,7 +38,7 @@ public:
     std::unique_ptr<BasicHierarchy> hierarchy;
     ResourcesManager<
         PHARE::core::PHARE_Types<PHARE::SimOpts{dimension, interp_order}>::Hybrid::GridLayout_t,
-        Grid_t, interp_order>
+        Grid_t>
         resourcesManager;
 
     ResourcesUsers users;

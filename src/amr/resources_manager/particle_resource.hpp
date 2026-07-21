@@ -12,11 +12,11 @@ namespace amr
     /** @brief tells SAMRAI which kind of variable, patchdata are used for a Field Resource
      * also says the type of the actual data buffer
      */
-    template<typename ResourcesUser, std::size_t interp>
+    template<typename ResourcesUser, typename GridLayout_t>
     struct UserParticleType
     {
         static constexpr auto dimension    = ResourcesUser::dimension;
-        static constexpr auto interp_order = interp;
+        static constexpr auto interp_order = GridLayout_t::options.interp_order;
 
         using particle_array_type = typename ResourcesUser::particle_array_type;
         using variable_type       = ParticlesVariable<particle_array_type, interp_order>;

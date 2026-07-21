@@ -42,7 +42,7 @@ public:
     using grid_type              = Grid_t;
     using ions_type              = Ions;
     using particle_array_type    = Ions::particle_array_type;
-    using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type, interp_order>;
+    using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
 
