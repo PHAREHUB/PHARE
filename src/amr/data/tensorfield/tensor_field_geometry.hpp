@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_GEOMETRY_HPP
 
 // keep this include before any amr or samrai include
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"

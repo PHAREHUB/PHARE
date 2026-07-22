@@ -3,7 +3,7 @@
 
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/box/box.hpp"
 
 

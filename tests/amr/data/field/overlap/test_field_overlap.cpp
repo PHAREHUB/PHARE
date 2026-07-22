@@ -1,5 +1,5 @@
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 
 #include <SAMRAI/hier/BoxContainer.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>

@@ -1,7 +1,7 @@
 #ifndef PHARE_AMR_SAMRAI_HPP
 #define PHARE_AMR_SAMRAI_HPP
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/types.hpp"
 
 #include <SAMRAI/tbox/RestartManager.h>

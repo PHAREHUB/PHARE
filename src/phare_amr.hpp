@@ -2,7 +2,7 @@
 #define PHARE_AMR_INCLUDE_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "phare_core.hpp"
 #include "amr/wrappers/hierarchy.hpp"

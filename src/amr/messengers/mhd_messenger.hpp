@@ -1,7 +1,7 @@
 #ifndef PHARE_MHD_MESSENGER_HPP
 #define PHARE_MHD_MESSENGER_HPP
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 
 #include "amr/data/field/refine/field_refiner.hpp"

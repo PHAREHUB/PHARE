@@ -9,7 +9,7 @@
 #include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/utilities/timestamps.hpp"
 
 #include "amr/wrappers/hierarchy.hpp"

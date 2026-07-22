@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_HPP
 
 #include "core/data/vector.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/logger.hpp"
 #include "core/data/field/field_box.hpp"

@@ -2,7 +2,7 @@
 #define PHARE_DETAIL_RESTART_HIGHFIVE_HPP
 
 
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include "restarts/restarts_props.hpp"
 #include "restarts/restarts_manager.hpp"

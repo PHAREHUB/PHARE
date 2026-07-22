@@ -2,7 +2,7 @@
 #define PHARE_SOLVER_HPP
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"

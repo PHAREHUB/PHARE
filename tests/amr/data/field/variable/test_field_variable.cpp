@@ -1,6 +1,6 @@
 
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 #include "phare_core.hpp"
 
 #include <SAMRAI/hier/BoxContainer.h>

@@ -2,9 +2,9 @@
 #define PHARE_HDF5_H5FILE_HPP
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/types.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
 

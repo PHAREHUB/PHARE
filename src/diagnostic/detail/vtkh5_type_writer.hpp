@@ -5,7 +5,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"

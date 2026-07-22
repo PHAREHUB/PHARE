@@ -1,7 +1,7 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_HPP
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/logger.hpp"
 #include "core/data/vector.hpp"

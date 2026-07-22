@@ -1,10 +1,10 @@
 #ifndef PHARE_SOLVER_PPC_HPP
 #define PHARE_SOLVER_PPC_HPP
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 

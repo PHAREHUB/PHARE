@@ -1,7 +1,7 @@
 #ifndef PHARE_FIELD_DATA_COARSEN_HPP
 #define PHARE_FIELD_DATA_COARSEN_HPP
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/utilities/box/amr_box.hpp"

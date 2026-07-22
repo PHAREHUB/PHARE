@@ -2,7 +2,7 @@
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
 #include "core/errors.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/numerics/moments/moments.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 

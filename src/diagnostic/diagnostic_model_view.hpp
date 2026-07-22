@@ -3,7 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include "amr/amr_constants.hpp"
 #include "amr/physical_models/mhd_model.hpp"

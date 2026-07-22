@@ -6,7 +6,7 @@
 #define PHARE_SIM_STR 1, 1, 2 // mostly for clangformat - errors in cpp file if define is missing
 #endif
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/samrai.hpp" // IWYU pragma: keep
 #include "amr/wrappers/hierarchy.hpp"

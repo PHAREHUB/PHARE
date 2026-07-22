@@ -1,7 +1,7 @@
 
 
 #include "phare_core.hpp"
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 
 #include "core/data/grid/grid.hpp"
 

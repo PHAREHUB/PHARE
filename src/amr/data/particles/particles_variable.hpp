@@ -1,7 +1,7 @@
 #ifndef PHARE_PARTICLES_VARIABLE_HPP
 #define PHARE_PARTICLES_VARIABLE_HPP
 
-#include "core/def/phare_mpi.hpp"        // IWYU pragma: keep
+#include "phare_mpi.hpp"        // IWYU pragma: keep
 #include "core/data/grid/gridlayout.hpp" // particle ghost width
 
 #include "particles_data_factory.hpp"

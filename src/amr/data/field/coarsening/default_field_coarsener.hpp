@@ -2,7 +2,7 @@
 #define PHARE_DEFAULT_FIELD_COARSENER_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/def.hpp"
 #include "core/utilities/constants.hpp"

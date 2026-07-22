@@ -47,32 +47,26 @@ set( SOURCES_INC
      utilities/point/point.hpp
      utilities/range/range.hpp
      utilities/types.hpp
-     utilities/mpi_utils.hpp
    )
 
 set( SOURCES_CPP
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
      utilities/index/index.cpp
-     utilities/mpi_utils.cpp
     )
 
 set( CORE_EXTRA_SOURCES_CPP )
 if (withPhlop)
   set( CORE_EXTRA_SOURCES_CPP ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/scope_timer.cpp
-                              ${PHARE_PROJECT_DIR}/subprojects/phlop/src/phlop/timing/common_threaded_timer.cpp
    )
 endif(withPhlop)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
-target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer MPI::MPI_C
+target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer
     PUBLIC cppdict ${PHARE_BASE_LIBS}
   )
 
-# skip mpicxx in compile command if not configured with configurator
-if (NOT phare_configurator)
-     target_compile_definitions(${PROJECT_NAME} PUBLIC MPICH_SKIP_MPICXX OMPI_SKIP_MPICXX )
-endif()
+
 
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 set_property(TARGET ${PROJECT_NAME} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")

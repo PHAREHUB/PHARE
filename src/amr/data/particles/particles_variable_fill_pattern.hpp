@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_PARTICLES_PARTICLES_VARIABLE_FILL_PATTERN_HPP
 
 #include "core/logger.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <amr/utilities/box/amr_box.hpp>
 

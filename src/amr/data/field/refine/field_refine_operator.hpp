@@ -2,7 +2,7 @@
 #define PHARE_FIELD_REFINE_OPERATOR_HPP
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"

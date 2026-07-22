@@ -2,7 +2,7 @@
 #define PHARE_DETAIL_DIAGNOSTIC_HIGHFIVE_HPP
 
 #include "core/utilities/types.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"

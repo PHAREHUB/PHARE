@@ -52,6 +52,7 @@ include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 #*******************************************************************************
 # PHARE source code
 add_subdirectory(src/core)
+add_subdirectory(src/mpi)
 add_subdirectory(src/initializer)
 add_subdirectory(src/amr)
 add_subdirectory(src/diagnostic)
