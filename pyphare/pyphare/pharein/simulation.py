@@ -7,6 +7,7 @@ from ..core import box as boxm
 from ..core import phare_utilities
 from ..core.box import Box
 from . import global_vars
+from .tagging import resolve_tagging
 
 # ------------------------------------------------------------------------------
 
@@ -574,110 +575,6 @@ def check_refinement(**kwargs):
     return kwargs.get("refinement", "boxes")
 
 
-def check_tagging(**kwargs):
-    """Normalize tagging configuration into
-    {"method", "quantities":[(name, thr)], "params":{...}}.
-
-    Returns None when refinement is not "tagging". Configuration is carried by the
-    optional `tagging` kwarg, e.g.
-
-        refinement="tagging",
-        tagging={"method": "lohner", "quantities": {"B": 0.1, "massDensity": 0.4},
-                 "params": {"reltol": 0.02}}
-
-    where `quantities` maps a field name to its own threshold (a cell is tagged if
-    ANY quantity's indicator exceeds its threshold). All keys are optional:
-    `method` defaults to "default"; when `quantities` is omitted (or no `tagging`
-    dict is given at all) the criterion falls back to B at `tagging_threshold`
-    (kept for backward compatibility, default 0.1).
-
-    `params` carries method-specific numbers:
-    - lohner: `reltol` (Loehner's eps, default 0.02) weights the noise filter in
-      the denominator of the estimator (damps the indicator where the field
-      variation is small relative to its magnitude); `abstol` (default 1e-30) is
-      an absolute denominator floor.
-    - wavelet: multiresolution detail criterion (Domingues et al. 2019,
-      10.1016/j.compfluid.2019.06.025). The indicator is the ABSOLUTE prediction
-      error |Q - Qpredicted| (units of Q), so thresholds are not comparable with
-      default/lohner ones. By default the threshold follows Harten's level
-      scaling eps_l = eps / 2^{dim (l - L)} (L the finest level), refining
-      coarse levels more eagerly; `level_scaling` (default 1) set to 0 uses the
-      per-quantity threshold unscaled on every level.
-
-    Quantity names are not restricted here: the C++ tagger resolves them against
-    the model's field tree at setup and throws (listing the available names) if a
-    name matches nothing. Use the model's own field names -- e.g. the hybrid
-    density is `chargeDensity`/`massDensity` and the MHD density is `rho`; `B` is a
-    universal alias for the magnetic-field components in either model.
-    """
-    valid_methods = ("default", "lohner", "wavelet")
-    valid_params = {
-        "default": (),
-        "lohner": ("reltol", "abstol"),
-        "wavelet": ("level_scaling",),
-    }
-
-    if kwargs.get("refinement", "boxes") != "tagging":
-        # a fully specified tagging= kwarg with refinement left at its default is almost
-        # always a mistake: fail loudly instead of silently ignoring the configuration.
-        if kwargs.get("tagging", None) is not None:
-            raise ValueError(
-                "Error: a 'tagging' configuration was provided but refinement is not"
-                " 'tagging'; set refinement='tagging' to enable it (or drop the 'tagging' kwarg)"
-            )
-        return None
-
-    threshold = kwargs.get("tagging_threshold", 0.1)
-    if threshold is None:
-        threshold = 0.1
-    threshold = float(threshold)
-
-    spec = kwargs.get("tagging", None)
-    if spec is None:
-        spec = {}
-    if not isinstance(spec, dict):
-        raise ValueError("Error: 'tagging' must be a dict {'method':..., 'quantities':...}")
-
-    # reject typos in the top-level keys (e.g. "quantites") instead of silently swallowing
-    # them and falling back to the B/tagging_threshold default.
-    valid_spec_keys = {"method", "quantities", "params"}
-    unknown_keys = set(spec) - valid_spec_keys
-    if unknown_keys:
-        raise ValueError(
-            f"Error: unknown tagging keys {sorted(unknown_keys)},"
-            f" expected among {sorted(valid_spec_keys)}"
-        )
-
-    method = spec.get("method", "default")
-    if method not in valid_methods:
-        raise ValueError(
-            f"Error: invalid tagging method '{method}', expected one of {valid_methods}"
-        )
-
-    params = spec.get("params", None) or {}
-    if not isinstance(params, dict):
-        raise ValueError("Error: tagging 'params' must be a dict {name: value}")
-    unknown = set(params) - set(valid_params[method])
-    if unknown:
-        raise ValueError(
-            f"Error: invalid tagging params {sorted(unknown)} for method '{method}',"
-            f" expected keys among {valid_params[method]}"
-        )
-    params = {str(name): float(value) for name, value in params.items()}
-
-    quantities = spec.get("quantities", None)
-    if quantities:
-        # accept the {name: threshold} mapping (preferred) or an iterable of
-        # (name, threshold) pairs.
-        items = quantities.items() if isinstance(quantities, dict) else quantities
-        quantities = [(str(name), float(thr)) for name, thr in items]
-    else:
-        # no quantities specified -> criterion applies to B at tagging_threshold
-        quantities = [("B", threshold)]
-
-    return {"method": method, "quantities": quantities, "params": params}
-
-
 def check_nesting_buffer(ndim, **kwargs):
     nesting_buffer = phare_utilities.np_array_ify(kwargs.get("nesting_buffer", 0), ndim)
 
@@ -904,7 +801,7 @@ def checker(func):
 
         kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
 
-        kwargs["tagging"] = check_tagging(**kwargs)
+        kwargs["tagging"] = resolve_tagging(**kwargs)
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
             (

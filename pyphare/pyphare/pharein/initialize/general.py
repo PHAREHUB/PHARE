@@ -81,6 +81,20 @@ def add_vector_int(path, val):
 add_string = pp.add_string
 
 
+def dict_populator():
+    """Object exposing add_string/add_int/add_double/add_bool, passed to the pharein config
+    dataclasses' populate_dict() so they can mirror their public shape on the C++ side without
+    importing this module (avoids a circular import)."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        add_string=add_string,
+        add_int=add_int,
+        add_double=add_double,
+        add_bool=add_bool,
+    )
+
+
 def populateDict(sim):
     add_string("simulation/name", "simulation_test")
     add_int("simulation/dimension", sim.ndim)
@@ -147,16 +161,7 @@ def populateDict(sim):
     if refinement_boxes is not None and sim.refinement == "boxes":
         as_paths(refinement_boxes)
     elif sim.refinement == "tagging":
-        tagging = sim.tagging
-        add_string("simulation/AMR/refinement/tagging/method", tagging["method"])
-        quantities = tagging["quantities"]
-        add_int("simulation/AMR/refinement/tagging/nbr_quantities", len(quantities))
-        for i, (name, threshold) in enumerate(quantities):
-            q_path = f"simulation/AMR/refinement/tagging/Q{i}/"
-            add_string(q_path + "name", name)
-            add_double(q_path + "threshold", threshold)
-        for name, value in tagging.get("params", {}).items():
-            add_double(f"simulation/AMR/refinement/tagging/params/{name}", value)
+        sim.tagging.populate_dict(dict_populator())
     else:
         add_string(
             "simulation/AMR/refinement/tagging/method", "none"
