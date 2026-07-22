@@ -14,7 +14,7 @@ function(_particles_test src test_name)
     phare_initializer
     ${GTEST_LIBS})
 
-  add_phare_test(${test_name} ${CMAKE_CURRENT_BINARY_DIR})
+  add_no_mpi_phare_test(${test_name} ${CMAKE_CURRENT_BINARY_DIR})
 
 endfunction(_particles_test)
 
