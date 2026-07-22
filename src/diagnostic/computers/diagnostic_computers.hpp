@@ -11,6 +11,7 @@ namespace PHARE::diagnostic
 // PUBLIC API
 void compute_momentum_tensor(auto& h5Writer);
 void compute_pop_momentum_tensor(auto& h5Writer, auto& pop);
+void compute_kinetic_energy_flux_vector(auto& h5Writer);
 void compute_pop_kinetic_energy_flux_vector(auto& h5Writer, auto& pop);
 
 
@@ -48,7 +49,12 @@ struct KineticEnergyFluxVectorComputer
     auto constexpr static fillFn
         = &ModelView_t::template fillPopKineticEnergyFluxVector<level_t, double, std::size_t>;
     auto constexpr static dimension    = GridLayout_t::dimension;
-    auto constexpr static interp_order = GridLayout_t::interp_order;
+    auto constexpr static interp_order = GridLayout_t::options.interp_order;
+
+    void fillAllSchedules(auto& h5Writer)
+    {
+        _fill_all_pop_schedules(h5Writer, std::mem_fn(fillFn));
+    }
 
     void fillPopSchedules(auto& h5Writer, auto& pop)
     {
@@ -63,10 +69,28 @@ struct KineticEnergyFluxVectorComputer
     };
 
     FluidWriter& h5Writer;
-    core::HeatEnergyFluxVectorInterpolator<dimension, interp_order> interpolator{};
+    core::KineticEnergyFluxVectorInterpolator<dimension, interp_order> interpolator{};
 };
 template<typename FluidWriter>
 KineticEnergyFluxVectorComputer(FluidWriter&) -> KineticEnergyFluxVectorComputer<FluidWriter>;
+
+void compute_kinetic_energy_flux_vector(auto& h5Writer)
+{
+    KineticEnergyFluxVectorComputer computer{h5Writer};
+    auto& modelView        = h5Writer.modelView();
+    auto const minLvl      = h5Writer.minLevel;
+    auto const maxLvl      = h5Writer.maxLevel;
+    auto& ions             = modelView.getIons();
+    auto const interpolate = [&](auto& layout, auto&&...) {
+        for (auto& pop : ions)
+            computer.interpolate(pop, layout);
+    };
+    modelView.visitHierarchy(interpolate, minLvl, maxLvl);
+    computer.fillAllSchedules(h5Writer);
+    modelView.visitHierarchy([&](auto&&...) { ions.computeFullKineticEnergyFluxVector(); }, minLvl,
+                             maxLvl);
+}
+
 
 void compute_pop_kinetic_energy_flux_vector(auto& h5Writer, auto& pop)
 {
@@ -96,7 +120,7 @@ struct MomentumTensorComputer
     auto constexpr static fillFn
         = &ModelView_t::template fillPopMomTensor<level_t, double, std::size_t>;
     auto constexpr static dimension    = GridLayout_t::dimension;
-    auto constexpr static interp_order = GridLayout_t::interp_order;
+    auto constexpr static interp_order = GridLayout_t::options.interp_order;
 
     void fillAllSchedules(auto& h5Writer)
     {

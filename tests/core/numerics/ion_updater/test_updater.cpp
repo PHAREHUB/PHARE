@@ -221,7 +221,7 @@ struct IonsBuffers
     Grid alphaParticleDensity;
     Grid alphaChargeDensity;
 
-    UsableVecFieldND protonF, alphaF, Vi;
+    UsableVecFieldND protonF, alphaF, Vi, Si;
     UsableTensorField<dim> M, alpha_M, protons_M;
 
     static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
@@ -257,6 +257,7 @@ struct IonsBuffers
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , Si{"kineticEnergyFlux", layout, HybridQuantity::Vector::V}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -294,6 +295,7 @@ struct IonsBuffers
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , Si{"kineticEnergyFlux", layout, HybridQuantity::Vector::V}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -323,16 +325,18 @@ struct IonsBuffers
         protonF.copyData(source.protonF);
         alphaF.copyData(source.alphaF);
         Vi.copyData(source.Vi);
+        Si.copyData(source.Si);
     }
 
     void setBuffers(Ions& ions)
     {
         {
-            auto const& [V, m, cd, md] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, m, cd, md, s] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
             M.set_on(m);
             cd.setBuffer(&ionChargeDensity);
             md.setBuffer(&ionMassDensity);
+            Si.set_on(s);
         }
 
         auto& pops = ions.getRunTimeResourcesViewList();

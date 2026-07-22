@@ -144,6 +144,7 @@ def config():
         "charge_density",
         "bulkVelocity",
         "pressure_tensor",
+        "heat_flux_vector",
     ]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
@@ -196,6 +197,14 @@ def plot(diag_dir):
             q.plot(
                 filename=plot_file_for_qty(f"q{c}", time),
                 qty=f"{pop_name}_q{c}",
+                plot_patches=True,
+            )
+
+        Q = run.GetQ(time)
+        for c in ["x", "y", "z"]:
+            Q.plot(
+                filename=plot_file_for_qty(f"Q{c}", time),
+                qty=f"q{c}",
                 plot_patches=True,
             )
 
@@ -274,6 +283,12 @@ class RunTest(SimulatorTest):
                 for c in ["x", "y", "z"]:
                     assert_file_exists_with_size_at_least(
                         plot_file_for_qty(f"b{c}", time)
+                    )
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(f"q{c}", time)
+                    )
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(f"Q{c}", time)
                     )
 
         cpp.mpi_barrier()

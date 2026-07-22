@@ -612,7 +612,7 @@ public:
 
 
 template<std::size_t dim, std::size_t interpOrder>
-class HeatEnergyFluxVectorInterpolator : public Interpolator<dim, interpOrder>
+class KineticEnergyFluxVectorInterpolator : public Interpolator<dim, interpOrder>
 {
 public:
     inline void operator()(auto& pop, auto const& particles, auto const& layout)
@@ -621,7 +621,7 @@ public:
         auto& weights_        = this->primal_weights_;
         auto const& [x, y, z] = pop.kineticEnergyFlux()();
         auto const coeff      = pop.mass() / 2;
-        PHARE_LOG_START(3, "HeatEnergyFluxVectorInterpolator::operator()");
+        PHARE_LOG_START(3, "KineticEnergyFluxVectorInterpolator::operator()");
 
         for (auto const& particle : particles)
         {
@@ -641,7 +641,7 @@ public:
                 z, particle, [](auto const& part) { return part.v[2]; }, startIndex_, weights_,
                 scaled_v_sq_sum);
         }
-        PHARE_LOG_STOP(3, "HeatEnergyFluxVectorInterpolator::operator()");
+        PHARE_LOG_STOP(3, "KineticEnergyFluxVectorInterpolator::operator()");
     }
 };
 

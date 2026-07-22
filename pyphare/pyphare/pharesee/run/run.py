@@ -15,6 +15,7 @@ from .utils import (
     _compute_pop_pressure,
     _compute_pressure,
     _compute_pop_heat_flux,
+    _compute_heat_flux,
     _compute_current,
     _compute_divB,
     _get_rank,
@@ -164,11 +165,21 @@ class Run:
         M = self._get_hierarchy(
             time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
         )
-        massDensity = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
         V = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
         return compute_hier_from(
-            _compute_pop_heat_flux, (S, n, M, massDensity, V), popname=pop_name
+            _compute_pop_heat_flux,
+            (S, n, M, V),
+            popname=pop_name,
+            mass=self.GetMass(pop_name, **kwargs),
         )
+
+    def GetQ(self, time, merged=False, interp="nearest", **kwargs):
+        S = self._get_hierarchy(time, "ions_kinetic_energy_flux_vector.h5", **kwargs)
+        M = self._get_hierarchy(time, "ions_momentum_tensor.h5", **kwargs)
+        massDensity = self.GetMassDensity(time, **kwargs)
+        Vi = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        Q = compute_hier_from(_compute_heat_flux, (S, M, massDensity, Vi))
+        return self._get(Q, time, merged, interp)  # should later be a VectorField
 
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
         hier = self._get_hierarchy(time, "ions_charge_density.h5")

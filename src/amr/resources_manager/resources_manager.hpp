@@ -332,14 +332,6 @@ namespace amr
                 pdrm->registerPatchDataForRestart(id);
         }
 
-        void unregisterForRestarts() const
-        {
-            auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
-            for (auto const& id : restart_patch_data_ids())
-                pdrm->unregisterPatchDataForRestart(id);
-        }
-
-
         NO_DISCARD auto restart_patch_data_ids() const
         {
             // see https://github.com/PHAREHUB/PHARE/issues/664
