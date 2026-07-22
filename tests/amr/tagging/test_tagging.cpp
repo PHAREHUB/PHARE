@@ -24,7 +24,8 @@ using namespace PHARE::core;
 // runtime dict contract: method + nbr_quantities + Q{i}/{name,threshold} + optional params/*
 PHARE::initializer::PHAREDict
 taggingDict(std::string const& method, std::vector<std::pair<std::string, double>> const& qtys,
-            std::vector<std::pair<std::string, double>> const& params = {})
+            std::vector<std::pair<std::string, double>> const& params      = {},
+            std::vector<std::pair<std::string, bool>> const& boolParams = {})
 {
     PHARE::initializer::PHAREDict dict;
     dict["method"]         = method;
@@ -36,6 +37,9 @@ taggingDict(std::string const& method, std::vector<std::pair<std::string, double
         dict[path]["threshold"] = qtys[i].second;
     }
     for (auto const& [name, value] : params)
+        dict["params"][name] = value;
+    // bool-typed params (e.g. wavelet level_scaling) mirror the Python add_bool path.
+    for (auto const& [name, value] : boolParams)
         dict["params"][name] = value;
     return dict;
 }
@@ -405,7 +409,7 @@ TEST(TagFields, WaveletTagsFrontOnly)
     // level_scaling off -> the per-quantity threshold applies directly to the detail
     std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{
-        taggingDict("wavelet", {{"E", 0.01}}, {{"level_scaling", 0.0}})}
+        taggingDict("wavelet", {{"E", 0.01}}, {}, {{"level_scaling", false}})}
         .tagFields(model, layout, tags.data());
 
     auto const count = std::count(tags.begin(), tags.end(), 1);
@@ -443,7 +447,7 @@ TEST(TagFields, WaveletTagsFeatureInEdgeBand)
 
     std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
     ConcreteTaggerKernel<TagFieldsMockModel>{
-        taggingDict("wavelet", {{"E", 0.01}}, {{"level_scaling", 0.0}})}
+        taggingDict("wavelet", {{"E", 0.01}}, {}, {{"level_scaling", false}})}
         .tagFields(model, layout, tags.data());
 
     bool constexpr fortran = false;

@@ -192,7 +192,7 @@ public:
             if (params.contains("abstol"))
                 lohnerAbstol_ = params["abstol"].template to<double>();
             if (params.contains("level_scaling"))
-                levelScaling_ = params["level_scaling"].template to<double>() != 0.;
+                levelScaling_ = params["level_scaling"].template to<bool>();
         }
     }
 
@@ -378,7 +378,7 @@ void ConcreteTaggerKernel<Model>::tagCells_(Model& model, gridlayout_type const&
     }
 
     // level-scaled threshold (wavelet only): Harten's strategy (Domingues et al. 2019,
-    // Eq. 7) eps_l = eps / 2^{dim (l - L)} with l current level and L the finest level, so
+    // Eq. 7) eps_l = eps / 2^{dim (L - l)} with l current level and L the finest level, so
     // refinement is triggered more eagerly on coarse levels (controls the L1 norm of the discarded
     // details).
     double thresholdScale = 1.0;
