@@ -365,8 +365,12 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
         if (dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
             != "none")
         {
+            // the wavelet Harten scaling reference L must be the finest level carrying MHD
+            // data (maxMHDLevel_ - 1), not the global finest (maxLevelNumber_ - 1) which in a
+            // coupled run belongs to the hybrid sub-hierarchy. In a pure-MHD run
+            // maxMHDLevel_ == maxLevelNumber_ so this is unchanged.
             auto mhdTagger_ = std::make_unique<amr::ConcreteTagger<MHDModel>>(
-                dict["simulation"]["AMR"]["refinement"]["tagging"], maxLevelNumber_);
+                dict["simulation"]["AMR"]["refinement"]["tagging"], maxMHDLevel_);
             multiphysInteg_->registerTagger(0, maxMHDLevel_ - 1, std::move(mhdTagger_));
         }
     }

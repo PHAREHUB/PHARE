@@ -77,6 +77,38 @@ class TestSimulation(unittest.TestCase):
         )
         self.assertEqual(0.01, s.time_step)
 
+    def test_tagging_unknown_top_level_key_raises(self):
+        # a typo in a top-level tagging key must fail rather than silently fall back
+        with self.assertRaises(ValueError):
+            simulation.check_tagging(
+                refinement="tagging",
+                tagging={"method": "lohner", "quantites": {"rho": 0.4}},
+            )
+
+    def test_tagging_without_refinement_raises(self):
+        # a fully specified tagging= with refinement left at default must not be ignored
+        with self.assertRaises(ValueError):
+            simulation.check_tagging(
+                max_nbr_levels=3,
+                tagging={"method": "wavelet", "quantities": {"rho": 0.01}},
+            )
+
+    def test_tagging_valid_spec_normalizes(self):
+        spec = simulation.check_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "lohner",
+                "quantities": {"B": 0.1},
+                "params": {"reltol": 0.02},
+            },
+        )
+        self.assertEqual(spec["method"], "lohner")
+        self.assertEqual(spec["quantities"], [("B", 0.1)])
+        self.assertEqual(spec["params"], {"reltol": 0.02})
+
+    def test_tagging_none_when_not_tagging(self):
+        self.assertIsNone(simulation.check_tagging())
+
 
 if __name__ == "__main__":
     unittest.main()

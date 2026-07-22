@@ -582,7 +582,7 @@ def check_tagging(**kwargs):
     optional `tagging` kwarg, e.g.
 
         refinement="tagging",
-        tagging={"method": "lohner", "quantities": {"B": 0.1, "rho": 0.4},
+        tagging={"method": "lohner", "quantities": {"B": 0.1, "massDensity": 0.4},
                  "params": {"reltol": 0.02}}
 
     where `quantities` maps a field name to its own threshold (a cell is tagged if
@@ -600,13 +600,15 @@ def check_tagging(**kwargs):
       10.1016/j.compfluid.2019.06.025). The indicator is the ABSOLUTE prediction
       error |Q - Qpredicted| (units of Q), so thresholds are not comparable with
       default/lohner ones. By default the threshold follows Harten's level
-      scaling eps_l = eps / |Omega| * 2^{dim (l - L)} (|Omega| the physical
-      domain volume, L the finest level), refining coarse levels more eagerly;
-      `level_scaling` (default 1) set to 0 uses the per-quantity threshold
-      unscaled on every level.
+      scaling eps_l = eps / 2^{dim (l - L)} (L the finest level), refining
+      coarse levels more eagerly; `level_scaling` (default 1) set to 0 uses the
+      per-quantity threshold unscaled on every level.
 
     Quantity names are not restricted here: the C++ tagger resolves them against
-    the model's field tree and throws if a name matches nothing.
+    the model's field tree at setup and throws (listing the available names) if a
+    name matches nothing. Use the model's own field names -- e.g. the hybrid
+    density is `chargeDensity`/`massDensity` and the MHD density is `rho`; `B` is a
+    universal alias for the magnetic-field components in either model.
     """
     valid_methods = ("default", "lohner", "wavelet")
     valid_params = {
@@ -616,6 +618,13 @@ def check_tagging(**kwargs):
     }
 
     if kwargs.get("refinement", "boxes") != "tagging":
+        # a fully specified tagging= kwarg with refinement left at its default is almost
+        # always a mistake: fail loudly instead of silently ignoring the configuration.
+        if kwargs.get("tagging", None) is not None:
+            raise ValueError(
+                "Error: a 'tagging' configuration was provided but refinement is not"
+                " 'tagging'; set refinement='tagging' to enable it (or drop the 'tagging' kwarg)"
+            )
         return None
 
     threshold = kwargs.get("tagging_threshold", 0.1)
@@ -628,6 +637,16 @@ def check_tagging(**kwargs):
         spec = {}
     if not isinstance(spec, dict):
         raise ValueError("Error: 'tagging' must be a dict {'method':..., 'quantities':...}")
+
+    # reject typos in the top-level keys (e.g. "quantites") instead of silently swallowing
+    # them and falling back to the B/tagging_threshold default.
+    valid_spec_keys = {"method", "quantities", "params"}
+    unknown_keys = set(spec) - valid_spec_keys
+    if unknown_keys:
+        raise ValueError(
+            f"Error: unknown tagging keys {sorted(unknown_keys)},"
+            f" expected among {sorted(valid_spec_keys)}"
+        )
 
     method = spec.get("method", "default")
     if method not in valid_methods:

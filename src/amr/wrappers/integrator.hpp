@@ -40,7 +40,7 @@ class Integrator
     {
         return cppdict::get_value(dict, "simulation/AMR/refinement/tagging/method",
                                   std::string{"none"})
-               == std::string{"auto"};
+               != std::string{"none"};
     }
 
 

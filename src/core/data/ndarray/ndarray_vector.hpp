@@ -186,6 +186,25 @@ public:
         std::copy(that.data(), that.data() + size(), data());
     }
 
+    /** @brief Copy a NdArrayView with opposite ordering */
+    void fill_from(NdArrayView<dim, DataType, !c_ordering> const& that)
+    {
+        if (for_N_any<dim>([&](auto i) { return shape()[i] != that.shape()[i]; }))
+            throw std::runtime_error("ArrayView::fill_from: Incompatible input shape");
+
+        std::array<std::uint32_t, dim> idx{};
+        for (std::size_t flat = 0; flat < size(); ++flat)
+        {
+            auto rem = flat;
+            for (int d = static_cast<int>(dim) - 1; d >= 0; --d)
+            {
+                idx[d] = static_cast<std::uint32_t>(rem % nCells_[d]);
+                rem /= nCells_[d];
+            }
+            (*this)(idx) = that(idx);
+        }
+    }
+
     NO_DISCARD auto begin() const { return ptr_; }
     NO_DISCARD auto begin() { return ptr_; }
 

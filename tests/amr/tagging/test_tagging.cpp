@@ -22,11 +22,9 @@ using namespace PHARE::core;
 
 
 // runtime dict contract: method + nbr_quantities + Q{i}/{name,threshold} + optional params/*
-// + optional domain_volume (injected by Python; the kernel defaults it to 1)
 PHARE::initializer::PHAREDict
 taggingDict(std::string const& method, std::vector<std::pair<std::string, double>> const& qtys,
-            std::vector<std::pair<std::string, double>> const& params = {},
-            double domainVolume = 0.)
+            std::vector<std::pair<std::string, double>> const& params = {})
 {
     PHARE::initializer::PHAREDict dict;
     dict["method"]         = method;
@@ -39,8 +37,6 @@ taggingDict(std::string const& method, std::vector<std::pair<std::string, double
     }
     for (auto const& [name, value] : params)
         dict["params"][name] = value;
-    if (domainVolume > 0.)
-        dict["domain_volume"] = domainVolume;
     return dict;
 }
 
@@ -418,6 +414,48 @@ TEST(TagFields, WaveletTagsFrontOnly)
 }
 
 
+// A feature landing within shaveLo/shaveHi of a patch edge must still be tagged: the
+// wavelet reach (3) exceeds nbrGhosts (2 at interp 1), so cells 18,19 on a 20-cell patch
+// used to be skipped, leaving an untaggable band on interior patch seams. The evaluation
+// centre is now clamped inward, so the band tags.
+TEST(TagFields, WaveletTagsFeatureInEdgeBand)
+{
+    constexpr std::size_t dim = ib_tagger_dim;
+    auto const layout         = TestGridLayout<IBTaggerGridLayout>::make(20);
+
+    UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
+    UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
+
+    // step in E_y at physical cell 18 (inside the high-edge shave band). Primal and dual
+    // share the same physicalStartIndex, so the dual-X start maps physical cell c to c+start.
+    auto& ey         = E.getComponent(PHARE::core::Component::Y);
+    auto const qty   = HybridQuantity::Scalar::Ey;
+    auto const alloc = layout.allocSize(qty);
+    auto const start
+        = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
+    std::uint32_t const jumpPhysical = 18;
+    for (std::size_t ix = 0; ix < alloc[0]; ++ix)
+        for (std::size_t iy = 0; iy < alloc[1]; ++iy)
+            ey(ix, iy) = (ix >= start + jumpPhysical) ? 1.0 : 0.0;
+
+    TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
+    auto const ncells = layout.nbrCells();
+
+    std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
+    ConcreteTaggerKernel<TagFieldsMockModel>{
+        taggingDict("wavelet", {{"E", 0.01}}, {{"level_scaling", 0.0}})}
+        .tagFields(model, layout, tags.data());
+
+    bool constexpr fortran = false;
+    auto tagsv             = NdArrayView<dim, int, fortran>(tags.data(), ncells);
+    bool bandTagged        = false;
+    for (std::uint32_t ix = jumpPhysical; ix < ncells[0]; ++ix)
+        for (std::uint32_t iy = 0; iy < ncells[1]; ++iy)
+            bandTagged |= (tagsv(ix, iy) == 1);
+    EXPECT_TRUE(bandTagged) << "wavelet feature in the high-edge shave band must still tag";
+}
+
+
 TEST(TagFields, WaveletLevelScalingRefinesCoarseLevelsMoreEagerly)
 {
     constexpr std::size_t dim = ib_tagger_dim;
@@ -430,13 +468,13 @@ TEST(TagFields, WaveletLevelScalingRefinesCoarseLevelsMoreEagerly)
     TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
     auto const ncells = layout.nbrCells();
 
-    // Harten scaling: eps_l = eps / |Omega| * 2^{dim (l - L)}, |Omega| the (constant)
-    // physical domain volume. This layout is level 0; a deeper hierarchy (larger L)
-    // lowers the effective threshold on level 0, so it must tag at least as much.
-    auto const countTags = [&](int maxLevelNumber, double domainVolume = 0.) {
+    // Harten scaling: eps_l = eps / 2^{dim (l - L)} (no domain-volume normalisation, so eps
+    // carries the units of the tagged quantity). This layout is level 0; a deeper hierarchy
+    // (larger L) lowers the effective threshold on level 0, so it must tag at least as much.
+    auto const countTags = [&](int maxLevelNumber) {
         std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
-        ConcreteTaggerKernel<TagFieldsMockModel>{
-            taggingDict("wavelet", {{"E", 1e-4}}, {}, domainVolume), maxLevelNumber}
+        ConcreteTaggerKernel<TagFieldsMockModel>{taggingDict("wavelet", {{"E", 1e-4}}),
+                                                 maxLevelNumber}
             .tagFields(model, layout, tags.data());
         return std::count(tags.begin(), tags.end(), 1);
     };
@@ -444,14 +482,7 @@ TEST(TagFields, WaveletLevelScalingRefinesCoarseLevelsMoreEagerly)
     auto const shallow = countTags(1); // L = 0 -> scale = 1
     auto const deep    = countTags(3); // L = 2 -> scale = 2^-4
     EXPECT_GT(deep, 0);
-    EXPECT_GE(deep, shallow);
-
-    // |Omega| divides the threshold: a large domain can only tag more, a tiny one less.
-    auto const bigDomain  = countTags(1, 1e3);
-    auto const tinyDomain = countTags(1, 1e-3);
-    EXPECT_GE(bigDomain, shallow);
-    EXPECT_LE(tinyDomain, shallow);
-    EXPECT_GT(bigDomain, tinyDomain) << "domain_volume must rescale the wavelet threshold";
+    EXPECT_GE(deep, shallow) << "a deeper hierarchy lowers the level-0 threshold, tagging more";
 }
 
 
@@ -470,6 +501,34 @@ TEST(TagFields, UnknownQuantityNameThrows)
     std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
 
     EXPECT_THROW(tagger.tagFields(model, layout, tags.data()), std::runtime_error);
+}
+
+
+TEST(TagFields, UnknownQuantityErrorListsAvailableNames)
+{
+    constexpr std::size_t dim = ib_tagger_dim;
+    auto const layout         = TestGridLayout<IBTaggerGridLayout>::make(20);
+
+    UsableVecField<dim> B{"B", layout, HybridQuantity::Vector::B};
+    UsableVecField<dim> E{"E", layout, HybridQuantity::Vector::E};
+    TagFieldsMockModel model{TagFieldsMockState{B, E}, &B};
+
+    ConcreteTaggerKernel<TagFieldsMockModel> tagger{
+        taggingDict("default", {{"bogus_does_not_exist", 0.1}})};
+    auto const ncells = layout.nbrCells();
+    std::vector<int> tags(static_cast<std::size_t>(ncells[0]) * ncells[1], 0);
+
+    try
+    {
+        tagger.tagFields(model, layout, tags.data());
+        FAIL() << "expected a runtime_error for an unknown quantity name";
+    }
+    catch (std::runtime_error const& e)
+    {
+        std::string const msg = e.what();
+        EXPECT_THAT(msg, testing::HasSubstr("bogus_does_not_exist"));
+        EXPECT_THAT(msg, testing::HasSubstr("available names"));
+    }
 }
 
 
