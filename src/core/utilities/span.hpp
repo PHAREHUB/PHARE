@@ -17,6 +17,8 @@ template<typename T>
 concept Spannable = requires(T t) {
     { t.size() };
     { t.data() };
+    { t.begin() };
+    { t.end() };
 };
 
 
