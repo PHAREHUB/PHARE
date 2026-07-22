@@ -24,6 +24,12 @@ def _serialized_simulation_string(restart_file_dir):
     return cpp_etc_lib().serialized_simulation_string(restart_file_dir)
 
 
+def _resources_hash(restart_file_dir):
+    from pyphare.cpp import cpp_etc_lib
+
+    return cpp_etc_lib().resources_hash(restart_file_dir)
+
+
 # converts scalars to array of expected size
 # converts lists to arrays
 class py_fn_wrapper:
@@ -270,6 +276,10 @@ def populateDict(sim):
 
             add_vector_int(
                 restarts_path + "restart_ids", _patch_data_ids(restart_file_load_path)
+            )
+            add_string(
+                restarts_path + "file_resources_hash",
+                _resources_hash(restart_file_load_path),
             )
             add_string(restarts_path + "loadPath", restart_file_load_path)
             add_double(restarts_path + "restart_time", restart_time)

@@ -140,6 +140,11 @@ RestartsManager<Writer>::addRestartDict(initializer::PHAREDict const& params)
     restarts_properties_->fileAttributes["serialized_simulation"]
         = params["serialized_simulation"].template to<std::string>();
 
+    assert(params.contains("resources_hash"));
+
+    restarts_properties_->fileAttributes["resources_hash"]
+        = params["resources_hash"].template to<std::string>();
+
     return *this;
 }
 
