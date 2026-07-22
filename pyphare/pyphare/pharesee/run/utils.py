@@ -503,13 +503,52 @@ def _compute_pop_pressure(patch_datas, **kwargs):
     )
 
 
+def _compute_heat_flux(patch_datas, **kwargs):
+    """computes the heat flux vector for total ions
+    q_i = S_i - trM*V_i/2 - (V.M)_i + massDensity*V_i*|V|^2
+    where S_i=(m/2)<|v|^2 v_i>, M_ij=m<v_i v_j>, V_i=bulk velocity, massDensity=total mass density
+    this is the total-ions analog of _compute_pop_heat_flux: the population formula divides
+    by the population density because its "flux" is F=nV, whereas here V and massDensity are
+    already the physical bulk velocity and mass density, so no such division is needed
+    (same relationship as between _compute_pressure and _compute_pop_pressure).
+    """
+    Sx = patch_datas["Sx"].dataset[:]
+    Sy = patch_datas["Sy"].dataset[:]
+    Sz = patch_datas["Sz"].dataset[:]
+    Mxx = patch_datas["Mxx"].dataset[:]
+    Mxy = patch_datas["Mxy"].dataset[:]
+    Mxz = patch_datas["Mxz"].dataset[:]
+    Myy = patch_datas["Myy"].dataset[:]
+    Myz = patch_datas["Myz"].dataset[:]
+    Mzz = patch_datas["Mzz"].dataset[:]
+    Vix = patch_datas["Vx"].dataset[:]
+    Viy = patch_datas["Vy"].dataset[:]
+    Viz = patch_datas["Vz"].dataset[:]
+    massDensity = patch_datas["value"].dataset[:]
+
+    V2 = Vix**2 + Viy**2 + Viz**2
+    trM_over_2 = (Mxx + Myy + Mzz) / 2
+    rhoV2 = massDensity * V2
+
+    qx = Sx - trM_over_2 * Vix - (Vix * Mxx + Viy * Mxy + Viz * Mxz) + rhoV2 * Vix
+    qy = Sy - trM_over_2 * Viy - (Vix * Mxy + Viy * Myy + Viz * Myz) + rhoV2 * Viy
+    qz = Sz - trM_over_2 * Viz - (Vix * Mxz + Viy * Myz + Viz * Mzz) + rhoV2 * Viz
+
+    return (
+        {"name": "qx", "data": qx, "centering": ["primal", "primal"]},
+        {"name": "qy", "data": qy, "centering": ["primal", "primal"]},
+        {"name": "qz", "data": qz, "centering": ["primal", "primal"]},
+    )
+
+
 def _compute_pop_heat_flux(patch_datas, **kwargs):
     """computes the heat flux vector for a given population
     q_i = S_i - trM*F_i/(2n) - (F.M_i)/n + m*F_i*|F|^2/n^2
-    where S_i=(m/2)<|v|^2 v_i>, M_ij=m<v_i v_j>, F_i=<v_i>, n=<1>, m=massDensity/n
+    where S_i=(m/2)<|v|^2 v_i>, M_ij=m<v_i v_j>, F_i=<v_i>, n=<1>, m=particle mass
     """
 
     popname = kwargs["popname"]
+    mass = kwargs["mass"]
     Sx = patch_datas[popname + "_Sx"].dataset[:]
     Sy = patch_datas[popname + "_Sy"].dataset[:]
     Sz = patch_datas[popname + "_Sz"].dataset[:]
@@ -523,11 +562,9 @@ def _compute_pop_heat_flux(patch_datas, **kwargs):
     Fy = patch_datas[popname + "_Fy"].dataset[:]
     Fz = patch_datas[popname + "_Fz"].dataset[:]
     n = patch_datas[popname + "_rho"].dataset[:]
-    massDensity = patch_datas["rho"].dataset[:]
 
     n2 = n**2
     inv_n = 1.0 / n
-    mass = massDensity * inv_n  # particle mass; assumes single-species massDensity = m*n
 
     F2 = Fx**2 + Fy**2 + Fz**2
     trM = Mxx + Myy + Mzz

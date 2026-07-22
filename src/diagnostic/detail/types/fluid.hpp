@@ -103,10 +103,16 @@ struct FluidDiagnosticWriter<H5Writer>::HybridFluidComputers
         }
     }
 
-    std::unordered_map<std::string, IonsFunctor> ion_functors{{
-        "/ions/momentum_tensor",
-        [](H5Writer& h5Writer) { compute_momentum_tensor(h5Writer); },
-    }};
+    std::unordered_map<std::string, IonsFunctor> ion_functors{
+        {
+            "/ions/momentum_tensor",
+            [](H5Writer& h5Writer) { compute_momentum_tensor(h5Writer); },
+        },
+        {
+            "/ions/kinetic_energy_flux_vector",
+            [](H5Writer& h5Writer) { compute_kinetic_energy_flux_vector(h5Writer); },
+        },
+    };
     std::unordered_map<std::string, PopFunctor> pop_functors;
 };
 
@@ -155,7 +161,7 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
 
     std::string tree{"/ions/"};
     checkCreateFileFor_(diagnostic, fileData_, tree, "charge_density", "mass_density",
-                        "bulkVelocity", "momentum_tensor");
+                        "bulkVelocity", "momentum_tensor", "kinetic_energy_flux_vector");
 }
 
 
@@ -221,6 +227,9 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
         infoVF(ions.velocity(), "bulkVelocity", patchAttributes[lvlPatchID]["ion"]);
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         infoTF(ions.momentumTensor(), "momentum_tensor", patchAttributes[lvlPatchID]["ion"]);
+    if (isActiveDiag(diagnostic, tree, "kinetic_energy_flux_vector"))
+        infoVF(ions.kineticEnergyFlux(), "kinetic_energy_flux_vector",
+               patchAttributes[lvlPatchID]["ion"]);
 }
 
 
@@ -288,6 +297,8 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
             initVF(path, attr["ion"], "bulkVelocity", null);
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
             initTF(path, attr["ion"], "momentum_tensor", null);
+        if (isActiveDiag(diagnostic, tree, "kinetic_energy_flux_vector"))
+            initVF(path, attr["ion"], "kinetic_energy_flux_vector", null);
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -332,6 +343,8 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         writeTF(path + "bulkVelocity", ions.velocity());
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         writeTF(path + "momentum_tensor", ions.momentumTensor());
+    if (isActiveDiag(diagnostic, tree, "kinetic_energy_flux_vector"))
+        writeTF(path + "kinetic_energy_flux_vector", ions.kineticEnergyFlux());
 }
 
 
