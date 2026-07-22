@@ -5,6 +5,7 @@
 #include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/mpi_utils.hpp"
+#include "core/utilities/cadence.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -73,30 +74,14 @@ public:
     RestartsManager& operator=(RestartsManager&&)      = delete;
 
 private:
-    bool needsCadenceAction_(double const nextTime, double const timeStamp,
-                             double const timeStep) const
-    {
-        // casting to float to truncate double to avoid trailing imprecision
-        return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
-    }
-
-    bool needsElapsedAction_(double const nextTime) const
-    {
-        return core::mpi::unix_timestamp_now() > nextTime;
-    }
-
-
     bool needsWrite_(RestartsProperties const& rest, double const timeStamp, double const timeStep)
     {
         auto const simUnit
-            = nextWriteSimUnit_ < rest.writeTimestamps.size()
-              and needsCadenceAction_(rest.writeTimestamps[nextWriteSimUnit_], timeStamp, timeStep);
+            = core::cadence_catch_up(rest.writeTimestamps, nextWriteSimUnit_, timeStamp, timeStep);
 
         auto const elapsed = nextWriteElapsed_ < rest.elapsedTimestamps.size()
-                             and needsElapsedAction_(rest.elapsedTimestamps[nextWriteElapsed_]);
+                             and core::cadence_elapsed(rest.elapsedTimestamps[nextWriteElapsed_]);
 
-        if (simUnit)
-            ++nextWriteSimUnit_;
         if (elapsed)
             ++nextWriteElapsed_;
 

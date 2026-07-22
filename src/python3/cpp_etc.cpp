@@ -11,6 +11,8 @@
 #include "python3/pybind_def.hpp"
 #include "python3/patch_data.hpp"
 
+#include "core/utilities/timestamps.hpp"
+
 #include "hdf5/phare_hdf5.hpp"
 
 #if PHARE_HAS_HIGHFIVE
@@ -93,6 +95,15 @@ PYBIND11_MODULE(cpp_etc, m)
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
 
     m.def("makePyArrayWrapper", makePyArrayWrapper<double>);
+
+    // accumulate the (constant or actually-used-per-step) dt into the simulation's current time
+    py::class_<core::ConstantTimeStamper>(m, "ConstantTimeStamper")
+        .def(py::init<double const&, double const&>(), py::arg("dt"), py::arg("init_time") = 0)
+        .def("advance", &core::ConstantTimeStamper::operator+=);
+
+    py::class_<core::KahanTimeStamper>(m, "KahanTimeStamper")
+        .def(py::init<double const&, double const&>(), py::arg("dt"), py::arg("init_time") = 0)
+        .def("advance", &core::KahanTimeStamper::operator+=);
 
     m.def("phare_deps", []() {
         std::unordered_map<std::string, std::string> versions{{"pybind", pybind_version()},

@@ -222,14 +222,14 @@ class AdvanceTestBase(SimulatorTest):
             qties = ["rho"]
             qties += [f"{qty}{xyz}" for qty in ["E", "V"] for xyz in ["x", "y", "z"]]
 
-        lvl_steps = global_vars.sim.level_time_steps
+        lvl_steps = global_vars.sim.time_stepper.level_time_steps
         print("LEVELSTEPS === ", lvl_steps)
         assert len(lvl_steps) > 1, "this test makes no sense with only 1 level"
 
         finestTimeStep = lvl_steps[-1]
         secondFinestTimeStep = lvl_steps[-2]
 
-        finest_level_step_nbr = global_vars.sim.level_step_nbr[-1]
+        finest_level_step_nbr = global_vars.sim.time_stepper.level_step_nbr[-1]
         uniqTimes = set([0])
 
         for step in range(1, finest_level_step_nbr + 1):
@@ -239,7 +239,7 @@ class AdvanceTestBase(SimulatorTest):
 
         self.assertEqual(len(uniqTimes), len(datahier.time_hier.items()))
 
-        syncSteps = global_vars.sim.level_step_nbr[-2]  # ignore finest subcycles
+        syncSteps = global_vars.sim.time_stepper.level_step_nbr[-2]  # ignore finest subcycles
 
         # FIX THIS AFTER NO MORE REGRIDS
         #  SEE: https://github.com/PHAREHUB/PHARE/issues/400
@@ -359,7 +359,7 @@ class AdvanceTestBase(SimulatorTest):
 
         checks = 0
         ndim = global_vars.sim.ndim
-        lvl_steps = global_vars.sim.level_time_steps
+        lvl_steps = global_vars.sim.time_stepper.level_time_steps
         assert (
             len(lvl_steps) == 2
         ), "this test is only configured for L0 -> L1 refinement comparisons"
@@ -371,7 +371,7 @@ class AdvanceTestBase(SimulatorTest):
         assert_time_in_hier(coarsest_time_before, coarsest_time_after)
 
         fine_subcycle_times = []
-        for fine_subcycle in range(global_vars.sim.level_step_nbr[fine_ilvl] + 1):
+        for fine_subcycle in range(global_vars.sim.time_stepper.level_step_nbr[fine_ilvl] + 1):
             fine_subcycle_time = coarsest_time_before + (
                 lvl_steps[fine_ilvl] * fine_subcycle
             )

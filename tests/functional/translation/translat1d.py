@@ -4,8 +4,6 @@ import numpy as np
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
 
-from tests.diagnostic import all_timestamps
-
 ph.NO_GUI()
 
 
@@ -18,8 +16,8 @@ def config_uni(**kwargs):
     sim = ph.Simulation(
         smallest_patch_size=20,
         largest_patch_size=20,
-        time_step_nbr=2000,  # number of time steps (not specified if time_step and final_time provided)
-        final_time=20.0,  # simulation final time (not specified if time_step and time_step_nbr provided)
+        time_step={"mode": "adaptive", "cfl": 0.8},
+        final_time=20.0,
         boundary_types="periodic",  # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=500,  # integer or tuple length == dimension
         dl=1.0,  # mesh size of the root level, float or tuple
@@ -78,7 +76,8 @@ def config_uni(**kwargs):
 
     ph.ElectronModel(closure="isothermal", Te=0.12)
 
-    timestamps = all_timestamps(sim)
+    # adaptive dt: dump times aren't known ahead of the run, use a fixed absolute grid instead
+    timestamps = np.linspace(0, sim.final_time, 11)
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
@@ -98,8 +97,8 @@ def config_td(**kwargs):
     sim = ph.Simulation(
         smallest_patch_size=20,
         largest_patch_size=20,
-        time_step_nbr=2000,  # number of time steps (not specified if time_step and final_time provided)
-        final_time=20.0,  # simulation final time (not specified if time_step and time_step_nbr provided)
+        time_step={"mode": "adaptive", "cfl": 0.8},
+        final_time=20.0,
         boundary_types="periodic",  # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=200,  # integer or tuple length == dimension
         dl=1.0,  # mesh size of the root level, float or tuple
@@ -173,7 +172,8 @@ def config_td(**kwargs):
 
     ph.ElectronModel(closure="isothermal", Te=0.12)
 
-    timestamps = all_timestamps(sim)
+    # adaptive dt: dump times aren't known ahead of the run, use a fixed absolute grid instead
+    timestamps = np.linspace(0, sim.final_time, 11)
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)

@@ -19,9 +19,9 @@ ph.NO_GUI()
 
 
 cells = (200, 100)
-time_step = 0.005
 final_time = 50
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
+# adaptive dt: dump times aren't known ahead of the run, use a fixed absolute grid instead
+timestamps = np.linspace(0, final_time, 6)
 diag_dir = "phare_outputs/harris"
 
 
@@ -29,7 +29,7 @@ def config():
     L = 0.5
 
     sim = ph.Simulation(
-        time_step=time_step,
+        time_step={"mode": "adaptive", "cfl": 0.8},
         final_time=final_time,
         cells=cells,
         dl=(0.40, 0.40),
@@ -146,7 +146,7 @@ def config():
             quantity=quantity, write_timestamps=timestamps, population_name="protons"
         )
 
-    ph.InfoDiagnostics(quantity="particle_count")
+    ph.InfoDiagnostics(quantity="particle_count", write_timestamps=timestamps)
 
     ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
 

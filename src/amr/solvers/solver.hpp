@@ -11,155 +11,185 @@
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
+#include <limits>
 #include <string>
 
 
 
 
-namespace PHARE
+namespace PHARE::solver
 {
-namespace solver
+
+/**
+ * @brief StabilityNumbers bundles the dimensionless coefficients scaling each stability bucket
+ * used by computeStableDt. Each is normalized so that 1 is the stability limit independent of
+ * dimension (choose in (0, 1]):
+ *   - cfl: advective (hyperbolic, incl. Hall whistler when active)
+ *   - fourier: resistive (parabolic diffusion), Fourier number Fo = eta*dt/dx^2
+ */
+struct StabilityNumbers
 {
+    double cfl;
+    double fourier;
+};
+
+/**
+ * @brief The ISolver is an interface for a solver used by the MultiPHysicsIntegrator.
+ *
+ * The main interest of this class is to provide the MultiPhysicsIntegrator with the method
+ * advanceLevel().
+ *
+ */
+template<typename AMR_Types>
+class ISolver
+{
+public:
+    using patch_t          = AMR_Types::patch_t;
+    using level_t          = AMR_Types::level_t;
+    using hierarchy_t      = AMR_Types::hierarchy_t;
+    using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
+
     /**
-     * @brief The ISolver is an interface for a solver used by the MultiPHysicsIntegrator.
-     *
-     * The main interest of this class is to provide the MultiPhysicsIntegrator with the method
-     * advanceLevel().
-     *
+     * @brief return the name of the ISolver
      */
-    template<typename AMR_Types>
-    class ISolver
-    {
-    public:
-        using patch_t          = AMR_Types::patch_t;
-        using level_t          = AMR_Types::level_t;
-        using hierarchy_t      = AMR_Types::hierarchy_t;
-        using IPhysicalModel_t = IPhysicalModel<AMR_Types>;
+    NO_DISCARD std::string name() const { return solverName; }
 
-        /**
-         * @brief return the name of the ISolver
-         */
-        NO_DISCARD std::string name() const { return solverName; }
-
-
-
-        /**
-         * @brief return the name of the model the ISolver is compatible with
-         */
-        NO_DISCARD virtual std::string modelName() const = 0;
-
-
-
-        /**
-         * @brief registerResources is used to register the solver quantities that need to be
-         * defined on a Patch. The quantities are registered to the ResourcesManager of the given
-         * IPhysicalModel
-         * @param model
-         */
-        virtual void registerResources(IPhysicalModel_t& model) = 0;
-
-
-
-
-        /**
-         * @brief fillMessengerInfo fills the IMessengerInfo with the names of the ISolver
-         * quantities that need to be communicated by a IMessenger.
-         * @param info
-         */
-        virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
-
-
-        /**
-         * @brief prepareStep is used to prepare internal variable needed for the reflux. It is
-         * called before the advanceLevel() method.
-         *
-         */
-        virtual void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime)
-            = 0;
-
-        /**
-         * @brief accumulateFluxSum accumulates the flux sum(s) on the given PatchLevel for
-         * refluxing later.
-         */
-        virtual void accumulateFluxSum(IPhysicalModel_t& model, level_t& level, double const coef)
-            = 0;
-
-
-        /**
-         * @brief resetFluxSum resets the flux sum(s) on the given PatchLevel to zero.
-         */
-        virtual void resetFluxSum(IPhysicalModel_t& model, level_t& level) = 0;
-
-
-        /**
-         * @brief implements the reflux operations needed for a given solver.
-         */
-        virtual void reflux(IPhysicalModel_t& model, level_t& level,
-                            amr::IMessenger<IPhysicalModel_t>& messenger, double const time)
-            = 0;
-
-        /**
-         * @brief advanceLevel advances the given level from t to t+dt
-         */
-        virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
-                                  IPhysicalModel_t& view,
-                                  amr::IMessenger<IPhysicalModel_t>& fromCoarser,
-                                  double const currentTime, double const newTime)
-            = 0;
-
-
-
-
-        /**
-         * @brief allocate is used to allocate ISolver variables previously registered to the
-         * ResourcesManager of the given model, onto the given Patch, at the given time.
-         */
-        virtual void allocate(IPhysicalModel_t& model, patch_t& patch,
-                              double const allocateTime) const
-            = 0;
-
-
-
-        virtual void onRegrid() {} // do what you need to do on regrid
-
-
-        virtual ~ISolver() = default;
-
-
-    protected:
-        explicit ISolver(std::string name)
-            : solverName{std::move(name)}
-        {
-        }
-        std::string solverName;
-    };
 
 
     /**
-     * @brief areCompatible returns true if the solver.modelname() equals the messenger name
+     * @brief return the name of the model the ISolver is compatible with
      */
+    NO_DISCARD virtual std::string modelName() const = 0;
 
 
-    template<typename AMR_Types>
-    bool areCompatible(amr::IMessenger<IPhysicalModel<AMR_Types>> const& messenger,
-                       ISolver<AMR_Types> const& solver)
+
+    /**
+     * @brief registerResources is used to register the solver quantities that need to be
+     * defined on a Patch. The quantities are registered to the ResourcesManager of the given
+     * IPhysicalModel
+     * @param model
+     */
+    virtual void registerResources(IPhysicalModel_t& model) = 0;
+
+
+
+
+    /**
+     * @brief fillMessengerInfo fills the IMessengerInfo with the names of the ISolver
+     * quantities that need to be communicated by a IMessenger.
+     * @param info
+     */
+    virtual void fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const = 0;
+
+
+    /**
+     * @brief prepareStep is used to prepare internal variable needed for the reflux. It is
+     * called before the advanceLevel() method.
+     *
+     */
+    virtual void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime) = 0;
+
+    /**
+     * @brief accumulateFluxSum accumulates the flux sum(s) on the given PatchLevel for
+     * refluxing later.
+     */
+    virtual void accumulateFluxSum(IPhysicalModel_t& model, level_t& level, double const coef) = 0;
+
+
+    /**
+     * @brief resetFluxSum resets the flux sum(s) on the given PatchLevel to zero.
+     */
+    virtual void resetFluxSum(IPhysicalModel_t& model, level_t& level) = 0;
+
+
+    /**
+     * @brief implements the reflux operations needed for a given solver.
+     */
+    virtual void reflux(IPhysicalModel_t& model, level_t& level,
+                        amr::IMessenger<IPhysicalModel_t>& messenger, double const time)
+        = 0;
+
+    /**
+     * @brief advanceLevel advances the given level from t to t+dt
+     */
+    virtual void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber,
+                              IPhysicalModel_t& view,
+                              amr::IMessenger<IPhysicalModel_t>& fromCoarser,
+                              double const currentTime, double const newTime)
+        = 0;
+
+
+
+
+    /**
+     * @brief allocate is used to allocate ISolver variables previously registered to the
+     * ResourcesManager of the given model, onto the given Patch, at the given time.
+     */
+    virtual void allocate(IPhysicalModel_t& model, patch_t& patch, double const allocateTime) const
+        = 0;
+
+
+
+    /**
+     * @brief computeStableDt returns the level's LOCAL stable time step: the minimum over
+     * only the patches owned by the calling rank, NOT YET reduced across the ranks the level
+     * is distributed over. The caller (MultiPhysicsIntegrator::computeStableDt) is
+     * responsible for the single cross-rank reduction covering the whole multi-level cascade.
+     *
+     * It combines two stability buckets, each scaled by its own coefficient in @p stability
+     * (both normalized so that 1 is the stability limit independent of dimension):
+     *   - advective (hyperbolic, incl. Hall whistler when active), scaled by stability.cfl
+     *   - resistive (parabolic diffusion), scaled by stability.fourier (Fourier number Fo =
+     *     eta*dt/dx^2)
+     * and returns their min.
+     *
+     * If not overriden by the actual Solver implementation, returns a very big double.
+     */
+    virtual double computeStableDt(IPhysicalModel_t& model, level_t& level,
+                                   StabilityNumbers const& stability)
     {
-        return solver.modelName() == messenger.fineModelName()
-               || solver.modelName() == messenger.coarseModelName();
+        return std::numeric_limits<double>::max();
     }
 
 
-    /**
-     * @brief areCompatible returns true if the model name is equal to the solver modelname
-     */
-    template<typename AMR_Types>
-    bool areCompatible(IPhysicalModel<AMR_Types> const& model, ISolver<AMR_Types> const& solver)
+    virtual void onRegrid() {} // do what you need to do on regrid
+
+
+    virtual ~ISolver() = default;
+
+
+protected:
+    explicit ISolver(std::string name)
+        : solverName{std::move(name)}
     {
-        return model.name() == solver.modelName();
     }
+    std::string solverName;
+};
 
 
-} // namespace solver
-} // namespace PHARE
+/**
+ * @brief areCompatible returns true if the solver.modelname() equals the messenger name
+ */
+
+
+template<typename AMR_Types>
+bool areCompatible(amr::IMessenger<IPhysicalModel<AMR_Types>> const& messenger,
+                   ISolver<AMR_Types> const& solver)
+{
+    return solver.modelName() == messenger.fineModelName()
+           || solver.modelName() == messenger.coarseModelName();
+}
+
+
+/**
+ * @brief areCompatible returns true if the model name is equal to the solver modelname
+ */
+template<typename AMR_Types>
+bool areCompatible(IPhysicalModel<AMR_Types> const& model, ISolver<AMR_Types> const& solver)
+{
+    return model.name() == solver.modelName();
+}
+
+} // namespace PHARE::solver
 
 #endif

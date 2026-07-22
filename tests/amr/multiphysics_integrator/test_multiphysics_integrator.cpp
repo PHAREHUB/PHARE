@@ -1,6 +1,8 @@
 
 #include "core/def/phare_mpi.hpp"
 
+#include <limits>
+
 #include "tests/simulator/per_test.hpp"
 
 using namespace PHARE::core;
@@ -155,6 +157,42 @@ TYPED_TEST(SimulatorTest, returnsCorrectMessengerForEachLevel)
     // EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg.messengerName(3));
     for (int i = 0; i < sim.hierarchy->getNumberOfLevels(); i++)
         EXPECT_EQ(std::string{"HybridModel-HybridModel"}, multiphysInteg.messengerName(i));
+}
+
+
+
+// -----------------------------------------------------------------------------
+//                     ADAPTIVE DT: computeStableDt cascade
+// -----------------------------------------------------------------------------
+// job.py.in sets up a 4-level hybrid-only hierarchy (L0..L3), giving us a real multi-level
+// SAMRAI hierarchy to exercise the ratio^2 projection + min-over-levels logic without having to
+// build a hierarchy fixture from scratch.
+
+TYPED_TEST(SimulatorTest, computeStableDtReturnsAFiniteBound)
+{
+    TypeParam sim;
+    auto& hierarchy      = *sim.hierarchy;
+    auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
+
+    ASSERT_GT(hierarchy.getNumberOfLevels(), 1);
+
+    auto const dt = multiphysInteg.computeStableDt(hierarchy, {/*cfl=*/0.4, /*fourier=*/0.4});
+
+    EXPECT_GT(dt, 0.);
+    EXPECT_LT(dt, std::numeric_limits<double>::max());
+}
+
+
+TYPED_TEST(SimulatorTest, computeStableDtScalesLinearlyWithCfl)
+{
+    TypeParam sim;
+    auto& hierarchy      = *sim.hierarchy;
+    auto& multiphysInteg = *sim.getMultiPhysicsIntegrator();
+
+    auto const dt_low  = multiphysInteg.computeStableDt(hierarchy, {0.2, 0.2});
+    auto const dt_high = multiphysInteg.computeStableDt(hierarchy, {0.4, 0.4});
+
+    EXPECT_DOUBLE_EQ(dt_high, 2. * dt_low);
 }
 
 

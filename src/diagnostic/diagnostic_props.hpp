@@ -36,6 +36,7 @@ struct DiagnosticProperties
     void forward_file_attribute(std::string const& key, auto& dict_node);
 
     std::size_t nAttributes = 0, dumpIdx = 0;
+
     FileAttributes fileAttributes{};
 };
 

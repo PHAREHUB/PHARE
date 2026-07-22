@@ -1,6 +1,7 @@
 #ifndef RESTART_DAO_HPP
 #define RESTART_DAO_HPP
 
+#include <cstddef>
 #include <vector>
 
 #include "dict.hpp"

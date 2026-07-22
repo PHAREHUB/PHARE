@@ -5,6 +5,7 @@
 #include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/mpi_utils.hpp"
+#include "core/utilities/cadence.hpp"
 
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
@@ -65,7 +66,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
 class IDiagnosticsManager
 {
 public:
-    virtual bool dump(double timeStamp, double timeStep)         = 0;
+    virtual bool dump(double timeStamp, double timeStep)        = 0;
     virtual void dump_level(std::size_t level, double timeStamp) = 0;
     inline virtual ~IDiagnosticsManager();
 };
@@ -121,19 +122,6 @@ public:
     DiagnosticsManager& operator=(DiagnosticsManager&&)      = delete;
 
 private:
-    NO_DISCARD bool needsAction_(double nextTime, double timeStamp, double timeStep)
-    {
-        // casting to float to truncate double to avoid trailing imprecision
-        return static_cast<float>(std::abs(nextTime - timeStamp)) < static_cast<float>(timeStep);
-    }
-
-    bool needsElapsedAction_(double const nextTime) const
-    {
-        return core::mpi::unix_timestamp_now() > nextTime;
-    }
-
-
-
     NO_DISCARD bool needsWrite_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
         auto const& diag_key     = diag.type + diag.quantity;
@@ -141,15 +129,12 @@ private:
         auto& nextWriteElapsed   = nextWriteElapsed_[diag_key];
 
         auto const writeTimestampNow
-            = nextWriteTimestamp < diag.writeTimestamps.size()
-              and needsAction_(diag.writeTimestamps[nextWriteTimestamp], timeStamp, timeStep);
+            = core::cadence_catch_up(diag.writeTimestamps, nextWriteTimestamp, timeStamp, timeStep);
 
         auto const writeElapsedNow
             = nextWriteElapsed < diag.elapsedTimestamps.size()
-              and needsElapsedAction_(diag.elapsedTimestamps[nextWriteElapsed]);
+              and core::cadence_elapsed(diag.elapsedTimestamps[nextWriteElapsed]);
 
-        if (writeTimestampNow)
-            ++nextWriteTimestamp;
         if (writeElapsedNow)
             ++nextWriteElapsed;
 
@@ -159,9 +144,9 @@ private:
 
     NO_DISCARD bool needsCompute_(DiagnosticProperties& diag, double timeStamp, double timeStep)
     {
-        auto nextCompute = nextCompute_[diag.type + diag.quantity];
-        return nextCompute < diag.computeTimestamps.size()
-               and needsAction_(diag.computeTimestamps[nextCompute], timeStamp, timeStep);
+        return core::cadence_catch_up(diag.computeTimestamps,
+                                       nextCompute_[diag.type + diag.quantity], timeStamp,
+                                       timeStep);
     }
 
 
@@ -228,14 +213,13 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     std::vector<DiagnosticProperties*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
-        auto diagID = diag.type + diag.quantity;
-
-        if (needsCompute_(diag, timeStamp, timeStep))
-        {
+        // needsCompute_ advances its own timestamp index (catch-up), so call it unconditionally
+        bool const computeNow = needsCompute_(diag, timeStamp, timeStep);
+        if (computeNow)
             writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
-            nextCompute_[diagID]++;
-        }
-        if (needsWrite_(diag, timeStamp, timeStep))
+        // call needsWrite_ unconditionally so its timestamp index still advances
+        bool const writeNow = needsWrite_(diag, timeStamp, timeStep);
+        if (writeNow)
         {
             activeDiagnostics.emplace_back(&diag);
         }

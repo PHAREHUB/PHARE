@@ -16,12 +16,10 @@ os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 ph.NO_GUI()
 
 final_time = 1.0
-# n_steps ~ final_time / 0.0007 (ideal CFL), divisible by 5 so dump times land on steps
-n_steps = 1430
-time_step = final_time / n_steps
 diag_dir = "phare_outputs/orszag_tang"
 
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
+# adaptive dt: dump times aren't known ahead of the run, use a fixed absolute grid instead
+timestamps = np.linspace(0, final_time, 6)
 
 hall = False
 res = False
@@ -33,7 +31,7 @@ def config():
     dl = (1.0 / cells[0], 1.0 / cells[1])
 
     sim = ph.Simulation(
-        time_step=time_step,
+        time_step={"mode": "adaptive", "cfl": 0.8},
         final_time=final_time,
         cells=cells,
         dl=dl,

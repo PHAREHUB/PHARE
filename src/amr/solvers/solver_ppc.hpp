@@ -7,6 +7,7 @@
 #include "core/utilities/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 
 #include "amr/solvers/solver.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
@@ -99,6 +100,9 @@ public:
 
     void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
                 double const time) override;
+
+    double computeStableDt(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+                           StabilityNumbers const& stability) override;
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
                       IMessenger& fromCoarserMessenger, double const currentTime,
@@ -308,6 +312,57 @@ void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
     Faraday_t{level, hybridModel}(Bold_, Eavg, B, dt);
 
     hybridMessenger.fillMagneticGhosts(B, level, time);
+}
+
+
+template<typename HybridModel, typename AMR_Types>
+double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& model,
+                                                          SAMRAI::hier::PatchLevel& level,
+                                                          StabilityNumbers const& stability)
+{
+    PHARE_LOG_SCOPE(1, "SolverPPC::computeStableDt");
+
+    // hybrid uses only the advective (whistler) bucket; stability.fourier is unused here.
+    double const cfl = stability.cfl;
+
+    auto& hybridModel = dynamic_cast<HybridModel&>(model);
+    auto& n           = hybridModel.state.ions.massDensity();
+    auto& B           = hybridModel.state.electromag.B;
+
+    // whistler-only advective bucket (Hall term dominates hybrid stiffness):
+    // dt = cfl / sum_d c_whistler_d / dx_d, cfl normalized so 1 is the stability limit.
+    double dt = std::numeric_limits<double>::max();
+
+    for (auto& patch : level)
+    {
+        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto _             = hybridModel.resourcesManager->setOnPatch(*patch, n, B);
+
+        auto const meshSize = layout.meshSize();
+
+        auto const& Bx = B(core::Component::X);
+        auto const& By = B(core::Component::Y);
+        auto const& Bz = B(core::Component::Z);
+
+        layout.evalOnBox(n, [&](auto&... args) mutable {
+            core::MeshIndex<dimension> const index{args...};
+
+            auto const rho = n(index);
+            auto const bx  = GridLayout::template project<GridLayout::BxToMoments>(Bx, index);
+            auto const by  = GridLayout::template project<GridLayout::ByToMoments>(By, index);
+            auto const bz  = GridLayout::template project<GridLayout::BzToMoments>(Bz, index);
+
+            auto const BdotB = bx * bx + by * by + bz * bz;
+
+            double invDtWhistler = 0;
+            for (std::size_t d = 0; d < dimension; ++d)
+                invDtWhistler += core::compute_whistler_(1.0 / meshSize[d], rho, BdotB) / meshSize[d];
+
+            dt = std::min(dt, cfl / invDtWhistler);
+        });
+    }
+
+    return dt; // LOCAL (per-rank) min; caller reduces once across ranks for the whole cascade
 }
 
 
