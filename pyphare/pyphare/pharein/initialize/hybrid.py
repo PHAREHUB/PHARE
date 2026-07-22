@@ -7,9 +7,6 @@ def populateDict(sim):
 
     addInitFunction = getattr(pp, "addInitFunction{:d}".format(sim.ndim) + "D")
 
-    if sim.refinement == "tagging":
-        add_string("simulation/AMR/refinement/tagging/hybrid_method", "default")
-
     add_string("simulation/algo/ion_updater/pusher/name", sim.particle_pusher)
 
     add_double("simulation/algo/ohm/resistivity", sim.resistivity)

@@ -7,6 +7,7 @@ from ..core import box as boxm
 from ..core import phare_utilities
 from ..core.box import Box
 from . import global_vars
+from .tagging import resolve_tagging
 
 # ------------------------------------------------------------------------------
 
@@ -726,6 +727,7 @@ def checker(func):
             "diag_export_format",
             "refinement_boxes",
             "refinement",
+            "tagging",
             "tagging_threshold",
             "clustering",
             "smallest_patch_size",
@@ -804,6 +806,7 @@ def checker(func):
 
         kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
 
+        kwargs["tagging"] = resolve_tagging(**kwargs)
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
             (

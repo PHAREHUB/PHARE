@@ -81,6 +81,20 @@ def add_vector_int(path, val):
 add_string = pp.add_string
 
 
+def dict_populator():
+    """Object exposing add_string/add_int/add_double/add_bool, passed to the pharein config
+    dataclasses' populate_dict() so they can mirror their public shape on the C++ side without
+    importing this module (avoids a circular import)."""
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        add_string=add_string,
+        add_int=add_int,
+        add_double=add_double,
+        add_bool=add_bool,
+    )
+
+
 def populateDict(sim):
     add_string("simulation/name", "simulation_test")
     add_int("simulation/dimension", sim.ndim)
@@ -148,11 +162,7 @@ def populateDict(sim):
     if refinement_boxes is not None and sim.refinement == "boxes":
         as_paths(refinement_boxes)
     elif sim.refinement == "tagging":
-        add_string("simulation/AMR/refinement/tagging/method", "auto")
-        # the two following params are hard-coded for now
-        # they will become configurable when we have multi-models or several methods
-        # per model
-        add_double("simulation/AMR/refinement/tagging/threshold", sim.tagging_threshold)
+        sim.tagging.populate_dict(dict_populator())
     else:
         add_string(
             "simulation/AMR/refinement/tagging/method", "none"

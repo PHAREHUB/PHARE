@@ -8,9 +8,6 @@ def populateDict(sim):
 
     add_int("simulation/AMR/max_mhd_level", sim.max_mhd_level)
 
-    if sim.refinement == "tagging":
-        add_string("simulation/AMR/refinement/tagging/mhd_method", "default")
-
     add_double("simulation/algo/fv_method/resistivity", sim.eta)
     add_double("simulation/algo/fv_method/hyper_resistivity", sim.nu)
     add_double("simulation/algo/fv_method/heat_capacity_ratio", sim.gamma)

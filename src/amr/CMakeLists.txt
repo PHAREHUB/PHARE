@@ -54,10 +54,8 @@ set( SOURCES_INC
      wrappers/hierarchy.hpp
      wrappers/integrator.hpp
      tagging/tagger.hpp
-     tagging/tagger_factory.hpp
      tagging/concrete_tagger.hpp
-     tagging/tagger_strategy.hpp
-     tagging/default_tagger_strategy.hpp
+     tagging/tagging_criteria.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
      solvers/solver_mhd.hpp

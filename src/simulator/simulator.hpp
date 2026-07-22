@@ -13,7 +13,7 @@
 #include "core/utilities/timestamps.hpp"
 
 #include "amr/wrappers/integrator.hpp"
-#include "amr/tagging/tagger_factory.hpp"
+#include "amr/tagging/concrete_tagger.hpp"
 #include "amr/load_balancing/load_balancer_details.hpp"
 #include "amr/load_balancing/load_balancer_manager.hpp"
 #include "amr/load_balancing/load_balancer_estimator_hybrid.hpp"
@@ -297,8 +297,8 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
         if (dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
             != "none")
         {
-            auto hybridTagger_ = amr::TaggerFactory<HybridModel>::make(
-                dict["simulation"]["AMR"]["refinement"]["tagging"]);
+            auto hybridTagger_ = std::make_unique<amr::ConcreteTagger<HybridModel>>(
+                dict["simulation"]["AMR"]["refinement"]["tagging"], maxLevelNumber_);
             multiphysInteg_->registerTagger(maxMHDLevel_, maxLevelNumber_ - 1,
                                             std::move(hybridTagger_));
         }
@@ -365,8 +365,12 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
         if (dict["simulation"]["AMR"]["refinement"]["tagging"]["method"].template to<std::string>()
             != "none")
         {
-            auto mhdTagger_ = amr::TaggerFactory<MHDModel>::make(
-                dict["simulation"]["AMR"]["refinement"]["tagging"]);
+            // the wavelet Harten scaling reference L must be the finest level carrying MHD
+            // data (maxMHDLevel_ - 1), not the global finest (maxLevelNumber_ - 1) which in a
+            // coupled run belongs to the hybrid sub-hierarchy. In a pure-MHD run
+            // maxMHDLevel_ == maxLevelNumber_ so this is unchanged.
+            auto mhdTagger_ = std::make_unique<amr::ConcreteTagger<MHDModel>>(
+                dict["simulation"]["AMR"]["refinement"]["tagging"], maxMHDLevel_);
             multiphysInteg_->registerTagger(0, maxMHDLevel_ - 1, std::move(mhdTagger_));
         }
     }

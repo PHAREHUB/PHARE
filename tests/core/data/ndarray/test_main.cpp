@@ -481,6 +481,121 @@ TEST(MaskedView3d, operatorRightShiftCoordinatesCorrect)
 }
 
 
+TEST(NdArrayViewFillFrom, sameOrderingCopiesAllValues)
+{
+    constexpr std::uint32_t nx = 2, ny = 3;
+    std::vector<double> src(nx * ny), dst(nx * ny, 0.);
+    NdArrayView<2, double> srcv{src.data(), {nx, ny}};
+    NdArrayView<2, double> dstv{dst.data(), {nx, ny}};
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            srcv(i, j) = 10. * i + j;
+
+    dstv.fill_from(srcv);
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            EXPECT_DOUBLE_EQ(dstv(i, j), srcv(i, j));
+}
+
+
+TEST(NdArrayViewFillFrom, oppositeOrdering2dTransposesLayout)
+{
+    // non-square shape with distinct values: a flat buffer copy would scramble
+    // the elements, so this only passes if fill_from goes through both views'
+    // own index arithmetic.
+    constexpr std::uint32_t nx = 2, ny = 3;
+    std::vector<double> fbuf(nx * ny), cbuf(nx * ny, 0.);
+    NdArrayView<2, double, /*c_ordering=*/false> fortran{fbuf.data(), {nx, ny}};
+    NdArrayView<2, double> c{cbuf.data(), {nx, ny}};
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            fortran(i, j) = 10. * i + j;
+
+    c.fill_from(fortran);
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            EXPECT_DOUBLE_EQ(c(i, j), fortran(i, j));
+
+    // the two flat buffers must actually differ, or this test could not
+    // distinguish an index-aware copy from a flat one
+    EXPECT_NE(fbuf, cbuf);
+}
+
+
+TEST(NdArrayViewFillFrom, oppositeOrdering2dReverseDirection)
+{
+    constexpr std::uint32_t nx = 2, ny = 3;
+    std::vector<double> cbuf(nx * ny), fbuf(nx * ny, 0.);
+    NdArrayView<2, double> c{cbuf.data(), {nx, ny}};
+    NdArrayView<2, double, false> fortran{fbuf.data(), {nx, ny}};
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            c(i, j) = 10. * i + j;
+
+    fortran.fill_from(c);
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            EXPECT_DOUBLE_EQ(fortran(i, j), c(i, j));
+
+    EXPECT_NE(fbuf, cbuf);
+}
+
+
+TEST(NdArrayViewFillFrom, oppositeOrdering3dCopiesAllValues)
+{
+    constexpr std::uint32_t nx = 2, ny = 3, nz = 4;
+    std::vector<double> fbuf(nx * ny * nz), cbuf(nx * ny * nz, 0.);
+    NdArrayView<3, double, false> fortran{fbuf.data(), {nx, ny, nz}};
+    NdArrayView<3, double> c{cbuf.data(), {nx, ny, nz}};
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            for (std::uint32_t k = 0; k < nz; ++k)
+                fortran(i, j, k) = 100. * i + 10. * j + k;
+
+    c.fill_from(fortran);
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        for (std::uint32_t j = 0; j < ny; ++j)
+            for (std::uint32_t k = 0; k < nz; ++k)
+                EXPECT_DOUBLE_EQ(c(i, j, k), fortran(i, j, k));
+
+    EXPECT_NE(fbuf, cbuf);
+}
+
+
+TEST(NdArrayViewFillFrom, oppositeOrdering1dIsExactCopy)
+{
+    constexpr std::uint32_t nx = 5;
+    std::vector<double> fbuf(nx), cbuf(nx, 0.);
+    NdArrayView<1, double, false> fortran{fbuf.data(), {nx}};
+    NdArrayView<1, double> c{cbuf.data(), {nx}};
+
+    for (std::uint32_t i = 0; i < nx; ++i)
+        fortran(i) = static_cast<double>(i);
+
+    c.fill_from(fortran);
+
+    EXPECT_EQ(fbuf, cbuf); // orderings coincide in 1D
+}
+
+
+TEST(NdArrayViewFillFrom, oppositeOrderingShapeMismatchThrows)
+{
+    std::vector<double> fbuf(2 * 3), cbuf(3 * 2);
+    NdArrayView<2, double, false> fortran{fbuf.data(), {2, 3}};
+    NdArrayView<2, double> c{cbuf.data(), {3, 2}};
+
+    EXPECT_THROW(c.fill_from(fortran), std::runtime_error);
+}
+
+
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
