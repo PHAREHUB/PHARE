@@ -149,7 +149,10 @@ def main():
                     interp_order, interp_order, interp_order
                 )
             )
-            subprocess.call(cmd)
+            try:
+                subprocess.call(cmd)
+            except FileNotFoundError:
+                print("ffmpeg not found, skipping video generation")
 
         ph.global_vars.sim = None
 
