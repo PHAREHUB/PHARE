@@ -2,6 +2,38 @@ from . import global_vars
 
 
 class MHDModel(object):
+    """
+    MHDModel sets up the MHD simulation type: the initial density, velocity,
+    magnetic field and pressure profiles of the single MHD fluid.
+
+    Used for an MHD simulation, i.e. one declared with
+    ``Simulation(model_options=["MHDModel"], ...)``. For a Hybrid simulation
+    (the default), use :class:`~pyphare.pharein.MaxwellianFluidModel` instead
+    - PHARE runs either Hybrid or MHD, never both together in the same run.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        ph.MHDModel(
+            density=density,
+            vx=vx, vy=vy, vz=vz,
+            bx=bx, by=by, bz=bz,
+            p=pressure,
+        )
+
+    **Parameters**:
+
+        * **density** (*function or number*), default=1, mass density profile.
+        * **vx**, **vy**, **vz** (*function or number*), default=(1, 0, 0), velocity profile, per direction.
+        * **bx**, **by**, **bz** (*function or number*), default=(1, 0, 0), magnetic field profile, per direction.
+        * **p** (*function or number*), default=1, thermal pressure profile.
+
+    Each parameter is a function of the spatial coordinates (one argument per
+    dimension: `f(x)`, `f(x, y)` or `f(x, y, z)`), or a plain number for a
+    spatially uniform value.
+    """
+
     def defaulter(self, input, value):
         if input is not None:
             import inspect
