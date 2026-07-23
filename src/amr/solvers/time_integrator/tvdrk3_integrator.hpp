@@ -55,8 +55,16 @@ public:
 
         this->accumulateButcherFluxes_(model, state1.E, fluxes, level, w01_ * w11_);
 
-        // U2 = 0.75*Un + 0.25*U1
-        RKUtils_t{level, model}(newTime, state2, RKPair_t{w00_, state}, RKPair_t{w01_, state1});
+        // U2 = 0.75*Un + 0.25*U1 is the interior node at abscissa t_n + dt/2 (c=1/2).
+        RKUtils_t{level, model}(state2, RKPair_t{w00_, state}, RKPair_t{w01_, state1});
+
+        // RKUtils combines the interior only; refill U2's coarse-fine ghosts by linear time
+        // interpolation at its own abscissa before evaluating F(U2). No-op away from
+        // coarse-fine boundaries (same-level fills are time-independent).
+        double const stageTime = currentTime + 0.5 * (newTime - currentTime);
+        TimeSetter{level, model, stageTime}(state2.rho, state2.rhoV, state2.Etot, state2.B);
+        bc.fillMagneticGhosts(state2.B, level, stageTime);
+        bc.fillMomentsGhosts(state2, level, stageTime);
 
         // U2 = Euler(U2)
         euler_(model, state2, state2, fluxes, bc, level, currentTime, newTime);

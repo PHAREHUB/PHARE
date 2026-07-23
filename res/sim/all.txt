@@ -54,6 +54,9 @@
 3,WENO3,None,Rusanov,false
 3,WENOZ,None,Rusanov,false
 3,MP5,None,Rusanov,false
+# --- tests/simulator/amr_convergence (2D) ---
+# alfven2d reuses the mhd_alfven2d permutation above and whistler2d (Hall) the
+# mhd_harris one -- no extra build
 # --- coverage-only: gaps not hit by any test ---
 1,Linear,MinMod,Rusanov,false
 1,Constant,None,HLL,false

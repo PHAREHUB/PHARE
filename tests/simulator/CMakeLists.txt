@@ -47,4 +47,5 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/config.py ${CMAKE_CURRENT_BINARY_DIR}
 add_subdirectory(initialize)
 add_subdirectory(refinement)
 add_subdirectory(advance)
+add_subdirectory(amr_convergence)
 

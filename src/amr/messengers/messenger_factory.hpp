@@ -8,6 +8,7 @@
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/mhd_hybrid_messenger_strategy.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
+#include "amr/messengers/refinement_config.hpp"
 #include "core/def.hpp"
 
 #include <algorithm>
@@ -49,8 +50,10 @@ public:
                   "MHDModel::dimension != HybridModel::dimension");
 
 
-    MessengerFactory(std::vector<MessengerDescriptor> messengerDescriptors)
+    MessengerFactory(std::vector<MessengerDescriptor> messengerDescriptors,
+                     RefinementConfig refinementConfig = {})
         : descriptors_{messengerDescriptors}
+        , refinementConfig_{std::move(refinementConfig)}
     {
     }
 
@@ -106,6 +109,9 @@ private:
 
         if constexpr (std::is_same_v<Strategy, MHDHybridMessengerStrategy<MHDModel, HybridModel>>)
         {
+            // No refinementConfig_ here, unlike the two branches below: MHDHybridMessengerStrategy
+            // is a coupling-only strategy — it builds no refine kernels/operators of its own, so
+            // there is nothing for the order config to reach. Deliberate, not a wiring gap.
             auto& resourcesManager = dynamic_cast<HybridModel const&>(fineModel).resourcesManager;
             auto messengerStrategy = std::make_unique<Strategy>(resourcesManager, firstLevel);
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
@@ -113,19 +119,21 @@ private:
         else if constexpr (std::is_base_of_v<HybridMessengerStrategy<HybridModel>, Strategy>)
         {
             auto& resourcesManager = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
-            auto messengerStrategy = std::make_unique<Strategy>(resourcesManager, firstLevel);
+            auto messengerStrategy
+                = std::make_unique<Strategy>(resourcesManager, firstLevel, refinementConfig_);
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
         else if constexpr (std::is_same_v<Strategy, MHDMessenger<MHDModel>>)
         {
             auto& mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
-            return std::make_unique<Strategy>(mhdResourcesManager, firstLevel);
+            return std::make_unique<Strategy>(mhdResourcesManager, firstLevel, refinementConfig_);
         }
 
         return {};
     }
 
     std::vector<MessengerDescriptor> descriptors_;
+    RefinementConfig refinementConfig_;
 };
 
 } // namespace PHARE::amr

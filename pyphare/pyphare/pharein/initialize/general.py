@@ -69,6 +69,11 @@ def populate_amr(dp, sim):
             "simulation/AMR/refinement/tagging/method", "none"
         )  # integrator.h might want some looking at
 
+    # field-refinement operator selection. Only emitted when a non-default order is requested,
+    # so existing sims produce a dict identical to before (C++ reads absent => order 0 => legacy).
+    if getattr(sim, "refinement_order", 0):
+        dp.add_int("simulation/AMR/refinement/order", sim.refinement_order)
+
 
 def populate_load_balancer(dp, sim):
     lb = sim.load_balancer or LoadBalancer(active=False, _register=False)
