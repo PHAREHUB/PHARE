@@ -20,6 +20,28 @@ class IsothermalClosure(object):
 
 
 class ElectronModel(object):
+    """
+    ElectronModel sets the closure used to compute the fluid electron
+    pressure in a Hybrid simulation (kinetic ions, fluid electrons). This
+    pressure enters the generalized Ohm's law used to advance the electric
+    field. Required in every Hybrid simulation.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        from pyphare.pharein import ElectronModel
+
+        ElectronModel(closure="isothermal", Te=0.2)
+
+    **Parameters**:
+
+        * **closure** (``str``), currently only "isothermal" is implemented.
+        * **Te** (``float``), default=0.1, electron temperature. With the isothermal
+          closure, this temperature is constant in both space and time, and the
+          electron pressure is simply `Te` times the electron density.
+    """
+
     def __init__(self, **kwargs):
         if kwargs["closure"] == "isothermal":
             self.closure = IsothermalClosure(**kwargs)

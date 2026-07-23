@@ -123,6 +123,27 @@ def try_cpp_build_config():
 
 
 class Diagnostics(object):
+    """
+    Base parameters shared by every diagnostics block below
+    (:class:`ElectromagDiagnostics`, :class:`FluidDiagnostics`,
+    :class:`ParticleDiagnostics`, :class:`MHDDiagnostics`,
+    :class:`MetaDiagnostics`, :class:`InfoDiagnostics`). A diagnostics block
+    writes one physical `quantity` to disk at a chosen set of times.
+
+    **Common parameters**:
+
+        * **quantity** (``str``), mandatory, which quantity to write - valid values depend on the diagnostics type, see each class below.
+        * **write_timestamps** (``list`` of ``float``), simulation times at which to write this quantity. Required unless `elapsed_timestamps` is given instead.
+        * **elapsed_timestamps** (``list`` of ``float`` seconds or ``datetime.timedelta``), write this quantity every time this much wall-clock time has elapsed since the simulation started, instead of at fixed simulation times. Can be given instead of, or in addition to, `write_timestamps`.
+        * **path** (``str``), default="./", directory the diagnostics files for this block are written to.
+        * **flush_every** (``int``), default=1, write to disk every `flush_every` dump (1 flushes every time, safest but slowest; larger values buffer more dumps in memory before writing, trading safety against a crash for I/O throughput).
+
+    Declaring two diagnostics blocks of the same type with the same
+    `quantity` (and, where relevant, the same `population_name`) does not
+    create two independent diagnostics: it extends the existing one's list
+    of timestamps with the new ones instead.
+    """
+
     h5_flush_never = 0
     cpp_dep_vers = try_cpp_dep_vers()
 
@@ -217,6 +238,27 @@ class Diagnostics(object):
 
 # ------------------------------------------------------------------------------
 class MHDDiagnostics(Diagnostics):
+    """
+    Writes MHD fluid quantities to disk. Only meaningful in an MHD
+    simulation (``Simulation(model_options=["MHDModel"])``).
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        from pyphare.pharein import MHDDiagnostics
+
+        MHDDiagnostics(quantity="rho", write_timestamps=timestamps)
+
+    **quantity**, one of:
+
+        * "rho" - mass density
+        * "V" - velocity
+        * "P" - thermal pressure
+        * "rhoV" - momentum density
+        * "Etot" - total energy density
+    """
+
     mhd_quantities = ["rho", "V", "P", "rhoV", "Etot"]
     type = "mhd"
 
@@ -251,6 +293,21 @@ class MHDDiagnostics(Diagnostics):
 
 # ------------------------------------------------------------------------------
 class ElectromagDiagnostics(Diagnostics):
+    """
+    Writes the electric or magnetic field to disk.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        from pyphare.pharein import ElectromagDiagnostics
+
+        ElectromagDiagnostics(quantity="E", write_timestamps=timestamps)
+        ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+
+    **quantity**, one of: "E" (electric field), "B" (magnetic field).
+    """
+
     em_quantities = ["E", "B"]
     type = "electromag"
 
@@ -282,6 +339,8 @@ def population_in_model(population):
 
 
 class FluidDiagnostics_(Diagnostics):
+    """:meta private:"""
+
     fluid_quantities = [
         "density",
         "charge_density",
@@ -343,6 +402,50 @@ def for_total_ions(**kwargs):
 
 
 class FluidDiagnostics:
+    """
+    Writes ion fluid moments (density, velocity, pressure, ...) to disk.
+    These are moments of the particle distribution(s), either for one named
+    population or, for some quantities, for the ions as a whole.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        from pyphare.pharein import FluidDiagnostics
+
+        # a per-population quantity: population_name required
+        FluidDiagnostics(
+            quantity="density",
+            population_name="protons",
+            write_timestamps=timestamps,
+        )
+
+        # a quantity that also works for the ions as a whole: population_name omitted
+        FluidDiagnostics(quantity="mass_density", write_timestamps=timestamps)
+
+    **quantity**, always requires **population_name**:
+
+        * "density" - particle density of the named population
+        * "flux" - flux of the named population
+
+    **quantity**, works either for the ions as a whole (omit
+    `population_name`) or for one named population (give `population_name`):
+
+        * "charge_density" - charge density
+        * "mass_density" - mass density
+        * "bulkVelocity" - bulk velocity
+        * "momentum_tensor" - momentum tensor
+        * "pressure_tensor" - pressure tensor. This is a convenience quantity:
+          declaring it registers the underlying moments it is computed from
+          (`mass_density`, `bulkVelocity` and `momentum_tensor` for the ions
+          as a whole; `density`, `flux` and `momentum_tensor` for a named
+          population) as separate diagnostics under the hood.
+
+    **population_name** (``str``), name of the ion population this
+    diagnostics applies to, as declared in
+    :class:`~pyphare.pharein.MaxwellianFluidModel`.
+    """
+
     def __init__(self, **kwargs):
         if kwargs["quantity"] == "pressure_tensor":
             if for_total_ions(**kwargs):
@@ -361,6 +464,33 @@ class FluidDiagnostics:
 
 
 class ParticleDiagnostics(Diagnostics):
+    """
+    Writes raw macro-particles of one ion population to disk. Typically much
+    heavier (in disk size and I/O time) than the other diagnostics types.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        from pyphare.pharein import ParticleDiagnostics
+
+        ParticleDiagnostics(
+            quantity="domain",
+            population_name="protons",
+            write_timestamps=timestamps,
+        )
+
+    **quantity**, one of:
+
+        * "domain" (default), particles living within the interior of the simulation patches - the right default for most uses.
+        * "levelGhost", particles living in the ghost region between two AMR levels - mainly useful for debugging refinement/coarsening.
+        * "space_box", particles living within a user-given spatial region - requires the additional **extent** parameter (the box, in the same units as the domain).
+
+    **population_name** (``str``), mandatory, name of the ion population to
+    write particles for, as declared in
+    :class:`~pyphare.pharein.MaxwellianFluidModel`.
+    """
+
     particle_quantities = ["space_box", "domain", "levelGhost"]
     type = "particle"
 
@@ -420,6 +550,26 @@ class ParticleDiagnostics(Diagnostics):
 
 
 class MetaDiagnostics(Diagnostics):
+    """
+    Writes bookkeeping information about the AMR hierarchy itself, rather
+    than a physical quantity.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        from pyphare.pharein import MetaDiagnostics
+
+        MetaDiagnostics(quantity="tags", write_timestamps=timestamps)
+
+    **quantity**, one of:
+
+        * "tags" - the per-cell refinement tags produced by
+          ``refinement="tagging"``, i.e. which cells were flagged for
+          refinement at each write time. Useful to inspect/tune
+          `tagging_threshold` and `tag_buffer`.
+    """
+
     meta_quantities = ["tags"]
     type = "meta"
 
@@ -447,6 +597,27 @@ class MetaDiagnostics(Diagnostics):
 
 
 class InfoDiagnostics(Diagnostics):
+    """
+    Writes lightweight run-monitoring information to disk, cheap enough to
+    dump at every time step.
+
+    **Usage example:**
+
+    .. code-block:: python
+
+        from pyphare.pharein import InfoDiagnostics
+
+        InfoDiagnostics(quantity="particle_count")
+
+    **quantity**, one of:
+
+        * "particle_count" - number of particles per patch/level, useful to
+          monitor AMR/load-balancing behavior over the run.
+
+    Unlike other diagnostics, **write_timestamps** defaults to every
+    simulation time step if not given explicitly.
+    """
+
     info_quantities = ["particle_count"]
     type = "info"
 

@@ -1014,15 +1014,30 @@ class Simulation(object):
     **Diagnostics output parameters:**
 
         * **diag_options** (``dict``)
-            * **path** (``str``) path for outputs (default : './')
-            * **diag_export_format** (``str``) format of the output diagnostics (default= "phareh5")
-            * **mode** (``str``) mode of the output diagnostics (default= "overwrite" will write over existing files)
+            * **format** (``str``), {"phareh5" (default), "pharevtkhdf"}, on-disk format of the diagnostics files.
+            * **options** (``dict``)
+                * **dir** (``str``) directory where diagnostics files are written (default : './')
+                * **mode** (``str``), {"overwrite" (default)}, whether existing files in `dir` are overwritten.
+                * **fine_dump_lvl_max** (``int``) if set, diagnostics are only dumped up to this AMR level (coarser levels only); useful to limit output size on deep hierarchies.
+                * **allow_emergency_dumps** (``bool``) if True, allows PHARE to write an out-of-schedule diagnostics dump when the run is interrupted abnormally.
+
+          Note: `diag_options["format"]` (the diagnostics file format) is unrelated to
+          the separate, unused-today `diag_export_format` keyword below - the latter is
+          reserved for a currently single-valued option ("hdf5") and should not be confused
+          with the former.
+        * **diag_export_format** (``str``), currently always "hdf5" (no other value is accepted).
 
 
 
     **Adaptive Mesh Refinement (AMR) parameters:**
 
-        * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. Used if no `refinement_boxes` are set
+        * **refinement** (``str``), {"boxes" (default), "tagging"}, how refined regions are chosen.
+
+            * "boxes" - refined regions are the fixed, user-given `refinement_boxes`, identical at every time step.
+            * "tagging" - refined regions are recomputed at run time from the solution itself: cells where a gradient-based criterion exceeds `tagging_threshold` are tagged, then clustered into patches (buffered by `tag_buffer`). Refined regions therefore move and grow/shrink as the physics evolves.
+
+        * **tagging_threshold** (``float``), default=0.1, used only when `refinement="tagging"`. Threshold of the tagging criterion above which a cell is flagged for refinement. Lower values tag more cells and produce more/larger refined regions.
+        * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. With `refinement="boxes"` this is derived automatically from the number of levels given in `refinement_boxes`; with `refinement="tagging"` it must be given explicitly (it otherwise silently defaults to 1, i.e. no refinement).
         * **tag_buffer** (``int``), default=1, value representing the number of cells by which tagged cells are buffered before clustering into boxes. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
         * **clustering** (``str``), {"berger", "tile" (default)}, type of clustering to use for AMR. `tile` results in wider patches, less artifacts and better scalability
 
@@ -1049,15 +1064,38 @@ class Simulation(object):
                 * "conserve"  - (default), will conserve existing files
                 * "overwrite" - will overwrite existing files
 
-            * **restart_time** (``float``) time at which to restart the simulation (default=0)
-            * **timestamps** (``list``) list of timestamps at which to restart the simulation
+            * **restart_time** (``float`` or ``"auto"``) time at which to restart the simulation. If "auto", the latest available restart file in `dir` is used.
+            * **timestamps** (``list``) list of simulation times at which to dump a restart file. Must be in ascending order and consistent with `time_step`.
+            * **elapsed_timestamps** (``list`` of ``float`` seconds or ``datetime.timedelta``) dump a restart file every time this much wall-clock time has elapsed since the simulation started, instead of at fixed simulation times. Can be combined with `timestamps`.
+            * **keep_last** (``int``) if set, only the `keep_last` most recent restart directories are kept - older ones are deleted automatically as new ones are written.
+
+    **MHD parameters:**
+
+        These parameters only apply to an MHD simulation, i.e. one declared with
+        ``model_options=["MHDModel"]`` (paired with an :class:`~pyphare.pharein.MHDModel`
+        block instead of a :class:`~pyphare.pharein.MaxwellianFluidModel` one). PHARE
+        currently runs either a Hybrid (kinetic ions / fluid electrons) or an MHD
+        simulation, never a mix of both in the same hierarchy.
+
+        * **model_options** (``str`` or ``list``), {"HybridModel" (default), "MHDModel"}, which physics this simulation evolves.
+        * **max_mhd_level** (``int``), default=0, number of AMR levels evolved with MHD. Must be <= `max_nbr_levels`; for an MHD simulation it is typically set equal to `max_nbr_levels` (every level is MHD).
+        * **gamma** (``float``), default=5/3, adiabatic index (heat capacity ratio) of the MHD fluid.
+        * **eta** (``float``), default=0.0, MHD resistivity.
+        * **nu** (``float``), default=0.0, MHD hyper-resistivity.
+        * **hall** (``bool``), default=False, whether the Hall term is included in the MHD Ohm's law.
+        * **res** (``bool``), default=False, whether resistivity is included in the MHD Ohm's law.
+        * **hyper_res** (``bool``), default=False, whether hyper-resistivity is included in the MHD Ohm's law.
+        * **reconstruction** (``str``), spatial reconstruction scheme used by the MHD finite-volume solver (e.g. "WENOZ").
+        * **limiter** (``str``), slope limiter used with the reconstruction scheme (e.g. "None").
+        * **riemann** (``str``), Riemann solver used at cell interfaces (e.g. "Rusanov").
+        * **mhd_timestepper** (``str``), time integration scheme for the MHD solver (e.g. "TVDRK3").
 
     Misc:
 
         * **description** (``string``), [default=None] arbitrary string for per simulation context - injected in output files when feasible
         * **strict** (``bool``), turns warnings into errors (default False)
-        * **resistivity** (``float``), resistivity value (default=0.0)
-        * **hyper-resistivity** (``float``), hyper-resistivity value (default=0.0)
+        * **resistivity** (``float``), Hybrid Ohm's law resistivity value (default=0.0)
+        * **hyper-resistivity** (``float``), Hybrid Ohm's law hyper-resistivity value (default=0.0)
         * **boundary_types** (``str`` or ``tuple``) type of boundary conditions (default is "periodic" for each direction)
 
     """
