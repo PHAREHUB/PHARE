@@ -232,3 +232,108 @@ TEST(BzToEz, combinationOk)
 {
     runTestFile("linear_coefs_yee_BzToEz.txt", []<typename Layout>() { return Layout::BzToEz(); });
 }
+
+
+// ---------------------------------------------------------------------------
+// Primitive B — dual-direction prolongation (coarse->fine, ratio 2).
+// Self-contained algebraic checks (no Python-generated reference files).
+// ---------------------------------------------------------------------------
+
+using PHARE::core::dirX;
+using ImplYee1 = PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t::implT;
+
+namespace
+{
+    // sum of a stencil's coefficients
+    auto coefSum(auto const& row)
+    {
+        double s = 0.;
+        for (auto const& wp : row)
+            s += wp.coef;
+        return s;
+    }
+
+    // coefficient at a given offset along dirX (0 if absent)
+    auto coefAt(auto const& row, int offset)
+    {
+        for (auto const& wp : row)
+            if (wp.indexes[dirX] == offset)
+                return wp.coef;
+        return 0.;
+    }
+
+    // value the stencil produces from coarse cell-averages u(I+offset) = f(I+offset)
+    auto applyRow(auto const& row, int I, auto&& f)
+    {
+        double v = 0.;
+        for (auto const& wp : row)
+            v += wp.coef * f(I + wp.indexes[dirX]);
+        return v;
+    }
+} // namespace
+
+// weights of each ladder rung match prolongation_operators.md §2.2 exactly
+TEST(DualProlongation, order2WeightsMatchLadder)
+{
+    auto right = ImplYee1::directionalProlongation<dirX, +1, 2>(); // σ=+1
+    EXPECT_DOUBLE_EQ(coefAt(right, -1), -1. / 8.);
+    EXPECT_DOUBLE_EQ(coefAt(right, 0), 1.);
+    EXPECT_DOUBLE_EQ(coefAt(right, +1), 1. / 8.);
+}
+
+// every rung is consistent: weights sum to 1 (reproduces a constant field)
+TEST(DualProlongation, weightsSumToOne)
+{
+    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, +1, 0>()), 1.);
+    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, -1, 0>()), 1.);
+    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, +1, 2>()), 1.);
+    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, -1, 2>()), 1.);
+}
+
+// conservation: the two children average back to ū_I at every order
+TEST(DualProlongation, childrenMeanBackToCoarse)
+{
+    auto check = [](auto const& right, auto const& left) {
+        // offset 0 carries the full coarse value in each child -> mean 1
+        EXPECT_DOUBLE_EQ(0.5 * (coefAt(right, 0) + coefAt(left, 0)), 1.);
+        // antisymmetric correction -> every off-center offset cancels in the mean
+        for (int o : {-2, -1, 1, 2})
+            EXPECT_DOUBLE_EQ(0.5 * (coefAt(right, o) + coefAt(left, o)), 0.);
+    };
+    check(ImplYee1::directionalProlongation<dirX, +1, 2>(),
+          ImplYee1::directionalProlongation<dirX, -1, 2>());
+}
+
+// exactness: on linear cell-averages u_i = a + b*i, each child reproduces a + b*(I ± 1/4)
+TEST(DualProlongation, exactOnLinearData)
+{
+    constexpr double a = 0.7, b = -1.3;
+    auto f             = [](int i) { return a + b * i; };
+    int const I        = 5;
+
+    for (auto const& [row, sigma] :
+         {std::pair{ImplYee1::directionalProlongation<dirX, +1, 2>(), +1},
+          std::pair{ImplYee1::directionalProlongation<dirX, -1, 2>(), -1}})
+        EXPECT_DOUBLE_EQ(applyRow(row, I, f), a + b * (I + sigma * 0.25));
+}
+
+// runtime tensorProduct reproduces the consteval one on fixed rows
+TEST(DualProlongation, runtimeTensorProductMatchesConsteval)
+{
+    using ImplYee2          = PHARE_Types<PHARE::SimOpts{2, 1}>::Hybrid::GridLayout_t::implT;
+    constexpr auto dY       = PHARE::core::dirY;
+    constexpr auto rowX     = ImplYee2::directionalProlongation<dirX, +1, 2>();
+    constexpr auto rowY     = ImplYee2::directionalProlongation<dY, -1, 2>();
+
+    constexpr auto ce = ImplYee2::tensorProduct<dirX, dY>(rowX, rowY); // consteval
+    auto rt           = ImplYee2::tensorProductRuntime<dirX, dY>(rowX, rowY);
+
+    ASSERT_EQ(ce.size(), rt.size());
+    // both enumerate the outer product in the same order
+    for (std::size_t i = 0; i < rt.size(); ++i)
+    {
+        EXPECT_EQ(ce[i].indexes[dirX], rt[i].indexes[dirX]);
+        EXPECT_EQ(ce[i].indexes[dY], rt[i].indexes[dY]);
+        EXPECT_DOUBLE_EQ(ce[i].coef, rt[i].coef);
+    }
+}

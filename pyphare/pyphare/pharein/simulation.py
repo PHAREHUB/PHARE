@@ -704,6 +704,21 @@ def check_mhd_parameters(**kwargs):
     return reconstruction, limiter, riemann, mhd_timestepper
 
 
+def check_refinement_operator(**kwargs):
+    """Selects the field-refinement (prolongation) operator order.
+
+    order 0 (default) keeps the legacy per-quantity operators (no behavior change).
+    order 2 = Linear.
+    """
+    order = kwargs.get("refinement_order", 0)
+    if order not in (0, 2):
+        raise ValueError(
+            f"Error: refinement_order must be 0 (legacy) or 2 (Linear), got {order}"
+        )
+
+    return order
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -751,6 +766,7 @@ def checker(func):
             "limiter",
             "riemann",
             "mhd_timestepper",
+            "refinement_order",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -849,6 +865,9 @@ def checker(func):
         kwargs["limiter"] = limiter
         kwargs["riemann"] = riemann
         kwargs["mhd_timestepper"] = mhd_timestepper
+
+        refinement_order = check_refinement_operator(**kwargs)
+        kwargs["refinement_order"] = refinement_order
 
         return func(simulation_object, **kwargs)
 

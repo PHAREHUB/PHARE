@@ -139,7 +139,8 @@ private:
                     double const currentTime, double const newTime);
 
 
-    void average_(level_t& level, HybridModel& model, Messenger& fromCoarser, double const newTime);
+    void average_(level_t& level, HybridModel& model, Messenger& fromCoarser,
+                  double const currentTime, double const newTime);
 
 
     void moveIons_(level_t& level, HybridModel& model, Messenger& fromCoarser,
@@ -326,14 +327,14 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     predictor1_(level, model, fromCoarser, currentTime, newTime);
 
-    average_(level, model, fromCoarser, newTime);
+    average_(level, model, fromCoarser, currentTime, newTime);
 
     moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::domain_only);
 
     predictor2_(level, model, fromCoarser, currentTime, newTime);
 
 
-    average_(level, model, fromCoarser, newTime);
+    average_(level, model, fromCoarser, currentTime, newTime);
 
     moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::all);
 
@@ -369,10 +370,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere");
         ampere(electromagPred_.B, model.state.J);
         setTime(model.state.J);
-    }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ampere::schedules");
-        fromCoarser.fillCurrentGhosts(model.state.J, level, newTime);
     }
 
 
@@ -412,10 +409,6 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere");
         ampere(electromagPred_.B, model.state.J);
         setTime(model.state.J);
-    }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ampere::schedules");
-        fromCoarser.fillCurrentGhosts(model.state.J, level, newTime);
     }
 
     Ohm_t ohm{ohm_info, level, model};
@@ -459,10 +452,6 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
         ampere(electromag.B, model.state.J);
         setTime(model.state.J);
     }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ampere::schedules");
-        fromCoarser.fillCurrentGhosts(model.state.J, level, newTime);
-    }
 
     Ohm_t ohm{ohm_info, level, model};
     {
@@ -482,7 +471,8 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
 
 template<typename HybridModel, typename AMR_Types>
 void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& model,
-                                                 Messenger& fromCoarser, double const newTime)
+                                                 Messenger& fromCoarser, double const currentTime,
+                                                 double const newTime)
 {
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::average_");
@@ -506,7 +496,7 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& mo
     // next coarser level E average
 
     PHARE_LOG_SCOPE(1, "SolverPPC::average::schedules");
-    fromCoarser.fillElectricGhosts(electromagAvg_.E, level, newTime);
+    fromCoarser.fillElectricGhosts(electromagAvg_.E, level, (currentTime + newTime) / 2.);
 }
 
 

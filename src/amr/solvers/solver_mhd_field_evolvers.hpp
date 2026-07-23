@@ -30,18 +30,14 @@ public:
     {
     }
 
-    void operator()(auto& state, double const gamma, double const newTime)
+    void operator()(auto& state, double const gamma)
     {
-        TimeSetter setTime{level, model, newTime};
-
         auto& rm = *model.resourcesManager;
         for (auto& patch : rm.enumerate(level, state))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type{layout, gamma}(state.rho, state.V, state.B, state.P, state.rhoV, state.Etot);
         }
-
-        setTime(state.rho, state.V, state.P, state.rhoV, state.Etot);
     }
 
     level_t& level;
@@ -67,18 +63,14 @@ public:
     {
     }
 
-    void operator()(auto& state, double const gamma, double const newTime)
+    void operator()(auto& state, double const gamma)
     {
-        TimeSetter setTime{level, model, newTime};
-
         auto& rm = *model.resourcesManager;
         for (auto& patch : rm.enumerate(level, state))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type{layout}(gamma, state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
         }
-
-        setTime(state.rho, state.rhoV, state.Etot, state.V, state.P);
     }
 
     level_t& level;
@@ -119,10 +111,8 @@ public:
     }
 
 
-    void operator()(auto& fvm_state, auto& ct_state, auto& state, auto& fluxes, double const newTime)
+    void operator()(auto& fvm_state, auto& ct_state, auto& state, auto& fluxes)
     {
-        TimeSetter setTime{level, model, newTime};
-
         auto& rm = *model.resourcesManager;
         for (auto& patch : rm.enumerate(level, fvm_state, ct_state, state, fluxes))
         {
@@ -130,8 +120,6 @@ public:
             core_type finite_volume_method{info, layout};
             finite_volume_method(fvm_state, ct_state, state, fluxes);
         }
-
-        setTime(state.rho, state.V, state.P, state.J);
     }
 
     level_t& level;
@@ -155,19 +143,15 @@ public:
     {
     }
 
-    void operator()(double const newTime, Model::state_type& state, Model::state_type& statenew,
-                    auto& fluxes, double const dt)
+    void operator()(Model::state_type& state, Model::state_type& statenew, auto& fluxes,
+                    double const dt)
     {
-        TimeSetter setTime{level, model, newTime};
-
         auto& rm = *model.resourcesManager;
         for (auto& patch : rm.enumerate(level, state, statenew, fluxes))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type{layout}(state, statenew, fluxes, dt);
         }
-
-        setTime(state.rho, state.rhoV, state.Etot);
     }
 
 
@@ -231,18 +215,14 @@ class RKUtilsTransformer
     using core_type  = core::RKUtils<GridLayout>;
 
 public:
-    void operator()(double const newTime, Model::state_type& res, auto... pairs)
+    void operator()(Model::state_type& res, auto... pairs)
     {
-        TimeSetter setTime{level, model, newTime};
-
         auto& rm = *model.resourcesManager;
         for (auto& patch : rm.enumerate(level, res, pairs.state...))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type{layout}(res, pairs...);
         }
-
-        setTime(res.rho, res.rhoV, res.Etot);
     }
 
 

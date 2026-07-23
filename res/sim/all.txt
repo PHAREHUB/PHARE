@@ -55,6 +55,10 @@
 3,1,6,SSPRK4_5,WENO3,None,Rusanov,false,false,false
 3,1,6,SSPRK4_5,WENOZ,None,Rusanov,false,false,false
 3,1,6,SSPRK4_5,MP5,None,Rusanov,false,false,false
+# --- tests/simulator/amr_convergence (2D) ---
+# alfven2d uses the mhd_alfven2d permutation above. whistler2d (Hall):
+# (no semicolons in comments -- CMake file(STRINGS) splits lines on them)
+2,1,4,SSPRK4_5,WENOZ,None,Rusanov,true,false,false
 # --- coverage-only: gaps not hit by any test ---
 1,1,2,Euler,Linear,MinMod,Rusanov,false,false,false
 1,1,2,Euler,Constant,None,HLL,false,false,false

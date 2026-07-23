@@ -9,6 +9,7 @@
 
 
 #include <array>
+#include <vector>
 
 
 namespace PHARE::core::hybrid
@@ -396,6 +397,59 @@ public:
         }
     }
 
+    /**
+     * @brief Primitive B — dual-direction prolongation (coarse→fine, ratio 2).
+     *
+     * A quantity dual in `dir` is an average over its dual extent there. Refining splits coarse
+     * cell I into two fine children sitting at ±¼ of the coarse spacing; parity p∈{0,1},
+     * sign σ = 2p−1 (σ=+1 = right child, σ=−1 = left). Offsets are relative to coarse cell I.
+     *
+     * The even-term cancellation (see prolongation_operators.md §2): subtracting the
+     * conservation constraint kills every even reconstruction coefficient, so the children
+     * depend only on ODD coefficients ⇒ parabolic ≡ linear (degree-2 skipped). Children are
+     * antisymmetric in σ about ū_I ⇒ they always mean back to ū_I (conservative at every order).
+     *
+     *   order 0 (constant):     ū_I
+     *   order 2 (linear, 3-pt):  ū_I + σ·(ū_{I+1} − ū_{I−1})/8
+     *
+     * Primal-direction prolongation needs no new table: the coincident fine node is an exact
+     * copy and the half-point is `directionalInterp<dir, PrimalToDual, order>` (same midpoint
+     * weights). This is the dual counterpart, kept beside it for cohesion.
+     */
+    template<auto dir, int sign, std::size_t order = 2>
+    NO_DISCARD static consteval auto directionalProlongation()
+    {
+        static_assert(sign == 1 || sign == -1, "child sign σ must be ±1");
+        static_assert(order == 0 || order == 2,
+                      "dual prolongation ladder is order 0 / 2 (degree-2 skipped)");
+
+        constexpr double s = sign;
+
+        if constexpr (dir >= dimension)
+        {
+            return std::array{WeightPoint{Point<int, dimension>{}, 1.0}};
+        }
+        else
+        {
+            auto make_p = [](int offset) {
+                Point<int, dimension> p{};
+                p[dir] = offset;
+                return p;
+            };
+
+            if constexpr (order == 0)
+            {
+                return std::array{WeightPoint{make_p(0), 1.0}};
+            }
+            else if constexpr (order == 2)
+            {
+                return std::array{WeightPoint{make_p(-1), -s / 8.0},
+                                  WeightPoint{make_p(0), 1.0},
+                                  WeightPoint{make_p(1), s / 8.0}};
+            }
+        }
+    }
+
     // we could possibly have a variadic version to factor out these 2 overload, but this might
     // complexify the code quite a bit. possibly not worth it
     template<auto dir1, auto dir2>
@@ -442,6 +496,56 @@ public:
                     if constexpr (dir3 < dimension)
                         pt[dir3] = p3.indexes[dir3];
                     result[k++] = {pt, p1.coef * p2.coef * p3.coef};
+                }
+        return result;
+    }
+
+    // Runtime counterparts of the consteval tensorProduct above: same outer-product logic, but
+    // over runtime weight rows (used by the limited prolongation path, whose 1-D rows are
+    // data-dependent and only known at runtime). The consteval versions stay the fast path for
+    // unlimited refinement. Each input row carries offsets only along its own direction, exactly
+    // like directionalInterp/directionalProlongation output.
+    template<auto dir1, auto dir2>
+    NO_DISCARD static std::vector<WeightPoint<dimension>>
+    tensorProductRuntime(auto const& s1, auto const& s2)
+    {
+        static_assert(dir1 != dir2);
+
+        std::vector<WeightPoint<dimension>> result;
+        result.reserve(s1.size() * s2.size());
+        for (auto const& p1 : s1)
+            for (auto const& p2 : s2)
+            {
+                Point<int, dimension> pt{};
+                if constexpr (dir1 < dimension)
+                    pt[dir1] = p1.indexes[dir1];
+                if constexpr (dir2 < dimension)
+                    pt[dir2] = p2.indexes[dir2];
+                result.push_back({pt, p1.coef * p2.coef});
+            }
+        return result;
+    }
+
+    template<auto dir1, auto dir2, auto dir3>
+    NO_DISCARD static std::vector<WeightPoint<dimension>>
+    tensorProductRuntime(auto const& s1, auto const& s2, auto const& s3)
+    {
+        static_assert(dir1 != dir2 && dir1 != dir3 && dir2 != dir3);
+
+        std::vector<WeightPoint<dimension>> result;
+        result.reserve(s1.size() * s2.size() * s3.size());
+        for (auto const& p1 : s1)
+            for (auto const& p2 : s2)
+                for (auto const& p3 : s3)
+                {
+                    Point<int, dimension> pt{};
+                    if constexpr (dir1 < dimension)
+                        pt[dir1] = p1.indexes[dir1];
+                    if constexpr (dir2 < dimension)
+                        pt[dir2] = p2.indexes[dir2];
+                    if constexpr (dir3 < dimension)
+                        pt[dir3] = p3.indexes[dir3];
+                    result.push_back({pt, p1.coef * p2.coef * p3.coef});
                 }
         return result;
     }

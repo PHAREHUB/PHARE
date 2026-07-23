@@ -9,6 +9,9 @@
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/mhd_flux_coarsener.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/composite_field_refiner.hpp"
+#include "amr/data/field/refine/magnetic_composite_refiner.hpp"
+#include "amr/messengers/refinement_config.hpp"
 #include "amr/data/field/refine/electric_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_field_regrider.hpp"
@@ -60,10 +63,12 @@ namespace amr
         static inline std::string const stratName    = "MHDModel-MHDModel";
 
         MHDMessenger(std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager,
-                     int const firstLevel)
+                     int const firstLevel, RefinementConfig const& refinementConfig = {})
             : resourcesManager_{std::move(resourcesManager)}
             , firstLevel_{firstLevel}
         {
+            makeRefineOperators_(refinementConfig);
+
             // moment ghosts are primitive quantities
             resourcesManager_->registerResources(rhoOld_);
             resourcesManager_->registerResources(Vold_);
@@ -72,7 +77,7 @@ namespace amr
             resourcesManager_->registerResources(rhoVold_);
             resourcesManager_->registerResources(EtotOld_);
 
-            resourcesManager_->registerResources(Jold_); // conditionally register
+            resourcesManager_->registerResources(Bold_);
 
             // also magnetic fluxes ? or should we use static refiners instead ?
         }
@@ -88,7 +93,7 @@ namespace amr
             resourcesManager_->allocate(rhoVold_, patch, allocateTime);
             resourcesManager_->allocate(EtotOld_, patch, allocateTime);
 
-            resourcesManager_->allocate(Jold_, patch, allocateTime);
+            resourcesManager_->allocate(Bold_, patch, allocateTime);
         }
 
 
@@ -298,7 +303,6 @@ namespace amr
                 = HydroZpatchGhostRefluxedAlgo.createSchedule(level);
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
-            currentGhostsRefiners_.registerLevel(hierarchy, level);
 
             rhoGhostsRefiners_.registerLevel(hierarchy, level);
             // velGhostsRefiners_.registerLevel(hierarchy, level);
@@ -406,22 +410,22 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, mhdModel.state.rho, mhdModel.state.V, mhdModel.state.P,
-                    mhdModel.state.rhoV, mhdModel.state.Etot, mhdModel.state.J, rhoOld_, Vold_,
-                    Pold_, rhoVold_, EtotOld_, Jold_);
+                    mhdModel.state.rhoV, mhdModel.state.Etot, mhdModel.state.B, rhoOld_, Vold_,
+                    Pold_, rhoVold_, EtotOld_, Bold_);
 
                 resourcesManager_->setTime(rhoOld_, *patch, currentTime);
                 resourcesManager_->setTime(Vold_, *patch, currentTime);
                 resourcesManager_->setTime(Pold_, *patch, currentTime);
                 resourcesManager_->setTime(rhoVold_, *patch, currentTime);
                 resourcesManager_->setTime(EtotOld_, *patch, currentTime);
-                resourcesManager_->setTime(Jold_, *patch, currentTime);
+                resourcesManager_->setTime(Bold_, *patch, currentTime);
 
                 rhoOld_.copyData(mhdModel.state.rho);
                 Vold_.copyData(mhdModel.state.V);
                 Pold_.copyData(mhdModel.state.P);
                 rhoVold_.copyData(mhdModel.state.rhoV);
                 EtotOld_.copyData(mhdModel.state.Etot);
-                Jold_.copyData(mhdModel.state.J);
+                Bold_.copyData(mhdModel.state.B);
             }
         }
 
@@ -497,34 +501,63 @@ namespace amr
             magMaxRefiners_.fill(B, level.getLevelNumber(), fillTime);
         }
 
-        void fillCurrentGhosts(VecFieldT& J, level_t const& level, double const fillTime)
-        {
-            setNaNsOnVecfieldGhosts(J, level);
-            currentGhostsRefiners_.fill(J, level.getLevelNumber(), fillTime);
-        }
-
         std::string name() override { return stratName; }
 
 
 
     private:
+        // Select the field-refinement operators once at construction. order==0 keeps the legacy
+        // per-quantity policies (byte-identical to master); order==2/4 swaps in the composite
+        // runtime kernels. B uses the shared-face magnetic kernel (interior stays Tóth-Roe).
+        void makeRefineOperators_(RefinementConfig const& config)
+        {
+            if (config.order)
+            {
+                auto fieldKernel = [&] {
+                    return std::make_shared<KernelFieldRefineOperator<GridLayoutT, GridT>>(
+                        makeRefineKernel<GridLayoutT, GridT>(config.order));
+                };
+                auto vecKernel = [&] {
+                    return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
+                        makeRefineKernel<GridLayoutT, GridT>(config.order));
+                };
+                auto magKernel = [&] {
+                    return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
+                        makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
+                };
+
+                mhdFluxRefineOp_    = fieldKernel();
+                mhdVecFluxRefineOp_ = vecKernel();
+                mhdFieldRefineOp_   = fieldKernel();
+                mhdVecFieldRefineOp_ = vecKernel();
+                EfieldRefineOp_     = vecKernel();
+                BfieldRefineOp_     = magKernel();
+                BfieldRegridOp_     = magKernel();
+            }
+            else
+            {
+                mhdFluxRefineOp_    = std::make_shared<MHDFluxRefineOp>();
+                mhdVecFluxRefineOp_ = std::make_shared<MHDVecFluxRefineOp>();
+                mhdFieldRefineOp_   = std::make_shared<MHDFieldRefineOp>();
+                mhdVecFieldRefineOp_ = std::make_shared<MHDVecFieldRefineOp>();
+                EfieldRefineOp_     = std::make_shared<ElectricFieldRefineOp>();
+                BfieldRefineOp_     = std::make_shared<MagneticFieldRefineOp>();
+                BfieldRegridOp_     = std::make_shared<MagneticFieldRegridOp>();
+            }
+        }
+
         // Maybe we also need conservative ghost refiners for amr operations, actually quite
         // likely
         void registerGhostComms_(std::unique_ptr<MHDMessengerInfo> const& info)
         {
-            // static refinement for J and E because in MHD they are temporaries, so keeping there
+            // static refinement for E because in MHD it is a temporary, so keeping its
             // state updated after each regrid is not a priority. However if we do not correctly
             // refine on regrid, the post regrid state is not up to date (in our case it will be nan
             // since we nan-initialise) and thus is is better to rely on static refinement, which
-            // uses the state after computation of ampere or CT.
+            // uses the state after computation of CT.
             elecGhostsRefiners_.addStaticRefiners(info->ghostElectric, EfieldRefineOp_,
                                                   info->ghostElectric,
                                                   nonOverwriteInteriorTFfillPattern);
-
-            currentGhostsRefiners_.addStaticRefiners(info->ghostCurrent, EfieldRefineOp_,
-                                                     info->ghostCurrent,
-                                                     nonOverwriteInteriorTFfillPattern);
-
 
             rhoGhostsRefiners_.addTimeRefiners(info->ghostDensity, info->modelDensity,
                                                rhoOld_.name(), mhdFieldRefineOp_, fieldTimeOp_,
@@ -586,8 +619,9 @@ namespace amr
 
             for (size_t i = 0; i < info->ghostMagnetic.size(); ++i)
             {
-                magGhostsRefiners_.addStaticRefiner(
-                    info->ghostMagnetic[i], BfieldRegridOp_, info->ghostMagnetic[i],
+                magGhostsRefiners_.addTimeRefiner(
+                    info->ghostMagnetic[i], info->modelMagnetic, Bold_.name(),
+                    BfieldRegridOp_, vecFieldTimeOp_, info->ghostMagnetic[i],
                     nonOverwriteInteriorTFfillPattern, magneticPatchStratPerGhostRefiner_[i]);
 
                 magMaxRefiners_.addStaticRefiner(
@@ -689,7 +723,7 @@ namespace amr
         VecFieldT rhoVold_{stratName + "rhoVold", core::MHDQuantity::Vector::rhoV};
         FieldT EtotOld_{stratName + "EtotOld", core::MHDQuantity::Scalar::Etot};
 
-        VecFieldT Jold_{stratName + "Jold", core::MHDQuantity::Vector::J};
+        VecFieldT Bold_{stratName + "Bold", core::MHDQuantity::Vector::B};
 
 
         using rm_t = typename MHDModel::resources_manager_type;
@@ -738,7 +772,6 @@ namespace amr
             HydroZpatchGhostRefluxedSchedules;
 
         GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
-        GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
         GhostRefinerPool rhoGhostsRefiners_{resourcesManager_};
         // GhostRefinerPool velGhostsRefiners_{resourcesManager_};
         // GhostRefinerPool pressureGhostsRefiners_{resourcesManager_};
@@ -799,13 +832,15 @@ namespace amr
 
         SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
 
-        RefOp_ptr mhdFluxRefineOp_{std::make_shared<MHDFluxRefineOp>()};
-        RefOp_ptr mhdVecFluxRefineOp_{std::make_shared<MHDVecFluxRefineOp>()};
-        RefOp_ptr mhdFieldRefineOp_{std::make_shared<MHDFieldRefineOp>()};
-        RefOp_ptr mhdVecFieldRefineOp_{std::make_shared<MHDVecFieldRefineOp>()};
-        RefOp_ptr EfieldRefineOp_{std::make_shared<ElectricFieldRefineOp>()};
-        RefOp_ptr BfieldRefineOp_{std::make_shared<MagneticFieldRefineOp>()};
-        RefOp_ptr BfieldRegridOp_{std::make_shared<MagneticFieldRegridOp>()};
+        // built in the ctor body (makeRefineOperators_): legacy policies when order==0,
+        // composite Linear kernels when order==2.
+        RefOp_ptr mhdFluxRefineOp_;
+        RefOp_ptr mhdVecFluxRefineOp_;
+        RefOp_ptr mhdFieldRefineOp_;
+        RefOp_ptr mhdVecFieldRefineOp_;
+        RefOp_ptr EfieldRefineOp_;
+        RefOp_ptr BfieldRefineOp_;
+        RefOp_ptr BfieldRegridOp_;
 
         TimeOp_ptr fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
         TimeOp_ptr vecFieldTimeOp_{std::make_shared<VecFieldTimeInterp>()};
