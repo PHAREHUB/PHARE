@@ -100,6 +100,9 @@ def config():
         ph.ParticleDiagnostics(
             quantity="domain", population_name=pop_name, write_timestamps=timestamps
         )
+
+    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
+
     return sim
 
 

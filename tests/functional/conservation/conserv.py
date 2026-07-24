@@ -91,6 +91,8 @@ def uniform(vth, dl, cells, nbr_steps):
             population_name="protons",
         )
 
+    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
+
     return sim
 
 
