@@ -1,0 +1,43 @@
+name: Feature / change request
+description: Propose a new feature or a change to existing code
+labels: ["feature", "triage"]
+body:
+  - type: textarea
+    id: why
+    attributes:
+      label: Why
+      description: What problem does this solve, or what capability is missing? This is the most important part — the how can come later.
+    validations:
+      required: true
+
+  - type: textarea
+    id: what
+    attributes:
+      label: What
+      description: What would change, at a high level (new capability, behavior change, API, etc.)?
+    validations:
+      required: true
+
+  - type: textarea
+    id: how
+    attributes:
+      label: Ideas on how (optional)
+      description: Any thoughts, hints, or constraints on implementation. Not required — this can be worked out later, in this issue or in the PR.
+    validations:
+      required: false
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches, or reasons to not do this, if any.
+    validations:
+      required: false
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional context
+      description: Related issues/PRs, discussions, references.
+    validations:
+      required: false

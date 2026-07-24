@@ -11,6 +11,21 @@ knowledge_base:
     project_keys: []
   linear:
     team_keys: []
+  code_guidelines:
+    enabled: true
+    filePatterns:
+      - '**/.cursorrules'
+      - .github/copilot-instructions.md
+      - '**/CLAUDE.md'
+      - '**/GEMINI.md'
+      - '**/.cursor/rules/*'
+      - '**/.windsurfrules'
+      - '**/.clinerules/*'
+      - '**/.rules/*'
+      - '**/AGENT.md'
+      - '**/AGENTS.md'
+      - '**/REVIEW.md'
+      - CONTRIBUTING.md
 chat:
   auto_reply: true
 reviews:
@@ -21,6 +36,7 @@ reviews:
   poem: false
   review_status: true
   collapse_walkthrough: true
+  sequence_diagrams: true
   path_filters: []
   path_instructions:
     - path: '**/*.hpp'
@@ -50,6 +66,10 @@ reviews:
     biome:
       enabled: true
     hadolint:
+      enabled: true
+    clang:
+      enabled: true
+    cppcheck:
       enabled: true
   auto_review:
     enabled: true

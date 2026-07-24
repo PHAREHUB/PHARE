@@ -1,0 +1,50 @@
+name: Bug report
+description: Something in PHARE isn't working as expected
+labels: ["bug 🔥", "triage"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: What's wrong
+      description: Describe the bug and what you expected to happen instead.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: reproducible
+    attributes:
+      label: Is it reproducible?
+      options:
+        - "Yes, reliably"
+        - "Yes, intermittently"
+        - "No / unknown"
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro-steps
+    attributes:
+      label: Steps to reproduce
+      description: If reproducible, give the minimal steps, config, or script needed. If not reproducible, explain what you observed and any conditions that seemed related.
+      placeholder: |
+        1. Simulation config / script used (attach or paste)
+        2. Command run
+        3. What happens
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environment
+      description: Commit/branch, build config (cmake flags, compiler), machine (laptop/HPC), dimension/interp order, MPI ranks, anything relevant.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extra
+    attributes:
+      label: Additional details
+      description: Logs, stack traces, output files, related issues/PRs.
+    validations:
+      required: false
