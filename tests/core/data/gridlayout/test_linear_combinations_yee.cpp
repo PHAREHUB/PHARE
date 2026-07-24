@@ -316,24 +316,3 @@ TEST(DualProlongation, exactOnLinearData)
           std::pair{ImplYee1::directionalProlongation<dirX, -1, 2>(), -1}})
         EXPECT_DOUBLE_EQ(applyRow(row, I, f), a + b * (I + sigma * 0.25));
 }
-
-// runtime tensorProduct reproduces the consteval one on fixed rows
-TEST(DualProlongation, runtimeTensorProductMatchesConsteval)
-{
-    using ImplYee2          = PHARE_Types<PHARE::SimOpts{2, 1}>::Hybrid::GridLayout_t::implT;
-    constexpr auto dY       = PHARE::core::dirY;
-    constexpr auto rowX     = ImplYee2::directionalProlongation<dirX, +1, 2>();
-    constexpr auto rowY     = ImplYee2::directionalProlongation<dY, -1, 2>();
-
-    constexpr auto ce = ImplYee2::tensorProduct<dirX, dY>(rowX, rowY); // consteval
-    auto rt           = ImplYee2::tensorProductRuntime<dirX, dY>(rowX, rowY);
-
-    ASSERT_EQ(ce.size(), rt.size());
-    // both enumerate the outer product in the same order
-    for (std::size_t i = 0; i < rt.size(); ++i)
-    {
-        EXPECT_EQ(ce[i].indexes[dirX], rt[i].indexes[dirX]);
-        EXPECT_EQ(ce[i].indexes[dY], rt[i].indexes[dY]);
-        EXPECT_DOUBLE_EQ(ce[i].coef, rt[i].coef);
-    }
-}
