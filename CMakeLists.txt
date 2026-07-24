@@ -38,7 +38,7 @@ include("${PHARE_PROJECT_DIR}/res/cmake/coverage.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/dep.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/cppcheck.cmake")
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 #### post deps config
