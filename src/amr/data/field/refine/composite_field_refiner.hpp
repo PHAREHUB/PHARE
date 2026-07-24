@@ -19,7 +19,7 @@
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
-#include <vector>
+#include <utility>
 
 
 namespace PHARE::amr
@@ -39,9 +39,11 @@ struct NoLimiter
  *   - primal, p=0 : exact copy (coincident node)            → {offset 0, 1.0}
  *   - primal, p=1 : half-point midpoint (Primitive A.2)     → directionalInterp<dir,PrimalToDual,order>
  *   - dual,   p   : ±¼ child ladder (Primitive B)           → directionalProlongation<dir, σ=2p−1, order>
- * The multi-D stencil is the outer product of the rows (tensorProductRuntime). Centering is constant
- * over a refineBox call, so the 2^dim parity-combo stencils are built once per box, then looked up
- * per fine index. Offsets are relative to the anchor I; values are gathered from the coarse field.
+ * The multi-D stencil is the outer product of the rows (consteval tensorProduct). Each 1-D row is
+ * padded to length 3 with zero-coef points so all stencils share one type; the full set of
+ * centering×parity combinations (4^dim of them) is a compile-time table, indexed at runtime per
+ * fine index by centering+parity. Offsets are relative to the anchor I; values are gathered from
+ * the coarse field.
  */
 template<typename GridLayoutT, typename FieldT, std::size_t order, bool sharedFacesOnly = false>
 class CompositeFieldRefiner : public IFieldRefineKernel<GridLayoutT, FieldT>
@@ -90,30 +92,33 @@ public:
             hasNormal = (primalCount == 1);
         }
 
-        // Centering is fixed over the box, so the rows are data-independent.
-        // Build the 2^dim parity-combo stencils once, then look up per fine index.
-        std::array<std::vector<WeightPoint_t>, (1u << dimension)> combos;
-        for (std::size_t combo = 0; combo < combos.size(); ++combo)
-            combos[combo] = makeStencil_(centering, combo);
-
+        // Per-direction centering is fixed over the box; parity varies per fine index. The full
+        // stencil for any (centering, parity) combination is a distinct compile-time array; the
+        // 2-bits-per-direction index built below (bit0 = parity, bit1 = dual) selects the matching
+        // gather at runtime via gatherers_.
         for (auto const fineIndex : phare_box_from<dimension>(intersectionBox))
         {
             auto const anchor = toCoarseIndex<dimension>(fineIndex);
 
-            std::size_t combo = 0;
+            std::size_t combined    = 0; // 2 bits/dir: (dual<<1)|parity
+            std::size_t parityCombo = 0; // 1 bit/dir: parity (for the shared-face skip)
             for (std::size_t d = 0; d < dimension; ++d)
-                combo |= static_cast<std::size_t>(fineIndex[d] - 2 * anchor[d]) << d;
+            {
+                auto const parity = static_cast<std::size_t>(fineIndex[d] - 2 * anchor[d]);
+                std::size_t const dualBit
+                    = (centering[d] == core::QtyCentering::dual) ? 1u : 0u;
+                parityCombo |= parity << d;
+                combined |= ((dualBit << 1) | parity) << (2u * d);
+            }
 
             if constexpr (sharedFacesOnly)
-                if (hasNormal && ((combo >> normalDir) & 1u) != 0u)
+                if (hasNormal && ((parityCombo >> normalDir) & 1u) != 0u)
                     continue; // interior-normal face: left to Tóth-Roe postprocess
 
             auto const anchorLocal = AMRToLocal(anchor, sourceFieldBox);
             auto const fineLocal   = AMRToLocal(fineIndex, destFieldBox);
 
-            double value = 0.;
-            for (auto const& w : combos[combo])
-                value += w.coef * sampleCoarse_(sourceField, anchorLocal, w.indexes);
+            double const value = gatherers_[combined](sourceField, anchorLocal);
 
             assignFine_(destinationField, fineLocal, value);
         }
@@ -123,47 +128,59 @@ public:
     int coarseStencilWidth() const override { return order / 2; }
 
 private:
-    // 1-D weight row for direction d, given its centering and parity (0/1), as a runtime vector.
-    template<std::size_t d>
-    static std::vector<WeightPoint_t> oneDRow_(core::QtyCentering c, std::size_t parity)
+    // 2 bits of choice per direction (dual<<1 | parity) → 4^dim combinations.
+    static constexpr std::size_t nCombined = std::size_t{1} << (2 * dimension);
+
+    // 1-D weight row for direction d and the compile-time choice (dual<<1 | parity). Forwards the
+    // consteval primitive directly; rows differ in length (copy=1, half-point=2, dual-σ±=3) and
+    // tensorProduct sizes the multi-D stencil from them exactly — no padding.
+    template<std::size_t d, std::size_t choice>
+    static consteval auto oneDRow_()
     {
-        std::vector<WeightPoint_t> row;
-        if (c == core::QtyCentering::primal)
-        {
-            if (parity == 0)
-                row.push_back({Point_t{}, 1.0}); // coincident node: exact copy
-            else
-                for (auto const& w :
-                     GridLayoutImpl::template directionalInterp<d, GridLayoutImpl::InterpDir::PrimalToDual, order>())
-                    row.push_back(w);
-        }
-        else // dual: σ = 2·parity − 1
-        {
-            if (parity == 0)
-                for (auto const& w : GridLayoutImpl::template directionalProlongation<d, -1, order>())
-                    row.push_back(w);
-            else
-                for (auto const& w : GridLayoutImpl::template directionalProlongation<d, +1, order>())
-                    row.push_back(w);
-        }
-        return row;
+        if constexpr (choice == 0) // primal, parity 0: coincident node, exact copy
+            return std::array{WeightPoint_t{Point_t{}, 1.0}};
+        else if constexpr (choice == 1) // primal, parity 1: half-point midpoint
+            return GridLayoutImpl::template directionalInterp<
+                d, GridLayoutImpl::InterpDir::PrimalToDual, order>();
+        else if constexpr (choice == 2) // dual, parity 0: σ = −1 child
+            return GridLayoutImpl::template directionalProlongation<d, -1, order>();
+        else // choice == 3 : dual, parity 1: σ = +1 child
+            return GridLayoutImpl::template directionalProlongation<d, +1, order>();
     }
 
-    static std::vector<WeightPoint_t>
-    makeStencil_(std::array<core::QtyCentering, dimension> const& centering, std::size_t combo)
+    // full multi-D stencil (exact size) for the combined choice index (2 bits per direction).
+    template<std::size_t combined>
+    static consteval auto makeStencil_()
     {
-        auto const parity = [combo](std::size_t d) { return (combo >> d) & 1u; };
-
         if constexpr (dimension == 1)
-            return oneDRow_<0>(centering[0], parity(0));
+            return oneDRow_<0, combined & 3u>();
         else if constexpr (dimension == 2)
-            return GridLayoutImpl::template tensorProductRuntime<0, 1>(
-                oneDRow_<0>(centering[0], parity(0)), oneDRow_<1>(centering[1], parity(1)));
+            return GridLayoutImpl::template tensorProduct<0, 1>(
+                oneDRow_<0, combined & 3u>(), oneDRow_<1, (combined >> 2) & 3u>());
         else
-            return GridLayoutImpl::template tensorProductRuntime<0, 1, 2>(
-                oneDRow_<0>(centering[0], parity(0)), oneDRow_<1>(centering[1], parity(1)),
-                oneDRow_<2>(centering[2], parity(2)));
+            return GridLayoutImpl::template tensorProduct<0, 1, 2>(
+                oneDRow_<0, combined & 3u>(), oneDRow_<1, (combined >> 2) & 3u>(),
+                oneDRow_<2, (combined >> 4) & 3u>());
     }
+
+    // gather the coarse contributions for one fine index using the exact stencil of choice
+    // `combined` (its size is baked in at compile time — no zero-coef points iterated).
+    template<std::size_t combined>
+    static double gatherStencil_(FieldT const& src, Point_t const& anchorLocal)
+    {
+        double value = 0.;
+        for (auto const& w : makeStencil_<combined>())
+            value += w.coef * sampleCoarse_(src, anchorLocal, w.indexes);
+        return value;
+    }
+
+    // runtime centering+parity → compile-time stencil: one gather fn per combination, dispatched
+    // by a plain index. Each keeps its natural length; nothing is padded to a common size.
+    using Gatherer_t = double (*)(FieldT const&, Point_t const&);
+    static constexpr std::array<Gatherer_t, nCombined> gatherers_
+        = []<std::size_t... I>(std::index_sequence<I...>) {
+              return std::array<Gatherer_t, nCombined>{&gatherStencil_<I>...};
+          }(std::make_index_sequence<nCombined>{});
 
     static double sampleCoarse_(FieldT const& src, Point_t const& anchorLocal, Point_t const& offset)
     {

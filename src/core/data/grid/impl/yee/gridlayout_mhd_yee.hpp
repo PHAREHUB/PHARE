@@ -8,7 +8,6 @@
 
 
 #include <array>
-#include <vector>
 
 namespace PHARE::core::mhd
 {
@@ -683,54 +682,6 @@ public:
                 }
         return result;
     }
-
-    // Runtime tensor-product: works with std::vector (returned by oneDRow_ in CompositeFieldRefiner).
-    // like directionalInterp/directionalProlongation output.
-    template<auto dir1, auto dir2>
-    NO_DISCARD static std::vector<WeightPoint<dimension>>
-    tensorProductRuntime(auto const& s1, auto const& s2)
-    {
-        static_assert(dir1 != dir2);
-
-        std::vector<WeightPoint<dimension>> result;
-        result.reserve(s1.size() * s2.size());
-        for (auto const& p1 : s1)
-            for (auto const& p2 : s2)
-            {
-                Point<int, dimension> pt{};
-                if constexpr (dir1 < dimension)
-                    pt[dir1] = p1.indexes[dir1];
-                if constexpr (dir2 < dimension)
-                    pt[dir2] = p2.indexes[dir2];
-                result.push_back({pt, p1.coef * p2.coef});
-            }
-        return result;
-    }
-
-    template<auto dir1, auto dir2, auto dir3>
-    NO_DISCARD static std::vector<WeightPoint<dimension>>
-    tensorProductRuntime(auto const& s1, auto const& s2, auto const& s3)
-    {
-        static_assert(dir1 != dir2 && dir1 != dir3 && dir2 != dir3);
-
-        std::vector<WeightPoint<dimension>> result;
-        result.reserve(s1.size() * s2.size() * s3.size());
-        for (auto const& p1 : s1)
-            for (auto const& p2 : s2)
-                for (auto const& p3 : s3)
-                {
-                    Point<int, dimension> pt{};
-                    if constexpr (dir1 < dimension)
-                        pt[dir1] = p1.indexes[dir1];
-                    if constexpr (dir2 < dimension)
-                        pt[dir2] = p2.indexes[dir2];
-                    if constexpr (dir3 < dimension)
-                        pt[dir3] = p3.indexes[dir3];
-                    result.push_back({pt, p1.coef * p2.coef * p3.coef});
-                }
-        return result;
-    }
-    //
 
     // These functions where none of the centerings are in common could actually be expensive in
     // 3d, because they will return a full cubic stencil. In MHD, they are only used for spatial
