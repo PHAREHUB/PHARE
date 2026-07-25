@@ -6,8 +6,6 @@ __pycache__
 *checkpoint.ipynb*
 Testing
 .idea
-*.png
-*.jpg
 data_out
 .sublime*
 compile_commands.json
