@@ -90,6 +90,9 @@ def populateDict(sim):
     if sim.largest_patch_size is not None:
         add_vector_int("simulation/AMR/largest_patch_size", sim.largest_patch_size)
 
+    add_bool("simulation/AMR/allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
+             sim.allow_patches_smaller_than_minimum_size_to_prevent_overlaps)
+
     add_string("simulation/grid/layout_type", sim.layout)
     add_int("simulation/grid/nbr_cells/x", sim.cells[0])
     add_double("simulation/grid/meshsize/x", sim.dl[0])
@@ -111,7 +114,14 @@ def populateDict(sim):
     add_int("simulation/time_step_nbr", sim.time_step_nbr)
     add_double("simulation/final_time", sim.final_time)
 
-    add_string("simulation/AMR/clustering", sim.clustering)
+    add_string("simulation/AMR/clustering", sim.clustering["method"])
+    if "tile_size" in sim.clustering:
+        add_vector_int("simulation/AMR/tile_size", sim.clustering["tile_size"])
+    if "allow_remote_tile_extent" in sim.clustering:
+        add_bool(
+            "simulation/AMR/allow_remote_tile_extent",
+            sim.clustering["allow_remote_tile_extent"],
+        )
     add_vector_int("simulation/AMR/nesting_buffer", sim.nesting_buffer)
     add_int("simulation/AMR/tag_buffer", sim.tag_buffer)
 

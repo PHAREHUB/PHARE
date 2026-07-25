@@ -646,12 +646,43 @@ def check_hyper_resistivity(**kwargs):
 
 
 def check_clustering(**kwargs):
-    valid_keys = ["berger", "tile"]
+    valid_methods = ["berger", "tile"]
+    valid_tile_keys = {"method", "tile_size", "allow_remote_tile_extent"}
+    valid_berger_keys = {"method"}
+
     clustering = kwargs.get("clustering", "tile")
-    if clustering not in valid_keys:
+
+    if isinstance(clustering, str):
+        clustering = {"method": clustering}
+
+    if not isinstance(clustering, dict):
+        raise ValueError("clustering must be a string or dict")
+
+    method = clustering.get("method", None)
+    if method not in valid_methods:
         raise ValueError(
-            f"Error: clustering type is not supported, supported types are {valid_keys}"
+            f"clustering method '{method}' not supported, must be one of {valid_methods}"
         )
+
+    valid_keys = valid_tile_keys if method == "tile" else valid_berger_keys
+    unknown = set(clustering.keys()) - valid_keys
+    if unknown:
+        raise ValueError(f"Unknown clustering options for '{method}': {unknown}")
+
+    if "tile_size" in clustering:
+        ndim = compute_dimension(kwargs["cells"])
+        ts = clustering["tile_size"]
+        if isinstance(ts, int):
+            clustering["tile_size"] = [ts] * ndim
+        if len(clustering["tile_size"]) != ndim:
+            raise ValueError(
+                f"tile_size length {len(clustering['tile_size'])} != ndim {ndim}"
+            )
+
+    if "allow_remote_tile_extent" in clustering:
+        if not isinstance(clustering["allow_remote_tile_extent"], bool):
+            raise ValueError("allow_remote_tile_extent must be a bool")
+
     return clustering
 
 
@@ -728,6 +759,7 @@ def checker(func):
             "refinement",
             "tagging_threshold",
             "clustering",
+            "allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
             "smallest_patch_size",
             "largest_patch_size",
             "diag_options",
@@ -771,6 +803,9 @@ def checker(func):
 
         kwargs["description"] = kwargs.get("description", None)
 
+        kwargs["allow_patches_smaller_than_minimum_size_to_prevent_overlaps"] = kwargs.get(
+            "allow_patches_smaller_than_minimum_size_to_prevent_overlaps", False
+        )
         kwargs["clustering"] = check_clustering(**kwargs)
 
         kwargs["restart_options"] = check_restart_options(**kwargs)
@@ -1024,7 +1059,7 @@ class Simulation(object):
 
         * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. Used if no `refinement_boxes` are set
         * **tag_buffer** (``int``), default=1, value representing the number of cells by which tagged cells are buffered before clustering into boxes. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
-        * **clustering** (``str``), {"berger", "tile" (default)}, type of clustering to use for AMR. `tile` results in wider patches, less artifacts and better scalability
+        * **clustering** (``str`` or ``dict``), type of clustering to use for AMR. String form: ``"tile"`` (default) or ``"berger"``. Dict form: ``{"method": "tile", "tile_size": 16, "allow_remote_tile_extent": False}``. ``tile_size`` (int or per-dim list, default 8) controls the SAMRAI tile grid granularity — larger values reduce patch overlap risk and produce fewer, larger patches. ``allow_remote_tile_extent`` (bool, default ``True``) — set to ``False`` to disable cross-MPI-rank tile clustering, which eliminates overlap path 1 at the cost of smaller per-rank patches (useful as a diagnostic). ``tile`` results in wider patches, less artifacts and better scalability than ``berger``.
 
         **Expert parameters:**
 

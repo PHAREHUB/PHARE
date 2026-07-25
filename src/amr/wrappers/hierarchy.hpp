@@ -402,6 +402,10 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
         largestPatchSize   = amr["largest_patch_size"].template to<std::vector<int>>();
     }
 
+    hierDB->putBool("allow_patches_smaller_than_minimum_size_to_prevent_overlaps",
+                    amr["allow_patches_smaller_than_minimum_size_to_prevent_overlaps"]
+                        .template to<bool>());
+
     auto addIntDimArray = [](auto& db, auto const& value, auto const& level) {
         int arr[dimension];
         std::fill_n(arr, dimension, value);
