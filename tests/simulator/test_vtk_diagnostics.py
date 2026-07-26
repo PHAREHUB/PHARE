@@ -1,5 +1,8 @@
 #
 
+import os
+import glob
+import h5py
 import unittest
 import itertools
 import numpy as np
@@ -158,6 +161,17 @@ def permute(dic):
     ]
 
 
+def permute_multistep(dic, time_step_nbr=3):
+    # several dumps, so the per step Steps/ index can be checked against itself
+    perms = permute(dic)
+    for perm in perms:
+        perm["simInput"].update(
+            time_step_nbr=time_step_nbr,
+            final_time=time_step_nbr * simArgs["final_time"],
+        )
+    return perms
+
+
 @ddt
 class VTKDiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
@@ -190,6 +204,64 @@ class VTKDiagnosticsTest(SimulatorTest):
                 plot_vtk(local_out + "/EM_E.vtkhdf", f"E{ndim}d_interp{interp}.vtk.png")
             except ModuleNotFoundError:
                 print("WARNING: vtk python module not found - cannot make plots")
+
+    @data(*permute_multistep({}))
+    @unpack
+    def test_steps_index(self, ndim, interp, simInput):
+        print("test_steps_index dim/interp:{}/{}".format(ndim, interp))
+
+        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
+        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+        local_out = self._run(ndim, interp, simInput)
+
+        if cpp.mpi_rank() != 0:
+            return
+
+        files = glob.glob(os.path.join(local_out, "*.vtkhdf"))
+        self.assertGreater(len(files), 0)
+        for path in sorted(files):
+            with h5py.File(path, "r") as h5:
+                self._check_steps_index(h5, ndim, os.path.basename(path))
+
+    def _check_steps_index(self, h5, ndim, name):
+        # lower dimensions are duplicated to fit a 3d view, cf HierarchyData::X_TIMES
+        x_times = [4, 2, 1][ndim - 1]
+        steps = h5["VTKHDF/Steps"]
+        nsteps = int(steps.attrs["NSteps"])
+        self.assertGreater(nsteps, 2)
+
+        for lvl in [key for key in steps if key.startswith("Level")]:
+            offsets = {key: steps[lvl][key] for key in ["AMRBoxOffset", "NumberOfAMRBox"]}
+            offsets["PointDataOffset/data"] = steps[lvl]["PointDataOffset/data"]
+
+            for key, dataset in offsets.items():
+                # int32 saturates at INT32_MAX rather than wrapping, so a dump of more
+                # than 2**31 rows silently pins every later step to the same offset
+                self.assertGreaterEqual(
+                    dataset.dtype.itemsize,
+                    8,
+                    f"{name} {lvl}/{key} is {dataset.dtype}, too narrow past INT32_MAX",
+                )
+
+            boxes = h5["VTKHDF"][lvl]["AMRBox"][:]
+            box_offset = offsets["AMRBoxOffset"][:]
+            nbr_boxes = offsets["NumberOfAMRBox"][:]
+            data_offset = offsets["PointDataOffset/data"][:]
+            self.assertEqual(len(data_offset), nsteps)
+
+            # each step starts where the previous one ended, no step may be skipped
+            boxes_so_far, rows_so_far = 0, 0
+            for step in range(nsteps):
+                self.assertEqual(box_offset[step], boxes_so_far, f"{name} {lvl} step {step}")
+                self.assertEqual(data_offset[step], rows_so_far, f"{name} {lvl} step {step}")
+                for box in boxes[boxes_so_far : boxes_so_far + nbr_boxes[step]]:
+                    # AMRBox holds an inclusive cell box, dumped data is all primal
+                    nodes = [box[2 * d + 1] - box[2 * d] + 2 for d in range(ndim)]
+                    rows_so_far += int(np.prod(nodes)) * x_times
+                boxes_so_far += int(nbr_boxes[step])
+
+            self.assertEqual(rows_so_far, h5["VTKHDF"][lvl]["PointData"]["data"].shape[0])
+            self.assertEqual(boxes_so_far, boxes.shape[0])
 
 
 if __name__ == "__main__":

@@ -14,6 +14,7 @@
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
+#include <cstdint>
 #include <string>
 #include <unordered_map>
 
@@ -110,15 +111,19 @@ struct HierarchyData
 
     std::vector<std::vector<std::array<int, dim * 2>>> flattened_lcl_level_boxes;
     std::vector<std::vector<std::vector<core::Box<int, dim>>>> level_boxes_per_rank;
-    std::vector<std::vector<int>> level_rank_data_size;
-    std::vector<int> n_boxes_per_level, level_data_size;
+    // row/box counts are 64 bit, a single dump of a large 2d/3d run overflows 32 bits
+    std::vector<std::vector<std::size_t>> level_rank_data_size;
+    std::vector<std::size_t> n_boxes_per_level, level_data_size;
 };
 
 
 template<typename Writer>
 class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
-    using FloatType                      = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
+    using FloatType = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
+    // VTKHDF step offsets/counts are 64 bit, as in VTK's own writer (H5T_STD_I64LE)
+    //  32 bits saturates for dumps of more than 2^31 rows of point data
+    using OffsetType                     = std::int64_t;
     using HierData                       = HierarchyData<Writer::dimension>;
     using ModelView                      = Writer::ModelView;
     using physical_quantity_type         = ModelView::physical_quantity_type;
@@ -385,9 +390,9 @@ void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl)
     auto const lvl = std::to_string(ilvl);
 
     h5file.create_resizable_2d_data_set<int, boxValsIn3D>(level_base + lvl + "/AMRBox");
-    h5file.create_resizable_1d_data_set<int>(step_level + lvl + "/AMRBoxOffset");
-    h5file.create_resizable_1d_data_set<int>(step_level + lvl + "/NumberOfAMRBox");
-    h5file.create_resizable_1d_data_set<int>(step_level + lvl + "/PointDataOffset/data");
+    h5file.create_resizable_1d_data_set<OffsetType>(step_level + lvl + "/AMRBoxOffset");
+    h5file.create_resizable_1d_data_set<OffsetType>(step_level + lvl + "/NumberOfAMRBox");
+    h5file.create_resizable_1d_data_set<OffsetType>(step_level + lvl + "/PointDataOffset/data");
 
     auto level_group = h5file.file().getGroup(level_base + lvl);
     if (!level_group.hasAttribute("Spacing"))
@@ -424,7 +429,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/PointDataOffset/data");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-        ds.select({old_size}, {1}).write(data_offset);
+        ds.select({old_size}, {1}).write(static_cast<OffsetType>(data_offset));
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::1");
@@ -453,7 +458,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/NumberOfAMRBox");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-        ds.select({old_size}, {1}).write(total_boxes);
+        ds.select({old_size}, {1}).write(static_cast<OffsetType>(total_boxes));
     }
 
     auto amrbox_ds  = h5file.getDataSet(level_base + lvl + "/AMRBox");
@@ -464,7 +469,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/AMRBoxOffset");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-        ds.select({old_size}, {1}).write(box_offset);
+        ds.select({old_size}, {1}).write(static_cast<OffsetType>(box_offset));
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
