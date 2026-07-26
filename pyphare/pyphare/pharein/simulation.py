@@ -1097,6 +1097,7 @@ class Simulation(object):
         * **resistivity** (``float``), Hybrid Ohm's law resistivity value (default=0.0)
         * **hyper-resistivity** (``float``), Hybrid Ohm's law hyper-resistivity value (default=0.0)
         * **boundary_types** (``str`` or ``tuple``) type of boundary conditions (default is "periodic" for each direction)
+        * **dry_run** (``bool``), default=False (or the `PHARE_DRY_RUN` environment variable if set), builds and validates the simulation - constructing models, populating the dict, building the hierarchy - without actually initializing or advancing it. `Simulator.initialize()`, `advance()` and `run()` become no-ops. Useful to check that a script is well-formed without paying for a real run.
 
     """
 

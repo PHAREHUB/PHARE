@@ -81,7 +81,8 @@ class MaxwellianFluidModel(object):
     profile function above is checked for periodicity at construction time.
     A profile that isn't actually periodic prints a warning; if
     ``Simulation(strict=True)`` was set, it raises instead. This check is
-    skipped for `dry_run` simulations and when restarting.
+    skipped for `dry_run` (see :class:`~pyphare.pharein.Simulation`)
+    simulations and when restarting.
     """
 
     def defaulter(self, input, value):
