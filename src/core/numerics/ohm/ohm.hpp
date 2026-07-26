@@ -12,8 +12,6 @@
 
 #include <array>
 #include <string_view>
-#include <utility>
-#include <variant>
 
 
 namespace PHARE::core
@@ -25,10 +23,10 @@ template<>
 struct EnumTraits<HyperMode>
 {
     static constexpr std::string_view label = "hyper mode";
-    static constexpr std::array<std::pair<std::string_view, HyperMode>, 2> names{{
-        {"constant", HyperMode::constant},
-        {"spatial", HyperMode::spatial},
-    }};
+    static constexpr std::array names{
+        enumEntry("constant", HyperMode::constant),
+        enumEntry("spatial", HyperMode::spatial),
+    };
 };
 
 struct OhmInfo
@@ -67,16 +65,13 @@ public:
     void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
                     VecField const& J, VecField& Enew)
     {
-        // lift the resistive / hyper-resistive runtime flags into compile-time tags, then a
-        // single std::visit dispatches once to the matching specialization: the per-cell E_Eq_
-        // branches only via if constexpr, skipping the projection / laplacian when eta or nu is
-        // zero without ever testing the flags inside the evalOnBox loop.
-        std::visit(
-            [&](auto isResistiveTag, auto isHyperResistiveTag) {
-                solve_<decltype(isResistiveTag)::value, decltype(isHyperResistiveTag)::value>(
-                    n, Ve, Pe, B, J, Enew);
-            },
-            asBoolConstant(isResistive()), asBoolConstant(isHyperResistive()));
+        // lift the resistive / hyper-resistive runtime flags into compile-time tags: the per-cell
+        // E_Eq_ branches only via if constexpr, skipping the projection / laplacian when eta or
+        // nu is zero without ever testing the flags inside the evalOnBox loop.
+        Constexprifier{isResistive(),
+                       isHyperResistive()}([&]<bool isResistiveV, bool isHyperResistiveV>() {
+            solve_<isResistiveV, isHyperResistiveV>(n, Ve, Pe, B, J, Enew);
+        });
     }
 
 private:

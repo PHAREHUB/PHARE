@@ -3,7 +3,9 @@
 
 
 #include "core/utilities/types.hpp"
+#include "core/utilities/meta/enum.hpp"
 
+#include <tuple>
 #include <type_traits>
 #include <variant>
 
@@ -77,6 +79,95 @@ namespace core
             return std::true_type{};
         return std::false_type{};
     }
+
+
+    namespace detail
+    {
+        // bool -> asBoolConstant; scoped enum -> asEnumConstant (needs an EnumTraits<T>
+        // specialization, see enum.hpp). Anything else is a programming error at the call site.
+        template<typename T>
+        auto toConstexprVariant(T const& value)
+        {
+            if constexpr (std::is_same_v<T, bool>)
+                return asBoolConstant(value);
+            else
+            {
+                static_assert(std::is_enum_v<T>,
+                              "Constexprifier only supports bool and scoped enum types");
+                return asEnumConstant(value);
+            }
+        }
+    } // namespace detail
+
+
+    /** @brief Lifts a batch of runtime bool/enum values into compile-time constants.
+     *
+     * Useful when runtime checks are embedded in a compute loop.
+     *
+     * @note enum arguments must have an `EnumTraits<Enum>` specialization (see
+     * core/utilities/meta/enum.hpp) listing every value the enum can take.
+     *
+     * @code
+     * enum class Mode { A, B, C };
+     *
+     * template<>
+     * struct EnumTraits<Mode>
+     * {
+     *     static constexpr std::string_view label = "Mode";
+     *     static constexpr std::array names
+     *     {
+     *         enumEntry("a", Mode::A),
+     *         enumEntry("b", Mode::B),
+     *         enumEntry("c", Mode::C)
+     *     };
+     * };
+     *
+     * bool aCondition = true;
+     * Mode anEnumValue = Mode::B;
+     *
+     * Constexprifier{aCondition, anEnumValue}([&]<bool constCondition, Mode constEnumValue>() {
+     *     for (std::size_t i = 0; i < 10; ++i)
+     *     {
+     *         if constexpr (constCondition)
+     *         {
+     *             // do something
+     *         }
+     *
+     *         if constexpr (constEnumValue == Mode::B)
+     *         {
+     *             // do something
+     *         }
+     *     }
+     * });
+     * @endcode
+     *
+     * @see core::Ohm::operator() in core/numerics/ohm/ohm.hpp (two bools)
+     * @see core::Godunov::operator() in core/numerics/godunov_fluxes/godunov_fluxes.hpp
+     *      (two bools + an enum)
+     */
+    template<typename... Args>
+    struct Constexprifier
+    {
+        explicit Constexprifier(Args const&... args)
+            : values{args...}
+        {
+        }
+
+        void operator()(auto&& fn) const
+        {
+            std::apply(
+                [&](auto const&... vs) {
+                    std::visit(
+                        [&](auto... tags) { fn.template operator()<decltype(tags)::value...>(); },
+                        detail::toConstexprVariant(vs)...);
+                },
+                values);
+        }
+
+        std::tuple<Args...> values;
+    };
+    template<typename... Args>
+    Constexprifier(Args const&...) -> Constexprifier<Args...>;
 
 
     template<typename DimConstant, typename InterpConstant, std::size_t... ValidNbrParticles>

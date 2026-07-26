@@ -17,7 +17,6 @@
 #include <tuple>
 #include <cstddef>
 #include <cstdint>
-#include <variant>
 
 namespace PHARE::core
 {
@@ -229,19 +228,15 @@ public:
             };
 
             // loop at compile time to avoid runtime checks in compute loops
-            std::visit(
-                [&](auto isResistiveTag, auto isHyperResistiveTag, auto hyperModeTag) {
-                    constexpr bool isResistive      = decltype(isResistiveTag)::value;
-                    constexpr bool isHyperResistive = decltype(isHyperResistiveTag)::value;
-
+            Constexprifier{is_resistive_, is_hyper_resistive_, hyper_mode}(
+                [&]<bool isResistive, bool isHyperResistive, HyperMode hyperMode>() {
                     fillHyperbolicFluxes(std::bool_constant < isResistive || isHyperResistive > {});
 
                     if constexpr (isResistive || isHyperResistive)
-                        addResistiveContributions(isResistiveTag, isHyperResistiveTag,
-                                                  hyperModeTag);
-                },
-                asBoolConstant(is_resistive_), asBoolConstant(is_hyper_resistive_),
-                asEnumConstant(hyper_mode));
+                        addResistiveContributions(
+                            std::bool_constant<isResistive>{}, std::bool_constant<isHyperResistive>{},
+                            std::integral_constant<HyperMode, hyperMode>{});
+                });
         });
     }
 

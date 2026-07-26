@@ -5,24 +5,37 @@
 #include <cctype>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <type_traits>
 #include <utility>
 #include <variant>
 
 namespace PHARE::core
 {
-/** @brief reflection-lite for scoped enums: locally specialize EnumTraits<Enum> with
+/**
+ * @brief reflection-lite for scoped enums: locally specialize EnumTraits<Enum> with
  *   static constexpr std::string_view label;   // human name, used in error messages
- *   static constexpr std::array<std::pair<std::string_view, Enum>, N> names;
+ *   static constexpr std::array names{enumEntry("a", Enum::A), enumEntry("b", Enum::B), ...};
  *                                               // {lowercase name -> value} parseable options
  * then fromString<Enum> / toString<Enum> / asEnumConstant<Enum> below work generically.
  *
  * The primary template is intentionally left undefined; each enum provides a specialization.
+ *
+ * @note No matter the namespace your enum lives in, the EnumTraits specialization must be declared
+ * inside the PHARE::core namespace
  */
 template<typename Enum>
 struct EnumTraits;
 
-/** @brief parses a (case-insensitive) string into its EnumTraits<Enum>::names value, throwing
+/** @brief Helper to declare the names table in EnumTraits specializations. */
+template<typename Enum>
+constexpr auto enumEntry(std::string_view name, Enum value)
+{
+    return std::pair{name, value};
+}
+
+/**
+ * @brief parses a (case-insensitive) string into its EnumTraits<Enum>::names value, throwing
  * if no name matches.
  */
 template<typename Enum>
@@ -48,7 +61,8 @@ std::string toString(Enum const value)
 }
 
 
-/** @brief undefined helper whose return type is the variant of std::integral_constant over the
+/**
+ * @brief undefined helper whose return type is the variant of std::integral_constant over the
  * values listed in EnumTraits<Enum>::names; used only to spell EnumConstantVariant_t.
  */
 template<typename Enum, std::size_t... Is>
@@ -61,7 +75,8 @@ using EnumConstantVariant_t = decltype(enumConstantVariant<Enum>(
     std::make_index_sequence<EnumTraits<Enum>::names.size()>{}));
 
 
-/** @brief implementation of asEnumConstant: scans EnumTraits<Enum>::names for the matching
+/**
+ * @brief implementation of asEnumConstant: scans EnumTraits<Enum>::names for the matching
  * value and returns the corresponding variant alternative, throwing if none matches.
  */
 template<typename Enum, std::size_t... Is>
@@ -91,8 +106,7 @@ template<typename Enum>
 auto asEnumConstant(Enum const value)
 {
     static_assert(std::is_enum_v<Enum>, "asEnumConstant requires an enum type");
-    return asEnumConstant_<Enum>(value,
-                                 std::make_index_sequence<EnumTraits<Enum>::names.size()>{});
+    return asEnumConstant_<Enum>(value, std::make_index_sequence<EnumTraits<Enum>::names.size()>{});
 }
 
 } // namespace PHARE::core

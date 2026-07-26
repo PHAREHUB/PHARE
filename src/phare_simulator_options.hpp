@@ -8,7 +8,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
-#include <utility>
 
 namespace PHARE
 {
@@ -28,51 +27,47 @@ namespace core
     struct EnumTraits<MHDOpts::TimeIntegratorType>
     {
         static constexpr std::string_view label = "time integrator type";
-        static constexpr std::array<std::pair<std::string_view, MHDOpts::TimeIntegratorType>, 4>
-            names{{
-                {"euler", MHDOpts::TimeIntegratorType::Euler},
-                {"tvdrk2", MHDOpts::TimeIntegratorType::TVDRK2},
-                {"tvdrk3", MHDOpts::TimeIntegratorType::TVDRK3},
-                {"ssprk4_5", MHDOpts::TimeIntegratorType::SSPRK4_5},
-            }};
+        static constexpr std::array names{
+            enumEntry("euler", MHDOpts::TimeIntegratorType::Euler),
+            enumEntry("tvdrk2", MHDOpts::TimeIntegratorType::TVDRK2),
+            enumEntry("tvdrk3", MHDOpts::TimeIntegratorType::TVDRK3),
+            enumEntry("ssprk4_5", MHDOpts::TimeIntegratorType::SSPRK4_5),
+        };
     };
 
     template<>
     struct EnumTraits<MHDOpts::ReconstructionType>
     {
         static constexpr std::string_view label = "reconstruction type";
-        static constexpr std::array<std::pair<std::string_view, MHDOpts::ReconstructionType>, 5>
-            names{{
-                {"constant", MHDOpts::ReconstructionType::Constant},
-                {"linear", MHDOpts::ReconstructionType::Linear},
-                {"weno3", MHDOpts::ReconstructionType::WENO3},
-                {"wenoz", MHDOpts::ReconstructionType::WENOZ},
-                {"mp5", MHDOpts::ReconstructionType::MP5},
-            }};
+        static constexpr std::array names{
+            enumEntry("constant", MHDOpts::ReconstructionType::Constant),
+            enumEntry("linear", MHDOpts::ReconstructionType::Linear),
+            enumEntry("weno3", MHDOpts::ReconstructionType::WENO3),
+            enumEntry("wenoz", MHDOpts::ReconstructionType::WENOZ),
+            enumEntry("mp5", MHDOpts::ReconstructionType::MP5),
+        };
     };
 
     template<>
     struct EnumTraits<MHDOpts::SlopeLimiterType>
     {
         static constexpr std::string_view label = "slope limiter type";
-        static constexpr std::array<std::pair<std::string_view, MHDOpts::SlopeLimiterType>, 3>
-            names{{
-                {"none", MHDOpts::SlopeLimiterType::None},
-                {"vanleer", MHDOpts::SlopeLimiterType::VanLeer},
-                {"minmod", MHDOpts::SlopeLimiterType::MinMod},
-            }};
+        static constexpr std::array names{
+            enumEntry("none", MHDOpts::SlopeLimiterType::None),
+            enumEntry("vanleer", MHDOpts::SlopeLimiterType::VanLeer),
+            enumEntry("minmod", MHDOpts::SlopeLimiterType::MinMod),
+        };
     };
 
     template<>
     struct EnumTraits<MHDOpts::RiemannSolverType>
     {
         static constexpr std::string_view label = "riemann solver type";
-        static constexpr std::array<std::pair<std::string_view, MHDOpts::RiemannSolverType>, 3>
-            names{{
-                {"rusanov", MHDOpts::RiemannSolverType::Rusanov},
-                {"hll", MHDOpts::RiemannSolverType::HLL},
-                {"hlld", MHDOpts::RiemannSolverType::HLLD},
-            }};
+        static constexpr std::array names{
+            enumEntry("rusanov", MHDOpts::RiemannSolverType::Rusanov),
+            enumEntry("hll", MHDOpts::RiemannSolverType::HLL),
+            enumEntry("hlld", MHDOpts::RiemannSolverType::HLLD),
+        };
     };
 } // namespace core
 

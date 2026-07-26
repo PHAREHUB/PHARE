@@ -18,12 +18,9 @@ class UpwindConstrainedTransportState
     using Field                     = VecField::field_type;
     constexpr static auto dimension = VecField::dimension;
 
-    // jt (transverse interface current) and rhot (transverse interface density) are only needed
-    // when the Hall term or resistivity is active. They are bundled in a holder so they can be
-    // registered / allocated only when necessary, through a runtime resource list: the list is a
-    // reference to persistent storage (this vector), so the resource manager sets buffers on these
-    // members and not on temporaries. The manager recurses into the holder's compile-time list, so
-    // its heterogeneous VecField + Field content is handled the same way as an ion population.
+    // Bundles heterogeneous resources (Fields and VecFields), so they can be exposed by the runtime
+    // resource view list of UpwindConstrainedTransportState. Hence, related memory can be allocated
+    // only when necessary based on a runtime criterion.
     struct TransverseResistiveState
     {
         NO_DISCARD auto getCompileTimeResourcesViewList()
@@ -62,7 +59,7 @@ public:
         // hyper-resistivity implies the Hall term, so isHall || isResistive covers every case in
         // which jt / rhot are consumed (Hall EMF, resistive and hyper-resistive energy fluxes).
         if (isHall || isResistive)
-            resistive_.emplace_back();
+            transverse_state_.emplace_back();
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
@@ -97,33 +94,33 @@ public:
 
     NO_DISCARD std::vector<TransverseResistiveState>& getRunTimeResourcesViewList()
     {
-        return resistive_;
+        return transverse_state_;
     }
     NO_DISCARD std::vector<TransverseResistiveState> const& getRunTimeResourcesViewList() const
     {
-        return resistive_;
+        return transverse_state_;
     }
 
     template<auto direction>
     auto& getJt()
     {
         if constexpr (direction == Direction::X)
-            return resistive_[0].jt_x;
+            return transverse_state_[0].jt_x;
         else if constexpr (direction == Direction::Y)
-            return resistive_[0].jt_y;
+            return transverse_state_[0].jt_y;
         else if constexpr (direction == Direction::Z)
-            return resistive_[0].jt_z;
+            return transverse_state_[0].jt_z;
     }
 
     template<auto direction>
     auto& getRhot() const
     {
         if constexpr (direction == Direction::X)
-            return resistive_[0].rhot_x;
+            return transverse_state_[0].rhot_x;
         else if constexpr (direction == Direction::Y)
-            return resistive_[0].rhot_y;
+            return transverse_state_[0].rhot_y;
         else if constexpr (direction == Direction::Z)
-            return resistive_[0].rhot_z;
+            return transverse_state_[0].rhot_z;
     }
 
     template<auto direction>
@@ -160,11 +157,11 @@ public:
         jT(Component::Z)(idx) = jt.z;
 
         if constexpr (direction == Direction::X)
-            resistive_[0].rhot_x(idx) = rhot;
+            transverse_state_[0].rhot_x(idx) = rhot;
         else if constexpr (direction == Direction::Y)
-            resistive_[0].rhot_y(idx) = rhot;
+            transverse_state_[0].rhot_y(idx) = rhot;
         else if constexpr (direction == Direction::Z)
-            resistive_[0].rhot_z(idx) = rhot;
+            transverse_state_[0].rhot_z(idx) = rhot;
     }
 
     VecField vt_x{"v_t_x", MHDQuantity::Vector::VecFlux_x};
@@ -187,7 +184,9 @@ public:
         dR_z{"dR_z", MHDQuantity::Scalar::ScalarFlux_z};
 
 private:
-    std::vector<TransverseResistiveState> resistive_;
+    // this vector is expected to hold at most one element. This is weird, but this is the only way
+    // the resource manager can handle heterogeneous runtime resources for now.
+    std::vector<TransverseResistiveState> transverse_state_;
 };
 
 } // namespace PHARE::core

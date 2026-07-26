@@ -8,6 +8,7 @@
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/utilities/algorithm.hpp"
 #include "core/utilities/index/index.hpp"
+#include <array>
 #include <cassert>
 #include <cstddef>
 
@@ -332,15 +333,15 @@ public:
     {
         // bt (transverse magnetic field for the energy ExB term) is only needed when resistivity
         // or hyper-resistivity is active, so it is registered / allocated only then, through a
-        // runtime resource list. That list is a reference to this persistent vector, so the
-        // resource manager sets buffers on these members and not on temporaries.
+        // runtime resource list.
         if (isResistive || isHyperResistive)
         {
-            bt_.emplace_back("b_t_x", MHDQuantity::Vector::VecFlux_x);
-            if constexpr (dimension >= 2)
-                bt_.emplace_back("b_t_y", MHDQuantity::Vector::VecFlux_y);
-            if constexpr (dimension >= 3)
-                bt_.emplace_back("b_t_z", MHDQuantity::Vector::VecFlux_z);
+            static constexpr std::array names{"b_t_x", "b_t_y", "b_t_z"};
+            static constexpr std::array quantities{MHDQuantity::Vector::VecFlux_x,
+                                                   MHDQuantity::Vector::VecFlux_y,
+                                                   MHDQuantity::Vector::VecFlux_z};
+            bt_.reserve(dimension);
+            for_N<dimension>([&](auto i) { bt_.emplace_back(names[i], quantities[i]); });
         }
     }
 
