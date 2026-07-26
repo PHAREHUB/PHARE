@@ -1,9 +1,9 @@
 
-=====================
-Run PHARE from python
-=====================
+=========
+Run PHARE
+=========
 
-PHARE can run as a python script.
+PHARE runs as a python script.
 
 Python dependencies
 -------------------
