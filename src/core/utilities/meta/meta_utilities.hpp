@@ -5,8 +5,10 @@
 #include "core/utilities/types.hpp"
 #include "core/utilities/meta/enum.hpp"
 
+#include <concepts>
 #include <tuple>
 #include <type_traits>
+#include <utility>
 #include <variant>
 
 
@@ -72,8 +74,11 @@ namespace core
     /** @brief lifts a runtime bool into a compile-time std::bool_constant (std::false_type /
      * std::true_type) wrapped in a variant, so std::visit can fan out both cases and let the
      * visitor branch via `if constexpr`.
+     *
+     * argument @c value is declared with concept + auto to avoid implicit conversions to bool.
      */
-    inline std::variant<std::false_type, std::true_type> asBoolConstant(bool const value)
+    inline std::variant<std::false_type, std::true_type>
+    asBoolConstant(std::same_as<bool> auto const value)
     {
         if (value)
             return std::true_type{};
@@ -81,23 +86,29 @@ namespace core
     }
 
 
+
     namespace detail
     {
-        // bool -> asBoolConstant; scoped enum -> asEnumConstant (needs an EnumTraits<T>
-        // specialization, see enum.hpp). Anything else is a programming error at the call site.
-        template<typename T>
-        auto toConstexprVariant(T const& value)
+        inline auto toConstexprVariant(std::same_as<bool> auto const value)
         {
-            if constexpr (std::is_same_v<T, bool>)
-                return asBoolConstant(value);
-            else
-            {
-                static_assert(std::is_enum_v<T>,
-                              "Constexprifier only supports bool and scoped enum types");
-                return asEnumConstant(value);
-            }
+            return asBoolConstant(value);
         }
+
+        template<typename Enum>
+        auto toConstexprVariant(Enum const value)
+            requires(std::is_enum_v<Enum>)
+        {
+            return asEnumConstant(value);
+        }
+
+        template<typename T>
+        using ConstexprVariant_t = decltype(toConstexprVariant(std::declval<T const&>()));
+
+        template<typename T>
+        constexpr std::size_t nbrConstexprCases = std::variant_size_v<ConstexprVariant_t<T>>;
     } // namespace detail
+
+
 
 
     /** @brief Lifts a batch of runtime bool/enum values into compile-time constants.
@@ -106,6 +117,9 @@ namespace core
      *
      * @note enum arguments must have an `EnumTraits<Enum>` specialization (see
      * core/utilities/meta/enum.hpp) listing every value the enum can take.
+     *
+     * @note the number of visitor instantiations is the *product* of the per-argument case
+     * counts, and is capped at MAX_CONSTEXPR_PERMUTATIONS by a static_assert.
      *
      * @code
      * enum class Mode { A, B, C };
@@ -148,6 +162,14 @@ namespace core
     template<typename... Args>
     struct Constexprifier
     {
+        /** maximum allowed number of compile-time permutations */
+        static constexpr std::size_t MAX_CONSTEXPR_PERMUTATIONS = 64;
+        /** total number of compile-time instanciations with given arguments */
+        static constexpr std::size_t permutations
+            = (std::size_t{1} * ... * detail::nbrConstexprCases<Args>);
+        static_assert(permutations <= MAX_CONSTEXPR_PERMUTATIONS,
+                      "Constexprifier: permutation budget exceeded");
+
         explicit Constexprifier(Args const&... args)
             : values{args...}
         {
