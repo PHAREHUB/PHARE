@@ -121,14 +121,16 @@ template<typename Writer>
 class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
     using FloatType = std::conditional_t<PHARE_DIAG_DOUBLES, double, float>;
-    // VTKHDF step offsets/counts are 64 bit, as in VTK's own writer (H5T_STD_I64LE)
-    //  32 bits saturates for dumps of more than 2^31 rows of point data
-    using OffsetType                     = std::int64_t;
-    using HierData                       = HierarchyData<Writer::dimension>;
-    using ModelView                      = Writer::ModelView;
-    using physical_quantity_type         = ModelView::physical_quantity_type;
-    using Attributes                     = Writer::Attributes;
-    std::string static inline const base = "/VTKHDF";
+    // on disk type of the Steps/ offsets, mandated by VTK: its own writer stores them as
+    //  vtkIdType / H5T_STD_I64LE. In memory the counts stay std::size_t, which is what
+    //  box.size() and HighFive getDimensions/select/resize give and take. 32 bits here
+    //  saturates at INT32_MAX for dumps of more than 2^31 rows of point data.
+    using VTKOffsetType                        = std::int64_t;
+    using HierData                             = HierarchyData<Writer::dimension>;
+    using ModelView                            = Writer::ModelView;
+    using physical_quantity_type               = ModelView::physical_quantity_type;
+    using Attributes                           = Writer::Attributes;
+    std::string static inline const base       = "/VTKHDF";
     std::string static inline const level_base = base + "/Level";
     std::string static inline const step_level = base + "/Steps/Level";
     auto static inline const level_data_path
@@ -390,9 +392,9 @@ void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl)
     auto const lvl = std::to_string(ilvl);
 
     h5file.create_resizable_2d_data_set<int, boxValsIn3D>(level_base + lvl + "/AMRBox");
-    h5file.create_resizable_1d_data_set<OffsetType>(step_level + lvl + "/AMRBoxOffset");
-    h5file.create_resizable_1d_data_set<OffsetType>(step_level + lvl + "/NumberOfAMRBox");
-    h5file.create_resizable_1d_data_set<OffsetType>(step_level + lvl + "/PointDataOffset/data");
+    h5file.create_resizable_1d_data_set<VTKOffsetType>(step_level + lvl + "/AMRBoxOffset");
+    h5file.create_resizable_1d_data_set<VTKOffsetType>(step_level + lvl + "/NumberOfAMRBox");
+    h5file.create_resizable_1d_data_set<VTKOffsetType>(step_level + lvl + "/PointDataOffset/data");
 
     auto level_group = h5file.file().getGroup(level_base + lvl);
     if (!level_group.hasAttribute("Spacing"))
@@ -429,7 +431,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/PointDataOffset/data");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-        ds.select({old_size}, {1}).write(static_cast<OffsetType>(data_offset));
+        ds.select({old_size}, {1}).write(static_cast<VTKOffsetType>(data_offset));
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::1");
@@ -458,7 +460,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/NumberOfAMRBox");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-        ds.select({old_size}, {1}).write(static_cast<OffsetType>(total_boxes));
+        ds.select({old_size}, {1}).write(static_cast<VTKOffsetType>(total_boxes));
     }
 
     auto amrbox_ds  = h5file.getDataSet(level_base + lvl + "/AMRBox");
@@ -469,7 +471,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
         auto ds             = h5file.getDataSet(step_level + lvl + "/AMRBoxOffset");
         auto const old_size = ds.getDimensions()[0];
         ds.resize({old_size + 1});
-        ds.select({old_size}, {1}).write(static_cast<OffsetType>(box_offset));
+        ds.select({old_size}, {1}).write(static_cast<VTKOffsetType>(box_offset));
     }
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
