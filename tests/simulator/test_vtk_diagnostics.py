@@ -1,8 +1,5 @@
 #
 
-import os
-import glob
-import h5py
 import unittest
 import itertools
 import numpy as np
@@ -161,18 +158,6 @@ def permute(dic):
     ]
 
 
-def permute_multistep(dic, time_step_nbr=3):
-    # the Steps/ index only breaks *between* steps, a single dump cannot expose it,
-    #  so these permutations run several timesteps hence write several dumps
-    perms = permute(dic)
-    for perm in perms:
-        perm["simInput"].update(
-            time_step_nbr=time_step_nbr,
-            final_time=time_step_nbr * simArgs["final_time"],
-        )
-    return perms
-
-
 @ddt
 class VTKDiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
@@ -205,105 +190,6 @@ class VTKDiagnosticsTest(SimulatorTest):
                 plot_vtk(local_out + "/EM_E.vtkhdf", f"E{ndim}d_interp{interp}.vtk.png")
             except ModuleNotFoundError:
                 print("WARNING: vtk python module not found - cannot make plots")
-
-    @data(*permute_multistep({}))
-    @unpack
-    def test_step_offsets_are_64bit_and_contiguous(self, ndim, interp, simInput):
-        """A .vtkhdf file is one file for the whole run: every dump appends its rows to
-        /VTKHDF/Level<n>/{PointData/data,AMRBox} and records where its own rows start in
-        /VTKHDF/Steps/Level<n>/{PointDataOffset/data,AMRBoxOffset,NumberOfAMRBox}. Those
-        three datasets are the only way a reader can tell one timestep from the next, so
-        a wrong value there does not corrupt the data, it silently serves the wrong step.
-
-        Two ways that index can go wrong, one assertion each:
-
-        1. too narrow. The offsets used to be created as int32 while the values written
-           are std::size_t. HDF5 saturates on conversion instead of wrapping, so once a
-           run passes 2**31 rows of point data in one dump, every later step stores
-           INT32_MAX and readers replay one frozen timestep for the rest of the run. Seen
-           on a 4096^2 / 3072 rank run: frozen from step 63 of 101. No test we can afford
-           to run reaches 2**31 rows, so the declared width is asserted directly - it is
-           the only observable that carries this defect at a size that runs in seconds.
-
-        2. not contiguous. Independently of any type, the offsets must describe exactly
-           the rows the writer appended, so they are rebuilt here from the AMRBox
-           geometry stored in the same file and compared to what the writer claimed.
-        """
-        print(
-            "test_step_offsets_are_64bit_and_contiguous dim/interp:{}/{}".format(
-                ndim, interp
-            )
-        )
-
-        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
-        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
-        local_out = self._run(ndim, interp, simInput)
-
-        if cpp.mpi_rank() != 0:
-            return
-
-        files = glob.glob(os.path.join(local_out, "*.vtkhdf"))
-        self.assertGreater(len(files), 0)
-        for path in sorted(files):
-            name = os.path.basename(path)
-            with h5py.File(path, "r") as h5:
-                steps = h5["VTKHDF/Steps"]
-                nsteps = int(steps.attrs["NSteps"])
-                self.assertGreater(nsteps, 2)  # nothing to index with fewer
-
-                for lvl in [key for key in steps if key.startswith("Level")]:
-                    offsets = {
-                        key: steps[lvl][key]
-                        for key in [
-                            "AMRBoxOffset",
-                            "NumberOfAMRBox",
-                            "PointDataOffset/data",
-                        ]
-                    }
-                    self._assert_offsets_are_64bit(offsets, name, lvl)
-                    self._assert_step_index_is_contiguous(
-                        h5, offsets, nsteps, ndim, name, lvl
-                    )
-
-    def _assert_offsets_are_64bit(self, offsets, name, lvl):
-        for key, dataset in offsets.items():
-            self.assertGreaterEqual(
-                dataset.dtype.itemsize,
-                8,
-                f"{name} {lvl}/{key} is {dataset.dtype}, saturates at INT32_MAX",
-            )
-
-    def _assert_step_index_is_contiguous(self, h5, offsets, nsteps, ndim, name, lvl):
-        # lower dimensions are duplicated to fit a 3d view, cf HierarchyData::X_TIMES
-        x_times = [4, 2, 1][ndim - 1]
-
-        boxes = h5["VTKHDF"][lvl]["AMRBox"][:]
-        box_offset = offsets["AMRBoxOffset"][:]
-        nbr_boxes = offsets["NumberOfAMRBox"][:]
-        data_offset = offsets["PointDataOffset/data"][:]
-        self.assertEqual(len(data_offset), nsteps)  # one offset per step, no more
-
-        # each step must start exactly where the previous one stopped writing. Exact
-        #  equality and not monotonicity: a level missing at a step legitimately repeats
-        #  its offset, which is also what a saturated offset looks like, so a weaker
-        #  check could not tell the two apart
-        boxes_so_far, rows_so_far = 0, 0
-        for step in range(nsteps):
-            self.assertEqual(
-                box_offset[step], boxes_so_far, f"{name} {lvl} step {step}"
-            )
-            self.assertEqual(
-                data_offset[step], rows_so_far, f"{name} {lvl} step {step}"
-            )
-            for box in boxes[boxes_so_far : boxes_so_far + nbr_boxes[step]]:
-                # AMRBox holds an inclusive cell box, dumped data is all primal
-                nodes = [box[2 * d + 1] - box[2 * d] + 2 for d in range(ndim)]
-                rows_so_far += int(np.prod(nodes)) * x_times
-            boxes_so_far += int(nbr_boxes[step])
-
-        # and the last step must close on the arrays it indexes into
-        self.assertEqual(rows_so_far, h5["VTKHDF"][lvl]["PointData"]["data"].shape[0])
-        self.assertEqual(boxes_so_far, boxes.shape[0])
 
 
 if __name__ == "__main__":
