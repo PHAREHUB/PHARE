@@ -20,7 +20,7 @@ import os
 import unittest
 
 import numpy as np
-from ddt import data, ddt
+from ddt import ddt
 
 import pyphare.pharein as ph
 from tests.simulator.amr_convergence.amr_convergence_base import ConvergenceTestBase
@@ -124,10 +124,7 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
         )
 
     def amr_simulation(self, order, N, n):
-        extra = {}
         tag = f"o{order}"
-        if order != 0:
-            extra["refinement_order"] = order
         base = f"phare_outputs/{self.name}_amr_convergence/{tag}_N{N}_n{n}"
         return self.simulation(
             refinement="boxes",
@@ -138,7 +135,7 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
                 "options": {"dir": base, "mode": "overwrite"},
             },
             **self._common(N, n),
-            **extra,
+            refinement_order=order,
         )
 
     def uniform_simulation(self, N, n):
@@ -200,24 +197,9 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
         for quantity in ["rho", "rhoV", "Etot"]:
             ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-    @data(2)  # Linear2 runtime kernel
-    def test_spatial_convergence(self, refinement_order):
+    def test_spatial_convergence(self):
         self.check_spatial_order(
-            refinement_order, self.SPATIAL_NS, self.SPATIAL_SIGMA,
-            self.SPATIAL_ORDER_BAND,
-        )
-
-    # legacy default refinement = order-1 refinement (order-0 polynomial;
-    # linear only on non-shared edges/faces). The whistler pins its cost even
-    # more sharply than the alfven case (1.58 there): measured on kaa
-    # 2026-07-09 slope 1.28 (segments 1.36 -> 1.19 still declining), L1 ~ 7x
-    # L0 at N=128 -- the dispersive wave amplifies the C-F pollution.
-    # Documented defect, expected to fail the 2nd-order band until the legacy
-    # op is replaced (an unexpected success flags that it was).
-    @unittest.expectedFailure
-    def test_spatial_convergence_legacy(self):
-        self.check_spatial_order(
-            0, self.SPATIAL_NS, self.SPATIAL_SIGMA, self.SPATIAL_ORDER_BAND
+            2, self.SPATIAL_NS, self.SPATIAL_SIGMA, self.SPATIAL_ORDER_BAND
         )
 
     def test_temporal_sigma_sweep(self):

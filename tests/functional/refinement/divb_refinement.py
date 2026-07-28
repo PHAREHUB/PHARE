@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# divB e2e for the higher-order field-refinement operators (refinement_order 0/2).
+# divB e2e for the composite field-refinement kernels (refinement_order 2).
 #
 # Idea: in the discrete Yee scheme Faraday preserves divB exactly, so on a fine level
 # created by B prolongation, max|divB| is set *purely* by the B refinement at the
@@ -27,7 +27,7 @@
 #             path with a div-free field
 #
 # Run: mpirun -n 12 python -u divb_refinement.py [boxes|tagging] [orders...]
-#   orders    : any of 0 2            (default 0 2)
+#   orders    : refinement orders to run  (default 2, the only supported order)
 
 import sys
 import numpy as np
@@ -62,11 +62,11 @@ FINE_BOX = [[4, 16], [15, 31]]
 # With the Harris Bx(y) init divB is machine-zero analytically (Bx const in x, By identically
 # 0); the evolved+reconstructed coarse floor is ~2e-7 for both modes, and the fine level sits
 # at ~2x that (a refinement-boundary truncation factor), NOT at the O(B/dx)~0.1 a misclassified
-# shared face would give. The contract: fine <= REL_TOL * max(coarse-floor, ABS_TOL) AND fine
-# within REL_TOL of the order-0 baseline (isolates the operator from the init floor). ABS_TOL
-# keeps a non-amplifying operator from tripping on the small coarse-floor noise.
+# shared face would give. The contract: fine <= REL_TOL * max(coarse-floor, ABS_TOL), i.e. the
+# fine level only inherits the floor. ABS_TOL keeps a non-amplifying operator from tripping on
+# the small coarse-floor noise.
 ABS_TOL = 1e-4  # floor below which divB is "already zero" (truncation, not a bug)
-REL_TOL = 5.0   # fine must not exceed REL_TOL x (coarse floor) nor REL_TOL x (order-0 fine)
+REL_TOL = 5.0   # fine must not exceed REL_TOL x (inherited coarse floor)
 
 
 # Shared Harris double-sheet init (both modes). Bx is a function of y ONLY (double tanh,
@@ -208,10 +208,6 @@ def run_variant(mode, order):
 def summarize(mode, orders, res):
     """rank-0 only: print the per-order divB table, True if every order passes."""
     print(f"=== divB {mode} summary ===", flush=True)
-    # baseline = legacy order-0 fine-level divB (operator-vs-legacy isolation). Falls back to
-    # the first order's fine divB if order 0 was not requested.
-    base_per = res.get(0, res[orders[0]])
-    base = base_per[max(base_per.keys())]
     ok = True
     for order in orders:
         per = res[order]
@@ -225,14 +221,12 @@ def summarize(mode, orders, res):
         coarse = per[min(per.keys())]
         ceiling = REL_TOL * max(coarse, ABS_TOL)  # not amplified beyond the inherited floor
         floor_ok = m <= ceiling
-        rel_ok = m <= REL_TOL * base if base else True  # operator vs legacy baseline
-        status = "OK" if (floor_ok and rel_ok) else "FAIL"
-        if not (floor_ok and rel_ok):
+        status = "OK" if floor_ok else "FAIL"
+        if not floor_ok:
             ok = False
         print(
-            f"  {label}: fine={m:.3e}  coarse={coarse:.3e}  base={base:.3e}  "
-            f"fine/coarse={m / coarse if coarse else float('inf'):.2f}  "
-            f"fine/base={m / base if base else float('inf'):.2f}  [{status}]",
+            f"  {label}: fine={m:.3e}  coarse={coarse:.3e}  "
+            f"fine/coarse={m / coarse if coarse else float('inf'):.2f}  [{status}]",
             flush=True,
         )
     print(f"DIVB_{mode.upper()}_OK" if ok else f"DIVB_{mode.upper()}_FAIL", flush=True)
@@ -242,7 +236,7 @@ def summarize(mode, orders, res):
 if __name__ == "__main__":
     argv = sys.argv[1:]
     mode = argv[0] if argv and argv[0] in ("boxes", "tagging") else "boxes"
-    orders = [int(a) for a in argv if a.isdigit()] or [0, 2]
+    orders = [int(a) for a in argv if a.isdigit()] or [2]
 
     res = {o: run_variant(mode, o) for o in orders}
     if cpp.mpi_rank() == 0 and not summarize(mode, orders, res):
