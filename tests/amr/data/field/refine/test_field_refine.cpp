@@ -456,17 +456,15 @@ TEST(compositeRefiner1D, dualChildrenConserveCoarseAverage)
 
     auto run = [&](auto refiner) {
         Grid1D src{"c", HybridQuantity::Scalar::rho, 8u};
-        Grid1D dst{"f", HybridQuantity::Scalar::rho, 16u};
-        for (std::size_t i = 0; i < 8; ++i)
+        Grid1D dst{"f", HybridQuantity::Scalar::rho, std::array<std::uint32_t, 1>{16u}, NaN};
+        for (std::size_t i = 0; i < src.shape()[0]; ++i)
             src(i) = coarse[i];
-        for (std::size_t i = 0; i < 16; ++i)
-            dst(i) = NaN;
 
         refiner.refineBox(src, dst, boxOf<1>({4}, {11}), centering, boxOf<1>({0}, {15}),
                           boxOf<1>({0}, {7}), ratio2(1));
 
-        for (int I = 2; I <= 5; ++I)
-            EXPECT_NEAR(0.5 * (dst(2 * I) + dst(2 * I + 1)), coarse[I], 1e-12);
+        for (int ix = 2; ix <= 5; ++ix)
+            EXPECT_NEAR(0.5 * (dst(2 * ix) + dst(2 * ix + 1)), coarse[ix], 1e-12);
     };
 
     run(CompositeFieldRefiner<GridYee1D, Grid1D, 2>{});
@@ -482,11 +480,9 @@ TEST(compositeRefiner1D, dualRowSumsToOne)
 
     auto run = [&](auto refiner) {
         Grid1D src{"c", HybridQuantity::Scalar::rho, 8u};
-        Grid1D dst{"f", HybridQuantity::Scalar::rho, 16u};
-        for (std::size_t i = 0; i < 8; ++i)
+        Grid1D dst{"f", HybridQuantity::Scalar::rho, std::array<std::uint32_t, 1>{16u}, NaN};
+        for (std::size_t i = 0; i < src.shape()[0]; ++i)
             src(i) = konst;
-        for (std::size_t i = 0; i < 16; ++i)
-            dst(i) = NaN;
         refiner.refineBox(src, dst, boxOf<1>({4}, {11}), centering, boxOf<1>({0}, {15}),
                           boxOf<1>({0}, {7}), ratio2(1));
         for (int f = 4; f <= 11; ++f)
@@ -507,23 +503,21 @@ TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
 
     auto run = [&](auto refiner) {
         Grid2D src{"c", HybridQuantity::Scalar::Bx, 6u, 6u};
-        Grid2D dst{"f", HybridQuantity::Scalar::Bx, 12u, 12u};
-        for (std::size_t ix = 0; ix < 6; ++ix)
-            for (std::size_t iy = 0; iy < 6; ++iy)
+        Grid2D dst{"f", HybridQuantity::Scalar::Bx, std::array<std::uint32_t, 2>{12u, 12u},
+                   NaN};
+        for (std::size_t ix = 0; ix < src.shape()[0]; ++ix)
+            for (std::size_t iy = 0; iy < src.shape()[1]; ++iy)
                 src(ix, iy) = src_at(ix, iy);
-        for (std::size_t ix = 0; ix < 12; ++ix)
-            for (std::size_t iy = 0; iy < 12; ++iy)
-                dst(ix, iy) = NaN;
 
         refiner.refineBox(src, dst, boxOf<2>({4, 4}, {5, 7}), centering, boxOf<2>({0, 0}, {11, 11}),
                           boxOf<2>({0, 0}, {5, 5}), ratio2(2));
 
-        // fine x=4 is a shared (even) face, anchor Ix=2; x=5 is interior (odd) → skipped (NaN)
-        for (int Iy = 2; Iy <= 3; ++Iy)
+        // fine x=4 is a shared (even) face, coarse anchor ix=2; x=5 is interior (odd) → skipped
+        for (int iy = 2; iy <= 3; ++iy)
         {
-            double const c0 = dst(4, 2 * Iy);
-            double const c1 = dst(4, 2 * Iy + 1);
-            EXPECT_NEAR(c0 + c1, 2.0 * src_at(2, Iy), 1e-12);
+            double const c0 = dst(4, 2 * iy);
+            double const c1 = dst(4, 2 * iy + 1);
+            EXPECT_NEAR(c0 + c1, 2.0 * src_at(2, iy), 1e-12);
         }
         EXPECT_TRUE(std::isnan(dst(5, 4))); // interior-normal face untouched
     };

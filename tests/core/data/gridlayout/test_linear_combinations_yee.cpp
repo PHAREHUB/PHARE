@@ -245,30 +245,25 @@ using ImplYee1 = PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t::implT;
 namespace
 {
     // sum of a stencil's coefficients
-    auto coefSum(auto const& row)
+    auto coefSum(auto const& span)
     {
-        double s = 0.;
-        for (auto const& wp : row)
-            s += wp.coef;
-        return s;
+        return PHARE::core::sum_from(span, [](auto const& wp) { return wp.coef; });
     }
 
     // coefficient at a given offset along dirX (0 if absent)
-    auto coefAt(auto const& row, int offset)
+    auto coefAt(auto const& span, int offset)
     {
-        for (auto const& wp : row)
+        for (auto const& wp : span)
             if (wp.indexes[dirX] == offset)
                 return wp.coef;
         return 0.;
     }
 
-    // value the stencil produces from coarse cell-averages u(I+offset) = f(I+offset)
-    auto applyRow(auto const& row, int I, auto&& f)
+    // value the stencil produces from coarse cell-averages u(ix+offset) = f(ix+offset)
+    auto applyRow(auto const& span, int ix, auto&& f)
     {
-        double v = 0.;
-        for (auto const& wp : row)
-            v += wp.coef * f(I + wp.indexes[dirX]);
-        return v;
+        return PHARE::core::sum_from(
+            span, [&](auto const& wp) { return wp.coef * f(ix + wp.indexes[dirX]); });
     }
 } // namespace
 

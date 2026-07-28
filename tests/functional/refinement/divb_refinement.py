@@ -71,8 +71,8 @@ REL_TOL = 5.0   # fine must not exceed REL_TOL x (coarse floor) nor REL_TOL x (o
 
 # Shared Harris double-sheet init (both modes). Bx is a function of y ONLY (double tanh,
 # sheets at 0.3Ly and 0.7Ly), By = Bz_tangential = 0 => divB = 0 to machine precision.
-def _S(y, y0, l):
-    return 0.5 * (1.0 + np.tanh((y - y0) / l))
+def _S(y, y0, width):
+    return 0.5 * (1.0 + np.tanh((y - y0) / width))
 
 
 def bx_harris(x, y):
@@ -205,15 +205,8 @@ def run_variant(mode, order):
     return None
 
 
-if __name__ == "__main__":
-    argv = sys.argv[1:]
-    mode = argv[0] if argv and argv[0] in ("boxes", "tagging") else "boxes"
-    orders = [int(a) for a in argv if a.isdigit()] or [0, 2]
-
-    res = {o: run_variant(mode, o) for o in orders}
-    if cpp.mpi_rank() != 0:
-        sys.exit(0)
-
+def summarize(mode, orders, res):
+    """rank-0 only: print the per-order divB table, True if every order passes."""
     print(f"=== divB {mode} summary ===", flush=True)
     # baseline = legacy order-0 fine-level divB (operator-vs-legacy isolation). Falls back to
     # the first order's fine divB if order 0 was not requested.
@@ -243,4 +236,14 @@ if __name__ == "__main__":
             flush=True,
         )
     print(f"DIVB_{mode.upper()}_OK" if ok else f"DIVB_{mode.upper()}_FAIL", flush=True)
-    sys.exit(0 if ok else 1)
+    return ok
+
+
+if __name__ == "__main__":
+    argv = sys.argv[1:]
+    mode = argv[0] if argv and argv[0] in ("boxes", "tagging") else "boxes"
+    orders = [int(a) for a in argv if a.isdigit()] or [0, 2]
+
+    res = {o: run_variant(mode, o) for o in orders}
+    if cpp.mpi_rank() == 0 and not summarize(mode, orders, res):
+        raise RuntimeError(f"divB {mode}: refinement did not preserve divB")

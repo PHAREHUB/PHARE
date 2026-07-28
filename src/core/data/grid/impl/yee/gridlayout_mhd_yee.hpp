@@ -606,8 +606,6 @@ public:
         static_assert(order == 0 || order == 2,
                       "dual prolongation ladder is order 0 / 2 (degree-2 skipped)");
 
-        constexpr double s = sign;
-
         if constexpr (dir >= dimension)
         {
             return std::array{WeightPoint{Point<int, dimension>{}, 1.0}};
@@ -626,9 +624,9 @@ public:
             }
             else if constexpr (order == 2)
             {
-                return std::array{WeightPoint{make_p(-1), -s / 8.0},
+                return std::array{WeightPoint{make_p(-1), -sign / 8.0},
                                   WeightPoint{make_p(0), 1.0},
-                                  WeightPoint{make_p(1), s / 8.0}};
+                                  WeightPoint{make_p(1), sign / 8.0}};
             }
         }
     }

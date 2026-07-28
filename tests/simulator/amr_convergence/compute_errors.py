@@ -78,7 +78,7 @@ def valid_mask(key, fine_box, ndim=2):
     """1 where this patch's cells belong to the composite grid, 0 where a coarse
     cell is covered by the fine level. fine_box = [lower, upper] in L0 cells."""
     ilvl, lower, upper = key
-    shape = tuple(u - l + 1 for l, u in zip(lower, upper))
+    shape = tuple(up - lo + 1 for lo, up in zip(lower, upper))
     mask = np.ones(shape)
     if ilvl == 0:
         sl = []
@@ -96,23 +96,23 @@ def composite_errors(run, final_time, fine_box, refinement_ratio=2, ndim=2):
     """(per_level eps, composite eps) -- L2-of-L1 over conserved vars."""
     f1 = conserved_fields(run, final_time)
     f0 = conserved_fields(run, 0.0)
-    assert f1.keys() == f0.keys(), (
-        f"patch layout changed between t=0 and t={final_time}: "
-        f"{sorted(f1.keys() ^ f0.keys())}"
-    )
-
-    cell_vol = {0: 1.0, 1: float(refinement_ratio) ** -ndim}  # relative volumes
+    if f1.keys() != f0.keys():
+        raise RuntimeError(
+            f"patch layout changed between t=0 and t={final_time}: "
+            f"{sorted(f1.keys() ^ f0.keys())}"
+        )
     comp_num = {v: 0.0 for v in CONSERVED}
     comp_den = 0.0
     lvl_num, lvl_den = {}, {}
     for key in f1:
         ilvl = key[0]
         mask = valid_mask(key, fine_box, ndim)
-        w = cell_vol[ilvl]
+        w = float(refinement_ratio) ** (-ndim * ilvl)  # relative cell volume
         ln = lvl_num.setdefault(ilvl, {v: 0.0 for v in CONSERVED})
         for v in CONSERVED:
             diff = np.abs(f1[key][v] - f0[key][v])
-            assert diff.shape == mask.shape, (v, diff.shape, mask.shape)
+            if diff.shape != mask.shape:
+                raise RuntimeError(f"{v}: field shape {diff.shape} != mask {mask.shape}")
             comp_num[v] += (diff * mask).sum() * w
             ln[v] += diff.sum()
         comp_den += mask.sum() * w
@@ -129,12 +129,14 @@ def uniform_error(run, final_time):
     """eps for a single-level uniform run (no masking, no volume weights)."""
     f1 = conserved_fields(run, final_time)
     f0 = conserved_fields(run, 0.0)
-    assert f1.keys() == f0.keys()
+    if f1.keys() != f0.keys():
+        raise RuntimeError(f"patch layout changed between t=0 and t={final_time}")
 
     num = {v: 0.0 for v in CONSERVED}
     den = 0.0
     for key in f1:
-        assert key[0] == 0, f"uniform run has a fine level: {key}"
+        if key[0] != 0:
+            raise RuntimeError(f"uniform run has a fine level: {key}")
         for v in CONSERVED:
             num[v] += np.abs(f1[key][v] - f0[key][v]).sum()
         den += f1[key][CONSERVED[0]].size
