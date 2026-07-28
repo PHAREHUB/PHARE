@@ -217,7 +217,7 @@ class KernelFieldRefineOperator : public SAMRAI::hier::RefineOperator
 {
 public:
     static constexpr std::size_t dimension = GridLayoutT::dimension;
-    using PhysicalQuantity                 = typename FieldT::physical_quantity_type;
+    using PhysicalQuantity                 = FieldT::physical_quantity_type;
     using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
     using Kernel_t                         = IFieldRefineKernel<GridLayoutT, FieldT>;
 

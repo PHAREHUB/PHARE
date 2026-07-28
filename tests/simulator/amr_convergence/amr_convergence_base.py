@@ -79,7 +79,9 @@ class ConvergenceTestBase(SimulatorTest):
             n = self.n_steps(N, sigma)
             per_level, composite = self.run_amr_case(order, N, n)
             rows.append((N, composite, per_level))
-            lvls = "  ".join(f"L{l}={e:.3e}" for l, e in sorted(per_level.items()))
+            lvls = "  ".join(
+                f"L{level}={err:.3e}" for level, err in sorted(per_level.items())
+            )
             print(
                 f"N={N:4d}  dt={self.final_time/n:.3e} (n={n})  "
                 f"composite={composite:.3e}  {lvls}"

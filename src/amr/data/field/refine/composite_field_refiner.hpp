@@ -6,6 +6,7 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/utilities/types.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
@@ -19,7 +20,6 @@
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
-#include <utility>
 
 
 namespace PHARE::amr
@@ -75,8 +75,8 @@ public:
         // and skipped below. When it has none (out-of-plane / reduced-dimension component: By,Bz in
         // 1D, Bz in 2D), there is no normal face and no ∇·B interior to protect, so it prolongs like
         // any same-centered (all-dual) quantity — every fine face is filled.
-        std::size_t normalDir = 0;
-        bool hasNormal        = false;
+        [[maybe_unused]] std::size_t normalDir = 0;
+        [[maybe_unused]] bool hasNormal        = false;
         if constexpr (sharedFacesOnly)
         {
             int primalCount = 0;
@@ -176,11 +176,9 @@ private:
 
     // runtime centering+parity → compile-time stencil: one gather fn per combination, dispatched
     // by a plain index. Each keeps its natural length; nothing is padded to a common size.
-    using Gatherer_t = double (*)(FieldT const&, Point_t const&);
-    static constexpr std::array<Gatherer_t, nCombined> gatherers_
-        = []<std::size_t... I>(std::index_sequence<I...>) {
-              return std::array<Gatherer_t, nCombined>{&gatherStencil_<I>...};
-          }(std::make_index_sequence<nCombined>{});
+    using Gatherer_t                 = double (*)(FieldT const&, Point_t const&);
+    static constexpr auto gatherers_ = core::for_N_make_array<nCombined>(
+        [](auto ic) { return Gatherer_t{&gatherStencil_<ic()>}; });
 
     static double sampleCoarse_(FieldT const& src, Point_t const& anchorLocal, Point_t const& offset)
     {
@@ -194,23 +192,10 @@ private:
     }
 
     // preserve the legacy NaN-guard: only fill fine indices not already set
-    static void assignFine_(FieldT& dst, Point_t const& fineLocal, double value)
+    static void assignFine_(FieldT& dst, Point_t const& fineLocal, double const value)
     {
-        if constexpr (dimension == 1)
-        {
-            if (std::isnan(dst(fineLocal[0])))
-                dst(fineLocal[0]) = value;
-        }
-        else if constexpr (dimension == 2)
-        {
-            if (std::isnan(dst(fineLocal[0], fineLocal[1])))
-                dst(fineLocal[0], fineLocal[1]) = value;
-        }
-        else
-        {
-            if (std::isnan(dst(fineLocal[0], fineLocal[1], fineLocal[2])))
-                dst(fineLocal[0], fineLocal[1], fineLocal[2]) = value;
-        }
+        if (auto& dst_val = dst(fineLocal.toArray()); std::isnan(dst_val))
+            dst_val = value;
     }
 };
 
@@ -218,14 +203,11 @@ private:
 // ---- factory (declared in field_refiner_kernel.hpp) ---------------------------------------------
 
 template<typename GridLayoutT, typename FieldT>
-std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
-makeRefineKernel(int order)
+std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int const order)
 {
-    switch (order)
-    {
-        case 2: return std::make_shared<CompositeFieldRefiner<GridLayoutT, FieldT, 2>>();
-        default: throw std::runtime_error("makeRefineKernel: order must be 2 (Linear)");
-    }
+    if (order != 2)
+        throw std::runtime_error("makeRefineKernel: order must be 2 (Linear)");
+    return std::make_shared<CompositeFieldRefiner<GridLayoutT, FieldT, 2>>();
 }
 
 
