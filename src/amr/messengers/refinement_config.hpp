@@ -5,18 +5,17 @@ namespace PHARE::amr
 {
 
 /**
- * @brief Runtime selection of the field-refinement operators.
+ * @brief Runtime selection of the field-refinement order.
  *
- * order == 0 (default) routes every refine-op member to the unchanged legacy templated
- * FieldRefineOperator<...,Policy> (byte-identical to master). order == 2 (Linear)
- * routes the composable members to the runtime KernelFieldRefineOperator built from
- * makeRefineKernel / makeMagneticRefineKernel. Distinct from the EXISTING particle
- * split-operator template param named RefinementParams (MessengerFactory /
- * HybridHybridMessengerStrategy) — do not conflate.
+ * The refine-op members of the messengers are built from the runtime kernels
+ * (makeRefineKernel / makeMagneticRefineKernel), whose stencil is selected by this order.
+ * order == 2 (Linear) is the only supported value for now; this struct is the extension point
+ * for higher orders. Distinct from the EXISTING particle split-operator template param named
+ * RefinementParams (MessengerFactory / HybridHybridMessengerStrategy) — do not conflate.
  */
 struct RefinementConfig
 {
-    int order = 0; // 0 => legacy operators
+    int order = 2;
 };
 
 } // namespace PHARE::amr

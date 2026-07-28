@@ -707,14 +707,11 @@ def check_mhd_parameters(**kwargs):
 def check_refinement_operator(**kwargs):
     """Selects the field-refinement (prolongation) operator order.
 
-    order 0 (default) keeps the legacy per-quantity operators (no behavior change).
-    order 2 = Linear.
+    order 2 (Linear, the default) is currently the only supported order.
     """
-    order = kwargs.get("refinement_order", 0)
-    if order not in (0, 2):
-        raise ValueError(
-            f"Error: refinement_order must be 0 (legacy) or 2 (Linear), got {order}"
-        )
+    order = kwargs.get("refinement_order", 2)
+    if order != 2:
+        raise ValueError(f"Error: refinement_order must be 2 (Linear), got {order}")
 
     return order
 

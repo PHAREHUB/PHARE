@@ -14,7 +14,6 @@
 #include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
-#include "amr/data/field/refine/field_refiner.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
@@ -24,9 +23,6 @@
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
 #include "amr/messengers/refinement_config.hpp"
-#include "amr/data/field/refine/electric_field_refiner.hpp"
-#include "amr/data/field/refine/magnetic_field_init_refiner.hpp"
-#include "amr/data/field/refine/magnetic_field_refiner.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
@@ -81,20 +77,7 @@ namespace amr
         using CoarseToFineRefineOpOld  = RefinementParams::CoarseToFineRefineOpOld;
         using CoarseToFineRefineOpNew  = RefinementParams::CoarseToFineRefineOpNew;
 
-        template<typename Policy>
-        using FieldRefineOp = FieldRefineOperator<GridLayoutT, GridT, Policy>;
-
-        template<typename Policy>
-        using VecFieldRefineOp = VecFieldRefineOperator<VectorFieldDataT, Policy>;
-
-        using DefaultFieldRefineOp    = FieldRefineOp<DefaultFieldRefiner<dimension>>;
-        using DefaultVecFieldRefineOp = VecFieldRefineOp<DefaultFieldRefiner<dimension>>;
-        // using FieldMomentsRefineOp    = FieldRefineOp<FieldMomentsRefiner<dimension>>;
-        // using VecFieldMomentsRefineOp = VecFieldRefineOp<FieldMomentsRefiner<dimension>>;
-        using MagneticFieldInitRefineOp = VecFieldRefineOp<MagneticFieldInitRefiner<dimension>>;
-        using MagneticFieldRefineOp     = VecFieldRefineOp<MagneticFieldRefiner<dimension>>;
-        using ElectricFieldRefineOp     = VecFieldRefineOp<ElectricFieldRefiner<dimension>>;
-        using FieldTimeInterp           = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
+        using FieldTimeInterp = FieldLinearTimeInterpolate<GridLayoutT, GridT>;
 
         using VecFieldTimeInterp
             = VecFieldLinearTimeInterpolate<GridLayoutT, GridT, core::HybridQuantity>;
@@ -745,41 +728,30 @@ namespace amr
         }
 
     private:
-        // Select the field-refinement operators once at construction. order==0 keeps the legacy
-        // per-quantity policies (byte-identical to master); order==2 swaps in the composite
-        // runtime kernels. B uses the shared-face magnetic kernel (interior stays Tóth-Roe).
+        // Select the field-refinement operators once at construction. The composite runtime
+        // kernels are built from the configured order; B uses the shared-face magnetic kernel
+        // (interior stays Tóth-Roe).
         // Particle refine operators (interior / level-ghost) are NOT touched.
         void makeRefineOperators_(RefinementConfig const& config)
         {
-            if (config.order)
-            {
-                auto fieldKernel = [&] {
-                    return std::make_shared<KernelFieldRefineOperator<GridLayoutT, GridT>>(
-                        makeRefineKernel<GridLayoutT, GridT>(config.order));
-                };
-                auto vecKernel = [&] {
-                    return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                        makeRefineKernel<GridLayoutT, GridT>(config.order));
-                };
-                auto magKernel = [&] {
-                    return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                        makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
-                };
+            auto fieldKernel = [&] {
+                return std::make_shared<KernelFieldRefineOperator<GridLayoutT, GridT>>(
+                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+            };
+            auto vecKernel = [&] {
+                return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
+                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+            };
+            auto magKernel = [&] {
+                return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
+                    makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
+            };
 
-                fieldRefineOp_    = fieldKernel();
-                vecFieldRefineOp_ = vecKernel();
-                BInitRefineOp_    = magKernel();
-                BRefineOp_        = magKernel();
-                EfieldRefineOp_   = vecKernel();
-            }
-            else
-            {
-                fieldRefineOp_    = std::make_shared<DefaultFieldRefineOp>();
-                vecFieldRefineOp_ = std::make_shared<DefaultVecFieldRefineOp>();
-                BInitRefineOp_    = std::make_shared<MagneticFieldInitRefineOp>();
-                BRefineOp_        = std::make_shared<MagneticFieldRefineOp>();
-                EfieldRefineOp_   = std::make_shared<ElectricFieldRefineOp>();
-            }
+            fieldRefineOp_    = fieldKernel();
+            vecFieldRefineOp_ = vecKernel();
+            BInitRefineOp_    = magKernel();
+            BRefineOp_        = magKernel();
+            EfieldRefineOp_   = vecKernel();
         }
 
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
@@ -1160,8 +1132,7 @@ namespace amr
         SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
 
 
-        // built in the ctor body (makeRefineOperators_): legacy policies when order==0,
-        // composite Linear kernels when order==2.
+        // built in the ctor body (makeRefineOperators_) from the composite runtime kernels.
         RefOp_ptr fieldRefineOp_;
         RefOp_ptr vecFieldRefineOp_;
 

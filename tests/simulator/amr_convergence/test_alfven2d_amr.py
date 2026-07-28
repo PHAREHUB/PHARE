@@ -12,7 +12,7 @@ import os
 import unittest
 
 import numpy as np
-from ddt import data, ddt
+from ddt import ddt
 
 import pyphare.pharein as ph
 from tests.simulator.amr_convergence.amr_convergence_base import ConvergenceTestBase
@@ -41,9 +41,7 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
     # N=16 is preasymptotic (calibration 2026-07-09: pairwise order 1.44 on
     # the 16->32 segment vs 1.82 on 32->64); the band was calibrated on
     # [32, 64, 128]. Measured on kaa 2026-07-09: order=2 slope 1.91
-    # (segments 1.82 -> 2.00, L1 ~= L0 at every N); order=0 (legacy) slope
-    # 1.58 (segments 1.61 -> 1.56, L1 ~ 3x L0 at N=128 -- C-F refinement
-    # pollution, asymptotic).
+    # (segments 1.82 -> 2.00, L1 ~= L0 at every N).
     SPATIAL_NS = [32, 64, 128]
     SPATIAL_SIGMA = 0.32  # the historical dt = 0.2/N convention
     SPATIAL_ORDER_BAND = (1.70, 2.25)
@@ -97,10 +95,7 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
         )
 
     def amr_simulation(self, order, N, n):
-        extra = {}
         tag = f"o{order}"
-        if order != 0:
-            extra["refinement_order"] = order
         base = f"phare_outputs/{self.name}_amr_convergence/{tag}_N{N}_n{n}"
         return self.simulation(
             refinement="boxes",
@@ -111,7 +106,7 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
                 "options": {"dir": base, "mode": "overwrite"},
             },
             **self._common(N, n),
-            **extra,
+            refinement_order=order,
         )
 
     def uniform_simulation(self, N, n):
@@ -165,22 +160,9 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
         for quantity in ["rho", "rhoV", "Etot"]:
             ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-    @data(2)  # Linear2 runtime kernel
-    def test_spatial_convergence(self, refinement_order):
+    def test_spatial_convergence(self):
         self.check_spatial_order(
-            refinement_order, self.SPATIAL_NS, self.SPATIAL_SIGMA,
-            self.SPATIAL_ORDER_BAND,
-        )
-
-    # the legacy default refinement is really an order-1 refinement (order-0
-    # polynomial; linear only on non-shared edges/faces): measured 1.58 here
-    # (segments 1.61 -> 1.56), so it cannot meet the 2nd-order band --
-    # documented defect, expected to fail until the legacy op is replaced
-    # (an unexpected success flags that it was).
-    @unittest.expectedFailure
-    def test_spatial_convergence_legacy(self):
-        self.check_spatial_order(
-            0, self.SPATIAL_NS, self.SPATIAL_SIGMA, self.SPATIAL_ORDER_BAND
+            2, self.SPATIAL_NS, self.SPATIAL_SIGMA, self.SPATIAL_ORDER_BAND
         )
 
     def test_temporal_sigma_sweep(self):

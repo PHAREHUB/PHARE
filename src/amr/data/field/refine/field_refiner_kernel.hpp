@@ -20,15 +20,12 @@ namespace PHARE::amr
 /**
  * @brief Runtime-dispatched field-refinement seam.
  *
- * Mirrors the contract of the legacy policy functors (constructed per refine() with
- * {centering, destFieldBox, sourceFieldBox, ratio}, then applied per fine index), but hoists
- * the single virtual call to PER OVERLAP BOX granularity: refineBox() receives one intersection
- * box and loops over its fine indices internally, so the virtual-dispatch cost is paid once per
- * box rather than once per index.
+ * A kernel is constructed once per refine operator and applied per overlap box: refineBox()
+ * receives one intersection box, together with {centering, destFieldBox, sourceFieldBox, ratio},
+ * and loops over its fine indices internally, so the virtual-dispatch cost is paid once per box
+ * rather than once per index.
  *
  * Concrete kernels (composite Linear, magnetic shared-face) implement refineBox().
- * order == 0 (legacy) never reaches this seam: the messengers route order-0 to the unchanged
- * templated FieldRefineOperator<...,Policy> instead.
  */
 template<typename GridLayoutT, typename FieldT>
 struct IFieldRefineKernel
@@ -40,7 +37,8 @@ struct IFieldRefineKernel
                            std::array<core::QtyCentering, dimension> const& centering,
                            SAMRAI::hier::Box const& destFieldBox,
                            SAMRAI::hier::Box const& sourceFieldBox,
-                           SAMRAI::hier::IntVector const& ratio) const = 0;
+                           SAMRAI::hier::IntVector const& ratio) const
+        = 0;
 
     /**
      * @brief Coarse-cell stencil half-width this kernel reads around each anchor.
@@ -63,8 +61,7 @@ struct IFieldRefineKernel
  * depend only on the seam.
  */
 template<typename GridLayoutT, typename FieldT>
-std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
-makeRefineKernel(int order);
+std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int order);
 
 /**
  * @brief Build a magnetic shared-face refinement kernel (tangential dual stencil only).
@@ -74,8 +71,7 @@ makeRefineKernel(int order);
  * ∇·B is preserved at every order.
  */
 template<typename GridLayoutT, typename FieldT>
-std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
-makeMagneticRefineKernel(int order);
+std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int order);
 
 
 } // namespace PHARE::amr

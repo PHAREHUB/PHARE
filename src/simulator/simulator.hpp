@@ -37,8 +37,8 @@ namespace PHARE
 {
 
 
-//! Read the optional field-refinement selection from the dict. Absent keys ⇒ order 0 ⇒ legacy
-//! operators (no behavior change vs master).
+//! Read the optional field-refinement selection from the dict. Absent keys ⇒ the RefinementConfig
+//! default order. Only order 2 (Linear) is supported.
 inline PHARE::amr::RefinementConfig
 refinementConfigFromDict(PHARE::initializer::PHAREDict const& dict)
 {
@@ -46,6 +46,9 @@ refinementConfigFromDict(PHARE::initializer::PHAREDict const& dict)
     auto const& refinement = dict["simulation"]["AMR"]["refinement"];
     if (refinement.contains("order"))
         config.order = refinement["order"].template to<int>();
+    if (config.order != 2)
+        throw std::runtime_error("unsupported field refinement order: "
+                                 + std::to_string(config.order) + " (only 2 is supported)");
     return config;
 }
 

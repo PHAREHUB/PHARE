@@ -25,25 +25,19 @@
 namespace PHARE::amr
 {
 
-/** @brief Tag for the unlimited (smooth) prolongation path. */
-struct NoLimiter
-{
-};
-
-
 /**
  * @brief Runtime field-refinement kernel built from the two 1-D primitives tensor-producted.
  *
  * For ratio 2, each fine index maps to a coarse anchor I = floor(f/2) (toCoarseIndex) and a parity
  * p = f − 2I ∈ {0,1} per direction. Per direction the 1-D weight row is chosen by centering+parity:
  *   - primal, p=0 : exact copy (coincident node)            → {offset 0, 1.0}
- *   - primal, p=1 : half-point midpoint (Primitive A.2)     → directionalInterp<dir,PrimalToDual,order>
- *   - dual,   p   : ±¼ child ladder (Primitive B)           → directionalProlongation<dir, σ=2p−1, order>
- * The multi-D stencil is the outer product of the rows (consteval tensorProduct). Each 1-D row is
- * padded to length 3 with zero-coef points so all stencils share one type; the full set of
- * centering×parity combinations (4^dim of them) is a compile-time table, indexed at runtime per
- * fine index by centering+parity. Offsets are relative to the anchor I; values are gathered from
- * the coarse field.
+ *   - primal, p=1 : half-point midpoint (Primitive A.2)     → directionalInterp<dir,PrimalToDual>
+ *   - dual,   p   : ±¼ child ladder (Primitive B)           → directionalProlongation<dir, σ=2p−1>
+ * (both at <order>). The multi-D stencil is the outer product of the rows (consteval
+ * tensorProduct). Each 1-D row is padded to length 3 with zero-coef points so all stencils share
+ * one type; the full set of centering×parity combinations (4^dim of them) is a compile-time
+ * table, indexed at runtime per fine index by centering+parity. Offsets are relative to the anchor
+ * I; values are gathered from the coarse field.
  */
 template<typename GridLayoutT, typename FieldT, std::size_t order, bool sharedFacesOnly = false>
 class CompositeFieldRefiner : public IFieldRefineKernel<GridLayoutT, FieldT>
@@ -73,8 +67,8 @@ public:
         // A B component is primal in at most one direction (its face normal). When it has one
         // (in-plane Bx/By/Bz), the odd-normal interior faces are owned by the Tóth-Roe postprocess
         // and skipped below. When it has none (out-of-plane / reduced-dimension component: By,Bz in
-        // 1D, Bz in 2D), there is no normal face and no ∇·B interior to protect, so it prolongs like
-        // any same-centered (all-dual) quantity — every fine face is filled.
+        // 1D, Bz in 2D), there is no normal face and no ∇·B interior to protect, so it prolongs
+        // like any same-centered (all-dual) quantity — every fine face is filled.
         [[maybe_unused]] std::size_t normalDir = 0;
         [[maybe_unused]] bool hasNormal        = false;
         if constexpr (sharedFacesOnly)
@@ -104,9 +98,8 @@ public:
             std::size_t parityCombo = 0; // 1 bit/dir: parity (for the shared-face skip)
             for (std::size_t d = 0; d < dimension; ++d)
             {
-                auto const parity = static_cast<std::size_t>(fineIndex[d] - 2 * anchor[d]);
-                std::size_t const dualBit
-                    = (centering[d] == core::QtyCentering::dual) ? 1u : 0u;
+                auto const parity         = static_cast<std::size_t>(fineIndex[d] - 2 * anchor[d]);
+                std::size_t const dualBit = (centering[d] == core::QtyCentering::dual) ? 1u : 0u;
                 parityCombo |= parity << d;
                 combined |= ((dualBit << 1) | parity) << (2u * d);
             }
@@ -180,7 +173,8 @@ private:
     static constexpr auto gatherers_ = core::for_N_make_array<nCombined>(
         [](auto ic) { return Gatherer_t{&gatherStencil_<ic()>}; });
 
-    static double sampleCoarse_(FieldT const& src, Point_t const& anchorLocal, Point_t const& offset)
+    static double sampleCoarse_(FieldT const& src, Point_t const& anchorLocal,
+                                Point_t const& offset)
     {
         if constexpr (dimension == 1)
             return src(anchorLocal[0] + offset[0]);
