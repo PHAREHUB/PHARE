@@ -6,8 +6,11 @@
 #include "core/data/grid/gridlayoutimplyee.hpp"
 
 #include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/coarse_cell_round_out.hpp"
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
+#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -18,6 +21,8 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <stdexcept>
+#include <string>
 
 
 
@@ -103,6 +108,26 @@ SAMRAI::hier::IntVector ratio2(std::size_t dim)
 }
 
 constexpr double NaN = std::numeric_limits<double>::quiet_NaN();
+
+std::string boxStr(SAMRAI::hier::Box const& box)
+{
+    auto const dim = box.getDim().getValue();
+    std::string s  = "[(";
+    for (unsigned short d = 0; d < dim; ++d)
+        s += std::to_string(box.lower(d)) + (d + 1 < dim ? "," : "),(");
+    for (unsigned short d = 0; d < dim; ++d)
+        s += std::to_string(box.upper(d)) + (d + 1 < dim ? "," : ")]");
+    return s;
+}
+
+// gtest's EXPECT_EQ cannot see PHARE::amr's operator== for SAMRAI boxes (it is not found by ADL from
+// testing::internal), and a raw byte comparison would also compare BoxIds.
+::testing::AssertionResult boxesEqual(SAMRAI::hier::Box const& lhs, SAMRAI::hier::Box const& rhs)
+{
+    if (PHARE::amr::operator==(lhs, rhs))
+        return ::testing::AssertionSuccess();
+    return ::testing::AssertionFailure() << boxStr(lhs) << " != " << boxStr(rhs);
+}
 } // namespace
 
 
@@ -181,6 +206,261 @@ TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
     };
 
     run(MagneticCompositeRefiner<GridYee2D, Grid2D, 2>{});
+}
+
+
+// ----- the whole-coarse-cell round-out
+// ------------------------------------------------------------
+
+TEST(coarseCellRoundOut, parityHelpersAreFloorBasedOnNegativeIndices)
+{
+    // `i % 2` is -1 on odd negatives, so a `== 1` parity test would silently invert there. These
+    // matter: the measured failing fill boxes really do have lower indices -3, -2, -1.
+    EXPECT_TRUE(isOddIndex(-3));
+    EXPECT_FALSE(isOddIndex(-2));
+    EXPECT_TRUE(isOddIndex(-1));
+    EXPECT_FALSE(isOddIndex(0));
+    EXPECT_TRUE(isOddIndex(1));
+
+    EXPECT_EQ(roundDownToEven(-3), -4);
+    EXPECT_EQ(roundDownToEven(-2), -2);
+    EXPECT_EQ(roundDownToEven(-1), -2);
+    EXPECT_EQ(roundDownToEven(0), 0);
+    EXPECT_EQ(roundDownToEven(1), 0);
+
+    EXPECT_EQ(roundUpToOddIndex(-4), -3);
+    EXPECT_EQ(roundUpToOddIndex(-3), -3);
+    EXPECT_EQ(roundUpToOddIndex(-2), -1);
+    EXPECT_EQ(roundUpToOddIndex(-1), -1);
+    EXPECT_EQ(roundUpToOddIndex(0), 1);
+
+    EXPECT_EQ(roundUpToEvenIndex(-3), -2);
+    EXPECT_EQ(roundUpToEvenIndex(-2), -2);
+    EXPECT_EQ(roundUpToEvenIndex(-1), 0);
+    EXPECT_EQ(roundUpToEvenIndex(0), 0);
+    EXPECT_EQ(roundUpToEvenIndex(1), 2);
+}
+
+
+TEST(coarseCellRoundOut, cellAndFieldBoxesAgreeOnWholeCoarseCells)
+{
+    // the measured failing fill box: one cell row, the lower half of coarse row 32
+    auto const fill    = boxOf<2>({-2, 64}, {81, 64});
+    auto const rounded = roundCellBoxOutToCoarseCells<2>(fill);
+    EXPECT_TRUE(boxesEqual(rounded, boxOf<2>({-2, 64}, {81, 65})));
+
+    // negative, odd on both lower edges (the measured coarse-interp temporary box)
+    EXPECT_TRUE(boxesEqual(roundCellBoxOutToCoarseCells<2>(boxOf<2>({-1, 47}, {80, 63})),
+                           boxOf<2>({-2, 46}, {81, 63})));
+
+    // a field box rounds to the field box of the rounded cell box: dual rows 2I..2J+1, primal
+    // nodes 2I..2J+2
+    std::array<QtyCentering, 2> bxCentering{QtyCentering::primal, QtyCentering::dual}; // Bx
+    EXPECT_TRUE(boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {82, 64}), bxCentering),
+                           boxOf<2>({-2, 64}, {82, 65})));
+
+    std::array<QtyCentering, 2> byCentering{QtyCentering::dual, QtyCentering::primal}; // By
+    EXPECT_TRUE(boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {81, 65}), byCentering),
+                           boxOf<2>({-2, 64}, {81, 66})));
+}
+
+
+TEST(coarseCellRoundOut, wholeCoarseCellsMeansLowerEvenAndUpperOdd)
+{
+    EXPECT_TRUE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {81, 65})));
+    EXPECT_TRUE(isWholeCoarseCells<2>(boxOf<2>({0, 0}, {1, 1})));  // a single coarse cell
+    EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-3, 64}, {81, 65}))); // lower x odd
+    EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {80, 65}))); // upper x even
+    EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {81, 64}))); // upper y even
+    // a rounded-out box always satisfies it, negative indices included
+    EXPECT_TRUE(isWholeCoarseCells<2>(roundCellBoxOutToCoarseCells<2>(boxOf<2>({-3, -1}, {4, 6}))));
+}
+
+
+// ----- magnetic prolongation over a misaligned fill box
+// -------------------------------------------
+//
+// The regression these two guard. SAMRAI fill boxes are not unions of whole coarse cells — a
+// recursive schedule's coarse-interpolation temporary is filled plus a one-cell ring, and one cell
+// is always half a coarse cell. Tóth-Roe reaches exactly one coarse cell, so on such a box it used
+// to read shared faces that lay outside the box and had therefore never been written: NaN B on the
+// fine level, then NaN E, then a particle out of its patch.
+
+namespace
+{
+// Coarse data that is *exactly* discretely divergence-free (unit spacing):
+//   dBx/di + dBy/dj = A + (-A) = 0
+// and non-trivial in both directions, so the Tóth-Roe transverse terms are exercised.
+constexpr double coefA = 0.7, coefG = 0.35, coefD = -0.2, coefC1 = 1.1, coefC2 = -0.4;
+
+double coarseBxAt(int I, int J)
+{
+    return coefA * I + coefG * J + coefC1;
+}
+double coarseByAt(int I, int J)
+{
+    return -coefA * J + coefD * I + coefC2;
+}
+
+// What order-2 prolongation followed by Tóth-Roe must produce. The dual ±¼ ladder is exact on a
+// linear profile, so the shared face at (2I, 2J+p) is coarseBxAt(I,J) ± G/4; Tóth-Roe's base term
+// is exact on a linear profile and its transverse term is a mixed second difference, which vanishes
+// on data with no cross term. Both fine components are again linear, with fine divergence
+// A/2 - A/2 = 0.
+double fineBxAt(int i, int j)
+{
+    return 0.5 * coefA * i + 0.5 * coefG * j - 0.25 * coefG + coefC1;
+}
+double fineByAt(int i, int j)
+{
+    return -0.5 * coefA * j + 0.5 * coefD * i - 0.25 * coefD + coefC2;
+}
+
+constexpr int fieldGhosts = static_cast<int>(GridYee2D::options.field_ghost_width);
+
+using VecFieldData2D = PHARE::amr::TensorFieldData<1, GridYee2D, Grid2D, HybridQuantity>;
+using MagStrategy2D  = MagneticRefinePatchStrategy<int, VecFieldData2D>;
+using FieldGeom2D    = FieldGeometry<GridYee2D, HybridQuantity::Scalar>;
+
+GridYee2D layoutOf(SAMRAI::hier::Box const& cellBox, double dl)
+{
+    std::array<std::uint32_t, 2> nbrCells{static_cast<std::uint32_t>(cellBox.numberCells(0)),
+                                          static_cast<std::uint32_t>(cellBox.numberCells(1))};
+    return GridYee2D{{dl, dl}, nbrCells, Point<double, 2>{0., 0.}, phare_box_from<2>(cellBox)};
+}
+
+//! allocated field box of a layout, in AMR field indices
+SAMRAI::hier::Box ghostFieldBoxOf(GridYee2D const& layout, HybridQuantity::Scalar qty)
+{
+    auto const cells = samrai_box_from(grow(layout.AMRBox(), fieldGhosts));
+    return FieldGeom2D::toFieldBox(cells, qty, layout);
+}
+
+//! the local index of an AMR field index; identical for both centerings (local = amr - lower + g)
+auto localOf(GridYee2D const& layout, int i, int j)
+{
+    return layout.AMRToLocal(Point<int, 2>{i, j});
+}
+
+std::array<Grid2D, 3> nanBFields(GridYee2D const& layout)
+{
+    return {Grid2D{"Bx", layout, HybridQuantity::Scalar::Bx, NaN},
+            Grid2D{"By", layout, HybridQuantity::Scalar::By, NaN},
+            Grid2D{"Bz", layout, HybridQuantity::Scalar::Bz, NaN}};
+}
+} // namespace
+
+
+// A 1-cell-thick fill strip whose lower x is odd and whose single cell row is odd: every edge cuts
+// a coarse cell in half. Round-out (gather side and postprocess side) must make every reconstructed
+// interior face exist, be finite, and be div-free.
+TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInteriorFaces)
+{
+    auto const finePatch   = boxOf<2>({0, 0}, {15, 15});
+    auto const coarsePatch = boxOf<2>({0, 0}, {7, 7});
+
+    auto const fineLayout   = layoutOf(finePatch, 0.1);
+    auto const coarseLayout = layoutOf(coarsePatch, 0.2);
+
+    // deliberately misaligned: lower x odd, upper x even, one cell row at odd y
+    auto const fill = boxOf<2>({1, 3}, {12, 3});
+
+    auto fields = nanBFields(fineLayout);
+
+    // ---- gather the shared faces, exactly as KernelTensorFieldRefineOperator::refine does
+    MagneticCompositeRefiner<GridYee2D, Grid2D, 2> refiner{};
+    std::array bQties{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By};
+    for (std::size_t c = 0; c < bQties.size(); ++c)
+    {
+        Grid2D coarse{"c", coarseLayout, bQties[c], NaN};
+        auto const srcFieldBox = ghostFieldBoxOf(coarseLayout, bQties[c]);
+        for (std::uint32_t lx = 0; lx < coarse.shape()[0]; ++lx)
+            for (std::uint32_t ly = 0; ly < coarse.shape()[1]; ++ly)
+            {
+                int const I    = static_cast<int>(lx) + srcFieldBox.lower(0);
+                int const J    = static_cast<int>(ly) + srcFieldBox.lower(1);
+                coarse(lx, ly) = c == 0 ? coarseBxAt(I, J) : coarseByAt(I, J);
+            }
+
+        auto const dstFieldBox = ghostFieldBoxOf(fineLayout, bQties[c]);
+        auto const overlapBox  = FieldGeom2D::toFieldBox(fill, bQties[c], fineLayout);
+
+        refiner.refineBox(coarse, fields[c], dstFieldBox * overlapBox,
+                          fineLayout.centering(bQties[c]), dstFieldBox, srcFieldBox, ratio2(2));
+    }
+
+    // ---- reconstruct the interior faces, exactly as postprocessRefine does
+    auto const region = MagStrategy2D::reconstructionRegion(
+        fill, samrai_box_from(grow(fineLayout.AMRBox(), fieldGhosts)));
+    EXPECT_TRUE(boxesEqual(region, boxOf<2>({0, 2}, {13, 3}))); // rounded out, no clip needed
+
+    MagStrategy2D::reconstructInteriorFaces(fields, fineLayout, region);
+
+    // every fine face of the region — shared (gathered) and interior (reconstructed) alike — is
+    // finite and equal to the exact prolongation
+    auto const& bx = fields[0];
+    auto const& by = fields[1];
+    std::size_t interiorBx = 0, interiorBy = 0;
+
+    for (auto const& idx :
+         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::Bx, fineLayout)))
+    {
+        auto const loc = localOf(fineLayout, idx[0], idx[1]);
+        ASSERT_TRUE(std::isfinite(bx(loc[0], loc[1])))
+            << "Bx not written at amr (" << idx[0] << "," << idx[1] << ")";
+        EXPECT_NEAR(bx(loc[0], loc[1]), fineBxAt(idx[0], idx[1]), 1e-12);
+        if (idx[0] % 2 != 0)
+            ++interiorBx;
+    }
+
+    for (auto const& idx :
+         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::By, fineLayout)))
+    {
+        auto const loc = localOf(fineLayout, idx[0], idx[1]);
+        ASSERT_TRUE(std::isfinite(by(loc[0], loc[1])))
+            << "By not written at amr (" << idx[0] << "," << idx[1] << ")";
+        EXPECT_NEAR(by(loc[0], loc[1]), fineByAt(idx[0], idx[1]), 1e-12);
+        if (idx[1] % 2 != 0)
+            ++interiorBy;
+    }
+
+    EXPECT_GT(interiorBx, 0u); // the test is only meaningful if faces were reconstructed
+    EXPECT_GT(interiorBy, 0u);
+
+    // and the discrete divergence of every fine cell of the region is zero
+    for (auto const& cell : phare_box_from<2>(region))
+    {
+        auto const bxLo = localOf(fineLayout, cell[0], cell[1]);
+        auto const bxHi = localOf(fineLayout, cell[0] + 1, cell[1]);
+        auto const byHi = localOf(fineLayout, cell[0], cell[1] + 1);
+
+        double const divB = (bx(bxHi[0], bxHi[1]) - bx(bxLo[0], bxLo[1]))
+                            + (by(byHi[0], byHi[1]) - by(bxLo[0], bxLo[1]));
+        EXPECT_NEAR(divB, 0., 1e-12) << "divB at fine cell (" << cell[0] << "," << cell[1] << ")";
+    }
+}
+
+
+// When the fill box already reaches the allocation, round-out is clipped back and can leave a coarse
+// cell half-covered. There is no well-posed reconstruction for such a cell — some of its inputs are
+// faces nothing ever wrote — so this is rejected rather than silently skipped. It cannot happen in
+// any supported configuration (field_ghost_width >= fill_ring + 1 holds everywhere), which is why a
+// deliberately misaligned *allocation* is needed to reach it at all.
+TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
+{
+    // a coarse-interpolation temporary: its box is coarsen(unfilled), so its parity is arbitrary.
+    // lower x odd and upper x even ⇒ the allocated box is misaligned in x whatever the ghost width,
+    // and a fill box reaching that edge cannot be rounded out inside the allocation.
+    auto const fineLayout = layoutOf(boxOf<2>({-1, 0}, {14, 15}), 0.1);
+    auto const ghostBox   = samrai_box_from(grow(fineLayout.AMRBox(), fieldGhosts));
+
+    EXPECT_FALSE(isWholeCoarseCells<2>(ghostBox));
+    EXPECT_THROW(MagStrategy2D::reconstructionRegion(ghostBox, ghostBox), std::runtime_error);
+
+    // an aligned allocation of the same size is accepted, so it really is the parity that is rejected
+    auto const alignedLayout = layoutOf(boxOf<2>({0, 0}, {15, 15}), 0.1);
+    auto const alignedGhosts = samrai_box_from(grow(alignedLayout.AMRBox(), fieldGhosts));
+    EXPECT_NO_THROW(MagStrategy2D::reconstructionRegion(alignedGhosts, alignedGhosts));
 }
 
 
