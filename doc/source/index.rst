@@ -85,7 +85,6 @@ Warning: This documentation is a work in progress. It is not complete and may co
    usage/diagnostics
    usage/load_balancing
    usage/restarts
-   usage/run_from_exe
    usage/examples
 
 

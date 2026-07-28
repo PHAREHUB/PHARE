@@ -44,7 +44,6 @@ first - every other block below depends on it.
     FluidDiagnostics(...)        # ion moment outputs
     ParticleDiagnostics(...)     # particle outputs
     MHDDiagnostics(...)          # MHD fluid outputs
-    MetaDiagnostics(...)         # AMR bookkeeping outputs
     InfoDiagnostics(...)         # run-monitoring outputs
 
     # ------------ END OF OPTIONAL BLOCKS
@@ -90,40 +89,6 @@ derived. Likewise for time, any two of ``time_step``, ``time_step_nbr`` and
    kept exactly as given and ``final_time`` is treated as a target: the
    actual number of steps is rounded to the nearest integer, so the run may
    stop slightly before or after the requested ``final_time``.
-
-Adaptive mesh refinement
--------------------------
-
-Refined regions can be placed in two ways, set by ``refinement``:
-
-- ``refinement="boxes"`` (default): you give the exact boxes to refine, one
-  list per level, in ``refinement_boxes``. Boxes never move.
-- ``refinement="tagging"``: PHARE decides where to refine at run time, based
-  on the local solution. This is what most functional examples in
-  ``tests/functional/`` use.
-
-.. code-block:: python
-
-    # static boxes, one region on level 0
-    Simulation(
-        # ...
-        refinement_boxes={"L0": {"B0": [(10, 10), (50, 50)]}},
-    )
-
-    # dynamic, gradient-based refinement
-    Simulation(
-        # ...
-        refinement="tagging",
-        max_nbr_levels=3,
-        tagging_threshold=0.1,
-        tag_buffer=2,
-    )
-
-.. warning::
-
-   With ``interp_order=1``, ``smallest_patch_size`` cannot be 4 or 5 in any
-   direction (a known upstream SAMRAI limitation). Pick a different value,
-   e.g. 6 or larger, or leave ``smallest_patch_size`` at its default.
 
 Restarts and diagnostics output
 ---------------------------------

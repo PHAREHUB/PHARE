@@ -35,6 +35,16 @@ Writing checkpoints
   keeping only the ``N`` most recent - useful to bound disk usage on a long
   run that checkpoints often.
 
+.. tip::
+
+   On supercomputers, jobs are typically killed after a fixed wall time
+   (e.g. 24h), but you can rarely predict which simulation time the run
+   will have reached by then. Prefer ``elapsed_timestamps`` over
+   ``timestamps`` in that case, e.g. at 10h and 23h, so a checkpoint is
+   guaranteed to be dumped with enough time left before the job is
+   killed - rather than picking simulation timestamps that risk falling
+   right after the job dies.
+
 Resuming from a checkpoint
 -----------------------------
 

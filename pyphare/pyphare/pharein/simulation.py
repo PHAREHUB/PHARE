@@ -1005,21 +1005,23 @@ class Simulation(object):
                     # ....
                     )
 
-    **Macro-particle parameters:**
-
-        * **interp_order** (``int``), 1, 2 or 3 (default=1) particle b-spline order
-        * **particle_pusher** (``str``), algo to push particles (default = "modifiedBoris")
-
-
     **Diagnostics output parameters:**
 
         * **diag_options** (``dict``)
-            * **format** (``str``), {"phareh5" (default), "pharevtkhdf"}, on-disk format of the diagnostics files.
+            * **format** (``str``), {"phareh5" (default), "pharevtkhdf"}, on-disk format of the diagnostics files. See :doc:`../usage/diagnostics` for what each format means.
             * **options** (``dict``)
                 * **dir** (``str``) directory where diagnostics files are written (default : './')
-                * **mode** (``str``), {"overwrite" (default)}, whether existing files in `dir` are overwritten.
-                * **fine_dump_lvl_max** (``int``) if set, diagnostics are only dumped up to this AMR level (coarser levels only); useful to limit output size on deep hierarchies.
-                * **allow_emergency_dumps** (``bool``) if True, allows PHARE to write an out-of-schedule diagnostics dump when the run is interrupted abnormally.
+                * **mode** (``str``), {"overwrite"}, if set to "overwrite", any existing diagnostics file in `dir`
+                  is truncated (wiped) at the start of the run. If omitted (the default), an existing file is
+                  opened and kept as-is instead, so new data is added onto it - useful when restarting a
+                  simulation, so diagnostics keep accumulating in the same file rather than being lost.
+                * **fine_dump_lvl_max** (``int``), default=None. This does not affect the regular diagnostics
+                  dumps, which always cover the whole hierarchy at the times given by each diagnostic's
+                  `write_timestamps`. If set, it additionally triggers an extra dump on every substep (much
+                  more frequent than the regular schedule on refined levels), limited to levels up to and
+                  including `fine_dump_lvl_max`. If left unset (the default), no such extra dump happens at
+                  all - only the regular, whole-hierarchy dumps occur.
+                * **allow_emergency_dumps** (``bool``), default=False, if True, allows PHARE to write an out-of-schedule diagnostics dump when the run is interrupted abnormally.
 
           Note: `diag_options["format"]` (the diagnostics file format) is unrelated to
           the separate, unused-today `diag_export_format` keyword below - the latter is
@@ -1033,21 +1035,49 @@ class Simulation(object):
 
         * **refinement** (``str``), {"boxes" (default), "tagging"}, how refined regions are chosen.
 
-            * "boxes" - refined regions are the fixed, user-given `refinement_boxes`, identical at every time step.
-            * "tagging" - refined regions are recomputed at run time from the solution itself: cells where a gradient-based criterion exceeds `tagging_threshold` are tagged, then clustered into patches (buffered by `tag_buffer`). Refined regions therefore move and grow/shrink as the physics evolves.
+            * "tagging" - refined regions are recomputed at run time from the solution itself: cells where a gradient-based criterion exceeds `tagging_threshold` are tagged, then clustered into patches (buffered by `tag_buffer`). Refined regions therefore move and grow/shrink as the physics evolves. This is the mode used for actual science production runs.
+            * "boxes" - refined regions are the fixed, user-given `refinement_boxes`, identical at every time step. Mostly used in tests, where fully deterministic, reproducible refined regions matter more than adapting to the physics.
 
-        * **tagging_threshold** (``float``), default=0.1, used only when `refinement="tagging"`. Threshold of the tagging criterion above which a cell is flagged for refinement. Lower values tag more cells and produce more/larger refined regions.
+        * **tagging_threshold** (``float``), default=0.1, used only when `refinement="tagging"`. Threshold of the tagging criterion above which a cell is flagged for refinement. Lower values tag more cells and produce more/larger refined regions. See :ref:`tagging-for-refinement` for the underlying theory.
         * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. With `refinement="boxes"` this is derived automatically from the number of levels given in `refinement_boxes`; with `refinement="tagging"` it must be given explicitly (it otherwise silently defaults to 1, i.e. no refinement).
-        * **tag_buffer** (``int``), default=1, value representing the number of cells by which tagged cells are buffered before clustering into boxes. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
-        * **clustering** (``str``), {"berger", "tile" (default)}, type of clustering to use for AMR. `tile` results in wider patches, less artifacts and better scalability
+        * **tag_buffer** (``int``), default=1, number of cells by which each tagged cell is grown, in every direction, before clustering into boxes. E.g. with `tag_buffer=1`, a single tagged cell becomes surrounded by a 1-cell-wide layer of also-tagged cells: 3 tagged cells in 1D, 9 in 2D. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
+        * **clustering** (``str``), {"berger", "tile" (default)}, type of :ref:`clustering` to use for AMR. :ref:`tile <tiling>` results in wider patches, less artifacts and better scalability than :ref:`berger <berger-rigoutsos>`.
 
         **Expert parameters:**
 
         These parameters are more advanced, modify them at your own risk
 
-        * **refined_particle_nbr** (``ìnt``), number of refined particle per coarse particle.
         * **nesting_buffer** (``ìnt``), default=0 minimum gap in coarse cells from the border of a level and any refined patch border
-        * **refinement_boxes**, default=None, {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
+        * **refinement_boxes** (``dict``), default=None, used only when `refinement="boxes"`. Explicitly gives the
+          fixed refined regions to create, level by level.
+
+            * Each key ``"Li"`` (``"L0"``, ``"L1"``, ...) identifies a level. Its value describes the box(es), given
+              in level ``Li``'s own cell-index coordinates, that will be refined into level ``Li+1``. So boxes under
+              ``"L0"`` define where level 1 patches will be, boxes under ``"L1"`` define where level 2 patches will
+              be, and so on.
+            * For a given level, boxes are given as a dict mapping an arbitrary box name (``"B0"``, ``"B1"``, ...,
+              only used to identify boxes in error messages) to a pair of index tuples ``(lower, upper)``: the
+              lower and upper cell indices of that box, inclusive, in x, (x, y) or (x, y, z) depending on the
+              simulation's dimension.
+
+            .. code-block:: python
+
+                refinement_boxes={
+                    "L0": {"B0": [(10,), (19,)]},   # 1D: on L0, cells 10 to 19 become refined into L1
+                    "L1": {"B0": [(30,), (49,)]},   # on L1, cells 30 to 49 (L1's own indexing) become L2
+                }
+
+          would produce a hierarchy with 3 levels (L0, L1, L2), the number of levels being deduced from the number
+          of keys given here (`max_nbr_levels` does not need to be set in that case).
+
+          .. warning::
+
+              These boxes are fixed for the entire simulation: they never move, grow or shrink, regardless of how
+              the physics evolves. Level boundaries therefore stay at the same location for the whole run, which
+              lets high-frequency noise generated at those boundaries accumulate there over time instead of being
+              swept away as a tagging-based refined region would do. For this reason `refinement_boxes` is mostly
+              useful for tests, where deterministic, reproducible refined regions matter more than accuracy - see
+              `refinement="tagging"` above for the mode intended for science production runs.
         * **smallest_patch_size** (``int`` or ``tuple``), minimum number of cells in a patch in each direction
           This parameter cannot be smaller than the number of field ghost nodes
         * **largest_patch_size** (``int`` or ``tuple``), maximum size of a patch in each direction
@@ -1056,18 +1086,44 @@ class Simulation(object):
 
     **Restart parameters:**
 
-    These parameters are used to restart a simulation from a previous state and dump chekpoints.
+    These parameters control both how checkpoints are dumped during a simulation and how a simulation
+    restarts from a previous checkpoint.
 
-        * **restart_options** (``dict``)
-            * **dir** (``str``) path for restart files (default : './')
-            * **mode** (``str``) mode of the restart files
+        * **restart_options** (``dict``), default=None (no restart files are read or written at all)
+            * **dir** (``str``), default="./", path for restart files
+            * **mode** (``str``), default="conserve", mode of the restart files
                 * "conserve"  - (default), will conserve existing files
                 * "overwrite" - will overwrite existing files
 
-            * **restart_time** (``float`` or ``"auto"``) time at which to restart the simulation. If "auto", the latest available restart file in `dir` is used.
-            * **timestamps** (``list``) list of simulation times at which to dump a restart file. Must be in ascending order and consistent with `time_step`.
-            * **elapsed_timestamps** (``list`` of ``float`` seconds or ``datetime.timedelta``) dump a restart file every time this much wall-clock time has elapsed since the simulation started, instead of at fixed simulation times. Can be combined with `timestamps`.
-            * **keep_last** (``int``) if set, only the `keep_last` most recent restart directories are kept - older ones are deleted automatically as new ones are written.
+            * **restart_time** (``float`` or ``"auto"``), default=None (fresh start, not a restart), time at which to restart the simulation. If "auto", the latest available restart file in `dir` is used.
+            * **timestamps** (``list``), default=None, list of simulation times at which to dump a restart file. Must be in ascending order and consistent with `time_step`. If neither this nor `elapsed_timestamps` is set, no restart file is ever dumped.
+            * **elapsed_timestamps** (``list`` of ``float`` seconds or ``datetime.timedelta``), default=None, dump a restart file every time this much wall-clock time has elapsed since the simulation started, instead of at fixed simulation times. Can be combined with `timestamps`.
+            * **keep_last** (``int``), default=None (keep every restart directory ever written, nothing is deleted). If set, only the `keep_last` most recent restart directories are kept - older ones are deleted automatically as new ones are written. It is a count rather than a bool because it expresses *how many* to retain, not just whether to prune at all.
+
+    **Hybrid parameters:**
+
+        These parameters only apply to a Hybrid simulation, i.e. one declared with
+        ``model_options=["HybridModel"]`` (the default, paired with a
+        :class:`~pyphare.pharein.MaxwellianFluidModel` block instead of an
+        :class:`~pyphare.pharein.MHDModel` one). They are ignored on pure-MHD runs.
+
+        * **interp_order** (``int``), 1, 2 or 3 (default=1) particle b-spline order
+        * **particle_pusher** (``str``), algo to push particles (default = "modifiedBoris")
+        * **resistivity** (``float``), default=0.0, Hybrid Ohm's law resistivity value
+        * **hyper-resistivity** (``float``), default=0.0, Hybrid Ohm's law hyper-resistivity value
+
+        **Expert parameters:**
+
+        These parameters are more advanced, modify them at your own risk
+
+        * **refined_particle_nbr** (``ìnt``), number of refined particles per coarse particle. This is not a
+          free parameter: only a handful of values are valid, and which ones depends on `ndim` and
+          `interp_order`. The authoritative list of valid combinations is `possibleSimulators()` in
+          `src/core/utilities/meta/meta_utilities.hpp`, since each combination corresponds to a distinct
+          pre-compiled instantiation of the code - passing a value outside that list raises an error at
+          `Simulation` construction time (mirrored on the Python side in `valid_refined_particle_nbr`,
+          `pyphare/pharein/simulation.py`). If omitted, the first valid value for the given
+          `ndim`/`interp_order` is used as the default.
 
     **MHD parameters:**
 
@@ -1094,8 +1150,6 @@ class Simulation(object):
 
         * **description** (``string``), [default=None] arbitrary string for per simulation context - injected in output files when feasible
         * **strict** (``bool``), turns warnings into errors (default False)
-        * **resistivity** (``float``), Hybrid Ohm's law resistivity value (default=0.0)
-        * **hyper-resistivity** (``float``), Hybrid Ohm's law hyper-resistivity value (default=0.0)
         * **boundary_types** (``str`` or ``tuple``) type of boundary conditions (default is "periodic" for each direction)
         * **dry_run** (``bool``), default=False (or the `PHARE_DRY_RUN` environment variable if set), builds and validates the simulation - constructing models, populating the dict, building the hierarchy - without actually initializing or advancing it. `Simulator.initialize()`, `advance()` and `run()` become no-ops. Useful to check that a script is well-formed without paying for a real run.
 
