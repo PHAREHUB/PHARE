@@ -10,6 +10,7 @@
 
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/utilities/box/amr_box.hpp"
+#include "coarse_cell_round_out.hpp"
 #include "field_refiner_kernel.hpp"
 
 #include <SAMRAI/hier/Box.h>
@@ -86,11 +87,28 @@ public:
             hasNormal = (primalCount == 1);
         }
 
+        // The Tóth-Roe postprocess that owns the interior faces reads the shared faces of the whole
+        // coarse cell, so the shared faces of every coarse cell the region touches must exist —
+        // the same whole-coarse-cell invariant the postprocess rounds its own region out to (see
+        // coarse_cell_round_out.hpp). Round out here too, then re-clip: the box arrives already
+        // clipped to the destination, so rounding can push it past the allocation. This cannot
+        // corrupt anything — assignFine_ writes only slots that are still NaN, so the extra layer
+        // of shared faces fills holes and never overwrites valid data. It also needs no extra
+        // coarse data: for both centerings the rounded-in fine indices share the coarse anchors,
+        // and the stencil reach around them, of the indices already gathered.
+        auto const region = [&]() -> SAMRAI::hier::Box {
+            if constexpr (sharedFacesOnly)
+                if (hasNormal)
+                    return roundFieldBoxOutToCoarseCells<dimension>(intersectionBox, centering)
+                           * destFieldBox;
+            return intersectionBox;
+        }();
+
         // Per-direction centering is fixed over the box; parity varies per fine index. The full
         // stencil for any (centering, parity) combination is a distinct compile-time array; the
         // 2-bits-per-direction index built below (bit0 = parity, bit1 = dual) selects the matching
         // gather at runtime via gatherers_.
-        for (auto const fineIndex : phare_box_from<dimension>(intersectionBox))
+        for (auto const fineIndex : phare_box_from<dimension>(region))
         {
             auto const anchor = toCoarseIndex<dimension>(fineIndex);
 
