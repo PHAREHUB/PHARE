@@ -54,7 +54,11 @@ public:
     SAMRAI::hier::IntVector
     getRefineOpStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
-        return SAMRAI::hier::IntVector(dim, 1); // hard-coded 0th order base interpolation
+        // Zero: the interior-face reconstruction reads no coarse data at all. It reads the *fine*
+        // faces of the coarse cell it is filling, which the gather has already written. The ring
+        // SAMRAI provisions is max(this, every registered refine operator), and the operators
+        // report their own coarse reach, so this returning 0 does not narrow anything.
+        return SAMRAI::hier::IntVector::getZero(dim);
     }
 
 
@@ -89,11 +93,11 @@ public:
      *
      * Rounding out grows each edge by at most one index, so the region stays inside the allocation
      * iff field_ghost_width >= fill_ring + 1. That holds in every configuration we support — the
-     * ring is 1 (the composite refiner is order 2 only), hybrid has 2 ghosts and MHD 6 — so the clip
-     * below never actually bites. If it ever did it would cut a coarse cell back in half, and a
-     * half-covered cell has no well-posed reconstruction: some of its inputs are faces nothing ever
-     * wrote. That is a configuration we do not handle, so say so rather than silently leaving NaN
-     * faces behind for something downstream to sample.
+     * ring is 1 (the composite refiner is order 2 only), hybrid has 2 ghosts and MHD 6 — so the
+     * clip below never actually bites. If it ever did it would cut a coarse cell back in half, and
+     * a half-covered cell has no well-posed reconstruction: some of its inputs are faces nothing
+     * ever wrote. That is a configuration we do not handle, so say so rather than silently leaving
+     * NaN faces behind for something downstream to sample.
      */
     static SAMRAI::hier::Box reconstructionRegion(SAMRAI::hier::Box const& fine_box,
                                                   SAMRAI::hier::Box const& ghost_box)
