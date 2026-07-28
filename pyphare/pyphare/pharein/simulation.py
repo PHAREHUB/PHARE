@@ -723,7 +723,6 @@ def checker(func):
             "refined_particle_nbr",
             "path",
             "nesting_buffer",
-            "diag_export_format",
             "refinement_boxes",
             "refinement",
             "tagging_threshold",
@@ -793,8 +792,6 @@ def checker(func):
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
-        kwargs["diag_export_format"] = kwargs.get("diag_export_format", "hdf5")
-        assert kwargs["diag_export_format"] in ["hdf5"]  # only hdf5 supported for now
 
         largest, smallest = check_patch_size(ndim, **kwargs)
         kwargs["smallest_patch_size"] = smallest
@@ -1015,7 +1012,6 @@ class Simulation(object):
 
         * **diag_options** (``dict``)
             * **path** (``str``) path for outputs (default : './')
-            * **diag_export_format** (``str``) format of the output diagnostics (default= "phareh5")
             * **mode** (``str``) mode of the output diagnostics (default= "overwrite" will write over existing files)
 
 
