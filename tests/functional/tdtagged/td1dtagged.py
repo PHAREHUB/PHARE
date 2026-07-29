@@ -129,6 +129,8 @@ def config(**options):
                 population_name=pop,
             )
 
+    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
+
     return sim
 
 

@@ -740,7 +740,7 @@ namespace amr
             auto levelNumber  = level.getLevelNumber();
             auto& hybridModel = static_cast<HybridModel&>(model);
 
-            PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber))
+            PHARE_LOG_LINE_STR("postSynchronize level " + std::to_string(levelNumber));
 
             // this electric schedule should probably only be a patch ghost one
             // since levelghost nodes are not affected by the coarsening
