@@ -600,8 +600,11 @@ def check_nesting_buffer(ndim, **kwargs):
     if nesting_buffer.size != ndim:
         raise ValueError(f"Error: nesting_buffer must be size {ndim}")
 
-    if (nesting_buffer < 0).any():
-        raise ValueError(f"Error: nesting_buffer({nesting_buffer}) cannot be negative")
+    if (nesting_buffer < 1).any():
+        raise ValueError(
+            f"Error: nesting_buffer({nesting_buffer}) must be at least 1"
+            + " on a simulation with refinement levels"
+        )
 
     smallest_patch_size = kwargs["smallest_patch_size"]
 
