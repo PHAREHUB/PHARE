@@ -88,7 +88,9 @@ public:
     void closeRestartFile() { SamraiLifeCycle::getRestartManager()->closeRestartFile(); }
 
     NO_DISCARD bool isFromRestart() const
-    { return SamraiLifeCycle::getRestartManager()->isFromRestart(); }
+    {
+        return SamraiLifeCycle::getRestartManager()->isFromRestart();
+    }
 
 private:
     std::optional<std::string> static restartFilePath(auto const& dict)
@@ -384,7 +386,7 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
 
     if (amr.contains("nesting_buffer"))
     {
-        std::vector<int> nesting_buffer = amr["nesting_buffer"].template to<std::vector<int>>();
+        std::vector<int> nesting_buffer = amr["nesting_buffer"];
         hierDB->putIntegerVector("proper_nesting_buffer", nesting_buffer);
     }
 

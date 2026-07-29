@@ -594,7 +594,7 @@ def check_nesting_buffer(ndim, **kwargs):
         return None
 
     # SAMRAI itself defaults proper_nesting_buffer to 1 and warns when it is 0
-    # (subprojects/samrai/source/SAMRAI/hier/PatchHierarchy.cpp:57,306-330)
+    # (subprojects/samrai/source/SAMRAI/hier/PatchHierarchy.cpp)
     nesting_buffer = phare_utilities.np_array_ify(kwargs.get("nesting_buffer", 1), ndim)
 
     if nesting_buffer.size != ndim:
