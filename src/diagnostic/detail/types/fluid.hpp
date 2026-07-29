@@ -6,6 +6,7 @@
 
 #include "diagnostic/detail/h5typewriter.hpp"
 
+#include <algorithm>
 #include <stdexcept>
 
 namespace PHARE::diagnostic::h5
@@ -95,25 +96,33 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
             modelView.fillPopMomTensor(lvl, h5Writer.timestamp(), i);
     };
 
-    auto const interpolate_pop = [&](auto& pop, auto& layout, auto&&...) {
+    auto const interpolate_domain = [&](auto& pop, auto& layout, auto&&...) {
         auto& pop_momentum_tensor = pop.momentumTensor();
         pop_momentum_tensor.zero();
         interpolator(pop.domainParticles(), pop_momentum_tensor, layout, pop.mass());
+    };
+
+    auto const interpolate_ghost = [&](auto& pop, auto& layout, auto&&...) {
+        auto& pop_momentum_tensor = pop.momentumTensor();
         interpolator(pop.levelGhostParticlesOld(), pop_momentum_tensor, layout, pop.mass());
     };
 
     if (isActiveDiag(diagnostic, "/ions/", "momentum_tensor"))
     {
-        auto const interpolate = [&](auto& layout, auto&&...) {
-            for (auto& pop : ions)
-                interpolate_pop(pop, layout);
-        };
-        modelView.visitHierarchy(interpolate, minLvl, maxLvl);
+        modelView.visitHierarchy(
+            [&](auto& layout, auto&&...) {
+                std::ranges::for_each(ions, [&](auto& pop) { interpolate_domain(pop, layout); });
+            },
+            minLvl, maxLvl);
 
         modelView.onLevels(fill_schedules, minLvl, maxLvl);
 
-        modelView.visitHierarchy( //
-            [&](auto&&...) { ions.computeFullMomentumTensor(); }, minLvl, maxLvl);
+        modelView.visitHierarchy(
+            [&](auto& layout, auto&&...) {
+                std::ranges::for_each(ions, [&](auto& pop) { interpolate_ghost(pop, layout); });
+                ions.computeFullMomentumTensor();
+            },
+            minLvl, maxLvl);
     }
     else // if not computing total momentum tensor, user may want to compute it for some pop
     {
@@ -124,11 +133,13 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
             if (!isActiveDiag(diagnostic, tree, "momentum_tensor"))
                 continue;
 
-            auto const interpolate = [&](auto& layout, auto&&...) { interpolate_pop(pop, layout); };
-
-            modelView.visitHierarchy(interpolate, minLvl, maxLvl);
+            modelView.visitHierarchy(
+                [&](auto& layout, auto&&...) { interpolate_domain(pop, layout); }, minLvl, maxLvl);
 
             modelView.onLevels(fill_schedules, minLvl, maxLvl);
+
+            modelView.visitHierarchy(
+                [&](auto& layout, auto&&...) { interpolate_ghost(pop, layout); }, minLvl, maxLvl);
         }
     }
 }
