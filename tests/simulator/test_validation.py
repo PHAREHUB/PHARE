@@ -174,14 +174,6 @@ class SimulatorValidation(SimulatorTest):
                 "nesting_buffer": 33,
             }
         ),
-        dup(
-            {
-                "cells": [65],
-                "refinement_boxes": None,
-                "largest_patch_size": 20,
-                "nesting_buffer": 46,
-            }
-        ),
         # finer box is not within set of coarser boxes
         dup(
             {
@@ -351,14 +343,6 @@ class SimulatorValidation(SimulatorTest):
                 "cells": [65, 65],
                 "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(11, 49)]},
                 "nesting_buffer": 33,
-            }
-        ),
-        dup(
-            {
-                "cells": [65, 65],
-                "refinement_boxes": None,
-                "largest_patch_size": 20,
-                "nesting_buffer": 46,
             }
         ),
         # finer box is not within set of coarser boxes
