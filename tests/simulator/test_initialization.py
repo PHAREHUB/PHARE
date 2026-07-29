@@ -122,7 +122,7 @@ class InitializationTest(SimulatorTest):
             dim,
             interp_order,
             "moments",
-            {"L0": {"B0": nDBox(dim, 10, 19)}},
+            {"L0": {"B0": nDBox(dim, 10, 18)}},
             beam=True,
             diag_outputs=f"test_bulkV/{dim}/{interp_order}/{self.ddt_test_id()}",
             **kwargs,
