@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 
+
+# small 2d Harris 3 level test to reproduce regridding conditions where some levels are
+#  expected to be destroyed and recreated
+
 import numpy as np
 import pyphare.pharein as ph
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
-from pyphare.pharesee.hierarchy.patchdata import ParticleData
+from pyphare.pharesee.hierarchy.patchdata import FieldData
 from pyphare.simulator.simulator import Simulator, startMPI
 
 from pyphare import cpp
@@ -16,14 +20,6 @@ time_step = 0.005
 time_step_nbr = 4
 final_time = time_step * time_step_nbr
 
-# ModelView::MTAlgo::getOrCreateSchedule (src/diagnostic/diagnostic_model_view.hpp)
-# caches the border-overlap schedule it uses to compute the (per population) momentum/
-# pressure tensor by SAMRAI level number only, and never rebuilds it when that level is
-# regridded (unlike the regular messenger pipeline, see multiphysics_integrator.hpp).
-# L2 is regridded by tagging on essentially every substep of its parent level, so a schedule
-# built at t=0 is expected to already be stale relative to L2's actual box layout well before
-# `final_time`. Two candidate restart points are used below so this does not depend on
-# precisely predicting SAMRAI's regrid cadence.
 restart_times = [time_step, 3 * time_step]  # 0.005, 0.015
 
 diag_dir = "phare_outputs/test_regridding"
@@ -194,6 +190,7 @@ class RegriddingTest(SimulatorTest):
         ph.global_vars.sim = None
         sim = config(diag_dir_a, run_timestamps)
         self.register_diag_dir_for_cleanup(diag_dir_a)
+        # reset kills diagnostics mananager/modelview/schedules
         Simulator(sim).run().reset()
         ph.global_vars.sim = None
         return diag_dir_a
@@ -209,8 +206,7 @@ class RegriddingTest(SimulatorTest):
             restart_time=restart_time,
         )
         self.register_diag_dir_for_cleanup(diag_dir_b)
-        # only the state right at/after restore is needed: MTAlgo's schedule for this
-        # process is built fresh on that first post-restart dump, so it cannot be stale.
+        # Diagnostics schedules are created on init
         Simulator(sim).initialize().reset()
         ph.global_vars.sim = None
         return diag_dir_b
@@ -240,7 +236,7 @@ class RegriddingTest(SimulatorTest):
             for patch0, patch1 in zip(lvl0.patches, lvl1.patches):
                 for key, pd0 in patch0.patch_datas.items():
                     pd1 = patch1.patch_datas[key]
-                    if isinstance(pd0, ParticleData):
+                    if not isinstance(pd0, FieldData):
                         # particle ordering across identical physical state is not
                         # guaranteed to match, this isn't what this test is about
                         continue
@@ -252,11 +248,9 @@ class RegriddingTest(SimulatorTest):
 
     def test_regrid_does_not_go_stale(self):
         """
-        Compares a continuous run against runs restarted right at candidate regrid
-        points. Both reach the same particle/field state and the same patch layout at
-        the comparison time, so any dataset mismatch between them is not physical - it
-        exposes ModelView keeping a schedule built against a box layout that no longer
-        exists.
+        Ensures computed diagnostic schedules continue to work even with regridding
+         and/or levels being recreated/destroyed by forcing schedule recreateion on
+          a restarted simulation and comparing it to one that did not restart
         """
         diag_dir_a = self._run_continuous()
         restarted_dirs = [self._run_restarted(diag_dir_a, rt) for rt in restart_times]
