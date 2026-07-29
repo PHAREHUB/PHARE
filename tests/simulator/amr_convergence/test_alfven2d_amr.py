@@ -4,8 +4,11 @@
 exact state at t=T equals the initial condition. See amr_convergence_base for
 the protocol and compute_errors for the norm.
 
+Solver numerics are shared with test_whistler2d_amr (which needs WENOZ, being
+dispersive) so the pair differs only in the Hall term.
+
 Requires the build permutation
-  2,1,4,TVDRK2,Linear,VanLeer,Rusanov,false,false,false  (in res/sim/all.txt).
+  2,1,4,SSPRK4_5,WENOZ,None,Rusanov,false,false,false  (in res/sim/all.txt).
 """
 
 import os
@@ -28,9 +31,10 @@ sinalpha = np.sin(alpha)
 GAMMA = 5.0 / 3.0
 P0, RHO0, DB, DV = 0.1, 1.0, 0.1, 0.1
 
-TIMESTEPPER = "TVDRK2"
-RECONSTRUCTION = "Linear"
-LIMITER = "VanLeer"
+# shared with test_whistler2d_amr -- see module docstring
+TIMESTEPPER = "SSPRK4_5"
+RECONSTRUCTION = "WENOZ"
+LIMITER = "None"
 
 
 @ddt
@@ -38,10 +42,7 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
     name = "alfven2d"
     final_time = 1.0  # one period (v_A = 1, wavelength 1 along e1)
 
-    # N=16 is preasymptotic (calibration 2026-07-09: pairwise order 1.44 on
-    # the 16->32 segment vs 1.82 on 32->64); the band was calibrated on
-    # [32, 64, 128]. Measured on kaa 2026-07-09: order=2 slope 1.91
-    # (segments 1.82 -> 2.00, L1 ~= L0 at every N).
+    # N=16 is preasymptotic; the band was calibrated on [32, 64, 128].
     SPATIAL_NS = [32, 64, 128]
     SPATIAL_SIGMA = 0.32  # the historical dt = 0.2/N convention
     SPATIAL_ORDER_BAND = (1.70, 2.25)
@@ -53,12 +54,6 @@ class AlfvenConvergenceTest(ConvergenceTestBase):
     # whistler test.
     SWEEP_N = 64
     SWEEP_SIGMAS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
-    # calibration 2026-07-09 (this branch, N=64): ratio drifts 0.0097
-    # (composite/uniform) and 0.0205 (L1-fine/uniform) on kaa at 30 ranks
-    # (0.0034 single-rank) while raw errors drift ~15% (TVDRK2's own dt^2
-    # error). The C-F time-interp defect this family diagnosed produced a ~6%
-    # error drift over a comparable sigma span (J-refiner sigma-sweep study,
-    # 2026-07-07); the gate sits between.
     MAX_AMR_SIGMA_DRIFT = 0.05
 
     def cfl_dt(self, N):

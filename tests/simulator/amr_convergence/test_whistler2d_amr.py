@@ -73,20 +73,14 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
     # N=16 preasymptotic here too (same family as the alfven test); dt ~ dx^2
     # makes N=128 the expensive end (~2800 steps at sigma=0.4).
     SPATIAL_NS = [32, 64, 128]
-    SPATIAL_SIGMA = 0.4  # proven operating point (uniform converges @ 2.00)
-    # Measured on kaa 2026-07-09: order=2 slope 1.99 (segments 1.99 -> 2.00).
+    SPATIAL_SIGMA = 0.4  # proven operating point
     SPATIAL_ORDER_BAND = (1.70, 2.25)
 
     # sigma sweep shared with the alfven test; gate = drift of the AMR/uniform
     # error ratio (see base class). The J-refiner fixed-N sigma-sweep study
     # (2026-07-07/08) validated this span for the whistler: sigma=0.9 is
     # stable up to N=128 (N=256 blows up there; fewer steps at N=64 leaves
-    # more margin). That study measured the static C-F refiner defect as ~6%
-    # L1(fine) drift over a comparable span, and the fixed (co-temporal
-    # time-refiner) pipeline as flat -- the gate sits between. Calibration on
-    # kaa 2026-07-09: raw errors flat to 0.1% (dt ~ dx^2 keeps SSPRK4_5's
-    # temporal error far below the spatial floor), ratio drifts 0.0005 /
-    # 0.0006 -- any C-F defect stands out against a near-zero baseline.
+    # more margin).
     SWEEP_N = 64
     SWEEP_SIGMAS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     MAX_AMR_SIGMA_DRIFT = 0.05
