@@ -580,10 +580,10 @@ def check_refinement(**kwargs):
 
 
 def check_nesting_buffer(ndim, **kwargs):
+    refinement_boxes = kwargs.get("refinement_boxes")
     has_amr = (
-        kwargs.get("refinement_boxes") is not None
-        or kwargs.get("max_nbr_levels", 1) > 1
-    )
+        refinement_boxes is not None and len(refinement_boxes) > 0
+    ) or kwargs.get("max_nbr_levels", 1) > 1
 
     if not has_amr:
         if "nesting_buffer" in kwargs:
