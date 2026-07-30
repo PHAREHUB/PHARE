@@ -5,9 +5,12 @@
 #include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutimplyee.hpp"
 
-#include "amr/data/field/refine/field_linear_refine.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
-#include "amr/data/field/refine/field_refiner.hpp"
+#include "amr/data/field/refine/coarse_cell_round_out.hpp"
+#include "amr/data/field/refine/composite_field_refiner.hpp"
+#include "amr/data/field/refine/magnetic_composite_refiner.hpp"
+#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -15,42 +18,18 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
+#include <array>
+#include <cmath>
+#include <limits>
+#include <stdexcept>
+#include <string>
+
 
 
 using namespace PHARE::core;
 using namespace PHARE::amr;
 
 using testing::Eq;
-
-
-
-TEST(UniformIntervalPartition, givesCorrectPartitionsForPrimal)
-{
-    LinearWeighter linearWeighter{QtyCentering::primal, 2};
-    std::array<double, 2> expectedDistances{0, 0.5};
-
-    auto const& actualDistances = linearWeighter.getUniformDistances();
-
-    for (auto i = 0u; i < 2; ++i)
-    {
-        EXPECT_DOUBLE_EQ(expectedDistances[i], actualDistances[i]);
-    }
-}
-
-
-TEST(UniformIntervalPartition, givesCorrectPartitionsForDual)
-{
-    LinearWeighter linearWeighter{QtyCentering::dual, 2};
-    std::array<double, 2> expectedDistances{0.75, 0.25};
-
-    auto const& actualDistances = linearWeighter.getUniformDistances();
-
-    for (auto i = 0u; i < 2; ++i)
-    {
-        EXPECT_DOUBLE_EQ(expectedDistances[i], actualDistances[i]);
-    }
-}
-
 
 
 
@@ -69,7 +48,9 @@ using aFieldRefineOperatorInfos
 TYPED_TEST_SUITE(aFieldRefineOperator, aFieldRefineOperatorInfos);
 
 
-TYPED_TEST(aFieldRefineOperator, canBeCreated)
+// instantiation gate: forces full compilation of CompositeFieldRefiner<...,order> (vtable →
+// refineBox) and the additive KernelFieldRefineOperator across all dim/interp, order 2.
+TYPED_TEST(aFieldRefineOperator, kernelRefineOperatorCanBeCreated)
 {
     static constexpr auto dim    = typename TypeParam::first_type{}();
     static constexpr auto interp = typename TypeParam::second_type{}();
@@ -77,307 +58,410 @@ TYPED_TEST(aFieldRefineOperator, canBeCreated)
     using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     using GridT   = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
-    FieldRefineOperator<GridYee, GridT, DefaultFieldRefiner<dim>> linearRefine{};
+    auto linearKernel = makeRefineKernel<GridYee, GridT>(2);
+    EXPECT_NE(linearKernel, nullptr);
+
+    KernelFieldRefineOperator<GridYee, GridT> kernelRefine{linearKernel};
+
+    auto magLinearKernel = makeMagneticRefineKernel<GridYee, GridT>(2);
+    EXPECT_NE(magLinearKernel, nullptr);
+
+    EXPECT_ANY_THROW((makeRefineKernel<GridYee, GridT>(3)));
+    EXPECT_ANY_THROW((makeRefineKernel<GridYee, GridT>(4)));
+    EXPECT_ANY_THROW((makeMagneticRefineKernel<GridYee, GridT>(0)));
+    EXPECT_ANY_THROW((makeMagneticRefineKernel<GridYee, GridT>(4)));
 }
 
 
 
 
-template<typename dimType>
-struct aFieldRefine : public testing::Test
+// ----- value-level refineBox tests for the composite kernel --------------------------------------
+//
+// Boxes are placed with lower=0 so AMR == local indexing; ratio 2. The fine destination is filled
+// with NaN so the kernel's NaN-guard writes every targeted index. The numeric core is separable, so
+// 1-D exercises both primitives (dual ±¼ ladder, primal half-point); one 2-D magnetic
+// case covers the sharedFacesOnly skip + the runtime tensor product of the 1-D rows.
+
+namespace
 {
-};
+using GridYee1D = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
+using Grid1D    = Grid<NdArrayVector<1>, HybridQuantity::Scalar>;
+using GridYee2D = PHARE::core::PHARE_Types<PHARE::SimOpts{2, 1}>::Hybrid::GridLayout_t;
+using Grid2D    = Grid<NdArrayVector<2>, HybridQuantity::Scalar>;
 
-using WithAllDim = testing::Types<DimConst<1>, DimConst<2>, DimConst<3>>;
-
-TYPED_TEST_SUITE(aFieldRefine, WithAllDim);
-
-
-TYPED_TEST(aFieldRefine, canBeCreated)
+template<std::size_t dim>
+SAMRAI::hier::Box boxOf(std::array<int, dim> lo, std::array<int, dim> up)
 {
-    static constexpr auto dim = TypeParam{}();
+    SAMRAI::tbox::Dimension d{dim};
+    SAMRAI::hier::Index loi{d, 0}, upi{d, 0};
+    for (std::size_t k = 0; k < dim; ++k)
+    {
+        loi(k) = lo[k];
+        upi(k) = up[k];
+    }
+    return SAMRAI::hier::Box{loi, upi, SAMRAI::hier::BlockId{0}};
+}
 
-    SAMRAI::tbox::Dimension dimension{dim};
-    std::array<QtyCentering, dim> centering = {{QtyCentering::primal}};
-    SAMRAI::hier::Box destinationGhostBox{dimension};
-    SAMRAI::hier::Box sourceGhostBox{dimension};
-    SAMRAI::hier::IntVector ratio{dimension, 2};
+SAMRAI::hier::IntVector ratio2(std::size_t dim)
+{
+    return SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{static_cast<unsigned short>(dim)}, 2};
+}
 
-    DefaultFieldRefiner<dim> fieldLinearRefine{centering, destinationGhostBox, sourceGhostBox,
-                                               ratio};
+constexpr double NaN = std::numeric_limits<double>::quiet_NaN();
+
+std::string boxStr(SAMRAI::hier::Box const& box)
+{
+    auto const dim = box.getDim().getValue();
+    std::string s  = "[(";
+    for (unsigned short d = 0; d < dim; ++d)
+        s += std::to_string(box.lower(d)) + (d + 1 < dim ? "," : "),(");
+    for (unsigned short d = 0; d < dim; ++d)
+        s += std::to_string(box.upper(d)) + (d + 1 < dim ? "," : ")]");
+    return s;
+}
+
+// gtest's EXPECT_EQ cannot see PHARE::amr's operator== for SAMRAI boxes (it is not found by ADL from
+// testing::internal), and a raw byte comparison would also compare BoxIds.
+::testing::AssertionResult boxesEqual(SAMRAI::hier::Box const& lhs, SAMRAI::hier::Box const& rhs)
+{
+    if (PHARE::amr::operator==(lhs, rhs))
+        return ::testing::AssertionSuccess();
+    return ::testing::AssertionFailure() << boxStr(lhs) << " != " << boxStr(rhs);
+}
+} // namespace
+
+
+// the two fine children of a coarse dual cell always mean back to its average (conservation),
+// at every order.
+TEST(compositeRefiner1D, dualChildrenConserveCoarseAverage)
+{
+    std::array<double, 8> coarse = {1.0, 1.3, 0.4, 2.0, -0.5, 0.7, 0.9, 0.2};
+    std::array<QtyCentering, 1> centering{QtyCentering::dual};
+
+    auto run = [&](auto refiner) {
+        Grid1D src{"c", HybridQuantity::Scalar::rho, 8u};
+        Grid1D dst{"f", HybridQuantity::Scalar::rho, std::array<std::uint32_t, 1>{16u}, NaN};
+        for (std::size_t i = 0; i < src.shape()[0]; ++i)
+            src(i) = coarse[i];
+
+        refiner.refineBox(src, dst, boxOf<1>({4}, {11}), centering, boxOf<1>({0}, {15}),
+                          boxOf<1>({0}, {7}), ratio2(1));
+
+        for (int ix = 2; ix <= 5; ++ix)
+            EXPECT_NEAR(0.5 * (dst(2 * ix) + dst(2 * ix + 1)), coarse[ix], 1e-12);
+    };
+
+    run(CompositeFieldRefiner<GridYee1D, Grid1D, 2>{});
 }
 
 
-
-
-template<typename dimType>
-struct aFieldLinearRefineIndexesAndWeights : public testing::Test
+// row sum ≡ 1 (partition of unity, S7): on a constant coarse field every fine child equals the
+// constant.
+TEST(compositeRefiner1D, dualRowSumsToOne)
 {
-};
+    constexpr double konst = 3.7;
+    std::array<QtyCentering, 1> centering{QtyCentering::dual};
 
-using WithAllDim = testing::Types<DimConst<1>, DimConst<2>, DimConst<3>>;
+    auto run = [&](auto refiner) {
+        Grid1D src{"c", HybridQuantity::Scalar::rho, 8u};
+        Grid1D dst{"f", HybridQuantity::Scalar::rho, std::array<std::uint32_t, 1>{16u}, NaN};
+        for (std::size_t i = 0; i < src.shape()[0]; ++i)
+            src(i) = konst;
+        refiner.refineBox(src, dst, boxOf<1>({4}, {11}), centering, boxOf<1>({0}, {15}),
+                          boxOf<1>({0}, {7}), ratio2(1));
+        for (int f = 4; f <= 11; ++f)
+            EXPECT_NEAR(dst(f), konst, 1e-14);
+    };
 
-TYPED_TEST_SUITE(aFieldLinearRefineIndexesAndWeights, WithAllDim);
-
-
-
-template<int dim, int numOfIndexes>
-constexpr std::array<Point<int, dim>, numOfIndexes>
-makeArrayOfPoints(std::array<int, numOfIndexes> indexVal)
-{
-    std::array<Point<int, dim>, numOfIndexes> arrayOfPoints{};
-
-    for (auto i = 0u; i < numOfIndexes; ++i)
-    {
-        int index = indexVal[i];
-
-        arrayOfPoints[i] = ConstArray<int, dim>(index);
-    }
-    return arrayOfPoints;
+    run(CompositeFieldRefiner<GridYee1D, Grid1D, 2>{});
 }
 
 
-
-TYPED_TEST(aFieldLinearRefineIndexesAndWeights, giveACorrectStartIndexForPrimalQty)
+// B (Bx: primal-x normal, dual-y tangential), sharedFacesOnly: the two tangential (y) children of a
+// shared (even-x) face are antisymmetric about the coarse value ⇒ sum = 2·C ⇒ ∇·B-neutral.
+// Interior (odd-x) faces are left untouched (NaN) by the Tóth-Roe owner.
+TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
 {
-    static constexpr auto dim = TypeParam{}();
+    auto src_at = [](int ix, int iy) { return 1.0 * ix + 0.5 * iy + 0.1 * ix * iy; };
+    std::array<QtyCentering, 2> centering{QtyCentering::primal, QtyCentering::dual}; // Bx
 
-    auto constexpr centering = ConstArray<QtyCentering, dim>(QtyCentering::primal);
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dim}, 2};
-    FieldRefineIndexesAndWeights<dim> indexesAndWeights{centering, ratio};
+    auto run = [&](auto refiner) {
+        Grid2D src{"c", HybridQuantity::Scalar::Bx, 6u, 6u};
+        Grid2D dst{"f", HybridQuantity::Scalar::Bx, std::array<std::uint32_t, 2>{12u, 12u}, NaN};
+        for (std::size_t ix = 0; ix < src.shape()[0]; ++ix)
+            for (std::size_t iy = 0; iy < src.shape()[1]; ++iy)
+                src(ix, iy) = src_at(ix, iy);
 
-    constexpr std::array<Point<int, dim>, 4> fineIndexes = makeArrayOfPoints<dim, 4>({-1, 0, 1, 2});
-    constexpr std::array<Point<int, dim>, 4> expectedStartIndexes
-        = makeArrayOfPoints<dim, 4>({-1, 0, 0, 1});
+        refiner.refineBox(src, dst, boxOf<2>({4, 4}, {5, 7}), centering, boxOf<2>({0, 0}, {11, 11}),
+                          boxOf<2>({0, 0}, {5, 5}), ratio2(2));
+
+        // fine x=4 is a shared (even) face, coarse anchor ix=2; x=5 is interior (odd) → skipped
+        for (int iy = 2; iy <= 3; ++iy)
+        {
+            double const c0 = dst(4, 2 * iy);
+            double const c1 = dst(4, 2 * iy + 1);
+            EXPECT_NEAR(c0 + c1, 2.0 * src_at(2, iy), 1e-12);
+        }
+        EXPECT_TRUE(std::isnan(dst(5, 4))); // interior-normal face untouched
+    };
+
+    run(MagneticCompositeRefiner<GridYee2D, Grid2D, 2>{});
+}
 
 
-    for (auto i = 0u; i < fineIndexes.size(); ++i)
+// ----- the whole-coarse-cell round-out
+// ------------------------------------------------------------
+
+TEST(coarseCellRoundOut, parityHelpersAreFloorBasedOnNegativeIndices)
+{
+    // `i % 2` is -1 on odd negatives, so a `== 1` parity test would silently invert there. These
+    // matter: the measured failing fill boxes really do have lower indices -3, -2, -1.
+    EXPECT_TRUE(isOddIndex(-3));
+    EXPECT_FALSE(isOddIndex(-2));
+    EXPECT_TRUE(isOddIndex(-1));
+    EXPECT_FALSE(isOddIndex(0));
+    EXPECT_TRUE(isOddIndex(1));
+
+    EXPECT_EQ(roundDownToEven(-3), -4);
+    EXPECT_EQ(roundDownToEven(-2), -2);
+    EXPECT_EQ(roundDownToEven(-1), -2);
+    EXPECT_EQ(roundDownToEven(0), 0);
+    EXPECT_EQ(roundDownToEven(1), 0);
+
+    EXPECT_EQ(roundUpToOddIndex(-4), -3);
+    EXPECT_EQ(roundUpToOddIndex(-3), -3);
+    EXPECT_EQ(roundUpToOddIndex(-2), -1);
+    EXPECT_EQ(roundUpToOddIndex(-1), -1);
+    EXPECT_EQ(roundUpToOddIndex(0), 1);
+
+    EXPECT_EQ(roundUpToEvenIndex(-3), -2);
+    EXPECT_EQ(roundUpToEvenIndex(-2), -2);
+    EXPECT_EQ(roundUpToEvenIndex(-1), 0);
+    EXPECT_EQ(roundUpToEvenIndex(0), 0);
+    EXPECT_EQ(roundUpToEvenIndex(1), 2);
+}
+
+
+TEST(coarseCellRoundOut, cellAndFieldBoxesAgreeOnWholeCoarseCells)
+{
+    // the measured failing fill box: one cell row, the lower half of coarse row 32
+    auto const fill    = boxOf<2>({-2, 64}, {81, 64});
+    auto const rounded = roundCellBoxOutToCoarseCells<2>(fill);
+    EXPECT_TRUE(boxesEqual(rounded, boxOf<2>({-2, 64}, {81, 65})));
+
+    // negative, odd on both lower edges (the measured coarse-interp temporary box)
+    EXPECT_TRUE(boxesEqual(roundCellBoxOutToCoarseCells<2>(boxOf<2>({-1, 47}, {80, 63})),
+                           boxOf<2>({-2, 46}, {81, 63})));
+
+    // a field box rounds to the field box of the rounded cell box: dual rows 2I..2J+1, primal
+    // nodes 2I..2J+2
+    std::array<QtyCentering, 2> bxCentering{QtyCentering::primal, QtyCentering::dual}; // Bx
+    EXPECT_TRUE(boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {82, 64}), bxCentering),
+                           boxOf<2>({-2, 64}, {82, 65})));
+
+    std::array<QtyCentering, 2> byCentering{QtyCentering::dual, QtyCentering::primal}; // By
+    EXPECT_TRUE(boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {81, 65}), byCentering),
+                           boxOf<2>({-2, 64}, {81, 66})));
+}
+
+
+TEST(coarseCellRoundOut, wholeCoarseCellsMeansLowerEvenAndUpperOdd)
+{
+    EXPECT_TRUE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {81, 65})));
+    EXPECT_TRUE(isWholeCoarseCells<2>(boxOf<2>({0, 0}, {1, 1})));  // a single coarse cell
+    EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-3, 64}, {81, 65}))); // lower x odd
+    EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {80, 65}))); // upper x even
+    EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {81, 64}))); // upper y even
+    // a rounded-out box always satisfies it, negative indices included
+    EXPECT_TRUE(isWholeCoarseCells<2>(roundCellBoxOutToCoarseCells<2>(boxOf<2>({-3, -1}, {4, 6}))));
+}
+
+
+// ----- magnetic prolongation over a misaligned fill box
+// -------------------------------------------
+//
+// The regression these two guard. SAMRAI fill boxes are not unions of whole coarse cells — a
+// recursive schedule's coarse-interpolation temporary is filled plus a one-cell ring, and one cell
+// is always half a coarse cell. Tóth-Roe reaches exactly one coarse cell, so on such a box it used
+// to read shared faces that lay outside the box and had therefore never been written: NaN B on the
+// fine level, then NaN E, then a particle out of its patch.
+
+namespace
+{
+// Coarse data that is *exactly* discretely divergence-free (unit spacing):
+//   dBx/di + dBy/dj = A + (-A) = 0
+// and non-trivial in both directions, so the Tóth-Roe transverse terms are exercised.
+constexpr double coefA = 0.7, coefG = 0.35, coefD = -0.2, coefC1 = 1.1, coefC2 = -0.4;
+
+double coarseBxAt(int I, int J)
+{
+    return coefA * I + coefG * J + coefC1;
+}
+double coarseByAt(int I, int J)
+{
+    return -coefA * J + coefD * I + coefC2;
+}
+
+// What order-2 prolongation followed by Tóth-Roe must produce. The dual ±¼ ladder is exact on a
+// linear profile, so the shared face at (2I, 2J+p) is coarseBxAt(I,J) ± G/4; Tóth-Roe's base term
+// is exact on a linear profile and its transverse term is a mixed second difference, which vanishes
+// on data with no cross term. Both fine components are again linear, with fine divergence
+// A/2 - A/2 = 0.
+double fineBxAt(int i, int j)
+{
+    return 0.5 * coefA * i + 0.5 * coefG * j - 0.25 * coefG + coefC1;
+}
+double fineByAt(int i, int j)
+{
+    return -0.5 * coefA * j + 0.5 * coefD * i - 0.25 * coefD + coefC2;
+}
+
+constexpr int fieldGhosts = static_cast<int>(GridYee2D::options.field_ghost_width);
+
+using VecFieldData2D = PHARE::amr::TensorFieldData<1, GridYee2D, Grid2D, HybridQuantity>;
+using MagStrategy2D  = MagneticRefinePatchStrategy<int, VecFieldData2D>;
+using FieldGeom2D    = FieldGeometry<GridYee2D, HybridQuantity::Scalar>;
+
+GridYee2D layoutOf(SAMRAI::hier::Box const& cellBox, double dl)
+{
+    std::array<std::uint32_t, 2> nbrCells{static_cast<std::uint32_t>(cellBox.numberCells(0)),
+                                          static_cast<std::uint32_t>(cellBox.numberCells(1))};
+    return GridYee2D{{dl, dl}, nbrCells, Point<double, 2>{0., 0.}, phare_box_from<2>(cellBox)};
+}
+
+//! allocated field box of a layout, in AMR field indices
+SAMRAI::hier::Box ghostFieldBoxOf(GridYee2D const& layout, HybridQuantity::Scalar qty)
+{
+    auto const cells = samrai_box_from(grow(layout.AMRBox(), fieldGhosts));
+    return FieldGeom2D::toFieldBox(cells, qty, layout);
+}
+
+//! the local index of an AMR field index; identical for both centerings (local = amr - lower + g)
+auto localOf(GridYee2D const& layout, int i, int j)
+{
+    return layout.AMRToLocal(Point<int, 2>{i, j});
+}
+
+std::array<Grid2D, 3> nanBFields(GridYee2D const& layout)
+{
+    return {Grid2D{"Bx", layout, HybridQuantity::Scalar::Bx, NaN},
+            Grid2D{"By", layout, HybridQuantity::Scalar::By, NaN},
+            Grid2D{"Bz", layout, HybridQuantity::Scalar::Bz, NaN}};
+}
+} // namespace
+
+
+// A 1-cell-thick fill strip whose lower x is odd and whose single cell row is odd: every edge cuts
+// a coarse cell in half. Round-out (gather side and postprocess side) must make every reconstructed
+// interior face exist, be finite, and be div-free.
+TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInteriorFaces)
+{
+    auto const finePatch   = boxOf<2>({0, 0}, {15, 15});
+    auto const coarsePatch = boxOf<2>({0, 0}, {7, 7});
+
+    auto const fineLayout   = layoutOf(finePatch, 0.1);
+    auto const coarseLayout = layoutOf(coarsePatch, 0.2);
+
+    // deliberately misaligned: lower x odd, upper x even, one cell row at odd y
+    auto const fill = boxOf<2>({1, 3}, {12, 3});
+
+    auto fields = nanBFields(fineLayout);
+
+    // ---- gather the shared faces, exactly as KernelTensorFieldRefineOperator::refine does
+    MagneticCompositeRefiner<GridYee2D, Grid2D, 2> refiner{};
+    std::array bQties{HybridQuantity::Scalar::Bx, HybridQuantity::Scalar::By};
+    for (std::size_t c = 0; c < bQties.size(); ++c)
     {
-        auto fineIndex          = fineIndexes[i];
-        auto expectedStartIndex = expectedStartIndexes[i];
+        Grid2D coarse{"c", coarseLayout, bQties[c], NaN};
+        auto const srcFieldBox = ghostFieldBoxOf(coarseLayout, bQties[c]);
+        for (std::uint32_t lx = 0; lx < coarse.shape()[0]; ++lx)
+            for (std::uint32_t ly = 0; ly < coarse.shape()[1]; ++ly)
+            {
+                int const I    = static_cast<int>(lx) + srcFieldBox.lower(0);
+                int const J    = static_cast<int>(ly) + srcFieldBox.lower(1);
+                coarse(lx, ly) = c == 0 ? coarseBxAt(I, J) : coarseByAt(I, J);
+            }
 
-        if constexpr (dim == 1)
-        {
-            auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
+        auto const dstFieldBox = ghostFieldBoxOf(fineLayout, bQties[c]);
+        auto const overlapBox  = FieldGeom2D::toFieldBox(fill, bQties[c], fineLayout);
 
-            EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
-        }
-        if constexpr (dim == 2)
-        {
-            auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
+        refiner.refineBox(coarse, fields[c], dstFieldBox * overlapBox,
+                          fineLayout.centering(bQties[c]), dstFieldBox, srcFieldBox, ratio2(2));
+    }
 
-            EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
-            EXPECT_EQ(expectedStartIndex[dirY], startIndex[dirY]);
-        }
-        if constexpr (dim == 3)
-        {
-            auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
+    // ---- reconstruct the interior faces, exactly as postprocessRefine does
+    auto const region = MagStrategy2D::reconstructionRegion(
+        fill, samrai_box_from(grow(fineLayout.AMRBox(), fieldGhosts)));
+    EXPECT_TRUE(boxesEqual(region, boxOf<2>({0, 2}, {13, 3}))); // rounded out, no clip needed
 
-            EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
-            EXPECT_EQ(expectedStartIndex[dirY], startIndex[dirY]);
-            EXPECT_EQ(expectedStartIndex[dirZ], startIndex[dirZ]);
-        }
+    MagStrategy2D::reconstructInteriorFaces(fields, fineLayout, region);
+
+    // every fine face of the region — shared (gathered) and interior (reconstructed) alike — is
+    // finite and equal to the exact prolongation
+    auto const& bx = fields[0];
+    auto const& by = fields[1];
+    std::size_t interiorBx = 0, interiorBy = 0;
+
+    for (auto const& idx :
+         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::Bx, fineLayout)))
+    {
+        auto const loc = localOf(fineLayout, idx[0], idx[1]);
+        ASSERT_TRUE(std::isfinite(bx(loc[0], loc[1])))
+            << "Bx not written at amr (" << idx[0] << "," << idx[1] << ")";
+        EXPECT_NEAR(bx(loc[0], loc[1]), fineBxAt(idx[0], idx[1]), 1e-12);
+        if (idx[0] % 2 != 0)
+            ++interiorBx;
+    }
+
+    for (auto const& idx :
+         phare_box_from<2>(FieldGeom2D::toFieldBox(region, HybridQuantity::Scalar::By, fineLayout)))
+    {
+        auto const loc = localOf(fineLayout, idx[0], idx[1]);
+        ASSERT_TRUE(std::isfinite(by(loc[0], loc[1])))
+            << "By not written at amr (" << idx[0] << "," << idx[1] << ")";
+        EXPECT_NEAR(by(loc[0], loc[1]), fineByAt(idx[0], idx[1]), 1e-12);
+        if (idx[1] % 2 != 0)
+            ++interiorBy;
+    }
+
+    EXPECT_GT(interiorBx, 0u); // the test is only meaningful if faces were reconstructed
+    EXPECT_GT(interiorBy, 0u);
+
+    // and the discrete divergence of every fine cell of the region is zero
+    for (auto const& cell : phare_box_from<2>(region))
+    {
+        auto const bxLo = localOf(fineLayout, cell[0], cell[1]);
+        auto const bxHi = localOf(fineLayout, cell[0] + 1, cell[1]);
+        auto const byHi = localOf(fineLayout, cell[0], cell[1] + 1);
+
+        double const divB = (bx(bxHi[0], bxHi[1]) - bx(bxLo[0], bxLo[1]))
+                            + (by(byHi[0], byHi[1]) - by(bxLo[0], bxLo[1]));
+        EXPECT_NEAR(divB, 0., 1e-12) << "divB at fine cell (" << cell[0] << "," << cell[1] << ")";
     }
 }
 
 
-TYPED_TEST(aFieldLinearRefineIndexesAndWeights, giveACorrectStartIndexForDualQty)
+// When the fill box already reaches the allocation, round-out is clipped back and can leave a coarse
+// cell half-covered. There is no well-posed reconstruction for such a cell — some of its inputs are
+// faces nothing ever wrote — so this is rejected rather than silently skipped. It cannot happen in
+// any supported configuration (field_ghost_width >= fill_ring + 1 holds everywhere), which is why a
+// deliberately misaligned *allocation* is needed to reach it at all.
+TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 {
-    static constexpr auto dim = TypeParam{}();
+    // a coarse-interpolation temporary: its box is coarsen(unfilled), so its parity is arbitrary.
+    // lower x odd and upper x even ⇒ the allocated box is misaligned in x whatever the ghost width,
+    // and a fill box reaching that edge cannot be rounded out inside the allocation.
+    auto const fineLayout = layoutOf(boxOf<2>({-1, 0}, {14, 15}), 0.1);
+    auto const ghostBox   = samrai_box_from(grow(fineLayout.AMRBox(), fieldGhosts));
 
-    auto constexpr centering = ConstArray<QtyCentering, dim>(QtyCentering::dual);
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dim}, 2};
-    FieldRefineIndexesAndWeights<dim> indexesAndWeights{centering, ratio};
+    EXPECT_FALSE(isWholeCoarseCells<2>(ghostBox));
+    EXPECT_THROW(MagStrategy2D::reconstructionRegion(ghostBox, ghostBox), std::runtime_error);
 
-    constexpr std::array<Point<int, dim>, 4> fineIndexes = makeArrayOfPoints<dim, 4>({-1, 0, 1, 2});
-    constexpr std::array<Point<int, dim>, 4> expectedStartIndexes
-        = makeArrayOfPoints<dim, 4>({-1, -1, 0, 0});
-
-
-    for (auto i = 0u; i < fineIndexes.size(); ++i)
-    {
-        auto fineIndex          = fineIndexes[i];
-        auto expectedStartIndex = expectedStartIndexes[i];
-
-        auto startIndex = indexesAndWeights.coarseStartIndex(fineIndex);
-
-        EXPECT_EQ(expectedStartIndex[dirX], startIndex[dirX]);
-
-        if constexpr (dim > 1)
-        {
-            EXPECT_EQ(expectedStartIndex[dirY], startIndex[dirY]);
-        }
-
-        if constexpr (dim > 2)
-        {
-            EXPECT_EQ(expectedStartIndex[dirZ], startIndex[dirZ]);
-        }
-    }
+    // an aligned allocation of the same size is accepted, so it really is the parity that is rejected
+    auto const alignedLayout = layoutOf(boxOf<2>({0, 0}, {15, 15}), 0.1);
+    auto const alignedGhosts = samrai_box_from(grow(alignedLayout.AMRBox(), fieldGhosts));
+    EXPECT_NO_THROW(MagStrategy2D::reconstructionRegion(alignedGhosts, alignedGhosts));
 }
-
-
-TYPED_TEST(aFieldLinearRefineIndexesAndWeights, giveACorrectWeightsForPrimalQty)
-{
-    static constexpr auto dim = TypeParam{}();
-
-    auto constexpr centering = ConstArray<QtyCentering, dim>(QtyCentering::primal);
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dim}, 2};
-    FieldRefineIndexesAndWeights<dim> indexesAndWeights{centering, ratio};
-
-    std::size_t constexpr primal = 0;
-    std::size_t constexpr dual   = 1;
-
-
-    auto xWeights = indexesAndWeights.weights(Direction::X);
-
-    EXPECT_DOUBLE_EQ(xWeights[primal][1], 0.);
-    EXPECT_DOUBLE_EQ(xWeights[primal][0], 1.);
-
-    EXPECT_DOUBLE_EQ(xWeights[dual][1], 0.5);
-    EXPECT_DOUBLE_EQ(xWeights[dual][0], 0.5);
-
-    if constexpr (dim > 1)
-    {
-        auto yWeights = indexesAndWeights.weights(Direction::Y);
-
-        EXPECT_DOUBLE_EQ(yWeights[primal][1], 0.);
-        EXPECT_DOUBLE_EQ(yWeights[primal][0], 1.);
-
-        EXPECT_DOUBLE_EQ(yWeights[dual][1], 0.5);
-        EXPECT_DOUBLE_EQ(yWeights[dual][0], 0.5);
-    }
-    if constexpr (dim > 2)
-    {
-        auto zWeights = indexesAndWeights.weights(Direction::Z);
-
-        EXPECT_DOUBLE_EQ(zWeights[primal][1], 0.);
-        EXPECT_DOUBLE_EQ(zWeights[primal][0], 1.);
-
-        EXPECT_DOUBLE_EQ(zWeights[dual][1], 0.5);
-        EXPECT_DOUBLE_EQ(zWeights[dual][0], 0.5);
-    }
-}
-
-
-TYPED_TEST(aFieldLinearRefineIndexesAndWeights, giveACorrectWeightsForDualQty)
-{
-    static constexpr auto dim = TypeParam{}();
-
-    auto constexpr centering = ConstArray<QtyCentering, dim>(QtyCentering::dual);
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dim}, 2};
-    FieldRefineIndexesAndWeights<dim> indexesAndWeights{centering, ratio};
-
-    std::size_t constexpr primal = 0;
-    std::size_t constexpr dual   = 1;
-
-
-    auto xWeights = indexesAndWeights.weights(Direction::X);
-
-    EXPECT_DOUBLE_EQ(xWeights[primal][1], 0.75);
-    EXPECT_DOUBLE_EQ(xWeights[primal][0], 0.25);
-
-    EXPECT_DOUBLE_EQ(xWeights[dual][1], 0.25);
-    EXPECT_DOUBLE_EQ(xWeights[dual][0], 0.75);
-
-    if constexpr (dim > 1)
-    {
-        auto yWeights = indexesAndWeights.weights(Direction::Y);
-
-        EXPECT_DOUBLE_EQ(yWeights[primal][1], 0.75);
-        EXPECT_DOUBLE_EQ(yWeights[primal][0], 0.25);
-
-        EXPECT_DOUBLE_EQ(yWeights[dual][1], 0.25);
-        EXPECT_DOUBLE_EQ(yWeights[dual][0], 0.75);
-    }
-    if constexpr (dim > 2)
-    {
-        auto zWeights = indexesAndWeights.weights(Direction::Z);
-
-        EXPECT_DOUBLE_EQ(zWeights[primal][1], 0.75);
-        EXPECT_DOUBLE_EQ(zWeights[primal][0], 0.25);
-
-        EXPECT_DOUBLE_EQ(zWeights[dual][1], 0.25);
-        EXPECT_DOUBLE_EQ(zWeights[dual][0], 0.75);
-    }
-}
-
-
-TYPED_TEST(aFieldLinearRefineIndexesAndWeights, giveACorrectWeightIndexesForPrimalQty)
-{
-    static constexpr auto dim = TypeParam{}();
-
-    auto constexpr centering = ConstArray<QtyCentering, dim>(QtyCentering::primal);
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dim}, 2};
-    FieldRefineIndexesAndWeights<dim> indexesAndWeights{centering, ratio};
-
-    constexpr std::array<Point<int, dim>, 4> fineIndexes = makeArrayOfPoints<dim, 4>({-1, 0, 1, 2});
-    constexpr std::array<int, 4> expectedWeightIndexes{1, 0, 1, 0};
-
-
-    for (auto i = 0u; i < fineIndexes.size(); ++i)
-    {
-        auto fineIndex           = fineIndexes[i];
-        auto expectedWeightIndex = expectedWeightIndexes[i];
-
-        auto xWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
-
-        EXPECT_EQ(expectedWeightIndex, xWeight);
-
-        if constexpr (dim > 1)
-        {
-            auto yWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirY];
-
-            EXPECT_EQ(expectedWeightIndex, yWeight);
-        }
-
-        if constexpr (dim > 2)
-        {
-            auto zWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirZ];
-
-            EXPECT_EQ(expectedWeightIndex, zWeight);
-        }
-    }
-}
-
-
-TYPED_TEST(aFieldLinearRefineIndexesAndWeights, giveACorrectWeightIndexesForDualQty)
-{
-    static constexpr auto dim = TypeParam{}();
-
-    auto constexpr centering = ConstArray<QtyCentering, dim>(QtyCentering::dual);
-    SAMRAI::hier::IntVector ratio{SAMRAI::tbox::Dimension{dim}, 2};
-    FieldRefineIndexesAndWeights<dim> indexesAndWeights{centering, ratio};
-
-    constexpr std::array<Point<int, dim>, 4> fineIndexes = makeArrayOfPoints<dim, 4>({-1, 0, 1, 2});
-    constexpr std::array<int, 4> expectedWeightIndexes{1, 0, 1, 0};
-
-
-    for (auto i = 0u; i < fineIndexes.size(); ++i)
-    {
-        auto fineIndex           = fineIndexes[i];
-        auto expectedWeightIndex = expectedWeightIndexes[i];
-
-        auto xWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirX];
-
-        EXPECT_EQ(expectedWeightIndex, xWeight);
-
-        if constexpr (dim > 1)
-        {
-            auto yWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirY];
-
-            EXPECT_EQ(expectedWeightIndex, yWeight);
-        }
-
-        if constexpr (dim > 2)
-        {
-            auto zWeight = indexesAndWeights.computeWeightIndex(fineIndex)[dirZ];
-
-            EXPECT_EQ(expectedWeightIndex, zWeight);
-        }
-    }
-}
-
-
 
 
 int main(int argc, char** argv)

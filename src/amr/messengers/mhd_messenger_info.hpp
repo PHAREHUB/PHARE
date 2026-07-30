@@ -22,7 +22,6 @@ namespace amr
         std::string modelTotalEnergy;
 
         std::string modelElectric;
-        std::string modelCurrent;
 
         std::vector<std::string> initDensity;
         std::vector<std::string> initMomentum;
@@ -40,7 +39,6 @@ namespace amr
         std::vector<std::string> ghostMagneticFluxesY;
         std::vector<std::string> ghostMagneticFluxesZ;
         std::vector<std::string> ghostElectric;
-        std::vector<std::string> ghostCurrent;
 
         core::AllFluxesNames reflux;
         core::AllFluxesNames fluxSum;

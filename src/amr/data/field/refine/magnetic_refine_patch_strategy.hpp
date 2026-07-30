@@ -8,12 +8,14 @@
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 
+#include "coarse_cell_round_out.hpp"
+
 
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
 
 #include <array>
-#include <cmath>
 #include <cassert>
+#include <stdexcept>
 
 namespace PHARE::amr
 {
@@ -52,7 +54,11 @@ public:
     SAMRAI::hier::IntVector
     getRefineOpStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
-        return SAMRAI::hier::IntVector(dim, 1); // hard-coded 0th order base interpolation
+        // Zero: the interior-face reconstruction reads no coarse data at all. It reads the *fine*
+        // faces of the coarse cell it is filling, which the gather has already written. The ring
+        // SAMRAI provisions is max(this, every registered refine operator), and the operators
+        // report their own coarse reach, so this returning 0 does not narrow anything.
+        return SAMRAI::hier::IntVector::getZero(dim);
     }
 
 
@@ -70,17 +76,59 @@ public:
     {
         assertIDsSet();
 
-        auto& fields       = TensorFieldDataT::getFields(fine, b_id_);
+        reconstructInteriorFaces(
+            TensorFieldDataT::getFields(fine, b_id_),
+            PHARE::amr::layoutFromPatch<gridlayout_type>(fine),
+            reconstructionRegion(fine_box, fine.getPatchData(b_id_)->getGhostBox()));
+    }
+
+
+    /**
+     * @brief The region an interior-face reconstruction over the fill box `fine_box` must run over.
+     *
+     * Tóth-Roe reaches exactly one coarse cell, so the region must be a union of whole coarse cells
+     * (see coarse_cell_round_out.hpp). A SAMRAI fill box is not: a recursive schedule's
+     * coarse-interpolation temporary is filled plus a ring of d_max_stencil_width = 1 cell, and one
+     * cell is always half a coarse cell.
+     *
+     * Rounding out grows each edge by at most one index, so the region stays inside the allocation
+     * iff field_ghost_width >= fill_ring + 1. That holds in every configuration we support — the
+     * ring is 1 (the composite refiner is order 2 only), hybrid has 2 ghosts and MHD 6 — so the
+     * clip below never actually bites. If it ever did it would cut a coarse cell back in half, and
+     * a half-covered cell has no well-posed reconstruction: some of its inputs are faces nothing
+     * ever wrote. That is a configuration we do not handle, so say so rather than silently leaving
+     * NaN faces behind for something downstream to sample.
+     */
+    static SAMRAI::hier::Box reconstructionRegion(SAMRAI::hier::Box const& fine_box,
+                                                  SAMRAI::hier::Box const& ghost_box)
+    {
+        auto const region = roundCellBoxOutToCoarseCells<dimension>(fine_box) * ghost_box;
+
+        if (!isWholeCoarseCells<dimension>(region))
+            throw std::runtime_error(
+                "magnetic prolongation region is not a union of whole coarse cells: fill box "
+                + to_str(fine_box) + ", rounded out and clipped to the allocated "
+                + to_str(ghost_box) + ", gives " + to_str(region)
+                + ", which half-covers a coarse cell. The field ghost width must be at least the "
+                  "fill ring plus one.");
+
+        return region;
+    }
+
+    //! reconstruct the interior magnetic faces over `region`, a cell box that must be a union of
+    //! whole coarse cells — i.e. one that came from reconstructionRegion.
+    static void reconstructInteriorFaces(auto& fields, gridlayout_type const& layout,
+                                         SAMRAI::hier::Box const& region)
+    {
         auto& [bx, by, bz] = fields;
 
-        auto layout        = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
-        auto fineBoxLayout = Geometry::layoutFromBox(fine_box, layout);
+        auto fineBoxLayout = Geometry::layoutFromBox(region, layout);
 
         auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
             using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
 
             return FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
-                fine_box, fields[i].physicalQuantity(), fineBoxLayout);
+                region, fields[i].physicalQuantity(), fineBoxLayout);
         });
 
         if constexpr (dimension == 1)

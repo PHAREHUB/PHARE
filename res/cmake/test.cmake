@@ -65,6 +65,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/functional/ionIonBeam)
   add_subdirectory(tests/functional/conservation)
   add_subdirectory(tests/functional/harris)
+  add_subdirectory(tests/functional/refinement)
 
   add_subdirectory(tests/functional/mhd_alfven2d)
   add_subdirectory(tests/functional/mhd_convergence)

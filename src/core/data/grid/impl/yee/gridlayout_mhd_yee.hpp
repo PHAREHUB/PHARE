@@ -584,6 +584,53 @@ public:
         }
     }
 
+    /**
+     * @brief Primitive B — dual-direction prolongation (coarse→fine, ratio 2).
+     *
+     * A quantity dual in `dir` is an average over its dual extent there. Refining splits coarse
+     * cell I into two fine children sitting at ±¼ of the coarse spacing; parity p∈{0,1},
+     * sign σ = 2p−1 (σ=+1 = right child, σ=−1 = left). Offsets are relative to coarse cell I.
+     *
+     * The even-term cancellation (see prolongation_operators.md §2): subtracting the
+     * conservation constraint kills every even reconstruction coefficient, so the children
+     * depend only on ODD coefficients ⇒ parabolic ≡ linear (degree-2 skipped). Children are
+     * antisymmetric in σ about ū_I ⇒ they always mean back to ū_I (conservative at every order).
+     *
+     *   order 0 (constant):     ū_I
+     *   order 2 (linear, 3-pt):  ū_I + σ·(ū_{I+1} − ū_{I−1})/8
+     */
+    template<auto dir, int sign, std::size_t order = 2>
+    NO_DISCARD static consteval auto directionalProlongation()
+    {
+        static_assert(sign == 1 || sign == -1, "child sign σ must be ±1");
+        static_assert(order == 0 || order == 2,
+                      "dual prolongation ladder is order 0 / 2 (degree-2 skipped)");
+
+        if constexpr (dir >= dimension)
+        {
+            return std::array{WeightPoint{Point<int, dimension>{}, 1.0}};
+        }
+        else
+        {
+            auto make_p = [](int offset) {
+                Point<int, dimension> p{};
+                p[dir] = offset;
+                return p;
+            };
+
+            if constexpr (order == 0)
+            {
+                return std::array{WeightPoint{make_p(0), 1.0}};
+            }
+            else if constexpr (order == 2)
+            {
+                return std::array{WeightPoint{make_p(-1), -sign / 8.0},
+                                  WeightPoint{make_p(0), 1.0},
+                                  WeightPoint{make_p(1), sign / 8.0}};
+            }
+        }
+    }
+
     // we could possibly have a variadic version to factor out these 2 overload, but this might
     // complexify the code quite a bit. possibly not worth it
     template<auto dir1, auto dir2>
@@ -633,7 +680,6 @@ public:
                 }
         return result;
     }
-    //
 
     // These functions where none of the centerings are in common could actually be expensive in
     // 3d, because they will return a full cubic stencil. In MHD, they are only used for spatial

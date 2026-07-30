@@ -8,6 +8,7 @@
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/mhd_hybrid_messenger_strategy.hpp"
 #include "amr/messengers/mhd_messenger.hpp"
+#include "amr/messengers/refinement_config.hpp"
 #include "core/def.hpp"
 
 #include <algorithm>
@@ -47,8 +48,10 @@ public:
                   "MHDModel::dimension != HybridModel::dimension");
 
 
-    MessengerFactory(std::vector<MessengerDescriptor> messengerDescriptors)
+    MessengerFactory(std::vector<MessengerDescriptor> messengerDescriptors,
+                     RefinementConfig refinementConfig = {})
         : descriptors_{messengerDescriptors}
+        , refinementConfig_{std::move(refinementConfig)}
     {
     }
 
@@ -86,8 +89,8 @@ public:
         {
             auto& resourcesManager = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
 
-            auto messengerStrategy
-                = std::make_unique<HybridHybridMessengerStrategy_t>(resourcesManager, firstLevel);
+            auto messengerStrategy = std::make_unique<HybridHybridMessengerStrategy_t>(
+                resourcesManager, firstLevel, refinementConfig_);
 
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
@@ -115,7 +118,8 @@ public:
         {
             auto& mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
 
-            return std::make_unique<MHDMessenger<MHDModel>>(mhdResourcesManager, firstLevel);
+            return std::make_unique<MHDMessenger<MHDModel>>(mhdResourcesManager, firstLevel,
+                                                            refinementConfig_);
         }
         else
             return {};
@@ -124,6 +128,7 @@ public:
 
 private:
     std::vector<MessengerDescriptor> descriptors_;
+    RefinementConfig refinementConfig_;
 };
 
 } // namespace PHARE::amr

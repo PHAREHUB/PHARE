@@ -52,7 +52,8 @@ public:
     void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
                     double const newTime)
     {
-        ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_, newTime);
+        ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_);
+        TimeSetter{level, model, newTime}(state.rho, state.rhoV, state.Etot, state.V, state.P);
 
         if constexpr (Hall || Resistivity || HyperResistivity)
         {
@@ -60,10 +61,12 @@ public:
             TimeSetter{level, model, newTime}(state.B, state.J);
         }
 
-        FVMethod_t{level, model, fVMethodInfo_}(fvm_, ct_, state, fluxes, newTime);
+        FVMethod_t{level, model, fVMethodInfo_}(fvm_, ct_, state, fluxes);
+        TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.J);
 
         // unecessary if we decide to store both primitive and conservative variables
-        ToConservativeConverter_t{level, model}(state, to_conservative_gamma_, newTime);
+        ToConservativeConverter_t{level, model}(state, to_conservative_gamma_);
+        TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.rhoV, state.Etot);
 
         ConstrainedTransport_t{level, model, constrainedTransportInfo_}(ct_, state);
     }

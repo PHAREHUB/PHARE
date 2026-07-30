@@ -158,6 +158,10 @@ def populateDict(sim):
             "simulation/AMR/refinement/tagging/method", "none"
         )  # integrator.h might want some looking at
 
+    # field-refinement (prolongation) order. Absent from the dict => C++ takes the
+    # RefinementConfig default, which is the same order 2.
+    add_int("simulation/AMR/refinement/order", sim.refinement_order)
+
     # load balancer block start
     lb = sim.load_balancer or LoadBalancer(active=False, _register=False)
     base = "simulation/AMR/loadbalancing"
