@@ -75,10 +75,11 @@ class PatchHierarchy(object):
         return deep_copy(self, memo, no_copy_keys)
 
     def __getitem__(self, that):
-        if type(that) is HierarchyAccessor:
-            accessor = that
-            return self.level(accessor.ilvl, accessor.time)[accessor.patch_idx]
-        return NotImplemented
+        if isinstance(that, HierarchyAccessor):
+            return self.level(that.ilvl, that.time)[that.patch_idx]
+        raise TypeError(
+            f"Invalid index type: {type(that).__name__}. Expected HierarchyAccessor."
+        )
 
     def update(self):
         if len(self.quantities()) > 1:
