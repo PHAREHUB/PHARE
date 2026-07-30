@@ -4,7 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/utilities/types.hpp"
 
 #include "amr/samrai.hpp"
 
@@ -64,6 +64,15 @@ namespace amr
             auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
             for (auto const& id : ALL_IDS()) // duplicates don't matter
                 pdrm->registerPatchDataForRestart(id);
+        }
+
+        static std::string registeredResourcesHash()
+        {
+            std::string hsh;
+            for (auto const res_map_ptr : INSTANCE().resources_)
+                for (auto const& [name, _] : *res_map_ptr)
+                    hsh = core::as_portable_hash(hsh + name);
+            return hsh;
         }
     };
 

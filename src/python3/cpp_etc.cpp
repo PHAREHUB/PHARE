@@ -129,6 +129,18 @@ PYBIND11_MODULE(cpp_etc, m)
 
         throw std::runtime_error("PHARE not built with highfive support");
     });
+    m.def("resources_hash", [&](std::string const& path) -> std::string {
+        _PHARE_WITH_HIGHFIVE({
+            auto const& restart_file = samrai_restart_file(path);
+            PHARE::hdf5::h5::HighFiveFile h5File{restart_file, HighFive::File::ReadOnly,
+                                                 /*para=*/false};
+            if (!h5File.file().getGroup("/phare").hasAttribute("resources_hash"))
+                return std::string{}; // old restart file predates this feature
+            return h5File.read_attribute("/phare", "resources_hash");
+        });
+
+        throw std::runtime_error("PHARE not built with highfive support");
+    });
 
 
     declareDim<1>(m);

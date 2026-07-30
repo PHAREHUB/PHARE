@@ -35,7 +35,6 @@
 namespace PHARE
 {
 
-
 class ISimulator
 {
 public:
@@ -93,12 +92,6 @@ public:
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
-
-    ~Simulator()
-    {
-        if (coutbuf != nullptr)
-            std::cout.rdbuf(coutbuf);
-    }
 
 
     NO_DISCARD double startTime() override { return startTime_; }
@@ -170,8 +163,7 @@ private:
         return nullptr;
     }
 
-    std::unique_ptr<std::ofstream> log_out{log_file()};
-    std::streambuf* coutbuf = nullptr;
+    CoutRedirect coutRedirect_{log_file()};
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
 
@@ -224,22 +216,6 @@ private:
 
 
 
-namespace
-{
-    inline auto logging(std::unique_ptr<std::ofstream>& log_out)
-    {
-        std::streambuf* buf = nullptr;
-        if (log_out)
-        {
-            buf = std::cout.rdbuf();
-            std::cout.rdbuf(log_out->rdbuf());
-        }
-        return buf;
-    }
-} // namespace
-
-
-
 //-----------------------------------------------------------------------------
 //                           Definitions
 //-----------------------------------------------------------------------------
@@ -281,7 +257,8 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict, auto&
 template<auto opts>
 void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
 {
-    hybridModel_ = std::make_shared<HybridModel>(dict["simulation"], hyb_resman_ptr);
+    hyb_resman_ptr = std::make_shared<HybridResourceManager_t>();
+    hybridModel_   = std::make_shared<HybridModel>(dict["simulation"], hyb_resman_ptr);
     hyb_resman_ptr->registerResources(hybridModel_->state); // still valid, never moved
 
     // we register the hybrid model for all possible levels in the hierarchy
@@ -350,7 +327,8 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
 template<auto opts>
 void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 {
-    mhdModel_ = std::make_shared<MHDModel>(dict["simulation"], mhd_resman_ptr);
+    mhd_resman_ptr = std::make_shared<MHDResourceManager_t>();
+    mhdModel_      = std::make_shared<MHDModel>(dict["simulation"], mhd_resman_ptr);
     mhd_resman_ptr->registerResources(mhdModel_->state);
 
     // we register the mhd model for all possible levels in the hierarchy
@@ -417,8 +395,7 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 template<auto opts>
 Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
                            std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
-    : coutbuf{logging(log_out)}
-    , hierarchy_{hierarchy}
+    : hierarchy_{hierarchy}
     , modelNames_{dict["simulation"]["models"].template to<std::vector<std::string>>()}
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
     , messengerFactory_{descriptors_}
@@ -441,25 +418,30 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     // we would need a different restart manager for mhd and hybrid if both models are used
 
     if (find_model("HybridModel"))
-    {
-        hyb_resman_ptr = std::make_shared<HybridResourceManager_t>();
         hybrid_init(dict);
-        if (dict["simulation"].contains("restarts"))
-            rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *hyb_resman_ptr,
-                                                                  dict["simulation"]["restarts"]);
-    }
 
     if (find_model("MHDModel"))
     {
-        mhd_resman_ptr = std::make_shared<MHDResourceManager_t>();
         mhd_init(dict);
-        if (dict["simulation"].contains("restarts"))
-            rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *mhd_resman_ptr,
-                                                                  dict["simulation"]["restarts"]);
     }
 
     if (!hyb_resman_ptr and !mhd_resman_ptr)
         throw std::runtime_error("unsupported model");
+
+    // the following can throw, which results in the destructor not executing as the class
+    //  does not count as "constructed"
+    auto mutated_dict = restarts::inject_simulation_information(
+        dict, amr::ResourcesManagerGlobals::registeredResourcesHash());
+
+    if (find_model("HybridModel"))
+        if (mutated_dict["simulation"].contains("restarts"))
+            rMan = restarts::RestartsManagerResolver::make_unique(
+                *hierarchy_, *hyb_resman_ptr, mutated_dict["simulation"]["restarts"]);
+
+
+    if (find_model("MHDModel") && mutated_dict["simulation"].contains("restarts"))
+        rMan = restarts::RestartsManagerResolver::make_unique(
+            *hierarchy_, *mhd_resman_ptr, mutated_dict["simulation"]["restarts"]);
 
     amr::ResourcesManagerGlobals::registerForRestarts();
 }
