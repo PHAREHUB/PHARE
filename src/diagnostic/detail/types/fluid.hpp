@@ -91,7 +91,7 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     // at this time, levelGhostPartsNew is emptied and not yet filled
     // and the former levelGhostPartsNew has been moved to levelGhostPartsOld
 
-    auto const fill_schedules = [&](auto& lvl) {
+    auto const fill_all_schedules = [&](auto& lvl) {
         for (std::size_t i = 0; i < ions.size(); ++i)
             modelView.fillPopMomTensor(lvl, h5Writer.timestamp(), i);
     };
@@ -115,7 +115,7 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
             },
             minLvl, maxLvl);
 
-        modelView.onLevels(fill_schedules, minLvl, maxLvl);
+        modelView.onLevels(fill_all_schedules, minLvl, maxLvl);
 
         modelView.visitHierarchy(
             [&](auto& layout, auto&&...) {
@@ -126,8 +126,9 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     }
     else // if not computing total momentum tensor, user may want to compute it for some pop
     {
-        for (auto& pop : ions)
+        for (std::size_t i = 0; i < ions.size(); i++)
         {
+            auto& pop = ions[i];
             std::string const tree{"/ions/pop/" + pop.name() + "/"};
 
             if (!isActiveDiag(diagnostic, tree, "momentum_tensor"))
@@ -136,7 +137,9 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
             modelView.visitHierarchy(
                 [&](auto& layout, auto&&...) { interpolate_domain(pop, layout); }, minLvl, maxLvl);
 
-            modelView.onLevels(fill_schedules, minLvl, maxLvl);
+            modelView.onLevels(
+                [&, i = i](auto& lvl) { modelView.fillPopMomTensor(lvl, h5Writer.timestamp(), i); },
+                minLvl, maxLvl);
 
             modelView.visitHierarchy(
                 [&](auto& layout, auto&&...) { interpolate_ghost(pop, layout); }, minLvl, maxLvl);
