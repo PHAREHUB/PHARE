@@ -243,18 +243,36 @@ protected:
         auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
         {
             using PlusEqualsOp = core::PlusEquals<typename VecField::value_type>;
-            if (not MTschedules.count(ilvl))
-                MTschedules.try_emplace(
-                    ilvl, MTalgo->createSchedule(
-                              hierarchy.getPatchLevel(ilvl), 0,
-                              std::make_shared<amr::FieldBorderOpTransactionFactory<
-                                  typename Super::TensorFieldData_t, PlusEqualsOp>>()));
-            return *MTschedules[ilvl];
+
+            auto const level   = hierarchy.getPatchLevel(ilvl);
+            auto schedule_iter = MTschedules.find(ilvl);
+            auto const create_schedule
+                = schedule_iter == MTschedules.end() or schedule_iter->second.level.lock() != level;
+
+            if (create_schedule)
+                schedule_iter
+                    = MTschedules
+                          .insert_or_assign(
+                              ilvl,
+                              Entry{level,
+                                    MTalgo->createSchedule(
+                                        level, 0,
+                                        std::make_shared<amr::FieldBorderOpTransactionFactory<
+                                            typename Super::TensorFieldData_t, PlusEqualsOp>>())})
+                          .first;
+
+            return *schedule_iter->second.schedule;
         }
+
+        struct Entry
+        {
+            std::weak_ptr<SAMRAI::hier::PatchLevel> level; // invalidadted if the Level is destroyed
+            std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule;
+        };
 
         std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> MTalgo
             = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> MTschedules;
+        std::map<int, Entry> MTschedules;
     };
 
     std::vector<MTAlgo> MTAlgos;
