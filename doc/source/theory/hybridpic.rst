@@ -1,7 +1,7 @@
 
-========================
-The hybrid PIC formalism
-========================
+====================
+The Hybrid PIC model
+====================
 
 The Hybrid formalism consists in modeling the plasma as a
 combination of constituants treated with a different physical models.
@@ -187,6 +187,9 @@ PHARE include these two terms and the electric field is obtained via :
 
     \mathbf{E} = -\mathbf{u_e}\times\mathbf{B} - \frac{1}{en}\nabla P_e +\eta\mathbf{j} - \nu\nabla^2\mathbf{j}
 
+
+Numerical scheme
+----------------
 
 
 
