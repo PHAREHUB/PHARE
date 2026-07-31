@@ -3,8 +3,8 @@
 
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/mpi_utils.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+#include "mpi/mpi_utils.hpp"
 #include "core/utilities/constants.hpp"
 
 #include "amr/amr_constants.hpp"

@@ -1,5 +1,5 @@
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 #include "phare_core.hpp"
 #include "core/data/grid/grid.hpp"
 #include "core/data/grid/gridlayout.hpp"

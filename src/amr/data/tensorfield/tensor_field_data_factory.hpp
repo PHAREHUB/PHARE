@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_DATA_FACTORY_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_geometry.hpp"

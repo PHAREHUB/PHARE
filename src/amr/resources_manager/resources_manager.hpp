@@ -3,7 +3,7 @@
 
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "amr/samrai.hpp"

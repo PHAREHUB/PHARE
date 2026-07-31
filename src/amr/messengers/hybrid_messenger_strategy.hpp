@@ -1,7 +1,7 @@
 #ifndef PHARE_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_MESSENGER_STRATEGY_HPP
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/messengers/messenger_info.hpp"
 

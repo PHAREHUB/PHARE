@@ -96,6 +96,7 @@ set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHAR
 target_link_directories(${PROJECT_NAME} PUBLIC ${MPI_LIBRARY_PATH})
 target_link_libraries(${PROJECT_NAME} PUBLIC
   phare_core
+  phare_mpi
   phare_initializer
   SAMRAI_algs
   SAMRAI_appu

@@ -1,4 +1,4 @@
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 
 #include "amr/data/particles/particles_data.hpp"
 #include "amr/data/particles/particles_variable.hpp"

@@ -2,7 +2,7 @@
 #define PHARE_TESTS_AMR_FIELD_DATA_FIELD_DATA_TEST_PARAM_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 
 #include "phare_core.hpp"
 #include "phare_simulator_options.hpp"

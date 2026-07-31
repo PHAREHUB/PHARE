@@ -1,7 +1,7 @@
 #ifndef PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_OVERLAP_HPP
 #define PHARE_SRC_AMR_TENSORFIELD_TENSORFIELD_OVERLAP_HPP
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 
 #include "core/data/tensorfield/tensorfield.hpp"
 

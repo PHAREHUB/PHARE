@@ -1,7 +1,7 @@
 #ifndef PHARE_PYTHON_DATA_WRANGLER_HPP
 #define PHARE_PYTHON_DATA_WRANGLER_HPP
 
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 

@@ -3,7 +3,7 @@
 
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "amr/amr_constants.hpp"
 #include "amr/data/particles/particles_data.hpp"

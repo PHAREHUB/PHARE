@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 
 #include "core/logger.hpp"
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 
 #include "amr/utilities/box/amr_box.hpp"

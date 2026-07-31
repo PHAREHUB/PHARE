@@ -2,7 +2,7 @@
 #define PHARE_FIELD_REFINER_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/data/field/field.hpp"
 #include "core/utilities/constants.hpp"

@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <unordered_map>
 
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include "diagnostic/diagnostic_writer.hpp"
 

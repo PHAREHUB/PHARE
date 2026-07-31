@@ -4,7 +4,7 @@
 
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/data/vector.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_packer.hpp"
 #include "core/data/ions/ion_population/particle_pack.hpp"

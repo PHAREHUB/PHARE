@@ -1,7 +1,7 @@
 #ifndef PHARE_TEST_COPY_OVERLAP_CENTERED_EY_HPP
 #define PHARE_TEST_COPY_OVERLAP_CENTERED_EY_HPP
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 
 
 #include <SAMRAI/pdat/NodeDataFactory.h>

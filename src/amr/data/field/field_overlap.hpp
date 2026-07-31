@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_OVERLAP_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/hier/BoxOverlap.h>
 #include <SAMRAI/hier/BoxContainer.h>

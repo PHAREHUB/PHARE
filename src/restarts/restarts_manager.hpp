@@ -4,7 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
-#include "core/utilities/mpi_utils.hpp"
+#include "mpi/mpi_utils.hpp"
 
 #include "initializer/data_provider.hpp"
 

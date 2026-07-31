@@ -2,7 +2,7 @@
 #define PHARE_LINEAR_WEIGHTER_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include "core/def.hpp"

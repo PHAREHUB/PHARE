@@ -2,7 +2,7 @@
 #define PHARE_SRC_AMR_FIELD_FIELD_DATA_FACTORY_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/tbox/MemoryUtilities.h>

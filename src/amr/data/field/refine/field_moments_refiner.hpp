@@ -2,7 +2,7 @@
 #define PHARE_FIELD_MOMENTS_REFINER_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include "core/utilities/point/point.hpp"

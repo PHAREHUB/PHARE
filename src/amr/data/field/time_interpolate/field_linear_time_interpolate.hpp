@@ -6,7 +6,7 @@
 //     FieldLinearTimeInterpolate
 // -------------------------------------
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 
 #include "amr/data/field/field_data.hpp"

@@ -2,7 +2,7 @@
 #define PHARE_FIELD_COARSEN_HPP
 
 
-#include "core/def/phare_mpi.hpp"
+#include "phare_mpi.hpp"
 
 #include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
