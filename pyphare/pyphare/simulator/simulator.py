@@ -68,7 +68,7 @@ class Simulator:
 
     **Mandatory arguments**
 
-        *  **simulation**: a `Simulation` object
+        *  **simulation**: a :class:`~pyphare.pharein.Simulation` object
 
 
     **Optional expert arguments**
@@ -76,8 +76,14 @@ class Simulator:
         These arguments have good default, change them at your own risk.
 
         *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
-        *  **auto_dump**: (``bool``), if True (default), will dump diagnostics automatically at requested timestamps
-        *  **post_advance**: (``Function``),  default None. A python function to execute after each advance()
+        *  **auto_dump**: (``bool``), if True (default), :meth:`dump` is called automatically on
+           :meth:`initialize` and after each :meth:`advance`, writing any diagnostics/restarts whose
+           requested timestamp has been reached. If False, this automatic call is disabled and nothing is
+           ever written unless the user calls :meth:`dump` explicitly - useful to take full manual control
+           over when dumps happen (e.g. to avoid an unwanted dump at ``initialize()`` time)
+        *  **post_advance**: (``Function``),  default None. A python function called after diagnostics have
+           been dumped, letting the user analyze the just-written data before the simulation takes another
+           step
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
 
     """
@@ -187,8 +193,15 @@ class Simulator:
 
     def run(self, plot_times=False, monitoring=None):
         """
-        Run the simulation until the end time
-        monitoring requires phlop
+        Run the simulation until the end time, calling :meth:`advance` in a loop.
+
+        *  **plot_times**: (``bool``), default False. If True, plots (rank 0 only) the wall-clock time
+           taken by each timestep once the run ends.
+        *  **monitoring**: (``bool`` or ``int``), default None. Enables periodic resource monitoring
+           (CPU/memory, per MPI rank) written to ``.phare/stats/rank.<rank>.yaml``, sampled every N
+           seconds if given as an int (default 100 if just True), or falls back to the
+           ``PHARE_SIM_MON`` environment variable if left None. Requires the optional ``phlop`` package
+           (``python3 -m pip install phlop``); silently does nothing if it isn't installed.
         """
 
         self._check_init()

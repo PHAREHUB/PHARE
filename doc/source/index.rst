@@ -52,8 +52,7 @@ Warning: This documentation is a work in progress. It is not complete and may co
    theory/hybridpic
    theory/pic
    theory/mhd
-   theory/spatial_discretization
-   theory/temporal_discretization
+   theory/normalization
    theory/amr
 
 
@@ -78,9 +77,13 @@ Warning: This documentation is a work in progress. It is not complete and may co
    :maxdepth: 1
    :hidden:
 
-   usage/simulation_inputs
    usage/run_from_python
-   usage/run_from_exe
+   usage/simulation
+   usage/models
+   usage/electrons
+   usage/diagnostics
+   usage/load_balancing
+   usage/restarts
    usage/examples
 
 
