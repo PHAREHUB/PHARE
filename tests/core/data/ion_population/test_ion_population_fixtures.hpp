@@ -57,7 +57,7 @@ public:
         , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
         , particles{this->name(), layout.AMRBox()}
     {
-        auto&& [_F, _M, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
+        auto&& [_F, _M, S, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
         F.set_on(_F);
         M.set_on(_M);
         _pd.setBuffer(&particleDensity);
@@ -111,12 +111,14 @@ public:
         , chargeDensity{"chargeDensity", layout, HybridQuantity::Scalar::rho}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
+        , kineticEnergyFlux{"kineticEnergyFlux", layout, HybridQuantity::Vector::V}
     {
-        auto&& [_bV, _M, _cd, _md] = Super::getCompileTimeResourcesViewList();
+        auto&& [_bV, _M, _cd, _md, _kef] = Super::getCompileTimeResourcesViewList();
         Vi.set_on(_bV);
         M.set_on(_M);
         _cd.setBuffer(&chargeDensity);
         _md.setBuffer(&massDensity);
+        kineticEnergyFlux.set_on(_kef);
 
         for (std::size_t i = 0; i < pop_names.size(); ++i)
             populations.emplace_back(pop_dict(pop_names[i]), layout);
@@ -138,6 +140,7 @@ public:
     _defaults::Grid_t massDensity, chargeDensity;
     _defaults::UsableVecField_t Vi;
     _defaults::UsableTensorField_t M;
+    _defaults::UsableVecField_t kineticEnergyFlux;
     std::vector<UsableIonsPopulation<_defaults>> populations;
 };
 
