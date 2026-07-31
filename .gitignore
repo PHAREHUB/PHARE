@@ -1,6 +1,5 @@
 bin
 build
-.worktrees
 subprojects
 __pycache__
 *.pyc
