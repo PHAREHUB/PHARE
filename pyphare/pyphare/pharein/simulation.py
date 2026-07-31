@@ -581,9 +581,15 @@ def check_refinement(**kwargs):
 
 def check_nesting_buffer(ndim, **kwargs):
     refinement_boxes = kwargs.get("refinement_boxes")
-    has_amr = (
-        refinement_boxes is not None and len(refinement_boxes) > 0
-    ) or kwargs.get("max_nbr_levels", 1) > 1
+    has_refinement_boxes = refinement_boxes is not None and len(refinement_boxes) > 0
+
+    if check_refinement(**kwargs) == "boxes":
+        # check_refinement_boxes() normalizes to (None, 1) whenever
+        # refinement_boxes is empty, ignoring any max_nbr_levels the user
+        # passed in that case, so has_amr must follow the same rule here.
+        has_amr = has_refinement_boxes
+    else:
+        has_amr = kwargs.get("max_nbr_levels", 1) > 1
 
     if not has_amr:
         if "nesting_buffer" in kwargs:
