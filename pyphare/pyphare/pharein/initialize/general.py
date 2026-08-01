@@ -26,19 +26,10 @@ def populate_grid(dp, sim):
     dp.add_int("simulation/dimension", sim.ndim)
 
     dp.add_string("simulation/grid/layout_type", sim.layout)
-    dp.add_int("simulation/grid/nbr_cells/x", sim.cells[0])
-    dp.add_double("simulation/grid/meshsize/x", sim.dl[0])
-    dp.add_string("simulation/grid/boundary_type/x", sim.boundary_types[0])
-
-    if sim.ndim > 1:
-        dp.add_int("simulation/grid/nbr_cells/y", sim.cells[1])
-        dp.add_double("simulation/grid/meshsize/y", sim.dl[1])
-        dp.add_string("simulation/grid/boundary_type/y", sim.boundary_types[1])
-
-        if sim.ndim > 2:
-            dp.add_int("simulation/grid/nbr_cells/z", sim.cells[2])
-            dp.add_double("simulation/grid/meshsize/z", sim.dl[2])
-            dp.add_string("simulation/grid/boundary_type/z", sim.boundary_types[2])
+    for i, k in enumerate(["x", "y", "z"][: sim.ndim]):
+        dp.add_int(f"simulation/grid/nbr_cells/{k}", sim.cells[i])
+        dp.add_double(f"simulation/grid/meshsize/{k}", sim.dl[i])
+        dp.add_string(f"simulation/grid/boundary_type/{k}", sim.boundary_types[i])
 
     dp.add_int("simulation/interp_order", sim.interp_order)
     dp.add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
@@ -219,20 +210,9 @@ def _populate_refinement_boxes(dp, refinement_boxes):
             box_id = "B" + str(box_i)
             lower = box.lower
             upper = box.upper
-            box_lower_path_x = box_id + "/lower/x/"
-            box_upper_path_x = box_id + "/upper/x/"
-            dp.add_int(level_path + box_lower_path_x, lower[0])
-            dp.add_int(level_path + box_upper_path_x, upper[0])
-            if len(lower) >= 2:
-                box_lower_path_y = box_id + "/lower/y/"
-                box_upper_path_y = box_id + "/upper/y/"
-                dp.add_int(level_path + box_lower_path_y, lower[1])
-                dp.add_int(level_path + box_upper_path_y, upper[1])
-                if len(lower) == 3:
-                    box_lower_path_z = box_id + "/lower/z/"
-                    box_upper_path_z = box_id + "/upper/z/"
-                    dp.add_int(level_path + box_lower_path_z, lower[2])
-                    dp.add_int(level_path + box_upper_path_z, upper[2])
+            for i, k in enumerate(["x", "y", "z"][: len(lower)]):
+                dp.add_int(level_path + f"{box_id}/lower/{k}/", lower[i])
+                dp.add_int(level_path + f"{box_id}/upper/{k}/", upper[i])
 
 
 def _patch_data_ids(restart_file_dir):

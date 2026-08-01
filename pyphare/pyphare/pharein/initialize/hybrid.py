@@ -35,12 +35,13 @@ def _populate_populations(dp, sim):
         dp.add_string(partinit_path + "name", "maxwellian")
 
         dp.add_init_function(sim.ndim, partinit_path + "density", d["density"])
-        dp.add_init_function(sim.ndim, partinit_path + "bulk_velocity_x", d["vx"])
-        dp.add_init_function(sim.ndim, partinit_path + "bulk_velocity_y", d["vy"])
-        dp.add_init_function(sim.ndim, partinit_path + "bulk_velocity_z", d["vz"])
-        dp.add_init_function(sim.ndim, partinit_path + "thermal_velocity_x", d["vthx"])
-        dp.add_init_function(sim.ndim, partinit_path + "thermal_velocity_y", d["vthy"])
-        dp.add_init_function(sim.ndim, partinit_path + "thermal_velocity_z", d["vthz"])
+        for k in ["x", "y", "z"]:
+            dp.add_init_function(
+                sim.ndim, partinit_path + f"bulk_velocity_{k}", d[f"v{k}"]
+            )
+            dp.add_init_function(
+                sim.ndim, partinit_path + f"thermal_velocity_{k}", d[f"vth{k}"]
+            )
         dp.add_double(partinit_path + "charge", d["charge"])
         dp.add_string(partinit_path + "basis", "cartesian")
         if "init" in d and "seed" in d["init"]:

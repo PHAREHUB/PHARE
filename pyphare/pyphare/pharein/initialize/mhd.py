@@ -37,14 +37,14 @@ def _populate_state(dp, sim):
     )
 
     velinit_path = "simulation/mhd_state/velocity/initializer/"
-    dp.add_init_function(sim.ndim, velinit_path + "x_component", modelDict["vx"])
-    dp.add_init_function(sim.ndim, velinit_path + "y_component", modelDict["vy"])
-    dp.add_init_function(sim.ndim, velinit_path + "z_component", modelDict["vz"])
-
     maginit_path = "simulation/mhd_state/magnetic/initializer/"
-    dp.add_init_function(sim.ndim, maginit_path + "x_component", modelDict["bx"])
-    dp.add_init_function(sim.ndim, maginit_path + "y_component", modelDict["by"])
-    dp.add_init_function(sim.ndim, maginit_path + "z_component", modelDict["bz"])
+    for k in ["x", "y", "z"]:
+        dp.add_init_function(
+            sim.ndim, velinit_path + f"{k}_component", modelDict[f"v{k}"]
+        )
+        dp.add_init_function(
+            sim.ndim, maginit_path + f"{k}_component", modelDict[f"b{k}"]
+        )
 
     dp.add_init_function(
         sim.ndim, "simulation/mhd_state/pressure/initializer", modelDict["p"]

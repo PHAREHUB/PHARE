@@ -1,7 +1,55 @@
-import pybindlibs.dictator as pp
+import numpy as np
+
+from pyphare.core.phare_utilities import is_scalar
+
 from . import general, hybrid, mhd
 
-__all__ = ["general", "hybrid", "mhd", "DictPopulator"]
+__all__ = ["DictPopulator", "general", "hybrid", "mhd"]
+
+
+class DictPopulator:
+    """
+    Thin stateless typed wrapper around pybindlibs.dictator.
+    Knows nothing about simulations, models, or what a given path means -
+    that logic lives in the populateDict() chunks of general/hybrid/mhd.
+    """
+
+    def __init__(self):
+        self.pp = dictator()
+
+    def add_int(self, path, val):
+        self.pp.add_int(path, int(val))
+
+    def add_bool(self, path, val):
+        self.pp.add_bool(path, bool(val))
+
+    def add_double(self, path, val):
+        self.pp.add_double(path, float(val))
+
+    def add_size_t(self, path, val):
+        casted = int(val)
+        if casted < 0:
+            raise RuntimeError("DictPopulator::add_size_t received negative value")
+        self.pp.add_size_t(path, casted)
+
+    def add_vector_int(self, path, val):
+        self.pp.add_vector_int(path, list(val))
+
+    def add_vector_string(self, path, val):
+        self.pp.add_vector_string(path, list(val))
+
+    def add_string(self, path, val):
+        self.pp.add_string(path, val)
+
+    def add_array_as_vector(self, path, val):
+        self.pp.add_array_as_vector(path, val)
+
+    def add_optional_size_t(self, path, val):
+        self.pp.add_optional_size_t(path, val)
+
+    def add_init_function(self, ndim, path, fn):
+        adder = getattr(self.pp, "addInitFunction{:d}".format(ndim) + "D")
+        adder(path, fn_wrapper(fn))
 
 
 # converts scalars to array of expected size
@@ -34,43 +82,8 @@ class fn_wrapper(py_fn_wrapper):
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
 
 
-class DictPopulator:
-    """
-    Thin stateless typed wrapper around pybindlibs.dictator.
-    Knows nothing about simulations, models, or what a given path means -
-    that logic lives in the populateDict() chunks of general/hybrid/mhd.
-    """
+def dictator():
+    # doesn't exist until the project is built!
+    import pybindlibs.dictator as pp
 
-    def add_int(self, path, val):
-        pp.add_int(path, int(val))
-
-    def add_bool(self, path, val):
-        pp.add_bool(path, bool(val))
-
-    def add_double(self, path, val):
-        pp.add_double(path, float(val))
-
-    def add_size_t(self, path, val):
-        casted = int(val)
-        if casted < 0:
-            raise RuntimeError("DictPopulator::add_size_t received negative value")
-        pp.add_size_t(path, casted)
-
-    def add_vector_int(self, path, val):
-        pp.add_vector_int(path, list(val))
-
-    def add_vector_string(self, path, val):
-        pp.add_vector_string(path, list(val))
-
-    def add_string(self, path, val):
-        pp.add_string(path, val)
-
-    def add_array_as_vector(self, path, val):
-        pp.add_array_as_vector(path, val)
-
-    def add_optional_size_t(self, path, val):
-        pp.add_optional_size_t(path, val)
-
-    def add_init_function(self, ndim, path, fn):
-        adder = getattr(pp, "addInitFunction{:d}".format(ndim) + "D")
-        adder(path, fn_wrapper(fn))
+    return pp
