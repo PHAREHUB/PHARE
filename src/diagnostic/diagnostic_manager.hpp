@@ -67,6 +67,10 @@ class IDiagnosticsManager
 public:
     virtual bool dump(double timeStamp, double timeStep)         = 0;
     virtual void dump_level(std::size_t level, double timeStamp) = 0;
+    // unconditional full-hierarchy dump (all levels, all diagnostics, in a single
+    // step). Used for emergency dumps so the VTKHDF step metadata stays consistent
+    // (one step = all levels), unlike a per-level dump_level loop.
+    virtual void dump_all(double timeStamp)                      = 0;
     inline virtual ~IDiagnosticsManager();
 };
 IDiagnosticsManager::~IDiagnosticsManager() {}
@@ -83,6 +87,8 @@ public:
 
 
     void dump_level(std::size_t level, double timeStamp) override;
+
+    void dump_all(double timeStamp) override;
 
 
     DiagnosticsManager(std::unique_ptr<Writer>&& writer_ptr)
@@ -219,6 +225,23 @@ void DiagnosticsManager<Writer>::dump_level(std::size_t level, double timeStamp)
         activeDiagnostics.emplace_back(&diag);
 
     writer_->dump_level(level, activeDiagnostics, timeStamp);
+}
+
+
+template<typename Writer>
+void DiagnosticsManager<Writer>::dump_all(double timeStamp)
+{
+    std::vector<DiagnosticProperties*> activeDiagnostics;
+    for (auto& diag : diagnostics_)
+    {
+        // recompute derived quantities (B=B1+B0, P, V, Etot) so the snapshot is
+        // consistent, then dump every diagnostic in one full-hierarchy step.
+        writer_->getDiagnosticWriterForType(diag.type)->compute(diag);
+        activeDiagnostics.emplace_back(&diag);
+    }
+
+    if (activeDiagnostics.size() > 0)
+        writer_->dump(activeDiagnostics, timeStamp);
 }
 
 
