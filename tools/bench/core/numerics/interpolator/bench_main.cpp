@@ -11,9 +11,9 @@ void interpolate(benchmark::State& state)
     auto static constexpr opts      = PHARE::SimOpts{dim, interp};
 
     using PHARE_Types   = PHARE::core::PHARE_Types<opts>;
-    using GridLayout_t  = TestGridLayout<typename PHARE_Types::GridLayout_t>;
-    using ParticleArray = PHARE_Types::ParticleArray_t;
-    using Grid_t        = PHARE_Types::Grid_t;
+    using GridLayout_t  = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
+    using ParticleArray = PHARE_Types::Hybrid::ParticleArray_t;
+    using Grid_t        = PHARE_Types::Hybrid::Grid_t;
 
     GridLayout_t layout{cells};
     PHARE::core::Interpolator<dim, interp> interpolator;

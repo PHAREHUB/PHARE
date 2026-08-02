@@ -9,29 +9,38 @@
 
 #include <memory>
 #include <string>
+#include <type_traits>
 
 namespace PHARE
 {
 namespace solver
 {
-    template<typename HybridModel, typename MHDModel>
+    // Variadic over the enabled initializers only — an MHD-only build never names
+    // HybridLevelInitializer<HybridModel>, so no hybrid type is instantiated for it.
+    template<typename AMRTypes, typename... Initializers>
     class LevelInitializerFactory
     {
-        using AMRTypes = typename HybridModel::amr_types;
-
     public:
         NO_DISCARD static std::unique_ptr<LevelInitializer<AMRTypes>>
         create(std::string modelName, PHARE::initializer::PHAREDict const& dict)
         {
-            if (modelName == "HybridModel")
-            {
-                return std::make_unique<HybridLevelInitializer<HybridModel>>(dict);
-            }
-            else if (modelName == "MHDModel")
-            {
-                return std::make_unique<MHDLevelInitializer<MHDModel>>();
-            }
-            return nullptr;
+            std::unique_ptr<LevelInitializer<AMRTypes>> result;
+            ((result = tryCreate<Initializers>(modelName, dict)) || ...);
+            return result;
+        }
+
+    private:
+        template<typename Initializer>
+        static std::unique_ptr<LevelInitializer<AMRTypes>>
+        tryCreate(std::string const& modelName, PHARE::initializer::PHAREDict const& dict)
+        {
+            if (modelName != Initializer::model_type::model_name)
+                return {};
+            if constexpr (std::is_constructible_v<Initializer,
+                                                   PHARE::initializer::PHAREDict const&>)
+                return std::make_unique<Initializer>(dict);
+            else
+                return std::make_unique<Initializer>();
         }
     };
 

@@ -17,7 +17,7 @@ TEST(test_tagger, fromFactoryValid)
 {
     auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
     using phare_types          = PHARE::solver::PHARE_Types<opts>;
-    using hybrid_model         = phare_types::HybridModel_t;
+    using hybrid_model         = phare_types::Hybrid::Model_t;
     PHARE::initializer::PHAREDict dict;
     dict["hybrid_method"] = std::string{"default"};
     dict["threshold"]     = 0.2;
@@ -29,7 +29,7 @@ TEST(test_tagger, fromFactoryInvalid)
 {
     auto static constexpr opts = PHARE::SimOpts{1ul, 1ul, 2ul};
     using phare_types          = PHARE::solver::PHARE_Types<opts>;
-    using hybrid_model         = phare_types::HybridModel_t;
+    using hybrid_model         = phare_types::Hybrid::Model_t;
     PHARE::initializer::PHAREDict dict;
     dict["hybrid_method"] = std::string{"invalidStrat"};
     auto hybridTagger     = TaggerFactory<hybrid_model>::make(dict);
@@ -164,7 +164,7 @@ struct TestTagger : public ::testing::Test
     auto static constexpr refinedPartNbr = TaggingTestInfo_t::refinedPartNbr;
     auto static constexpr opts           = PHARE::SimOpts{dim, interp_order, refinedPartNbr};
 
-    using phare_types = PHARE::solver::PHARE_Types<opts>;
+    using phare_types = PHARE::core::PHARE_Types<opts>;
     using Electromag  = phare_types::Hybrid::Electromag_t;
     using Ions        = phare_types::Hybrid::Ions_t;
     using Electrons   = phare_types::Hybrid::Electrons_t;

@@ -25,14 +25,14 @@ namespace solver
     template<typename HybridModel>
     class HybridLevelInitializer : public LevelInitializer<typename HybridModel::amr_types>
     {
-        using amr_types                    = typename HybridModel::amr_types;
-        using hierarchy_t                  = typename amr_types::hierarchy_t;
-        using level_t                      = typename amr_types::level_t;
-        using patch_t                      = typename amr_types::patch_t;
+        using amr_types                    = HybridModel::amr_types;
+        using hierarchy_t                  = amr_types::hierarchy_t;
+        using level_t                      = amr_types::level_t;
+        using patch_t                      = amr_types::patch_t;
         using IPhysicalModelT              = IPhysicalModel<amr_types>;
         using IMessengerT                  = amr::IMessenger<IPhysicalModelT>;
         using HybridMessenger              = amr::HybridMessenger<HybridModel>;
-        using GridLayoutT                  = typename HybridModel::gridlayout_type;
+        using GridLayoutT                  = HybridModel::gridlayout_type;
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::options.interp_order;
 
@@ -43,6 +43,8 @@ namespace solver
         inline bool isRootLevel(int const levelNumber) const { return levelNumber == 0; }
 
     public:
+        using model_type = HybridModel;
+
         explicit HybridLevelInitializer(PHARE::initializer::PHAREDict const& dict)
             : ohm_info{core::OhmInfo::FROM(dict["algo"]["ohm"])}
         {

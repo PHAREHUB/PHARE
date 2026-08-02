@@ -13,12 +13,21 @@ while(THIS_FILE)
 
     # Skip empty lines and comments
     string(STRIP "${LINE}" LINE)
-    if("${LINE}" STREQUAL "" OR "${LINE}" MATCHES "^#")
+    if("${LINE}" STREQUAL "" OR "${LINE}" MATCHES "^#" OR NOT "${LINE}" MATCHES "^[0-9]")
         continue()
     endif()
 
     string(REPLACE "," ";" LINE_LIST ${LINE})
     list(LENGTH LINE_LIST LINE_LENGTH)
+
+    if(LINE_LENGTH EQUAL 8)
+        # MHD-only shape: dim,timeint,recon,slope,riemann,hall,res,hyper
+        # normalize to the 10-field SimOpts aggregate order: dim,0,0,timeint,...
+        list(INSERT LINE_LIST 1 "0" "0")
+        list(LENGTH LINE_LIST LINE_LENGTH)
+    elseif(NOT LINE_LENGTH EQUAL 3 AND NOT LINE_LENGTH EQUAL 10)
+        message(FATAL_ERROR "PHARE permutation line has unsupported arity (${LINE_LENGTH}): ${LINE}")
+    endif()
 
     SET(_OFFSET 3)
     SET(_PREFIXES "TimeIntegratorType;ReconstructionType;SlopeLimiterType;RiemannSolverType")

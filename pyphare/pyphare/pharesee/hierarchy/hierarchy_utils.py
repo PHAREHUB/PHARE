@@ -678,7 +678,19 @@ def single_patch_for_LO(hier, qties=None, skip=None):
     sim = hier.sim
     origin = [0] * len(sim.cells)
     box = Box(origin, sim.cells)
-    layout = GridLayout(box, origin, sim.dl, interp_order=sim.interp_order)
+
+    def layout_of(patch_data):
+        """whole-domain layout for that patch data: same as its own layout but for the
+        box. Ghosts come from the data rather than from interp_order, which an MHD run
+        does not have."""
+        return GridLayout(
+            box,
+            origin,
+            sim.dl,
+            interp_order=patch_data.layout.interp_order,
+            ghosts_nbr=patch_data.layout.ghosts_nbr,
+        )
+
     p0 = Patch(patch_datas={}, patch_id="", box=box)
     for t in cier.times():
         cier.time_hier[format_timestamp(t)] = {0: cier.level(0, t)}
@@ -689,7 +701,7 @@ def single_patch_for_LO(hier, qties=None, skip=None):
                 continue
             if isinstance(v, FieldData):
                 l0_pds[k] = FieldData(
-                    layout,
+                    layout_of(v),
                     v.field_name,
                     None,
                     centering=v.centerings,

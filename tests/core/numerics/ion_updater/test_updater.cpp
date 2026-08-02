@@ -171,9 +171,9 @@ struct ElectromagBuffers
 {
     constexpr static PHARE::SimOpts opts{dim, interp_order};
     using PHARETypes       = PHARE_Types<opts>;
-    using Grid             = typename PHARETypes::Grid_t;
-    using GridLayout       = typename PHARETypes::GridLayout_t;
-    using Electromag       = typename PHARETypes::Electromag_t;
+    using Grid             = PHARETypes::Hybrid::Grid_t;
+    using GridLayout       = PHARETypes::Hybrid::GridLayout_t;
+    using Electromag       = PHARETypes::Hybrid::Electromag_t;
     using UsableVecFieldND = UsableVecField<dim>;
 
     UsableVecFieldND B, E;
@@ -208,11 +208,11 @@ struct IonsBuffers
     constexpr static PHARE::SimOpts opts{dim, interp_order};
     using PHARETypes                 = PHARE_Types<opts>;
     using UsableVecFieldND           = UsableVecField<dim>;
-    using Grid                       = typename PHARETypes::Grid_t;
-    using GridLayout                 = typename PHARETypes::GridLayout_t;
-    using Ions                       = typename PHARETypes::Ions_t;
-    using ParticleArray              = typename PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory = typename PHARETypes::ParticleInitializerFactory_t;
+    using Grid                       = PHARETypes::Hybrid::Grid_t;
+    using GridLayout                 = PHARETypes::Hybrid::GridLayout_t;
+    using Ions                       = PHARETypes::Hybrid::Ions_t;
+    using ParticleArray              = PHARETypes::Hybrid::ParticleArray_t;
+    using ParticleInitializerFactory = PHARETypes::Hybrid::ParticleInitializerFactory_t;
 
     Grid ionChargeDensity;
     Grid ionMassDensity;
@@ -366,11 +366,11 @@ struct IonUpdaterTest : public ::testing::Test
     static constexpr auto interp_order = DimInterpT::interp_order;
     constexpr static PHARE::SimOpts opts{dim, interp_order};
     using PHARETypes    = PHARE_Types<opts>;
-    using Ions          = PHARETypes::Ions_t;
-    using Electromag    = PHARETypes::Electromag_t;
+    using Ions          = PHARETypes::Hybrid::Ions_t;
+    using Electromag    = PHARETypes::Hybrid::Electromag_t;
     using GridLayout    = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using ParticleArray = PHARETypes::ParticleArray_t;
-    using ParticleInitializerFactory = PHARETypes::ParticleInitializerFactory_t;
+    using ParticleArray = PHARETypes::Hybrid::ParticleArray_t;
+    using ParticleInitializerFactory = PHARETypes::Hybrid::ParticleInitializerFactory_t;
 
     using IonUpdater_t = IonUpdater<Ions, Electromag, GridLayout>;
     using Boxing_t     = UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
@@ -387,8 +387,8 @@ struct IonUpdaterTest : public ::testing::Test
 
 
     // data for electromagnetic fields
-    using Field            = typename PHARETypes::Grid_t;
-    using VecField         = typename PHARETypes::VecField_t;
+    using Field            = PHARETypes::Hybrid::Grid_t;
+    using VecField         = PHARETypes::Hybrid::VecField_t;
     using UsableVecFieldND = UsableVecField<dim>;
 
     ElectromagBuffers<dim, interp_order> emBuffers;

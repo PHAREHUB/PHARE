@@ -31,7 +31,7 @@ public:
     using Grid_t              = Grid<Array_t, HybridQuantity::Scalar>;
     using UsableVecField_t    = UsableVecField<dim>;
     using UsableTensorField_t = UsableTensorField<dim, /*rank = */ 2>;
-    using GridLayout_t        = PHARE_Types::GridLayout_t;
+    using GridLayout_t        = PHARE_Types::Hybrid::GridLayout_t;
     using VecField_t          = UsableVecField_t::Super;
     using TensorField_t       = UsableTensorField_t::Super;
 

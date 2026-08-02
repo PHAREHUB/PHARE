@@ -12,19 +12,21 @@ namespace PHARE::solver
 template<typename MHDModel>
 class MHDLevelInitializer : public LevelInitializer<typename MHDModel::amr_types>
 {
-    using amr_types                    = typename MHDModel::amr_types;
-    using hierarchy_t                  = typename amr_types::hierarchy_t;
-    using level_t                      = typename amr_types::level_t;
-    using patch_t                      = typename amr_types::patch_t;
+    using amr_types                    = MHDModel::amr_types;
+    using hierarchy_t                  = amr_types::hierarchy_t;
+    using level_t                      = amr_types::level_t;
+    using patch_t                      = amr_types::patch_t;
     using IPhysicalModelT              = IPhysicalModel<amr_types>;
     using IMessengerT                  = amr::IMessenger<IPhysicalModelT>;
     using MHDMessenger                 = amr::MHDMessenger<MHDModel>;
-    using GridLayoutT                  = typename MHDModel::gridlayout_type;
+    using GridLayoutT                  = MHDModel::gridlayout_type;
     static constexpr auto dimension = GridLayoutT::dimension;
 
     inline bool isRootLevel(int levelNumber) const { return levelNumber == 0; }
 
 public:
+    using model_type = MHDModel;
+
     MHDLevelInitializer() = default;
 
     void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,

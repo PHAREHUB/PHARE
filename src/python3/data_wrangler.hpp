@@ -70,7 +70,7 @@ public:
     static constexpr std::size_t dimension = opts.dimension;
 
     using Simulator   = PHARE::Simulator<opts>;
-    using HybridModel = Simulator::HybridModel;
+    using HybridModel = solver::PHARE_Types<opts>::Hybrid::Model_t;
 
 
     DataWrangler(std::shared_ptr<Simulator> const& simulator,

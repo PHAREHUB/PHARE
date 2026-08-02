@@ -73,22 +73,6 @@ struct PHARE_Types
         using GridLayout_t                  = GridLayout<mhd_options>;
     };
 
-    // deprecated defaults
-    using Grid_t                          = Hybrid::Grid_t;
-    using Field_t                         = Hybrid::Field_t;
-    using VecField_t                      = Hybrid::VecField_t;
-    using SymTensorField_t                = Hybrid::SymTensorField_t;
-    using Electromag_t                    = Hybrid::Electromag_t;
-    using GridLayout_t                    = Hybrid::GridLayout_t;
-    using Particle_t                      = Hybrid::Particle_t;
-    using ParticleAoS_t                   = Hybrid::ParticleArray_t;
-    using ParticleArray_t                 = Hybrid::ParticleArray_t;
-    using ParticleSoA_t                   = Hybrid::ParticleSoA_t;
-    using IonPopulation_t                 = Hybrid::IonPopulation_t;
-    using Ions_t                          = Hybrid::Ions_t;
-    using Electrons_t                     = Hybrid::Electrons_t;
-    using MaxwellianParticleInitializer_t = Hybrid::MaxwellianParticleInitializer_t;
-    using ParticleInitializerFactory_t    = Hybrid::ParticleInitializerFactory_t;
 };
 
 struct PHARE_Sim_Types

@@ -17,9 +17,9 @@ namespace PHARE::amr
 template<typename PHARE_T>
 class LoadBalancerEstimatorMHD : public LoadBalancerEstimator
 {
-    using MHDModel  = typename PHARE_T::MHDModel_t;
-    using amr_types = typename MHDModel::amr_types;
-    using level_t   = typename amr_types::level_t;
+    using MHDModel  = PHARE_T::MHD::Model_t;
+    using amr_types = MHDModel::amr_types;
+    using level_t   = amr_types::level_t;
 
 public:
     LoadBalancerEstimatorMHD(int const id)
