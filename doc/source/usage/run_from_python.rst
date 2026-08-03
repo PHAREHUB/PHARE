@@ -8,8 +8,8 @@ PHARE can run as a python script.
 Python dependencies
 -------------------
 
-PHARE requires a minimmum version of python 3.8 to run properly.
-Make sure `python3` shows the version is at least 3.8. 
+PHARE requires a minimmum version of python 3.11 to run properly.
+Make sure `python3` shows the version is at least 3.11. 
 Python package dependencies are listed in `requirements.txt` file.
 Install dependencies for the user:
 
