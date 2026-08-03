@@ -16,6 +16,10 @@ def format_timestamp(timestamp):
     return "{:.10f}".format(timestamp)
 
 
+class TimeNotFoundError(ValueError):
+    """raised when a requested time has no corresponding diagnostic dump"""
+
+
 class PatchHierarchy(object):
     """is a collection of patch levels"""
 
@@ -214,7 +218,10 @@ class PatchHierarchy(object):
     def levels(self, time=None):
         if time is None:
             time = self._default_time()
-        return self.time_hier[format_timestamp(time)]
+        time = format_timestamp(time)
+        if time not in self.time_hier:
+            raise TimeNotFoundError(f"{time} not found in hierarchy")
+        return self.time_hier[time]
 
     def level(self, level_number, time=None):
         return self.levels(time)[level_number]
