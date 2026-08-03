@@ -74,9 +74,10 @@ class Simulator:
         These arguments have good default, change them at your own risk.
 
         *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
-        *  **post_advance**: (``Function``),  default None. A python function called after diagnostics have
-           been dumped, letting the user analyze the just-written data before the simulation takes another
-           step
+        *  **post_advance**: (``Function``),  default None. A python function called with the current time
+           after each advance, once any diagnostics active at that time have been dumped. Diagnostics may not
+           exist for that time, in which case loading them raises
+           :class:`pyphare.pharesee.hierarchy.TimeNotFoundError`
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
 
     """
@@ -160,7 +161,8 @@ class Simulator:
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
 
-        if self.dump() and self.post_advance is not None:
+        self.dump()
+        if self.post_advance is not None:
             self.post_advance(self.cpp_sim.currentTime())
         return self
 
