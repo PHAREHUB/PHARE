@@ -7,6 +7,7 @@ import numpy as np
 
 import pyphare.pharein as ph
 from pyphare import cpp
+from pyphare.pharesee.hierarchy import TimeNotFoundError
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 from tests.diagnostic import all_timestamps
@@ -255,8 +256,14 @@ def post_advance(new_time):
         particle_diagnostics["idx"] < particle_diagnostics["count"]
         and cpp.mpi_rank() == 0
     ):
+        try:
+            datahier = get_time(
+                ph.global_vars.sim.diag_options["options"]["dir"], new_time
+            )
+        except TimeNotFoundError:
+            return  # no particle diagnostic dumped at this time
+
         particle_diagnostics["idx"] += 1
-        datahier = get_time(ph.global_vars.sim.diag_options["options"]["dir"], new_time)
         test.base_test_domain_particles_on_refined_level(datahier, new_time)
 
 
