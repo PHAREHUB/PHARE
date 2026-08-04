@@ -74,11 +74,6 @@ class Simulator:
         These arguments have good default, change them at your own risk.
 
         *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
-        *  **auto_dump**: (``bool``), if True (default), :meth:`dump` is called automatically on
-           :meth:`initialize` and after each :meth:`advance`, writing any diagnostics/restarts whose
-           requested timestamp has been reached. If False, this automatic call is disabled and nothing is
-           ever written unless the user calls :meth:`dump` explicitly - useful to take full manual control
-           over when dumps happen (e.g. to avoid an unwanted dump at ``initialize()`` time)
         *  **post_advance**: (``Function``),  default None. A python function called after diagnostics have
            been dumped, letting the user analyze the just-written data before the simulation takes another
            step
@@ -86,7 +81,7 @@ class Simulator:
 
     """
 
-    def __init__(self, simulation, auto_dump=True, **kwargs):
+    def __init__(self, simulation, **kwargs):
         assert isinstance(simulation, ph.Simulation)  # pylint: disable=no-member
         self.simulation = simulation
         self.cpp_hier = None  # HERE
@@ -100,7 +95,6 @@ class Simulator:
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
 
-        self.auto_dump = auto_dump
         from pyphare.simulator import _simulator
 
         _simulator.obj = self
@@ -143,9 +137,8 @@ class Simulator:
             return self
 
         try:
-            self.cpp_sim.initialize()
-            self.initialized = True
-            self._auto_dump()  # first dump might be before first advance
+            self.cpp_initialize()
+            self.dump()  # first dump might be before first advance
 
             return self
         except Exception as e:  # see #1434
@@ -167,7 +160,7 @@ class Simulator:
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
 
-        if self._auto_dump() and self.post_advance is not None:
+        if self.dump() and self.post_advance is not None:
             self.post_advance(self.cpp_sim.currentTime())
         return self
 
@@ -235,13 +228,13 @@ class Simulator:
         return self.reset()
 
     def dump(self, *args):
-        assert len(args) == 0 or len(args) == 2
+        # do diagnostics/restarts dump if active at this time
+        if not (len(args) == 0 or len(args) == 2):
+            raise ValueError("Simulator::dump: unexpected parameter count")
 
         time = self.currentTime() if len(args) == 0 else args[0]
         timestep = self.timeStep() if len(args) == 0 else args[1]
-
         restarts.dump(self, time, timestep)
-
         return self.cpp_sim.dump_diagnostics(timestamp=time, timestep=timestep)
 
     def data_wrangler(self):
@@ -285,8 +278,14 @@ class Simulator:
         self._check_setup()
         return self.cpp_sim.interp_order  # constexpr static value
 
-    def _auto_dump(self):
-        return self.auto_dump and self.dump()
+    def cpp_initialize(self):
+        # special case to initialize without dumping
+        if self.initialized:
+            return self
+        self._check_setup()
+        self.cpp_sim.initialize()
+        self.initialized = True
+        return self
 
     def _check_init(self):
         if not self.initialized:
