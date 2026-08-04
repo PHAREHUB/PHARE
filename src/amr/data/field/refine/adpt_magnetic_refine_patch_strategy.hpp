@@ -114,11 +114,28 @@ public:
     {
         assertIDsSet();
 
-        auto& fields       = TensorFieldDataT::getFields(fine, b_id_);
-        auto& [bx, by, bz] = fields;
+        auto& fields = TensorFieldDataT::getFields(fine, b_id_);
 
         auto const layout = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
         auto const region = reconstructionRegion(fine_box, fine.getPatchData(b_id_)->getGhostBox());
+
+        touchUpInteriorFaces(fields, layout, region);
+    }
+
+
+    /**
+     * @brief Stage 2 proper: add the divergence-equalizing correction over `region`.
+     *
+     * Split out of postprocessRefine so it can be driven directly from a test with a hand-built
+     * field, exactly as the legacy strategy's reconstructInteriorFaces was. `region` must already
+     * be whole-coarse-cell rounded (reconstructionRegion) — every read here lands on a fine face
+     * of the coarse cell being corrected, and those exist only if the cell is wholly inside.
+     */
+    static void touchUpInteriorFaces(auto& fields, gridlayout_type const& layout,
+                                     SAMRAI::hier::Box const& region)
+    {
+        auto& [bx, by, bz] = fields;
+
         auto const regionLayout = Geometry::layoutFromBox(region, layout);
 
         auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
