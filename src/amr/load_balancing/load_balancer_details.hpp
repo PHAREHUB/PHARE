@@ -2,9 +2,8 @@
 #define PHARE_AMR_LOAD_BALANCER_LOAD_BALANCER_DETAILS_HPP
 
 #include <string>
-#include <cstdint>
+#include <cstddef>
 
-#include "core/logger.hpp"
 #include "initializer/data_provider.hpp"
 
 namespace PHARE::amr

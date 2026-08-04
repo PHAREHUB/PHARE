@@ -148,7 +148,7 @@ def config():
 
     ph.InfoDiagnostics(quantity="particle_count")
 
-    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
+    ph.LoadBalancer(auto=True, mode="nppc", tol=0.05)
 
     return sim
 

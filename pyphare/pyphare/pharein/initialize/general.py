@@ -3,9 +3,8 @@ import os
 import numpy as np
 import pybindlibs.dictator as pp
 from pyphare.core.phare_utilities import is_scalar
-from pyphare.pharein.load_balancer import LoadBalancer
-from pyphare.pharein.simulation import deserialize as deserialize_sim
 from pyphare.pharein.simulation import serialize as serialize_sim
+from pyphare.pharein.simulation import deserialize as deserialize_sim
 
 
 def _patch_data_ids(restart_file_dir):
@@ -159,24 +158,23 @@ def populateDict(sim):
         )  # integrator.h might want some looking at
 
     # load balancer block start
-    lb = sim.load_balancer or LoadBalancer(active=False, _register=False)
     base = "simulation/AMR/loadbalancing"
-    add_bool(f"{base}/active", lb.active)
-    add_string(f"{base}/mode", lb.mode)
-    add_double(f"{base}/tolerance", lb.tol)
+    lb = sim.load_balancer
+    add_bool(f"{base}/active", True if lb else False)
+    if lb:
+        add_string(f"{base}/mode", lb.mode)
+        add_double(f"{base}/tolerance", lb.tol)
+        add_bool(f"{base}/auto", lb.auto)
+        add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
+        add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)
+        add_size_t(
+            f"{base}/next_rebalance_backoff_multiplier",
+            lb.next_rebalance_backoff_multiplier,
+        )
 
-    # if mode==nppc, imbalance allowed
-    add_bool(f"{base}/auto", lb.auto)
-    add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
-    add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)
-    add_size_t(
-        f"{base}/next_rebalance_backoff_multiplier",
-        lb.next_rebalance_backoff_multiplier,
-    )
-
-    # cadence based values
-    add_size_t(f"{base}/every", lb.every)
-    add_bool(f"{base}/on_init", lb.on_init)
+        # cadence based values
+        add_size_t(f"{base}/every", lb.every)
+        add_bool(f"{base}/on_init", lb.on_init)
     # load balancer block end
 
     serialized_sim = serialize_sim(sim)
