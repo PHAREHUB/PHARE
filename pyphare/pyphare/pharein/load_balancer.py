@@ -1,7 +1,5 @@
 from dataclasses import dataclass, field
 
-from . import global_vars as gv
-
 
 @dataclass
 class LoadBalancer:
@@ -9,7 +7,7 @@ class LoadBalancer:
     LoadBalancer controls how simulation work (particles and cells) is
     redistributed across MPI ranks as the simulation runs, to keep ranks
     evenly loaded on an evolving, adaptively-refined domain. Optional - if
-    none is created, load balancing runs with the defaults below.
+    none is created, L0 is never proactively rebalanced.
 
     Can be created any time after :class:`~pyphare.pharein.Simulation`, at
     most once per simulation.
@@ -32,7 +30,6 @@ class LoadBalancer:
 
     **Parameters**:
 
-        * **active** (``bool``), default=True, whether the proactive L0 rebalancing described below is performed at all.
         * **mode** (``str``), {"nppc" (default), "homogeneous"}, how load is assessed per rank: "nppc" counts particles per rank, "homogeneous" counts cells per rank. Applies at every level, whenever that level's patches are redistributed across ranks.
         * **tol** (``float``), default=0.05, acceptable relative imbalance between ranks. Used both hierarchy-wide (only used with `mode="nppc"`) and as the threshold that triggers a proactive L0 rebalance between regrids.
         * **on_init** (``bool``), default=True, whether L0 is checked/rebalanced right after the simulation is initialized.
@@ -40,17 +37,20 @@ class LoadBalancer:
         * **every** (``int``), if set, proactively rebalance L0 every `every` steps instead of automatically. Mutually exclusive with `auto`.
     """
 
-    # whether or not load balancing is performed
-    active: bool = field(default_factory=lambda: True)
-
-    # which way load is assessed
+    # which way load is assessed - applies to every level, not just L0
     mode: str = field(default_factory=lambda: "nppc")
 
-    # acceptable imbalance essentially
+    # acceptable imbalance essentially - used both for L0's explicit rebalance
+    # decision and as the threshold applied to every other level when it is
+    # regridded. currently a single value shared by all levels; there is no
+    # per-level override
     tol: float = field(default_factory=lambda: 0.05)
 
-    # whether to rebalance/check imbalance on init
+    # L0 only: whether to force a rebalance check of L0 at the very first step
     on_init: bool = field(default_factory=lambda: True)
+
+    # L0 only: everything below this line governs *when* L0's explicit rebalance
+    # check runs - none of it affects other levels
 
     # if auto, other values are not used if active
     auto: bool = field(default_factory=lambda: False)
@@ -81,6 +81,8 @@ class LoadBalancer:
             raise RuntimeError(f"LoadBalancer mode '{self.mode}' is not valid")
 
         if self._register:
+            from . import global_vars as gv
+
             if not gv.sim:
                 raise RuntimeError(
                     "LoadBalancer cannot be registered as no simulation exists"
