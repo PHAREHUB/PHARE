@@ -18,7 +18,7 @@
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
-#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
+#include "amr/data/field/refine/adpt_magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 
 
@@ -501,8 +501,8 @@ namespace amr
 
     private:
         // Select the field-refinement operators once at construction. The composite runtime
-        // kernels are built from the configured order; B uses the shared-face magnetic kernel
-        // (interior stays Tóth-Roe).
+        // kernels are built from the configured order; B uses the stage-1 magnetic kernel (fills
+        // every fine face; the ADPT patch strategy runs the stage-2 divB touch-up afterward).
         void makeRefineOperators_(RefinementConfig const& config)
         {
             auto fieldKernel = [&] {
@@ -578,7 +578,7 @@ namespace amr
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
                 std::vector<std::shared_ptr<
-                    MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+                    ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
                     result;
 
                 result.reserve(info->ghostMagnetic.size());
@@ -588,7 +588,7 @@ namespace amr
                     auto&& [id] = resourcesManager_->getIDsList(key);
 
                     auto patch_strat = std::make_shared<
-                        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
+                        ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
                         *resourcesManager_);
 
                     patch_strat->registerIDs(id);
@@ -826,11 +826,11 @@ namespace amr
         CoarsenOp_ptr mhdVecFluxCoarseningOp_{std::make_shared<MHDVecFluxCoarsenOp>()};
         CoarsenOp_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
-        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
+        ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
             magneticRefinePatchStrategy_{*resourcesManager_};
 
         std::vector<
-            std::shared_ptr<MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+            std::shared_ptr<ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
             magneticPatchStratPerGhostRefiner_;
     };
 

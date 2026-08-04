@@ -10,7 +10,11 @@
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
+#include "amr/data/field/refine/adpt_magnetic_refine_patch_strategy.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
+
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/index/index.hpp"
 
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -21,8 +25,10 @@
 #include <array>
 #include <cmath>
 #include <limits>
+#include <map>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 
 
@@ -80,7 +86,7 @@ TYPED_TEST(aFieldRefineOperator, kernelRefineOperatorCanBeCreated)
 // Boxes are placed with lower=0 so AMR == local indexing; ratio 2. The fine destination is filled
 // with NaN so the kernel's NaN-guard writes every targeted index. The numeric core is separable, so
 // 1-D exercises both primitives (dual ±¼ ladder, primal half-point); one 2-D magnetic
-// case covers the sharedFacesOnly skip + the runtime tensor product of the 1-D rows.
+// case covers the fill-all-faces stage-1 kernel + the runtime tensor product of the 1-D rows.
 
 namespace
 {
@@ -120,8 +126,8 @@ std::string boxStr(SAMRAI::hier::Box const& box)
     return s;
 }
 
-// gtest's EXPECT_EQ cannot see PHARE::amr's operator== for SAMRAI boxes (it is not found by ADL from
-// testing::internal), and a raw byte comparison would also compare BoxIds.
+// gtest's EXPECT_EQ cannot see PHARE::amr's operator== for SAMRAI boxes (it is not found by ADL
+// from testing::internal), and a raw byte comparison would also compare BoxIds.
 ::testing::AssertionResult boxesEqual(SAMRAI::hier::Box const& lhs, SAMRAI::hier::Box const& rhs)
 {
     if (PHARE::amr::operator==(lhs, rhs))
@@ -177,35 +183,76 @@ TEST(compositeRefiner1D, dualRowSumsToOne)
 }
 
 
-// B (Bx: primal-x normal, dual-y tangential), sharedFacesOnly: the two tangential (y) children of a
-// shared (even-x) face are antisymmetric about the coarse value ⇒ sum = 2·C ⇒ ∇·B-neutral.
-// Interior (odd-x) faces are left untouched (NaN) by the Tóth-Roe owner.
+// B (Bx: primal-x normal, dual-y tangential): the two tangential (y) children of a shared
+// (even-x) face are antisymmetric about the coarse value ⇒ sum = 2·C ⇒ ∇·B-neutral (stage-1
+// property, unaffected by the magnetic round-out). Interior (odd-x, normal-direction) faces are
+// now filled too — stage 1 of the ADPT prolongation fills ALL fine faces; ownership of divB-safety
+// there moves to the stage-2 touch-up (not exercised by this kernel-only test). Assert the interior
+// fill matches the same tensor-product stencil value the kernel uses (directionalInterp /
+// directionalProlongation), computed independently of CompositeFieldRefiner's own orchestration.
 TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
 {
+    using ImplYee2D = GridYee2D::implT;
+
     auto src_at = [](int ix, int iy) { return 1.0 * ix + 0.5 * iy + 0.1 * ix * iy; };
     std::array<QtyCentering, 2> centering{QtyCentering::primal, QtyCentering::dual}; // Bx
 
-    auto run = [&](auto refiner) {
-        Grid2D src{"c", HybridQuantity::Scalar::Bx, 6u, 6u};
-        Grid2D dst{"f", HybridQuantity::Scalar::Bx, std::array<std::uint32_t, 2>{12u, 12u}, NaN};
-        for (std::size_t ix = 0; ix < src.shape()[0]; ++ix)
-            for (std::size_t iy = 0; iy < src.shape()[1]; ++iy)
-                src(ix, iy) = src_at(ix, iy);
-
-        refiner.refineBox(src, dst, boxOf<2>({4, 4}, {5, 7}), centering, boxOf<2>({0, 0}, {11, 11}),
-                          boxOf<2>({0, 0}, {5, 5}), ratio2(2));
-
-        // fine x=4 is a shared (even) face, coarse anchor ix=2; x=5 is interior (odd) → skipped
-        for (int iy = 2; iy <= 3; ++iy)
-        {
-            double const c0 = dst(4, 2 * iy);
-            double const c1 = dst(4, 2 * iy + 1);
-            EXPECT_NEAR(c0 + c1, 2.0 * src_at(2, iy), 1e-12);
-        }
-        EXPECT_TRUE(std::isnan(dst(5, 4))); // interior-normal face untouched
+    auto rowX = [](int parity) {
+        std::vector<WeightPoint<2>> row;
+        if (parity == 0)
+            row.push_back({Point<int, 2>{}, 1.0});
+        else
+            for (auto const& w :
+                 ImplYee2D::directionalInterp<0, ImplYee2D::InterpDir::PrimalToDual, 2>())
+                row.push_back(w);
+        return row;
+    };
+    auto rowY = [](int parity) {
+        std::vector<WeightPoint<2>> row;
+        if (parity == 0)
+            for (auto const& w : ImplYee2D::directionalProlongation<1, -1, 2>())
+                row.push_back(w);
+        else
+            for (auto const& w : ImplYee2D::directionalProlongation<1, +1, 2>())
+                row.push_back(w);
+        return row;
+    };
+    auto expectedAt = [&](int Ix, int Iy, int px, int py) {
+        double v = 0.0;
+        for (auto const& wx : rowX(px))
+            for (auto const& wy : rowY(py))
+                v += wx.coef * wy.coef * src_at(Ix + wx.indexes[0], Iy + wy.indexes[1]);
+        return v;
     };
 
-    run(MagneticCompositeRefiner<GridYee2D, Grid2D, 2>{});
+    Grid2D src{"c", HybridQuantity::Scalar::Bx, 6u, 6u};
+    Grid2D dst{"f", HybridQuantity::Scalar::Bx, std::array<std::uint32_t, 2>{12u, 12u}, NaN};
+    for (std::size_t ix = 0; ix < src.shape()[0]; ++ix)
+        for (std::size_t iy = 0; iy < src.shape()[1]; ++iy)
+            src(ix, iy) = src_at(ix, iy);
+
+    MagneticCompositeRefiner<GridYee2D, Grid2D, 2> refiner{};
+    refiner.refineBox(src, dst, boxOf<2>({4, 4}, {5, 7}), centering, boxOf<2>({0, 0}, {11, 11}),
+                      boxOf<2>({0, 0}, {5, 5}), ratio2(2));
+
+    // fine x=4 is a shared (even) face, coarse anchor Ix=2
+    for (int iy = 2; iy <= 3; ++iy)
+    {
+        double const c0 = dst(4, 2 * iy);
+        double const c1 = dst(4, 2 * iy + 1);
+        EXPECT_NEAR(c0 + c1, 2.0 * src_at(2, iy), 1e-12);
+    }
+
+    // fine x=5 is interior (odd-x, normal-direction), coarse anchor Ix=2: stage 1 now fills it
+    // (no more single-owner skip). Assert filled (non-NaN) and matching the tensor-product
+    // stencil value built from the primitive weight tables above.
+    for (int iy = 4; iy <= 7; ++iy)
+    {
+        int const Iy = iy / 2;
+        int const py = iy - 2 * Iy;
+        EXPECT_FALSE(std::isnan(dst(5, iy)));
+        EXPECT_NEAR(dst(5, iy), expectedAt(2, Iy, 1, py), 1e-12);
+    }
 }
 
 
@@ -256,19 +303,21 @@ TEST(coarseCellRoundOut, cellAndFieldBoxesAgreeOnWholeCoarseCells)
     // a field box rounds to the field box of the rounded cell box: dual rows 2I..2J+1, primal
     // nodes 2I..2J+2
     std::array<QtyCentering, 2> bxCentering{QtyCentering::primal, QtyCentering::dual}; // Bx
-    EXPECT_TRUE(boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {82, 64}), bxCentering),
-                           boxOf<2>({-2, 64}, {82, 65})));
+    EXPECT_TRUE(
+        boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {82, 64}), bxCentering),
+                   boxOf<2>({-2, 64}, {82, 65})));
 
     std::array<QtyCentering, 2> byCentering{QtyCentering::dual, QtyCentering::primal}; // By
-    EXPECT_TRUE(boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {81, 65}), byCentering),
-                           boxOf<2>({-2, 64}, {81, 66})));
+    EXPECT_TRUE(
+        boxesEqual(roundFieldBoxOutToCoarseCells<2>(boxOf<2>({-2, 64}, {81, 65}), byCentering),
+                   boxOf<2>({-2, 64}, {81, 66})));
 }
 
 
 TEST(coarseCellRoundOut, wholeCoarseCellsMeansLowerEvenAndUpperOdd)
 {
     EXPECT_TRUE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {81, 65})));
-    EXPECT_TRUE(isWholeCoarseCells<2>(boxOf<2>({0, 0}, {1, 1})));  // a single coarse cell
+    EXPECT_TRUE(isWholeCoarseCells<2>(boxOf<2>({0, 0}, {1, 1})));      // a single coarse cell
     EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-3, 64}, {81, 65}))); // lower x odd
     EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {80, 65}))); // upper x even
     EXPECT_FALSE(isWholeCoarseCells<2>(boxOf<2>({-2, 64}, {81, 64}))); // upper y even
@@ -398,8 +447,8 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
 
     // every fine face of the region — shared (gathered) and interior (reconstructed) alike — is
     // finite and equal to the exact prolongation
-    auto const& bx = fields[0];
-    auto const& by = fields[1];
+    auto const& bx         = fields[0];
+    auto const& by         = fields[1];
     std::size_t interiorBx = 0, interiorBy = 0;
 
     for (auto const& idx :
@@ -441,11 +490,11 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
 }
 
 
-// When the fill box already reaches the allocation, round-out is clipped back and can leave a coarse
-// cell half-covered. There is no well-posed reconstruction for such a cell — some of its inputs are
-// faces nothing ever wrote — so this is rejected rather than silently skipped. It cannot happen in
-// any supported configuration (field_ghost_width >= fill_ring + 1 holds everywhere), which is why a
-// deliberately misaligned *allocation* is needed to reach it at all.
+// When the fill box already reaches the allocation, round-out is clipped back and can leave a
+// coarse cell half-covered. There is no well-posed reconstruction for such a cell — some of its
+// inputs are faces nothing ever wrote — so this is rejected rather than silently skipped. It cannot
+// happen in any supported configuration (field_ghost_width >= fill_ring + 1 holds everywhere),
+// which is why a deliberately misaligned *allocation* is needed to reach it at all.
 TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 {
     // a coarse-interpolation temporary: its box is coarsen(unfilled), so its parity is arbitrary.
@@ -457,10 +506,205 @@ TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
     EXPECT_FALSE(isWholeCoarseCells<2>(ghostBox));
     EXPECT_THROW(MagStrategy2D::reconstructionRegion(ghostBox, ghostBox), std::runtime_error);
 
-    // an aligned allocation of the same size is accepted, so it really is the parity that is rejected
+    // an aligned allocation of the same size is accepted, so it really is the parity that is
+    // rejected
     auto const alignedLayout = layoutOf(boxOf<2>({0, 0}, {15, 15}), 0.1);
     auto const alignedGhosts = samrai_box_from(grow(alignedLayout.AMRBox(), fieldGhosts));
     EXPECT_NO_THROW(MagStrategy2D::reconstructionRegion(alignedGhosts, alignedGhosts));
+}
+
+
+// ==================================================================================================
+// ADPTMagneticRefinePatchStrategy stage-2 touch-up tests (Balsara divB-free prolongation)
+// ==================================================================================================
+//
+// Exercises the public static correctBx2d/correctBy2d directly: they are plain static functions,
+// so no SAMRAI Patch/ResourcesManager machinery is needed. Stage 1 (CompositeFieldRefiner, reused
+// from the value-level tests above) fills every fine face of Bx/By from coarse data; these statics
+// then apply the stage-2 divergence-equalizing correction, sharing one DivCache per postprocess
+// pass -- the same contract as ADPTMagneticRefinePatchStrategy::postprocessRefine.
+//
+// The strategy class only reads, from its TensorFieldDataT template parameter, the compile-time
+// typedefs used at class scope (Geometry/gridlayout_type/N/dimension); Geometry and ResMan are
+// never touched by the statics under test, so both are empty stand-ins.
+//
+// order-4 is deliberately NOT exercised here (unlike the upstream ADPT gtests this was ported
+// from): CompositeFieldRefiner on this branch static_asserts order == 2 (higher-order-refinement
+// caps refinement order at 2 for hybrid), so an order-4 fillFaces2D<4> would fail to compile. The
+// touch-up statics themselves are order-independent, so order 2 alone still exercises the full
+// stage-2 contract (memoised stage-1 snapshot, per-zone equalization).
+namespace
+{
+struct DummyGeometry2D
+{
+};
+
+struct DummyTensorFieldData2D
+{
+    using Geometry                         = DummyGeometry2D;
+    using gridlayout_type                  = GridYee2D;
+    static constexpr std::size_t N         = 3;
+    static constexpr std::size_t dimension = 2;
+};
+
+struct DummyResMan2D
+{
+};
+
+using ADPT2D = ADPTMagneticRefinePatchStrategy<DummyResMan2D, DummyTensorFieldData2D>;
+
+// A GridLayout whose AMRToLocal is the identity (AMR index == array-local index): avoids
+// depending on GridLayoutImplYee's internal ghost-width value, matching the "lower=0 =>
+// AMR==local" convention the CompositeFieldRefiner value tests above already rely on.
+GridYee2D identityLayout2D()
+{
+    using CoreBox = PHARE::core::Box<int, 2>;
+    GridYee2D probe{{1., 1.}, {40u, 40u}, {{0., 0.}}, CoreBox{Point{0, 0}, Point{39, 39}}};
+    auto const g0 = probe.AMRToLocal(Point{0, 0});
+    int const G   = static_cast<int>(g0[0]);
+    return GridYee2D{{1., 1.}, {40u, 40u}, {{0., 0.}}, CoreBox{Point{G, G}, Point{G + 39, G + 39}}};
+}
+
+// raw ("flux") divergence of fine cell (cx,cy): the same quantity the strategy's
+// subzoneDiv2d_ computes internally.
+double rawDiv2d(Grid2D& bx, Grid2D& by, int cx, int cy)
+{
+    return (bx(cx + 1, cy) - bx(cx, cy)) + (by(cx, cy + 1) - by(cx, cy));
+}
+
+Grid2D makeGrid2D(HybridQuantity::Scalar qty, int n)
+{
+    return Grid2D{"g", qty, static_cast<std::uint32_t>(n), static_cast<std::uint32_t>(n)};
+}
+
+constexpr int coarseN_ = 12;
+constexpr int fineN_   = 2 * coarseN_;
+
+// fills every fine face of bx (primal-x/dual-y) and by (dual-x/primal-y) inside fine indices
+// [6,17]^2 (coarse cells [3,8]) from full [0,coarseN_)^2 coarse arrays, via CompositeFieldRefiner.
+template<int order>
+void fillFaces2D(Grid2D& bxCoarse, Grid2D& byCoarse, Grid2D& bxFine, Grid2D& byFine)
+{
+    std::array<QtyCentering, 2> const bxCentering{QtyCentering::primal, QtyCentering::dual};
+    std::array<QtyCentering, 2> const byCentering{QtyCentering::dual, QtyCentering::primal};
+
+    auto const destBox   = boxOf<2>({6, 6}, {17, 17});
+    auto const destGhost = boxOf<2>({0, 0}, {fineN_ - 1, fineN_ - 1});
+    auto const srcGhost  = boxOf<2>({0, 0}, {coarseN_ - 1, coarseN_ - 1});
+
+    CompositeFieldRefiner<GridYee2D, Grid2D, order> refiner{};
+    refiner.refineBox(bxCoarse, bxFine, destBox, bxCentering, destGhost, srcGhost, ratio2(2));
+    refiner.refineBox(byCoarse, byFine, destBox, byCentering, destGhost, srcGhost, ratio2(2));
+}
+
+// applies the stage-2 touch-up over the same fine box used to fill the faces (matches
+// ADPTMagneticRefinePatchStrategy::postprocessRefine's per-component loop shape: the parity
+// gate inside correctBx2d/correctBy2d selects only the interior/odd faces).
+void touchUp2D(Grid2D& bxFine, Grid2D& byFine)
+{
+    auto const layout  = identityLayout2D();
+    auto const destBox = boxOf<2>({6, 6}, {17, 17});
+
+    ADPT2D::DivCache cache;
+    for (auto const& i : phare_box_from<2>(destBox))
+        ADPT2D::correctBx2d(cache, bxFine, byFine, layout, i);
+    for (auto const& i : phare_box_from<2>(destBox))
+        ADPT2D::correctBy2d(cache, bxFine, byFine, layout, i);
+}
+
+void fillNaN2D(Grid2D& bxFine, Grid2D& byFine)
+{
+    for (int i = 0; i < fineN_; ++i)
+        for (int j = 0; j < fineN_; ++j)
+        {
+            bxFine(i, j) = NaN;
+            byFine(i, j) = NaN;
+        }
+}
+} // namespace
+
+
+// Coarse B built from a stream function psi (bx = y-difference, by = -x-difference of psi at the
+// same 4 corner nodes bounding the cell) is discretely divergence-free by construction, at ANY
+// grid resolution, independently of psi's shape -- the corner-algebra telescopes to zero
+// regardless of mesh spacing. psi here is a generic (non-affine) cubic, so the order-2 stage-1
+// fill is not already exact: the stage-2 touch-up is what must zero the fine divergence.
+template<int order>
+static void runDivFreeCase()
+{
+    auto psi = [](int x, int y) { return 0.7 * x * x * y - 0.3 * x * y * y + 1.3 * x - 0.6 * y; };
+
+    Grid2D bxCoarse = makeGrid2D(HybridQuantity::Scalar::Bx, coarseN_);
+    Grid2D byCoarse = makeGrid2D(HybridQuantity::Scalar::By, coarseN_);
+    Grid2D bxFine   = makeGrid2D(HybridQuantity::Scalar::Bx, fineN_);
+    Grid2D byFine   = makeGrid2D(HybridQuantity::Scalar::By, fineN_);
+
+    for (int I = 0; I < coarseN_; ++I)
+        for (int J = 0; J < coarseN_; ++J)
+        {
+            bxCoarse(I, J) = psi(I, J + 1) - psi(I, J);
+            byCoarse(I, J) = -(psi(I + 1, J) - psi(I, J));
+        }
+    fillNaN2D(bxFine, byFine);
+
+    fillFaces2D<order>(bxCoarse, byCoarse, bxFine, byFine);
+    touchUp2D(bxFine, byFine);
+
+    for (int cx = 8; cx <= 15; ++cx)
+        for (int cy = 8; cy <= 15; ++cy)
+            EXPECT_NEAR(rawDiv2d(bxFine, byFine, cx, cy), 0.0, 1e-12)
+                << "order=" << order << " cx=" << cx << " cy=" << cy;
+}
+
+TEST(ADPTMagneticTouchUp2D, correctsToExactDivBFreeOnGenericDivFreeCoarseData)
+{
+    runDivFreeCase<2>();
+}
+
+
+// Same flow but the coarse field is NOT divergence-free: the touch-up doesn't (and can't) zero
+// out the divergence -- per the class docstring it *equalizes* the 4 fine-subzone divergences of
+// the coarse cell they split (they all become the transported zone divergence q0 != 0). Assert
+// equality within each complete coarse zone, not zero.
+template<int order>
+static void runEqualizeCase()
+{
+    auto bxOf = [](int I, int J) { return I * I - 0.3 * J + 0.2 * I * J; };
+    auto byOf = [](int I, int J) { return 0.5 * J * J + 0.1 * I - I * J; };
+
+    Grid2D bxCoarse = makeGrid2D(HybridQuantity::Scalar::Bx, coarseN_);
+    Grid2D byCoarse = makeGrid2D(HybridQuantity::Scalar::By, coarseN_);
+    Grid2D bxFine   = makeGrid2D(HybridQuantity::Scalar::Bx, fineN_);
+    Grid2D byFine   = makeGrid2D(HybridQuantity::Scalar::By, fineN_);
+
+    for (int I = 0; I < coarseN_; ++I)
+        for (int J = 0; J < coarseN_; ++J)
+        {
+            bxCoarse(I, J) = bxOf(I, J);
+            byCoarse(I, J) = byOf(I, J);
+        }
+    fillNaN2D(bxFine, byFine);
+
+    fillFaces2D<order>(bxCoarse, byCoarse, bxFine, byFine);
+    touchUp2D(bxFine, byFine);
+
+    for (int I = 4; I <= 7; ++I)
+        for (int J = 4; J <= 7; ++J)
+        {
+            double const d00 = rawDiv2d(bxFine, byFine, 2 * I, 2 * J);
+            double const d10 = rawDiv2d(bxFine, byFine, 2 * I + 1, 2 * J);
+            double const d01 = rawDiv2d(bxFine, byFine, 2 * I, 2 * J + 1);
+            double const d11 = rawDiv2d(bxFine, byFine, 2 * I + 1, 2 * J + 1);
+
+            EXPECT_NEAR(d10, d00, 1e-12) << "order=" << order << " I=" << I << " J=" << J;
+            EXPECT_NEAR(d01, d00, 1e-12) << "order=" << order << " I=" << I << " J=" << J;
+            EXPECT_NEAR(d11, d00, 1e-12) << "order=" << order << " I=" << I << " J=" << J;
+        }
+}
+
+TEST(ADPTMagneticTouchUp2D, equalizesSubzoneDivergenceOnGenericNonDivFreeCoarseData)
+{
+    runEqualizeCase<2>();
 }
 
 

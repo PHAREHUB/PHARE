@@ -64,11 +64,12 @@ template<typename GridLayoutT, typename FieldT>
 std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int order);
 
 /**
- * @brief Build a magnetic shared-face refinement kernel (tangential dual stencil only).
+ * @brief Build the stage-1 magnetic refinement kernel of the ADPT div-free prolongation.
  *
- * Interior fine faces remain owned by the Tóth-Roe MagneticRefinePatchStrategy and are NOT
- * produced here. The shared-face tangential correction is antisymmetric in the child sign, so
- * ∇·B is preserved at every order.
+ * Fills ALL fine faces per component (shared and interior) with the composite tensor stencils;
+ * the stage-2 partner ADPTMagneticRefinePatchStrategy::postprocessRefine then applies the
+ * order-independent divB touch-up. The shared-face tangential correction is antisymmetric in the
+ * child sign, so ∇·B is preserved before the touch-up ever runs.
  */
 template<typename GridLayoutT, typename FieldT>
 std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int order);

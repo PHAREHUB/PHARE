@@ -15,20 +15,21 @@ namespace PHARE::amr
 {
 
 /**
- * @brief Composable B-field prolongation, restricted to shared (even-normal) faces.
+ * @brief Stage 1 of the Balsara ADPT divB-free B prolongation.
  *
- * B is point-sampled (primal) in its face-normal direction and dual (face-average) in the two
- * tangential directions. The only div-free-compatible, higher-orderable freedom is the tangential
- * dual stencil on the shared faces (copy in normal ⊗ Primitive-B in each tangential dir); the
- * correction is antisymmetric in the child sign ⇒ zero-mean per coarse face ⇒ ∇·B preserved at
- * every order. The interior (odd-normal) fine faces are NOT produced here: they are
- * computed div-free by the Tóth-Roe MagneticRefinePatchStrategy::postprocessRefine, which overwrites
- * them and reads only shared faces + dual children. This is the sharedFacesOnly=true specialization
- * of CompositeFieldRefiner.
+ * Fills ALL fine faces of a B component from its coarse faces, per component (primal-even
+ * direction: exact copy; primal-odd direction: directionalInterp half-point; dual directions:
+ * directionalProlongation ±¼ ladder). This is exactly CompositeFieldRefiner run with the magnetic
+ * (isMagnetic=true) round-out on — B carries no other special stage-1 gating.
+ *
+ * Its stage-2 partner is ADPTMagneticRefinePatchStrategy::postprocessRefine: an order-independent
+ * divB touch-up that equalizes the 2^d subzone divergences of each coarse zone via a closed-form
+ * min-norm correction, making the composite result divB-free exactly regardless of the stage-1
+ * order. At order 2 this reproduces the legacy Tóth-Roe operator exactly (derivation §S6b).
  */
 template<typename GridLayoutT, typename FieldT, std::size_t order>
 using MagneticCompositeRefiner
-    = CompositeFieldRefiner<GridLayoutT, FieldT, order, /*sharedFacesOnly=*/true>;
+    = CompositeFieldRefiner<GridLayoutT, FieldT, order, /*isMagnetic=*/true>;
 
 
 template<typename GridLayoutT, typename FieldT>
