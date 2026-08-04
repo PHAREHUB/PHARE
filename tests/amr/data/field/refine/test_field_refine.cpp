@@ -9,7 +9,6 @@
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
-#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/refine/adpt_magnetic_refine_patch_strategy.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
@@ -368,7 +367,7 @@ double fineByAt(int i, int j)
 constexpr int fieldGhosts = static_cast<int>(GridYee2D::options.field_ghost_width);
 
 using VecFieldData2D = PHARE::amr::TensorFieldData<1, GridYee2D, Grid2D, HybridQuantity>;
-using MagStrategy2D  = MagneticRefinePatchStrategy<int, VecFieldData2D>;
+using MagStrategy2D  = ADPTMagneticRefinePatchStrategy<int, VecFieldData2D>;
 using FieldGeom2D    = FieldGeometry<GridYee2D, HybridQuantity::Scalar>;
 
 GridYee2D layoutOf(SAMRAI::hier::Box const& cellBox, double dl)
@@ -443,7 +442,7 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
         fill, samrai_box_from(grow(fineLayout.AMRBox(), fieldGhosts)));
     EXPECT_TRUE(boxesEqual(region, boxOf<2>({0, 2}, {13, 3}))); // rounded out, no clip needed
 
-    MagStrategy2D::reconstructInteriorFaces(fields, fineLayout, region);
+    MagStrategy2D::touchUpInteriorFaces(fields, fineLayout, region);
 
     // every fine face of the region — shared (gathered) and interior (reconstructed) alike — is
     // finite and equal to the exact prolongation
