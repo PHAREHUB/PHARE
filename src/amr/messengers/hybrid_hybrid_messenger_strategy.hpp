@@ -16,7 +16,7 @@
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
-#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
+#include "amr/data/field/refine/adpt_magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
@@ -729,8 +729,8 @@ namespace amr
 
     private:
         // Select the field-refinement operators once at construction. The composite runtime
-        // kernels are built from the configured order; B uses the shared-face magnetic kernel
-        // (interior stays Tóth-Roe).
+        // kernels are built from the configured order; B uses the stage-1 magnetic kernel (fills
+        // every fine face; the ADPT patch strategy runs the stage-2 divB touch-up afterward).
         // Particle refine operators (interior / level-ghost) are NOT touched.
         void makeRefineOperators_(RefinementConfig const& config)
         {
@@ -774,7 +774,7 @@ namespace amr
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
                 std::vector<std::shared_ptr<
-                    MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+                    ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
                     result;
 
                 result.reserve(info->ghostMagnetic.size());
@@ -784,7 +784,7 @@ namespace amr
                     auto&& [id] = resourcesManager_->getIDsList(key);
 
                     auto patch_strat = std::make_shared<
-                        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
+                        ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
                         *resourcesManager_);
 
                     patch_strat->registerIDs(id);
@@ -795,8 +795,8 @@ namespace amr
             }();
 
             // B (and Bpred) C-F ghosts are time interpolated between Bold_ (t=n) and model
-            // B (t=n+1). Per-refiner magnetic patch strategy is carried through so Tóth-Roe
-            // divB preservation still runs after spatial refine.
+            // B (t=n+1). Per-refiner magnetic patch strategy is carried through so the ADPT
+            // divB touch-up still runs after spatial refine.
             for (size_t i = 0; i < info->ghostMagnetic.size(); ++i)
             {
                 magGhostsRefiners_.addTimeRefiner(
@@ -1165,11 +1165,11 @@ namespace amr
             std::make_shared<MomentsVecFieldCoarsenOp>()};
         CoarsenOperator_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
-        MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
+        ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
             magneticRefinePatchStrategy_{*resourcesManager_};
 
         std::vector<
-            std::shared_ptr<MagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+            std::shared_ptr<ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
             magneticPatchStratPerGhostRefiner_;
     };
 

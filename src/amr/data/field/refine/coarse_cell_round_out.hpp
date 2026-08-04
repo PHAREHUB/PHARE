@@ -19,15 +19,16 @@ namespace PHARE::amr
  *
  * Magnetic prolongation (ratio 2) is split in two. Faces with an even index in their component's
  * normal direction coincide with a coarse face and are gathered from the coarse level; the
- * odd-normal (interior) faces do not exist on the coarse grid and are reconstructed div-free by
- * MagneticRefinePatchStrategy::postprocessRefine (Tóth-Roe). That reconstruction reaches exactly
- * one coarse cell: for an interior face of coarse cell C it reads only faces bounding C, and every
- * one of them is a shared face the gather just filled.
+ * odd-normal (interior) faces are then reconstructed div-free by a magnetic patch strategy's
+ * postprocessRefine (see MagneticPatchStrategyBase::reconstructionRegion). That reconstruction
+ * reaches exactly one coarse cell: for an interior face of coarse cell C it reads only faces
+ * bounding C, and every one of them is a shared face the gather just filled.
  *
  * Hence the invariant: **the region a magnetic prolongation runs over must be a union of whole
- * coarse cells**. Then every Tóth-Roe input is in the region and was written. SAMRAI's fill boxes
- * do not satisfy it on their own: a recursive schedule fills a coarse-interpolation temporary plus
- * a ring of d_max_stencil_width = 1 cell, and one cell is always *half* a coarse cell.
+ * coarse cells**. Then every postprocess input is in the region and was written. SAMRAI's fill
+ * boxes do not satisfy it on their own: a recursive schedule fills a coarse-interpolation
+ * temporary plus a ring of d_max_stencil_width = 1 cell, and one cell is always *half* a coarse
+ * cell.
  *
  * A cell box is a union of whole coarse cells in a direction iff its lower index is even and its
  * upper index is odd. The corresponding field box, per direction, is

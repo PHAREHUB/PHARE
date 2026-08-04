@@ -40,7 +40,7 @@ namespace PHARE::amr
  * table, indexed at runtime per fine index by centering+parity. Offsets are relative to the anchor
  * I; values are gathered from the coarse field.
  */
-template<typename GridLayoutT, typename FieldT, std::size_t order, bool sharedFacesOnly = false>
+template<typename GridLayoutT, typename FieldT, std::size_t order, bool isMagnetic = false>
 class CompositeFieldRefiner : public IFieldRefineKernel<GridLayoutT, FieldT>
 {
     static constexpr std::size_t dimension = GridLayoutT::dimension;
@@ -61,43 +61,41 @@ public:
             if (ratio(d) != 2)
                 throw std::runtime_error("CompositeFieldRefiner supports refinement ratio 2 only");
 
-        // For a face field (B): the single primal direction is the face normal. Shared faces are
-        // the even-normal-parity ones (coincident with a coarse face); the odd-normal (interior)
-        // faces are owned by the Tóth-Roe postprocess, which overwrites them and never reads them,
-        // so we skip them here. Tangential directions are dual ⇒ their children are always filled.
-        // A B component is primal in at most one direction (its face normal). When it has one
-        // (in-plane Bx/By/Bz), the odd-normal interior faces are owned by the Tóth-Roe postprocess
-        // and skipped below. When it has none (out-of-plane / reduced-dimension component: By,Bz in
-        // 1D, Bz in 2D), there is no normal face and no ∇·B interior to protect, so it prolongs
-        // like any same-centered (all-dual) quantity — every fine face is filled.
-        [[maybe_unused]] std::size_t normalDir = 0;
-        [[maybe_unused]] bool hasNormal        = false;
-        if constexpr (sharedFacesOnly)
+        // Stage 1 of the Balsara ADPT div-free prolongation fills EVERY fine face of a B
+        // component (shared and interior alike) from its coarse faces; ownership of divB-safety
+        // for the interior (odd-normal) faces moves to the stage-2 touch-up
+        // (ADPTMagneticRefinePatchStrategy::postprocessRefine), which reads them back and
+        // overwrites them with a divergence-equalizing correction. We still need to know whether
+        // this component HAS a normal (face) direction, though: that alone gates the whole-
+        // coarse-cell round-out below, which the stage-2 touch-up depends on (see class notes for
+        // the "hasNormal" split). A B component is primal in at most one direction (its face
+        // normal); an out-of-plane / reduced-dimension component (By,Bz in 1D, Bz in 2D) has none,
+        // has no interior face and no ∇·B neighbourhood to protect, so it needs no rounding.
+        [[maybe_unused]] bool hasNormal = false;
+        if constexpr (isMagnetic)
         {
             int primalCount = 0;
             for (std::size_t d = 0; d < dimension; ++d)
                 if (centering[d] == core::QtyCentering::primal)
-                {
-                    normalDir = d;
                     ++primalCount;
-                }
             if (primalCount > 1)
                 throw std::runtime_error(
-                    "magnetic shared-face refiner expects at most one primal (normal) direction");
+                    "magnetic refiner expects at most one primal (normal) direction");
             hasNormal = (primalCount == 1);
         }
 
-        // The Tóth-Roe postprocess that owns the interior faces reads the shared faces of the whole
+        // The stage-2 touch-up that owns the interior faces reads the shared faces of the whole
         // coarse cell, so the shared faces of every coarse cell the region touches must exist —
-        // the same whole-coarse-cell invariant the postprocess rounds its own region out to (see
-        // coarse_cell_round_out.hpp). Round out here too, then re-clip: the box arrives already
-        // clipped to the destination, so rounding can push it past the allocation. This cannot
-        // corrupt anything — assignFine_ writes only slots that are still NaN, so the extra layer
-        // of shared faces fills holes and never overwrites valid data. It also needs no extra
-        // coarse data: for both centerings the rounded-in fine indices share the coarse anchors,
-        // and the stencil reach around them, of the indices already gathered.
+        // the same whole-coarse-cell invariant the touch-up rounds its own region out to (see
+        // coarse_cell_round_out.hpp and MagneticPatchStrategyBase::reconstructionRegion). Round
+        // out here too, then re-clip: the box arrives already clipped to the destination, so
+        // rounding can push it past the allocation. This cannot corrupt anything — assignFine_
+        // writes only slots that are still NaN, so the extra layer of shared faces fills holes and
+        // never overwrites valid data. It also needs no extra coarse data: for both centerings the
+        // rounded-in fine indices share the coarse anchors, and the stencil reach around them, of
+        // the indices already gathered.
         auto const region = [&]() -> SAMRAI::hier::Box {
-            if constexpr (sharedFacesOnly)
+            if constexpr (isMagnetic)
                 if (hasNormal)
                     return roundFieldBoxOutToCoarseCells<dimension>(intersectionBox, centering)
                            * destFieldBox;
@@ -112,19 +110,13 @@ public:
         {
             auto const anchor = toCoarseIndex<dimension>(fineIndex);
 
-            std::size_t combined    = 0; // 2 bits/dir: (dual<<1)|parity
-            std::size_t parityCombo = 0; // 1 bit/dir: parity (for the shared-face skip)
+            std::size_t combined = 0; // 2 bits/dir: (dual<<1)|parity
             for (std::size_t d = 0; d < dimension; ++d)
             {
                 auto const parity         = static_cast<std::size_t>(fineIndex[d] - 2 * anchor[d]);
                 std::size_t const dualBit = (centering[d] == core::QtyCentering::dual) ? 1u : 0u;
-                parityCombo |= parity << d;
                 combined |= ((dualBit << 1) | parity) << (2u * d);
             }
-
-            if constexpr (sharedFacesOnly)
-                if (hasNormal && ((parityCombo >> normalDir) & 1u) != 0u)
-                    continue; // interior-normal face: left to Tóth-Roe postprocess
 
             auto const anchorLocal = AMRToLocal(anchor, sourceFieldBox);
             auto const fineLocal   = AMRToLocal(fineIndex, destFieldBox);
