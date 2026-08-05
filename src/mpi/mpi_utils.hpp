@@ -14,10 +14,10 @@
 
 #if !defined(PHARE_LOG_ERROR)
 #define PHARE_LOG_ERROR(x)                                                                         \
-    PHARE::core::mpi::log_error(std::string{__FILE__} + ":" + std::to_string(__LINE__), x);
+    PHARE::mpi::log_error(std::string{__FILE__} + ":" + std::to_string(__LINE__), x);
 #endif
 
-namespace PHARE::core::mpi
+namespace PHARE::mpi
 {
 template<typename Data>
 NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size = 0);
@@ -177,12 +177,12 @@ NO_DISCARD std::vector<Vector> collectVector(Vector const& sendBuff, int mpi_siz
 }
 
 template<typename T, typename Vector>
-NO_DISCARD SpanSet<T, int> collectSpanSet(Vector const& sendBuff, int mpi_size = 0)
+NO_DISCARD core::SpanSet<T, int> collectSpanSet(Vector const& sendBuff, int mpi_size = 0)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
 
-    SpanSet<T, int> rcvBuff{collect(static_cast<int>(sendBuff.size()), mpi_size)};
+    core::SpanSet<T, int> rcvBuff{collect(static_cast<int>(sendBuff.size()), mpi_size)};
     _collect_vector<T>(sendBuff, rcvBuff, rcvBuff.sizes, rcvBuff.displs, mpi_size);
 
     return rcvBuff;
@@ -212,7 +212,8 @@ NO_DISCARD auto collectArrays(std::array<T, size> const& arr, int mpi_size)
 
 
 template<typename Vector>
-NO_DISCARD SpanSet<typename Vector::value_type, int> collect_raw(Vector const& data, int mpi_size)
+NO_DISCARD core::SpanSet<typename Vector::value_type, int> collect_raw(Vector const& data,
+                                                                       int mpi_size)
 {
     if (mpi_size == 0)
         MPI_Comm_size(MPI_COMM_WORLD, &mpi_size);
@@ -238,7 +239,7 @@ NO_DISCARD std::vector<Data> collect(Data const& data, int mpi_size)
         return values;
     }
 }
-} // namespace PHARE::core::mpi
+} // namespace PHARE::mpi
 
 
 #endif /* PHARE_CORE_UTILITIES_MPI_H */

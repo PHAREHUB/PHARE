@@ -24,7 +24,7 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
     PHARE_WITH_PHLOP({
         if (auto e = core::get_env("PHARE_SCOPE_TIMING", "false"); e == "1" || e == "true")
             phlop::scope_timer()
-                .file_name(".phare/timings/rank." + std::to_string(core::mpi::rank()) + ".txt")
+                .file_name(".phare/timings/rank." + std::to_string(mpi::rank()) + ".txt")
                 .init();
     })
 }

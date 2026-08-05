@@ -57,7 +57,7 @@ public:
                 pdrm->registerPatchDataForRestart(id);
 
             int timeStepIdx = 0; // forced to zero as we wrap in our own timestamp directories
-            restart_manager->openRestartFile(*_restartFilePath, timeStepIdx, core::mpi::size());
+            restart_manager->openRestartFile(*_restartFilePath, timeStepIdx, mpi::size());
         }
     }
 
@@ -79,16 +79,18 @@ public:
         // there's a PR for this next line, but until then the code below is the same
         // return SAMRAI::tbox::RestartManager::getManager()->getRestartFileFullPath(path, idx);
 
-        return path                                                                   //
-               + "/restore." + SAMRAI::tbox::Utilities::intToString(idx, 6)           //
-               + "/nodes." + SAMRAI::tbox::Utilities::nodeToString(core::mpi::size()) //
-               + "/proc." + SAMRAI::tbox::Utilities::processorToString(core::mpi::rank());
+        return path                                                             //
+               + "/restore." + SAMRAI::tbox::Utilities::intToString(idx, 6)     //
+               + "/nodes." + SAMRAI::tbox::Utilities::nodeToString(mpi::size()) //
+               + "/proc." + SAMRAI::tbox::Utilities::processorToString(mpi::rank());
     }
 
     void closeRestartFile() { SamraiLifeCycle::getRestartManager()->closeRestartFile(); }
 
     NO_DISCARD bool isFromRestart() const
-    { return SamraiLifeCycle::getRestartManager()->isFromRestart(); }
+    {
+        return SamraiLifeCycle::getRestartManager()->isFromRestart();
+    }
 
 private:
     std::optional<std::string> static restartFilePath(auto const& dict)

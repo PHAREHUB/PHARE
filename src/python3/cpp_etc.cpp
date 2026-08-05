@@ -80,10 +80,10 @@ PYBIND11_MODULE(cpp_etc, m)
     py::class_<PyArrayWrapper<double>, py::smart_holder, core::Span<double>>(m, "PyWrapper");
 
 
-    m.def("mpi_size", []() { return core::mpi::size(); });
-    m.def("mpi_rank", []() { return core::mpi::rank(); });
-    m.def("mpi_barrier", []() { core::mpi::barrier(); });
-    m.def("mpi_initialized", []() { return core::mpi::is_init(); });
+    m.def("mpi_size", []() { return mpi::size(); });
+    m.def("mpi_rank", []() { return mpi::rank(); });
+    m.def("mpi_barrier", []() { mpi::barrier(); });
+    m.def("mpi_initialized", []() { return mpi::is_init(); });
 
     py::class_<SamraiLifeCycle, std::shared_ptr<SamraiLifeCycle>>(m, "SamraiLifeCycle")
         .def(py::init<>())

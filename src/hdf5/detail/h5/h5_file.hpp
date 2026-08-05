@@ -51,7 +51,7 @@ public:
             fapl.add(HighFive::MPIOFileAccess{MPI_COMM_WORLD, MPI_INFO_NULL});
 #else
             std::cout << "WARNING: PARALLEL HDF5 not available" << std::endl;
-            if (core::mpi::size() > 1)
+            if (mpi::size() > 1)
             {
                 throw std::runtime_error("HDF5 NOT PARALLEL!");
             }
@@ -152,9 +152,9 @@ public:
     template<typename Type, typename Size>
     void create_data_set_per_mpi(std::string const& path, Size const& dataSetSize)
     {
-        auto const mpi_size = core::mpi::size();
-        auto const sizes    = core::mpi::collect(dataSetSize, mpi_size);
-        auto const paths    = core::mpi::collect(path, mpi_size);
+        auto const mpi_size = mpi::size();
+        auto const sizes    = mpi::collect(dataSetSize, mpi_size);
+        auto const paths    = mpi::collect(path, mpi_size);
         for (int i = 0; i < mpi_size; i++)
         { // in the case an mpi node lacks something to write
             if (is_zero(sizes[i]) || paths[i] == "")
@@ -174,7 +174,7 @@ public:
         // assumes all keyPaths and values are identical, and no null patches
         // clang-format off
         PHARE_DEBUG_DO(
-            auto const paths = core::mpi::collect(keyPath, core::mpi::size());
+            auto const paths = mpi::collect(keyPath, mpi::size());
             if (!core::all(paths, [&](auto const& path) { return path == paths[0]; }))
                 throw std::runtime_error("Function does not support different paths per mpi core");
         )
@@ -234,14 +234,14 @@ public:
                     .write(value);
         };
 
-        int const mpi_size = core::mpi::size();
+        int const mpi_size = mpi::size();
         auto const values  = [&]() {
             if constexpr (data_is_vector)
-                return core::mpi::collect_raw(data, mpi_size);
+                return mpi::collect_raw(data, mpi_size);
             else
-                return core::mpi::collect(data, mpi_size);
+                return mpi::collect(data, mpi_size);
         }();
-        auto const paths = core::mpi::collect(path, mpi_size);
+        auto const paths = mpi::collect(path, mpi_size);
 
         for (int i = 0; i < mpi_size; ++i)
         {

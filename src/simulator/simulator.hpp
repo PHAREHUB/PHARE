@@ -146,15 +146,15 @@ private:
         if (auto log = core::get_env("PHARE_LOG"))
         {
             if (log == "RANK_FILES")
-                return std::make_unique<std::ofstream>(".log/" + std::to_string(core::mpi::rank())
+                return std::make_unique<std::ofstream>(".log/" + std::to_string(mpi::rank())
                                                        + ".out");
 
 
             if (log == "DATETIME_FILES")
             {
-                auto date_time = core::mpi::date_time();
-                auto rank      = std::to_string(core::mpi::rank());
-                auto size      = std::to_string(core::mpi::size());
+                auto date_time = mpi::date_time();
+                auto rank      = std::to_string(mpi::rank());
+                auto size      = std::to_string(mpi::size());
                 return std::make_unique<std::ofstream>(".log/" + date_time + "_" + rank + "_of_"
                                                        + size + ".out");
             }
@@ -517,7 +517,7 @@ void Simulator<opts>::initialize()
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any_errors())
+    if (mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)
@@ -566,7 +566,7 @@ double Simulator<opts>::advance(double dt)
         PHARE_LOG_ERROR(*error);
     }
 
-    if (core::mpi::any_errors())
+    if (mpi::any_errors())
     {
         this->dMan.reset(); // closes/flushes hdf5 files
         if (error)

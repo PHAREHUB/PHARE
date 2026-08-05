@@ -32,20 +32,17 @@ public:
     virtual void createFiles(DiagnosticProperties& diagnostic) = 0;
 
     virtual void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                                std::string const& patchID, Attributes& patchAttributes)
-        = 0;
+                                std::string const& patchID, Attributes& patchAttributes) = 0;
 
     virtual void
     initDataSets(DiagnosticProperties& diagnostic,
                  std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
-                 Attributes& patchAttributes, std::size_t maxLevel)
-        = 0;
+                 Attributes& patchAttributes, std::size_t maxLevel) = 0;
 
     virtual void writeAttributes(
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
-        std::size_t maxLevel)
-        = 0;
+        std::size_t maxLevel) = 0;
     //------------------------------------------------------------------------
 
 
@@ -79,7 +76,7 @@ protected:
         {
             auto& lvlPatches       = patchIDs.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
-            std::size_t maxPatches = core::mpi::max(patchNbr);
+            std::size_t maxPatches = mpi::max(patchNbr);
             for (std::size_t i = 0; i < patchNbr; ++i)
                 initPatch(lvl, patchAttributes[std::to_string(lvl) + "_" + lvlPatches[i]],
                           lvlPatches[i]);
@@ -98,7 +95,7 @@ protected:
         {
             auto& lvlPatches       = patchAttributes.at(lvl);
             std::size_t patchNbr   = lvlPatches.size();
-            std::size_t maxPatches = core::mpi::max(patchNbr);
+            std::size_t maxPatches = mpi::max(patchNbr);
             for (auto const& [patch, attr] : lvlPatches)
                 h5Writer_.writeAttributeDict(file, attr,
                                              h5Writer_.getPatchPathAddTimestamp(lvl, patch));

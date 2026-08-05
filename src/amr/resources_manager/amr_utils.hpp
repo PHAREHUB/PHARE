@@ -290,7 +290,7 @@ namespace amr
         auto const& mapping      = level.getProcessorMapping();
         auto const& global_boxes = level.getBoxes();
 
-        std::vector<std::vector<core::Box<int, dim>>> boxes_per_rank(core::mpi::size());
+        std::vector<std::vector<core::Box<int, dim>>> boxes_per_rank(mpi::size());
         assert(global_boxes.size() == level.getGlobalNumberOfPatches());
 
         auto gbox_iter = global_boxes.begin();

@@ -66,11 +66,11 @@ struct HierarchyData
                 data.n_boxes_per_level[ilvl]    = 0;
                 data.level_boxes_per_rank[ilvl] = amr::boxesPerRankOn<dim>(level);
                 data.flattened_lcl_level_boxes[ilvl]
-                    = flatten_boxes(data.level_boxes_per_rank[ilvl][core::mpi::rank()]);
+                    = flatten_boxes(data.level_boxes_per_rank[ilvl][mpi::rank()]);
 
                 for (std::size_t i = 0; i < data.level_boxes_per_rank[ilvl].size(); ++i)
                 {
-                    data.level_rank_data_size[ilvl].resize(core::mpi::size());
+                    data.level_rank_data_size[ilvl].resize(mpi::size());
 
                     data.level_rank_data_size[ilvl][i] = 0;
                     for (auto box : data.level_boxes_per_rank[ilvl][i])
@@ -87,9 +87,9 @@ struct HierarchyData
                 data.level_data_size[ilvl]   = 0;
                 data.n_boxes_per_level[ilvl] = 0;
                 data.level_rank_data_size[ilvl].clear();
-                data.level_rank_data_size[ilvl].resize(core::mpi::size());
+                data.level_rank_data_size[ilvl].resize(mpi::size());
                 data.level_boxes_per_rank[ilvl].clear();
-                data.level_boxes_per_rank[ilvl].resize(core::mpi::size());
+                data.level_boxes_per_rank[ilvl].resize(mpi::size());
                 data.flattened_lcl_level_boxes[ilvl].clear();
             },
             h5Writer.minLevel, h5Writer.maxLevel);
@@ -291,7 +291,7 @@ public:
         //  next rank, or the next step, is indexed onto rows nobody wrote
         PHARE_DEBUG_DO(if (level > -1) {
             auto const& reserved = HierData::INSTANCE().level_rank_data_size[level];
-            assert(data_offset - start_offset == reserved[core::mpi::rank()]);
+            assert(data_offset - start_offset == reserved[mpi::rank()]);
         })
     }
 
@@ -475,7 +475,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
     auto const new_size         = data_offset + level_data_size;
 
     point_data_ds.resize({new_size, N});
-    for (int i = 0; i < core::mpi::rank(); ++i)
+    for (int i = 0; i < mpi::rank(); ++i)
         data_offset += rank_data_sizes[i];
 }
 
@@ -505,12 +505,12 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
     amrbox_ds.resize({box_offset + total_boxes, boxValsIn3D});
-    for (int i = 0; i < core::mpi::rank(); ++i)
+    for (int i = 0; i < mpi::rank(); ++i)
         box_offset += rank_boxes[i].size();
 
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::3");
-    amrbox_ds.select({box_offset, 0}, {rank_boxes[core::mpi::rank()].size(), dimension * 2})
+    amrbox_ds.select({box_offset, 0}, {rank_boxes[mpi::rank()].size(), dimension * 2})
         .write(hier_data.flattened_lcl_level_boxes[ilvl]);
 }
 

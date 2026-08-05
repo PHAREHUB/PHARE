@@ -94,7 +94,7 @@ public:
         dict["nbrCells"] = core::Point<std::uint32_t, Model::dimension>{grid.nbrCells()}.toVector();
         dict["lower"]    = grid.AMRBox().lower.toVector();
         dict["upper"]    = grid.AMRBox().upper.toVector();
-        dict["mpi_rank"] = static_cast<std::size_t>(core::mpi::rank());
+        dict["mpi_rank"] = static_cast<std::size_t>(mpi::rank());
         return dict;
     }
 

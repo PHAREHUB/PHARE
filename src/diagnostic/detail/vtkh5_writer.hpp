@@ -39,7 +39,7 @@ class H5Writer
         void setup(DiagnosticProperties& prop) {}
         void write(DiagnosticProperties& prop)
         {
-            if (core::mpi::rank() == 0)
+            if (mpi::rank() == 0)
             {
                 PHARE_LOG_LINE_SS( //
                     "No diagnostic writer found for " + prop.type + ":" + prop.quantity);
@@ -184,7 +184,7 @@ template<typename ModelView>
 void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnostics,
                                double timestamp)
 {
-    timestamp_                             = timestamp;
+    timestamp_                   = timestamp;
     fileAttributes_["dimension"] = dimension;
     if constexpr (solver::is_hybrid_model_v<Model_t>)
         fileAttributes_["interpOrder"] = GridLayout::options.interp_order;

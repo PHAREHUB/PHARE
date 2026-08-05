@@ -120,7 +120,7 @@ public:
 
     auto sync(std::vector<PatchData<std::vector<double>, dimension>> const& input)
     {
-        auto const mpi_size = core::mpi::size();
+        auto const mpi_size = mpi::size();
         std::vector<PatchData<std::vector<double>, dimension>> collected;
 
         auto const reinterpret_array = [&](auto& py_array) {
@@ -129,12 +129,12 @@ public:
         };
 
         auto const collect = [&](PatchData<std::vector<double>, dimension> const& patch_data) {
-            auto patchIDs = core::mpi::collect(patch_data.patchID, mpi_size);
-            auto origins  = core::mpi::collect(patch_data.origin, mpi_size);
-            auto lower    = core::mpi::collect_raw(makeSpan(patch_data.lower), mpi_size);
-            auto upper    = core::mpi::collect_raw(makeSpan(patch_data.upper), mpi_size);
-            auto ghosts   = core::mpi::collect(patch_data.nGhosts, mpi_size);
-            auto datas    = core::mpi::collect(patch_data.data, mpi_size);
+            auto patchIDs = mpi::collect(patch_data.patchID, mpi_size);
+            auto origins  = mpi::collect(patch_data.origin, mpi_size);
+            auto lower    = mpi::collect_raw(makeSpan(patch_data.lower), mpi_size);
+            auto upper    = mpi::collect_raw(makeSpan(patch_data.upper), mpi_size);
+            auto ghosts   = mpi::collect(patch_data.nGhosts, mpi_size);
+            auto datas    = mpi::collect(patch_data.data, mpi_size);
 
             for (int i = 0; i < mpi_size; i++)
             {
@@ -145,7 +145,7 @@ public:
             }
         };
 
-        auto const max = core::mpi::max(input.size());
+        auto const max = mpi::max(input.size());
 
         PatchData<std::vector<double>, dimension> empty;
 

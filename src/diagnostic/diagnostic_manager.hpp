@@ -129,7 +129,7 @@ private:
 
     bool needsElapsedAction_(double const nextTime) const
     {
-        return core::mpi::unix_timestamp_now() > nextTime;
+        return mpi::unix_timestamp_now() > nextTime;
     }
 
 
@@ -171,7 +171,7 @@ private:
     std::map<std::string, std::size_t> nextWrite_;
     std::map<std::string, std::size_t> nextWriteElapsed_;
 
-    std::time_t const start_time_{core::mpi::unix_timestamp_now()};
+    std::time_t const start_time_{mpi::unix_timestamp_now()};
 };
 
 
