@@ -83,6 +83,7 @@ Warning: This documentation is a work in progress. It is not complete and may co
    usage/run_from_exe
    usage/examples
    usage/environment_variables
+   usage/performance_analyses
 
 
 

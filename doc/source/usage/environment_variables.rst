@@ -20,6 +20,8 @@ Any other value is rejected. When running via ``pyphare``, the Python side defau
 starts. When running pure C++ (e.g. unit tests) without going through Python, no redirection
 happens unless this variable is set.
 
+.. _phare_scope_timing:
+
 ``PHARE_SCOPE_TIMING``
 -----------------------
 
@@ -29,10 +31,12 @@ Writes one timing file per rank to ``.phare/timings/rank.<N>.txt``. Read indepen
 the C++ side (gated behind the ``phlop`` build option) and the Python side (which additionally
 triggers monitoring setup before the C++ simulator is constructed).
 
+See :doc:`performance_analyses` for details on configuring and analysing scope timings.
+
 ``PHARE_H5_CHUNK_SIZE``
 -------------------------
 
-HDF5 dataset chunk size, in elements. Defaults to ``1024``. Affects diagnostic/restart HDF5 I/O.
+HDF5 dataset chunk size, in elements. Defaults to ``1024``. Affects VTKHDF diagnostics.
 
 ``PHARE_SIM_MON``
 -------------------
