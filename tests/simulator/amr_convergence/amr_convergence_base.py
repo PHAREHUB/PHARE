@@ -53,18 +53,22 @@ class ConvergenceTestBase(SimulatorTest):
         return [[lo, lo], [hi, hi]]
 
     def run_amr_case(self, order, N, n):
-        """One AMR run; (per_level eps, composite eps)."""
+        """One AMR run; (per_level eps, composite eps), None under PHARE_DRY_RUN."""
         sim = self.amr_simulation(order, N, n)
         self.add_model_and_diags()
         Simulator(sim).run().reset()
+        if sim.dry_run:  # setup only: nothing advanced, no diagnostics to read back
+            return None
         run = Run(sim.diag_options["options"]["dir"])
         return compute_errors.composite_errors(run, self.final_time, self.fine_box(N))
 
     def run_uniform_case(self, N, n):
-        """One single-level control run; eps."""
+        """One single-level control run; eps, None under PHARE_DRY_RUN."""
         sim = self.uniform_simulation(N, n)
         self.add_model_and_diags()
         Simulator(sim).run().reset()
+        if sim.dry_run:  # setup only: nothing advanced, no diagnostics to read back
+            return None
         run = Run(sim.diag_options["options"]["dir"])
         return compute_errors.uniform_error(run, self.final_time)
 
@@ -77,7 +81,10 @@ class ConvergenceTestBase(SimulatorTest):
         rows = []
         for N in Ns:
             n = self.n_steps(N, sigma)
-            per_level, composite = self.run_amr_case(order, N, n)
+            case = self.run_amr_case(order, N, n)
+            if case is None:  # dry run: keep sweeping so every deck is built
+                continue
+            per_level, composite = case
             rows.append((N, composite, per_level))
             lvls = "  ".join(
                 f"L{level}={err:.3e}" for level, err in sorted(per_level.items())
@@ -86,6 +93,9 @@ class ConvergenceTestBase(SimulatorTest):
                 f"N={N:4d}  dt={self.final_time/n:.3e} (n={n})  "
                 f"composite={composite:.3e}  {lvls}"
             )
+        if not rows:  # dry run: decks constructed, no errors to fit an order to
+            print("  dry run: setup only, convergence order not checked")
+            return
         for (Na, ea, _), (Nb, eb, _) in zip(rows, rows[1:]):
             print(f"  segment N={Na}->{Nb}: order {np.log(ea/eb)/np.log(Nb/Na):.2f}")
         errs = [e for _, e, _ in rows]
@@ -114,8 +124,11 @@ class ConvergenceTestBase(SimulatorTest):
         print(f"\n== {self.name}: sigma sweep, order={order}, N={N} ==")
         uni, amr_comp, amr_fine = [], [], []
         for n, sigma in sorted(by_n.items(), reverse=True):  # small dt -> large dt
-            per_level, composite = self.run_amr_case(order, N, n)
+            case = self.run_amr_case(order, N, n)
             eps_uni = self.run_uniform_case(N, n)
+            if case is None:  # dry run: keep sweeping so every deck is built
+                continue
+            per_level, composite = case
             uni.append(eps_uni)
             amr_comp.append(composite)
             amr_fine.append(per_level[1])
@@ -124,6 +137,10 @@ class ConvergenceTestBase(SimulatorTest):
                 f"uniform={eps_uni:.6e}  composite={composite:.6e}  "
                 f"L1(fine)={per_level[1]:.6e}"
             )
+
+        if not uni:  # dry run: decks constructed, no errors to measure drift on
+            print("  dry run: setup only, sigma drift not checked")
+            return
 
         def drift(errs):
             return (max(errs) - min(errs)) / min(errs)

@@ -185,13 +185,17 @@ def max_divb_per_level(diag_dir, check_time):
 
 
 def run_variant(mode, order):
+    """(per-level max|divB| on rank 0, dry_run flag); per-level is None under dry run."""
     diag_dir = f"divb_{mode}_o{order}"
     sim, check_time = config(mode, order, diag_dir)
     label = f"order={order}"
     if cpp.mpi_rank() == 0:
         print(f"=== divB {mode} {label} ===", flush=True)
     Simulator(sim).run().reset()
+    dry_run = sim.dry_run
     ph.global_vars.sim = None
+    if dry_run:  # setup only: nothing advanced, no diagnostics to read back
+        return None, True
     if cpp.mpi_rank() == 0:
         per = max_divb_per_level(diag_dir, check_time)
         finest = max(per.keys())
@@ -201,8 +205,8 @@ def run_variant(mode, order):
             f"max|divB|_fine={per[finest]:.3e}  max|divB|_coarse={coarse:.3e}",
             flush=True,
         )
-        return per
-    return None
+        return per, False
+    return None, False
 
 
 def summarize(mode, orders, res):
@@ -238,6 +242,11 @@ if __name__ == "__main__":
     mode = argv[0] if argv and argv[0] in ("boxes", "tagging") else "boxes"
     orders = [int(a) for a in argv if a.isdigit()] or [2]
 
-    res = {o: run_variant(mode, o) for o in orders}
+    res, dry_run = {}, False
+    for o in orders:
+        res[o], dry_run = run_variant(mode, o)
+    if dry_run:  # setup only: every order's deck was built, no divB to summarize
+        print("dry run: setup only, divB not checked", flush=True)
+        sys.exit(0)
     if cpp.mpi_rank() == 0 and not summarize(mode, orders, res):
         raise RuntimeError(f"divB {mode}: refinement did not preserve divB")
