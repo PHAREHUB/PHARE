@@ -384,7 +384,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy, Messenger>::advanceL
         PHARE_LOG_ERROR(ex());
     }
 
-    if (core::mpi::any_errors())
+    if (mpi::any_errors())
         throw core::DictionaryException{}("ID", "SolverMHD::advanceLevel");
 }
 

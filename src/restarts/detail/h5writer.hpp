@@ -56,7 +56,7 @@ public:
             "/phare", "serialized_simulation",
             properties.fileAttributes["serialized_simulation"].template to<std::string>());
 
-        core::mpi::barrier();
+        mpi::barrier();
     }
 
 

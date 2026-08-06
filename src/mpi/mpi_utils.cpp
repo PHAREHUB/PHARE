@@ -10,7 +10,7 @@
 #define PHARE_ERRORS_USE_MPI_ABORT 1
 #endif
 
-namespace PHARE::core::mpi
+namespace PHARE::mpi
 {
 int size()
 {
@@ -87,4 +87,4 @@ std::int64_t unix_timestamp_now()
     return all_get_from_rank_0([]() { return static_cast<std::int64_t>(std::time(NULL)); });
 }
 
-} // namespace PHARE::core::mpi
+} // namespace PHARE::mpi
