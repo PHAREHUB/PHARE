@@ -26,8 +26,10 @@ using core::dirZ;
 /**
  * @brief Runtime-dispatched field refine operator.
  *
- * Holds a shared_ptr<IFieldRefineKernel> chosen at construction (makeRefineKernel(order)) and
+ * Holds a unique_ptr<IFieldRefineKernel> chosen at construction (makeRefineKernel(order)) and
  * forwards each overlap box to the kernel, which decides the stencil from the refinement order.
+ * Nothing is ever shared: the factory mints a fresh kernel per operator, and the kernels are
+ * stateless (their stencil tables are static, held behind the kernel's vtable).
  */
 template<typename GridLayoutT, typename FieldT>
 class KernelFieldRefineOperator : public SAMRAI::hier::RefineOperator
@@ -38,7 +40,7 @@ public:
     using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
     using Kernel_t                         = IFieldRefineKernel<GridLayoutT, FieldT>;
 
-    explicit KernelFieldRefineOperator(std::shared_ptr<Kernel_t> kernel)
+    explicit KernelFieldRefineOperator(std::unique_ptr<Kernel_t> kernel)
         : SAMRAI::hier::RefineOperator{"KernelFieldRefineOperator"}
         , kernel_{std::move(kernel)}
     {
@@ -89,7 +91,7 @@ public:
     }
 
 private:
-    std::shared_ptr<Kernel_t> kernel_;
+    std::unique_ptr<Kernel_t> kernel_;
 };
 
 
@@ -111,7 +113,7 @@ public:
 
     static constexpr std::size_t N = TensorFieldDataT::N;
 
-    explicit KernelTensorFieldRefineOperator(std::shared_ptr<Kernel_t> kernel)
+    explicit KernelTensorFieldRefineOperator(std::unique_ptr<Kernel_t> kernel)
         : SAMRAI::hier::RefineOperator{"KernelTensorFieldRefineOperator"}
         , kernel_{std::move(kernel)}
     {
@@ -165,7 +167,7 @@ public:
     }
 
 private:
-    std::shared_ptr<Kernel_t> kernel_;
+    std::unique_ptr<Kernel_t> kernel_;
 };
 
 
