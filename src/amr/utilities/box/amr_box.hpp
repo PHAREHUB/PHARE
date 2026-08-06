@@ -9,6 +9,8 @@
 
 #include "SAMRAI/hier/Box.h"
 
+#include <string>
+
 
 namespace PHARE::amr
 {
@@ -127,6 +129,19 @@ NO_DISCARD core::Box<Type, dim> shift(core::Box<Type, dim> const& box,
                                       SAMRAI::hier::Transformation const& tform)
 {
     return core::shift(box, as_point<dim>(tform));
+}
+
+
+//! for diagnostics: "[(lo0,lo1),(up0,up1)]"
+NO_DISCARD inline std::string to_str(SAMRAI::hier::Box const& box)
+{
+    auto const dim = box.getDim().getValue();
+    std::string s{"[("};
+    for (SAMRAI::hier::Box::dir_t d = 0; d < dim; ++d)
+        s += std::to_string(box.lower(d)) + (d + 1 < dim ? "," : "),(");
+    for (SAMRAI::hier::Box::dir_t d = 0; d < dim; ++d)
+        s += std::to_string(box.upper(d)) + (d + 1 < dim ? "," : ")]");
+    return s;
 }
 
 } // namespace PHARE::amr

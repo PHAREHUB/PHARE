@@ -173,7 +173,7 @@ private:
     {
         double value = 0.;
         for (auto const& w : makeStencil_<combined>())
-            value += w.coef * sampleCoarse_(src, anchorLocal, w.indexes);
+            value += w.coef * src(anchorLocal + w.indexes);
         return value;
     }
 
@@ -183,22 +183,10 @@ private:
     static constexpr auto gatherers_ = core::for_N_make_array<nCombined>(
         [](auto ic) { return Gatherer_t{&gatherStencil_<ic()>}; });
 
-    static double sampleCoarse_(FieldT const& src, Point_t const& anchorLocal,
-                                Point_t const& offset)
-    {
-        if constexpr (dimension == 1)
-            return src(anchorLocal[0] + offset[0]);
-        else if constexpr (dimension == 2)
-            return src(anchorLocal[0] + offset[0], anchorLocal[1] + offset[1]);
-        else
-            return src(anchorLocal[0] + offset[0], anchorLocal[1] + offset[1],
-                       anchorLocal[2] + offset[2]);
-    }
-
     // preserve the legacy NaN-guard: only fill fine indices not already set
     static void assignFine_(FieldT& dst, Point_t const& fineLocal, double const value)
     {
-        if (auto& dst_val = dst(fineLocal.toArray()); std::isnan(dst_val))
+        if (auto& dst_val = dst(fineLocal); std::isnan(dst_val))
             dst_val = value;
     }
 };
