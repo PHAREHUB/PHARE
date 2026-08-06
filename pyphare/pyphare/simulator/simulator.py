@@ -1,20 +1,16 @@
-#
-#
-#
-
+import atexit
+import datetime
 import os
 import sys
-import datetime
-import atexit
 import time as timem
-import numpy as np
-import pyphare.pharein as ph
 from pathlib import Path
-from . import monitoring as mon
 
+import numpy as np
+
+import pyphare.pharein as ph
 from pyphare import cpp
-import pyphare.pharein.restarts as restarts
 
+from . import monitoring as mon
 
 exit_on_exception = True
 life_cycles = {}
@@ -97,7 +93,7 @@ class Simulator:
         self.log_to_file = kwargs.get("log_to_file", True)
 
         self.auto_dump = auto_dump
-        import pyphare.simulator._simulator as _simulator
+        from pyphare.simulator import _simulator
 
         _simulator.obj = self
 
@@ -126,7 +122,7 @@ class Simulator:
         except Exception:
             import traceback
 
-            print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
+            print(f'Exception caught in "Simulator.setup()": {sys.exc_info()}')
             print(traceback.format_exc())
             raise ValueError("Error in Simulator.setup(), see previous error")
 
@@ -146,11 +142,7 @@ class Simulator:
 
             return self
         except Exception:
-            print(
-                'Exception caught in "Simulator.initialize()": {}'.format(
-                    sys.exc_info()[0]
-                )
-            )
+            print(f'Exception caught in "Simulator.initialize()": {sys.exc_info()[0]}')
             raise ValueError("Error in Simulator.initialize(), see previous error")
 
     def _throw(self, e):
@@ -242,7 +234,7 @@ class Simulator:
         time = self.currentTime() if len(args) == 0 else args[0]
         timestep = self.timeStep() if len(args) == 0 else args[1]
 
-        restarts.dump(self, time, timestep)
+        ph.restarts.dump(self, time, timestep)
 
         return self.cpp_sim.dump_diagnostics(timestamp=time, timestep=timestep)
 

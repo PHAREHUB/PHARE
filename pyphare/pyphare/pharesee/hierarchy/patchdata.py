@@ -1,11 +1,7 @@
-#
-#
-#
-
 import numpy as np
 
-from ...core import gridlayout
 from ...core import box as boxm
+from ...core import gridlayout
 from ...core import phare_utilities as phut
 
 
@@ -59,9 +55,7 @@ class FieldData(PatchData):
         return self.size - self.ghost_box.shape
 
     def __str__(self):
-        return "FieldData: (box=({}, {}), key={})".format(
-            self.layout.box, self.layout.box.shape, self.field_name
-        )
+        return f"FieldData: (box=({self.layout.box}, {self.layout.box.shape}), key={self.field_name})"
 
     def __repr__(self):
         return self.__str__()
@@ -140,16 +134,41 @@ class FieldData(PatchData):
                 self.offset[i] = 0.5 * self.dl[i]
 
         self.dataset = data
+        self._is_consistent()
 
-    def meshgrid(self, select=None):
-        def grid():
-            if self.ndim == 1:
-                return [self.x]
-            if self.ndim == 2:
-                return np.meshgrid(self.x, self.y, indexing="ij")
-            return np.meshgrid(self.x, self.y, self.z, indexing="ij")
+    def _is_consistent(self):
+        if not all(self.layout.ghosts_nbr == self.ghosts_nbr):
+            raise ValueError(
+                f"FieldData.ghosts_nbr is inconsistent with layout, ({self.layout.ghosts_nbr} != {self.ghosts_nbr})"
+            )
 
-        mesh = grid()
+    def copy_as(self, data=None, **kwargs):
+        data = data if data is not None else self.dataset
+        name = kwargs.get("name", self.field_name)
+        layout = self.layout
+        if "ghosts_nbr" in kwargs:
+            layout = self.layout.copy_as(ghosts_nbr=kwargs["ghosts_nbr"])
+        kwargs.setdefault("centering", self.centerings)
+        return FieldData(layout, name, data, **kwargs)
+
+    def meshCoords(self, withGhosts=False):
+        def _trim(arr, g):
+            return arr if (withGhosts or g == 0) else arr[g - 1 : -g + 1]
+
+        x = _trim(self.x, self.ghosts_nbr[0])
+        if self.ndim == 1:
+            return (x,)
+        y = _trim(self.y, self.ghosts_nbr[1])
+        if self.ndim == 2:
+            return x, y
+        return x, y, _trim(self.z, self.ghosts_nbr[2])
+
+    def meshgrid(self, select=None, withGhosts=True):
+        coords = self.meshCoords(withGhosts=withGhosts)
+        if self.ndim == 1:
+            x = coords[0]
+            return (x[select],) if select is not None else (x,)
+        mesh = np.meshgrid(*coords, indexing="ij")
         if select is not None:
             return tuple(g[select] for g in mesh)
         return mesh
@@ -166,10 +185,9 @@ class FieldData(PatchData):
     def _resolve_ghost_nbr(self, **kwargs):
         layout = self.layout
         ghosts_nbr = kwargs.get("ghosts_nbr", np.zeros(self.ndim, dtype=int))
-        if "ghosts_nbr" not in kwargs:
-            if self.field_name != "tags":
-                for i, centering in enumerate(self.centerings):
-                    ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+        if "ghosts_nbr" not in kwargs and self.field_name != "tags":
+            for i, centering in enumerate(self.centerings):
+                ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
         return phut.np_array_ify(ghosts_nbr, layout.box.ndim)
 
     def _resolve_centering(self, **kwargs):
@@ -194,7 +212,6 @@ class FieldData(PatchData):
         raise ValueError(
             f"centering not specified and cannot be inferred from field name : {field_name}"
         )
-
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
@@ -260,9 +277,7 @@ class ParticleData(PatchData):
         elif layout.interp_order == 2 or layout.interp_order == 3:
             self.ghosts_nbr = np.array([2] * layout.box.ndim)
         else:
-            raise RuntimeError(
-                "invalid interpolation order {}".format(layout.interp_order)
-            )
+            raise RuntimeError(f"invalid interpolation order {layout.interp_order}")
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
         assert (self.box.lower == self.ghost_box.lower + self.ghosts_nbr).all()
