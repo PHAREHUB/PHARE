@@ -61,7 +61,7 @@ struct IFieldRefineKernel
  * depend only on the seam.
  */
 template<typename GridLayoutT, typename FieldT>
-std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int order);
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int order);
 
 /**
  * @brief Build the stage-1 magnetic refinement kernel of the ADPT div-free prolongation.
@@ -72,7 +72,7 @@ std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int or
  * child sign, so ∇·B is preserved before the touch-up ever runs.
  */
 template<typename GridLayoutT, typename FieldT>
-std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int order);
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int order);
 
 
 } // namespace PHARE::amr

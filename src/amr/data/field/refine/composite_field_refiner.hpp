@@ -195,11 +195,11 @@ private:
 // ---- factory (declared in field_refiner_kernel.hpp) ---------------------------------------------
 
 template<typename GridLayoutT, typename FieldT>
-std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int const order)
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int const order)
 {
     if (order != 2)
         throw std::runtime_error("makeRefineKernel: order must be 2 (Linear)");
-    return std::make_shared<CompositeFieldRefiner<GridLayoutT, FieldT, 2>>();
+    return std::make_unique<CompositeFieldRefiner<GridLayoutT, FieldT, 2>>();
 }
 
 

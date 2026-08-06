@@ -33,11 +33,11 @@ using MagneticCompositeRefiner
 
 
 template<typename GridLayoutT, typename FieldT>
-std::shared_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int const order)
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int const order)
 {
     if (order != 2)
         throw std::runtime_error("makeMagneticRefineKernel: order must be 2 (Linear)");
-    return std::make_shared<MagneticCompositeRefiner<GridLayoutT, FieldT, 2>>();
+    return std::make_unique<MagneticCompositeRefiner<GridLayoutT, FieldT, 2>>();
 }
 
 

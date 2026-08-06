@@ -27,6 +27,7 @@
 #include <map>
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 
@@ -66,7 +67,7 @@ TYPED_TEST(aFieldRefineOperator, kernelRefineOperatorCanBeCreated)
     auto linearKernel = makeRefineKernel<GridYee, GridT>(2);
     EXPECT_NE(linearKernel, nullptr);
 
-    KernelFieldRefineOperator<GridYee, GridT> kernelRefine{linearKernel};
+    KernelFieldRefineOperator<GridYee, GridT> kernelRefine{std::move(linearKernel)};
 
     auto magLinearKernel = makeMagneticRefineKernel<GridYee, GridT>(2);
     EXPECT_NE(magLinearKernel, nullptr);
