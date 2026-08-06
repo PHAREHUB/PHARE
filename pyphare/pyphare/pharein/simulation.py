@@ -209,11 +209,32 @@ def check_time(**kwargs):
 # ------------------------------------------------------------------------------
 
 
-def check_interp_order(**kwargs):
-    interp_order = kwargs.get("interp_order", 1)
+valid_interp_orders = [1, 2, 3]
 
-    if interp_order not in [1, 2, 3]:
-        raise ValueError("Error: invalid interpolation order. Should be in [1,2,3]")
+# A run with no hybrid model has no interpolation order: clients say so by omitting
+# interp_order (or passing None). 0 is only the internal value we ship to C++, where
+# SimOpts::interp_order needs an integer and derives hybrid_enabled from it being > 0.
+no_hybrid_interp_order = 0
+
+
+def hybrid_is_active(interp_order):
+    """interp_order is how a run says whether it has a hybrid model at all:
+    C++ SimOpts derives hybrid_enabled from it the same way."""
+    return interp_order != no_hybrid_interp_order
+
+
+def check_interp_order(**kwargs):
+    model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
+    interp_order = kwargs.get("interp_order", None)
+
+    if interp_order is None:
+        return 1 if "HybridModel" in model_options else no_hybrid_interp_order
+
+    if interp_order not in valid_interp_orders:
+        raise ValueError(
+            f"Error: invalid interpolation order ({interp_order}), should be in "
+            f"{valid_interp_orders}; omit it for a run with no hybrid model"
+        )
 
     return interp_order
 
@@ -293,12 +314,25 @@ valid_refined_particle_nbr = {
     },
 }  # Default refined_particle_nbr per dim/interp is considered index 0 of list
 
+no_refined_particle_nbr = 0  # internal, C++-facing counterpart of no_hybrid_interp_order
+
 
 def check_refined_particle_nbr(ndim, **kwargs):
     interp = kwargs["interp_order"]
-    refined_particle_nbr = kwargs.get(
-        "refined_particle_nbr", valid_refined_particle_nbr[ndim][interp][0]
-    )
+    refined_particle_nbr = kwargs.get("refined_particle_nbr", None)
+
+    # like interp_order, a run with no hybrid model has no refined particle number, and
+    # says so by omitting the key. 0 is again only what C++ SimOpts is given.
+    if not hybrid_is_active(interp):
+        if refined_particle_nbr is not None:
+            raise ValueError(
+                "Error: refined_particle_nbr is meaningless without a hybrid model "
+                "(no interp_order given), it should be omitted"
+            )
+        return no_refined_particle_nbr
+
+    if refined_particle_nbr is None:
+        refined_particle_nbr = valid_refined_particle_nbr[ndim][interp][0]
 
     if refined_particle_nbr not in valid_refined_particle_nbr[ndim][interp]:
         raise ValueError(
@@ -690,6 +724,12 @@ def check_model_options(**kwargs):
             f"Invalid model options: {model_options}. Allowed values are {valid_options}."
         )
 
+    if "HybridModel" in model_options and not hybrid_is_active(kwargs["interp_order"]):
+        raise ValueError("Error: HybridModel requires an interp_order")
+
+    if "MHDModel" in model_options and not kwargs["mhd_timestepper"]:
+        raise ValueError("Error: MHDModel requires a non-empty mhd_timestepper")
+
     return model_options
 
 
@@ -844,8 +884,6 @@ def checker(func):
 
         kwargs["max_mhd_level"] = check_max_mhd_level(**kwargs)
 
-        kwargs["model_options"] = check_model_options(**kwargs)
-
         gamma, eta, nu = check_mhd_constants(**kwargs)
         kwargs["gamma"] = gamma
         kwargs["eta"] = eta
@@ -863,6 +901,8 @@ def checker(func):
         kwargs["limiter"] = limiter
         kwargs["riemann"] = riemann
         kwargs["mhd_timestepper"] = mhd_timestepper
+
+        kwargs["model_options"] = check_model_options(**kwargs)
 
         return func(simulation_object, **kwargs)
 
@@ -1018,7 +1058,9 @@ class Simulation(object):
 
     **Macro-particle parameters:**
 
-        * **interp_order** (``int``), 1, 2 or 3 (default=1) particle b-spline order
+        * **interp_order** (``int``), 1, 2 or 3 (default=1 if "HybridModel" is among
+          ``model_options``) particle b-spline order; omit it for a run with no hybrid
+          model, where it has no meaning
         * **particle_pusher** (``str``), algo to push particles (default = "modifiedBoris")
 
 
@@ -1039,6 +1081,7 @@ class Simulation(object):
         **Expert parameters:**
 
         These parameters are more advanced, modify them at your own risk
+
 
         * **refined_particle_nbr** (``ìnt``), number of refined particle per coarse particle.
         * **nesting_buffer** (``ìnt``), default=1 minimum gap in coarse cells from the border of a level and any refined patch border. Has no effect (and is not sent to SAMRAI) if the simulation has no refinement levels.

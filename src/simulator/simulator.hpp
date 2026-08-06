@@ -70,6 +70,8 @@ template<auto opts>
 class Simulator : public ISimulator
 {
 public:
+    auto static constexpr options = opts;
+
     std::size_t static constexpr dimension     = opts.dimension;
     std::size_t static constexpr interp_order  = opts.interp_order;
     std::size_t static constexpr nbRefinedPart = opts.nbRefinedPart;
@@ -77,18 +79,11 @@ public:
     using SAMRAITypes            = PHARE::amr::SAMRAI_Types;
     using PHARETypes             = solver::PHARE_Types<opts>;
     using IPhysicalModel         = PHARE::solver::IPhysicalModel<SAMRAITypes>;
-    using HybridModel            = PHARETypes::HybridModel_t;
-    using MHDModel               = PHARETypes::MHDModel_t;
-    using SolverMHD              = PHARETypes::SolverMHD_t;
-    using SolverPPC              = PHARETypes::SolverPPC_t;
     using MessengerFactory       = PHARETypes::MessengerFactory;
     using MultiPhysicsIntegrator = PHARETypes::MultiPhysicsIntegrator_t;
     using SimFunctorParams       = core::PHARE_Sim_Types::SimFunctorParams;
     using SimFunctors            = core::PHARE_Sim_Types::SimulationFunctors;
     using Integrator             = PHARE::amr::Integrator<dimension>;
-
-    using HybridResourceManager_t = HybridModel::resources_manager_type;
-    using MHDResourceManager_t    = MHDModel::resources_manager_type;
 
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
@@ -113,8 +108,8 @@ public:
     std::vector<double> const& cellWidth() const override { return hierarchy_->cellWidth(); }
     std::size_t interporder() const override { return interp_order; }
 
-    NO_DISCARD auto& getHybridModel() { return hybridModel_; }
-    NO_DISCARD auto& getMHDModel() { return mhdModel_; }
+    NO_DISCARD auto& getHybridModel() { return hyb_.model_; }
+    NO_DISCARD auto& getMHDModel() { return mhd_.model_; }
     NO_DISCARD auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
 
     NO_DISCARD std::string to_str() override;
@@ -192,12 +187,9 @@ private:
 
     bool allowEmergencyDumps = false;
 
-    std::shared_ptr<HybridResourceManager_t> hyb_resman_ptr;
-    std::shared_ptr<MHDResourceManager_t> mhd_resman_ptr;
-
-    // physical models that can be used
-    std::shared_ptr<HybridModel> hybridModel_;
-    std::shared_ptr<MHDModel> mhdModel_;
+    // empty when opts has the corresponding model disabled, see phare_solver.hpp
+    solver::HybridSimState<opts> hyb_;
+    solver::MHDSimState<opts> mhd_;
 
     std::unique_ptr<PHARE::core::ITimeStamper> timeStamper;
     std::unique_ptr<PHARE::diagnostic::IDiagnosticsManager> dMan;
@@ -281,12 +273,15 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict, auto&
 template<auto opts>
 void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
 {
-    hybridModel_ = std::make_shared<HybridModel>(dict["simulation"], hyb_resman_ptr);
-    hyb_resman_ptr->registerResources(hybridModel_->state); // still valid, never moved
+    using HybridModel = PHARETypes::Hybrid::Model_t;
+    using SolverPPC   = PHARETypes::Hybrid::Solver_t;
+
+    hyb_.model_ = std::make_shared<HybridModel>(dict["simulation"], hyb_.resman_);
+    hyb_.resman_->registerResources(hyb_.model_->state); // still valid, never moved
 
     // we register the hybrid model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
-    multiphysInteg_->registerModel(maxMHDLevel_, maxLevelNumber_ - 1, hybridModel_);
+    multiphysInteg_->registerModel(maxMHDLevel_, maxLevelNumber_ - 1, hyb_.model_);
 
     multiphysInteg_->registerAndInitSolver(maxMHDLevel_, maxLevelNumber_ - 1,
                                            std::make_unique<SolverPPC>(dict["simulation"]["algo"]));
@@ -343,19 +338,22 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
     if (dict["simulation"].contains("diagnostics"))
-        diagnostics_init(dict["simulation"]["diagnostics"], *hybridModel_);
+        diagnostics_init(dict["simulation"]["diagnostics"], *hyb_.model_);
 }
 
 
 template<auto opts>
 void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 {
-    mhdModel_ = std::make_shared<MHDModel>(dict["simulation"], mhd_resman_ptr);
-    mhd_resman_ptr->registerResources(mhdModel_->state);
+    using MHDModel  = PHARETypes::MHD::Model_t;
+    using SolverMHD = PHARETypes::MHD::Solver_t;
+
+    mhd_.model_ = std::make_shared<MHDModel>(dict["simulation"], mhd_.resman_);
+    mhd_.resman_->registerResources(mhd_.model_->state);
 
     // we register the mhd model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
-    multiphysInteg_->registerModel(0, maxMHDLevel_ - 1, mhdModel_);
+    multiphysInteg_->registerModel(0, maxMHDLevel_ - 1, mhd_.model_);
 
     multiphysInteg_->registerAndInitSolver(0, maxMHDLevel_ - 1,
                                            std::make_unique<SolverMHD>(dict["simulation"]["algo"]));
@@ -409,7 +407,7 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
     if (dict["simulation"].contains("diagnostics"))
-        diagnostics_init(dict["simulation"]["diagnostics"], *mhdModel_);
+        diagnostics_init(dict["simulation"]["diagnostics"], *mhd_.model_);
 }
 
 
@@ -440,26 +438,56 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
 
     // we would need a different restart manager for mhd and hybrid if both models are used
 
-    if (find_model("HybridModel"))
+    // the build enabling a model (static_assert in solver::PHARE_Types) is not enough: the dict
+    // still has to ask for one of them by name.
+    bool anyModel = false;
+
+    if constexpr (has_hybrid_v<opts>)
     {
-        hyb_resman_ptr = std::make_shared<HybridResourceManager_t>();
-        hybrid_init(dict);
-        if (dict["simulation"].contains("restarts"))
-            rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *hyb_resman_ptr,
-                                                                  dict["simulation"]["restarts"]);
+        if (find_model("HybridModel"))
+        {
+            anyModel       = true;
+            using ResMan_t = PHARETypes::Hybrid::Model_t::resources_manager_type;
+            hyb_.resman_   = std::make_shared<ResMan_t>();
+            hybrid_init(dict);
+            if (dict["simulation"].contains("restarts"))
+                rMan = restarts::RestartsManagerResolver::make_unique(
+                    *hierarchy_, *hyb_.resman_, dict["simulation"]["restarts"]);
+        }
+    }
+    else
+    {
+        if (find_model("HybridModel"))
+            throw std::runtime_error("HybridModel requested but this build has no hybrid support");
     }
 
-    if (find_model("MHDModel"))
+    if constexpr (has_mhd_v<opts>)
     {
-        mhd_resman_ptr = std::make_shared<MHDResourceManager_t>();
-        mhd_init(dict);
-        if (dict["simulation"].contains("restarts"))
-            rMan = restarts::RestartsManagerResolver::make_unique(*hierarchy_, *mhd_resman_ptr,
-                                                                  dict["simulation"]["restarts"]);
+        if (find_model("MHDModel"))
+        {
+            anyModel       = true;
+            using ResMan_t = PHARETypes::MHD::Model_t::resources_manager_type;
+            mhd_.resman_   = std::make_shared<ResMan_t>();
+            mhd_init(dict);
+            if (dict["simulation"].contains("restarts"))
+                rMan = restarts::RestartsManagerResolver::make_unique(
+                    *hierarchy_, *mhd_.resman_, dict["simulation"]["restarts"]);
+        }
+    }
+    else
+    {
+        if (find_model("MHDModel"))
+            throw std::runtime_error("MHDModel requested but this build has no MHD support");
     }
 
-    if (!hyb_resman_ptr and !mhd_resman_ptr)
-        throw std::runtime_error("unsupported model");
+    if (!anyModel)
+    {
+        std::string names;
+        for (auto const& name : modelNames_)
+            names += (names.empty() ? "" : ", ") + name;
+        throw std::runtime_error("unsupported model, none of [" + names
+                                 + "] is supported by this build");
+    }
 
     amr::ResourcesManagerGlobals::registerForRestarts();
 }
@@ -476,7 +504,16 @@ std::string Simulator<opts>::to_str()
     ss << "dimension            : " << dimension << "\n";
     ss << "time step            : " << dt_ << "\n";
     ss << "number of time steps : " << timeStepNbr_ << "\n";
-    ss << core::to_str(hybridModel_->state);
+    if constexpr (has_hybrid_v<opts>)
+    {
+        if (hyb_.model_)
+            ss << core::to_str(hyb_.model_->state);
+    }
+    if constexpr (has_mhd_v<opts>)
+    {
+        if (mhd_.model_)
+            ss << core::to_str(mhd_.model_->state);
+    }
     return ss.str();
 }
 

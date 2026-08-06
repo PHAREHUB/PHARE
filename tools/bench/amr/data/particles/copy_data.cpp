@@ -14,8 +14,8 @@ class ParticleDataCopy : public benchmark::Fixture
 {
     auto static constexpr opts = PHARE::SimOpts{dim, interp};
     using PHARE_Types          = PHARE::core::PHARE_Types<opts>;
-    using GridLayout_t         = PHARE_Types::GridLayout_t;
-    using ParticleArray        = PHARE_Types::ParticleArray_t;
+    using GridLayout_t         = PHARE_Types::Hybrid::GridLayout_t;
+    using ParticleArray        = PHARE_Types::Hybrid::ParticleArray_t;
     using ParticlesData        = PHARE::amr::ParticlesData<ParticleArray>;
 
 public:

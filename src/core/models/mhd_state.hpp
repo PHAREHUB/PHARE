@@ -10,6 +10,9 @@
 
 #include "initializer/data_provider.hpp"
 
+#include <string>
+#include <sstream>
+
 namespace PHARE
 {
 namespace core
@@ -20,7 +23,7 @@ namespace core
     {
     public:
         using vecfield_type = VecFieldT;
-        using field_type    = typename VecFieldT::field_type;
+        using field_type    = VecFieldT::field_type;
 
         static constexpr auto dimension = VecFieldT::dimension;
 
@@ -54,6 +57,14 @@ namespace core
         //-------------------------------------------------------------------------
         //                  ends the ResourcesUser interface
         //-------------------------------------------------------------------------
+
+        NO_DISCARD std::string to_str() const
+        {
+            std::stringstream ss;
+            ss << "MHD State\n";
+            ss << "------------------------------------\n";
+            return ss.str();
+        }
 
         MHDState(PHARE::initializer::PHAREDict const& dict)
             : rho{dict["name"].template to<std::string>() + "_" + "rho", MHDQuantity::Scalar::rho}

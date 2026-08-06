@@ -149,7 +149,7 @@ BSpline readFromFile(std::string centering, std::size_t order)
 template<typename AWeighter_t, typename Centering, Centering centering, typename Weighter>
 void check_bspline(Weighter& weighter, std::string centering_id)
 {
-    using Interpolator_t        = typename AWeighter_t::Interpolator_t;
+    using Interpolator_t        = AWeighter_t::Interpolator_t;
     constexpr auto interp_order = AWeighter_t::interp_order;
 
     auto data = readFromFile(centering_id, interp_order);
@@ -220,9 +220,9 @@ public:
     static constexpr std::uint32_t nx = 50;
 
     using PHARE_TYPES      = PHARE_Types<opts>;
-    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
-    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
-    using Electromag_t     = PHARE_TYPES::Electromag_t;
+    using GridLayout_t     = PHARE_TYPES::Hybrid::GridLayout_t;
+    using ParticleArray_t  = PHARE_TYPES::Hybrid::ParticleArray_t;
+    using Electromag_t     = PHARE_TYPES::Hybrid::Electromag_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
     Electromag_t em;
@@ -309,8 +309,8 @@ public:
 
     using PHARE_TYPES  = PHARE_Types<opts>;
     using GridLayout_t = PHARE_Types<PHARE::SimOpts{dimension, interp_order}>::Hybrid::GridLayout_t;
-    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
-    using Electromag_t     = PHARE_TYPES::Electromag_t;
+    using ParticleArray_t  = PHARE_TYPES::Hybrid::ParticleArray_t;
+    using Electromag_t     = PHARE_TYPES::Hybrid::Electromag_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
     Electromag_t em;
@@ -400,9 +400,9 @@ public:
     static constexpr std::uint32_t nz = 50;
 
     using PHARE_TYPES      = PHARE_Types<opts>;
-    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
-    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
-    using Electromag_t     = PHARE_TYPES::Electromag_t;
+    using GridLayout_t     = PHARE_TYPES::Hybrid::GridLayout_t;
+    using ParticleArray_t  = PHARE_TYPES::Hybrid::ParticleArray_t;
+    using Electromag_t     = PHARE_TYPES::Hybrid::Electromag_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
     Electromag_t em;
@@ -496,10 +496,10 @@ class ACollectionOfParticles_1d : public ::testing::Test
     constexpr static PHARE::SimOpts opts{dimension, interp_order};
 
     using PHARE_TYPES      = PHARE_Types<opts>;
-    using ParticleArray_t  = typename PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t     = typename PHARE_TYPES::GridLayout_t;
-    using Grid_t           = typename PHARE_TYPES::Grid_t;
-    using Particle_t       = typename ParticleArray_t::Particle_t;
+    using ParticleArray_t  = PHARE_TYPES::Hybrid::ParticleArray_t;
+    using GridLayout_t     = PHARE_TYPES::Hybrid::GridLayout_t;
+    using Grid_t           = PHARE_TYPES::Hybrid::Grid_t;
+    using Particle_t       = ParticleArray_t::Particle_t;
     using UsableVecFieldND = UsableVecField<dimension>;
 
 public:
@@ -692,9 +692,9 @@ struct ACollectionOfParticles_2d : public ::testing::Test
     constexpr static PHARE::SimOpts opts{dim, interp_order};
 
     using PHARE_TYPES      = PHARE_Types<opts>;
-    using ParticleArray_t  = PHARE_TYPES::ParticleArray_t;
-    using GridLayout_t     = PHARE_TYPES::GridLayout_t;
-    using Grid_t           = PHARE_TYPES::Grid_t;
+    using ParticleArray_t  = PHARE_TYPES::Hybrid::ParticleArray_t;
+    using GridLayout_t     = PHARE_TYPES::Hybrid::GridLayout_t;
+    using Grid_t           = PHARE_TYPES::Hybrid::Grid_t;
     using UsableVecFieldND = UsableVecField<dim>;
 
     GridLayout_t layout{ConstArray<double, dim>(.1), {nx, ny}, ConstArray<double, dim>(0)};

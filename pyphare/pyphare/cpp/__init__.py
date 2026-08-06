@@ -13,17 +13,26 @@ _libs = {}
 
 
 def simulator_id(sim):
-    if not sim.mhd_timestepper:  # no MHD
-        return f"{sim.ndim}_{sim.interp_order}_{sim.refined_particle_nbr}"
+    parts = [str(sim.ndim)]
 
-    Hall = "true" if sim.hall else "false"
-    Res = "true" if sim.res else "false"
-    Hyper_Res = "true" if sim.hyper_res else "false"
-    return (
-        f"{sim.ndim}_{sim.interp_order}_{sim.refined_particle_nbr}_"
-        f"{sim.mhd_timestepper}_{sim.reconstruction}_{sim.limiter}_"
-        f"{sim.riemann}_{Hall}_{Res}_{Hyper_Res}"
-    )
+    if sim.interp_order:
+        parts += [str(sim.interp_order), str(sim.refined_particle_nbr)]
+
+    if sim.mhd_timestepper:
+        hall_active = "true" if sim.hall else "false"
+        res_active = "true" if sim.res else "false"
+        hyper_res_active = "true" if sim.hyper_res else "false"
+        parts += [
+            sim.mhd_timestepper,
+            sim.reconstruction,
+            sim.limiter,
+            sim.riemann,
+            hall_active,
+            res_active,
+            hyper_res_active,
+        ]
+
+    return "_".join(parts)
 
 
 def cpp_lib(sim):

@@ -13,14 +13,6 @@ template<ReconstructionType R>
 struct ReconstructionNghosts;
 
 template<>
-struct ReconstructionNghosts<ReconstructionType::Default>
-{
-    // Default is for Hybrid-only simulations, no MHD reconstruction needed.
-    // nghosts=0 signals to use Hybrid ghost width instead.
-    static constexpr std::uint32_t value = 0;
-};
-
-template<>
 struct ReconstructionNghosts<ReconstructionType::Constant>
 {
     static constexpr std::uint32_t value = 1;

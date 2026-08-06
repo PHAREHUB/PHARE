@@ -20,7 +20,7 @@ public:
     static constexpr std::size_t dimension = opts.dimension;
 
     using PHARESolverTypes = solver::PHARE_Types<opts>;
-    using HybridModel      = PHARESolverTypes::HybridModel_t;
+    using HybridModel      = PHARESolverTypes::Hybrid::Model_t;
     using GridLayout       = HybridModel::gridlayout_type;
 
     PatchLevel(amr::Hierarchy& hierarchy, HybridModel& model, std::size_t lvl)
