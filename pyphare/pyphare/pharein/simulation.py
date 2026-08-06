@@ -580,16 +580,39 @@ def check_refinement(**kwargs):
 
 
 def check_nesting_buffer(ndim, **kwargs):
-    nesting_buffer = phare_utilities.np_array_ify(kwargs.get("nesting_buffer", 0), ndim)
+    refinement_boxes = kwargs.get("refinement_boxes")
+    has_refinement_boxes = refinement_boxes is not None and len(refinement_boxes) > 0
+
+    if check_refinement(**kwargs) == "boxes":
+        # check_refinement_boxes() normalizes to (None, 1) whenever
+        # refinement_boxes is empty, ignoring any max_nbr_levels the user
+        # passed in that case, so has_amr must follow the same rule here.
+        has_amr = has_refinement_boxes
+    else:
+        has_amr = kwargs.get("max_nbr_levels", 1) > 1
+
+    if not has_amr:
+        if "nesting_buffer" in kwargs:
+            print(
+                f"WARNING, nesting_buffer({kwargs['nesting_buffer']}) has no effect"
+                + " on a simulation with no refinement levels, ignoring"
+            )
+        return None
+
+    # SAMRAI itself defaults proper_nesting_buffer to 1 and warns when it is 0
+    # (subprojects/samrai/source/SAMRAI/hier/PatchHierarchy.cpp)
+    nesting_buffer = phare_utilities.np_array_ify(kwargs.get("nesting_buffer", 1), ndim)
 
     if nesting_buffer.size != ndim:
         raise ValueError(f"Error: nesting_buffer must be size {ndim}")
 
-    if (nesting_buffer < 0).any():
-        raise ValueError(f"Error: nesting_buffer({nesting_buffer}) cannot be negative")
+    if (nesting_buffer < 1).any():
+        raise ValueError(
+            f"Error: nesting_buffer({nesting_buffer}) must be at least 1"
+            + " on a simulation with refinement levels"
+        )
 
     smallest_patch_size = kwargs["smallest_patch_size"]
-    largest_patch_size = kwargs["largest_patch_size"]
 
     if (nesting_buffer > smallest_patch_size / 2).any():
         raise ValueError(
@@ -599,16 +622,7 @@ def check_nesting_buffer(ndim, **kwargs):
 
     cells = np.asarray(kwargs["cells"])
 
-    if (
-        largest_patch_size is not None
-        and (nesting_buffer > (cells - largest_patch_size)).any()
-    ):
-        raise ValueError(
-            f"Error: nesting_buffer({nesting_buffer})"
-            + f"incompatible with number of domain cells ({cells}) and largest_patch_size({largest_patch_size})"
-        )
-
-    elif (nesting_buffer > cells).any():
+    if (nesting_buffer > cells).any():
         raise ValueError(
             f"Error: nesting_buffer({nesting_buffer}) incompatible with number of domain cells ({cells})"
         )
@@ -1027,7 +1041,7 @@ class Simulation(object):
         These parameters are more advanced, modify them at your own risk
 
         * **refined_particle_nbr** (``ìnt``), number of refined particle per coarse particle.
-        * **nesting_buffer** (``ìnt``), default=0 minimum gap in coarse cells from the border of a level and any refined patch border
+        * **nesting_buffer** (``ìnt``), default=1 minimum gap in coarse cells from the border of a level and any refined patch border. Has no effect (and is not sent to SAMRAI) if the simulation has no refinement levels.
         * **refinement_boxes**, default=None, {"L0":{"B0":[(lox,loy,loz),(upx,upy,upz)],...,"Bi":[(),()]},..."Li":{B0:[(),()]}}
         * **smallest_patch_size** (``int`` or ``tuple``), minimum number of cells in a patch in each direction
           This parameter cannot be smaller than the number of field ghost nodes
