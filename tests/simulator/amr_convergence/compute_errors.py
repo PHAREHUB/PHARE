@@ -110,6 +110,10 @@ def composite_errors(run, final_time, fine_box, refinement_ratio=2, ndim=2):
         w = float(refinement_ratio) ** (-ndim * ilvl)  # relative cell volume
         ln = lvl_num.setdefault(ilvl, {v: 0.0 for v in CONSERVED})
         for v in CONSERVED:
+            if f1[key][v].shape != f0[key][v].shape:
+                raise RuntimeError(
+                    f"{v}: field shape {f1[key][v].shape} != {f0[key][v].shape}"
+                )
             diff = np.abs(f1[key][v] - f0[key][v])
             if diff.shape != mask.shape:
                 raise RuntimeError(f"{v}: field shape {diff.shape} != mask {mask.shape}")
@@ -138,6 +142,10 @@ def uniform_error(run, final_time):
         if key[0] != 0:
             raise RuntimeError(f"uniform run has a fine level: {key}")
         for v in CONSERVED:
+            if f1[key][v].shape != f0[key][v].shape:
+                raise RuntimeError(
+                    f"{v}: field shape {f1[key][v].shape} != {f0[key][v].shape}"
+                )
             num[v] += np.abs(f1[key][v] - f0[key][v]).sum()
         den += f1[key][CONSERVED[0]].size
     return float(np.sqrt(sum((num[v] / den) ** 2 for v in CONSERVED)))
