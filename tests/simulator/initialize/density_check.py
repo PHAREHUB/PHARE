@@ -1,24 +1,22 @@
 import os
 
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.run import Run
-
-import pyphare.pharein as ph
-
-from pyphare.pharein import global_vars
-from tests.diagnostic import all_timestamps
-
-from pyphare.pharein.diagnostics import FluidDiagnostics
-
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
-
+import pyphare.pharein as ph
+from pyphare.pharein import global_vars
+from pyphare.pharein.diagnostics import FluidDiagnostics
 from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.pharesee.hierarchy.fromfunc import ions_mass_density_func1d
-from pyphare.pharesee.hierarchy.fromfunc import ions_charge_density_func1d
-from pyphare.pharesee.hierarchy.fromfunc import ions_mass_density_func2d
-from pyphare.pharesee.hierarchy.fromfunc import ions_charge_density_func2d
+from pyphare.pharesee.hierarchy.fromfunc import (
+    ions_charge_density_func1d,
+    ions_charge_density_func2d,
+    ions_mass_density_func1d,
+    ions_mass_density_func2d,
+)
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
+
+from tests.diagnostic import all_timestamps
 
 mpl.use("Agg")
 
@@ -233,10 +231,10 @@ def main():
                 dset_H = pd_H[patch_H.box]
 
                 std = np.std(dset_h - dset_H)
-                print("dim = {}, sigma(user v - actual v) = {}".format(pd_H.ndim, std))
+                print(f"dim = {pd_H.ndim}, sigma(user v - actual v) = {std}")
                 assert std < 0.062  # empirical value obtained from print just above
 
-    fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(6, 8))
+    _fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(6, 8))
 
     # 1d stuffs
     run_path = os.path.join(os.curdir, "nCheck_1d")
@@ -248,13 +246,13 @@ def main():
 
     H1 = hierarchy_from(
         hier=h1,
-        func=ions_mass_density_func1d,
+        from_func=ions_mass_density_func1d,
         masses=masses,
         densities=(densityMain_1d, densityBeam_1d),
     )
     H2 = hierarchy_from(
         hier=h2,
-        func=ions_charge_density_func1d,
+        from_func=ions_charge_density_func1d,
         charges=charges,
         densities=(densityMain_1d, densityBeam_1d),
     )
@@ -283,13 +281,13 @@ def main():
 
     H1 = hierarchy_from(
         hier=h1,
-        func=ions_mass_density_func2d,
+        from_func=ions_mass_density_func2d,
         masses=masses,
         densities=(densityMain_2d, densityBeam_2d),
     )
     H2 = hierarchy_from(
         hier=h2,
-        func=ions_charge_density_func2d,
+        from_func=ions_charge_density_func2d,
         charges=charges,
         densities=(densityMain_2d, densityBeam_2d),
     )
