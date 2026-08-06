@@ -1,4 +1,3 @@
-#
 
 
 class Patch:
@@ -21,7 +20,7 @@ class Patch:
         self.layout = None
 
         if len(patch_datas):
-            pdata0 = list(patch_datas.values())[0]  # 0 represents all others
+            pdata0 = next(iter(patch_datas.values()))  # 0 represents all others
             self.layout = pdata0.layout  # deprecated!
             self.box = pdata0.layout.box
             self.origin = pdata0.layout.origin

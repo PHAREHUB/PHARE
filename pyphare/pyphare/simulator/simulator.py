@@ -1,20 +1,18 @@
-#
-#
-#
 
+import atexit
+import datetime
 import os
 import sys
-import datetime
-import atexit
 import time as timem
-import numpy as np
-import pyphare.pharein as ph
 from pathlib import Path
-from . import monitoring as mon
 
+import numpy as np
+
+import pyphare.pharein as ph
 from pyphare import cpp
-import pyphare.pharein.restarts as restarts
+from pyphare.pharein import restarts
 
+from . import monitoring as mon
 
 exit_on_exception = True
 life_cycles = {}
@@ -97,7 +95,7 @@ class Simulator:
         self.log_to_file = kwargs.get("log_to_file", True)
 
         self.auto_dump = auto_dump
-        import pyphare.simulator._simulator as _simulator
+        from pyphare.simulator import _simulator
 
         _simulator.obj = self
 
@@ -123,12 +121,12 @@ class Simulator:
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
 
             return self
-        except Exception:
+        except cpp.cpp_error_type() as e:
             import traceback
 
-            print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
+            print(f'Exception caught in "Simulator.setup()": {sys.exc_info()}')
             print(traceback.format_exc())
-            raise ValueError("Error in Simulator.setup(), see previous error")
+            raise ValueError("Error in Simulator.setup(), see previous error") from e
 
     def initialize(self):
         try:
@@ -145,13 +143,11 @@ class Simulator:
             self._auto_dump()  # first dump might be before first advance
 
             return self
-        except Exception:
+        except cpp.cpp_error_type() as e:
             print(
-                'Exception caught in "Simulator.initialize()": {}'.format(
-                    sys.exc_info()[0]
-                )
+                f'Exception caught in "Simulator.initialize()": {sys.exc_info()[0]}'
             )
-            raise ValueError("Error in Simulator.initialize(), see previous error")
+            raise ValueError("Error in Simulator.initialize(), see previous error") from e
 
     def _throw(self, e):
         print_rank0(e)
@@ -169,7 +165,7 @@ class Simulator:
 
         try:
             self.cpp_sim.advance(dt)
-        except (RuntimeError, TypeError, NameError, ValueError) as e:
+        except cpp.cpp_error_type() as e:
             self._throw(f"Exception caught in simulator.py::advance: \n{e}")
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
@@ -206,7 +202,7 @@ class Simulator:
         t = self.cpp_sim.currentTime()
 
         tot = 0
-        print_rank0("Starting at ", datetime.datetime.now())
+        print_rank0("Starting at ", datetime.datetime.now().astimezone())
         print_rank0("Simulation start time/end time ", t, end_time)
         while t < end_time:
             tick = timem.time()
@@ -225,7 +221,7 @@ class Simulator:
 
         print_rank0(f"mean advance time = {np.mean(perf)}")
         print_rank0(f"total advance time = {datetime.timedelta(seconds=tot)}")
-        print_rank0("Finished at ", datetime.datetime.now())
+        print_rank0("Finished at ", datetime.datetime.now().astimezone())
 
         if plot_times:
             plot_timestep_time(perf)

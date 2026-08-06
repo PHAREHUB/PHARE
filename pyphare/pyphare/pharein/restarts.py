@@ -1,6 +1,7 @@
 import os
-import numpy as np
 from pathlib import Path
+
+import numpy as np
 
 from pyphare.core import phare_utilities
 
@@ -9,7 +10,7 @@ def format_time(time):
     """
     0.006 == "00000.00600"
     """
-    return "{:0>11.5f}".format(time)
+    return f"{time:0>11.5f}"
 
 
 def dump(simulator, time, time_step):
@@ -139,22 +140,21 @@ def conserve_existing(sim):
     restart_options = sim.restart_options
     timestamps = restart_options["timestamps"]
 
-    if "mode" in restart_options:
-        if restart_options["mode"] == "conserve":
-            from pyphare.cpp import cpp_etc_lib
+    if "mode" in restart_options and restart_options["mode"] == "conserve":
+        from pyphare.cpp import cpp_etc_lib
 
-            torm = []
+        torm = []
 
-            for i, time in enumerate(timestamps):
-                restart_file = cpp_etc_lib().restart_path_for_time(
-                    sim.restart_file_path(), time
-                )
+        for i, time in enumerate(timestamps):
+            restart_file = cpp_etc_lib().restart_path_for_time(
+                sim.restart_file_path(), time
+            )
 
-                if os.path.exists(restart_file):
-                    torm += [i]
+            if os.path.exists(restart_file):
+                torm += [i]
 
-            for i in reversed(torm):
-                timestamps = np.delete(timestamps, i)
+        for i in reversed(torm):
+            timestamps = np.delete(timestamps, i)
 
     return timestamps
 

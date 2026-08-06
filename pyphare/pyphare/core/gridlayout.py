@@ -1,6 +1,3 @@
-#!/usr/bin/env python3
-
-
 import numpy as np
 
 from .box import Box
@@ -168,7 +165,7 @@ def yee_element_is_primal(key, direction="x"):
     return yee_centering[direction][key] == "primal"
 
 
-class YeeCentering(object):
+class YeeCentering:
     def __init__(self):
         self.centerX = yee_centering["x"]
         self.centerY = yee_centering["y"]
@@ -241,7 +238,7 @@ def mhdGhostNbrFromReconstruction(reconstruction):
     }.get(reconstruction)
 
 
-class GridLayout(object):
+class GridLayout:
     """
     initialized default to -1 as an invalid value allowing the override mechanism. Using None
     results in a pylint error elsewhere

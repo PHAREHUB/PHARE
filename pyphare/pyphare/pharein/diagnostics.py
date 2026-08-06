@@ -29,7 +29,7 @@ def diagnostics_checker(func):
             )
 
         one_of_required = ["elapsed_timestamps", "write_timestamps"]
-        if not any([k in kwargs for k in one_of_required]):
+        if not any(k in kwargs for k in one_of_required):
             raise RuntimeError(
                 "Error: missing parameters - one required: "
                 + ", ".join(one_of_required)
@@ -122,7 +122,7 @@ def try_cpp_build_config():
         return {}
 
 
-class Diagnostics(object):
+class Diagnostics:
     h5_flush_never = 0
     cpp_dep_vers = try_cpp_dep_vers()
 
@@ -217,11 +217,11 @@ class Diagnostics(object):
 
 # ------------------------------------------------------------------------------
 class MHDDiagnostics(Diagnostics):
-    mhd_quantities = ["rho", "V", "P", "rhoV", "Etot"]
+    mhd_quantities = ("rho", "V", "P", "rhoV", "Etot")
     type = "mhd"
 
     def __init__(self, **kwargs):
-        super(MHDDiagnostics, self).__init__(
+        super().__init__(
             MHDDiagnostics.type
             + str(global_vars.sim.count_diagnostics(MHDDiagnostics.type)),
             **kwargs,
@@ -251,11 +251,11 @@ class MHDDiagnostics(Diagnostics):
 
 # ------------------------------------------------------------------------------
 class ElectromagDiagnostics(Diagnostics):
-    em_quantities = ["E", "B"]
+    em_quantities = ("E", "B")
     type = "electromag"
 
     def __init__(self, **kwargs):
-        super(ElectromagDiagnostics, self).__init__(
+        super().__init__(
             ElectromagDiagnostics.type
             + str(global_vars.sim.count_diagnostics(ElectromagDiagnostics.type)),
             **kwargs,
@@ -282,18 +282,18 @@ def population_in_model(population):
 
 
 class FluidDiagnostics_(Diagnostics):
-    fluid_quantities = [
+    fluid_quantities = (
         "density",
         "charge_density",
         "mass_density",
         "flux",
         "bulkVelocity",
         "momentum_tensor",
-    ]
+    )
     type = "fluid"
 
     def __init__(self, **kwargs):
-        super(FluidDiagnostics_, self).__init__(
+        super().__init__(
             FluidDiagnostics_.type
             + str(global_vars.sim.count_diagnostics(FluidDiagnostics_.type)),
             **kwargs,
@@ -328,9 +328,7 @@ class FluidDiagnostics_(Diagnostics):
         else:
             if not population_in_model(self.population_name):
                 raise ValueError(
-                    "Error: population '{}' not in simulation initial model".format(
-                        self.population_name
-                    )
+                    f"Error: population '{self.population_name}' not in simulation initial model"
                 )
             self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
 
@@ -361,11 +359,11 @@ class FluidDiagnostics:
 
 
 class ParticleDiagnostics(Diagnostics):
-    particle_quantities = ["space_box", "domain", "levelGhost"]
+    particle_quantities = ("space_box", "domain", "levelGhost")
     type = "particle"
 
     def __init__(self, **kwargs):
-        super(ParticleDiagnostics, self).__init__(
+        super().__init__(
             ParticleDiagnostics.type
             + str(global_vars.sim.count_diagnostics(ParticleDiagnostics.type)),
             **kwargs,
@@ -393,9 +391,7 @@ class ParticleDiagnostics(Diagnostics):
 
         if not population_in_model(self.population_name):
             raise ValueError(
-                "Error: population '{}' not in simulation initial model".format(
-                    self.population_name
-                )
+                f"Error: population '{self.population_name}' not in simulation initial model"
             )
 
         self.quantity = "/ions/pop/" + self.population_name + "/" + self.quantity
@@ -420,11 +416,11 @@ class ParticleDiagnostics(Diagnostics):
 
 
 class MetaDiagnostics(Diagnostics):
-    meta_quantities = ["tags"]
+    meta_quantities = ("tags",)
     type = "meta"
 
     def __init__(self, **kwargs):
-        super(MetaDiagnostics, self).__init__(
+        super().__init__(
             MetaDiagnostics.type
             + str(global_vars.sim.count_diagnostics(MetaDiagnostics.type)),
             **kwargs,
@@ -447,7 +443,7 @@ class MetaDiagnostics(Diagnostics):
 
 
 class InfoDiagnostics(Diagnostics):
-    info_quantities = ["particle_count"]
+    info_quantities = ("particle_count",)
     type = "info"
 
     @classmethod
@@ -457,7 +453,7 @@ class InfoDiagnostics(Diagnostics):
         return kwargs
 
     def __init__(self, **kwargs):
-        super(InfoDiagnostics, self).__init__(
+        super().__init__(
             InfoDiagnostics.type
             + str(global_vars.sim.count_diagnostics(InfoDiagnostics.type)),
             **InfoDiagnostics.default_kwargs(**kwargs),

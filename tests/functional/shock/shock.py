@@ -2,12 +2,11 @@
 
 
 import numpy as np
-
-from pyphare import cpp
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
+from pyphare import cpp
 
 ph.NO_GUI()
 
@@ -33,7 +32,7 @@ def config(interp_order):
         # refinement_boxes = {"L0":{"B0":[(125,), (750,)]}},
         diag_options={
             "format": "phareh5",
-            "options": {"dir": "shock_{}".format(interp_order), "mode": "overwrite"},
+            "options": {"dir": f"shock_{interp_order}", "mode": "overwrite"},
         },
     )
 
@@ -113,10 +112,11 @@ def config(interp_order):
 
 
 def main():
-    import os
     import glob
+    import os
     import shlex
     import subprocess
+
     import matplotlib.pyplot as plt
 
     dry_run = False
@@ -129,11 +129,11 @@ def main():
             dt = 10 * sim.time_step
             nt = sim.final_time / dt + 1
             times = dt * np.arange(nt)
-            r = Run("shock_{}".format(interp_order))
+            r = Run(f"shock_{interp_order}")
             for it, t in enumerate(times):
                 fig, ax = plt.subplots()
                 B = r.GetB(t, merged=True)
-                title = "interp order {} - t = {:06.3f}".format(interp_order, t)
+                title = f"interp order {interp_order} - t = {t:06.3f}"
                 x = B["By"][1][0]
                 By = B["By"][0]
                 ax.plot(x, By(x), color="k")
@@ -141,15 +141,11 @@ def main():
                 ax.set_ylim((-0.2, 5))
                 ax.set_xlim((0, 250))
                 fig.savefig(
-                    "shock_{}/shock_By_{}_{:04d}.png".format(
-                        interp_order, interp_order, it
-                    )
+                    f"shock_{interp_order}/shock_By_{interp_order}_{it:04d}.png"
                 )
                 plt.close(fig)
             cmd = shlex.split(
-                "ffmpeg -r 10 -y -pattern_type glob -i 'shock_{}/shock_By_{}_*.png' -c:v libx264 -crf 0 shock_interp{}.mp4".format(
-                    interp_order, interp_order, interp_order
-                )
+                f"ffmpeg -r 10 -y -pattern_type glob -i 'shock_{interp_order}/shock_By_{interp_order}_*.png' -c:v libx264 -crf 0 shock_interp{interp_order}.mp4"
             )
             try:
                 subprocess.call(cmd)
@@ -176,7 +172,7 @@ def main():
             x = B["By"][1][0]
             By = B["By"][0]
             ax.plot(x, By(x), color=color, label=f"interp order {interp_order}")
-        title = "interp order {} - t = {:06.3f}".format(interp_order, t)
+        title = f"interp order {interp_order} - t = {t:06.3f}"
         ax.set_title(title)
         ax.set_ylim((-0.2, 5))
         ax.set_xlim((0, 250))

@@ -1,13 +1,14 @@
 import unittest
+
 import numpy as np
-from ddt import ddt, data, unpack
+from ddt import data, ddt, unpack
 from pyphare.core.box import Box, Box2D
 from pyphare.pharesee.geometry import (
-    level_ghost_boxes,
-    hierarchy_overlaps,
-    touch_domain_border,
-    ghost_area_boxes,
     get_periodic_list,
+    ghost_area_boxes,
+    hierarchy_overlaps,
+    level_ghost_boxes,
+    touch_domain_border,
 )
 
 from pyphare_tests.test_pharesee import build_hierarchy
@@ -265,7 +266,7 @@ class GeometryTest2D(AGeometryTest):
 
         self.assertEqual(len(expected), len(gaboxes))
 
-        for ilvl in hierarchy.levels().keys():
+        for ilvl in hierarchy.levels():
             self.assertEqual(len(gaboxes[ilvl][particles]), len(expected[ilvl]))
             for act_pdata, exp_pdata in zip(gaboxes[ilvl][particles], expected[ilvl]):
                 self.assertEqual(len(exp_pdata["boxes"]), len(act_pdata["boxes"]))
@@ -283,7 +284,7 @@ class GeometryTest2D(AGeometryTest):
         self.assertGreater(len(lvl_gboxes), 0)
         for ilvl, pdatainfos in lvl_gboxes.items():
             self.assertGreater(len(pdatainfos), 0)
-            for particles_id, gaboxes_list in pdatainfos.items():
+            for gaboxes_list in pdatainfos.values():
                 self.assertGreater(len(gaboxes_list), 0)
                 for pdatainfo in gaboxes_list:
                     for box in pdatainfo["boxes"]:
@@ -379,11 +380,11 @@ class ParticleLevelGhostGeometryTest2D(AGeometryTest):
         for ilvl in range(1, len(hierarchy.levels())):
             self.assertEqual(len(lvl_gaboxes[ilvl].keys()), 1)
 
-            key = list(lvl_gaboxes[ilvl].keys())[0]
+            key = next(iter(lvl_gaboxes[ilvl].keys()))
 
-            ghost_area_box_list = sum(  # aggregate to single list
-                [actual["boxes"] for actual in lvl_gaboxes[ilvl][key]], []
-            )
+            ghost_area_box_list = [  # aggregate to single list
+                box for actual in lvl_gaboxes[ilvl][key] for box in actual["boxes"]
+            ]
 
             fig = hierarchy.plot_2d_patches(
                 ilvl,
@@ -487,7 +488,7 @@ class ParticleLevelGhostGeometryTest2D(AGeometryTest):
 
             qtyNbr = len(lvl.patches[0].patch_datas.keys())
             self.assertEqual(qtyNbr, 1)
-            pop_name = list(lvl.patches[0].patch_datas.keys())[0]
+            pop_name = next(iter(lvl.patches[0].patch_datas.keys()))
             n_ghosts = lvl.patches[0].patch_datas[pop_name].ghosts_nbr
 
             periodic_list = get_periodic_list(lvl.patches, domain_box, n_ghosts)

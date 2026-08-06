@@ -2,11 +2,7 @@
 import os
 
 import numpy as np
-from pathlib import Path
-
-from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
 from tests.simulator import SimulatorTest
@@ -129,11 +125,11 @@ def config(settings):
 
 class DispersionTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(DispersionTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(DispersionTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None

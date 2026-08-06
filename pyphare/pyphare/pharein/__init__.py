@@ -1,7 +1,6 @@
 import os
-import sys
 import subprocess
-
+import sys
 
 from .diagnostics import (
     ElectromagDiagnostics,
@@ -11,26 +10,26 @@ from .diagnostics import (
     MHDDiagnostics,
     ParticleDiagnostics,
 )
-from .load_balancer import LoadBalancer
 from .electron_model import ElectronModel
+from .load_balancer import LoadBalancer
 from .maxwellian_fluid_model import MaxwellianFluidModel
 from .mhd_model import MHDModel
 from .simulation import Simulation
 from .uniform_model import UniformModel
 
 __all__ = [
-    "UniformModel",
-    "MaxwellianFluidModel",
+    "ElectromagDiagnostics",
     "ElectronModel",
     "FluidDiagnostics",
-    "MHDModel",
-    "MHDDiagnostics",
-    "ElectromagDiagnostics",
-    "ParticleDiagnostics",
-    "MetaDiagnostics",
     "InfoDiagnostics",
-    "Simulation",
     "LoadBalancer",
+    "MHDDiagnostics",
+    "MHDModel",
+    "MaxwellianFluidModel",
+    "MetaDiagnostics",
+    "ParticleDiagnostics",
+    "Simulation",
+    "UniformModel",
 ]
 
 # This exists to allow a condition variable for when we are running PHARE from C++ via phare-exe

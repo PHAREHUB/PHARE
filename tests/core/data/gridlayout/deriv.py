@@ -1,16 +1,14 @@
 #!/usr/bin/env python
-#!coding: utf-8
 
+import math
 import os
 import sys
-import math
-import numpy as np
 
-from pyphare.core import gridlayout
-
-import utilities
-import fieldNodeCoordinates
 import cellCenteredCoordinates
+import fieldNodeCoordinates
+import numpy as np
+import utilities
+from pyphare.core import gridlayout
 
 
 class DerivParams(cellCenteredCoordinates.CenteredCoordParams):
@@ -156,21 +154,9 @@ def main(path="./"):
 
                 params.setCoord(gl, originPosition, centering, derivedCentering)
 
-                summaryBasePart = "{} {} {} {} {} ".format(
-                    params.interpOrder,
-                    quantity,
-                    derivQuantity,
-                    params.nbrCell,
-                    params.dl,
-                )
+                summaryBasePart = f"{params.interpOrder} {quantity} {derivQuantity} {params.nbrCell} {params.dl} "
 
-                summaryGridLayoutPart = " {} {} {} {} {}\n".format(
-                    params.iGhostStart,
-                    params.iGhostEnd,
-                    params.iStart,
-                    params.iEnd,
-                    params.origin,
-                )
+                summaryGridLayoutPart = f" {params.iGhostStart} {params.iGhostEnd} {params.iStart} {params.iEnd} {params.origin}\n"
 
                 outSummaryString = summaryBasePart + summaryGridLayoutPart
 
@@ -185,12 +171,7 @@ def main(path="./"):
                         )
                         functionValue = primitive(coord)
 
-                        outValuesString = "{} {} {} {}\n".format(
-                            params.interpOrder,
-                            quantity,
-                            position,
-                            functionValue,
-                        )
+                        outValuesString = f"{params.interpOrder} {quantity} {position} {functionValue}\n"
 
                         outValues.write(utilities.removeTupleFormat(outValuesString))
 
@@ -203,9 +184,7 @@ def main(path="./"):
                             primitive, coord, dx, order=3
                         )
 
-                        outDerivedValuesString = "{} {} {} {}\n".format(
-                            params.interpOrder, derivQuantity, position, derivedValue
-                        )
+                        outDerivedValuesString = f"{params.interpOrder} {derivQuantity} {position} {derivedValue}\n"
 
                         outDerivedValues1D.write(
                             utilities.removeTupleFormat(outDerivedValuesString)

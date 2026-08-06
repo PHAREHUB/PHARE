@@ -224,7 +224,7 @@ def check_interp_order(**kwargs):
 def check_pusher(**kwargs):
     pusher = kwargs.get("particle_pusher", "modified_boris")
     if pusher not in ["modified_boris"]:
-        raise ValueError("Error: invalid pusher ({})".format(pusher))
+        raise ValueError(f"Error: invalid pusher ({pusher})")
     return pusher
 
 
@@ -234,7 +234,7 @@ def check_pusher(**kwargs):
 def check_layout(**kwargs):
     layout = kwargs.get("layout", "yee")
     if layout not in ("yee"):
-        raise ValueError("Error: invalid layout ({})".format(layout))
+        raise ValueError(f"Error: invalid layout ({layout})")
     return layout
 
 
@@ -258,20 +258,18 @@ def check_boundaries(ndim, **kwargs):
         bc_length = 1
         if boundary_types not in valid_boundary_types:
             raise ValueError(
-                "Error: '{}' is not a valid boundary type".format(boundary_types)
+                f"Error: '{boundary_types}' is not a valid boundary type"
             )
         boundary_types = phare_utilities.listify(boundary_types)
     else:
         bc_length = len(boundary_types)
         for bc in boundary_types:
             if bc not in valid_boundary_types:
-                raise ValueError("Error: '{}' is not a valid boundary type".format(bc))
+                raise ValueError(f"Error: '{bc}' is not a valid boundary type")
 
     if bc_length != ndim:
         raise ValueError(
-            "Error- boundary_types should have length {} and is of length {}".format(
-                ndim, bc_length
-            )
+            f"Error- boundary_types should have length {ndim} and is of length {bc_length}"
         )
 
     return boundary_types
@@ -302,10 +300,8 @@ def check_refined_particle_nbr(ndim, **kwargs):
 
     if refined_particle_nbr not in valid_refined_particle_nbr[ndim][interp]:
         raise ValueError(
-            "Invalid split particle number, valid values for dim({}) ".format(ndim)
-            + "interp({}) include {}".format(
-                interp, valid_refined_particle_nbr[ndim][interp]
-            )
+            f"Invalid split particle number, valid values for dim({ndim}) "
+            + f"interp({interp}) include {valid_refined_particle_nbr[ndim][interp]}"
         )
 
     return refined_particle_nbr
@@ -328,18 +324,18 @@ def as_list_per_level(refinement_boxes):
         else:
             level_key = "L" + str(level_key)
 
-        if isinstance(boxes, list) and all([isinstance(box, Box) for box in boxes]):
+        if isinstance(boxes, list) and all(isinstance(box, Box) for box in boxes):
             list_per_level[level_key] = boxes
 
         elif isinstance(boxes, dict):
             list_per_level[level_key] = []
 
-            if all([isinstance(val, Box) for key, val in boxes.items()]):
-                for box_id, box in boxes.items():
+            if all(isinstance(val, Box) for key, val in boxes.items()):
+                for box in boxes.values():
                     list_per_level[level_key] += [box]
 
-            elif all([isinstance(val, (tuple, list)) for key, val in boxes.items()]):
-                for box_id, box_coords in boxes.items():
+            elif all(isinstance(val, (tuple, list)) for key, val in boxes.items()):
+                for box_coords in boxes.values():
                     box_coords = [list(box_coord) for box_coord in box_coords]
                     list_per_level[level_key] += [Box(box_coords[0], box_coords[1])]
 
@@ -421,12 +417,11 @@ def check_patch_size(ndim, **kwargs):
         smallest_patch_size = phare_utilities.np_array_ify(
             kwargs["smallest_patch_size"], ndim
         )
-        if interp == 1:
-            if any([v == 4 or v == 5 for v in smallest_patch_size]):
-                samrai_bug_url = "https://github.com/llnl/SAMRAI/issues/311"
-                raise ValueError(
-                    f"Error: smallest_patch_size cannot be 4 or 5 in interp 1 because of {samrai_bug_url}"
-                )
+        if interp == 1 and any(v == 4 or v == 5 for v in smallest_patch_size):
+            samrai_bug_url = "https://github.com/llnl/SAMRAI/issues/311"
+            raise ValueError(
+                f"Error: smallest_patch_size cannot be 4 or 5 in interp 1 because of {samrai_bug_url}"
+            )
 
     cells = phare_utilities.np_array_ify(kwargs["cells"])
 
@@ -526,7 +521,7 @@ def check_diag_options(**kwargs):
 
 
 def check_restart_options(**kwargs):
-    import pyphare.pharein.restarts as restarts
+    from pyphare.pharein import restarts
 
     valid_keys = [
         "dir",
@@ -540,7 +535,7 @@ def check_restart_options(**kwargs):
     restart_options = kwargs.get("restart_options", None)
 
     if restart_options:
-        for key in restart_options.keys():
+        for key in restart_options:
             if key not in valid_keys:
                 raise ValueError(
                     f"invalid option ({key}), valid options are {valid_keys}"
@@ -569,7 +564,7 @@ def check_restart_options(**kwargs):
 
 
 def validate_restart_options(sim):
-    import pyphare.pharein.restarts as restarts
+    from pyphare.pharein import restarts
 
     if sim.restart_options is not None:
         restarts.validate(sim)
@@ -858,7 +853,7 @@ def checker(func):
 # ------------------------------------------------------------------------------
 
 
-class Simulation(object):
+class Simulation:
     """
 
     **Usage example:**
@@ -1139,7 +1134,7 @@ class Simulation(object):
         """
         if diag.name in self.diagnostics:
             raise ValueError(
-                "Error: diagnostics {} already registered".format(diag.name)
+                f"Error: diagnostics {diag.name} already registered"
             )
 
         # check whether the spatial extent of the diagnostics is valid, given the domain size
@@ -1159,7 +1154,7 @@ class Simulation(object):
         """
         # to be considered https://github.com/PHAREHUB/PHARE/issues/666
 
-        import pyphare.pharein.restarts as restarts
+        from pyphare.pharein import restarts
 
         return restarts.is_restartable_compared_to(self, sim)
 
@@ -1204,15 +1199,17 @@ def serialize(sim):
     :meta private:
     """
     # pickle cannot handle simulation objects
-    import dill
     import codecs
+
+    import dill
 
     return codecs.encode(dill.dumps(de_numpify_simulation(deepcopy(sim))), "hex")
 
 
 def deserialize(hex):
     """:meta private:"""
-    import dill
     import codecs
+
+    import dill
 
     return re_numpify_simulation(dill.loads(codecs.decode(hex, "hex")))

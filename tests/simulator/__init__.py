@@ -1,11 +1,9 @@
-#
-#
 
 import os
 import unittest
-import numpy as np
 from datetime import datetime
 
+import numpy as np
 import pyphare.pharein as ph
 from pyphare.pharein import ElectronModel
 
@@ -29,12 +27,11 @@ class NoOverwriteDict(dict):
         if k in self.keys():
             raise ValueError("Key is already present")
         else:
-            return super(NoOverwriteDict, self).__setitem__(k, v)
+            return super().__setitem__(k, v)
 
 
 def basicSimulatorArgs(dim: int, interp: int, **kwargs):
-    from pyphare.pharein.simulation import valid_refined_particle_nbr
-    from pyphare.pharein.simulation import check_patch_size
+    from pyphare.pharein.simulation import check_patch_size, valid_refined_particle_nbr
 
     cells = kwargs.get("cells", [20 for i in range(dim)])
     if not isinstance(cells, (list, tuple)):
@@ -80,7 +77,7 @@ def fn_periodic(sim, *xyz):
 
     L = sim.simulation_domain()
     return np.asarray(
-        [0.1 * np.cos(2 * np.pi * xyz[i] / L[i]) for i, v in enumerate(xyz)]
+        [0.1 * np.cos(2 * np.pi * v / L[i]) for i, v in enumerate(xyz)]
     ).prod(axis=0)
 
 
@@ -242,7 +239,7 @@ class SimulatorTest(unittest.TestCase):
         self.diag_dirs += [diag_dir]
 
     def __init__(self, *args, **kwargs):
-        super(SimulatorTest, self).__init__(*args, **SimulatorTest.pop(kwargs.copy()))
+        super().__init__(*args, **SimulatorTest.pop(kwargs.copy()))
         self.rethrow_ = True
         for key in SimulatorTest.test_kwargs:
             if key in kwargs:

@@ -4,10 +4,8 @@ import os
 import unittest
 
 import numpy as np
-from ddt import data, ddt
-
 import pyphare.pharein as ph
-
+from ddt import data, ddt
 from pyphare.core.box import Box1D
 from pyphare.pharein import ElectromagDiagnostics, ElectronModel
 from pyphare.pharesee.hierarchy import hierarchy_from
@@ -83,7 +81,7 @@ simArgs = {
 @ddt
 class DiagnosticsTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(DiagnosticsTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def setUp(self):
@@ -102,7 +100,7 @@ class DiagnosticsTest(unittest.TestCase):
     def test_dump_diags_timestamps(self):
         import h5py  # see doc/conventions.md section 2.1.1
 
-        print("test_dump_diags dim/interp:{}/{}".format(1, 1))
+        print(f"test_dump_diags dim/interp:{1}/{1}")
 
         simulation = ph.Simulation(**simArgs.copy())
         sim = simulation
@@ -126,7 +124,7 @@ class DiagnosticsTest(unittest.TestCase):
             return
 
         def make_time(stamp):
-            return "{:.10f}".format(stamp)
+            return f"{stamp:.10f}"
 
         for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
             h5_filename = os.path.join(out, h5_filename_from(diagInfo))

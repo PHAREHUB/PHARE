@@ -7,18 +7,16 @@
 
 
 import unittest
-import numpy as np
-from ddt import ddt
 
+import numpy as np
+import pyphare.core.box as boxm
+from ddt import ddt
+from pyphare.core.box import Box, amr_to_local
+from pyphare.core.phare_utilities import assert_fp_any_all_close
+from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
+from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
 
 from pyphare import cpp
-import pyphare.core.box as boxm
-from pyphare.core.box import Box
-from pyphare.core.box import amr_to_local
-from pyphare.core.phare_utilities import assert_fp_any_all_close
-from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
-from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
-
 from tests.simulator import SimulatorTest, diff_boxes
 
 
@@ -63,7 +61,6 @@ class AdvanceTestBase(SimulatorTest):
                     assert_fp_any_all_close(slice1, slice2, atol=5.5e-15, rtol=0)
                     success_test_nbr += 1
                 except AssertionError as e:
-                    import matplotlib.pyplot as plt
                     from matplotlib.patches import Rectangle
 
                     box = ovrlp_box
@@ -191,9 +188,7 @@ class AdvanceTestBase(SimulatorTest):
 
     def _test_field_coarsening_via_subcycles(self, dim, interp_order, **kwargs):
         print(
-            "test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(
-                dim, interp_order
-            )
+            f"test_field_coarsening_via_subcycles for dim/interp : {dim}/{interp_order}"
         )
 
         from pyphare.pharein import global_vars
@@ -312,7 +307,7 @@ class AdvanceTestBase(SimulatorTest):
                                         rtol=0,
                                     )
                                 except AssertionError as e:
-                                    print("failing for {}".format(qty))
+                                    print(f"failing for {qty}")
                                     print(checkTime)
                                     print(np.abs(coarse_pdDataset - afterCoarse).max())
                                     print(boxm.DataSelector(coarse_pdDataset)[dataBox])
@@ -522,9 +517,7 @@ class AdvanceTestBase(SimulatorTest):
 
         """
         print(
-            "test_field_coarsening_via_subcycles for dim/interp : {}/{}".format(
-                ndim, interp_order
-            )
+            f"test_field_coarsening_via_subcycles for dim/interp : {ndim}/{interp_order}"
         )
 
         import random

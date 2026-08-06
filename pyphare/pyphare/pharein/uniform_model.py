@@ -1,7 +1,7 @@
 from . import global_vars
 
 
-class UniformModel(object):
+class UniformModel:
     def __init__(self, b=(1.0, 0.0, 0.0), e=(0.0, 0.0, 0.0), **kwargs):
         self.model_dict = {"model": "model", "model_name": "uniform"}
 

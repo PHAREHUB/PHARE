@@ -1,13 +1,12 @@
 #!/usr/bin/env python
-#!coding: utf-8
 
 
 import os
 import sys
-import utilities
-import numpy as np
-import cellCenteredCoordinates
 
+import cellCenteredCoordinates
+import numpy as np
+import utilities
 from pyphare.core import gridlayout
 
 # TODO : FieldNode coords is general case of cellCenteredCoord
@@ -130,13 +129,9 @@ def main(path="./"):
 
                 params.setCoord(gl, originPosition, centering)
 
-                summaryBasePart = "{} {} {} ".format(
-                    quantity, params.nbrCell, params.dl
-                )
+                summaryBasePart = f"{quantity} {params.nbrCell} {params.dl} "
 
-                summaryGridLayoutPart = "{} {} {}\n".format(
-                    params.iStart, params.iEnd, params.origin
-                )
+                summaryGridLayoutPart = f"{params.iStart} {params.iEnd} {params.origin}\n"
 
                 outSummaryString = summaryBasePart + summaryGridLayoutPart
 
@@ -165,9 +160,7 @@ def main(path="./"):
                                 fieldCoords(positionY, quantity, "Y", params.dl[1], gl),
                             )
 
-                            outValuesString = "{} {} {}\n".format(
-                                quantity, position, centered
-                            )
+                            outValuesString = f"{quantity} {position} {centered}\n"
 
                             outFileV.write(utilities.removeTupleFormat(outValuesString))
 
@@ -192,9 +185,7 @@ def main(path="./"):
                                     ),
                                 )
 
-                                outValuesString = "{} {} {}\n".format(
-                                    quantity, position, centered
-                                )
+                                outValuesString = f"{quantity} {position} {centered}\n"
 
                                 outFileV.write(
                                     utilities.removeTupleFormat(outValuesString)

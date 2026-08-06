@@ -1,7 +1,7 @@
 from . import global_vars
 
 
-class IsothermalClosure(object):
+class IsothermalClosure:
     closure_name = "isothermal"
 
     def __init__(self, **kwargs):
@@ -19,7 +19,7 @@ class IsothermalClosure(object):
         return IsothermalClosure.closure_name
 
 
-class ElectronModel(object):
+class ElectronModel:
     def __init__(self, **kwargs):
         if kwargs["closure"] == "isothermal":
             self.closure = IsothermalClosure(**kwargs)

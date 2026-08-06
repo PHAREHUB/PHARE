@@ -1,5 +1,5 @@
-import os
 import logging
+import os
 
 LOG_LEVEL = os.environ.get("PYPHARE_LOG_LEVEL", "INFO")
 log_levels = {"INFO": 20, "WARNING": 30, "ERROR": 40, "DEBUG": 10}  # maps enum values

@@ -1,10 +1,8 @@
-#
-#
-#
 
-import os
-import json
 import importlib
+import json
+import os
+
 from . import validate
 
 __all__ = ["validate"]
@@ -39,6 +37,17 @@ def cpp_etc_lib():
     return importlib.import_module("pybindlibs.cpp_etc")
 
 
+def cpp_error_type():
+    """
+    Exception type raised for any error originating on the C++ side of the
+    pybind11 boundary (PHARE, SAMRAI, HDF5, MPI, ...). Registered on the C++
+    side in src/python3/cpp_etc.cpp so that python code can catch a specific,
+    well defined type instead of guessing at possible exception types or
+    catching a blind `Exception`.
+    """
+    return cpp_etc_lib().PHARECppError
+
+
 def build_config():
     return cpp_etc_lib().phare_build_config()
 
@@ -48,27 +57,27 @@ def build_config_as_json():
 
 
 def splitter_type(sim):
-    return getattr(cpp_lib(sim), "Splitter")
+    return cpp_lib(sim).Splitter
 
 
 def split_pyarrays_fn(sim):
-    return getattr(cpp_lib(sim), "split_pyarray_particles")
+    return cpp_lib(sim).split_pyarray_particles
 
 
 def mpi_rank():
-    return getattr(cpp_etc_lib(), "mpi_rank")()
+    return cpp_etc_lib().mpi_rank()
 
 
 def mpi_size():
-    return getattr(cpp_etc_lib(), "mpi_size")()
+    return cpp_etc_lib().mpi_size()
 
 
 def mpi_barrier():
-    return getattr(cpp_etc_lib(), "mpi_barrier")()
+    return cpp_etc_lib().mpi_barrier()
 
 
 def mpi_initialized():
-    return getattr(cpp_etc_lib(), "mpi_initialized")()
+    return cpp_etc_lib().mpi_initialized()
 
 
 def print_rank0(*args, **kwargs):

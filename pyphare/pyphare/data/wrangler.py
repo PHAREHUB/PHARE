@@ -9,7 +9,7 @@ class DataWrangler:
         self.dim = sim.ndim
         self.interp = sim.interp_order
         self.refined_particle_nbr = sim.refined_particle_nbr
-        self.cpp = getattr(cpp.cpp_lib(sim), "DataWrangler")(
+        self.cpp = cpp.cpp_lib(sim).DataWrangler(
             simulator.cpp_sim, simulator.cpp_hier
         )
 

@@ -5,7 +5,7 @@ from .general import add_double, add_int, add_size_t, add_string, fn_wrapper
 
 def populateDict(sim):
 
-    addInitFunction = getattr(pp, "addInitFunction{:d}".format(sim.ndim) + "D")
+    addInitFunction = getattr(pp, f"addInitFunction{sim.ndim:d}" + "D")
 
     if sim.refinement == "tagging":
         add_string("simulation/AMR/refinement/tagging/hybrid_method", "default")
@@ -26,10 +26,10 @@ def populateDict(sim):
     partinit = "particle_initializer"
     for pop_index, pop in enumerate(init_model.populations):
         pop_path = "simulation/ions/pop"
-        partinit_path = pop_path + "{:d}/".format(pop_index) + partinit + "/"
+        partinit_path = pop_path + f"{pop_index:d}/" + partinit + "/"
         d = modelDict[pop]
-        add_string(pop_path + "{:d}/name".format(pop_index), pop)
-        add_double(pop_path + "{:d}/mass".format(pop_index), d["mass"])
+        add_string(pop_path + f"{pop_index:d}/name", pop)
+        add_double(pop_path + f"{pop_index:d}/mass", d["mass"])
         add_string(partinit_path + "name", "maxwellian")
 
         addInitFunction(partinit_path + "density", fn_wrapper(d["density"]))
