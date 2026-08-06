@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#!coding: utf-8
 """
 this script aims at producing expected values for cell center coordinates
 it writes the following files:
@@ -10,14 +9,13 @@ it writes the following files:
     centers as a function of the interpolation order and dimensionality
 """
 
-import numpy as np
-
+import os
 import sys
 
-from pyphare.core import gridlayout
-import utilities
-import os
 import gridparams
+import numpy as np
+import utilities
+from pyphare.core import gridlayout
 
 
 class CenteredCoordParams(gridparams.GridParams):
@@ -184,11 +182,9 @@ def main(path="./"):
 
             params.setCoord(gl, originPosition, centering)
 
-            summaryBasePart = "{} {} ".format(params.nbrCell, params.dl)
+            summaryBasePart = f"{params.nbrCell} {params.dl} "
 
-            summaryGridLayoutPart = "{} {} {}\n".format(
-                params.iStart, params.iEnd, params.origin
-            )
+            summaryGridLayoutPart = f"{params.iStart} {params.iEnd} {params.origin}\n"
 
             outSummaryString = summaryBasePart + summaryGridLayoutPart
 
@@ -197,10 +193,7 @@ def main(path="./"):
             outFileS.write(outSummaryString)
             if dimension == 1:
                 for position in np.arange(params.iStart, params.iEnd + 1):
-                    outValuesString = "{} {}\n".format(
-                        position,
-                        centeredCoords(position, params.dl),
-                    )
+                    outValuesString = f"{position} {centeredCoords(position, params.dl)}\n"
 
                     outFileV.write(utilities.removeTupleFormat(outValuesString))
 
@@ -213,7 +206,7 @@ def main(path="./"):
                             centeredCoords(positionY, params.dl[1]),
                         )
 
-                        outValuesString = "{} {}\n".format(position, centered)
+                        outValuesString = f"{position} {centered}\n"
 
                         outFileV.write(utilities.removeTupleFormat(outValuesString))
 
@@ -230,7 +223,7 @@ def main(path="./"):
                                 centeredCoords(positionZ, params.dl[2]),
                             )
 
-                            outValuesString = "{} {}\n".format(position, centered)
+                            outValuesString = f"{position} {centered}\n"
 
                             outFileV.write(utilities.removeTupleFormat(outValuesString))
 

@@ -1,7 +1,7 @@
 from . import global_vars
 
 
-class UniformModel(object):
+class UniformModel:
     """
     :meta private:
 
@@ -9,7 +9,6 @@ class UniformModel(object):
     initial-condition format is incompatible with the Hybrid initializer.
     Not covered in the user documentation until this is resolved.
     """
-
     def __init__(self, b=(1.0, 0.0, 0.0), e=(0.0, 0.0, 0.0), **kwargs):
         self.model_dict = {"model": "model", "model_name": "uniform"}
 

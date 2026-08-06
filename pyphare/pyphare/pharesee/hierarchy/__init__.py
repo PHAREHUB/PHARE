@@ -1,21 +1,22 @@
-from .scalarfield import ScalarField
-from .vectorfield import VectorField
-from .hierarchy import PatchHierarchy
 from pyphare.core.phare_utilities import listify
 
+from .hierarchy import PatchHierarchy
+from .scalarfield import ScalarField
+from .vectorfield import VectorField
+
 __all__ = [
+    "PatchHierarchy",
     "ScalarField",
     "VectorField",
-    "PatchHierarchy",
 ]
 
 
 def hierarchy_from(
     simulator=None, qty=None, pop="", h5_filename=None, times=None, hier=None, func=None, **kwargs
 ):
+    from .fromfunc import hierarchy_from_func
     from .fromh5 import hierarchy_fromh5
     from .fromsim import hierarchy_from_sim
-    from .fromfunc import hierarchy_from_func
 
     """
     this function reads an HDF5 PHARE file and returns a PatchHierarchy from

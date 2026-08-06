@@ -1,5 +1,6 @@
 import numpy as np
-from ..core.phare_utilities import refinement_ratio, print_trace
+
+from ..core.phare_utilities import print_trace, refinement_ratio
 
 
 class Particles:
@@ -115,7 +116,7 @@ class Particles:
             idx = np.where((self.x > box.lower[0]) & (self.x < box.upper[0]))[0]
 
         else:
-            raise ValueError("unsupported box type ({})".format(box_type))
+            raise ValueError(f"unsupported box type ({box_type})")
 
         return Particles(
             icells=self.iCells[idx],
@@ -159,7 +160,7 @@ class Particles:
             deltas=split_pyarrays[1].reshape(
                 int(len(split_pyarrays[1]) / self.ndim), self.ndim
             ),
-            weights=split_pyarrays[2].reshape(int(len(split_pyarrays[2])), 1),
+            weights=split_pyarrays[2].reshape(len(split_pyarrays[2]), 1),
             v=split_pyarrays[3].reshape(int(len(split_pyarrays[3]) / 3), 3),
             dl=self.dl[0] / refinement_ratio
             + np.zeros((split_pyarrays[2].size, self.ndim)),
@@ -187,7 +188,7 @@ def all_assert_sorted(part1, part2):
 
     deltol = (
         1e-6
-        if any([part.deltas.dtype == np.float32 for part in [part1, part2]])
+        if any(part.deltas.dtype == np.float32 for part in [part1, part2])
         else 1e-12
     )
 
@@ -212,7 +213,7 @@ def any_assert(part1, part2):
 
 
 def aggregate(particles_in):
-    assert all([isinstance(particles, Particles) for particles in particles_in])
+    assert all(isinstance(particles, Particles) for particles in particles_in)
 
     from copy import copy
 
@@ -274,24 +275,24 @@ def single_patch_per_level_per_pop_from(hier, only_keep_L0=True):  # dragons
 
         patch_levels = hier.time_hier[tidx]
 
-        for level_idx in patch_levels.keys():
+        for level_idx in patch_levels:
             patch_level = patch_levels[level_idx]
 
             patch0 = patch_level.patches[0]
             particles = {}  # str:[]
 
-            for key in patch0.patch_datas.keys():
+            for key in patch0.patch_datas:
                 if isinstance(patch0[key].dataset, Particles):
                     particles[key] = []
 
             for patch in patch_level.patches:
-                for key in patch.patch_datas.keys():
+                for key in patch.patch_datas:
                     if key in particles:
                         particles[key] += [patch[key].dataset]
 
-            for key in particles.keys():
-                if particles[key]:
-                    patch0[key].dataset = aggregate(particles[key])
+            for key, value in particles.items():
+                if value:
+                    patch0[key].dataset = aggregate(value)
 
             patch_levels[level_idx].patches = [patch0]  # just one patch
 

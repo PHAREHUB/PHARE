@@ -29,10 +29,10 @@ def _populate_populations(dp, sim):
     partinit = "particle_initializer"
     for pop_index, pop in enumerate(init_model.populations):
         pop_path = "simulation/ions/pop"
-        partinit_path = pop_path + "{:d}/".format(pop_index) + partinit + "/"
+        partinit_path = pop_path + f"{pop_index:d}/" + partinit + "/"
         d = modelDict[pop]
-        dp.add_string(pop_path + "{:d}/name".format(pop_index), pop)
-        dp.add_double(pop_path + "{:d}/mass".format(pop_index), d["mass"])
+        dp.add_string(pop_path + f"{pop_index:d}/name", pop)
+        dp.add_double(pop_path + f"{pop_index:d}/mass", d["mass"])
         dp.add_string(partinit_path + "name", "maxwellian")
 
         dp.add_init_function(sim.ndim, partinit_path + "density", d["density"])

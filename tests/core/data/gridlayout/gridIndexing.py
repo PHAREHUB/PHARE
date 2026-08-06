@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#!coding: utf-8
 """
 This script prepares 'gridIndexing.txt'. The file contains expected values
 for physical/ghostStart/EndIndexes in directions X, Y and Z for all hybrid
@@ -9,9 +8,9 @@ quantities and for all interpolation orders (1,2,3,4), in 1D, 2D and 3D.
 
 import os
 import sys
-import utilities
-import gridparams
 
+import gridparams
+import utilities
 from pyphare.core import gridlayout
 
 
@@ -150,15 +149,7 @@ def main(path="./"):
             for quantity in quantities:
                 params.setIndexes(quantity, gl)
 
-                outString = "{} {} {} {} {} {} {}\n".format(
-                    quantities.index(quantity),
-                    params.nbrCell,
-                    params.dl,
-                    params.physicalStart,
-                    params.physicalEnd,
-                    params.ghostStart,
-                    params.ghostEnd,
-                )
+                outString = f"{quantities.index(quantity)} {params.nbrCell} {params.dl} {params.physicalStart} {params.physicalEnd} {params.ghostStart} {params.ghostEnd}\n"
 
                 outFile.write(utilities.removeTupleFormat(outString))
 

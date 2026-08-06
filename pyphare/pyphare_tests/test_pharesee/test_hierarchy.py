@@ -1,13 +1,12 @@
 import unittest
-from ddt import ddt
-import numpy as np
 
+import numpy as np
+from ddt import ddt
 from pyphare.core.box import Box
+from pyphare.core.operators import cross, dot, grad, modulus, sqrt
+from pyphare.pharesee.hierarchy import PatchHierarchy, ScalarField, VectorField
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import PatchHierarchy
-from pyphare.pharesee.hierarchy import ScalarField, VectorField
-from pyphare.core.operators import dot, cross, sqrt, modulus, grad
 
 diag_outputs = "phare_outputs/"
 time_step_nbr = 20

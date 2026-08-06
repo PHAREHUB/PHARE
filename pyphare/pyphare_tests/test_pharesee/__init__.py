@@ -1,17 +1,13 @@
 import numpy as np
-
 import pyphare.core.box as boxm
 from pyphare.core.box import Box
-from pyphare.core.phare_utilities import listify
 from pyphare.core.gridlayout import GridLayout, yee_element_is_primal
-
-from pyphare.pharesee.particles import Particles
-
-from pyphare.pharesee.hierarchy.patchdata import FieldData
-from pyphare.pharesee.hierarchy.patchdata import ParticleData
+from pyphare.core.phare_utilities import listify
 from pyphare.pharesee.hierarchy import PatchHierarchy
 from pyphare.pharesee.hierarchy.patch import Patch
+from pyphare.pharesee.hierarchy.patchdata import FieldData, ParticleData
 from pyphare.pharesee.hierarchy.patchlevel import PatchLevel
+from pyphare.pharesee.particles import Particles
 
 """
 number of ghosts is hard coded to 5
@@ -90,7 +86,7 @@ def build_boxes(domain_box, **kwargs):
                 boxes[level_number].append(refined_box)
 
         else:
-            for boxname, box in boxes_data.items():
+            for box in boxes_data.values():
                 if isinstance(box, Box):
                     refinement_box = Box(box.lower, box.upper)
                 else:
@@ -217,7 +213,7 @@ def build_kwargs(**kwargs):
     if "simulation" in kwargs:
         for k in kwargs:
             if k != "simulation":
-                print("warning: 'simulation' given, {} discarded".format(k))
+                print(f"warning: 'simulation' given, {k} discarded")
 
         sim = kwargs["simulation"]
         kwargs["nbr_cells"] = sim.cells

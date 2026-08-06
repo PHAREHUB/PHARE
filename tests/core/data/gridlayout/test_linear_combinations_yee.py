@@ -1,10 +1,8 @@
 #!/usr/bin/env pyhton
-#!coding: utf-8
 
 
 import os
 import sys
-
 
 # this script writes the following file
 # in 1D, in 2D and in 3D :
@@ -478,8 +476,7 @@ def main(path="./"):
         outFile = open(os.path.join(path, filename), "w")
 
         for dim in [1, 2, 3]:
-            for interpOrder in [1, 2, 3]:
-                outFile.write(cases[case](dim, interpOrder) + "\n")
+            outFile.writelines(cases[case](dim, interpOrder) + "\n" for interpOrder in [1, 2, 3])
 
         outFile.close()
 

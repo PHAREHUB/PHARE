@@ -7,11 +7,11 @@ import unittest
 
 import matplotlib
 from ddt import data, ddt, unpack
-from pyphare.core.box import Box3D
 from pyphare.core import phare_utilities as phut
+from pyphare.core.box import Box3D
 
-from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
+from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 
 matplotlib.use("Agg")  # for systems without GUI
 
