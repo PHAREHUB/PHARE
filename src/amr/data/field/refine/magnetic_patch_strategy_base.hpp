@@ -2,6 +2,7 @@
 #define PHARE_AMR_MAGNETIC_PATCH_STRATEGY_BASE_HPP
 
 #include "coarse_cell_round_out.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
 #include "SAMRAI/xfer/RefinePatchStrategy.h"
 
