@@ -16,7 +16,7 @@ def all_timestamps(sim):
 
 def diagnostics_checker(func):
     def wrapper(diagnostics_object, name, **kwargs):
-        mandatory_keywords = ["write_timestamps", "quantity"]
+        mandatory_keywords = ["quantity"]
 
         # check if some mandatory keywords are not missing
         missing_mandatory_kwds = phare_utilities.check_mandatory_keywords(
@@ -29,13 +29,26 @@ def diagnostics_checker(func):
             )
 
         one_of_required = ["elapsed_timestamps", "write_timestamps"]
-        if not any([k in kwargs for k in one_of_required]):
+        for k in one_of_required:
+            if kwargs.get(k, None) is None:
+                kwargs.pop(k, None)
+        if not any(
+            phare_utilities.np_array_ify(kwargs[k]).size > 0
+            for k in one_of_required
+            if k in kwargs
+        ):
             raise RuntimeError(
-                "Error: missing parameters - one required: "
+                "Error: missing parameters - one required (non-empty): "
                 + ", ".join(one_of_required)
             )
 
-        accepted_keywords = ["path", "population_name", "flush_every"]
+        accepted_keywords = [
+            "path",
+            "population_name",
+            "flush_every",
+            "write_timestamps",
+            "elapsed_timestamps",
+        ]
         accepted_keywords += mandatory_keywords
 
         # check that all passed keywords are in the accepted keyword list
