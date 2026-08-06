@@ -1,7 +1,5 @@
 import os
 
-import numpy as np
-from pyphare.core.phare_utilities import is_scalar
 from pyphare.pharein.load_balancer import LoadBalancer
 from pyphare.pharein.simulation import deserialize as deserialize_sim
 from pyphare.pharein.simulation import serialize as serialize_sim
@@ -209,7 +207,7 @@ def _populate_refinement_boxes(dp, refinement_boxes):
     )
     for level, boxes in refinement_boxes.items():
         level_path = "simulation/AMR/refinement/boxes/" + level + "/"
-        dp.add_int(level_path + "nbr_boxes/", int(len(boxes)))
+        dp.add_int(level_path + "nbr_boxes/", len(boxes))
         for box_i, box in enumerate(boxes):
             box_id = "B" + str(box_i)
             lower = box.lower

@@ -1,16 +1,10 @@
-#
+
 
 import numpy as np
-from pathlib import Path
+import pyphare.pharein as ph
+from pyphare.simulator.simulator import Simulator, startMPI
 
 from pyphare import cpp
-import pyphare.pharein as ph
-from pyphare.pharesee.run import Run
-from pyphare.simulator.simulator import Simulator
-from pyphare.simulator.simulator import startMPI
-
-from tests.simulator import SimulatorTest
-
 
 ph.NO_GUI()
 

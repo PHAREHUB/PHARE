@@ -1,15 +1,14 @@
-#
-#
 
 import os
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pyphare.pharein as ph
-import matplotlib.pyplot as plt
-
-from pyphare import cpp
-from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
+
+from pyphare import cpp
 
 ph.NO_GUI()
 
@@ -200,16 +199,14 @@ def main():
             times,
             first_mode,
             color="k",
-            label="|$\hat{B}_y (m=1,t)-i\hat{B}_z (m=1,t)$|",
+            label=r"|$\hat{B}_y (m=1,t)-i\hat{B}_z (m=1,t)$|",
         )
         ax1.plot(
             times[:imax],
             yaebx(times[:imax], ampl, gamma),
             color="r",
             linestyle="-",
-            label="$B_0. \exp(\gamma t), \ with\ \gamma =${:5.5f} (expected 0.09)".format(
-                gamma
-            ),
+            label=rf"$B_0. \exp(\gamma t), \ with\ \gamma =${gamma:5.5f} (expected 0.09)",
         )
         ax1.axvline(0, 0, yaebx(times[imax], ampl, gamma), color="red", linestyle="--")
         ax1.axvline(
@@ -245,7 +242,7 @@ def main():
                 vmin=vmin,
                 vmax=vmax,
                 dv=0.05,
-                title="t = {:.1f}".format(t),
+                title=f"t = {t:.1f}",
                 xlabel="",
                 ylabel="",
             )

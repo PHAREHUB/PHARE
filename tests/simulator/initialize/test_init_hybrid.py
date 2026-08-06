@@ -1,17 +1,15 @@
-#
 
 
 import os
+
 import numpy as np
-
-
 import pyphare.pharein as ph
 from pyphare.core.box import nDBox
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.geometry import level_ghost_boxes
+from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.pharesee.particles import aggregate as aggregate_particles
+from pyphare.simulator.simulator import Simulator
 
 from tests.simulator.test_initialization import InitializationTest
 
@@ -270,9 +268,7 @@ class HybridInitializationTest(InitializationTest):
         self, ndim, interp_order, refinement_boxes, **kwargs
     ):
         print(
-            "test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(
-                ndim, interp_order
-            )
+            f"test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {ndim}/{interp_order}"
         )
         datahier = self.getHierarchy(
             ndim,

@@ -1,11 +1,8 @@
-#
-#
-#
 
 import numpy as np
 
-from ...core import gridlayout
 from ...core import box as boxm
+from ...core import gridlayout
 from ...core import phare_utilities as phut
 
 
@@ -59,9 +56,7 @@ class FieldData(PatchData):
         return self.size - self.ghost_box.shape
 
     def __str__(self):
-        return "FieldData: (box=({}, {}), key={})".format(
-            self.layout.box, self.layout.box.shape, self.field_name
-        )
+        return f"FieldData: (box=({self.layout.box}, {self.layout.box.shape}), key={self.field_name})"
 
     def __repr__(self):
         return self.__str__()
@@ -166,10 +161,9 @@ class FieldData(PatchData):
     def _resolve_ghost_nbr(self, **kwargs):
         layout = self.layout
         ghosts_nbr = kwargs.get("ghosts_nbr", np.zeros(self.ndim, dtype=int))
-        if "ghosts_nbr" not in kwargs:
-            if self.field_name != "tags":
-                for i, centering in enumerate(self.centerings):
-                    ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
+        if "ghosts_nbr" not in kwargs and self.field_name != "tags":
+            for i, centering in enumerate(self.centerings):
+                ghosts_nbr[i] = layout.nbrGhosts(layout.interp_order, centering)
         return phut.np_array_ify(ghosts_nbr, layout.box.ndim)
 
     def _resolve_centering(self, **kwargs):
@@ -261,7 +255,7 @@ class ParticleData(PatchData):
             self.ghosts_nbr = np.array([2] * layout.box.ndim)
         else:
             raise RuntimeError(
-                "invalid interpolation order {}".format(layout.interp_order)
+                f"invalid interpolation order {layout.interp_order}"
             )
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)

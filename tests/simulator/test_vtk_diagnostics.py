@@ -1,19 +1,17 @@
-#
 
-import unittest
 import itertools
-import numpy as np
+import unittest
 from copy import deepcopy
+
+import numpy as np
+import pyphare.pharein as ph
 from ddt import data, ddt, unpack
+from pyphare.core import phare_utilities as phut
+from pyphare.simulator.simulator import Simulator, startMPI
 
 from pyphare import cpp
-import pyphare.pharein as ph
-from pyphare.core import phare_utilities as phut
-from pyphare.simulator.simulator import startMPI
-from pyphare.simulator.simulator import Simulator
-
-from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
+from tests.simulator import SimulatorTest
 
 # only in 2d for now
 ppc_per_dim = [100, 25, 10]
@@ -161,7 +159,7 @@ def permute(dic):
 @ddt
 class VTKDiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(VTKDiagnosticsTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def _run(self, ndim, interp, simInput, diag_dir="", **kwargs):
@@ -176,7 +174,7 @@ class VTKDiagnosticsTest(SimulatorTest):
     @data(*permute({}))
     @unpack
     def test_dump_diags(self, ndim, interp, simInput):
-        print("test_dump_diags dim/interp:{}/{}".format(ndim, interp))
+        print(f"test_dump_diags dim/interp:{ndim}/{interp}")
 
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
         simInput["refinement_boxes"] = {"L0": {"B0": b0}}

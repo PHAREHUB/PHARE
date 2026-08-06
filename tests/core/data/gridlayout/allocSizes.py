@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#!coding: utf-8
 """
 this scripts defins 'allocSize.txt', a file containing expected values
 for grid sizes, as a function of the interpolation order, the dimensionality (1,2,3)
@@ -9,9 +8,9 @@ and the quantity.
 
 import os
 import sys
-import utilities
-import gridparams
 
+import gridparams
+import utilities
 from pyphare.core import gridlayout
 
 
@@ -128,13 +127,7 @@ def main(path="./"):
             for quantity in quantities:
                 params.setAlloc(quantity, gl)
 
-                outString = "{} {} {} {} {}\n".format(
-                    quantities.index(quantity),
-                    params.nbrCell,
-                    params.dl,
-                    params.alloc,
-                    params.allocDer,
-                )
+                outString = f"{quantities.index(quantity)} {params.nbrCell} {params.dl} {params.alloc} {params.allocDer}\n"
 
                 outString = utilities.removeTupleFormat(outString)
 

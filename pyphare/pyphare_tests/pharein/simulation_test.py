@@ -1,11 +1,8 @@
 import unittest
+
 import numpy as np
-
-
-import pyphare.pharein.global_vars as global_vars
-
 from pyphare.core import phare_utilities
-from pyphare.pharein import simulation
+from pyphare.pharein import global_vars, simulation
 
 
 class TestSimulation(unittest.TestCase):
