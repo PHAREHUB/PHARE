@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
 
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.run import Run
-
-
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
+import pyphare.pharein as ph
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
 
-from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
-from tests.diagnostic import all_timestamps
 from pyphare import cpp
+from tests.diagnostic import all_timestamps
+from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 
 mpl.use("Agg")
 
@@ -247,7 +245,7 @@ test = HybridAdvanceTest()
 
 def get_time(path, time):
     if time is not None:
-        time = "{:.10f}".format(time)
+        time = f"{time:.10f}"
     from pyphare.pharesee.hierarchy import hierarchy_from
 
     return hierarchy_from(h5_filename=path + "/ions_pop_protons_domain.h5", times=time)

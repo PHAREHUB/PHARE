@@ -173,11 +173,11 @@ def config(diag_dir_, write_timestamps, restart_source_dir=None, restart_time=No
 
 class RegriddingTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(RegriddingTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(RegriddingTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None

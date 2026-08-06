@@ -4,9 +4,9 @@ This file exists independently from test_initialization.py to isolate dimension
 """
 
 import unittest
-from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
+from ddt import data, ddt, unpack
 from pyphare.core.box import Box1D
 
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
@@ -30,9 +30,9 @@ class Initialization1DTest(HybridInitializationTest):
         self._test_nbr_particles_per_cell_is_as_provided(ndim, interp_order)
 
     @data(
-        *per_interp(({"L0": {"B0": Box1D(10, 14)}})),
-        *per_interp(({"L0": {"B0": Box1D(5, 20)}, "L1": {"B0": Box1D(15, 35)}})),
-        *per_interp(({"L0": {"B0": Box1D(2, 12), "B1": Box1D(13, 25)}})),
+        *per_interp({"L0": {"B0": Box1D(10, 14)}}),
+        *per_interp({"L0": {"B0": Box1D(5, 20)}, "L1": {"B0": Box1D(15, 35)}}),
+        *per_interp({"L0": {"B0": Box1D(2, 12), "B1": Box1D(13, 25)}}),
     )
     @unpack
     def test_levelghostparticles_have_correct_split_from_coarser_particle(
@@ -51,9 +51,9 @@ class Initialization1DTest(HybridInitializationTest):
         )
 
     @data(
-        *per_interp(({"L0": {"B0": Box1D(10, 14)}})),
-        *per_interp(({"L0": {"B0": Box1D(5, 20)}, "L1": {"B0": Box1D(15, 35)}})),
-        *per_interp(({"L0": {"B0": Box1D(2, 12), "B1": Box1D(13, 25)}})),
+        *per_interp({"L0": {"B0": Box1D(10, 14)}}),
+        *per_interp({"L0": {"B0": Box1D(5, 20)}, "L1": {"B0": Box1D(15, 35)}}),
+        *per_interp({"L0": {"B0": Box1D(2, 12), "B1": Box1D(13, 25)}}),
     )
     @unpack
     def test_domainparticles_have_correct_split_from_coarser_particle(

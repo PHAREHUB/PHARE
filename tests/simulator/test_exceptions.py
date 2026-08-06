@@ -86,7 +86,7 @@ simArgs = {
 
 class BorisTwoCellJumpTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(BorisTwoCellJumpTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):

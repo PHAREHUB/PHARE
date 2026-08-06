@@ -1,5 +1,6 @@
-from pyphare.core.gridlayout import yee_centering
 import numpy as np
+
+from pyphare.core.gridlayout import yee_centering
 
 
 def _current1d(by, bz, xby, xbz):
@@ -283,10 +284,7 @@ def _ppd_to_ppp_domain_slicing(**kwargs):
 
     inner, _, _ = _inner_slices(nb_ghosts)
 
-    if ndim == 1:
-        inner_all = tuple([inner] * ndim)
-        return inner_all, (inner_all,)
-    elif ndim == 2:
+    if ndim == 1 or ndim == 2:
         inner_all = tuple([inner] * ndim)
         return inner_all, (inner_all,)
     else:
@@ -411,7 +409,6 @@ def _get_rank(patchdatas, patch_id, **kwargs):
     reference_pd = patchdatas["Bx"]  # Bx as a ref, but could be any other
     ndim = reference_pd.box.ndim
 
-    layout = reference_pd.layout
     centering = "dual"
     nbrGhosts = reference_pd.ghosts_nbr[0]
     shape = grow(reference_pd.box, [nbrGhosts] * 2).shape

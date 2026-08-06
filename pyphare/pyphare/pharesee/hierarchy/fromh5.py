@@ -1,29 +1,30 @@
 import os
-import numpy as np
 from pathlib import Path
 
-from .patch import Patch
-from .patchlevel import PatchLevel
-from .patchdata import FieldData, ParticleData
-from ..particles import Particles
-from .hierarchy import PatchHierarchy
-from .hierarchy import format_timestamp
-from ...core.box import Box
-from ...core.phare_utilities import (
-    refinement_ratio,
-    none_iterable,
-    all_iterables,
-)
-from ...core.gridlayout import GridLayout
-from .hierarchy_utils import field_qties
+import numpy as np
+
 from pyphare.core.phare_utilities import listify
 
+from ...core.box import Box
+from ...core.gridlayout import GridLayout
+from ...core.phare_utilities import (
+    all_iterables,
+    none_iterable,
+    refinement_ratio,
+)
+from ..particles import Particles
+from .hierarchy import PatchHierarchy, format_timestamp
+from .hierarchy_utils import field_qties
+from .patch import Patch
+from .patchdata import FieldData, ParticleData
+from .patchlevel import PatchLevel
 
 h5_time_grp_key = "t"
 particle_files_patterns = ("domain", "levelGhost")
 
 
-def get_all_available_quantities_from_h5(filepath, time=0, exclude=["tags"], hier=None):
+def get_all_available_quantities_from_h5(filepath, time=0, exclude=None, hier=None):
+    exclude = exclude if exclude is not None else ["tags"]
     time = format_timestamp(time)
     path = Path(filepath)
     for h5 in path.glob("*.h5"):
@@ -61,7 +62,7 @@ def particle_dataset_name(basename):
 
 
 def is_particle_file(filename):
-    return any([pattern in filename for pattern in particle_files_patterns])
+    return any(pattern in filename for pattern in particle_files_patterns)
 
 
 def pop_name(basename):
@@ -101,19 +102,17 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, interp_order, lvl_cell
 
         pdname = particle_dataset_name(basename)
         if pdname in patch_datas:
-            raise ValueError("error - {} already in patchdata".format(pdname))
+            raise ValueError(f"error - {pdname} already in patchdata")
 
         patch_datas[pdname] = ParticleData(layout, particles, pop_name(basename))
 
     else:
-        for dataset_name in h5_patch_grp.keys():
+        for dataset_name in h5_patch_grp:
             dataset = h5_patch_grp[dataset_name]
 
             if dataset_name not in field_qties:
                 raise RuntimeError(
-                    "invalid dataset name : {} is not in {}".format(
-                        dataset_name, field_qties
-                    )
+                    f"invalid dataset name : {dataset_name} is not in {field_qties}"
                 )
 
             ghosts_nbr = [0] * amr_box.ndim
@@ -132,7 +131,7 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, interp_order, lvl_cell
                 pdata_name = pop_name(basename) + "_" + pdata_name
 
             if dataset_name in patch_datas:
-                raise ValueError("error - {} already in patchdata".format(dataset_name))
+                raise ValueError(f"error - {dataset_name} already in patchdata")
 
             patch_datas[pdata_name] = pdata
 

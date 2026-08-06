@@ -5,12 +5,12 @@
 
 import os
 import sys
-import numpy as np
 
+import numpy as np
 from pyphare.core import gridlayout
 
 
-class TestVariables(object):
+class TestVariables:
     def __init__(self):
         """This class only has a constructor
         in order to set the variables to test the derivatives

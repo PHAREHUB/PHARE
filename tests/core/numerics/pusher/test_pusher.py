@@ -4,8 +4,8 @@
 import os
 import sys
 
-from scipy.integrate import odeint
 import numpy as np
+from scipy.integrate import odeint
 
 
 def Bx(x, y, z):

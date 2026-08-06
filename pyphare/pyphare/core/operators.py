@@ -1,8 +1,7 @@
 import numpy as np
 
 from pyphare.pharesee.hierarchy import ScalarField, VectorField
-from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import rename
+from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from, rename
 
 
 def _compute_dot_product(patch_datas, **kwargs):
@@ -86,7 +85,7 @@ def dot(hier_left, hier_right, **kwargs):
         names_right = ["right_x", "right_y", "right_z"]
 
     else:
-        raise RuntimeError("type of hierarchy not yet considered")
+        raise TypeError("type of hierarchy not yet considered")
 
     hl = rename(hier_left, names_left)
     hr = rename(hier_right, names_right)
@@ -105,7 +104,7 @@ def cross(hier_left, hier_right, **kwargs):
         names_right = ["right_x", "right_y", "right_z"]
 
     else:
-        raise RuntimeError("type of hierarchy not yet considered")
+        raise TypeError("type of hierarchy not yet considered")
 
     hl = rename(hier_left, names_left)
     hr = rename(hier_right, names_right)
@@ -135,7 +134,7 @@ def modulus(hier):
 
 def grad(hier, **kwargs):
     assert isinstance(hier, ScalarField)
-    nb_ghosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr[0]
+    nb_ghosts = next(iter(hier.level(0).patches[0].patch_datas.values())).ghosts_nbr[0]
     h = compute_hier_from(_compute_grad, hier, nb_ghosts=nb_ghosts)
 
     return VectorField(h)

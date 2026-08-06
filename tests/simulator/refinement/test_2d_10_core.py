@@ -10,14 +10,12 @@
 
 
 import numpy as np
-
-from pyphare import cpp
-import pyphare.pharein as ph
 import pyphare.core.box as boxm
+import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
 
+from pyphare import cpp
 from tests.simulator.test_advance import AdvanceTestBase
-
 
 ph.NO_GUI()
 test = AdvanceTestBase(rethrow=True)  # change to False for debugging images
@@ -116,7 +114,7 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
 
 def get_time(path, time=None, datahier=None):
     if time is not None:
-        time = "{:.10f}".format(time)
+        time = f"{time:.10f}"
     from pyphare.pharesee.hierarchy import hierarchy_from
 
     datahier = hierarchy_from(h5_filename=path + "/EM_E.h5", times=time, hier=datahier)

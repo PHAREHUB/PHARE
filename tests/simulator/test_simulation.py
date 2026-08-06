@@ -1,11 +1,10 @@
-#
-#
 
 import unittest
+from copy import deepcopy
+
 import numpy as np
 import pyphare.pharein as ph
 
-from copy import deepcopy
 from tests.simulator import SimulatorTest
 
 simArgs = dict(
@@ -19,18 +18,19 @@ simArgs = dict(
 
 class SimulatorValidation(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(SimulatorValidation, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(SimulatorValidation, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         ph.global_vars.sim = None
 
     def test_no_numpy_on_serialization(self):
-        import dill
         import codecs
+
+        import dill
 
         sim = ph.Simulation(**deepcopy(simArgs))
 

@@ -1,6 +1,6 @@
-from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
-
 import numpy as np
+
+from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 
 
 def ions_mass_density_func1d(x, **kwargs):
