@@ -55,7 +55,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
         "refinement_boxes": {"L0": {"B0": b0}},
         "refined_particle_nbr": valid_refined_particle_nbr[dim][interp][0],
         "diag_options": {},
-        "nesting_buffer": 0,
+        "nesting_buffer": 1,
         "strict": True,
     }
     for k, v in kwargs.items():

@@ -58,7 +58,7 @@ class SimulatorValidation(SimulatorTest):
         dup({"cells": [65], "refinement_boxes": {"L0": {"B0": Box(5, 55)}}}),
         dup({"cells": [65], "refinement_boxes": {"L0": [Box(5, 55)]}}),
         dup({"cells": [65], "refinement_boxes": {0: [Box(5, 55)]}}),
-        dup({"cells": [65], "refinement_boxes": {0: [Box(0, 55)]}}),
+        dup({"cells": [65], "refinement_boxes": {0: [Box(1, 55)]}}),
         dup({"cells": [65], "refinement_boxes": {"L0": [Box(5, 14), Box(15, 25)]}}),
         dup(
             {
@@ -92,7 +92,7 @@ class SimulatorValidation(SimulatorTest):
         dup(
             {
                 "cells": [65],
-                "refinement_boxes": {"L0": [Box(5, 25)], "L1": [Box(10, 50)]},
+                "refinement_boxes": {"L0": [Box(5, 25)], "L1": [Box(11, 50)]},
             }
         ),
         dup(
@@ -110,7 +110,11 @@ class SimulatorValidation(SimulatorTest):
                 "nesting_buffer": 10,
             }
         ),
-        # finer box is within set of coarser boxes
+    ]
+
+    invalid1D = [
+        # finer box spans the touching boundary of two same-level
+        # siblings -- no longer valid once nesting_buffer >= 1
         dup(
             {
                 "cells": [65],
@@ -120,9 +124,6 @@ class SimulatorValidation(SimulatorTest):
                 },
             }
         ),
-    ]
-
-    invalid1D = [
         # finer box outside lower
         dup(
             {
@@ -174,14 +175,6 @@ class SimulatorValidation(SimulatorTest):
                 "nesting_buffer": 33,
             }
         ),
-        dup(
-            {
-                "cells": [65],
-                "refinement_boxes": None,
-                "largest_patch_size": 20,
-                "nesting_buffer": 46,
-            }
-        ),
         # finer box is not within set of coarser boxes
         dup(
             {
@@ -227,7 +220,7 @@ class SimulatorValidation(SimulatorTest):
         dup({"cells": [65, 65], "refinement_boxes": {"L0": {"B0": Box2D(5, 55)}}}),
         dup({"cells": [65, 65], "refinement_boxes": {"L0": [Box2D(5, 55)]}}),
         dup({"cells": [65, 65], "refinement_boxes": {0: [Box2D(5, 55)]}}),
-        dup({"cells": [65, 65], "refinement_boxes": {0: [Box2D(0, 55)]}}),
+        dup({"cells": [65, 65], "refinement_boxes": {0: [Box2D(1, 55)]}}),
         dup(
             {
                 "cells": [65, 65],
@@ -266,7 +259,7 @@ class SimulatorValidation(SimulatorTest):
         dup(
             {
                 "cells": [65, 65],
-                "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(10, 50)]},
+                "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(11, 50)]},
             }
         ),
         dup(
@@ -351,14 +344,6 @@ class SimulatorValidation(SimulatorTest):
                 "cells": [65, 65],
                 "refinement_boxes": {"L0": [Box2D(5, 25)], "L1": [Box2D(11, 49)]},
                 "nesting_buffer": 33,
-            }
-        ),
-        dup(
-            {
-                "cells": [65, 65],
-                "refinement_boxes": None,
-                "largest_patch_size": 20,
-                "nesting_buffer": 46,
             }
         ),
         # finer box is not within set of coarser boxes

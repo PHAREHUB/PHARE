@@ -88,7 +88,9 @@ public:
     void closeRestartFile() { SamraiLifeCycle::getRestartManager()->closeRestartFile(); }
 
     NO_DISCARD bool isFromRestart() const
-    { return SamraiLifeCycle::getRestartManager()->isFromRestart(); }
+    {
+        return SamraiLifeCycle::getRestartManager()->isFromRestart();
+    }
 
 private:
     std::optional<std::string> static restartFilePath(auto const& dict)
@@ -382,8 +384,11 @@ auto patchHierarchyDatabase(PHARE::initializer::PHAREDict const& amr)
     auto maxLevelNumber = amr["max_nbr_levels"].template to<int>();
     hierDB->putInteger("max_levels", maxLevelNumber);
 
-    std::vector<int> nesting_buffer = amr["nesting_buffer"].template to<std::vector<int>>();
-    hierDB->putIntegerVector("proper_nesting_buffer", nesting_buffer);
+    if (amr.contains("nesting_buffer"))
+    {
+        std::vector<int> nesting_buffer = amr["nesting_buffer"];
+        hierDB->putIntegerVector("proper_nesting_buffer", nesting_buffer);
+    }
 
     auto ratioToCoarserDB = hierDB->putDatabase("ratio_to_coarser");
 
