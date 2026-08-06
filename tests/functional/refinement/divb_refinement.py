@@ -240,7 +240,19 @@ def summarize(mode, orders, res):
 if __name__ == "__main__":
     argv = sys.argv[1:]
     mode = argv[0] if argv and argv[0] in ("boxes", "tagging") else "boxes"
-    orders = [int(a) for a in argv if a.isdigit()] or [2]
+    rest = argv[1:] if argv and argv[0] in ("boxes", "tagging") else argv
+    if rest:
+        try:
+            orders = [int(a) for a in rest]
+        except ValueError as e:
+            raise ValueError(f"non-integer refinement order in {rest}") from e
+        bad = [o for o in orders if o != 2]
+        if bad:
+            raise ValueError(
+                f"unsupported refinement order(s) {bad}: only order 2 is supported"
+            )
+    else:
+        orders = [2]
 
     res, dry_run = {}, False
     for o in orders:
