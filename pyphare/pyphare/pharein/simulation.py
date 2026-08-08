@@ -314,7 +314,8 @@ valid_refined_particle_nbr = {
     },
 }  # Default refined_particle_nbr per dim/interp is considered index 0 of list
 
-no_refined_particle_nbr = 0  # internal, C++-facing counterpart of no_hybrid_interp_order
+# internal, C++-facing counterpart of no_hybrid_interp_order
+no_refined_particle_nbr = 0
 
 
 def check_refined_particle_nbr(ndim, **kwargs):

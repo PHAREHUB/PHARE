@@ -1,8 +1,8 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_FLUID_HPP
 
+#include "amr/physical_models/hybrid_model.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
 
 #include "diagnostic/detail/h5typewriter.hpp"
 
@@ -32,11 +32,12 @@ public:
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
-    using Attributes = Super::Attributes;
-    using GridLayout = H5Writer::GridLayout;
-    using FloatType  = H5Writer::FloatType;
+    using Attributes       = Super::Attributes;
+    using ModelViewVariant = Super::ModelViewVariant;
+    using ModelMapper_t    = Super::ModelMapper_t;
+    using FloatType        = H5Writer::FloatType;
 
-    static constexpr auto dimension = GridLayout::dimension;
+    static constexpr auto dimension = H5Writer::dimension;
 
 
     FluidDiagnosticWriter(H5Writer& h5Writer)
@@ -50,7 +51,8 @@ public:
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                        std::string const& patchID, Attributes& patchAttributes) override;
+                        std::string const& patchID, Attributes& patchAttributes,
+                        ModelViewVariant& modelView) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
@@ -60,76 +62,26 @@ public:
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
         std::size_t maxLevel) override;
-
-private:
-    auto isActiveDiag(DiagnosticProperties const& diagnostic, std::string const& tree,
-                      std::string var)
-    {
-        return diagnostic.quantity == tree + var;
-    };
 };
-
-
 
 
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
-    static constexpr auto interp_order = GridLayout::options.interp_order;
-    core::MomentumTensorInterpolator<dimension, interp_order> interpolator;
+    using HybridModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().hyridModelView())>;
+    using Model_t           = HybridModelView_t::Model_t;
 
-    auto& h5Writer    = this->h5Writer_;
-    auto& modelView   = h5Writer.modelView();
-    auto& ions        = modelView.getIons();
-    auto const minLvl = this->h5Writer_.minLevel;
-    auto const maxLvl = this->h5Writer_.maxLevel;
-    // compute the momentum tensor for each population that requires it
-    // compute for all ions but that requires the computation of all pop
-
-    // dumps occur after the last substep but before the next first substep
-    // at this time, levelGhostPartsNew is emptied and not yet filled
-    // and the former levelGhostPartsNew has been moved to levelGhostPartsOld
-
-    auto const fill_schedules = [&](auto& lvl) {
-        for (std::size_t i = 0; i < ions.size(); ++i)
-            modelView.fillPopMomTensor(lvl, h5Writer.timestamp(), i);
-    };
-
-    auto const interpolate_pop = [&](auto& pop, auto& layout, auto&&...) {
-        auto& pop_momentum_tensor = pop.momentumTensor();
-        pop_momentum_tensor.zero();
-        interpolator(pop.domainParticles(), pop_momentum_tensor, layout, pop.mass());
-        interpolator(pop.levelGhostParticlesOld(), pop_momentum_tensor, layout, pop.mass());
-    };
-
-    if (isActiveDiag(diagnostic, "/ions/", "momentum_tensor"))
+    if constexpr (solver::is_hybrid_model_v<Model_t>)
     {
-        auto const interpolate = [&](auto& layout, auto&&...) {
-            for (auto& pop : ions)
-                interpolate_pop(pop, layout);
-        };
-        modelView.visitHierarchy(interpolate, minLvl, maxLvl);
+        using Computers = HybridModelView_t::FluidComputers;
 
-        modelView.onLevels(fill_schedules, minLvl, maxLvl);
+        auto const& qty = diagnostic.quantity;
+        auto& h5Writer  = this->h5Writer_;
+        auto& modelView = h5Writer.mapper().hyridModelView();
+        auto& computers = Computers::getOrCreateFor(modelView);
 
-        modelView.visitHierarchy( //
-            [&](auto&&...) { ions.computeFullMomentumTensor(); }, minLvl, maxLvl);
-    }
-    else // if not computing total momentum tensor, user may want to compute it for some pop
-    {
-        for (auto& pop : ions)
-        {
-            std::string const tree{"/ions/pop/" + pop.name() + "/"};
-
-            if (!isActiveDiag(diagnostic, tree, "momentum_tensor"))
-                continue;
-
-            auto const interpolate = [&](auto& layout, auto&&...) { interpolate_pop(pop, layout); };
-
-            modelView.visitHierarchy(interpolate, minLvl, maxLvl);
-
-            modelView.onLevels(fill_schedules, minLvl, maxLvl);
-        }
+        computers.compute(qty, modelView, h5Writer.minLevel, h5Writer.maxLevel,
+                          h5Writer.timestamp());
     }
 }
 
@@ -138,16 +90,16 @@ void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
-    for (auto const& pop : this->h5Writer_.modelView().getIons())
+    for (auto const& pop : this->h5Writer_.mapper().hyridModelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         checkCreateFileFor_(diagnostic, fileData_, tree, "density", "charge_density", "flux",
-                            "momentum_tensor");
+                            "momentum_tensor", "kinetic_energy_flux_vector");
     }
 
     std::string tree{"/ions/"};
     checkCreateFileFor_(diagnostic, fileData_, tree, "charge_density", "mass_density",
-                        "bulkVelocity", "momentum_tensor");
+                        "bulkVelocity", "momentum_tensor", "kinetic_energy_flux_vector");
 }
 
 
@@ -156,61 +108,58 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                      std::size_t iLevel, std::string const& patchID,
-                                                     Attributes& patchAttributes)
+                                                     Attributes& patchAttributes,
+                                                     ModelViewVariant& modelViewVariant)
 {
-    auto& h5Writer = this->h5Writer_;
-    auto& ions     = h5Writer.modelView().getIons();
-    std::string lvlPatchID{std::to_string(iLevel) + "_" + patchID};
+    std::visit(
+        [&](auto& mv) {
+            using ModelView_t = std::decay_t<decltype(mv)>;
+            using Model_t     = ModelView_t::Model_t;
 
+            // fluid diagnostics only ever concern the hybrid model at present; modelView can
+            // legitimately hold the mhd alternative here (diagnostics_ isn't filtered per-model
+            // before dispatch), so this is a real per-instantiation branch, not dead code
+            if constexpr (solver::is_hybrid_model_v<Model_t>)
+            {
+                using GridLayout = ModelView_t::GridLayout;
+                using Accessors  = ModelView_t::FluidAccessors;
 
-    auto const setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
-        auto ghosts = GridLayout::nDNbrGhosts(field.physicalQuantity());
-        for (std::uint8_t i = 1; i < GridLayout::dimension; ++i)
-            if (ghosts[i] != ghosts[i - 1])
-                throw std::runtime_error("ghosts per direction must be constant");
-        attr[name + "_ghosts"] = static_cast<std::size_t>(ghosts[0]);
-    };
+                auto& model     = mv.model();
+                auto& accessors = Accessors::getOrCreateFor(mv);
+                auto const& qty = diagnostic.quantity;
+                std::string lvlPatchID{std::to_string(iLevel) + "_" + patchID};
 
-    auto const infoDS = [&](auto& field, std::string name, auto& attr) {
-        // highfive doesn't accept uint32 which ndarray.shape() is
-        auto const& shape = field.shape();
-        attr[name]        = std::vector<std::size_t>(shape.data(), shape.data() + shape.size());
-        setGhostNbr(field, attr, name);
-    };
+                auto const infoDS = [](auto& field, std::string const& name, auto& attr) {
+                    auto ghosts = GridLayout::nDNbrGhosts(field.physicalQuantity());
+                    for (std::uint8_t i = 1; i < GridLayout::dimension; ++i)
+                        if (ghosts[i] != ghosts[i - 1])
+                            throw std::runtime_error("ghosts per direction must be constant");
+                    attr[name + "_ghosts"] = static_cast<std::size_t>(ghosts[0]);
 
-    auto const infoVF = [&](auto& vecF, std::string name, auto& attr) {
-        for (auto const& [id, type] : core::VectorComponents::map())
-            infoDS(vecF.getComponent(type), name + "_" + id, attr);
-    };
+                    // highfive doesn't accept uint32 which ndarray.shape() is
+                    auto const& shape = field.shape();
+                    attr[name]
+                        = std::vector<std::size_t>(shape.data(), shape.data() + shape.size());
+                };
 
-    auto const infoTF = [&](auto& tensorF, std::string name, auto& attr) {
-        for (auto const& [id, type] : core::TensorComponents::map())
-            infoDS(tensorF.getComponent(type), name + "_" + id, attr);
-    };
+                auto const action = [&](auto& quantity, std::string const& name, auto& attr) {
+                    using Quantity = std::decay_t<decltype(quantity)>;
+                    if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
+                        infoDS(quantity, name, attr);
+                    else
+                        for (auto const& [id, type] :
+                             core::Components::componentMap<Quantity::rank>())
+                            infoDS(quantity.getComponent(type), name + "_" + id, attr);
+                };
 
-    for (auto& pop : ions)
-    {
-        std::string tree{"/ions/pop/" + pop.name() + "/"};
-        auto& popAttr = patchAttributes[lvlPatchID]["fluid_" + pop.name()];
-        if (isActiveDiag(diagnostic, tree, "density"))
-            infoDS(pop.particleDensity(), "density", popAttr);
-        if (isActiveDiag(diagnostic, tree, "charge_density"))
-            infoDS(pop.chargeDensity(), "charge_density", popAttr);
-        if (isActiveDiag(diagnostic, tree, "flux"))
-            infoVF(pop.flux(), "flux", popAttr);
-        if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
-            infoTF(pop.momentumTensor(), "momentum_tensor", popAttr);
-    }
-
-    std::string tree{"/ions/"};
-    if (isActiveDiag(diagnostic, tree, "charge_density"))
-        infoDS(ions.chargeDensity(), "charge_density", patchAttributes[lvlPatchID]["ion"]);
-    if (isActiveDiag(diagnostic, tree, "mass_density"))
-        infoDS(ions.massDensity(), "mass_density", patchAttributes[lvlPatchID]["ion"]);
-    if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-        infoVF(ions.velocity(), "bulkVelocity", patchAttributes[lvlPatchID]["ion"]);
-    if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
-        infoTF(ions.momentumTensor(), "momentum_tensor", patchAttributes[lvlPatchID]["ion"]);
+                accessors.dispatch(
+                    qty, model,
+                    [&](auto& field, std::string const& name, std::string const& ownerKey) {
+                        action(field, name, patchAttributes[lvlPatchID][ownerKey]);
+                    });
+            }
+        },
+        modelViewVariant);
 }
 
 
@@ -222,60 +171,44 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
     std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
     Attributes& patchAttributes, std::size_t maxLevel)
 {
-    auto& h5Writer = this->h5Writer_;
-    auto& ions     = h5Writer.modelView().getIons();
-    auto& h5file   = Super::h5FileForQuantity(diagnostic);
+    using HybridModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().hyridModelView())>;
+    using GridLayout        = HybridModelView_t::GridLayout;
+    using Accessors         = HybridModelView_t::FluidAccessors;
 
-    auto const writeGhosts = [&](auto& path, auto& attr, std::string key, auto null) {
-        this->writeGhostsAttr_(h5file, path,
-                               null ? 0 : attr[key + "_ghosts"].template to<std::size_t>(), null);
-    };
+    auto& h5Writer  = this->h5Writer_;
+    auto& modelView = h5Writer.mapper().hyridModelView();
+    auto& model     = modelView.model();
+    auto& accessors = Accessors::getOrCreateFor(modelView);
+    auto& h5file    = Super::h5FileForQuantity(diagnostic);
+    auto const& qty = diagnostic.quantity;
 
-    auto const initDS = [&](auto& path, auto& attr, std::string key, auto null) {
+    auto const initDS = [&](auto& path, auto& attr, std::string const& key, bool null) {
         auto dsPath = path + key;
         h5Writer.template createDataSet<FloatType>(
             h5file, dsPath,
             null ? std::vector<std::size_t>(GridLayout::dimension, 0)
                  : attr[key].template to<std::vector<std::size_t>>());
-        writeGhosts(dsPath, attr, key, null);
-    };
-    auto const initVF = [&](auto& path, auto& attr, std::string key, auto null) {
-        for (auto& [id, type] : core::Components::componentMap())
-            initDS(path, attr, key + "_" + id, null);
-    };
-    auto const initTF = [&](auto& path, auto& attr, std::string key, auto null) {
-        for (auto& [id, type] : core::Components::componentMap<2>())
-            initDS(path, attr, key + "_" + id, null);
+        this->writeGhostsAttr_(h5file, dsPath,
+                               null ? 0 : attr[key + "_ghosts"].template to<std::size_t>(), null);
     };
 
     auto const initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
         bool null        = patchID.empty();
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
-        for (auto& pop : ions)
-        {
-            std::string popId{"fluid_" + pop.name()};
-            std::string tree{"/ions/pop/" + pop.name() + "/"};
-            std::string popPath(path + "pop/" + pop.name() + "/");
-            if (isActiveDiag(diagnostic, tree, "density"))
-                initDS(path, attr[popId], "density", null);
-            if (isActiveDiag(diagnostic, tree, "charge_density"))
-                initDS(path, attr[popId], "charge_density", null);
-            if (isActiveDiag(diagnostic, tree, "flux"))
-                initVF(path, attr[popId], "flux", null);
-            if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
-                initTF(path, attr[popId], "momentum_tensor", null);
-        }
+        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr) {
+            using Field = std::decay_t<decltype(field)>;
+            if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
+                initDS(path, fieldAttr, name, null);
+            else
+                for (auto& [id, type] : core::Components::componentMap<Field::rank>())
+                    initDS(path, fieldAttr, name + "_" + id, null);
+        };
 
-        std::string tree{"/ions/"};
-        if (isActiveDiag(diagnostic, tree, "charge_density"))
-            initDS(path, attr["ion"], "charge_density", null);
-        if (isActiveDiag(diagnostic, tree, "mass_density"))
-            initDS(path, attr["ion"], "mass_density", null);
-        if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-            initVF(path, attr["ion"], "bulkVelocity", null);
-        if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
-            initTF(path, attr["ion"], "momentum_tensor", null);
+        accessors.dispatch(qty, model,
+                           [&](auto& field, std::string const& name, std::string const& ownerKey) {
+                               action(field, name, attr[ownerKey]);
+                           });
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -285,39 +218,29 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
 template<typename H5Writer>
 void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
-    auto& h5Writer = this->h5Writer_;
-    auto& ions     = h5Writer.modelView().getIons();
-    auto& h5file   = Super::h5FileForQuantity(diagnostic);
+    using HybridModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().hyridModelView())>;
+    using GridLayout        = HybridModelView_t::GridLayout;
+    using Accessors         = HybridModelView_t::FluidAccessors;
 
-    auto writeDS = [&](auto path, auto& field) {
-        h5file.template write_data_set_flat<GridLayout::dimension>(path, field.data());
-    };
-    auto writeTF
-        = [&](auto path, auto& vecF) { h5Writer.writeTensorFieldAsDataset(h5file, path, vecF); };
-
+    auto& h5Writer   = this->h5Writer_;
+    auto& modelView  = h5Writer.mapper().hyridModelView();
+    auto& model      = modelView.model();
+    auto& accessors  = Accessors::getOrCreateFor(modelView);
+    auto& h5file     = Super::h5FileForQuantity(diagnostic);
+    auto const& qty  = diagnostic.quantity;
     std::string path = h5Writer.patchPath() + "/";
-    for (auto& pop : ions)
-    {
-        std::string tree{"/ions/pop/" + pop.name() + "/"};
-        if (isActiveDiag(diagnostic, tree, "density"))
-            writeDS(path + "density", pop.particleDensity());
-        if (isActiveDiag(diagnostic, tree, "charge_density"))
-            writeDS(path + "charge_density", pop.chargeDensity());
-        if (isActiveDiag(diagnostic, tree, "flux"))
-            writeTF(path + "flux", pop.flux());
-        if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
-            writeTF(path + "momentum_tensor", pop.momentumTensor());
-    }
 
-    std::string tree{"/ions/"};
-    if (isActiveDiag(diagnostic, tree, "charge_density"))
-        writeDS(path + "charge_density", ions.chargeDensity());
-    if (isActiveDiag(diagnostic, tree, "mass_density"))
-        writeDS(path + "mass_density", ions.massDensity());
-    if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
-        writeTF(path + "bulkVelocity", ions.velocity());
-    if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
-        writeTF(path + "momentum_tensor", ions.momentumTensor());
+    auto const action = [&](auto& field, std::string const& name) {
+        using Field = std::decay_t<decltype(field)>;
+        if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
+            h5file.template write_data_set_flat<GridLayout::dimension>(path + name, field.data());
+        else
+            H5Writer::writeTensorFieldAsDataset(h5file, path + name, field);
+    };
+
+    accessors.dispatch(qty, model, [&](auto& field, std::string const& name, std::string const&) {
+        action(field, name);
+    });
 }
 
 
@@ -336,13 +259,14 @@ void FluidDiagnosticWriter<H5Writer>::writeAttributes(
             this->writeIonPopAttributes_(h5file, pop);
     };
 
-    for (auto& pop : h5Writer.modelView().getIons())
+    for (auto& pop : h5Writer.mapper().hyridModelView().getIons())
     {
         std::string tree = "/ions/pop/" + pop.name() + "/";
         checkWrite(tree, "density", pop);
         checkWrite(tree, "charge_density", pop);
         checkWrite(tree, "flux", pop);
         checkWrite(tree, "momentum_tensor", pop);
+        checkWrite(tree, "kinetic_energy_flux_vector", pop);
     }
 
     writeAttributes_(diagnostic, h5file, fileAttributes, patchAttributes, maxLevel);

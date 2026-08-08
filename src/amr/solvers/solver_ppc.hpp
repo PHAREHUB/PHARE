@@ -566,12 +566,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     setTime(ions);
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillFluxBorders");
-        fromCoarser.fillFluxBorders(ions, level, newTime);
-    }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillDensityBorders");
-        fromCoarser.fillDensityBorders(ions, level, newTime);
+        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopBorders");
+        fromCoarser.fillIonPopBorders(ions, level, newTime);
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");

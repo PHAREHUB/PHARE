@@ -10,6 +10,7 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
 
@@ -72,7 +73,6 @@ struct PHARE_Types
         using Electromag_t                  = Electromag<VecField_t>;
         using GridLayout_t                  = GridLayout<mhd_options>;
     };
-
 };
 
 struct PHARE_Sim_Types

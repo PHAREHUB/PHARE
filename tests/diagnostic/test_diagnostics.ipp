@@ -1,6 +1,4 @@
 
-// input/input_1d_ratio_2.txt is unused but a reference
-
 #include "test_diagnostics.hpp"
 
 template<typename Simulator>

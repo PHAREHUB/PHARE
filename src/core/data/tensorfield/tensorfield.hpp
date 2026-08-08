@@ -1,15 +1,17 @@
 #ifndef PHARE_TENSORFIELD_HPP
 #define PHARE_TENSORFIELD_HPP
 
-#include <cstddef>
-#include <string>
-#include <array>
-#include <vector>
-#include <unordered_map>
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+
+
+#include <array>
+#include <string>
+#include <vector>
+#include <cstddef>
+#include <unordered_map>
 
 namespace PHARE::core::detail
 {

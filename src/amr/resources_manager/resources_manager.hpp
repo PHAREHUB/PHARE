@@ -2,16 +2,13 @@
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
 
-#include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/quantities/hybrid_quantities.hpp"
+
+#include "core/def.hpp"
 
 #include "amr/samrai.hpp"
 
-#include "field_resource.hpp"
 #include "resources_guards.hpp"
-#include "particle_resource.hpp"
-#include "tensor_field_resource.hpp"
 #include "resources_manager_utilities.hpp"
 
 #include <SAMRAI/hier/Patch.h>
@@ -19,6 +16,8 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
+#include <tuple>
+#include <variant>
 #include <optional>
 
 
@@ -35,36 +34,6 @@ namespace amr
     {
         std::shared_ptr<SAMRAI::hier::Variable> variable;
         int id;
-    };
-
-
-    struct ResourcesManagerGlobals
-    {
-        static ResourcesManagerGlobals& INSTANCE();
-
-
-        std::vector<std::map<std::string, ResourcesInfo>*> resources_;
-
-        static auto ALL_IDS()
-        {
-            std::vector<int> ids;
-            ids.reserve((core::sum_from(INSTANCE().resources_,
-                                        [](auto const& map) { return map->size(); })));
-
-            assert(INSTANCE().resources_.size());
-            for (auto const res_map_ptr : INSTANCE().resources_)
-                for (auto const& [_, info] : *res_map_ptr)
-                    ids.emplace_back(info.id);
-
-            return ids;
-        }
-
-        static void registerForRestarts()
-        {
-            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
-            for (auto const& id : ALL_IDS()) // duplicates don't matter
-                pdrm->registerPatchDataForRestart(id);
-        }
     };
 
 
@@ -112,22 +81,22 @@ namespace amr
      *
      */
 
-    template<typename GridLayoutT, typename Grid_t>
+    template<auto opts, typename... core_types_per_model>
     class ResourcesManager
     {
-        using This         = ResourcesManager<GridLayoutT, Grid_t>;
-        using QuantityType = decltype(GridLayoutT::options.field_options)::Quantity;
+        using This = ResourcesManager<opts, core_types_per_model...>;
 
     public:
-        static constexpr std::size_t dimension = GridLayoutT::dimension;
+        using TypeTuple = std::tuple<core_types_per_model...>;
 
-        using UserField_t = UserFieldType<Grid_t, GridLayoutT>;
+        /** \brief the UserField_t/UserTensorField_t/UserParticle_t for a single model (e.g.
+         * HybridModel/MHDModel) registered on this ResourcesManager - resolved by looking Model
+         * up among core_types_per_model, not by re-deriving its shape independently.
+         */
+        template<typename Model>
+        using ResourceUserTypesFor = typename ResourceUserTypesFor_<Model, TypeTuple>::type;
 
-        template<typename ResourcesView>
-        using UserParticle_t = UserParticleType<ResourcesView, GridLayoutT>;
-
-        template<std::size_t rank>
-        using UserTensorField_t = UserTensorFieldType<rank, Grid_t, GridLayoutT, QuantityType>;
+        static constexpr std::size_t dimension = opts.dimension;
 
 
         ResourcesManager()
@@ -135,15 +104,43 @@ namespace amr
             , context_{variableDatabase_->getContext(contextName_)}
             , dimension_{SAMRAI::tbox::Dimension{dimension}}
         {
-            ResourcesManagerGlobals::INSTANCE().resources_.emplace_back(&nameToResourceInfo_);
+            instances_().emplace_back(&nameToResourceInfo_);
         }
+
+
         ~ResourcesManager()
         {
             for (auto& [key, resourcesInfo] : nameToResourceInfo_)
                 variableDatabase_->removeVariable(key);
 
-            auto& vec = ResourcesManagerGlobals::INSTANCE().resources_;
+            auto& vec = instances_();
             vec.erase(std::remove(vec.begin(), vec.end(), &nameToResourceInfo_), vec.end());
+        }
+
+
+        /** \brief IDs of every resource registered across all live instances of this exact
+         * ResourcesManager specialization (i.e. across all models sharing this type).
+         */
+        NO_DISCARD static auto ALL_IDS()
+        {
+            std::vector<int> ids;
+            ids.reserve(core::sum_from(instances_(), [](auto const& map) { return map->size(); }));
+
+            for (auto const* map : instances_())
+                for (auto const& [_, info] : *map)
+                    ids.emplace_back(info.id);
+
+            return ids;
+        }
+
+        /** \brief registers, for SAMRAI restarts, the resources of every live instance of this
+         * ResourcesManager specialization - not just this one.
+         */
+        static void registerForRestarts()
+        {
+            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
+            for (auto const& id : ALL_IDS()) // duplicates don't matter
+                pdrm->registerPatchDataForRestart(id);
         }
 
 
@@ -166,6 +163,36 @@ namespace amr
          * we ask for them in a tuple, and recursively call registerResources() for all of the
          * unpacked elements
          */
+
+        void static handle_sub_resources(auto fn, auto& obj, auto&&... args)
+        {
+            using ResourcesView = decltype(obj);
+
+            if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
+            {
+                for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
+                {
+                    using RuntimeResource = decltype(runtimeResource);
+                    if constexpr (has_sub_resources_v<RuntimeResource>)
+                    {
+                        fn(runtimeResource, args...);
+                    }
+                    else
+                    {
+                        std::visit([&](auto&& val) { fn(val, args...); }, runtimeResource);
+                    }
+                }
+            }
+
+            if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+            {
+                // unpack the tuple subResources and apply for each element registerResources()
+                // (recursively)
+                std::apply([&](auto&... subResource) { (fn(subResource, args...), ...); },
+                           obj.getCompileTimeResourcesViewList());
+            }
+        }
+
         template<typename ResourcesView>
         void registerResources(ResourcesView& obj)
         {
@@ -177,24 +204,8 @@ namespace amr
             {
                 static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        this->registerResources(resourcesUser);
-                    }
-                }
-
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element registerResources()
-                    // (recursively)
-                    std::apply(
-                        [this](auto&... subResource) {
-                            (this->registerResources(subResource), ...);
-                        },
-                        obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources( //
+                    [&](auto&&... args) { this->registerResources(args...); }, obj);
             }
         }
 
@@ -219,21 +230,8 @@ namespace amr
             {
                 static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        this->allocate(resourcesUser, patch, allocateTime);
-                    }
-                }
-
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element registerResources()
-                    std::apply([this, &patch, allocateTime](auto&... subResource) //
-                               { (this->allocate(subResource, patch, allocateTime), ...); },
-                               obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources( //
+                    [&](auto&&... args) { this->allocate(args...); }, obj, patch, allocateTime);
             }
         }
 
@@ -263,19 +261,9 @@ namespace amr
         template<typename ResourcesView>
         NO_DISCARD auto getTimes(ResourcesView& obj, SAMRAI::hier::Patch const& patch) const
         {
-            auto IDs = getIDs(obj);
             std::vector<double> times;
-            /*std::transform(std::begin(IDs), std::end(IDs), std::back_inserter(times),
-                           [&patch](auto const& id) {
-                               auto patchdata = patch.getPatchData(id);
-                               return patchdata->getTime();
-                           });*/
-
-            for (auto const& id : IDs)
-            {
-                auto patchdata = patch.getPatchData(id);
-                times.push_back(patchdata->getTime());
-            }
+            for (auto const& id : getIDs(obj))
+                times.push_back(patch.getPatchData(id)->getTime());
             return times;
         }
 
@@ -321,28 +309,6 @@ namespace amr
 
             return std::nullopt;
         }
-
-
-
-
-        void registerForRestarts() const
-        {
-            auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
-            for (auto const& id : restart_patch_data_ids())
-                pdrm->registerPatchDataForRestart(id);
-        }
-
-        // needed as long as we have different resource managers dealing with different physical
-        // quantities
-        // template<typename ResourcesView>
-        // void registerForRestarts(ResourcesView const& view) const
-        // {
-        //     auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
-
-        //     for (auto const& id : restart_patch_data_ids(view))
-        //         pdrm->registerPatchDataForRestart(id);
-        // }
-
 
 
 
@@ -467,25 +433,9 @@ namespace amr
             }
             else
             {
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        //
-                        this->getIDs_(resourcesUser, IDs);
-                    }
-                }
+                static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element
-                    // registerResources()
-                    std::apply(
-                        [this, &IDs](auto&... subResource) {
-                            (this->getIDs_(subResource, IDs), ...);
-                        },
-                        obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources([&](auto&&... args) { this->getIDs_(args...); }, obj, IDs);
             }
         }
 
@@ -520,21 +470,6 @@ namespace amr
         }
 
 
-
-        void static handle_sub_resources(auto fn, auto& obj, auto&&... args)
-        {
-            using ResourcesView = decltype(obj);
-
-            if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
-                    fn(runtimeResource, args...);
-
-            // unpack the tuple subResources and apply for each element registerResources()
-            //  (recursively)
-            if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                std::apply([&](auto&... subResource) { (fn(subResource, args...), ...); },
-                           obj.getCompileTimeResourcesViewList());
-        }
 
 
         template<typename ResourcesView>
@@ -643,6 +578,14 @@ namespace amr
             {
                 throw std::runtime_error("Resources not found ! " + resourcesName);
             }
+        }
+
+        // every live instance of this exact ResourcesManager specialization registers itself
+        // here, so ALL_IDS()/registerForRestarts() can aggregate across the models sharing it
+        NO_DISCARD static auto& instances_()
+        {
+            static std::vector<std::map<std::string, ResourcesInfo>*> instances;
+            return instances;
         }
 
         std::string contextName_{"default"};

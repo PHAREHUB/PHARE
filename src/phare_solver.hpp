@@ -20,34 +20,69 @@
 #include "amr/level_initializer/hybrid_level_initializer.hpp"
 #include "amr/level_initializer/mhd_level_initializer.hpp"
 #include "amr/solvers/mhd_resolver.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
 
 #include <memory>
 
 namespace PHARE::solver
 {
+// One specialization per enabled-combination: a disabled model's core types are never passed
+// to ResourcesManager, so no resource-user specializations get instantiated/registered for a
+// model this build doesn't want. When both models are enabled, they share one ResourcesManager
+// instance/type (see comment on PHARE_Types::ResourcesManager_t below).
+template<auto opts, typename CoreTypes, bool hasHybrid, bool hasMHD>
+struct ResourcesManagerSelector;
+
+template<auto opts, typename CoreTypes>
+struct ResourcesManagerSelector<opts, CoreTypes, true, false>
+{
+    using type = amr::ResourcesManager<opts, typename CoreTypes::Hybrid>;
+};
+
+template<auto opts, typename CoreTypes>
+struct ResourcesManagerSelector<opts, CoreTypes, false, true>
+{
+    using type = amr::ResourcesManager<opts, typename CoreTypes::MHD>;
+};
+
+template<auto opts, typename CoreTypes>
+struct ResourcesManagerSelector<opts, CoreTypes, true, true>
+{
+    using type = amr::ResourcesManager<opts, typename CoreTypes::MHD, typename CoreTypes::Hybrid>;
+};
+
+
 // Bool-specialized holders: compile-time model enabling, to avoid expanding templates and
 // emitting binary symbols for a model the opts value does not ask for. The `false`
 // specialization is empty, so hybrid- (or mhd-) disabled opts never name the corresponding
 // Model_t/Solver_t/etc. as a type.
 // The `enabled` default is on the primary template because partial specializations may not
 // carry default template arguments.
-template<auto opts, typename CoreTypes, bool enabled = has_hybrid_v<opts>>
+template<auto opts, typename CoreTypes, typename ResMan_t, bool enabled = has_hybrid_v<opts>>
 struct HybridStack;
 
-template<auto opts, typename CoreTypes>
-struct HybridStack<opts, CoreTypes, false>
+template<auto opts, typename CoreTypes, typename ResMan_t>
+struct HybridStack<opts, CoreTypes, ResMan_t, false>
 {
 };
 
-template<auto opts, typename CoreTypes>
-struct HybridStack<opts, CoreTypes, true>
+template<auto opts, typename CoreTypes, typename ResMan_t>
+struct HybridStack<opts, CoreTypes, ResMan_t, true>
 {
+    struct Types
+    {
+        using GridLayout_t       = CoreTypes::Hybrid::GridLayout_t;
+        using Electromag_t       = CoreTypes::Hybrid::Electromag_t;
+        using Ions_t             = CoreTypes::Hybrid::Ions_t;
+        using Electrons_t        = CoreTypes::Hybrid::Electrons_t;
+        using Grid_t             = CoreTypes::Hybrid::Grid_t;
+        using amr_types          = amr::SAMRAI_Types;
+        using ResourcesManager_t = ResMan_t;
+    };
+
     using GridLayout_t = CoreTypes::Hybrid::GridLayout_t;
-    using Model_t       = HybridModel<GridLayout_t, typename CoreTypes::Hybrid::Electromag_t,
-                                      typename CoreTypes::Hybrid::Ions_t,
-                                      typename CoreTypes::Hybrid::Electrons_t, amr::SAMRAI_Types,
-                                      typename CoreTypes::Hybrid::Grid_t>;
-    using Solver_t = PHARE::solver::SolverPPC<Model_t, PHARE::amr::SAMRAI_Types>;
+    using Model_t      = HybridModel<Types>;
+    using Solver_t     = PHARE::solver::SolverPPC<Model_t, PHARE::amr::SAMRAI_Types>;
 
     using Splitter_t = PHARE::amr::Splitter<PHARE::core::DimConst<opts.dimension>,
                                             PHARE::core::InterpConst<opts.interp_order>,
@@ -58,21 +93,28 @@ struct HybridStack<opts, CoreTypes, true>
     using LevelInitializer_t = HybridLevelInitializer<Model_t>;
 };
 
-template<auto opts, typename CoreTypes, bool enabled = has_mhd_v<opts>>
+template<auto opts, typename CoreTypes, typename ResMan_t, bool enabled = has_mhd_v<opts>>
 struct MHDStack;
 
-template<auto opts, typename CoreTypes>
-struct MHDStack<opts, CoreTypes, false>
+template<auto opts, typename CoreTypes, typename ResMan_t>
+struct MHDStack<opts, CoreTypes, ResMan_t, false>
 {
 };
 
-template<auto opts, typename CoreTypes>
-struct MHDStack<opts, CoreTypes, true>
+template<auto opts, typename CoreTypes, typename ResMan_t>
+struct MHDStack<opts, CoreTypes, ResMan_t, true>
 {
+    struct Types
+    {
+        using GridLayout_t       = CoreTypes::MHD::GridLayout_t;
+        using VecField_t         = CoreTypes::MHD::VecField_t;
+        using Grid_t             = CoreTypes::MHD::Grid_t;
+        using amr_types          = amr::SAMRAI_Types;
+        using ResourcesManager_t = ResMan_t;
+    };
+
     using GridLayout_t = CoreTypes::MHD::GridLayout_t;
-    using Model_t
-        = MHDModel<GridLayout_t, typename CoreTypes::MHD::VecField_t, amr::SAMRAI_Types,
-                  typename CoreTypes::MHD::Grid_t>;
+    using Model_t       = MHDModel<Types>;
     using Solver_t = PHARE::solver::SolverMHD<Model_t, PHARE::amr::SAMRAI_Types,
                                               typename MHDResolver<opts, Model_t>::MHDTimeStepper_t>;
 
@@ -131,8 +173,16 @@ struct PHARE_Types
     // core deps
     using core_types = PHARE::core::PHARE_Types<opts>;
 
-    using Hybrid = HybridStack<opts, core_types>;
-    using MHD    = MHDStack<opts, core_types>;
+    // shared by both models when both are enabled: one ResourcesManager instance can then serve
+    // Hybrid and MHD resources - gated the same way as Hybrid/MHDStack below, so a disabled
+    // model's core types are never passed to ResourcesManager (no resource-user specializations
+    // instantiated/registered for a model this build doesn't want)
+    using ResourcesManager_t =
+        typename ResourcesManagerSelector<opts, core_types, has_hybrid_v<opts>,
+                                          has_mhd_v<opts>>::type;
+
+    using Hybrid = HybridStack<opts, core_types, ResourcesManager_t>;
+    using MHD    = MHDStack<opts, core_types, ResourcesManager_t>;
 
     using IPhysicalModel = PHARE::solver::IPhysicalModel<PHARE::amr::SAMRAI_Types>;
 
