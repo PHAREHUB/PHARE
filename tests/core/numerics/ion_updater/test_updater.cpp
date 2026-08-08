@@ -222,7 +222,6 @@ struct IonsBuffers
     Grid alphaChargeDensity;
 
     UsableVecFieldND protonF, alphaF, Vi;
-    UsableTensorField<dim> M, alpha_M, protons_M;
 
     static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
 
@@ -257,9 +256,6 @@ struct IonsBuffers
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
-        , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonDomain{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , protonPatchGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
         , protonLevelGhost{grow(layout.AMRBox(), ghostSafeMapLayer)}
@@ -294,9 +290,6 @@ struct IonsBuffers
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
-        , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
-        , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protonDomain{source.protonDomain}
         , protonPatchGhost{source.protonPatchGhost}
         , protonLevelGhost{source.protonLevelGhost}
@@ -328,28 +321,25 @@ struct IonsBuffers
     void setBuffers(Ions& ions)
     {
         {
-            auto const& [V, m, cd, md] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, cd, md] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
-            M.set_on(m);
             cd.setBuffer(&ionChargeDensity);
             md.setBuffer(&ionMassDensity);
         }
 
         auto& pops = ions.getRunTimeResourcesViewList();
         {
-            auto const& [F, M, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
+            auto const& [F, d, c, particles] = pops[0].getCompileTimeResourcesViewList();
             d.setBuffer(&protonParticleDensity);
             c.setBuffer(&protonChargeDensity);
-            protons_M.set_on(M);
             protonF.set_on(F);
             particles.setBuffer(&protonPack);
         }
 
         {
-            auto const& [F, M, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
+            auto const& [F, d, c, particles] = pops[1].getCompileTimeResourcesViewList();
             d.setBuffer(&alphaParticleDensity);
             c.setBuffer(&alphaChargeDensity);
-            alpha_M.set_on(M);
             alphaF.set_on(F);
             particles.setBuffer(&alphaPack);
         }

@@ -1,5 +1,4 @@
 
-
 #include "phare_core.hpp"
 
 #include "core/data/grid/grid.hpp"
@@ -9,20 +8,22 @@
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+
+#include "core/utilities/variants.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
 #include "initializer/data_provider.hpp"
 
+#include "tests/initializer/init_functions.hpp"
+
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
+
+#include "gtest/gtest.h"
 
 #include <string>
 #include <vector>
 
-#include "gtest/gtest.h"
-
-
-#include "tests/initializer/init_functions.hpp"
 
 using namespace PHARE::initializer::test_fn::func_1d; // density/etc are here
 
@@ -264,9 +265,13 @@ TYPED_TEST_P(aResourceUserCollection, hasPointersValidWithBracketOperator)
 
 TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
 {
+    PHARE::SimOpts constexpr opts{1, 1};
+    using PHARETypes         = PHARE::solver::PHARE_Types<opts>;
+    using ResourcesManager_t = PHARETypes::ResourcesManager_t;
+    ResourcesManager_t resourcesManager;
+
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t, Grid1D>
-        resourcesManager;
+
     IonPopulation1D_P pop;
     static_assert(is_particles_v<ParticlesPack<ParticleArray<1>>>);
 
@@ -303,6 +308,125 @@ typedef ::testing::Types<IonPop1DOnly, VecField1DOnly, Ions1DOnly, Electromag1DO
                          HybridState1DOnly>
     MyTypes;
 INSTANTIATE_TYPED_TEST_SUITE_P(testResourcesManager, aResourceUserCollection, MyTypes);
+
+
+
+
+struct FieldResource
+{
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(rho); }
+
+    std::array<std::uint32_t, 1> cells{5};
+    Field1D rho{"name", HybridQuantity::Scalar::rho, nullptr, cells};
+};
+struct VecFieldResource
+{
+    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(B); }
+
+    VecField1D B{"B", HybridQuantity::Vector::B};
+};
+
+struct ResourceUser
+{
+    using Resources = std::variant<FieldResource>;
+
+    ResourceUser() { resources.resize(2, FieldResource{}); }
+
+    NO_DISCARD std::vector<Resources>& getRunTimeResourcesViewList() { return resources; }
+
+    auto get() { return get_as_tuple_or_throw<FieldResource, FieldResource>(resources); }
+
+    std::vector<Resources> resources;
+};
+
+
+TEST(usingResources, test_variants_helpers)
+{
+    using Resources = std::variant<FieldResource, VecFieldResource>;
+
+    std::vector<Resources> resources{FieldResource{}, VecFieldResource{}};
+
+    {
+        auto const&& [rho, B] = get_as_tuple_or_throw<FieldResource, VecFieldResource>(resources);
+    }
+    {
+        auto& rho = get_as_ref_or_throw<FieldResource>(resources);
+        EXPECT_EQ(&rho, &std::get<FieldResource>(resources[0]));
+    }
+    {
+        auto& B = get_as_ref_or_throw<VecFieldResource>(resources);
+        EXPECT_EQ(&B, &std::get<VecFieldResource>(resources[1]));
+    }
+}
+
+
+TEST(usingResources, test_variants_resource_helpers)
+{
+    using Resources = std::variant<Field1D, VecField1D>;
+
+    std::array<std::uint32_t, 1> cells{5};
+    Field1D moe_{"moe", HybridQuantity::Scalar::rho, nullptr, cells};
+    VecField1D B_{"B", HybridQuantity::Vector::B};
+    Field1D rho_{"rho", HybridQuantity::Scalar::rho, nullptr, cells};
+    VecField1D E_{"E", HybridQuantity::Vector::E};
+
+    std::vector<Resources> resources{rho_, moe_, B_, E_};
+    {
+        auto const& rho = get_from_variants(resources, rho_);
+        EXPECT_EQ(rho.name(), "rho");
+
+        auto const& B = get_from_variants(resources, B_);
+        EXPECT_EQ(B.name(), "B");
+    }
+    auto [rho, B] = get_from_variants(resources, rho_, B_);
+    EXPECT_EQ(rho.name(), "rho");
+    EXPECT_EQ(B.name(), "B");
+}
+
+TEST(usingResourcesManager, test_variants)
+{
+    PHARE::SimOpts constexpr opts{1, 1};
+    using PHARETypes         = PHARE::solver::PHARE_Types<opts>;
+    using ResourcesManager_t = PHARETypes::ResourcesManager_t;
+    ResourcesManager_t resourcesManager;
+
+    ResourceUser resourceUser;
+
+    std::unique_ptr<BasicHierarchy> bhierarchy
+        = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));
+
+    bhierarchy->init();
+    resourcesManager.registerResources(resourceUser);
+    auto& hierarchy = bhierarchy->hierarchy;
+
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+            resourcesManager.allocate(resourceUser, *patch, 0);
+
+    std::size_t patches = 0, checks = 0;
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+        {
+            auto dataOnPatch = resourcesManager.setOnPatch(*patch, resourceUser);
+            auto&& [r0, r1]  = resourceUser.get();
+            r1.rho.data()[4] = 5;
+            ++patches;
+        }
+
+
+    for (int iLevel = 0; iLevel < hierarchy->getNumberOfLevels(); ++iLevel)
+        for (auto const& patch : *hierarchy->getPatchLevel(iLevel))
+        {
+            auto dataOnPatch = resourcesManager.setOnPatch(*patch, resourceUser);
+            auto&& [r0, r1]  = resourceUser.get();
+            EXPECT_EQ(r1.rho.data()[4], 5);
+            ++checks;
+        }
+
+    EXPECT_GE(patches, 1);
+    EXPECT_EQ(checks, patches);
+}
+
 
 
 

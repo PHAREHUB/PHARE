@@ -696,10 +696,10 @@ namespace amr
         std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
         int const firstLevel_;
 
-        using InitRefinerPool             = RefinerPool<rm_t, RefinerType::InitField>;
-        using GhostRefinerPool            = RefinerPool<rm_t, RefinerType::GhostField>;
-        using InitDomPartRefinerPool      = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
-        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
+        using InitRefinerPool             = RefinerPool<rm_t, MHDModel, RefinerType::InitField>;
+        using GhostRefinerPool            = RefinerPool<rm_t, MHDModel, RefinerType::GhostField>;
+        using InitDomPartRefinerPool      = RefinerPool<rm_t, MHDModel, RefinerType::InitInteriorPart>;
+        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, MHDModel, RefinerType::PatchVecFieldBorderMax>;
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost; //

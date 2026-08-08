@@ -18,9 +18,10 @@ public:
     using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
-    using Attributes = typename Super::Attributes;
-    using GridLayout = typename H5Writer::GridLayout;
-    using FloatType  = typename H5Writer::FloatType;
+    using Attributes       = typename Super::Attributes;
+    using ModelViewVariant = typename Super::ModelViewVariant;
+    using FloatType        = typename H5Writer::FloatType;
+    static constexpr auto dimension = H5Writer::dimension;
 
     InfoDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}
@@ -34,7 +35,8 @@ public:
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                        std::string const& patchID, Attributes& patchAttributes) override;
+                        std::string const& patchID, Attributes& patchAttributes,
+                        ModelViewVariant& modelView) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
@@ -58,7 +60,8 @@ void InfoDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnosti
 template<typename H5Writer>
 void InfoDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                     std::size_t iLevel, std::string const& patchID,
-                                                    Attributes& patchAttributes)
+                                                    Attributes& patchAttributes,
+                                                    ModelViewVariant& /*modelView*/)
 {
 }
 
@@ -86,30 +89,31 @@ void InfoDiagnosticWriter<H5Writer>::writeAttributes(
         patchAttributes,
     std::size_t maxLevel)
 {
-    auto& h5Writer = this->h5Writer_;
+    auto& h5Writer  = this->h5Writer_;
+    auto& modelView = h5Writer.mapper().hyridModelView();
 
     std::size_t lvl_idx = -1, p_idx = 0;
-    auto gatherParticleCounts
-        = [&](GridLayout& gridLayout, std::string patchID, std::size_t iLevel) {
-              if (iLevel != lvl_idx)
-              {
-                  lvl_idx = iLevel;
-                  p_idx   = 0;
-              }
+    auto gatherParticleCounts = [&](auto& /*gridLayout*/, std::string patchID,
+                                    std::size_t iLevel) {
+        if (iLevel != lvl_idx)
+        {
+            lvl_idx = iLevel;
+            p_idx   = 0;
+        }
 
-              auto& patches = patchAttributes[iLevel];
-              assert(patches[p_idx].first == patchID);
-              patches[p_idx].second["particle_count"]
-                  = sum_from(h5Writer.modelView().getIons(),
-                             [](auto const& pop) { return pop.domainParticles().size(); });
-              ++p_idx;
-          };
+        auto& patches = patchAttributes[iLevel];
+        assert(patches[p_idx].first == patchID);
+        patches[p_idx].second["particle_count"]
+            = sum_from(modelView.getIons(),
+                      [](auto const& pop) { return pop.domainParticles().size(); });
+        ++p_idx;
+    };
 
     Attributes defaultPatchAttributes;
 
     if (diagnostic.quantity == "/particle_count")
     {
-        h5Writer.modelView().visitHierarchy(gatherParticleCounts, h5Writer_.minLevel, maxLevel);
+        modelView.visitHierarchy(gatherParticleCounts, h5Writer_.minLevel, maxLevel);
         defaultPatchAttributes["particle_count"] = std::size_t{0};
     }
 

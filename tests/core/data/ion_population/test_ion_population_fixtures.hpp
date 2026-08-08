@@ -2,15 +2,12 @@
 #define PHARE_TEST_CORE_DATA_ION_POPULATIONS_ION_POPULATION_FIXTURES_HPP
 
 #include <cassert>
-#include <functional>
 
 #include "phare_core.hpp"
 #include "core/data/ions/ions.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/data/particles/particle_array.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 
-#include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/particles/test_particles_fixtures.hpp"
 
@@ -54,12 +51,10 @@ public:
         , particleDensity{this->name() + "_particleDensity", layout, HybridQuantity::Scalar::rho}
         , chargeDensity{this->name() + "_chargeDensity", layout, HybridQuantity::Scalar::rho}
         , F{this->name() + "_flux", layout, HybridQuantity::Vector::V}
-        , M{this->name() + "_momentumTensor", layout, HybridQuantity::Tensor::M}
         , particles{this->name(), layout.AMRBox()}
     {
-        auto&& [_F, _M, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
+        auto&& [_F, _pd, _cd, _particles] = Super::getCompileTimeResourcesViewList();
         F.set_on(_F);
-        M.set_on(_M);
         _pd.setBuffer(&particleDensity);
         _cd.setBuffer(&chargeDensity);
         _particles.setBuffer(&particles.pack());
@@ -73,7 +68,6 @@ public:
 
     _defaults::Grid_t particleDensity, chargeDensity;
     _defaults::UsableVecField_t F;
-    _defaults::UsableTensorField_t M;
     UsableParticlesPopulation<ParticleArray_t> particles;
 };
 
@@ -110,11 +104,9 @@ public:
         , massDensity{"massDensity", layout, HybridQuantity::Scalar::rho}
         , chargeDensity{"chargeDensity", layout, HybridQuantity::Scalar::rho}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
-        , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
     {
-        auto&& [_bV, _M, _cd, _md] = Super::getCompileTimeResourcesViewList();
+        auto&& [_bV, _cd, _md] = Super::getCompileTimeResourcesViewList();
         Vi.set_on(_bV);
-        M.set_on(_M);
         _cd.setBuffer(&chargeDensity);
         _md.setBuffer(&massDensity);
 
@@ -137,7 +129,6 @@ public:
 
     _defaults::Grid_t massDensity, chargeDensity;
     _defaults::UsableVecField_t Vi;
-    _defaults::UsableTensorField_t M;
     std::vector<UsableIonsPopulation<_defaults>> populations;
 };
 

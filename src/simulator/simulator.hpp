@@ -207,9 +207,9 @@ private:
 
 
     double restart_time(initializer::PHAREDict const&);
-    void diagnostics_init(initializer::PHAREDict const&, auto&);
-    void hybrid_init(initializer::PHAREDict const&);
-    void mhd_init(initializer::PHAREDict const&);
+    void diagnostics_setup(initializer::PHAREDict const&, auto&... models);
+    void hybrid_setup(initializer::PHAREDict const&);
+    void mhd_setup(initializer::PHAREDict const&);
 
     void handle_dictionary_exception(core::DictionaryException const& ex);
 };
@@ -245,9 +245,9 @@ double Simulator<opts>::restart_time(initializer::PHAREDict const& dict)
 
 
 template<auto opts>
-void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict, auto& model)
+void Simulator<opts>::diagnostics_setup(initializer::PHAREDict const& dict, auto&... models)
 {
-    dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(*hierarchy_, model, dict);
+    dMan = PHARE::diagnostic::DiagnosticsManagerResolver::make_unique(*hierarchy_, dict, models...);
 
     if (dict.contains("fine_dump_lvl_max"))
     {
@@ -271,13 +271,13 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict, auto&
 
 
 template<auto opts>
-void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
+void Simulator<opts>::hybrid_setup(initializer::PHAREDict const& dict)
 {
     using HybridModel = PHARETypes::Hybrid::Model_t;
     using SolverPPC   = PHARETypes::Hybrid::Solver_t;
 
     hyb_.model_ = std::make_shared<HybridModel>(dict["simulation"], hyb_.resman_);
-    hyb_.resman_->registerResources(hyb_.model_->state); // still valid, never moved
+    hyb_.model_->registerResources();
 
     // we register the hybrid model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
@@ -336,20 +336,17 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
                                        loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
 
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
-
-    if (dict["simulation"].contains("diagnostics"))
-        diagnostics_init(dict["simulation"]["diagnostics"], *hyb_.model_);
 }
 
 
 template<auto opts>
-void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
+void Simulator<opts>::mhd_setup(initializer::PHAREDict const& dict)
 {
     using MHDModel  = PHARETypes::MHD::Model_t;
     using SolverMHD = PHARETypes::MHD::Solver_t;
 
     mhd_.model_ = std::make_shared<MHDModel>(dict["simulation"], mhd_.resman_);
-    mhd_.resman_->registerResources(mhd_.model_->state);
+    mhd_.model_->registerResources();
 
     // we register the mhd model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
@@ -405,9 +402,6 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
                                        loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
 
     timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
-
-    if (dict["simulation"].contains("diagnostics"))
-        diagnostics_init(dict["simulation"]["diagnostics"], *mhd_.model_);
 }
 
 
@@ -449,7 +443,7 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
             anyModel       = true;
             using ResMan_t = PHARETypes::Hybrid::Model_t::resources_manager_type;
             hyb_.resman_   = std::make_shared<ResMan_t>();
-            hybrid_init(dict);
+            hybrid_setup(dict);
             if (dict["simulation"].contains("restarts"))
                 rMan = restarts::RestartsManagerResolver::make_unique(
                     *hierarchy_, *hyb_.resman_, dict["simulation"]["restarts"]);
@@ -468,7 +462,7 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
             anyModel       = true;
             using ResMan_t = PHARETypes::MHD::Model_t::resources_manager_type;
             mhd_.resman_   = std::make_shared<ResMan_t>();
-            mhd_init(dict);
+            mhd_setup(dict);
             if (dict["simulation"].contains("restarts"))
                 rMan = restarts::RestartsManagerResolver::make_unique(
                     *hierarchy_, *mhd_.resman_, dict["simulation"]["restarts"]);
@@ -489,7 +483,30 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
                                  + "] is supported by this build");
     }
 
-    amr::ResourcesManagerGlobals::registerForRestarts();
+    if (dict["simulation"].contains("diagnostics"))
+    {
+        if constexpr (has_hybrid_v<opts> and has_mhd_v<opts>)
+        {
+            if (hyb_.model_ and mhd_.model_)
+                diagnostics_setup(dict["simulation"]["diagnostics"], *mhd_.model_, *hyb_.model_);
+            else if (hyb_.model_)
+                diagnostics_setup(dict["simulation"]["diagnostics"], *hyb_.model_);
+            else if (mhd_.model_)
+                diagnostics_setup(dict["simulation"]["diagnostics"], *mhd_.model_);
+        }
+        else if constexpr (has_hybrid_v<opts>)
+        {
+            if (hyb_.model_)
+                diagnostics_setup(dict["simulation"]["diagnostics"], *hyb_.model_);
+        }
+        else if constexpr (has_mhd_v<opts>)
+        {
+            if (mhd_.model_)
+                diagnostics_setup(dict["simulation"]["diagnostics"], *mhd_.model_);
+        }
+    }
+
+    PHARETypes::ResourcesManager_t::registerForRestarts();
 }
 
 
@@ -625,8 +642,7 @@ void Simulator<opts>::handle_dictionary_exception(core::DictionaryException cons
     if (this->allowEmergencyDumps)
         for (auto const& exception_id : dump_exceptions)
             if (ex.id() == exception_id)
-                for (int ilvl = 0; ilvl < hierarchy_->getMaxNumberOfLevels(); ++ilvl)
-                    this->dMan->dump_level(ilvl, currentTime_);
+                this->dMan->dump(currentTime_);
 }
 
 template<auto opts>

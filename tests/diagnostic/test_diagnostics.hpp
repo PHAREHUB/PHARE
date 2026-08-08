@@ -8,6 +8,7 @@
 #include "diagnostic/detail/types/electromag.hpp"
 #include "diagnostic/detail/types/particle.hpp"
 #include "diagnostic/detail/types/fluid.hpp"
+#include <diagnostic/diagnostic_manager.hpp>
 
 
 
@@ -42,8 +43,12 @@ void checkVecField(HighFiveFile const& file, GridLayout const& layout, VecField 
 template<typename Hierarchy, typename HybridModel>
 struct Hi5Diagnostic
 {
-    using ModelView_t = ModelView<Hierarchy, HybridModel>;
-    using Writer_t    = H5Writer<ModelView_t>;
+    using ModelMapper_t        = DiagnosticsModelMapper<Hierarchy, HybridModel>;
+    using Writer_t             = H5Writer<ModelMapper_t>;
+    using ModelView_t          = ModelView<Hierarchy, HybridModel>;
+    using WriterConfig_t       = Writer_t::Config;
+    using DiagnosticsManager_t = DiagnosticsManager<Writer_t>;
+
 
     Hi5Diagnostic(Hierarchy& hierarchy, HybridModel& hybridModel, std::string out,
                   auto const flags = NEW_HI5_FILE)
@@ -51,12 +56,13 @@ struct Hi5Diagnostic
         , model_{hybridModel}
         , out_{out}
         , flags_{flags}
-        , dMan{std::make_unique<Writer_t>(hierarchy_, model_, out, flags_)}
-        , writer{dMan.writer()}
-        , modelView{writer.modelView()}
+        , dMan{hierarchy_, WriterConfig_t{out, flags}, model_}
     {
     }
     ~Hi5Diagnostic() {}
+
+    NO_DISCARD auto& writer() { return dMan.writer(); }
+    NO_DISCARD auto& modelView() { return writer().mapper().hyridModelView(); }
 
     auto dict(std::string&& type, std::string& quantity)
     {
@@ -94,9 +100,7 @@ struct Hi5Diagnostic
     std::string const out_;
     HiFile::AccessMode const flags_;
 
-    DiagnosticsManager<Writer_t> dMan;
-    Writer_t& writer;
-    ModelView_t const& modelView;
+    DiagnosticsManager_t dMan;
 };
 
 template<typename Simulator, typename Hi5Diagnostic>
@@ -112,18 +116,19 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkF = [&](auto& layout, auto& path, auto tree, auto name, auto& field) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
+        auto hifile = hi5.writer().makeFile(hi5.writer().fileString(tree + name), hi5.flags_);
         auto&& data = checkField(*hifile, layout, field, path + name);
     };
 
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto name, auto& val) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + name), hi5.flags_);
+        auto hifile = hi5.writer().makeFile(hi5.writer().fileString(tree + name), hi5.flags_);
         checkVecField(*hifile, layout, val, path + name);
     };
 
     auto visit = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
+        assert(hybridModel.isUsable());
         auto path  = hi5.getPatchPath(iLevel, patchID);
-        auto& ions = hi5.modelView.getIons();
+        auto& ions = hi5.modelView().getIons();
         for (auto& pop : ions)
         {
             checkF(layout, path, "/ions/pop/" + pop.name(), "/density"s, pop.chargeDensity());
@@ -132,7 +137,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
         checkF(layout, path, "/ions"s, "/charge_density"s, ions.chargeDensity());
 
         std::string tree{"/ions"}, var{"/bulkVelocity"};
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree + var), hi5.flags_);
+        auto hifile = hi5.writer().makeFile(hi5.writer().fileString(tree + var), hi5.flags_);
         checkVecField(*hifile, layout, ions.velocity(), path + var);
     };
 
@@ -154,7 +159,7 @@ void validateElectromagDump(Simulator& sim, Hi5Diagnostic& hi5)
     auto& hybridModel = *sim.getHybridModel();
 
     auto checkVF = [&](auto& layout, auto& path, auto tree, auto& val) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree), hi5.flags_);
+        auto hifile = hi5.writer().makeFile(hi5.writer().fileString(tree), hi5.flags_);
         checkVecField(*hifile, layout, val, path + tree);
     };
 
@@ -214,7 +219,7 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
     };
 
     auto checkFile = [&](auto& path, auto tree, auto& particles) {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(tree), hi5.flags_);
+        auto hifile = hi5.writer().makeFile(hi5.writer().fileString(tree), hi5.flags_);
         checkParticles(*hifile, particles, path + "/");
     };
 
@@ -277,7 +282,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
     std::size_t popAttrChecks = 0;
     for (auto const& fileType : h5FileTypes)
     {
-        auto hifile = hi5.writer.makeFile(hi5.writer.fileString(fileType), hi5.flags_);
+        auto hifile = hi5.writer().makeFile(hi5.writer().fileString(fileType), hi5.flags_);
 
         auto visit = [&](GridLayout& grid, std::string patchID, std::size_t iLevel) {
             auto group = hifile->file().getGroup(hi5.getPatchPath(iLevel, patchID));
