@@ -210,6 +210,7 @@ private:
     void diagnostics_init(initializer::PHAREDict const&, auto&);
     void hybrid_init(initializer::PHAREDict const&);
     void mhd_init(initializer::PHAREDict const&);
+    void finalize_init(PHARE::initializer::PHAREDict const& dict);
 
     void handle_dictionary_exception(core::DictionaryException const& ex);
 };
@@ -269,6 +270,49 @@ void Simulator<opts>::diagnostics_init(initializer::PHAREDict const& dict, auto&
     this->allowEmergencyDumps = cppdict::get_value(dict, "allow_emergency_dumps", false);
 }
 
+template<auto opts>
+void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
+{
+    auto const lb_info = amr::LoadBalancerDetails::FROM(dict["simulation"]["AMR"]["loadbalancing"]);
+    auto lbm_          = std::make_unique<amr::LoadBalancerManager<opts.dimension>>(dict);
+    auto loadBalancer_db = std::make_shared<SAMRAI::tbox::MemoryDatabase>("LoadBalancerDB");
+    loadBalancer_db->putDouble("flexible_load_tolerance", lb_info.tolerance);
+    auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
+        SAMRAI::tbox::Dimension{dimension}, "LoadBalancer", loadBalancer_db);
+
+    if (lb_info.active and dict["simulation"]["AMR"]["refinement"].contains("tagging"))
+    {
+        // Load balancers break with refinement boxes - only tagging supported
+        /*
+          P=0000000:Program abort called in file ``/.../SAMRAI/xfer/RefineSchedule.cpp'' at line
+          369 P=0000000:ERROR MESSAGE: P=0000000:RefineSchedule:RefineSchedule error: We are not
+          currently P=0000000:supporting RefineSchedules with the source level finer
+          P=0000000:than the destination level
+        */
+
+        if (find_model("HybridModel"))
+        {
+            auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(
+                lb_info.mode, lbm_->getId());
+            lbm_->addLoadBalancerEstimator(maxMHDLevel_, maxLevelNumber_ - 1, std::move(lbe_));
+        }
+        if (find_model("MHDModel"))
+        {
+            auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorMHD<PHARETypes>>(lbm_->getId());
+            lbm_->addLoadBalancerEstimator(0, maxMHDLevel_ - 1, std::move(lbe_));
+        }
+        lbm_->setLoadBalancer(loadBalancer);
+    }
+    auto const lbm_id = lbm_->getId(); // moved on next line
+    multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
+
+    startTime_ = restart_time(dict);
+    integrator_
+        = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
+                                       loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
+    timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
+}
+
 
 template<auto opts>
 void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
@@ -300,42 +344,6 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
                                             std::move(hybridTagger_));
         }
     }
-
-    amr::LoadBalancerDetails lb_info
-        = amr::LoadBalancerDetails::FROM(dict["simulation"]["AMR"]["loadbalancing"]);
-
-    auto lbm_ = std::make_unique<amr::LoadBalancerManager<opts.dimension>>(dict);
-    auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(lb_info.mode,
-                                                                               lbm_->getId());
-
-    auto loadBalancer_db = std::make_shared<SAMRAI::tbox::MemoryDatabase>("LoadBalancerDB");
-    loadBalancer_db->putDouble("flexible_load_tolerance", lb_info.tolerance);
-    auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
-        SAMRAI::tbox::Dimension{dimension}, "LoadBalancer", loadBalancer_db);
-
-    if (dict["simulation"]["AMR"]["refinement"].contains("tagging"))
-    { // Load balancers break with refinement boxes - only tagging supported
-        /*
-          P=0000000:Program abort called in file ``/.../SAMRAI/xfer/RefineSchedule.cpp'' at line 369
-          P=0000000:ERROR MESSAGE:
-          P=0000000:RefineSchedule:RefineSchedule error: We are not currently
-          P=0000000:supporting RefineSchedules with the source level finer
-          P=0000000:than the destination level
-        */
-        lbm_->addLoadBalancerEstimator(maxMHDLevel_, maxLevelNumber_ - 1, std::move(lbe_));
-        lbm_->setLoadBalancer(loadBalancer);
-    }
-
-    auto lbm_id = lbm_->getId(); // moved on next line
-    multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
-
-    startTime_ = restart_time(dict);
-
-    integrator_
-        = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
-                                       loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
-
-    timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
     if (dict["simulation"].contains("diagnostics"))
         diagnostics_init(dict["simulation"]["diagnostics"], *hyb_.model_);
@@ -370,41 +378,6 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
             multiphysInteg_->registerTagger(0, maxMHDLevel_ - 1, std::move(mhdTagger_));
         }
     }
-
-    amr::LoadBalancerDetails lb_info
-        = amr::LoadBalancerDetails::FROM(dict["simulation"]["AMR"]["loadbalancing"]);
-
-    auto lbm_ = std::make_unique<amr::LoadBalancerManager<opts.dimension>>(dict);
-    auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorMHD<PHARETypes>>(lbm_->getId());
-
-    auto loadBalancer_db = std::make_shared<SAMRAI::tbox::MemoryDatabase>("LoadBalancerDB");
-    loadBalancer_db->putDouble("flexible_load_tolerance", lb_info.tolerance);
-    auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
-        SAMRAI::tbox::Dimension{dimension}, "LoadBalancer", loadBalancer_db);
-
-    if (dict["simulation"]["AMR"]["refinement"].contains("tagging"))
-    { // Load balancers break with refinement boxes - only tagging supported
-        /*
-          P=0000000:Program abort called in file ``/.../SAMRAI/xfer/RefineSchedule.cpp'' at line 369
-          P=0000000:ERROR MESSAGE:
-          P=0000000:RefineSchedule:RefineSchedule error: We are not currently
-          P=0000000:supporting RefineSchedules with the source level finer
-          P=0000000:than the destination level
-        */
-        lbm_->addLoadBalancerEstimator(0, maxMHDLevel_ - 1, std::move(lbe_));
-        lbm_->setLoadBalancer(loadBalancer);
-    }
-
-    auto lbm_id = lbm_->getId(); // moved on next line
-    multiphysInteg_->setLoadBalancerManager(std::move(lbm_));
-
-    startTime_ = restart_time(dict);
-
-    integrator_
-        = std::make_unique<Integrator>(dict, hierarchy_, multiphysInteg_, multiphysInteg_,
-                                       loadBalancer, startTime_, finalTime_, lb_info, lbm_id);
-
-    timeStamper = core::TimeStamperFactory::create(dict["simulation"]);
 
     if (dict["simulation"].contains("diagnostics"))
         diagnostics_init(dict["simulation"]["diagnostics"], *mhd_.model_);
@@ -488,6 +461,8 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
         throw std::runtime_error("unsupported model, none of [" + names
                                  + "] is supported by this build");
     }
+
+    finalize_init(dict);
 
     amr::ResourcesManagerGlobals::registerForRestarts();
 }

@@ -96,7 +96,7 @@ def config():
     for quantity in ["charge_density", "bulkVelocity"]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-    ph.LoadBalancer(active=True, auto=True, mode="nppc", tol=0.05)
+    ph.LoadBalancer(auto=True, mode="nppc", tol=0.05)
 
     return sim
 

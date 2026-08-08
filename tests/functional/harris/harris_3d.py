@@ -148,7 +148,7 @@ def config():
     )
 
     ph.ElectronModel(closure="isothermal", Te=0.0)
-    ph.LoadBalancer(active=True, mode="nppc", tol=0.05, every=1000)
+    ph.LoadBalancer(mode="nppc", tol=0.05, every=1000)
 
     pop = "protons"
     ph.FluidDiagnostics(quantity="bulkVelocity", write_timestamps=timestamps)
