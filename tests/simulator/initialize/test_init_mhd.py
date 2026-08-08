@@ -1,13 +1,11 @@
-#
 
 import os
+
 import numpy as np
-
-
 import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
-from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy import hierarchy_from
+from pyphare.simulator.simulator import Simulator
 
 from tests.diagnostic import all_timestamps
 from tests.simulator.test_initialization import InitializationTest

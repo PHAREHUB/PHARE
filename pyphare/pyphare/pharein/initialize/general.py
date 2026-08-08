@@ -2,6 +2,7 @@ import os
 
 import numpy as np
 import pybindlibs.dictator as pp
+
 from pyphare.core.phare_utilities import is_scalar
 from pyphare.pharein.load_balancer import LoadBalancer
 from pyphare.pharein.simulation import deserialize as deserialize_sim
@@ -126,7 +127,7 @@ def populateDict(sim):
         add_int("simulation/AMR/refinement/boxes/nbr_levels/", len(rb.keys()))
         for level, boxes in rb.items():
             level_path = "simulation/AMR/refinement/boxes/" + level + "/"
-            add_int(level_path + "nbr_boxes/", int(len(boxes)))
+            add_int(level_path + "nbr_boxes/", len(boxes))
             for box_i, box in enumerate(boxes):
                 box_id = "B" + str(box_i)
                 lower = box.lower

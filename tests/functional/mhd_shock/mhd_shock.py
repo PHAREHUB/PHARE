@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
 import os
-import numpy as np
 from pathlib import Path
-from dataclasses import field
 
-from pyphare import cpp
+import numpy as np
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
 
+from pyphare import cpp
 from tests.simulator import SimulatorTest
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
@@ -118,11 +117,11 @@ def plot(diag_dir, plot_dir):
 
 class ShockTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(ShockTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(ShockTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None

@@ -29,7 +29,7 @@ class AdvanceTest3D(HybridAdvanceTest):
         self._test_L0_particle_number_conservation(ndim, interp, ppc=ppc, cells=20)
 
     @data(
-        *per_interp(({"L0": {"B0": Box3D(10, 14)}})),
+        *per_interp({"L0": {"B0": Box3D(10, 14)}}),
     )
     @unpack
     def test_domain_particles_on_refined_level(self, interp_order, refinement_boxes):

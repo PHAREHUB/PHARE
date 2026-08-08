@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator
-
-
 import matplotlib as mpl
 import numpy as np
+import pyphare.pharein as ph
+from pyphare.simulator.simulator import Simulator
 
 mpl.use("Agg")
 

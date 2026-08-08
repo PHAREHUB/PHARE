@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 
 
-import os
 import copy
-import unittest
 import itertools
-import numpy as np
-from time import sleep
-from pathlib import Path
+import os
+import unittest
 from copy import deepcopy
-from ddt import data, ddt, unpack
+from pathlib import Path
+from time import sleep
 
+import numpy as np
 import pyphare.pharein as ph
-
+from ddt import data, ddt, unpack
 from pyphare.pharein.simulation import supported_dimensions
-from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.simulator.simulator import Simulator
-from pyphare.simulator.simulator import startMPI
+from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
+from pyphare.simulator.simulator import Simulator, startMPI
 
-from tests.simulator import SimulatorTest
 from tests.diagnostic import dump_all_diags
-
+from tests.simulator import SimulatorTest
 
 ppc_per_dim = [100, 25, 10]
 
@@ -134,7 +131,7 @@ def permute(dic):
 @ddt
 class DiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(DiagnosticsTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
@@ -215,7 +212,7 @@ class DiagnosticsTest(SimulatorTest):
     )
     @unpack
     def test_dump_diags(self, ndim, interp, simInput):
-        print("test_dump_diags ndim/interp:{}/{}".format(ndim, interp))
+        print(f"test_dump_diags ndim/interp:{ndim}/{interp}")
 
         # configure simulation ndim sized values
         for key in ["cells", "dl", "boundary_types"]:
@@ -242,7 +239,7 @@ class DiagnosticsTest(SimulatorTest):
         self._check_diags(sim, ["0.0000000000", "0.0010000000"])
 
     def test_dump_elapsed_time_diags(self, ndim=1, interp=1):
-        print("test_dump_elapsed_time_diags dim/interp:{}/{}".format(ndim, interp))
+        print(f"test_dump_elapsed_time_diags dim/interp:{ndim}/{interp}")
 
         simInput = copy.deepcopy(simArgs)
         # configure simulation ndim sized values

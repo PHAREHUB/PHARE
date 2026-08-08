@@ -1,16 +1,11 @@
 #!/usr/bin/env python3
 import os
 
-import numpy as np
 import matplotlib.pyplot as plt
-from pathlib import Path
-
+import numpy as np
 import pyphare.pharein as ph
-from pyphare import cpp 
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-
-from tests.simulator import SimulatorTest
 
 # Note: this test does not handle mpi yet (would require gathering several patches on rank 0).
 # It scans every reconstruction in one run, each compiled as its own permutation in res/sim/all.txt.

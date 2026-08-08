@@ -1,9 +1,7 @@
-#
-#
-#
 
 
 import vtk
+
 from .base import VtkTensorFieldFile
 
 

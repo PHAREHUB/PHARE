@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 
 import allocSizes
-import gridIndexing
 import cellCenteredCoordinates
 import fieldNodeCoordinates
-import test_linear_combinations_yee
+import gridIndexing
 import test_deriv
 import test_laplacian
+import test_linear_combinations_yee
 
 
 def main():

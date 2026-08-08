@@ -1,13 +1,13 @@
-from .hierarchy_utils import isFieldQty, field_qties, quantidic, refinement_ratio
-from .patchdata import FieldData, ParticleData
-from .patch import Patch
-from .patchlevel import PatchLevel
-from .hierarchy import PatchHierarchy
-from ..particles import Particles
+import numpy as np
+
 from ...core import gridlayout  #  import GridLayout, HybridGridLayoutFor
 from ...core.box import Box
-
-import numpy as np
+from ..particles import Particles
+from .hierarchy import PatchHierarchy
+from .hierarchy_utils import field_qties, isFieldQty, quantidic, refinement_ratio
+from .patch import Patch
+from .patchdata import FieldData, ParticleData
+from .patchlevel import PatchLevel
 
 
 def make_layout_for(simulator, patch, qty, dl):
@@ -106,13 +106,13 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                         # now search which of the already created patches has the same box
                         # once found we add the new particles to the ones already present
 
-                        patch = [p for p in patches[ilvl] if p.box == box][0]
+                        patch = next(p for p in patches[ilvl] if p.box == box)
                         patch.patch_datas[pop + "_particles"].dataset.add(
                             patchGhost_part
                         )
 
         else:
-            raise ValueError("{} is not a valid quantity".format(qty))
+            raise ValueError(f"{qty} is not a valid quantity")
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 

@@ -1,6 +1,3 @@
-#
-#
-#
 
 from .plot import plot
 

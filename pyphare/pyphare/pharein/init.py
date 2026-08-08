@@ -1,7 +1,9 @@
 def get_user_inputs(jobname):
     import importlib
-    from . import populateDict
+
     import pyphare.pharein as _init_
+
+    from . import populateDict
 
     _init_.PHARE_EXE = True
     print(jobname)

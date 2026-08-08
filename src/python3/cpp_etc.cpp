@@ -73,6 +73,36 @@ auto samrai_version()
 
 PYBIND11_MODULE(cpp_etc, m)
 {
+    // Code called through pybind11 (this module, and the per-simulator cpp_<id> modules)
+    // may throw exceptions coming from PHARE, SAMRAI, HDF5, MPI, etc. with no common
+    // ancestor guaranteed, so python callers cannot know in advance what to catch.
+    // Registering a translator is process-wide (shared pybind11 internals across every
+    // PHARE extension module), and this module is always the first one imported
+    // (see Simulator.setup() -> startMPI()), so declaring it here covers all of them.
+    // This gives python a single, specific, non-blind exception type to catch instead of
+    // `except Exception`, see pyphare.cpp.cpp_error_type().
+    PYBIND11_CONSTINIT static py::gil_safe_call_once_and_store<py::object> phare_cpp_error_storage;
+    phare_cpp_error_storage.call_once_and_store_result(
+        [&]() { return py::exception<void>(m, "PHARECppError"); });
+
+    py::register_exception_translator([](std::exception_ptr p) {
+        if (!p)
+            return;
+        try
+        {
+            std::rethrow_exception(p);
+        }
+        catch (std::exception const& e)
+        {
+            py::set_error(phare_cpp_error_storage.get_stored(), e.what());
+        }
+        catch (...)
+        {
+            py::set_error(phare_cpp_error_storage.get_stored(),
+                          "Unknown C++ exception crossed the PHARE/pybind11 boundary");
+        }
+    });
+
     auto samrai_restart_file = [](std::string path) {
         return PHARE::amr::HierarchyRestarter::getRestartFileFullPath(path);
     };

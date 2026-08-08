@@ -1,25 +1,25 @@
-import os
 import glob
+import os
+
 import numpy as np
 
-from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.pharesee.hierarchy import ScalarField, VectorField
-
-from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
 from pyphare.core.phare_utilities import listify
-
 from pyphare.logger import getLogger
+from pyphare.pharesee.hierarchy import ScalarField, VectorField, hierarchy_from
+from pyphare.pharesee.hierarchy.hierarchy_utils import (
+    compute_hier_from,
+    flat_finest_field,
+)
+
 from .utils import (
-    _compute_to_primal,
-    _compute_pop_pressure,
-    _compute_pressure,
     _compute_current,
     _compute_divB,
+    _compute_pop_pressure,
+    _compute_pressure,
+    _compute_to_primal,
     _get_rank,
     make_interpolator,
 )
-
 
 logger = getLogger(__name__)
 
@@ -48,11 +48,10 @@ class Run:
 
         times = listify(times)
         times = [f"{t:.10f}" for t in times]
-        if "selection_box" in kwargs:
-            if isinstance(kwargs["selection_box"], tuple):
-                lower = kwargs["selection_box"][:2]
-                upper = kwargs["selection_box"][2:]
-                kwargs["selection_box"] = Box(lower, upper)
+        if "selection_box" in kwargs and isinstance(kwargs["selection_box"], tuple):
+            lower = kwargs["selection_box"][:2]
+            upper = kwargs["selection_box"][2:]
+            kwargs["selection_box"] = Box(lower, upper)
 
         def _get_hier(h):
             return hierarchy_from(
@@ -77,9 +76,9 @@ class Run:
 
             # assumes all qties in the hierarchy have the same ghost width
             # so take the first patch data of the first patch of the first level....
-            nbrGhosts = list(hierarchy.level(0).patches[0].patch_datas.values())[
-                0
-            ].ghosts_nbr
+            nbrGhosts = next(
+                iter(hierarchy.level(0).patches[0].patch_datas.values())
+            ).ghosts_nbr
             merged_qties = {}
             for qty in hierarchy.quantities():
                 data, coords = flat_finest_field(hierarchy, qty, time=time)
@@ -345,7 +344,7 @@ class Run:
         import h5py
 
         for qty in list_of_qty:
-            file = os.path.join(self.path, "ions_pop_{}_{}.h5".format(pop_name, qty))
+            file = os.path.join(self.path, f"ions_pop_{pop_name}_{qty}.h5")
             if os.path.isfile(file):
                 h5_file = h5py.File(file, "r")
                 list_of_mass.append(h5_file.attrs["pop_mass"])
@@ -379,7 +378,7 @@ class Run:
                 return time
             if self.default_time_:
                 return self.default_time_
-            self.default_time_ = float(list(data_file[h5_time_grp_key].keys())[0])
+            self.default_time_ = float(next(iter(data_file[h5_time_grp_key].keys())))
             return self.default_time_
 
         h5_time_grp_key = "t"

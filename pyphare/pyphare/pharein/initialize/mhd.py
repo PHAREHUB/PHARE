@@ -4,7 +4,7 @@ from .general import add_double, add_int, add_string, fn_wrapper
 
 
 def populateDict(sim):
-    addInitFunction = getattr(pp, "addInitFunction{:d}".format(sim.ndim) + "D")
+    addInitFunction = getattr(pp, f"addInitFunction{sim.ndim:d}" + "D")
 
     add_int("simulation/AMR/max_mhd_level", sim.max_mhd_level)
 

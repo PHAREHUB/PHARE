@@ -1,18 +1,11 @@
-#
+
 
 import numpy as np
-from pathlib import Path
-
 import pyphare.pharein as ph
-from pyphare import cpp
 from pyphare.pharesee.run import Run
-
-from pyphare.simulator.simulator import Simulator
-from pyphare.simulator.simulator import startMPI
-
+from pyphare.simulator.simulator import Simulator, startMPI
 
 from tests.simulator import SimulatorTest
-
 
 ph.NO_GUI()
 
@@ -201,11 +194,11 @@ def plot(diag_dir, plot_dir):
 
 class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(HarrisTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(HarrisTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
