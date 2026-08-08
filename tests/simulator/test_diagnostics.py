@@ -267,6 +267,25 @@ class DiagnosticsTest(SimulatorTest):
 
         self._check_diags(sim, ["0.0000000000"])
 
+    def test_diagnostics_requires_non_empty_timestamps(self, ndim=1, interp=1):
+        simInput = copy.deepcopy(simArgs)
+        for key in ["cells", "dl", "boundary_types"]:
+            simInput[key] = [simInput[key] for d in range(ndim)]
+
+        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
+        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+
+        self.simulation(interp_order=interp, **simInput)
+
+        with self.assertRaises(RuntimeError):
+            ph.ElectromagDiagnostics(quantity="E")
+
+        with self.assertRaises(RuntimeError):
+            ph.ElectromagDiagnostics(quantity="E", write_timestamps=[])
+
+        with self.assertRaises(RuntimeError):
+            ph.ElectromagDiagnostics(quantity="E", write_timestamps=None)
+
 
 if __name__ == "__main__":
     startMPI()
