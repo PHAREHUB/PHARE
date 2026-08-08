@@ -330,12 +330,13 @@ class RestartsTest(SimulatorTest):
         model = setup_model(sim)
         dump_all_diags(model.populations, timestamps=np.array(timestamps))
 
-        # autodump false to ignore possible init dump
-        simulator = Simulator(sim, auto_dump=False).initialize()
+        # skip the initial dump so the elapsed_timestamps clock starts at the sleep below,
+        # not at whatever initialize() itself costs
+        simulator = Simulator(sim).cpp_initialize()
 
         sleep(5)
-        simulator.advance().dump()  # should trigger restart on "restart_idx" advance
-        simulator.advance().dump()
+        simulator.advance()  # dump() happens automatically; should trigger restart here
+        simulator.advance()
         simulator.reset()
 
         # second restarted simulation

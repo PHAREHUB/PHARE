@@ -76,13 +76,12 @@ class Simulator:
         These arguments have good default, change them at your own risk.
 
         *  **print_one_line**: (``bool``), default False, will print simulator info per advance on one line (erasing the previous)
-        *  **auto_dump**: (``bool``), if True (default), will dump diagnostics automatically at requested timestamps
         *  **post_advance**: (``Function``),  default None. A python function to execute after each advance()
         *  **log_to_file**: if True (default), will log prints made from C++ code per MPI rank to the .log directory
 
     """
 
-    def __init__(self, simulation, auto_dump=True, **kwargs):
+    def __init__(self, simulation, **kwargs):
         assert isinstance(simulation, ph.Simulation)  # pylint: disable=no-member
         self.simulation = simulation
         self.cpp_hier = None  # HERE
@@ -96,7 +95,6 @@ class Simulator:
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
 
-        self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
 
         _simulator.obj = self
@@ -133,16 +131,13 @@ class Simulator:
     def initialize(self):
         try:
             if self.initialized:
-                return
+                return self
             if self.cpp_hier is None:
                 self.setup()
-
             if self.simulation.dry_run:
                 return self
-
-            self.cpp_sim.initialize()
-            self.initialized = True
-            self._auto_dump()  # first dump might be before first advance
+            self.cpp_initialize()
+            self.dump()  # first dump might be before first advance
 
             return self
         except Exception:
@@ -152,13 +147,6 @@ class Simulator:
                 )
             )
             raise ValueError("Error in Simulator.initialize(), see previous error")
-
-    def _throw(self, e):
-        print_rank0(e)
-        if exit_on_exception:
-            sys.exit(1)
-        # or reraise
-        raise RuntimeError(e)
 
     def advance(self, dt=None):
         self._check_init()
@@ -174,7 +162,7 @@ class Simulator:
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")
 
-        if self._auto_dump() and self.post_advance is not None:
+        if self.dump() and self.post_advance is not None:
             self.post_advance(self.cpp_sim.currentTime())
         return self
 
@@ -233,17 +221,14 @@ class Simulator:
         mon.monitoring_shutdown()
         return self.reset()
 
-    def _auto_dump(self):
-        return self.auto_dump and self.dump()
-
     def dump(self, *args):
-        assert len(args) == 0 or len(args) == 2
+        # do diagnostics/restarts dump if active at this time
+        if not (len(args) == 0 or len(args) == 2):
+            raise ValueError("Simulator::dump: unexpected parameter count")
 
         time = self.currentTime() if len(args) == 0 else args[0]
         timestep = self.timeStep() if len(args) == 0 else args[1]
-
         restarts.dump(self, time, timestep)
-
         return self.cpp_sim.dump_diagnostics(timestamp=time, timestep=timestep)
 
     def data_wrangler(self):
@@ -287,6 +272,16 @@ class Simulator:
         self._check_init()
         return self.cpp_sim.interp_order  # constexpr static value
 
+    def cpp_initialize(self):
+        # special case to initialize without dumping
+        if self.initialized:
+            return self
+        if self.cpp_hier is None:
+            self.setup()
+        self.cpp_sim.initialize()
+        self.initialized = True
+        return self
+
     def _check_init(self):
         if not self.initialized:
             self.initialize()
@@ -306,3 +301,10 @@ class Simulator:
         if need_log_dir and cpp.mpi_rank() == 0:
             Path(".log").mkdir(exist_ok=True)
         cpp.mpi_barrier()
+
+    def _throw(self, e):
+        print_rank0(e)
+        if exit_on_exception:
+            sys.exit(1)
+        # or reraise
+        raise RuntimeError(e)
