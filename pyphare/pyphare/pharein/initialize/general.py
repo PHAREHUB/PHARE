@@ -6,10 +6,10 @@ from pyphare.pharein.load_balancer import LoadBalancer
 from pyphare.pharein.simulation import deserialize as deserialize_sim
 from pyphare.pharein.simulation import serialize as serialize_sim
 
+from .dict_populator import DictPopulator
+
 
 def populateDict(sim):
-    from . import DictPopulator
-
     dp = DictPopulator()
 
     populate_grid(dp, sim)

@@ -1,6 +1,7 @@
-def populateDict(sim):
-    from . import DictPopulator
+from .dict_populator import DictPopulator
 
+
+def populateDict(sim):
     dp = DictPopulator()
 
     dp.add_int("simulation/AMR/max_mhd_level", sim.max_mhd_level)
@@ -18,7 +19,9 @@ def _populate_algo(dp, sim):
     dp.add_double("simulation/algo/fv_method/heat_capacity_ratio", sim.gamma)
     dp.add_enum_int("simulation/algo/fv_method/hyper_mode", "HyperMode", sim.hyper_mode)
     dp.add_enum_int(
-        "simulation/algo/time_integrator_type", "TimeIntegratorType", sim.mhd_timestepper
+        "simulation/algo/time_integrator_type",
+        "TimeIntegratorType",
+        sim.mhd_timestepper,
     )
     dp.add_bool("simulation/algo/fv_method/hall", sim.hall)
     dp.add_double("simulation/algo/to_primitive/heat_capacity_ratio", sim.gamma)
