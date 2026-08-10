@@ -95,6 +95,9 @@ private:
             Ex(idx) = -(ct_state.aL_y(idx) * FL + ct_state.aR_y(idx) * FR)
                       + (ct_state.dR_y(idx) * BzR - ct_state.dL_y(idx) * BzL);
 
+            // Store upwind-averaged Bz at Ex location (y-face in 2D) for Poynting correction
+            ct_state.Bt_z_at_Ex(idx) = ct_state.aL_y(idx) * BzL + ct_state.aR_y(idx) * BzR;
+
             if constexpr (Hall)
             {
                 auto invRho  = 1.0 / ct_state.rhot_y(idx);
@@ -151,6 +154,10 @@ private:
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
 
+            // Store edge-B at Ex location for Poynting energy correction (3D)
+            ct_state.Bt_y_at_Ex(idx) = aB * ByB + aT * ByT;
+            ct_state.Bt_z_at_Ex(idx) = aS * BzS + aN * BzN;
+
             if constexpr (Hall)
             {
                 auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
@@ -183,6 +190,10 @@ private:
 
             Ey(idx) = (ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       - (ct_state.dR_x(idx) * BzR - ct_state.dL_x(idx) * BzL);
+
+            // Store upwind-averaged Bz at Ey location (x-face in 2D; also used in 1D) for
+            // the Poynting correction
+            ct_state.Bt_z_at_Ey(idx) = ct_state.aL_x(idx) * BzL + ct_state.aR_x(idx) * BzR;
 
             if constexpr (Hall)
             {
@@ -239,6 +250,10 @@ private:
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
 
+            // Store edge-B at Ey location for Poynting energy correction (3D)
+            ct_state.Bt_x_at_Ey(idx) = aB * BxB + aT * BxT;
+            ct_state.Bt_z_at_Ey(idx) = aW * BzW + aE * BzE;
+
             if constexpr (Hall)
             {
                 auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
@@ -269,6 +284,9 @@ private:
 
             Ez(idx) = -(ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       + (ct_state.dR_x(idx) * ByR - ct_state.dL_x(idx) * ByL);
+
+            // Store upwind-averaged By at Ez location (1D) for the Poynting correction
+            ct_state.Bt_y_at_Ez(idx) = ct_state.aL_x(idx) * ByL + ct_state.aR_x(idx) * ByR;
 
             if constexpr (Hall)
             {
@@ -325,6 +343,10 @@ private:
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);
+
+            // Store edge-B at Ez location for Poynting energy correction (2D+)
+            ct_state.Bt_x_at_Ez(idx) = aS * BxS + aN * BxN;
+            ct_state.Bt_y_at_Ez(idx) = aW * ByW + aE * ByE;
 
             if constexpr (Hall)
             {

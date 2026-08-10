@@ -321,53 +321,6 @@ struct AllFluxesNames
 };
 
 
-template<typename VecField, typename Equations>
-class GodunovState
-{
-    using Field                            = VecField::field_type;
-    constexpr static auto dimension        = VecField::dimension;
-    constexpr static auto Resistivity      = Equations::resistivity;
-    constexpr static auto HyperResistivity = Equations::hyperResistivity;
-
-public:
-    GodunovState() = default;
-
-    NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(bt_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(bt_x, bt_y);
-            else if constexpr (dimension == 3)
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
-        }
-        else
-            return std::forward_as_tuple();
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        if constexpr (Resistivity || HyperResistivity)
-        {
-            if constexpr (dimension == 1)
-                return std::forward_as_tuple(bt_x);
-            else if constexpr (dimension == 2)
-                return std::forward_as_tuple(bt_x, bt_y);
-            else if constexpr (dimension == 3)
-                return std::forward_as_tuple(bt_x, bt_y, bt_z);
-        }
-        else
-            return std::forward_as_tuple();
-    }
-
-    VecField bt_x{"b_t_x", MHDQuantity::Vector::VecFlux_x};
-    VecField bt_y{"b_t_y", MHDQuantity::Vector::VecFlux_y};
-    VecField bt_z{"b_t_z", MHDQuantity::Vector::VecFlux_z};
-};
-
-
 template<template<typename> typename Op, typename Field, typename VecField>
 void operate(AllFluxes<Field, VecField>& dst, AllFluxes<Field, VecField> const& src, auto&&... args)
 {

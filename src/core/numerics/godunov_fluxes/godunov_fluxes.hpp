@@ -3,6 +3,7 @@
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/constants.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -96,8 +97,8 @@ public:
     {
     }
 
-    template<typename GState, typename State, typename Fluxes>
-    void operator()(GState& fvm_state, auto& ct_state, State& state, Fluxes& fluxes)
+    template<typename State, typename Fluxes>
+    void operator()(auto& ct_state, State& state, Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
 
@@ -134,11 +135,6 @@ public:
 
                         ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
                                                           riemann_.uct_coefs, {indices...});
-
-                        // for energy ExB term
-                        if constexpr (Resistivity || HyperResistivity)
-                            save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
-                                                                      {indices...});
                     }
                     else // Ideal
                     {
@@ -156,160 +152,124 @@ public:
 
                         ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
                                                           {indices...});
-
-                        // for energy ExB term
-                        if constexpr (Resistivity)
-                            save_tranverse_magnetic_field_<direction>(fvm_state, uL, uR,
-                                                                      {indices...});
                     }
                 });
 
-            // adding resistive contributions to energy taking advantage of the already computed jt
-            // fluxes for the laplacian computation. This probably doesn't need the grow as the
-            // required quantities for ct are already saved.
-            if constexpr (Resistivity || HyperResistivity)
-            {
-                layout_.evalOnBox(
-                    fluxes.template expose_centering<direction>(), [&](auto&... indices) {
-                        auto& Jt     = ct_state.template getJt<direction>();
-                        auto& Bt     = getBt_<direction>(fvm_state);
-                        auto F       = fluxes.template get_dir<direction>({indices...});
-                        auto& F_B    = F.B;
-                        auto& F_Etot = F.Etot();
+            // Note: resistive contributions to F_B and F_Etot are now handled via CT:
+            // - B is updated by Faraday using E (which includes ηJ from CT)
+            // - Etot gets the resistive Poynting flux via E×B where E = E_ideal + ηJ
+            // The old resistive_contributions code was dead (F_B is never consumed by the
+            // finite-volume update) and would double-count η(J×B) in F_Etot once combined
+            // with the Poynting correction.
+        });
+    }
 
-                        auto const& Btidx = toPerIndexVector(Bt, {indices...});
+    template<typename CTState, typename State, typename Fluxes>
+    void apply_poynting_correction(CTState const& ct_state, State const& state, Fluxes& fluxes)
+    {
+        // Apply Poynting flux correction to energy: ∂E/∂t -= ∇·(E×B)
+        // Must be called AFTER CT has computed both E and the edge-B fields, so the
+        // edge-centered B from CT is temporally consistent with E. Because E from CT
+        // includes resistive (ηJ) and hyper-resistive terms, E×B automatically captures
+        // the resistive Poynting flux.
+        constexpr auto directions     = getDirections<dimension>();
+        constexpr auto num_directions = std::tuple_size_v<std::decay_t<decltype(directions)>>;
 
-                        if constexpr (Resistivity)
-                        {
-                            // transverse B field components (probably a riemann operation).
-                            auto const& Jtidx = toPerIndexVector(Jt, {indices...});
-                            equations_.template resistive_contributions<direction>(
-                                eta, Btidx, Jtidx, F_B, F_Etot);
-                        }
-                        if constexpr (HyperResistivity)
-                        {
-                            auto const vecLaplJ
-                                = transverse_laplacian_<direction>(Jt, {indices...});
+        for_N<num_directions>([&](auto i) {
+            constexpr Direction direction = std::get<i>(directions);
 
-                            if (hyper_mode == HyperMode::constant)
-                                return constant_hyperresistive_<direction>(Btidx, vecLaplJ, F_B,
-                                                                           F_Etot);
-                            else if (hyper_mode == HyperMode::spatial)
-                            {
-                                auto const& Bn = toPerIndexVector(state.B, {indices...});
-                                auto const& rhot
-                                    = ct_state.template getRhot<direction>()(indices...);
-
-                                return spatial_hyperresistive_<direction>(Btidx, Bn, vecLaplJ, rhot,
-                                                                          F_B, F_Etot);
-                            }
-                            else
-                                throw std::runtime_error("Error - Ohm - unknown hyper_mode");
-                        }
-                    });
-            }
+            layout_.evalOnBox(fluxes.template expose_centering<direction>(), [&](auto&... indices) {
+                auto& F_Etot = fluxes.template get_dir<direction>({indices...}).Etot();
+                poynting_energy_flux_<direction>(ct_state, state.E,
+                                                 MeshIndex<dimension>{indices...}, F_Etot);
+            });
         });
     }
 
 private:
     template<auto direction>
-    auto save_tranverse_magnetic_field_(auto& fvm_state, auto const& uL, auto const& uR,
-                                        MeshIndex<dimension> idx)
+    void poynting_energy_flux_(auto const& ct_state, auto const& E,
+                               MeshIndex<dimension> const& index, auto& F_Etot) const
     {
-        auto Bidx = riemann_.vector_riemann_averaging(uL.B, uR.B);
+        // Magnetic energy flux through the face: S.n = (E x B).n. Since S_i = eps_ijk E_j B_k,
+        // a face never needs its own E component, which leaves exactly two products per face.
+        // E and the CT edge-B buffers are point values living on edges; each product is formed
+        // on the edge it lives on, then projected onto the flux face across the single axis
+        // separating the two locations (primal -> dual in every case).
+        //
+        // directionalInterp returns the identity stencil for an axis the simulation does not
+        // have, which is what collapses the lower dimensional cases: in 2D Ey already sits on
+        // the x-face, and in 1D both products already sit on the x-face.
+        using InterpDir = typename GridLayout::implT::InterpDir;
 
-        auto& Bt = getBt_<direction>(fvm_state);
+        // Same as GridLayout::project, but for an expression rather than a stored field: the
+        // integrand is a product of two fields, and since both are point values the product
+        // must be formed on the edge before being projected onto the face. Projecting the
+        // factors separately and multiplying on the face would be a different (and, beyond
+        // order 2, wrong) discretisation.
+        auto project_on_face = [&](auto const& stencil, auto&& integrand) {
+            std::decay_t<decltype(integrand(index))> result = 0.;
 
-        Bt(Component::X)(idx) = Bidx.x;
-        Bt(Component::Y)(idx) = Bidx.y;
-        Bt(Component::Z)(idx) = Bidx.z;
-    }
+            for (auto const& wp : stencil)
+                result += wp.coef * integrand(index + wp.indexes);
 
-    template<auto direction>
-    auto& getBt_(auto& fvm_state) const
-    {
-        if constexpr (direction == Direction::X)
-            return fvm_state.bt_x;
-        else if constexpr (direction == Direction::Y)
-            return fvm_state.bt_y;
-        else if constexpr (direction == Direction::Z)
-            return fvm_state.bt_z;
-    }
-
-    template<auto direction>
-    void constant_hyperresistive_(auto const& Bt, auto const& vecLaplJ, auto& F_B,
-                                  auto& F_Etot) const
-    {
-        equations_.template resistive_contributions<direction>(-nu, Bt, vecLaplJ, F_B, F_Etot);
-    }
-
-    template<auto direction>
-    void spatial_hyperresistive_(auto const& Bt, auto const& B, auto const& vecLaplJ,
-                                 auto const& rhot, auto& F_B, auto& F_Etot) const
-    {
-        auto minMeshSize = [&]() {
-            auto const meshSize = layout_.meshSize();
-            if constexpr (dimension == 1)
-                return meshSize[0];
-            else if constexpr (dimension == 2)
-                return std::min({meshSize[0], meshSize[1]});
-            else
-                return std::min({meshSize[0], meshSize[1], meshSize[2]});
-        }();
-
-
-        auto computeHR = [&](auto Bx, auto By, auto Bz) {
-            auto b          = std::sqrt(Bx * Bx + By * By + Bz * Bz);
-            auto const coef = -nu * minMeshSize * minMeshSize * (b / rhot + 1);
-            equations_.template resistive_contributions<direction>(coef, Bt, vecLaplJ, F_B, F_Etot);
+            return result;
         };
 
+        auto const& Ex = E(Component::X);
+        auto const& Ey = E(Component::Y);
+        auto const& Ez = E(Component::Z);
+
         if constexpr (direction == Direction::X)
         {
-            auto const Bx = B.x; // normal component
-            auto const By = Bt.y;
-            auto const Bz = Bt.z;
+            constexpr auto zEdgeToXFace
+                = GridLayout::implT::template directionalInterp<dirY, InterpDir::PrimalToDual>();
+            constexpr auto yEdgeToXFace
+                = GridLayout::implT::template directionalInterp<dirZ, InterpDir::PrimalToDual>();
 
-            computeHR(Bx, By, Bz);
+            auto const& By_at_Ez = ct_state.getBy_at_Ez();
+            auto const& Bz_at_Ey = ct_state.getBz_at_Ey();
+
+            auto const EzBy
+                = project_on_face(zEdgeToXFace, [&](auto const& i) { return Ez(i) * By_at_Ez(i); });
+            auto const EyBz
+                = project_on_face(yEdgeToXFace, [&](auto const& i) { return Ey(i) * Bz_at_Ey(i); });
+
+            F_Etot += EyBz - EzBy;
         }
         else if constexpr (direction == Direction::Y)
         {
-            auto const Bx = Bt.x;
-            auto const By = B.y; // normal component
-            auto const Bz = Bt.z;
+            constexpr auto zEdgeToYFace
+                = GridLayout::implT::template directionalInterp<dirX, InterpDir::PrimalToDual>();
+            constexpr auto xEdgeToYFace
+                = GridLayout::implT::template directionalInterp<dirZ, InterpDir::PrimalToDual>();
 
-            computeHR(Bx, By, Bz);
+            auto const& Bx_at_Ez = ct_state.getBx_at_Ez();
+            auto const& Bz_at_Ex = ct_state.getBz_at_Ex();
+
+            auto const EzBx
+                = project_on_face(zEdgeToYFace, [&](auto const& i) { return Ez(i) * Bx_at_Ez(i); });
+            auto const ExBz
+                = project_on_face(xEdgeToYFace, [&](auto const& i) { return Ex(i) * Bz_at_Ex(i); });
+
+            F_Etot += EzBx - ExBz;
         }
         else if constexpr (direction == Direction::Z)
         {
-            auto const Bx = Bt.x;
-            auto const By = Bt.y;
-            auto const Bz = B.z; // normal component
+            constexpr auto xEdgeToZFace
+                = GridLayout::implT::template directionalInterp<dirY, InterpDir::PrimalToDual>();
+            constexpr auto yEdgeToZFace
+                = GridLayout::implT::template directionalInterp<dirX, InterpDir::PrimalToDual>();
 
-            computeHR(Bx, By, Bz);
-        }
-    }
+            auto const& By_at_Ex = ct_state.getBy_at_Ex();
+            auto const& Bx_at_Ey = ct_state.getBx_at_Ey();
 
-    template<auto direction>
-    auto transverse_laplacian_(auto const& Jt, MeshIndex<dimension> index) const
-    {
-        if constexpr (direction == Direction::X)
-        {
-            auto const JyLapl = layout_.laplacian(Jt(Component::Y), index);
-            auto const JzLapl = layout_.laplacian(Jt(Component::Z), index);
-            return PerIndexVector<double>{std::nan(""), JyLapl, JzLapl};
-        }
-        else if constexpr (direction == Direction::Y)
-        {
-            auto const JxLapl = layout_.laplacian(Jt(Component::X), index);
-            auto const JzLapl = layout_.laplacian(Jt(Component::Z), index);
-            return PerIndexVector<double>{JxLapl, std::nan(""), JzLapl};
-        }
-        else if constexpr (direction == Direction::Z)
-        {
-            auto const JxLapl = layout_.laplacian(Jt(Component::X), index);
-            auto const JyLapl = layout_.laplacian(Jt(Component::Y), index);
-            return PerIndexVector<double>{JxLapl, JyLapl, std::nan("")};
+            auto const ExBy
+                = project_on_face(xEdgeToZFace, [&](auto const& i) { return Ex(i) * By_at_Ex(i); });
+            auto const EyBx
+                = project_on_face(yEdgeToZFace, [&](auto const& i) { return Ey(i) * Bx_at_Ey(i); });
+
+            F_Etot += ExBy - EyBx;
         }
     }
 
