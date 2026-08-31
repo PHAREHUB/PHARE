@@ -118,9 +118,12 @@ def composite_errors(run, final_time, fine_box, refinement_ratio=2, ndim=2):
             if diff.shape != mask.shape:
                 raise RuntimeError(f"{v}: field shape {diff.shape} != mask {mask.shape}")
             comp_num[v] += (diff * mask).sum() * w
-            ln[v] += diff.sum()
+            # masked exactly like comp_num: on the coarse level the fine-covered region is
+            # represented by the fine level, so counting it here would mix two resolutions into
+            # what the docstring calls a per-level masked norm.
+            ln[v] += (diff * mask).sum()
         comp_den += mask.sum() * w
-        lvl_den[ilvl] = lvl_den.get(ilvl, 0) + mask.size
+        lvl_den[ilvl] = lvl_den.get(ilvl, 0) + mask.sum()
 
     def eps(num, den):
         return float(np.sqrt(sum((num[v] / den) ** 2 for v in CONSERVED)))
