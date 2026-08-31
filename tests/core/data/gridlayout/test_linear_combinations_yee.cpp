@@ -267,7 +267,7 @@ namespace
     }
 } // namespace
 
-// weights of each ladder rung match prolongation_operators.md §2.2 exactly
+// order-2 dual prolongation weights: -1/8, 1, 1/8
 TEST(DualProlongation, order2WeightsMatchLadder)
 {
     auto right = ImplYee1::directionalProlongation<dirX, +1, 2>(); // σ=+1

@@ -591,8 +591,8 @@ public:
      * cell I into two fine children sitting at ±¼ of the coarse spacing; parity p∈{0,1},
      * sign σ = 2p−1 (σ=+1 = right child, σ=−1 = left). Offsets are relative to coarse cell I.
      *
-     * The even-term cancellation (see prolongation_operators.md §2): subtracting the
-     * conservation constraint kills every even reconstruction coefficient, so the children
+     * Even-term cancellation: subtracting the conservation constraint kills every even
+     * reconstruction coefficient, so the children
      * depend only on ODD coefficients ⇒ parabolic ≡ linear (degree-2 skipped). Children are
      * antisymmetric in σ about ū_I ⇒ they always mean back to ū_I (conservative at every order).
      *

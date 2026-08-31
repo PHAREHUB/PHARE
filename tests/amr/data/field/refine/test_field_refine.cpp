@@ -186,7 +186,7 @@ TEST(compositeRefiner1D, dualChildrenConserveCoarseAverage)
 }
 
 
-// row sum ≡ 1 (partition of unity, S7): on a constant coarse field every fine child equals the
+// row sum ≡ 1 (partition of unity): on a constant coarse field every fine child equals the
 // constant.
 TEST(compositeRefiner1D, dualRowSumsToOne)
 {
