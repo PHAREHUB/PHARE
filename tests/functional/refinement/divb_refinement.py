@@ -64,12 +64,12 @@ FINE_BOX = [[4, 16], [15, 31]]
 # escape hatch, which is what made an earlier version of this gate unfalsifiable.
 #
 # The constants come from MEASURED floors (2026-08-31, 4 ranks, both modes), not from taste:
-#   float64 diagnostics: coarse 6.2e-16 .. 2.9e-15, fine 3.0e-15 .. 1.4e-14, ratio 4.06 .. 5.33
+#   float64 diagnostics: coarse 6.2e-16 .. 2.9e-15, fine 2.6e-15 .. 1.4e-14, ratio 2.96 .. 5.33
 #   float32 diagnostics: coarse 2.2e-07,             fine 4.2e-07 .. 4.5e-07, ratio 1.89 .. 2.04
 # Two things that only measurement shows. First, the ratio is NOT precision-independent: float32
 # sits near 2 but float64 near 5, because in double precision the coarse floor is pure roundoff
 # and the fine level carries a few more operations' worth of it. Second, that double-precision
-# ratio WANDERS run to run (4.06 .. 5.33 observed over four runs, varying with rank
+# ratio WANDERS run to run (2.96 .. 5.33 observed over six runs, varying with rank
 # decomposition) precisely because it is roundoff, so the relative arm needs real headroom or it
 # becomes a flaky test -- a REL_TOL of 5 would have failed a passing run.
 # ABS_CAP is the arm with teeth: ~70x above the worst measured double-precision fine value and
@@ -120,7 +120,7 @@ def config(mode, order, diag_dir):
         boundary_types=["periodic", "periodic"],
         refinement_order=order,  # <-- path under test
         strict=True,
-        nesting_buffer=0,
+        nesting_buffer=1,
         diag_options={
             "format": "phareh5",
             "options": {"dir": diag_dir, "mode": "overwrite"},
