@@ -35,7 +35,7 @@ class TensorFieldData : public SAMRAI::hier::PatchData
 
     static constexpr auto NO_ROTATE = SAMRAI::hier::Transformation::NO_ROTATE;
 
-    using tensor_t             = typename PhysicalQuantity::template TensorType<rank_>;
+    using tensor_t             = PhysicalQuantity::template TensorType<rank_>;
     using TensorFieldOverlap_t = TensorFieldOverlap<rank_>;
 
 public:
@@ -58,9 +58,11 @@ public:
     static constexpr auto rank      = rank_;
     static constexpr auto N         = core::detail::tensor_field_dim_from_rank<rank>();
 
-    using Geometry        = TensorFieldGeometry<rank, GridLayoutT, PhysicalQuantity>;
-    using gridlayout_type = GridLayoutT;
-    using grid_type       = Grid_t;
+    using Geometry          = TensorFieldGeometry<rank, GridLayoutT, PhysicalQuantity>;
+    using gridlayout_type   = GridLayoutT;
+    using grid_type         = Grid_t;
+    using field_type        = Grid_t::field_type;
+    using tensor_field_type = core::TensorField<field_type, PhysicalQuantity, rank>;
 
     /*** \brief Construct a TensorFieldData from information associated to a patch
      *
@@ -74,6 +76,7 @@ public:
         , gridLayout{layout}
         , grids{make_grids(core::detail::tensor_field_names<rank>(name), layout, qty)}
         , quantity_{qty}
+        , name_{name}
     {
     }
 
@@ -331,6 +334,23 @@ public:
         return patchData->grids;
     }
 
+    /**
+     * @brief Get a TensorField associated to data with @p id on @p patch.
+     *
+     * @param patch the AMR patch
+     * @param id the resource index of the data
+     * @return a tensor field
+     **/
+    static tensor_field_type getTensorField(SAMRAI::hier::Patch const& patch, int const id)
+    {
+        auto const& patchData = std::dynamic_pointer_cast<This>(patch.getPatchData(id));
+        if (!patchData)
+            throw std::runtime_error("cannot cast to TensorFieldData");
+        tensor_field_type tensorField{patchData->name_, patchData->quantity_};
+        tensorField.setBuffer(&patchData->grids);
+        return tensorField;
+    }
+
 
     template<typename Operation>
     void operate(SAMRAI::hier::PatchData const& src, SAMRAI::hier::BoxOverlap const& overlap);
@@ -344,6 +364,7 @@ public:
 
 private:
     tensor_t quantity_; ///! PhysicalQuantity used for this field data
+    std::string name_;
 
     static inline core::MinimizingVector<value_type> tmp; // LESS ALLOCATIONS
 

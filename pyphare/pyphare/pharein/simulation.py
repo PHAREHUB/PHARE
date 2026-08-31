@@ -6,6 +6,7 @@ import numpy as np
 from ..core import box as boxm
 from ..core import phare_utilities
 from ..core.box import Box
+from . import boundary
 from . import global_vars
 from . import timestepper
 
@@ -203,7 +204,7 @@ def check_path(**kwargs):
 
 
 def check_boundaries(ndim, **kwargs):
-    valid_boundary_types = ("periodic",)
+    valid_boundary_types = ("periodic", "physical")
     boundary_types = kwargs.get("boundary_types", ["periodic"] * ndim)
     phare_utilities.check_iterables(boundary_types)
 
@@ -670,7 +671,10 @@ def check_mhd_constants(**kwargs):
     eta = kwargs.get("eta", 0.0)
     nu = kwargs.get("nu", 0.0)
 
-    return gamma, eta, nu
+    if not isinstance(gamma, (int, float)) or gamma <= 1:
+        raise ValueError(f"'gamma' must be a scalar greater than 1, got {gamma!r}")
+
+    return float(gamma), eta, nu
 
 
 def check_mhd_terms(**kwargs):
@@ -704,6 +708,7 @@ def checker(func):
             "layout",
             "interp_order",
             "boundary_types",
+            "boundary_conditions",
             "refined_particle_nbr",
             "path",
             "nesting_buffer",
@@ -773,6 +778,9 @@ def checker(func):
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
+        kwargs["boundary_conditions"] = boundary.resolve_boundary_conditions(
+            ndim, **kwargs
+        )
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
 

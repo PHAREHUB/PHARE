@@ -4,6 +4,7 @@ project(phare_core)
 set( SOURCES_INC
      data/electromag/electromag.hpp
      data/field/field.hpp
+     data/field/field_traits.hpp
      data/grid/gridlayoutdefs.hpp
      data/grid/gridlayout.hpp
      data/grid/gridlayout_impl.hpp
@@ -20,10 +21,24 @@ set( SOURCES_INC
      data/ions/particle_initializers/maxwellian_particle_initializer.hpp
      data/ions/particle_initializers/particle_initializer_factory.hpp
      data/tensorfield/tensorfield.hpp
+     data/tensorfield/tensorfield_traits.hpp
      data/vecfield/vecfield.hpp
      data/vecfield/vecfield_component.hpp
      data/vecfield/vecfield_initializer.hpp
+     data/vecfield/vecfield_traits.hpp
+     boundary/boundary.hpp
+     boundary/boundary_defs.hpp
+     boundary/boundary_factory.hpp
+     boundary/boundary_manager.hpp
      numerics/boundary_condition/boundary_condition.hpp
+     numerics/boundary_condition/field_boundary_condition.hpp
+     numerics/boundary_condition/field_boundary_condition_resolver.hpp
+     numerics/boundary_condition/field_none_boundary_condition.hpp
+     numerics/boundary_condition/field_neumann_boundary_condition.hpp
+     numerics/boundary_condition/field_dirichlet_boundary_condition.hpp
+     numerics/boundary_condition/field_symmetric_boundary_condition.hpp
+     numerics/boundary_condition/field_antisymmetric_boundary_condition.hpp
+     numerics/boundary_condition/field_divergence_free_transverse_neumann_boundary_condition.hpp
      numerics/interpolator/interpolator.hpp
      numerics/pusher/boris.hpp
      numerics/pusher/pusher.hpp

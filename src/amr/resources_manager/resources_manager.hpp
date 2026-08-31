@@ -116,7 +116,7 @@ namespace amr
     class ResourcesManager
     {
         using This         = ResourcesManager<GridLayoutT, Grid_t>;
-        using QuantityType = decltype(GridLayoutT::options.field_options)::Quantity;
+        using QuantityType = GridLayoutT::Quantity;
 
     public:
         static constexpr std::size_t dimension = GridLayoutT::dimension;

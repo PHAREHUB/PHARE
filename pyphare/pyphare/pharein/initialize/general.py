@@ -156,6 +156,16 @@ def populateDict(sim):
             add_double("simulation/grid/meshsize/z", sim.dl[2])
             add_string("simulation/grid/boundary_type/z", sim.boundary_types[2])
 
+    if sim.boundary_conditions is not None:
+        directions = "x", "y", "z"
+        sides = "lower", "upper"
+        for direction in directions[: sim.ndim]:
+            for side in sides:
+                location = f"{direction}{side}"
+                bc = sim.boundary_conditions[location]
+                bc_path = f"simulation/grid/boundary_conditions/{location}"
+                bc.populate_dict(bc_path, sim.ndim)
+
     add_int("simulation/interp_order", sim.interp_order)
     add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
 

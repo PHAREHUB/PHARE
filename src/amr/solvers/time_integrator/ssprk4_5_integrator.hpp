@@ -120,7 +120,6 @@ public:
     {
         Super::allocate(model, patch, allocateTime);
         euler_.allocate(model, patch, allocateTime);
-        // no need to allocate compute_fluxes_, as it shares its resources with euler_
     }
 
     using Super::exposeFluxes;
