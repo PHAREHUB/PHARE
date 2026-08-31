@@ -10,6 +10,7 @@
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
 #include "amr/data/field/refine/adpt_magnetic_refine_patch_strategy.hpp"
+#include "amr/messengers/refinement_config.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "core/utilities/box/box.hpp"
@@ -64,18 +65,42 @@ TYPED_TEST(aFieldRefineOperator, kernelRefineOperatorCanBeCreated)
     using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
     using GridT   = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 
-    auto linearKernel = makeRefineKernel<GridYee, GridT>(2);
+    auto linearKernel = makeRefineKernel<GridYee, GridT>(FieldRefinementOrder::Linear);
     EXPECT_NE(linearKernel, nullptr);
 
     KernelFieldRefineOperator<GridYee, GridT> kernelRefine{std::move(linearKernel)};
 
-    auto magLinearKernel = makeMagneticRefineKernel<GridYee, GridT>(2);
+    auto magLinearKernel = makeMagneticRefineKernel<GridYee, GridT>(FieldRefinementOrder::Linear);
     EXPECT_NE(magLinearKernel, nullptr);
+}
 
-    EXPECT_ANY_THROW((makeRefineKernel<GridYee, GridT>(3)));
-    EXPECT_ANY_THROW((makeRefineKernel<GridYee, GridT>(4)));
-    EXPECT_ANY_THROW((makeMagneticRefineKernel<GridYee, GridT>(0)));
-    EXPECT_ANY_THROW((makeMagneticRefineKernel<GridYee, GridT>(4)));
+
+// An unsupported refinement order can no longer reach the kernel factories: they take a
+// FieldRefinementOrder, whose only enumerator is Linear. So the rejection this used to test at the
+// factory now belongs at the single place a raw value is validated -- RefinementConfig::FROM, which
+// is the only conversion from a dict int into the enum.
+TEST(aRefinementConfig, rejectsUnsupportedOrderFromTheDict)
+{
+    auto configFor = [](int const order) {
+        PHARE::initializer::PHAREDict dict;
+        dict["simulation"]["AMR"]["refinement"]["order"] = order;
+        return RefinementConfig::FROM(dict);
+    };
+
+    EXPECT_EQ(configFor(2).order, FieldRefinementOrder::Linear);
+
+    EXPECT_ANY_THROW(configFor(0));
+    EXPECT_ANY_THROW(configFor(3));
+    EXPECT_ANY_THROW(configFor(4));
+}
+
+
+// An absent refinement node at any level of the path falls back to the default order rather than
+// throwing an invalid-key from the dict.
+TEST(aRefinementConfig, defaultsToLinearWhenTheDictSaysNothing)
+{
+    PHARE::initializer::PHAREDict empty;
+    EXPECT_EQ(RefinementConfig::FROM(empty).order, FieldRefinementOrder::Linear);
 }
 
 

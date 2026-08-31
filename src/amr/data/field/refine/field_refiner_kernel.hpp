@@ -18,6 +18,15 @@ namespace PHARE::amr
 {
 
 /**
+ * @brief Supported field-refinement orders, shared by RefinementConfig and the kernel factories.
+ *
+ * Linear (order 2) is the only supported value for now; validating a raw dict int against this
+ * enum happens in exactly one place (RefinementConfig::FROM), so the factories below no longer
+ * need their own runtime order check.
+ */
+enum class FieldRefinementOrder { Linear = 2 };
+
+/**
  * @brief Runtime-dispatched field-refinement seam.
  *
  * A kernel is constructed once per refine operator and applied per overlap box: refineBox()
@@ -56,23 +65,28 @@ struct IFieldRefineKernel
 /**
  * @brief Build a composite field-refinement kernel for a given order.
  *
- * order: 2 = Linear (per the dual ±1/4 ladder). Definition lives with the concrete
- * composite kernels (Step 3); declared here so the additive operators and the messengers can
- * depend only on the seam.
+ * order: 2 = Linear (per the dual ±1/4 ladder). Definition lives with the concrete composite
+ * kernels (composite_field_refiner.hpp); declared here so the additive operators and the
+ * messengers can depend only on the seam.
  */
 template<typename GridLayoutT, typename FieldT>
-std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int order);
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
+makeRefineKernel(FieldRefinementOrder order);
 
 /**
  * @brief Build the stage-1 magnetic refinement kernel of the ADPT div-free prolongation.
  *
  * Fills ALL fine faces per component (shared and interior) with the composite tensor stencils;
  * the stage-2 partner ADPTMagneticRefinePatchStrategy::postprocessRefine then applies the
- * order-independent divB touch-up. The shared-face tangential correction is antisymmetric in the
- * child sign, so ∇·B is preserved before the touch-up ever runs.
+ * order-independent divB touch-up. Stage 1 by itself makes no ∇·B claim — it only reproduces
+ * each component's coarse values on the fine grid via the tensor stencils above; ∇·B-freeness of
+ * the composite result is established solely by the stage-2 touch-up, which equalizes the 2^d
+ * fine subzone divergences of each coarse zone once stage 1 has filled every face (see
+ * ADPTMagneticRefinePatchStrategy's class docs).
  */
 template<typename GridLayoutT, typename FieldT>
-std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int order);
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
+makeMagneticRefineKernel(FieldRefinementOrder order);
 
 
 } // namespace PHARE::amr

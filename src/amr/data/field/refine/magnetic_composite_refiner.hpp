@@ -8,7 +8,6 @@
 #include "composite_field_refiner.hpp"
 
 #include <memory>
-#include <stdexcept>
 
 
 namespace PHARE::amr
@@ -25,19 +24,21 @@ namespace PHARE::amr
  * Its stage-2 partner is ADPTMagneticRefinePatchStrategy::postprocessRefine: an order-independent
  * divB touch-up that equalizes the 2^d subzone divergences of each coarse zone via a closed-form
  * min-norm correction, making the composite result divB-free exactly regardless of the stage-1
- * order. At order 2 this reproduces the legacy Tóth-Roe operator exactly (derivation §S6b).
+ * order. At order 2 this reproduces the legacy Tóth-Roe operator exactly.
  */
 template<typename GridLayoutT, typename FieldT, std::size_t order>
 using MagneticCompositeRefiner
     = CompositeFieldRefiner<GridLayoutT, FieldT, order, /*isMagnetic=*/true>;
 
 
+// Single-enumerator dispatch, same as makeRefineKernel above: the order is validated once in
+// RefinementConfig::FROM and the enum type carries it from there.
 template<typename GridLayoutT, typename FieldT>
-std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeMagneticRefineKernel(int const order)
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
+makeMagneticRefineKernel([[maybe_unused]] FieldRefinementOrder const order)
 {
-    if (order != 2)
-        throw std::runtime_error("makeMagneticRefineKernel: order must be 2 (Linear)");
-    return std::make_unique<MagneticCompositeRefiner<GridLayoutT, FieldT, 2>>();
+    return std::make_unique<MagneticCompositeRefiner<
+        GridLayoutT, FieldT, static_cast<std::size_t>(FieldRefinementOrder::Linear)>>();
 }
 
 

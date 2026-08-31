@@ -16,6 +16,7 @@
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -35,10 +36,11 @@ namespace PHARE::amr
  *   - primal, p=1 : half-point midpoint (Primitive A.2)     → directionalInterp<dir,PrimalToDual>
  *   - dual,   p   : ±¼ child ladder (Primitive B)           → directionalProlongation<dir, σ=2p−1>
  * (both at <order>). The multi-D stencil is the outer product of the rows (consteval
- * tensorProduct). Each 1-D row is padded to length 3 with zero-coef points so all stencils share
- * one type; the full set of centering×parity combinations (4^dim of them) is a compile-time
- * table, indexed at runtime per fine index by centering+parity. Offsets are relative to the anchor
- * I; values are gathered from the coarse field.
+ * tensorProduct), which sizes each multi-D stencil exactly from its rows' own lengths (copy=1,
+ * half-point=2, dual-σ±=3) — no padding to a common length; the full set of centering×parity
+ * combinations (4^dim of them) is a compile-time table, indexed at runtime per fine index by
+ * centering+parity. Offsets are relative to the anchor I; values are gathered from the coarse
+ * field.
  */
 template<typename GridLayoutT, typename FieldT, std::size_t order, bool isMagnetic = false>
 class CompositeFieldRefiner : public IFieldRefineKernel<GridLayoutT, FieldT>
@@ -74,10 +76,9 @@ public:
         [[maybe_unused]] bool hasNormal = false;
         if constexpr (isMagnetic)
         {
-            int primalCount = 0;
-            for (std::size_t d = 0; d < dimension; ++d)
-                if (centering[d] == core::QtyCentering::primal)
-                    ++primalCount;
+            auto const primalCount
+                = std::count_if(centering.begin(), centering.end(),
+                                [](auto const c) { return c == core::QtyCentering::primal; });
             if (primalCount > 1)
                 throw std::runtime_error(
                     "magnetic refiner expects at most one primal (normal) direction");
@@ -87,8 +88,8 @@ public:
         // The stage-2 touch-up that owns the interior faces reads the shared faces of the whole
         // coarse cell, so the shared faces of every coarse cell the region touches must exist —
         // the same whole-coarse-cell invariant the touch-up rounds its own region out to (see
-        // coarse_cell_round_out.hpp and MagneticPatchStrategyBase::reconstructionRegion). Round
-        // out here too, then re-clip: the box arrives already clipped to the destination, so
+        // coarse_cell_round_out.hpp and ADPTMagneticRefinePatchStrategy::reconstructionRegion).
+        // Round out here too, then re-clip: the box arrives already clipped to the destination, so
         // rounding can push it past the allocation. This cannot corrupt anything — assignFine_
         // writes only slots that are still NaN, so the extra layer of shared faces fills holes and
         // never overwrites valid data. It also needs no extra coarse data: for both centerings the
@@ -194,12 +195,16 @@ private:
 
 // ---- factory (declared in field_refiner_kernel.hpp) ---------------------------------------------
 
+// FieldRefinementOrder has a single enumerator today and RefinementConfig::FROM is the only place
+// a dict value is validated into it, so there is nothing left to branch on here: the enum type
+// itself carries the guarantee the old runtime throw used to check. When Cubic (order 4) lands
+// this becomes a switch over the enum, one case per compile-time stencil.
 template<typename GridLayoutT, typename FieldT>
-std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>> makeRefineKernel(int const order)
+std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
+makeRefineKernel([[maybe_unused]] FieldRefinementOrder const order)
 {
-    if (order != 2)
-        throw std::runtime_error("makeRefineKernel: order must be 2 (Linear)");
-    return std::make_unique<CompositeFieldRefiner<GridLayoutT, FieldT, 2>>();
+    return std::make_unique<CompositeFieldRefiner<
+        GridLayoutT, FieldT, static_cast<std::size_t>(FieldRefinementOrder::Linear)>>();
 }
 
 
