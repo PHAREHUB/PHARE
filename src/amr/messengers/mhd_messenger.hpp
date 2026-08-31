@@ -577,8 +577,7 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<
-                    ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+                std::vector<std::shared_ptr<ADPTMagneticRefinePatchStrategy<VectorFieldDataT>>>
                     result;
 
                 result.reserve(info->ghostMagnetic.size());
@@ -587,9 +586,8 @@ namespace amr
                 {
                     auto&& [id] = resourcesManager_->getIDsList(key);
 
-                    auto patch_strat = std::make_shared<
-                        ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>(
-                        *resourcesManager_);
+                    auto patch_strat
+                        = std::make_shared<ADPTMagneticRefinePatchStrategy<VectorFieldDataT>>();
 
                     patch_strat->registerIDs(id);
 
@@ -826,11 +824,9 @@ namespace amr
         CoarsenOp_ptr mhdVecFluxCoarseningOp_{std::make_shared<MHDVecFluxCoarsenOp>()};
         CoarsenOp_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
-        ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>
-            magneticRefinePatchStrategy_{*resourcesManager_};
+        ADPTMagneticRefinePatchStrategy<VectorFieldDataT> magneticRefinePatchStrategy_{};
 
-        std::vector<
-            std::shared_ptr<ADPTMagneticRefinePatchStrategy<ResourcesManagerT, VectorFieldDataT>>>
+        std::vector<std::shared_ptr<ADPTMagneticRefinePatchStrategy<VectorFieldDataT>>>
             magneticPatchStratPerGhostRefiner_;
     };
 

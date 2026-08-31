@@ -393,7 +393,7 @@ double fineByAt(int i, int j)
 constexpr int fieldGhosts = static_cast<int>(GridYee2D::options.field_ghost_width);
 
 using VecFieldData2D = PHARE::amr::TensorFieldData<1, GridYee2D, Grid2D, HybridQuantity>;
-using MagStrategy2D  = ADPTMagneticRefinePatchStrategy<int, VecFieldData2D>;
+using MagStrategy2D  = ADPTMagneticRefinePatchStrategy<VecFieldData2D>;
 using FieldGeom2D    = FieldGeometry<GridYee2D, HybridQuantity::Scalar>;
 
 GridYee2D layoutOf(SAMRAI::hier::Box const& cellBox, double dl)
@@ -572,11 +572,7 @@ struct DummyTensorFieldData2D
     static constexpr std::size_t dimension = 2;
 };
 
-struct DummyResMan2D
-{
-};
-
-using ADPT2D = ADPTMagneticRefinePatchStrategy<DummyResMan2D, DummyTensorFieldData2D>;
+using ADPT2D = ADPTMagneticRefinePatchStrategy<DummyTensorFieldData2D>;
 
 // A GridLayout whose AMRToLocal is the identity (AMR index == array-local index): avoids
 // depending on GridLayoutImplYee's internal ghost-width value, matching the "lower=0 =>

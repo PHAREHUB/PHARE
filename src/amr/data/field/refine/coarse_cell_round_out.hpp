@@ -19,9 +19,9 @@ namespace PHARE::amr
  * Magnetic prolongation (ratio 2) is split in two. Faces with an even index in their component's
  * normal direction coincide with a coarse face and are gathered from the coarse level; the
  * odd-normal (interior) faces are then reconstructed div-free by a magnetic patch strategy's
- * postprocessRefine (see MagneticPatchStrategyBase::reconstructionRegion). That reconstruction
- * reaches exactly one coarse cell: for an interior face of coarse cell C it reads only faces
- * bounding C, and every one of them is a shared face the gather just filled.
+ * postprocessRefine (see ADPTMagneticRefinePatchStrategy::reconstructionRegion). That
+ * reconstruction reaches exactly one coarse cell: for an interior face of coarse cell C it reads
+ * only faces bounding C, and every one of them is a shared face the gather just filled.
  *
  * Hence the invariant: **the region a magnetic prolongation runs over must be a union of whole
  * coarse cells**. Then every postprocess input is in the region and was written. SAMRAI's fill
@@ -96,7 +96,8 @@ roundFieldBoxOutToCoarseCells(SAMRAI::hier::Box box,
  *
  * Checking a region once is equivalent to checking every index in it: if the region is a union of
  * whole coarse cells then the coarse cell of every fine face it contains is inside it too, which is
- * exactly what each Tóth-Roe reconstruction needs.
+ * exactly what the ADPT touch-up's interior-face reconstruction needs (see
+ * ADPTMagneticRefinePatchStrategy::touchUpInteriorFaces).
  */
 template<std::size_t dim>
 NO_DISCARD bool isWholeCoarseCells(SAMRAI::hier::Box const& box)
