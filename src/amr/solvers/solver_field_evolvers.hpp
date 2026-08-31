@@ -5,6 +5,7 @@
 #include "core/numerics/faraday/faraday.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/physical_models/hybrid_model.hpp"
 
 
 namespace PHARE::solver
@@ -86,8 +87,6 @@ AmpereLevelTransformer(typename Model::amr_types::level_t&, Model&)
 
 
 
-
-
 template<typename level_t, typename Model>
 struct TimeSetter
 {
@@ -114,9 +113,8 @@ struct FieldEvolverDispatchers
     // hybrid: J is never communicated — Ampere computes it on physical+1,
     // exactly the layer Ohm reads. MHD keeps ghostbox-1 (its working state).
     static constexpr core::AmpereBox ampere_box
-        = Model::model_type_name == "HybridModel"
-              ? core::AmpereBox{core::AmpereMode::GrownPhysical, 1}
-              : core::AmpereBox{};
+        = is_hybrid_model_v<Model> ? core::AmpereBox{core::AmpereMode::GrownPhysical, 1}
+                                   : core::AmpereBox{};
 
     using Faraday_t = FaradayLevelTransformer<Model>;
     using Ampere_t  = AmpereLevelTransformer<Model, ampere_box>;

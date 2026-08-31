@@ -71,6 +71,7 @@ public:
 
         this->accumulateButcherFluxes_(model, state2.E, fluxes, level, w11_);
 
+        // Un+1 = 1/3*Un + 2/3*Euler(U2)
         euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
                                     level, newTime, newTime - currentTime);
     }

@@ -108,9 +108,6 @@ namespace amr
 
             magneticRefinePatchStrategy_.registerIDs(*b_id);
 
-            BalgoPatchGhost.registerRefine(*b_id, *b_id, *b_id, BfieldRefineOp_,
-                                           nonOverwriteInteriorTFfillPattern);
-
             BalgoInit.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
                                      overwriteInteriorTFfillPattern);
 
@@ -501,8 +498,7 @@ namespace amr
 
     private:
         // Select the field-refinement operators once at construction. The composite runtime
-        // kernels are built from the configured order; B uses the stage-1 magnetic kernel (fills
-        // every fine face; the ADPT patch strategy runs the stage-2 divB touch-up afterward).
+        // kernels are built from the configured order.
         void makeRefineOperators_(RefinementConfig const& config)
         {
             auto fieldKernel = [&] {
@@ -523,7 +519,6 @@ namespace amr
             mhdFieldRefineOp_    = fieldKernel();
             mhdVecFieldRefineOp_ = vecKernel();
             EfieldRefineOp_      = vecKernel();
-            BfieldRefineOp_      = magKernel();
             BfieldRegridOp_      = magKernel();
         }
 
@@ -801,7 +796,6 @@ namespace amr
         RefOp_ptr mhdFieldRefineOp_;
         RefOp_ptr mhdVecFieldRefineOp_;
         RefOp_ptr EfieldRefineOp_;
-        RefOp_ptr BfieldRefineOp_;
         RefOp_ptr BfieldRegridOp_;
 
         TimeOp_ptr fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
