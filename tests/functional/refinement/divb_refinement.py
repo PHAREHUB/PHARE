@@ -57,16 +57,42 @@ NSTEPS = {"boxes": 2, "tagging": 20}  # tagging needs steps for regrids to fire
 # in y sit in the flat field a few cells off the sheet, the sheet itself is fully refined.
 FINE_BOX = [[4, 16], [15, 31]]
 
-# A divB spike from a misclassified/overwritten shared face is O(B/dx) ~ 0.1. The refinement
-# is divB-preserving iff the fine level does not AMPLIFY divB beyond the floor it inherits.
-# With the Harris Bx(y) init divB is machine-zero analytically (Bx const in x, By identically
-# 0); the evolved+reconstructed coarse floor is ~2e-7 for both modes, and the fine level sits
-# at ~2x that (a refinement-boundary truncation factor), NOT at the O(B/dx)~0.1 a misclassified
-# shared face would give. The contract: fine <= REL_TOL * max(coarse-floor, ABS_TOL), i.e. the
-# fine level only inherits the floor. ABS_TOL keeps a non-amplifying operator from tripping on
-# the small coarse-floor noise.
-ABS_TOL = 1e-4  # floor below which divB is "already zero" (truncation, not a bug)
-REL_TOL = 5.0   # fine must not exceed REL_TOL x (inherited coarse floor)
+# A divB spike from a misclassified/overwritten shared face is O(B/dx) ~ 1e-1. With the Harris
+# Bx(y) init divB is machine-zero analytically (Bx const in x, By identically 0), so after
+# NSTEPS the floor is pure roundoff and the fine level must both stay absolutely tiny AND not
+# amplify what it inherits. Both arms below must hold -- there is deliberately no max(abs, rel)
+# escape hatch, which is what made an earlier version of this gate unfalsifiable.
+#
+# The constants come from MEASURED floors (2026-08-31, 4 ranks, both modes), not from taste:
+#   float64 diagnostics: coarse 6.2e-16 .. 2.9e-15, fine 3.0e-15 .. 1.4e-14, ratio 4.06 .. 5.33
+#   float32 diagnostics: coarse 2.2e-07,             fine 4.2e-07 .. 4.5e-07, ratio 1.89 .. 2.04
+# Two things that only measurement shows. First, the ratio is NOT precision-independent: float32
+# sits near 2 but float64 near 5, because in double precision the coarse floor is pure roundoff
+# and the fine level carries a few more operations' worth of it. Second, that double-precision
+# ratio WANDERS run to run (4.06 .. 5.33 observed over four runs, varying with rank
+# decomposition) precisely because it is roundoff, so the relative arm needs real headroom or it
+# becomes a flaky test -- a REL_TOL of 5 would have failed a passing run.
+# ABS_CAP is the arm with teeth: ~70x above the worst measured double-precision fine value and
+# ~11 orders below the O(B/dx) spike a misclassified shared face produces. REL_TOL still adds
+# discrimination the cap cannot give (a 100x amplification of a 1e-15 floor is still under ABS_CAP).
+ABS_CAP = 1e-12  # fine-level max|divB| must be this small in absolute terms ...
+REL_TOL = 20.0  # ... AND must not amplify the inherited coarse floor by more than this
+
+
+def require_double_diagnostics(b_dtype):
+    """Fail loudly unless diagnostics were dumped in double precision.
+
+    PHARE writes float32 diagnostics unless built with -DPHARE_DIAG_DOUBLES=1, and at float32 the
+    write precision ALONE puts max|divB| at ~2e-7 -- five orders above ABS_CAP -- so the absolute
+    arm of the gate would be measuring the dump format instead of the refinement operator. CI
+    always builds with diagnostic doubles (see .github/workflows/cmake_ubuntu.yml), so a float32
+    run is a local-build mistake: say so instead of silently relaxing the threshold.
+    """
+    if np.dtype(b_dtype) != np.float64:
+        raise RuntimeError(
+            f"divb_refinement needs double-precision diagnostics (B was dumped as {b_dtype}). "
+            "Rebuild with -DPHARE_DIAG_DOUBLES=1 -- build.sh takes 'pharediagdouble' as arg 5."
+        )
 
 
 # Shared Harris double-sheet init (both modes). Bx is a function of y ONLY (double tanh,
@@ -168,7 +194,9 @@ def max_divb_per_level(diag_dir, check_time):
     run = Run(diag_dir)
     B = run.GetB(check_time, all_primal=False)
     blvls = B.levels(check_time)
-    ng = int(blvls[min(blvls)].patches[0].patch_datas["Bx"].ghosts_nbr[0])
+    bx = blvls[min(blvls)].patches[0].patch_datas["Bx"]
+    ng = int(bx.ghosts_nbr[0])
+    b_dtype = bx.dataset[:].dtype
     divb = run.GetDivB(check_time)
     lvls = divb.levels(check_time)
     out = {}
@@ -181,7 +209,7 @@ def max_divb_per_level(diag_dir, check_time):
             if arr.size:
                 m = max(m, float(np.nanmax(arr)))
         out[lvl] = m
-    return out
+    return out, b_dtype
 
 
 def run_variant(mode, order):
@@ -197,7 +225,8 @@ def run_variant(mode, order):
     if dry_run:  # setup only: nothing advanced, no diagnostics to read back
         return None, True
     if cpp.mpi_rank() == 0:
-        per = max_divb_per_level(diag_dir, check_time)
+        per, b_dtype = max_divb_per_level(diag_dir, check_time)
+        require_double_diagnostics(b_dtype)
         finest = max(per.keys())
         coarse = per[min(per.keys())]
         print(
@@ -223,14 +252,15 @@ def summarize(mode, orders, res):
             print(f"  {label}: NO FINE LEVEL FORMED  [FAIL]", flush=True)
             continue
         coarse = per[min(per.keys())]
-        ceiling = REL_TOL * max(coarse, ABS_TOL)  # not amplified beyond the inherited floor
-        floor_ok = m <= ceiling
-        status = "OK" if floor_ok else "FAIL"
-        if not floor_ok:
+        abs_ok = m <= ABS_CAP  # absolutely div-free, not merely unamplified
+        rel_ok = m <= REL_TOL * coarse  # and no amplification of the inherited floor
+        if not (abs_ok and rel_ok):
             ok = False
+        failed = "" if abs_ok and rel_ok else f" (abs={abs_ok} rel={rel_ok})"
         print(
             f"  {label}: fine={m:.3e}  coarse={coarse:.3e}  "
-            f"fine/coarse={m / coarse if coarse else float('inf'):.2f}  [{status}]",
+            f"fine/coarse={m / coarse if coarse else float('inf'):.2f}  "
+            f"cap={ABS_CAP:.0e}  [{'OK' if abs_ok and rel_ok else 'FAIL'}{failed}]",
             flush=True,
         )
     print(f"DIVB_{mode.upper()}_OK" if ok else f"DIVB_{mode.upper()}_FAIL", flush=True)
