@@ -2,7 +2,7 @@
 #define PHARE_MAGNETIC_COMPOSITE_REFINER_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "field_refiner_kernel.hpp"
 #include "composite_field_refiner.hpp"

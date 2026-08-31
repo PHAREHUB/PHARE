@@ -2,7 +2,7 @@
 #define PHARE_AMR_COARSE_CELL_ROUND_OUT_HPP
 
 #include "core/def.hpp"
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 

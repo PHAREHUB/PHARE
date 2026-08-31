@@ -2,7 +2,7 @@
 #define PHARE_FIELD_REFINER_KERNEL_HPP
 
 
-#include "core/def/phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 
