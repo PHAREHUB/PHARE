@@ -25,9 +25,10 @@ public:
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
-    using Attributes = Super::Attributes;
-    using GridLayout = H5Writer::GridLayout;
-    using FloatType  = H5Writer::FloatType;
+    using Attributes       = Super::Attributes;
+    using ModelViewVariant = Super::ModelViewVariant;
+    using FloatType        = H5Writer::FloatType;
+    static constexpr auto dimension = H5Writer::dimension;
 
     ElectromagDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}
@@ -40,7 +41,8 @@ public:
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                        std::string const& patchID, Attributes& patchAttributes) override;
+                        std::string const& patchID, Attributes& patchAttributes,
+                        ModelViewVariant& modelView) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
@@ -72,36 +74,43 @@ template<typename H5Writer>
 void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                           std::size_t iLevel,
                                                           std::string const& patchID,
-                                                          Attributes& patchAttributes)
+                                                          Attributes& patchAttributes,
+                                                          ModelViewVariant& modelViewVariant)
 {
-    auto& h5Writer         = this->h5Writer_;
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
-    auto const infoVF = [&](auto& vecF, std::string name, auto& attr) {
-        for (auto& [id, type] : core::Components::componentMap())
-        {
-            // highfive doesn't accept uint32 which ndarray.shape() is
-            auto const& array_shape = vecF.getComponent(type).shape();
-            attr[name][id]          = std::vector<std::size_t>(array_shape.data(),
-                                                               array_shape.data() + array_shape.size());
-            auto ghosts = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
-            for (std::uint8_t i = 1; i < GridLayout::dimension; ++i)
-                if (ghosts[i] != ghosts[i - 1])
-                    throw std::runtime_error("ghosts per direction must be constant");
-            attr[name][id + "_ghosts"] = static_cast<std::size_t>(ghosts[0]);
-        }
-    };
+    std::visit(
+        [&](auto& modelView) {
+            using GridLayout = typename std::decay_t<decltype(modelView)>::GridLayout;
 
-    if (isActiveDiag(diagnostic, "/", "EM_B"))
-    {
-        auto& B = h5Writer.modelView().getB();
-        infoVF(B, "EM_B", patchAttributes[lvlPatchID]);
-    }
-    if (isActiveDiag(diagnostic, "/", "EM_E"))
-    {
-        auto& E = h5Writer.modelView().getE();
-        infoVF(E, "EM_E", patchAttributes[lvlPatchID]);
-    }
+            auto const infoVF = [&](auto& vecF, std::string name, auto& attr) {
+                for (auto& [id, type] : core::Components::componentMap())
+                {
+                    // highfive doesn't accept uint32 which ndarray.shape() is
+                    auto const& array_shape = vecF.getComponent(type).shape();
+                    attr[name][id] = std::vector<std::size_t>(
+                        array_shape.data(), array_shape.data() + array_shape.size());
+                    auto ghosts
+                        = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
+                    for (std::uint8_t i = 1; i < GridLayout::dimension; ++i)
+                        if (ghosts[i] != ghosts[i - 1])
+                            throw std::runtime_error("ghosts per direction must be constant");
+                    attr[name][id + "_ghosts"] = static_cast<std::size_t>(ghosts[0]);
+                }
+            };
+
+            if (isActiveDiag(diagnostic, "/", "EM_B"))
+            {
+                auto& B = modelView.getB();
+                infoVF(B, "EM_B", patchAttributes[lvlPatchID]);
+            }
+            if (isActiveDiag(diagnostic, "/", "EM_E"))
+            {
+                auto& E = modelView.getE();
+                infoVF(E, "EM_E", patchAttributes[lvlPatchID]);
+            }
+        },
+        modelViewVariant);
 }
 
 
@@ -120,7 +129,7 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
             auto vFPath = path + "/" + key + "_" + id;
             h5Writer.template createDataSet<FloatType>(
                 h5file, vFPath,
-                null ? std::vector<std::size_t>(GridLayout::dimension, 0)
+                null ? std::vector<std::size_t>(dimension, 0)
                      : attr[key][id].template to<std::vector<std::size_t>>());
 
             this->writeGhostsAttr_(h5file, vFPath,
@@ -154,16 +163,20 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
     std::string tree = "/";
     std::string path = h5Writer.patchPath() + "/";
 
-    if (isActiveDiag(diagnostic, tree, "EM_B"))
-    {
-        auto& B = h5Writer.modelView().getB();
-        h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B", B);
-    }
-    if (isActiveDiag(diagnostic, tree, "EM_E"))
-    {
-        auto& E = h5Writer.modelView().getE();
-        h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_E", E);
-    }
+    std::visit(
+        [&](auto& modelView) {
+            if (isActiveDiag(diagnostic, tree, "EM_B"))
+            {
+                auto& B = modelView.getB();
+                h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B", B);
+            }
+            if (isActiveDiag(diagnostic, tree, "EM_E"))
+            {
+                auto& E = modelView.getE();
+                h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_E", E);
+            }
+        },
+        h5Writer.currentModelView());
 }
 
 

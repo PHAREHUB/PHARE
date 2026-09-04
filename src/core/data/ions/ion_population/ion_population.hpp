@@ -30,7 +30,6 @@ namespace core
             : name_{initializer["name"].template to<std::string>()}
             , mass_{initializer["mass"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
-            , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
             , particleDensity_{name_ + "_particleDensity", HybridQuantity::Scalar::rho}
             , chargeDensity_{name_ + "_chargeDensity", HybridQuantity::Scalar::rho}
             , particles_{name_}
@@ -54,14 +53,12 @@ namespace core
 
         NO_DISCARD bool isUsable() const
         {
-            return core::isUsable(particles_, particleDensity_, chargeDensity_, flux_,
-                                  momentumTensor_);
+            return core::isUsable(particles_, particleDensity_, chargeDensity_, flux_);
         }
 
         NO_DISCARD bool isSettable() const
         {
-            return core::isSettable(particles_, particleDensity_, chargeDensity_, flux_,
-                                    momentumTensor_);
+            return core::isSettable(particles_, particleDensity_, chargeDensity_, flux_);
         }
 
         NO_DISCARD auto& domainParticles() const { return particles_.domainParticles(); }
@@ -94,9 +91,6 @@ namespace core
         NO_DISCARD VecField const& flux() const { return flux_; }
         NO_DISCARD VecField& flux() { return flux_; }
 
-        NO_DISCARD TensorField const& momentumTensor() const { return momentumTensor_; }
-        NO_DISCARD TensorField& momentumTensor() { return momentumTensor_; }
-
 
 
         //-------------------------------------------------------------------------
@@ -108,8 +102,7 @@ namespace core
 
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            return std::forward_as_tuple(flux_, momentumTensor_, particleDensity_, chargeDensity_,
-                                         particles_);
+            return std::forward_as_tuple(flux_, particleDensity_, chargeDensity_, particles_);
         }
 
 
@@ -132,7 +125,6 @@ namespace core
         std::string name_;
         double mass_;
         VecField flux_;
-        TensorField momentumTensor_;
         field_type particleDensity_;
         field_type chargeDensity_;
         ParticlesPack<ParticleArray> particles_;

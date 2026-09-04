@@ -5,14 +5,20 @@
 #include "core/utilities/types.hpp"
 
 #include <string>
-#include <type_traits>
 #include <vector>
 #include <cstddef>
+#include <type_traits>
 
 #include "dict.hpp"
 
 namespace PHARE::diagnostic
 {
+
+using PatchProperties
+    = cppdict::Dict<float, double, std::size_t, std::vector<int>, std::vector<std::uint32_t>,
+                    std::vector<double>, std::vector<std::size_t>, std::string,
+                    std::vector<std::string>>;
+
 struct DiagnosticProperties
 {
     // Types limited to actual need, no harm to modify

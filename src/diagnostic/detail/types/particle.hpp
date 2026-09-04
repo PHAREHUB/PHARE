@@ -3,15 +3,13 @@
 
 #include "diagnostic/detail/h5typewriter.hpp"
 
-#include "core/data/particles/particle_packer.hpp"
 #include "core/data/grid/gridlayout.hpp"
-
+#include "core/data/particles/particle_packer.hpp"
 
 #include "hdf5/writer/particle_writer.hpp"
 
-#include <unordered_map>
 #include <string>
-#include <memory>
+#include <unordered_map>
 
 namespace PHARE::diagnostic::h5
 {
@@ -35,10 +33,12 @@ public:
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
-    using GridLayout                  = H5Writer::GridLayout;
+    using HybridModel_t                = typename H5Writer::ModelMapper_t::HasModels_t::HybridModel_t;
+    using GridLayout                  = typename HybridModel_t::gridlayout_type;
     static constexpr auto dimension   = H5Writer::dimension;
     static constexpr auto interpOrder = GridLayout::options.interp_order;
     using Attributes                  = typename Super::Attributes;
+    using ModelViewVariant            = typename Super::ModelViewVariant;
     using Packer                      = core::ParticlePacker<dimension>;
     using FloatType                   = typename H5Writer::FloatType;
 
@@ -52,7 +52,8 @@ public:
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                        std::string const& patchID, Attributes& patchAttributes) override;
+                        std::string const& patchID, Attributes& patchAttributes,
+                        ModelViewVariant& modelView) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
@@ -68,7 +69,7 @@ public:
 template<typename H5Writer>
 void ParticlesDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
-    for (auto const& pop : this->h5Writer_.modelView().getIons())
+    for (auto const& pop : this->h5Writer_.mapper().hyridModelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         checkCreateFileFor_(diagnostic, fileData_, tree, "domain", "levelGhost");
@@ -79,7 +80,8 @@ template<typename H5Writer>
 void ParticlesDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                          std::size_t iLevel,
                                                          std::string const& patchID,
-                                                         Attributes& patchAttributes)
+                                                         Attributes& patchAttributes,
+                                                         ModelViewVariant& /*modelView*/)
 {
     auto checkInfo = [&](auto& tree, auto pType, auto& attr, auto& ps) {
         std::string active{tree + pType};
@@ -96,7 +98,7 @@ void ParticlesDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& d
 
     auto& h5Writer         = this->h5Writer_;
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
-    for (auto& pop : h5Writer.modelView().getIons())
+    for (auto& pop : h5Writer.mapper().hyridModelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         auto& popAttr = patchAttributes[lvlPatchID][pop.name()];
@@ -149,7 +151,7 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
     };
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
-        for (auto& pop : h5Writer.modelView().getIons())
+        for (auto& pop : h5Writer.mapper().hyridModelView().getIons())
         {
             std::string tree{"/ions/pop/" + pop.name() + "/"};
             initIfActive(lvl, tree, attr, pop.name(), patchID, "domain");
@@ -173,7 +175,7 @@ void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic
                                         h5Writer.patchPath() + "/");
     };
 
-    for (auto& pop : h5Writer.modelView().getIons())
+    for (auto& pop : h5Writer.mapper().hyridModelView().getIons())
     {
         std::string tree{"/ions/pop/" + pop.name() + "/"};
         checkWrite(tree, "domain", pop.domainParticles());
@@ -197,7 +199,7 @@ void ParticlesDiagnosticWriter<H5Writer>::writeAttributes(
             this->writeIonPopAttributes_(h5file, pop);
     };
 
-    for (auto& pop : h5Writer.modelView().getIons())
+    for (auto& pop : h5Writer.mapper().hyridModelView().getIons())
     {
         std::string tree = "/ions/pop/" + pop.name() + "/";
         checkWrite(tree, "domain", pop);

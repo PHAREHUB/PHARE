@@ -5,6 +5,7 @@
 #include <functional>
 #include <iterator>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <cmath>
 #include <vector>
@@ -15,7 +16,6 @@
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "initializer/data_provider.hpp"
-#include "particle_initializers/particle_initializer_factory.hpp"
 #include "core/utilities/algorithm.hpp"
 
 namespace PHARE
@@ -49,7 +49,6 @@ namespace core
                       return IonPopulation{dict["pop" + std::to_string(ipop)]};
                   },
                   dict["nbrPopulations"].template to<std::size_t>())}
-            , momentumTensor_{"momentumTensor", HybridQuantity::Tensor::M}
         {
         }
 
@@ -68,9 +67,6 @@ namespace core
 
         NO_DISCARD std::string static chargeDensityName() { return "chargeDensity"; }
         NO_DISCARD std::string static massDensityName() { return "massDensity"; }
-
-        tensorfield_type const& momentumTensor() const { return momentumTensor_; }
-        tensorfield_type& momentumTensor() { return momentumTensor_; }
 
         void computeChargeDensity()
         {
@@ -144,23 +140,6 @@ namespace core
         }
 
 
-        void computeFullMomentumTensor()
-        {
-            momentumTensor_.zero();
-            auto& mom = momentumTensor_;
-
-            for (auto& pop : populations_)
-            {
-                auto& p_mom = pop.momentumTensor();
-                for (auto p_mij = p_mom.begin(), mij = mom.begin(); p_mij != p_mom.end();
-                     ++p_mij, ++mij)
-                {
-                    std::transform(std::begin(*mij), std::end(*mij), std::begin(*p_mij),
-                                   std::begin(*mij), std::plus<typename field_type::type>{});
-                }
-            }
-        }
-
 
         NO_DISCARD auto begin() { return std::begin(populations_); }
         NO_DISCARD auto end() { return std::end(populations_); }
@@ -185,13 +164,9 @@ namespace core
         // because it is for internal use only so no object will ever need to access it.
         NO_DISCARD bool isUsable() const
         {
-            bool usable = chargeDensity_.isUsable() and bulkVelocity_.isUsable()
-                          and momentumTensor_.isUsable() and massDensity_.isUsable();
-
+            bool usable = core::isUsable(chargeDensity_, bulkVelocity_, massDensity_);
             for (auto const& pop : populations_)
-            {
                 usable = usable and pop.isUsable();
-            }
             return usable;
         }
 
@@ -199,13 +174,9 @@ namespace core
 
         NO_DISCARD bool isSettable() const
         {
-            bool settable = massDensity_.isSettable() and chargeDensity_.isSettable()
-                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
-
+            bool settable = core::isSettable(massDensity_, chargeDensity_, bulkVelocity_);
             for (auto const& pop : populations_)
-            {
                 settable = settable and pop.isSettable();
-            }
             return settable;
         }
 
@@ -224,8 +195,7 @@ namespace core
 
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
-            return std::forward_as_tuple(bulkVelocity_, momentumTensor_, chargeDensity_,
-                                         massDensity_);
+            return std::forward_as_tuple(bulkVelocity_, chargeDensity_, massDensity_);
         }
 
 
@@ -246,6 +216,14 @@ namespace core
             return ss.str();
         }
 
+        std::size_t pop_index(std::string const& name) const
+        {
+            for (std::size_t i = 0; i < size(); ++i)
+                if (name == populations_[i].name())
+                    return i;
+            throw std::runtime_error("No known population " + name);
+        }
+
 
         auto& operator[](std::size_t const i) const { return populations_[i]; }
         auto& operator[](std::size_t const i) { return populations_[i]; }
@@ -255,7 +233,6 @@ namespace core
         field_type chargeDensity_;
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_;
-        tensorfield_type momentumTensor_;
     };
 
 } // namespace core
