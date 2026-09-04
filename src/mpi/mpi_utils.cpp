@@ -1,6 +1,6 @@
 //
 
-#include "core/errors.hpp"
+#include "core/errors.hpp" // IWYU pragma: keep
 
 #include "mpi_utils.hpp"
 

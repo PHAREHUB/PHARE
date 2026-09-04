@@ -1,7 +1,6 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_TYPES_MHD_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_TYPES_MHD_HPP
 
-#include "core/numerics/primite_conservative_converter/to_primitive_converter.hpp"
 #include "diagnostic/detail/h5typewriter.hpp"
 
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -26,9 +25,11 @@ public:
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
-    using Attributes = typename Super::Attributes;
-    using GridLayout = typename H5Writer::GridLayout;
-    using FloatType  = typename H5Writer::FloatType;
+    using Attributes       = typename Super::Attributes;
+    using ModelViewVariant = typename Super::ModelViewVariant;
+    using MHDModel_t       = typename H5Writer::ModelMapper_t::HasModels_t::MHDModel_t;
+    using GridLayout       = typename MHDModel_t::gridlayout_type;
+    using FloatType        = typename H5Writer::FloatType;
 
     static constexpr auto dimension = GridLayout::dimension;
 
@@ -42,7 +43,8 @@ public:
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                        std::string const& patchID, Attributes& patchAttributes) override;
+                        std::string const& patchID, Attributes& patchAttributes,
+                        ModelViewVariant& modelView) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
@@ -71,51 +73,33 @@ void MHDDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic
 template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
 {
+    using ModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().mhdModelView())>;
+    using Computers   = typename ModelView_t::MHDComputers;
+
     auto& h5Writer  = this->h5Writer_;
-    auto& modelView = h5Writer.modelView();
-    auto minLvl     = h5Writer.minLevel;
-    auto maxLvl     = h5Writer.maxLevel;
+    auto& modelView = h5Writer.mapper().mhdModelView();
+    auto& computers = Computers::getOrCreateFor(modelView);
+    // or FloatType if we want to expose that to DiagnosticProperties
+    double const gamma = diagnostic.fileAttributes["heat_capacity_ratio"];
 
-    auto& rho  = modelView.getRho();
-    auto& V    = modelView.getV();
-    auto& B    = modelView.getB();
-    auto& P    = modelView.getP();
-    auto& rhoV = modelView.getRhoV();
-    auto& Etot = modelView.getEtot();
-
-    std::string tree{"/mhd/"};
-    if (isActiveDiag(diagnostic, tree, "V"))
-    {
-        auto computeVelocity = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
-            core::ToPrimitiveConverter<GridLayout> toPrim{layout};
-            toPrim.rhoVToVOnGhostBox(rho, rhoV, V);
-        };
-        modelView.visitHierarchy(computeVelocity, minLvl, maxLvl);
-    }
-    if (isActiveDiag(diagnostic, tree, "P"))
-    {
-        auto computePressure = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
-            auto const gamma = diagnostic.fileAttributes["heat_capacity_ratio"]
-                                   .template to<double>(); // or FloatType if we want to expose that
-                                                           // to DiagnosticProperties
-            core::ToPrimitiveConverter<GridLayout> toPrim{layout};
-            toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
-        };
-        modelView.visitHierarchy(computePressure, minLvl, maxLvl);
-    }
+    computers.compute(diagnostic.quantity, modelView, gamma, h5Writer.minLevel, h5Writer.maxLevel,
+                      h5Writer.timestamp());
 }
 
 template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                    std::size_t iLevel, std::string const& patchID,
-                                                   Attributes& patchAttributes)
+                                                   Attributes& patchAttributes,
+                                                   ModelViewVariant& /*modelView*/)
 {
+    using ModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().mhdModelView())>;
+    using Accessors   = typename ModelView_t::MHDAccessors;
+
     auto& h5Writer         = this->h5Writer_;
-    auto& rho              = h5Writer.modelView().getRho();
-    auto& V                = h5Writer.modelView().getV();
-    auto& P                = h5Writer.modelView().getP();
-    auto& rhoV             = h5Writer.modelView().getRhoV();
-    auto& Etot             = h5Writer.modelView().getEtot();
+    auto& modelView         = h5Writer.mapper().mhdModelView();
+    auto& model             = modelView.model();
+    auto& accessors         = Accessors::getOrCreateFor(modelView);
+    auto const& qty         = diagnostic.quantity;
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
     auto setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
@@ -127,29 +111,26 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
             attr[name + "_ghosts_z"] = static_cast<std::size_t>(ghosts[2]);
     };
 
-    auto infoDS = [&](auto& field, std::string name, auto& attr) {
+    auto infoDS = [&](auto& field, std::string const& name, auto& attr) {
         // highfive doesn't accept uint32 which ndarray.shape() is
         auto const& shape = field.shape();
         attr[name]        = std::vector<std::size_t>(shape.data(), shape.data() + shape.size());
         setGhostNbr(field, attr, name);
     };
 
-    auto infoVF = [&](auto& vecF, std::string name, auto& attr) {
-        for (auto const& [id, type] : core::VectorComponents::map())
-            infoDS(vecF.getComponent(type), name + "_" + id, attr);
+    auto const action = [&](auto& field, std::string const& name, auto& attr) {
+        using Quantity = std::decay_t<decltype(field)>;
+        if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
+            infoDS(field, name, attr);
+        else
+            for (auto const& [id, type] : core::VectorComponents::map())
+                infoDS(field.getComponent(type), name + "_" + id, attr);
     };
 
-    std::string tree{"/mhd/"};
-    if (isActiveDiag(diagnostic, tree, "rho"))
-        infoDS(rho, "rho", patchAttributes[lvlPatchID]["mhd"]);
-    if (isActiveDiag(diagnostic, tree, "V"))
-        infoVF(V, "V", patchAttributes[lvlPatchID]["mhd"]);
-    if (isActiveDiag(diagnostic, tree, "P"))
-        infoDS(P, "P", patchAttributes[lvlPatchID]["mhd"]);
-    if (isActiveDiag(diagnostic, tree, "rhoV"))
-        infoVF(rhoV, "rhoV", patchAttributes[lvlPatchID]["mhd"]);
-    if (isActiveDiag(diagnostic, tree, "Etot"))
-        infoDS(Etot, "Etot", patchAttributes[lvlPatchID]["mhd"]);
+    accessors.dispatch(qty, model,
+                       [&](auto& field, std::string const& name, std::string const& ownerKey) {
+                           action(field, name, patchAttributes[lvlPatchID][ownerKey]);
+                       });
 }
 
 template<typename H5Writer>
@@ -181,26 +162,31 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
         writeGhosts(dsPath, attr, key, null);
     };
 
-    auto initVF = [&](auto& path, auto& attr, std::string key, auto null) {
-        for (auto& [id, type] : core::Components::componentMap())
-            initDS(path, attr, key + "_" + id, null);
-    };
+    using ModelView_t = std::decay_t<decltype(h5Writer.mapper().mhdModelView())>;
+    using Accessors   = typename ModelView_t::MHDAccessors;
+
+    auto& modelView = h5Writer.mapper().mhdModelView();
+    auto& model     = modelView.model();
+    auto& accessors = Accessors::getOrCreateFor(modelView);
+    auto const& qty = diagnostic.quantity;
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
         bool null        = patchID.empty();
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
-        std::string tree{"/mhd/"};
-        if (isActiveDiag(diagnostic, tree, "rho"))
-            initDS(path, attr["mhd"], "rho", null);
-        if (isActiveDiag(diagnostic, tree, "V"))
-            initVF(path, attr["mhd"], "V", null);
-        if (isActiveDiag(diagnostic, tree, "P"))
-            initDS(path, attr["mhd"], "P", null);
-        if (isActiveDiag(diagnostic, tree, "rhoV"))
-            initVF(path, attr["mhd"], "rhoV", null);
-        if (isActiveDiag(diagnostic, tree, "Etot"))
-            initDS(path, attr["mhd"], "Etot", null);
+        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr) {
+            using Quantity = std::decay_t<decltype(field)>;
+            if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
+                initDS(path, fieldAttr, name, null);
+            else
+                for (auto& [id, type] : core::VectorComponents::map())
+                    initDS(path, fieldAttr, name + "_" + id, null);
+        };
+
+        accessors.dispatch(qty, model,
+                           [&](auto& field, std::string const& name, std::string const& ownerKey) {
+                               action(field, name, attr[ownerKey]);
+                           });
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -209,50 +195,28 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
 template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
-    auto& h5Writer = this->h5Writer_;
-    auto& rho      = h5Writer.modelView().getRho();
-    auto& V        = h5Writer.modelView().getV();
-    auto& P        = h5Writer.modelView().getP();
-    auto& rhoV     = h5Writer.modelView().getRhoV();
-    auto& Etot     = h5Writer.modelView().getEtot();
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    using ModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().mhdModelView())>;
+    using Accessors   = typename ModelView_t::MHDAccessors;
 
-    auto hasNaN = [](auto const& container) {
-        return std::any_of(container.begin(), container.end(),
-                           [](auto const& x) { return std::isnan(x); });
-    };
-
-    auto checkNaN = [&](std::string const& name, auto const& field) {
-        if (hasNaN(field))
-        {
-            throw std::runtime_error("NaN detected in field '" + name + "'");
-        }
-    };
-
-    auto writeDS = [&](auto path, auto& field) {
-        h5file.template write_data_set_flat<GridLayout::dimension>(path, field.data());
-        // checkNaN(path, field);
-    };
-
-    auto writeTF = [&](auto path, auto& vecF) {
-        h5Writer.writeTensorFieldAsDataset(h5file, path, vecF);
-        // for (std::size_t d = 0; d < vecF.size(); ++d)
-        //     checkNaN(path + "[" + std::to_string(d) + "]", vecF[d]);
-    };
-
+    auto& h5Writer   = this->h5Writer_;
+    auto& modelView  = h5Writer.mapper().mhdModelView();
+    auto& model      = modelView.model();
+    auto& accessors  = Accessors::getOrCreateFor(modelView);
+    auto& h5file     = *fileData_.at(diagnostic.quantity);
+    auto const& qty  = diagnostic.quantity;
     std::string path = h5Writer.patchPath() + "/";
-    std::string tree{"/mhd/"};
 
-    if (isActiveDiag(diagnostic, tree, "rho"))
-        writeDS(path + "rho", rho);
-    if (isActiveDiag(diagnostic, tree, "V"))
-        writeTF(path + "V", V);
-    if (isActiveDiag(diagnostic, tree, "P"))
-        writeDS(path + "P", P);
-    if (isActiveDiag(diagnostic, tree, "rhoV"))
-        writeTF(path + "rhoV", rhoV);
-    if (isActiveDiag(diagnostic, tree, "Etot"))
-        writeDS(path + "Etot", Etot);
+    auto const action = [&](auto& field, std::string const& name) {
+        using Quantity = std::decay_t<decltype(field)>;
+        if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
+            h5file.template write_data_set_flat<GridLayout::dimension>(path + name, field.data());
+        else
+            h5Writer.writeTensorFieldAsDataset(h5file, path + name, field);
+    };
+
+    accessors.dispatch(qty, model, [&](auto& field, std::string const& name, std::string const&) {
+        action(field, name);
+    });
 }
 
 template<typename H5Writer>

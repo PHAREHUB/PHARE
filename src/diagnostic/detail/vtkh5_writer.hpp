@@ -1,7 +1,6 @@
 #ifndef PHARE_DIAGNOSTIC_DETAIL_VTK_H5_WRITER_HPP
 #define PHARE_DIAGNOSTIC_DETAIL_VTK_H5_WRITER_HPP
 
-
 #include "core/logger.hpp"
 #include "mpi/mpi_utils.hpp"
 
@@ -24,15 +23,13 @@ namespace PHARE::diagnostic::vtkh5
 {
 using namespace hdf5::h5;
 
-
-
-template<typename _ModelView>
+template<typename ModelMapper_t>
 class H5Writer
 {
-    struct NullTypeWriter : public H5TypeWriter<H5Writer<_ModelView>>
+    struct NullTypeWriter : public H5TypeWriter<H5Writer<ModelMapper_t>>
     {
         NullTypeWriter(auto& h5Writer)
-            : H5TypeWriter<H5Writer<_ModelView>>{h5Writer}
+            : H5TypeWriter<H5Writer<ModelMapper_t>>{h5Writer}
         {
         }
 
@@ -49,46 +46,54 @@ class H5Writer
     };
 
 public:
-    using ModelView  = _ModelView;
-    using This       = H5Writer<ModelView>;
-    using Model_t    = ModelView::Model_t;
-    using GridLayout = ModelView::GridLayout;
-    using Attributes = ModelView::PatchProperties;
+    // using ModelView  = _ModelView;
+    using This       = H5Writer<ModelMapper_t>;
+    using Attributes = PatchProperties;
 
-    static constexpr auto dimension  = GridLayout::dimension;
+    static constexpr auto dimension  = ModelMapper_t::dimension;
     static constexpr auto READ_WRITE = HiFile::AccessMode::OpenOrCreate;
 
     // flush_never: disables manual file closing, but still occurrs via RAII
     static constexpr std::size_t flush_never = 0;
 
-    template<typename Hierarchy, typename Model>
-    H5Writer(Hierarchy& hier, Model& model, std::string const hifivePath, HiFile::AccessMode _flags)
-        : modelView_{hier, model}
-        , flags{_flags}
-        , filePath_{hifivePath}
+    struct Config
     {
-        if constexpr (solver::is_hybrid_model_v<Model>)
+        std::string filePath;
+        HiFile::AccessMode flags;
+
+        static Config FROM(initializer::PHAREDict const& dict)
         {
-            typeWriters_ = {
-                {"info", make_writer<NullTypeWriter>()},
-                {"meta", make_writer<NullTypeWriter>()},
-                {"fluid", make_writer<FluidDiagnosticWriter<This>>()},
-                {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()},
-                {"particle", make_writer<NullTypeWriter>()} //
-            };
+            auto flags = READ_WRITE;
+            if (dict.contains("mode") and dict["mode"].template to<std::string>() == "overwrite")
+                flags |= HiFile::Truncate;
+            return {dict["filePath"].template to<std::string>(), flags};
         }
-        else if constexpr (solver::is_mhd_model_v<Model>)
+    };
+    using Config_t = Config;
+
+    H5Writer(auto& hier, Config const& config, auto&... models)
+        : mapper_{hier, models...}
+        , config_{config}
+    {
+        if constexpr (ModelMapper_t::has_hybrid_model)
         {
-            typeWriters_ = {
-                {"meta", make_writer<NullTypeWriter>()},
-                {"mhd", make_writer<FluidDiagnosticWriter<This>>()},
-                {"electromag", make_writer<ElectromagDiagnosticWriter<This>>()} //
-            };
+            typeWriters_.emplace("info", make_writer<NullTypeWriter>());
+            typeWriters_.emplace("meta", make_writer<NullTypeWriter>());
+            typeWriters_.emplace("fluid", make_writer<FluidDiagnosticWriter<This>>());
+            typeWriters_.emplace("electromag", make_writer<ElectromagDiagnosticWriter<This>>());
+            typeWriters_.emplace("particle", make_writer<NullTypeWriter>());
         }
-        else
+        if constexpr (ModelMapper_t::has_mhd_model)
+        {
+            typeWriters_.emplace("meta", make_writer<NullTypeWriter>());
+            typeWriters_.emplace("mhd", make_writer<FluidDiagnosticWriter<This>>());
+            typeWriters_.emplace("electromag", make_writer<ElectromagDiagnosticWriter<This>>());
+        }
+        if constexpr (!ModelMapper_t::has_hybrid_model and !ModelMapper_t::has_mhd_model)
         {
             // MacOS clang unhappy with static_assert(false), requires a dependency on Model
-            static_assert(!std::is_same_v<Model, Model>, "Unsupported model type in H5Writer");
+            static_assert(core::dependent_false_v<ModelMapper_t>,
+                          "Unsupported model type in H5Writer");
         }
     }
 
@@ -97,17 +102,6 @@ public:
     H5Writer(H5Writer&&)                 = delete;
     H5Writer& operator=(H5Writer const&) = delete;
     H5Writer& operator=(H5Writer&&)      = delete;
-
-
-    template<typename Hierarchy, typename Model>
-    static auto make_unique(Hierarchy& hier, Model& model, initializer::PHAREDict const& dict)
-    {
-        std::string filePath     = dict["filePath"].template to<std::string>();
-        HiFile::AccessMode flags = READ_WRITE;
-        if (dict.contains("mode") and dict["mode"].template to<std::string>() == "overwrite")
-            flags |= HiFile::Truncate;
-        return std::make_unique<This>(hier, model, filePath, flags);
-    }
 
 
     void dump(std::vector<DiagnosticProperties*> const&, double current_timestamp);
@@ -123,7 +117,8 @@ public:
 
     auto makeFile(DiagnosticProperties const& diagnostic)
     {
-        return std::make_unique<HighFiveFile>(filePath_ + "/" + fileString(diagnostic.quantity),
+        return std::make_unique<HighFiveFile>(config_.filePath + "/"
+                                                  + fileString(diagnostic.quantity),
                                               file_flags[diagnostic.type + diagnostic.quantity]);
     }
 
@@ -135,20 +130,19 @@ public:
     }
 
 
-    auto& modelView() { return modelView_; }
+    auto& mapper() { return mapper_; }
     auto timestamp() const { return timestamp_; }
 
 private:
-    ModelView modelView_;
+    ModelMapper_t mapper_;
+    Config config_;
 
 public:
-    std::size_t minLevel = 0, maxLevel = modelView_.maxLevel();
-    HiFile::AccessMode flags;
+    std::size_t minLevel = 0, maxLevel = mapper_.maxLevel();
 
 
 private:
     double timestamp_ = 0;
-    std::string filePath_;
     Attributes fileAttributes_;
 
     std::unordered_map<std::string, HiFile::AccessMode> file_flags;
@@ -180,22 +174,23 @@ private:
 
 
 
-template<typename ModelView>
-void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnostics,
-                               double timestamp)
+template<typename ModelMapper_t>
+void H5Writer<ModelMapper_t>::dump(std::vector<DiagnosticProperties*> const& diagnostics,
+                                   double timestamp)
 {
     timestamp_                   = timestamp;
     fileAttributes_["dimension"] = dimension;
-    if constexpr (solver::is_hybrid_model_v<Model_t>)
-        fileAttributes_["interpOrder"] = GridLayout::options.interp_order;
-    fileAttributes_["domain_box"]          = modelView_.domainBox();
-    fileAttributes_["boundary_conditions"] = modelView_.boundaryConditions();
+    if constexpr (ModelMapper_t::has_hybrid_model)
+        fileAttributes_["interpOrder"]
+            = ModelMapper_t::HasModels_t::HybridModel_t::GridLayoutT::options.interp_order;
+    fileAttributes_["domain_box"]          = mapper_.hierarchy.domainBox();
+    fileAttributes_["boundary_conditions"] = mapper_.hierarchy.boundaryConditions();
 
     HierarchyData<dimension>::reset(*this);
 
     for (auto* diagnostic : diagnostics)
         if (!file_flags.count(diagnostic->type + diagnostic->quantity))
-            file_flags[diagnostic->type + diagnostic->quantity] = this->flags;
+            file_flags[diagnostic->type + diagnostic->quantity] = config_.flags;
 
     for (auto* diagnostic : diagnostics) // all collective calls first!
     {
@@ -205,7 +200,11 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     }
 
     for (auto* diagnostic : diagnostics)
-        typeWriters_.at(diagnostic->type)->write(*diagnostic);
+    {
+        auto& typeWriter = *typeWriters_.at(diagnostic->type);
+        typeWriter.compute(*diagnostic); // compute to temporaries then write immediately!
+        typeWriter.write(*diagnostic);
+    }
 
     for (auto* diagnostic : diagnostics)
     {
@@ -215,21 +214,12 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     }
 }
 
-template<typename ModelView>
-void H5Writer<ModelView>::dump_level(std::size_t level,
-                                     std::vector<DiagnosticProperties*> const& diagnostics,
-                                     double timestamp)
+template<typename ModelMapper_t>
+void H5Writer<ModelMapper_t>::dump_level(std::size_t level,
+                                         std::vector<DiagnosticProperties*> const& diagnostics,
+                                         double timestamp)
 {
-    std::size_t _minLevel = this->minLevel;
-    std::size_t _maxLevel = this->maxLevel;
-
-    this->minLevel = level;
-    this->maxLevel = level;
-
-    this->dump(diagnostics, timestamp);
-
-    this->minLevel = _minLevel;
-    this->maxLevel = _maxLevel;
+    throw std::runtime_error("!!DOES NOT WORK!!");
 }
 
 

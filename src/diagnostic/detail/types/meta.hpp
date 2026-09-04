@@ -21,9 +21,10 @@ public:
     using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
-    using Attributes = typename Super::Attributes;
-    using GridLayout = typename H5Writer::GridLayout;
-    using FloatType  = typename H5Writer::FloatType;
+    using Attributes       = typename Super::Attributes;
+    using ModelViewVariant = typename Super::ModelViewVariant;
+    using FloatType        = typename H5Writer::FloatType;
+    static constexpr auto dimension = H5Writer::dimension;
 
     MetaDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}
@@ -37,7 +38,8 @@ public:
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                        std::string const& patchID, Attributes& patchAttributes) override;
+                        std::string const& patchID, Attributes& patchAttributes,
+                        ModelViewVariant& modelView) override;
 
     void initDataSets(DiagnosticProperties& diagnostic,
                       std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
@@ -66,20 +68,25 @@ void MetaDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnosti
 template<typename H5Writer>
 void MetaDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                     std::size_t iLevel, std::string const& patchID,
-                                                    Attributes& patchAttributes)
+                                                    Attributes& patchAttributes,
+                                                    ModelViewVariant& modelViewVariant)
 {
     auto& h5Writer         = this->h5Writer_;
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
     std::string path{h5Writer.getPatchPathAddTimestamp(iLevel, patchID)};
 
-    if (diagnostic.quantity == "/tags" and h5Writer.modelView().hasTagsVectorFor(iLevel, patchID))
-    {
-        auto& model_tags = *h5Writer.modelView().getTagsVectorFor(iLevel, patchID);
-        auto& shape      = model_tags.shape();
-        tags[path]       = model_tags.data();
-        patchAttributes[lvlPatchID]["tags"]
-            = std::vector<std::size_t>(shape.data(), shape.data() + shape.size());
-    }
+    std::visit(
+        [&](auto& modelView) {
+            if (diagnostic.quantity == "/tags" and modelView.hasTagsVectorFor(iLevel, patchID))
+            {
+                auto& model_tags = *modelView.getTagsVectorFor(iLevel, patchID);
+                auto& shape      = model_tags.shape();
+                tags[path]       = model_tags.data();
+                patchAttributes[lvlPatchID]["tags"]
+                    = std::vector<std::size_t>(shape.data(), shape.data() + shape.size());
+            }
+        },
+        modelViewVariant);
 }
 
 
@@ -100,7 +107,7 @@ void MetaDiagnosticWriter<H5Writer>::initDataSets(
             h5Writer.template createDataSet<int>(
                 Super::h5FileForQuantity(diagnostic), path + "/tags",
                 null or tags.count(path) == 0
-                    ? std::vector<std::size_t>(GridLayout::dimension, 0)
+                    ? std::vector<std::size_t>(dimension, 0)
                     : attr["tags"].template to<std::vector<std::size_t>>());
     };
 
@@ -121,7 +128,7 @@ void MetaDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         if (tags.count(path) > 0)
         {
             auto& h5 = Super::h5FileForQuantity(diagnostic);
-            h5.template write_data_set_flat<GridLayout::dimension>(path + "/tags", tags[path]);
+            h5.template write_data_set_flat<dimension>(path + "/tags", tags[path]);
             tags.erase(path);
         }
     }

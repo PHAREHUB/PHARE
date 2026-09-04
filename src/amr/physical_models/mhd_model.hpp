@@ -4,23 +4,31 @@
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/mhd_state.hpp"
+#include "core/utilities/variants.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/hier/PatchLevel.h>
 
 #include <string>
 #include <string_view>
+#include <variant>
 
 
 namespace PHARE::solver
 {
-template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
-class MHDModel : public IPhysicalModel<AMR_Types>
+template<typename Types>
+class MHDModel : public IPhysicalModel<typename Types::amr_types>
 {
 public:
+    using GridLayoutT        = Types::GridLayout_t;
+    using VecFieldT          = Types::VecField_t;
+    using AMR_Types          = Types::amr_types;
+    using Grid_t             = Types::Grid_t;
+    using ResourcesManager_t = Types::ResourcesManager_t;
+
     static constexpr auto dimension = GridLayoutT::dimension;
 
     using amr_types = AMR_Types;
@@ -34,33 +42,19 @@ public:
     using state_type             = core::MHDState<vecfield_type>;
     using gridlayout_type        = GridLayoutT;
     using grid_type              = Grid_t;
-    using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
+    using resources_manager_type = ResourcesManager_t;
+    using Resources              = std::variant<field_type, vecfield_type>;
 
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
 
-    state_type state;
-    std::shared_ptr<resources_manager_type> resourcesManager;
-
-    // diagnostics buffers
-    vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
-    field_type P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
-
-    // maybe these could have a single allocation shared for hybrid and mhd, as they are strictly
-    // temporaries. Right now the hybrid version is in the hybrid_hybrid_messenger_strategy.hpp
-    field_type tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
-    vecfield_type tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
-
     void initialize(level_t& level) override;
 
+    void registerResources() override { resourcesManager->registerResources(*this); }
 
     void allocate(patch_t& patch, double const allocateTime) override
     {
-        resourcesManager->allocate(state, patch, allocateTime);
-        resourcesManager->allocate(V_diag_, patch, allocateTime);
-        resourcesManager->allocate(P_diag_, patch, allocateTime);
-        resourcesManager->allocate(tmpField_, patch, allocateTime);
-        resourcesManager->allocate(tmpVec_, patch, allocateTime);
+        resourcesManager->allocate(*this, patch, allocateTime);
     }
 
 
@@ -77,10 +71,7 @@ public:
         , state{dict["mhd_state"]}
         , resourcesManager{_resourcesManager}
     {
-        resourcesManager->registerResources(V_diag_);
-        resourcesManager->registerResources(P_diag_);
-        resourcesManager->registerResources(tmpField_);
-        resourcesManager->registerResources(tmpVec_);
+        registerTemporaryRequirements();
     }
 
     ~MHDModel() override = default;
@@ -98,15 +89,51 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
 
+    void registerTemporaryRequirements(auto&&... quantities);
+
+    auto& getTmp(auto&& as) { return core::get_from_variants(resources, as); }
+
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
+    state_type state;
+    std::shared_ptr<resources_manager_type> resourcesManager;
+    std::vector<Resources> resources;
+    std::array<std::size_t, std::variant_size_v<Resources>> n_per_type = {0};
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
 };
 
-template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
-void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& level)
+template<typename Types>
+void MHDModel<Types>::registerTemporaryRequirements(auto&&... quantities)
+{
+    // todo figure out at runtime
+    std::array<std::size_t, std::variant_size_v<Resources>> _n_per_type{2, 2};
+
+    auto const namer = []<auto i>(auto n) -> std::string {
+        return "tmp" + std::array<std::string, 3>{"Field", "VecField", "TensorField"}[i]
+               + std::to_string(n);
+    };
+
+    core::for_N<std::variant_size_v<Resources>>([&](auto i) {
+        while (n_per_type[i] < _n_per_type[i])
+        {
+            auto const name = namer.template operator()<i>(n_per_type[i]);
+            if constexpr (i == 0)
+                resources.emplace_back(field_type{name, core::MHDQuantity::all_primal_field});
+            else if constexpr (i == 1)
+                resources.emplace_back(vecfield_type{name, core::MHDQuantity::Vector::V});
+            else
+                static_assert(core::dependent_false_v<Types>);
+
+            ++n_per_type[i];
+        }
+    });
+}
+
+
+template<typename Types>
+void MHDModel<Types>::initialize(level_t& level)
 {
     for (auto& patch : level)
     {
@@ -117,9 +144,8 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
     }
 }
 
-template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
-void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
-    std::unique_ptr<amr::IMessengerInfo> const& info) const
+template<typename Types>
+void MHDModel<Types>::fillMessengerInfo(std::unique_ptr<amr::IMessengerInfo> const& info) const
 {
     auto& MHDInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
 

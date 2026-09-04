@@ -4,10 +4,12 @@
 
 #include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/core_meta.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "mpi/mpi_utils.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
+
+#include "mpi/mpi_utils.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
 
@@ -18,7 +20,6 @@
 #include <cassert>
 #include <cstdint>
 #include <string>
-#include <utility>
 #include <unordered_map>
 
 #if !defined(PHARE_DIAG_DOUBLES)
@@ -50,7 +51,7 @@ struct HierarchyData
     {
         PHARE_LOG_SCOPE(3, "HierarchyData<H5Writer::reset");
 
-        auto const maxLevels = h5Writer.modelView().maxLevel() + 1;
+        auto const maxLevels = h5Writer.mapper().maxLevel() + 1;
         auto& data           = INSTANCE();
 
         data.level_data_size.resize(maxLevels);
@@ -59,40 +60,45 @@ struct HierarchyData
         data.level_rank_data_size.resize(maxLevels);
         data.flattened_lcl_level_boxes.resize(maxLevels);
 
-        h5Writer.modelView().onLevels(
-            [&](auto const& level) {
-                auto const ilvl = level.getLevelNumber();
+        h5Writer.mapper().onLevels([&](auto const& level) { reset_level(level); },
+                                   [&](int const ilvl) { reset_missing_level(ilvl); },
+                                   h5Writer.minLevel, h5Writer.maxLevel);
+    }
 
-                data.n_boxes_per_level[ilvl]    = 0;
-                data.level_boxes_per_rank[ilvl] = amr::boxesPerRankOn<dim>(level);
-                data.flattened_lcl_level_boxes[ilvl]
-                    = flatten_boxes(data.level_boxes_per_rank[ilvl][mpi::rank()]);
+    static void reset_level(auto& level)
+    {
+        auto& data                      = INSTANCE();
+        auto const ilvl                 = level.getLevelNumber();
+        data.n_boxes_per_level[ilvl]    = 0;
+        data.level_boxes_per_rank[ilvl] = amr::boxesPerRankOn<dim>(level);
+        data.flattened_lcl_level_boxes[ilvl]
+            = flatten_boxes(data.level_boxes_per_rank[ilvl][mpi::rank()]);
 
-                for (std::size_t i = 0; i < data.level_boxes_per_rank[ilvl].size(); ++i)
-                {
-                    data.level_rank_data_size[ilvl].resize(mpi::size());
+        for (std::size_t i = 0; i < data.level_boxes_per_rank[ilvl].size(); ++i)
+        {
+            data.level_rank_data_size[ilvl].resize(mpi::size());
 
-                    data.level_rank_data_size[ilvl][i] = 0;
-                    for (auto box : data.level_boxes_per_rank[ilvl][i])
-                    {
-                        box.upper += 1;                                             // all primal
-                        data.level_rank_data_size[ilvl][i] += box.size() * X_TIMES; // no ghosts
-                    }
-                    data.n_boxes_per_level[ilvl] += data.level_boxes_per_rank[ilvl][i].size();
-                }
+            data.level_rank_data_size[ilvl][i] = 0;
+            for (auto box : data.level_boxes_per_rank[ilvl][i])
+            {
+                box.upper += 1;                                             // all primal
+                data.level_rank_data_size[ilvl][i] += box.size() * X_TIMES; // no ghosts
+            }
+            data.n_boxes_per_level[ilvl] += data.level_boxes_per_rank[ilvl][i].size();
+        }
 
-                data.level_data_size[ilvl] = core::sum(data.level_rank_data_size[ilvl]);
-            },
-            [&](int const ilvl) { // ilvl does not exist currently
-                data.level_data_size[ilvl]   = 0;
-                data.n_boxes_per_level[ilvl] = 0;
-                data.level_rank_data_size[ilvl].clear();
-                data.level_rank_data_size[ilvl].resize(mpi::size());
-                data.level_boxes_per_rank[ilvl].clear();
-                data.level_boxes_per_rank[ilvl].resize(mpi::size());
-                data.flattened_lcl_level_boxes[ilvl].clear();
-            },
-            h5Writer.minLevel, h5Writer.maxLevel);
+        data.level_data_size[ilvl] = core::sum(data.level_rank_data_size[ilvl]);
+    }
+    static void reset_missing_level(int const ilvl)
+    {
+        auto& data                   = INSTANCE();
+        data.level_data_size[ilvl]   = 0;
+        data.n_boxes_per_level[ilvl] = 0;
+        data.level_rank_data_size[ilvl].clear();
+        data.level_rank_data_size[ilvl].resize(mpi::size());
+        data.level_boxes_per_rank[ilvl].clear();
+        data.level_boxes_per_rank[ilvl].resize(mpi::size());
+        data.flattened_lcl_level_boxes[ilvl].clear();
     }
 
 
@@ -131,8 +137,6 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
     //  limit then points at the same rows, so readers replay one frozen timestep.
     using VTKOffsetType                        = std::int64_t;
     using HierData                             = HierarchyData<Writer::dimension>;
-    using ModelView                            = Writer::ModelView;
-    using physical_quantity_type               = ModelView::physical_quantity_type;
     using Attributes                           = Writer::Attributes;
     std::string static inline const base       = "/VTKHDF";
     std::string static inline const level_base = base + "/Level";
@@ -207,7 +211,6 @@ void H5TypeWriter<Writer>::writeFileAttributes(DiagnosticProperties const& prop,
 template<typename Writer>
 class H5TypeWriter<Writer>::VTKFileInitializer
 {
-    auto static constexpr primal_qty         = physical_quantity_type::all_primal_field;
     std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
 public:
     VTKFileInitializer(DiagnosticProperties const& prop, H5TypeWriter<Writer>* const typewriter);
@@ -225,7 +228,7 @@ public:
 private:
     auto level_spacing(int const lvl) const
     {
-        auto const mesh_size = typewriter->h5Writer_.modelView().cellWidth();
+        auto const mesh_size = typewriter->h5Writer_.mapper().cellWidth();
         return core::for_N_make_array<dimension>(
             [&](auto i) { return static_cast<float>(mesh_size[i] / std::pow(2, lvl)); });
     }
@@ -268,14 +271,12 @@ private:
     H5TypeWriter<Writer>* const typewriter;
     HighFiveFile& h5file;
     std::size_t data_offset;
-    ModelView& modelView = typewriter->h5Writer_.modelView();
 };
 
 
 template<typename Writer>
 class H5TypeWriter<Writer>::VTKFileWriter
 {
-    auto static constexpr primal_qty         = physical_quantity_type::all_primal_field;
     std::size_t static constexpr boxValsIn3D = 6; // lo0, up0, lo1, up1, lo2, up2
 
 
@@ -295,17 +296,15 @@ public:
         })
     }
 
-    void writeField(auto const& field, auto const& layout);
-
-    template<std::size_t rank = 2>
-    void writeTensorField(auto const& tf, auto const& layout);
+    void write(auto const& quantity, auto const& layout);
 
 
 
 private:
     auto local_box(auto const& layout) const
     {
-        return layout.AMRToLocal(layout.AMRBoxFor(primal_qty));
+        using PQ = typename decltype(layout.options)::FieldOptions::Quantity;
+        return layout.AMRToLocal(layout.AMRBoxFor(PQ::all_primal_field));
     }
 
     DiagnosticProperties const& diagnostic;
@@ -314,7 +313,6 @@ private:
     std::size_t const start_offset;
     std::size_t data_offset = start_offset;
     int level               = -1; // no patch on this rank for this level until one is written
-    ModelView& modelView    = typewriter->h5Writer_.modelView();
 };
 
 
@@ -380,42 +378,30 @@ H5TypeWriter<Writer>::VTKFileWriter::VTKFileWriter(DiagnosticProperties const& p
 
 
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileWriter::writeField(auto const& field, auto const& layout)
+void H5TypeWriter<Writer>::VTKFileWriter::write(auto const& quantity, auto const& layout)
 {
-    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField");
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::write");
 
-    auto const& frimal = core::convert_to_fortran_primal(modelView.tmpField(), field, layout);
-    auto const size    = local_box(layout).size();
-    auto ds            = h5file.getDataSet(level_data_path(layout.levelNumber()));
-    level              = layout.levelNumber();
+    using Quantity_t = std::decay_t<decltype(quantity)>;
 
-    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeField::0");
-    for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
-    {
-        ds.select({data_offset, 0}, {size, 1}).write_raw(frimal.data());
-        data_offset += size;
-    }
-}
-
-
-template<typename Writer>
-template<std::size_t rank>
-void H5TypeWriter<Writer>::VTKFileWriter::writeTensorField(auto const& tf, auto const& layout)
-{
-    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField");
-
-    auto static constexpr N = core::detail::tensor_field_dim_from_rank<rank>();
-    auto const& frimal
-        = core::convert_to_fortran_primal(modelView.template tmpTensorField<rank>(), tf, layout);
+    auto const& frimal = core::convert_to_fortran_primal(
+        typewriter->h5Writer_.mapper().tmpFor(quantity), quantity, layout);
     auto const size = local_box(layout).size();
     auto ds         = h5file.getDataSet(level_data_path(layout.levelNumber()));
     level           = layout.levelNumber();
 
-    PHARE_LOG_SCOPE(3, "VTKFileWriter::writeTensorField::0");
+    auto const write_component = [&](std::uint32_t c, auto const& component) {
+        ds.select({data_offset, c}, {size, 1}).write_raw(component.data());
+    };
+
+    PHARE_LOG_SCOPE(3, "VTKFileWriter::write::0");
     for (std::uint16_t i = 0; i < HierData::X_TIMES; ++i)
     {
-        for (std::uint32_t c = 0; c < N; ++c)
-            ds.select({data_offset, c}, {size, 1}).write_raw(frimal[c].data());
+        if constexpr (core::is_tensor_field_v<Quantity_t>)
+            for (std::uint32_t c = 0; c < Quantity_t::size(); ++c)
+                write_component(c, frimal[c]);
+        else
+            write_component(0, frimal);
         data_offset += size;
     }
 }
