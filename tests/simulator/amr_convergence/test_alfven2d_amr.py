@@ -5,10 +5,11 @@ exact state at t=T equals the initial condition. See amr_convergence_base for
 the protocol and compute_errors for the norm.
 
 Solver numerics are shared with test_whistler2d_amr (which needs WENOZ, being
-dispersive) so the pair differs only in the Hall term.
+dispersive) so the pair differs only in the Hall term and in the
+hyper-resistivity the whistler needs to reach order 2.
 
 Requires the build permutation
-  2,1,4,SSPRK4_5,WENOZ,None,Rusanov,false,false,false  (in res/sim/all.txt).
+  2,SSPRK4_5,WENOZ,None,Rusanov,false,false,false  (in res/sim/all.txt).
 """
 
 import os
