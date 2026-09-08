@@ -9,6 +9,7 @@ import unittest
 
 import numpy as np
 import pyphare.pharein as ph
+from pyphare.cpp import simulator_id
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import MHDGridLayoutFor
 from pyphare.pharesee.hierarchy.hierarchy import PatchHierarchy
@@ -16,6 +17,8 @@ from pyphare.pharesee.hierarchy.hierarchy_utils import single_patch_for_LO
 from pyphare.pharesee.hierarchy.patch import Patch
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 from pyphare.pharesee.hierarchy.patchlevel import PatchLevel
+
+from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
 
@@ -90,6 +93,42 @@ class MHDOnlyAPITest(unittest.TestCase):
                 patches[0].patch_datas["rho"][patch.box],
                 patch.patch_datas["rho"][patch.box],
             )
+
+
+class MHDOnlyThroughTestHelperTest(SimulatorTest):
+    """The same contract as MHDOnlyAPITest, but for a deck built through
+    SimulatorTest.simulation() rather than ph.Simulation() directly -- that is
+    the path every tests/simulator deck takes."""
+
+    def mhd_simulation(self, **kwargs):
+        return self.simulation(
+            time_step=0.001,
+            time_step_nbr=1,
+            cells=cells,
+            dl=dl,
+            model_options=["MHDModel"],
+            reconstruction=reconstruction.capitalize(),
+            limiter="VanLeer",
+            riemann="Rusanov",
+            mhd_timestepper="TVDRK2",
+            diag_options={
+                "format": "phareh5",
+                "options": {"dir": "phare_outputs/mhd_only_api", "mode": "overwrite"},
+            },
+            **kwargs,
+        )
+
+    def test_helper_injects_no_hybrid_keys(self):
+        """regression: the helper defaulted interp_order to 1 and forwarded it
+        unconditionally, overriding pharein's derivation from model_options. An
+        MHD-only deck then asked for the coupled hybrid+MHD pybind module, which
+        no res/sim MHD-only line builds."""
+        sim = self.mhd_simulation()
+        self.assertEqual(sim.interp_order, 0)  # internal, C++-facing value
+        self.assertEqual(sim.refined_particle_nbr, 0)
+        self.assertEqual(
+            simulator_id(sim), "1_TVDRK2_Linear_VanLeer_Rusanov_false_false_false"
+        )
 
 
 if __name__ == "__main__":

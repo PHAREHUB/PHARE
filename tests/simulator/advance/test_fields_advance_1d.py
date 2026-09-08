@@ -30,7 +30,14 @@ def permute_hybrid(boxes={}):
 
 
 def permute_mhd(boxes={}):
-    return [dict(super_class=MHDAdvanceTest, hall=False, refinement_boxes=boxes)]
+    return [
+        dict(
+            super_class=MHDAdvanceTest,
+            hall=False,
+            refinement_boxes=boxes,
+            interp_order=None,
+        )
+    ]
 
 
 def permute(boxes={}, hybrid=True, mhd=False):
