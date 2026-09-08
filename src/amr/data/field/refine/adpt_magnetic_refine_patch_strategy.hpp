@@ -47,17 +47,21 @@ using core::dirZ;
  *
  * IMPLEMENTATION NOTES
  * --------------------
- * - dx = dy (= dz) is ASSUMED (no runtime check, TR precedent — the legacy Laplacian correction
- *   silently shares this assumption). The mesh spacing cancels in the equal-mesh closed forms;
- *   the anisotropic-mesh generalisation is not implemented here.
+ * - Anisotropic meshes (dx != dy != dz) are handled exactly: subzoneDiv weights each face
+ *   difference by 1/D_c, and the correction of a component-c face carries a D_c prefactor. The
+ *   integer stencils survive anisotropy verbatim — only the divergence proxy and the prefactor
+ *   change. Only the anisotropy RATIO matters: a uniform rescale of every D_c cancels between the
+ *   weighted divergence and the prefactor, so the equal-mesh case reduces to the unweighted form
+ *   identically and the fine-vs-coarse meshSize is immaterial. 1D is unchanged: its single weight
+ *   cancels against its own prefactor.
  * - The correction is ADDED (+=) to the existing (stage-1) face value, whereas TR fully recomputed
  *   the interior face (baseline + correction). At order 2 the stage-1 interior fill equals TR's
  *   ½(neighbour) baseline, so += and TR's = coincide; at order 4 the += preserves the Cubic4 face.
- * - subzoneDiv here is the raw fine-face-difference sum (a "flux" divergence, no 1/h factor — the
- *   dimensionally consistent quantity to add to a face value). Consequently the closed-form
- *   denominators are the FLUX-variable ones: 1/2 (1D), [3,1]/8 (2D), [7,2,2,1]/24 (3D). These are
- *   the density weights ([·]/16, [·]/48) rescaled by the fixed 1/h = 2 ("flux variables ⇒ /8
- *   and /24"); numerically reproduces TR exactly at equal mesh.
+ * - subzoneDiv here is the 1/D_c-weighted fine-face-difference sum (a physical divergence up to a
+ *   uniform scale); the D_c prefactor on the correction restores the dimension of a face value.
+ *   The closed-form denominators stay the FLUX-variable ones: 1/2 (1D), [3,1]/8 (2D),
+ *   [7,2,2,1]/24 (3D). These are the density weights ([·]/16, [·]/48) rescaled by the fixed
+ *   refinement ratio 2 ("flux variables ⇒ /8 and /24"); at equal mesh this reproduces TR exactly.
  * - Order-independence / correctness: the correction of every interior face must be computed from
  *   the STAGE-1 (uncorrected) subzone divergences. A face-centric loop that recomputed divergences
  *   from the live (partially corrected) field would couple sibling interior faces and fail the
@@ -279,11 +283,13 @@ public:
         int const cy0 = iy;                                   // own row
         int const cy1 = iy + ((idx[dirY] % 2 == 0) ? 1 : -1); // sibling row in the coarse cell
 
-        auto pair = [&](int cy) {
-            return subzoneDiv2d_(cache, bx, by, cxR, cy) - subzoneDiv2d_(cache, bx, by, cxL, cy);
+        auto const& D = layout.meshSize();
+        auto pair     = [&](int cy) {
+            return subzoneDiv2d_(cache, bx, by, D, cxR, cy)
+                   - subzoneDiv2d_(cache, bx, by, D, cxL, cy);
         };
 
-        bx(ix, iy) += (3.0 * pair(cy0) + pair(cy1)) / 8.0;
+        bx(ix, iy) += D[dirX] * (3.0 * pair(cy0) + pair(cy1)) / 8.0;
     }
 
     // Interior By face by(ix,iy) separates fine cells (ix,iy-1) [below] and (ix,iy) [above].
@@ -304,11 +310,13 @@ public:
         int const cx0 = ix;                                   // own column
         int const cx1 = ix + ((idx[dirX] % 2 == 0) ? 1 : -1); // sibling column
 
-        auto pair = [&](int cx) {
-            return subzoneDiv2d_(cache, bx, by, cx, cyA) - subzoneDiv2d_(cache, bx, by, cx, cyB);
+        auto const& D = layout.meshSize();
+        auto pair     = [&](int cx) {
+            return subzoneDiv2d_(cache, bx, by, D, cx, cyA)
+                   - subzoneDiv2d_(cache, bx, by, D, cx, cyB);
         };
 
-        by(ix, iy) += (3.0 * pair(cx0) + pair(cx1)) / 8.0;
+        by(ix, iy) += D[dirY] * (3.0 * pair(cx0) + pair(cx1)) / 8.0;
     }
 
 
@@ -333,13 +341,16 @@ public:
         int const sy  = iy + ((idx[dirY] % 2 == 0) ? 1 : -1);
         int const sz  = iz + ((idx[dirZ] % 2 == 0) ? 1 : -1);
 
-        auto pair = [&](int cy, int cz) {
-            return subzoneDiv3d_(cache, bx, by, bz, cxR, cy, cz)
-                   - subzoneDiv3d_(cache, bx, by, bz, cxL, cy, cz);
+        auto const& D = layout.meshSize();
+        auto pair     = [&](int cy, int cz) {
+            return subzoneDiv3d_(cache, bx, by, bz, D, cxR, cy, cz)
+                   - subzoneDiv3d_(cache, bx, by, bz, D, cxL, cy, cz);
         };
 
         bx(ix, iy, iz)
-            += (7.0 * pair(iy, iz) + 2.0 * pair(sy, iz) + 2.0 * pair(iy, sz) + pair(sy, sz)) / 24.0;
+            += D[dirX]
+               * (7.0 * pair(iy, iz) + 2.0 * pair(sy, iz) + 2.0 * pair(iy, sz) + pair(sy, sz))
+               / 24.0;
     }
 
     static void correctBy3d(auto& cache, auto& bx, auto& by, auto& bz, auto const& layout,
@@ -358,13 +369,16 @@ public:
         int const sx  = ix + ((idx[dirX] % 2 == 0) ? 1 : -1);
         int const sz  = iz + ((idx[dirZ] % 2 == 0) ? 1 : -1);
 
-        auto pair = [&](int cx, int cz) {
-            return subzoneDiv3d_(cache, bx, by, bz, cx, cyA, cz)
-                   - subzoneDiv3d_(cache, bx, by, bz, cx, cyB, cz);
+        auto const& D = layout.meshSize();
+        auto pair     = [&](int cx, int cz) {
+            return subzoneDiv3d_(cache, bx, by, bz, D, cx, cyA, cz)
+                   - subzoneDiv3d_(cache, bx, by, bz, D, cx, cyB, cz);
         };
 
         by(ix, iy, iz)
-            += (7.0 * pair(ix, iz) + 2.0 * pair(sx, iz) + 2.0 * pair(ix, sz) + pair(sx, sz)) / 24.0;
+            += D[dirY]
+               * (7.0 * pair(ix, iz) + 2.0 * pair(sx, iz) + 2.0 * pair(ix, sz) + pair(sx, sz))
+               / 24.0;
     }
 
     static void correctBz3d(auto& cache, auto& bx, auto& by, auto& bz, auto const& layout,
@@ -383,20 +397,24 @@ public:
         int const sx  = ix + ((idx[dirX] % 2 == 0) ? 1 : -1);
         int const sy  = iy + ((idx[dirY] % 2 == 0) ? 1 : -1);
 
-        auto pair = [&](int cx, int cy) {
-            return subzoneDiv3d_(cache, bx, by, bz, cx, cy, czA)
-                   - subzoneDiv3d_(cache, bx, by, bz, cx, cy, czB);
+        auto const& D = layout.meshSize();
+        auto pair     = [&](int cx, int cy) {
+            return subzoneDiv3d_(cache, bx, by, bz, D, cx, cy, czA)
+                   - subzoneDiv3d_(cache, bx, by, bz, D, cx, cy, czB);
         };
 
         bz(ix, iy, iz)
-            += (7.0 * pair(ix, iy) + 2.0 * pair(sx, iy) + 2.0 * pair(ix, sy) + pair(sx, sy)) / 24.0;
+            += D[dirZ]
+               * (7.0 * pair(ix, iy) + 2.0 * pair(sx, iy) + 2.0 * pair(ix, sy) + pair(sx, sy))
+               / 24.0;
     }
 
 
 private:
-    // Raw ("flux") divergence of the fine cell at local index (cx[,cy[,cz]]): the sum over
-    // directions of the (high face − low face) difference (dx = dy = dz assumed). Memoised so every
-    // interior face's correction reads the STAGE-1 value even after sibling faces are written.
+    // 1/D_c-weighted divergence of the fine cell at local index (cx[,cy[,cz]]): the sum over
+    // directions of (high face − low face)/D_c. 1D keeps the raw difference — its weight cancels
+    // against the prefactor. Memoised so every interior face's correction reads the STAGE-1 value
+    // even after sibling faces are written.
     static double subzoneDiv1d_(auto& cache, auto& bx, int cx)
     {
         CellKey const key{cx};
@@ -407,24 +425,26 @@ private:
         return d;
     }
 
-    static double subzoneDiv2d_(auto& cache, auto& bx, auto& by, int cx, int cy)
+    static double subzoneDiv2d_(auto& cache, auto& bx, auto& by, auto const& D, int cx, int cy)
     {
         CellKey const key{cx, cy};
         if (auto it = cache.find(key); it != cache.end())
             return it->second;
-        double const d = (bx(cx + 1, cy) - bx(cx, cy)) + (by(cx, cy + 1) - by(cx, cy));
+        double const d
+            = (bx(cx + 1, cy) - bx(cx, cy)) / D[dirX] + (by(cx, cy + 1) - by(cx, cy)) / D[dirY];
         cache.emplace(key, d);
         return d;
     }
 
-    static double subzoneDiv3d_(auto& cache, auto& bx, auto& by, auto& bz, int cx, int cy, int cz)
+    static double subzoneDiv3d_(auto& cache, auto& bx, auto& by, auto& bz, auto const& D, int cx,
+                                int cy, int cz)
     {
         CellKey const key{cx, cy, cz};
         if (auto it = cache.find(key); it != cache.end())
             return it->second;
-        double const d = (bx(cx + 1, cy, cz) - bx(cx, cy, cz))
-                         + (by(cx, cy + 1, cz) - by(cx, cy, cz))
-                         + (bz(cx, cy, cz + 1) - bz(cx, cy, cz));
+        double const d = (bx(cx + 1, cy, cz) - bx(cx, cy, cz)) / D[dirX]
+                         + (by(cx, cy + 1, cz) - by(cx, cy, cz)) / D[dirY]
+                         + (bz(cx, cy, cz + 1) - bz(cx, cy, cz)) / D[dirZ];
         cache.emplace(key, d);
         return d;
     }

@@ -586,8 +586,9 @@ GridYee2D identityLayout2D()
     return GridYee2D{{1., 1.}, {40u, 40u}, {{0., 0.}}, CoreBox{Point{G, G}, Point{G + 39, G + 39}}};
 }
 
-// raw ("flux") divergence of fine cell (cx,cy): the same quantity the strategy's
-// subzoneDiv2d_ computes internally.
+// raw ("flux") divergence of fine cell (cx,cy). The strategy's subzoneDiv2d_ weights each face
+// difference by 1/D_c, so this is that same quantity on the unit mesh these cases run on
+// (identityLayout2D), which is what makes equalizing one equivalent to equalizing the other.
 double rawDiv2d(Grid2D& bx, Grid2D& by, int cx, int cy)
 {
     return (bx(cx + 1, cy) - bx(cx, cy)) + (by(cx, cy + 1) - by(cx, cy));
