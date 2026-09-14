@@ -1,10 +1,18 @@
 #!/usr/bin/env python3
-"""AMR space-time convergence: 2D rotated Hall-MHD whistler wave (Toth,
-JCP 227, 2008, Table 2). Hall-MHD analog of test_alfven2d_amr; the ideal
-CP-Alfven wave is replaced by a weakly-dispersive whistler (k*d_i = 0.19),
-which is the characteristic Hall wave and therefore the sensitive probe for
-the coarse-fine time interpolation of the Hall term (B/E/J refiners). See
-amr_convergence_base for the protocol and compute_errors for the norm.
+"""AMR space-time convergence: 2D rotated Hall-MHD whistler wave. Hall-MHD
+analog of test_alfven2d_amr; the ideal CP-Alfven wave is replaced by a weakly
+dispersive whistler (k*d_i = 0.19), which is the characteristic Hall wave and
+therefore the sensitive probe for the coarse-fine time interpolation of the
+Hall term (B/E/J refiners). See amr_convergence_base for the protocol and
+compute_errors for the norm.
+
+The wave follows Toth, JCP 227, 2008, section 4.1: the dispersion relation
+(54), the transverse amplitude ratio (55), right-hand circular polarization,
+and the arctan(0.5) rotation of its 2D case. The plasma parameters are ours
+and differ from that paper's, which runs a strongly dispersive wave
+(k*d_i ~= 1.1, c_w/c_A ~= 1.7) in a very low-beta plasma (c_A/c_s ~= 77);
+here k*d_i = 0.19 and beta = 2. Its error tables are not a reference for the
+numbers this test produces.
 
 Reconstruction is fixed at WENOZ -- the whistler is dispersive, so Linear
 would not reach order 2 and could not expose an order defect. Hyper-resistivity
@@ -32,20 +40,20 @@ os.environ.setdefault("PHARE_SCOPE_TIMING", "0")
 
 ph.NO_GUI()
 
-# Rotated whistler, Toth Table 2: alpha = arctan(0.5) ~= 26.56 deg.
+# Rotation angle of Toth's 2D case: alpha = arctan(0.5) ~= 26.56 deg.
 tan_alpha = 0.5
 cosalpha = 1.0 / np.sqrt(1 + tan_alpha**2)
 sinalpha = tan_alpha / np.sqrt(1 + tan_alpha**2)
 
 B0, RHO0, P0 = 1.0, 1.0, 1.0
 GAMMA = 5.0 / 3.0
-DELTA = 1e-3  # wave amplitude (Toth dB/B0 = 1e-3)
+DELTA = 1e-3  # wave amplitude dB/B0
 
 c_A = B0 / np.sqrt(RHO0)
 c_s = np.sqrt(GAMMA * P0 / RHO0)
 v_fast = np.sqrt(c_s**2 + c_A**2)
 
-# Toth k*d_i ~= 0.19 (PHARE d_i = 1 -> k = 0.19); one mode over the domain.
+# k*d_i = 0.19 (PHARE d_i = 1 -> k = 0.19); one mode over the domain.
 K = 0.19
 L = 2 * np.pi / K  # wavelength = domain length along e1
 
@@ -80,10 +88,8 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
     SPATIAL_ORDER_BAND = (1.70, 2.25)
 
     # sigma sweep shared with the alfven test; gate = drift of the AMR/uniform
-    # error ratio (see base class). The J-refiner fixed-N sigma-sweep study
-    # (2026-07-07/08) validated this span for the whistler: sigma=0.9 is
-    # stable up to N=128 (N=256 blows up there; fewer steps at N=64 leaves
-    # more margin).
+    # error ratio (see base class). sigma=0.9 is stable up to N=128 (N=256
+    # blows up there; the shorter run at N=64 leaves more margin).
     SWEEP_N = 64
     SWEEP_SIGMAS = [0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     MAX_AMR_SIGMA_DRIFT = 0.05

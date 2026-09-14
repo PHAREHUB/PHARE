@@ -63,16 +63,11 @@ public:
             if (ratio(d) != 2)
                 throw std::runtime_error("CompositeFieldRefiner supports refinement ratio 2 only");
 
-        // Stage 1 of the Balsara ADPT div-free prolongation fills EVERY fine face of a B
-        // component (shared and interior alike) from its coarse faces; ownership of divB-safety
-        // for the interior (odd-normal) faces moves to the stage-2 touch-up
-        // (ADPTMagneticRefinePatchStrategy::postprocessRefine), which reads them back and
-        // overwrites them with a divergence-equalizing correction. We still need to know whether
-        // this component HAS a normal (face) direction, though: that alone gates the whole-
-        // coarse-cell round-out below, which the stage-2 touch-up depends on (see class notes for
-        // the "hasNormal" split). A B component is primal in at most one direction (its face
-        // normal); an out-of-plane / reduced-dimension component (By,Bz in 1D, Bz in 2D) has none,
-        // has no interior face and no ∇·B neighbourhood to protect, so it needs no rounding.
+        // Stage 1 fills every fine face, interior ones included; the stage-2 touch-up then
+        // overwrites the interior faces. What matters here is only whether the component has a
+        // normal (face) direction at all, since that gates the round-out below. A B component is
+        // primal in at most one direction; an out-of-plane component (By,Bz in 1D, Bz in 2D) has
+        // none, hence no interior face and no ∇·B neighbourhood to protect.
         [[maybe_unused]] bool hasNormal = false;
         if constexpr (isMagnetic)
         {
@@ -85,16 +80,11 @@ public:
             hasNormal = (primalCount == 1);
         }
 
-        // The stage-2 touch-up that owns the interior faces reads the shared faces of the whole
-        // coarse cell, so the shared faces of every coarse cell the region touches must exist —
-        // the same whole-coarse-cell invariant the touch-up rounds its own region out to (see
-        // coarse_cell_round_out.hpp and ADPTMagneticRefinePatchStrategy::reconstructionRegion).
-        // Round out here too, then re-clip: the box arrives already clipped to the destination, so
-        // rounding can push it past the allocation. This cannot corrupt anything — assignFine_
-        // writes only slots that are still NaN, so the extra layer of shared faces fills holes and
-        // never overwrites valid data. It also needs no extra coarse data: for both centerings the
-        // rounded-in fine indices share the coarse anchors, and the stencil reach around them, of
-        // the indices already gathered.
+        // The stage-2 touch-up reads the shared faces of a whole coarse cell, so this gather must
+        // satisfy the same whole-coarse-cell invariant (coarse_cell_round_out.hpp). Round out,
+        // then re-clip: the box arrives already clipped, so rounding can push it past the
+        // allocation. Safe — assignFine_ writes only still-NaN slots, and the rounded-in fine
+        // indices share the coarse anchors, and stencil reach, of those already gathered.
         auto const region = [&]() -> SAMRAI::hier::Box {
             if constexpr (isMagnetic)
                 if (hasNormal)
@@ -103,10 +93,8 @@ public:
             return intersectionBox;
         }();
 
-        // Per-direction centering is fixed over the box; parity varies per fine index. The full
-        // stencil for any (centering, parity) combination is a distinct compile-time array; the
-        // 2-bits-per-direction index built below (bit0 = parity, bit1 = dual) selects the matching
-        // gather at runtime via gatherers_.
+        // Centering is fixed over the box, parity varies per fine index. The 2-bits-per-direction
+        // index built below (bit0 = parity, bit1 = dual) selects the matching compile-time stencil.
         for (auto const fineIndex : phare_box_from<dimension>(region))
         {
             auto const anchor = toCoarseIndex<dimension>(fineIndex);
@@ -135,9 +123,7 @@ private:
     // 2 bits of choice per direction (dual<<1 | parity) → 4^dim combinations.
     static constexpr std::size_t nCombined = std::size_t{1} << (2 * dimension);
 
-    // 1-D weight row for direction d and the compile-time choice (dual<<1 | parity). Forwards the
-    // consteval primitive directly; rows differ in length (copy=1, half-point=2, dual-σ±=3) and
-    // tensorProduct sizes the multi-D stencil from them exactly — no padding.
+    // 1-D weight row for direction d and the compile-time choice (dual<<1 | parity).
     template<std::size_t d, std::size_t choice>
     static consteval auto oneDRow_()
     {
@@ -179,7 +165,7 @@ private:
     }
 
     // runtime centering+parity → compile-time stencil: one gather fn per combination, dispatched
-    // by a plain index. Each keeps its natural length; nothing is padded to a common size.
+    // by a plain index.
     using Gatherer_t                 = double (*)(FieldT const&, Point_t const&);
     static constexpr auto gatherers_ = core::for_N_make_array<nCombined>(
         [](auto ic) { return Gatherer_t{&gatherStencil_<ic()>}; });
@@ -195,10 +181,9 @@ private:
 
 // ---- factory (declared in field_refiner_kernel.hpp) ---------------------------------------------
 
-// FieldRefinementOrder has a single enumerator today and RefinementConfig::FROM is the only place
-// a dict value is validated into it, so there is nothing left to branch on here: the enum type
-// itself carries the guarantee the old runtime throw used to check. When Cubic (order 4) lands
-// this becomes a switch over the enum, one case per compile-time stencil.
+// FieldRefinementOrder has a single enumerator and RefinementConfig::FROM is the only place a
+// dict value is validated into it, so there is nothing to branch on. A second order adds a switch
+// here, one case per compile-time stencil.
 template<typename GridLayoutT, typename FieldT>
 std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
 makeRefineKernel([[maybe_unused]] FieldRefinementOrder const order)

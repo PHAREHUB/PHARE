@@ -23,61 +23,26 @@ using core::dirY;
 using core::dirZ;
 
 /**
- * @brief Stage-2 (order-INdependent) cross-component divB touch-up of the Balsara ADPT
- *        div-free magnetic prolongation.
+ * @brief Stage 2 of the Balsara ADPT divergence-free magnetic prolongation: the cross-component
+ *        divB touch-up. Order-independent.
  *
- * Paired with the fill-all composite kernel (stage 1, per-component, order-dialed): stage 1 fills
- * EVERY fine face of each B component from its own coarse faces; this stage equalizes the
- * divergences of the 2^d fine cells a coarse zone splits into -- its subzones -- by adding the
- * closed-form min-norm correction to the 2d interior faces. When the coarse field is discretely
- * div-free the transported zone divergence q0 = 0, so every corrected subzone divergence becomes
- * 0 to roundoff (div-free prolongation). At order 2 this touch-up is algebraically identical to
- * the legacy Tóth-Roe postprocess, so ADPT order 2 == the legacy operator; at order 4 the same
- * touch-up is ADDED to the 4th-order (Cubic4) interior faces, unlocking genuine 4th-order
- * div-free B refinement (out of scope here: this branch caps refinement order at 2).
+ * Stage 1 (the fill-all composite kernel, magnetic_composite_refiner.hpp) fills every fine face of
+ * each B component from that component's own coarse faces, and makes no divB claim. This stage
+ * adds a closed-form min-norm correction to the 2d interior faces of each coarse zone, equalizing
+ * the divergences of the 2^d fine cells the zone splits into -- its subzones. They all become the
+ * zone's transported divergence q0, so a discretely div-free coarse field (q0 = 0) prolongs
+ * div-free to roundoff whatever the stage-1 order.
  *
- * Derivation: Balsara, D. S. (2001), "Divergence-Free Adaptive Mesh Refinement for
- * Magnetohydrodynamics", J. Comput. Phys. 174, 614-648 — the ADPT scheme this touch-up
- * implements. In closed form: for each coarse zone, the correction added to an interior face is
- * a weighted sum of that zone's 2^d fine-subzone (flux) divergence deficits — own subzone
- * weighted highest, each farther (Hamming-distance) neighbour weighted less — sized to drive
- * every corrected subzone divergence to the coarse zone's own transported divergence. The
- * per-dimension flux-variable weights are 1/2 (1D), [3,1]/8 (2D) and [7,2,2,1]/24 (3D); see the
- * correctBx/By/Bz*Nd functions below and the IMPLEMENTATION NOTES for how they are used.
+ * Balsara, D. S., Samantaray, S. & Subramanian, S. (2023), "Efficient WENO-Based Prolongation
+ * Strategies for Divergence-Preserving Vector Fields", Commun. Appl. Math. Comput.,
+ * doi:10.1007/s42967-021-00182-x. The correction of an interior face is a weighted sum of the
+ * zone's subzone divergence deficits — own subzone weighted highest, each farther
+ * (Hamming-distance) neighbour less. The per-dimension weights are the flux-variable ones,
+ * 1/2 (1D), [3,1]/8 (2D) and [7,2,2,1]/24 (3D): the density weights ([·]/16, [·]/48) rescaled by
+ * the refinement ratio 2.
  *
- * IMPLEMENTATION NOTES
- * --------------------
- * - Anisotropic meshes (dx != dy != dz) are handled exactly: subzoneDiv weights each face
- *   difference by 1/D_c, and the correction of a component-c face carries a D_c prefactor. The
- *   integer stencils survive anisotropy verbatim — only the divergence proxy and the prefactor
- *   change. Only the anisotropy RATIO matters: a uniform rescale of every D_c cancels between the
- *   weighted divergence and the prefactor, so the equal-mesh case reduces to the unweighted form
- *   identically and the fine-vs-coarse meshSize is immaterial. 1D is unchanged: its single weight
- *   cancels against its own prefactor.
- * - The correction is ADDED (+=) to the existing (stage-1) face value, whereas TR fully recomputed
- *   the interior face (baseline + correction). At order 2 the stage-1 interior fill equals TR's
- *   ½(neighbour) baseline, so += and TR's = coincide; at order 4 the += preserves the Cubic4 face.
- * - subzoneDiv here is the 1/D_c-weighted fine-face-difference sum (a physical divergence up to a
- *   uniform scale); the D_c prefactor on the correction restores the dimension of a face value.
- *   The closed-form denominators stay the FLUX-variable ones: 1/2 (1D), [3,1]/8 (2D),
- *   [7,2,2,1]/24 (3D). These are the density weights ([·]/16, [·]/48) rescaled by the fixed
- *   refinement ratio 2 ("flux variables ⇒ /8 and /24"); at equal mesh this reproduces TR exactly.
- * - Order-independence / correctness: the correction of every interior face must be computed from
- *   the STAGE-1 (uncorrected) subzone divergences. A face-centric loop that recomputed divergences
- *   from the live (partially corrected) field would couple sibling interior faces and fail the
- *   divB-exactness gate. A per-zone snapshot is therefore load-bearing (NOT an optional
- *   optimisation): subzoneDiv_ memoises each fine cell's divergence in a small per-postprocess
- *   cache, populated at the cell's first reference — which, since the touch-up only ever writes
- *   interior faces and a cell's divergence is only ever requested by its own zone's corrections,
- *   captures the stage-1 value.
- * - Whole-coarse-cell round-out: every subzoneDiv_ read of an interior face's touch-up reaches only
- *   the fine faces of its own coarse cell — the same one-coarse-cell reach the legacy Tóth-Roe
- *   postprocess has (see reconstructionRegion below). So the touch-up must run over the SAME
- *   whole-coarse-cell region as the legacy strategy, computed the same way: round the SAMRAI fill
- *   box out to whole coarse cells and clip to the allocated ghost box. Running it over the raw
- *   fill_box (as an earlier version of this file did) reopens the 3-level perimeter-NaN bug the
- *   round-out fixed: on a misaligned fill box, the far shared face of a cut coarse cell was never
- *   gathered, and correctBxNd would read it as leftover NaN scratch.
+ * The correction is added to the stage-1 face value rather than replacing it, so a higher-order
+ * stage-1 interior fill survives the touch-up.
  */
 template<typename TensorFieldDataT>
 class ADPTMagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
@@ -106,8 +71,6 @@ public:
 
     void registerIDs(int const b_id) { b_id_ = b_id; }
 
-    // The magnetic path has no physical-boundary or pre-refine work of its own: both are pure
-    // SAMRAI::xfer::RefinePatchStrategy hooks this family never needs.
     void setPhysicalBoundaryConditions(SAMRAI::hier::Patch&, double const,
                                        SAMRAI::hier::IntVector const&) override
     {
@@ -118,10 +81,8 @@ public:
     {
     }
 
-    // Always 0: the stage-2 touch-up reconstructs an interior face from *fine* faces of the coarse
-    // cell it belongs to — faces the stage-1 gather has already written — and reads no coarse data
-    // at all. SAMRAI provisions max(this, every registered refine operator), and the operators
-    // report their own coarse reach (1 at order 2), so 0 here narrows nothing.
+    // Always 0: the touch-up reads only fine faces the stage-1 gather already wrote, no coarse
+    // data. SAMRAI provisions max(this, every registered refine operator), so 0 narrows nothing.
     SAMRAI::hier::IntVector
     getRefineOpStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
     {
@@ -129,29 +90,19 @@ public:
     }
 
     /**
-     * @brief The region a magnetic interior-face reconstruction over the fill box `fine_box` must
-     * run over.
+     * @brief The region the touch-up over fill box `fine_box` must run over: `fine_box` rounded
+     * out to whole coarse cells, clipped to the allocation.
      *
-     * The touch-up reaches exactly one coarse cell: it reads only fine faces bounding the coarse
-     * cell it is reconstructing, and every one of those is a shared face the stage-1 gather fills.
-     * So the reconstruction is self-consistent iff the region it runs over is a union of whole
-     * coarse cells (see coarse_cell_round_out.hpp).
+     * The touch-up reaches exactly one coarse cell, so it is self-consistent only over a union of
+     * whole coarse cells (coarse_cell_round_out.hpp). SAMRAI fill boxes are not: a recursive
+     * schedule's coarse-interpolation temporary plus its one-cell ring always cuts a coarse cell
+     * in half, leaving the far shared faces unwritten.
      *
-     * SAMRAI's fill boxes are not. A recursive schedule fills a coarse-interpolation temporary plus
-     * a ring of d_max_stencil_width = 1 cell, and one cell is always *half* a coarse cell, whatever
-     * the temporary's own parity — so the shared faces the reconstruction needs on the far side of
-     * a cut cell were never written.
-     *
-     * Rounding out grows each edge by at most one index, so the region stays inside the allocation
-     * iff field_ghost_width >= fill_ring + 1. That holds in every configuration we support — the
-     * ring is 1 (the composite refiner is order 2 only), and field_ghost_width (see
-     * ghost_width_calculator.hpp) never goes below 2 (hybrid at interp_order 1; MHD at its lowest
-     * reconstruction width) — but with zero slack in that tightest configuration: 2 is exactly
-     * fill_ring + 1, not a comfortable margin. So the clip below never actually bites, but only
-     * just. If it ever did it would cut a coarse cell back in half, and
-     * a half-covered cell has no well-posed reconstruction: some of its inputs are faces nothing
-     * ever wrote. That is a configuration we do not handle, so say so rather than silently leaving
-     * NaN faces behind for something downstream to sample.
+     * Round-out grows each edge by one index, so the region stays inside the allocation iff
+     * field_ghost_width >= fill_ring + 1. That holds everywhere we support, but with zero slack:
+     * the ring is 1 and field_ghost_width (ghost_width_calculator.hpp) bottoms out at exactly 2.
+     * If the clip ever bit it would halve a coarse cell, and a half-covered cell has no well-posed
+     * reconstruction — some of its inputs are faces nothing ever wrote — hence the throw.
      */
     static SAMRAI::hier::Box reconstructionRegion(SAMRAI::hier::Box const& fine_box,
                                                   SAMRAI::hier::Box const& ghost_box)
@@ -170,9 +121,8 @@ public:
     }
 
 
-    // Stage-2 touch-up: same postprocessRefine slot as the legacy TR strategy, run over the same
-    // whole-coarse-cell-rounded region (reconstructionRegion) so every subzoneDiv_ read lands on a
-    // fine face the stage-1 gather actually wrote (see class notes).
+    // Run over the whole-coarse-cell-rounded region so every subzoneDiv_ read lands on a fine
+    // face the stage-1 refinement actually wrote.
     void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
                            SAMRAI::hier::Box const& fine_box,
                            SAMRAI::hier::IntVector const& ratio) override
@@ -189,12 +139,9 @@ public:
 
 
     /**
-     * @brief Stage 2 proper: add the divergence-equalizing correction over `region`.
-     *
-     * Split out of postprocessRefine so it can be driven directly from a test with a hand-built
-     * field, exactly as the legacy strategy's reconstructInteriorFaces was. `region` must already
-     * be whole-coarse-cell rounded (reconstructionRegion) — every read here lands on a fine face
-     * of the coarse cell being corrected, and those exist only if the cell is wholly inside.
+     * @brief Add the divergence-equalizing correction over `region`, which must already be
+     * whole-coarse-cell rounded (reconstructionRegion): every read here lands on a fine face of
+     * the coarse cell being corrected, and those exist only if the cell is wholly inside.
      */
     static void touchUpInteriorFaces(auto& fields, gridlayout_type const& layout,
                                      SAMRAI::hier::Box const& region)
@@ -210,7 +157,8 @@ public:
                 region, fields[i].physicalQuantity(), regionLayout);
         });
 
-        // one stage-1 divergence snapshot for the whole patch pair (see class notes)
+        // One stage-1 snapshot per pass: every correction must read stage-1 divergences.
+        // Recomputing from the live field couples sibling interior faces and breaks divB exactness.
         DivCache cache;
 
         if constexpr (dimension == 1)
@@ -249,7 +197,7 @@ public:
 
     // ---- 1D ------------------------------------------------------------------------------------
     // Only Bx has an x-normal; the single interior face's min-norm correction is δ = pair/2 (flux).
-    // On div-free (Bx const) stage-1 data pair = 0, so this is a no-op — matching TR's 1D baseline.
+    // On div-free (Bx const) stage-1 data pair = 0, so this is a no-op.
     static void correctBx1d(auto& cache, auto& bx, auto const& layout,
                             core::Point<int, dimension> idx)
     {
@@ -413,8 +361,8 @@ public:
 private:
     // 1/D_c-weighted divergence of the fine cell at local index (cx[,cy[,cz]]): the sum over
     // directions of (high face − low face)/D_c. 1D keeps the raw difference — its weight cancels
-    // against the prefactor. Memoised so every interior face's correction reads the STAGE-1 value
-    // even after sibling faces are written.
+    // against the prefactor. Memoised so a correction still reads the stage-1 value after sibling
+    // faces are written.
     static double subzoneDiv1d_(auto& cache, auto& bx, int cx)
     {
         CellKey const key{cx};

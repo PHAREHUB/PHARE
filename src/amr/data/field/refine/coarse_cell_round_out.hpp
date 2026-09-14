@@ -16,18 +16,15 @@ namespace PHARE::amr
 /**
  * @brief The whole-coarse-cell invariant of magnetic prolongation, and the helpers enforcing it.
  *
- * Magnetic prolongation (ratio 2) is split in two. Faces with an even index in their component's
- * normal direction coincide with a coarse face and are gathered from the coarse level; the
- * odd-normal (interior) faces are then reconstructed div-free by a magnetic patch strategy's
- * postprocessRefine (see ADPTMagneticRefinePatchStrategy::reconstructionRegion). That
+ * Magnetic prolongation (ratio 2) gathers the even-normal (shared) faces from the coarse level,
+ * then reconstructs the odd-normal (interior) faces div-free in postprocessRefine. That
  * reconstruction reaches exactly one coarse cell: for an interior face of coarse cell C it reads
- * only faces bounding C, and every one of them is a shared face the gather just filled.
+ * only faces bounding C, every one of them a shared face the gather just filled.
  *
- * Hence the invariant: **the region a magnetic prolongation runs over must be a union of whole
- * coarse cells**. Then every postprocess input is in the region and was written. SAMRAI's fill
- * boxes do not satisfy it on their own: a recursive schedule fills a coarse-interpolation
- * temporary plus a ring of d_max_stencil_width = 1 cell, and one cell is always *half* a coarse
- * cell.
+ * Hence the invariant: the region a magnetic prolongation runs over must be a union of whole
+ * coarse cells, so that every postprocess input is in the region and was written. SAMRAI fill
+ * boxes do not satisfy it: a recursive schedule's coarse-interpolation temporary plus its ring of
+ * d_max_stencil_width = 1 cell always cuts a coarse cell in half.
  *
  * A cell box is a union of whole coarse cells in a direction iff its lower index is even and its
  * upper index is odd. The corresponding field box, per direction, is
@@ -94,10 +91,8 @@ roundFieldBoxOutToCoarseCells(SAMRAI::hier::Box box,
 /**
  * @brief Does this cell box consist of whole coarse cells, i.e. does it satisfy the invariant?
  *
- * Checking a region once is equivalent to checking every index in it: if the region is a union of
- * whole coarse cells then the coarse cell of every fine face it contains is inside it too, which is
- * exactly what the ADPT touch-up's interior-face reconstruction needs (see
- * ADPTMagneticRefinePatchStrategy::touchUpInteriorFaces).
+ * Checking the region once is equivalent to checking every index in it: if the region is a union
+ * of whole coarse cells, the coarse cell of every fine face it contains is inside it too.
  */
 template<std::size_t dim>
 NO_DISCARD bool isWholeCoarseCells(SAMRAI::hier::Box const& box)

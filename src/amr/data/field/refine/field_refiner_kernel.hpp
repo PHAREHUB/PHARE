@@ -20,21 +20,22 @@ namespace PHARE::amr
 /**
  * @brief Supported field-refinement orders, shared by RefinementConfig and the kernel factories.
  *
- * Linear (order 2) is the only supported value for now; validating a raw dict int against this
- * enum happens in exactly one place (RefinementConfig::FROM), so the factories below no longer
- * need their own runtime order check.
+ * Linear (order 2) is the only supported value for now. A raw dict int is validated against this
+ * enum in exactly one place, RefinementConfig::FROM; the factories below take the enum and so need
+ * no order check of their own.
  */
 enum class FieldRefinementOrder { Linear = 2 };
 
 /**
  * @brief Runtime-dispatched field-refinement seam.
  *
- * A kernel is constructed once per refine operator and applied per overlap box: refineBox()
- * receives one intersection box, together with {centering, destFieldBox, sourceFieldBox, ratio},
- * and loops over its fine indices internally, so the virtual-dispatch cost is paid once per box
- * rather than once per index.
+ * The refinement order is a runtime dict value, so it must not become a template parameter of the
+ * refine operators and messengers: that would carry it into the build permutation id and multiply
+ * the compiled permutations. This seam is what keeps it runtime — operators and messengers depend
+ * on the interface, never on the stencil tables.
  *
- * Concrete kernels (composite Linear, magnetic shared-face) implement refineBox().
+ * refineBox() takes one overlap box and loops over its fine indices internally, so the virtual
+ * call is paid once per box rather than once per index.
  */
 template<typename GridLayoutT, typename FieldT>
 struct IFieldRefineKernel
@@ -65,9 +66,8 @@ struct IFieldRefineKernel
 /**
  * @brief Build a composite field-refinement kernel for a given order.
  *
- * order: 2 = Linear (per the dual ±1/4 ladder). Definition lives with the concrete composite
- * kernels (composite_field_refiner.hpp); declared here so the additive operators and the
- * messengers can depend only on the seam.
+ * Defined with the concrete kernels (composite_field_refiner.hpp); declared here so the additive
+ * operators and the messengers depend only on the seam.
  */
 template<typename GridLayoutT, typename FieldT>
 std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
@@ -76,13 +76,8 @@ makeRefineKernel(FieldRefinementOrder order);
 /**
  * @brief Build the stage-1 magnetic refinement kernel of the ADPT div-free prolongation.
  *
- * Fills ALL fine faces per component (shared and interior) with the composite tensor stencils;
- * the stage-2 partner ADPTMagneticRefinePatchStrategy::postprocessRefine then applies the
- * order-independent divB touch-up. Stage 1 by itself makes no ∇·B claim — it only reproduces
- * each component's coarse values on the fine grid via the tensor stencils above; ∇·B-freeness of
- * the composite result is established solely by the stage-2 touch-up, which equalizes the 2^d
- * fine subzone divergences of each coarse zone once stage 1 has filled every face (see
- * ADPTMagneticRefinePatchStrategy's class docs).
+ * Fills every fine face per component with the composite tensor stencils, and makes no ∇·B claim:
+ * ∇·B-freeness comes from the stage-2 touch-up (adpt_magnetic_refine_patch_strategy.hpp).
  */
 template<typename GridLayoutT, typename FieldT>
 std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>

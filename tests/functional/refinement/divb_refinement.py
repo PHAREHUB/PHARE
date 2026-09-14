@@ -57,24 +57,19 @@ NSTEPS = {"boxes": 2, "tagging": 20}  # tagging needs steps for regrids to fire
 # in y sit in the flat field a few cells off the sheet, the sheet itself is fully refined.
 FINE_BOX = [[4, 16], [15, 31]]
 
-# A divB spike from a misclassified/overwritten shared face is O(B/dx) ~ 1e-1. With the Harris
-# Bx(y) init divB is machine-zero analytically (Bx const in x, By identically 0), so after
-# NSTEPS the floor is pure roundoff and the fine level must both stay absolutely tiny AND not
-# amplify what it inherits. Both arms below must hold -- there is deliberately no max(abs, rel)
-# escape hatch, which is what made an earlier version of this gate unfalsifiable.
+# A divB spike from a misclassified/overwritten shared face is O(B/dx) ~ 1e-1. The Harris Bx(y)
+# init is analytically machine-zero, so after NSTEPS the floor is pure roundoff: the fine level
+# must stay absolutely tiny and not amplify what it inherits. Both arms must hold.
 #
-# The constants come from MEASURED floors (2026-08-31, 4 ranks, both modes), not from taste:
+# Measured floors (2026-08-31, 4 ranks, both modes):
 #   float64 diagnostics: coarse 6.2e-16 .. 2.9e-15, fine 2.6e-15 .. 1.4e-14, ratio 2.96 .. 5.33
 #   float32 diagnostics: coarse 2.2e-07,             fine 4.2e-07 .. 4.5e-07, ratio 1.89 .. 2.04
-# Two things that only measurement shows. First, the ratio is NOT precision-independent: float32
-# sits near 2 but float64 near 5, because in double precision the coarse floor is pure roundoff
-# and the fine level carries a few more operations' worth of it. Second, that double-precision
-# ratio WANDERS run to run (2.96 .. 5.33 observed over six runs, varying with rank
-# decomposition) precisely because it is roundoff, so the relative arm needs real headroom or it
-# becomes a flaky test -- a REL_TOL of 5 would have failed a passing run.
-# ABS_CAP is the arm with teeth: ~70x above the worst measured double-precision fine value and
-# ~11 orders below the O(B/dx) spike a misclassified shared face produces. REL_TOL still adds
-# discrimination the cap cannot give (a 100x amplification of a 1e-15 floor is still under ABS_CAP).
+# The ratio is not precision-independent -- float32 sits near 2, float64 near 5, the fine level
+# carrying a few more operations' worth of roundoff -- and the float64 ratio wanders run to run
+# with the rank decomposition, which is why REL_TOL has headroom: 5 would have failed a passing
+# run. ABS_CAP is the arm with teeth, ~70x above the worst measured fine value and ~11 orders
+# below the O(B/dx) spike. REL_TOL still catches what the cap cannot: a 100x amplification of a
+# 1e-15 floor is still under ABS_CAP.
 ABS_CAP = 1e-12  # fine-level max|divB| must be this small in absolute terms ...
 REL_TOL = 20.0  # ... AND must not amplify the inherited coarse floor by more than this
 
@@ -187,10 +182,9 @@ def config(mode, order, diag_dir):
 
 
 def max_divb_per_level(diag_dir, check_time):
-    # IMPORTANT: measure the DOMAIN INTERIOR only. _compute_divB builds divB from the full
-    # B datasets (ghosts included) and drops ghosts_nbr, so dataset[:] still spans the ghost
-    # band. The fine-level coarse-fine ghost fill is a known divB hot-spot (order-independent,
-    # pre-existing) that is NOT a physical interior violation -> strip a ghost margin.
+    # Measure the domain interior only: _compute_divB builds divB from the full B datasets and
+    # drops ghosts_nbr, so dataset[:] still spans the ghost band. The coarse-fine ghost fill is a
+    # known divB hot-spot, not a physical interior violation -> strip a ghost margin.
     run = Run(diag_dir)
     B = run.GetB(check_time, all_primal=False)
     blvls = B.levels(check_time)

@@ -75,10 +75,9 @@ TYPED_TEST(aFieldRefineOperator, kernelRefineOperatorCanBeCreated)
 }
 
 
-// An unsupported refinement order can no longer reach the kernel factories: they take a
-// FieldRefinementOrder, whose only enumerator is Linear. So the rejection this used to test at the
-// factory now belongs at the single place a raw value is validated -- RefinementConfig::FROM, which
-// is the only conversion from a dict int into the enum.
+// An unsupported order cannot reach the kernel factories: they take a FieldRefinementOrder, whose
+// only enumerator is Linear. RefinementConfig::FROM is the single conversion from a dict int into
+// that enum, so it is the only place a raw value can be rejected.
 TEST(aRefinementConfig, rejectsUnsupportedOrderFromTheDict)
 {
     auto configFor = [](int const order) {
@@ -162,8 +161,7 @@ std::string boxStr(SAMRAI::hier::Box const& box)
 } // namespace
 
 
-// the two fine children of a coarse dual cell always mean back to its average (conservation),
-// at every order.
+// the two fine children of a coarse dual cell always mean back to its average (conservation)
 TEST(compositeRefiner1D, dualChildrenConserveCoarseAverage)
 {
     std::array<double, 8> coarse = {1.0, 1.3, 0.4, 2.0, -0.5, 0.7, 0.9, 0.2};
@@ -208,13 +206,12 @@ TEST(compositeRefiner1D, dualRowSumsToOne)
 }
 
 
-// B (Bx: primal-x normal, dual-y tangential): the two tangential (y) children of a shared
-// (even-x) face are antisymmetric about the coarse value ⇒ sum = 2·C ⇒ ∇·B-neutral (stage-1
-// property, unaffected by the magnetic round-out). Interior (odd-x, normal-direction) faces are
-// now filled too — stage 1 of the ADPT prolongation fills ALL fine faces; ownership of divB-safety
-// there moves to the stage-2 touch-up (not exercised by this kernel-only test). Assert the interior
-// fill matches the same tensor-product stencil value the kernel uses (directionalInterp /
-// directionalProlongation), computed independently of CompositeFieldRefiner's own orchestration.
+// B (Bx: primal-x normal, dual-y tangential). Two assertions on the stage-1 fill:
+//   - shared (even-x) faces: the two tangential (y) children are antisymmetric about the coarse
+//     value ⇒ sum = 2·C ⇒ ∇·B-neutral;
+//   - interior (odd-x) faces: filled with the tensor-product stencil value, recomputed here from
+//     the primitive weight tables independently of CompositeFieldRefiner's orchestration.
+// divB-safety of the interior faces belongs to the stage-2 touch-up, not exercised by this test.
 TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
 {
     using ImplYee2D = GridYee2D::implT;
@@ -268,9 +265,8 @@ TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
         EXPECT_NEAR(c0 + c1, 2.0 * src_at(2, iy), 1e-12);
     }
 
-    // fine x=5 is interior (odd-x, normal-direction), coarse anchor Ix=2: stage 1 now fills it
-    // (no more single-owner skip). Assert filled (non-NaN) and matching the tensor-product
-    // stencil value built from the primitive weight tables above.
+    // fine x=5 is interior (odd-x, normal-direction), coarse anchor Ix=2: filled (non-NaN) and
+    // matching the tensor-product stencil value built from the primitive weight tables above
     for (int iy = 4; iy <= 7; ++iy)
     {
         int const Iy = iy / 2;
@@ -281,13 +277,12 @@ TEST(magneticCompositeRefiner2D, sharedFaceTangentialChildrenAreDivBNeutral)
 }
 
 
-// ----- the whole-coarse-cell round-out
-// ------------------------------------------------------------
+// ----- the whole-coarse-cell round-out -----------------------------------------------------------
 
 TEST(coarseCellRoundOut, parityHelpersAreFloorBasedOnNegativeIndices)
 {
-    // `i % 2` is -1 on odd negatives, so a `== 1` parity test would silently invert there. These
-    // matter: the measured failing fill boxes really do have lower indices -3, -2, -1.
+    // `i % 2` is -1 on odd negatives, so a `== 1` parity test would silently invert there, and
+    // fill boxes with negative lower indices do occur.
     EXPECT_TRUE(isOddIndex(-3));
     EXPECT_FALSE(isOddIndex(-2));
     EXPECT_TRUE(isOddIndex(-1));
@@ -316,12 +311,12 @@ TEST(coarseCellRoundOut, parityHelpersAreFloorBasedOnNegativeIndices)
 
 TEST(coarseCellRoundOut, cellAndFieldBoxesAgreeOnWholeCoarseCells)
 {
-    // the measured failing fill box: one cell row, the lower half of coarse row 32
+    // one cell row, the lower half of coarse row 32
     auto const fill    = boxOf<2>({-2, 64}, {81, 64});
     auto const rounded = roundCellBoxOutToCoarseCells<2>(fill);
     EXPECT_TRUE(boxesEqual(rounded, boxOf<2>({-2, 64}, {81, 65})));
 
-    // negative, odd on both lower edges (the measured coarse-interp temporary box)
+    // negative, odd on both lower edges (the shape a coarse-interpolation temporary takes)
     EXPECT_TRUE(boxesEqual(roundCellBoxOutToCoarseCells<2>(boxOf<2>({-1, 47}, {80, 63})),
                            boxOf<2>({-2, 46}, {81, 63})));
 
@@ -351,20 +346,17 @@ TEST(coarseCellRoundOut, wholeCoarseCellsMeansLowerEvenAndUpperOdd)
 }
 
 
-// ----- magnetic prolongation over a misaligned fill box
-// -------------------------------------------
+// ----- magnetic prolongation over a misaligned fill box ------------------------------------------
 //
-// The regression these two guard. SAMRAI fill boxes are not unions of whole coarse cells — a
-// recursive schedule's coarse-interpolation temporary is filled plus a one-cell ring, and one cell
-// is always half a coarse cell. Tóth-Roe reaches exactly one coarse cell, so on such a box it used
-// to read shared faces that lay outside the box and had therefore never been written: NaN B on the
-// fine level, then NaN E, then a particle out of its patch.
+// The regression these two guard: SAMRAI fill boxes are not unions of whole coarse cells, so a
+// magnetic postprocess reaching one coarse cell reads shared faces outside the box that were never
+// written — NaN B on the fine level, then NaN E, then a particle out of its patch.
 
 namespace
 {
 // Coarse data that is *exactly* discretely divergence-free (unit spacing):
 //   dBx/di + dBy/dj = A + (-A) = 0
-// and non-trivial in both directions, so the Tóth-Roe transverse terms are exercised.
+// and non-trivial in both directions, so the touch-up's transverse terms are exercised.
 constexpr double coefA = 0.7, coefG = 0.35, coefD = -0.2, coefC1 = 1.1, coefC2 = -0.4;
 
 double coarseBxAt(int I, int J)
@@ -376,11 +368,10 @@ double coarseByAt(int I, int J)
     return -coefA * J + coefD * I + coefC2;
 }
 
-// What order-2 prolongation followed by Tóth-Roe must produce. The dual ±¼ ladder is exact on a
-// linear profile, so the shared face at (2I, 2J+p) is coarseBxAt(I,J) ± G/4; Tóth-Roe's base term
-// is exact on a linear profile and its transverse term is a mixed second difference, which vanishes
-// on data with no cross term. Both fine components are again linear, with fine divergence
-// A/2 - A/2 = 0.
+// What the two stages must produce. The dual ±¼ ladder is exact on a linear profile, so the shared
+// face at (2I, 2J+p) is coarseBxAt(I,J) ± G/4; the touch-up's correction is a mixed second
+// difference, which vanishes on data with no cross term. Both fine components are again linear,
+// with fine divergence A/2 - A/2 = 0.
 double fineBxAt(int i, int j)
 {
     return 0.5 * coefA * i + 0.5 * coefG * j - 0.25 * coefG + coefC1;
@@ -517,9 +508,9 @@ TEST(magneticProlongation2D, misalignedFillBoxReconstructsFiniteDivBFreeInterior
 
 // When the fill box already reaches the allocation, round-out is clipped back and can leave a
 // coarse cell half-covered. There is no well-posed reconstruction for such a cell — some of its
-// inputs are faces nothing ever wrote — so this is rejected rather than silently skipped. It cannot
-// happen in any supported configuration (field_ghost_width >= fill_ring + 1 holds everywhere),
-// which is why a deliberately misaligned *allocation* is needed to reach it at all.
+// inputs are faces nothing ever wrote — so it is rejected rather than silently skipped. Reaching
+// it needs a misaligned allocation: field_ghost_width >= fill_ring + 1 holds in every supported
+// configuration.
 TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 {
     // a coarse-interpolation temporary: its box is coarsen(unfilled), so its parity is arbitrary.
@@ -539,9 +530,9 @@ TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 }
 
 
-// ==================================================================================================
+// =================================================================================================
 // ADPTMagneticRefinePatchStrategy stage-2 touch-up tests (Balsara divB-free prolongation)
-// ==================================================================================================
+// =================================================================================================
 //
 // Exercises the public static correctBx2d/correctBy2d directly: they are plain static functions,
 // so no SAMRAI Patch/ResourcesManager machinery is needed. Stage 1 (CompositeFieldRefiner, reused
@@ -553,11 +544,9 @@ TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 // typedefs used at class scope (Geometry/gridlayout_type/N/dimension); Geometry and ResMan are
 // never touched by the statics under test, so both are empty stand-ins.
 //
-// order-4 is deliberately NOT exercised here (unlike the upstream ADPT gtests this was ported
-// from): CompositeFieldRefiner on this branch static_asserts order == 2 (higher-order-refinement
-// caps refinement order at 2 for hybrid), so an order-4 fillFaces2D<4> would fail to compile. The
-// touch-up statics themselves are order-independent, so order 2 alone still exercises the full
-// stage-2 contract (memoised stage-1 snapshot, per-zone equalization).
+// Order 2 only: CompositeFieldRefiner static_asserts order == 2. The touch-up statics are
+// order-independent, so order 2 exercises the whole stage-2 contract (memoised stage-1 snapshot,
+// per-zone equalization).
 namespace
 {
 struct DummyGeometry2D
@@ -685,9 +674,9 @@ TEST(ADPTMagneticTouchUp2D, correctsToExactDivBFreeOnGenericDivFreeCoarseData)
 
 
 // Same flow but the coarse field is NOT divergence-free: the touch-up doesn't (and can't) zero
-// out the divergence -- per the class docstring it *equalizes* the 4 fine-subzone divergences of
-// the coarse cell they split (they all become the transported zone divergence q0 != 0). Assert
-// equality within each complete coarse zone, not zero.
+// out the divergence: it equalizes the 4 subzone divergences of the coarse cell they split, which
+// all become the transported zone divergence q0 != 0. Assert equality within each complete coarse
+// zone, not zero.
 template<int order>
 static void runEqualizeCase()
 {
@@ -741,7 +730,6 @@ int main(int argc, char** argv)
 
     int testResult = RUN_ALL_TESTS();
 
-    // Finalize
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::finalize();
     SAMRAI::tbox::SAMRAI_MPI::finalize();
