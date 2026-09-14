@@ -12,8 +12,7 @@ __all__ = ["validate"]
 _libs = {}
 
 
-def _simulator_id_parts(sim):
-    """The build permutation fields, in the order the res/sim files list them."""
+def simulator_id(sim):
     parts = [str(sim.ndim)]
 
     if sim.interp_order:
@@ -28,52 +27,7 @@ def _simulator_id_parts(sim):
             hall_active,
         ]
 
-    return parts
-
-
-def simulator_id(sim):
-    return "_".join(_simulator_id_parts(sim))
-
-
-def permutation_line(sim):
-    """The res/sim permutation file line that builds this simulation's module.
-    Not derivable from simulator_id by splitting: field values contain '_'
-    (SSPRK4_5)."""
-    return ",".join(_simulator_id_parts(sim))
-
-
-def built_simulator_ids():
-    """Permutations present in the loaded build, or None if pybindlibs itself is
-    not importable (no build on PYTHONPATH at all)."""
-    import pkgutil
-
-    try:
-        import pybindlibs
-    except ModuleNotFoundError:
-        return None
-
-    return sorted(
-        name[len("cpp_") :]
-        for _, name, _ in pkgutil.iter_modules(pybindlibs.__path__)
-        if name.startswith("cpp_") and name != "cpp_etc"
-    )
-
-
-def _no_such_module_message(sim, mod_str):
-    built = built_simulator_ids()
-    if built is None:
-        listing = "    pybindlibs not importable -- no build on PYTHONPATH"
-    elif built:
-        listing = "\n".join(f"    {name}" for name in built)
-    else:
-        listing = "    (none)"
-    return (
-        f"No module named '{mod_str}'.\n"
-        f"This run needs the build permutation\n"
-        f"    {permutation_line(sim)}\n"
-        f"Add it to a res/sim permutation file (res/sim/all.txt) and rebuild.\n"
-        f"Permutations currently built:\n{listing}"
-    )
+    return "_".join(parts)
 
 
 def cpp_lib(sim):
@@ -81,10 +35,7 @@ def cpp_lib(sim):
 
     mod_str = f"pybindlibs.cpp_{simulator_id(sim)}"
     if mod_str not in _libs:
-        try:
-            _libs[mod_str] = importlib.import_module(mod_str)
-        except ModuleNotFoundError as e:
-            raise ModuleNotFoundError(_no_such_module_message(sim, mod_str)) from e
+        _libs[mod_str] = importlib.import_module(mod_str)
     return _libs[mod_str]
 
 

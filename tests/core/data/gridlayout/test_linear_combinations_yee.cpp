@@ -276,16 +276,14 @@ TEST(DualProlongation, order2WeightsMatchLadder)
     EXPECT_DOUBLE_EQ(coefAt(right, +1), 1. / 8.);
 }
 
-// every rung is consistent: weights sum to 1 (reproduces a constant field)
+// consistency: weights sum to 1 (reproduces a constant field)
 TEST(DualProlongation, weightsSumToOne)
 {
-    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, +1, 0>()), 1.);
-    EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, -1, 0>()), 1.);
     EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, +1, 2>()), 1.);
     EXPECT_DOUBLE_EQ(coefSum(ImplYee1::directionalProlongation<dirX, -1, 2>()), 1.);
 }
 
-// conservation: the two children average back to ū_I at every order
+// conservation: the two children average back to ū_I
 TEST(DualProlongation, childrenMeanBackToCoarse)
 {
     auto check = [](auto const& right, auto const& left) {

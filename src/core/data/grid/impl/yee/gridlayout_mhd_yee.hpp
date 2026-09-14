@@ -596,15 +596,13 @@ public:
      * depend only on ODD coefficients ⇒ parabolic ≡ linear (degree-2 skipped). Children are
      * antisymmetric in σ about ū_I ⇒ they always mean back to ū_I (conservative at every order).
      *
-     *   order 0 (constant):     ū_I
      *   order 2 (linear, 3-pt):  ū_I + σ·(ū_{I+1} − ū_{I−1})/8
      */
     template<auto dir, int sign, std::size_t order = 2>
     NO_DISCARD static consteval auto directionalProlongation()
     {
         static_assert(sign == 1 || sign == -1, "child sign σ must be ±1");
-        static_assert(order == 0 || order == 2,
-                      "dual prolongation ladder is order 0 / 2 (degree-2 skipped)");
+        static_assert(order == 2, "dual prolongation ladder is order 2 (degree-2 skipped)");
 
         if constexpr (dir >= dimension)
         {
@@ -618,16 +616,9 @@ public:
                 return p;
             };
 
-            if constexpr (order == 0)
-            {
-                return std::array{WeightPoint{make_p(0), 1.0}};
-            }
-            else if constexpr (order == 2)
-            {
-                return std::array{WeightPoint{make_p(-1), -sign / 8.0},
-                                  WeightPoint{make_p(0), 1.0},
-                                  WeightPoint{make_p(1), sign / 8.0}};
-            }
+            return std::array{WeightPoint{make_p(-1), -sign / 8.0},
+                              WeightPoint{make_p(0), 1.0},
+                              WeightPoint{make_p(1), sign / 8.0}};
         }
     }
 

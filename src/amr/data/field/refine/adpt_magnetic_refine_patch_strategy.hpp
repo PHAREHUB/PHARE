@@ -26,15 +26,15 @@ using core::dirZ;
  * @brief Stage-2 (order-INdependent) cross-component divB touch-up of the Balsara ADPT
  *        div-free magnetic prolongation.
  *
- * Paired with the fill-all composite kernel (stage 1, per-component, order-dialed): stage 1
- * fills EVERY fine face of each B component from its own coarse faces; this stage equalizes,
- * per coarse zone, the 2^d fine-subzone divergences of the filled data by adding the closed-form
- * min-norm correction to the 2d interior faces. When the coarse field is discretely div-free the
- * transported zone divergence q0 = 0, so every corrected fine subzone divergence becomes 0 to
- * roundoff (div-free prolongation). At order 2 this touch-up is algebraically identical to the
- * legacy Tóth-Roe postprocess, so ADPT order 2 == the legacy operator; at order
- * 4 the same touch-up is ADDED to the 4th-order (Cubic4) interior faces, unlocking genuine
- * 4th-order div-free B refinement (out of scope here: this branch caps refinement order at 2).
+ * Paired with the fill-all composite kernel (stage 1, per-component, order-dialed): stage 1 fills
+ * EVERY fine face of each B component from its own coarse faces; this stage equalizes the
+ * divergences of the 2^d fine cells a coarse zone splits into -- its subzones -- by adding the
+ * closed-form min-norm correction to the 2d interior faces. When the coarse field is discretely
+ * div-free the transported zone divergence q0 = 0, so every corrected subzone divergence becomes
+ * 0 to roundoff (div-free prolongation). At order 2 this touch-up is algebraically identical to
+ * the legacy Tóth-Roe postprocess, so ADPT order 2 == the legacy operator; at order 4 the same
+ * touch-up is ADDED to the 4th-order (Cubic4) interior faces, unlocking genuine 4th-order
+ * div-free B refinement (out of scope here: this branch caps refinement order at 2).
  *
  * Derivation: Balsara, D. S. (2001), "Divergence-Free Adaptive Mesh Refinement for
  * Magnetohydrodynamics", J. Comput. Phys. 174, 614-648 — the ADPT scheme this touch-up
