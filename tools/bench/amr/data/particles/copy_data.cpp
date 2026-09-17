@@ -1,4 +1,6 @@
 
+#include "simulator/simulator_def.hpp"
+
 #include "amr/samrai.hpp" // IWYU pragma: keep
 
 #include "amr/data/particles/particles_data.hpp"

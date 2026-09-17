@@ -6,7 +6,7 @@
 #include "core/data/particles/particle_array.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 
-#include "phare_simulator_options.hpp"
+#include "core/models/options/mhd_options_def.hpp"
 
 #include "amr/samrai.hpp"             // SamraiLifeCycle without simulators
 #include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
@@ -17,6 +17,7 @@
 #include "core/utilities/timestamps.hpp"
 
 #include "hdf5/phare_hdf5.hpp"
+#include "simulator/simulator_runtime.hpp"
 
 #if PHARE_HAS_HIGHFIVE
 #include "hdf5/detail/h5/h5_file.hpp"
@@ -95,7 +96,7 @@ PYBIND11_MODULE(cpp_etc, m)
         .def("reset", &SamraiLifeCycle::reset);
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");
-    m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
+    m.def("make_hierarchy", []() { return PHARE::make_hierarchy(); });
 
     m.def("makePyArrayWrapper", makePyArrayWrapper<double>);
 

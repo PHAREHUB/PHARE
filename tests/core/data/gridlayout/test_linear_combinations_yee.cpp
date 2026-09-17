@@ -1,7 +1,7 @@
 
 
 #include "phare_core.hpp"
-#include "phare_simulator_options.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "test_linear_combinations_yee.hpp"
 
