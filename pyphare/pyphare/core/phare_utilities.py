@@ -24,6 +24,10 @@ def none_iterable(*args):
     return all(not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args)
 
 
+def all_none(*args):
+    return all(arg is None for arg in args)
+
+
 def equal_size(*args):
     """
     return true if all arguments are of equal length
