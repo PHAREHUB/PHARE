@@ -2,17 +2,19 @@
 #define PHARE_HYBRID_MODEL_HPP
 
 
-#include "core/def.hpp"
-#include "core/models/hybrid_state.hpp"
-#include "core/boundary/boundary_manager.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
-
-#include "initializer/data_provider.hpp"
-
-#include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
+#include "core/boundary/boundary_manager.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
+#include "core/def.hpp"
+#include "core/models/external_field.hpp"
+#include "core/models/external_field_updater.hpp"
+#include "core/models/external_field_updater_factory.hpp"
+#include "core/models/hybrid_state.hpp"
+
+#include "initializer/data_provider.hpp"
 
 #include <string>
 
@@ -47,15 +49,22 @@ public:
     using boundary_manager_type  = core::BoundaryManager<gridlayout_type, field_type>;
     using ParticleInitializerFactory
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+    using external_field_type         = core::ExternalField<vecfield_type>;
+    using external_field_updater_type = core::IExternalFieldUpdater<vecfield_type, gridlayout_type>;
+    using external_field_factory_type
+        = core::ExternalFieldUpdaterFactory<vecfield_type, gridlayout_type>;
 
     static constexpr std::string_view model_type_name = "HybridModel";
     static inline std::string const model_name{model_type_name};
 
 
     core::HybridState<Electromag, Ions, Electrons> state;
+    external_field_type externalField;
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::shared_ptr<boundary_manager_type> boundaryManager;
+    std::unique_ptr<external_field_updater_type> externalFieldUpdater;
 
+    vecfield_type tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
 
     void initialize(level_t& level) override;
 
@@ -67,6 +76,8 @@ public:
     virtual void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
+        resourcesManager->allocate(externalField, patch, allocateTime);
+        resourcesManager->allocate(tmpVec_, patch, allocateTime);
     }
 
 
@@ -89,7 +100,12 @@ public:
                 std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict}
+        , externalField{model_name}
         , resourcesManager{_resourcesManager}
+        , externalFieldUpdater{dict.contains("external_field")
+                                   ? external_field_factory_type::create(dict["external_field"])
+                                   : external_field_factory_type::createZero()}
+
     {
         // no boundary conditions in hybrid for now, but boundaryManager needed by the messenger, so
         // we create a dummy one
@@ -100,8 +116,24 @@ public:
             has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
             std::vector<core::HybridQuantity::Scalar>{},
             std::vector<core::HybridQuantity::Vector>{});
+        resourcesManager->registerResources(tmpVec_);
     }
 
+    void initializeExternalField(level_t& level, double time) override
+    {
+        for (auto const& patch : resourcesManager->enumerate(level, externalField, tmpVec_))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+            auto scratch      = core::view_as(tmpVec_, vecfield_type::tensor_t::E, layout);
+            (*externalFieldUpdater)(externalField, scratch, layout, time);
+        }
+    }
+
+    void updateExternalField(level_t& level, double time) override
+    {
+        if (externalFieldUpdater->isTimeDependent())
+            initializeExternalField(level, time);
+    }
 
     virtual ~HybridModel() override {}
 
@@ -109,13 +141,18 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return state.isUsable(); }
+    NO_DISCARD bool isUsable() const { return core::isUsable(state, externalField); }
+    NO_DISCARD bool isSettable() const { return core::isSettable(state, externalField); }
 
-    NO_DISCARD bool isSettable() const { return state.isSettable(); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(state, externalField);
+    }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(state, externalField);
+    }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -137,12 +174,12 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
 void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::initialize(
     level_t& level)
 {
-    for (auto& patch : level)
+    auto& rm = *(this->resourcesManager);
+    for (auto& patch : rm.enumerate(level, *this))
     {
         // first initialize the ions
         auto layout = amr::layoutFromPatch<gridlayout_type>(*patch);
         auto& ions  = state.ions;
-        auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions, state.J);
 
         for (auto& pop : ions)
         {
