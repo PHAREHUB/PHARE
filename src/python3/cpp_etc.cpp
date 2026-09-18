@@ -8,6 +8,7 @@
 #include "core/boundary/boundary_defs.hpp"
 
 #include "core/models/options/mhd_options_def.hpp"
+#include "core/models/external_field_updater_defs.hpp"
 
 #include "amr/samrai.hpp"             // SamraiLifeCycle without simulators
 #include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
@@ -148,6 +149,11 @@ PYBIND11_MODULE(cpp_etc, m)
 
         throw std::runtime_error("PHARE not built with highfive support");
     });
+
+    py::enum_<core::ExternalFieldUpdaterType>(m, "ExternalFieldUpdaterType")
+        .value("zero", core::ExternalFieldUpdaterType::Zero)
+        .value("user-defined", core::ExternalFieldUpdaterType::UserDefined)
+        .value("dipole", core::ExternalFieldUpdaterType::Dipole);
 
 
     py::enum_<MHDOpts::TimeIntegratorType>(m, "TimeIntegratorType")

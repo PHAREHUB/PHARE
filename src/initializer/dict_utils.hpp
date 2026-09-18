@@ -24,11 +24,13 @@ namespace PHARE::initializer
 template<typename Type, std::size_t dimension>
 void parseDimXYZType(PHAREDict const& dict, std::string key, Type* arr)
 {
-    arr[0] = dict[key]["x"].template to<Type>();
+    PHAREDict const& components = dict[key];
+
+    arr[0] = components["x"].template to<Type>();
     if constexpr (dimension > 1)
-        arr[1] = dict[key]["y"].template to<Type>();
+        arr[1] = components["y"].template to<Type>();
     if constexpr (dimension > 2)
-        arr[2] = dict[key]["z"].template to<Type>();
+        arr[2] = components["z"].template to<Type>();
 }
 
 /**
