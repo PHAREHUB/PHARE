@@ -64,7 +64,7 @@ template<typename H5Writer>
 void ElectromagDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
     std::string tree = "/";
-    checkCreateFileFor_(diagnostic, fileData_, tree, "EM_B", "EM_E");
+    checkCreateFileFor_(diagnostic, fileData_, tree, "EM_B", "EM_E", "EM_B0");
 }
 
 
@@ -82,9 +82,9 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
         {
             // highfive doesn't accept uint32 which ndarray.shape() is
             auto const& array_shape = vecF.getComponent(type).shape();
-            attr[name][id]          = std::vector<std::size_t>(array_shape.data(),
-                                                               array_shape.data() + array_shape.size());
-            auto ghosts = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
+            attr[name][id] = std::vector<std::size_t>(array_shape.data(),
+                                                      array_shape.data() + array_shape.size());
+            auto ghosts    = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());
             for (std::uint8_t i = 1; i < GridLayout::dimension; ++i)
                 if (ghosts[i] != ghosts[i - 1])
                     throw std::runtime_error("ghosts per direction must be constant");
@@ -101,6 +101,12 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
     {
         auto& E = h5Writer.modelView().getE();
         infoVF(E, "EM_E", patchAttributes[lvlPatchID]);
+    }
+
+    if (isActiveDiag(diagnostic, "/", "EM_B0"))
+    {
+        auto& B0 = h5Writer.modelView().getB0();
+        infoVF(B0, "EM_B0", patchAttributes[lvlPatchID]);
     }
 }
 
@@ -138,6 +144,8 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
             initVF(path, attr, "EM_B", null);
         if (isActiveDiag(diagnostic, tree, "EM_E"))
             initVF(path, attr, "EM_E", null);
+        if (isActiveDiag(diagnostic, tree, "EM_B0"))
+            initVF(path, attr, "EM_B0", null);
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -163,6 +171,11 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
     {
         auto& E = h5Writer.modelView().getE();
         h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_E", E);
+    }
+    if (isActiveDiag(diagnostic, tree, "EM_B0"))
+    {
+        auto& B0 = h5Writer.modelView().getB0();
+        h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B0", B0);
     }
 }
 
