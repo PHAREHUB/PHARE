@@ -53,6 +53,8 @@ if(HighFive)
   phare_python3_exec(9       isothermal_no_spurious_b test_isothermal_no_spurious_b.py  ${CMAKE_CURRENT_BINARY_DIR})
   phare_python3_exec(9       patch_layout_independence test_patch_layout_independence.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       hybrid_shared_fields test_hybrid_shared_fields.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       external_field  test_external_field.py   ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       fromsim         test_fromsim.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
   if(testMPI)
