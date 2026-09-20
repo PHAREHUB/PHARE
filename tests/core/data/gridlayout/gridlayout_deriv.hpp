@@ -5,6 +5,7 @@
 
 #include "core/data/grid/grid.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "gtest/gtest.h"

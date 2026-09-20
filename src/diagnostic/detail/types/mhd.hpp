@@ -209,13 +209,14 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
 template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
-    auto& h5Writer = this->h5Writer_;
-    auto& rho      = h5Writer.modelView().getRho();
-    auto& V        = h5Writer.modelView().getV();
-    auto& P        = h5Writer.modelView().getP();
-    auto& rhoV     = h5Writer.modelView().getRhoV();
-    auto& Etot     = h5Writer.modelView().getEtot();
-    auto& h5file   = *fileData_.at(diagnostic.quantity);
+    auto& h5Writer  = this->h5Writer_;
+    auto& modelView = h5Writer.modelView();
+    auto& rho       = modelView.getRho();
+    auto& V         = modelView.getV();
+    auto& P         = modelView.getP();
+    auto& rhoV      = modelView.getRhoV();
+    auto& Etot      = modelView.getEtot();
+    auto& h5file    = *fileData_.at(diagnostic.quantity);
 
     auto hasNaN = [](auto const& container) {
         return std::any_of(container.begin(), container.end(),
@@ -230,12 +231,13 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     };
 
     auto writeDS = [&](auto path, auto& field) {
-        h5file.template write_data_set_flat<GridLayout::dimension>(path, field.data());
+        h5file.template write_data_set_flat<GridLayout::dimension>(
+            path, modelView.field_reducer(field).data());
         // checkNaN(path, field);
     };
 
     auto writeTF = [&](auto path, auto& vecF) {
-        h5Writer.writeTensorFieldAsDataset(h5file, path, vecF);
+        h5Writer.writeTensorFieldAsDataset(h5file, path, modelView.vec_field_reducer(vecF));
         // for (std::size_t d = 0; d < vecF.size(); ++d)
         //     checkNaN(path + "[" + std::to_string(d) + "]", vecF[d]);
     };

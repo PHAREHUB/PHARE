@@ -2,6 +2,7 @@
 #define PHARE_AMR_SOLVERS_MHD_RESOLVER_HPP
 
 #include "amr/solvers/time_integrator/time_integrator.hpp"
+#include "core/models/options/mhd_options_def.hpp"
 
 #include "core/numerics/MHD_equations/MHD_equations.hpp"
 #include "core/numerics/godunov_fluxes/godunov_fluxes.hpp"
@@ -16,12 +17,10 @@
 #include "core/numerics/slope_limiters/min_mod.hpp"
 #include "core/numerics/slope_limiters/van_leer.hpp"
 
-#include "phare_simulator_options.hpp"
 
 
 namespace PHARE::solver
 {
-
 // Selectors
 template<MHDOpts::ReconstructionType T>
 struct ReconstructionSelector;
@@ -67,12 +66,12 @@ struct ReconstructionSelector<MHDOpts::ReconstructionType::MP5>
     using type = core::MP5Reconstruction<GridLayout, SlopeLimiter>;
 };
 
-// SlopeLimiterSelector is only declared above, never defined: every (reconstruction, limiter) pair
-// we support must be listed explicitly below, and any pair that is not listed fails to compile
-// rather than silently resolving to something. That is how a half-configured MHD build is caught --
-// e.g. reconstruction set but limiter left at MHDOff has no specialization, so it does not build.
-// Only Linear actually consults a limiter; the others still need an entry for None, resolving to
-// void, to say "this combination is valid, the limiter is simply unused".
+// SlopeLimiterSelector is only declared above, never defined: every (reconstruction, limiter)
+// pair we support must be listed explicitly below, and any pair that is not listed fails to
+// compile rather than silently resolving to something. That is how a half-configured MHD build
+// is caught -- e.g. reconstruction set but limiter left at MHDOff has no specialization, so it
+// does not build. Only Linear actually consults a limiter; the others still need an entry for
+// None, resolving to void, to say "this combination is valid, the limiter is simply unused".
 template<>
 struct SlopeLimiterSelector<MHDOpts::ReconstructionType::Constant, MHDOpts::SlopeLimiterType::None>
 {
@@ -134,8 +133,6 @@ struct RiemannSolverSelector<MHDOpts::RiemannSolverType::HLLD>
 template<auto opts, typename MHDModel>
 struct MHDResolver
 {
-    // Get the types from opts
-
     static constexpr bool Hall = opts.Hall;
 
     using SlopeLimiter
@@ -148,12 +145,8 @@ struct MHDResolver
     using Reconstruction
         = ReconstructionSelector<opts.reconstruction_type>::template type<Layout, Limiter>;
 
-    // Resolution
-
-    using GridLayout = MHDModel::gridlayout_type;
-
-    using Equations_t = core::MHDEquations<Hall>;
-
+    using GridLayout      = MHDModel::gridlayout_type;
+    using Equations_t     = core::MHDEquations<Hall>;
     using RiemannSolver_t = RiemannSolver<Hall>;
 
     template<typename Layout>

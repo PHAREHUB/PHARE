@@ -1,7 +1,6 @@
 #ifndef PHARE_AMR_SOLVERS_SOLVER_MHD_FIELD_EVOLVERS_HPP
 #define PHARE_AMR_SOLVERS_SOLVER_MHD_FIELD_EVOLVERS_HPP
 
-
 #include "core/numerics/time_integrator_utils.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/constrained_transport/dissipative_electric_field.hpp"
@@ -15,7 +14,6 @@
 
 namespace PHARE::solver
 {
-
 
 template<typename Model>
 class ToConservativeTransformer

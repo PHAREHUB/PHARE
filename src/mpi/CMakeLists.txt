@@ -16,7 +16,7 @@ if (withPhlop)
 endif(withPhlop)
 
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
-target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_WERROR_FLAGS})
+target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME}  PRIVATE phare_core MPI::MPI_C
     PUBLIC ${PHARE_BASE_LIBS}
   )

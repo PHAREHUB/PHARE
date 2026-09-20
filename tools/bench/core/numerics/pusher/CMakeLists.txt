@@ -11,7 +11,7 @@ target_link_libraries(push_raw_particle_gen PUBLIC ${GBENCH_LIBS} phare_simulato
 add_custom_command(
     TARGET push_raw_particle_gen
     COMMAND push_raw_particle_gen
-    DEPENDS pusher
+    # DEPENDS pusher
 )
 
 add_phare_cpp_benchmark(10 ${PROJECT_NAME} push_raw_use ${CMAKE_CURRENT_BINARY_DIR})

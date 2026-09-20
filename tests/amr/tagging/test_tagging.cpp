@@ -1,7 +1,11 @@
 
 
 #include "phare_solver.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "amr/tagging/tagger_factory.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -168,8 +172,12 @@ struct TestTagger : public ::testing::Test
     using Electromag  = phare_types::Hybrid::Electromag_t;
     using Ions        = phare_types::Hybrid::Ions_t;
     using Electrons   = phare_types::Hybrid::Electrons_t;
-    using GridLayoutT
-        = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
+    using core_types  = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes = core_types::Hybrid;
+    using GridLayoutT = HybridTypes::GridLayout_t;
+
+    auto static constexpr field_opts = PHARE::core::TensorFieldOptions<HybridTypes>{};
+    using UsableVecField_t           = PHARE::core::UsableVecField<field_opts>;
 
     struct SinglePatchHybridModel
     {
@@ -180,13 +188,13 @@ struct TestTagger : public ::testing::Test
 
     GridLayoutT layout;
 
-    UsableVecField<dim> B, E;
+    UsableVecField_t B, E;
 
     SinglePatchHybridModel model;
     std::vector<int> tags;
 
     TestTagger()
-        : layout{TestGridLayout<GridLayoutT>::make(20)}
+        : layout{TestGridLayout<GridLayoutT>::make(20u)}
         , B{"EM_B", layout, HybridQuantity::Vector::B}
         , E{"EM_E", layout, HybridQuantity::Vector::E}
         , model{createDict<dim>()}

@@ -61,8 +61,8 @@ jobs:
 
     - name: Build
       working-directory: ${{github.workspace}}/build
-      run: . /.venv/bin/activate; cmake --build . 
+      run: . /.venv/bin/activate; cmake --build .
 
     - name: Test
       working-directory: ${{github.workspace}}/build
-      run: . /.venv/bin/activate; ctest -j 2 --output-on-failure
+      run: . /.venv/bin/activate; ctest -j 1 --output-on-failure
