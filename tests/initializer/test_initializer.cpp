@@ -1,6 +1,7 @@
 
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/data/particles/particle_array.hpp"
 
@@ -8,17 +9,19 @@
 #include "initializer/python_data_provider.hpp"
 #include "initializer/restart_data_provider.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+
 #include <memory>
 #include <string>
 #include <stdlib.h>
 
 #include "gtest/gtest.h"
 
-
 using namespace PHARE::initializer;
 
 using GridLayoutT    = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
-using ParticleArrayT = PHARE::core::ParticleArray<1>;
+using ParticleArrayT = PHARE::core::AoSMappedParticleArray<1>;
 
 
 
@@ -116,5 +119,18 @@ int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
 
-    return RUN_ALL_TESTS();
+    try
+    {
+        return RUN_ALL_TESTS();
+    }
+    catch (std::runtime_error const& e)
+    {
+        PHARE_LOG_LINE_STR(e.what());
+    }
+    catch (...)
+    {
+        PHARE_LOG_LINE_STR("UNKNOWN ERROR");
+    }
+
+    return 1;
 }

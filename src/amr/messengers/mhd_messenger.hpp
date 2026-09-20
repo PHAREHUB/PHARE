@@ -18,6 +18,7 @@
 #include "amr/messengers/refiner.hpp"
 #include "amr/messengers/refiner_pool.hpp"
 #include "amr/messengers/synchronizer_pool.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
@@ -52,6 +53,10 @@ namespace amr
         using GridT             = MHDModel::grid_type;
         using ResourcesManagerT = MHDModel::resources_manager_type;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::MHDQuantity>;
+
+        using BorderMaxOp = core::FieldBorderMaxOp<typename VecFieldT::value_type>;
+        using VecFieldBorderMaxTransactionFactory_t
+            = FieldBorderOpTransactionFactory<VectorFieldDataT, BorderMaxOp>;
 
         static constexpr auto dimension = MHDModel::dimension;
 
@@ -312,8 +317,12 @@ namespace amr
             magFluxesZGhostRefiners_.registerLevel(hierarchy, level);
 
             magGhostsRefiners_.registerLevel(hierarchy, level);
-            magMaxRefiners_.registerLevel(hierarchy, level);
-            magMaxModelRefiners_.registerLevel(hierarchy, level);
+
+            {
+                auto border_max_factory = std::make_shared<VecFieldBorderMaxTransactionFactory_t>();
+                magMaxRefiners_.registerLevel(hierarchy, level, border_max_factory);
+                magMaxModelRefiners_.registerLevel(hierarchy, level, border_max_factory);
+            }
 
             if (levelNumber != rootLevelNumber)
             {
@@ -642,30 +651,39 @@ namespace amr
          */
         void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch)
         {
-            auto const qty         = field.physicalQuantity();
-            using qty_t            = std::decay_t<decltype(qty)>;
-            using field_geometry_t = FieldGeometry<GridLayoutT, qty_t>;
+            if constexpr (core::is_field_v<FieldT>)
+            {
+                auto const qty         = field.physicalQuantity();
+                using qty_t            = std::decay_t<decltype(qty)>;
+                using field_geometry_t = FieldGeometry<GridLayoutT, qty_t>;
 
-            auto const box    = patch.getBox();
-            auto const layout = layoutFromPatch<GridLayoutT>(patch);
+                auto const box    = patch.getBox();
+                auto const layout = layoutFromPatch<GridLayoutT>(patch);
 
-            // we need to remove the box from the ghost box
-            // to use SAMRAI::removeIntersections we do some conversions to
-            // samrai box.
-            // not gbox is a fieldBox (thanks to the layout)
+                // we need to remove the box from the ghost box
+                // to use SAMRAI::removeIntersections we do some conversions to
+                // samrai box.
+                // not gbox is a fieldBox (thanks to the layout)
 
-            auto const gbox  = layout.AMRGhostBoxFor(field.physicalQuantity());
-            auto const sgbox = samrai_box_from(gbox);
-            auto const fbox  = field_geometry_t::toFieldBox(box, qty, layout);
+                auto const gbox  = layout.AMRGhostBoxFor(field.physicalQuantity());
+                auto const sgbox = samrai_box_from(gbox);
+                auto const fbox  = field_geometry_t::toFieldBox(box, qty, layout);
 
-            // we have field samrai boxes so we can now remove one from the other
-            SAMRAI::hier::BoxContainer ghostLayerBoxes{};
-            ghostLayerBoxes.removeIntersections(sgbox, fbox);
+                // we have field samrai boxes so we can now remove one from the other
+                SAMRAI::hier::BoxContainer ghostLayerBoxes{};
+                ghostLayerBoxes.removeIntersections(sgbox, fbox);
 
-            // and now finally set the NaNs on the ghost boxes
-            for (auto const& gb : ghostLayerBoxes)
-                for (auto const& index : layout.AMRToLocal(phare_box_from<dimension>(gb)))
-                    field(index) = std::numeric_limits<typename VecFieldT::value_type>::quiet_NaN();
+                // and now finally set the NaNs on the ghost boxes
+                for (auto const& gb : ghostLayerBoxes)
+                    for (auto const& index : layout.AMRToLocal(phare_box_from<dimension>(gb)))
+                        field(index)
+                            = std::numeric_limits<typename VecFieldT::value_type>::quiet_NaN();
+            }
+            else
+            {
+                auto const nan = std::numeric_limits<typename FieldT::type>::quiet_NaN();
+                core::fill_ghost(field, layoutFromPatch<GridLayoutT>(patch), nan);
+            }
         }
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)

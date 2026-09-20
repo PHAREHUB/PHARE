@@ -1,19 +1,21 @@
 #ifndef PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 #define PHARE_FLUID_PARTICLE_INITIALIZER_HPP
 
+
+#include "core/def.hpp"
+#include "core/utilities/types.hpp"
+#include "core/data/particles/particle.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_array_appender.hpp"
+#include "core/data/ions/particle_initializers/particle_initializer.hpp"
+
+#include "initializer/data_provider.hpp"
+
 #include <memory>
 #include <random>
 #include <cassert>
-#include <functional>
 
-#include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/utilities/types.hpp"
-#include "core/data/ions/particle_initializers/particle_initializer.hpp"
-#include "core/data/particles/particle.hpp"
-#include "initializer/data_provider.hpp"
-#include "core/utilities/point/point.hpp"
-#include "core/def.hpp"
 
 
 namespace PHARE::core
@@ -81,7 +83,6 @@ public:
     }
 
 private:
-    using Particle = typename ParticleArray::value_type;
     InputFunction density_;
     std::array<InputFunction, 3> bulkVelocity_;
     std::array<InputFunction, 3> thermalVelocity_;
@@ -105,6 +106,8 @@ public:
         : _n{density(coords...)}
 
     {
+        // std::unique_lock<std::mutex> lock(ThreadPool::mutex(0)); // PYTHON == DEADLOCK
+
         static_assert(sizeof...(coords) <= 3, "can only provide up to 3 coordinates");
         for (std::uint32_t i = 0; i < 3; i++)
         {
@@ -134,9 +137,9 @@ private:
 
 
 
-template<typename ParticleArray, typename GridLayout>
-void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
-    ParticleArray& particles, GridLayout const& layout) const
+template<typename ParticleArray_t, typename GridLayout>
+void MaxwellianParticleInitializer<ParticleArray_t, GridLayout>::loadParticles(
+    ParticleArray_t& particles, GridLayout const& layout) const
 {
     auto const icell = [](auto const idx, auto const& indices) {
         return for_N_make_array<dimension>([&](auto i) { return std::get<i>(indices[idx]); });
@@ -145,6 +148,7 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     auto const deltas = [](auto& pos, auto& gen) {
         return for_N_make_array<dimension>([&](auto) { return pos(gen); });
     };
+
 
     // in the following two calls,
     // primal indexes are given here because that's what cellCenteredCoordinates takes
@@ -165,6 +169,10 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
     auto const [n, V, Vth] = fns();
     auto randGen           = getRNG(rngSeed_);
     ParticleDeltaDistribution<double> deltaDistrib;
+
+
+    core::reserve(particles, layout.AMRBox(), nbrParticlePerCell_);
+
 
     for (std::size_t flatCellIdx = 0; flatCellIdx < ndCellIndices.size(); ++flatCellIdx)
     {
@@ -191,10 +199,13 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             if (basis_ == Basis::Magnetic)
                 particleVelocity = basisTransform(basis, particleVelocity);
 
-            particles.emplace_back(Particle{cellWeight, particleCharge_, iCell,
-                                            deltas(deltaDistrib, randGen), particleVelocity});
+            particles.emplace_back(cellWeight, particleCharge_, iCell,
+                                   deltas(deltaDistrib, randGen), particleVelocity);
         }
     }
+
+    // out_particles = std::move(particles);
+    particles.template on_appended<ParticleType::Domain>();
 }
 
 } // namespace PHARE::core

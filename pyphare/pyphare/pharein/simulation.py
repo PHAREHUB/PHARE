@@ -191,6 +191,36 @@ def check_layout(**kwargs):
     return layout
 
 
+valid_particle_layouts = ("AoSMapped", "AoSPCTS")
+
+
+def check_particle_layout(**kwargs):
+    particle_layout = kwargs.get("particle_layout", "AoSMapped")
+    particle_layout = str(particle_layout).split(".")[-1]  # support enum
+    if particle_layout not in valid_particle_layouts:
+        raise ValueError(
+            "Error: invalid particle_layout ({}), valid={}".format(
+                particle_layout, valid_particle_layouts
+            )
+        )
+    return particle_layout
+
+
+valid_allocators = ("CPU",)
+
+
+def check_allocator(**kwargs):
+    allocator = kwargs.get("allocator", "CPU")
+    allocator = str(allocator).split(".")[-1]  # support enum
+    if allocator not in valid_allocators:
+        raise ValueError(
+            "Error: invalid allocator ({}), valid={}".format(
+                allocator, valid_allocators
+            )
+        )
+    return allocator
+
+
 # ------------------------------------------------------------------------------
 
 
@@ -246,7 +276,8 @@ valid_refined_particle_nbr = {
     },
 }  # Default refined_particle_nbr per dim/interp is considered index 0 of list
 
-no_refined_particle_nbr = 0  # internal, C++-facing counterpart of no_hybrid_interp_order
+# internal, C++-facing counterpart of no_hybrid_interp_order
+no_refined_particle_nbr = 0
 
 
 def check_refined_particle_nbr(ndim, **kwargs):
@@ -702,6 +733,8 @@ def checker(func):
             "time_step",
             "time_step_nbr",
             "layout",
+            "particle_layout",
+            "allocator",
             "interp_order",
             "boundary_types",
             "refined_particle_nbr",
@@ -767,6 +800,8 @@ def checker(func):
 
         kwargs["particle_pusher"] = check_pusher(**kwargs)
         kwargs["layout"] = check_layout(**kwargs)
+        kwargs["particle_layout"] = check_particle_layout(**kwargs)
+        kwargs["allocator"] = check_allocator(**kwargs)
         kwargs["path"] = check_path(**kwargs)
 
         ndim = compute_dimension(cells)
@@ -782,7 +817,7 @@ def checker(func):
 
         kwargs["nesting_buffer"] = check_nesting_buffer(ndim, **kwargs)
 
-        kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
+        kwargs["tag_buffer"] = kwargs.get("tag_buffer", 3)
 
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
@@ -965,6 +1000,8 @@ class Simulation(object):
         These parameters are more advanced, modify them at your own risk
 
             * **layout** (``str``), layout of the physical quantities on the mesh (default = "yee")
+            * **particle_layout** (``str``), in-memory particle array layout, one of "AoSMapped", "AoSPCTS" (default = "AoSMapped")
+            * **allocator** (``str``), particle/field data allocator, one of "CPU" (default = "CPU")
 
 
     For instance:
@@ -1117,6 +1154,9 @@ class Simulation(object):
     def __setstate__(self, state):
         vars(self).update(state)
 
+    def __repr__(self):
+        return print_simulation(self)
+
     # ------------------------------------------------------------------------------
 
     def add_diagnostics(self, diag):
@@ -1184,6 +1224,25 @@ class Simulation(object):
 
 
 # ------------------------------------------------------------------------------
+
+
+def print_simulation(sim):
+    """:meta private:"""
+    import json
+
+    def default(o):
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        if callable(o):
+            return getattr(o, "__name__", str(o))
+        if hasattr(o, "__dict__"):
+            return o.__dict__
+        return str(o)
+
+    try:
+        return json.dumps(vars(sim), default=default, indent=2, sort_keys=True)
+    except (TypeError, ValueError) as e:
+        return f"<Simulation repr failed: {e}>"
 
 
 def serialize(sim):

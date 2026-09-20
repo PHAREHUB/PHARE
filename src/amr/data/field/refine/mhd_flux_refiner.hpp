@@ -7,7 +7,7 @@
 #include <SAMRAI/hier/Box.h>
 
 #include "amr/resources_manager/amr_utils.hpp"
-#include "core/utilities/constants.hpp"
+#include "amr/data/field/refine/any_field_refiner.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/point/point.hpp"
 
@@ -22,24 +22,22 @@ using core::dirY;
 using core::dirZ;
 
 template<std::size_t dimension>
-class MHDFluxRefiner
+class MHDFluxRefiner : public AnyFieldRefiner<MHDFluxRefiner<dimension>, dimension>
 {
 public:
-    MHDFluxRefiner(std::array<core::QtyCentering, dimension> const& centering,
-                   SAMRAI::hier::Box const& destinationGhostBox,
-                   SAMRAI::hier::Box const& sourceGhostBox, SAMRAI::hier::IntVector const& ratio)
-        : fineBox_{destinationGhostBox}
-        , coarseBox_{sourceGhostBox}
-        , centerings_{centering}
-    {
-    }
+    using Super = AnyFieldRefiner<MHDFluxRefiner<dimension>, dimension>;
+    using Super::Super;
 
+protected:
+    using Super::centerings_;
+    using Super::coarseBox_;
+    using Super::fineBox_;
 
+public:
     // electric field refinement strategy follows
     // fujimoto et al. 2011 :  doi:10.1016/j.jcp.2011.08.002
     template<typename FieldT>
-    void operator()(FieldT const& coarseField, FieldT& fineField,
-                    core::Point<int, dimension> fineIndex)
+    void refine(FieldT const& coarseField, FieldT& fineField, core::Point<int, dimension> fineIndex)
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
@@ -80,8 +78,8 @@ private:
     {
         assert(centerings_[dirX] == core::QtyCentering::primal
                && "MHD flux should be primal in x in 1D");
-        if (std::isnan(fineField(locFineIdx[dirX])))
-            fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+        if (auto& fineVal = fineField(locFineIdx); std::isnan(fineVal))
+            fineVal = coarseField(locCoarseIdx);
     }
 
     template<typename FieldT>
@@ -91,41 +89,35 @@ private:
                    core::Point<int, dimension> const& locCoarseIdx)
     {
         // ilc: index local coarse
-        // ilf: index local fine
         auto const ilcx = locCoarseIdx[dirX];
         auto const ilcy = locCoarseIdx[dirY];
-        auto const ilfx = locFineIdx[dirX];
-        auto const ilfy = locFineIdx[dirY];
-
 
         if (centerings_[dirX] == core::QtyCentering::primal)
         {
             assert(centerings_[dirY] == core::QtyCentering::dual
                    && "MHD flux in x direction should be dual in y");
-            if (onCoarseXFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy)))
+            if (auto& fineVal = fineField(locFineIdx);
+                onCoarseXFace_(fineIndex) && std::isnan(fineVal))
             {
-                fineField(ilfx, ilfy) = coarseField(ilcx, ilcy);
+                fineVal = coarseField(locCoarseIdx);
             }
-            else
+            else if (std::isnan(fineVal))
             {
-                if (std::isnan(fineField(ilfx, ilfy)))
-                    fineField(ilfx, ilfy)
-                        = 0.5 * (coarseField(ilcx, ilcy) + coarseField(ilcx + 1, ilcy));
+                fineVal = 0.5 * (coarseField(locCoarseIdx) + coarseField(ilcx + 1, ilcy));
             }
         }
         else if (centerings_[dirY] == core::QtyCentering::primal)
         {
             assert(centerings_[dirX] == core::QtyCentering::dual
                    && "MHD flux in y direction should be dual in x");
-            if (onCoarseYFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy)))
+            if (auto& fineVal = fineField(locFineIdx);
+                onCoarseYFace_(fineIndex) && std::isnan(fineVal))
             {
-                fineField(ilfx, ilfy) = coarseField(ilcx, ilcy);
+                fineVal = coarseField(locCoarseIdx);
             }
-            else
+            else if (std::isnan(fineVal))
             {
-                if (std::isnan(fineField(ilfx, ilfy)))
-                    fineField(ilfx, ilfy)
-                        = 0.5 * (coarseField(ilcx, ilcy) + coarseField(ilcx, ilcy + 1));
+                fineVal = 0.5 * (coarseField(locCoarseIdx) + coarseField(ilcx, ilcy + 1));
             }
         }
         else
@@ -143,28 +135,23 @@ private:
                    core::Point<int, dimension> const& locCoarseIdx)
     {
         // ilc: index local coarse
-        // ilf: index local fine
         auto const ilcx = locCoarseIdx[dirX];
         auto const ilcy = locCoarseIdx[dirY];
         auto const ilcz = locCoarseIdx[dirZ];
-        auto const ilfx = locFineIdx[dirX];
-        auto const ilfy = locFineIdx[dirY];
-        auto const ilfz = locFineIdx[dirZ];
 
         if (centerings_[dirX] == core::QtyCentering::primal)
         {
             assert(centerings_[dirY] == core::QtyCentering::dual
                    && centerings_[dirZ] == core::QtyCentering::dual
                    && "MHD flux in x direction should be dual in y and z");
-            if (onCoarseXFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy, ilfz)))
+            if (auto& fineVal = fineField(locFineIdx);
+                onCoarseXFace_(fineIndex) && std::isnan(fineVal))
             {
-                fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
+                fineVal = coarseField(locCoarseIdx);
             }
-            else
+            else if (std::isnan(fineVal))
             {
-                if (std::isnan(fineField(ilfx, ilfy, ilfz)))
-                    fineField(ilfx, ilfy, ilfz)
-                        = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx + 1, ilcy, ilcz));
+                fineVal = 0.5 * (coarseField(locCoarseIdx) + coarseField(ilcx + 1, ilcy, ilcz));
             }
         }
         else if (centerings_[dirY] == core::QtyCentering::primal)
@@ -172,15 +159,14 @@ private:
             assert(centerings_[dirX] == core::QtyCentering::dual
                    && centerings_[dirZ] == core::QtyCentering::dual
                    && "MHD flux in y direction should be dual in x and z");
-            if (onCoarseYFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy, ilfz)))
+            if (auto& fineVal = fineField(locFineIdx);
+                onCoarseYFace_(fineIndex) && std::isnan(fineVal))
             {
-                fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
+                fineVal = coarseField(locCoarseIdx);
             }
-            else
+            else if (std::isnan(fineVal))
             {
-                if (std::isnan(fineField(ilfx, ilfy, ilfz)))
-                    fineField(ilfx, ilfy, ilfz)
-                        = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx, ilcy + 1, ilcz));
+                fineVal = 0.5 * (coarseField(locCoarseIdx) + coarseField(ilcx, ilcy + 1, ilcz));
             }
         }
         else if (centerings_[dirZ] == core::QtyCentering::primal)
@@ -188,24 +174,19 @@ private:
             assert(centerings_[dirX] == core::QtyCentering::dual
                    && centerings_[dirY] == core::QtyCentering::dual
                    && "MHD flux in z direction should be dual in x and y");
-            if (onCoarseZFace_(fineIndex) && std::isnan(fineField(ilfx, ilfy, ilfz)))
+            if (auto& fineVal = fineField(locFineIdx);
+                onCoarseZFace_(fineIndex) && std::isnan(fineVal))
             {
-                fineField(ilfx, ilfy, ilfz) = coarseField(ilcx, ilcy, ilcz);
+                fineVal = coarseField(locCoarseIdx);
             }
-            else
+            else if (std::isnan(fineVal))
             {
-                if (std::isnan(fineField(ilfx, ilfy, ilfz)))
-                    fineField(ilfx, ilfy, ilfz)
-                        = 0.5 * (coarseField(ilcx, ilcy, ilcz) + coarseField(ilcx, ilcy, ilcz + 1));
+                fineVal = 0.5 * (coarseField(locCoarseIdx) + coarseField(ilcx, ilcy, ilcz + 1));
             }
         }
     }
-
-    SAMRAI::hier::Box const fineBox_;
-    SAMRAI::hier::Box const coarseBox_;
-    std::array<core::QtyCentering, dimension> const centerings_;
 };
 } // namespace PHARE::amr
 
 
-#endif // PHARE_ELECTRIC_FIELD_REFINER_HPP
+#endif // PHARE_MHD_FLUX_REFINER_HPP

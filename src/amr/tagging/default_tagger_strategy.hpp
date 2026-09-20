@@ -1,27 +1,41 @@
 #ifndef DEFAULT_TAGGER_STRATEGY_H
 #define DEFAULT_TAGGER_STRATEGY_H
 
+#include "core/data/field/field_tiles.hpp"
+#include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/data/particles/particle_array_def.hpp"
 
 #include "amr/physical_models/mhd_model.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 
-#include "initializer/data_provider.hpp"
-
 #include "tagger_strategy.hpp"
+#include "initializer/data_provider.hpp"
 
 #include <cstddef>
 #include <stdexcept>
 
 namespace PHARE::amr
 {
+
+template<typename Model>
+struct DefaultHybridFieldTagger
+{
+    using gridlayout_type           = typename Model::gridlayout_type;
+    static auto constexpr dimension = Model::dimension;
+
+    void tag(auto const& layout, int* tags, auto const& B, auto const& layout1,
+             auto const& offset) const;
+
+    double const threshold_ = 0.1;
+};
+
+
 template<typename Model>
 class DefaultTaggerStrategy : public TaggerStrategy<Model>
 {
     using gridlayout_type           = typename Model::gridlayout_type;
     static auto constexpr dimension = Model::dimension;
-
 
 public:
     DefaultTaggerStrategy(initializer::PHAREDict const& dict)
@@ -46,17 +60,48 @@ private:
     double threshold_ = 0.1;
 };
 
+
 template<typename Model>
 void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layout, int* tags) const
 {
-    auto&& [Bx, By, Bz] = getB(model)();
+    using Field_t = Model::field_type;
+
+    DefaultHybridFieldTagger<Model> tagger{threshold_};
+
+    auto& B = getB(model);
+
+    if constexpr (core::is_field_tile_set_v<Field_t>)
+    {
+        core::tile_exec_with_layout(
+            [&](auto& tile_layout, auto&& Btile) {
+                auto const& tile_amr_box   = tile_layout.AMRBox();
+                auto const tag_local_lower = layout.AMRToLocal(tile_amr_box.lower)
+                                             - gridlayout_type::options.field_ghost_width;
+
+                tagger.tag(layout, tags, Btile, tile_layout, tag_local_lower);
+            },
+            B);
+        return;
+    }
+    else
+    {
+        tagger.tag(layout, tags, B, layout, core::Point{ConstArray<int, dimension>()});
+    }
+}
+
+
+template<typename Model>
+void DefaultHybridFieldTagger<Model>::tag(auto const& layout, int* tags, auto const& B,
+                                          auto const& layout1, auto const& offset) const
+{
+    auto& [Bx, By, Bz] = B();
 
     // we loop on cell indexes for all qties regardless of their centering
     auto const& start_x = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::X);
 
     // override end_x because the tag buffer does not have ghost cells
     // and physicalEnd will account for ghost cells
-    auto const& end_x = layout.nbrCells()[0] - 1;
+    auto const& end_x = layout1.nbrCells()[0] - 1;
 
     // SAMRAI tags int* buffer is FORTRAN ordering so we set false to the view
     bool constexpr c_ordering = false;
@@ -101,18 +146,19 @@ void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layo
 
             if (criter > threshold_)
             {
-                tagsv(iCell) = 1;
+                tagsv(offset[0] + iCell) = 1;
             }
             else
-                tagsv(iCell) = 0;
+                tagsv(offset[0] + iCell) = 0;
         }
     }
+
     if constexpr (dimension == 2)
     {
         auto const& start_y
             = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::Y);
 
-        auto const& end_y = layout.nbrCells()[1] - 1;
+        auto const& end_y = layout1.nbrCells()[1] - 1;
 
         for (auto iTag_x = 0u, ix = start_x; iTag_x <= end_x; ++ix, ++iTag_x)
         {
@@ -138,11 +184,11 @@ void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layo
 
                 if (crit > threshold_)
                 {
-                    tagsv(iTag_x, iTag_y) = 1;
+                    tagsv(offset[0] + iTag_x, offset[1] + iTag_y) = 1;
                 }
                 else
                 {
-                    tagsv(iTag_x, iTag_y) = 0;
+                    tagsv(offset[0] + iTag_x, offset[1] + iTag_y) = 0;
                 }
             }
         }
@@ -154,8 +200,8 @@ void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layo
         auto const& start_z
             = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::Z);
 
-        auto const& end_y = layout.nbrCells()[1] - 1;
-        auto const& end_z = layout.nbrCells()[2] - 1;
+        auto const& end_y = layout1.nbrCells()[1] - 1;
+        auto const& end_z = layout1.nbrCells()[2] - 1;
 
         for (auto iTag_x = 0u, ix = start_x; iTag_x <= end_x; ++ix, ++iTag_x)
         {
@@ -186,17 +232,18 @@ void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layo
 
                     if (crit > threshold_)
                     {
-                        tagsv(iTag_x, iTag_y, iTag_z) = 1;
+                        tagsv(offset[0] + iTag_x, offset[1] + iTag_y, offset[2] + iTag_z) = 1;
                     }
                     else
                     {
-                        tagsv(iTag_x, iTag_y, iTag_z) = 0;
+                        tagsv(offset[0] + iTag_x, offset[1] + iTag_y, offset[2] + iTag_z) = 0;
                     }
                 }
             }
         }
     }
 }
+
 } // namespace PHARE::amr
 
-#endif // DEFAULT_HYBRID_TAGGER_STRATEGY_H
+#endif // DEFAULT_TAGGER_STRATEGY_H

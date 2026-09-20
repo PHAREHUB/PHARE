@@ -16,15 +16,12 @@ from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
 
-# dir(cpp)
-
 start_time = 0
 cells = (150, 240, 50)
 dl = (0.4, 0.4, 0.4)
-diag_dir = "phare_outputs/harris_3d"
+diag_dir = "phare_outputs/harris_3d_{timestepper}"
 time_step = 0.002
 final_time = 0.1
-# timestamps = np.arange(0.0, final_time + time_step, final_time / 100)
 timestamps = [0, final_time / 2, final_time]
 
 hs = hour_seconds = 3600.0

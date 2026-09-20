@@ -4,15 +4,16 @@
 
 import os
 import sys
-import datetime
 import atexit
-import time as timem
+import datetime
+import traceback
 import numpy as np
-import pyphare.pharein as ph
+import time as timem
 from pathlib import Path
-from . import monitoring as mon
 
 from pyphare import cpp
+import pyphare.pharein as ph
+from . import monitoring as mon
 import pyphare.pharein.restarts as restarts
 
 
@@ -100,6 +101,7 @@ class Simulator:
         import pyphare.simulator._simulator as _simulator
 
         _simulator.obj = self
+        self.cpp_lib = None
 
     def __del__(self):
         self.reset()
@@ -123,8 +125,6 @@ class Simulator:
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
             return self
         except Exception:
-            import traceback
-
             print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
             print(traceback.format_exc())
             raise ValueError("Error in Simulator.setup(), see previous error")
@@ -150,6 +150,7 @@ class Simulator:
                     sys.exc_info()[0]
                 )
             )
+            print(traceback.format_exc())
             raise ValueError("Error in Simulator.initialize(), see previous error")
 
     def _throw(self, e):
@@ -214,6 +215,7 @@ class Simulator:
             perf.append(ticktock)
             tot += ticktock
             t = self.cpp_sim.currentTime()
+
             if cpp.mpi_rank() == 0:
                 delta = datetime.timedelta(seconds=tot)
                 print(

@@ -1,5 +1,7 @@
 #include "field_data_test_param.hpp"
 
+#include "gmock/gmock.h"
+
 using testing::Eq;
 
 using namespace PHARE::core;
@@ -29,7 +31,7 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyLikeACellData)
     auto iStart = this->param.destinationFieldData->gridLayout.ghostStartIndex(destinationField,
                                                                                Direction::X);
     auto iEnd   = this->param.destinationFieldData->gridLayout.ghostEndIndex(destinationField,
-                                                                           Direction::X);
+                                                                             Direction::X);
 
     for (auto ix = iStart; ix <= iEnd; ++ix)
     {
@@ -57,7 +59,7 @@ TYPED_TEST_P(AFieldData1DCenteredOnEy, CopyLikeACellData)
     iStart = this->param.destinationFieldData->gridLayout.ghostStartIndex(destinationField,
                                                                           Direction::X);
     iEnd   = this->param.destinationFieldData->gridLayout.ghostEndIndex(destinationField,
-                                                                      Direction::X);
+                                                                        Direction::X);
 
 
     double const* nodeDataStart = this->destinationNodeData->getPointer();

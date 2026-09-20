@@ -15,12 +15,6 @@
 namespace PHARE::amr
 {
 
-using core::dirX;
-using core::dirY;
-using core::dirZ;
-
-
-
 template<typename Dst>
 void refine_field(Dst& destinationField, auto& sourceField, auto& intersectionBox, auto& refiner)
 {
@@ -28,6 +22,19 @@ void refine_field(Dst& destinationField, auto& sourceField, auto& intersectionBo
         refiner(sourceField, destinationField, bix);
 }
 
+template<typename Refiner, typename FieldT>
+void refine_field(FieldT& dst, auto const& dstBox, auto const& dstLayout, FieldT const& src,
+                  auto const& srcBox, auto& overlap, auto ratio)
+{
+    auto const& qty = dst.physicalQuantity();
+
+    Refiner refiner{dstLayout.centering(qty), dstBox, srcBox, ratio};
+    for (auto const& box : overlap.getDestinationBoxContainer())
+    {
+        auto intersectionBox = dstBox * box;
+        refine_field(dst, src, intersectionBox, refiner);
+    }
+}
 
 template<typename GridLayoutT, typename FieldT, typename FieldRefinerPolicy>
 class FieldRefineOperator : public SAMRAI::hier::RefineOperator
@@ -47,13 +54,11 @@ public:
     virtual ~FieldRefineOperator() = default;
 
     /** This implementation have the top priority for refine operation
-     *
      */
     NO_DISCARD int getOperatorPriority() const override { return 0; }
 
     /**
      * @brief This operator needs to have at least 1 ghost cell to work properly
-     *
      */
     NO_DISCARD SAMRAI::hier::IntVector
     getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
@@ -62,14 +67,11 @@ public:
     }
 
 
-
-
     /**
      * @brief Given a set of box on a fine patch, compute the interpolation from
      * a coarser patch that is underneath the fine box.
      * Since we get our boxes from a FieldOverlap, we know that they are in correct
      * Field Indexes
-     *
      */
     void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
                 int const destinationId, int const sourceId,
@@ -98,15 +100,8 @@ public:
         auto const sourceFieldBox
             = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
-        FieldRefinerPolicy refiner{destLayout.centering(qty), destFieldBox, sourceFieldBox, ratio};
-
-        for (auto const& box : overlapBoxes)
-        {
-            // we compute the intersection with the destination,
-            // and then we apply the refine operation on each fine index.
-            auto intersectionBox = destFieldBox * box;
-            refine_field(destinationField, sourceField, intersectionBox, refiner);
-        }
+        refine_field<FieldRefinerPolicy>(destinationField, destFieldBox, destLayout, sourceField,
+                                         sourceFieldBox, destinationFieldOverlap, ratio);
     }
 };
 
@@ -133,13 +128,11 @@ public:
     virtual ~TensorFieldRefineOperator() = default;
 
     /** This implementation have the top priority for refine operation
-     *
      */
     NO_DISCARD int getOperatorPriority() const override { return 0; }
 
     /**
      * @brief This operator needs to have at least 1 ghost cell to work properly
-     *
      */
     NO_DISCARD SAMRAI::hier::IntVector
     getStencilWidth(SAMRAI::tbox::Dimension const& dim) const override
@@ -148,14 +141,11 @@ public:
     }
 
 
-
-
     /**
      * @brief Given a set of box on a fine patch, compute the interpolation from
      * a coarser patch that is underneath the fine box.
      * Since we get our boxes from a FieldOverlap, we know that they are in correct
      * Field Indexes
-     *
      */
     void refine(SAMRAI::hier::Patch& destination, SAMRAI::hier::Patch const& source,
                 int const destinationId, int const sourceId,
@@ -185,16 +175,9 @@ public:
             auto const sourceFieldBox
                 = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
-            FieldRefinerPolicy refiner{destLayout.centering(qty), destFieldBox, sourceFieldBox,
-                                       ratio};
-
-            for (auto const& box : overlapBoxes)
-            {
-                // we compute the intersection with the destination,
-                // and then we apply the refine operation on each fine index.
-                auto const intersectionBox = destFieldBox * box;
-                refine_field(destinationFields[c], sourceFields[c], intersectionBox, refiner);
-            }
+            refine_field<FieldRefinerPolicy>(destinationFields[c], destFieldBox, destLayout,
+                                             sourceFields[c], sourceFieldBox,
+                                             *destinationTensorFieldOverlap[c], ratio);
         }
     }
 };
@@ -204,7 +187,5 @@ using VecFieldRefineOperator = TensorFieldRefineOperator<VectorFieldDataT, Field
 
 
 } // namespace PHARE::amr
-
-
 
 #endif

@@ -1,40 +1,29 @@
 
 
+
 #include "amr/samrai.hpp"
-#include "simulator/simulator.hpp"
 #include "amr/wrappers/hierarchy.hpp"
+
 #include "initializer/python_data_provider.hpp"
+#include "simulator/simulator_runtime.hpp"
+
+#include "phare.hpp"
+
+#include "simulator/simulator.hpp"
+#include "simulator/simulator_runtime.hpp"
 
 #include <atomic>
 #include <csignal>
 #include <algorithm>
 
-namespace
-{
-std::atomic<int> gSignalStatus = 0;
-}
-
-void signal_handler(int signal)
-{
-    gSignalStatus = signal;
-}
-
 namespace PHARE
 {
-
 std::unique_ptr<PHARE::ISimulator> getSimulator(std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy)
 {
-    PHARE::initializer::PHAREDict const& theDict
-        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-    auto dim           = theDict["simulation"]["dimension"].template to<int>();
-    auto interpOrder   = theDict["simulation"]["interp_order"].template to<int>();
-    auto nbRefinedPart = theDict["simulation"]["refined_particle_nbr"].template to<int>();
-
-    return core::makeAtRuntime<SimulatorMaker>(dim, interpOrder, nbRefinedPart,
-                                               SimulatorMaker{hierarchy});
+    return makeSimulatorAtRuntime<SimulatorMaker>(
+        SimOpts::FROM(initializer::PHAREDictHandler::INSTANCE().dict()["simulation"]),
+        SimulatorMaker{hierarchy});
 }
-
-} // namespace PHARE
 
 
 std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char** argv)
@@ -56,6 +45,22 @@ std::unique_ptr<PHARE::initializer::DataProvider> fromCommandLine(int argc, char
     }
     return nullptr;
 }
+
+} /* namespace PHARE */
+
+
+namespace
+{
+std::atomic<int> gSignalStatus = 0;
+}
+
+void signal_handler(int signal)
+{
+    gSignalStatus = signal;
+}
+
+
+
 
 int main(int argc, char** argv)
 {
@@ -82,7 +87,7 @@ int main(int argc, char** argv)
     PHARE::SamraiLifeCycle slc{argc, argv};
 
     std::cerr << "creating python data provider\n";
-    auto provider = fromCommandLine(argc, argv);
+    auto provider = PHARE::fromCommandLine(argc, argv);
 
     std::cerr << "reading user inputs...";
     provider->read();
@@ -90,7 +95,7 @@ int main(int argc, char** argv)
 
     auto& dictHandler = PHARE::initializer::PHAREDictHandler::INSTANCE();
 
-    auto hierarchy = PHARE::amr::Hierarchy::make();
+    auto hierarchy = PHARE::make_hierarchy();
 
     auto simulator = PHARE::getSimulator(hierarchy);
 

@@ -29,7 +29,10 @@ struct RestartsManagerResolver
 {
     template<typename Hierarchy, typename ResourceManager_t>
     NO_DISCARD static std::unique_ptr<IRestartsManager>
-    make_unique(Hierarchy& hier, ResourceManager_t& resman, initializer::PHAREDict const& dict)
+    make_unique([[maybe_unused]] Hierarchy& hier,           //
+                [[maybe_unused]] ResourceManager_t& resman, //
+                [[maybe_unused]] initializer::PHAREDict const& dict)
+
     {
 #if PHARE_HAS_HIGHFIVE
         using Writer_t = h5::Writer<Hierarchy, ResourceManager_t>;

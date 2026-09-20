@@ -46,8 +46,6 @@ if(PGO_USE)
   set (PHARE_FLAGS ${PHARE_FLAGS} -fprofile-use )
 endif()
 
-
-set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 set (PHARE_MPIRUN_POSTFIX ${PHARE_MPIRUN_POSTFIX})
 
@@ -200,7 +198,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   # never be skipped by the PHARE_UNLEVELED_TEST_LEVEL check below, else the
   # binary silently builds with default (non-Werror, missing -DPHARE_HAS_HIGHFIVE) flags.
   function(add_phare_test_build_flags_ binary)
-    target_compile_options(${binary} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
+    target_compile_options(${binary} PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})
   endfunction(add_phare_test_build_flags_)
 
   # ctest-registration decoration only - assumes add_test() was already called
@@ -261,7 +259,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
         return()
       endif()
-      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} ${Python_EXECUTABLE} -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
     endfunction(add_python3_test)
 
@@ -269,7 +267,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       if(${PHARE_EXEC_LEVEL_MIN} GREATER ${PHARE_UNLEVELED_TEST_LEVEL})
         return()
       endif()
-      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 ${file} WORKING_DIRECTORY ${directory})
+      add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} ${Python_EXECUTABLE} ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name}_mpi_n_${N})
     endfunction(add_mpi_python3_test)
 
@@ -310,7 +308,6 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     set(GTEST_LIBS gtest gmock)
 
   endif()
-
   function(phare_exec level target exe directory)
     if(${level} GREATER_EQUAL ${PHARE_EXEC_LEVEL_MIN} AND ${level} LESS_EQUAL ${PHARE_EXEC_LEVEL_MAX})
       add_test(NAME ${target} COMMAND ${exe} WORKING_DIRECTORY ${directory})
@@ -332,7 +329,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       else()
         add_test(
             NAME py3_${target}_mpi_n_${N}
-            COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} ${CLI_ARGS}
+            COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} ${Python_EXECUTABLE} -u ${file} ${CLI_ARGS}
             WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target}_mpi_n_${N})
       endif()
