@@ -8,6 +8,7 @@ import numpy as np
 import pyphare.pharein as ph
 from pyphare.core.box import nDBox
 from pyphare.simulator.simulator import Simulator
+from pyphare.pharesee.run import Run
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.geometry import level_ghost_boxes
 from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
@@ -29,7 +30,8 @@ class HybridInitializationTest(InitializationTest):
         beam=False,
         time_step_nbr=1,
         smallest_patch_size=None,
-        largest_patch_size=10,
+        largest_patch_size=None,
+        block_merging_particles=False,
         cells=120,
         dl=0.1,
         diag_outputs="",
@@ -181,6 +183,9 @@ class HybridInitializationTest(InitializationTest):
 
         Simulator(sim).initialize().reset()
 
+        if qty == "run":
+            return Run(diag_outputs)
+
         eb_hier = None
         if qty in ["e", "eb"]:
             eb_hier = hierarchy_from(
@@ -227,8 +232,8 @@ class HybridInitializationTest(InitializationTest):
             h5_filename=diag_outputs + "/ions_pop_protons_levelGhost.h5",
             hier=particle_hier,
         )
-
-        merge_particles(particle_hier)
+        if not block_merging_particles:
+            merge_particles(particle_hier)
 
         return particle_hier
 

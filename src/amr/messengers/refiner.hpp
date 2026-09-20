@@ -1,10 +1,11 @@
 #ifndef PHARE_REFINER_HPP
 #define PHARE_REFINER_HPP
 
-#include "communicator.hpp"
+#include "core/utilities/types.hpp"
 
 #include "amr/messengers/field_operate_transaction.hpp"
-#include "core/utilities/types.hpp"
+
+#include "communicator.hpp"
 
 #include <stdexcept>
 
@@ -34,21 +35,20 @@ class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
 {
     using FieldData_t = ResourcesManager::UserField_t::patch_data_type;
 
-    using SetMaxOp     = core::SetMax<typename FieldData_t::value_type>;
-    using PlusEqualsOp = core::PlusEquals<typename FieldData_t::value_type>;
-
-    // hard coded rank cause there's no real tensorfields that use this code yet
-    using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
     using VecFieldData_t    = ResourcesManager::template UserTensorField_t<1>::patch_data_type;
+    using TensorFieldData_t = ResourcesManager::template UserTensorField_t<2>::patch_data_type;
 
     std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat_ = nullptr;
 
 public:
     void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                       std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
+                       std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                       std::shared_ptr<SAMRAI::xfer::RefineTransactionFactory> const& refac
+                       = nullptr)
     {
         auto levelNumber = level->getLevelNumber();
 
+        using enum RefinerType;
         for (auto& algo : this->algos)
         {
             // for GhostField we need schedules that take on the level where there is an
@@ -69,7 +69,7 @@ public:
             // destination level. Note that the schedule remains valid as long as the levels
             // involved in its creation do not change; thus, it can be used for multiple
             // data communication cycles.
-            if constexpr (Type == RefinerType::GhostField)
+            if constexpr (Type == GhostField)
             {
                 this->add(algo,
                           algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
@@ -85,64 +85,14 @@ public:
 
             // schedule used to += density and flux for populations
             // on incomplete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchFieldBorderSum)
+            else if constexpr (core::any_in(Type, PatchFieldBorderSum, PatchVecFieldBorderSum,
+                                            PatchTensorFieldBorderSum, PatchFieldBorderMax,
+                                            PatchVecFieldBorderMax))
             {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<FieldData_t, PlusEqualsOp>>()),
-                          levelNumber);
+                assert(refac); // pass on call to this function
+                this->add(algo, algo->createSchedule(level, 0, refac), levelNumber);
             }
 
-
-            else if constexpr (Type == RefinerType::PatchTensorFieldBorderSum)
-            {
-                this->add(
-                    algo,
-                    algo->createSchedule(
-                        level, patchStrat_.get(),
-                        std::make_shared<
-                            FieldBorderOpTransactionFactory<TensorFieldData_t, PlusEqualsOp>>()),
-                    levelNumber);
-            }
-
-
-            else if constexpr (Type == RefinerType::PatchVecFieldBorderSum)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>()),
-                          levelNumber);
-            }
-
-
-            // schedule used to == max of density and flux for populations
-            // on complete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchFieldBorderMax)
-            {
-                this->add(
-                    algo,
-                    algo->createSchedule(
-                        level, patchStrat_.get(),
-                        std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, SetMaxOp>>()),
-                    levelNumber);
-            }
-
-
-            // schedule used to == max of density and flux for populations
-            // on complete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchVecFieldBorderMax)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<VecFieldData_t, SetMaxOp>>()),
-                          levelNumber);
-            }
 
             // this createSchedule overload is used to initialize fields.
             // note that here we must take that createsSchedule() overload and put nullptr
@@ -255,6 +205,7 @@ public:
             this->findSchedule(algo, levelNumber)->fillData(initDataTime);
     }
 
+
     template<typename VecFieldT>
     void fill(VecFieldT& vec, int const levelNumber, double const fillTime)
     {
@@ -285,7 +236,6 @@ public:
 
 
 
-
     Refiner(std::string const& dst, std::string const& src,
             std::shared_ptr<ResourcesManager> const& rm,
             std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp,
@@ -300,6 +250,7 @@ public:
 
 
 
+
     /**
      * @brief This overload of makeRefiner creates a Refiner for communication from one
      * scalar quantity to itself without time interpolation.
@@ -309,7 +260,6 @@ public:
         : Refiner{name, name, rm, refineOp}
     {
     }
-
 
 
     auto& register_resource(auto& rm, auto& dst, auto& src, auto& scratch, auto&&... args)

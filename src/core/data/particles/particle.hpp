@@ -1,10 +1,9 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_HPP
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_HPP
 
-
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/point/point.hpp"
-
 
 #include <array>
 #include <random>
@@ -12,9 +11,86 @@
 #include <algorithm>
 #include <type_traits>
 
-
 namespace PHARE::core
 {
+
+template<size_t dim>
+struct Particle
+{
+    static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
+    static auto constexpr dimension = dim;
+
+    constexpr Particle() {}
+    Particle(Particle const&)            = default;
+    Particle(Particle&&)                 = default;
+    Particle& operator=(Particle const&) = default;
+    Particle& operator=(Particle&&)      = default;
+
+    Particle(double const& a_weight, double const& a_charge, std::array<int, dim> const& cell,
+             std::array<double, dim> const& a_delta, std::array<double, 3> const& a_v) //
+        : weight_{a_weight}
+        , charge_{a_charge}
+        , iCell_{cell}
+        , delta_{a_delta}
+        , v_{a_v}
+    {
+    }
+
+    template<typename Particle_t>
+    Particle(Particle_t const& p) //
+        : weight_{p.weight()}
+        , charge_{p.charge()}
+        , iCell_{p.iCell()}
+        , delta_{p.delta()}
+        , v_{p.v()}
+    {
+    }
+
+    //                                                             1d  2d  3d
+    double weight_                 = 0;                         // 8   8   8
+    double charge_                 = 0;                         // 16  16  16
+    std::array<int, dim> iCell_    = ConstArray<int, dim>();    // 20  24  28
+    std::array<double, dim> delta_ = ConstArray<double, dim>(); // 28  40  52
+    std::array<double, 3> v_       = ConstArray<double, 3>();   // 52  64  76
+
+    NO_DISCARD bool operator==(Particle<dim> const& that) const
+    {
+        return (this->weight_ == that.weight_) && //
+               (this->charge_ == that.charge_) && //
+               (this->iCell_ == that.iCell_) &&   //
+               (this->delta_ == that.delta_) &&   //
+               (this->v_ == that.v_);
+    }
+
+    auto& weight() { return weight_; }
+    auto& weight() const { return weight_; }
+
+    auto& charge() { return charge_; }
+    auto& charge() const { return charge_; }
+
+    auto& iCell() { return iCell_; }
+    auto& iCell() const { return iCell_; }
+
+    auto& delta() { return delta_; }
+    auto& delta() const { return delta_; }
+
+    auto& v() { return v_; }
+    auto& v() const { return v_; }
+
+    template<std::size_t dimension>
+    friend std::ostream& operator<<(std::ostream& out, Particle<dimension> const& particle);
+
+    auto copy() const { return *this; }
+};
+
+// Must stay trivially copyable: std::vector only relocates via memmove (fast) instead of
+// per-element construct/destroy (slow) when this holds - losing it silently turns every
+// particle-array growth/reserve into an O(n) memcpy replaced by an O(n) loop of placement-news.
+static_assert(std::is_trivially_copyable_v<Particle<1>>);
+static_assert(std::is_trivially_copyable_v<Particle<2>>);
+static_assert(std::is_trivially_copyable_v<Particle<3>>);
+
+
 template<typename T = float>
 struct ParticleDeltaDistribution
 {
@@ -27,73 +103,63 @@ struct ParticleDeltaDistribution
 };
 
 
-template<typename Particle>
-NO_DISCARD auto cellAsPoint(Particle const& particle)
+template<typename T, std::size_t dim>
+NO_DISCARD auto cellAsPoint(std::array<T, dim> const& iCell)
 {
-    return Point<int, Particle::dimension>{particle.iCell};
+    return Point<int, dim>{iCell};
 }
 
 
-template<size_t dim>
-struct Particle
+template<typename Particle>
+NO_DISCARD auto cellAsPoint(Particle const& particle)
 {
-    static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
-    static std::size_t constexpr dimension = dim;
+    return cellAsPoint(particle.iCell());
+}
 
-    Particle(double a_weight, double a_charge, std::array<int, dim> cell,
-             std::array<double, dim> a_delta, std::array<double, 3> a_v)
-        : weight{a_weight}
-        , charge{a_charge}
-        , iCell{cell}
-        , delta{a_delta}
-        , v{a_v}
-    {
-    }
 
-    Particle() = default;
+template<std::size_t dim>
+struct ParticlePosition
+{
+    static size_t const dimension = dim;
 
-    double weight = 0;
-    double charge = 0;
+    std::array<int, dim> _iCell;
+    std::array<double, dim> _delta;
 
-    // {} zero initialization
-    std::array<int, dim> iCell{};
-    std::array<double, dim> delta{};
-    std::array<double, 3> v{};
-
-    NO_DISCARD bool operator==(Particle<dim> const& that) const
-    {
-        return (this->weight == that.weight) && //
-               (this->charge == that.charge) && //
-               (this->iCell == that.iCell) &&   //
-               (this->delta == that.delta) &&   //
-               (this->v == that.v);
-    }
-
-    template<std::size_t dimension>
-    friend std::ostream& operator<<(std::ostream& out, Particle<dimension> const& particle);
+    auto& iCell() const { return _iCell; }
+    auto& delta() const { return _delta; }
 };
+
+
+template<size_t dim>
+auto to_string(Particle<dim> const& particle)
+{
+    std::stringstream out;
+    auto const append = [&](std::string const name, auto const& value) {
+        out << name << "(" << value[0];
+        for (std::size_t i = 1; i < dim; ++i)
+            out << "," << value[i];
+        out << "), ";
+    };
+    append("iCell", particle.iCell());
+    append("delta", particle.delta());
+    append("v", particle.v());
+    out << "), charge: " << particle.charge() << ", weight: " << particle.weight();
+    return out.str();
+}
+
+template<template<std::size_t> typename Particle_t, std::size_t dim, typename Stream>
+Stream& write_to_stream(Particle_t<dim> const& particle, Stream& out, bool const new_line = true)
+{
+    out << to_string(particle);
+    if (new_line)
+        out << '\n';
+    return out;
+}
 
 template<std::size_t dim>
 std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
 {
-    out << "iCell(";
-    for (auto c : particle.iCell)
-    {
-        out << c << ",";
-    }
-    out << "), delta(";
-    for (auto d : particle.delta)
-    {
-        out << d << ",";
-    }
-    out << "), v(";
-    for (auto v : particle.v)
-    {
-        out << v << ",";
-    }
-    out << "), charge : " << particle.charge << ", weight : " << particle.weight;
-    out << '\n';
-    return out;
+    return write_to_stream(particle, out);
 }
 
 
@@ -111,6 +177,22 @@ struct ParticleView
 };
 
 
+template<typename Box_t, typename RValue = std::size_t>
+struct CellFlattener
+{
+    template<typename Icell>
+    NO_DISCARD RValue operator()(Icell const& icell) const
+    {
+        if constexpr (Box_t::dimension == 2)
+            return icell[1] + icell[0] * shape[1];
+        if constexpr (Box_t::dimension == 3)
+            return icell[2] + icell[1] * shape[2] + icell[0] * shape[1] * shape[2];
+        return icell[0];
+    }
+
+    Box_t const box;
+    std::array<int, Box_t::dimension> shape = box.shape().toArray();
+};
 
 
 template<std::size_t dim, typename T>
@@ -132,22 +214,22 @@ operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
            particleA.v == particleB.v;
 }
 
-} // namespace PHARE::core
 
-
-namespace std
+auto shift_particle(auto particle, auto const& shift)
 {
-
-template<size_t dim, template<std::size_t> typename Particle_t>
-NO_DISCARD typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
-                                     PHARE::core::Particle<dim>>
-copy(Particle_t<dim> const& from)
-{
-    return {from.weight, from.charge, from.iCell, from.delta, from.v};
+    array_op<PlusEquals<int>>(particle.iCell(), shift);
+    return particle;
 }
 
 
-} // namespace std
+} // namespace PHARE::core
 
+
+template<std::size_t dim>
+void swap(PHARE::core::Particle<dim>& a, PHARE::core::Particle<dim>& b)
+{
+    if (&a != &b)
+        std::swap(a, b);
+}
 
 #endif

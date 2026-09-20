@@ -4,6 +4,8 @@
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
+#include "core/data/field/field_box.hpp"
+
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
 
@@ -13,6 +15,7 @@
 #include <SAMRAI/hier/RefineOperator.h>
 
 #include <cstddef>
+#include <type_traits>
 
 namespace PHARE::amr
 {
@@ -20,6 +23,41 @@ namespace PHARE::amr
 using core::dirX;
 using core::dirY;
 using core::dirZ;
+
+
+// the kernel only ever sees plain fields: FieldT itself, or the grid a tiled FieldT reduces to
+template<typename FieldT>
+using refine_kernel_field_t
+    = std::decay_t<decltype(core::reduce_single(std::declval<FieldT const&>()))>;
+
+
+template<typename FieldT>
+void refine_field(auto const& kernel, FieldT const& src, FieldT& dst, auto const& overlapBoxes,
+                  auto const& centering, auto const& destFieldBox, auto const& sourceFieldBox,
+                  auto const& ratio)
+    requires(not core::is_field_tile_set_v<FieldT>)
+{
+    for (auto const& box : overlapBoxes)
+    {
+        auto const intersectionBox = destFieldBox * box;
+        kernel.refineBox(src, dst, intersectionBox, centering, destFieldBox, sourceFieldBox, ratio);
+    }
+}
+
+// TODO: no dynamic allocation -- borrow a pre-declared untiled temporary instead of reducing
+// into fresh grids (SAMRAI's coarse-interpolation temporary patches have none allocated)
+template<typename FieldT>
+void refine_field(auto const& kernel, FieldT const& src, FieldT& dst, auto const& overlapBoxes,
+                  auto const& centering, auto const& destFieldBox, auto const& sourceFieldBox,
+                  auto const& ratio)
+    requires(core::is_field_tile_set_v<FieldT>)
+{
+    auto const flat_src = core::reduce_single(src);
+    auto flat_dst       = core::reduce_single(dst); // keeps NaNs, the kernel only fills those
+    refine_field(kernel, flat_src, flat_dst, overlapBoxes, centering, destFieldBox, sourceFieldBox,
+                 ratio);
+    core::copy_fields(dst, *flat_dst); // every tile's ghost box, so inner tile ghosts agree
+}
 
 
 
@@ -38,7 +76,7 @@ public:
     static constexpr std::size_t dimension = GridLayoutT::dimension;
     using PhysicalQuantity                 = FieldT::physical_quantity_type;
     using FieldDataT                       = FieldData<GridLayoutT, FieldT>;
-    using Kernel_t                         = IFieldRefineKernel<GridLayoutT, FieldT>;
+    using Kernel_t = IFieldRefineKernel<GridLayoutT, refine_kernel_field_t<FieldT>>;
 
     explicit KernelFieldRefineOperator(std::unique_ptr<Kernel_t> kernel)
         : SAMRAI::hier::RefineOperator{"KernelFieldRefineOperator"}
@@ -80,14 +118,8 @@ public:
         auto const sourceFieldBox
             = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
-        auto const centering = destLayout.centering(qty);
-
-        for (auto const& box : overlapBoxes)
-        {
-            auto const intersectionBox = destFieldBox * box;
-            kernel_->refineBox(sourceField, destinationField, intersectionBox, centering,
-                               destFieldBox, sourceFieldBox, ratio);
-        }
+        refine_field(*kernel_, sourceField, destinationField, overlapBoxes,
+                     destLayout.centering(qty), destFieldBox, sourceFieldBox, ratio);
     }
 
 private:
@@ -109,7 +141,7 @@ public:
 
     using TensorFieldDataT     = TensorFieldData_t;
     using TensorFieldOverlap_t = TensorFieldOverlap<TensorFieldData_t::rank>;
-    using Kernel_t             = IFieldRefineKernel<GridLayoutT, GridT>;
+    using Kernel_t             = IFieldRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>;
 
     static constexpr std::size_t N = TensorFieldDataT::N;
 
@@ -155,14 +187,8 @@ public:
             auto const sourceFieldBox
                 = FieldGeometry::toFieldBox(srcData->getGhostBox(), qty, srcLayout);
 
-            auto const centering = destLayout.centering(qty);
-
-            for (auto const& box : overlapBoxes)
-            {
-                auto const intersectionBox = destFieldBox * box;
-                kernel_->refineBox(sourceFields[c], destinationFields[c], intersectionBox,
-                                   centering, destFieldBox, sourceFieldBox, ratio);
-            }
+            refine_field(*kernel_, sourceFields[c], destinationFields[c], overlapBoxes,
+                         destLayout.centering(qty), destFieldBox, sourceFieldBox, ratio);
         }
     }
 
@@ -176,7 +202,5 @@ using KernelVecFieldRefineOperator = KernelTensorFieldRefineOperator<VectorField
 
 
 } // namespace PHARE::amr
-
-
 
 #endif

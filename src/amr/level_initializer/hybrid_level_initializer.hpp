@@ -1,10 +1,11 @@
 #ifndef PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 #define PHARE_HYBRID_LEVEL_INITIALIZER_HPP
 
-#include "core/errors.hpp"
 #include "mpi/mpi_utils.hpp"
+
+#include "core/errors.hpp"
 #include "core/numerics/moments/moments.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/interpolator/interpolating.hpp"
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
@@ -36,14 +37,25 @@ namespace solver
         static constexpr auto dimension    = GridLayoutT::dimension;
         static constexpr auto interp_order = GridLayoutT::options.interp_order;
 
-        using Ampere_t = FieldEvolverDispatchers<HybridModel>::Ampere_t;
-        using Ohm_t    = OhmLevelTransformer<HybridModel>;
+        using Ampere_t        = AmpereLevelTransformer<HybridModel>;
+        using Ohm_t           = OhmLevelTransformer<HybridModel>;
+        using ParticleArray_t = HybridModel::particle_array_type;
+        using Interpolating_t
+            = core::Interpolating<dimension, interp_order, /*atomic_interp*/ false>;
+
+
         core::OhmInfo ohm_info;
+
 
         inline bool isRootLevel(int const levelNumber) const { return levelNumber == 0; }
 
     public:
         using model_type = HybridModel;
+
+        explicit HybridLevelInitializer(core::OhmInfo const& info)
+            : ohm_info{info}
+        {
+        }
 
         explicit HybridLevelInitializer(PHARE::initializer::PHAREDict const& dict)
             : ohm_info{core::OhmInfo::FROM(dict["algo"]["ohm"])}
@@ -55,7 +67,8 @@ namespace solver
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
                                 bool isRegridding) override
         {
-            core::Interpolator<dimension, interp_order> interpolate_;
+            Interpolating_t interpolate_;
+
             auto& hybridModel = static_cast<HybridModel&>(model);
             auto& level       = amr_types::getLevel(*hierarchy, levelNumber);
 
@@ -104,6 +117,7 @@ namespace solver
                 core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
             }
 
+
             // at this point flux and density is computed for all pops
             // but nodes on ghost box overlaps are not complete because they lack
             // contribution of neighbor particles.
@@ -121,9 +135,7 @@ namespace solver
                     core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
                 }
 
-
-                // now all nodes are complete, the total ion moments
-                // can safely be computed.
+                // now all nodes are complete, the total ion moments can safely be computed.
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
             }
@@ -159,8 +171,7 @@ namespace solver
                 auto& E         = hybridModel.state.electromag.E;
                 auto& electrons = hybridModel.state.electrons;
 
-                for (auto& patch : rm.enumerate(level, electrons))
-                    electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
+                ElectronsLevelTransformer{level, hybridModel}(electrons);
 
                 Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
                 setTime(E);
@@ -176,6 +187,7 @@ namespace solver
             hybMessenger.prepareStep(hybridModel, level, initDataTime);
         }
     };
+
 } // namespace solver
 } // namespace PHARE
 

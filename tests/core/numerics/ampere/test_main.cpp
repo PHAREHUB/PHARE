@@ -1,11 +1,11 @@
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "core/data/field/field.hpp"
-#include "core/data/grid/gridlayout.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
 
 #include "tests/core/data/field/test_field.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -17,8 +17,6 @@
 
 
 using namespace PHARE::core;
-
-
 
 struct GridLayoutMock1D
 {
@@ -101,12 +99,14 @@ class Ampere1DTest : public ::testing::Test
 protected:
     static constexpr std::size_t dim          = 1;
     static constexpr std::size_t interp_order = 1;
-    using UsableVecFieldND                    = UsableVecField<dim>;
-    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using Ampere_t     = Ampere<GridLayout_t>;
+    using core_types                          = PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes                         = core_types::Hybrid;
+    using GridLayout_t                        = HybridTypes::GridLayout_t;
+    using Ampere_t                            = Ampere<GridLayout_t>;
+    auto static constexpr field_opts          = TensorFieldOptions<HybridTypes>{};
+    using UsableVecFieldND                    = UsableVecField<field_opts>;
 
     GridLayout_t layout;
-
     UsableVecFieldND B, J;
 
 public:
@@ -124,12 +124,14 @@ class Ampere2DTest : public ::testing::Test
 protected:
     static constexpr std::size_t dim          = 2;
     static constexpr std::size_t interp_order = 1;
-    using UsableVecFieldND                    = UsableVecField<dim>;
-    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using Ampere_t     = Ampere<GridLayout_t>;
+    using core_types                          = PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes                         = core_types::Hybrid;
+    using GridLayout_t                        = HybridTypes::GridLayout_t;
+    using Ampere_t                            = Ampere<GridLayout_t>;
+    auto static constexpr field_opts          = TensorFieldOptions<HybridTypes>{};
+    using UsableVecFieldND                    = UsableVecField<field_opts>;
 
     GridLayout_t layout;
-
     UsableVecFieldND B, J;
 
 public:
@@ -147,12 +149,14 @@ class Ampere3DTest : public ::testing::Test
 protected:
     static constexpr std::size_t dim          = 3;
     static constexpr std::size_t interp_order = 1;
-    using UsableVecFieldND                    = UsableVecField<dim>;
-    using GridLayout_t = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using Ampere_t     = Ampere<GridLayout_t>;
+    using core_types                          = PHARE_Types<PHARE::SimOpts{dim, interp_order}>;
+    using HybridTypes                         = core_types::Hybrid;
+    using GridLayout_t                        = HybridTypes::GridLayout_t;
+    using Ampere_t                            = Ampere<GridLayout_t>;
+    auto static constexpr field_opts          = TensorFieldOptions<HybridTypes>{};
+    using UsableVecFieldND                    = UsableVecField<field_opts>;
 
     GridLayout_t layout;
-
     UsableVecFieldND B, J;
 
 public:
@@ -176,7 +180,7 @@ TEST_F(Ampere1DTest, ampere1DCalculatedOk)
     std::uint32_t gsi_d_X = this->layout.ghostStartIndex(QtyCentering::dual, Direction::X);
     std::uint32_t gei_d_X = this->layout.ghostEndIndex(QtyCentering::dual, Direction::X);
 
-    auto const& [Bx, By, Bz] = B();
+    auto& [Bx, By, Bz]       = B();
     auto const& [Jx, Jy, Jz] = J();
 
     for (std::uint32_t ix = gsi_d_X; ix <= gei_d_X; ++ix)
@@ -218,7 +222,7 @@ TEST_F(Ampere2DTest, ampere2DCalculatedOk)
     std::uint32_t gsi_d_Y = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Y);
     std::uint32_t gei_d_Y = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Y);
 
-    auto const& [Bx, By, Bz] = B();
+    auto& [Bx, By, Bz]       = B();
     auto const& [Jx, Jy, Jz] = J();
 
     for (std::uint32_t ix = gsi_p_X; ix <= gei_p_X; ++ix)
@@ -320,7 +324,7 @@ TEST_F(Ampere3DTest, ampere3DCalculatedOk)
     std::uint32_t gsi_d_Z = this->layout.ghostStartIndex(QtyCentering::dual, Direction::Z);
     std::uint32_t gei_d_Z = this->layout.ghostEndIndex(QtyCentering::dual, Direction::Z);
 
-    auto const& [Bx, By, Bz] = B();
+    auto& [Bx, By, Bz]       = B();
     auto const& [Jx, Jy, Jz] = J();
 
     for (std::uint32_t ix = gsi_p_X; ix <= gei_p_X; ++ix)

@@ -1,10 +1,8 @@
 #ifndef PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
-
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "amr/samrai.hpp"
 
@@ -20,7 +18,7 @@
 
 #include <map>
 #include <optional>
-
+#include <stdexcept>
 
 
 namespace PHARE
@@ -111,15 +109,16 @@ namespace amr
      *
      *
      */
-
-    template<typename GridLayoutT, typename Grid_t>
+    template<typename GridLayoutT, typename Grid_t, typename... ResourcesUserTypes>
     class ResourcesManager
     {
-        using This         = ResourcesManager<GridLayoutT, Grid_t>;
+        using This         = ResourcesManager<GridLayoutT, Grid_t, ResourcesUserTypes...>;
         using QuantityType = decltype(GridLayoutT::options.field_options)::Quantity;
 
     public:
         static constexpr std::size_t dimension = GridLayoutT::dimension;
+
+        using ResourceUserTypes = std::tuple<ResourcesUserTypes...>;
 
         using UserField_t = UserFieldType<Grid_t, GridLayoutT>;
 
@@ -323,8 +322,6 @@ namespace amr
         }
 
 
-
-
         void registerForRestarts() const
         {
             auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
@@ -501,9 +498,11 @@ namespace amr
         auto getPatchData_(ResourcesInfo const& resourcesVariableInfo,
                            SAMRAI::hier::Patch const& patch) const
         {
-            auto patchData = patch.getPatchData(resourcesVariableInfo.variable, context_);
-            return (std::dynamic_pointer_cast<typename ResourceType::patch_data_type>(patchData))
-                ->getPointer();
+            using PatchData_t = ResourceType::patch_data_type;
+            auto patchData    = patch.getPatchData(resourcesVariableInfo.variable, context_);
+            if (auto casted = std::dynamic_pointer_cast<PatchData_t>(patchData))
+                return casted->getPointer();
+            throw std::runtime_error("Resource Manager bad cast");
         }
 
 

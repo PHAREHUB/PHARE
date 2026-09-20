@@ -1,8 +1,11 @@
 
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/utilities/box/box.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "gtest/gtest.h"
 

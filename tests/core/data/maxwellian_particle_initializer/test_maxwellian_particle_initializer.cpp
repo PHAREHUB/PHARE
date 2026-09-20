@@ -1,18 +1,16 @@
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
-#include <type_traits>
-
-
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/data/particles/particle_utilities.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_array_def.hpp"
+#include "core/data/particles/particle_utilities.hpp"
+#include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
-#include "gmock/gmock.h"
+#include "simulator/simulator_def.hpp"
+
 #include "gtest/gtest.h"
 
 #include "tests/initializer/init_functions.hpp"
@@ -22,38 +20,52 @@ using namespace PHARE::core;
 using namespace PHARE::initializer;
 
 
+template<typename ParticleArrayT>
 class AMaxwellianParticleInitializer1D : public ::testing::Test
 {
 private:
     using GridLayoutT       = PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t;
-    using ParticleArrayT    = ParticleArray<1>;
     using InitFunctionArray = std::array<InitFunction<1>, 3>;
 
+    auto static init_particles(GridLayoutT const& layout)
+    {
+        if constexpr (any_in(ParticleArrayT::layout_mode, LayoutMode::AoSMapped))
+            return ParticleArrayT{layout.AMRBox()};
+        else
+            return ParticleArrayT{};
+    }
+
 public:
+    static constexpr std::uint32_t nbrParticlesPerCell = 10000;
+
     AMaxwellianParticleInitializer1D()
         : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
-        , particles{layout.AMRBox()}
+        , particles{init_particles(layout)}
         , initializer{std::make_unique<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>>(
               density, InitFunctionArray{vx, vy, vz}, InitFunctionArray{vthx, vthy, vthz}, 1.,
               nbrParticlesPerCell)}
     {
-        //
     }
 
 
     GridLayoutT layout;
     ParticleArrayT particles;
-    std::uint32_t nbrParticlesPerCell{10000};
     std::unique_ptr<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>> initializer;
+
+    auto operator()() { return std::forward_as_tuple(layout, particles, initializer); }
 };
 
 
+using Tests1d = testing::Types<AoSMappedParticleArray<1>, AoSParticleArray<1>, SoAParticleArray<1>>;
+TYPED_TEST_SUITE(AMaxwellianParticleInitializer1D, Tests1d);
 
 
-TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
+TYPED_TEST(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 {
+    auto const& [layout, particles, initializer] = (*this)();
+
     auto nbrCells             = layout.nbrCells();
-    auto expectedNbrParticles = nbrParticlesPerCell * nbrCells[0];
+    auto expectedNbrParticles = TestFixture::nbrParticlesPerCell * nbrCells[0];
     initializer->loadParticles(particles, layout);
     EXPECT_EQ(expectedNbrParticles, particles.size());
 }
@@ -61,22 +73,23 @@ TEST_F(AMaxwellianParticleInitializer1D, loadsTheCorrectNbrOfParticles)
 
 
 
-TEST_F(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
+TYPED_TEST(AMaxwellianParticleInitializer1D, loadsParticlesInTheDomain)
 {
+    auto const& [layout, particles, initializer] = (*this)();
+
     initializer->loadParticles(particles, layout);
-    for (auto const& particle : particles)
+
+    for (std::size_t i = 0; i < particles.size(); i++)
     {
-        EXPECT_TRUE(particle.iCell[0] >= 50 && particle.iCell[0] <= 99);
-        auto pos       = positionAsPoint(particle, layout);
-        auto endDomain = (layout.AMRBox().upper[0] + 1) * layout.meshSize()[0];
+        EXPECT_TRUE(particles.iCell(i)[0] >= 50 && particles.iCell(i)[0] <= 99);
+        auto pos       = positionAsPoint(particles, i, layout);
+        auto endDomain = layout.origin()[0] + layout.nbrCells()[0] * layout.meshSize()[0];
 
         if (!((pos[0] > 0.) and (pos[0] < endDomain)))
             std::cout << "position : " << pos[0] << " not in domain (0," << endDomain << ")\n";
         EXPECT_TRUE(pos[0] > 0. && pos[0] < endDomain);
     }
 }
-
-
 
 
 int main(int argc, char** argv)

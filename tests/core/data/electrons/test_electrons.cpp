@@ -1,20 +1,19 @@
 
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "initializer/data_provider.hpp"
 
-#include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ions/ions.hpp"
+#include "core/utilities/types.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/electromag/electromag.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
-#include "core/data/ions/ions.hpp"
-#include "core/data/electromag/electromag.hpp"
-#include "src/core/utilities/types.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include "tests/initializer/init_functions.hpp"
@@ -131,15 +130,18 @@ struct ElectronsTest : public ::testing::Test
 {
     static constexpr auto dim    = typename TypeInfo::first_type{}();
     static constexpr auto interp = typename TypeInfo::second_type{}();
+    static constexpr auto opts   = PHARE::SimOpts{dim, interp};
 
+    using core_types                 = PHARE::core::PHARE_Types<opts>;
+    auto constexpr static field_opts = TensorFieldOptions<typename core_types::Hybrid>{};
 
-    using GridYee = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
+    using GridYee = core_types::Hybrid::GridLayout_t;
 
     using GridND           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
     using FieldND          = Field<dim, HybridQuantity::Scalar>;
     using VecFieldND       = VecField<FieldND, HybridQuantity>;
     using SymTensorFieldND = SymTensorField<FieldND, HybridQuantity>;
-    using ParticleArray_t  = ParticleArray<dim>;
+    using ParticleArray_t  = ParticleArray<ParticleArrayOptions{dim}>;
     using IonPopulationND  = IonPopulation<ParticleArray_t, VecFieldND, SymTensorFieldND>;
     using IonsT            = Ions<IonPopulationND, GridYee>;
     using PartPackND       = ParticlesPack<ParticleArray_t>;
@@ -150,8 +152,8 @@ struct ElectronsTest : public ::testing::Test
 
     Electromag<VecFieldND> electromag;
 
-    UsableVecField<dim> J, F, Ve, Vi;
-    UsableTensorField<dim> ionTensor, protonTensor;
+    UsableVecField<field_opts> J, F, Ve, Vi;
+    UsableTensorField<field_opts> ionTensor, protonTensor;
 
     GridND ionChargeDensity, ionMassDensity, protonParticleDensity, protonChargeDensity, Pe;
 
@@ -214,17 +216,14 @@ struct ElectronsTest : public ::testing::Test
         auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
 
-
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
-
 
         auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
         auto const& [_, P] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
 
-        auto const& [Jx, Jy, Jz]    = J();
-        auto const& [Vix, Viy, Viz] = Vi();
-
+        auto& [Jx, Jy, Jz]    = J();
+        auto& [Vix, Viy, Viz] = Vi();
 
         if constexpr (dim == 1)
         {

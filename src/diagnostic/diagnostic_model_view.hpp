@@ -131,6 +131,34 @@ public:
         return derived().getCompileTimeResourcesViewList();
     }
 
+    auto operator()() const { return model_.getCompileTimeResourcesViewList(); }
+
+
+    auto& field_reducer(auto& f)
+        requires(core::is_field_tile_set_v<Field>)
+    {
+        return core::reduce_single(Model::tmpField, f);
+    }
+    auto& field_reducer(auto& f) { return f; }
+
+    auto& vec_field_reducer(auto& tf_in)
+        requires(core::is_field_tile_set_v<Field>)
+    {
+        for (std::size_t i = 0; i < 3; ++i)
+            core::reduce_single(Model::tmpVec[i], tf_in[i]);
+        return Model::tmpVec;
+    }
+    auto& vec_field_reducer(auto& f) { return f; }
+
+    auto& tensor_field_reducer(auto& f)
+        requires(core::is_field_tile_set_v<Field>)
+    {
+        for (std::size_t i = 0; i < 6; ++i)
+            core::reduce_single(Model::tmpTensor[i], f[i]);
+        return Model::tmpTensor;
+    }
+    auto& tensor_field_reducer(auto& f) { return f; }
+
 protected:
     Model& model_;
     Hierarchy& hierarchy_;
@@ -154,6 +182,10 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Mod
     using VecField     = Model::vecfield_type;
     using TensorFieldT = Model::ions_type::tensorfield_type;
 
+    using ScratchTensorFieldData_t
+        = amr::TensorFieldData<2, typename Super::GridLayout,
+                               typename Model::Super::storage_t::grid_type, core::HybridQuantity>;
+
 public:
     using Model_t                = Model;
     using physical_quantity_type = Model::physical_quantity_type;
@@ -170,57 +202,55 @@ public:
 
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 
-    auto& tmpField() { return tmpField_; }
+    auto& tmpField() { return Model::tmpField; }
 
-    auto& tmpVecField() { return tmpVec_; }
+    auto& tmpVecField() { return Model::tmpVec; }
 
     template<std::size_t rank = 2>
     auto& tmpTensorField()
     {
         static_assert(rank > 0 and rank < 3);
         if constexpr (rank == 1)
-            return tmpVec_;
+            return Model::tmpVec;
         else
-            return tmpTensor_;
+            return Model::tmpTensor;
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(Model::tmpField, Model::tmpVec, Model::tmpTensor);
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(Model::tmpField, Model::tmpVec, Model::tmpTensor);
     }
 
     void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
     {
-        using value_type = TensorFieldT::value_type;
         auto constexpr N = core::detail::tensor_field_dim_from_rank<2>();
 
         auto& rm   = *this->model_.resourcesManager;
         auto& ions = this->model_.state.ions;
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, Model::tmpTensor))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(tmpTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+                core::reduce_into(Model::tmpTensor[c], ions[popidx].momentumTensor()[c]);
 
         MTAlgos[popidx].getOrCreateSchedule(this->hierarchy_, lvl.getLevelNumber()).fillData(time);
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, Model::tmpTensor))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
-                            ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
+                core::copy_fields(ions[popidx].momentumTensor()[c], Model::tmpTensor[c]);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        return std::forward_as_tuple(tmpField_, tmpVec_, tmpTensor_);
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        return std::forward_as_tuple(tmpField_, tmpVec_, tmpTensor_);
-    }
 
 protected:
     void declareMomentumTensorAlgos()
     {
         auto& rm = *this->model_.resourcesManager;
 
-        auto const dst_name = tmpTensor_.name();
+        auto const dst_name = Model::tmpTensor.name();
 
         for (auto& pop : this->model_.state.ions)
         {
@@ -242,7 +272,7 @@ protected:
     {
         auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
         {
-            using PlusEqualsOp = core::PlusEquals<typename VecField::value_type>;
+            using BorderSumOp = core::FieldBorderSumOp<typename VecField::value_type>;
 
             auto const level   = hierarchy.getPatchLevel(ilvl);
             auto schedule_iter = MTschedules.find(ilvl);
@@ -258,7 +288,8 @@ protected:
                                     MTalgo->createSchedule(
                                         level, 0,
                                         std::make_shared<amr::FieldBorderOpTransactionFactory<
-                                            typename Super::TensorFieldData_t, PlusEqualsOp>>())})
+                                            typename Super::TensorFieldData_t, BorderSumOp,
+                                            ScratchTensorFieldData_t>>())})
                           .first;
 
             return *schedule_iter->second.schedule;
@@ -276,9 +307,6 @@ protected:
     };
 
     std::vector<MTAlgo> MTAlgos;
-    Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
-    VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
-    TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
 };
 
 
@@ -352,14 +380,15 @@ public:
     }
 
 protected:
-    // these quantities are not always up to date in the calculations but we can compute them from
-    // the conservative variables when needed their registration and allocation are handled in the
+    // not always current; computed from conservative vars when needed; registered/allocated in
     // model
     VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
 
-    Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
-    VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
+    // Field/VecField may be tiled; this is reduce_single()'s destination so it must always be
+    // Model's plain (never tiled) storage type, same as Model::tmpField/tmpVec.
+    Model::Field_rt tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
+    Model::VecField_rt tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
 };
 
 

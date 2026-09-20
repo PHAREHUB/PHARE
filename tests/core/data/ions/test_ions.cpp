@@ -1,13 +1,16 @@
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/data/ions/ions.hpp"
 #include "core/data/vecfield/vecfield.hpp"
-#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/particles/particle_array.hpp"
+#include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
+
+#include "simulator/simulator_def.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -22,8 +25,8 @@ static constexpr std::size_t dim         = 1;
 static constexpr std::size_t interpOrder = 1;
 
 using GridYee1D = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interpOrder}>::Hybrid::GridLayout_t;
-using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray<1>, GridYee1D>;
-
+using ParticleArray_t                 = AoSMappedParticleArray<1>;
+using MaxwellianParticleInitializer1D = MaxwellianParticleInitializer<ParticleArray_t, GridYee1D>;
 
 
 class theIons : public ::testing::Test
@@ -34,7 +37,8 @@ protected:
     using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
     using InitFunctionT    = PHARE::initializer::InitFunction<1>;
 
-    using IonPopulation1D = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
+    using IonPopulation1D = IonPopulation<ParticleArray_t, VecField1D, SymTensorField1D>;
+
     Ions<IonPopulation1D, GridYee1D> ions;
 
     PHARE::initializer::PHAREDict createIonsDict()
