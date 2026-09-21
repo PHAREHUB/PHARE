@@ -24,7 +24,7 @@ the stability bound dt <~ dx^2/pi, so at fixed sigma dt ~ dx^2 -- large N is
 expensive (N=128 needs ~2800 steps at sigma=0.4).
 
 Requires the build permutation
-  2,SSPRK4_5,WENOZ,None,Rusanov,true,false,true  (in res/sim/all.txt).
+  2,WENOZ,None,Rusanov,true  (in res/sim/all.txt).
 """
 
 import os
@@ -125,8 +125,6 @@ class WhistlerConvergenceTest(ConvergenceTestBase):
             riemann="Rusanov",
             mhd_timestepper=TIMESTEPPER,
             hall=True,
-            res=False,
-            hyper_res=True,
             model_options=["MHDModel"],
         )
 
