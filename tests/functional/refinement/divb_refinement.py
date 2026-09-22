@@ -174,11 +174,6 @@ def config(mode, order, diag_dir):
             "vthy": thermal,
             "vthz": thermal,
             "nbr_part_per_cell": 30,
-            # Seeded so the gate is reproducible: unseeded, particle init draws from
-            # random_device, and the moments it feeds move max|divB| by a few ulp from one run
-            # to the next -- fine against the cap, but then the gate cannot tell a refactor
-            # that changed nothing from one that changed a little. Per-rank so the noise stays
-            # decorrelated across ranks (reproducible at a fixed rank count).
             "init": {"seed": cpp.mpi_rank() + 12},
         },
     )
