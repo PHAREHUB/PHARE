@@ -126,9 +126,7 @@ class MHDOnlyThroughTestHelperTest(SimulatorTest):
         sim = self.mhd_simulation()
         self.assertEqual(sim.interp_order, 0)  # internal, C++-facing value
         self.assertEqual(sim.refined_particle_nbr, 0)
-        self.assertEqual(
-            simulator_id(sim), "1_TVDRK2_Linear_VanLeer_Rusanov_false_false_false"
-        )
+        self.assertEqual(simulator_id(sim), "1_Linear_VanLeer_Rusanov_false")
 
 
 if __name__ == "__main__":
