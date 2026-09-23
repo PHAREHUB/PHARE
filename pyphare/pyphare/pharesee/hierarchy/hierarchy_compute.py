@@ -3,7 +3,6 @@
 #
 
 import operator
-from copy import deepcopy
 
 from .hierarchy import PatchHierarchy
 
@@ -16,6 +15,10 @@ def rename(hierarchy, names):
 
 def compute_rename(patch, **kwargs):
     new_names = kwargs["new_names"]
+    if len(new_names) != len(patch.patch_datas):
+        raise ValueError(
+            f"cannot rename {list(patch.patch_datas)} to {list(new_names)}: count mismatch"
+        )
     pd_attrs = []
 
     for new_name, pd_name in zip(new_names, patch.patch_datas):
@@ -64,7 +67,8 @@ class DataAccessor:
     `accessor` is a HierarchyAccessor locating the patch currently being
     computed (hierarchy, time, level, patch index). `operand` is either
     another hierarchy, in which case indexing by quantity name returns its
-    dataset at that same patch location, or anything else operable against
+    dataset at that same patch location (a single-quantity hierarchy, e.g. a
+    ScalarField, is broadcast for any key), or anything else operable against
     a dataset (usually a scalar), which is returned unchanged regardless of
     the key.
     """
@@ -75,7 +79,10 @@ class DataAccessor:
 
     def __getitem__(self, key):
         if isinstance(self.operand, PatchHierarchy):
-            return self.operand[self.accessor][key].dataset[:]
+            patch = self.operand[self.accessor]
+            if key not in patch.patch_datas and len(patch.patch_datas) == 1:
+                key = next(iter(patch.patch_datas))
+            return patch[key].dataset[:]
         return self.operand
 
 
