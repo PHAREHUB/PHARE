@@ -76,6 +76,8 @@ def _compute_current(patch, **kwargs):
         xbz = Bz.x
         Jy, Jz = _current1d(By[:], Bz[:], xby, xbz)
         return (
+            # Jx is invariant in 1D, so this value is invalid and should not be used
+            reference_pd.copy_as(0, name="Jx", centering="dual"),
             By.copy_as(Jy, name="Jy", centering="primal"),
             Bz.copy_as(Jz, name="Jz", centering="primal"),
         )

@@ -330,7 +330,10 @@ class Run:
         return files
 
     def _get_any_hierarchy(self, time):
-        return self._get_hierarchy(time, os.path.basename(self.available_diags[0]))
+        for file in self.available_diags:
+            if f"{time:.10f}" in (f"{t:.10f}" for t in all_times_from(file)):
+                return self._get_hierarchy(time, os.path.basename(file))
+        raise RuntimeError(f"No diagnostic found at time {time} in {self.path}")
 
     def _get_hierarchy(self, times, filename, hier=None, **kwargs):
         from pyphare.core.box import Box
