@@ -188,6 +188,8 @@ def extract_patchdatas(hierarchies, ilvl, t, ipatch):
 
 
 def new_patchdatas_from(compute, patch, **kwargs):
+    if not patch.patch_datas:  # empty patches are kept, nothing to compute
+        return {}
     return {data.name: data for data in compute(patch, **kwargs)}
 
 
