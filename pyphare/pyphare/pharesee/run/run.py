@@ -362,13 +362,9 @@ class Run:
             domain = self.GetDomainSize()
             dl = self.GetDl(time=time)
 
-            # assumes all qties in the hierarchy have the same ghost width
-            # so take the first patch data of the first patch of the first level....
-            nbrGhosts = next(
-                iter(hierarchy.level(0).patches[0].patch_datas.values())
-            ).ghosts_nbr
             merged_qties = {}
             for qty in hierarchy.quantities():
+                nbrGhosts = hierarchy.level(0, time).patches[0][qty].ghosts_nbr
                 data, coords = flat_finest_field(hierarchy, qty, time=time)
                 merged_qties[qty] = make_interpolator(
                     data, coords, interp, domain, dl, qty, nbrGhosts
