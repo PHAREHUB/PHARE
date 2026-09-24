@@ -160,7 +160,8 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
 
     auto const fns = std::make_from_tuple<MaxwellianInitFunctions>(std::tuple_cat(
         std::forward_as_tuple(density_, bulkVelocity_, thermalVelocity_, magneticField_, basis_),
-        cellCoords));
+        std::apply([](auto const&... coords) { return std::make_tuple(make_span(coords)...); },
+                   cellCoords)));
 
     auto const [n, V, Vth] = fns();
     auto randGen           = getRNG(rngSeed_);

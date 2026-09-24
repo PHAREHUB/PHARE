@@ -72,7 +72,10 @@ class py_fn_wrapper:
         self.fn = fn
 
     def __call__(self, *xyz):
-        args = [np.asarray(arg) for arg in xyz]
+        from pyphare.cpp import cpp_etc_lib
+
+        args = [np.asarray(arg) for arg in xyz]  # zero-copy views of C++ Spans
+        assert cpp_etc_lib().are_the_same_data(args[0], xyz[0])
         ret = self.fn(*args)
         if isinstance(ret, list):
             ret = np.asarray(ret)

@@ -23,9 +23,12 @@ public:
             indices, field, [](auto& gridLayout, auto& field_, auto const&... args) {
                 return gridLayout.fieldNodeCoordinates(field_, args...);
             });
+        auto const spans
+            = for_N<Field::dimension>([&](auto i) { return make_span(std::get<i>(coords)); });
 
         std::shared_ptr<Span<double>> gridPtr // keep grid data alive
-            = std::apply([&](auto&... args) { return init(args...); }, coords);
+            = std::apply([&](auto&... args) { return init(args...); }, spans);
+
         Span<double>& grid = *gridPtr;
 
         for (std::size_t cell_idx = 0; cell_idx < indices.size(); cell_idx++)

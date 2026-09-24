@@ -23,21 +23,28 @@ concept Spannable = requires(T t) {
 
 
 template<typename T, typename SIZE = std::size_t>
-
 struct Span
 {
     using value_type = T;
 
     NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
     NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
-    NO_DISCARD T const* const& data() const { return ptr; }
-    NO_DISCARD T const* const& begin() const { return ptr; }
+    NO_DISCARD T* data() const { return ptr; }
+    NO_DISCARD T* begin() const { return ptr; }
     NO_DISCARD T* end() const { return ptr + s; }
     NO_DISCARD SIZE const& size() const { return s; }
 
-    T const* ptr = nullptr;
-    SIZE s       = 0;
+    T* ptr = nullptr;
+    SIZE s = 0;
 };
+
+
+template<typename Container_t>
+auto make_span(Container_t& container)
+{
+    using value_type = std::remove_reference_t<decltype(*container.data())>;
+    return Span<value_type>{container.data(), container.size()};
+}
 
 
 template<typename T, typename SIZE = std::size_t>
@@ -90,7 +97,11 @@ struct SpanSet
     {
     }
 
-    NO_DISCARD Span<T, SIZE> operator[](SIZE i) const
+    NO_DISCARD Span<T, SIZE> operator[](SIZE i)
+    {
+        return {this->vec.data() + displs[i], this->sizes[i]};
+    }
+    NO_DISCARD Span<T const, SIZE> operator[](SIZE i) const
     {
         return {this->vec.data() + displs[i], this->sizes[i]};
     }
