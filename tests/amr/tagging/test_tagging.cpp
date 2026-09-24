@@ -38,7 +38,7 @@ TEST(test_tagger, fromFactoryInvalid)
 }
 
 
-using Param   = std::vector<double>;
+using Param   = PHARE::core::Span<double const>;
 using RetType = std::shared_ptr<PHARE::core::Span<double>>;
 
 RetType step1(Param const& x)
