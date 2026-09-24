@@ -12,7 +12,7 @@
 using namespace PHARE::core;
 
 
-using Param  = std::vector<double> const&;
+using Param  = PHARE::core::Span<double const> const&;
 using Return = std::shared_ptr<Span<double>>;
 
 Return density(Param x)

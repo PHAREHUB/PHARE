@@ -7,6 +7,7 @@
 #include "core/utilities/types.hpp"
 
 #include <vector>
+#include <algorithm>
 #include <cstddef>
 #include <numeric>
 
@@ -68,6 +69,23 @@ public:
         : Vector{vec_}
         , Span_{Vector::var.data(), Vector::var.size()}
     {
+    }
+
+    template<typename U> // U is T or T const
+        requires std::is_same_v<std::remove_const_t<U>, T>
+    VectorSpan(Span<U, SIZE> const& span)
+        : Vector{vector_from(span)}
+        , Span_{Vector::var.data(), Vector::var.size()}
+    {
+    }
+
+private:
+    template<typename U>
+    static std::vector<T> vector_from(Span<U, SIZE> const& span)
+    {
+        std::vector<T> vec(span.size());
+        std::copy(span.data(), span.data() + span.size(), vec.data());
+        return vec;
     }
 };
 
