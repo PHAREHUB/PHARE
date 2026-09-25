@@ -12,7 +12,10 @@ if (test AND coverage)
   add_custom_target(build-time-make-directory ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage)
 
-  set (_Gcvr gcovr --exclude=.*subprojects.* --exclude=.*tests.* --exclude=/usr/include/.* )
+  # absolute filter: relative gcovr filters are matched against paths relative to the cwd
+  #  (the build dir), so unanchored excludes like '.*tests.*' drop everything if the checkout
+  #  path itself contains 'tests' or 'subprojects'. Only src/ is of interest anyway.
+  set (_Gcvr gcovr --filter ${CMAKE_SOURCE_DIR}/src/ )
   set (_Gcvr ${_Gcvr} --object-directory ${CMAKE_BINARY_DIR} -r ${CMAKE_SOURCE_DIR})
 
   # hot functions (e.g. Field::operator()) legitimately exceed gcovr's default suspicious
