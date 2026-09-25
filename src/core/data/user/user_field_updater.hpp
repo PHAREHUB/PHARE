@@ -30,11 +30,7 @@ public:
             });
 
         std::shared_ptr<Span<double>> gridPtr // keep grid data alive
-            = std::apply(
-                [&](auto const&... xyz) {
-                    return f(CoordinateSpan{xyz.data(), xyz.size()}..., time);
-                },
-                coords);
+            = std::apply([&](auto const&... xyz) { return f(make_span(xyz)..., time); }, coords);
         Span<double>& grid = *gridPtr;
 
         // a user function returning the wrong number of values would be read out of bounds

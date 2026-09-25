@@ -18,35 +18,33 @@ namespace PHARE::core
 /**
  * @brief turn a point-wise formula f(Point, time) into a vectorized SpaceTimeFunction.
  *
- * Stands in for pyphare's space_time_fn_wrapper: coordinates arrive as CoordinateSpan views
+ * Stands in for pyphare's space_time_fn_wrapper: coordinates arrive as Span views
  * and the result is returned as a Span owning its buffer, so a test drives the updaters
  * through the very call convention the python binding produces, without python.
  */
 template<std::size_t dim, typename Fn>
 SpaceTimeFunction<dim> spaceTimeFunction(Fn f)
 {
-    auto fill = [f](CoordinateSpan const& x, double t, auto&& pointAt) {
-        std::vector<double> out(x.size);
-        for (std::size_t i = 0; i < x.size; ++i)
+    auto fill = [f](Span<double const> const& x, double t, auto&& pointAt) {
+        std::vector<double> out(x.size());
+        for (std::size_t i = 0; i < x.size(); ++i)
             out[i] = f(pointAt(i), t);
         return std::static_pointer_cast<Span<double>>(
             std::make_shared<VectorSpan<double>>(std::move(out)));
     };
 
     if constexpr (dim == 1)
-        return [fill](CoordinateSpan const& x, double t) {
-            return fill(x, t, [&](std::size_t i) { return Point<double, 1>{x.ptr[i]}; });
+        return [fill](Span<double const> const& x, double t) {
+            return fill(x, t, [&](std::size_t i) { return Point<double, 1>{x[i]}; });
         };
     else if constexpr (dim == 2)
-        return [fill](CoordinateSpan const& x, CoordinateSpan const& y, double t) {
-            return fill(x, t, [&](std::size_t i) { return Point<double, 2>{x.ptr[i], y.ptr[i]}; });
+        return [fill](Span<double const> const& x, Span<double const> const& y, double t) {
+            return fill(x, t, [&](std::size_t i) { return Point<double, 2>{x[i], y[i]}; });
         };
     else
-        return [fill](CoordinateSpan const& x, CoordinateSpan const& y, CoordinateSpan const& z,
-                      double t) {
-            return fill(x, t, [&](std::size_t i) {
-                return Point<double, 3>{x.ptr[i], y.ptr[i], z.ptr[i]};
-            });
+        return [fill](Span<double const> const& x, Span<double const> const& y,
+                      Span<double const> const& z, double t) {
+            return fill(x, t, [&](std::size_t i) { return Point<double, 3>{x[i], y[i], z[i]}; });
         };
 }
 

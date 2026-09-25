@@ -57,9 +57,7 @@ class fn_wrapper(py_fn_wrapper):
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
 
 
-# Wrap calls to user space-time functions. Deliberately not a py_fn_wrapper:
-# the coordinates already are numpy arrays, zero-copy views onto the C++ buffers
-# (see the CoordinateSpan caster in python3/pybind_def.hpp).
+# Wrap calls to user space-time functions f(x[, y[, z]], t)
 class space_time_fn_wrapper:
     def __init__(self, fn):
         self.fn = fn
@@ -67,7 +65,8 @@ class space_time_fn_wrapper:
     def __call__(self, *args):
         from pyphare.cpp import cpp_etc_lib
 
-        *xyz, t = args
+        *spans, t = args
+        xyz = [np.asarray(span) for span in spans]
         ret = self.fn(*xyz, t)
         if is_scalar(ret):
             ret = np.full(xyz[-1].shape, ret, dtype=np.float64)
