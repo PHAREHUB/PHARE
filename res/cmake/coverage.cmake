@@ -15,7 +15,9 @@ if (test AND coverage)
   # absolute filter: relative gcovr filters are matched against paths relative to the cwd
   #  (the build dir), so unanchored excludes like '.*tests.*' drop everything if the checkout
   #  path itself contains 'tests' or 'subprojects'. Only src/ is of interest anyway.
-  set (_Gcvr gcovr --filter ${CMAKE_SOURCE_DIR}/src/ )
+  #  Filters are regexes, so the checkout path is escaped.
+  string(REGEX REPLACE "([][+.*()^$?|{}\\\\])" "\\\\\\1" _src_dir_re "${CMAKE_SOURCE_DIR}")
+  set (_Gcvr gcovr --filter ${_src_dir_re}/src/ )
   set (_Gcvr ${_Gcvr} --object-directory ${CMAKE_BINARY_DIR} -r ${CMAKE_SOURCE_DIR})
 
   # hot functions (e.g. Field::operator()) legitimately exceed gcovr's default suspicious
