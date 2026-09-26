@@ -6,26 +6,36 @@ if (test AND coverage)
 
   set (_Fvr " -fprofile-arcs -ftest-coverage")
 
-  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -DHAVE_EXECINFO_H -g3 -O0")
-  set(CMAKE_CXX_FLAGS_DEBUG   "${CMAKE_C_FLAGS_DEBUG} ${_Fvr}")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -pg -DHAVE_EXECINFO_H -g3 -O0 ${_Fvr}")
   set(CMAKE_EXE_LINKER_FLAGS  "${CMAKE_EXE_LINKER_FLAGS}  ${_Fvr}")
 
   add_custom_target(build-time-make-directory ALL
     COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/coverage)
 
-  set (_Gcvr gcovr --exclude='.*subprojects.*' --exclude='.*tests.*' --exclude='/usr/include/.*' )
+  # absolute filter: relative gcovr filters are matched against paths relative to the cwd
+  #  (the build dir), so unanchored excludes like '.*tests.*' drop everything if the checkout
+  #  path itself contains 'tests' or 'subprojects'. Only src/ is of interest anyway.
+  #  Filters are regexes, so the checkout path is escaped.
+  string(REGEX REPLACE "([][+.*()^$?|{}\\\\])" "\\\\\\1" _src_dir_re "${CMAKE_SOURCE_DIR}")
+  set (_Gcvr gcovr --filter ${_src_dir_re}/src/ )
   set (_Gcvr ${_Gcvr} --object-directory ${CMAKE_BINARY_DIR} -r ${CMAKE_SOURCE_DIR})
 
-  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
-    COMMAND ${_Gcvr} --html --html-details -o ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
-  )
+  # hot functions (e.g. Field::operator()) legitimately exceed gcovr's default suspicious
+  #  hits threshold (2^32) over the test suite. Raise it rather than disable it, so the
+  #  near 2^64 counts of https://gcc.gnu.org/bugzilla/show_bug.cgi?id=68080 are still caught.
+  #  The option only exists in newer gcovr versions.
+  execute_process(COMMAND gcovr --help OUTPUT_VARIABLE _Gcvr_help ERROR_QUIET)
+  if (_Gcvr_help MATCHES "--gcov-suspicious-hits-threshold")
+    set (_Gcvr ${_Gcvr} --gcov-suspicious-hits-threshold 281474976710656) # 2^48
+  endif()
 
-  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/coverage/coverage.xml
-    COMMAND ${_Gcvr} --xml -o ${CMAKE_CURRENT_BINARY_DIR}/coverage/coverage.xml
-  )
-
+  # one pass over the coverage data for both reports, always regenerated
   add_custom_target(gcovr
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html gcovr ${CMAKE_CURRENT_BINARY_DIR}/coverage/coverage.xml
+    COMMAND ${_Gcvr}
+            --html-details ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
+            --xml ${CMAKE_CURRENT_BINARY_DIR}/coverage/coverage.xml
+    DEPENDS build-time-make-directory
+    VERBATIM
   )
 
   if(APPLE)
@@ -36,7 +46,7 @@ if (test AND coverage)
 
   add_custom_target(show_coverage
     COMMAND ${OPPEN_CMD} ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/coverage/index.html gcovr
+    DEPENDS gcovr
   )
 
 ENDIF(test AND coverage)
