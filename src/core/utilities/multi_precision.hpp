@@ -26,6 +26,53 @@ static_assert(std::endian::native == std::endian::little,
               "multi precision types assume little endian");
 
 
+// Bytes bytes to/from the low bytes of a uint64, in power of two chunks.
+//  A single memcpy of e.g. 6 bytes into a uint64 goes through the stack as two narrow
+//  stores and one wide load, which stalls on store forwarding on every decode.
+template<std::size_t Bytes>
+NO_DISCARD inline std::uint64_t load_low_bytes(std::uint8_t const* const src)
+{
+    static_assert(Bytes >= 1 and Bytes <= 8);
+    std::uint64_t u  = 0;
+    std::size_t off  = 0;
+    auto const chunk = [&]<typename U>() {
+        U c;
+        std::memcpy(&c, src + off, sizeof(U));
+        u |= static_cast<std::uint64_t>(c) << (8 * off);
+        off += sizeof(U);
+    };
+    if constexpr (Bytes & 8)
+        chunk.template operator()<std::uint64_t>();
+    if constexpr (Bytes & 4)
+        chunk.template operator()<std::uint32_t>();
+    if constexpr (Bytes & 2)
+        chunk.template operator()<std::uint16_t>();
+    if constexpr (Bytes & 1)
+        chunk.template operator()<std::uint8_t>();
+    return u;
+}
+
+template<std::size_t Bytes>
+inline void store_low_bytes(std::uint8_t* const dst, std::uint64_t const u)
+{
+    static_assert(Bytes >= 1 and Bytes <= 8);
+    std::size_t off  = 0;
+    auto const chunk = [&]<typename U>() {
+        U const c = static_cast<U>(u >> (8 * off));
+        std::memcpy(dst + off, &c, sizeof(U));
+        off += sizeof(U);
+    };
+    if constexpr (Bytes & 8)
+        chunk.template operator()<std::uint64_t>();
+    if constexpr (Bytes & 4)
+        chunk.template operator()<std::uint32_t>();
+    if constexpr (Bytes & 2)
+        chunk.template operator()<std::uint16_t>();
+    if constexpr (Bytes & 1)
+        chunk.template operator()<std::uint8_t>();
+}
+
+
 template<typename Derived, typename Real>
 struct MultiPrecisionOps
 {
@@ -76,15 +123,13 @@ struct TruncatedDouble : MultiPrecisionOps<TruncatedDouble<Bytes>, double>
         // a carry out of the mantissa increments the exponent, which is the correct rounding
         u += (std::uint64_t{1} << (dropped_bits - 1)) - 1 + lsb;
         u >>= dropped_bits;
-        std::memcpy(data.data(), &u, Bytes);
+        store_low_bytes<Bytes>(data.data(), u);
         return *this;
     }
 
     operator double() const
     {
-        std::uint64_t u = 0;
-        std::memcpy(&u, data.data(), Bytes);
-        return std::bit_cast<double>(u << dropped_bits);
+        return std::bit_cast<double>(load_low_bytes<Bytes>(data.data()) << dropped_bits);
     }
 
     std::array<std::uint8_t, Bytes> data{};
@@ -114,15 +159,13 @@ struct FixedPointUnit : MultiPrecisionOps<FixedPointUnit<Bytes>, double>
         std::uint64_t const u = !(s > 0)                        ? 0 // also NaN
                                 : s >= static_cast<double>(max) ? max
                                                                 : static_cast<std::uint64_t>(s);
-        std::memcpy(data.data(), &u, Bytes);
+        store_low_bytes<Bytes>(data.data(), u);
         return *this;
     }
 
     operator double() const
     {
-        std::uint64_t u = 0;
-        std::memcpy(&u, data.data(), Bytes);
-        return static_cast<double>(u) / scale;
+        return static_cast<double>(load_low_bytes<Bytes>(data.data())) / scale;
     }
 
     std::array<std::uint8_t, Bytes> data{};
