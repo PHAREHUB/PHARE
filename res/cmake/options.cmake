@@ -66,6 +66,9 @@ option(withCaliper "Use LLNL Caliper" OFF)
 # -DwithPhlop=OFF - also interacts with CXX def -DPHARE_LOG_LEVEL=N
 option(withPhlop "Use phlop for scope timings and such" OFF)
 
+# -DexecuteNotebooks=ON / requires test=ON
+option(executeNotebooks "Execute notebook examples in res/eg" OFF)
+
 
 # -DtestDuringBuild=ON enabled if devMode=ON, disabled if asan=ON (needs LD_PRELOAD)
 option(testDuringBuild "Runs C++ unit tests after they are built" OFF)
