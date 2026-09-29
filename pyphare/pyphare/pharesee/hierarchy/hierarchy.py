@@ -24,6 +24,7 @@ class PatchHierarchy:
         refinement_ratio=2,
         data_files=None,
         selection_box=None,
+        ephemerals=None,  # time based computed data cache, e.g. interpolated data
     ):
         self.time_hier = {format_timestamp(t): lvls for t, lvls in time_hier.items()}
         times = list(self.time_hier.keys())
@@ -47,6 +48,7 @@ class PatchHierarchy:
         else:
             self.data_files = {}
 
+        self.ephemerals = ephemerals
         self.update()
 
     @staticmethod
@@ -59,6 +61,16 @@ class PatchHierarchy:
         selection_box = listify(selection_box)
         assert len(times) == len(selection_box)
         return {format_timestamp(t): box for t, box in zip(times, selection_box)}
+
+    def finest(self, time=None, qty=None):
+        """
+        Returns a UniformGrids if multiple quantities, a container of UniformGrid
+         OR returns just one UniformGrid
+        """
+        from . import func
+
+        finest = func.GetFinest(self, time, qty)
+        return next(iter(finest.values())) if len(finest) == 1 else finest
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things
@@ -425,9 +437,14 @@ class PatchHierarchy:
                 if qty is None:
                     qty = pdata_names[0]
 
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                pdat = patch.patch_datas[qty]
+                nbrGhosts = pdat.ghosts_nbr
+                if nbrGhosts[0] > 0:
+                    val = pdat[patch.box]
+                    x = pdat.x[nbrGhosts[0] : -nbrGhosts[0]]
+                else:
+                    val = pdat.dataset[:]
+                    x = pdat.x
                 label = f"L{lvl_nbr}P{ip}"
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
