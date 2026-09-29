@@ -135,14 +135,16 @@ struct FixedPointUnit : MultiPrecisionOps<FixedPointUnit<Bytes>, double>
 
     FixedPointUnit& operator=(double const v)
     {
-        // not std::nearbyint, a libm call without SSE4.1. s >= 0 so + .5 and truncation rounds
-        //  to nearest, ties up rather than to even. Decoded values are integers once scaled,
-        //  so encode(decode(x)) == x still holds
-        double const s        = v * scale;
-        std::uint64_t const u = !(s > 0) ? 0 // also NaN
-                                : s >= static_cast<double>(max)
-                                    ? max
-                                    : static_cast<std::uint64_t>(s + .5);
+        // not std::nearbyint, a libm call without SSE4.1. For 0 <= s < 2^52, s + 2^52 has a
+        //  unit ulp, so the addition itself rounds to nearest even (unbiased) and the mantissa
+        //  holds the rounded integer
+        double constexpr magic           = 4503599627370496.; // 2^52
+        std::uint64_t constexpr mantissa = (std::uint64_t{1} << 52) - 1;
+        double const s                   = v * scale;
+        auto const rounded = [&]() { return std::bit_cast<std::uint64_t>(s + magic) & mantissa; };
+        std::uint64_t const u = !(s > 0)                        ? 0 // also NaN
+                                : s >= static_cast<double>(max) ? max
+                                                                : rounded();
         store_words(data, u);
         return *this;
     }
