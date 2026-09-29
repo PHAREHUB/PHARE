@@ -3,7 +3,7 @@
 
 #include "core/models/external_field.hpp"
 #include "core/utilities/point/point.hpp"
-#include "core/utilities/space_time_function.hpp"
+#include "initializer/data_provider.hpp"
 #include "core/utilities/span.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
@@ -23,7 +23,7 @@ namespace PHARE::core
  * through the very call convention the python binding produces, without python.
  */
 template<std::size_t dim, typename Fn>
-SpaceTimeFunction<dim> spaceTimeFunction(Fn f)
+initializer::SpaceTimeFunction<dim> spaceTimeFunction(Fn f)
 {
     auto fill = [f](Span<double const> const& x, double t, auto&& pointAt) {
         std::vector<double> out(x.size());
@@ -66,19 +66,21 @@ public:
         : Super{name}
         , b0_{name + "_B0", layout, MHDQuantity::Vector::B}
         , dB0dt_{name + "_dB0dt", layout, MHDQuantity::Vector::B}
-        , scratch_{name + "_scratch", layout, MHDQuantity::Vector::E}
+        , tmpVec_{name + "_tmpVec", layout, MHDQuantity::Vector::VecAllPrimal}
+        , scratch_{view_as(tmpVec_.super(), MHDQuantity::Vector::E, layout)}
     {
         b0_.set_on(this->B0);
         dB0dt_.set_on(this->dB0dt);
-        scratch_.set_on(this->scratch);
     }
 
     Super& super() { return *this; }
+    VecFieldMHD<dim>& scratch() { return scratch_; }
 
 private:
     UsableVecFieldMHD<dim> b0_;
     UsableVecFieldMHD<dim> dB0dt_;
-    UsableVecFieldMHD<dim> scratch_;
+    UsableVecFieldMHD<dim> tmpVec_;
+    VecFieldMHD<dim> scratch_;
 };
 
 } // namespace PHARE::core

@@ -1,12 +1,11 @@
-#ifndef PHARE_CORE_MODELS_EXTERNAL_FIELD_UPDATER
-#define PHARE_CORE_MODELS_EXTERNAL_FIELD_UPDATER
+#ifndef PHARE_CORE_MODELS_EXTERNAL_FIELD_UPDATER_HPP
+#define PHARE_CORE_MODELS_EXTERNAL_FIELD_UPDATER_HPP
 
 #include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/external_field.hpp"
 #include "core/utilities/point/point.hpp"
 
-#include <cassert>
 #include <cstddef>
 
 namespace PHARE::core
@@ -43,32 +42,32 @@ public:
     /**
      * @brief fill an external field at a given time
      *
-     * @param externalField the external field to fill, whose E-centered scratch vecfield holds
-     * the vector potential on output
+     * @param externalField the external field to fill
+     * @param scratch E-centered work vecfield, holding the vector potential on output
      * @param layout the current grid layout
      * @param time the current time
      */
-    virtual void operator()(external_field_type& externalField, GridLayoutT const& layout,
-                            double time)
+    virtual void operator()(external_field_type& externalField, vecfield_type& scratch,
+                            GridLayoutT const& layout, double time)
     {
-        computePotential(externalField.scratch, time, layout);
-        curlOnGhostBox_(externalField.B0, externalField.scratch, layout);
+        computePotential(scratch, time, layout);
+        curlOnGhostBox_(externalField.B0, scratch, layout);
         if (isTimeDependent())
         {
-            computePotentialTimeDerivative(externalField.scratch, time, layout);
-            curlOnGhostBox_(externalField.dB0dt, externalField.scratch, layout);
+            computePotentialTimeDerivative(scratch, time, layout);
+            curlOnGhostBox_(externalField.dB0dt, scratch, layout);
         }
         else
         {
             externalField.dB0dt.zero();
         }
-    };
+    }
 
-    void virtual computePotential(vecfield_type& a0, double time, GridLayoutT const& layout) = 0;
-    void virtual computePotentialTimeDerivative(vecfield_type& da0_dt, double time,
+    virtual void computePotential(vecfield_type& a0, double time, GridLayoutT const& layout) = 0;
+    virtual void computePotentialTimeDerivative(vecfield_type& da0_dt, double time,
                                                 GridLayoutT const& layout)                   = 0;
 
-    NO_DISCARD bool virtual isTimeDependent() const = 0;
+    NO_DISCARD virtual bool isTimeDependent() const = 0;
 
 private:
     void curlOnGhostBox_(vecfield_type& out, vecfield_type const& in, GridLayoutT const& layout)
@@ -110,4 +109,4 @@ private:
 
 } // namespace PHARE::core
 
-#endif // PHARE_CORE_MODELS_EXTERNAL_FIELD_UPDATER
+#endif // PHARE_CORE_MODELS_EXTERNAL_FIELD_UPDATER_HPP

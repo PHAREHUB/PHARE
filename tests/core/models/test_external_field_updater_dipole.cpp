@@ -9,6 +9,7 @@
 #include "gtest/gtest.h"
 
 #include <cmath>
+#include <limits>
 #include <numbers>
 #include <numeric>
 #include <stdexcept>
@@ -28,7 +29,7 @@ constexpr SimOpts mhd_opts{.dimension           = dim,
                            .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov};
 
 template<std::size_t dim>
-using MHDTypes = typename PHARE_Types<mhd_opts<dim>>::MHD;
+using MHDTypes = PHARE_Types<mhd_opts<dim>>::MHD;
 
 
 /**
@@ -77,8 +78,8 @@ struct DipoleSetup
     //! of order 0.5 over the domain. Taken here with ~50% margin.
     auto static constexpr tolerance = dim == 2 ? 1.5e-4 : 1.2e-3;
 
-    using GridLayout_t = typename MHDTypes<dim>::GridLayout_t;
-    using VecField_t   = typename MHDTypes<dim>::VecField_t;
+    using GridLayout_t = MHDTypes<dim>::GridLayout_t;
+    using VecField_t   = MHDTypes<dim>::VecField_t;
     using Updater_t    = ExternalFieldUpdaterDipole<VecField_t, GridLayout_t>;
     using Position_t   = Updater_t::point_type;
     using Moment_t     = Updater_t::vector_type;
@@ -107,7 +108,7 @@ struct DipoleSetup
 
     Updater_t updater{position(), moment(), /*radius=*/0.};
 
-    void update(double time = 0.) { updater(externalField, layout, time); }
+    void update(double time = 0.) { updater(externalField, externalField.scratch(), layout, time); }
 
     //! largest |B0 - B_analytical| over the physical domain, all components
     double maxErrorOnDomain()
@@ -207,7 +208,7 @@ struct FiniteRadiusSetup
     using Updater_t = Point_t::Updater_t;
 
     //! the domain center, a primal node in every direction, hence an A0 node
-    typename Point_t::Position_t static position()
+    Point_t::Position_t static position()
     {
         if constexpr (dim == 2)
             return {0.5, 0.5};
@@ -238,8 +239,8 @@ struct FiniteRadiusSetup
 
     FiniteRadiusSetup()
     {
-        Updater_t{position(), Point_t::moment(), radius}(finite, layout, 0.);
-        Updater_t{position(), Point_t::moment(), 0.}(point, layout, 0.);
+        Updater_t{position(), Point_t::moment(), radius}(finite, finite.scratch(), layout, 0.);
+        Updater_t{position(), Point_t::moment(), 0.}(point, point.scratch(), layout, 0.);
     }
 
     double distance(Point<double, dim> const& x) const
@@ -326,11 +327,33 @@ TYPED_TEST(FiniteRadiusDipoleTest, isThePointDipoleOutside)
     EXPECT_EQ(differences, 0u);
 }
 
+TYPED_TEST(FiniteRadiusDipoleTest, isFiniteEverywhereForAPointDipoleOnANode)
+{
+    std::size_t nonFinite = 0;
+    this->setup.forEachNode([&](auto, double, double pointValue, double) {
+        if (!std::isfinite(pointValue))
+            ++nonFinite;
+    });
+    EXPECT_EQ(nonFinite, 0u);
+}
+
 TYPED_TEST(FiniteRadiusDipoleTest, rejectsANegativeRadius)
 {
-    using Updater_t = typename TypeParam::Updater_t;
+    using Updater_t = TypeParam::Updater_t;
     EXPECT_THROW((Updater_t{TypeParam::position(), TypeParam::Point_t::moment(), -1.}),
                  std::invalid_argument);
+}
+
+TYPED_TEST(FiniteRadiusDipoleTest, rejectsANonFiniteRadius)
+{
+    using Updater_t     = TypeParam::Updater_t;
+    auto const position = TypeParam::position();
+    auto const moment   = TypeParam::Point_t::moment();
+    EXPECT_THROW((Updater_t{position, moment, std::numeric_limits<double>::infinity()}),
+                 std::invalid_argument);
+    EXPECT_THROW((Updater_t{position, moment, std::numeric_limits<double>::quiet_NaN()}),
+                 std::invalid_argument);
+    EXPECT_THROW((Updater_t{position, moment, 1e200}), std::invalid_argument);
 }
 
 

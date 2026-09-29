@@ -45,7 +45,6 @@ set( SOURCES_INC
      utilities/meta/meta_utilities.hpp
      utilities/partitionner/partitionner.hpp
      utilities/point/point.hpp
-     utilities/space_time_function.hpp
      utilities/range/range.hpp
      utilities/types.hpp
    )

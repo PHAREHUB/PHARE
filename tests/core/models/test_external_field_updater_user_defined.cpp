@@ -11,7 +11,9 @@
 
 #include <array>
 #include <cmath>
+#include <memory>
 #include <numbers>
+#include <stdexcept>
 
 using namespace PHARE;
 using namespace PHARE::core;
@@ -28,7 +30,7 @@ constexpr SimOpts mhd_opts{.dimension           = dim,
                            .riemann_solver_type = MHDOpts::RiemannSolverType::Rusanov};
 
 template<std::size_t dim>
-using MHDTypes = typename PHARE_Types<mhd_opts<dim>>::MHD;
+using MHDTypes = PHARE_Types<mhd_opts<dim>>::MHD;
 
 double constexpr twoPi = 2. * std::numbers::pi;
 
@@ -77,7 +79,7 @@ double timeProfileDerivative(double t)
 
 
 template<std::size_t dim, typename Profile>
-std::array<SpaceTimeFunction<dim>, 3> potentialFunctions(Profile profile)
+std::array<initializer::SpaceTimeFunction<dim>, 3> potentialFunctions(Profile profile)
 {
     auto component = [profile](std::size_t c) {
         return spaceTimeFunction<dim>([profile, c](Point<double, dim> const& x, double t) {
@@ -101,8 +103,8 @@ struct UserDefinedSetup
 
     auto static constexpr baseTolerance = dim == 2 ? 7.6e-3 : 3.8e-3;
 
-    using GridLayout_t = typename MHDTypes<dim>::GridLayout_t;
-    using VecField_t   = typename MHDTypes<dim>::VecField_t;
+    using GridLayout_t = MHDTypes<dim>::GridLayout_t;
+    using VecField_t   = MHDTypes<dim>::VecField_t;
     using Updater_t    = ExternalFieldUpdaterUserDefined<VecField_t, GridLayout_t>;
 
     Updater_t static makeUpdater()
@@ -120,7 +122,10 @@ struct UserDefinedSetup
 
     Updater_t updater{makeUpdater()};
 
-    void update(double time = evalTime) { updater(externalField, layout, time); }
+    void update(double time = evalTime)
+    {
+        updater(externalField, externalField.scratch(), layout, time);
+    }
 
     //! largest |field - factor * curl(a)| over the ghost box, all components
     double maxErrorAgainstCurl(VecField_t& vecfield, double factor)
@@ -262,6 +267,32 @@ TYPED_TEST(StaticUserDefinedTest, retrievesTheCurlOfTheUserPotential)
 TYPED_TEST(StaticUserDefinedTest, retrievesAZeroTimeDerivative)
 {
     EXPECT_DOUBLE_EQ(this->setup.maxAbsTimeDerivative(), 0.);
+}
+
+
+TEST(UserDefinedExternalField, rejectsAUserFunctionReturningTheWrongNumberOfValues)
+{
+    using Setup_t   = UserDefinedSetup<2, 8, false>;
+    using Updater_t = Setup_t::Updater_t;
+
+    initializer::SpaceTimeFunction<2> const tooShort = [](Span<double const> const&,
+                                                          Span<double const> const&, double) {
+        return std::static_pointer_cast<Span<double>>(std::make_shared<VectorSpan<double>>(1, 0.));
+    };
+    initializer::SpaceTimeFunction<2> const noValues
+        = [](Span<double const> const&, Span<double const> const&, double) {
+              return std::shared_ptr<Span<double>>{};
+          };
+
+    TestGridLayout<Setup_t::GridLayout_t> layout{Setup_t::cells};
+    UsableExternalField<2> externalField{"external", layout};
+
+    for (auto const& f : {tooShort, noValues})
+    {
+        Updater_t updater{{f, f, f}};
+        EXPECT_THROW(updater(externalField, externalField.scratch(), layout, 0.),
+                     std::runtime_error);
+    }
 }
 
 

@@ -3,7 +3,6 @@
 
 #include "core/models/external_field_updater.hpp"
 
-#include <cassert>
 #include <cstddef>
 
 namespace PHARE::core
@@ -27,26 +26,27 @@ public:
     using component_type      = Super::component_type;
     using external_field_type = Super::external_field_type;
 
-    static constexpr std::size_t dimension = GridLayoutT::dimension;
-
-    virtual ~ExternalFieldUpdaterZero() = default;
+    static constexpr std::size_t dimension = Super::dimension;
 
     NO_DISCARD bool isTimeDependent() const final { return false; }
 
-    void virtual operator()(external_field_type& externalField, GridLayoutT const& layout,
-                            double time) final
+    void operator()(external_field_type& externalField, vecfield_type& /*scratch*/,
+                    GridLayoutT const& /*layout*/, double /*time*/) final
     {
         externalField.B0.zero();
         externalField.dB0dt.zero();
-        externalField.scratch.zero(); // registered resource: never leave the sentinel in place
     }
 
     // never called: operator() above is final and fills B0/dB0dt without a potential
-    void virtual computePotential(vecfield_type& a0, double time,
-                                  GridLayoutT const& layout) final{};
+    void computePotential(vecfield_type& /*a0*/, double /*time*/,
+                          GridLayoutT const& /*layout*/) final
+    {
+    }
 
-    void virtual computePotentialTimeDerivative(vecfield_type& da0_dt, double time,
-                                                GridLayoutT const& layout) final{};
+    void computePotentialTimeDerivative(vecfield_type& /*da0_dt*/, double /*time*/,
+                                        GridLayoutT const& /*layout*/) final
+    {
+    }
 };
 
 } // namespace PHARE::core

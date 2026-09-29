@@ -43,10 +43,10 @@ public:
         , moment_{moment}
         , radiusSquared_{radius * radius}
     {
-        if (!(radius >= 0.)) // also rejects NaN
-            throw std::invalid_argument("dipole radius must be positive or zero, got "
+        if (!std::isfinite(radius) or radius < 0. or !std::isfinite(radiusSquared_))
+            throw std::invalid_argument("dipole radius must be finite and positive or zero, got "
                                         + std::to_string(radius));
-    };
+    }
 
     template<component_type i>
     double potential(point_type const& coords, double /*time*/) const
@@ -63,6 +63,8 @@ public:
                 point_type const r      = coords - position_;
                 double const rSquared   = std::max(
                     std::inner_product(r.begin(), r.end(), r.begin(), 0.0), radiusSquared_);
+                if (rSquared == 0.)
+                    return 0.0;
                 // z component of the cross product `moment_` times `r`
                 return factor * (moment_[0] * r[1] - moment_[1] * r[0]) / rSquared;
             }
@@ -74,6 +76,8 @@ public:
             point_type const r = coords - position_;
             double const rSquared
                 = std::max(std::inner_product(r.begin(), r.end(), r.begin(), 0.0), radiusSquared_);
+            if (rSquared == 0.)
+                return 0.0;
             double constexpr factor = 1. / (4. * std::numbers::pi);
             // elegant trick to express component i of cross product `moment_` times `r`
             constexpr auto j = (static_cast<std::size_t>(i) + 1) % 3;

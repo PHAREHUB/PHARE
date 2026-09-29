@@ -6,7 +6,7 @@ import inspect
 import math
 import numbers
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from ..core import phare_utilities
 
@@ -125,6 +125,7 @@ class UserDefinedExternalField(ExternalField):
     is_time_dependent: bool
     potential: tuple
     potential_time_derivative: tuple | None
+    resolved: bool = field(default=False, kw_only=True, repr=False, compare=False)
 
     def populate_dict(self, dp):
         super().populate_dict(dp)
@@ -201,6 +202,13 @@ def _check_signature_size(list, name, ndim, is_time_dependent):
                 f"Error: external_field '{name}' component 'a{axis}' takes {size} "
                 f"argument(s), expected {expected} ({arguments})"
             )
+        try:
+            inspect.signature(f).bind(*([None] * expected))
+        except TypeError as exc:
+            raise ValueError(
+                f"Error: external_field '{name}' component 'a{axis}' must accept "
+                f"{expected} positional argument(s) ({arguments})"
+            ) from exc
 
 
 def _zero_defaulter(ndim):
@@ -250,6 +258,8 @@ def _resolve_dict_user_defined_external_field(external_field, *, ndim):
         )
     is_time_dependent = _is_signature_time_dependent(_first_callable(potential), ndim)
 
+    _check_signature_size(potential, "potential", ndim, is_time_dependent)
+
     if ndim == 1 and potential[0] is not None:
         raise ValueError(
             "Error: in 1D, first component of the potential cannot"
@@ -270,6 +280,7 @@ def _resolve_dict_user_defined_external_field(external_field, *, ndim):
             "not depend on time"
         )
 
+    potential_time_derivative = None
     if is_time_dependent:
         potential_time_derivative = _check_callables(
             "potential_time_derivative", external_field
@@ -286,11 +297,9 @@ def _resolve_dict_user_defined_external_field(external_field, *, ndim):
         potential_time_derivative = _normalized_components(
             potential_time_derivative, ndim, is_time_dependent
         )
-    else:
-        potential_time_derivative = None
 
     return UserDefinedExternalField(
-        is_time_dependent, potential, potential_time_derivative
+        is_time_dependent, potential, potential_time_derivative, resolved=True
     )
 
 
@@ -325,6 +334,43 @@ def _resolve_dict_external_field(external_field, *, ndim):
         return _resolve_dict_user_defined_external_field(external_field, ndim=ndim)
 
 
+def _resolve_instance_external_field(external_field, *, ndim):
+    if type(external_field) is ZeroExternalField:
+        return external_field
+
+    if type(external_field) is DipoleExternalField:
+        return _resolve_dict_external_field(
+            {
+                "type": "dipole",
+                "position": external_field.position,
+                "moment": external_field.moment,
+                "radius": external_field.radius,
+            },
+            ndim=ndim,
+        )
+
+    if type(external_field) is UserDefinedExternalField:
+        if external_field.resolved:
+            return external_field
+        declaration = {"type": "user-defined", "potential": external_field.potential}
+        if external_field.potential_time_derivative is not None:
+            declaration["potential_time_derivative"] = (
+                external_field.potential_time_derivative
+            )
+        resolved = _resolve_dict_user_defined_external_field(declaration, ndim=ndim)
+        if resolved.is_time_dependent != external_field.is_time_dependent:
+            raise ValueError(
+                "Error: user-defined external_field 'is_time_dependent' is "
+                f"{external_field.is_time_dependent}, but the signature of its "
+                "'potential' components says otherwise"
+            )
+        return resolved
+
+    raise ValueError(
+        f"Error: unsupported external_field type {type(external_field).__name__}"
+    )
+
+
 def resolve_external_field(ndim, **kwargs):
     """
     Resolve the public 'external_field' Simulation option into a validated ExternalField.
@@ -335,7 +381,7 @@ def resolve_external_field(ndim, **kwargs):
         return ZeroExternalField()
 
     if isinstance(external_field, ExternalField):
-        return external_field
+        return _resolve_instance_external_field(external_field, ndim=ndim)
 
     if not isinstance(external_field, dict):
         raise ValueError(

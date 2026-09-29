@@ -6,7 +6,6 @@
 #include <cstdint>
 
 #include "core/utilities/span.hpp"
-#include "core/utilities/space_time_function.hpp"
 
 #include "pybind11/numpy.h"
 

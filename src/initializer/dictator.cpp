@@ -12,7 +12,7 @@
 
 
 
-using PHARE::core::SpaceTimeFunction;
+using PHARE::initializer::SpaceTimeFunction;
 using PHARE::initializer::InitFunction;
 
 

@@ -62,6 +62,7 @@ public:
     std::shared_ptr<resources_manager_type> resourcesManager;
     std::unique_ptr<external_field_updater_type> externalFieldUpdater;
 
+    vecfield_type tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
 
     void initialize(level_t& level) override;
 
@@ -74,6 +75,7 @@ public:
     {
         resourcesManager->allocate(state, patch, allocateTime);
         resourcesManager->allocate(externalField, patch, allocateTime);
+        resourcesManager->allocate(tmpVec_, patch, allocateTime);
     }
 
 
@@ -104,14 +106,16 @@ public:
 
     {
         resourcesManager->registerResources(externalField);
+        resourcesManager->registerResources(tmpVec_);
     }
 
     void initializeExternalField(level_t& level, double time) override
     {
-        for (auto const& patch : resourcesManager->enumerate(level, externalField))
+        for (auto const& patch : resourcesManager->enumerate(level, externalField, tmpVec_))
         {
             auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            (*externalFieldUpdater)(externalField, layout, time);
+            auto scratch      = core::view_as(tmpVec_, vecfield_type::tensor_t::E, layout);
+            (*externalFieldUpdater)(externalField, scratch, layout, time);
         }
     }
 
@@ -127,9 +131,8 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return state.isUsable() and externalField.isUsable(); }
-
-    NO_DISCARD bool isSettable() const { return state.isSettable() and externalField.isSettable(); }
+    NO_DISCARD bool isUsable() const { return core::isUsable(state, externalField); }
+    NO_DISCARD bool isSettable() const { return core::isSettable(state, externalField); }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
@@ -161,13 +164,12 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
 void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::initialize(
     level_t& level)
 {
-    for (auto& patch : level)
+    auto& rm = *(this->resourcesManager);
+    for (auto& patch : rm.enumerate(level, *this))
     {
         // first initialize the ions
         auto layout = amr::layoutFromPatch<gridlayout_type>(*patch);
         auto& ions  = state.ions;
-        auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions, state.J,
-                                                    externalField);
 
         for (auto& pop : ions)
         {

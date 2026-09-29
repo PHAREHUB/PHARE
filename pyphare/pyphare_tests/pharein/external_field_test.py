@@ -1,10 +1,12 @@
 import unittest
 
 import numpy as np
+from ddt import data, ddt, unpack
 import pyphare.pharein.global_vars as global_vars
 from pyphare.pharein import simulation
 from pyphare.pharein.external_field import (
     DipoleExternalField,
+    ExternalField,
     ZeroExternalField,
     UserDefinedExternalField,
     resolve_external_field,
@@ -31,6 +33,14 @@ def ay_1d(x):
     return x
 
 
+def az_2d_keyword_only(x, *, y):
+    return x
+
+
+def dazdt_2d_keyword_only(x, y, *, t):
+    return x + y
+
+
 def resolve_user_defined(ndim, potential, **extra):
     """Resolve a user-defined declaration, narrowed to what the tests then read."""
     ef = resolve_external_field(
@@ -39,6 +49,65 @@ def resolve_user_defined(ndim, potential, **extra):
     )
     assert isinstance(ef, UserDefinedExternalField)
     return ef
+
+
+_dipole = {
+    "type": "dipole",
+    "position": (0.5, 1.5),
+    "moment": (0.0, 2.0),
+    "radius": 0.0,
+}
+_static = {"type": "user-defined", "potential": (None, None, az_2d)}
+_timed = {
+    "type": "user-defined",
+    "potential": (None, None, az_2d_t),
+    "potential_time_derivative": (None, None, dazdt_2d),
+}
+
+_invalid_declarations = [
+    (2, {"type": "quadrupole"}),  # unknown type
+    (2, {"position": (0.5, 1.5)}),  # no type
+    (2, "dipole"),  # not a dict
+    (1, _dipole),  # a dipole makes no sense in 1D
+    (3, _dipole),  # both vectors must have ndim components
+    (2, {**_dipole, "moment": (0.0, 1.0, 2.0)}),  # three components in 2D
+    (2, {**_dipole, "moment": (0.0, 0.0)}),  # a zero moment is no dipole
+    (2, {k: v for k, v in _dipole.items() if k != "moment"}),  # missing key
+    (2, {k: v for k, v in _dipole.items() if k != "radius"}),  # radius is required
+    (2, {**_dipole, "value": 3}),  # unknown key
+    (2, {**_dipole, "radius": -1.0}),  # a negative radius
+    (2, {**_dipole, "radius": float("nan")}),  # not a number
+    (2, {**_dipole, "radius": float("inf")}),  # an infinite radius
+    (2, {**_dipole, "radius": (1.0, 1.0)}),  # not a scalar
+    (2, {**_dipole, "radius": "1"}),  # not a number
+    #
+    (2, {"type": "user-defined"}),  # no potential
+    (2, {**_static, "potential": (None, None, None)}),  # all components None
+    (2, {**_static, "potential": (None, az_2d)}),  # not three components
+    (2, {**_static, "potential": (None, None, 1.0)}),  # not a callable
+    (2, {**_static, "potential": (az_2d, None, az_2d_t)}),  # mixed signatures
+    (3, _static),  # signature does not match ndim
+    (1, {**_static, "potential": (ay_1d, None, None)}),  # a_x is unused in 1D
+    (2, {**_static, "moment": (0.0, 1.0)}),  # unknown key
+    # the time dependence of the potential and of its derivative must agree
+    (2, {k: v for k, v in _timed.items() if k != "potential_time_derivative"}),
+    (2, {**_static, "potential_time_derivative": (None, None, dazdt_2d)}),
+    (2, {**_timed, "potential_time_derivative": (None, None, az_2d)}),
+    # every component is called with positional arguments only
+    (2, {**_static, "potential": (None, None, az_2d_keyword_only)}),
+    (2, {**_timed, "potential_time_derivative": (None, None, dazdt_2d_keyword_only)}),
+]
+
+_invalid_instances = [
+    (2, ExternalField()),  # the base class maps to no C++ updater
+    (1, DipoleExternalField((0.5,), (1.0,), 0.0)),  # a dipole makes no sense in 1D
+    (2, DipoleExternalField((0.5, 1.5, 0.5), (0.0, 1.0, 0.0), 0.0)),  # 3 components
+    (2, DipoleExternalField((0.5, 1.5), (0.0, 1.0), -1.0)),  # a negative radius
+    (2, UserDefinedExternalField(False, (None, None, None), None)),  # all None
+    (2, UserDefinedExternalField(False, (None, None, az_3d), None)),  # wrong ndim
+    (2, UserDefinedExternalField(True, (None, None, az_2d), None)),  # not time dependent
+    (2, UserDefinedExternalField(True, (None, None, az_2d_t), None)),  # no derivative
+]
 
 
 class RecordingPopulator:
@@ -60,6 +129,7 @@ class RecordingPopulator:
         self.written[path] = fn
 
 
+@ddt
 class TestExternalFieldResolution(unittest.TestCase):
     def test_absent_gives_no_external_field(self):
         self.assertIsInstance(resolve_external_field(2), ZeroExternalField)
@@ -147,6 +217,31 @@ class TestExternalFieldResolution(unittest.TestCase):
         for defaulted in (ef.potential[0], dadt[0]):
             np.testing.assert_array_equal(defaulted(x, y, 0.5), np.zeros(x.size))
 
+    @data(*_invalid_instances)
+    @unpack
+    def test_invalid_instances_are_rejected(self, ndim, ef):
+        with self.assertRaises(ValueError):
+            resolve_external_field(ndim, external_field=ef)
+
+    def test_instances_are_resolved_as_their_dict_declaration(self):
+        x, y = np.array([0.0, 1.0]), np.array([2.0, 3.0])
+
+        dipole = resolve_external_field(
+            2, external_field=DipoleExternalField([0.5, 1.5], [0.0, 1.0], 0)
+        )
+        self.assertEqual(dipole, DipoleExternalField((0.5, 1.5), (0.0, 1.0), 0.0))
+
+        ef = resolve_external_field(
+            2, external_field=UserDefinedExternalField(False, (None, None, az_2d), None)
+        )
+        self.assertTrue(ef.resolved)
+        np.testing.assert_array_equal(ef.potential[2](x, y, 0.5), az_2d(x, y))
+        np.testing.assert_array_equal(ef.potential[0](x, y, 0.5), np.zeros(x.size))
+
+    def test_resolved_instances_are_kept(self):
+        ef = resolve_user_defined(2, (None, None, az_2d))
+        self.assertIs(resolve_external_field(2, external_field=ef), ef)
+
     def test_user_defined_is_resolved_in_1d_and_3d(self):
         x = np.array([0.0, 1.0, 2.0])
 
@@ -157,52 +252,11 @@ class TestExternalFieldResolution(unittest.TestCase):
         az = resolve_user_defined(3, (None, None, az_3d)).potential[2]
         np.testing.assert_array_equal(az(x, x, x, 7.0), az_3d(x, x, x))
 
-    def test_invalid_declarations_are_rejected(self):
-        dipole = {
-            "type": "dipole",
-            "position": (0.5, 1.5),
-            "moment": (0.0, 2.0),
-            "radius": 0.0,
-        }
-        static = {"type": "user-defined", "potential": (None, None, az_2d)}
-        timed = {
-            "type": "user-defined",
-            "potential": (None, None, az_2d_t),
-            "potential_time_derivative": (None, None, dazdt_2d),
-        }
-
-        for ndim, ef in [
-            (2, {"type": "quadrupole"}),  # unknown type
-            (2, {"position": (0.5, 1.5)}),  # no type
-            (2, "dipole"),  # not a dict
-            (1, dipole),  # a dipole makes no sense in 1D
-            (3, dipole),  # both vectors must have ndim components
-            (2, {**dipole, "moment": (0.0, 1.0, 2.0)}),  # three components in 2D
-            (2, {**dipole, "moment": (0.0, 0.0)}),  # a zero moment is no dipole
-            (2, {k: v for k, v in dipole.items() if k != "moment"}),  # missing key
-            (2, {k: v for k, v in dipole.items() if k != "radius"}),  # radius is required
-            (2, {**dipole, "value": 3}),  # unknown key
-            (2, {**dipole, "radius": -1.0}),  # a negative radius
-            (2, {**dipole, "radius": float("nan")}),  # not a number
-            (2, {**dipole, "radius": float("inf")}),  # an infinite radius
-            (2, {**dipole, "radius": (1.0, 1.0)}),  # not a scalar
-            (2, {**dipole, "radius": "1"}),  # not a number
-            #
-            (2, {"type": "user-defined"}),  # no potential
-            (2, {**static, "potential": (None, None, None)}),  # all components None
-            (2, {**static, "potential": (None, az_2d)}),  # not three components
-            (2, {**static, "potential": (None, None, 1.0)}),  # not a callable
-            (2, {**static, "potential": (az_2d, None, az_2d_t)}),  # mixed signatures
-            (3, static),  # signature does not match ndim
-            (1, {**static, "potential": (ay_1d, None, None)}),  # a_x is unused in 1D
-            (2, {**static, "moment": (0.0, 1.0)}),  # unknown key
-            # the time dependence of the potential and of its derivative must agree
-            (2, {k: v for k, v in timed.items() if k != "potential_time_derivative"}),
-            (2, {**static, "potential_time_derivative": (None, None, dazdt_2d)}),
-            (2, {**timed, "potential_time_derivative": (None, None, az_2d)}),
-        ]:
-            with self.assertRaises(ValueError):
-                resolve_external_field(ndim, external_field=ef)
+    @data(*_invalid_declarations)
+    @unpack
+    def test_invalid_declarations_are_rejected(self, ndim, ef):
+        with self.assertRaises(ValueError):
+            resolve_external_field(ndim, external_field=ef)
 
 
 class TestExternalFieldPopulateDict(unittest.TestCase):

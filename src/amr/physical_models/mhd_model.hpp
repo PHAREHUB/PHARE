@@ -101,10 +101,11 @@ public:
 
     void initializeExternalField(level_t& level, double time) override
     {
-        for (auto const& patch : resourcesManager->enumerate(level, externalField))
+        for (auto const& patch : resourcesManager->enumerate(level, externalField, tmpVec_))
         {
             auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-            (*externalFieldUpdater)(externalField, layout, time);
+            auto scratch      = core::view_as(tmpVec_, vecfield_type::tensor_t::E, layout);
+            (*externalFieldUpdater)(externalField, scratch, layout, time);
         }
     }
 
@@ -145,11 +146,10 @@ public:
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
 void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& level)
 {
-    for (auto& patch : level)
+    auto& rm = *(this->resourcesManager);
+    for (auto& patch : rm.enumerate(level, *this))
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        auto _      = this->resourcesManager->setOnPatch(*patch, state, externalField);
-
         state.initialize(layout);
     }
 }

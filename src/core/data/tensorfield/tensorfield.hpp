@@ -243,6 +243,18 @@ template<typename Field_t, typename PhysicalQuantity>
 using SymTensorField = TensorField<Field_t, PhysicalQuantity, /*rank=*/2>;
 
 
+template<typename Field_t, typename PhysicalQuantity, std::size_t rank, typename GridLayout>
+NO_DISCARD auto view_as(TensorField<Field_t, PhysicalQuantity, rank>& source,
+                        typename TensorField<Field_t, PhysicalQuantity, rank>::tensor_t qty,
+                        GridLayout const& layout)
+{
+    TensorField<Field_t, PhysicalQuantity, rank> view{source.name(), qty};
+    for (std::size_t i = 0; i < view.size(); ++i)
+        view[i] = view_as(source[i], view[i].physicalQuantity(), layout);
+    return view;
+}
+
+
 } // namespace PHARE::core
 
 

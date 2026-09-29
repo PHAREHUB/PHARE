@@ -115,18 +115,18 @@ def add_enum_int(path, enum_name, member_name):
     add_int(path, int(getattr(enum_cls, member)))
 
 
-def _space_time_function_adder(ndim):
+def _add_space_time_function_per_ndim(ndim):
     """
     Retrieve the correct cppdict adding utility for a space-time function, consistently
     with ndim.
     """
-    adder = getattr(pp, f"add_space_time_function_{ndim:d}d")
+    add_function = getattr(pp, f"add_space_time_function_{ndim:d}d")
 
-    def add_space_time_function(path, fn):
+    def _add_space_time_function(path, fn):
         """'fn' takes the ndim coordinates followed by the time."""
-        adder(path, space_time_fn_wrapper(fn))
+        add_function(path, space_time_fn_wrapper(fn))
 
-    return add_space_time_function
+    return _add_space_time_function
 
 
 def dict_populator(ndim):
@@ -142,7 +142,7 @@ def dict_populator(ndim):
             self.add_vector_int = add_vector_int
             self.add_string = add_string
             self.add_enum_int = add_enum_int
-            self.add_space_time_function = _space_time_function_adder(ndim)
+            self.add_space_time_function = _add_space_time_function_per_ndim(ndim)
 
     return DictPopulator()
 

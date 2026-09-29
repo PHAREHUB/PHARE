@@ -115,7 +115,7 @@ class ExternalFieldTest(SimulatorTest):
         return sim, timestamps
 
     def run_sim(self, sim):
-        # NB: not named `run` - SimulatorTest.run is unittest's test entry point
+        # NB: not named `run` - unittest.TestCase.run is the test entry point
         Simulator(sim).run().reset()
         return Run(sim.diag_options["options"]["dir"])
 

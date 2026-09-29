@@ -15,8 +15,6 @@
 #include "python3/pybind_def.hpp"
 #include "python3/patch_data.hpp"
 
-// phare_deps() returns an unordered_map and several bindings take/return std::vector:
-// pybind_def.hpp used to pull this in, it no longer does
 #include "pybind11/stl.h"
 
 #include "hdf5/phare_hdf5.hpp"

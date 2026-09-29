@@ -86,7 +86,7 @@ struct UpdaterRun
     template<typename Updater>
     explicit UpdaterRun(Updater& updater, double time = 0.)
     {
-        updater(externalField, layout, time);
+        updater(externalField, externalField.scratch(), layout, time);
     }
 };
 
@@ -117,7 +117,7 @@ double maxDifference(UpdaterRun& lhs, UpdaterRun& rhs)
 Point<double, 3> constexpr expectedCurl{7., -5., 1.};
 
 template<typename Profile>
-std::array<SpaceTimeFunction<2>, 3> potentialFunctions(Profile g)
+std::array<initializer::SpaceTimeFunction<2>, 3> potentialFunctions(Profile g)
 {
     return {
         spaceTimeFunction<2>([g](Point<double, 2> const& x, double t) { return 2. * x[1] * g(t); }),
