@@ -10,14 +10,15 @@
 #include <bit>
 #include <cmath>
 #include <cstdint>
-#include <cstring>
+#include <type_traits>
 #include <ostream>
 
 
 // Reduced precision storage types.
 //  Values are decoded to double on read and encoded on assignment, so all arithmetic
 //  is done in double and only the stored representation loses precision.
-//  Storage is a byte array (alignof == 1), so Bytes need not be a power of two.
+//  Storage is a uint16 array for even Bytes (alignof == 2), else a byte array (alignof == 1),
+//  so Bytes need not be a power of two.
 //  Encoding rounds to nearest, and encode(decode(x)) == x bitwise.
 
 namespace PHARE::core
@@ -26,50 +27,32 @@ static_assert(std::endian::native == std::endian::little,
               "multi precision types assume little endian");
 
 
-// Bytes bytes to/from the low bytes of a uint64, in power of two chunks.
-//  A single memcpy of e.g. 6 bytes into a uint64 goes through the stack as two narrow
-//  stores and one wide load, which stalls on store forwarding on every decode.
+// Storage words: uint16 for even Bytes, else uint8.
+//  Byte (char) typed stores may alias anything, including the doubles around them, so the
+//  compiler must reload/spill after every encode. uint16 does not alias double under strict
+//  aliasing. Words are accessed element-wise, not via memcpy, which is also alias-everything.
 template<std::size_t Bytes>
-NO_DISCARD inline std::uint64_t load_low_bytes(std::uint8_t const* const src)
+using storage_word_t = std::conditional_t<Bytes % 2 == 0, std::uint16_t, std::uint8_t>;
+
+template<std::size_t Bytes>
+using storage_array_t = std::array<storage_word_t<Bytes>, Bytes / sizeof(storage_word_t<Bytes>)>;
+
+template<typename Word, std::size_t N>
+NO_DISCARD inline std::uint64_t load_words(std::array<Word, N> const& src)
 {
-    static_assert(Bytes >= 1 and Bytes <= 8);
-    std::uint64_t u  = 0;
-    std::size_t off  = 0;
-    auto const chunk = [&]<typename U>() {
-        U c;
-        std::memcpy(&c, src + off, sizeof(U));
-        u |= static_cast<std::uint64_t>(c) << (8 * off);
-        off += sizeof(U);
-    };
-    if constexpr (Bytes & 8)
-        chunk.template operator()<std::uint64_t>();
-    if constexpr (Bytes & 4)
-        chunk.template operator()<std::uint32_t>();
-    if constexpr (Bytes & 2)
-        chunk.template operator()<std::uint16_t>();
-    if constexpr (Bytes & 1)
-        chunk.template operator()<std::uint8_t>();
+    static_assert(sizeof(Word) * N <= 8);
+    std::uint64_t u = 0;
+    for (std::size_t i = 0; i < N; ++i)
+        u |= static_cast<std::uint64_t>(src[i]) << (8 * sizeof(Word) * i);
     return u;
 }
 
-template<std::size_t Bytes>
-inline void store_low_bytes(std::uint8_t* const dst, std::uint64_t const u)
+template<typename Word, std::size_t N>
+inline void store_words(std::array<Word, N>& dst, std::uint64_t const u)
 {
-    static_assert(Bytes >= 1 and Bytes <= 8);
-    std::size_t off  = 0;
-    auto const chunk = [&]<typename U>() {
-        U const c = static_cast<U>(u >> (8 * off));
-        std::memcpy(dst + off, &c, sizeof(U));
-        off += sizeof(U);
-    };
-    if constexpr (Bytes & 8)
-        chunk.template operator()<std::uint64_t>();
-    if constexpr (Bytes & 4)
-        chunk.template operator()<std::uint32_t>();
-    if constexpr (Bytes & 2)
-        chunk.template operator()<std::uint16_t>();
-    if constexpr (Bytes & 1)
-        chunk.template operator()<std::uint8_t>();
+    static_assert(sizeof(Word) * N <= 8);
+    for (std::size_t i = 0; i < N; ++i)
+        dst[i] = static_cast<Word>(u >> (8 * sizeof(Word) * i));
 }
 
 
@@ -123,16 +106,13 @@ struct TruncatedDouble : MultiPrecisionOps<TruncatedDouble<Bytes>, double>
         // a carry out of the mantissa increments the exponent, which is the correct rounding
         u += (std::uint64_t{1} << (dropped_bits - 1)) - 1 + lsb;
         u >>= dropped_bits;
-        store_low_bytes<Bytes>(data.data(), u);
+        store_words(data, u);
         return *this;
     }
 
-    operator double() const
-    {
-        return std::bit_cast<double>(load_low_bytes<Bytes>(data.data()) << dropped_bits);
-    }
+    operator double() const { return std::bit_cast<double>(load_words(data) << dropped_bits); }
 
-    std::array<std::uint8_t, Bytes> data{};
+    storage_array_t<Bytes> data{};
 };
 
 
@@ -155,20 +135,21 @@ struct FixedPointUnit : MultiPrecisionOps<FixedPointUnit<Bytes>, double>
 
     FixedPointUnit& operator=(double const v)
     {
-        double const s        = std::nearbyint(v * scale);
-        std::uint64_t const u = !(s > 0)                        ? 0 // also NaN
-                                : s >= static_cast<double>(max) ? max
-                                                                : static_cast<std::uint64_t>(s);
-        store_low_bytes<Bytes>(data.data(), u);
+        // not std::nearbyint, a libm call without SSE4.1. s >= 0 so + .5 and truncation rounds
+        //  to nearest, ties up rather than to even. Decoded values are integers once scaled,
+        //  so encode(decode(x)) == x still holds
+        double const s        = v * scale;
+        std::uint64_t const u = !(s > 0) ? 0 // also NaN
+                                : s >= static_cast<double>(max)
+                                    ? max
+                                    : static_cast<std::uint64_t>(s + .5);
+        store_words(data, u);
         return *this;
     }
 
-    operator double() const
-    {
-        return static_cast<double>(load_low_bytes<Bytes>(data.data())) / scale;
-    }
+    operator double() const { return static_cast<double>(load_words(data)) / scale; }
 
-    std::array<std::uint8_t, Bytes> data{};
+    storage_array_t<Bytes> data{};
 };
 
 

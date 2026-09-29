@@ -72,8 +72,8 @@ TEST(ParticleStorage, compactParticleSizes)
 
     EXPECT_EQ(sizeof(ReferenceParticle<3>), 80u);
 
-    static_assert(sizeof(Fixed<6>) == 6 and alignof(Fixed<6>) == 1);
-    static_assert(sizeof(Trunc<6>) == 6 and alignof(Trunc<6>) == 1);
+    static_assert(sizeof(Fixed<6>) == 6 and alignof(Fixed<6>) == 2);
+    static_assert(sizeof(Trunc<6>) == 6 and alignof(Trunc<6>) == 2);
     static_assert(std::is_trivially_copyable_v<CompactParticle<3>>); // SAMRAI streams memcpy
 }
 
