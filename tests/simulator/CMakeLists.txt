@@ -23,6 +23,8 @@ if(HighFive)
   phare_python3_exec(9       restarts    test_restarts.py     ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       run         test_run.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       vtk_diagnostics test_vtk_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       external_field  test_external_field.py   ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_python3_exec(9       fromsim         test_fromsim.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
   if(testMPI)

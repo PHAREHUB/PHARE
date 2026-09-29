@@ -2,8 +2,12 @@
 #define PHARE_MHD_MODEL_HPP
 
 #include "core/def.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/models/mhd_state.hpp"
+#include "core/models/external_field.hpp"
+#include "core/models/external_field_updater.hpp"
+#include "core/models/external_field_updater_factory.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
@@ -28,19 +32,25 @@ public:
     using level_t   = amr_types::level_t;
     using Interface = IPhysicalModel<AMR_Types>;
 
-    using physical_quantity_type = core::MHDQuantity;
-    using vecfield_type          = VecFieldT;
-    using field_type             = vecfield_type::field_type;
-    using state_type             = core::MHDState<vecfield_type>;
-    using gridlayout_type        = GridLayoutT;
-    using grid_type              = Grid_t;
-    using resources_manager_type = amr::ResourcesManager<gridlayout_type, Grid_t>;
+    using physical_quantity_type      = core::MHDQuantity;
+    using vecfield_type               = VecFieldT;
+    using field_type                  = vecfield_type::field_type;
+    using state_type                  = core::MHDState<vecfield_type>;
+    using gridlayout_type             = GridLayoutT;
+    using grid_type                   = Grid_t;
+    using resources_manager_type      = amr::ResourcesManager<gridlayout_type, Grid_t>;
+    using external_field_type         = core::ExternalField<vecfield_type>;
+    using external_field_updater_type = core::IExternalFieldUpdater<vecfield_type, gridlayout_type>;
+    using external_field_factory_type
+        = core::ExternalFieldUpdaterFactory<vecfield_type, gridlayout_type>;
 
     static constexpr std::string_view model_type_name = "MHDModel";
     static inline std::string const model_name{model_type_name};
 
     state_type state;
+    external_field_type externalField;
     std::shared_ptr<resources_manager_type> resourcesManager;
+    std::unique_ptr<external_field_updater_type> externalFieldUpdater;
 
     // diagnostics buffers
     vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
@@ -61,6 +71,7 @@ public:
         resourcesManager->allocate(P_diag_, patch, allocateTime);
         resourcesManager->allocate(tmpField_, patch, allocateTime);
         resourcesManager->allocate(tmpVec_, patch, allocateTime);
+        resourcesManager->allocate(externalField, patch, allocateTime);
     }
 
 
@@ -75,12 +86,33 @@ public:
                       std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
         , state{dict["mhd_state"]}
+        , externalField{model_name}
         , resourcesManager{_resourcesManager}
+        , externalFieldUpdater{dict.contains("external_field")
+                                   ? external_field_factory_type::create(dict["external_field"])
+                                   : external_field_factory_type::createZero()}
     {
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
         resourcesManager->registerResources(tmpField_);
         resourcesManager->registerResources(tmpVec_);
+        resourcesManager->registerResources(externalField);
+    }
+
+    void initializeExternalField(level_t& level, double time) override
+    {
+        for (auto const& patch : resourcesManager->enumerate(level, externalField, tmpVec_))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+            auto scratch      = core::view_as(tmpVec_, vecfield_type::tensor_t::E, layout);
+            (*externalFieldUpdater)(externalField, scratch, layout, time);
+        }
+    }
+
+    void updateExternalField(level_t& level, double time) override
+    {
+        if (externalFieldUpdater->isTimeDependent())
+            initializeExternalField(level, time);
     }
 
     ~MHDModel() override = default;
@@ -90,13 +122,19 @@ public:
     //                  start the ResourcesUser interface
     //-------------------------------------------------------------------------
 
-    NO_DISCARD bool isUsable() const { return state.isUsable(); }
+    NO_DISCARD bool isUsable() const { return state.isUsable() and externalField.isUsable(); }
 
-    NO_DISCARD bool isSettable() const { return state.isSettable(); }
+    NO_DISCARD bool isSettable() const { return state.isSettable() and externalField.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(state, externalField);
+    }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(state, externalField);
+    }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
@@ -108,11 +146,10 @@ public:
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
 void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& level)
 {
-    for (auto& patch : level)
+    auto& rm = *(this->resourcesManager);
+    for (auto& patch : rm.enumerate(level, *this))
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        auto _      = this->resourcesManager->setOnPatch(*patch, state);
-
         state.initialize(layout);
     }
 }
@@ -146,8 +183,6 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
     MHDInfo.ghostElectric.push_back(MHDInfo.modelElectric);
     MHDInfo.ghostCurrent.push_back(MHDInfo.modelCurrent);
 }
-
-
 
 
 template<typename Model>

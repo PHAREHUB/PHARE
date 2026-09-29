@@ -4,11 +4,9 @@
 #include <tuple>
 #include <cassert>
 #include <cstdint>
-#include <stdexcept>
 
 #include "core/utilities/span.hpp"
 
-#include "pybind11/stl.h"
 #include "pybind11/numpy.h"
 
 

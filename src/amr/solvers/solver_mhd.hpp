@@ -382,6 +382,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::advanceLevel(
         PHARE_LOG_ERROR(ex());
     }
 
+    mhdModel.updateExternalField(*level, newTime);
+
     if (mpi::any_errors())
         throw core::DictionaryException{}("ID", "SolverMHD::advanceLevel");
 }

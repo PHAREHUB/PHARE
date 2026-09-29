@@ -62,6 +62,9 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
         if (isActiveDiag(diagnostic, "/", "EM_E"))
             return initializer.template initTensorFieldFileLevel<1>(level);
 
+        if (isActiveDiag(diagnostic, "/", "EM_B0"))
+            return initializer.template initTensorFieldFileLevel<1>(level);
+
         return std::nullopt;
     };
 
@@ -103,6 +106,12 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
                 {
                     auto& E = this->h5Writer_.modelView().getE();
                     writer.template writeTensorField<1>(E, layout);
+                }
+
+                if (isActiveDiag(diagnostic, "/", "EM_B0"))
+                {
+                    auto& B0 = this->h5Writer_.modelView().getB0();
+                    writer.template writeTensorField<1>(B0, layout);
                 }
             };
 

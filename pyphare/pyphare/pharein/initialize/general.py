@@ -31,7 +31,10 @@ class py_fn_wrapper:
         self.fn = fn
 
     def __call__(self, *xyz):
-        args = [np.asarray(arg) for arg in xyz]
+        from pyphare.cpp import cpp_etc_lib
+
+        args = [np.asarray(arg) for arg in xyz]  # zero-copy views of C++ Spans
+        assert cpp_etc_lib().are_the_same_data(args[0], xyz[0])
         ret = self.fn(*args)
         if isinstance(ret, list):
             ret = np.asarray(ret)
@@ -52,6 +55,22 @@ class fn_wrapper(py_fn_wrapper):
         # convert numpy array to C++ SubSpan
         # couples vector init functions to C++
         return cpp_etc_lib().makePyArrayWrapper(super().__call__(*xyz))
+
+
+# Wrap calls to user space-time functions f(x[, y[, z]], t)
+class space_time_fn_wrapper:
+    def __init__(self, fn):
+        self.fn = fn
+
+    def __call__(self, *args):
+        from pyphare.cpp import cpp_etc_lib
+
+        *spans, t = args
+        xyz = [np.asarray(span) for span in spans]
+        ret = self.fn(*xyz, t)
+        if is_scalar(ret):
+            ret = np.full(xyz[-1].shape, ret, dtype=np.float64)
+        return cpp_etc_lib().makePyArrayWrapper(ret)
 
 
 # pybind complains if receiving wrong type
@@ -87,6 +106,7 @@ def add_enum_int(path, enum_name, member_name):
 
     enum_cls = getattr(cpp_etc_lib(), enum_name)
     member = member_name.lower()
+
     if member not in enum_cls.__members__:
         raise ValueError(
             f"{enum_name}: unknown value '{member_name}',"
@@ -94,6 +114,37 @@ def add_enum_int(path, enum_name, member_name):
         )
     add_int(path, int(getattr(enum_cls, member)))
 
+
+def _add_space_time_function_per_ndim(ndim):
+    """
+    Retrieve the correct cppdict adding utility for a space-time function, consistently
+    with ndim.
+    """
+    add_function = getattr(pp, f"add_space_time_function_{ndim:d}d")
+
+    def _add_space_time_function(path, fn):
+        """'fn' takes the ndim coordinates followed by the time."""
+        add_function(path, space_time_fn_wrapper(fn))
+
+    return _add_space_time_function
+
+
+def dict_populator(ndim):
+    """An object bundling the add_* writers, passed to the objects that populate the dict
+    themselves, so that they need not import this module (which would be circular)."""
+
+    class DictPopulator:
+        def __init__(self):
+            self.add_int = add_int
+            self.add_bool = add_bool
+            self.add_double = add_double
+            self.add_size_t = add_size_t
+            self.add_vector_int = add_vector_int
+            self.add_string = add_string
+            self.add_enum_int = add_enum_int
+            self.add_space_time_function = _add_space_time_function_per_ndim(ndim)
+
+    return DictPopulator()
 
 def populateDict(sim):
     add_string("simulation/name", "simulation_test")
@@ -118,6 +169,8 @@ def populateDict(sim):
             add_int("simulation/grid/nbr_cells/z", sim.cells[2])
             add_double("simulation/grid/meshsize/z", sim.dl[2])
             add_string("simulation/grid/boundary_type/z", sim.boundary_types[2])
+
+    sim.external_field.populate_dict(dict_populator(sim.ndim))
 
     add_int("simulation/interp_order", sim.interp_order)
     add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)

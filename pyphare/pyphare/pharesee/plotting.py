@@ -295,7 +295,7 @@ def finest_field_plot(run_path, qty, **kwargs):
     plot the given quantity (qty) at 'run_path' with only the finest data
 
     * run_path : the path of the run
-    * qty : ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
+    * qty : ['Bx', 'By', 'Bz', 'B0x', 'B0y', 'B0z', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
 
     kwargs:
     * ax : the handle for the fig axes
@@ -333,6 +333,12 @@ def finest_field_plot(run_path, qty, **kwargs):
             times = get_times_from_h5(file)
             time = times[0]
         interpolator, finest_coords = r.GetE(time, merged=True, interp=interp)[qty]
+    elif qty in ["B0x", "B0y", "B0z"]:
+        file = os.path.join(run_path, "EM_B0.h5")
+        if time is None:
+            times = get_times_from_h5(file)
+            time = times[0]
+        interpolator, finest_coords = r.GetB0(time, merged=True, interp=interp)[qty]
     elif qty in ["Vx", "Vy", "Vz"]:
         file = os.path.join(run_path, "ions_bulkVelocity.h5")
         if time is None:
@@ -354,7 +360,7 @@ def finest_field_plot(run_path, qty, **kwargs):
     else:
         # ___ TODO : should also include the files for a given population
         raise ValueError(
-            "qty should be in ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']"
+            "qty should be in ['Bx', 'By', 'Bz', 'B0x', 'B0y', 'B0z', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']"
         )
 
     if "ax" not in kwargs:

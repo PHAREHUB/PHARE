@@ -26,6 +26,7 @@ logger = getLogger(__name__)
 quantities_per_file = {
     "EM_B": "B",
     "EM_E": "E",
+    "EM_B0": "B0",
     "ions_bulkVelocity": "Vi",
     "ions_charge_density": "Ni",
     "particle_count": "nppc",
@@ -112,6 +113,16 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
+        return VectorField(h)
+
+    def GetB0(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
+        if merged:
+            all_primal = False
+        hier = self._get_hierarchy(time, "EM_B0.h5", **kwargs)
+        if not all_primal:
+            return self._get(hier, time, merged, interp)
+
+        h = compute_hier_from(_compute_to_primal, hier, x="B0x", y="B0y", z="B0z")
         return VectorField(h)
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):

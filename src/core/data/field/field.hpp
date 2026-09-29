@@ -4,12 +4,14 @@
 
 #include "core/def.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
+#include "core/utilities/types.hpp"
 
 
 #include <array>
 #include <string>
 #include <cstddef>
 #include <utility>
+#include <stdexcept>
 
 
 namespace PHARE::core
@@ -94,6 +96,16 @@ private:
     Super const& super() const { return *this; }
 };
 
+
+template<std::size_t dim, typename PhysicalQuantity, typename Data_t, typename GridLayout>
+NO_DISCARD auto view_as(Field<dim, PhysicalQuantity, Data_t>& source, PhysicalQuantity qty,
+                        GridLayout const& layout)
+{
+    auto const shape = layout.allocSize(qty);
+    if (product(shape) > source.size())
+        throw std::runtime_error("view_as: " + source.name() + " too small for requested view");
+    return Field<dim, PhysicalQuantity, Data_t>{source.name(), qty, source.data(), shape};
+}
 
 
 } // namespace PHARE::core

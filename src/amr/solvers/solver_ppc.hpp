@@ -338,6 +338,8 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
     moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::all);
 
     corrector_(level, model, fromCoarser, currentTime, newTime);
+
+    model.updateExternalField(level, newTime);
 }
 
 

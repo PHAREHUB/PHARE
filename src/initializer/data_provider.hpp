@@ -44,7 +44,7 @@ namespace initializer
     struct InitFunctionHelper<double, 1>
     {
         using return_type = std::shared_ptr<core::Span<double>>;
-        using param_type  = std::vector<double> const&;
+        using param_type  = core::Span<double const> const&;
         using type        = std::function<return_type(param_type)>;
     };
 
@@ -52,7 +52,7 @@ namespace initializer
     struct InitFunctionHelper<double, 2>
     {
         using return_type = std::shared_ptr<core::Span<double>>;
-        using param_type  = std::vector<double> const&;
+        using param_type  = core::Span<double const> const&;
         using type        = std::function<return_type(param_type, param_type)>;
     };
 
@@ -60,7 +60,7 @@ namespace initializer
     struct InitFunctionHelper<double, 3>
     {
         using return_type = std::shared_ptr<core::Span<double>>;
-        using param_type  = std::vector<double> const&;
+        using param_type  = core::Span<double const> const&;
         using type        = std::function<return_type(param_type, param_type, param_type)>;
     };
 
@@ -68,10 +68,44 @@ namespace initializer
     using InitFunction = typename InitFunctionHelper<double, dim>::type;
 
 
+    template<typename ReturnType, std::size_t dim>
+    struct SpaceTimeFunctionHelper
+    {
+    };
+
+    template<>
+    struct SpaceTimeFunctionHelper<double, 1>
+    {
+        using return_type = std::shared_ptr<core::Span<double>>;
+        using param_type  = core::Span<double const> const&;
+        using type        = std::function<return_type(param_type, double)>;
+    };
+
+    template<>
+    struct SpaceTimeFunctionHelper<double, 2>
+    {
+        using return_type = std::shared_ptr<core::Span<double>>;
+        using param_type  = core::Span<double const> const&;
+        using type        = std::function<return_type(param_type, param_type, double)>;
+    };
+
+    template<>
+    struct SpaceTimeFunctionHelper<double, 3>
+    {
+        using return_type = std::shared_ptr<core::Span<double>>;
+        using param_type  = core::Span<double const> const&;
+        using type        = std::function<return_type(param_type, param_type, param_type, double)>;
+    };
+
+    template<std::size_t dim>
+    using SpaceTimeFunction = SpaceTimeFunctionHelper<double, dim>::type;
+
+
     using PHAREDict
         = cppdict::Dict<bool, int, std::vector<int>, double, std::vector<double>, std::size_t,
                         std::optional<std::size_t>, std::string, std::vector<std::string>,
-                        InitFunction<1>, InitFunction<2>, InitFunction<3>>;
+                        InitFunction<1>, InitFunction<2>, InitFunction<3>, SpaceTimeFunction<1>,
+                        SpaceTimeFunction<2>, SpaceTimeFunction<3>>;
 
 
     class PHAREDictHandler
@@ -81,7 +115,7 @@ namespace initializer
 
         void init() { phareDict = std::make_unique<PHAREDict>(); }
 
-        void stop() { phareDict.release(); }
+        void stop() { phareDict.reset(); }
 
         NO_DISCARD auto& dict()
         {

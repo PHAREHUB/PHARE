@@ -10,10 +10,35 @@ from ...core.box import Box
 import numpy as np
 
 
+def origin_from(patch):
+    """PatchData.origin is a comma separated string, built C++ side by Point::str()"""
+    return [float(v) for v in patch.origin.split(",")]
+
+
+def particles_from(patch, layout):
+    """Build Particles from a data wrangler patch, whose buffers are all flat."""
+    v = np.asarray(patch.data.v)
+    v = v.reshape(int(v.size / 3), 3)
+    nbr = v.shape[0]
+
+    dl = np.zeros((nbr, layout.ndim))
+    for i in range(layout.ndim):
+        dl[:, i] = layout.dl[i]
+
+    return Particles(
+        icells=np.asarray(patch.data.iCell).reshape(nbr, layout.ndim),
+        deltas=np.asarray(patch.data.delta).reshape(nbr, layout.ndim),
+        v=v,
+        weights=np.asarray(patch.data.weight),
+        charges=np.asarray(patch.data.charge),
+        dl=dl,
+    )
+
+
 def make_layout_for(simulator, patch, qty, dl):
     model = "mhd" if str(qty).startswith("mhd") else "hybrid"
     box = Box(patch.lower, patch.upper)
-    origin = patch.origin
+    origin = origin_from(patch)
     if model == "hybrid":
         # check for particle quantity?
         return gridlayout.HybridGridLayoutFor(box, origin, dl, simulator.interp_order())
@@ -27,9 +52,9 @@ def hierarchy_from_sim(simulator, qty, pop=""):
     nbr_levels = dw.getNumberOfLevels()
     patch_levels = {}
 
-    root_cell_width = simulator.cell_width()
+    root_cell_width = np.asarray(simulator.cell_width())
     domain_box = Box([0] * len(root_cell_width), simulator.domain_box())
-    assert len(domain_box.ndim) == len(simulator.domain_box().ndim)
+    assert domain_box.ndim == len(simulator.domain_box())
 
     for ilvl in range(nbr_levels):
         lvl_cell_width = root_cell_width / refinement_ratio**ilvl
@@ -42,7 +67,10 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for patch in wpatches:
                 patch_datas = {}
                 layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
-                pdata = FieldData(layout, field_qties[qty], patch.data)
+                pdata = FieldData(layout, field_qties[qty], np.asarray(patch.data))
+                # the wrangler hands back a flat buffer: give it the layout's shape,
+                # as an h5 read would, so the dataset is indexable like any other
+                pdata.dataset = pdata.dataset.reshape(pdata.size)
                 patch_datas[qty] = pdata
                 patches[ilvl].append(Patch(patch_datas))
 
@@ -65,15 +93,7 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                 patch_datas = {}
 
                 layout = make_layout_for(simulator, patch, qty, lvl_cell_width)
-                v = np.asarray(patch.data.v).reshape(int(len(patch.data.v) / 3), 3)
-
-                domain_particles = Particles(
-                    icells=np.asarray(patch.data.iCell),
-                    deltas=np.asarray(patch.data.delta),
-                    v=v,
-                    weights=np.asarray(patch.data.weight),
-                    charges=np.asarray(patch.data.charge),
-                )
+                domain_particles = particles_from(patch, layout)
 
                 patch_datas[pop + "_particles"] = ParticleData(
                     layout, domain_particles, pop
@@ -89,17 +109,10 @@ def hierarchy_from_sim(simulator, qty, pop=""):
             for ghostParticles in ["levelGhost"]:
                 if ghostParticles in populationdict:
                     for dwpatch in populationdict[ghostParticles]:
-                        v = np.asarray(dwpatch.data.v)
-                        s = v.size
-                        v = v[:].reshape(int(s / 3), 3)
-
-                        patchGhost_part = Particles(
-                            icells=np.asarray(dwpatch.data.iCell),
-                            deltas=np.asarray(dwpatch.data.delta),
-                            v=v,
-                            weights=np.asarray(dwpatch.data.weight),
-                            charges=np.asarray(dwpatch.data.charge),
+                        layout = make_layout_for(
+                            simulator, dwpatch, qty, lvl_cell_width
                         )
+                        patchGhost_part = particles_from(dwpatch, layout)
 
                         box = Box(dwpatch.lower, dwpatch.upper)
 
@@ -116,4 +129,6 @@ def hierarchy_from_sim(simulator, qty, pop=""):
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-    return PatchHierarchy(patch_levels, domain_box, time=simulator.currentTime())
+    return PatchHierarchy(
+        [patch_levels], domain_box, refinement_ratio, times=[simulator.currentTime()]
+    )

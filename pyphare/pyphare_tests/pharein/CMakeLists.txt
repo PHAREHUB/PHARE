@@ -4,5 +4,6 @@ project(test-pharein)
 
 
 add_python3_test(test-pharein-simulation simulation_test.py ${PROJECT_SOURCE_DIR})
+add_python3_test(test-pharein-external-field external_field_test.py ${PROJECT_SOURCE_DIR})
 
 
