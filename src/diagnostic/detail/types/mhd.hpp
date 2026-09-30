@@ -38,7 +38,7 @@ public:
     {
     }
     void write(DiagnosticProperties&) override;
-    void compute(DiagnosticProperties&) override;
+    void compute_as_needed(DiagnosticProperties&) override;
 
     void createFiles(DiagnosticProperties& diagnostic) override;
 
@@ -71,7 +71,7 @@ void MHDDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic
 }
 
 template<typename H5Writer>
-void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
+void MHDDiagnosticWriter<H5Writer>::compute_as_needed(DiagnosticProperties& diagnostic)
 {
     using ModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().mhdModelView())>;
     using Computers   = typename ModelView_t::MHDComputers;

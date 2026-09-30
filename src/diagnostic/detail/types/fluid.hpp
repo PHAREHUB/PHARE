@@ -46,7 +46,7 @@ public:
     }
 
     void write(DiagnosticProperties&) override;
-    void compute(DiagnosticProperties&) override;
+    void compute_as_needed(DiagnosticProperties&) override;
 
     void createFiles(DiagnosticProperties& diagnostic) override;
 
@@ -66,7 +66,7 @@ public:
 
 
 template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
+void FluidDiagnosticWriter<H5Writer>::compute_as_needed(DiagnosticProperties& diagnostic)
 {
     using HybridModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().hyridModelView())>;
     using Model_t           = HybridModelView_t::Model_t;
