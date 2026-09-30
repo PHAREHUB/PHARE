@@ -203,28 +203,45 @@ struct DiagnosticsModelMapper
         throw std::runtime_error("mhdModelView: no mhd model registered");
     }
 
+    // the source may itself be a temporary (e.g. pop i's momentum tensor is tmpTensorField{i}),
+    // so never hand it back as its own destination; getTmp throws if idx + 1 does not exist
+    NO_DISCARD static auto& distinct_tmp_(auto const& quantity, std::size_t const idx, auto&& tmp)
+    {
+        auto& t = tmp(idx);
+        return &t == &quantity ? tmp(idx + 1) : t;
+    }
+
     template<typename Field_t>
         requires(amr::is_field_v<Field_t>)
-    NO_DISCARD auto& tmpFor(Field_t const&)
+    NO_DISCARD auto& tmpFor(Field_t const& quantity, std::size_t const idx = 0)
     {
         using PQ = Field_t::physical_quantity_type;
         if constexpr (std::is_same_v<PQ, core::HybridQuantity::Scalar>)
-            return hyridModelView().tmpField();
+            return distinct_tmp_(quantity, idx, [&](auto i) -> auto& {
+                return hyridModelView().tmpField(i);
+            });
         else if constexpr (std::is_same_v<PQ, core::MHDQuantity::Scalar>)
-            return mhdModelView().tmpField();
+            return distinct_tmp_(quantity, idx, [&](auto i) -> auto& {
+                return mhdModelView().tmpField(i);
+            });
         else
             static_assert(core::dependent_false_v<Field_t>);
     }
 
     template<typename TensorField_t>
         requires(amr::is_tensor_field_v<TensorField_t>)
-    NO_DISCARD auto& tmpFor(TensorField_t const&)
+    NO_DISCARD auto& tmpFor(TensorField_t const& quantity, std::size_t const idx = 0)
     {
-        using PQ = TensorField_t::field_type::physical_quantity_type;
+        auto constexpr rank = TensorField_t::rank;
+        using PQ            = TensorField_t::field_type::physical_quantity_type;
         if constexpr (std::is_same_v<PQ, core::HybridQuantity::Scalar>)
-            return hyridModelView().template tmpTensorField<TensorField_t::rank>();
+            return distinct_tmp_(quantity, idx, [&](auto i) -> auto& {
+                return hyridModelView().template tmpTensorField<rank>(i);
+            });
         else if constexpr (std::is_same_v<PQ, core::MHDQuantity::Scalar>)
-            return mhdModelView().template tmpTensorField<TensorField_t::rank>();
+            return distinct_tmp_(quantity, idx, [&](auto i) -> auto& {
+                return mhdModelView().template tmpTensorField<rank>(i);
+            });
         else
             static_assert(core::dependent_false_v<TensorField_t>);
     }

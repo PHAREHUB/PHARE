@@ -90,12 +90,15 @@ template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnostic,
                                                    std::size_t iLevel, std::string const& patchID,
                                                    Attributes& patchAttributes,
-                                                   ModelViewVariant& /*modelView*/)
+                                                   ModelViewVariant& modelViewVariant)
 {
     using ModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().mhdModelView())>;
     using Accessors   = typename ModelView_t::MHDAccessors;
 
-    auto& h5Writer         = this->h5Writer_;
+    auto& h5Writer = this->h5Writer_;
+    if (!h5Writer.mapper().is_mhd_model(modelViewVariant))
+        return; // patch is on a level owned by another model
+
     auto& modelView         = h5Writer.mapper().mhdModelView();
     auto& model             = modelView.model();
     auto& accessors         = Accessors::getOrCreateFor(modelView);
@@ -171,10 +174,10 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
     auto const& qty = diagnostic.quantity;
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
-        bool null        = patchID.empty();
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
-        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr) {
+        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr,
+                                bool const null) {
             using Quantity = std::decay_t<decltype(field)>;
             if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
                 initDS(path, fieldAttr, name, null);
@@ -185,7 +188,10 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
 
         accessors.dispatch(qty, model,
                            [&](auto& field, std::string const& name, std::string const& ownerKey) {
-                               action(field, name, attr[ownerKey]);
+                               // a patch on a level owned by another model has no attributes
+                               //  for this one - check before attr[ownerKey] creates the key
+                               bool const null = patchID.empty() or !attr.contains(ownerKey);
+                               action(field, name, attr[ownerKey], null);
                            });
     };
 
@@ -198,7 +204,10 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     using ModelView_t = std::decay_t<decltype(this->h5Writer_.mapper().mhdModelView())>;
     using Accessors   = typename ModelView_t::MHDAccessors;
 
-    auto& h5Writer   = this->h5Writer_;
+    auto& h5Writer = this->h5Writer_;
+    if (!h5Writer.mapper().is_mhd_model(h5Writer.currentModelView()))
+        return; // patch is on a level owned by another model
+
     auto& modelView  = h5Writer.mapper().mhdModelView();
     auto& model      = modelView.model();
     auto& accessors  = Accessors::getOrCreateFor(modelView);

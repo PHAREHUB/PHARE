@@ -217,12 +217,18 @@ public:
 
     void initFileLevel(int const ilvl);
 
-    std::size_t initFieldFileLevel(auto const ilvl) { return initAnyFieldLevel(ilvl); }
+    // provided == false: the model owning ilvl does not support the quantity, so the level is
+    //  registered with zero boxes, as if it did not exist
+    std::size_t initFieldFileLevel(auto const ilvl, bool const provided = true)
+    {
+        return initAnyFieldLevel(ilvl, provided);
+    }
 
     template<std::size_t rank = 2>
-    std::size_t initTensorFieldFileLevel(auto const ilvl)
+    std::size_t initTensorFieldFileLevel(auto const ilvl, bool const provided = true)
     {
-        return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(ilvl);
+        return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(ilvl,
+                                                                                   provided);
     }
 
 private:
@@ -234,20 +240,20 @@ private:
     }
 
     template<std::size_t N = 1>
-    std::size_t initAnyFieldLevel(auto const ilvl)
+    std::size_t initAnyFieldLevel(auto const ilvl, bool const provided)
     {
         h5file.create_resizable_2d_data_set<FloatType, N>(level_data_path(ilvl));
         initFileLevel(ilvl);
-        resize_boxes(ilvl);
-        resize_data<N>(ilvl);
+        resize_boxes(ilvl, provided);
+        resize_data<N>(ilvl, provided);
         return data_offset;
     }
 
 
     template<std::size_t N = 1>
-    void resize_data(int const ilvl);
+    void resize_data(int const ilvl, bool const provided);
 
-    void resize_boxes(int const ilvl);
+    void resize_boxes(int const ilvl, bool const provided);
 
     // the Steps/ datasets are the only index a reader has from one dump to the next, so
     //  they are created and appended to here only, never inline: one place to be 64 bit in
@@ -439,7 +445,7 @@ void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl)
 
 template<typename Writer>
 template<std::size_t N>
-void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl, bool const provided)
 {
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data");
 
@@ -455,6 +461,9 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
         append_step_offset(step_level + lvl + "/PointDataOffset/data", data_offset);
     }
 
+    if (!provided) // zero boxes, nothing to reserve
+        return;
+
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_data::1");
     auto const& rank_data_sizes = hier_data.level_rank_data_size[ilvl];
     auto const& level_data_size = hier_data.level_data_size[ilvl];
@@ -467,14 +476,14 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_data(int const ilvl)
 
 
 template<typename Writer>
-void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
+void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl, bool const provided)
 {
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes");
 
     auto const lvl          = std::to_string(ilvl);
     auto const& hier_data   = HierData::INSTANCE();
     auto const& rank_boxes  = hier_data.level_boxes_per_rank[ilvl];
-    auto const& total_boxes = hier_data.n_boxes_per_level[ilvl];
+    auto const total_boxes  = provided ? hier_data.n_boxes_per_level[ilvl] : std::size_t{0};
 
     {
         PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::0");
@@ -488,6 +497,9 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl)
         PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::1");
         append_step_offset(step_level + lvl + "/AMRBoxOffset", box_offset);
     }
+
+    if (!provided) // zero boxes, nothing to reserve
+        return;
 
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::2");
     amrbox_ds.resize({box_offset + total_boxes, boxValsIn3D});

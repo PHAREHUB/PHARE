@@ -12,6 +12,7 @@
 #include "tensor_field_resource.hpp"
 
 
+#include <array>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -197,17 +198,49 @@ namespace amr
     };
 
 
+    template<typename T, typename TypeTuple>
+    struct index_in_tuple;
+
+    template<typename T, typename... Ts>
+    struct index_in_tuple<T, std::tuple<Ts...>>
+    {
+        static constexpr std::size_t value = [] {
+            std::array<bool, sizeof...(Ts)> constexpr same{std::is_same_v<T, Ts>...};
+            for (std::size_t i = 0; i < same.size(); ++i)
+                if (same[i])
+                    return i;
+            return sizeof...(Ts);
+        }();
+    };
+
+
     template<typename ResourceManager, typename ResourceView>
     class ResourceResolver
     {
-        using OwnerModel_t
-            = typename owner_model_of<ResourceView, typename ResourceManager::TypeTuple>::type;
+        using TypeTuple    = ResourceManager::TypeTuple;
+        using OwnerModel_t = owner_model_of<ResourceView, TypeTuple>::type;
 
         static_assert(!std::is_void_v<OwnerModel_t>,
                       "ResourceView does not belong to any model registered on this "
                       "ResourcesManager");
 
         using RMT_t = ResourcesManagerTypes<OwnerModel_t>;
+
+    public:
+        // resources are unique per name within a model, the same name may exist on several
+        static constexpr std::size_t model_index = index_in_tuple<OwnerModel_t, TypeTuple>::value;
+
+        // SAMRAI variable names must be globally unique, so qualify by model when there are
+        //  several - with a single model the name is unchanged (and so are restart files)
+        static std::string samrai_name(ResourceView const& view)
+        {
+            if constexpr (std::tuple_size_v<TypeTuple> == 1)
+                return view.name();
+            else
+                return view.name() + "__" + std::to_string(model_index);
+        }
+
+    private:
 
         auto constexpr static resolve_t()
         {
@@ -227,12 +260,12 @@ namespace amr
         auto static make_shared_variable(ResourceView const& view)
         {
             if constexpr (is_tensor_field_v<ResourceView>)
-                return std::make_shared<typename type::variable_type>(view.name(),
+                return std::make_shared<typename type::variable_type>(samrai_name(view),
                                                                       view.physicalQuantity());
             else if constexpr (is_particles_v<ResourceView>)
-                return std::make_shared<typename type::variable_type>(view.name());
+                return std::make_shared<typename type::variable_type>(samrai_name(view));
             else if constexpr (is_field_v<ResourceView>)
-                return std::make_shared<typename type::variable_type>(view.name(),
+                return std::make_shared<typename type::variable_type>(samrai_name(view),
                                                                       view.physicalQuantity());
             else
                 throw std::runtime_error("bad condition");

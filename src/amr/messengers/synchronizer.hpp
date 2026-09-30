@@ -6,14 +6,14 @@
 
 namespace PHARE::amr
 {
-template<typename ResourcesManager>
+template<typename ResourcesManager, typename Model>
 class Synchronizer : private Communicator<SynchronizerTypes, ResourcesManager::dimension>
 {
 public:
     Synchronizer(std::string const& name, std::shared_ptr<ResourcesManager> const& rm,
                  std::shared_ptr<SAMRAI::hier::CoarsenOperator> coarsenOp)
     {
-        auto id = rm->getID(name);
+        auto id = rm->template scoped<Model>().getID(name);
         if (id)
         {
             this->add_algorithm()->registerCoarsen(*id, *id, coarsenOp);

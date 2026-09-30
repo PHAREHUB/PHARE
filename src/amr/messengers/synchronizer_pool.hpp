@@ -9,7 +9,7 @@ namespace PHARE::amr
 {
 
 
-template<typename ResourcesManager>
+template<typename ResourcesManager, typename Model>
 class SynchronizerPool
 {
 public:
@@ -19,7 +19,7 @@ public:
     {
         // check if key is in synchronizers_
         auto const [it, success] = synchronizers_.insert(
-            {key, Synchronizer<ResourcesManager>(descriptor, rm_, coarsenOp)});
+            {key, Synchronizer<ResourcesManager, Model>(descriptor, rm_, coarsenOp)});
         if (!success)
             throw std::runtime_error(key + " is already registered");
     }
@@ -49,7 +49,7 @@ public:
 
 private:
     std::shared_ptr<ResourcesManager> rm_;
-    std::map<std::string, Synchronizer<ResourcesManager>> synchronizers_;
+    std::map<std::string, Synchronizer<ResourcesManager, Model>> synchronizers_;
 };
 
 

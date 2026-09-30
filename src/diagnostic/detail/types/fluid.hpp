@@ -193,10 +193,10 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
     };
 
     auto const initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
-        bool null        = patchID.empty();
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
-        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr) {
+        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr,
+                                bool const null) {
             using Field = std::decay_t<decltype(field)>;
             if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
                 initDS(path, fieldAttr, name, null);
@@ -207,7 +207,10 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
 
         accessors.dispatch(qty, model,
                            [&](auto& field, std::string const& name, std::string const& ownerKey) {
-                               action(field, name, attr[ownerKey]);
+                               // a patch on a level owned by another model has no attributes
+                               //  for this one - check before attr[ownerKey] creates the key
+                               bool const null = patchID.empty() or !attr.contains(ownerKey);
+                               action(field, name, attr[ownerKey], null);
                            });
     };
 
@@ -222,7 +225,10 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     using GridLayout        = HybridModelView_t::GridLayout;
     using Accessors         = HybridModelView_t::FluidAccessors;
 
-    auto& h5Writer   = this->h5Writer_;
+    auto& h5Writer = this->h5Writer_;
+    if (!h5Writer.mapper().is_hybrid_model(h5Writer.currentModelView()))
+        return; // patch is on a level owned by another model
+
     auto& modelView  = h5Writer.mapper().hyridModelView();
     auto& model      = modelView.model();
     auto& accessors  = Accessors::getOrCreateFor(modelView);

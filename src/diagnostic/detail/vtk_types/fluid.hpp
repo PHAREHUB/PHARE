@@ -78,7 +78,8 @@ private:
     template<typename ModelView>
     std::optional<std::size_t>
     initHybridFluidLevel(ModelView& modelView, DiagnosticProperties& diagnostic,
-                         VTKFileInitializer& file_initializer, auto const ilvl)
+                         VTKFileInitializer& file_initializer, auto const ilvl,
+                         bool const provided)
     {
         using Model_t = ModelView::Model_t;
         if constexpr (solver::is_hybrid_model_v<Model_t>)
@@ -94,10 +95,10 @@ private:
                 [&](auto& field, std::string const&, std::string const&) {
                     using Quantity = std::decay_t<decltype(field)>;
                     if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
-                        offset = file_initializer.initFieldFileLevel(ilvl);
+                        offset = file_initializer.initFieldFileLevel(ilvl, provided);
                     else
                         offset = file_initializer.template initTensorFieldFileLevel<Quantity::rank>(
-                            ilvl);
+                            ilvl, provided);
                 });
             return offset;
         }
@@ -107,7 +108,7 @@ private:
     template<typename ModelView>
     std::optional<std::size_t>
     initMhdFluidLevel(ModelView& modelView, DiagnosticProperties& diagnostic,
-                      VTKFileInitializer& file_initializer, auto const ilvl)
+                      VTKFileInitializer& file_initializer, auto const ilvl, bool const provided)
     {
         using Model_t = ModelView::Model_t;
         if constexpr (solver::is_mhd_model_v<Model_t>)
@@ -123,9 +124,10 @@ private:
                 [&](auto& field, std::string const&, std::string const&) {
                     using Quantity = std::decay_t<decltype(field)>;
                     if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
-                        offset = file_initializer.initFieldFileLevel(ilvl);
+                        offset = file_initializer.initFieldFileLevel(ilvl, provided);
                     else
-                        offset = file_initializer.template initTensorFieldFileLevel<1>(ilvl);
+                        offset
+                            = file_initializer.template initTensorFieldFileLevel<1>(ilvl, provided);
                 });
             return offset;
         }
@@ -207,32 +209,50 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
     // (used below to match per-pop quantities) are global to the simulation, not per-level,
     // so resolving the model once here (rather than per-level) is correct even for levels
     // that don't exist yet.
-    auto& mv = ownModelView(diagnostic);
+    auto& mv     = ownModelView(diagnostic);
+    auto& mapper = this->h5Writer_.mapper();
 
-    auto const init = [&](auto const ilvl) -> std::optional<std::size_t> {
+    auto const init = [&](auto const ilvl, bool const provided) -> std::optional<std::size_t> {
         return std::visit(
             [&](auto& modelView) -> std::optional<std::size_t> {
-                if (auto ret = initHybridFluidLevel(modelView, diagnostic, initializer, ilvl))
+                if (auto ret
+                    = initHybridFluidLevel(modelView, diagnostic, initializer, ilvl, provided))
                     return ret;
-                if (auto ret = initMhdFluidLevel(modelView, diagnostic, initializer, ilvl))
+                if (auto ret = initMhdFluidLevel(modelView, diagnostic, initializer, ilvl, provided))
                     return ret;
                 return std::nullopt;
             },
             mv);
     };
 
-    this->h5Writer_.mapper().onLevels(
+    // the model owning an existing level may not support this quantity (e.g. hybrid fluid on an
+    //  mhd level) - such levels get zero boxes, like a missing level
+    auto const provided_on = [&](auto const ilvl) {
+        return std::visit(
+            [&](auto& levelView) {
+                using LevelView = std::decay_t<decltype(levelView)>;
+                if constexpr (solver::is_hybrid_model_v<typename LevelView::Model_t>)
+                    return LevelView::FluidAccessors::getOrCreateFor(levelView).provides(
+                        diagnostic.quantity);
+                else
+                    return LevelView::MHDAccessors::getOrCreateFor(levelView).provides(
+                        diagnostic.quantity);
+            },
+            mapper.levelModelView(ilvl));
+    };
+
+    mapper.onLevels(
         [&](auto const& level) {
             PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::setup_level");
 
             auto const ilvl = level.getLevelNumber();
-            if (auto const offset = init(ilvl))
+            if (auto const offset = init(ilvl, provided_on(ilvl)))
                 info.offset_per_level[ilvl] = *offset;
         },
         [&](int const ilvl) {
             PHARE_LOG_SCOPE(3, "FluidDiagnosticWriter<H5Writer>::setup_missing_level");
 
-            init(ilvl);
+            init(ilvl, /*provided=*/true); // HierarchyData already has zero boxes for it
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
 }

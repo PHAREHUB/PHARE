@@ -136,7 +136,7 @@ public:
 
 
 template<typename Types>
-void HybridModel<Types>::registerTemporaryRequirements(auto&&... quantities)
+void HybridModel<Types>::registerTemporaryRequirements(auto&&... /*quantities*/)
 {
     // todo figure out at runtime
     std::array<std::size_t, std::variant_size_v<Resources>> _n_per_type{2, 1,

@@ -80,11 +80,18 @@ public:
     }
 
 
+    // only levels owned by this model, see visitHierarchy
     template<typename Action>
     void onLevels(Action&& action, std::size_t const minlvl = 0,
                   std::size_t const maxlvl = amr::MAX_LEVEL_IDX)
     {
-        amr::onLevels(hierarchy_, std::forward<Action>(action), minlvl, maxlvl);
+        amr::onLevels(
+            hierarchy_,
+            [&](auto& level) {
+                if (hierarchy_.modelForLevel(level.getLevelNumber()) == Model::model_name)
+                    action(level);
+            },
+            minlvl, maxlvl);
     }
 
 
@@ -97,11 +104,14 @@ public:
     }
 
 
+    // only visits levels owned by this model - other models' resources are not allocated there
     template<typename Action>
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
     {
-        amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
-                                        std::forward<Action>(action), minLevel, maxLevel, model_);
+        for (int ilvl = minLevel; ilvl < hierarchy_.getNumberOfLevels() && ilvl <= maxLevel; ++ilvl)
+            if (hierarchy_.modelForLevel(ilvl) == Model::model_name)
+                amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(ilvl),
+                                            *model_.resourcesManager, action, model_);
     }
 
     NO_DISCARD auto boundaryConditions() const { return hierarchy_.boundaryConditions(); }
@@ -367,7 +377,7 @@ void ModelView<Hierarchy, Model>::declareMomentumTensorAlgos()
         auto& MTAlgo        = MTAlgos.emplace_back();
         auto const src_name = tmpTensorField(i).name();
 
-        auto&& [idDst, idSrc] = rm.getIDsList(dst_name, src_name);
+        auto&& [idDst, idSrc] = rm.template scoped<Model>().getIDsList(dst_name, src_name);
         MTAlgo.MTalgo->registerRefine(
             idDst, idSrc, idDst, nullptr,
             std::make_shared<amr::TensorFieldGhostInterpOverlapFillPattern<
@@ -447,6 +457,9 @@ struct ModelView<Hierarchy, Model>::FluidAccessors
         }
         return false;
     }
+
+    // whether this model supports qty at all
+    NO_DISCARD bool provides(std::string const& qty) const { return fields.count(qty) > 0; }
 
     std::unordered_map<std::string, Entry> fields;
 };
@@ -620,6 +633,9 @@ struct ModelView<Hierarchy, Model>::MHDAccessors
         }
         return false;
     }
+
+    // whether this model supports qty at all
+    NO_DISCARD bool provides(std::string const& qty) const { return fields.count(qty) > 0; }
 
     std::unordered_map<std::string, Entry> fields;
 };

@@ -155,7 +155,7 @@ namespace amr
             std::unique_ptr<HybridMessengerInfo> hybridInfo{
                 dynamic_cast<HybridMessengerInfo*>(fromFinerInfo.release())};
 
-            auto&& [b_id] = resourcesManager_->getIDsList(hybridInfo->modelMagnetic);
+            auto&& [b_id] = ids().getIDsList(hybridInfo->modelMagnetic);
 
             magneticRefinePatchStrategy_.registerIDs(b_id);
 
@@ -173,14 +173,14 @@ namespace amr
             BregridAlgo.registerRefine(b_id, b_id, b_id, BRefineOp_,
                                        overwriteInteriorTFfillPattern);
 
-            auto&& [e_id] = resourcesManager_->getIDsList(hybridInfo->modelElectric);
+            auto&& [e_id] = ids().getIDsList(hybridInfo->modelElectric);
 
 
             EalgoPatchGhost.registerRefine(e_id, e_id, e_id, EfieldRefineOp_,
                                            nonOverwriteInteriorTFfillPattern);
 
-            auto&& [e_reflux_id]  = resourcesManager_->getIDsList(hybridInfo->refluxElectric);
-            auto&& [e_fluxsum_id] = resourcesManager_->getIDsList(hybridInfo->fluxSumElectric);
+            auto&& [e_reflux_id]  = ids().getIDsList(hybridInfo->refluxElectric);
+            auto&& [e_fluxsum_id] = ids().getIDsList(hybridInfo->fluxSumElectric);
 
 
             RefluxAlgo.registerCoarsen(e_reflux_id, e_fluxsum_id, electricFieldCoarseningOp_);
@@ -693,6 +693,9 @@ namespace amr
         }
 
     private:
+        // resource lookups by name, restricted to this model's resources
+        auto ids() const { return resourcesManager_->template scoped<HybridModel>(); }
+
         // Select the field-refinement operators once at construction. The composite runtime
         // kernels are built from the configured order; B uses the stage-1 magnetic kernel (fills
         // every fine face; the magnetic patch strategy runs the stage-2 divB touch-up afterward).
@@ -745,7 +748,7 @@ namespace amr
 
                 for (auto const& key : info->ghostMagnetic)
                 {
-                    auto&& [id] = resourcesManager_->getIDsList(key);
+                    auto&& [id] = ids().getIDsList(key);
 
                     auto patch_strat
                         = std::make_shared<MagneticRefinePatchStrategy<VectorFieldDataT>>();
@@ -795,7 +798,7 @@ namespace amr
 
         void registerInitComms(std::unique_ptr<HybridMessengerInfo> const& info)
         {
-            auto b_id = resourcesManager_->getID(info->modelMagnetic);
+            auto b_id = ids().getID(info->modelMagnetic);
             BalgoInit.registerRefine(*b_id, *b_id, *b_id, BInitRefineOp_,
                                      overwriteInteriorTFfillPattern);
 
@@ -1085,9 +1088,9 @@ namespace amr
         //! to grab particle leaving neighboring patches and inject into domain
         DomainGhostPartRefinerPool domainGhostPartRefiners_{resourcesManager_};
 
-        SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
-        SynchronizerPool<rm_t> ionBulkVelSynchronizers_{resourcesManager_};
-        SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t, HybridModel> chargeDensitySynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t, HybridModel> ionBulkVelSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t, HybridModel> electroSynchronizers_{resourcesManager_};
 
 
         // built in the ctor body (makeRefineOperators_) from the composite runtime kernels.

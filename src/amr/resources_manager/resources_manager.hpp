@@ -17,6 +17,7 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
+#include <array>
 #include <tuple>
 #include <variant>
 #include <optional>
@@ -68,8 +69,8 @@ namespace amr
      * ResourcesManager is used to register ResourceUsers to the SAMRAI system, this is done
      * by calling the registerResources() method. It is also used to allocate already registered
      * ResourcesViews on a patch by calling the method allocate(). One can also get the identifier
-     * (ID) of a patchdata corresponding to one or several ResourcesViews by calling getID() or
-     * getIDs() methods.
+     * (ID) of a patchdata corresponding to one or several ResourcesViews by calling getIDs(), or
+     * by name within one model via scoped<Model>().getID() / getIDsList().
      *
      * Data objects like VecField and Ions etc., i.e. ResourcesViews, need to be set on a patch
      * before being usable. Having a Patch and several ResourcesViews obj1, obj2, etc. this is done
@@ -110,8 +111,9 @@ namespace amr
 
         ~ResourcesManager()
         {
-            for (auto& [key, resourcesInfo] : nameToResourceInfo_)
-                variableDatabase_->removeVariable(key);
+            for (auto& infos : nameToResourceInfo_)
+                for (auto& [_, resourcesInfo] : infos)
+                    variableDatabase_->removeVariable(resourcesInfo.variable->getName());
         }
 
 
@@ -120,10 +122,9 @@ namespace amr
         NO_DISCARD auto ALL_IDS() const
         {
             std::vector<int> ids;
-            ids.reserve(nameToResourceInfo_.size());
-
-            for (auto const& [_, info] : nameToResourceInfo_)
-                ids.emplace_back(info.id);
+            for (auto const& infos : nameToResourceInfo_)
+                for (auto const& [_, info] : infos)
+                    ids.emplace_back(info.id);
 
             return ids;
         }
@@ -286,40 +287,63 @@ namespace amr
 
 
 
-        /** \brief Get all the names and resources id that the resource view
-         *  have registered via the ResourcesManager
-         */
-        NO_DISCARD std::optional<int> getID(std::string const& resourceName) const
-        {
-            auto id = nameToResourceInfo_.find(resourceName);
-
-            if (id != std::end(nameToResourceInfo_))
-                return std::optional<int>{id->second.id};
-
-            return std::nullopt;
-        }
-
-
-
         NO_DISCARD auto restart_patch_data_ids() const
         {
             // see https://github.com/PHAREHUB/PHARE/issues/664
-            std::vector<int> ids;
-            for (auto const& [key, info] : nameToResourceInfo_)
-                ids.emplace_back(info.id);
-            return ids;
+            return ALL_IDS();
         }
 
-        auto getIDsList(auto&&... keys) const
+
+        // by name within one model, the same name may exist on other models
+        template<typename Model>
+        NO_DISCARD std::optional<int> getIDFor(std::string const& resourceName) const
         {
-            auto const Fn = [&](auto& key) {
+            static_assert(model_index_of_<Model> < std::tuple_size_v<TypeTuple>,
+                          "Model is not one of the models registered on this ResourcesManager");
+            auto const& infos = nameToResourceInfo_[model_index_of_<Model>];
+            if (auto it = infos.find(resourceName); it != infos.end())
+                return it->second.id;
+            return std::nullopt;
+        }
+
+        template<typename Model>
+        auto getIDsListFor(auto&&... keys) const
+        {
+            auto const Fn = [&](auto const& key) {
                 if (key.empty())
                     throw std::runtime_error("Resource Manager key cannot be empty");
-                if (auto const id = getID(key))
+                if (auto const id = getIDFor<Model>(key))
                     return *id;
                 throw std::runtime_error("Resource Manager has no key: " + key);
             };
             return std::array{Fn(keys)...};
+        }
+
+
+        /** \brief this ResourcesManager, with name lookups restricted to Model's resources - for
+         * callers that only deal with one model (messengers, model views), so names never need
+         * to differ between models
+         */
+        template<typename Model>
+        struct ModelScoped
+        {
+            ResourcesManager const& rm;
+
+            NO_DISCARD auto getID(std::string const& name) const
+            {
+                return rm.template getIDFor<Model>(name);
+            }
+
+            NO_DISCARD auto getIDsList(auto&&... keys) const
+            {
+                return rm.template getIDsListFor<Model>(keys...);
+            }
+        };
+
+        template<typename Model>
+        NO_DISCARD ModelScoped<Model> scoped() const
+        {
+            return {*this};
         }
 
 
@@ -415,8 +439,9 @@ namespace amr
         {
             if constexpr (is_resource<ResourcesView>::value)
             {
-                auto foundIt = nameToResourceInfo_.find(obj.name());
-                if (foundIt == nameToResourceInfo_.end())
+                auto const& infos = resourceInfosFor_(obj);
+                auto foundIt      = infos.find(obj.name());
+                if (foundIt == infos.end())
                     throw std::runtime_error("Cannot find " + obj.name());
                 IDs.push_back(foundIt->second.id);
             }
@@ -500,14 +525,14 @@ namespace amr
             if (view.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            if (nameToResourceInfo_.count(view.name()) == 0)
+            if (auto& infos = resourceInfosFor_(view); infos.count(view.name()) == 0)
             {
                 ResourcesInfo info;
                 info.variable = ResourcesResolver_t::make_shared_variable(view);
                 info.id       = variableDatabase_->registerVariableAndContext(
                     info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                nameToResourceInfo_.emplace(view.name(), info);
+                infos.emplace(view.name(), info);
             }
         }
 
@@ -525,8 +550,9 @@ namespace amr
             if (obj.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
-            if (resourceInfoIt == nameToResourceInfo_.end())
+            auto const& infos          = resourceInfosFor_(obj);
+            auto const& resourceInfoIt = infos.find(obj.name());
+            if (resourceInfoIt == infos.end())
                 throw std::runtime_error("Resources not found ! " + obj.name());
 
             obj.setBuffer(getResourcesPointer_<ResourcesType>(resourceInfoIt->second, patch));
@@ -538,8 +564,8 @@ namespace amr
             if (obj.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
-            if (resourceInfoIt == nameToResourceInfo_.end())
+            auto const& infos = resourceInfosFor_(obj);
+            if (infos.find(obj.name()) == infos.end())
                 throw std::runtime_error("Resources not found !");
 
             obj.setBuffer(nullptr);
@@ -557,8 +583,9 @@ namespace amr
             if (obj.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
-            if (resourceVariablesInfo != nameToResourceInfo_.end())
+            auto const& infos                 = resourceInfosFor_(obj);
+            auto const& resourceVariablesInfo = infos.find(resourcesName);
+            if (resourceVariablesInfo != infos.end())
             {
                 if (!patch.checkAllocated(resourceVariablesInfo->second.id))
                     patch.allocatePatchData(resourceVariablesInfo->second.id, allocateTime);
@@ -573,7 +600,27 @@ namespace amr
         SAMRAI::hier::VariableDatabase* variableDatabase_;
         std::shared_ptr<SAMRAI::hier::VariableContext> context_;
         SAMRAI::tbox::Dimension dimension_;
-        std::map<std::string, ResourcesInfo> nameToResourceInfo_;
+        template<typename Model>
+        static constexpr std::size_t model_index_of_
+            = index_in_tuple<typename model_core_types_of<Model, TypeTuple>::type, TypeTuple>::value;
+
+        // one map per model: names are unique within a model, not across models
+        std::array<std::map<std::string, ResourcesInfo>, std::tuple_size_v<TypeTuple>>
+            nameToResourceInfo_;
+
+        // the map of the model owning ResourcesView, resolved at compile time
+        template<typename ResourcesView>
+        NO_DISCARD std::map<std::string, ResourcesInfo>& resourceInfosFor_(ResourcesView const&)
+        {
+            return nameToResourceInfo_[ResourceResolver<This, ResourcesView>::model_index];
+        }
+
+        template<typename ResourcesView>
+        NO_DISCARD std::map<std::string, ResourcesInfo> const&
+        resourceInfosFor_(ResourcesView const&) const
+        {
+            return nameToResourceInfo_[ResourceResolver<This, ResourcesView>::model_index];
+        }
 
         template<typename ResourcesManager, typename... ResourcesViews>
         friend class ResourcesGuard;
