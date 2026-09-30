@@ -347,11 +347,9 @@ double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& mode
     // whistler wave cfl criterion
     double dt = std::numeric_limits<double>::max();
 
-    auto& rm = *hybridModel.resourcesManager;
-    for (auto& patch : rm.enumerate(level, n, B))
-    {
-        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-
+    // on one patch, or one tile of it - tiles are traversed sequentially, so reducing into dt is
+    //  safe; min is order independent and tile overlaps don't matter
+    auto const whistlerDt = [&](auto const& layout, auto const& n, auto const& B) {
         auto const meshSize = layout.meshSize();
 
         auto const& Bx = B(core::Component::X);
@@ -376,6 +374,17 @@ double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& mode
 
             dt = std::min(dt, wave / invDtWhistler);
         });
+    };
+
+    auto& rm = *hybridModel.resourcesManager;
+    for (auto& patch : rm.enumerate(level, n, B))
+    {
+        using field_type = std::decay_t<decltype(n)>;
+
+        if constexpr (core::is_field_tile_set_v<field_type>)
+            core::tile_exec_with_layout(whistlerDt, n, B);
+        else
+            whistlerDt(amr::layoutFromPatch<GridLayout>(*patch), n, B);
     }
 
     return dt;
