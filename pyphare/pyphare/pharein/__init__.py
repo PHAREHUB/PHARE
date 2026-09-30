@@ -57,12 +57,6 @@ if venv_path is not None:
     sys.path = sys.path + pythonpath
 
 
-def add_vector_string(path, val):
-    import pybindlibs.dictator as pp
-
-    pp.add_vector_string(path, list(val))
-
-
 def NO_GUI():
     """prevents issues when command line only and no desktop etc"""
     import matplotlib as mpl
@@ -88,7 +82,9 @@ def populateDict(simulation=None):
         simulation = sim
 
     initialize.general.populateDict(simulation)
-    add_vector_string("simulation/models", simulation.model_options)
+    initialize.DictPopulator().add_vector_string(
+        "simulation/models", simulation.model_options
+    )
 
     if "HybridModel" in simulation.model_options:
         initialize.hybrid.populateDict(simulation)
