@@ -11,8 +11,8 @@ import pyphare.pharein as ph
 # minimal valid geometry; time parameters are supplied per-test
 baseArgs = dict(
     boundary_types="periodic",
-    cells=np.array([20]),
-    dl=0.3,
+    cells=[20],
+    dl=[0.3],
 )
 
 
