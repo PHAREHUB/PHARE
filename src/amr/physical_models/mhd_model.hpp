@@ -85,6 +85,9 @@ public:
 
     NO_DISCARD bool isSettable() const { return state.isSettable(); }
 
+    NO_DISCARD auto& getRunTimeResourcesViewList() { return resources; }
+    NO_DISCARD auto& getRunTimeResourcesViewList() const { return resources; }
+
     NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
@@ -105,7 +108,7 @@ public:
 };
 
 template<typename Types>
-void MHDModel<Types>::registerTemporaryRequirements(auto&&... quantities)
+void MHDModel<Types>::registerTemporaryRequirements(auto&&... /*quantities*/)
 {
     // todo figure out at runtime
     std::array<std::size_t, std::variant_size_v<Resources>> _n_per_type{2, 2};

@@ -81,8 +81,11 @@ void ParticlesDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& d
                                                          std::size_t iLevel,
                                                          std::string const& patchID,
                                                          Attributes& patchAttributes,
-                                                         ModelViewVariant& /*modelView*/)
+                                                         ModelViewVariant& modelViewVariant)
 {
+    if (!this->h5Writer_.mapper().is_hybrid_model(modelViewVariant))
+        return; // patch is on a level owned by another model
+
     auto checkInfo = [&](auto& tree, auto pType, auto& attr, auto& ps) {
         std::string active{tree + pType};
         if (diagnostic.quantity == active)
@@ -133,8 +136,7 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
         }
     };
 
-    auto initDataSet = [&](auto& lvl, auto& patchID, auto& attr) {
-        bool null = patchID.empty();
+    auto initDataSet = [&](auto& lvl, auto& patchID, auto& attr, bool const null) {
         std::string path{h5Writer_.getPatchPathAddTimestamp(lvl, patchID) + "/"};
         std::size_t part_idx = 0;
         core::apply(Packer::empty(), [&](auto const& arg) {
@@ -147,7 +149,11 @@ void ParticlesDiagnosticWriter<H5Writer>::initDataSets(
 
     auto initIfActive = [&](auto& lvl, auto& tree, auto& attr, auto& pop, auto& patch, auto var) {
         if (diagnostic.quantity == tree + var)
-            initDataSet(lvl, patch, patch.empty() ? attr : attr[pop][var]);
+        {
+            // a patch on a level owned by another model has no attributes for this one
+            bool const null = patch.empty() or !attr.contains(pop);
+            initDataSet(lvl, patch, null ? attr : attr[pop][var], null);
+        }
     };
 
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
@@ -167,6 +173,8 @@ template<typename H5Writer>
 void ParticlesDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 {
     auto& h5Writer = this->h5Writer_;
+    if (!h5Writer.mapper().is_hybrid_model(h5Writer.currentModelView()))
+        return; // patch is on a level owned by another model
 
     auto checkWrite = [&](auto& tree, auto pType, auto& ps) {
         std::string active{tree + pType};
