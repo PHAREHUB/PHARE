@@ -364,7 +364,7 @@ void H5Writer<ModelMapper_t>::writeDatasets_(std::vector<DiagnosticProperties*> 
     for (auto* diagnostic : diagnostics)
     {
         auto& typeWriter = *typeWriters_.at(diagnostic->type);
-        typeWriter.compute(*diagnostic); // compute to temporaries then write immediately!
+        typeWriter.compute_as_needed(*diagnostic); // compute to temporaries then write immediately!
         mapper_.visitHierarchy(
             [&](auto& /*gridLayout*/, std::string const& patchID, std::size_t iLevel,
                 auto& modelView) {

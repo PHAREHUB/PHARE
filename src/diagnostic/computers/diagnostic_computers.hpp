@@ -15,8 +15,8 @@ namespace PHARE::diagnostic
 // level range/timestamp, none of which are specific to any particular writer type (h5, vtk)
 void compute_momentum_tensor(auto& modelView, std::size_t minLvl, std::size_t maxLvl,
                              double timestamp);
-void compute_pop_momentum_tensor(auto& modelView, auto& pop, std::size_t minLvl,
-                                 std::size_t maxLvl, double timestamp);
+void compute_pop_momentum_tensor(auto& modelView, auto& pop, std::size_t minLvl, std::size_t maxLvl,
+                                 double timestamp);
 void compute_mhd_velocity(auto& modelView, std::size_t minLvl, std::size_t maxLvl,
                           double timestamp);
 void compute_mhd_pressure(auto& modelView, double gamma, std::size_t minLvl, std::size_t maxLvl,
@@ -37,6 +37,7 @@ void _fill_all_pop_schedules(auto& modelView, auto fn, std::size_t minLvl, std::
     modelView.onLevels(fill_schedules, minLvl, maxLvl);
 }
 
+
 void _fill_one_pop_schedule(auto& modelView, auto fn, auto& pop, std::size_t minLvl,
                             std::size_t maxLvl, double timestamp)
 {
@@ -45,6 +46,7 @@ void _fill_one_pop_schedule(auto& modelView, auto fn, auto& pop, std::size_t min
     auto const fill_schedules = [&](auto& lvl) { fn(modelView, lvl, timestamp, i); };
     modelView.onLevels(fill_schedules, minLvl, maxLvl);
 }
+
 
 // sums resources[0..n) (per population) into resources[n] (the ions-level aggregate),
 // component-wise, where n == ions.size()
@@ -103,6 +105,8 @@ struct MomentumTensorComputer
     ModelView_t& modelView;
     core::MomentumTensorInterpolator<dimension, interp_order> interpolator{};
 };
+
+
 template<typename ModelView_t>
 MomentumTensorComputer(ModelView_t&) -> MomentumTensorComputer<ModelView_t>;
 
@@ -130,8 +134,8 @@ void compute_momentum_tensor(auto& modelView, std::size_t minLvl, std::size_t ma
 }
 
 
-void compute_pop_momentum_tensor(auto& modelView, auto& pop, std::size_t minLvl,
-                                 std::size_t maxLvl, double timestamp)
+void compute_pop_momentum_tensor(auto& modelView, auto& pop, std::size_t minLvl, std::size_t maxLvl,
+                                 double timestamp)
 {
     MomentumTensorComputer computer{modelView};
     auto const i           = modelView.getIons().pop_index(pop.name());
@@ -148,7 +152,7 @@ void compute_mhd_velocity(auto& modelView, std::size_t minLvl, std::size_t maxLv
                           double /*timestamp*/)
 {
     using GridLayout = typename std::decay_t<decltype(modelView)>::GridLayout;
-    auto& state       = modelView.model().state;
+    auto& state      = modelView.model().state;
 
     modelView.visitHierarchy(
         [&](GridLayout& layout, std::string const&, std::size_t) {
@@ -166,13 +170,12 @@ void compute_mhd_pressure(auto& modelView, double gamma, std::size_t minLvl, std
                           double /*timestamp*/)
 {
     using GridLayout = typename std::decay_t<decltype(modelView)>::GridLayout;
-    auto& state       = modelView.model().state;
+    auto& state      = modelView.model().state;
 
     modelView.visitHierarchy(
         [&](GridLayout& layout, std::string const&, std::size_t) {
             core::ToPrimitiveConverter<GridLayout> toPrim{layout};
-            toPrim.eosEtotToPOnGhostBox(gamma, state.rho, state.rhoV, state.B, state.Etot,
-                                        state.P);
+            toPrim.eosEtotToPOnGhostBox(gamma, state.rho, state.rhoV, state.B, state.Etot, state.P);
         },
         minLvl, maxLvl);
 }

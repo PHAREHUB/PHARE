@@ -31,7 +31,7 @@ public:
 
     void setup(DiagnosticProperties&) override;
     void write(DiagnosticProperties&) override;
-    void compute(DiagnosticProperties&) override;
+    void compute_as_needed(DiagnosticProperties&) override;
 
     // resolves the ModelView for diagnostic.type ("fluid"->hybrid, "mhd"->mhd) by checking
     // is_hybrid_model_v/is_mhd_model_v on the alternatives actually present in modelViews -
@@ -273,7 +273,7 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
 
 
 template<typename H5Writer>
-void FluidDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
+void FluidDiagnosticWriter<H5Writer>::compute_as_needed(DiagnosticProperties& diagnostic)
 {
     auto& mv = ownModelView(diagnostic);
     std::visit([&](auto& modelView) { computeMhdFluid(modelView, diagnostic); }, mv);

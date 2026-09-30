@@ -430,8 +430,6 @@ void DiagnosticsManager<ModelMapper>::dump_level(std::size_t level, double timeS
     for (auto& diag : diagnostics_)
         activeDiagnostics.emplace_back(&diag);
 
-    // compute() now happens inside writer_.dump()/dump_level() itself, immediately before
-    // each diagnostic's own write pass - see H5Writer::writeDatasets_
     writer_.dump_level(level, activeDiagnostics, timeStamp);
 }
 
@@ -442,6 +440,8 @@ bool DiagnosticsManager<ModelMapper>::dump(double timeStamp, double timeStep)
     std::vector<DiagnosticProperties*> activeDiagnostics;
     for (auto& diag : diagnostics_)
     {
+        if (needsCompute_(diag, timeStamp, timeStep))
+            writer_.getDiagnosticWriterForType(diag.type)->compute(diag);
         if (needsWrite_(diag, timeStamp, timeStep))
             activeDiagnostics.emplace_back(&diag);
     }

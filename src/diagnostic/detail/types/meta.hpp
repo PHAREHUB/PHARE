@@ -33,7 +33,7 @@ public:
 
     void write(DiagnosticProperties&) override;
 
-    void compute(DiagnosticProperties&) override {}
+    void compute_as_needed(DiagnosticProperties&) override {}
 
     void createFiles(DiagnosticProperties& diagnostic) override;
 
