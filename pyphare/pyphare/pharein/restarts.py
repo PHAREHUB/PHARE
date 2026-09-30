@@ -106,19 +106,24 @@ def validate(sim):
         timestamps = restart_options["timestamps"]
         if np.any(timestamps < init_time):
             raise RuntimeError(
-                f"Error: timestamp({sim.time_step_nbr}) cannot be less than simulation.init_time({init_time}))"
+                f"Error: timestamp({timestamps[timestamps < init_time]}) "
+                f"cannot be less than simulation.init_time({init_time}))"
             )
-        if np.any(timestamps > sim.final_time):
+        final_time = sim.time_stepper.final_time
+        if np.any(timestamps > final_time):
             raise RuntimeError(
-                f"Error: timestamp({sim.time_step_nbr}) cannot be greater than simulation.final_time({sim.final_time}))"
+                f"Error: timestamp({timestamps[timestamps > final_time]}) "
+                f"cannot be greater than simulation.final_time({final_time}))"
             )
         if not np.all(np.diff(timestamps) >= 0):
             raise RuntimeError(
                 "Error: restart_options timestamps not in ascending order)"
             )
-        if not np.all(
+        if sim.time_stepper.mode == "constant" and not np.all(
             np.abs(
-                timestamps / sim.time_step - np.rint(timestamps / sim.time_step) < 1e-9
+                timestamps / sim.time_stepper.time_step
+                - np.rint(timestamps / sim.time_stepper.time_step)
+                < 1e-9
             )
         ):
             raise RuntimeError(

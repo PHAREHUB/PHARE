@@ -12,3 +12,6 @@ if(HighFive)
   ## These test use dump diagnostics so require HighFive!
   phare_mpi_python3_exec(21 4 test-orszag-tang orszag_tang.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()
+
+## no dump diagnostics here, HighFive is not required
+phare_mpi_python3_exec(101 4 test-orszag-tang-benchmark orszag_tang_benchmark.py ${CMAKE_CURRENT_BINARY_DIR})

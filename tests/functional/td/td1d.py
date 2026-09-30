@@ -90,8 +90,8 @@ def config():
     ph.ElectronModel(closure="isothermal", Te=0.12)
 
     dt_dump = 0.1
-    n_dump = int(sim.final_time / dt_dump) + 1
-    timestamps = np.linspace(0, sim.final_time, n_dump)
+    n_dump = int(sim.time_stepper.final_time / dt_dump) + 1
+    timestamps = np.linspace(0, sim.time_stepper.final_time, n_dump)
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)

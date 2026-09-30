@@ -91,7 +91,7 @@ def config():
 
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
-    timestamps = np.arange(0, sim.final_time, 0.1)
+    timestamps = np.arange(0, sim.time_stepper.final_time, 0.1)
 
     for quantity in ["B", "E"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)

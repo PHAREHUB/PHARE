@@ -121,7 +121,6 @@ class Simulator:
             self.cpp_lib = cpp.cpp_lib(self.simulation)
             self.cpp_hier = cpp.cpp_etc_lib().make_hierarchy()
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
-
             return self
         except Exception:
             import traceback
@@ -160,15 +159,14 @@ class Simulator:
         # or reraise
         raise RuntimeError(e)
 
-    def advance(self, dt=None):
+    def advance(self):
         self._check_init()
         if self.simulation.dry_run:
             return self
-        if dt is None:
-            dt = self.timeStep()
 
         try:
-            self.cpp_sim.advance(dt)
+            # dt lives on the C++ side: fixed by config, or recomputed per step when adaptive
+            self.cpp_sim.advance()
         except (RuntimeError, TypeError, NameError, ValueError) as e:
             self._throw(f"Exception caught in simulator.py::advance: \n{e}")
         except KeyboardInterrupt as e:
@@ -223,7 +221,8 @@ class Simulator:
                     end=self.print_eol,
                 )
 
-        print_rank0(f"mean advance time = {np.mean(perf)}")
+        if perf:
+            print_rank0(f"mean advance time = {np.mean(perf)}")
         print_rank0(f"total advance time = {datetime.timedelta(seconds=tot)}")
         print_rank0("Finished at ", datetime.datetime.now())
 
@@ -306,3 +305,4 @@ class Simulator:
         if need_log_dir and cpp.mpi_rank() == 0:
             Path(".log").mkdir(exist_ok=True)
         cpp.mpi_barrier()
+

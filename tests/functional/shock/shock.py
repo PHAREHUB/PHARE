@@ -97,8 +97,8 @@ def config(interp_order):
 
     ph.ElectronModel(closure="isothermal", Te=0.12)
 
-    dt = 10 * sim.time_step
-    nt = sim.final_time / dt + 1
+    dt = 10 * sim.time_stepper.time_step
+    nt = sim.time_stepper.final_time / dt + 1
     timestamps = dt * np.arange(nt)
 
     for quantity in ["E", "B"]:
@@ -126,8 +126,8 @@ def main():
         dry_run = sim.dry_run
 
         if not dry_run and cpp.mpi_rank() == 0:
-            dt = 10 * sim.time_step
-            nt = sim.final_time / dt + 1
+            dt = 10 * sim.time_stepper.time_step
+            nt = sim.time_stepper.final_time / dt + 1
             times = dt * np.arange(nt)
             r = Run("shock_{}".format(interp_order))
             for it, t in enumerate(times):

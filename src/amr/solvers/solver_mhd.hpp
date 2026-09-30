@@ -12,6 +12,7 @@
 #include "core/logger.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 #include "core/utilities/index/index.hpp"
 
 #include "initializer/data_provider.hpp"
@@ -55,6 +56,10 @@ private:
 
     std::unordered_map<std::size_t, double> oldTime_;
 
+    double const gamma_; // adiabatic index
+    double const eta_;   // resistivity
+    bool const isHall_;
+
 public:
     SolverMHD(PHARE::initializer::PHAREDict const& dict)
         : ISolver<AMR_Types>{"MHDSolver"}
@@ -87,6 +92,9 @@ public:
                    {"sumRhoV_fz", MHDQuantity::Vector::VecFlux_z},
                    {"sumB_fz", MHDQuantity::Vector::VecFlux_z},
                    {"sumEtot_fz", MHDQuantity::Scalar::ScalarFlux_z}}
+        , gamma_{dict["to_primitive"]["heat_capacity_ratio"].template to<double>()}
+        , eta_{dict["constrained_transport"]["resistivity"].template to<double>()}
+        , isHall_{cppdict::get_value(dict, "fv_method/hall", false)}
     {
     }
 
@@ -116,6 +124,9 @@ public:
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
                       IMessenger& fromCoarserMessenger, double const currentTime,
                       double const newTime) override;
+
+    double computeStableDt(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+                           CFLNumbers const& cflNumbers) override;
 
     void onRegrid() override {}
 
@@ -384,6 +395,85 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::advanceLevel(
 
     if (mpi::any_errors())
         throw core::DictionaryException{}("ID", "SolverMHD::advanceLevel");
+}
+
+template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
+double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
+    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, CFLNumbers const& cflNumbers)
+{
+    PHARE_LOG_SCOPE(1, "SolverMHD::computeStableDt");
+
+    auto const [wave, diffusive] = cflNumbers;
+
+    auto& mhdModel = dynamic_cast<MHDModel&>(model);
+    auto& rho      = mhdModel.state.rho;
+    auto& rhoV     = mhdModel.state.rhoV;
+    auto& B        = mhdModel.state.B;
+    auto& Etot     = mhdModel.state.Etot;
+
+    double dt = std::numeric_limits<double>::max();
+
+    for (auto& patch : level)
+    {
+        auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
+        auto _             = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot);
+
+        auto const meshSize = layout.meshSize();
+
+        // diffusive cfl constraint
+        if (eta_ > 0)
+        {
+            double invdx2 = 0;
+            for (std::size_t d = 0; d < dimension; ++d)
+                invdx2 += 1.0 / (meshSize[d] * meshSize[d]);
+            dt = std::min(dt, diffusive / (2.0 * eta_ * invdx2));
+        }
+
+        auto const& rhoVx = rhoV(core::Component::X);
+        auto const& rhoVy = rhoV(core::Component::Y);
+        auto const& rhoVz = rhoV(core::Component::Z);
+        auto const& Bx    = B(core::Component::X);
+        auto const& By    = B(core::Component::Y);
+        auto const& Bz    = B(core::Component::Z);
+
+        // wave cfl constraint
+        layout.evalOnBox(rho, [&](auto&... args) mutable {
+            core::MeshIndex<dimension> const index{args...};
+
+            auto const r  = rho(index);
+            auto const vx = rhoVx(index) / r;
+            auto const vy = rhoVy(index) / r;
+            auto const vz = rhoVz(index) / r;
+
+            auto const bx
+                = GridLayout::template project<GridLayout::implT::faceXToCellCenter>(Bx, index);
+            auto const by
+                = GridLayout::template project<GridLayout::implT::faceYToCellCenter>(By, index);
+            auto const bz
+                = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
+
+            auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
+            auto const BdotB = bx * bx + by * by + bz * bz;
+
+            std::array<double, 3> const v{vx, vy, vz};
+            std::array<double, 3> const b{bx, by, bz};
+
+            // sum_d (|v_d| + c_fast_d + c_whistler_d) / dx_d over simulated directions
+            double invDtWave = 0;
+            for (std::size_t d = 0; d < dimension; ++d)
+            {
+                auto const cfast = core::compute_fast_magnetosonic_(gamma_, r, b[d], BdotB, P);
+                // Hall whistler
+                auto const cw = isHall_ ? std::numbers::pi
+                                              * core::compute_whistler_(1.0 / meshSize[d], r, BdotB)
+                                        : 0.0;
+                invDtWave += (std::abs(v[d]) + cfast + cw) / meshSize[d];
+            }
+            dt = std::min(dt, wave / invDtWave);
+        });
+    }
+
+    return dt;
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>

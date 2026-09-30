@@ -14,6 +14,8 @@
 #include "python3/pybind_def.hpp"
 #include "python3/patch_data.hpp"
 
+#include "core/utilities/timestamps.hpp"
+
 #include "hdf5/phare_hdf5.hpp"
 
 #if PHARE_HAS_HIGHFIVE
@@ -96,6 +98,10 @@ PYBIND11_MODULE(cpp_etc, m)
     m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
 
     m.def("makePyArrayWrapper", makePyArrayWrapper<double>);
+
+    py::enum_<core::TimeStepType>(m, "TimeStepType")
+        .value("constant", core::TimeStepType::constant)
+        .value("adaptive", core::TimeStepType::adaptive);
 
     m.def("phare_deps", []() {
         std::unordered_map<std::string, std::string> versions{{"pybind", pybind_version()},

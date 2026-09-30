@@ -79,7 +79,8 @@ def uniform(vth, dl, cells, nbr_steps):
 
     ph.ElectronModel(closure="isothermal", Te=0.1)
 
-    timestamps = np.arange(0, sim.final_time, 50 * sim.time_step)
+    stepper = sim.time_stepper
+    timestamps = np.arange(0, stepper.final_time, 50 * stepper.time_step)
 
     for quantity in ["B"]:
         ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)

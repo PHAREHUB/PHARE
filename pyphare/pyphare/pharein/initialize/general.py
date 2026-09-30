@@ -78,6 +78,43 @@ def add_vector_int(path, val):
     pp.add_vector_int(path, list(val))
 
 
+def add_enum_int(path, enum_name, member_name):
+    """Writes the integer value of an enum member exposed by cpp_etc."""
+    from pyphare.cpp import cpp_etc_lib
+
+    enum_cls = getattr(cpp_etc_lib(), enum_name)
+    member = str(member_name).lower()
+    if member not in enum_cls.__members__:
+        raise ValueError(
+            f"{enum_name}: unknown value '{member_name}',"
+            f" expected one of {list(enum_cls.__members__)}"
+        )
+    add_int(path, int(getattr(enum_cls, member)))
+
+
+def dict_populator():
+    def add_size_t(path, val):
+        casted = int(val)
+        if casted < 0:
+            raise RuntimeError("pyphare.__init__::add_size_t received negative value")
+        pp.add_size_t(path, casted)
+
+    def add_vector_int(path, val):
+        pp.add_vector_int(path, list(val))
+
+    class DictPopulator:
+        def __init__(self):
+            self.add_int = add_int
+            self.add_bool = add_bool
+            self.add_double = add_double
+            self.add_size_t = add_size_t
+            self.add_vector_int = add_vector_int
+            self.add_string = pp.add_string
+            self.add_enum_int = add_enum_int
+
+    return DictPopulator()
+
+
 add_string = pp.add_string
 
 
@@ -121,9 +158,8 @@ def populateDict(sim):
 
     add_int("simulation/interp_order", sim.interp_order)
     add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
-    add_double("simulation/time_step", sim.time_step)
-    add_int("simulation/time_step_nbr", sim.time_step_nbr)
-    add_double("simulation/final_time", sim.final_time)
+
+    sim.time_stepper.populate_dict(dict_populator())
 
     add_string("simulation/AMR/clustering", sim.clustering)
     if sim.nesting_buffer is not None:
