@@ -60,7 +60,7 @@ def config(**kwargs):
     ph.ElectronModel(closure="isothermal", Te=kwargs.get("Te", 0.005))
 
     sim = ph.global_vars.sim
-    dt = sim.time_step * 500
+    dt = sim.time_stepper.time_step * 500
     timestamps = np.arange(0, sim.final_time + dt, dt)
 
     for quantity in ["E", "B"]:
