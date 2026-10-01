@@ -1,6 +1,7 @@
 #ifndef PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 #define PHARE_SRC_AMR_FIELD_FIELD_VARIABLE_FILL_PATTERN_HPP
 
+#include "core/def.hpp"
 #include "core/logger.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "core/utilities/types.hpp"
@@ -216,6 +217,23 @@ private:
 };
 
 
+/** @brief True if both geometries are built on the same patch, not on a periodic image of it.
+ * Distinct overlapping patches may have identical boxes, so box ids are compared, not extents.
+ */
+template<typename Geometry_t>
+NO_DISCARD bool isSamePatch(Geometry_t const& dst_geometry, Geometry_t const& src_geometry)
+{
+    auto const& dst_id = dst_geometry.patchBox.getBoxId();
+    auto const& src_id = src_geometry.patchBox.getBoxId();
+    if (!dst_id.getLocalId().isValid() or !src_id.getLocalId().isValid())
+    {
+        PHARE_DEBUG_DO(throw std::runtime_error("isSamePatch: geometry box without id");)
+        return dst_geometry.patchBox.isSpatiallyEqual(src_geometry.patchBox);
+    }
+    return dst_id == src_id;
+}
+
+
 // We use this fill pattern to sum the contributions of border fields like rho and flux
 /** \brief VariableFillPattern that is used to fill incomplete ghost domain moment nodes
  *
@@ -269,17 +287,14 @@ public:
     {
         PHARE_LOG_SCOPE(3, "FieldGhostInterpOverlapFillPattern::calculateOverlap");
 
-        // Skip if src and dst are the same
-        if (phare_box_from<dim>(dst_patch_box) == phare_box_from<dim>(src_mask))
+        auto const& dst_geometry = dynamic_cast<FieldGeometry_t const&>(_dst_geometry);
+        auto const& src_geometry = dynamic_cast<FieldGeometry_t const&>(_src_geometry);
+
+        if (isSamePatch(dst_geometry, src_geometry))
             return std::make_shared<FieldOverlap>(SAMRAI::hier::BoxContainer{}, transformation);
 
-        if (dynamic_cast<FieldGeometry_t const*>(&_dst_geometry))
-            return calculateOverlap(dynamic_cast<FieldGeometry_t const&>(_dst_geometry),
-                                    dynamic_cast<FieldGeometry_t const&>(_src_geometry),
-                                    dst_patch_box, src_mask, fill_box, overwrite_interior,
-                                    transformation);
-        else
-            throw std::runtime_error("bad cast");
+        return calculateOverlap(dst_geometry, src_geometry, dst_patch_box, src_mask, fill_box,
+                                overwrite_interior, transformation);
     }
 
 
@@ -348,8 +363,10 @@ public:
     {
         PHARE_LOG_SCOPE(3, "TensorFieldGhostInterpOverlapFillPattern::calculateOverlap");
 
-        // Skip if src and dst are the same
-        if (phare_box_from<dim>(dst_patch_box) == phare_box_from<dim>(src_mask))
+        auto const& dst_geometry = dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry);
+        auto const& src_geometry = dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry);
+
+        if (isSamePatch(dst_geometry, src_geometry))
         {
             auto overlaps = PHARE::core::for_N_make_array<N>([&](auto /*i*/) {
                 return std::make_shared<FieldOverlap>(SAMRAI::hier::BoxContainer{}, transformation);
@@ -357,21 +374,14 @@ public:
             return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
         }
 
-        if (dynamic_cast<TensorFieldGeometry_t const*>(&_dst_geometry))
-        {
-            auto overlaps = PHARE::core::for_N_make_array<N>([&](auto i) {
-                auto overlap = FieldGhostInterpOverlapFillPattern<Gridlayout_t>::calculateOverlap(
-                    dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry)[i],
-                    dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry)[i], dst_patch_box,
-                    src_mask, fill_box, overwrite_interior, transformation);
+        auto overlaps = PHARE::core::for_N_make_array<N>([&](auto i) {
+            auto overlap = FieldGhostInterpOverlapFillPattern<Gridlayout_t>::calculateOverlap(
+                dst_geometry[i], src_geometry[i], dst_patch_box, src_mask, fill_box,
+                overwrite_interior, transformation);
 
-                return std::dynamic_pointer_cast<FieldOverlap>(overlap);
-            });
-            return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
-        }
-
-        else
-            throw std::runtime_error("bad cast");
+            return std::dynamic_pointer_cast<FieldOverlap>(overlap);
+        });
+        return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
     }
 
     std::string const& getPatternName() const override { return s_name_id; }

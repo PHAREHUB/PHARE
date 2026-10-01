@@ -1,5 +1,6 @@
 // Same-level patches may overlap. These tests cover the pieces that make overlapping
-// patches behave as a partition of the level: the region used to exchange leaving particles.
+// patches behave as a partition of the level: the region used to exchange leaving particles,
+// and the border sum between distinct patches with equal boxes.
 
 #include "phare_core.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
@@ -179,6 +180,82 @@ TEST(PatchOverlapExchangeRegion, matchesClippedRegionWithoutOverlap3D)
     checkExchangeRegion<3, 1>();
     checkExchangeRegion<3, 2>();
     checkExchangeRegion<3, 3>();
+}
+
+
+
+// ---------------------------------------------------------------------------------------------
+// border sum: a patch skips itself, not another patch with the same box
+
+template<std::size_t dim>
+auto makeLayout(SAMRAI::hier::Box const& box)
+{
+    using GridLayout = GridLayout_t<dim, 1>;
+    std::array<double, dim> dl;
+    std::array<std::uint32_t, dim> nbrCells;
+    core::Point<double, dim> origin;
+    for (std::size_t i = 0; i < dim; ++i)
+    {
+        dl[i]       = 0.1;
+        nbrCells[i] = box.numberCells(i);
+        origin[i]   = 0;
+    }
+    return GridLayout{dl, nbrCells, origin};
+}
+
+template<std::size_t dim>
+void checkBorderSumSkipsOnlySelf()
+{
+    using GridLayout = GridLayout_t<dim, 1>;
+    using Scalar     = core::HybridQuantity::Scalar;
+    using Field_g    = amr::FieldGeometry<GridLayout, Scalar>;
+    using Vector_g   = amr::TensorFieldGeometry<1, GridLayout, core::HybridQuantity>;
+
+    SAMRAI::tbox::Dimension const sdim{dim};
+    auto const extent
+        = samraiBox(Box_t<dim>{core::ConstArray<int, dim>(0), core::ConstArray<int, dim>(7)});
+    auto const layout = makeLayout<dim>(extent);
+
+    SAMRAI::hier::Box const patch{extent, SAMRAI::hier::LocalId{0}, 0};
+    SAMRAI::hier::Box const twin{extent, SAMRAI::hier::LocalId{1}, 0};
+    SAMRAI::hier::Box const image{extent, SAMRAI::hier::LocalId{0}, 0, SAMRAI::hier::PeriodicId{1}};
+    SAMRAI::hier::Transformation const noShift{SAMRAI::hier::IntVector::getZero(sdim)};
+    auto fill_box = extent;
+    fill_box.grow(SAMRAI::hier::IntVector{sdim, 2});
+
+    auto const isEmpty = [&](auto const& pattern, auto const& dst, auto const& src) {
+        // through the virtual interface, as RefineSchedule calls it
+        using Geometry = SAMRAI::hier::BoxGeometry const&;
+        return pattern
+            .calculateOverlap(static_cast<Geometry>(dst), static_cast<Geometry>(src), patch, extent,
+                              fill_box, true, noShift)
+            ->isOverlapEmpty();
+    };
+
+    amr::FieldGhostInterpOverlapFillPattern<GridLayout> scalarPattern;
+    Field_g const patchField{patch, layout, Scalar::rho};
+    EXPECT_TRUE(isEmpty(scalarPattern, patchField, Field_g{patch, layout, Scalar::rho}));
+    EXPECT_FALSE(isEmpty(scalarPattern, patchField, Field_g{twin, layout, Scalar::rho}));
+    EXPECT_FALSE(isEmpty(scalarPattern, patchField, Field_g{image, layout, Scalar::rho}));
+
+    auto constexpr V = core::HybridQuantity::Vector::V;
+    amr::TensorFieldGhostInterpOverlapFillPattern<GridLayout> vectorPattern;
+    Vector_g const patchVector{patch, layout, V};
+    EXPECT_TRUE(isEmpty(vectorPattern, patchVector, Vector_g{patch, layout, V}));
+    EXPECT_FALSE(isEmpty(vectorPattern, patchVector, Vector_g{twin, layout, V}));
+}
+
+TEST(PatchOverlapBorderSum, skipsSelfButNotIdenticalBox1D)
+{
+    checkBorderSumSkipsOnlySelf<1>();
+}
+TEST(PatchOverlapBorderSum, skipsSelfButNotIdenticalBox2D)
+{
+    checkBorderSumSkipsOnlySelf<2>();
+}
+TEST(PatchOverlapBorderSum, skipsSelfButNotIdenticalBox3D)
+{
+    checkBorderSumSkipsOnlySelf<3>();
 }
 
 
