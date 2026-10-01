@@ -76,6 +76,8 @@ public:
         ToConservativeConverter_t{level, model}(state, to_conservative_gamma_, newTime);
 
         ConstrainedTransport_t{level, model, constrainedTransportInfo_}(ct_, state);
+
+        bc.fillElectricGhosts(state.E, level, newTime);
     }
 
     void registerResources(MHDModel& model)

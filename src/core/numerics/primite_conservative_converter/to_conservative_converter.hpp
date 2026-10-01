@@ -2,6 +2,8 @@
 #define PHARE_CORE_NUMERICS_PRIMITIVE_CONSERVATIVE_CONVERTER_HPP
 
 
+#include <array>
+
 #include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
@@ -13,7 +15,12 @@ inline auto vToRhoV(auto const& rho, auto const& Vx, auto const& Vy, auto const&
     auto const rhoVy = rho * Vy;
     auto const rhoVz = rho * Vz;
 
-    return std::make_tuple(rhoVx, rhoVy, rhoVz);
+    return std::array{rhoVx, rhoVy, rhoVz};
+}
+
+inline auto vToRhoV(auto const& rho, auto const& V)
+{
+    return vToRhoV(rho, V[0], V[1], V[2]);
 }
 
 inline auto eosPToEtot(double const gamma, auto const& rho, auto const& vx, auto const& vy,
