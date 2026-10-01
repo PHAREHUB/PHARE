@@ -61,7 +61,7 @@ def config(**kwargs):
 
     sim = ph.global_vars.sim
     dt = sim.time_stepper.time_step * 500
-    timestamps = np.arange(0, sim.final_time + dt, dt)
+    timestamps = np.arange(0, sim.time_stepper.final_time + dt, dt)
 
     for quantity in ["E", "B"]:
         ph.ElectromagDiagnostics(
