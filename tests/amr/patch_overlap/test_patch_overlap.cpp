@@ -1,6 +1,6 @@
 // Same-level patches may overlap. These tests cover the pieces that make overlapping
-// patches behave as a partition of the level: the region used to exchange leaving particles,
-// and the border sum between distinct patches with equal boxes.
+// patches behave as a partition of the level: ownership of shared cells, the region used
+// to exchange leaving particles, and the border sum between distinct patches with equal boxes.
 
 #include "phare_core.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
@@ -256,6 +256,164 @@ TEST(PatchOverlapBorderSum, skipsSelfButNotIdenticalBox2D)
 TEST(PatchOverlapBorderSum, skipsSelfButNotIdenticalBox3D)
 {
     checkBorderSumSkipsOnlySelf<3>();
+}
+
+
+
+// ---------------------------------------------------------------------------------------------
+// ownership: every covered cell is owned by exactly one box, the one with the smallest id
+
+template<std::size_t dim>
+struct Configuration
+{
+    std::vector<Box_t<dim>> boxes;
+    std::vector<int> ids;
+};
+
+template<std::size_t dim>
+Box_t<dim> randomBox(std::mt19937& gen, int const domainSize)
+{
+    std::uniform_int_distribution<int> lowerDist(0, domainSize - 1);
+    std::uniform_int_distribution<int> sizeDist(1, domainSize / 2);
+    Box_t<dim> box;
+    for (std::size_t i = 0; i < dim; ++i)
+    {
+        box.lower[i] = lowerDist(gen);
+        box.upper[i] = std::min(domainSize - 1, box.lower[i] + sizeDist(gen) - 1);
+    }
+    return box;
+}
+
+template<std::size_t dim>
+Configuration<dim> randomConfiguration(std::mt19937& gen, int const domainSize)
+{
+    Configuration<dim> config;
+    std::uniform_int_distribution<int> nbrDist(2, 6);
+    auto const nbrBoxes = nbrDist(gen);
+    for (int i = 0; i < nbrBoxes; ++i)
+        config.boxes.push_back(randomBox<dim>(gen, domainSize));
+
+    // geometries that random boxes rarely produce
+    std::uniform_int_distribution<int> pick(0, nbrBoxes - 1);
+    auto const some = config.boxes[pick(gen)];
+    config.boxes.push_back(some); // identical twin
+    if (auto inner = some; some.upper[0] > some.lower[0])
+    {
+        inner.lower[0] += 1; // nested
+        config.boxes.push_back(inner);
+    }
+    auto corner = some; // corner contact only
+    for (std::size_t i = 0; i < dim; ++i)
+        corner.lower[i] = corner.upper[i] = some.upper[i] + 1;
+    config.boxes.push_back(corner);
+
+    config.ids.resize(config.boxes.size());
+    std::iota(config.ids.begin(), config.ids.end(), 0);
+    std::shuffle(config.ids.begin(), config.ids.end(), gen);
+    for (auto& id : config.ids)
+        id = 7 * id + 3; // ids need not be contiguous
+    return config;
+}
+
+template<std::size_t dim>
+auto neighborsOf(Configuration<dim> const& config, std::size_t const self,
+                 std::vector<Shift_t<dim>> const& shifts)
+{
+    std::vector<std::pair<Box_t<dim>, int>> neighbors;
+    for (std::size_t j = 0; j < config.boxes.size(); ++j)
+        for (auto const& shift : shifts)
+            if (j != self or shift != Shift_t<dim>{}) // a patch is not its own neighbor
+                neighbors.emplace_back(core::shift(config.boxes[j], shift), config.ids[j]);
+    return neighbors;
+}
+
+template<std::size_t dim>
+void checkEveryCoveredCellHasOneOwner(Configuration<dim> const& config, int const domainSize,
+                                      std::vector<Shift_t<dim>> const& shifts)
+{
+    std::vector<std::vector<Box_t<dim>>> foreign;
+    for (std::size_t i = 0; i < config.boxes.size(); ++i)
+        foreign.push_back(
+            amr::makeForeignBoxes(config.boxes[i], config.ids[i], neighborsOf(config, i, shifts)));
+
+    Box_t<dim> domain;
+    for (std::size_t i = 0; i < dim; ++i)
+    {
+        domain.lower[i] = 0;
+        domain.upper[i] = domainSize; // corner boxes may stick out by one cell
+    }
+
+    for (auto const& cell : domain)
+    {
+        std::size_t nbrCovering = 0, nbrOwners = 0;
+        int smallestId = std::numeric_limits<int>::max(), ownerId = -1;
+        for (std::size_t i = 0; i < config.boxes.size(); ++i)
+            if (core::isIn(cell, config.boxes[i]))
+            {
+                ++nbrCovering;
+                smallestId = std::min(smallestId, config.ids[i]);
+                if (!core::isIn(cell, foreign[i]))
+                {
+                    ++nbrOwners;
+                    ownerId = config.ids[i];
+                }
+            }
+        ASSERT_EQ(nbrOwners, nbrCovering > 0 ? 1u : 0u) << "cell " << cell;
+        if (nbrCovering > 0)
+        {
+            ASSERT_EQ(ownerId, smallestId);
+        }
+    }
+}
+
+template<std::size_t dim>
+void checkOwnership(int const domainSize, int const nbrConfigurations)
+{
+    std::mt19937 gen(1234 + dim);
+
+    std::vector<Shift_t<dim>> const noShift{Shift_t<dim>{}};
+
+    // periodic images: same id, shifted by one period in each direction
+    auto periodic = noShift;
+    for (std::size_t i = 0; i < dim; ++i)
+        for (int sign : {-1, 1})
+        {
+            Shift_t<dim> shift{};
+            shift[i] = sign * (domainSize + 1);
+            periodic.push_back(shift);
+        }
+
+    for (int c = 0; c < nbrConfigurations; ++c)
+    {
+        auto const config = randomConfiguration<dim>(gen, domainSize);
+        checkEveryCoveredCellHasOneOwner(config, domainSize, noShift);
+        checkEveryCoveredCellHasOneOwner(config, domainSize, periodic);
+        if (::testing::Test::HasFatalFailure())
+            return;
+    }
+}
+
+TEST(PatchOverlapOwnership, everyCoveredCellHasExactlyOneOwner1D)
+{
+    checkOwnership<1>(32, 1000);
+}
+TEST(PatchOverlapOwnership, everyCoveredCellHasExactlyOneOwner2D)
+{
+    checkOwnership<2>(16, 1000);
+}
+TEST(PatchOverlapOwnership, everyCoveredCellHasExactlyOneOwner3D)
+{
+    checkOwnership<3>(10, 1000);
+}
+
+TEST(PatchOverlapOwnership, smallerIdOwnsIdenticalBoxes)
+{
+    Box_t<2> const box{{0, 0}, {7, 7}};
+    std::vector<std::pair<Box_t<2>, int>> const smaller{{box, 1}}, larger{{box, 2}};
+    EXPECT_TRUE(amr::makeForeignBoxes(box, 1, larger).empty());
+    auto const foreign = amr::makeForeignBoxes(box, 2, smaller);
+    ASSERT_EQ(foreign.size(), 1u);
+    EXPECT_EQ(foreign[0], box);
 }
 
 
