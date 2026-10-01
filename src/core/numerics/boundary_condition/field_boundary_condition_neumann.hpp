@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_NEUMANN_BOUNDARY_CONDITION_HPP
-#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_NEUMANN_BOUNDARY_CONDITION_HPP
+#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_NEUMANN_HPP
+#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_NEUMANN_HPP
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -22,7 +22,7 @@ namespace PHARE::core
  *
  */
 template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-class FieldNeumannBoundaryCondition
+class FieldBoundaryConditionNeumann
     : public IFieldBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>
 {
 public:
@@ -34,14 +34,14 @@ public:
     static constexpr std::size_t N         = Super::N;
     static constexpr bool is_scalar        = Super::is_scalar;
 
-    FieldNeumannBoundaryCondition() = default;
+    FieldBoundaryConditionNeumann() = default;
 
-    FieldNeumannBoundaryCondition(FieldNeumannBoundaryCondition const&)            = default;
-    FieldNeumannBoundaryCondition& operator=(FieldNeumannBoundaryCondition const&) = default;
-    FieldNeumannBoundaryCondition(FieldNeumannBoundaryCondition&&)                 = default;
-    FieldNeumannBoundaryCondition& operator=(FieldNeumannBoundaryCondition&&)      = default;
+    FieldBoundaryConditionNeumann(FieldBoundaryConditionNeumann const&)            = default;
+    FieldBoundaryConditionNeumann& operator=(FieldBoundaryConditionNeumann const&) = default;
+    FieldBoundaryConditionNeumann(FieldBoundaryConditionNeumann&&)                 = default;
+    FieldBoundaryConditionNeumann& operator=(FieldBoundaryConditionNeumann&&)      = default;
 
-    virtual ~FieldNeumannBoundaryCondition() = default;
+    virtual ~FieldBoundaryConditionNeumann() = default;
 
     FieldBoundaryConditionType getType() const override
     {
@@ -70,7 +70,7 @@ public:
             }
         });
     }
-}; // class FieldNeumannBoundaryCondition
+}; // class FieldBoundaryConditionNeumann
 
 } // namespace PHARE::core
-#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_NEUMANN_BOUNDARY_CONDITION_HPP
+#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_NEUMANN_HPP

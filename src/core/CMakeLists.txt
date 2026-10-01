@@ -33,12 +33,12 @@ set( SOURCES_INC
      numerics/boundary_condition/boundary_condition.hpp
      numerics/boundary_condition/field_boundary_condition.hpp
      numerics/boundary_condition/field_boundary_condition_resolver.hpp
-     numerics/boundary_condition/field_none_boundary_condition.hpp
-     numerics/boundary_condition/field_neumann_boundary_condition.hpp
-     numerics/boundary_condition/field_dirichlet_boundary_condition.hpp
-     numerics/boundary_condition/field_symmetric_boundary_condition.hpp
-     numerics/boundary_condition/field_antisymmetric_boundary_condition.hpp
-     numerics/boundary_condition/field_divergence_free_transverse_neumann_boundary_condition.hpp
+     numerics/boundary_condition/field_boundary_condition_none.hpp
+     numerics/boundary_condition/field_boundary_condition_neumann.hpp
+     numerics/boundary_condition/field_boundary_condition_dirichlet.hpp
+     numerics/boundary_condition/field_boundary_condition_symmetric.hpp
+     numerics/boundary_condition/field_boundary_condition_antisymmetric.hpp
+     numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_neumann.hpp
      numerics/interpolator/interpolator.hpp
      numerics/pusher/boris.hpp
      numerics/pusher/pusher.hpp

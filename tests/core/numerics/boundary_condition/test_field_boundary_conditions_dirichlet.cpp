@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_dirichlet_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
 #include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
 
 using namespace PHARE::core;
@@ -9,7 +9,7 @@ using namespace PHARE::core;
 TEST_F(FieldBC1D, DirichletSetsLowerGhostByLinearExtrapolation)
 {
     double const value = 3.0;
-    FieldDirichletBoundaryCondition<Field1D, GridLayout1D> bc{value};
+    FieldBoundaryConditionDirichlet<Field1D, GridLayout1D> bc{value};
     bc.apply(field, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
 
     double expected = 2.0 * value - interiorValue;
@@ -20,7 +20,7 @@ TEST_F(FieldBC1D, DirichletSetsLowerGhostByLinearExtrapolation)
 TEST_F(FieldBC1D, DirichletSetsUpperGhostByLinearExtrapolation)
 {
     double const value = 3.0;
-    FieldDirichletBoundaryCondition<Field1D, GridLayout1D> bc{value};
+    FieldBoundaryConditionDirichlet<Field1D, GridLayout1D> bc{value};
     bc.apply(field, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
     double expected       = 2.0 * value - interiorValue;
@@ -34,7 +34,7 @@ TEST_F(FieldBC2D, DirichletAtXBoundaries)
 {
     double const value    = 3.0;
     double const expected = 2.0 * value - interiorValue;
-    FieldDirichletBoundaryCondition<Field2D, GridLayout2D> bc{value};
+    FieldBoundaryConditionDirichlet<Field2D, GridLayout2D> bc{value};
     bc.apply(field, BoundaryLocation::XLower, xLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(field, BoundaryLocation::XUpper, xUpperGhostCellBox2D(), layout, 0.0);
 
@@ -53,7 +53,7 @@ TEST_F(FieldBC2D, DirichletAtYBoundaries)
 {
     double const value    = 3.0;
     double const expected = 2.0 * value - interiorValue;
-    FieldDirichletBoundaryCondition<Field2D, GridLayout2D> bc{value};
+    FieldBoundaryConditionDirichlet<Field2D, GridLayout2D> bc{value};
     bc.apply(field, BoundaryLocation::YLower, yLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(field, BoundaryLocation::YUpper, yUpperGhostCellBox2D(), layout, 0.0);
 
@@ -73,7 +73,7 @@ TEST_F(FieldBC3D, DirichletAtZBoundaries)
 {
     double const value    = 3.0;
     double const expected = 2.0 * value - interiorValue;
-    FieldDirichletBoundaryCondition<Field3D, GridLayout3D> bc{value};
+    FieldBoundaryConditionDirichlet<Field3D, GridLayout3D> bc{value};
     bc.apply(field, BoundaryLocation::ZLower, zLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(field, BoundaryLocation::ZUpper, zUpperGhostCellBox3D(), layout, 0.0);
 

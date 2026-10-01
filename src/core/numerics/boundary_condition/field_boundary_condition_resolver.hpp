@@ -3,14 +3,14 @@
 
 #include "core/data/tensorfield/tensorfield_traits.hpp"
 #include "core/data/vecfield/vecfield_traits.hpp"
-#include "core/numerics/boundary_condition/field_antisymmetric_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_antisymmetric.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_dirichlet_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_divergence_free_transverse_dirichlet_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_divergence_free_transverse_neumann_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_neumann_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_none_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_symmetric_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_dirichlet.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_neumann.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_neumann.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_none.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_symmetric.hpp"
 
 namespace PHARE::core
 {
@@ -22,35 +22,35 @@ template<>
 struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::None>
 {
     template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-    using type = FieldNoneBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>;
+    using type = FieldBoundaryConditionNone<ScalarOrTensorFieldT, GridLayoutT>;
 };
 
 template<>
 struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::Dirichlet>
 {
     template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-    using type = FieldDirichletBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>;
+    using type = FieldBoundaryConditionDirichlet<ScalarOrTensorFieldT, GridLayoutT>;
 };
 
 template<>
 struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::AntiSymmetric>
 {
     template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-    using type = FieldAntiSymmetricBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>;
+    using type = FieldBoundaryConditionAntiSymmetric<ScalarOrTensorFieldT, GridLayoutT>;
 };
 
 template<>
 struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::Symmetric>
 {
     template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-    using type = FieldSymmetricBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>;
+    using type = FieldBoundaryConditionSymmetric<ScalarOrTensorFieldT, GridLayoutT>;
 };
 
 template<>
 struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::Neumann>
 {
     template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-    using type = FieldNeumannBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>;
+    using type = FieldBoundaryConditionNeumann<ScalarOrTensorFieldT, GridLayoutT>;
 };
 
 template<>
@@ -58,7 +58,7 @@ struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::DivergenceFree
 {
     // only makes sense for a vector field
     template<IsVecField VecFieldT, typename GridLayoutT>
-    using type = FieldDivergenceFreeTransverseNeumannBoundaryCondition<VecFieldT, GridLayoutT>;
+    using type = FieldBoundaryConditionDivergenceFreeTransverseNeumann<VecFieldT, GridLayoutT>;
 };
 
 template<>
@@ -66,7 +66,7 @@ struct FieldBoundaryConditionSelector<FieldBoundaryConditionType::DivergenceFree
 {
     // only makes sense for a vector field
     template<IsVecField VecFieldT, typename GridLayoutT>
-    using type = FieldDivergenceFreeTransverseDirichletBoundaryCondition<VecFieldT, GridLayoutT>;
+    using type = FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecFieldT, GridLayoutT>;
 };
 
 template<FieldBoundaryConditionType type, IsScalarOrTensorField ScalarOrTensorFieldT,

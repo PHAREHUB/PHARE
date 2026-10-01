@@ -1,8 +1,8 @@
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_dirichlet_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_neumann_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_symmetric_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_neumann.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_symmetric.hpp"
 #include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
 
 using namespace PHARE::core;
@@ -14,11 +14,11 @@ TEST_F(FieldBC1D, SymmetricScalarEquivalentToNeumann)
     Field1D& refField{*(&refGrid)};
     for (std::uint32_t i = 0; i < refGrid.shape()[0]; ++i)
         refField(i) = (i >= physStart && i <= physEnd) ? interiorValue : ghostSentinel;
-    FieldNeumannBoundaryCondition<Field1D, GridLayout1D> neumann;
+    FieldBoundaryConditionNeumann<Field1D, GridLayout1D> neumann;
     neumann.apply(refField, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     neumann.apply(refField, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
-    FieldSymmetricBoundaryCondition<Field1D, GridLayout1D> sym;
+    FieldBoundaryConditionSymmetric<Field1D, GridLayout1D> sym;
     sym.apply(field, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     sym.apply(field, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
@@ -29,7 +29,7 @@ TEST_F(FieldBC1D, SymmetricScalarEquivalentToNeumann)
 
 TEST_F(VecFieldBC1D, SymmetricNormalComponentBxSetToDirichletZero)
 {
-    FieldSymmetricBoundaryCondition<VecField1D, GridLayout1D> bc;
+    FieldBoundaryConditionSymmetric<VecField1D, GridLayout1D> bc;
     bc.apply(B, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
@@ -45,7 +45,7 @@ TEST_F(VecFieldBC1D, SymmetricNormalComponentBxSetToDirichletZero)
 
 TEST_F(VecFieldBC1D, SymmetricTangentialComponentsByBzSetToNeumann)
 {
-    FieldSymmetricBoundaryCondition<VecField1D, GridLayout1D> bc;
+    FieldBoundaryConditionSymmetric<VecField1D, GridLayout1D> bc;
     bc.apply(B, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
@@ -62,7 +62,7 @@ TEST_F(VecFieldBC1D, SymmetricTangentialComponentsByBzSetToNeumann)
 
 TEST_F(VecFieldBC2D, SymmetricAtXBoundaries)
 {
-    FieldSymmetricBoundaryCondition<VecField2D, GridLayout2D> bc;
+    FieldBoundaryConditionSymmetric<VecField2D, GridLayout2D> bc;
     bc.apply(B, BoundaryLocation::XLower, xLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, xUpperGhostCellBox2D(), layout, 0.0);
 
@@ -102,7 +102,7 @@ TEST_F(VecFieldBC2D, SymmetricAtXBoundaries)
 
 TEST_F(VecFieldBC2D, SymmetricAtYBoundaries)
 {
-    FieldSymmetricBoundaryCondition<VecField2D, GridLayout2D> bc;
+    FieldBoundaryConditionSymmetric<VecField2D, GridLayout2D> bc;
     bc.apply(B, BoundaryLocation::YLower, yLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::YUpper, yUpperGhostCellBox2D(), layout, 0.0);
 
@@ -143,7 +143,7 @@ TEST_F(VecFieldBC2D, SymmetricAtYBoundaries)
 
 TEST_F(VecFieldBC3D, SymmetricAtZBoundaries)
 {
-    FieldSymmetricBoundaryCondition<VecField3D, GridLayout3D> bc;
+    FieldBoundaryConditionSymmetric<VecField3D, GridLayout3D> bc;
     bc.apply(B, BoundaryLocation::ZLower, zLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::ZUpper, zUpperGhostCellBox3D(), layout, 0.0);
 
@@ -194,7 +194,7 @@ TEST_F(VecFieldBC3D, SymmetricAtZBoundaries)
 
 TEST_F(VecFieldBC3D, SymmetricAtXBoundaries)
 {
-    FieldSymmetricBoundaryCondition<VecField3D, GridLayout3D> bc;
+    FieldBoundaryConditionSymmetric<VecField3D, GridLayout3D> bc;
     bc.apply(B, BoundaryLocation::XLower, xLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, xUpperGhostCellBox3D(), layout, 0.0);
 
@@ -238,7 +238,7 @@ TEST_F(VecFieldBC3D, SymmetricAtXBoundaries)
 
 TEST_F(VecFieldBC3D, SymmetricAtYBoundaries)
 {
-    FieldSymmetricBoundaryCondition<VecField3D, GridLayout3D> bc;
+    FieldBoundaryConditionSymmetric<VecField3D, GridLayout3D> bc;
     bc.apply(B, BoundaryLocation::YLower, yLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::YUpper, yUpperGhostCellBox3D(), layout, 0.0);
 

@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_divergence_free_transverse_dirichlet_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_dirichlet.hpp"
 #include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
 
 using namespace PHARE::core;
@@ -9,7 +9,7 @@ using namespace PHARE::core;
 TEST_F(VecFieldBC1D, DivergenceFreeTransverseDirichletAtXBoundaries)
 {
     std::array values{123.0, 7.0, 11.0};
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition<VecField1D, GridLayout1D> bc{values};
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecField1D, GridLayout1D> bc{values};
     bc.apply(B, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
@@ -40,7 +40,7 @@ TEST_F(VecFieldBC1D, DivergenceFreeTransverseDirichletAtXBoundaries)
 TEST_F(VecFieldBC2D, DivergenceFreeTransverseDirichletAtXBoundaries)
 {
     std::array values{123.0, 7.0, 11.0};
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition<VecField2D, GridLayout2D> bc{values};
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecField2D, GridLayout2D> bc{values};
     bc.apply(B, BoundaryLocation::XLower, xLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, xUpperGhostCellBox2D(), layout, 0.0);
 
@@ -84,7 +84,7 @@ TEST_F(VecFieldBC2D, DivergenceFreeTransverseDirichletAtXBoundaries)
 TEST_F(VecFieldBC2D, DivergenceFreeTransverseDirichletAtYBoundaries)
 {
     std::array values{3.0, 123.0, 11.0};
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition<VecField2D, GridLayout2D> bc{values};
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecField2D, GridLayout2D> bc{values};
     bc.apply(B, BoundaryLocation::YLower, yLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::YUpper, yUpperGhostCellBox2D(), layout, 0.0);
 
@@ -127,7 +127,7 @@ TEST_F(VecFieldBC2D, DivergenceFreeTransverseDirichletAtYBoundaries)
 
 TEST_F(VecFieldBC2DNonUniformBy, DivergenceFreeTransverseDirichletKeepsXGhostDivergenceZero)
 {
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition<VecField2D, GridLayout2D> bc{
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecField2D, GridLayout2D> bc{
         std::array{123.0, 0.0, 11.0}};
     bc.apply(B, BoundaryLocation::XLower, xLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, xUpperGhostCellBox2D(), layout, 0.0);
@@ -152,7 +152,7 @@ TEST_F(VecFieldBC2DNonUniformBy, DivergenceFreeTransverseDirichletKeepsXGhostDiv
 TEST_F(VecFieldBC2DNonUniformByAnisotropic,
        DivergenceFreeTransverseDirichletKeepsXGhostDivergenceZeroOnAnisotropicMesh)
 {
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition<VecField2D, GridLayout2D> bc{
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecField2D, GridLayout2D> bc{
         std::array{123.0, 0.0, 11.0}};
     bc.apply(B, BoundaryLocation::XLower, xLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, xUpperGhostCellBox2D(), layout, 0.0);
@@ -176,7 +176,7 @@ TEST_F(VecFieldBC2DNonUniformByAnisotropic,
 TEST_F(VecFieldBC3D, DivergenceFreeTransverseDirichletAtZBoundaries)
 {
     std::array values{3.0, 7.0, 123.0};
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition<VecField3D, GridLayout3D> bc{values};
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet<VecField3D, GridLayout3D> bc{values};
     bc.apply(B, BoundaryLocation::ZLower, zLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::ZUpper, zUpperGhostCellBox3D(), layout, 0.0);
 

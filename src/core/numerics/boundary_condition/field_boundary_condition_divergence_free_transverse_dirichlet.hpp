@@ -1,11 +1,11 @@
-#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIVERGENCE_FREE_TRANSVERSE_DIRICHLET_BOUNDARY_CONDITION_HPP
-#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIVERGENCE_FREE_TRANSVERSE_DIRICHLET_BOUNDARY_CONDITION_HPP
+#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIVERGENCE_FREE_TRANSVERSE_DIRICHLET_HPP
+#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIVERGENCE_FREE_TRANSVERSE_DIRICHLET_HPP
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/boundary_condition/divergence_free_transverse_common.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_dirichlet_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
 
 #include <array>
 #include <cstddef>
@@ -16,7 +16,7 @@ namespace PHARE::core
  * @brief Boundary condition for vector fields that imposes a value on tangential
  * components and sets the normal component so that numerical divergence is zero.
  *
- * Each tangential component is delegated to a scalar @c FieldDirichletBoundaryCondition;
+ * Each tangential component is delegated to a scalar @c FieldBoundaryConditionDirichlet;
  * the normal component is then recomputed from the tangential ghost values so that the
  * discrete divergence stays zero.
  *
@@ -27,7 +27,7 @@ namespace PHARE::core
  *
  */
 template<typename VecFieldT, typename GridLayoutT>
-class FieldDivergenceFreeTransverseDirichletBoundaryCondition
+class FieldBoundaryConditionDivergenceFreeTransverseDirichlet
     : public IFieldBoundaryCondition<VecFieldT, GridLayoutT>
 {
 public:
@@ -42,30 +42,30 @@ public:
                   "Divergence-free transverse Dirichlet boundary condition only applies to vector "
                   "fields.");
 
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition() = default;
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet() = default;
 
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition(value_type value)
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet(value_type value)
     {
         for (std::size_t i = 0; i < N; ++i)
             scalar_dirichlet_conditions_[i] = _scalar_dirichlet_bc_type{value};
     }
 
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition(std::array<value_type, N> const& values)
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet(std::array<value_type, N> const& values)
     {
         for (std::size_t i = 0; i < N; ++i)
             scalar_dirichlet_conditions_[i] = _scalar_dirichlet_bc_type{values[i]};
     }
 
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition(
-        FieldDivergenceFreeTransverseDirichletBoundaryCondition const&) = default;
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition&
-    operator=(FieldDivergenceFreeTransverseDirichletBoundaryCondition const&) = default;
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition(
-        FieldDivergenceFreeTransverseDirichletBoundaryCondition&&) = default;
-    FieldDivergenceFreeTransverseDirichletBoundaryCondition&
-    operator=(FieldDivergenceFreeTransverseDirichletBoundaryCondition&&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet(
+        FieldBoundaryConditionDivergenceFreeTransverseDirichlet const&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet&
+    operator=(FieldBoundaryConditionDivergenceFreeTransverseDirichlet const&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet(
+        FieldBoundaryConditionDivergenceFreeTransverseDirichlet&&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseDirichlet&
+    operator=(FieldBoundaryConditionDivergenceFreeTransverseDirichlet&&) = default;
 
-    virtual ~FieldDivergenceFreeTransverseDirichletBoundaryCondition() = default;
+    virtual ~FieldBoundaryConditionDivergenceFreeTransverseDirichlet() = default;
 
     FieldBoundaryConditionType getType() const override
     {
@@ -101,11 +101,11 @@ public:
     }
 
 private:
-    using _scalar_dirichlet_bc_type = FieldDirichletBoundaryCondition<field_type, GridLayoutT>;
+    using _scalar_dirichlet_bc_type = FieldBoundaryConditionDirichlet<field_type, GridLayoutT>;
 
     std::array<_scalar_dirichlet_bc_type, N> scalar_dirichlet_conditions_;
 
-}; // class FieldDivergenceFreeTransverseDirichletBoundaryCondition
+}; // class FieldBoundaryConditionDivergenceFreeTransverseDirichlet
 
 } // namespace PHARE::core
-#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIVERGENCE_FREE_TRANSVERSE_DIRICHLET_BOUNDARY_CONDITION_HPP
+#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIVERGENCE_FREE_TRANSVERSE_DIRICHLET_HPP

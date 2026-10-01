@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_none_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_none.hpp"
 #include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
 
 using namespace PHARE::core;
@@ -8,7 +8,7 @@ using namespace PHARE::core;
 
 TEST_F(FieldBC1D, NoneDoesNotModifyGhostCells)
 {
-    FieldNoneBoundaryCondition<Field1D, GridLayout1D> bc;
+    FieldBoundaryConditionNone<Field1D, GridLayout1D> bc;
     bc.apply(field, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     bc.apply(field, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 

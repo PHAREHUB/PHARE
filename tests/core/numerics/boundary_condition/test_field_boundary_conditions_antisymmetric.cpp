@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_antisymmetric_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_dirichlet_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_antisymmetric.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
 #include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
 
 using namespace PHARE::core;
@@ -13,11 +13,11 @@ TEST_F(FieldBC1D, AntiSymmetricScalarEquivalentToDirichletZero)
     Field1D& refField{*(&refGrid)};
     for (std::uint32_t i = 0; i < refGrid.shape()[0]; ++i)
         refField(i) = (i >= physStart && i <= physEnd) ? interiorValue : ghostSentinel;
-    FieldDirichletBoundaryCondition<Field1D, GridLayout1D> dirichlet{0.0};
+    FieldBoundaryConditionDirichlet<Field1D, GridLayout1D> dirichlet{0.0};
     dirichlet.apply(refField, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     dirichlet.apply(refField, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
-    FieldAntiSymmetricBoundaryCondition<Field1D, GridLayout1D> antisym;
+    FieldBoundaryConditionAntiSymmetric<Field1D, GridLayout1D> antisym;
     antisym.apply(field, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     antisym.apply(field, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
@@ -28,7 +28,7 @@ TEST_F(FieldBC1D, AntiSymmetricScalarEquivalentToDirichletZero)
 
 TEST_F(VecFieldBC1D, AntiSymmetricNormalComponentBxSetToNeumann)
 {
-    FieldAntiSymmetricBoundaryCondition<VecField1D, GridLayout1D> bc;
+    FieldBoundaryConditionAntiSymmetric<VecField1D, GridLayout1D> bc;
     bc.apply(B, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
@@ -42,7 +42,7 @@ TEST_F(VecFieldBC1D, AntiSymmetricNormalComponentBxSetToNeumann)
 
 TEST_F(VecFieldBC1D, AntiSymmetricTangentialComponentsByBzSetToDirichletZero)
 {
-    FieldAntiSymmetricBoundaryCondition<VecField1D, GridLayout1D> bc;
+    FieldBoundaryConditionAntiSymmetric<VecField1D, GridLayout1D> bc;
     bc.apply(B, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
@@ -60,7 +60,7 @@ TEST_F(VecFieldBC1D, AntiSymmetricTangentialComponentsByBzSetToDirichletZero)
 
 TEST_F(VecFieldBC2D, AntiSymmetricAtXBoundaries)
 {
-    FieldAntiSymmetricBoundaryCondition<VecField2D, GridLayout2D> bc;
+    FieldBoundaryConditionAntiSymmetric<VecField2D, GridLayout2D> bc;
     bc.apply(B, BoundaryLocation::XLower, xLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, xUpperGhostCellBox2D(), layout, 0.0);
 
@@ -98,7 +98,7 @@ TEST_F(VecFieldBC2D, AntiSymmetricAtXBoundaries)
 
 TEST_F(VecFieldBC2D, AntiSymmetricAtYBoundaries)
 {
-    FieldAntiSymmetricBoundaryCondition<VecField2D, GridLayout2D> bc;
+    FieldBoundaryConditionAntiSymmetric<VecField2D, GridLayout2D> bc;
     bc.apply(B, BoundaryLocation::YLower, yLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::YUpper, yUpperGhostCellBox2D(), layout, 0.0);
 
@@ -137,7 +137,7 @@ TEST_F(VecFieldBC2D, AntiSymmetricAtYBoundaries)
 
 TEST_F(VecFieldBC3D, AntiSymmetricAtZBoundaries)
 {
-    FieldAntiSymmetricBoundaryCondition<VecField3D, GridLayout3D> bc;
+    FieldBoundaryConditionAntiSymmetric<VecField3D, GridLayout3D> bc;
     bc.apply(B, BoundaryLocation::ZLower, zLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::ZUpper, zUpperGhostCellBox3D(), layout, 0.0);
 
@@ -184,7 +184,7 @@ TEST_F(VecFieldBC3D, AntiSymmetricAtZBoundaries)
 
 TEST_F(VecFieldBC3D, AntiSymmetricAtXBoundaries)
 {
-    FieldAntiSymmetricBoundaryCondition<VecField3D, GridLayout3D> bc;
+    FieldBoundaryConditionAntiSymmetric<VecField3D, GridLayout3D> bc;
     bc.apply(B, BoundaryLocation::XLower, xLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::XUpper, xUpperGhostCellBox3D(), layout, 0.0);
 
@@ -226,7 +226,7 @@ TEST_F(VecFieldBC3D, AntiSymmetricAtXBoundaries)
 
 TEST_F(VecFieldBC3D, AntiSymmetricAtYBoundaries)
 {
-    FieldAntiSymmetricBoundaryCondition<VecField3D, GridLayout3D> bc;
+    FieldBoundaryConditionAntiSymmetric<VecField3D, GridLayout3D> bc;
     bc.apply(B, BoundaryLocation::YLower, yLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(B, BoundaryLocation::YUpper, yUpperGhostCellBox3D(), layout, 0.0);
 

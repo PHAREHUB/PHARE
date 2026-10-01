@@ -1,7 +1,7 @@
 #include "gtest/gtest.h"
 
 #include "core/boundary/boundary_defs.hpp"
-#include "core/numerics/boundary_condition/field_divergence_free_transverse_neumann_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_divergence_free_transverse_neumann.hpp"
 #include "tests/core/numerics/boundary_condition/mhd_bc_test_fixtures.hpp"
 
 using namespace PHARE::core;
@@ -66,7 +66,7 @@ struct DivFreeTransverseNeumannBC2D : testing::Test
     void applyAndCheck(BoundaryLocation loc, Box<std::uint32_t, 2> const& ghostBox)
     {
         auto B = Bvec.super();
-        FieldDivergenceFreeTransverseNeumannBoundaryCondition<VecFieldMHD<2>, GridLayoutMHD2D> bc;
+        FieldBoundaryConditionDivergenceFreeTransverseNeumann<VecFieldMHD<2>, GridLayoutMHD2D> bc;
         bc.apply(B, loc, ghostBox, layout, 0.0);
 
         checkTransverseMirrored(loc, ghostBox);
@@ -119,7 +119,7 @@ struct DivFreeTransverseNeumannBC2DAnisotropic : testing::Test
     void applyAndCheckSpaced(BoundaryLocation loc, Box<std::uint32_t, 2> const& ghostBox)
     {
         auto B = Bvec.super();
-        FieldDivergenceFreeTransverseNeumannBoundaryCondition<VecFieldMHD<2>, GridLayoutMHD2D> bc;
+        FieldBoundaryConditionDivergenceFreeTransverseNeumann<VecFieldMHD<2>, GridLayoutMHD2D> bc;
         bc.apply(B, loc, ghostBox, layout, 0.0);
 
         auto& Bx        = Bvec[0];
@@ -180,7 +180,7 @@ struct DivFreeTransverseNeumannBC3D : testing::Test
         std::size_t const iNormal = static_cast<std::size_t>(direction);
 
         auto B = Bvec.super();
-        FieldDivergenceFreeTransverseNeumannBoundaryCondition<VecFieldMHD<3>, GridLayoutMHD3D> bc;
+        FieldBoundaryConditionDivergenceFreeTransverseNeumann<VecFieldMHD<3>, GridLayoutMHD3D> bc;
         bc.apply(B, loc, ghostBox, layout, 0.0);
 
         for (std::size_t comp = 0; comp < 3; ++comp)

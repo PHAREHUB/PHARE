@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIRICHLET_BOUNDARY_CONDITION_HPP
-#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIRICHLET_BOUNDARY_CONDITION_HPP
+#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIRICHLET_HPP
+#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIRICHLET_HPP
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayout.hpp"
@@ -22,7 +22,7 @@ namespace PHARE::core
  *
  */
 template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-class FieldDirichletBoundaryCondition
+class FieldBoundaryConditionDirichlet
     : public IFieldBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>
 {
 public:
@@ -35,21 +35,21 @@ public:
     static constexpr std::size_t N         = Super::N;
     static constexpr bool is_scalar        = Super::is_scalar;
 
-    FieldDirichletBoundaryCondition() = default;
+    FieldBoundaryConditionDirichlet() = default;
 
-    FieldDirichletBoundaryCondition(value_type value)
+    FieldBoundaryConditionDirichlet(value_type value)
         requires(is_scalar)
         : value_{value} {};
 
-    FieldDirichletBoundaryCondition(std::array<value_type, N> value)
+    FieldBoundaryConditionDirichlet(std::array<value_type, N> value)
         : value_{value} {};
 
-    FieldDirichletBoundaryCondition(FieldDirichletBoundaryCondition const&)            = default;
-    FieldDirichletBoundaryCondition& operator=(FieldDirichletBoundaryCondition const&) = default;
-    FieldDirichletBoundaryCondition(FieldDirichletBoundaryCondition&&)                 = default;
-    FieldDirichletBoundaryCondition& operator=(FieldDirichletBoundaryCondition&&)      = default;
+    FieldBoundaryConditionDirichlet(FieldBoundaryConditionDirichlet const&)            = default;
+    FieldBoundaryConditionDirichlet& operator=(FieldBoundaryConditionDirichlet const&) = default;
+    FieldBoundaryConditionDirichlet(FieldBoundaryConditionDirichlet&&)                 = default;
+    FieldBoundaryConditionDirichlet& operator=(FieldBoundaryConditionDirichlet&&)      = default;
 
-    virtual ~FieldDirichletBoundaryCondition() = default;
+    virtual ~FieldBoundaryConditionDirichlet() = default;
 
     FieldBoundaryConditionType getType() const override
     {
@@ -87,7 +87,7 @@ public:
 private:
     std::array<value_type, N> value_{0};
 
-}; // class FieldDirichletBoundaryCondition
+}; // class FieldBoundaryConditionDirichlet
 
 } // namespace PHARE::core
-#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIRICHLET_BOUNDARY_CONDITION_HPP
+#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIRICHLET_HPP

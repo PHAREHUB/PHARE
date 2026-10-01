@@ -1,6 +1,6 @@
 #include "gtest/gtest.h"
 
-#include "core/numerics/boundary_condition/field_neumann_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_neumann.hpp"
 #include "tests/core/numerics/boundary_condition/hybrid_bc_test_fixtures.hpp"
 
 using namespace PHARE::core;
@@ -8,7 +8,7 @@ using namespace PHARE::core;
 
 TEST_F(FieldBC1D, NeumannSetsLowerGhostToInteriorValue)
 {
-    FieldNeumannBoundaryCondition<Field1D, GridLayout1D> bc;
+    FieldBoundaryConditionNeumann<Field1D, GridLayout1D> bc;
     bc.apply(field, BoundaryLocation::XLower, lowerGhostCellBox(), layout, 0.0);
 
     for (std::uint32_t g = 0; g < ghostWidth; ++g)
@@ -17,7 +17,7 @@ TEST_F(FieldBC1D, NeumannSetsLowerGhostToInteriorValue)
 
 TEST_F(FieldBC1D, NeumannSetsUpperGhostToInteriorValue)
 {
-    FieldNeumannBoundaryCondition<Field1D, GridLayout1D> bc;
+    FieldBoundaryConditionNeumann<Field1D, GridLayout1D> bc;
     bc.apply(field, BoundaryLocation::XUpper, upperGhostCellBox(), layout, 0.0);
 
     std::uint32_t allocSz = grid.shape()[0];
@@ -28,7 +28,7 @@ TEST_F(FieldBC1D, NeumannSetsUpperGhostToInteriorValue)
 
 TEST_F(FieldBC2D, NeumannAtXBoundaries)
 {
-    FieldNeumannBoundaryCondition<Field2D, GridLayout2D> bc;
+    FieldBoundaryConditionNeumann<Field2D, GridLayout2D> bc;
     bc.apply(field, BoundaryLocation::XLower, xLowerGhostCellBox2D(), layout, 0.0);
     bc.apply(field, BoundaryLocation::XUpper, xUpperGhostCellBox2D(), layout, 0.0);
 
@@ -46,7 +46,7 @@ TEST_F(FieldBC2D, NeumannAtXBoundaries)
 
 TEST_F(FieldBC3D, NeumannAtZBoundaries)
 {
-    FieldNeumannBoundaryCondition<Field3D, GridLayout3D> bc;
+    FieldBoundaryConditionNeumann<Field3D, GridLayout3D> bc;
     bc.apply(field, BoundaryLocation::ZLower, zLowerGhostCellBox3D(), layout, 0.0);
     bc.apply(field, BoundaryLocation::ZUpper, zUpperGhostCellBox3D(), layout, 0.0);
 

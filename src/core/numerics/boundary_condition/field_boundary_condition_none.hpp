@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_NONE_BOUNDARY_CONDITION_HPP
-#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_NONE_BOUNDARY_CONDITION_HPP
+#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_NONE_HPP
+#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_NONE_HPP
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -16,20 +16,20 @@ namespace PHARE::core
  * @tparam GridLayoutT Grid layout configuration.
  */
 template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-class FieldNoneBoundaryCondition : public IFieldBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>
+class FieldBoundaryConditionNone : public IFieldBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>
 {
 public:
     using Super = IFieldBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>;
     static constexpr std::size_t dimension = Super::dimension;
 
-    FieldNoneBoundaryCondition() = default;
+    FieldBoundaryConditionNone() = default;
 
-    FieldNoneBoundaryCondition(FieldNoneBoundaryCondition const&)            = default;
-    FieldNoneBoundaryCondition& operator=(FieldNoneBoundaryCondition const&) = default;
-    FieldNoneBoundaryCondition(FieldNoneBoundaryCondition&&)                 = default;
-    FieldNoneBoundaryCondition& operator=(FieldNoneBoundaryCondition&&)      = default;
+    FieldBoundaryConditionNone(FieldBoundaryConditionNone const&)            = default;
+    FieldBoundaryConditionNone& operator=(FieldBoundaryConditionNone const&) = default;
+    FieldBoundaryConditionNone(FieldBoundaryConditionNone&&)                 = default;
+    FieldBoundaryConditionNone& operator=(FieldBoundaryConditionNone&&)      = default;
 
-    virtual ~FieldNoneBoundaryCondition() = default;
+    virtual ~FieldBoundaryConditionNone() = default;
 
     FieldBoundaryConditionType getType() const override { return FieldBoundaryConditionType::None; }
 
@@ -39,7 +39,7 @@ public:
                GridLayoutT const& /*gridLayout*/, [[maybe_unused]] double const /*time*/) override
     {
     }
-}; // class FieldNoneBoundaryCondition
+}; // class FieldBoundaryConditionNone
 
 } // namespace PHARE::core
-#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_NONE_BOUNDARY_CONDITION_HPP
+#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_NONE_HPP

@@ -1,26 +1,26 @@
-#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_ANTISYMMETRIC_BOUNDARY_CONDITION_HPP
-#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_ANTISYMMETRIC_BOUNDARY_CONDITION_HPP
+#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_SYMMETRIC_HPP
+#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_SYMMETRIC_HPP
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_dirichlet_boundary_condition.hpp"
-#include "core/numerics/boundary_condition/field_neumann_boundary_condition.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_dirichlet.hpp"
+#include "core/numerics/boundary_condition/field_boundary_condition_neumann.hpp"
 
 namespace PHARE::core
 {
 /**
- * @brief Anti-symmetric boundary condition for scalar and vector fields.
+ * @brief Symmetric boundary condition for scalar and vector fields.
  *
- * For scalars, imposes a zero value on the boundary (Dirichlet zero).
- * For vectors, imposes zero value on tangential components, Neumann on the normal component.
+ * For scalars, imposes a null derivative along the normal (Neumann).
+ * For vectors, imposes Neumann on tangential components, zero value on the normal component.
  *
  * @tparam ScalarOrTensorFieldT Type of the field or tensor field.
  * @tparam GridLayoutT Grid layout configuration.
  *
  */
 template<typename ScalarOrTensorFieldT, typename GridLayoutT>
-class FieldAntiSymmetricBoundaryCondition
+class FieldBoundaryConditionSymmetric
     : public IFieldBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>
 {
 public:
@@ -32,19 +32,18 @@ public:
     static constexpr std::size_t N         = Super::N;
     static constexpr bool is_scalar        = Super::is_scalar;
 
-    FieldAntiSymmetricBoundaryCondition() = default;
+    FieldBoundaryConditionSymmetric() = default;
 
-    FieldAntiSymmetricBoundaryCondition(FieldAntiSymmetricBoundaryCondition const&) = default;
-    FieldAntiSymmetricBoundaryCondition& operator=(FieldAntiSymmetricBoundaryCondition const&)
-        = default;
-    FieldAntiSymmetricBoundaryCondition(FieldAntiSymmetricBoundaryCondition&&)            = default;
-    FieldAntiSymmetricBoundaryCondition& operator=(FieldAntiSymmetricBoundaryCondition&&) = default;
+    FieldBoundaryConditionSymmetric(FieldBoundaryConditionSymmetric const&)            = default;
+    FieldBoundaryConditionSymmetric& operator=(FieldBoundaryConditionSymmetric const&) = default;
+    FieldBoundaryConditionSymmetric(FieldBoundaryConditionSymmetric&&)                 = default;
+    FieldBoundaryConditionSymmetric& operator=(FieldBoundaryConditionSymmetric&&)      = default;
 
-    virtual ~FieldAntiSymmetricBoundaryCondition() = default;
+    virtual ~FieldBoundaryConditionSymmetric() = default;
 
     FieldBoundaryConditionType getType() const override
     {
-        return FieldBoundaryConditionType::AntiSymmetric;
+        return FieldBoundaryConditionType::Symmetric;
     }
 
     void apply(ScalarOrTensorFieldT& scalarOrTensorField, BoundaryLocation const boundaryLocation,
@@ -59,30 +58,30 @@ public:
             field_type& field = std::get<i>(fields);
             if constexpr (is_scalar)
             {
-                scalar_dirichlet_condition_.apply(field, boundaryLocation, localGhostBox,
-                                                  gridLayout, time);
+                scalar_neumann_condition_.apply(field, boundaryLocation, localGhostBox, gridLayout,
+                                                time);
             }
             else
             {
                 if (static_cast<std::size_t>(i) != static_cast<std::size_t>(direction))
-                    scalar_dirichlet_condition_.apply(field, boundaryLocation, localGhostBox,
-                                                      gridLayout, time);
-                else
                     scalar_neumann_condition_.apply(field, boundaryLocation, localGhostBox,
                                                     gridLayout, time);
+                else
+                    scalar_dirichlet_condition_.apply(field, boundaryLocation, localGhostBox,
+                                                      gridLayout, time);
             }
         });
     }
 
 private:
-    using _scalar_neumann_condition_type = FieldNeumannBoundaryCondition<field_type, GridLayoutT>;
+    using _scalar_neumann_condition_type = FieldBoundaryConditionNeumann<field_type, GridLayoutT>;
     using _scalar_dirichlet_condition_type
-        = FieldDirichletBoundaryCondition<field_type, GridLayoutT>;
+        = FieldBoundaryConditionDirichlet<field_type, GridLayoutT>;
 
     _scalar_neumann_condition_type scalar_neumann_condition_{};
     _scalar_dirichlet_condition_type scalar_dirichlet_condition_{};
 
-}; // class FieldAntiSymmetricBoundaryCondition
+}; // class FieldBoundaryConditionSymmetric
 
 } // namespace PHARE::core
-#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_ANTISYMMETRIC_BOUNDARY_CONDITION_HPP
+#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_SYMMETRIC_HPP

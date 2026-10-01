@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIVERGENCE_FREE_TRANSVERSE_NEUMANN_BOUNDARY_CONDITION_HPP
-#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIVERGENCE_FREE_TRANSVERSE_NEUMANN_BOUNDARY_CONDITION_HPP
+#ifndef PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIVERGENCE_FREE_TRANSVERSE_NEUMANN_HPP
+#define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIVERGENCE_FREE_TRANSVERSE_NEUMANN_HPP
 
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -25,7 +25,7 @@ namespace PHARE::core
  *
  */
 template<typename VecFieldT, typename GridLayoutT>
-class FieldDivergenceFreeTransverseNeumannBoundaryCondition
+class FieldBoundaryConditionDivergenceFreeTransverseNeumann
     : public IFieldBoundaryCondition<VecFieldT, GridLayoutT>
 {
 public:
@@ -39,18 +39,18 @@ public:
         N == 3,
         "Divergence-free transverse Neumann boundary condition only applies to vector fields.");
 
-    FieldDivergenceFreeTransverseNeumannBoundaryCondition() = default;
+    FieldBoundaryConditionDivergenceFreeTransverseNeumann() = default;
 
-    FieldDivergenceFreeTransverseNeumannBoundaryCondition(
-        FieldDivergenceFreeTransverseNeumannBoundaryCondition const&) = default;
-    FieldDivergenceFreeTransverseNeumannBoundaryCondition&
-    operator=(FieldDivergenceFreeTransverseNeumannBoundaryCondition const&) = default;
-    FieldDivergenceFreeTransverseNeumannBoundaryCondition(
-        FieldDivergenceFreeTransverseNeumannBoundaryCondition&&) = default;
-    FieldDivergenceFreeTransverseNeumannBoundaryCondition&
-    operator=(FieldDivergenceFreeTransverseNeumannBoundaryCondition&&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseNeumann(
+        FieldBoundaryConditionDivergenceFreeTransverseNeumann const&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseNeumann&
+    operator=(FieldBoundaryConditionDivergenceFreeTransverseNeumann const&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseNeumann(
+        FieldBoundaryConditionDivergenceFreeTransverseNeumann&&) = default;
+    FieldBoundaryConditionDivergenceFreeTransverseNeumann&
+    operator=(FieldBoundaryConditionDivergenceFreeTransverseNeumann&&) = default;
 
-    virtual ~FieldDivergenceFreeTransverseNeumannBoundaryCondition() = default;
+    virtual ~FieldBoundaryConditionDivergenceFreeTransverseNeumann() = default;
 
     FieldBoundaryConditionType getType() const override
     {
@@ -94,7 +94,7 @@ public:
                                                       localGhostBox);
     }
 
-}; // class FieldDivergenceFreeTransverseNeumannBoundaryCondition
+}; // class FieldBoundaryConditionDivergenceFreeTransverseNeumann
 
 } // namespace PHARE::core
-#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_DIVERGENCE_FREE_TRANSVERSE_NEUMANN_BOUNDARY_CONDITION_HPP
+#endif // PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIVERGENCE_FREE_TRANSVERSE_NEUMANN_HPP
