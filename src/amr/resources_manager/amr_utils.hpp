@@ -6,6 +6,8 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "mpi/mpi_utils.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/utilities/box/box.hpp"
+#include "core/utilities/range/range.hpp"
 
 #include "amr/amr_constants.hpp"
 #include "amr/types/amr_types.hpp"
@@ -202,36 +204,18 @@ namespace amr
 
 
 
-    NO_DISCARD auto inline getSameLevelNeighbors(SAMRAI::hier::Patch const& patch,
-                                                 SAMRAI::hier::PatchHierarchy const& hierarchy)
+    // same-level neighbour boxes of all local patches of level `ilvl`, including periodic images
+    NO_DISCARD auto inline makeSameLevelNeighbors(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                                  int const ilvl)
     {
-        auto const lvlNbr = patch.getPatchLevelNumber();
-
-        return SAMRAI::hier::HierarchyNeighbors{hierarchy, lvlNbr, lvlNbr}.getSameLevelNeighbors(
-            patch.getBox(), lvlNbr);
-    }
-
-    void inline noDomainOverlapsOn(SAMRAI::hier::PatchHierarchy const& hierarchy, int const ilvl)
-    {
-        for (auto const& patch : *hierarchy.getPatchLevel(ilvl))
-            for (auto const& neighbox : getSameLevelNeighbors(*patch, hierarchy))
-                if (auto const overlap = patch->getBox() * neighbox; !overlap.empty())
-                    throw std::runtime_error(
-                        "CATASTROPHIC ERROR: Patch domain overlap detected on level: "
-                        + std::to_string(ilvl));
-    }
-
-    void inline noDomainOverlapsOn(SAMRAI::hier::PatchHierarchy const& hierarchy)
-    {
-        for (int iLevel = 0; iLevel < hierarchy.getNumberOfLevels(); ++iLevel)
-            noDomainOverlapsOn(hierarchy, iLevel);
+        return SAMRAI::hier::HierarchyNeighbors{hierarchy, ilvl, ilvl};
     }
 
 
     // potentially to replace with SAMRAI coarse to fine boundary stuff
     template<typename GridLayoutT> // fow now it gives us a box for only patch ghost layer
     NO_DISCARD auto makeNonLevelGhostBoxFor(SAMRAI::hier::Patch const& patch,
-                                            SAMRAI::hier::PatchHierarchy const& hierarchy)
+                                            SAMRAI::hier::HierarchyNeighbors const& neighbors)
     {
         auto constexpr dimension       = GridLayoutT::dimension;
         auto const lvlNbr              = patch.getPatchLevelNumber();
@@ -239,15 +223,73 @@ namespace amr
         auto const domBox              = phare_box_from<dimension>(domain);
         auto const particleGhostBox    = grow(domBox, GridLayoutT::options.particle_ghost_width);
 
-        auto const neighbors = getSameLevelNeighbors(patch, hierarchy);
+        auto const& neighbors_ = neighbors.getSameLevelNeighbors(domain, lvlNbr);
         std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
-        patchGhostLayerBoxes.reserve(neighbors.size() + 1);
+        patchGhostLayerBoxes.reserve(neighbors_.size() + 1);
         patchGhostLayerBoxes.emplace_back(domBox);
-        for (auto const& neighbox : neighbors)
+        for (auto const& neighbox : neighbors_)
             patchGhostLayerBoxes.emplace_back(
                 *(particleGhostBox * phare_box_from<dimension>(neighbox)));
 
         return patchGhostLayerBoxes;
+    }
+
+
+    // Cells of `box` that are also covered by a neighbour with a smaller id.
+    // `neighbors` is a range of (box, id) pairs. With ids that are unique and totally ordered,
+    // every cell covered by at least one box is left out of the result of exactly one box.
+    template<typename Box_t, typename Id_t, typename Neighbors>
+    NO_DISCARD auto makeForeignBoxes(Box_t const& box, Id_t const& id, Neighbors const& neighbors)
+    {
+        std::vector<Box_t> foreign;
+        for (auto const& [neighbox, neighid] : neighbors)
+            if (neighid < id)
+                if (auto const overlap = box * neighbox)
+                    foreign.emplace_back(*overlap);
+        return foreign;
+    }
+
+
+    // Same-level patches may overlap: SAMRAI grows small boxes to the minimum patch size
+    // without looking at the other new boxes. A cell covered by several patches is owned by
+    // the patch with the smallest GlobalId (lowest owner rank, then lowest local id).
+    // Returns the cells of `patch` owned by another patch. Periodic images carry the GlobalId
+    // of their patch, so all ranks agree without communication.
+    template<typename GridLayoutT>
+    NO_DISCARD auto makeForeignBoxesFor(SAMRAI::hier::Patch const& patch,
+                                        SAMRAI::hier::HierarchyNeighbors const& neighbors)
+    {
+        auto constexpr dimension = GridLayoutT::dimension;
+        using Box_t              = core::Box<int, dimension>;
+
+        auto const& neighbors_
+            = neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber());
+        std::vector<std::pair<Box_t, SAMRAI::hier::GlobalId>> neighborIds;
+        neighborIds.reserve(neighbors_.size());
+        for (auto const& neighbox : neighbors_)
+            neighborIds.emplace_back(phare_box_from<dimension>(neighbox), neighbox.getGlobalId());
+
+        return makeForeignBoxes(phare_box_from<dimension>(patch.getBox()), patch.getGlobalId(),
+                                neighborIds);
+    }
+
+
+    // drops the domain particles of all populations located in `foreignBoxes`
+    template<typename Ions, typename Boxes>
+    void eraseForeignDomainParticles(Ions& ions, Boxes const& foreignBoxes)
+    {
+        if (foreignBoxes.empty())
+            return;
+
+        for (auto& pop : ions)
+        {
+            auto& particles = pop.domainParticles();
+            auto range      = core::makeIndexRange(particles);
+            auto const kept = particles.partition(range, [&](auto const& cell) {
+                return !core::isIn(core::Point{cell}, foreignBoxes);
+            });
+            particles.erase(core::makeRange(particles, kept.iend(), particles.size()));
+        }
     }
 
     inline auto to_string(auto const& id)
