@@ -55,9 +55,7 @@ def mhd_hierarchy(sim):
     """two level-0 patches tiling the domain, as an MHD run's hierarchy would be"""
     boxes = [Box([0], [cells // 2 - 1]), Box([cells // 2], [cells - 1])]
     patches = [Patch({"rho": field_data(box, "rho")}, f"0#{i}") for i, box in enumerate(boxes)]
-    hier = PatchHierarchy(
-        [{0: PatchLevel(0, patches)}], Box([0], [cells - 1]), times=[0.0]
-    )
+    hier = PatchHierarchy({0.0: {0: PatchLevel(0, patches)}}, Box([0], [cells - 1]))
     hier._sim = sim
     return hier
 

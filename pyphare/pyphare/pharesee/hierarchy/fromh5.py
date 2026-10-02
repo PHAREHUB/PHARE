@@ -293,14 +293,14 @@ def new_from_h5(filepath, times, **kwargs):
     if none_iterable(selection_box) and all_iterables(times):
         selection_box = [selection_box] * len(times)
 
-    patch_levels_per_time = []
+    time_hier = {}
 
     h5f = h5py.File(filepath, "r")
     for it, time in enumerate(times):
         if isinstance(time, float):
             time = f"{time:.10f}"
         patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box[it])
-        patch_levels_per_time.append(patch_levels)
+        time_hier[time] = patch_levels
 
     dim = len(h5f.attrs["domain_box"])
     domain_box = Box([0] * dim, h5f.attrs["domain_box"])
@@ -309,10 +309,9 @@ def new_from_h5(filepath, times, **kwargs):
     # because we want that operations involving several hierarchies will need to check
     # that each time has the same patch layout.
     hier = PatchHierarchy(
-        patch_levels_per_time,
+        time_hier,
         domain_box,
         refinement_ratio,
-        times,
         h5f,
         selection_box=selection_box,
     )
