@@ -11,6 +11,7 @@ from pyphare.pharesee.hierarchy import hierarchy_from
 
 from tests.diagnostic import all_timestamps
 from tests.simulator.test_initialization import InitializationTest
+from tests.simulator.test_initialization import vector_potential_init
 
 
 class MHDInitializationTest(InitializationTest):
@@ -32,6 +33,7 @@ class MHDInitializationTest(InitializationTest):
         timestamps=None,
         diag_outputs="",
         max_mhd_level=1,
+        vecpot=False,
         **kwargs,
     ):
         if smallest_patch_size is None:
@@ -116,9 +118,11 @@ class MHDInitializationTest(InitializationTest):
         def p(*xyz):
             return 1.0
 
-        ph.MHDModel(
-            density=density or _density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p
+        magnetic = (
+            vector_potential_init(ndim, L) if vecpot else dict(bx=bx, by=by, bz=bz)
         )
+
+        ph.MHDModel(density=density or _density, vx=vx, vy=vy, vz=vz, p=p, **magnetic)
 
         if timestamps is None:
             timestamps = all_timestamps(ph.global_vars.sim)

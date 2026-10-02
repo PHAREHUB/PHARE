@@ -44,6 +44,9 @@ class Initialization1DTest(MHDInitializationTest, HybridInitializationTest):
         phut.cast_to(self, super_class)
         self._test_B_is_as_provided_by_user(ndim, **kwargs)
 
+    def test_vector_potential_rejections(self):
+        self._test_vector_potential_rejections(ndim)
+
 
 @ddt
 class HybridInitialization1DTest(HybridInitializationTest):

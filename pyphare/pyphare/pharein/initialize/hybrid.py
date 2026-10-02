@@ -1,6 +1,7 @@
 import pybindlibs.dictator as pp
 
 from .general import add_double, add_enum_int, add_int, add_size_t, add_string, fn_wrapper
+from .general import add_magnetic_initializer
 
 
 def populateDict(sim):
@@ -51,10 +52,9 @@ def populateDict(sim):
     add_string("simulation/electromag/electric/name", "E")
     add_string("simulation/electromag/magnetic/name", "B")
 
-    maginit_path = "simulation/electromag/magnetic/initializer/"
-    addInitFunction(maginit_path + "x_component", fn_wrapper(modelDict["bx"]))
-    addInitFunction(maginit_path + "y_component", fn_wrapper(modelDict["by"]))
-    addInitFunction(maginit_path + "z_component", fn_wrapper(modelDict["bz"]))
+    add_magnetic_initializer(
+        addInitFunction, "simulation/electromag/magnetic/initializer/", modelDict
+    )
 
     #### adding electrons
     if sim.electrons is None:

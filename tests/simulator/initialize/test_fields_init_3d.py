@@ -9,6 +9,7 @@ from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
+from pyphare.core.box import nDBox
 
 from tests.simulator.initialize.test_init_mhd import MHDInitializationTest
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
@@ -35,6 +36,12 @@ def permute(hybrid=True, mhd=False):
     return (permute_hybrid() if hybrid else []) + (permute_mhd() if mhd else [])
 
 
+def permute_vector_potential():
+    # max_mhd_level=2: the test checks div B on a refined level
+    mhd = dict(interp_order=None, hall=False, max_mhd_level=2)
+    return permute_hybrid() + [dict(super_class=MHDInitializationTest, **mhd)]
+
+
 @ddt
 class Initialization3DTest(MHDInitializationTest, HybridInitializationTest):
     @data(*permute())
@@ -43,6 +50,21 @@ class Initialization3DTest(MHDInitializationTest, HybridInitializationTest):
         print(f"\n{self._testMethodName}_{ndim}d")
         phut.cast_to(self, super_class)
         self._test_B_is_as_provided_by_user(ndim, cells=cells, **kwargs)
+
+    @data(*permute_vector_potential())
+    @unpack
+    def test_B_from_vector_potential(self, super_class, **kwargs):
+        print(f"\n{self._testMethodName}_{ndim}d")
+        phut.cast_to(self, super_class)
+        self._test_B_from_vector_potential(
+            ndim,
+            refinement_boxes={"L0": {"B0": nDBox(ndim, 5, 14)}},
+            cells=cells,
+            **kwargs,
+        )
+
+    def test_vector_potential_rejections(self):
+        self._test_vector_potential_rejections(ndim)
 
     @data(*permute())
     @unpack

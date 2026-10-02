@@ -1,6 +1,7 @@
 import pybindlibs.dictator as pp
 
 from .general import add_bool, add_double, add_int, add_string, fn_wrapper, add_enum_int
+from .general import add_magnetic_initializer
 
 
 def populateDict(sim):
@@ -47,17 +48,8 @@ def populateDict(sim):
         "simulation/mhd_state/velocity/initializer/z_component",
         fn_wrapper(modelDict["vz"]),
     )
-    addInitFunction(
-        "simulation/mhd_state/magnetic/initializer/x_component",
-        fn_wrapper(modelDict["bx"]),
-    )
-    addInitFunction(
-        "simulation/mhd_state/magnetic/initializer/y_component",
-        fn_wrapper(modelDict["by"]),
-    )
-    addInitFunction(
-        "simulation/mhd_state/magnetic/initializer/z_component",
-        fn_wrapper(modelDict["bz"]),
+    add_magnetic_initializer(
+        addInitFunction, "simulation/mhd_state/magnetic/initializer/", modelDict
     )
     addInitFunction(
         "simulation/mhd_state/pressure/initializer", fn_wrapper(modelDict["p"])
