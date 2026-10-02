@@ -275,7 +275,7 @@ def overlap_mask_1d(x, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        (fine_x,) = pdata.meshCoords()
+        fine_x = pdata.x
         fine_dl = pdata.dl
         local_dl = dl
 
@@ -309,7 +309,7 @@ def overlap_mask_2d(x, y, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        fine_x, fine_y = pdata.meshCoords()
+        fine_x, fine_y = pdata.x, pdata.y
         fine_dl = pdata.dl
         local_dl = dl
 

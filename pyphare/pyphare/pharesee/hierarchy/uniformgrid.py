@@ -64,8 +64,7 @@ def _get_grid(obj, qty=None):
 def peak_coordinates(obj, qty=None, **kwargs):
     grid = _get_grid(obj, qty)
     peaks, _ = find_peaks(grid, **kwargs)
-    dl = grid.layout.dl
-    return peaks * dl[0]  # only works for 1D!
+    return grid.x[peaks]  # only works for 1D!
 
 
 def find_peaks(obj, qty=None, **kwargs):
