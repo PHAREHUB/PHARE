@@ -6,6 +6,10 @@ from pyphare.core import phare_utilities
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import HybridGridLayoutFor
 from pyphare.pharein import global_vars
+from pyphare.pharein.vector_potential import (
+    magnetic_non_periodic,
+    resolve_magnetic_init,
+)
 
 
 class MaxwellianFluidModel(object):
@@ -55,10 +59,20 @@ class MaxwellianFluidModel(object):
         * **bx** (*function*): magnetic field in x direction
         * **by** (*function*): magnetic field in y direction
         * **bz** (*function*): magnetic field in z direction
+        * **ax** (*function*): vector potential in x direction
+        * **ay** (*function*): vector potential in y direction
+        * **az** (*function*): vector potential in z direction
 
-    Each of `bx`, `by`, `bz` is a function of the spatial coordinates (one
-    argument per dimension: `f(x)`, `f(x, y)` or `f(x, y, z)`), or a plain
-    number for a spatially uniform component (default: `bx=1`, `by=bz=0`).
+    Each of `bx`, `by`, `bz`, `ax`, `ay`, `az` is a function of the spatial
+    coordinates (one argument per dimension: `f(x)`, `f(x, y)` or `f(x, y, z)`),
+    or a plain number for a spatially uniform component (default: `bx=1`,
+    `by=bz=0`).
+
+    Giving any of ``ax, ay, az`` sets B to the discrete curl of A on the Yee grid,
+    so that the initial div B is at round-off. Missing ``a*`` are 0. In this mode,
+    ``bx, by`` (and ``bz`` in 3D) cannot be given; in 2D, ``bz`` may be given
+    instead of ``ax, ay``. A is not supported in 1D. A need not be periodic, only
+    its curl does (e.g. a Harris sheet Az).
 
     **Ion populations**:
 
@@ -110,7 +124,7 @@ class MaxwellianFluidModel(object):
         if self.dim == 3:
             return lambda x, y, z: value
 
-    def __init__(self, bx=None, by=None, bz=None, **kwargs):
+    def __init__(self, bx=None, by=None, bz=None, ax=None, ay=None, az=None, **kwargs):
         if global_vars.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
 
@@ -118,13 +132,18 @@ class MaxwellianFluidModel(object):
             raise RuntimeError("A model is already created")
 
         self.dim = global_vars.sim.ndim
-        bx = self.defaulter(bx, 1.0)
-        by = self.defaulter(by, 0.0)
-        bz = self.defaulter(bz, 0.0)
+        magnetic = resolve_magnetic_init(
+            self.dim, self.defaulter, bx, by, bz, ax, ay, az
+        )
 
         self.model_dict = {"model": "model", "model_name": "custom"}
-
-        self.model_dict.update({"bx": bx, "by": by, "bz": bz})
+        if magnetic["mode"] == "b":
+            self.model_dict.update({k: magnetic[k] for k in ("bx", "by", "bz")})
+        else:
+            self.model_dict["vector_potential"] = {
+                k: magnetic[k] for k in ("ax", "ay", "az")
+            }
+            self.model_dict["direct_b"] = magnetic["direct"]
 
         self.populations = list(kwargs.keys())
         for population in self.populations:
@@ -289,11 +308,17 @@ class MaxwellianFluidModel(object):
         nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X", "Y"]
         domain = sim.simulation_domain()
-        bx = self.model_dict["bx"]
-        by = self.model_dict["by"]
-        bz = self.model_dict["bz"]
-        is_periodic = True
-        not_periodic = []
+        if "vector_potential" in self.model_dict:
+            b_checked = []
+            not_periodic = magnetic_non_periodic(sim, self.model_dict, atol)
+        else:
+            b_checked = list(
+                zip(
+                    [self.model_dict[b] for b in ("bx", "by", "bz")], ("Bx", "By", "Bz")
+                )
+            )
+            not_periodic = []
+        is_periodic = len(not_periodic) == 0
 
         def getCoord(L, R, idir):
             if idir == 0:
@@ -317,7 +342,7 @@ class MaxwellianFluidModel(object):
 
                 direction = directions[idir]
 
-                for b_i, b_name in zip((bx, by, bz), ("Bx", "By", "Bz")):
+                for b_i, b_name in b_checked:
                     if layout.qtyIsDual(b_name, direction):
                         L, R = dual_left, dual_right
                     else:
@@ -363,11 +388,17 @@ class MaxwellianFluidModel(object):
         nbrPrimalGhosts = layout.nbrGhostsPrimal(sim.interp_order)
         directions = ["X", "Y", "Z"]
         domain = sim.simulation_domain()
-        bx = self.model_dict["bx"]
-        by = self.model_dict["by"]
-        bz = self.model_dict["bz"]
-        is_periodic = True
-        not_periodic = []
+        if "vector_potential" in self.model_dict:
+            b_checked = []
+            not_periodic = magnetic_non_periodic(sim, self.model_dict, atol)
+        else:
+            b_checked = list(
+                zip(
+                    [self.model_dict[b] for b in ("bx", "by", "bz")], ("Bx", "By", "Bz")
+                )
+            )
+            not_periodic = []
+        is_periodic = len(not_periodic) == 0
 
         def getCoord(L, R, idir):
             if idir == 0:
@@ -405,7 +436,7 @@ class MaxwellianFluidModel(object):
 
                 direction = directions[idir]
 
-                for b_i, b_name in zip((bx, by, bz), ("Bx", "By", "Bz")):
+                for b_i, b_name in b_checked:
                     if layout.qtyIsDual(b_name, direction):
                         L, R = dual_left, dual_right
                     else:

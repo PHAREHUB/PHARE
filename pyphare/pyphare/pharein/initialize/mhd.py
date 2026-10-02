@@ -1,4 +1,5 @@
 from .dict_populator import DictPopulator
+from .general import add_magnetic_initializer
 
 
 def populateDict(sim):
@@ -46,14 +47,13 @@ def _populate_state(dp, sim):
     )
 
     velinit_path = "simulation/mhd_state/velocity/initializer/"
-    maginit_path = "simulation/mhd_state/magnetic/initializer/"
     for k in ["x", "y", "z"]:
         dp.add_init_function(
             sim.ndim, velinit_path + f"{k}_component", modelDict[f"v{k}"]
         )
-        dp.add_init_function(
-            sim.ndim, maginit_path + f"{k}_component", modelDict[f"b{k}"]
-        )
+    add_magnetic_initializer(
+        dp, sim.ndim, "simulation/mhd_state/magnetic/initializer/", modelDict
+    )
 
     dp.add_init_function(
         sim.ndim, "simulation/mhd_state/pressure/initializer", modelDict["p"]
