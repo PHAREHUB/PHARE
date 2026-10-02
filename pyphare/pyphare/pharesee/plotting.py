@@ -326,31 +326,31 @@ def finest_field_plot(run_path, qty, **kwargs):
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetB(time, merged=True, interp=interp)[qty]
+        grid = r.GetB(time, all_primal=False).finest(time, qty, interp)
     elif qty in ["Ex", "Ey", "Ez"]:
         file = os.path.join(run_path, "EM_E.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetE(time, merged=True, interp=interp)[qty]
+        grid = r.GetE(time, all_primal=False).finest(time, qty, interp)
     elif qty in ["Vx", "Vy", "Vz"]:
         file = os.path.join(run_path, "ions_bulkVelocity.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetVi(time, merged=True, interp=interp)[qty]
+        grid = r.GetVi(time).finest(time, qty[1:], interp)
     elif qty == "rho":
         file = os.path.join(run_path, "ions_charge_density.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetNi(time, merged=True, interp=interp)[qty]
+        grid = r.GetNi(time).finest(time, interp=interp)
     elif qty in ("Jx", "Jy", "Jz"):
         file = os.path.join(run_path, "EM_B.h5")
         if time is None:
             times = get_times_from_h5(file)
             time = times[0]
-        interpolator, finest_coords = r.GetJ(time, merged=True, interp=interp)[qty]
+        grid = r.GetJ(time, all_primal=False).finest(time, qty, interp)
     else:
         # ___ TODO : should also include the files for a given population
         raise ValueError(
@@ -366,10 +366,10 @@ def finest_field_plot(run_path, qty, **kwargs):
     if dim == 1:
         drawstyle = kwargs.get("drawstyle", "steps-mid")
 
-        ax.plot(finest_coords[0], interpolator(finest_coords[0]), drawstyle=drawstyle)
+        ax.plot(grid.x, grid[:], drawstyle=drawstyle)
     elif dim == 2:
-        x = finest_coords[0]
-        y = finest_coords[1]
+        x = np.copy(grid.x)
+        y = np.copy(grid.y)
         dx = x[1] - x[0]
         dy = y[1] - y[0]
 
@@ -381,8 +381,7 @@ def finest_field_plot(run_path, qty, **kwargs):
         y -= dy / 2
         y = np.append(y, y[-1] + dy)
 
-        X, Y = np.meshgrid(x, y)
-        DATA = interpolator(X, Y)
+        DATA = grid[:].T  # pcolormesh takes (y, x)
 
         vmin = kwargs.get("vmin", np.nanmin(DATA))
         vmax = kwargs.get("vmax", np.nanmax(DATA))

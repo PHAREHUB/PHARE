@@ -140,6 +140,22 @@ class FieldData(PatchData):
                 self.offset[i] = 0.5 * self.dl[i]
 
         self.dataset = data
+        self._is_consistent()
+
+    def _is_consistent(self):
+        if not all(self.layout.ghosts_nbr == self.ghosts_nbr):
+            raise ValueError(
+                f"FieldData.ghosts_nbr is inconsistent with layout, ({self.layout.ghosts_nbr} != {self.ghosts_nbr})"
+            )
+
+    def copy_as(self, data=None, **kwargs):
+        data = data if data is not None else self.dataset
+        name = kwargs.get("name", self.field_name)
+        layout = self.layout
+        if "ghosts_nbr" in kwargs:
+            layout = self.layout.copy_as(ghosts_nbr=kwargs["ghosts_nbr"])
+        kwargs.setdefault("centering", self.centerings)
+        return FieldData(layout, name, data, **kwargs)
 
     def meshgrid(self, select=None):
         def grid():
@@ -194,7 +210,6 @@ class FieldData(PatchData):
         raise ValueError(
             f"centering not specified and cannot be inferred from field name : {field_name}"
         )
-
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
