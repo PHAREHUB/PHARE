@@ -3,11 +3,10 @@ from copy import deepcopy
 import numpy as np
 
 
-def gaussian(hier, qty=None, sigma=2, **kwargs):
-    from pyphare.pharesee import hierarchy as harch
+def gaussian(hier, qty=None, sigma=2, time=None):
+    from pyphare.pharesee.hierarchy import func
 
-    time = harch.func.GetTime(hier)
-    finest = harch.func.GetFinest(hier, time, qty)
+    finest = func.GetFinest(hier, time, qty)
     grids = deepcopy(finest)
     for key, grid in finest.items():
         grids[key] = gaussian_filter_uniform_grid(grid, sigma=sigma)
