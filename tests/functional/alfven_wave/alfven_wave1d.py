@@ -126,9 +126,8 @@ def phase_speed(run_path, ampl, xmax):
     wave_vec = np.zeros_like(time)
 
     for it, t in enumerate(time):
-        B = r.GetB(t, merged=True)
-        xby = B["By"][1][0]
-        by = B["By"][0](xby)
+        By = r.GetB(t, all_primal=False).finest(t, "By")
+        xby, by = By.x, By[:]
         a, k, phi = curve_fit(wave, xby, by, p0=(ampl, 2 * np.pi / xmax, 0))[0]
         phase[it] = phi
         amplitude[it] = a
@@ -154,17 +153,15 @@ def main():
         t = get_times_from_h5("EM_B.h5")
         fig, ax = plt.subplots(figsize=(9, 5), nrows=1)
 
-        B = r.GetB(t[int(len(t) / 2)], merged=True)
-        xby = B["By"][1][0]
-        by = B["By"][0](xby)
+        By = r.GetB(t[int(len(t) / 2)], all_primal=False).finest(qty="By")
+        xby, by = By.x, By[:]
         ax.plot(xby, by, label="t = 500", alpha=0.6)
 
         x0 = 450
         x1 = 550
 
-        B = r.GetB(t[-1], merged=True)
-        xby = B["By"][1][0]
-        by = B["By"][0](xby)
+        By = r.GetB(t[-1], all_primal=False).finest(qty="By")
+        xby, by = By.x, By[:]
         ax.plot(xby, by, label="t = 1000", alpha=0.6)
         ax.plot(
             xby,
@@ -174,9 +171,8 @@ def main():
             label="T=500 (theory)",
         )
 
-        B = r.GetB(t[0], merged=True)
-        xby = B["By"][1][0]
-        by = B["By"][0](xby)
+        By = r.GetB(t[0], all_primal=False).finest(qty="By")
+        xby, by = By.x, By[:]
         ax.plot(xby, by, label="t = 0", color="k")
 
         ax.set_xlabel("x")

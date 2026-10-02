@@ -121,16 +121,12 @@ def growth_b_right_hand(run_path, time_offset):
     first_mode = np.array([])
 
     for time in times:
-        B_hier = r.GetB(time, merged=True, interp="linear")
+        B_hier = r.GetB(time, all_primal=False)
 
-        by_interpolator, xyz_finest = B_hier["By"]
-        bz_interpolator, xyz_finest = B_hier["Bz"]
-
-        # remove the last point so that "x" is periodic wo. last point = first point
-        x = xyz_finest[0][:-1]
-
-        by = by_interpolator(x)
-        bz = bz_interpolator(x)
+        # domain only, By/Bz are dual so that's exactly one period
+        By = B_hier.finest(time, "By", "linear")
+        Bz = B_hier.finest(time, "Bz", "linear")
+        by, bz = By[By.box], Bz[Bz.box]
 
         # get the mode 1, as it is the most unstable in a box of length 33
         mode1 = np.absolute(np.fft.fft(by - 1j * bz)[1])
@@ -255,11 +251,10 @@ def main():
             ax.axvline(14, vmin, vmax, color="red")
             ax.axvline(18, vmin, vmax, color="red")
 
-            E_hier = r.GetE(time=t, merged=True, interp="linear")
-            ey_interpolator, xyz_finest = E_hier["Ey"]
+            Ey = r.GetE(time=t, all_primal=False).finest(t, "Ey", "linear")
             ax_t.plot(
-                xyz_finest[0],
-                ey_interpolator(xyz_finest[0]),
+                Ey.x,
+                Ey[:],
                 linewidth=2,
                 color="dimgray",
             )

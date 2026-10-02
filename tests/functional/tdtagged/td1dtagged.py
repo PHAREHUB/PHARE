@@ -152,19 +152,15 @@ def make_figure():
     v = 2
 
     BH = rwT.GetB(plot_time)
-    BwT = rwT.GetB(plot_time, merged=True, interp="linear")
-    BNoRef = rNoRef.GetB(plot_time, merged=True, interp="linear")
-    JwT = rwT.GetJ(plot_time, merged=True, interp="linear")
-    JNoRef = rNoRef.GetJ(plot_time, merged=True, interp="linear")
+    BywT = rwT.GetB(plot_time, all_primal=False).finest(plot_time, "By", "linear")
+    ByNoRef = rNoRef.GetB(plot_time, all_primal=False).finest(plot_time, "By", "linear")
+    JzwT = rwT.GetJ(plot_time, all_primal=False).finest(plot_time, "Jz", "linear")
+    JzNoRef = rNoRef.GetJ(plot_time, all_primal=False).finest(plot_time, "Jz", "linear")
 
-    xbywT = BwT["By"][1][0]
-    bywT = BwT["By"][0](xbywT)
-    xbyNoRef = BNoRef["By"][1][0]
-    byNoRef = BNoRef["By"][0](xbyNoRef)
-    xjzwT = JwT["Jz"][1][0]
-    jzwT = JwT["Jz"][0](xjzwT)
-    xjzNoRef = JNoRef["Jz"][1][0]
-    jzNoRef = JNoRef["Jz"][0](xjzNoRef)
+    xbywT, bywT = BywT.x, BywT[:]
+    xbyNoRef, byNoRef = ByNoRef.x, ByNoRef[:]
+    xjzwT, jzwT = JzwT.x, JzwT[:]
+    xjzNoRef, jzNoRef = JzNoRef.x, JzNoRef[:]
 
     fig, axarr = plt.subplots(nrows=3, figsize=(8, 8))
 
