@@ -110,7 +110,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Bx", y="By", z="Bz")
-        return VectorField.FROM(h)
+        return VectorField(h)
 
     def GetE(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -120,27 +120,27 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="Ex", y="Ey", z="Ez")
-        return VectorField.FROM(h)
+        return VectorField(h)
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
-        return ScalarField.FROM(self._get(hier, time, merged, interp))
+        return ScalarField(self._get(hier, time, merged, interp))
 
     def GetNi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
-        return ScalarField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
+        return ScalarField(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
-        return ScalarField.FROM(self._get(hier, time, merged, interp))
+        return ScalarField(self._get(hier, time, merged, interp))
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
-        return VectorField.FROM(self._get(hier, time, merged, interp, drop_ghosts=True))
+        return VectorField(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
-        return VectorField.FROM(self._get(hier, time, merged, interp))
+        return VectorField(self._get(hier, time, merged, interp))
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(
@@ -172,7 +172,7 @@ class Run:
             return Te * self._get(hier, time, merged, interp)
 
         h = compute_hier_from(hc.drop_ghosts, hier)
-        return ScalarField.FROM(h) * Te
+        return ScalarField(h) * Te
 
     def GetJ(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -182,12 +182,12 @@ class Run:
         if not all_primal:
             return self._get(J, time, merged, interp)
         h = compute_hier_from(_compute_to_primal, J, x="Jx", y="Jy", z="Jz")
-        return VectorField.FROM(h)
+        return VectorField(h)
 
     def GetDivB(self, time, merged=False, interp="nearest", **kwargs):
         B = self.GetB(time, all_primal=False, **kwargs)
         db = compute_hier_from(_compute_divB, B)
-        return ScalarField.FROM(self._get(db, time, merged, interp))
+        return ScalarField(self._get(db, time, merged, interp))
 
     def GetMHDrho(
         self, time, merged=False, interp="nearest", all_primal=True, **kwargs
@@ -199,7 +199,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, value="mhdRho")
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def GetMHDV(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -209,7 +209,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, x="mhdVx", y="mhdVy", z="mhdVz")
-        return VectorField.FROM(h)
+        return VectorField(h)
 
     def GetMHDP(self, time, merged=False, interp="nearest", all_primal=True, **kwargs):
         if merged:
@@ -219,7 +219,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, value="mhdP")
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def GetMHDrhoV(
         self, time, merged=False, interp="nearest", all_primal=True, **kwargs
@@ -233,7 +233,7 @@ class Run:
         h = compute_hier_from(
             _compute_to_primal, hier, x="mhdRhoVx", y="mhdRhoVy", z="mhdRhoVz"
         )
-        return VectorField.FROM(h)
+        return VectorField(h)
 
     def GetMHDEtot(
         self, time, merged=False, interp="nearest", all_primal=True, **kwargs
@@ -245,7 +245,7 @@ class Run:
             return self._get(hier, time, merged, interp)
 
         h = compute_hier_from(_compute_to_primal, hier, value="mhdEtot")
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def GetMagneticFlux(
         self, time, interp="nearest", xn=None, yn=None, Xn=None, Yn=None
@@ -330,7 +330,7 @@ class Run:
         """
         B = self.GetB(time, all_primal=False, **kwargs)
         ranks = compute_hier_from(_get_rank, B)
-        return ScalarField.FROM(self._get(ranks, time, merged, interp))
+        return ScalarField(self._get(ranks, time, merged, interp))
 
     def GetParticles(self, time, pop_name, hier=None, **kwargs):
         def filename(name):
