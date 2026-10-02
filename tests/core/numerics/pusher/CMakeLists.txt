@@ -2,21 +2,26 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(test-pusher)
 
-set(SOURCES test_pusher.cpp)
+function(_add_pusher_test name src)
 
-add_executable(${PROJECT_NAME} ${SOURCES})
+  add_executable(${name} ${src})
 
-target_include_directories(${PROJECT_NAME} PRIVATE
-  ${GTEST_INCLUDE_DIRS}
-  )
+  target_include_directories(${name} PRIVATE
+    ${GTEST_INCLUDE_DIRS}
+    )
 
-target_link_libraries(${PROJECT_NAME} PRIVATE
-  phare_core
-  phare_initializer
-  ${GTEST_LIBS})
+  target_link_libraries(${name} PRIVATE
+    phare_core
+    phare_initializer
+    ${GTEST_LIBS})
+
+  add_no_mpi_phare_test(${name} ${CMAKE_CURRENT_BINARY_DIR})
+
+endfunction(_add_pusher_test)
+
+_add_pusher_test(${PROJECT_NAME} test_pusher.cpp)
+_add_pusher_test(test-particle-precision test_particle_precision.cpp)
 
 add_custom_command(TARGET test-pusher
                    PRE_BUILD
                    COMMAND "PYTHONPATH=${PHARE_PYTHONPATH}" ${Python_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_pusher.py ${CMAKE_CURRENT_BINARY_DIR})
-
-add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})

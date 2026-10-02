@@ -338,6 +338,21 @@ NO_DISCARD auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
     return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
 }
 
+template<typename To, typename From, std::size_t Size>
+NO_DISCARD auto constexpr array_cast(std::array<From, Size> const& from)
+{
+    return generate([](auto const& v) { return static_cast<To>(v); }, from);
+}
+
+template<typename T, typename U, std::size_t Size>
+NO_DISCARD bool constexpr array_equals(std::array<T, Size> const& a, std::array<U, Size> const& b)
+{
+    for (std::size_t i = 0; i < Size; ++i)
+        if (!(a[i] == b[i]))
+            return false;
+    return true;
+}
+
 template<typename T>
 auto constexpr all_are(auto&&... ts)
 {

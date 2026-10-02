@@ -4,6 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/utilities/point/point.hpp"
+#include "core/data/particles/particle_storage.hpp"
 
 
 #include <array>
@@ -34,14 +35,27 @@ NO_DISCARD auto cellAsPoint(Particle const& particle)
 }
 
 
-template<size_t dim>
+template<size_t dim, typename Delta_t = ParticleDelta_t, typename V_t = ParticleV_t>
 struct Particle
 {
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static std::size_t constexpr dimension = dim;
+    using delta_type                       = Delta_t;
+    using v_type                           = V_t;
 
     Particle(double a_weight, double a_charge, std::array<int, dim> cell,
              std::array<double, dim> a_delta, std::array<double, 3> a_v)
+        : weight{a_weight}
+        , charge{a_charge}
+        , iCell{cell}
+        , delta{a_delta}
+        , v{a_v}
+    {
+    }
+
+    template<typename D, typename V>
+    Particle(double a_weight, double a_charge, std::array<int, dim> cell,
+             MultiPrecisionArray<D, dim> const& a_delta, MultiPrecisionArray<V, 3> const& a_v)
         : weight{a_weight}
         , charge{a_charge}
         , iCell{cell}
@@ -57,10 +71,10 @@ struct Particle
 
     // {} zero initialization
     std::array<int, dim> iCell{};
-    std::array<double, dim> delta{};
-    std::array<double, 3> v{};
+    MultiPrecisionArray<Delta_t, dim> delta{};
+    MultiPrecisionArray<V_t, 3> v{};
 
-    NO_DISCARD bool operator==(Particle<dim> const& that) const
+    NO_DISCARD bool operator==(Particle const& that) const
     {
         return (this->weight == that.weight) && //
                (this->charge == that.charge) && //
@@ -68,13 +82,10 @@ struct Particle
                (this->delta == that.delta) &&   //
                (this->v == that.v);
     }
-
-    template<std::size_t dimension>
-    friend std::ostream& operator<<(std::ostream& out, Particle<dimension> const& particle);
 };
 
-template<std::size_t dim>
-std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
+template<std::size_t dim, typename Delta_t, typename V_t>
+std::ostream& operator<<(std::ostream& out, Particle<dim, Delta_t, V_t> const& particle)
 {
     out << "iCell(";
     for (auto c : particle.iCell)
@@ -106,24 +117,33 @@ struct ParticleView
     double& weight;
     double& charge;
     std::array<int, dim>& iCell;
-    std::array<double, dim>& delta;
-    std::array<double, 3>& v;
+    MultiPrecisionArray<double, dim>& delta;
+    MultiPrecisionArray<double, 3>& v;
 };
 
 
 
+template<typename T>
+struct is_phare_particle : std::false_type
+{
+};
+template<std::size_t dim, typename Delta_t, typename V_t>
+struct is_phare_particle<Particle<dim, Delta_t, V_t>> : std::true_type
+{
+};
+template<std::size_t dim>
+struct is_phare_particle<ParticleView<dim>> : std::true_type
+{
+};
 
-template<std::size_t dim, typename T>
-inline constexpr auto is_phare_particle_type
-    = std::is_same_v<Particle<dim>, T> or std::is_same_v<ParticleView<dim>, T>;
+template<typename T>
+inline constexpr bool is_phare_particle_v = is_phare_particle<T>::value;
 
 
-template<std::size_t dim, template<std::size_t> typename ParticleA,
-         template<std::size_t> typename ParticleB>
-NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
-                                         and is_phare_particle_type<dim, ParticleB<dim>>,
-                                     bool>
-operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
+template<typename ParticleA, typename ParticleB>
+    requires(is_phare_particle_v<ParticleA> and is_phare_particle_v<ParticleB>
+             and ParticleA::dimension == ParticleB::dimension)
+NO_DISCARD bool operator==(ParticleA const& particleA, ParticleB const& particleB)
 {
     return particleA.weight == particleB.weight and //
            particleA.charge == particleB.charge and //
@@ -138,10 +158,15 @@ operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 namespace std
 {
 
-template<size_t dim, template<std::size_t> typename Particle_t>
-NO_DISCARD typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Particle_t<dim>>,
-                                     PHARE::core::Particle<dim>>
-copy(Particle_t<dim> const& from)
+template<size_t dim, typename Delta_t, typename V_t>
+NO_DISCARD PHARE::core::Particle<dim, Delta_t, V_t>
+copy(PHARE::core::Particle<dim, Delta_t, V_t> const& from)
+{
+    return from;
+}
+
+template<size_t dim>
+NO_DISCARD PHARE::core::Particle<dim> copy(PHARE::core::ParticleView<dim> const& from)
 {
     return {from.weight, from.charge, from.iCell, from.delta, from.v};
 }

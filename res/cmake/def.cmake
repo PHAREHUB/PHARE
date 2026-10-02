@@ -47,6 +47,10 @@ if(PGO_USE)
 endif()
 
 
+# global so every target sees the same particle layout, a mismatch is an ODR violation
+add_compile_definitions(PHARE_PARTICLE_DELTA_BYTES=${PHARE_PARTICLE_DELTA_BYTES}
+                        PHARE_PARTICLE_V_BYTES=${PHARE_PARTICLE_V_BYTES})
+
 set (PHARE_WERROR_FLAGS ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set (PHARE_PYTHONPATH "${CMAKE_BINARY_DIR}:${CMAKE_SOURCE_DIR}/pyphare")
 set (PHARE_MPIRUN_POSTFIX ${PHARE_MPIRUN_POSTFIX})

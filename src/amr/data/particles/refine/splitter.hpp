@@ -71,7 +71,6 @@ private:
     void dispatch(Particle const& particle, Particles& particles, std::size_t idx) const
     {
         using Weight_t = std::decay_t<decltype(particle.weight)>;
-        using Delta_t  = std::decay_t<decltype(particle.delta[0])>;
 
         constexpr auto dimension = Particle::dimension;
         constexpr auto refRatio  = PHARE::amr::refinementRatio;
@@ -89,15 +88,15 @@ private:
                 fineParticle.weight       = particle.weight * weight * power[dimension - 1];
                 fineParticle.charge       = particle.charge;
                 fineParticle.iCell        = particle.iCell;
-                fineParticle.delta        = particle.delta;
                 fineParticle.v            = particle.v;
 
+                // via double, delta storage may not represent values outside [0, 1)
                 for (std::size_t iDim = 0; iDim < dimension; ++iDim)
                 {
-                    fineParticle.delta[iDim]
-                        += static_cast<Delta_t>(pattern.deltas_[rpIndex][iDim]);
-                    Delta_t integra = std::floor(fineParticle.delta[iDim]);
-                    fineParticle.delta[iDim] -= integra;
+                    double const delta = particle.delta[iDim]
+                                         + static_cast<double>(pattern.deltas_[rpIndex][iDim]);
+                    double const integra     = std::floor(delta);
+                    fineParticle.delta[iDim] = delta - integra;
                     fineParticle.iCell[iDim] += static_cast<int32_t>(integra);
                 }
             }
