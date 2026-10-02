@@ -8,7 +8,7 @@ class AnyTensorField(PatchHierarchy):
     @staticmethod
     def FROM(klass, hier):
         return klass(
-            hier.patch_levels,
+            [hier.levels(t) for t in hier.times()],
             hier.domain_box,
             hier.refinement_ratio,
             hier.times(),
