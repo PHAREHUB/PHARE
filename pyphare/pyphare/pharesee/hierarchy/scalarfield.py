@@ -1,15 +1,18 @@
-from . import tensorfield
+from .hierarchy import PatchHierarchy
 from .hierarchy_utils import compute_hier_from, compute_rename, rename, _compute_neg
 
 
-class ScalarField(tensorfield.AnyTensorField):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-    @classmethod
-    def FROM(cls, hier):
+class ScalarField(PatchHierarchy):
+    def __init__(self, hier):
         renamed_hier = compute_hier_from(compute_rename, hier, new_names=("value",))
-        return super().FROM(cls, renamed_hier)
+        patch_levels = renamed_hier.patch_levels
+        domain_box = renamed_hier.domain_box
+        refinement_ratio = renamed_hier.refinement_ratio
+        data_files = renamed_hier.data_files
+
+        super().__init__(
+            patch_levels, domain_box, refinement_ratio, renamed_hier.times(), data_files
+        )
 
     def __add__(self, other):
         assert isinstance(other, (ScalarField, int, float))
@@ -26,7 +29,7 @@ class ScalarField(tensorfield.AnyTensorField):
         else:
             raise RuntimeError("right operand not supported")
 
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def __radd__(self, other):
         return self.__add__(other)
@@ -46,7 +49,7 @@ class ScalarField(tensorfield.AnyTensorField):
         else:
             raise RuntimeError("right operand not supported")
 
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def __mul__(self, other):
         assert isinstance(other, (ScalarField, int, float))
@@ -60,7 +63,7 @@ class ScalarField(tensorfield.AnyTensorField):
         else:
             raise RuntimeError("right operand not supported")
 
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def __rmul__(self, other):
         return self.__mul__(other)
@@ -77,7 +80,7 @@ class ScalarField(tensorfield.AnyTensorField):
         else:
             raise RuntimeError("right operand not supported")
 
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def __rtruediv__(self, other):
         assert isinstance(other, (int, float))
@@ -85,7 +88,7 @@ class ScalarField(tensorfield.AnyTensorField):
 
         h = compute_hier_from(self._compute_rtruediv, (h_self,), other=other)
 
-        return ScalarField.FROM(h)
+        return ScalarField(h)
 
     def _compute_add(self, patch_datas, **kwargs):
         ref_name = next(iter(patch_datas.keys()))
@@ -206,4 +209,4 @@ class ScalarField(tensorfield.AnyTensorField):
     def __neg__(self):
         names_self = self.quantities()
         h = compute_hier_from(_compute_neg, self, new_names=names_self)
-        return ScalarField.FROM(h)
+        return ScalarField(h)
