@@ -18,7 +18,7 @@ class MHDAdvanceTest(AdvanceTestBase):
     def getHierarchy(
         self,
         ndim,
-        interp_order,  # torm?
+        _interp_order,
         qty,
         refinement_boxes={},
         density=None,
@@ -34,11 +34,15 @@ class MHDAdvanceTest(AdvanceTestBase):
         diag_outputs="",
         **kwargs
     ):
+        # the shared hybrid+MHD base passes this positionally: an MHD-only run
+        # has no interp order, so it is accepted and deliberately unused --
+        # forwarding it would override pharein's derivation from model_options
+        # and select the coupled hybrid+MHD module.
         if smallest_patch_size is None:
             from pyphare.pharein.simulation import check_patch_size
 
             _, smallest_patch_size = check_patch_size(
-                ndim, interp_order=interp_order, cells=cells
+                ndim, interp_order=None, cells=cells
             )
 
         # ----------------------------------------------------------------------
@@ -59,7 +63,6 @@ class MHDAdvanceTest(AdvanceTestBase):
             boundary_types=["periodic"] * ndim,
             cells=phut.np_array_ify(cells, ndim),
             dl=phut.np_array_ify(dl, ndim),
-            interp_order=interp_order,
             refinement_boxes=refinement_boxes,
             diag_options={"format": "phareh5", "options": extra_diag_options},
             strict=True,

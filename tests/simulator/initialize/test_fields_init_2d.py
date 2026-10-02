@@ -27,7 +27,9 @@ def permute_hybrid():
 
 
 def permute_mhd():
-    return [dict(super_class=MHDInitializationTest, hall=False)]
+    return [
+        dict(super_class=MHDInitializationTest, hall=False, interp_order=None),
+    ]
 
 
 def permute(hybrid=True, mhd=False):

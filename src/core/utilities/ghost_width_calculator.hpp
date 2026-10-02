@@ -26,7 +26,10 @@ constexpr inline std::uint32_t roundUpToEven(std::uint32_t n)
  * Ghost cells are needed for:
  * - Particle-mesh interpolation: (interp_order + 1) / 2
  * - One extra layer for particles that may leave cells
- * - Rounded to even for Toth & Roe (2002) magnetic refinement formulas
+ * - Rounded to even so the ghost box stays a whole-coarse-cell union (lower even / upper odd) at
+ *   refinement ratio 2 — the invariant the ADPT magnetic touch-up's fill-box round-out clips
+ *   against (see coarse_cell_round_out.hpp and
+ *   ADPTMagneticRefinePatchStrategy::reconstructionRegion)
  */
 template<std::uint32_t interp_order>
 constexpr std::uint32_t nbrGhostsFromInterpOrder()
@@ -49,7 +52,10 @@ constexpr std::uint32_t nbrGhostsFromInterpOrder()
  * - Reconstruction stencil width
  * - One layer for J computation on the full ghost box
  * - One more layer for J Laplacian used by hyper-resistivity
- * - Rounded to even for Toth & Roe (2002) magnetic refinement formulas
+ * - Rounded to even so the ghost box stays a whole-coarse-cell union (lower even / upper odd) at
+ *   refinement ratio 2 — the invariant the ADPT magnetic touch-up's fill-box round-out clips
+ *   against (see coarse_cell_round_out.hpp and
+ *   ADPTMagneticRefinePatchStrategy::reconstructionRegion)
  */
 template<std::uint32_t reconstruction_nghosts>
 constexpr std::uint32_t nbrGhostsFromReconstruction()

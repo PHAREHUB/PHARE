@@ -259,14 +259,20 @@ class SimulatorTest(unittest.TestCase):
 
         return f"{self._testMethodName}/{cpp.mpi_size()}/{cpp.simulator_id(sim)}"
 
-    def simulation(self, interp_order=1, **kwargs):
+    def simulation(self, **kwargs):
         """
         Override diagnostics and restarts directories to prevent resuse across tests
         This happens because we do not know the C++ simulation identifier (pybind module name)
         Before we populate the python Simulation class
+
+        interp_order is deliberately not defaulted here. pharein derives it from
+        model_options -- 1 for a hybrid run, none at all for MHD-only -- and a
+        default of 1 forwarded unconditionally overrode that derivation, so every
+        MHD-only deck built through this helper asked for the coupled hybrid+MHD
+        pybind module instead of the MHD-only one.
         """
         ph.global_vars.sim = None
-        sim = ph.Simulation(interp_order=interp_order, **kwargs)
+        sim = ph.Simulation(**kwargs)
         base = sim.diag_options["options"]["dir"]
         test_output = self.unique_diag_dir(sim)
         if base.endswith(test_output):

@@ -159,14 +159,12 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
     hybridInfo.modelElectric        = state.electromag.E.name();
     hybridInfo.modelIonDensity      = state.ions.chargeDensityName();
     hybridInfo.modelIonBulkVelocity = state.ions.velocity().name();
-    hybridInfo.modelCurrent         = state.J.name();
 
     hybridInfo.initElectric.emplace_back(state.electromag.E.name());
     hybridInfo.initMagnetic.emplace_back(state.electromag.B.name());
 
     hybridInfo.ghostElectric.push_back(hybridInfo.modelElectric);
     hybridInfo.ghostMagnetic.push_back(hybridInfo.modelMagnetic);
-    hybridInfo.ghostCurrent.push_back(state.J.name());
     hybridInfo.ghostBulkVelocity.push_back(hybridInfo.modelIonBulkVelocity);
 
     auto transform_ = [](auto& ions, auto& inserter) {
