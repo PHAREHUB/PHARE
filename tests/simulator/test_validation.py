@@ -6,9 +6,7 @@ from ddt import data, ddt
 from pyphare.core.box import Box, Box2D
 from pyphare.simulator.simulator import Simulator
 
-from tests.simulator import NoOverwriteDict, populate_simulation
-from tests.simulator import SimulatorTest
-
+from tests.simulator import NoOverwriteDict, SimulatorTest, populate_simulation
 
 out = "phare_outputs/valid/refinement_boxes/"
 diags = {
@@ -27,11 +25,11 @@ def dup(dic):
 @ddt
 class SimulatorValidation(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(SimulatorValidation, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(SimulatorValidation, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
 

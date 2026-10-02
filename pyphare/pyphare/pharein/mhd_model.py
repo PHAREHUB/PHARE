@@ -1,7 +1,7 @@
 from . import global_vars
 
 
-class MHDModel(object):
+class MHDModel:
     def defaulter(self, input, value):
         if input is not None:
             import inspect

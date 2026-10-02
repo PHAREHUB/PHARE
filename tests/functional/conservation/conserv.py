@@ -1,15 +1,14 @@
 #!/usr/bin/env python3
 
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.run import Run
-from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
-
-import numpy as np
 from glob import glob
 
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pyphare.pharein as ph
+from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
 
 mpl.use("Agg")
 
@@ -30,7 +29,7 @@ def uniform(vth, dl, cells, nbr_steps):
         dl=dl,
         diag_options={
             "format": "phareh5",
-            "options": {"dir": "vth{}dx{}".format(vth, dl), "mode": "overwrite"},
+            "options": {"dir": f"vth{vth}dx{dl}", "mode": "overwrite"},
         },
     )
 

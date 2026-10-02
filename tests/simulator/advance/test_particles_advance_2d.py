@@ -4,9 +4,9 @@ This file exists independently from test_advance.py to isolate dimension
 """
 
 import unittest
-from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
+from ddt import data, ddt, unpack
 from pyphare.core.box import Box2D
 
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
@@ -29,7 +29,7 @@ class AdvanceTest2D(HybridAdvanceTest):
         self._test_L0_particle_number_conservation(ndim, interp, ppc=ppc)
 
     @data(
-        *per_interp(({"L0": {"B0": Box2D(10, 14)}})),
+        *per_interp({"L0": {"B0": Box2D(10, 14)}}),
     )
     @unpack
     def test_domain_particles_on_refined_level(self, interp_order, refinement_boxes):

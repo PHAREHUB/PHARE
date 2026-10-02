@@ -1,17 +1,16 @@
 import unittest
 
-from ddt import ddt, data, unpack
+import numpy as np
+from ddt import data, ddt, unpack
 from pyphare.core.box import Box
-from pyphare.pharesee.geometry import get_periodic_list, ghost_area_boxes
+from pyphare.core.gridlayout import yee_element_is_primal
 from pyphare.pharesee.geometry import (
-    level_ghost_boxes,
+    get_periodic_list,
+    ghost_area_boxes,
     hierarchy_overlaps,
+    level_ghost_boxes,
     touch_domain_border,
 )
-
-from pyphare.core.gridlayout import yee_element_is_primal
-
-import numpy as np
 
 from pyphare_tests.test_pharesee import build_hierarchy
 
@@ -124,11 +123,11 @@ class GeometryTest(unittest.TestCase):
             qtyNbr = len(gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
-            key = list(gaboxes[ilvl].keys())[0]
+            key = next(iter(gaboxes[ilvl].keys()))
 
-            level_ghost_area_boxes = sum(  # aggregate to single list
-                [actual["boxes"] for actual in gaboxes[ilvl][key]], []
-            )
+            level_ghost_area_boxes = [  # aggregate to single list
+                box for actual in gaboxes[ilvl][key] for box in actual["boxes"]
+            ]
 
             self.assertEqual(expected[ilvl], level_ghost_area_boxes)
 
@@ -165,7 +164,7 @@ class GeometryTest(unittest.TestCase):
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
-            key = list(lvl_gaboxes[ilvl].keys())[0]
+            key = next(iter(lvl_gaboxes[ilvl].keys()))
 
             for actual, exp in zip(lvl_gaboxes[ilvl][key], expected[ilvl]):
                 act_boxes = actual["boxes"]
@@ -183,7 +182,7 @@ class GeometryTest(unittest.TestCase):
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
-            key = list(lvl_gaboxes[ilvl].keys())[0]
+            key = next(iter(lvl_gaboxes[ilvl].keys()))
 
             for pdatainfo in lvl_gaboxes[ilvl][key]:
                 for box in pdatainfo["boxes"]:
@@ -353,11 +352,11 @@ class GeometryTest(unittest.TestCase):
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
-            key = list(lvl_gaboxes[ilvl].keys())[0]
+            key = next(iter(lvl_gaboxes[ilvl].keys()))
 
-            ghost_area_boxes = sum(  # aggregate to single list
-                [actual["boxes"] for actual in lvl_gaboxes[ilvl][key]], []
-            )
+            ghost_area_boxes = [  # aggregate to single list
+                box for actual in lvl_gaboxes[ilvl][key] for box in actual["boxes"]
+            ]
 
             self.assertEqual(expected[ilvl], ghost_area_boxes)
 

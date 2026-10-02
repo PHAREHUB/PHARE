@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
 import unittest
-import numpy as np
 
+import numpy as np
 from pyphare.simulator.simulator import Simulator
+
 from tests.simulator import populate_simulation
 
 # TODO - validate data from somewhere!
@@ -11,7 +12,7 @@ from tests.simulator import populate_simulation
 
 class DataWranglerTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(DataWranglerTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.dw = None
         self.simulator = None
 

@@ -2,31 +2,31 @@
 PHARE build and runtime validation checks
 """
 
+import dataclasses
+import json
 import os
 import sys
-import json
-import dataclasses
 from pathlib import Path
 
-from pyphare.core import phare_utilities
 from pyphare import cpp
+from pyphare.core import phare_utilities
 
 DOT_PHARE_DIR = Path(os.getcwd()) / ".phare"
 
 
-ERROR_MESSAGES = dict(
-    on_phare_config_error="""
+ERROR_MESSAGES = {
+    "on_phare_config_error": """
         Warning: PHARE was not built with the configurator active""",
-    on_python3_version_mismatch="""
+    "on_python3_version_mismatch": """
         Inconsistency detected!
         Python during build and now are not the same!
         Build python version  : {}
         Current python version: {}""",
-    on_build_config_check_runtime_error="""
+    "on_build_config_check_runtime_error": """
         Could not interrogate python versions
         Please see 'Having Issues' Section of ISSUES.TXT
         Actual error (consider adding to issue report): {}""",
-)
+}
 
 
 def print_error(key, *args):
@@ -87,7 +87,7 @@ def try_system_binary(cli, log_to):
         try:
             proc = phare_utilities.run_cli_cmd(cli, check=True)
             f.write(phare_utilities.decode_bytes(proc.stdout).strip())
-        except Exception as e:
+        except RuntimeError as e:
             f.write(f"failed to run cli command {cli}\n")
             f.write(f"error {e}")
 

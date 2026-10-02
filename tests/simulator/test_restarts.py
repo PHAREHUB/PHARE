@@ -1,25 +1,22 @@
-#
-#
 
 import copy
 import datetime
 import unittest
-import numpy as np
-from time import sleep
-from pathlib import Path
-
 from datetime import timedelta
-from ddt import ddt, data, unpack
+from pathlib import Path
+from time import sleep
 
-from pyphare import cpp
+import numpy as np
 import pyphare.pharein as ph
+from ddt import data, ddt, unpack
+from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
+from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 
-from tests.simulator import SimulatorTest
+from pyphare import cpp
 from tests.diagnostic import dump_all_diags
-from pyphare.pharesee.hierarchy.patchdata import ParticleData
-from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
+from tests.simulator import SimulatorTest
 
 
 def permute(dic, expected_num_levels):
@@ -137,11 +134,11 @@ def dup(dic={}):
 @ddt
 class RestartsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(RestartsTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(RestartsTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None

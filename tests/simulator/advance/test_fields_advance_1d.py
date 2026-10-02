@@ -4,14 +4,14 @@ This file exists independently from test_advance.py to isolate dimension
 """
 
 import unittest
-from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
-from pyphare.core.box import Box1D
+from ddt import data, ddt, unpack
 from pyphare.core import phare_utilities as phut
+from pyphare.core.box import Box1D
 
-from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
+from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 
 ph.NO_GUI()
 ndim = 1
@@ -59,19 +59,19 @@ class AdvanceTest1D(HybridAdvanceTest, MHDAdvanceTest):
         self._test_overlaped_fields_are_equal(datahier, time_step_nbr, time_step)
 
     @data(
-        *permute(({"L0": {"B0": Box1D(10, 19)}})),
-        *permute(({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}})),
-        *permute(({"L0": {"B0": Box1D(6, 23)}})),
-        *permute(({"L0": {"B0": Box1D(2, 12), "B1": Box1D(13, 25)}})),
-        *permute(({"L0": {"B0": Box1D(5, 20)}, "L1": {"B0": Box1D(15, 19)}})),
+        *permute({"L0": {"B0": Box1D(10, 19)}}),
+        *permute({"L0": {"B0": Box1D(10, 14), "B1": Box1D(15, 19)}}),
+        *permute({"L0": {"B0": Box1D(6, 23)}}),
+        *permute({"L0": {"B0": Box1D(2, 12), "B1": Box1D(13, 25)}}),
+        *permute({"L0": {"B0": Box1D(5, 20)}, "L1": {"B0": Box1D(15, 19)}}),
         *permute(
-            (
+            
                 {
                     "L0": {"B0": Box1D(5, 20)},
                     "L1": {"B0": Box1D(12, 38)},
                     "L2": {"B0": Box1D(30, 52)},
                 }
-            )
+            
         ),
     )
     @unpack
@@ -82,9 +82,9 @@ class AdvanceTest1D(HybridAdvanceTest, MHDAdvanceTest):
 
     @unittest.skip("should change to work on moments")
     @data(  # only supports a hierarchy with 2 levels
-        *permute(({"L0": [Box1D(5, 9)]})),
-        *permute(({"L0": [Box1D(5, 24)]})),
-        *permute(({"L0": [Box1D(5, 9), Box1D(20, 24)]})),
+        *permute({"L0": [Box1D(5, 9)]}),
+        *permute({"L0": [Box1D(5, 24)]}),
+        *permute({"L0": [Box1D(5, 9), Box1D(20, 24)]}),
     )
     @unpack
     def test_field_level_ghosts_via_subcycles_and_coarser_interpolation(

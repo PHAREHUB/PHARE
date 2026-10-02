@@ -1,13 +1,13 @@
 from .hierarchy import PatchHierarchy
 from .hierarchy_utils import (
+    _compute_add,
+    _compute_mul,
+    _compute_scalardiv,
+    _compute_sub,
+    _compute_truediv,
     compute_hier_from,
     compute_rename,
     rename,
-    _compute_mul,
-    _compute_add,
-    _compute_sub,
-    _compute_truediv,
-    _compute_scalardiv,
 )
 from .scalarfield import ScalarField
 
@@ -44,7 +44,7 @@ class VectorField(PatchHierarchy):
             names_self = ["self_x", "self_y", "self_z"]
             names_other = ["other_x", "other_y", "other_z"]
         else:
-            raise RuntimeError("type of hierarchy not yet considered")
+            raise TypeError("type of hierarchy not yet considered")
 
         h_self = rename(self, names_self)
         h_other = rename(other, names_other)
@@ -67,7 +67,7 @@ class VectorField(PatchHierarchy):
             names_self = ["self_x", "self_y", "self_z"]
             names_other = ["other_x", "other_y", "other_z"]
         else:
-            raise RuntimeError("type of hierarchy not yet considered")
+            raise TypeError("type of hierarchy not yet considered")
 
         h_self = rename(self, names_self)
         h_other = rename(other, names_other)
@@ -84,7 +84,7 @@ class VectorField(PatchHierarchy):
 
     def __truediv__(self, other):
         if not isinstance(other, (ScalarField, int, float)):
-            raise RuntimeError("type of operand not considered")
+            raise TypeError("type of operand not considered")
 
         if isinstance(other, ScalarField):
             return VectorField(
