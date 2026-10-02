@@ -472,16 +472,12 @@ class PatchHierarchyTest(unittest.TestCase):
 
     def _test_magnetic_flux_bilinear(self):
         """
-        B is dual on some axes, bilinear interpolation needs samples
+        bilinear interpolation of B on the finest grid needs samples
         beyond the domain to evaluate it on the domain edges
         """
         r = Run(self.diag_dir())
-        time = 0.0
-        domain = r.GetDomainSize()
-        dl = r.GetDl(r.GetB(time).finest_level(time))
-        xn, yn = (np.linspace(0, L, round(L / d) + 1) for L, d in zip(domain, dl))
-        Xn, Yn = np.meshgrid(xn, yn, indexing="ij")
-        Az, _ = r.GetMagneticFlux(time, interp="bilinear", xn=xn, yn=yn, Xn=Xn, Yn=Yn)
+        Az, (xn, yn) = r.GetMagneticFlux(0.0, interp="bilinear")
+        self.assertEqual(Az.shape, (len(xn), len(yn)))
         self.assertFalse(np.isnan(Az).any())
 
     def _test_finest_ignores_ghosts(self):
