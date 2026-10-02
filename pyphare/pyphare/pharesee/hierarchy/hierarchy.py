@@ -71,14 +71,14 @@ class PatchHierarchy(object):
         self.ephemerals = ephemerals
         self.update()
 
-    def finest(self, time=None, qty=None):
+    def finest(self, time=None, qty=None, interp="nearest"):
         """
-        Returns a UniformGrids if multiple quantities, a container of UniformGrid
-         OR returns just one UniformGrid
+        Returns the UniformGrid of qty, or of the only quantity
+         OR a UniformGrids, a container of UniformGrid, of all quantities
         """
         from . import func
 
-        finest = func.GetFinest(self, time, qty)
+        finest = func.GetFinest(self, time, qty, interp)
         return next(iter(finest.values())) if len(finest) == 1 else finest
 
     def __deepcopy__(self, memo):
