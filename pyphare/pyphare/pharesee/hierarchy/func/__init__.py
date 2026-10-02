@@ -1,4 +1,4 @@
-def GetDomainSize(hier, **kwargs):
+def GetDomainSize(hier):
     root_cell_width = hier.level(0).cell_width
     domain_box = hier.domain_box
     return (domain_box.upper + 1) * root_cell_width
@@ -16,25 +16,25 @@ def GetTime(hier):
     return times[0]
 
 
-def GetFinest(hier, time, qty=None, interp="nearest"):
+def GetFinest(hier, time=None, qty=None, interp="nearest"):
+    """
+    Returns UniformGrids of qty, or of all quantities if qty is None
+     interpolated grids are cached per time and interp
+    """
     from pyphare.pharesee.hierarchy import uniformgrid as uniform
+    from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
     from pyphare.pharesee.run import utils as rutils
 
-    if not hier.ephemerals:
+    time = format_timestamp(GetTime(hier) if time is None else time)
+    if hier.ephemerals is None:
         hier.ephemerals = {}
-    if time not in hier.ephemerals:
-        hier.ephemerals[time] = {}
+    cache = hier.ephemerals.setdefault(time, {})
+    cache = cache.setdefault(("finest", interp), uniform.UniformGrids({}))
 
-    finest = "finest"
-    if finest in hier.ephemerals[time]:
-        if not qty:
-            return hier.ephemerals[time][finest]
-        if qty and qty in hier.ephemerals[time]:
-            return hier.ephemerals[time][qty]
-    else:
-        hier.ephemerals[time][finest] = uniform.UniformGrids({})
-
-    grids = rutils.interpolate_hierarchy(hier, quantity=qty, interp=interp)
-    for k, v in grids.items():
-        hier.ephemerals[time][finest][k] = v
-    return hier.ephemerals[time][finest]
+    qties = [qty] if qty else hier.quantities()
+    for q in [q for q in qties if q not in cache]:
+        for k, v in rutils.interpolate_hierarchy(
+            hier, quantity=q, interp=interp
+        ).items():
+            cache[k] = v
+    return uniform.UniformGrids({q: cache[q] for q in qties})
