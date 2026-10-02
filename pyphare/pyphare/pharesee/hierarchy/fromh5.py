@@ -269,10 +269,7 @@ def add_data_from_h5(hier, filepath, time):
     h5f = h5py.File(filepath, "r")
 
     # force using the hierarchy selection box at that time if existing
-    if hier.selection_box is not None:
-        selection_box = hier.selection_box[time]
-    else:
-        selection_box = None
+    selection_box = hier.selection_box.get(format_timestamp(time))
     patch_levels = patch_levels_from_h5(h5f, time, selection_box=selection_box)
 
     for ilvl, lvl in hier.levels(time).items():
