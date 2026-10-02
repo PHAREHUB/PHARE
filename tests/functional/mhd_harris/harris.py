@@ -113,7 +113,32 @@ def config():
     def p(x, y):
         return 1.0 - (bx(x, y) ** 2 + by(x, y) ** 2) / 2.0
 
-    ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
+    def logcosh(u):
+        u = np.abs(u)
+        return u + np.log1p(np.exp(-2.0 * u)) - np.log(2.0)
+
+    def az(x, y):
+        # bx = dAz/dy, by = -dAz/dx with bx, by the profiles above
+        Lx = sim.simulation_domain()[0]
+        Ly = sim.simulation_domain()[1]
+        sigma = 1.0
+        dB = 0.1
+
+        x0 = x - 0.5 * Lx
+        y1 = y - 0.3 * Ly
+        y2 = y - 0.7 * Ly
+
+        dAz1 = dB * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
+        dAz2 = -dB * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
+
+        v1 = -1
+        v2 = 1.0
+        background = v1 * y + (v2 - v1) * 0.5 * L * (
+            logcosh(y1 / L) - logcosh(y2 / L)
+        )
+        return background + dAz1 + dAz2
+
+    ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, az=az, p=p)
 
     ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
 

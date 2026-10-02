@@ -132,6 +132,25 @@ def add_enum_int(path, enum_name, member_name):
     add_int(path, int(getattr(enum_cls, member)))
 
 
+def add_magnetic_initializer(addInitFunction, maginit_path, modelDict):
+    """
+    B mode: x/y/z_component from bx, by, bz.
+    A mode: all three vector_potential/x/y/z_component, plus the x/y/z_component
+    of each B component given directly (2D bz).
+    """
+    if "vector_potential" not in modelDict:
+        for c in ("x", "y", "z"):
+            addInitFunction(maginit_path + f"{c}_component", fn_wrapper(modelDict["b" + c]))
+        return
+
+    vecpot_path = maginit_path + "vector_potential/"
+    for c in ("x", "y", "z"):
+        fn = modelDict["vector_potential"]["a" + c]
+        addInitFunction(vecpot_path + f"{c}_component", fn_wrapper(fn))
+    for c, fn in modelDict["direct_b"].items():
+        addInitFunction(maginit_path + f"{c}_component", fn_wrapper(fn))
+
+
 def populateDict(sim):
     add_string("simulation/name", "simulation_test")
     add_int("simulation/dimension", sim.ndim)

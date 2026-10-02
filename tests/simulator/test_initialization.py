@@ -14,7 +14,97 @@ import pyphare.pharein as ph
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
 
-from tests.simulator import SimulatorTest
+from tests.simulator import SimulatorTest, basicSimulatorArgs
+
+
+def vector_potential_init(ndim, L):
+    """
+    Magnetic init kwargs in vector-potential mode, for 2D and 3D.
+
+    A is smooth with a periodic curl, but has linear terms (uniform in-plane B)
+    that make A itself non-periodic. 2D: az and a direct bz. 3D: ax, ay, az.
+    """
+    k = 2 * np.pi / np.asarray(L)
+
+    if ndim == 2:
+
+        def az(x, y):
+            return (
+                0.5 * y
+                - 0.3 * x
+                + 0.1 * np.cos(k[0] * x) * np.cos(k[1] * y)
+                + 0.05 * np.sin(2 * k[0] * x) * np.sin(k[1] * y)
+            )
+
+        def bz(x, y):
+            return 0.2 + 0.1 * np.sin(k[0] * x) * np.cos(k[1] * y)
+
+        return dict(az=az, bz=bz)
+
+    assert ndim == 3
+
+    def ax(x, y, z):
+        return 0.2 * z + 0.1 * np.sin(k[1] * y) * np.cos(k[2] * z)
+
+    def ay(x, y, z):
+        return 0.3 * x + 0.1 * np.sin(k[2] * z) * np.cos(k[0] * x)
+
+    def az(x, y, z):
+        return 0.5 * y + 0.1 * np.cos(k[0] * x) * np.cos(k[1] * y) * np.sin(k[2] * z)
+
+    return dict(ax=ax, ay=ay, az=az)
+
+
+def _yee_coords(patch):
+    """primal and dual node coordinates per direction, ghosts included, from B"""
+    bx, by, bz = (patch.patch_datas[f"B{c}"] for c in "xyz")
+    primal = [bx.x, by.y] + ([bz.z] if bx.ndim == 3 else [])
+    dual = [by.x, bx.y] + ([bx.z] if bx.ndim == 3 else [])
+    return primal, dual
+
+
+def _curl_of_edge_sampled(patch, vecpot):
+    """
+    numpy discrete curl of A sampled once on the Yee edge lattice of the patch
+    (ghosts included), with the solver's two-point stencil. Returns
+    {"Bx", "By", "Bz"} on the B ghost boxes.
+    """
+    primal, dual = _yee_coords(patch)
+    ndim = len(primal)
+    dl = patch.patch_datas["Bx"].dl
+
+    def on_edges(comp):  # A_comp is dual along comp, primal elsewhere
+        coords = [dual[d] if d == comp else primal[d] for d in range(ndim)]
+        mesh = np.meshgrid(*coords, indexing="ij")
+        return np.zeros(mesh[0].shape) + vecpot["a" + "xyz"[comp]](*mesh)
+
+    Ax, Ay, Az = (on_edges(c) for c in range(3))
+
+    def D(a, d):
+        return np.diff(a, axis=d) / dl[d]
+
+    if ndim == 2:
+        return {"Bx": D(Az, 1), "By": -D(Az, 0), "Bz": D(Ay, 0) - D(Ax, 1)}
+    return {
+        "Bx": D(Az, 1) - D(Ay, 2),
+        "By": D(Ax, 2) - D(Az, 0),
+        "Bz": D(Ay, 0) - D(Ax, 1),
+    }
+
+
+def _domain(pd, data=None):
+    data = pd.dataset[:] if data is None else data
+    return data[tuple(slice(g, -g) for g in pd.ghosts_nbr)]
+
+
+def _divB_domain(patch):
+    """numpy discrete div B on the patch domain cells"""
+    pds = [patch.patch_datas[f"B{c}"] for c in "xyz"][: patch.box.ndim]
+    divB = sum(
+        np.diff(pd.dataset[:].astype(np.float64), axis=d) / pd.dl[d]
+        for d, pd in enumerate(pds)
+    )
+    return divB[tuple(slice(g, -g) for g in pds[0].ghosts_nbr)]
 
 
 @ddt
@@ -116,6 +206,99 @@ class InitializationTest(SimulatorTest):
                     )
 
         print(f"\n{self._testMethodName}_{dim}d took {self.datetime_diff(now)} seconds")
+
+    def _test_B_from_vector_potential(
+        self, dim, interp_order, refinement_boxes, **kwargs
+    ):
+        """
+        A mode: level 0 B is the discrete curl of A sampled on the Yee edges, and the
+        discrete div B is at round-off on level 0 and on the refined level 1.
+        """
+        print(f"test_B_from_vector_potential : dim {dim} interp_order : {interp_order}")
+        hier = self.getHierarchy(
+            dim,
+            interp_order,
+            qty="b",
+            refinement_boxes=refinement_boxes,
+            diag_outputs=f"test_b_vecpot/{dim}/{interp_order}/{self.ddt_test_id()}",
+            vecpot=True,
+            **kwargs,
+        )
+
+        model = ph.global_vars.sim.model
+        self.assertTrue("bx" not in model.model_dict)
+        vecpot = model.model_dict["vector_potential"]
+        direct = model.model_dict["direct_b"]
+        self.assertEqual(sorted(direct.keys()), ["z"] if dim == 2 else [])
+
+        levels = hier.levels()
+        self.assertTrue(len(levels) > 1)
+
+        a_max, b_max, curl_err = 0.0, 0.0, 0.0
+        for patch in levels[0].patches:
+            curl = _curl_of_edge_sampled(patch, vecpot)
+            primal, dual = _yee_coords(patch)
+            a_max = max(
+                a_max,
+                *[
+                    np.max(np.abs(fn(*np.meshgrid(*primal, indexing="ij"))))
+                    for fn in vecpot.values()
+                ],
+            )
+
+            for name, expected in curl.items():
+                pd = patch.patch_datas[name]
+                actual = pd.dataset[:].astype(np.float64)
+                self.assertEqual(actual.shape, tuple(pd.size))
+                if name == "Bz" and "z" in direct:
+                    expected = np.zeros(actual.shape) + direct["z"](*pd.meshgrid())
+                self.assertEqual(actual.shape, expected.shape)
+                b_max = max(b_max, np.max(np.abs(actual)))
+                curl_err = max(
+                    curl_err, np.max(np.abs(_domain(pd) - _domain(pd, expected)))
+                )
+
+        # fp32 diagnostics (no PHARE_DIAG_DOUBLES) are bounded by the dump rounding of B
+        eps = np.finfo(levels[0].patches[0].patch_datas["Bx"].dataset.dtype).eps
+        dl0 = min(levels[0].patches[0].patch_datas["Bx"].dl)
+        curl_atol = max(1e-13 * a_max / dl0, 4 * eps * b_max)
+        print(f"L0 max|B - curlA| = {curl_err:.3e} (atol {curl_atol:.3e})")
+        self.assertLess(curl_err, curl_atol)
+
+        for ilvl, level in levels.items():
+            dl = min(level.patches[0].patch_datas["Bx"].dl)
+            div_max = max(np.max(np.abs(_divB_domain(p))) for p in level.patches)
+            div_atol = max(1e-12 * a_max / dl**2, 4 * dim * eps * b_max / dl)
+            print(f"L{ilvl} max|divB| = {div_max:.3e} (atol {div_atol:.3e})")
+            self.assertLess(div_max, div_atol)
+
+    def _test_vector_potential_rejections(self, dim):
+        """invalid B / A combinations raise ValueError, for both models"""
+        fn = {
+            1: lambda x: x * 0,
+            2: lambda x, y: x * 0,
+            3: lambda x, y, z: x * 0,
+        }[dim]
+
+        if dim == 1:
+            invalid = [dict(ax=fn), dict(ay=fn), dict(az=fn), dict(bx=fn, az=fn)]
+        elif dim == 2:
+            invalid = [
+                dict(az=fn, bx=fn),
+                dict(az=fn, by=fn),
+                dict(az=fn, bz=fn, ax=fn),
+                dict(bz=fn, ay=fn),
+            ]
+        else:
+            invalid = [dict(az=fn, bx=fn), dict(ax=fn, by=fn), dict(az=fn, bz=fn)]
+
+        for model in (ph.MaxwellianFluidModel, ph.MHDModel):
+            for magnetic in invalid:
+                ph.global_vars.sim = None
+                ph.Simulation(**basicSimulatorArgs(dim, 1))
+                with self.assertRaises(ValueError, msg=f"{model.__name__} {magnetic}"):
+                    model(**magnetic)
+        ph.global_vars.sim = None
 
     def _test_bulkvel_is_as_provided_by_user(self, dim, interp_order, **kwargs):
         hier = self.getHierarchy(
