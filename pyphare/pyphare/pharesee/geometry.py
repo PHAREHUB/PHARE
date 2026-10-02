@@ -46,8 +46,12 @@ def touch_domain_border(box, domain_box, border):
         raise RuntimeError("invalid border")
 
 
+def max_ghosts_nbr(patch):
+    return max(pd.ghosts_nbr.max() for pd in patch.patch_datas.values())
+
+
 def is_border_patch(patch, domain_box):
-    gbox = boxm.grow(patch.box, [1] * domain_box.ndim)
+    gbox = boxm.grow(patch.box, [max_ghosts_nbr(patch)] * domain_box.ndim)
     return gbox * domain_box != gbox
 
 
@@ -76,7 +80,7 @@ def border_shifted_patches_for(patch, domain_box):
         return []  # skip
 
     ndim = domain_box.ndim
-    gbox = boxm.grow(patch.box, [1] * ndim)
+    gbox = boxm.grow(patch.box, [max_ghosts_nbr(patch)] * ndim)
     shifted_patches = []
     for shift in periodic_shifts_for(domain_box):
         shifted_box = boxm.shift(gbox, shift)
