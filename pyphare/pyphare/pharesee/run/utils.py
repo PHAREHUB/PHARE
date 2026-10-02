@@ -527,13 +527,13 @@ def finest_coords_for(domain, dl, qty, nbrGhosts, origin=None):
         origin = [0] * dim
 
     if dim == 1:
-        nx = int(domain[0] / dl[0])
+        nx = int(np.round(domain[0] / dl[0]))
         return (
             yeeCoordsFor(origin, nbrGhosts[0], dl, [nx], qty, "x", withGhosts=True),
         )
 
     elif dim == 2:
-        nCells = [int(d / dl_i) for d, dl_i in zip(domain, dl)]
+        nCells = [int(np.round(d / dl_i)) for d, dl_i in zip(domain, dl)]
         x = yeeCoordsFor(origin, nbrGhosts[0], dl, nCells, qty, "x", withGhosts=True)
         y = yeeCoordsFor(origin, nbrGhosts[1], dl, nCells, qty, "y", withGhosts=True)
         return (x, y)

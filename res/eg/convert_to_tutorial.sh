@@ -8,4 +8,4 @@ set -ex
 jupyter nbconvert --to notebook "$1"  \
    --TagRemovePreprocessor.enabled=True            \
    --TagRemovePreprocessor.remove_cell_tags answer  \
-   --output $2
+   --output "$2"
