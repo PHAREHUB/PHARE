@@ -40,10 +40,11 @@ class H5Writer
     static constexpr std::size_t timestamp_precision = 10;
 
 public:
-    using This       = H5Writer<ModelView>;
-    using Model_t    = ModelView::Model_t;
-    using GridLayout = ModelView::GridLayout;
-    using Attributes = ModelView::PatchProperties;
+    using This        = H5Writer<ModelView>;
+    using ModelView_t = ModelView;
+    using Model_t     = ModelView::Model_t;
+    using GridLayout  = ModelView::GridLayout;
+    using Attributes  = ModelView::PatchProperties;
 
     static constexpr auto dimension  = GridLayout::dimension;
     static constexpr auto READ_WRITE = HiFile::AccessMode::OpenOrCreate;

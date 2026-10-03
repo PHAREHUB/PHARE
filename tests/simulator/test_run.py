@@ -144,6 +144,7 @@ def config():
         "charge_density",
         "bulkVelocity",
         "pressure_tensor",
+        "heat_flux_vector",
     ]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
@@ -152,7 +153,8 @@ def config():
         quantity="domain", write_timestamps=timestamps, population_name=pop
     )
 
-    for quantity in ["density", "charge_density", "pressure_tensor"]:
+    pop_qties = ["density", "charge_density", "pressure_tensor", "heat_flux_vector"]
+    for quantity in pop_qties:
         ph.FluidDiagnostics(
             quantity=quantity, write_timestamps=timestamps, population_name=pop
         )
@@ -189,6 +191,22 @@ def plot(diag_dir):
                 plot_patches=True,
             )
             Bexp.plot(filename=plot_file_for_qty(f"b{c}_exp", time), qty=f"B{c}")
+
+        q = run.Getq(time, pop_name)
+        for c in ["x", "y", "z"]:
+            q.plot(
+                filename=plot_file_for_qty(f"q{c}", time),
+                qty=f"{pop_name}_q{c}",
+                plot_patches=True,
+            )
+
+        Q = run.GetQ(time)
+        for c in ["x", "y", "z"]:
+            Q.plot(
+                filename=plot_file_for_qty(f"Q{c}", time),
+                qty=f"q{c}",
+                plot_patches=True,
+            )
 
         run.GetJ(time).plot(
             all_primal=False,
@@ -265,6 +283,12 @@ class RunTest(SimulatorTest):
                 for c in ["x", "y", "z"]:
                     assert_file_exists_with_size_at_least(
                         plot_file_for_qty(f"b{c}", time)
+                    )
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(f"q{c}", time)
+                    )
+                    assert_file_exists_with_size_at_least(
+                        plot_file_for_qty(f"Q{c}", time)
                     )
 
         cpp.mpi_barrier()
