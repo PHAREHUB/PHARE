@@ -87,21 +87,17 @@ namespace solver
                 }
             }
 
-            try
-            {
-                amr::noDomainOverlapsOn(*hierarchy, levelNumber); // VERY BAD!
-            }
-            catch (std::exception const& ex)
-            {
-                PHARE_LOG_ERROR(ex.what());
-            }
-            if (mpi::any_errors())
-                throw core::DictionaryException{}("ID", "HybridLevelInitializer::initialize");
-
-            // now all particles are here, we must compute moments.
             auto& ions = hybridModel.state.ions;
             auto& rm   = *hybridModel.resourcesManager;
 
+            // overlapping patches were each filled over their whole domain,
+            // keep particles only on the patch owning their cell
+            auto const neighbors = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
+            for (auto& patch : rm.enumerate(level, ions))
+                amr::eraseForeignDomainParticles(
+                    ions, amr::makeForeignBoxesFor<GridLayoutT>(*patch, neighbors));
+
+            // now all particles are here, we must compute moments.
             for (auto& patch : rm.enumerate(level, ions))
             {
                 auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
