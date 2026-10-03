@@ -1,5 +1,6 @@
 import numpy as np
 
+from pyphare.core import box as boxm
 from pyphare.pharesee.hierarchy import ScalarField, VectorField
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import rename
@@ -54,7 +55,6 @@ def _compute_cross_product(patch_datas, **kwargs):
 
 def _compute_grad(patch_data, **kwargs):
     ndim = patch_data["value"].box.ndim
-    nb_ghosts = kwargs["nb_ghosts"]
     ds = patch_data["value"].dataset
 
     ds_shape = list(ds.shape)
@@ -64,11 +64,13 @@ def _compute_grad(patch_data, **kwargs):
     ds_z = np.full(ds_shape, np.nan)
 
     grad_ds = np.gradient(ds)
-    select = tuple([slice(nb_ghosts, -nb_ghosts) for _ in range(ndim)])
+    pd = patch_data["value"]
+    lbox = boxm.amr_to_local(pd.box, pd.ghost_box)
+    lbox.upper += pd.primal_directions()
     if ndim == 2:
-        ds_x[select] = np.asarray(grad_ds[0][select])
-        ds_y[select] = np.asarray(grad_ds[1][select])
-        ds_z[select].fill(0.0)  # TODO at 2D, gradient is null in z dir
+        boxm.DataSelector(ds_x)[lbox] = boxm.select(grad_ds[0], lbox)
+        boxm.DataSelector(ds_y)[lbox] = boxm.select(grad_ds[1], lbox)
+        boxm.DataSelector(ds_z)[lbox] = 0.0  # TODO at 2D, gradient is null in z dir
 
     else:
         raise RuntimeError("dimension not yet implemented")
@@ -135,7 +137,6 @@ def modulus(hier):
 
 def grad(hier, **kwargs):
     assert isinstance(hier, ScalarField)
-    nb_ghosts = list(hier.level(0).patches[0].patch_datas.values())[0].ghosts_nbr[0]
-    h = compute_hier_from(_compute_grad, hier, nb_ghosts=nb_ghosts)
+    h = compute_hier_from(_compute_grad, hier)
 
     return VectorField(h)

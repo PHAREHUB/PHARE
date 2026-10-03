@@ -18,6 +18,11 @@ nt = int(final_time / dt) + 1
 timestamps = dt * np.arange(nt)
 
 
+def patch_box_data(patch, qty):
+    pd = patch[qty]
+    return pd[patch.box]
+
+
 @ddt
 class PatchHierarchyTest(unittest.TestCase):
     def diag_dir(self):
@@ -147,6 +152,13 @@ class PatchHierarchyTest(unittest.TestCase):
 
             for quantity in ["charge_density", "bulkVelocity"]:
                 ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
+
+            for quantity in ["density", "flux"]:
+                ph.FluidDiagnostics(
+                    quantity=quantity,
+                    write_timestamps=timestamps,
+                    population_name="protons",
+                )
 
             return sim
 
@@ -340,6 +352,115 @@ class PatchHierarchyTest(unittest.TestCase):
             self.assertTrue(isinstance(s, VectorField))
             self.assertEqual(s.quantities(), ["x", "y", "z"])
 
+    def _test_mixed_ghost_getters(self):
+        """
+        single population of charge 1, so Ni == N and Vi == Flux / N
+        some getters drop ghosts and others do not, they must still be combinable
+        """
+        r = Run(self.diag_dir())
+        time = 0.0
+        Ni = r.GetNi(time)
+        N = r.GetN(time, "protons")
+        Vi = r.GetVi(time)
+        Flux = r.GetFlux(time, "protons")
+        B = r.GetB(time)
+
+        diff = Ni - N
+        V = Flux / N
+        self.assertTrue(isinstance(np.add(Ni, N), ScalarField))
+        self.assertTrue(isinstance(dot(Flux, B), ScalarField))
+
+        # Ez is primal in 2d, E keeps its ghosts with all_primal=False
+        Ez = ScalarField(r.GetE(time, all_primal=False).Ez)
+        self.assertTrue(isinstance(Ni * Ez, ScalarField))
+        self.assertTrue(isinstance(np.multiply(Ni, Ez), ScalarField))
+
+        for ilvl, lvl in diff.levels(time).items():
+            for ip, patch in enumerate(lvl.patches):
+                pd = patch["value"]
+                np.testing.assert_allclose(pd[patch.box], 0, atol=1e-12)
+
+                # Vi on patch borders can be refilled after it is computed from
+                # the pop moments (fillIonBorders), so only compare inner nodes
+                inner = (slice(1, -1),) * 2
+                vi_patch = Vi.level(ilvl, time).patches[ip]
+                for c in ["x", "y", "z"]:
+                    np.testing.assert_allclose(
+                        patch_box_data(V.level(ilvl, time).patches[ip], c)[inner],
+                        patch_box_data(vi_patch, c)[inner],
+                        atol=1e-12,
+                    )
+
+    def _test_grad_values(self):
+        r = Run(self.diag_dir())
+        time = 0.0
+        for scalar in (r.GetNi(time), r.GetPe(time)):
+            g = grad(scalar)
+            for ilvl, lvl in scalar.levels(time).items():
+                for ip, patch in enumerate(lvl.patches):
+                    data = patch_box_data(patch, "value")
+                    expected = np.gradient(data)
+                    gpatch = g.level(ilvl, time).patches[ip]
+                    for i, c in enumerate(["x", "y"]):
+                        computed = patch_box_data(gpatch, c)
+                        self.assertFalse(np.isnan(computed).any())
+                        # np.gradient is one sided on the edges of the patch data
+                        inner = (slice(1, -1),) * 2
+                        np.testing.assert_allclose(
+                            computed[inner], expected[i][inner], atol=1e-12
+                        )
+
+    def _test_patch_cut(self):
+        r = Run(self.diag_dir())
+        time = 0.0
+        for hier, qty in ((r.GetNi(time), "value"), (r.GetB(time), "x")):
+            for patch in hier.level(0, time).patches:
+                pd = patch[qty]
+                data = pd[patch.box]
+                idx = data.shape[0] // 2
+                cut = pd.origin[0] + (idx + 0.1) * pd.layout.dl[0]
+                np.testing.assert_array_equal(patch(qty, x=cut), data[idx, :])
+
+    def _test_hierarchy_cut(self):
+        r = Run(self.diag_dir())
+        time = 0.0
+        Ni = r.GetNi(time)
+        dl = Ni.level(0, time).patches[0]["value"].layout.dl
+        L = 86 * dl[1]
+
+        coords, cut = Ni(x=12.95)  # not on a patch border
+        self.assertEqual(coords.shape, cut.shape)
+        self.assertFalse(np.isnan(cut).any())
+        self.assertTrue((np.diff(coords) > 0).all())  # no overlaps across patches
+        self.assertLessEqual(np.diff(coords).max(), dl[1] + 1e-12)  # no gaps
+        self.assertAlmostEqual(coords[0], 0)
+        self.assertAlmostEqual(coords[-1], L)
+
+    def _test_finest_ignores_ghosts(self):
+        """
+        ghost values are not guaranteed to be valid, so they are poisoned
+        with NaN which must not appear in the finest data
+        """
+        from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+
+        r = Run(self.diag_dir())
+        time = 0.0
+        # GetN drops ghosts, so read the file as is
+        N = ScalarField(r._get_hierarchy(time, "ions_pop_protons_density.h5"))
+        for lvl in N.levels(time).values():
+            for patch in lvl.patches:
+                pd = patch["value"]
+                self.assertTrue(all(g > 0 for g in pd.ghosts_nbr))
+                domain = np.array(pd[pd.box])
+                pd.dataset = np.full(pd.dataset.shape, np.nan)
+                pd[pd.box] = domain
+
+        data, _ = flat_finest_field(N, "value", time=time)
+        self.assertFalse(np.isnan(data).any())
+
+        finest = N.finest(time)
+        self.assertFalse(np.isnan(finest[finest.box]).any())
+
     def test_all(self):
         """
         DO NOT RUN MULTIPLE SIMULATIONS!
@@ -349,7 +470,7 @@ class PatchHierarchyTest(unittest.TestCase):
         for test in [method for method in dir(self) if method.startswith("_test_")]:
             getattr(self, test)()
             checks += 1
-        self.assertEqual(checks, 18)  # update if you add new tests
+        self.assertEqual(checks, 23)  # update if you add new tests
 
 
 if __name__ == "__main__":
