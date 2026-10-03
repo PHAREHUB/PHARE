@@ -74,6 +74,8 @@ basically runs the simulation. Here is a small example:
     # ...
     )
 
+    ph.ElectronModel(closure="isothermal", Te=0.2)
+
 
     def main():
         simulator = Simulator(sim)
