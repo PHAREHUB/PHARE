@@ -147,7 +147,7 @@ class PatchHierarchy(object):
             raise RuntimeError(f"Failed to deserialize simulation from data file : {e}")
         return self._sim
 
-    def __call__(self, qty=None, **kwargs):
+    def __call__(self, qty=None, time=None, **kwargs):
         # take slice/slab of 1/2d array from 2/3d array
         def cuts(c, coord):
             return c > coord.min() and c < coord.max()
@@ -168,9 +168,9 @@ class PatchHierarchy(object):
                 return coord[mask], data[mask]
 
         def domain_coords(patch, qty):
-            pd = patch.patch_datas[qty]
-            nbrGhosts = pd.ghosts_nbr[0]
-            return pd.x[nbrGhosts:-nbrGhosts], pd.y[nbrGhosts:-nbrGhosts]
+            from .hierarchy_utils import local_domain_coords
+
+            return local_domain_coords(patch.patch_datas[qty])
 
         if len(kwargs) < 1 or len(kwargs) > 3:
             raise ValueError("Error - must provide coordinates")
@@ -194,10 +194,10 @@ class PatchHierarchy(object):
         extractor = Extractor()
         datas = []
         coords = []
-        ilvls = list(self.levels().keys())[::-1]
+        ilvls = list(self.levels(time).keys())[::-1]
 
         for ilvl in ilvls:
-            lvl = self.patch_levels[ilvl]
+            lvl = self.level(ilvl, time)
             for patch in lvl.patches:
                 slice_coord = domain_coords(patch, qty)[slice_dim]
                 cst_coord = domain_coords(patch, qty)[cst_dim]

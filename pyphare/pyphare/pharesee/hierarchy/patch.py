@@ -64,11 +64,11 @@ class Patch:
         pd = self.patch_datas[qty]
         origin = pd.origin[idim]
         idx = int((cut - origin) / pd.layout.dl[idim])
-        nbrGhosts = pd.ghosts_nbr[idim]
+        data = pd[pd.box]
         if idim == 0:
-            return pd.dataset[idx + nbrGhosts, nbrGhosts:-nbrGhosts]
+            return data[idx, :]
         elif idim == 1:
-            return pd.dataset[nbrGhosts:-nbrGhosts, idx + nbrGhosts]
+            return data[:, idx]
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return patch_array_ufunc(self, ufunc, method, *inputs, **kwargs)

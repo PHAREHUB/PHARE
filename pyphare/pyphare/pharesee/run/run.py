@@ -124,7 +124,7 @@ class Run:
 
     def GetMassDensity(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_mass_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
+        return ScalarField(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetNi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_charge_density.h5", **kwargs)
@@ -132,7 +132,7 @@ class Run:
 
     def GetN(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_density.h5", **kwargs)
-        return ScalarField(self._get(hier, time, merged, interp))
+        return ScalarField(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
@@ -140,12 +140,13 @@ class Run:
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, f"ions_pop_{pop_name}_flux.h5", **kwargs)
-        return VectorField(self._get(hier, time, merged, interp))
+        return VectorField(self._get(hier, time, merged, interp, drop_ghosts=True))
 
     def GetPressure(self, time, pop_name, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(
             time, f"ions_pop_{pop_name}_momentum_tensor.h5", **kwargs
         )
+        M = compute_hier_from(hc.drop_ghosts, M)
         V = self.GetFlux(time, pop_name, **kwargs)
         N = self.GetN(time, pop_name, **kwargs)
         P = compute_hier_from(
@@ -158,8 +159,10 @@ class Run:
 
     def GetPi(self, time, merged=False, interp="nearest", **kwargs):
         M = self._get_hierarchy(time, "ions_momentum_tensor.h5", **kwargs)
+        M = compute_hier_from(hc.drop_ghosts, M)
         massDensity = self.GetMassDensity(time, **kwargs)
         Vi = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        Vi = compute_hier_from(hc.drop_ghosts, Vi)
         Pi = compute_hier_from(_compute_pressure, (M, massDensity, Vi))
         return self._get(Pi, time, merged, interp)  # should later be a TensorField
 

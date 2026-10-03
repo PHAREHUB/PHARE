@@ -67,8 +67,10 @@ class FieldData(PatchData):
         return self.__str__()
 
     def compare(self, that, atol=1e-16):
-        return self.field_name == that.field_name and phut.fp_any_all_close(
-            self.dataset[:], that.dataset[:], atol=atol
+        return (
+            self.field_name == that.field_name
+            and self.dataset.shape == that.dataset.shape
+            and phut.fp_any_all_close(self.dataset[:], that.dataset[:], atol=atol)
         )
 
     def __eq__(self, that):
@@ -218,9 +220,37 @@ class FieldData(PatchData):
         return field_data_array_function(self, func, types, args, kwargs)
 
 
+def align_ghosts(datas):
+    """
+    field datas with different ghosts can only be combined on their domain
+    returns datas unchanged if ghosts already match
+    """
+    fields = [d for d in datas if isinstance(d, FieldData)]
+    if len({tuple(f.ghosts_nbr) for f in fields}) < 2:
+        return datas
+
+    def drop_ghosts(d):
+        if not isinstance(d, FieldData):
+            return d
+        data = np.asarray(d[d.box])
+        return d.copy_as(data, ghosts_nbr=[0] * d.ndim)
+
+    return type(datas)(drop_ghosts(d) for d in datas)
+
+
+def _aligned_self(patch_data, inputs, aligned):
+    if aligned is inputs:
+        return patch_data
+    return next(a for i, a in zip(inputs, aligned) if i is patch_data)
+
+
 def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
     if method != "__call__":
         return NotImplemented
+
+    aligned = align_ghosts(inputs)
+    patch_data = _aligned_self(patch_data, inputs, aligned)
+    inputs = aligned
 
     in_ = [i.dataset if isinstance(i, FieldData) else i for i in inputs]
     out_ = getattr(ufunc, method)(*in_, **kwargs)
@@ -238,6 +268,10 @@ def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
 
 
 def field_data_array_function(patch_data, func, types, args, kwargs):
+    aligned = align_ghosts(args)
+    patch_data = _aligned_self(patch_data, args, aligned)
+    args = aligned
+
     in_ = [a.dataset if isinstance(a, FieldData) else a for a in args]
     out_ = func(*in_, **kwargs)
 
