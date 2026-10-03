@@ -4,10 +4,7 @@ import numpy as np
 
 from typing import Any, List, Tuple
 
-from .hierarchy import PatchHierarchy, format_timestamp
-from .patchdata import FieldData, ParticleData
-from .patchlevel import PatchLevel
-from .patch import Patch
+
 from ...core.box import Box
 from ...core.gridlayout import GridLayout
 from ...core.phare_utilities import listify
@@ -147,6 +144,8 @@ def compute_hier_from(compute, hierarchies, **kwargs):
     """return a new hierarchy using the callback 'compute' on all patchdatas
     of the given hierarchies
     """
+    from .patchlevel import PatchLevel
+    from .hierarchy import PatchHierarchy
 
     hierarchies = listify(hierarchies)
     if not are_compatible_hierarchies(hierarchies):
@@ -181,6 +180,8 @@ def extract_patchdatas(hierarchies, ilvl, t, ipatch):
 
 
 def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
+    from .patchdata import FieldData
+
     new_patch_datas = {}
     datas = compute(patchdatas, patch_id=id, **kwargs)
     for data in datas:
@@ -193,6 +194,8 @@ def new_patchdatas_from(compute, patchdatas, layout, id, **kwargs):
 
 
 def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
+    from .patch import Patch
+
     reference_hier = hierarchies[0]
     new_patches = []
     ref_patches = reference_hier.level(ilvl, time=t).patches
@@ -601,6 +604,8 @@ class EqualityReport:
         return not self.failed
 
     def __repr__(self):
+        from .patchdata import FieldData
+
         for msg, ref, cmp in self:
             print(msg)
             try:
@@ -625,6 +630,8 @@ class EqualityReport:
 
 
 def hierarchy_compare(this, that, atol=1e-16):
+    from .hierarchy import PatchHierarchy
+
     eqr = EqualityReport()
 
     if not isinstance(this, PatchHierarchy) or not isinstance(that, PatchHierarchy):
@@ -669,6 +676,10 @@ def hierarchy_compare(this, that, atol=1e-16):
 
 
 def single_patch_for_LO(hier, qties=None, skip=None):
+    from .patch import Patch
+    from .hierarchy import format_timestamp
+    from .patchdata import FieldData, ParticleData
+
     def _skip(qty):
         return (qties is not None and qty not in qties) or (
             skip is not None and qty in skip

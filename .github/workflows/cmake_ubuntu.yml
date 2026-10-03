@@ -34,9 +34,16 @@ jobs:
         restore-keys: ${{ runner.os }}-ccache-
 
     - name: Clone PHARE
-      uses: actions/checkout@v4
+      uses: actions/checkout@v6
       with:
         submodules: 'recursive'
+
+    - name: preconfig
+      run: |
+        set -ex
+        . /.venv/bin/activate;
+        python3 -m pip install pylint -U
+        pylint --disable=all --enable=cyclic-import pyphare/pyphare
 
     - name: Ensure ccache uses ~/.ccache
       run: |

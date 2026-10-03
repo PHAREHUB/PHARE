@@ -8,8 +8,6 @@ import json
 import dataclasses
 from pathlib import Path
 
-from pyphare.core import phare_utilities
-from pyphare import cpp
 
 DOT_PHARE_DIR = Path(os.getcwd()) / ".phare"
 
@@ -34,12 +32,16 @@ def print_error(key, *args):
 
 
 def python_version_from(binary):
+    from pyphare.core import phare_utilities
+
     return phare_utilities.decode_bytes(
         phare_utilities.run_cli_cmd(f"{binary} -V", check=True).stdout.strip()
     )
 
 
 def check_build_config_is_runtime_compatible(strict=True):
+    from pyphare import cpp
+
     try:
         build_config: dict = cpp.build_config()
 
@@ -68,6 +70,8 @@ def check_build_config_is_runtime_compatible(strict=True):
 
 
 def get_git_hash():
+    from pyphare import cpp
+
     build_config: dict = cpp.build_config()
 
     if "PHARE_CONFIG_ERROR" in build_config:
@@ -85,6 +89,8 @@ class RuntimeSettings:
 def try_system_binary(cli, log_to):
     with open(log_to, "w") as f:
         try:
+            from pyphare.core import phare_utilities
+
             proc = phare_utilities.run_cli_cmd(cli, check=True)
             f.write(phare_utilities.decode_bytes(proc.stdout).strip())
         except Exception as e:
@@ -99,6 +105,8 @@ def try_system_binaries(log_dir):
 
 
 def log_runtime_config():
+    from pyphare import cpp
+
     settings = RuntimeSettings(
         python_binary=sys.executable,
         python_version=python_version_from(sys.executable),
