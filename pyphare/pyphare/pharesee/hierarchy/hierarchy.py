@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from dataclasses import dataclass
 
 from .patch import Patch
 from .patchlevel import PatchLevel
@@ -73,8 +74,12 @@ class PatchHierarchy(object):
         no_copy_keys = ["data_files"]  # do not copy these things
         return deep_copy(self, memo, no_copy_keys)
 
-    def __getitem__(self, qty):
-        return self.__dict__[qty]
+    def __getitem__(self, that):
+        if isinstance(that, HierarchyAccessor):
+            return self.level(that.ilvl, that.time)[that.patch_idx]
+        raise TypeError(
+            f"Invalid index type: {type(that).__name__}. Expected HierarchyAccessor."
+        )
 
     def update(self):
         if len(self.quantities()) > 1:
@@ -432,9 +437,11 @@ class PatchHierarchy(object):
                 if qty is None:
                     qty = pdata_names[0]
 
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                pd = patch[qty]
+                nbrGhosts = pd.ghosts_nbr
+                any_ghosts = any(nbrGhosts)
+                val = pd[patch.box] if any_ghosts else pd[:]
+                x = pd.x[nbrGhosts[0] : -nbrGhosts[0]] if nbrGhosts[0] > 0 else pd.x
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")
@@ -620,6 +627,18 @@ class PatchHierarchy(object):
 
     def __array_function__(self, func, types, args, kwargs):
         return hierarchy_array_function(self, func, types, args, kwargs)
+
+
+@dataclass
+class HierarchyAccessor:
+    """
+    For cross hierarchy operations, so we can retrieve relevant patches etc
+    """
+
+    hier: PatchHierarchy
+    time: float
+    ilvl: int
+    patch_idx: int
 
 
 def hierarchy_array_ufunc(hier, ufunc, method, *inputs, **kwargs):
