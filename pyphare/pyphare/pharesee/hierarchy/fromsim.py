@@ -116,4 +116,4 @@ def hierarchy_from_sim(simulator, qty, pop=""):
 
         patch_levels[ilvl] = PatchLevel(ilvl, patches[ilvl])
 
-    return PatchHierarchy(patch_levels, domain_box, time=simulator.currentTime())
+    return PatchHierarchy({simulator.currentTime(): patch_levels}, domain_box)

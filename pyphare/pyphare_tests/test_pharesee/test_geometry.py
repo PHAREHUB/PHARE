@@ -79,7 +79,7 @@ class GeometryTest(unittest.TestCase):
 
         overlaps = hierarchy_overlaps(hierarchy)
 
-        for ilvl, lvl in enumerate(hierarchy.patch_levels):
+        for ilvl, lvl in enumerate(hierarchy.levels()):
             self.assertEqual(len(expected[ilvl]), len(overlaps[ilvl]))
 
             for exp, actual in zip(expected[ilvl], overlaps[ilvl]):
@@ -120,7 +120,7 @@ class GeometryTest(unittest.TestCase):
         # same number of levels
         self.assertEqual(len(expected), len(gaboxes))
 
-        for ilvl, lvl in enumerate(hierarchy.patch_levels):
+        for ilvl, lvl in enumerate(hierarchy.levels()):
             qtyNbr = len(gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
@@ -161,7 +161,7 @@ class GeometryTest(unittest.TestCase):
         }
 
         lvl_gaboxes = level_ghost_boxes(hierarchy, "particles")
-        for ilvl in range(1, len(hierarchy.patch_levels)):
+        for ilvl in range(1, len(hierarchy.levels())):
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
@@ -179,7 +179,7 @@ class GeometryTest(unittest.TestCase):
 
         lvl_gaboxes = level_ghost_boxes(hierarchy, "particles")
 
-        for ilvl in range(1, len(hierarchy.patch_levels)):
+        for ilvl in range(1, len(hierarchy.levels())):
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
@@ -187,7 +187,7 @@ class GeometryTest(unittest.TestCase):
 
             for pdatainfo in lvl_gaboxes[ilvl][key]:
                 for box in pdatainfo["boxes"]:
-                    for patch in hierarchy.patch_levels[ilvl].patches:
+                    for patch in hierarchy.levels()[ilvl].patches:
                         self.assertIsNone(patch.box * box)
 
     @data(
@@ -228,7 +228,7 @@ class GeometryTest(unittest.TestCase):
         )
 
         overlaps = hierarchy_overlaps(hierarchy)
-        for ilvl, lvl in enumerate(hierarchy.patch_levels):
+        for ilvl, lvl in enumerate(hierarchy.levels()):
             if ilvl not in expected:
                 continue
             self.assertEqual(len(expected[ilvl]), len(overlaps[ilvl]))
@@ -277,14 +277,14 @@ class GeometryTest(unittest.TestCase):
             dim, interp_order, nbr_cells, refinement_boxes, quantities="Bx"
         )
 
-        for ilvl in range(1, len(hierarchy.patch_levels)):
+        for ilvl in range(1, len(hierarchy.levels())):
             refined_domain_box = hierarchy.refined_domain_box(ilvl)
 
             n_ghosts = (
-                hierarchy.patch_levels[ilvl].patches[0].patch_datas["Bx"].ghosts_nbr
+                hierarchy.levels()[ilvl].patches[0].patch_datas["Bx"].ghosts_nbr
             )
             patches = get_periodic_list(
-                hierarchy.patch_levels[ilvl].patches, refined_domain_box, n_ghosts
+                hierarchy.levels()[ilvl].patches, refined_domain_box, n_ghosts
             )
 
             periodic_boxes = [patch.box for patch in patches]
@@ -349,7 +349,7 @@ class GeometryTest(unittest.TestCase):
         )
 
         lvl_gaboxes = level_ghost_boxes(hierarchy, "Bx")
-        for ilvl in range(1, len(hierarchy.patch_levels)):
+        for ilvl in range(1, len(hierarchy.levels())):
             qtyNbr = len(lvl_gaboxes[ilvl].keys())
             self.assertEqual(qtyNbr, 1)
 
