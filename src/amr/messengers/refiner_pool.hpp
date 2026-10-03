@@ -22,10 +22,10 @@ namespace amr
      * A RefinerPool is a container of Refiner objects that can (but not necessarily)
      * be processed together.
      */
-    template<typename ResourcesManager, RefinerType Type>
+    template<typename ResourcesManager, typename Model, RefinerType Type>
     class RefinerPool
     {
-        using Refiner_t = Refiner<ResourcesManager, Type>;
+        using Refiner_t = Refiner<ResourcesManager, Model, Type>;
 
 
     public:
@@ -162,9 +162,9 @@ namespace PHARE::amr
 {
 
 
-template<typename ResourcesManager, RefinerType Type>
+template<typename ResourcesManager, typename Model, RefinerType Type>
 template<typename Resource, typename Key>
-void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
+void RefinerPool<ResourcesManager, Model, Type>::addStaticRefiner(
     Resource const& dst, Resource const& src,
     std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp, Key const& key,
     std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
@@ -178,9 +178,9 @@ void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
 }
 
 
-template<typename ResourcesManager, RefinerType Type>
+template<typename ResourcesManager, typename Model, RefinerType Type>
 template<typename Resource, typename Key>
-void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
+void RefinerPool<ResourcesManager, Model, Type>::addStaticRefiner(
     Resource const& src_dst, std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
     Key const& key, std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
     std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
@@ -189,9 +189,9 @@ void RefinerPool<ResourcesManager, Type>::addStaticRefiner(
 }
 
 
-template<typename ResourcesManager, RefinerType Type>
+template<typename ResourcesManager, typename Model, RefinerType Type>
 template<typename Resources, typename Keys>
-void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
+void RefinerPool<ResourcesManager, Model, Type>::addStaticRefiners(
     Resources const& destinations, Resources const& sources,
     std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, Keys const& keys,
     std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
@@ -205,9 +205,9 @@ void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
 }
 
 
-template<typename ResourcesManager, RefinerType Type>
+template<typename ResourcesManager, typename Model, RefinerType Type>
 template<typename Srcs, typename Keys>
-void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
+void RefinerPool<ResourcesManager, Model, Type>::addStaticRefiners(
     Srcs const& src_dest, std::shared_ptr<SAMRAI::hier::RefineOperator> refineOp, Keys const& keys,
     std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern,
     std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat)
@@ -217,8 +217,8 @@ void RefinerPool<ResourcesManager, Type>::addStaticRefiners(
 
 
 
-template<typename ResourcesManager, RefinerType Type>
-void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
+template<typename ResourcesManager, typename Model, RefinerType Type>
+void RefinerPool<ResourcesManager, Model, Type>::addTimeRefiner(
     std::string const& ghost, std::string const& model, std::string const& oldModel,
     std::shared_ptr<SAMRAI::hier::RefineOperator> const& refineOp,
     std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator> const& timeOp, std::string const& key,
@@ -232,8 +232,8 @@ void RefinerPool<ResourcesManager, Type>::addTimeRefiner(
 }
 
 
-template<typename ResourcesManager, RefinerType Type>
-void RefinerPool<ResourcesManager, Type>::addTimeRefiners(
+template<typename ResourcesManager, typename Model, RefinerType Type>
+void RefinerPool<ResourcesManager, Model, Type>::addTimeRefiners(
     std::vector<std::string> const& ghostVecs, std::string const& modelVec,
     std::string const& oldModelVec, std::shared_ptr<SAMRAI::hier::RefineOperator>& refineOp,
     std::shared_ptr<SAMRAI::hier::TimeInterpolateOperator>& timeOp,

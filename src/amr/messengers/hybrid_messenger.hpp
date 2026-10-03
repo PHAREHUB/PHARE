@@ -346,14 +346,9 @@ namespace amr
         void syncIonMoments(IonsT& ions) { strat_->syncIonMoments(ions); }
 
 
-        void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
+        void fillIonPopBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
         {
-            strat_->fillFluxBorders(ions, level, fillTime);
-        }
-
-        void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
-        {
-            strat_->fillDensityBorders(ions, level, fillTime);
+            strat_->fillIonPopBorders(ions, level, fillTime);
         }
 
         void fillIonBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)

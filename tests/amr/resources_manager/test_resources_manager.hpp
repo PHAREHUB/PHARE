@@ -1,31 +1,20 @@
 #ifndef PHARE_TESTS_AMR_TOOLS_RESSOURCE_RESSOURCE_TEST_1D_HPP
 #define PHARE_TESTS_AMR_TOOLS_RESSOURCE_RESSOURCE_TEST_1D_HPP
 
+#include "phare_solver.hpp"
 
-#include "phare_core.hpp"
+#include "amr/resources_manager/resources_manager.hpp"
+
+#include "test_resources_manager_basic_hierarchy.hpp"
+
+#include "input_config.h"
+
+#include "gtest/gtest.h"
 
 #include <memory>
 
-
-#include "test_resources_manager_basic_hierarchy.hpp"
-#include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
-#include "core/data/ions/ion_population/ion_population.hpp"
-#include "core/data/ions/ions.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
-#include "core/data/particles/particle_array.hpp"
-#include "core/data/vecfield/vecfield.hpp"
-#include "input_config.h"
-#include "amr/resources_manager/resources_manager.hpp"
-
-#include "gmock/gmock.h"
-#include "gtest/gtest.h"
-
 using namespace PHARE::core;
 using namespace PHARE::amr;
-
-
 
 
 template<typename ResourcesUsers>
@@ -34,12 +23,13 @@ class aResourceUserCollection : public ::testing::Test
 public:
     std::size_t constexpr static dimension    = 1;
     std::size_t constexpr static interp_order = 1;
-    using Grid_t = Grid<NdArrayVector<dimension>, HybridQuantity::Scalar>;
+    auto constexpr static opts                = PHARE::SimOpts{dimension, interp_order};
+
+    using PHARETypes         = PHARE::solver::PHARE_Types<opts>;
+    using ResourcesManager_t = PHARETypes::ResourcesManager_t;
+
     std::unique_ptr<BasicHierarchy> hierarchy;
-    ResourcesManager<
-        PHARE::core::PHARE_Types<PHARE::SimOpts{dimension, interp_order}>::Hybrid::GridLayout_t,
-        Grid_t>
-        resourcesManager;
+    ResourcesManager_t resourcesManager;
 
     ResourcesUsers users;
 

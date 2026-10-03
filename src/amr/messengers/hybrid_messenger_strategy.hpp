@@ -128,11 +128,8 @@ namespace amr
                                      double const time)
             = 0;
 
-        virtual void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                     double const fillTime)
-            = 0;
-        virtual void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                        double const fillTime)
+        virtual void fillIonPopBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                       double const fillTime)
             = 0;
         virtual void fillIonBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                     double const fillTime)
