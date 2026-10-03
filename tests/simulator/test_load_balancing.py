@@ -206,9 +206,7 @@ class LoadBalancingTest(SimulatorTest):
             return
 
         with self.assertRaises(RuntimeError):
-            self.run_sim(
-                dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
-            )
+            self.run_sim(dict(mode="nppc", tol=0.01, **lbkwargs))
             # does not get here
 
     @unittest.skip("should change with moments")
@@ -224,9 +222,7 @@ class LoadBalancingTest(SimulatorTest):
         if cpp.mpi_size() == 1:  # doesn't make sense
             return
 
-        diag_dir = self.run_sim(
-            dict(active=True, mode="nppc", tol=0.01, **lbkwargs),
-        )
+        diag_dir = self.run_sim(dict(mode="nppc", tol=0.01, **lbkwargs))
 
         if cpp.mpi_rank() == 0:
             t0_sdev = np.std(list(time_info(diag_dir).values()))
@@ -257,9 +253,7 @@ class LoadBalancingTest(SimulatorTest):
             check_time,
         )
         is_hier = get_particles(
-            self.run_sim(
-                dict(active=True, auto=True, mode="nppc", tol=0.05),
-            ),
+            self.run_sim(dict(auto=True, mode="nppc", tol=0.05)),
             check_time,
         )
 

@@ -2,22 +2,28 @@
 #
 
 from dataclasses import dataclass, field
-from . import global_vars as gv
 
 
 @dataclass
 class LoadBalancer:
-    # whether or not load balancing is performed
-    active: bool = field(default_factory=lambda: True)
+    # Levels other than L0 are never explicitly rebalanced by this class - they get
+    # rebalanced as a side effect of regridding, whenever that naturally happens.
+    # Only L0 is rebalanced "on demand" by the logic these options configure.
 
-    # which way load is assessed
+    # which way load is assessed - applies to every level, not just L0
     mode: str = field(default_factory=lambda: "nppc")
 
-    # acceptable imbalance essentially
+    # acceptable imbalance essentially - used both for L0's explicit rebalance
+    # decision and as the threshold applied to every other level when it is
+    # regridded. currently a single value shared by all levels; there is no
+    # per-level override
     tol: float = field(default_factory=lambda: 0.05)
 
-    # whether to rebalance/check imbalance on init
+    # L0 only: whether to force a rebalance check of L0 at the very first step
     on_init: bool = field(default_factory=lambda: True)
+
+    # L0 only: everything below this line governs *when* L0's explicit rebalance
+    # check runs - none of it affects other levels
 
     # if auto, other values are not used if active
     auto: bool = field(default_factory=lambda: False)
@@ -48,6 +54,8 @@ class LoadBalancer:
             raise RuntimeError(f"LoadBalancer mode '{self.mode}' is not valid")
 
         if self._register:
+            from . import global_vars as gv
+
             if not gv.sim:
                 raise RuntimeError(
                     "LoadBalancer cannot be registered as no simulation exists"
