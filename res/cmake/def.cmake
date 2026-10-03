@@ -342,6 +342,21 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   #  phare_mpi_python3_exec(1 2 test_id script.py ${CMAKE_CURRENT_BINARY_DIR} $ARGS)
 
 
+  # adds ctest labels to a test registered by phare_mpi_python3_exec/phare_python3_exec,
+  #  whichever variant exists, nothing if its level filtered it out
+  function(phare_test_labels target)
+    set(names py3_${target} py3_${target}_mpi_n_${PHARE_MPI_PROCS} py3_${target}_mpi_n_2)
+    list(REMOVE_DUPLICATES names)
+    foreach(name ${names})
+      if(TEST ${name})
+        set_property(TEST ${name} APPEND PROPERTY LABELS ${ARGN})
+      endif()
+    endforeach()
+  endfunction(phare_test_labels)
+  # use
+  #  phare_test_labels(test_id heavy)
+
+
   if(testMPI)
     function(phare_python3_exec level target file directory)
       phare_mpi_python3_exec(${level} 2 ${target} ${file} ${directory})

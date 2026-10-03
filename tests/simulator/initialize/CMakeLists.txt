@@ -23,6 +23,7 @@ if(HighFive)
   if(PHARE_PYTEST_SIMULATORS GREATER_EQUAL 3)
     phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-3d-fields     test_fields_init_3d.py     ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-3d-particles  test_particles_init_3d.py  ${CMAKE_CURRENT_BINARY_DIR})
+    phare_test_labels(init-3d-particles heavy)
   endif()
 
   phare_mpi_python3_exec(9 ${PHARE_MPI_PROCS} init-densities density_check.py  ${CMAKE_CURRENT_BINARY_DIR})
