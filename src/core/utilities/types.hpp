@@ -14,6 +14,7 @@
 #include <cstdint>
 #include <cassert>
 #include <iomanip>
+#include <limits>
 #include <numeric>
 #include <sstream>
 #include <iostream>
@@ -149,6 +150,8 @@ namespace core
     template<typename Type, std::size_t size>
     NO_DISCARD constexpr std::array<Type, size> ConstArray(Type val = 0)
     {
+        static_assert(size <= std::numeric_limits<std::uint8_t>::max(),
+                      "ConstArray loop counter is std::uint8_t and would overflow for this size");
         std::array<Type, size> arr{};
         for (std::uint8_t i = 0; i < size; i++)
             arr[i] = val;

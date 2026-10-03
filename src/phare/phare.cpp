@@ -99,7 +99,7 @@ int main(int argc, char** argv)
     simulator->initialize();
 
     dictHandler.stop();
-    provider.release();
+    provider.reset();
 
     [[maybe_unused]] auto time = simulator->startTime();
 
