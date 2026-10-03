@@ -37,9 +37,16 @@ def diagnostics_checker(func):
 
         # at least one way to schedule dumps must be given
         one_of_required = ["write_timestamps", "elapsed_timestamps"]
-        if not any([k in kwargs for k in one_of_required]):
+        for k in one_of_required:
+            if kwargs.get(k, None) is None:
+                kwargs.pop(k, None)
+        if not any(
+            phare_utilities.np_array_ify(kwargs[k]).size > 0
+            for k in one_of_required
+            if k in kwargs
+        ):
             raise RuntimeError(
-                "Error: missing parameters - one required: "
+                "Error: missing parameters - one required (non-empty): "
                 + ", ".join(one_of_required)
             )
 
