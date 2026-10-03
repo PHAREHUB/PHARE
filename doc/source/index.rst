@@ -80,7 +80,6 @@ Warning: This documentation is a work in progress. It is not complete and may co
    usage/run_from_python
    usage/simulation
    usage/models
-   usage/electrons
    usage/diagnostics
    usage/load_balancing
    usage/restarts

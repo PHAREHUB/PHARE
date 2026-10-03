@@ -97,7 +97,25 @@ Examples:
 - ``tests/functional/harris/harris_2d.py`` - one population.
 - ``tests/functional/ionIon/beam_ions.py`` - two populations.
 
-A Hybrid simulation also requires an :doc:`ElectronModel <electrons>` block.
+A Hybrid simulation also requires an ``ElectronModel`` block, see below.
+
+Hybrid: ElectronModel
+-----------------------
+
+In a Hybrid simulation, ions are kinetic but electrons are a fluid: their
+momentum equation (via a chosen pressure closure) is used to compute the
+electric field, assuming quasineutrality. ``ElectronModel`` sets that
+closure, and is required in every Hybrid simulation.
+
+.. autoclass:: pyphare.pharein.ElectronModel
+
+.. code-block:: python
+
+    from pyphare.pharein import ElectronModel
+
+    ElectronModel(closure="isothermal", Te=0.2)
+
+Not needed for an MHD simulation.
 
 MHD: MHDModel
 --------------
