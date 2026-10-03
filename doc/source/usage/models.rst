@@ -43,9 +43,10 @@ Below, a single population of protons:
                  "nbr_part_per_cell": 100}
     )
 
-``density``, ``vbulk*``, ``vthx/y/z`` and ``bx/by/bz`` are all functions of
-the spatial coordinates. For example, the density below defines two current
-sheets at :math:`y=0.3L_y` and :math:`y=0.7L_y`, each of half-width 0.5:
+``density``, ``vbulk*``, ``vthx/y/z`` and ``bx/by/bz`` are each either a plain
+number (for a spatially uniform value) or a function of the spatial
+coordinates. For example, the density below defines two current sheets at
+:math:`y=0.3L_y` and :math:`y=0.7L_y`, each of half-width 0.5:
 
 .. code-block:: python
 

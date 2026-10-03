@@ -1,3 +1,4 @@
+import numbers
 from . import global_vars
 
 
@@ -36,14 +37,21 @@ class MHDModel(object):
 
     def defaulter(self, input, value):
         if input is not None:
-            import inspect
+            if isinstance(input, numbers.Real):
+                value = input
+            elif not callable(input):
+                raise TypeError(
+                    f"model profile must be a number or a function, got {type(input).__name__}"
+                )
+            else:
+                import inspect
 
-            params = list(inspect.signature(input).parameters.values())
-            assert len(params)
-            param_per_dim = len(params) == self.dim
-            has_vargs = params[0].kind == inspect.Parameter.VAR_POSITIONAL
-            assert param_per_dim or has_vargs
-            return input
+                params = list(inspect.signature(input).parameters.values())
+                assert len(params)
+                param_per_dim = len(params) == self.dim
+                has_vargs = params[0].kind == inspect.Parameter.VAR_POSITIONAL
+                assert param_per_dim or has_vargs
+                return input
         if self.dim == 1:
             return lambda x: value + x * 0
         if self.dim == 2:
