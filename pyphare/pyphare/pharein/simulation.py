@@ -872,6 +872,7 @@ class Simulation(object):
                        dl=(0.2, 0.2),
 
                        # AMR parameters
+                       refinement="tagging",
                        max_nbr_levels=3,
 
                         # general physics parameters
@@ -1108,7 +1109,9 @@ class Simulation(object):
           model, where it has no meaning
         * **particle_pusher** (``str``), algo to push particles (default = "modifiedBoris")
         * **resistivity** (``float``), default=0.0, Hybrid Ohm's law resistivity value
-        * **hyper-resistivity** (``float``), default=0.0, Hybrid Ohm's law hyper-resistivity value
+        * **hyper_resistivity** (``float``), default=0.0001, Hybrid Ohm's law hyper-resistivity value
+        * **hyper_mode** (``str``), {"constant" (default), "spatial"}, "constant" uses `hyper_resistivity`
+          as is; "spatial" scales it locally by ``(|B|/(n + 0.1) + 1) / 4**level``
 
         **Expert parameters:**
 
@@ -1137,12 +1140,13 @@ class Simulation(object):
         * **eta** (``float``), default=0.0, MHD resistivity.
         * **nu** (``float``), default=0.0, MHD hyper-resistivity.
         * **hall** (``bool``), default=False, whether the Hall term is included in the MHD Ohm's law.
-        * **res** (``bool``), default=False, whether resistivity is included in the MHD Ohm's law.
-        * **hyper_res** (``bool``), default=False, whether hyper-resistivity is included in the MHD Ohm's law.
         * **reconstruction** (``str``), spatial reconstruction scheme used by the MHD finite-volume solver (e.g. "WENOZ").
         * **limiter** (``str``), slope limiter used with the reconstruction scheme (e.g. "None").
         * **riemann** (``str``), Riemann solver used at cell interfaces (e.g. "Rusanov").
-        * **mhd_timestepper** (``str``), time integration scheme for the MHD solver (e.g. "TVDRK3").
+        * **mhd_timestepper** (``str``), mandatory for an MHD simulation, time integration scheme for the MHD solver (e.g. "TVDRK3").
+
+        `reconstruction`, `limiter`, `riemann` and `hall` select which pre-compiled MHD module is
+        loaded, so their combination must be one that was built (see ``res/sim/all.txt``).
 
     Misc:
 

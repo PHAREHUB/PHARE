@@ -13,6 +13,7 @@ Writing checkpoints
 .. code-block:: python
 
     import numpy as np
+    import pyphare.pharein as ph
 
     ph.Simulation(
         # ...
@@ -60,5 +61,6 @@ Resuming from a checkpoint
     )
 
 ``restart_time="auto"`` picks the latest available checkpoint in ``dir``.
-``cells``, ``dl`` and ``max_nbr_levels`` must match the run that produced the
-checkpoint.
+The restarted run must describe the same simulation as the one that produced
+the checkpoint; PHARE checks that ``cells``, ``dl`` and ``max_nbr_levels``
+match.

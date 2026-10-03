@@ -28,6 +28,8 @@ Below, a single population of protons:
 
 .. code-block:: python
 
+    import pyphare.pharein as ph
+
     ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
@@ -130,6 +132,10 @@ MHD: MHDModel
         model_options=["MHDModel"],
         max_mhd_level=sim_max_nbr_levels,  # every level is MHD
         gamma=5.0 / 3.0,
+        reconstruction="Linear",
+        limiter="VanLeer",
+        riemann="Rusanov",
+        mhd_timestepper="TVDRK2",
     )
 
     ph.MHDModel(

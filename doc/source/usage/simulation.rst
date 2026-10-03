@@ -79,6 +79,7 @@ derived. Likewise for time, any two of ``time_step``, ``time_step_nbr`` and
         dl=(0.2, 0.2),          # domain_size is derived: (20, 20)
         time_step=0.001,
         time_step_nbr=1000,     # final_time is derived: ~1.0
+        refinement="tagging",
         max_nbr_levels=3,
     )
 
