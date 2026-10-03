@@ -238,12 +238,6 @@ def align_ghosts(datas):
     return type(datas)(drop_ghosts(d) for d in datas)
 
 
-def _aligned_self(patch_data, inputs, aligned):
-    if aligned is inputs:
-        return patch_data
-    return next(a for i, a in zip(inputs, aligned) if i is patch_data)
-
-
 def field_data_array_ufunc(patch_data, ufunc, method, *inputs, **kwargs):
     if method != "__call__":
         return NotImplemented
@@ -331,3 +325,9 @@ class ParticleData(PatchData):
 
     def __eq__(self, that):
         return self.compare(that)
+
+
+def _aligned_self(patch_data, inputs, aligned):
+    if aligned is inputs:
+        return patch_data
+    return next(a for i, a in zip(inputs, aligned) if i is patch_data)
