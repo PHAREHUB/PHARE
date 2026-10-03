@@ -95,7 +95,7 @@ under a different keyword:
 Examples:
 
 - ``tests/functional/harris/harris_2d.py`` - one population.
-- ``tests/functional/ionIon/beam_ions.py`` - two populations.
+- ``tests/functional/ionIonBeam/ion_ion_beam1d.py`` - two populations.
 
 A Hybrid simulation also requires an ``ElectronModel`` block, see below.
 

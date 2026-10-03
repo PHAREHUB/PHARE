@@ -23,8 +23,8 @@ Writing checkpoints
         },
     )
 
-- ``mode="conserve"`` (default) keeps any existing checkpoint files;
-  ``mode="overwrite"`` replaces them.
+- ``mode`` is required: ``"conserve"`` keeps any existing checkpoint files;
+  ``"overwrite"`` replaces them.
 - ``timestamps`` are simulation times, and must line up with the
   simulation's ``time_step``.
 - ``elapsed_timestamps`` writes a checkpoint every time that much wall-clock
@@ -60,5 +60,5 @@ Resuming from a checkpoint
     )
 
 ``restart_time="auto"`` picks the latest available checkpoint in ``dir``.
-All other ``Simulation`` parameters (domain, resolution, ``max_nbr_levels``,
-...) must match the run that produced the checkpoint.
+``cells``, ``dl`` and ``max_nbr_levels`` must match the run that produced the
+checkpoint.

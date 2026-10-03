@@ -22,6 +22,7 @@ units, and each value must line up with the simulation's ``time_step``:
 .. code-block:: python
 
     import numpy as np
+    import pyphare.pharein as ph
 
     time_step_nbr = 1000
     time_step = 0.001

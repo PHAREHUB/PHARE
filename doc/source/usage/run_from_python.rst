@@ -80,6 +80,10 @@ basically runs the simulation. Here is a small example:
         simulator.run()
 
 
+    if __name__ == "__main__":
+        main()
+
+
 
 The Simulator
 -------------

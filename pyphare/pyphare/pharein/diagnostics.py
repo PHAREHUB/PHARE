@@ -512,11 +512,10 @@ class ParticleDiagnostics(Diagnostics):
             write_timestamps=timestamps,
         )
 
-    **quantity**, one of:
+    **quantity**, mandatory, one of:
 
-        * "domain" (default), particles living within the interior of the simulation patches - the right default for most uses.
+        * "domain", particles living within the interior of the simulation patches - the right choice for most uses.
         * "levelGhost", particles living in the ghost region between two AMR levels - mainly useful for debugging refinement/coarsening.
-        * "space_box", particles living within a user-given spatial region - requires the additional **extent** parameter (the box, in the same units as the domain).
 
     **population_name** (``str``), mandatory, name of the ion population to
     write particles for, as declared in
