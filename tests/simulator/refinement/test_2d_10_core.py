@@ -15,6 +15,7 @@ from pyphare import cpp
 import pyphare.pharein as ph
 import pyphare.core.box as boxm
 from pyphare.simulator.simulator import Simulator, startMPI
+from pyphare.pharesee.hierarchy import TimeNotFoundError
 
 from tests.simulator.test_advance import AdvanceTestBase
 
@@ -163,7 +164,10 @@ def post_advance(new_time):
         L0_datahier = check_hier(get_hier(L0_diags))
         L0L1_datahier = check_hier(get_hier(L0L1_diags))
         extra_collections = []
-        errors = test.base_test_overlaped_fields_are_equal(L0L1_datahier, new_time)
+        try:
+            errors = test.base_test_overlaped_fields_are_equal(L0L1_datahier, new_time)
+        except TimeNotFoundError:
+            return  # nothing dumped at this time yet
 
         # The test commented out, see warning in test_advance.py
         # errors = (
