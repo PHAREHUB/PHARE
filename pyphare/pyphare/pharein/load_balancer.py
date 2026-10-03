@@ -28,9 +28,9 @@ class LoadBalancer:
 
     .. code-block:: python
 
-        from pyphare.pharein import LoadBalancer
+        import pyphare.pharein as ph
 
-        LoadBalancer(mode="nppc", tol=0.05, every=200)
+        ph.LoadBalancer(mode="nppc", tol=0.05, every=200)
 
     **Parameters**:
 

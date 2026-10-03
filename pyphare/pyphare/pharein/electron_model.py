@@ -30,9 +30,9 @@ class ElectronModel(object):
 
     .. code-block:: python
 
-        from pyphare.pharein import ElectronModel
+        import pyphare.pharein as ph
 
-        ElectronModel(closure="isothermal", Te=0.2)
+        ph.ElectronModel(closure="isothermal", Te=0.2)
 
     **Parameters**:
 

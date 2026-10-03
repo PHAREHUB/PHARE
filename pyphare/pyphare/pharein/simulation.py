@@ -858,11 +858,11 @@ class Simulation(object):
 
         .. code-block:: python
 
-            from pyphare.pharein import Simulation
+            import pyphare.pharein as ph
 
 
 
-            Simulation(
+            ph.Simulation(
                        # time evolution parameters
                        time_step_nbr=1000,
                        time_step=0.001,
@@ -912,7 +912,7 @@ class Simulation(object):
 
         .. code-block:: python
 
-            Simulation(
+            ph.Simulation(
                        time_step_nbr=1000,
                        time_step=0.001,
 
@@ -923,7 +923,7 @@ class Simulation(object):
 
         .. code-block:: python
 
-            Simulation(
+            ph.Simulation(
                        time_step_nbr=1000,
                        final_time=1.,
 
@@ -934,7 +934,7 @@ class Simulation(object):
 
         .. code-block:: python
 
-            Simulation(
+            ph.Simulation(
                        time_step=0.001,
                        final_time=1.,
 
@@ -971,7 +971,7 @@ class Simulation(object):
 
         .. code-block:: python
 
-            Simulation(
+            ph.Simulation(
                        dl=(0.1, 0.1),
                        domain_size=(100,100),
 
@@ -983,7 +983,7 @@ class Simulation(object):
 
         .. code-block:: python
 
-            Simulation(
+            ph.Simulation(
                        cells=(1000, 1000),
                        domain_size=(100,100),
 
@@ -994,7 +994,7 @@ class Simulation(object):
 
         .. code-block:: python
 
-            Simulation(
+            ph.Simulation(
                        cells=(1000, 1000),
                        dl=(0.1,0.1),
 

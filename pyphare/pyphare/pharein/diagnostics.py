@@ -278,9 +278,9 @@ class MHDDiagnostics(Diagnostics):
 
     .. code-block:: python
 
-        from pyphare.pharein import MHDDiagnostics
+        import pyphare.pharein as ph
 
-        MHDDiagnostics(quantity="rho", write_timestamps=timestamps)
+        ph.MHDDiagnostics(quantity="rho", write_timestamps=timestamps)
 
     **quantity**, one of:
 
@@ -332,10 +332,10 @@ class ElectromagDiagnostics(Diagnostics):
 
     .. code-block:: python
 
-        from pyphare.pharein import ElectromagDiagnostics
+        import pyphare.pharein as ph
 
-        ElectromagDiagnostics(quantity="E", write_timestamps=timestamps)
-        ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+        ph.ElectromagDiagnostics(quantity="E", write_timestamps=timestamps)
+        ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
 
     **quantity**, one of: "E" (electric field), "B" (magnetic field).
     """
@@ -443,17 +443,17 @@ class FluidDiagnostics:
 
     .. code-block:: python
 
-        from pyphare.pharein import FluidDiagnostics
+        import pyphare.pharein as ph
 
         # a per-population quantity: population_name required
-        FluidDiagnostics(
+        ph.FluidDiagnostics(
             quantity="density",
             population_name="protons",
             write_timestamps=timestamps,
         )
 
         # a quantity that also works for the ions as a whole: population_name omitted
-        FluidDiagnostics(quantity="mass_density", write_timestamps=timestamps)
+        ph.FluidDiagnostics(quantity="mass_density", write_timestamps=timestamps)
 
     **quantity**, always requires **population_name**:
 
@@ -504,9 +504,9 @@ class ParticleDiagnostics(Diagnostics):
 
     .. code-block:: python
 
-        from pyphare.pharein import ParticleDiagnostics
+        import pyphare.pharein as ph
 
-        ParticleDiagnostics(
+        ph.ParticleDiagnostics(
             quantity="domain",
             population_name="protons",
             write_timestamps=timestamps,
@@ -590,9 +590,9 @@ class MetaDiagnostics(Diagnostics):
 
     .. code-block:: python
 
-        from pyphare.pharein import MetaDiagnostics
+        import pyphare.pharein as ph
 
-        MetaDiagnostics(quantity="tags", write_timestamps=timestamps)
+        ph.MetaDiagnostics(quantity="tags", write_timestamps=timestamps)
 
     **quantity**, one of:
 
@@ -637,9 +637,9 @@ class InfoDiagnostics(Diagnostics):
 
     .. code-block:: python
 
-        from pyphare.pharein import InfoDiagnostics
+        import pyphare.pharein as ph
 
-        InfoDiagnostics(quantity="particle_count")
+        ph.InfoDiagnostics(quantity="particle_count")
 
     **quantity**, one of:
 

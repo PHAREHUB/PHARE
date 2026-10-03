@@ -15,19 +15,19 @@ first - every other block below depends on it.
 
     # ------------ MANDATORY BLOCKS
 
-    Simulation(
+    ph.Simulation(
         # time evolution, domain, AMR, restart and diagnostics-output parameters
     )
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
         # magnetic field profile and ion population(s), for a Hybrid simulation
     )
     # -- or, for an MHD simulation --
-    MHDModel(
+    ph.MHDModel(
         # density, velocity, magnetic field and pressure profiles
     )
 
-    ElectronModel(
+    ph.ElectronModel(
         # electron fluid closure - required for a Hybrid simulation
     )
 
@@ -36,15 +36,15 @@ first - every other block below depends on it.
 
     # ------------ OPTIONAL BLOCKS
 
-    LoadBalancer(
+    ph.LoadBalancer(
         # tune how work is redistributed across MPI ranks
     )
 
-    ElectromagDiagnostics(...)   # E and B field outputs
-    FluidDiagnostics(...)        # ion moment outputs
-    ParticleDiagnostics(...)     # particle outputs
-    MHDDiagnostics(...)          # MHD fluid outputs
-    InfoDiagnostics(...)         # run-monitoring outputs
+    ph.ElectromagDiagnostics(...)   # E and B field outputs
+    ph.FluidDiagnostics(...)        # ion moment outputs
+    ph.ParticleDiagnostics(...)     # particle outputs
+    ph.MHDDiagnostics(...)          # MHD fluid outputs
+    ph.InfoDiagnostics(...)         # run-monitoring outputs
 
     # ------------ END OF OPTIONAL BLOCKS
 
@@ -72,9 +72,9 @@ derived. Likewise for time, any two of ``time_step``, ``time_step_nbr`` and
 
 .. code-block:: python
 
-    from pyphare.pharein import Simulation
+    import pyphare.pharein as ph
 
-    Simulation(
+    ph.Simulation(
         cells=(100, 100),
         dl=(0.2, 0.2),          # domain_size is derived: (20, 20)
         time_step=0.001,

@@ -60,18 +60,17 @@ basically runs the simulation. Here is a small example:
 .. code-block:: python
 
     from pyphare.simulator.simulator import Simulator
-    from pyphare.pharein import Simulation
-    from pyphare.pharein import MaxwellianFluidModel
+    import pyphare.pharein as ph
 
 
     # define your simulation parameters
     # and initial condition...
 
-    sim = Simulation(
+    sim = ph.Simulation(
     # ...
     )
 
-    MaxwellianFluidModel(
+    ph.MaxwellianFluidModel(
     # ...
     )
 

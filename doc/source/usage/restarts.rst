@@ -14,7 +14,7 @@ Writing checkpoints
 
     import numpy as np
 
-    Simulation(
+    ph.Simulation(
         # ...
         restart_options={
             "dir": "restarts",
@@ -50,7 +50,7 @@ Resuming from a checkpoint
 
 .. code-block:: python
 
-    Simulation(
+    ph.Simulation(
         # ...
         restart_options={
             "dir": "restarts",

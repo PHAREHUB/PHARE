@@ -111,9 +111,9 @@ closure, and is required in every Hybrid simulation.
 
 .. code-block:: python
 
-    from pyphare.pharein import ElectronModel
+    import pyphare.pharein as ph
 
-    ElectronModel(closure="isothermal", Te=0.2)
+    ph.ElectronModel(closure="isothermal", Te=0.2)
 
 Not needed for an MHD simulation.
 
