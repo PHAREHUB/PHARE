@@ -82,6 +82,15 @@ PYBIND11_MODULE(cpp_etc, m)
         return PHARE::amr::HierarchyRestarter::getRestartFileFullPath(path);
     };
     py::class_<core::Span<double>, py::smart_holder>(m, "Span");
+    // buffer protocol so np.asarray(span) is a zero-copy (readonly) view
+    py::class_<core::Span<double const>, py::smart_holder>(m, "ConstSpan", py::buffer_protocol())
+        .def_buffer([](core::Span<double const> const& span) {
+            return py::buffer_info(span.data(), span.size(), /*readonly=*/true);
+        });
+    // py::array, not py_array_t, so no forcecast copy can happen on the way in
+    m.def("are_the_same_data", [](py::array const& array, core::Span<double const> const& span) {
+        return array.data() == static_cast<void const*>(span.data());
+    });
     py::class_<PyArrayWrapper<double>, py::smart_holder, core::Span<double>>(m, "PyWrapper");
 
 

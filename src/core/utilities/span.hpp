@@ -7,6 +7,7 @@
 #include "core/utilities/types.hpp"
 
 #include <vector>
+#include <algorithm>
 #include <cstddef>
 #include <numeric>
 
@@ -23,21 +24,34 @@ concept Spannable = requires(T t) {
 
 
 template<typename T, typename SIZE = std::size_t>
-
 struct Span
 {
     using value_type = T;
 
     NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
     NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
-    NO_DISCARD T const* const& data() const { return ptr; }
-    NO_DISCARD T const* const& begin() const { return ptr; }
+    NO_DISCARD T* data() const { return ptr; }
+    NO_DISCARD T* begin() const { return ptr; }
     NO_DISCARD T* end() const { return ptr + s; }
     NO_DISCARD SIZE const& size() const { return s; }
 
-    T const* ptr = nullptr;
-    SIZE s       = 0;
+    T* ptr = nullptr;
+    SIZE s = 0;
 };
+
+
+template<typename Container_t>
+auto make_span(Container_t& container)
+{
+    using value_type = std::remove_reference_t<decltype(*container.data())>;
+    return Span<value_type>{container.data(), container.size()};
+}
+
+template<typename Container_t>
+auto make_const_span(Container_t const& container)
+{
+    return make_span(container);
+}
 
 
 template<typename T, typename SIZE = std::size_t>
@@ -61,6 +75,23 @@ public:
         : Vector{vec_}
         , Span_{Vector::var.data(), Vector::var.size()}
     {
+    }
+
+    template<typename U> // U is T or T const
+        requires std::is_same_v<std::remove_const_t<U>, T>
+    VectorSpan(Span<U, SIZE> const& span)
+        : Vector{vector_from(span)}
+        , Span_{Vector::var.data(), Vector::var.size()}
+    {
+    }
+
+private:
+    template<typename U>
+    static std::vector<T> vector_from(Span<U, SIZE> const& span)
+    {
+        std::vector<T> vec(span.size());
+        std::copy(span.data(), span.data() + span.size(), vec.data());
+        return vec;
     }
 };
 
@@ -90,7 +121,11 @@ struct SpanSet
     {
     }
 
-    NO_DISCARD Span<T, SIZE> operator[](SIZE i) const
+    NO_DISCARD Span<T, SIZE> operator[](SIZE i)
+    {
+        return {this->vec.data() + displs[i], this->sizes[i]};
+    }
+    NO_DISCARD Span<T const, SIZE> operator[](SIZE i) const
     {
         return {this->vec.data() + displs[i], this->sizes[i]};
     }

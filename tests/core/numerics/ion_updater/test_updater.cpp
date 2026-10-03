@@ -12,7 +12,7 @@
 using namespace PHARE::core;
 
 
-using Param  = std::vector<double> const&;
+using Param  = PHARE::core::Span<double const> const&;
 using Return = std::shared_ptr<Span<double>>;
 
 Return density(Param x)
@@ -627,7 +627,8 @@ struct IonUpdaterTest : public ::testing::Test
                 x.emplace_back(layout.cellCenteredCoordinates(amr_idx)[0]);
             }
 
-            auto functionXPtr = function(x); // keep alive
+            auto const span   = make_const_span(x);
+            auto functionXPtr = function(span); // keep alive
             EXPECT_EQ(functionXPtr->size(), (ix1 - ix0));
 
             auto& functionX = *functionXPtr;

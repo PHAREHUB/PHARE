@@ -44,7 +44,7 @@ namespace initializer
     struct InitFunctionHelper<double, 1>
     {
         using return_type = std::shared_ptr<core::Span<double>>;
-        using param_type  = std::vector<double> const&;
+        using param_type  = core::Span<double const> const&;
         using type        = std::function<return_type(param_type)>;
     };
 
@@ -52,7 +52,7 @@ namespace initializer
     struct InitFunctionHelper<double, 2>
     {
         using return_type = std::shared_ptr<core::Span<double>>;
-        using param_type  = std::vector<double> const&;
+        using param_type  = core::Span<double const> const&;
         using type        = std::function<return_type(param_type, param_type)>;
     };
 
@@ -60,7 +60,7 @@ namespace initializer
     struct InitFunctionHelper<double, 3>
     {
         using return_type = std::shared_ptr<core::Span<double>>;
-        using param_type  = std::vector<double> const&;
+        using param_type  = core::Span<double const> const&;
         using type        = std::function<return_type(param_type, param_type, param_type)>;
     };
 

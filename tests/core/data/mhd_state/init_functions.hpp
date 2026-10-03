@@ -9,7 +9,7 @@
 
 namespace PHARE::initializer::test_fn::func_1d
 {
-using Param  = std::vector<double> const&;
+using Param  = PHARE::core::Span<double const> const&;
 using Return = std::shared_ptr<PHARE::core::Span<double>>;
 
 Return density(Param x)
@@ -71,7 +71,7 @@ Return pressure(Param x)
 
 namespace PHARE::initializer::test_fn::func_2d
 {
-using Param  = std::vector<double> const&;
+using Param  = PHARE::core::Span<double const> const&;
 using Return = std::shared_ptr<PHARE::core::Span<double>>;
 
 Return density(Param x, Param /*y*/)
@@ -134,7 +134,7 @@ Return pressure(Param x, Param /*y*/)
 template<std::size_t dim>
 auto makeSharedPtr()
 {
-    using Param = std::vector<double> const&;
+    using Param = PHARE::core::Span<double const> const&;
 
     if constexpr (dim == 1)
     {

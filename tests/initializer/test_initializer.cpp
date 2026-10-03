@@ -90,7 +90,8 @@ TEST(APythonDataProvider, providesAValidTree)
 
     EXPECT_EQ("modified_boris", pusherName);
 
-    std::vector<double> input_2 = {2};
+    std::vector<double> const input_vec = {2};
+    auto const input_2                  = PHARE::core::make_const_span(input_vec);
 
     EXPECT_EQ(2, nbrPopulations);
     EXPECT_EQ("protons", pop0Name);
