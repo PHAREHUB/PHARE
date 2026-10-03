@@ -6,12 +6,13 @@ import numpy as np
 
 from pyphare.core import phare_utilities as phut
 
+from ...core import box as boxm
 from ...core.box import Box
 from ...core.gridlayout import GridLayout
 from ...core.phare_utilities import listify, refinement_ratio
 from .hierarchy import PatchHierarchy, format_timestamp
 from .patch import Patch
-from .patchdata import FieldData, ParticleData
+from .patchdata import FieldData, ParticleData, align_ghosts
 from .patchlevel import PatchLevel
 
 field_qties = {
@@ -204,6 +205,12 @@ def new_patches_from(compute, hierarchies, ilvl, t, **kwargs):
     for ip, current_patch in enumerate(ref_patches):
         layout = current_patch.layout
         patch_datas = extract_patchdatas(hierarchies, ilvl, t, ip)
+        if len(hierarchies) > 1:
+            pdatas = list(patch_datas.values())
+            aligned = align_ghosts(pdatas)
+            if aligned is not pdatas:
+                patch_datas = dict(zip(patch_datas.keys(), aligned))
+                layout = aligned[0].layout
         new_patch_datas = new_patchdatas_from(
             compute, patch_datas, layout, id=current_patch.id, **kwargs
         )
@@ -262,6 +269,16 @@ def isFieldQty(qty):
     )
 
 
+def local_domain_coords(pdata):
+    """coordinates of the patch data nodes, without ghosts, per direction"""
+    lbox = boxm.amr_to_local(pdata.box, pdata.ghost_box)
+    lbox.upper += pdata.primal_directions()
+    return tuple(
+        getattr(pdata, "xyz"[i])[lbox.lower[i] : lbox.upper[i] + 1]
+        for i in range(pdata.ndim)
+    )
+
+
 def overlap_mask_1d(x, dl, level, qty):
     """
     return the mask for x where x is overlaped by the qty patch datas
@@ -277,12 +294,14 @@ def overlap_mask_1d(x, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        fine_x = pdata.x
+        (fine_x,) = local_domain_coords(pdata)
         fine_dl = pdata.dl
         local_dl = dl
 
         if fine_dl[0] < local_dl[0]:
-            xmin, xmax = fine_x.min(), fine_x.max()
+            # fine patches have no ghosts here, so their boundary points are included
+            tol = 0.5 * fine_dl[0]
+            xmin, xmax = fine_x.min() - tol, fine_x.max() + tol
 
             overlaped_idx = np.where((x > xmin) & (x < xmax))[0]
 
@@ -311,13 +330,15 @@ def overlap_mask_2d(x, y, dl, level, qty):
 
     for patch in level.patches:
         pdata = patch.patch_datas[qty]
-        fine_x, fine_y = pdata.x, pdata.y
+        fine_x, fine_y = local_domain_coords(pdata)
         fine_dl = pdata.dl
         local_dl = dl
 
         if (fine_dl[0] < local_dl[0]) and (fine_dl[1] < local_dl[1]):
-            xmin, xmax = fine_x.min(), fine_x.max()
-            ymin, ymax = fine_y.min(), fine_y.max()
+            # fine patches have no ghosts here, so their boundary points are included
+            tolx, toly = 0.5 * fine_dl[0], 0.5 * fine_dl[1]
+            xmin, xmax = fine_x.min() - tolx, fine_x.max() + tolx
+            ymin, ymax = fine_y.min() - toly, fine_y.max() + toly
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
             xf = xv.flatten()
@@ -368,8 +389,8 @@ def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
 
         for ip, patch in enumerate(patches):
             pdata = patch[qty]
-            data = pdata[:]
-            x = pdata.x
+            data = pdata[pdata.box]
+            (x,) = local_domain_coords(pdata)
 
             if ilvl == hierarchy.finest_level(time):
                 if ip == 0:
@@ -401,9 +422,8 @@ def flat_finest_field_2d(hierarchy, qty, time=None):
 
         for ip, patch in enumerate(patches):
             pdata = patch[qty]
-            data = pdata[:]
-            x = pdata.x
-            y = pdata.y
+            data = pdata[pdata.box]
+            x, y = local_domain_coords(pdata)
 
             xv, yv = np.meshgrid(x, y, indexing="ij")
 
