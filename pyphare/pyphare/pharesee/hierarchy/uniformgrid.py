@@ -45,22 +45,6 @@ class UniformGrids:
         return key in self.grids
 
 
-def _plot_this(ungrid, **kwargs):
-    from .plotting.plot_fields import plot_field_data
-
-    plot_field_data(ungrid, **kwargs)
-
-
-def _get_grid(obj, qty=None):
-    if type(obj) is UniformGrid:
-        return obj
-    if type(obj) is UniformGrids:
-        if qty is None:
-            raise ValueError("quantity (qty) must be set in this context")
-        return obj[qty]
-    raise TypeError("Function only supports UniformGrids")
-
-
 def peak_coordinates(obj, qty=None, **kwargs):
     grid = _get_grid(obj, qty)
     peaks, _ = find_peaks(grid, **kwargs)
@@ -79,3 +63,19 @@ def find_peaks(obj, qty=None, **kwargs):
     if "peak_heights" in props:
         return peaks, props["peak_heights"]
     return peaks, props
+
+
+def _plot_this(ungrid, **kwargs):
+    from .plotting.plot_fields import plot_field_data
+
+    plot_field_data(ungrid, **kwargs)
+
+
+def _get_grid(obj, qty=None):
+    if type(obj) is UniformGrid:
+        return obj
+    if type(obj) is UniformGrids:
+        if qty is None:
+            raise ValueError("quantity (qty) must be set in this context")
+        return obj[qty]
+    raise TypeError("Function only supports UniformGrids")

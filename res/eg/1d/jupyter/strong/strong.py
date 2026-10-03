@@ -88,11 +88,11 @@ def main():
     from pyphare.simulator.simulator import Simulator
 
     if len(sys.argv) != 4:
-        print('This code needs 3 paramaters, "run_name", Te, Ti')
-    else:
-        diagdir = sys.argv[1]
-        Te = float(sys.argv[2])
-        Ti = float(sys.argv[3])
+        raise SystemExit('This code needs 3 parameters, "run_name", Te, Ti')
+
+    diagdir = sys.argv[1]
+    Te = float(sys.argv[2])
+    Ti = float(sys.argv[3])
 
     Simulator(config(diagdir=diagdir, Te=Te, Ti=Ti), print_one_line=True).run().reset()
     ph.global_vars.sim = None
