@@ -36,5 +36,28 @@ Particle at level boundaries
 ----------------------------
 
 
+.. _tagging-for-refinement:
+
+Tagging for refinement
+-----------------------
+
+
+.. _clustering:
+
+Clustering
+----------
+
+
+.. _tiling:
+
+Tiling
+~~~~~~
+
+
+.. _berger-rigoutsos:
+
+Berger-Rigoutsos
+~~~~~~~~~~~~~~~~
+
 
 
