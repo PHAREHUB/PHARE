@@ -1,0 +1,39 @@
+
+super: settings
+
+property:
+  cuda.arch: 120
+  cxx.flags: >-
+    --std=c++20 -fPIC -fsized-deallocation -Wno-unknown-cuda-version
+    -Xclang -fcuda-allow-variadic-functions
+    -x cuda --cuda-gpu-arch=sm_${cuda.arch} -DMKN_GPU_CUDA=1 -DMKN_GPU_ROCM=0
+    -DPHARE_HAVE_MKN_GPU=1
+
+# -DPHARE_FORCE_LOG_LINE -DPHARE_SKIP_MPI_IN_CORE
+  lnk.flags: -lcudart # -lineinfo # -rdynamic # -fuse-ld=gold
+  # lnk.flags: -Wl,-z,defs -lcudart -lineinfo # -rdynamic # -fuse-ld=gold
+
+# local:
+#   repo: /mkn/r
+#   mod-repo: /mkn/m
+
+# remote:
+#   repo: git@github.com:mkn/
+#   mod-repo: git@github.com:mkn-mod/
+
+env: |
+  MKN_GPU_BX_THREADS=512
+
+#   OMPI_CXX=clang++-18
+#   PATH=/opt/mpi/cuda/bin:${PATH}
+
+# inc: /usr/local/cuda-13.2/targets/x86_64-linux/include/cccl
+path: /usr/local/cuda/targets/x86_64-linux/lib
+
+
+
+file:
+  - type: cpp:cxx:cc
+    archiver: ar -cr
+    compiler:  clang++ ${cxx.flags}
+    linker:  clang++ ${lnk.flags}
