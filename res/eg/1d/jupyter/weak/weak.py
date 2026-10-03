@@ -69,11 +69,22 @@ def config(**kwargs):
         },
     )
 
+    def vth_i(x):
+        return np.sqrt(kwargs.get("Ti", T(x)))
+
     ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
         bz=bz,
-        protons={"charge": 1, "density": density, "nbr_part_per_cell": 200, **vvv},
+        protons={
+            "charge": 1,
+            "density": density,
+            "nbr_part_per_cell": 200,
+            **vvv,
+            "vthx": vth_i,
+            "vthy": vth_i,
+            "vthz": vth_i,
+        },
     )
 
     ph.ElectronModel(closure="isothermal", Te=kwargs.get("Te", 0.0))
@@ -97,11 +108,11 @@ if __name__ == "__main__":
     from pyphare.simulator.simulator import Simulator
 
     if len(sys.argv) != 4:
-        print('This code needs 3 paramaters, "run_name", Te, Ti')
-    else:
-        diagdir = sys.argv[1]
-        Te = float(sys.argv[2])
-        Ti = float(sys.argv[3])
+        raise SystemExit('This code needs 3 parameters, "run_name", Te, Ti')
 
-    Simulator(config(diagdir=diagdir, Te=Te), print_one_line=True).run().reset()
+    diagdir = sys.argv[1]
+    Te = float(sys.argv[2])
+    Ti = float(sys.argv[3])
+
+    Simulator(config(diagdir=diagdir, Te=Te, Ti=Ti), print_one_line=True).run().reset()
     ph.global_vars.sim = None
