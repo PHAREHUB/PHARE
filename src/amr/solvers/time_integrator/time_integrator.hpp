@@ -7,7 +7,7 @@
 #include <utility>
 
 #include "initializer/data_provider.hpp"
-#include "phare_simulator_options.hpp"
+
 
 #include "amr/solvers/time_integrator/euler_integrator.hpp"
 #include "amr/solvers/time_integrator/tvdrk2_integrator.hpp"

@@ -1,22 +1,20 @@
 #ifndef _PHARE_CORE_DATA_FIELD_INITIAZILIZERS_FIELD_USER_INITIALIZER_HPP_
 #define _PHARE_CORE_DATA_FIELD_INITIAZILIZERS_FIELD_USER_INITIALIZER_HPP_
 
-#include "core/utilities/span.hpp"
-#include "initializer/data_provider.hpp"
-#include "core/utilities/point/point.hpp"
+
+
+#include "core/data/grid/grid_tiles.hpp"
 
 #include <tuple>
-#include <memory>
-#include <cassert>
+
 
 namespace PHARE::core
 {
+
 class FieldUserFunctionInitializer
 {
-public:
-    template<typename Field, typename GridLayout>
-    void static initialize(Field& field, GridLayout const& layout,
-                           initializer::InitFunction<GridLayout::dimension> const& init)
+    template<typename Field, typename GridLayout, typename InitFunction>
+    void static _initialize(Field& field, GridLayout const& layout, InitFunction const& init)
     {
         auto const indices = layout.indices(layout.AMRGhostBoxFor(field));
         auto const coords  = layout.template indexesToCoordVectors</*WithField=*/true>(
@@ -33,7 +31,21 @@ public:
                 [&](auto&... args) { field(layout.AMRToLocal(Point{args...})) = grid[cell_idx]; },
                 indices[cell_idx]);
     }
+
+public:
+    template<typename Field, typename GridLayout, typename InitFunction>
+    void static initialize(Field& field, GridLayout const& layout, InitFunction const& init)
+    {
+        auto constexpr static is_field_tile_set = is_field_tile_set_v<Field>;
+
+        if constexpr (is_field_tile_set)
+            for (auto& tile : field())
+                _initialize(tile(), tile.layout(), init);
+        else
+            _initialize(field, layout, init);
+    }
 };
+
 
 } // namespace PHARE::core
 

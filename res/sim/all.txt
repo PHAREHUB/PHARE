@@ -1,64 +1,74 @@
-# --- hybrid-only builds (dim,interp,nbRefinedPart) ---
-1,1,2
-1,1,3
-1,2,2
-1,2,3
-1,2,4
-1,3,2
-1,3,3
-1,3,4
-1,3,5
-2,1,4
-2,1,5
-2,1,8
-2,1,9
-2,2,4
-2,2,5
-2,2,8
-2,2,9
-2,2,16
-2,3,4
-2,3,5
-2,3,8
-2,3,9
-2,3,25
-3,1,6
-3,1,12
-3,1,27
-3,2,6
-3,2,12
-3,2,27
-3,3,6
-3,3,12
-3,3,27
-# --- MHD-only builds (dim,reconstruction,limiter,riemann,hall) ---
+# --- hybrid-only builds (dim,interp,nbRefinedPart,layout,allocator) ---
+1,1,2,AoSMapped,CPU
+1,1,2,AoSPCTS,CPU
+1,1,3,AoSMapped,CPU
+1,2,2,AoSMapped,CPU
+1,2,2,AoSPCTS,CPU
+1,2,3,AoSMapped,CPU
+1,2,4,AoSMapped,CPU
+1,3,2,AoSMapped,CPU
+1,3,2,AoSPCTS,CPU
+1,3,3,AoSMapped,CPU
+1,3,4,AoSMapped,CPU
+1,3,5,AoSMapped,CPU
+2,1,4,AoSMapped,CPU
+2,1,4,AoSPCTS,CPU
+2,1,5,AoSMapped,CPU
+2,1,8,AoSMapped,CPU
+2,1,9,AoSMapped,CPU
+2,2,4,AoSMapped,CPU
+2,2,4,AoSPCTS,CPU
+2,2,5,AoSMapped,CPU
+2,2,8,AoSMapped,CPU
+2,2,9,AoSMapped,CPU
+2,2,16,AoSMapped,CPU
+2,3,4,AoSMapped,CPU
+2,3,4,AoSPCTS,CPU
+2,3,5,AoSMapped,CPU
+2,3,8,AoSMapped,CPU
+2,3,9,AoSMapped,CPU
+2,3,25,AoSMapped,CPU
+3,1,6,AoSMapped,CPU
+3,1,6,AoSPCTS,CPU
+3,1,12,AoSMapped,CPU
+3,1,27,AoSMapped,CPU
+3,2,6,AoSMapped,CPU
+3,2,6,AoSPCTS,CPU
+3,2,12,AoSMapped,CPU
+3,2,27,AoSMapped,CPU
+3,3,6,AoSMapped,CPU
+3,3,6,AoSPCTS,CPU
+3,3,12,AoSMapped,CPU
+3,3,27,AoSMapped,CPU
+# --- MHD-only builds (dim,0,0,layout,allocator,reconstruction,limiter,riemann,hall) ---
+# interp/refined are forced to 0 (layout/allocator are unused but kept explicit for a
+# stable module name) so hybrid code is not compiled into these -- decoupled surfaces.
+# timestepper is a runtime choice (not a compile-time axis), so it is not a column here.
 # --- one line per single-run functional test ---
-# mhd_harris (higher-order, kept)
-2,WENOZ,None,Rusanov,true
-# mhd_harris_3d (higher-order, kept)
-3,WENOZ,None,Rusanov,true
-# mhd_alfven2d, mhd_rotor, mhd_orszagtang (ideal)
-2,Linear,VanLeer,Rusanov,false
-# mhd_shock (also covers 1D convergence @ Linear)
-1,Linear,VanLeer,Rusanov,false
+# mhd_harris, mhd_harris_3d (higher-order, kept)
+2,0,0,AoSMapped,CPU,WENOZ,None,Rusanov,true
+3,0,0,AoSMapped,CPU,WENOZ,None,Rusanov,true
+# mhd_alfven2d, mhd_rotor, mhd_orszagtang, mhd_shock, mhd_orszagtang_3d (ideal);
+# also covers mhd_convergence (1D) and mhd_multidimensional_convergence (3D) @ Linear
+2,0,0,AoSMapped,CPU,Linear,VanLeer,Rusanov,false
+1,0,0,AoSMapped,CPU,Linear,VanLeer,Rusanov,false
+3,0,0,AoSMapped,CPU,Linear,VanLeer,Rusanov,false
 # mhd_dispersion (whistler1d, Hall)
-1,Linear,VanLeer,Rusanov,true
-# mhd_orszagtang_3d (also covers 3D convergence @ Linear)
-3,Linear,VanLeer,Rusanov,false
+1,0,0,AoSMapped,CPU,Linear,VanLeer,Rusanov,true
 # --- mhd_convergence (1D): remaining reconstructions ---
-1,Constant,None,Rusanov,false
-1,WENO3,None,Rusanov,false
-1,WENOZ,None,Rusanov,false
-1,MP5,None,Rusanov,false
+1,0,0,AoSMapped,CPU,Constant,None,Rusanov,false
+1,0,0,AoSMapped,CPU,WENO3,None,Rusanov,false
+1,0,0,AoSMapped,CPU,WENOZ,None,Rusanov,false
+1,0,0,AoSMapped,CPU,MP5,None,Rusanov,false
 # --- mhd_multidimensional_convergence (3D): remaining order-2 reconstructions ---
-3,WENO3,None,Rusanov,false
-3,WENOZ,None,Rusanov,false
-3,MP5,None,Rusanov,false
+3,0,0,AoSMapped,CPU,WENO3,None,Rusanov,false
+3,0,0,AoSMapped,CPU,WENOZ,None,Rusanov,false
+3,0,0,AoSMapped,CPU,MP5,None,Rusanov,false
 # --- coverage-only: gaps not hit by any test ---
-1,Linear,MinMod,Rusanov,false
-1,Constant,None,HLL,false
-1,Constant,None,HLLD,false
-# --- coupled build (dim,interp,nbRefinedPart,reconstruction,limiter,riemann,hall) ---
+1,0,0,AoSMapped,CPU,Linear,MinMod,Rusanov,false
+1,0,0,AoSMapped,CPU,Constant,None,HLL,false
+1,0,0,AoSMapped,CPU,Constant,None,HLLD,false
+# --- coupled ("both") build (dim,interp,nbRefinedPart,layout,allocator,reconstruction,limiter,riemann,hall) ---
 # proven by a one-timestep gate: mhd_harris/harris.py's config with interp_order/
-# refined_particle_nbr forced explicit (its own default is 5-field MHD-only)
-2,1,4,WENOZ,None,Rusanov,true
+# refined_particle_nbr forced explicit (its own default is decoupled MHD-only)
+2,1,4,AoSMapped,CPU,WENOZ,None,Rusanov,true

@@ -31,9 +31,8 @@ struct VecFieldMock
 
     bool isUsable() const { return true; }
 
-
+    auto& view() const { return *this; }
     auto& view() { return *this; }
-    auto view() const { return *this; }
 };
 
 

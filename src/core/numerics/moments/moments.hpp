@@ -2,7 +2,7 @@
 #define MOMENTS_HPP
 
 
-#include "core/numerics/interpolator/interpolator.hpp"
+#include <type_traits>
 
 #include <stdexcept>
 
@@ -42,15 +42,12 @@ namespace core
             auto& flux            = pop.flux();
 
             if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
-            {
-                auto& partArray = pop.domainParticles();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
-            }
+                interpolate(pop.domainParticles(), particleDensity, chargeDensity, flux, layout);
+
             else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
-            {
-                auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
-            }
+                interpolate( //
+                    pop.levelGhostParticlesOld(), particleDensity, chargeDensity, flux, layout);
+
             else
                 throw std::runtime_error("unknown deposit tag");
         }

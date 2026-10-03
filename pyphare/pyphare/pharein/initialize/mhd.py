@@ -5,6 +5,12 @@ def populateDict(sim):
 
     dp.add_int("simulation/AMR/max_mhd_level", sim.max_mhd_level)
 
+    # read by SimOpts (simulator_def.hpp)
+    dp.add_enum_int("simulation/reconstruction", "ReconstructionType", sim.reconstruction)
+    dp.add_enum_int("simulation/limiter", "SlopeLimiterType", sim.limiter)
+    dp.add_enum_int("simulation/riemann", "RiemannSolverType", sim.riemann)
+    dp.add_bool("simulation/hall", sim.hall)
+
     if sim.refinement == "tagging":
         dp.add_string("simulation/AMR/refinement/tagging/mhd_method", "default")
 

@@ -4,8 +4,10 @@
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/field/field.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 
@@ -22,24 +24,6 @@ namespace PHARE
 {
 namespace core
 {
-    template<auto options>
-    concept HasInterpOrder = requires { options.interp_order; };
-
-
-    template<typename T, typename Attempt = void>
-    struct has_physicalQuantity : std::false_type
-    {
-    };
-
-    template<typename T>
-    struct has_physicalQuantity<
-        T, core::tryToInstanciate<decltype(std::declval<T>().physicalQuantity())>> : std::true_type
-    {
-    };
-    template<typename T>
-    constexpr bool has_physicalQuantity_v = has_physicalQuantity<T>::value;
-
-
     NO_DISCARD constexpr int centering2int(QtyCentering c)
     {
         return static_cast<int>(c);
@@ -135,7 +119,7 @@ namespace core
             if (AMRBox_.size() != boxFromNbrCells(nbrCells).size())
                 throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
 
-            inverseMeshSize_ = generate([](auto const e) { return 1. / e; }, meshSize_);
+            inverseMeshSize_ = generate_from([](auto const e) { return 1. / e; }, meshSize_);
         }
 
 
@@ -218,7 +202,7 @@ namespace core
         template<typename T>
         NO_DISCARD auto indices(Box<T, dimension> const& box) const
         {
-            return generate(
+            return generate_from(
                 [](auto const& amr_idx) -> tuple_fixed_type<T, dimension> {
                     return for_N<dimension>([&](auto i) { return amr_idx[i]; });
                 },
@@ -835,6 +819,7 @@ namespace core
         template<typename HasQuantity>
         NO_DISCARD constexpr static auto centering(HasQuantity const& hasQuantity)
             requires(has_physicalQuantity_v<HasQuantity>)
+
         {
             return centering(hasQuantity.physicalQuantity());
         }
@@ -1195,52 +1180,64 @@ namespace core
             }
         }
 
-        template<typename Field, typename Fn>
-        void evalOnBox(Field& field, Fn&& fn) const
+        // essentially box form of allocSize(...)
+        template<typename Field>
+        Box<std::uint32_t, dimension> ghostBoxFor(Field const& field) const
         {
-            auto indices = [&](auto const& centering, auto const direction) {
-                return this->physicalStartToEnd(centering, direction);
-            };
-
-            evalOnBox_(field, fn, indices);
-        }
-
-        template<typename Field, typename Fn>
-        void evalOnBiggerBox(Field& field, Point<uint32_t, dimension> const& grow, Fn&& fn) const
-        {
-            auto indices = [&](auto const& centering, auto const direction) {
-                auto [start, end] = this->physicalStartToEnd(centering, direction);
-                return std::make_pair(start - grow[static_cast<std::size_t>(direction)],
-                                      end + grow[static_cast<std::size_t>(direction)]);
-            };
-
-            evalOnBox_(field, fn, indices);
-        }
-
-        template<typename Field, typename Fn>
-        void evalOnShrinkedGhostBox(Field& field, Point<uint32_t, dimension> const& shrink,
-                                    Fn&& fn) const
-        {
-            auto indices = [&](auto const& centering, auto const direction) {
-                auto [start, end] = this->ghostStartToEnd(centering, direction);
-                return std::make_pair(start + shrink[static_cast<std::size_t>(direction)],
-                                      end - shrink[static_cast<std::size_t>(direction)]);
-            };
-
-            evalOnBox_(field, fn, indices);
-        }
-
-        template<typename Field, typename Fn>
-        void evalOnGhostBox(Field& field, Fn&& fn) const
-        {
-            auto indices = [&](auto const& centering, auto const direction) {
+            return BoxFor(field, [&](auto const& centering, auto const direction) {
                 return this->ghostStartToEnd(centering, direction);
-            };
-
-            evalOnBox_(field, fn, indices);
+            });
         }
+
+        template<typename Field>
+        auto domainBoxFor(Field const& field) const
+        {
+            return BoxFor(field, [&](auto const& centering, auto const direction) {
+                return this->physicalStartToEnd(centering, direction);
+            });
+        }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnBox(Field const& field, Fn&& fn, Args&&... args) const
+        {
+            evalOnAnyBox(field, domainBoxFor(field), fn, args...);
+        }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalGrownOnBox(Field const& field, auto const& growby, Fn&& fn, Args&&... args) const
+        {
+            evalOnAnyBox(field, grow(domainBoxFor(field), growby), fn, args...);
+        }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnGhostBox(Field const& field, Fn&& fn, Args&&... args) const
+        {
+            evalOnAnyBox(field, ghostBoxFor(field), fn, args...);
+        }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnBiggerBox(Field const& field, Point<uint32_t, dimension> const& growby, Fn&& fn,
+                             Args&&... args) const
+        {
+            evalOnAnyBox(field, grow(domainBoxFor(field), growby), fn, args...);
+        }
+
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnShrinkedGhostBox(Field const& field, Point<uint32_t, dimension> const& shrinkby,
+                                    Fn&& fn, Args&&... args) const
+        {
+            evalOnAnyBox(field, shrink(ghostBoxFor(field), shrinkby), fn, args...);
+        }
+
         auto levelNumber() const { return levelNumber_; }
 
+
+        // function to take a part of a gridlayout
+        This copy_as(Box<int, dimension> const box) const
+        {
+            auto const shifted_origin = Point<double, dimension>{meshSize_} * box.lower;
+            return {meshSize_, box.shape().as_unsigned(), shifted_origin, box, levelNumber_};
+        }
 
         auto amr_lcl_idx(auto const& box) const { return boxes_iterator{box, AMRToLocal(box)}; }
         auto amr_lcl_idx() const { return amr_lcl_idx(AMRBox()); }
@@ -1251,38 +1248,15 @@ namespace core
         }
 
     private:
-        template<typename Field, typename IndicesFn, typename Fn>
-        static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd)
+        template<typename Field, typename Box_t, typename Fn, typename... Args>
+        void static evalOnAnyBox([[maybe_unused]] Field const& feeld, Box_t const& box, Fn& fn,
+                                 Args&... args)
         {
-            auto const [ix0, ix1] = startToEnd(field, Direction::X);
-            for (auto ix = ix0; ix <= ix1; ++ix)
-            {
-                if constexpr (dimension == 1)
-                {
-                    fn(ix);
-                }
-                else
-                {
-                    auto const [iy0, iy1] = startToEnd(field, Direction::Y);
+            static_assert(!is_field_tile_set_v<Field>);
 
-                    for (auto iy = iy0; iy <= iy1; ++iy)
-                    {
-                        if constexpr (dimension == 2)
-                        {
-                            fn(ix, iy);
-                        }
-                        else
-                        {
-                            auto const [iz0, iz1] = startToEnd(field, Direction::Z);
-
-                            for (auto iz = iz0; iz <= iz1; ++iz)
-                                fn(ix, iy, iz);
-                        }
-                    }
-                }
-            }
+            for (auto const& bix : box)
+                fn(bix, args...);
         }
-
 
         template<typename Field, typename Fn>
         auto BoxFor(Field const& field, Fn startToEnd) const

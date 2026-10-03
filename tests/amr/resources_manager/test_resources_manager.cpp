@@ -1,6 +1,7 @@
 
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/data/grid/grid.hpp"
 #include "test_resources_manager.hpp"
@@ -12,6 +13,9 @@
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
 
 #include "initializer/data_provider.hpp"
+
+#include "simulator/simulator_def.hpp"
+
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
@@ -36,14 +40,14 @@ using Field1D          = Field<dim, HybridQuantity::Scalar>;
 using Grid1D           = Grid<NdArrayVector<dim>, HybridQuantity::Scalar>;
 using VecField1D       = VecField<Field1D, HybridQuantity>;
 using SymTensorField1D = SymTensorField<Field1D, HybridQuantity>;
-using IonPopulation1D  = IonPopulation<ParticleArray<1>, VecField1D, SymTensorField1D>;
+using IonPopulation1D  = IonPopulation<AoSMappedParticleArray<1>, VecField1D, SymTensorField1D>;
 using Ions1D           = Ions<IonPopulation1D, GridLayout_t>;
 using Electromag1D     = Electromag<VecField1D>;
 using Electrons1D      = Electrons<Ions1D>;
 using HybridState1D    = HybridState<Electromag1D, Ions1D, Electrons1D>;
 
 using MaxwellianParticleInitializer1D
-    = MaxwellianParticleInitializer<ParticleArray<dim>, GridLayout_t>;
+    = MaxwellianParticleInitializer<AoSMappedParticleArray<dim>, GridLayout_t>;
 
 using InitFunctionT = PHARE::initializer::InitFunction<dim>;
 
@@ -268,7 +272,7 @@ TEST(usingResourcesManager, toGetTimeOfAResourcesUser)
     ResourcesManager<PHARE::core::PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t, Grid1D>
         resourcesManager;
     IonPopulation1D_P pop;
-    static_assert(is_particles_v<ParticlesPack<ParticleArray<1>>>);
+    static_assert(is_particles_v<ParticlesPack<AoSMappedParticleArray<1>>>);
 
     auto s    = inputBase + std::string("/input/input_db_1d");
     hierarchy = std::make_unique<BasicHierarchy>(inputBase + std::string("/input/input_db_1d"));

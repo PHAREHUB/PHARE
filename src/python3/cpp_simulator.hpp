@@ -1,12 +1,15 @@
 #ifndef PHARE_PYTHON_CPP_SIMULATOR_HPP
 #define PHARE_PYTHON_CPP_SIMULATOR_HPP
 
-
+#include "phare_core.hpp"
 #ifndef PHARE_SIM_STR
-#define PHARE_SIM_STR 1, 1, 2 // mostly for clangformat - errors in cpp file if define is missing
+// mostly for clangformat - errors in cpp file if define is missing
+#define PHARE_SIM_STR 1ull, 1ull, 2ull
 #endif
 
-#include "phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp"             // IWYU pragma: keep
+#include "core/def/phare_config.hpp" // IWYU pragma: keep
+#include "core/utilities/types.hpp"
 
 #include "amr/samrai.hpp" // IWYU pragma: keep
 #include "amr/wrappers/hierarchy.hpp"
@@ -14,25 +17,29 @@
 #include "simulator/simulator.hpp" // IWYU pragma: keep
 
 #include "python3/pybind_def.hpp" // IWYU pragma: keep
-#include "pybind11/stl.h"         // IWYU pragma: keep
-#include "pybind11/numpy.h"       // IWYU pragma: keep
-#include "pybind11/chrono.h"      // IWYU pragma: keep
-#include "pybind11/complex.h"     // IWYU pragma: keep
-#include "pybind11/functional.h"  // IWYU pragma: keep
+#include "simulator/simulator.hpp"
+
+#include "pybind11/stl.h"        // IWYU pragma: keep
+#include "pybind11/numpy.h"      // IWYU pragma: keep
+#include "pybind11/chrono.h"     // IWYU pragma: keep
+#include "pybind11/complex.h"    // IWYU pragma: keep
+#include "pybind11/functional.h" // IWYU pragma: keep
 
 #include "python3/particles.hpp"     // IWYU pragma: keep
 #include "python3/patch_level.hpp"   // IWYU pragma: keep
 #include "python3/data_wrangler.hpp" // IWYU pragma: keep
+#include "python3/pybind_def.hpp"    // IWYU pragma: keep
 
+#include <cstddef>
 
 namespace py = pybind11;
 
 namespace PHARE::pydata
 {
-
-
 auto static constexpr resolve_simulator_options()
 {
+    using namespace PHARE;
+    using namespace PHARE::core;
     using namespace PHARE::MHDOpts;
     return SimOpts{PHARE_SIM_STR};
 }
@@ -55,6 +62,7 @@ void declareSimulator(PyClass&& sim)
         .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"));
 }
 
+
 template<auto opts>
 void inline declare_etc_hybrid(py::module& m)
 {
@@ -65,7 +73,6 @@ void inline declare_etc_hybrid(py::module& m)
 
     py::class_<DW, py::smart_holder>(m, name.c_str(), py::module_local())
         .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def("sync_merge", &DW::sync_merge)
         .def("getPatchLevel", &DW::getPatchLevel)
         .def("getNumberOfLevels", &DW::getNumberOfLevels);
@@ -120,11 +127,13 @@ void inline declare_etc(py::module& m)
 
 void inline declare_macro_sim(py::module& m)
 {
-    using Sim = Simulator<resolve_simulator_options()>;
+    constexpr auto opts = resolve_simulator_options();
+    using Sim           = Simulator<opts>;
 
     std::string name = "Simulator";
+
     declareSimulator<Sim>(
-        py::class_<Sim, py::smart_holder>(m, name.c_str())
+        py::class_<Sim, py::smart_holder>(m, name.c_str(), py::module_local())
             .def_property_readonly_static("dims", [](py::object) { return Sim::dimension; })
             .def_property_readonly_static("interp_order",
                                           [](py::object) { return Sim::interp_order; })
@@ -137,7 +146,7 @@ void inline declare_macro_sim(py::module& m)
     });
 
 
-    declare_etc<Sim::options>(m);
+    declare_etc<opts>(m);
 }
 
 

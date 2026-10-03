@@ -325,9 +325,12 @@ class Run:
         ranks = compute_hier_from(_get_rank, B)
         return ScalarField(self._get(ranks, time, merged, interp))
 
-    def GetParticles(self, time, pop_name, hier=None, **kwargs):
+    def GetParticles(self, time, pop_name, hier=None, type="domain", **kwargs):
+        if type not in ["domain", "levelGhost"]:
+            raise RuntimeError("Run::GetParticles: unexpected type")
+
         def filename(name):
-            return f"ions_pop_{name}_domain.h5"
+            return f"ions_pop_{name}_{type}.h5"
 
         if isinstance(pop_name, (list, tuple)):
             for pop in pop_name:
@@ -422,6 +425,15 @@ class Run:
             ts[quantities_per_file.get(basename, basename)] = time
             ff.close()
         return ts
+
+    def all_pops(self):
+        pops = set()
+        for file in self.available_diags:
+            basename = os.path.basename(file).split(".")[0]
+            if basename.startswith("ions_pop_"):
+                if any([basename.endswith(k) for k in ["density", "flux", "domain"]]):
+                    pops.add(basename[9:].split("_")[0])
+        return list(pops)
 
     def times(self, qty):
         return self.all_times()[qty]

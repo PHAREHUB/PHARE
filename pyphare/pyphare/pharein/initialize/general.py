@@ -34,6 +34,9 @@ def populate_grid(dp, sim):
     dp.add_int("simulation/interp_order", sim.interp_order)
     dp.add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)
 
+    dp.add_enum_int("simulation/particle_layout", "LayoutMode", sim.particle_layout)
+    dp.add_enum_int("simulation/allocator", "AllocatorMode", sim.allocator)
+
     sim.time_stepper.populate_dict(dp)
 
 

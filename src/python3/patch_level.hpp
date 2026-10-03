@@ -4,11 +4,13 @@
 #include "phare_solver.hpp"
 #include "python3/patch_data.hpp"
 
+#include "core/data/particles/particle_array.hpp"
+#include "core/data/particles/particle_packer.hpp"
+
 #include <string>
 #include <cstring>
 #include <cstddef>
-
-#include "python3/patch_data.hpp"
+#include <algorithm>
 
 
 namespace PHARE::pydata
@@ -254,22 +256,27 @@ public:
 
     auto getParticles(std::string userPopName)
     {
-        using Nested = std::vector<PatchData<core::ContiguousParticles<dimension>, dimension>>;
-        using Inner  = std::unordered_map<std::string, Nested>;
+        using ParticleArray_t = HybridModel::particle_array_type;
+        using FlatParticles_t = core::SoAParticleArray<dimension>;
+        using Packer          = core::ParticlePacker<ParticleArray_t>;
+        using Nested          = std::vector<PatchData<FlatParticles_t, dimension>>;
+        using Inner           = std::unordered_map<std::string, Nested>;
 
         std::unordered_map<std::string, Inner> pop_particles;
 
-        auto getParticleData = [&](Inner& inner, GridLayout& grid, std::string patchID,
-                                   std::string key, auto& particles) {
-            if (particles.size() == 0)
+        auto getParticleData = [&]<core::ParticleType ptype>(Inner& inner, GridLayout& grid,
+                                                              std::string patchID, std::string key,
+                                                              ParticleArray_t const& particles) {
+            auto const size = Packer::template size<ptype>(particles);
+            if (size == 0)
                 return;
 
             if (!inner.count(key))
                 inner.emplace(key, Nested());
 
-            auto& patch_data = inner[key].emplace_back(particles.size());
+            auto& patch_data = inner[key].emplace_back(size);
             setPatchDataFromGrid(patch_data, grid, patchID);
-            core::ParticlePacker<dimension>{particles}.pack(patch_data.data);
+            Packer{particles}.template pack<ptype>(patch_data.data);
         };
 
         auto& ions = model_.state.ions;
@@ -284,8 +291,10 @@ public:
 
                     auto& inner = pop_particles.at(pop.name());
 
-                    getParticleData(inner, grid, patchID, "domain", pop.domainParticles());
-                    getParticleData(inner, grid, patchID, "levelGhost", pop.levelGhostParticles());
+                    getParticleData.template operator()<core::ParticleType::Domain>(
+                        inner, grid, patchID, "domain", pop.domainParticles());
+                    getParticleData.template operator()<core::ParticleType::LevelGhost>(
+                        inner, grid, patchID, "levelGhost", pop.levelGhostParticles());
                 }
             }
         };

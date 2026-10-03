@@ -60,7 +60,7 @@ public:
         model_->fillMessengerInfo(infoFromCoarser);
         solver_->fillMessengerInfo(infoFromFiner);
 
-        messenger_->registerQuantities(std::move(infoFromFiner), std::move(infoFromCoarser));
+        messenger_->registerQuantities(std::move(infoFromCoarser), std::move(infoFromFiner));
     }
 
 

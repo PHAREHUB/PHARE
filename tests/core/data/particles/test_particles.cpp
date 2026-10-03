@@ -1,17 +1,18 @@
-
-
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_utilities.hpp"
 
+#include "simulator/simulator_def.hpp"
+
+#include "test_particle_partitionner.hpp"
+
 #include "gtest/gtest.h"
 
-
 #include <string>
-
 
 using namespace PHARE::core;
 
@@ -29,32 +30,36 @@ public:
 
 
 TEST_F(AParticle, ParticleWeightIsWellInitialized)
-{ EXPECT_DOUBLE_EQ(0.01, part.weight); }
+{
+    EXPECT_DOUBLE_EQ(0.01, part.weight());
+}
 
 TEST_F(AParticle, ParticleChargeIsInitiliazedOK)
-{ EXPECT_DOUBLE_EQ(1., part.charge); }
+{
+    EXPECT_DOUBLE_EQ(1., part.charge());
+}
 
 
 TEST_F(AParticle, ParticleVelocityIsInitializedOk)
 {
-    EXPECT_DOUBLE_EQ(1.8, part.v[0]);
-    EXPECT_DOUBLE_EQ(1.83, part.v[1]);
-    EXPECT_DOUBLE_EQ(2.28, part.v[2]);
+    EXPECT_DOUBLE_EQ(1.8, part.v()[0]);
+    EXPECT_DOUBLE_EQ(1.83, part.v()[1]);
+    EXPECT_DOUBLE_EQ(2.28, part.v()[2]);
 }
 
 TEST_F(AParticle, ParticleDeltaIsInitializedOk)
 {
-    EXPECT_FLOAT_EQ(0.002f, part.delta[0]);
-    EXPECT_FLOAT_EQ(0.2f, part.delta[1]);
-    EXPECT_FLOAT_EQ(0.8f, part.delta[2]);
+    EXPECT_FLOAT_EQ(0.002f, part.delta()[0]);
+    EXPECT_FLOAT_EQ(0.2f, part.delta()[1]);
+    EXPECT_FLOAT_EQ(0.8f, part.delta()[2]);
 }
 
 
 TEST_F(AParticle, ParticleCellIsInitializedOK)
 {
-    EXPECT_EQ(43, part.iCell[0]);
-    EXPECT_EQ(75, part.iCell[1]);
-    EXPECT_EQ(92, part.iCell[2]);
+    EXPECT_EQ(43, part.iCell()[0]);
+    EXPECT_EQ(75, part.iCell()[1]);
+    EXPECT_EQ(92, part.iCell()[2]);
 }
 
 
@@ -76,13 +81,14 @@ TEST_F(AParticle, CanBeReducedToAnAbsolutePositionPoint)
     PHARE::core::PHARE_Types<PHARE::SimOpts{3, 1}>::Hybrid::GridLayout_t layout{
         meshSize, nbrCells, origin, Box{Point{40, 60, 80}, Point{59, 89, 119}}};
 
-    auto iCell            = part.iCell;
+    auto iCell            = layout.AMRToLocal(cellAsPoint(part));
     auto p                = positionAsPoint(part, layout);
     auto startIndexes     = layout.physicalStartIndex(QtyCentering::primal);
     auto expectedPosition = Point<double, 3>{};
     for (auto i = 0u; i < 3; ++i)
     {
-        expectedPosition[i] = meshSize[i] * (iCell[i] + part.delta[i]);
+        expectedPosition[i]
+            = origin[i] + meshSize[i] * (iCell[i] - startIndexes[i] + part.delta()[i]);
         EXPECT_DOUBLE_EQ(expectedPosition[i], p[i]);
     }
 }

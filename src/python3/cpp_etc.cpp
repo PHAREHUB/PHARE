@@ -1,12 +1,11 @@
 // This file is for the python module for everything besides C++ Simulators.
 
-
 #include "core/def.hpp"
-#include "core/def/phare_config.hpp"
+#include "core/def/phare_config.hpp" // IWYU pragma: keep
 #include "core/data/particles/particle_array.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 
-#include "phare_simulator_options.hpp"
+
 
 #include "amr/samrai.hpp"             // SamraiLifeCycle without simulators
 #include "amr/wrappers/hierarchy.hpp" // for HierarchyRestarter::getRestartFileFullPath
@@ -18,45 +17,19 @@
 
 #include "hdf5/phare_hdf5.hpp"
 
+#include "simulator/simulator_runtime.hpp"
+
 #if PHARE_HAS_HIGHFIVE
 #include "hdf5/detail/h5/h5_file.hpp"
 #endif
+
+#include <pybind11/stl_bind.h>
+#include <pybind11/native_enum.h>
 
 namespace py = pybind11;
 
 namespace PHARE::pydata
 {
-
-template<typename Type, std::size_t dimension>
-void declarePatchData(py::module& m, std::string key)
-{
-    using PatchDataType = PatchData<Type, dimension>;
-    py::class_<PatchDataType>(m, key.c_str())
-        .def_readonly("patchID", &PatchDataType::patchID)
-        .def_readonly("origin", &PatchDataType::origin)
-        .def_readonly("lower", &PatchDataType::lower)
-        .def_readonly("upper", &PatchDataType::upper)
-        .def_readonly("nGhosts", &PatchDataType::nGhosts)
-        .def_readonly("data", &PatchDataType::data);
-}
-
-template<std::size_t dim>
-void declareDim(py::module& m)
-{
-    using CP         = core::ContiguousParticles<dim>;
-    std::string name = "ContiguousParticles_" + std::to_string(dim);
-    py::class_<CP, std::shared_ptr<CP>>(m, name.c_str())
-        .def(py::init<std::size_t>())
-        .def_readwrite("iCell", &CP::iCell)
-        .def_readwrite("delta", &CP::delta)
-        .def_readwrite("weight", &CP::weight)
-        .def_readwrite("charge", &CP::charge)
-        .def_readwrite("v", &CP::v)
-        .def("size", &CP::size);
-
-    name = "PatchData" + name;
-    declarePatchData<CP, dim>(m, name.c_str());
-}
 
 auto pybind_version()
 {
@@ -76,12 +49,54 @@ auto samrai_version()
     return ss.str();
 }
 
-PYBIND11_MODULE(cpp_etc, m)
+auto supported_layouts()
+{
+    using enum core::LayoutMode;
+    std::vector layouts{AoSMapped};
+    layouts.emplace_back(AoSPCTS);
+    return layouts;
+}
+
+template<typename Type, std::size_t dimension>
+void declarePatchData(py::module& m, std::string key)
+{
+    using PatchDataType = PatchData<Type, dimension>;
+    py::class_<PatchDataType>(m, key.c_str())
+        .def_readonly("patchID", &PatchDataType::patchID)
+        .def_readonly("origin", &PatchDataType::origin)
+        .def_readonly("lower", &PatchDataType::lower)
+        .def_readonly("upper", &PatchDataType::upper)
+        .def_readonly("nGhosts", &PatchDataType::nGhosts)
+        .def_readonly("data", &PatchDataType::data);
+}
+
+template<std::size_t dim>
+void declareDim(py::module& m)
+{
+    using CP         = core::SoAParticleArray<dim>;
+    std::string name = "ContiguousParticles_" + std::to_string(dim);
+    py::class_<CP, std::shared_ptr<CP>>(m, name.c_str())
+        .def(py::init<std::size_t>())
+        .def_readwrite("iCell", &CP::iCell_)
+        .def_readwrite("delta", &CP::delta_)
+        .def_readwrite("weight", &CP::weight_)
+        .def_readwrite("charge", &CP::charge_)
+        .def_readwrite("v", &CP::v_)
+        .def("size", &CP::size);
+
+    name = "PatchData" + name;
+    declarePatchData<CP, dim>(m, name.c_str());
+}
+
+
+PYBIND11_MODULE(cpp_etc, m, py::mod_gil_not_used())
 {
     auto samrai_restart_file = [](std::string path) {
         return PHARE::amr::HierarchyRestarter::getRestartFileFullPath(path);
     };
+
     py::class_<core::Span<double>, py::smart_holder>(m, "Span");
+    m.def("makeSpan", makePySpan<double>);
     py::class_<PyArrayWrapper<double>, py::smart_holder, core::Span<double>>(m, "PyWrapper");
 
 
@@ -95,7 +110,7 @@ PYBIND11_MODULE(cpp_etc, m)
         .def("reset", &SamraiLifeCycle::reset);
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");
-    m.def("make_hierarchy", []() { return PHARE::amr::Hierarchy::make(); });
+    m.def("make_hierarchy", []() { return PHARE::make_hierarchy(); });
 
     m.def("makePyArrayWrapper", makePyArrayWrapper<double>);
 
@@ -139,12 +154,60 @@ PYBIND11_MODULE(cpp_etc, m)
         throw std::runtime_error("PHARE not built with highfive support");
     });
 
+    using enum core::LayoutMode;
+    py::native_enum<core::LayoutMode>(m, "LayoutMode", "enum.Enum")
+        .value("AoSMapped", AoSMapped)
+        .value("AoSPCTS", AoSPCTS)
+        .finalize();
 
-    py::enum_<MHDOpts::TimeIntegratorType>(m, "TimeIntegratorType")
-        .value("euler", MHDOpts::TimeIntegratorType::Euler)
-        .value("tvdrk2", MHDOpts::TimeIntegratorType::TVDRK2)
-        .value("tvdrk3", MHDOpts::TimeIntegratorType::TVDRK3)
-        .value("ssprk4_5", MHDOpts::TimeIntegratorType::SSPRK4_5);
+    m.def("supported_layouts", supported_layouts);
+
+    py::native_enum<core::AllocatorMode>(m, "AllocatorMode", "enum.Enum")
+        .value("CPU", core::AllocatorMode::CPU)
+        .finalize();
+
+    py::native_enum<MHDOpts::TimeIntegratorType>(m, "TimeIntegratorType", "enum.Enum")
+        .value("Default", MHDOpts::TimeIntegratorType::MHDOff)
+        .value("Euler", MHDOpts::TimeIntegratorType::Euler)
+        .value("TVDRK2", MHDOpts::TimeIntegratorType::TVDRK2)
+        .value("TVDRK3", MHDOpts::TimeIntegratorType::TVDRK3)
+        .value("SSPRK4_5", MHDOpts::TimeIntegratorType::SSPRK4_5)
+        .finalize();
+
+    py::native_enum<MHDOpts::ReconstructionType>(m, "ReconstructionType", "enum.Enum")
+        .value("Default", MHDOpts::ReconstructionType::MHDOff)
+        .value("Constant", MHDOpts::ReconstructionType::Constant)
+        .value("Linear", MHDOpts::ReconstructionType::Linear)
+        .value("WENO3", MHDOpts::ReconstructionType::WENO3)
+        .value("WENOZ", MHDOpts::ReconstructionType::WENOZ)
+        .value("MP5", MHDOpts::ReconstructionType::MP5)
+        .finalize();
+
+    py::native_enum<MHDOpts::SlopeLimiterType>(m, "SlopeLimiterType", "enum.Enum")
+        .value("None", MHDOpts::SlopeLimiterType::None) // accessed via getattr(), not dot syntax
+        .value("VanLeer", MHDOpts::SlopeLimiterType::VanLeer)
+        .value("MinMod", MHDOpts::SlopeLimiterType::MinMod)
+        .finalize();
+
+    py::native_enum<MHDOpts::RiemannSolverType>(m, "RiemannSolverType", "enum.Enum")
+        .value("Default", MHDOpts::RiemannSolverType::MHDOff)
+        .value("Rusanov", MHDOpts::RiemannSolverType::Rusanov)
+        .value("HLL", MHDOpts::RiemannSolverType::HLL)
+        .value("HLLD", MHDOpts::RiemannSolverType::HLLD)
+        .finalize();
+
+    py::class_<SimOpts>(m, "SimOpts")
+        .def(py::init<>())
+        .def_readwrite("dimension", &SimOpts::dimension)
+        .def_readwrite("interp_order", &SimOpts::interp_order)
+        .def_readwrite("nbRefinedPart", &SimOpts::nbRefinedPart)
+        .def_readwrite("layout_mode", &SimOpts::layout_mode)
+        .def_readwrite("alloc_mode", &SimOpts::alloc_mode)
+        .def_readwrite("reconstruction_type", &SimOpts::reconstruction_type)
+        .def_readwrite("slope_limiter_type", &SimOpts::slope_limiter_type)
+        .def_readwrite("riemann_solver_type", &SimOpts::riemann_solver_type)
+        .def_readwrite("Hall", &SimOpts::Hall)
+        .def("__eq__", [](SimOpts const& a, SimOpts const& b) { return a == b; });
 
     py::enum_<core::HyperMode>(m, "HyperMode")
         .value("constant", core::HyperMode::constant)

@@ -6,7 +6,7 @@
 #include "core/utilities/point/point.hpp"
 #include "core/models/options/hybrid_options.hpp"
 
-#include "phare_simulator_options.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "gridlayout_base_params.hpp"
 

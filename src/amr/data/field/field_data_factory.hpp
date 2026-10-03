@@ -164,9 +164,7 @@ namespace amr
         bool validCopyTo(std::shared_ptr<SAMRAI::hier::PatchDataFactory> const&
                              destinationPatchDataFactory) const final
         {
-            auto fieldDataFactory
-                = std::dynamic_pointer_cast<FieldDataFactory>(destinationPatchDataFactory);
-            return (fieldDataFactory != nullptr);
+            return true; // hax for the moment - grid and non-grid interop
         }
 
 

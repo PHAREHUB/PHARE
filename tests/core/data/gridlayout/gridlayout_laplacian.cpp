@@ -1,6 +1,6 @@
 
 
-#include "phare_simulator_options.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "gridlayout_params.hpp"
 #include "gridlayout_laplacian.hpp"

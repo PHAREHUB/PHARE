@@ -1,4 +1,5 @@
 
+#include "core/def/pragma_disable.hpp"
 #include "core/def/phlop.hpp" // IWYU pragma: keep // scope timing
 #include "mpi/mpi_utils.hpp"
 
@@ -11,6 +12,10 @@
 namespace PHARE
 {
 
+// GCC (observed on 16.x, -O3) mis-attributes the template argument of
+// _Sp_counted_ptr_inplace<Tp,...>::_M_dispose() for this shared_ptr<Appender>, reporting it as
+// instantiated for std::string instead of StreamAppender -- a false positive.
+DISABLE_WARNING(array-bounds, array-bounds, 42)
 SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
 {
     SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
@@ -19,7 +24,7 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
     // uncomment next line for debugging samrai issues
     // SAMRAI::tbox::SAMRAI_MPI::setCallAbortInParallelInsteadOfMPIAbort();
     std::shared_ptr<SAMRAI::tbox::Logger::Appender> appender
-        = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
+        = std::make_shared<StreamAppender>(&std::cout);
     SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
     PHARE_WITH_PHLOP({
         if (auto e = core::get_env("PHARE_SCOPE_TIMING", "false"); e == "1" || e == "true")
@@ -28,6 +33,7 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
                 .init();
     })
 }
+ENABLE_WARNING(array-bounds, array-bounds, 42)
 
 SamraiLifeCycle::~SamraiLifeCycle()
 {

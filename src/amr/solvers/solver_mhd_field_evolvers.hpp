@@ -1,7 +1,6 @@
 #ifndef PHARE_AMR_SOLVERS_SOLVER_MHD_FIELD_EVOLVERS_HPP
 #define PHARE_AMR_SOLVERS_SOLVER_MHD_FIELD_EVOLVERS_HPP
 
-
 #include "core/numerics/time_integrator_utils.hpp"
 #include "core/numerics/finite_volume_euler/finite_volume_euler.hpp"
 #include "core/numerics/constrained_transport/upwind_constrained_transport.hpp"
@@ -14,7 +13,6 @@
 
 namespace PHARE::solver
 {
-
 
 template<typename Model>
 class ToConservativeTransformer
@@ -91,8 +89,6 @@ ToPrimitiveTransformer(typename Model::amr_types::level_t&, Model&)
 
 
 
-
-
 template<typename Model, typename FVMethod>
 class FVMethodTransformer
 {
@@ -101,8 +97,8 @@ class FVMethodTransformer
     using core_type  = FVMethod;
 
 public:
-    using info_type    = core_type::Info_t;
-    using Equations_t  = core_type::Equations_t;
+    using info_type   = core_type::Info_t;
+    using Equations_t = core_type::Equations_t;
 
     template<typename T>
     using Rec = core_type::template Rec<T>;
@@ -117,7 +113,8 @@ public:
     }
 
 
-    void operator()(auto& fvm_state, auto& ct_state, auto& state, auto& fluxes, double const newTime)
+    void operator()(auto& fvm_state, auto& ct_state, auto& state, auto& fluxes,
+                    double const newTime)
     {
         TimeSetter setTime{level, model, newTime};
 
@@ -211,10 +208,6 @@ public:
     Model& model;
     info_type const info;
 };
-
-
-
-
 
 
 
