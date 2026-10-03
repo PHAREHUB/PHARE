@@ -20,6 +20,7 @@
 #include <optional>
 #include <algorithm>
 #include <stdexcept>
+#include <functional>
 
 
 
@@ -586,6 +587,24 @@ struct PlusEqualsProduct
     void operator()(auto& d0, auto& o) { d += d0 * o; }
     D& d;
 };
+
+
+// fixed, portable digest (fnv1a64-v1). Deliberately not std::hash<std::string>, whose
+// algorithm is implementation-defined and may differ across compilers/standard library
+// versions, which would make a digest persisted to disk (e.g. in a restart file)
+// incomparable after a toolchain upgrade even when the hashed content is unchanged.
+NO_DISCARD inline std::string as_portable_hash(std::string const& s)
+{
+    std::uint64_t h = 14695981039346656037ull; // FNV-1a 64-bit offset basis
+    for (unsigned char c : s)
+    {
+        h ^= static_cast<std::uint64_t>(c);
+        h *= 1099511628211ull; // FNV-1a 64-bit prime
+    }
+    std::stringstream ss;
+    ss << std::hex << h;
+    return ss.str();
+}
 
 } // namespace PHARE::core
 

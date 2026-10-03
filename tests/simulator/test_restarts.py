@@ -381,6 +381,77 @@ class RestartsTest(SimulatorTest):
         self.assertEqual(diag_dir0, diag_dir1)
         self.assertEqual(len(sim.restart_options["timestamps"]), 0)
 
+    def _dump_restart_and_get_file(self, simput):
+        """runs a first simulation dumping a restart at timestep*4, returns
+        (diag_dir0, restart_time, this rank's restart hdf5 file path)"""
+        from pyphare.cpp import cpp_etc_lib
+
+        restart_time = timestep * 4
+        simput["restart_options"]["timestamps"] = [restart_time]
+        sim = self.simulation(**simput)
+        diag_dir0 = sim.diag_options["options"]["dir"]
+        setup_model(sim)
+        Simulator(sim).run().reset()
+
+        restart_file_load_path = cpp_etc_lib().restart_path_for_time(
+            diag_dir0, restart_time
+        )
+        restart_file = cpp_etc_lib().samrai_restart_file(restart_file_load_path)
+        return diag_dir0, restart_time, restart_file
+
+    def _restarted_simulation(self, simput, diag_dir0, restart_time):
+        simput = copy.deepcopy(simput)
+        simput["restart_options"]["dir"] = diag_dir0
+        simput["restart_options"]["restart_time"] = restart_time
+        ph.global_vars.sim = None
+        sim = ph.Simulation(**simput)
+        setup_model(sim)
+        return sim
+
+    def test_resources_hash_mismatch_raises(self, ndim=1, interp=1):
+        print(f"test_resources_hash_mismatch_raises dim/interp:{ndim}/{interp}")
+        import h5py
+
+        simput = dup(dict())
+        for key in ["cells", "dl", "boundary_types"]:
+            simput[key] = [simput[key]] * ndim
+        simput["interp_order"] = interp
+
+        diag_dir0, restart_time, restart_file = self._dump_restart_and_get_file(simput)
+
+        with h5py.File(restart_file, "r+") as f:
+            f["/phare"].attrs["resources_hash"] = "corrupted_hash_value"
+        cpp.mpi_barrier()
+
+        sim = self._restarted_simulation(simput, diag_dir0, restart_time)
+        simulator = Simulator(sim)
+        try:
+            with self.assertRaises(RuntimeError) as ctx:
+                simulator.setup()
+            self.assertIn("incompatible", str(ctx.exception))
+        finally:
+            simulator.reset()
+
+    def test_resources_hash_missing_is_backward_compatible(self, ndim=1, interp=1):
+        print(
+            f"test_resources_hash_missing_is_backward_compatible dim/interp:{ndim}/{interp}"
+        )
+        import h5py
+
+        simput = dup(dict())
+        for key in ["cells", "dl", "boundary_types"]:
+            simput[key] = [simput[key]] * ndim
+        simput["interp_order"] = interp
+
+        diag_dir0, restart_time, restart_file = self._dump_restart_and_get_file(simput)
+
+        with h5py.File(restart_file, "r+") as f:
+            del f["/phare"].attrs["resources_hash"]
+        cpp.mpi_barrier()
+
+        sim = self._restarted_simulation(simput, diag_dir0, restart_time)
+        Simulator(sim).run().reset()  # no exception - old restart files stay loadable
+
     def test_input_validation_trailing_slash(self):
         if cpp.mpi_size() > 1:
             return  # no need to test in parallel
