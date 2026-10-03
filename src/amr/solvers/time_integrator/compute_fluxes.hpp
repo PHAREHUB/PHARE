@@ -20,7 +20,8 @@ class ComputeFluxes
     // using Layout        = MHDModel::gridlayout_type;
     using Dispatchers_t = Dispatchers<MHDModel>;
 
-    using Ampere_t = Dispatchers_t::Ampere_t;
+    using Ampere_t                   = Dispatchers_t::Ampere_t;
+    using DissipativeElectricField_t = Dispatchers_t::DissipativeElectricField_t;
 
     using FVMethod_t     = Dispatchers_t::template FVMethod_t<FVMethodStrategy>;
     using FVMethodInfo_t = FVMethod_t::info_type;
@@ -70,36 +71,39 @@ public:
             TimeSetter{level, model, newTime}(state.B, state.J);
         }
 
-        FVMethod_t{level, model, fVMethodInfo_}(fvm_, ct_, state, fluxes, newTime);
+        if (isDissipative_)
+            DissipativeElectricField_t{level, model, fVMethodInfo_}(dissipative_electric_state_,
+                                                                    state);
+
+        FVMethod_t{level, model, fVMethodInfo_}(ct_, dissipative_electric_state_, state, fluxes,
+                                                newTime);
 
         // unecessary if we decide to store both primitive and conservative variables
         ToConservativeConverter_t{level, model}(state, to_conservative_gamma_, newTime);
 
-        ConstrainedTransport_t{level, model, constrainedTransportInfo_}(ct_, state);
+        ConstrainedTransport_t{level, model,
+                               constrainedTransportInfo_}(ct_, dissipative_electric_state_, state);
     }
 
     void registerResources(MHDModel& model)
     {
-        model.resourcesManager->registerResources(fvm_);
         model.resourcesManager->registerResources(ct_);
+        model.resourcesManager->registerResources(dissipative_electric_state_);
     }
 
     void allocate(MHDModel& model, auto& patch, double const allocateTime) const
     {
-        model.resourcesManager->allocate(fvm_, patch, allocateTime);
         model.resourcesManager->allocate(ct_, patch, allocateTime);
+        model.resourcesManager->allocate(dissipative_electric_state_, patch, allocateTime);
     }
 
 private:
     FVMethodInfo_t fVMethodInfo_;
     ConstrainedTransportInfo_t constrainedTransportInfo_;
+    bool const isDissipative_{fVMethodInfo_.isResistive() || fVMethodInfo_.isHyperResistive()};
 
-    // Ampere_t ampere_;
-    core::GodunovState<VecField, Equations_t> fvm_{fVMethodInfo_.isResistive(),
-                                                   fVMethodInfo_.isHyperResistive()};
-    core::UpwindConstrainedTransportState<VecField> ct_{Hall, fVMethodInfo_.isResistive()};
-    // ToPrimitiveConverter_t to_primitive_;
-    // ToConservativeConverter_t to_conservative_;
+    core::UpwindConstrainedTransportState<VecField> ct_{Hall};
+    core::DissipativeElectricFieldState<VecField> dissipative_electric_state_{isDissipative_};
     double to_primitive_gamma_;
     double to_conservative_gamma_;
     bool needsCurrent_;
