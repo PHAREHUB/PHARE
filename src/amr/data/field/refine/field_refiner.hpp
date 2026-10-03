@@ -1,20 +1,18 @@
 #ifndef PHARE_FIELD_REFINER_HPP
 #define PHARE_FIELD_REFINER_HPP
 
-
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
-#include "core/data/field/field.hpp"
-#include "core/utilities/constants.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
+
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include "field_linear_refine.hpp"
 
 #include <SAMRAI/hier/Box.h>
 
 #include <array>
-#include <vector>
 
 
 namespace PHARE

@@ -1,6 +1,7 @@
 
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
@@ -29,10 +30,14 @@ public:
 
 
 TEST_F(AParticle, ParticleWeightIsWellInitialized)
-{ EXPECT_DOUBLE_EQ(0.01, part.weight); }
+{
+    EXPECT_DOUBLE_EQ(0.01, part.weight);
+}
 
 TEST_F(AParticle, ParticleChargeIsInitiliazedOK)
-{ EXPECT_DOUBLE_EQ(1., part.charge); }
+{
+    EXPECT_DOUBLE_EQ(1., part.charge);
+}
 
 
 TEST_F(AParticle, ParticleVelocityIsInitializedOk)
