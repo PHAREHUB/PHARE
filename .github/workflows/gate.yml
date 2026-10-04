@@ -94,9 +94,18 @@ jobs:
       - run: pip install clang-format==20.1.8 # one version for everyone: formatting differs between versions
       - run: |
           mb=$(git merge-base "$BASE" "$HEAD")
+          # exit 0: nothing to change (prints a message, not a diff); 1: a diff; other: an error
+          rc=0
           git clang-format --diff --extensions c,cc,cpp,h,hpp,ipp "$mb" -- src tests tools \
-            | reviewdog -f=diff -name=clang-format -reporter=github-pr-annotations \
-                        -filter-mode=added -fail-level="$FAIL_LEVEL" -diff="git diff $mb"
+            > "$RUNNER_TEMP/format.diff" || rc=$?
+          [ "$rc" -le 1 ] || { cat "$RUNNER_TEMP/format.diff"; exit "$rc"; }
+          if ! grep -q '^diff --git' "$RUNNER_TEMP/format.diff"; then
+            cat "$RUNNER_TEMP/format.diff"
+            exit 0
+          fi
+          reviewdog -f=diff -name=clang-format -reporter=github-pr-annotations \
+                    -filter-mode=added -fail-level="$FAIL_LEVEL" -diff="git diff $mb" \
+                    < "$RUNNER_TEMP/format.diff"
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
           FAIL_LEVEL: ${{ contains(github.event.pull_request.labels.*.name, 'format-ok') && 'none' || 'any' }}
@@ -105,7 +114,6 @@ jobs:
     # no new ruff finding on changed Python lines. Warning only until #1314 sets the rules.
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -119,7 +127,8 @@ jobs:
         with:
           reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
       - run: pip install ruff==0.16.10
-      - run: |
+      - continue-on-error: true # warning only (step level: the job stays green)
+        run: |
           mb=$(git merge-base "$BASE" "$HEAD")
           ruff check --exit-zero --output-format=rdjson pyphare tests tools \
             | reviewdog -f=rdjson -name=ruff -reporter=github-pr-annotations \
@@ -131,14 +140,14 @@ jobs:
     # no new copy-pasted block (jscpd, compared with the merge base). Warning only for now.
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - run: |
+      - continue-on-error: true # warning only (step level: the job stays green)
+        run: |
           mb=$(git merge-base "$BASE" "$HEAD")
           status=0
           npx -y jscpd@5.4.0 --baseline-from-ref "$mb" --fail-on-new-clones \
@@ -156,11 +165,10 @@ jobs:
           exit $status
 
   workflows:
-    # actionlint + zizmor, only when the PR changes .github/. Warning only for now
-    # (the workflows on master have zizmor findings).
+    # actionlint + zizmor on the workflow files the PR changes (not those it leaves alone:
+    # master's own findings are not the PR's). Warning only for now.
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    continue-on-error: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -169,15 +177,23 @@ jobs:
           persist-credentials: false
       - id: changed
         run: |
-          if git diff --quiet "$(git merge-base "$BASE" "$HEAD")" "$HEAD" -- .github; then
-            echo "github=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "github=true" >> "$GITHUB_OUTPUT"
-          fi
-      - if: steps.changed.outputs.github == 'true'
-        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
-      - if: steps.changed.outputs.github == 'true'
-        run: pipx run --spec zizmor==1.30.1 zizmor --offline --format github .github/workflows
+          files=$(git diff --name-only --diff-filter=d "$(git merge-base "$BASE" "$HEAD")" "$HEAD" \
+                    -- '.github/workflows/*.yml' '.github/workflows/*.yaml' | tr '\n' ' ')
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+      - if: steps.changed.outputs.files != ''
+        continue-on-error: true # warning only (step level: the job stays green)
+        run: |
+          read -ra files <<< "$FILES"
+          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color "${files[@]}"
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
+      - if: steps.changed.outputs.files != ''
+        continue-on-error: true
+        run: |
+          read -ra files <<< "$FILES"
+          pipx run --spec zizmor==1.30.1 zizmor --offline --format github "${files[@]}"
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
 
   dependencies:
     # Python dependency changes: fail on a high-severity known vulnerability

@@ -84,10 +84,11 @@ def merge_base(base, head, cwd=None):
 
 
 TEST_PATH = re.compile(r"(^|/)(tests?|pyphare_tests)/|(^|/)test_[^/]*$|_test\.[^/]*$")
+CI_PATH = "res/ci/"  # the CI's own scripts and fixtures (full of skips and asserts on purpose)
 
 
 def is_test_file(path):
-    return bool(path) and bool(TEST_PATH.search(path))
+    return bool(path) and not path.startswith(CI_PATH) and bool(TEST_PATH.search(path))
 
 
 @dataclass

@@ -141,6 +141,10 @@ class AddedLines(unittest.TestCase):
         f = self.flagged({"tests/test_x.py": PY_TEST}, {"tests/test_x.py": PY_TEST + "\n    def test_c(self):\n        self.assertTrue(True)\n"})
         self.assertEqual(f, [])
 
+    def test_ci_fixtures_ignored(self):
+        f = self.flagged({"res/ci/gate/tests/test_gate.py": "x = 1\n"}, {"res/ci/gate/tests/test_gate.py": "FIXTURE = '@unittest.skip'\n"})
+        self.assertEqual(f, [])
+
     def test_non_test_file_ignored(self):
         f = self.flagged({"src/x.py": "x = 1\n"}, {"src/x.py": "@unittest.skip\ndef f(): pass\n"})
         self.assertEqual(f, [])
