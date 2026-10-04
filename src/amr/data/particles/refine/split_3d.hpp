@@ -219,6 +219,11 @@ struct Splitter<DimConst<3>, InterpConst<2>, RefinedParticlesConst<12>>
 
 
 /**************************************************************************/
+// TODO(@rochSmets) please review and explain: Smets et al. 2021 (CPC, arXiv:2104.10675) Tables 5-6
+// give only the tau = 0 and tau = 1 rows for N = 27 at p = 2 and 3. These values are applied to the
+// face (Pink), corner (Lime) and edge (Purple) children alike, so the children weights sum
+// to 1.538, not 1. Where do these w and delta come from, and what are the tau = 2 and 3 values? Not
+// built until then: commented out in res/sim/all.txt (see PHAREHUB/PHARE#1340).
 using SplitPattern_3_2_27_Dispatcher
     = PatternDispatcher<BlackPattern<DimConst<3>>, PinkPattern<DimConst<3>>,
                         LimePattern<DimConst<3>>, PurplePattern<DimConst<3>>>;
@@ -278,6 +283,11 @@ struct Splitter<DimConst<3>, InterpConst<3>, RefinedParticlesConst<12>>
 
 
 /**************************************************************************/
+// TODO(@rochSmets) please review and explain: Smets et al. 2021 (CPC, arXiv:2104.10675) Tables 5-6
+// give only the tau = 0 and tau = 1 rows for N = 27 at p = 2 and 3. These values are applied to the
+// face (Pink), corner (Lime) and edge (Purple) children alike, so the children weights sum
+// to 1.551, not 1. Where do these w and delta come from, and what are the tau = 2 and 3 values? Not
+// built until then: commented out in res/sim/all.txt (see PHAREHUB/PHARE#1340).
 using SplitPattern_3_3_27_Dispatcher
     = PatternDispatcher<BlackPattern<DimConst<3>>, PinkPattern<DimConst<3>>,
                         LimePattern<DimConst<3>>, PurplePattern<DimConst<3>>>;

@@ -27,10 +27,10 @@
 3,1,27
 3,2,6
 3,2,12
-3,2,27
+# 3,2,27  disabled: weights not in Smets 2021 CPC, see split_3d.hpp TODO(@rochSmets), #1340
 3,3,6
 3,3,12
-3,3,27
+# 3,3,27  disabled: weights not in Smets 2021 CPC, see split_3d.hpp TODO(@rochSmets), #1340
 # --- MHD-only builds (dim,reconstruction,limiter,riemann,hall) ---
 # --- one line per single-run functional test ---
 # mhd_harris (higher-order, kept)
