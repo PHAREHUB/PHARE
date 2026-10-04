@@ -55,7 +55,7 @@ dimension_2:
 
     N_particles_9:
       delta:  1
-      weight: .25 .125 .01625
+      weight: .25 .125 .0625
 
   interp_2:
     N_particles_4:
@@ -112,7 +112,7 @@ dimension_3:
 
     N_particles_27:
       delta:  1
-      weight: .125 .0625
+      weight: .125 .0625 .015625 .03125
 
   interp_2:
     N_particles_6:

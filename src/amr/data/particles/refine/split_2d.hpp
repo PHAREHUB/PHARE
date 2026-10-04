@@ -109,7 +109,7 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<5>>
 
 /**************************************************************************/
 using SplitPattern_2_1_8_Dispatcher
-    = PatternDispatcher<PurplePattern<DimConst<2>>, PinkPattern<DimConst<2>>>;
+    = PatternDispatcher<PinkPattern<DimConst<2>>, PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<8>>
@@ -117,7 +117,7 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<8>>
       SplitPattern_2_1_8_Dispatcher
 {
     constexpr Splitter()
-        : SplitPattern_2_1_8_Dispatcher{{1, 2}, {2, 1}}
+        : SplitPattern_2_1_8_Dispatcher{{weight[0], delta[0]}, {weight[1], delta[1]}}
     {
     }
 
@@ -142,7 +142,7 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<9>>
     }
 
     static constexpr std::array<float, 1> delta  = {1};
-    static constexpr std::array<float, 3> weight = {0.25, 0.125, 0.01625};
+    static constexpr std::array<float, 3> weight = {0.25, 0.125, 0.0625};
 };
 
 

@@ -7,6 +7,7 @@
 #include "amr/amr_constants.hpp"
 
 #include <array>
+#include <algorithm>
 #include <cmath>
 #include <tuple>
 #include <cassert>
@@ -61,6 +62,19 @@ public:
                            std::size_t idx = 0) const
     {
         dispatch(coarsePartOnRefinedGrid, refinedParticles, idx);
+    }
+
+    // largest offset, in fine cells along any axis, of a refined particle from its parent
+    constexpr float maxDelta() const
+    {
+        float max             = 0;
+        auto const patternMax = [&](auto const& pattern) {
+            for (auto const& delta : pattern.deltas_)
+                for (std::size_t i = 0; i < delta.size(); ++i)
+                    max = std::max(max, delta[i] < 0 ? -delta[i] : delta[i]);
+        };
+        std::apply([&](auto const&... pattern) { (patternMax(pattern), ...); }, patterns);
+        return max;
     }
 
     std::tuple<Patterns...> patterns{};
@@ -163,6 +177,17 @@ template<typename dim>
 struct WhitePattern
 {
 };
+
+
+// fine cells by which a destination box must grow to hold every parent that can put a child in it
+template<typename Splitter>
+constexpr int splitBoxGrowth()
+{
+    constexpr float maxDelta  = Splitter{}.maxDelta();
+    constexpr int maxDeltaInt = static_cast<int>(maxDelta);
+    constexpr int ceilDelta   = maxDelta > maxDeltaInt ? maxDeltaInt + 1 : maxDeltaInt;
+    return std::max(Splitter::maxCellDistanceFromSplit(), ceilDelta);
+}
 
 } // namespace PHARE::amr
 
