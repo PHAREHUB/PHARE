@@ -129,8 +129,8 @@ struct ASplitter
 
     static constexpr int maxCellDistanceFromSplit()
     {
-        constexpr auto particleSize = interp_order + 1;
-        return std::ceil(particleSize * 0.5);
+        constexpr int particleSize = interp_order + 1;
+        return (particleSize + 1) / 2; // ceil(particleSize / 2), std::ceil is not constexpr
     }
 
     constexpr ASplitter() {}
