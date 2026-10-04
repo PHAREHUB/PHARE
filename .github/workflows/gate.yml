@@ -1,0 +1,191 @@
+# Diff checks on every PR: they read the PR's changes and never build it.
+# One job = one status. Findings show inline on the PR's "Files changed" (annotations),
+# which needs no write token and so works for PRs from forks.
+#
+# Some failures can be legitimate (a test removed on purpose, a keyword renamed, ...):
+# a maintainer then adds the label named in the job's output. Labelling re-runs this
+# workflow only, in seconds; the TeamCity build is not re-run.
+#
+# The checks are part of the PR: .github/** and res/ci/** are in CODEOWNERS, so a PR
+# that changes them needs a code owner's approval.
+
+name: gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  BASE: ${{ github.event.pull_request.base.sha }}
+  HEAD: ${{ github.event.pull_request.head.sha }}
+  GATE_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+  REVIEWDOG_VERSION: v0.21.2
+
+jobs:
+  scripts:
+    # res/ci/gate/*.py: tests removed (label tests-removed-ok), skips/layering/conventions
+    # (tests-skip-ok, convention-ok), loosened tolerances (test-values-ok), pharein keywords (api-break-ok)
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [tests_removed, added_lines, assert_scan, pharein_keywords]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: python3 "res/ci/gate/${CHECK}.py" "$BASE" "$HEAD"
+        env:
+          CHECK: ${{ matrix.check }}
+
+  gate-selftest:
+    # the scripts' own fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - run: python3 -m unittest discover -s res/ci/gate/tests
+
+  pr-body:
+    # the Issue and Tests sections of .github/pull_request_template.md are filled
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - run: |
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/body.md"
+          python3 res/ci/gate/pr_body.py "$RUNNER_TEMP/body.md"
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+
+  format:
+    # changed C++ lines follow .clang-format (label format-ok)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
+        with:
+          reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
+      - run: pip install clang-format==20.1.8 # one version for everyone: formatting differs between versions
+      - run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          git clang-format --diff --extensions c,cc,cpp,h,hpp,ipp "$mb" -- src tests tools \
+            | reviewdog -f=diff -name=clang-format -reporter=github-pr-annotations \
+                        -filter-mode=added -fail-level="$FAIL_LEVEL" -diff="git diff $mb"
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+          FAIL_LEVEL: ${{ contains(github.event.pull_request.labels.*.name, 'format-ok') && 'none' || 'any' }}
+
+  ruff:
+    # no new ruff finding on changed Python lines. Warning only until #1314 sets the rules.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
+        with:
+          reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
+      - run: pip install ruff==0.16.10
+      - run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          ruff check --exit-zero --output-format=rdjson pyphare tests tools \
+            | reviewdog -f=rdjson -name=ruff -reporter=github-pr-annotations \
+                        -filter-mode=added -fail-level=warning -diff="git diff $mb"
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+
+  clones:
+    # no new copy-pasted block (jscpd, compared with the merge base). Warning only for now.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          status=0
+          npx -y jscpd@5.4.0 --baseline-from-ref "$mb" --fail-on-new-clones \
+            --min-tokens 70 --format cpp,python --formats-exts "cpp:cpp,hpp,h,cc,ipp;python:py" \
+            --ignore "**/subprojects/**,**/build*/**,**/.git/**" \
+            --reporters json --silent --output "$RUNNER_TEMP/jscpd" . || status=$?
+          python3 - "$RUNNER_TEMP/jscpd/jscpd-report.json" <<'EOF'
+          import json, sys
+          for c in json.load(open(sys.argv[1]))["duplicates"]:
+              if c["isNew"]:
+                  a, b = c["firstFile"], c["secondFile"]
+                  print(f"::warning file={a['name']},line={a['start']},title=new clone::"
+                        f"{c['lines']} lines also in {b['name']}:{b['start']}-{b['end']}")
+          EOF
+          exit $status
+
+  workflows:
+    # actionlint + zizmor, only when the PR changes .github/. Warning only for now
+    # (the workflows on master have zizmor findings).
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: changed
+        run: |
+          if git diff --quiet "$(git merge-base "$BASE" "$HEAD")" "$HEAD" -- .github; then
+            echo "github=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "github=true" >> "$GITHUB_OUTPUT"
+          fi
+      - if: steps.changed.outputs.github == 'true'
+        run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+      - if: steps.changed.outputs.github == 'true'
+        run: pipx run --spec zizmor==1.30.1 zizmor --offline --format github .github/workflows
+
+  dependencies:
+    # Python dependency changes: fail on a high-severity known vulnerability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          base-ref: ${{ github.event.pull_request.base.sha }}
+          head-ref: ${{ github.event.pull_request.head.sha }}

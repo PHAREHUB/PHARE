@@ -1,0 +1,34 @@
+# Labels by changed paths (actions/labeler, run by .github/workflows/labels.yml).
+core:
+  - changed-files:
+      - any-glob-to-any-file: "src/core/**"
+amr:
+  - changed-files:
+      - any-glob-to-any-file: "src/amr/**"
+simulator:
+  - changed-files:
+      - any-glob-to-any-file: ["src/simulator/**", "src/phare/**", "src/initializer/**"]
+python-bindings:
+  - changed-files:
+      - any-glob-to-any-file: "src/python3/**"
+io:
+  - changed-files:
+      - any-glob-to-any-file: ["src/diagnostic/**", "src/hdf5/**", "src/restarts/**"]
+pyphare:
+  - changed-files:
+      - any-glob-to-any-file: "pyphare/**"
+mhd:
+  - changed-files:
+      - any-glob-to-any-file: ["**/*mhd*", "**/*mhd*/**", "**/*MHD*"]
+tests:
+  - changed-files:
+      - any-glob-to-any-file: "tests/**"
+ci:
+  - changed-files:
+      - any-glob-to-any-file: [".github/**", "res/ci/**"]
+build:
+  - changed-files:
+      - any-glob-to-any-file: ["**/CMakeLists.txt", "res/cmake/**", "requirements*.txt"]
+docs:
+  - changed-files:
+      - any-glob-to-any-file: ["doc/**", "**/*.md"]

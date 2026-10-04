@@ -1,0 +1,16 @@
+# clang-tidy for PHARE, run on the changed lines of a PR (clang-tidy-diff.py, TeamCity).
+# Start small: checks that find bugs or performance problems, not style.
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -bugprone-implicit-widening-of-multiplication-result,
+  performance-*,
+  -performance-avoid-endl,
+  modernize-use-nodiscard
+CheckOptions:
+  # PHARE spells [[nodiscard]] through its NO_DISCARD macro (src/core/def.hpp)
+  modernize-use-nodiscard.ReplacementString: NO_DISCARD
+HeaderFilterRegex: '.*/(src|tests)/.*'
+WarningsAsErrors: ''

@@ -1,0 +1,10 @@
+# Changes to these paths need the approval of a code owner who is not the PR's author
+# (enforced by the master ruleset: "require review from code owners").
+# They hold what judges a PR (the CI and its checks) and how the code is built.
+
+/.github/                   @nicolasaunai
+/res/ci/                    @nicolasaunai
+/res/cmake/                 @nicolasaunai
+CMakeLists.txt              @nicolasaunai
+/.clang-format              @nicolasaunai
+/.clang-tidy                @nicolasaunai
