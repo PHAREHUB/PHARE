@@ -147,7 +147,7 @@ struct Splitter<DimConst<2>, InterpConst<1>, RefinedParticlesConst<9>>
 
 
 /**************************************************************************/
-using SplitPattern_2_2_4_Dispatcher = PatternDispatcher<PinkPattern<DimConst<2>>>;
+using SplitPattern_2_2_4_Dispatcher = PatternDispatcher<PurplePattern<DimConst<2>>>;
 
 template<>
 struct Splitter<DimConst<2>, InterpConst<2>, RefinedParticlesConst<4>>
