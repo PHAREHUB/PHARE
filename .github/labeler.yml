@@ -1,34 +1,41 @@
 # Labels by changed paths (actions/labeler, run by .github/workflows/labels.yml).
+# Only labels that already exist in the repository.
 core:
   - changed-files:
       - any-glob-to-any-file: "src/core/**"
 amr:
   - changed-files:
       - any-glob-to-any-file: "src/amr/**"
-simulator:
+initializer:
   - changed-files:
-      - any-glob-to-any-file: ["src/simulator/**", "src/phare/**", "src/initializer/**"]
-python-bindings:
+      - any-glob-to-any-file: "src/initializer/**"
+pbwrapper:
   - changed-files:
       - any-glob-to-any-file: "src/python3/**"
-io:
+I/O:
   - changed-files:
       - any-glob-to-any-file: ["src/diagnostic/**", "src/hdf5/**", "src/restarts/**"]
-pyphare:
+python:
   - changed-files:
       - any-glob-to-any-file: "pyphare/**"
-mhd:
+pharein:
+  - changed-files:
+      - any-glob-to-any-file: "pyphare/pyphare/pharein/**"
+pharesee:
+  - changed-files:
+      - any-glob-to-any-file: "pyphare/pyphare/pharesee/**"
+MHD:
   - changed-files:
       - any-glob-to-any-file: ["**/*mhd*", "**/*mhd*/**", "**/*MHD*"]
-tests:
+test:
   - changed-files:
       - any-glob-to-any-file: "tests/**"
-ci:
+CI:
   - changed-files:
       - any-glob-to-any-file: [".github/**", "res/ci/**"]
 build:
   - changed-files:
       - any-glob-to-any-file: ["**/CMakeLists.txt", "res/cmake/**", "requirements*.txt"]
-docs:
+documentation:
   - changed-files:
       - any-glob-to-any-file: ["doc/**", "**/*.md"]
