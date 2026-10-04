@@ -59,7 +59,7 @@ TYPED_TEST(SplitterTest, weights_sum_to_one)
     TypeParam splitter{};
     double sum = 0;
     PHARE::core::apply(splitter.patterns, [&](auto const& pattern) {
-        sum += pattern.weight_ * pattern.deltas_.size();
+        sum += static_cast<double>(pattern.weight_) * pattern.deltas_.size();
     });
     EXPECT_NEAR(sum, 1., 1e-5);
 }
@@ -112,22 +112,23 @@ std::vector<Triplet> triplets(Splitter_t const& splitter)
 {
     std::vector<Triplet> out;
     PHARE::core::apply(splitter.patterns, [&](auto const& pattern) {
+        auto const weight = static_cast<double>(pattern.weight_);
         for (auto const& d : pattern.deltas_)
         {
             int tau      = 0;
             double delta = 0;
             for (auto const x : d)
-                if (std::abs(x) > 1e-6)
+                if (std::abs(x) > 1e-6f)
                 {
                     ++tau;
                     delta = std::max(delta, static_cast<double>(std::abs(x)));
                 }
             auto it = std::find_if(out.begin(), out.end(), [&](auto const& t) {
                 return t.tau == tau and std::abs(t.delta - delta) < 1e-5
-                       and std::abs(t.weight - pattern.weight_) < 1e-7;
+                       and std::abs(t.weight - weight) < 1e-7;
             });
             if (it == out.end())
-                out.push_back({tau, pattern.weight_, delta, 1});
+                out.push_back({tau, weight, delta, 1});
             else
                 ++it->count;
         }
