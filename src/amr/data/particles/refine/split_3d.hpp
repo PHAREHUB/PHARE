@@ -168,12 +168,14 @@ struct Splitter<DimConst<3>, InterpConst<1>, RefinedParticlesConst<27>>
 {
     constexpr Splitter()
         : SplitPattern_3_1_27_Dispatcher{
-              {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
+              {weight[0]}, {weight[1], delta[0]}, {weight[2], delta[0]}, {weight[3], delta[0]}}
     {
     }
 
-    static constexpr std::array<float, 1> delta  = {1};
-    static constexpr std::array<float, 2> weight = {0.125, 0.0625};
+    static constexpr std::array<float, 1> delta = {1};
+    // exact split: tensor product of the 1D {0.5, 0.25} split, ordered as the dispatcher
+    // (centre, 6 faces, 8 corners, 12 edges)
+    static constexpr std::array<float, 4> weight = {0.125, 0.0625, 0.015625, 0.03125};
 };
 
 
