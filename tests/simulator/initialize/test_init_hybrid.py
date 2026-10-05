@@ -54,7 +54,6 @@ class HybridInitializationTest(InitializationTest):
             largest_patch_size=largest_patch_size,
             time_step_nbr=time_step_nbr,
             final_time=30.0,
-            boundary_types=["periodic"] * ndim,
             cells=[cells] * ndim,
             dl=[dl] * ndim,
             interp_order=interp_order,

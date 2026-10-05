@@ -40,16 +40,16 @@ $$
 \pdv{t}(\rho \vb{u}) + \div(\rho \vb{u} \vb{u}) = -\grad P + \vb{j} \cross \vb{B}
 $$ (eq:theory_mhd_dimensional_momentum_conservation)
 
-- Energy conservation for the total energy of the plasma $e_t =  e + \flatfrac{\vb{u}^2}{2} $ 
+- Energy conservation for the total energy of the plasma $e_t =  e + \flatfrac{\vb{u}^2}{2} $
 
 $$
 \pdv{t}(\rho e_t)  + \div(\rho \vb{u} e_t) = - \div(P \vb{u}) + \vb{j} \cdot \vb{E}
 $$ (eq:theory_mhd_dimensional_fluid_total_energy_conservation)
 
 With some manipulations, and by defining the total pressure $P* = P + \flatfrac{\vb{B}^2}{2 \mu_0}$,
-the total energy per unit volume  $E = \rho e_t + \flatfrac{\vb{B}^2}{2 \mu_0}$,
-and the Poynting vector $\vb*{\Pi} = \frac{\vb{E} \cross \vb{B}}{\mu_0}$ ,
-we can obtain the following system of equations:
+the total energy per unit volume $E = \rho e_t + \flatfrac{\vb{B}^2}{2 \mu_0}$, and the Poynting
+vector $\vb*{\Pi} = \frac{\vb{E} \cross \vb{B}}{\mu_0}$ , we can obtain the following system of
+equations:
 
 $$
 \begin{aligned}
@@ -75,6 +75,7 @@ $$ (eq:theory_mhd_dimensional_eos)
 ## Dimensionless equations
 
 Let us introduce the following reference quantities:
+
 - A reference magnetic field $B_0$
 - A reference plasma density $n_0$
 - The mass of the proton $m_p$
@@ -83,6 +84,7 @@ Let us introduce the following reference quantities:
 $$
 v_{0} = \frac{B_0}{\sqrt{m_p n_0 \mu_0}}
 $$
+
 - The proton gyro-frequency $\omega_0$:
 
 $$
@@ -90,6 +92,7 @@ $$
 $$
 
 From these reference quantities, we can deduce the other reference quantities
+
 - the proton inertial length $\delta_{0}$
 
 $$
@@ -132,7 +135,8 @@ $$
  \nu_0 = \mu_0 v_0 \delta_0^3  = \frac{B_0 m_p}{e^3 n_0^2 \mu_0 }
 $$
 
-By defining non-dimensional fields as $\tilde{\phi} = \frac{\phi}{\phi_0}$, we can obtain the following equations:
+By defining non-dimensional fields as $\tilde{\phi} = \frac{\phi}{\phi_0}$, we can obtain the
+following equations:
 
 $$
 \begin{aligned}
@@ -141,7 +145,7 @@ $$
     & \pdv{\tilde{E}}{\tilde{t}} =  - \tilde{\grad} \cdot \left[  ( \tilde{\rho} \tilde{e}_t + \tilde{P}) \tilde{\vb{u}} + \tilde{\vb*{\Pi}}\right] = - \tilde{\grad} \cdot  \left[ \left(\tilde{E} + \tilde{P}^* - \tilde{\vb{B}}^2 \right) \tilde{\vb{u}} + \tilde{\vb*{\Pi}} \right] \\
     & \pdv{\tilde{\vb{B}}}{\tilde{t}} = - \tilde{\grad} \cross \vb{\tilde{E}} %= - \curl[ \eta \vb{j} - \tilde{\vb{u}} \cross \tilde{\vb{B}} ]
 \end{aligned}
-$$ 
+$$
 
 with
 
@@ -152,7 +156,8 @@ $$
 \end{aligned}
 $$
 
-In the following, equations will be considered under their non-dimensional form, with the tildes dropped for readability.
+In the following, equations will be considered under their non-dimensional form, with the tildes
+dropped for readability.
 
 ## Splitting of the magnetic field
 
@@ -162,9 +167,11 @@ $$
 \vb{B} = \vb{B}_0 + \vb{B}_1
 $$
 
-where $\vb{B}_0$ is the imposed external field and $\vb{B}_1$ is the difference between the total and external magnetic fields.
+where $\vb{B}_0$ is the imposed external field and $\vb{B}_1$ is the difference between the total
+and external magnetic fields.
 
-Inserting this splitting in the definition of the total energy $E$, one can define the "reduced" total energy $E_1$:
+Inserting this splitting in the definition of the total energy $E$, one can define the "reduced"
+total energy $E_1$:
 
 $$
 E = \underbrace{\rho e_t + \frac{\vb{B}_1^2}{2}}_{E_1} + \frac{\vb{B}_0^2}{2} + \vb{B}_0 \cdot \vb{B}_1
@@ -185,11 +192,14 @@ $$
 \begin{aligned}
 \vb{B}_0 \cdot \pdv*{\vb{B}}{t} &= - \vb{B}_0 \cdot \left( \curl \vb{E} \right) \\
 &= - \div(\vb{E} \cross \vb{B}_0) - \vb{E} \cdot \underbrace{ \left( \curl \vb{B}_0\right)}_{ = \vb{j}_0  = \vb{0}}
-\end{aligned} 
+\end{aligned}
 $$
-The rotational of $\vb{B}_0$ is zero because it is external; the currents generating it are located outside of the computational domain.
 
-Therefore, the equation for energy and magnetic field can be written in terms of $E_1$ and $B_1$ as follows
+The rotational of $\vb{B}_0$ is zero because it is external; the currents generating it are located
+outside of the computational domain.
+
+Therefore, the equation for energy and magnetic field can be written in terms of $E_1$ and $B_1$ as
+follows
 
 $$
 \begin{aligned}

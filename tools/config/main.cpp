@@ -72,7 +72,7 @@ int main(int argc, char** argv)
         config_mpi();
         write_hdf5_info();
     }
-    catch (const std::exception& e)
+    catch (std::exception const& e)
     {
         std::cerr << e.what() << std::endl;
         MPI_Abort(MPI_COMM_WORLD, 1);

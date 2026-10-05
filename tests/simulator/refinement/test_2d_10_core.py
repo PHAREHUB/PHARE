@@ -33,7 +33,6 @@ def config(diag_outputs, model_init={}, refinement_boxes=None):
         largest_patch_size=20,
         time_step_nbr=1,
         final_time=0.001,
-        # boundary_types="periodic",
         cells=(50, 100),
         dl=(0.40, 0.40),
         # refinement="tagging",

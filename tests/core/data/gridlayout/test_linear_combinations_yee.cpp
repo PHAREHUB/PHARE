@@ -244,27 +244,27 @@ using ImplYee1 = PHARE_Types<PHARE::SimOpts{1, 1}>::Hybrid::GridLayout_t::implT;
 
 namespace
 {
-    // sum of a stencil's coefficients
-    auto coefSum(auto const& span)
-    {
-        return PHARE::core::sum_from(span, [](auto const& wp) { return wp.coef; });
-    }
+// sum of a stencil's coefficients
+auto coefSum(auto const& span)
+{
+    return PHARE::core::sum_from(span, [](auto const& wp) { return wp.coef; });
+}
 
-    // coefficient at a given offset along dirX (0 if absent)
-    auto coefAt(auto const& span, int offset)
-    {
-        for (auto const& wp : span)
-            if (wp.indexes[dirX] == offset)
-                return wp.coef;
-        return 0.;
-    }
+// coefficient at a given offset along dirX (0 if absent)
+auto coefAt(auto const& span, int offset)
+{
+    for (auto const& wp : span)
+        if (wp.indexes[dirX] == offset)
+            return wp.coef;
+    return 0.;
+}
 
-    // value the stencil produces from coarse cell-averages u(ix+offset) = f(ix+offset)
-    auto applyRow(auto const& span, int ix, auto&& f)
-    {
-        return PHARE::core::sum_from(
-            span, [&](auto const& wp) { return wp.coef * f(ix + wp.indexes[dirX]); });
-    }
+// value the stencil produces from coarse cell-averages u(ix+offset) = f(ix+offset)
+auto applyRow(auto const& span, int ix, auto&& f)
+{
+    return PHARE::core::sum_from(
+        span, [&](auto const& wp) { return wp.coef * f(ix + wp.indexes[dirX]); });
+}
 } // namespace
 
 // order-2 dual prolongation weights: -1/8, 1, 1/8
@@ -301,8 +301,8 @@ TEST(DualProlongation, childrenMeanBackToCoarse)
 TEST(DualProlongation, exactOnLinearData)
 {
     constexpr double a = 0.7, b = -1.3;
-    auto f             = [](int i) { return a + b * i; };
-    int const I        = 5;
+    auto f      = [](int i) { return a + b * i; };
+    int const I = 5;
 
     for (auto const& [row, sigma] :
          {std::pair{ImplYee1::directionalProlongation<dirX, +1, 2>(), +1},

@@ -1,29 +1,24 @@
 #ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 #define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
-#include "core/utilities/types.hpp"
-#include "core/utilities/constants.hpp"
-
-#include "amr/utilities/box/amr_box.hpp"
-#include "amr/data/field/field_geometry.hpp"
-#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"
+#include "amr/data/field/refine/field_refine_patch_strategy.hpp"
+#include "amr/data/tensorfield/tensor_field_data_traits.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
+#include "amr/utilities/box/amr_box.hpp"
 
-#include "SAMRAI/xfer/RefinePatchStrategy.h"
+#include "core/utilities/types.hpp"
 
 #include <array>
 #include <cassert>
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 #include <limits>
 #include <stdexcept>
 #include <vector>
 
 namespace PHARE::amr
 {
-using core::dirX;
-using core::dirY;
-using core::dirZ;
 
 namespace detail
 {
@@ -123,34 +118,29 @@ namespace detail
  * The correction is added to the stage-1 face value rather than replacing it, so a higher-order
  * stage-1 interior fill survives the touch-up.
  */
-template<typename TensorFieldDataT>
-class MagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
+template<IsVecFieldData VecFieldDataT, typename BoundaryManagerT>
+class MagneticRefinePatchStrategy : public FieldRefinePatchStrategy<VecFieldDataT, BoundaryManagerT>
 {
 public:
-    using Geometry        = typename TensorFieldDataT::Geometry;
-    using gridlayout_type = typename TensorFieldDataT::gridlayout_type;
+    using geometry_type       = VecFieldDataT::Geometry;
+    using field_geometry_type = geometry_type::FieldGeometry_t;
+    using gridlayout_type     = VecFieldDataT::gridlayout_type;
+    using Super               = FieldRefinePatchStrategy<VecFieldDataT, BoundaryManagerT>;
 
-    static constexpr std::size_t N         = TensorFieldDataT::N;
-    static constexpr std::size_t dimension = TensorFieldDataT::dimension;
+    static constexpr std::size_t dimension = VecFieldDataT::dimension;
+    static constexpr std::size_t N         = VecFieldDataT::N;
+
+
+    using Super::data_id_;
 
     using DivScratch = detail::DivScratch<gridlayout_type>;
 
-    MagneticRefinePatchStrategy()
-        : b_id_{-1}
-    {
-    }
-
-    void assertIDsSet() const
-    {
-        if (b_id_ < 0)
-            throw std::runtime_error(
-                "MagneticRefinePatchStrategy: registerIDs was not called before use");
-    }
-
-    void registerIDs(int const b_id) { b_id_ = b_id; }
-
-    void setPhysicalBoundaryConditions(SAMRAI::hier::Patch&, double const,
-                                       SAMRAI::hier::IntVector const&) override
+    /**
+     * @brief Construct the magnetic refinement strategy.
+     * @param boundary_manager Manager handling boundary conditions.
+     */
+    MagneticRefinePatchStrategy(BoundaryManagerT& boundaryManager)
+        : Super(boundaryManager)
     {
     }
 
@@ -199,18 +189,21 @@ public:
     }
 
 
+
+
     // Run over the whole-coarse-cell-rounded region so every subzoneDiv_ read lands on a fine
     // face the stage-1 refinement actually wrote.
     void postprocessRefine(SAMRAI::hier::Patch& fine, SAMRAI::hier::Patch const& coarse,
                            SAMRAI::hier::Box const& fine_box,
                            SAMRAI::hier::IntVector const& ratio) override
     {
-        assertIDsSet();
+        Super::assertIDsSet();
 
-        auto& fields = TensorFieldDataT::getFields(fine, b_id_);
+        auto& fields = VecFieldDataT::getFields(fine, data_id_);
 
         auto const layout = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
-        auto const region = reconstructionRegion(fine_box, fine.getPatchData(b_id_)->getGhostBox());
+        auto const region
+            = reconstructionRegion(fine_box, fine.getPatchData(data_id_)->getGhostBox());
 
         touchUpInteriorFaces(fields, layout, region, scratch_);
     }
@@ -226,13 +219,11 @@ public:
     {
         auto& [bx, by, bz] = fields;
 
-        auto const regionLayout = Geometry::layoutFromBox(region, layout);
+        auto const regionLayout = geometry_type::layoutFromBox(region, layout);
 
         auto const fine_field_box = core::for_N_make_array<N>([&](auto i) {
-            using PhysicalQuantity = std::decay_t<decltype(fields[i].physicalQuantity())>;
-
-            return FieldGeometry<gridlayout_type, PhysicalQuantity>::toFieldBox(
-                region, fields[i].physicalQuantity(), regionLayout);
+            return field_geometry_type::toFieldBox(region, fields[i].physicalQuantity(),
+                                                   regionLayout);
         });
 
         // One stage-1 snapshot per pass (DivScratch): every correction must read stage-1
@@ -471,7 +462,6 @@ private:
         return d;
     }
 
-    int b_id_;
     DivScratch scratch_;
 };
 

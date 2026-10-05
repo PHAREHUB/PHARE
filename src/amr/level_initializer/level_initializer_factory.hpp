@@ -37,7 +37,7 @@ namespace solver
             if (modelName != Initializer::model_type::model_name)
                 return {};
             if constexpr (std::is_constructible_v<Initializer,
-                                                   PHARE::initializer::PHAREDict const&>)
+                                                  PHARE::initializer::PHAREDict const&>)
                 return std::make_unique<Initializer>(dict);
             else
                 return std::make_unique<Initializer>();

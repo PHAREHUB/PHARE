@@ -1,4 +1,7 @@
+import numpy as np
+
 from . import global_vars
+from .boundary import SuperMagnetofastInflowBoundary
 
 
 class MHDModel(object):
@@ -54,4 +57,40 @@ class MHDModel(object):
             }
         )
 
+        self.validate_inflow_normal_b(global_vars.sim)
+
         global_vars.sim.set_model(self)
+
+    def validate_inflow_normal_b(self, sim, rtol=1e-6):
+        domain = sim.simulation_domain()
+        b_functions = [self.model_dict[name] for name in ("bx", "by", "bz")]
+
+        for location, bc in sim.domain_boundaries.items():
+            if not isinstance(bc, SuperMagnetofastInflowBoundary):
+                continue
+
+            normal = "xyz".index(location[0])
+            face = 0.0 if location[1:] == "lower" else domain[normal]
+            axes = [
+                (
+                    np.array([face])
+                    if idir == normal
+                    else (np.arange(sim.cells[idir]) + 0.5) * sim.dl[idir]
+                )
+                for idir in range(sim.ndim)
+            ]
+            coords = [c.ravel() for c in np.meshgrid(*axes, indexing="ij")]
+            bn = np.broadcast_to(
+                np.asarray(b_functions[normal](*coords), dtype=float), coords[0].shape
+            )
+
+            expected = bc.B[normal]
+            scale = np.linalg.norm(bc.B) or 1.0
+            deviation = np.abs(bn - expected)
+            if not np.all(deviation <= rtol * scale):
+                raise ValueError(
+                    f"the initial {'xyz'[normal]} magnetic field on the inflow boundary "
+                    f"'{location}' must equal the boundary value B[{normal}]={expected}, since "
+                    f"the normal magnetic field stays at its initial value on an inflow face; "
+                    f"max deviation {np.max(deviation)}"
+                )

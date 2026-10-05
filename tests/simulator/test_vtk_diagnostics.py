@@ -134,7 +134,6 @@ def config(sim):
 simArgs = {
     "time_step_nbr": 1,
     "final_time": 0.001,
-    "boundary_types": "periodic",
     "cells": 40,
     "dl": 0.3,
     "diag_options": {
@@ -165,7 +164,7 @@ class VTKDiagnosticsTest(SimulatorTest):
         self.simulator = None
 
     def _run(self, ndim, interp, simInput, diag_dir="", **kwargs):
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simInput[key] = list(phut.np_array_ify(simInput[key], ndim))
         simulation = config(self.simulation(interp_order=interp, **simInput))
         self.assertTrue(len(simulation.cells) == ndim)

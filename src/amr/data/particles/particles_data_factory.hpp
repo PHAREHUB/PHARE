@@ -45,18 +45,18 @@ namespace amr
         }
 
         std::shared_ptr<SAMRAI::hier::PatchData>
-        allocate(const SAMRAI::hier::Patch& patch) const final
+        allocate(SAMRAI::hier::Patch const& patch) const final
         {
             return std::make_shared<ParticlesData<ParticleArray>>(patch.getBox(), d_ghosts, name_);
         }
 
         std::shared_ptr<SAMRAI::hier::BoxGeometry>
-        getBoxGeometry(const SAMRAI::hier::Box& box) const final
+        getBoxGeometry(SAMRAI::hier::Box const& box) const final
         {
             return std::make_shared<SAMRAI::pdat::CellGeometry>(box, d_ghosts);
         }
 
-        std::size_t getSizeOfMemory([[maybe_unused]] const SAMRAI::hier::Box& box) const final
+        std::size_t getSizeOfMemory([[maybe_unused]] SAMRAI::hier::Box const& box) const final
         {
             throw std::runtime_error("cannot compute size from box");
         }

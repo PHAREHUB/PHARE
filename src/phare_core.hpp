@@ -72,7 +72,6 @@ struct PHARE_Types
         using Electromag_t                  = Electromag<VecField_t>;
         using GridLayout_t                  = GridLayout<mhd_options>;
     };
-
 };
 
 struct PHARE_Sim_Types

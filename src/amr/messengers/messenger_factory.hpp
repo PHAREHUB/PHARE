@@ -36,7 +36,8 @@ NO_DISCARD std::vector<MessengerDescriptor> makeDescriptors(std::vector<std::str
 
 // Variadic MessengerFactory — only instantiates messenger code for the provided strategies.
 // This is what achieves model decoupling: an MHD-only build's Strategies pack never names a
-// hybrid type, so no hybrid messenger code is ever instantiated (and symmetrically for hybrid-only).
+// hybrid type, so no hybrid messenger code is ever instantiated (and symmetrically for
+// hybrid-only).
 template<typename MHDModel, typename HybridModel, typename... Strategies>
 class MessengerFactory
 {
@@ -90,7 +91,8 @@ public:
         std::unique_ptr<IMessenger<IPhysicalModel>> result;
 
         // fold over the strategy pack; `||` short-circuits once a strategy has set result
-        ((result = tryCreate<Strategies>(messengerName, coarseModel, fineModel, firstLevel)) || ...);
+        ((result = tryCreate<Strategies>(messengerName, coarseModel, fineModel, firstLevel))
+         || ...);
 
         return result;
     }
@@ -118,15 +120,20 @@ private:
         }
         else if constexpr (std::is_base_of_v<HybridMessengerStrategy<HybridModel>, Strategy>)
         {
-            auto& resourcesManager = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
-            auto messengerStrategy
-                = std::make_unique<Strategy>(resourcesManager, firstLevel, refinementConfig_);
+            auto& hybridCoarseModel = dynamic_cast<HybridModel const&>(coarseModel);
+            auto& resourcesManager  = hybridCoarseModel.resourcesManager;
+            auto& boundaryManager   = hybridCoarseModel.boundaryManager;
+            auto messengerStrategy  = std::make_unique<Strategy>(resourcesManager, boundaryManager,
+                                                                 firstLevel, refinementConfig_);
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
         else if constexpr (std::is_same_v<Strategy, MHDMessenger<MHDModel>>)
         {
-            auto& mhdResourcesManager = dynamic_cast<MHDModel const&>(coarseModel).resourcesManager;
-            return std::make_unique<Strategy>(mhdResourcesManager, firstLevel, refinementConfig_);
+            auto& mhdCoarseModel      = dynamic_cast<MHDModel const&>(coarseModel);
+            auto& mhdResourcesManager = mhdCoarseModel.resourcesManager;
+            auto& mhdBoundaryManager  = mhdCoarseModel.boundaryManager;
+            return std::make_unique<Strategy>(mhdResourcesManager, mhdBoundaryManager, firstLevel,
+                                              refinementConfig_);
         }
 
         return {};
