@@ -2,16 +2,14 @@
 #define PHARE_AMR_TOOLS_RESOURCES_MANAGER_HPP
 
 
-#include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/models/quantities/hybrid_quantities.hpp"
+
+#include "core/def.hpp"
+#include "core/utilities/variants.hpp"
 
 #include "amr/samrai.hpp"
 
-#include "field_resource.hpp"
 #include "resources_guards.hpp"
-#include "particle_resource.hpp"
-#include "tensor_field_resource.hpp"
 #include "resources_manager_utilities.hpp"
 
 #include <SAMRAI/hier/Patch.h>
@@ -19,6 +17,9 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
+#include <array>
+#include <tuple>
+#include <variant>
 #include <optional>
 
 
@@ -35,36 +36,6 @@ namespace amr
     {
         std::shared_ptr<SAMRAI::hier::Variable> variable;
         int id;
-    };
-
-
-    struct ResourcesManagerGlobals
-    {
-        static ResourcesManagerGlobals& INSTANCE();
-
-
-        std::vector<std::map<std::string, ResourcesInfo>*> resources_;
-
-        static auto ALL_IDS()
-        {
-            std::vector<int> ids;
-            ids.reserve((core::sum_from(INSTANCE().resources_,
-                                        [](auto const& map) { return map->size(); })));
-
-            assert(INSTANCE().resources_.size());
-            for (auto const res_map_ptr : INSTANCE().resources_)
-                for (auto const& [_, info] : *res_map_ptr)
-                    ids.emplace_back(info.id);
-
-            return ids;
-        }
-
-        static void registerForRestarts()
-        {
-            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
-            for (auto const& id : ALL_IDS()) // duplicates don't matter
-                pdrm->registerPatchDataForRestart(id);
-        }
     };
 
 
@@ -98,8 +69,8 @@ namespace amr
      * ResourcesManager is used to register ResourceUsers to the SAMRAI system, this is done
      * by calling the registerResources() method. It is also used to allocate already registered
      * ResourcesViews on a patch by calling the method allocate(). One can also get the identifier
-     * (ID) of a patchdata corresponding to one or several ResourcesViews by calling getID() or
-     * getIDs() methods.
+     * (ID) of a patchdata corresponding to one or several ResourcesViews by calling getIDs(), or
+     * by name within one model via scoped<Model>().getID() / getIDsList().
      *
      * Data objects like VecField and Ions etc., i.e. ResourcesViews, need to be set on a patch
      * before being usable. Having a Patch and several ResourcesViews obj1, obj2, etc. this is done
@@ -112,22 +83,22 @@ namespace amr
      *
      */
 
-    template<typename GridLayoutT, typename Grid_t>
+    template<auto opts, typename... core_types_per_model>
     class ResourcesManager
     {
-        using This         = ResourcesManager<GridLayoutT, Grid_t>;
-        using QuantityType = decltype(GridLayoutT::options.field_options)::Quantity;
+        using This = ResourcesManager<opts, core_types_per_model...>;
 
     public:
-        static constexpr std::size_t dimension = GridLayoutT::dimension;
+        using TypeTuple = std::tuple<core_types_per_model...>;
 
-        using UserField_t = UserFieldType<Grid_t, GridLayoutT>;
+        /** \brief the UserField_t/UserTensorField_t/UserParticle_t for a single model (e.g.
+         * HybridModel/MHDModel) registered on this ResourcesManager - resolved by looking Model
+         * up among core_types_per_model, not by re-deriving its shape independently.
+         */
+        template<typename Model>
+        using ResourceUserTypesFor = typename ResourceUserTypesFor_<Model, TypeTuple>::type;
 
-        template<typename ResourcesView>
-        using UserParticle_t = UserParticleType<ResourcesView, GridLayoutT>;
-
-        template<std::size_t rank>
-        using UserTensorField_t = UserTensorFieldType<rank, Grid_t, GridLayoutT, QuantityType>;
+        static constexpr std::size_t dimension = opts.dimension;
 
 
         ResourcesManager()
@@ -135,15 +106,36 @@ namespace amr
             , context_{variableDatabase_->getContext(contextName_)}
             , dimension_{SAMRAI::tbox::Dimension{dimension}}
         {
-            ResourcesManagerGlobals::INSTANCE().resources_.emplace_back(&nameToResourceInfo_);
         }
+
+
         ~ResourcesManager()
         {
-            for (auto& [key, resourcesInfo] : nameToResourceInfo_)
-                variableDatabase_->removeVariable(key);
+            for (auto& infos : nameToResourceInfo_)
+                for (auto& [_, resourcesInfo] : infos)
+                    variableDatabase_->removeVariable(resourcesInfo.variable->getName());
+        }
 
-            auto& vec = ResourcesManagerGlobals::INSTANCE().resources_;
-            vec.erase(std::remove(vec.begin(), vec.end(), &nameToResourceInfo_), vec.end());
+
+        /** \brief IDs of every resource registered on this ResourcesManager.
+         */
+        NO_DISCARD auto ALL_IDS() const
+        {
+            std::vector<int> ids;
+            for (auto const& infos : nameToResourceInfo_)
+                for (auto const& [_, info] : infos)
+                    ids.emplace_back(info.id);
+
+            return ids;
+        }
+
+        /** \brief registers, for SAMRAI restarts, the resources of this ResourcesManager.
+         */
+        void registerForRestarts() const
+        {
+            auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
+            for (auto const& id : ALL_IDS()) // duplicates don't matter
+                pdrm->registerPatchDataForRestart(id);
         }
 
 
@@ -166,6 +158,31 @@ namespace amr
          * we ask for them in a tuple, and recursively call registerResources() for all of the
          * unpacked elements
          */
+
+        void static handle_sub_resources(auto fn, auto& obj, auto&&... args)
+        {
+            using ResourcesView = decltype(obj);
+
+            if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
+            {
+                for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
+                {
+                    if constexpr (core::std_variant<decltype(runtimeResource)>)
+                        std::visit([&](auto&& val) { fn(val, args...); }, runtimeResource);
+                    else
+                        fn(runtimeResource, args...);
+                }
+            }
+
+            if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
+            {
+                // unpack the tuple subResources and apply for each element registerResources()
+                // (recursively)
+                std::apply([&](auto&... subResource) { (fn(subResource, args...), ...); },
+                           obj.getCompileTimeResourcesViewList());
+            }
+        }
+
         template<typename ResourcesView>
         void registerResources(ResourcesView& obj)
         {
@@ -177,24 +194,8 @@ namespace amr
             {
                 static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        this->registerResources(resourcesUser);
-                    }
-                }
-
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element registerResources()
-                    // (recursively)
-                    std::apply(
-                        [this](auto&... subResource) {
-                            (this->registerResources(subResource), ...);
-                        },
-                        obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources( //
+                    [&](auto&&... args) { this->registerResources(args...); }, obj);
             }
         }
 
@@ -219,21 +220,8 @@ namespace amr
             {
                 static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        this->allocate(resourcesUser, patch, allocateTime);
-                    }
-                }
-
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element registerResources()
-                    std::apply([this, &patch, allocateTime](auto&... subResource) //
-                               { (this->allocate(subResource, patch, allocateTime), ...); },
-                               obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources( //
+                    [&](auto&&... args) { this->allocate(args...); }, obj, patch, allocateTime);
             }
         }
 
@@ -263,19 +251,9 @@ namespace amr
         template<typename ResourcesView>
         NO_DISCARD auto getTimes(ResourcesView& obj, SAMRAI::hier::Patch const& patch) const
         {
-            auto IDs = getIDs(obj);
             std::vector<double> times;
-            /*std::transform(std::begin(IDs), std::end(IDs), std::back_inserter(times),
-                           [&patch](auto const& id) {
-                               auto patchdata = patch.getPatchData(id);
-                               return patchdata->getTime();
-                           });*/
-
-            for (auto const& id : IDs)
-            {
-                auto patchdata = patch.getPatchData(id);
-                times.push_back(patchdata->getTime());
-            }
+            for (auto const& id : getIDs(obj))
+                times.push_back(patch.getPatchData(id)->getTime());
             return times;
         }
 
@@ -309,62 +287,63 @@ namespace amr
 
 
 
-        /** \brief Get all the names and resources id that the resource view
-         *  have registered via the ResourcesManager
-         */
-        NO_DISCARD std::optional<int> getID(std::string const& resourceName) const
-        {
-            auto id = nameToResourceInfo_.find(resourceName);
-
-            if (id != std::end(nameToResourceInfo_))
-                return std::optional<int>{id->second.id};
-
-            return std::nullopt;
-        }
-
-
-
-
-        void registerForRestarts() const
-        {
-            auto pdrm = SamraiLifeCycle::getPatchDataRestartManager();
-            for (auto const& id : restart_patch_data_ids())
-                pdrm->registerPatchDataForRestart(id);
-        }
-
-        // needed as long as we have different resource managers dealing with different physical
-        // quantities
-        // template<typename ResourcesView>
-        // void registerForRestarts(ResourcesView const& view) const
-        // {
-        //     auto pdrm = SAMRAI::hier::PatchDataRestartManager::getManager();
-
-        //     for (auto const& id : restart_patch_data_ids(view))
-        //         pdrm->registerPatchDataForRestart(id);
-        // }
-
-
-
-
         NO_DISCARD auto restart_patch_data_ids() const
         {
             // see https://github.com/PHAREHUB/PHARE/issues/664
-            std::vector<int> ids;
-            for (auto const& [key, info] : nameToResourceInfo_)
-                ids.emplace_back(info.id);
-            return ids;
+            return ALL_IDS();
         }
 
-        auto getIDsList(auto&&... keys) const
+
+        // by name within one model, the same name may exist on other models
+        template<typename Model>
+        NO_DISCARD std::optional<int> getIDFor(std::string const& resourceName) const
         {
-            auto const Fn = [&](auto& key) {
+            static_assert(model_index_of_<Model> < std::tuple_size_v<TypeTuple>,
+                          "Model is not one of the models registered on this ResourcesManager");
+            auto const& infos = nameToResourceInfo_[model_index_of_<Model>];
+            if (auto it = infos.find(resourceName); it != infos.end())
+                return it->second.id;
+            return std::nullopt;
+        }
+
+        template<typename Model>
+        auto getIDsListFor(auto&&... keys) const
+        {
+            auto const Fn = [&](auto const& key) {
                 if (key.empty())
                     throw std::runtime_error("Resource Manager key cannot be empty");
-                if (auto const id = getID(key))
+                if (auto const id = getIDFor<Model>(key))
                     return *id;
                 throw std::runtime_error("Resource Manager has no key: " + key);
             };
             return std::array{Fn(keys)...};
+        }
+
+
+        /** \brief this ResourcesManager, with name lookups restricted to Model's resources - for
+         * callers that only deal with one model (messengers, model views), so names never need
+         * to differ between models
+         */
+        template<typename Model>
+        struct ModelScoped
+        {
+            ResourcesManager const& rm;
+
+            NO_DISCARD auto getID(std::string const& name) const
+            {
+                return rm.template getIDFor<Model>(name);
+            }
+
+            NO_DISCARD auto getIDsList(auto&&... keys) const
+            {
+                return rm.template getIDsListFor<Model>(keys...);
+            }
+        };
+
+        template<typename Model>
+        NO_DISCARD ModelScoped<Model> scoped() const
+        {
+            return {*this};
         }
 
 
@@ -460,32 +439,17 @@ namespace amr
         {
             if constexpr (is_resource<ResourcesView>::value)
             {
-                auto foundIt = nameToResourceInfo_.find(obj.name());
-                if (foundIt == nameToResourceInfo_.end())
+                auto const& infos = resourceInfosFor_(obj);
+                auto foundIt      = infos.find(obj.name());
+                if (foundIt == infos.end())
                     throw std::runtime_error("Cannot find " + obj.name());
                 IDs.push_back(foundIt->second.id);
             }
             else
             {
-                if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                {
-                    for (auto& resourcesUser : obj.getRunTimeResourcesViewList())
-                    {
-                        //
-                        this->getIDs_(resourcesUser, IDs);
-                    }
-                }
+                static_assert(has_sub_resources_v<ResourcesView>);
 
-                if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                {
-                    // unpack the tuple subResources and apply for each element
-                    // registerResources()
-                    std::apply(
-                        [this, &IDs](auto&... subResource) {
-                            (this->getIDs_(subResource, IDs), ...);
-                        },
-                        obj.getCompileTimeResourcesViewList());
-                }
+                handle_sub_resources([&](auto&&... args) { this->getIDs_(args...); }, obj, IDs);
             }
         }
 
@@ -520,21 +484,6 @@ namespace amr
         }
 
 
-
-        void static handle_sub_resources(auto fn, auto& obj, auto&&... args)
-        {
-            using ResourcesView = decltype(obj);
-
-            if constexpr (has_runtime_subresourceview_list<ResourcesView>::value)
-                for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
-                    fn(runtimeResource, args...);
-
-            // unpack the tuple subResources and apply for each element registerResources()
-            //  (recursively)
-            if constexpr (has_compiletime_subresourcesview_list<ResourcesView>::value)
-                std::apply([&](auto&... subResource) { (fn(subResource, args...), ...); },
-                           obj.getCompileTimeResourcesViewList());
-        }
 
 
         template<typename ResourcesView>
@@ -576,14 +525,14 @@ namespace amr
             if (view.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            if (nameToResourceInfo_.count(view.name()) == 0)
+            if (auto& infos = resourceInfosFor_(view); infos.count(view.name()) == 0)
             {
                 ResourcesInfo info;
                 info.variable = ResourcesResolver_t::make_shared_variable(view);
                 info.id       = variableDatabase_->registerVariableAndContext(
                     info.variable, context_, SAMRAI::hier::IntVector::getZero(dimension_));
 
-                nameToResourceInfo_.emplace(view.name(), info);
+                infos.emplace(view.name(), info);
             }
         }
 
@@ -601,8 +550,9 @@ namespace amr
             if (obj.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
-            if (resourceInfoIt == nameToResourceInfo_.end())
+            auto const& infos          = resourceInfosFor_(obj);
+            auto const& resourceInfoIt = infos.find(obj.name());
+            if (resourceInfoIt == infos.end())
                 throw std::runtime_error("Resources not found ! " + obj.name());
 
             obj.setBuffer(getResourcesPointer_<ResourcesType>(resourceInfoIt->second, patch));
@@ -614,8 +564,8 @@ namespace amr
             if (obj.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            auto const& resourceInfoIt = nameToResourceInfo_.find(obj.name());
-            if (resourceInfoIt == nameToResourceInfo_.end())
+            auto const& infos = resourceInfosFor_(obj);
+            if (infos.find(obj.name()) == infos.end())
                 throw std::runtime_error("Resources not found !");
 
             obj.setBuffer(nullptr);
@@ -633,8 +583,9 @@ namespace amr
             if (obj.name().empty())
                 throw std::runtime_error("Resource Manager key cannot be empty");
 
-            auto const& resourceVariablesInfo = nameToResourceInfo_.find(resourcesName);
-            if (resourceVariablesInfo != nameToResourceInfo_.end())
+            auto const& infos                 = resourceInfosFor_(obj);
+            auto const& resourceVariablesInfo = infos.find(resourcesName);
+            if (resourceVariablesInfo != infos.end())
             {
                 if (!patch.checkAllocated(resourceVariablesInfo->second.id))
                     patch.allocatePatchData(resourceVariablesInfo->second.id, allocateTime);
@@ -649,7 +600,27 @@ namespace amr
         SAMRAI::hier::VariableDatabase* variableDatabase_;
         std::shared_ptr<SAMRAI::hier::VariableContext> context_;
         SAMRAI::tbox::Dimension dimension_;
-        std::map<std::string, ResourcesInfo> nameToResourceInfo_;
+        template<typename Model>
+        static constexpr std::size_t model_index_of_
+            = index_in_tuple<typename model_core_types_of<Model, TypeTuple>::type, TypeTuple>::value;
+
+        // one map per model: names are unique within a model, not across models
+        std::array<std::map<std::string, ResourcesInfo>, std::tuple_size_v<TypeTuple>>
+            nameToResourceInfo_;
+
+        // the map of the model owning ResourcesView, resolved at compile time
+        template<typename ResourcesView>
+        NO_DISCARD std::map<std::string, ResourcesInfo>& resourceInfosFor_(ResourcesView const&)
+        {
+            return nameToResourceInfo_[ResourceResolver<This, ResourcesView>::model_index];
+        }
+
+        template<typename ResourcesView>
+        NO_DISCARD std::map<std::string, ResourcesInfo> const&
+        resourceInfosFor_(ResourcesView const&) const
+        {
+            return nameToResourceInfo_[ResourceResolver<This, ResourcesView>::model_index];
+        }
 
         template<typename ResourcesManager, typename... ResourcesViews>
         friend class ResourcesGuard;

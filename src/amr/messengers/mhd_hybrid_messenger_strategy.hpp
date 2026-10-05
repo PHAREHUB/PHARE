@@ -113,12 +113,8 @@ namespace amr
         // }
 
 
-        void fillFluxBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
-                             double const /*fillTime*/) override
-        {
-        }
-        void fillDensityBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
-                                double const /*fillTime*/) override
+        void fillIonPopBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+                               double const /*fillTime*/) override
         {
         }
         void fillIonBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
