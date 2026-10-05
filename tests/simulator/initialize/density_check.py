@@ -66,7 +66,6 @@ def config_1d():
         largest_patch_size=60,
         time_step=ts,
         time_step_nbr=1,
-        boundary_types="periodic",
         cells=ncell,
         dl=dl,
         diag_options={
@@ -161,7 +160,6 @@ def config_2d():
         largest_patch_size=60,
         time_step=ts,
         time_step_nbr=1,
-        boundary_types=("periodic", "periodic"),
         cells=(ncell, ncell),
         dl=(dl, dl),
         diag_options={

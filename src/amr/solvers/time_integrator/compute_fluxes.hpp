@@ -83,6 +83,8 @@ public:
 
         ConstrainedTransport_t{level, model,
                                constrainedTransportInfo_}(ct_, dissipative_electric_state_, state);
+
+        bc.fillElectricGhosts(state.E, level, newTime);
     }
 
     void registerResources(MHDModel& model)

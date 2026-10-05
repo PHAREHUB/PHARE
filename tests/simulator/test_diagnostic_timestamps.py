@@ -72,7 +72,6 @@ simArgs = {
     "largest_patch_size": 10,
     "time_step_nbr": 1e5,  # is sufficient based on https://github.com/PHARCHIVE/test_snippets/blob/main/numeric/double/increment_error.cpp
     "time_step": 0.001,
-    "boundary_types": "periodic",
     "cells": 10,
     "dl": 0.2,
     "diag_options": {"format": "phareh5", "options": {"dir": out, "mode": "overwrite"}},

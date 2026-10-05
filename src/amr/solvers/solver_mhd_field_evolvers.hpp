@@ -284,7 +284,9 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
 {
     using GridLayout = Model::gridlayout_type;
 
-    // Ampere_t and Faraday_t inherited from FieldEvolverDispatchers<Model>
+    // Ampere_t inherited from FieldEvolverDispatchers<Model>
+
+    using Faraday_t = FaradayLevelTransformer<Model, /*OnGhostBox=*/true>;
 
     using ToPrimitiveConverter_t    = ToPrimitiveTransformer<Model>;
     using ToConservativeConverter_t = ToConservativeTransformer<Model>;

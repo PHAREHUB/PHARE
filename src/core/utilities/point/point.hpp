@@ -137,7 +137,9 @@ namespace core
             Point p;
             std::istringstream split(csv);
             std::vector<std::string> tokens;
-            for (std::string each; std::getline(split, each, ','); tokens.push_back(each)) {}
+            for (std::string each; std::getline(split, each, ','); tokens.push_back(each))
+            {
+            }
             assert(tokens.size() == dimension);
             for (std::size_t i = 0; i < tokens.size(); i++)
             {
@@ -258,6 +260,16 @@ namespace core
                 return as<std::int32_t>();
             // else no return cause not yet handled
         }
+
+
+        NO_DISCARD constexpr Point<Type, dim> shift(std::size_t d, int offset) const
+        {
+            assert(d < dim);
+            Point<Type, dim> result = *this;
+            result[d] += static_cast<Type>(offset);
+            return result;
+        }
+
 
     private:
         std::array<Type, dim> r{};

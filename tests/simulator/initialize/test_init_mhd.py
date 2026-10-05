@@ -56,7 +56,6 @@ class MHDInitializationTest(InitializationTest):
             largest_patch_size=largest_patch_size,
             time_step_nbr=time_step_nbr,
             time_step=time_step,
-            boundary_types=["periodic"] * ndim,
             cells=phut.np_array_ify(cells, ndim),
             dl=phut.np_array_ify(dl, ndim),
             interp_order=interp_order,

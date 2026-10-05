@@ -187,4 +187,7 @@ def is_restartable_compared_to(curr_sim, prev_sim):
         for key, curr, prev, op in failed:
             print(f"{key} current({curr}) {op.__name__} previous({prev})")
 
+    if getattr(curr_sim, "boundaries", None) != getattr(prev_sim, "boundaries", None):
+        print("WARNING: restart boundaries differ from the previous run.")
+
     return not failed

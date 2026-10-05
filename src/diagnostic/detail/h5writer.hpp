@@ -255,7 +255,7 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     fileAttributes_["cell_width"] = modelView_.cellWidth();
     fileAttributes_["origin"]     = modelView_.origin();
 
-    fileAttributes_["boundary_conditions"] = modelView_.boundaryConditions();
+    fileAttributes_["periodicities"] = modelView_.periodicities();
 
     for (auto* diagnostic : diagnostics)
         if (!file_flags.count(diagnostic->type + diagnostic->quantity))

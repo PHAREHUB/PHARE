@@ -25,7 +25,6 @@ def uniform(vth, dl, cells, nbr_steps):
         largest_patch_size=20,
         time_step_nbr=nbr_steps,
         final_time=50.0,
-        boundary_types="periodic",
         cells=cells,
         dl=dl,
         diag_options={

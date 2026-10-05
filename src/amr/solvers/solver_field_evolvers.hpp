@@ -12,12 +12,12 @@ namespace PHARE::solver
 
 
 
-template<typename Model>
+template<typename Model, bool OnGhostBox = false>
 class FaradayLevelTransformer
 {
     using GridLayout = Model::gridlayout_type;
     using level_t    = Model::amr_types::level_t;
-    using core_type  = core::Faraday<GridLayout>;
+    using core_type  = core::Faraday<GridLayout, OnGhostBox>;
 
 public:
     explicit FaradayLevelTransformer(level_t& level, auto& model)
