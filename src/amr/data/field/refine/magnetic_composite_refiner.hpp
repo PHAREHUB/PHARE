@@ -5,6 +5,7 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 
 #include "core/data/grid/gridlayoutdefs.hpp"
+#include "core/utilities/types.hpp"
 
 #include "coarse_cell_round_out.hpp"
 #include "composite_field_refiner.hpp"
@@ -13,7 +14,6 @@
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>
 
-#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <memory>
@@ -77,9 +77,8 @@ private:
                   std::array<core::QtyCentering, dimension> const& centering,
                   SAMRAI::hier::Box const& destFieldBox)
     {
-        auto const primalCount
-            = std::count_if(centering.begin(), centering.end(),
-                            [](auto const c) { return c == core::QtyCentering::primal; });
+        auto const primalCount = core::sum_from(
+            centering, [](auto const c) { return c == core::QtyCentering::primal ? 1 : 0; });
 
         if (primalCount > 1)
             throw std::runtime_error(

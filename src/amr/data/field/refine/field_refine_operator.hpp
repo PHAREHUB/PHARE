@@ -104,12 +104,12 @@ class KernelTensorFieldRefineOperator : public SAMRAI::hier::RefineOperator
 {
 public:
     using GridLayoutT                      = TensorFieldData_t::gridlayout_type;
-    using FieldT                           = TensorFieldData_t::grid_type;
+    using GridT                            = TensorFieldData_t::grid_type;
     static constexpr std::size_t dimension = GridLayoutT::dimension;
 
     using TensorFieldDataT     = TensorFieldData_t;
     using TensorFieldOverlap_t = TensorFieldOverlap<TensorFieldData_t::rank>;
-    using Kernel_t             = IFieldRefineKernel<GridLayoutT, FieldT>;
+    using Kernel_t             = IFieldRefineKernel<GridLayoutT, GridT>;
 
     static constexpr std::size_t N = TensorFieldDataT::N;
 

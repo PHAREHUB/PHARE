@@ -103,7 +103,7 @@ namespace detail
         }
 
     private:
-        using GridLayoutImpl = typename GridLayoutT::implT;
+        using GridLayoutImpl = GridLayoutT::implT;
         using Point_t        = core::Point<int, dimension>;
         using WeightPoint_t  = core::WeightPoint<dimension>;
 
@@ -114,6 +114,8 @@ namespace detail
         template<std::size_t d, std::size_t choice>
         static consteval auto oneDRow_()
         {
+            static_assert(choice < 4, "choice is 2 bits: dual << 1 | parity");
+
             if constexpr (choice == 0) // primal, parity 0: coincident node, exact copy
                 return std::array{WeightPoint_t{Point_t{}, 1.0}};
             else if constexpr (choice == 1) // primal, parity 1: half-point midpoint
@@ -129,6 +131,8 @@ namespace detail
         template<std::size_t combined>
         static consteval auto makeStencil_()
         {
+            static_assert(dimension >= 1 and dimension <= 3);
+
             if constexpr (dimension == 1)
                 return oneDRow_<0, combined & 3u>();
             else if constexpr (dimension == 2)
@@ -145,10 +149,9 @@ namespace detail
         template<std::size_t combined>
         static double gatherStencil_(FieldT const& src, Point_t const& anchorLocal)
         {
-            double value = 0.;
-            for (auto const& w : makeStencil_<combined>())
-                value += w.coef * src(anchorLocal + w.indexes);
-            return value;
+            return core::sum_from(makeStencil_<combined>(), [&](auto const& w) {
+                return w.coef * src(anchorLocal + w.indexes);
+            });
         }
 
         // runtime centering+parity → compile-time stencil: one gather fn per combination,
