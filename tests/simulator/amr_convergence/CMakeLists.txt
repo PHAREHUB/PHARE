@@ -9,13 +9,10 @@ endif()
 
 if(HighFive)
   ## AMR space-time convergence studies (2D MHD); dump + read back h5 diagnostics.
-  ## One ctest entry per test method so `ctest -j` runs the independent sweeps
-  ## concurrently; inside an entry the sweep is sequential (order/drift need
-  ## all points together).
+  ## One ctest entry per file: the sweeps inside a file run sequentially, which is
+  ## what the order and drift measurements need anyway (all points together).
   if(PHARE_PYTEST_SIMULATORS GREATER_EQUAL 2)
-    phare_mpi_python3_exec(21 ${PHARE_MPI_PROCS} amr-convergence-alfven2d-spatial-o2      test_alfven2d_amr.py   ${CMAKE_CURRENT_BINARY_DIR} AlfvenConvergenceTest.test_spatial_convergence)
-    phare_mpi_python3_exec(21 ${PHARE_MPI_PROCS} amr-convergence-alfven2d-temporal        test_alfven2d_amr.py   ${CMAKE_CURRENT_BINARY_DIR} AlfvenConvergenceTest.test_temporal_sigma_sweep)
-    phare_mpi_python3_exec(21 ${PHARE_MPI_PROCS} amr-convergence-whistler2d-spatial-o2     test_whistler2d_amr.py ${CMAKE_CURRENT_BINARY_DIR} WhistlerConvergenceTest.test_spatial_convergence)
-    phare_mpi_python3_exec(21 ${PHARE_MPI_PROCS} amr-convergence-whistler2d-temporal       test_whistler2d_amr.py ${CMAKE_CURRENT_BINARY_DIR} WhistlerConvergenceTest.test_temporal_sigma_sweep)
+    phare_mpi_python3_exec(21 ${PHARE_MPI_PROCS} amr-convergence-alfven2d   test_alfven2d_amr.py   ${CMAKE_CURRENT_BINARY_DIR})
+    phare_mpi_python3_exec(21 ${PHARE_MPI_PROCS} amr-convergence-whistler2d test_whistler2d_amr.py ${CMAKE_CURRENT_BINARY_DIR})
   endif()
 endif()
