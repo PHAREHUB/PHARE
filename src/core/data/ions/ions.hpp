@@ -44,7 +44,7 @@ namespace core
             : massDensity_{massDensityName(), HybridQuantity::Scalar::rho}
             , chargeDensity_{chargeDensityName(), HybridQuantity::Scalar::rho}
             , bulkVelocity_{"bulkVel", HybridQuantity::Vector::V}
-            , populations_{generate(
+            , populations_{generate_from(
                   [&dict](auto ipop) { //
                       return IonPopulation{dict["pop" + std::to_string(ipop)]};
                   },
