@@ -20,6 +20,7 @@
 #include <SAMRAI/hier/Patch.h>
 #include "SAMRAI/hier/PatchLevel.h"
 
+#include <memory>
 #include <stdexcept>
 #include <tuple>
 #include <unordered_map>
@@ -152,16 +153,12 @@ private:
                    double const currentTime, double const newTime, core::UpdaterMode mode);
 
 
-    void make_boxes(hierarchy_t const& hierarchy, level_t& level)
+    void make_boxes(hierarchy_t const& hierarchy, std::shared_ptr<level_t> const& level)
     {
-        int const lvlNbr = level.getLevelNumber();
-        if (boxing.count(lvlNbr))
-            return;
+        auto& levelBoxing = boxing[level->getLevelNumber()] = LevelBoxing{level, {}};
 
-        auto& levelBoxing = boxing[lvlNbr]; // creates if missing
-
-        for (auto const& patch : level)
-            if (auto [it, suc] = levelBoxing.try_emplace(
+        for (auto const& patch : *level)
+            if (auto [it, suc] = levelBoxing.patches.try_emplace(
                     amr::to_string(patch->getGlobalId()),
                     Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
                              amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, hierarchy)});
@@ -172,8 +169,11 @@ private:
     auto& setup_level(hierarchy_t const& hierarchy, int const levelNumber)
     {
         auto level = hierarchy.getPatchLevel(levelNumber);
-        if (boxing.count(levelNumber) == 0)
-            make_boxes(hierarchy, *level);
+        // level may have been removed and re-created without a regrid notification
+        auto const it            = boxing.find(levelNumber);
+        bool const needsCreating = it == boxing.end() or it->second.level.lock() != level;
+        if (needsCreating)
+            make_boxes(hierarchy, level);
         return *level;
     }
 
@@ -186,7 +186,12 @@ private:
 
 
     using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
-    std::unordered_map<int /*level*/, std::unordered_map<std::string /*patchid*/, Boxing_t>> boxing;
+    struct LevelBoxing
+    {
+        std::weak_ptr<level_t> level; // identity of the level the boxes were built for
+        std::unordered_map<std::string /*patchid*/, Boxing_t> patches;
+    };
+    std::unordered_map<int /*level*/, LevelBoxing> boxing;
 
 
 }; // end solverPPC
@@ -602,7 +607,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
 
     TimeSetter setTime{level, model, newTime};
     auto& rm                = *model.resourcesManager;
-    auto const& levelBoxing = boxing[level.getLevelNumber()];
+    auto const& levelBoxing = boxing[level.getLevelNumber()].patches;
 
     auto& ions = model.state.ions;
     try
