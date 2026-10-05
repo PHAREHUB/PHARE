@@ -36,6 +36,9 @@ public:
         auto const [hydro_speedL, hydro_speedR, mag_speedL, mag_speedR]
             = hll_speeds_<direction>(uL, uR, jL, jR);
 
+        uL.to_conservative(gamma_);
+        uR.to_conservative(gamma_);
+
         auto split = [](auto const& a) {
             auto hydro = std::make_tuple(a.rho, a.rhoV().x, a.rhoV().y, a.rhoV().z);
             auto mag   = std::make_tuple(a.B.x, a.B.y, a.B.z, a.Etot());
