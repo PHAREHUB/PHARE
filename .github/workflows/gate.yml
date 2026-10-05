@@ -136,6 +136,34 @@ jobs:
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
 
+  clang-tidy:
+    # .clang-tidy checks on the changed C++ lines. clang-tidy reads the compile commands of a
+    # configured tree: configure only, no build. Same image as cmake_ubuntu.yml. Warning only for now.
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: apt-get update -qq && apt-get install -y -qq clang-tidy-18 # same LLVM 18 as the image's clang
+      - name: configure
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . /.venv/bin/activate
+          cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+                -DSAMRAI_ROOT=/usr/local -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                -Dphare_configurator=ON -Dbench=ON
+      - continue-on-error: true # warning only (step level: the job stays green)
+        run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          git diff -U0 "$mb" "$HEAD" -- src tests tools \
+            | clang-tidy-diff-18.py -clang-tidy-binary clang-tidy-18 -p1 -path build -j "$(nproc)" \
+                                    -quiet -iregex '.*\.(c|cc|cpp|h|hpp|ipp)' > "$RUNNER_TEMP/tidy.log" 2>&1 || true
+          python3 res/ci/gate/clang_tidy.py "$RUNNER_TEMP/tidy.log" "$GITHUB_WORKSPACE"
+
   clones:
     # no new copy-pasted block (jscpd, compared with the merge base). Warning only for now.
     runs-on: ubuntu-latest

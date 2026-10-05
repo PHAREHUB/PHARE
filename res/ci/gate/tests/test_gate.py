@@ -17,6 +17,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import added_lines  # noqa: E402
 import assert_scan  # noqa: E402
+import clang_tidy  # noqa: E402
 import gitdiff  # noqa: E402
 import pharein_keywords  # noqa: E402
 import pr_body  # noqa: E402
@@ -436,6 +437,30 @@ class Threads(unittest.TestCase):
                 threads.fetch("o", "r", 1, "t")
         finally:
             threads.graphql = real
+
+
+class ClangTidy(unittest.TestCase):
+    LOG = textwrap.dedent("""\
+        /w/src/core/a.hpp:12:5: warning: result of integer division used in a floating point context [bugprone-integer-division]
+           12 |     return a / b;
+        /w/src/core/a.hpp:12:5: warning: result of integer division used in a floating point context [bugprone-integer-division]
+        /w/src/diagnostic/diagnostics.hpp:8:2: error: // PHARE_HAS_HIGHFIVE expected to be defined as bool [clang-diagnostic-error]
+        /usr/include/c++/13/bits/stl_vector.h:3:1: warning: something in a system header [performance-foo]
+        2 warnings generated.
+        """)
+
+    def test_check_warnings_kept_once(self):
+        findings, _ = clang_tidy.parse(self.LOG, "/w")
+        self.assertEqual([(f.path, f.line, f.level) for f in findings], [("src/core/a.hpp", 12, "warning")])
+        self.assertIn("[bugprone-integer-division]", findings[0].message)
+
+    def test_compiler_errors_counted_not_reported(self):
+        _, not_analysed = clang_tidy.parse(self.LOG, "/w")
+        self.assertEqual(not_analysed, ["src/diagnostic/diagnostics.hpp"])
+
+    def test_paths_outside_checkout_dropped(self):
+        findings, _ = clang_tidy.parse(self.LOG, "/w")
+        self.assertFalse(any(f.path.startswith("/") for f in findings))
 
 
 class Report(unittest.TestCase):

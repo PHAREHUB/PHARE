@@ -1,4 +1,4 @@
-# clang-tidy for PHARE, run on the changed lines of a PR (clang-tidy-diff.py, TeamCity).
+# clang-tidy for PHARE, run on the changed lines of a PR (clang-tidy-diff, gate.yml).
 # Start small: checks that find bugs or performance problems, not style.
 Checks: >
   -*,
