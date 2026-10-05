@@ -13,6 +13,7 @@
 
 #include <array>
 #include <cassert>
+#include <cstdint>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -23,6 +24,82 @@ namespace PHARE::amr
 using core::dirX;
 using core::dirY;
 using core::dirZ;
+
+namespace detail
+{
+    //! a fine cell of the snapshot region, in the layout's local indices -- never negative
+    template<std::size_t dimension>
+    using LocalCellKey = std::array<std::uint32_t, dimension>;
+
+    /**
+     * @brief The stage-1 divergence snapshot of one touch-up pass: one slot per fine cell of the
+     * reconstruction region, NaN meaning "not computed yet".
+     *
+     * Every correction has to read stage-1 divergences -- recomputing from the live field once a
+     * sibling interior face has been written couples the two faces and loses divB exactness -- so
+     * each subzone divergence is computed once per pass and reread afterwards. The region is a
+     * dense box of fine cells, so the slots are a flat array indexed by the cell's offset in it,
+     * and the array is kept between passes: only a region bigger than every earlier one allocates.
+     */
+    template<typename GridLayoutT>
+    class DivScratch
+    {
+        static constexpr std::size_t dimension = GridLayoutT::dimension;
+
+        using LocalCellKey_t = LocalCellKey<dimension>;
+
+    public:
+        //! sizes the snapshot to `region`'s fine cells, in the local indices the corrections
+        //! index by, and marks every slot not-computed
+        void reset(SAMRAI::hier::Box const& region, GridLayoutT const& layout)
+        {
+            auto const local = layout.AMRToLocal(phare_box_from<dimension>(region));
+            auto const shape = local.shape();
+
+            for (std::size_t d = 0; d < dimension; ++d)
+            {
+                lower_[d] = static_cast<std::uint32_t>(local.lower[d]);
+                shape_[d] = static_cast<std::uint32_t>(shape[d]);
+            }
+
+            values_.assign(local.size(), unset_);
+        }
+
+        NO_DISCARD double& operator()(auto const... cells)
+        {
+            static_assert(sizeof...(cells) == dimension);
+
+            return values_[offset_(LocalCellKey_t{static_cast<std::uint32_t>(cells)...})];
+        }
+
+    private:
+        static constexpr double unset_ = std::numeric_limits<double>::quiet_NaN();
+
+        // row-major offset of a fine cell in the region. The corrections only ever reach cells of
+        // the coarse cell they correct an interior face of, so a region of whole coarse cells
+        // (reconstructionRegion) contains every cell they index -- the assert catches a caller
+        // that reset the snapshot to something else.
+        NO_DISCARD std::size_t offset_(LocalCellKey_t const& cell) const
+        {
+            std::size_t offset = 0;
+
+            for (std::size_t d = 0; d < dimension; ++d)
+            {
+                // unsigned: a cell under lower_ wraps around and trips the same bound
+                assert(cell[d] - lower_[d] < shape_[d]);
+
+                offset = offset * std::size_t{shape_[d]} + std::size_t{cell[d] - lower_[d]};
+            }
+
+            return offset;
+        }
+
+        core::Point<std::uint32_t, dimension> lower_;
+        core::Point<std::uint32_t, dimension> shape_;
+        std::vector<double> values_;
+    };
+} // namespace detail
+
 
 /**
  * @brief Stage 2 of the Balsara ADPT divergence-free magnetic prolongation: the cross-component
@@ -56,65 +133,7 @@ public:
     static constexpr std::size_t N         = TensorFieldDataT::N;
     static constexpr std::size_t dimension = TensorFieldDataT::dimension;
 
-    using CellKey = std::array<int, dimension>;
-
-    /**
-     * @brief The stage-1 divergence snapshot of one touch-up pass: one slot per fine cell of the
-     * reconstruction region, NaN meaning "not computed yet".
-     *
-     * Every correction has to read stage-1 divergences -- recomputing from the live field once a
-     * sibling interior face has been written couples the two faces and loses divB exactness -- so
-     * each subzone divergence is computed once per pass and reread afterwards. The region is a
-     * dense box of fine cells, so the slots are a flat array indexed by the cell's offset in it,
-     * and the array is kept between passes: only a region bigger than every earlier one allocates.
-     */
-    class DivScratch
-    {
-    public:
-        //! sizes the snapshot to `region`'s fine cells, in the local indices the corrections
-        //! index by, and marks every slot not-computed
-        void reset(SAMRAI::hier::Box const& region, gridlayout_type const& layout)
-        {
-            auto const local = layout.AMRToLocal(phare_box_from<dimension>(region));
-
-            lower_ = local.lower;
-            shape_ = local.shape();
-            values_.assign(local.size(), unset_);
-        }
-
-        NO_DISCARD double& operator()(auto const... cells)
-        {
-            static_assert(sizeof...(cells) == dimension);
-
-            return values_[offset_(CellKey{cells...})];
-        }
-
-    private:
-        static constexpr double unset_ = std::numeric_limits<double>::quiet_NaN();
-
-        // row-major offset of a fine cell in the region. The corrections only ever reach cells of
-        // the coarse cell they correct an interior face of, so a region of whole coarse cells
-        // (reconstructionRegion) contains every cell they index -- the assert catches a caller
-        // that reset the snapshot to something else.
-        NO_DISCARD std::size_t offset_(CellKey const& cell) const
-        {
-            std::size_t offset = 0;
-
-            for (std::size_t d = 0; d < dimension; ++d)
-            {
-                assert(cell[d] >= lower_[d] and cell[d] - lower_[d] < shape_[d]);
-
-                offset = offset * static_cast<std::size_t>(shape_[d])
-                         + static_cast<std::size_t>(cell[d] - lower_[d]);
-            }
-
-            return offset;
-        }
-
-        core::Point<int, dimension> lower_;
-        core::Point<int, dimension> shape_;
-        std::vector<double> values_;
-    };
+    using DivScratch = detail::DivScratch<gridlayout_type>;
 
     ADPTMagneticRefinePatchStrategy()
         : b_id_{-1}
@@ -258,7 +277,7 @@ public:
     // Only Bx has an x-normal; the single interior face's min-norm correction is δ = pair/2 (flux).
     // On div-free (Bx const) stage-1 data pair = 0, so this is a no-op.
     static void correctBx1d(auto& scratch, auto& bx, auto const& layout,
-                            core::Point<int, dimension> idx)
+                            core::Point<int, dimension> const& idx)
     {
         if (!isNewFineFace(idx, dirX))
             return;
@@ -267,7 +286,7 @@ public:
         int const ix   = loc[dirX];
 
         double const pair = subzoneDiv1d_(scratch, bx, ix) - subzoneDiv1d_(scratch, bx, ix - 1);
-        bx(ix) += 0.5 * pair;
+        bx(loc) += 0.5 * pair;
     }
 
 
@@ -276,7 +295,7 @@ public:
     // ξ = [ 3·pair(own row) + 1·pair(sibling row) ] / 8   ([3,1] weights, flux denominator 8)
     // where pair(cy) = d(right cell) − d(left cell) = deficit difference across the face.
     static void correctBx2d(auto& scratch, auto& bx, auto& by, auto const& layout,
-                            core::Point<int, dimension> idx)
+                            core::Point<int, dimension> const& idx)
     {
         if (!isNewFineFace(idx, dirX))
             return;
@@ -296,14 +315,14 @@ public:
                    - subzoneDiv2d_(scratch, bx, by, D, cxL, cy);
         };
 
-        bx(ix, iy) += D[dirX] * (3.0 * pair(cy0) + pair(cy1)) / 8.0;
+        bx(loc) += D[dirX] * (3.0 * pair(cy0) + pair(cy1)) / 8.0;
     }
 
     // Interior By face by(ix,iy) separates fine cells (ix,iy-1) [below] and (ix,iy) [above].
     // η = [ 3·pair(own column) + 1·pair(sibling column) ] / 8
     // where pair(cx) = d(above cell) − d(below cell).
     static void correctBy2d(auto& scratch, auto& bx, auto& by, auto const& layout,
-                            core::Point<int, dimension> idx)
+                            core::Point<int, dimension> const& idx)
     {
         if (!isNewFineFace(idx, dirY))
             return;
@@ -323,7 +342,7 @@ public:
                    - subzoneDiv2d_(scratch, bx, by, D, cx, cyB);
         };
 
-        by(ix, iy) += D[dirY] * (3.0 * pair(cx0) + pair(cx1)) / 8.0;
+        by(loc) += D[dirY] * (3.0 * pair(cx0) + pair(cx1)) / 8.0;
     }
 
 
@@ -333,7 +352,7 @@ public:
     // quadrant t; own quadrant weight 7, single-flip (edge-adjacent) 2 each, double-flip
     // (diagonal) 1 — all positive.
     static void correctBx3d(auto& scratch, auto& bx, auto& by, auto& bz, auto const& layout,
-                            core::Point<int, dimension> idx)
+                            core::Point<int, dimension> const& idx)
     {
         if (!isNewFineFace(idx, dirX))
             return;
@@ -354,14 +373,13 @@ public:
                    - subzoneDiv3d_(scratch, bx, by, bz, D, cxL, cy, cz);
         };
 
-        bx(ix, iy, iz)
-            += D[dirX]
-               * (7.0 * pair(iy, iz) + 2.0 * pair(sy, iz) + 2.0 * pair(iy, sz) + pair(sy, sz))
-               / 24.0;
+        bx(loc) += D[dirX]
+                   * (7.0 * pair(iy, iz) + 2.0 * pair(sy, iz) + 2.0 * pair(iy, sz) + pair(sy, sz))
+                   / 24.0;
     }
 
     static void correctBy3d(auto& scratch, auto& bx, auto& by, auto& bz, auto const& layout,
-                            core::Point<int, dimension> idx)
+                            core::Point<int, dimension> const& idx)
     {
         if (!isNewFineFace(idx, dirY))
             return;
@@ -382,14 +400,13 @@ public:
                    - subzoneDiv3d_(scratch, bx, by, bz, D, cx, cyB, cz);
         };
 
-        by(ix, iy, iz)
-            += D[dirY]
-               * (7.0 * pair(ix, iz) + 2.0 * pair(sx, iz) + 2.0 * pair(ix, sz) + pair(sx, sz))
-               / 24.0;
+        by(loc) += D[dirY]
+                   * (7.0 * pair(ix, iz) + 2.0 * pair(sx, iz) + 2.0 * pair(ix, sz) + pair(sx, sz))
+                   / 24.0;
     }
 
     static void correctBz3d(auto& scratch, auto& bx, auto& by, auto& bz, auto const& layout,
-                            core::Point<int, dimension> idx)
+                            core::Point<int, dimension> const& idx)
     {
         if (!isNewFineFace(idx, dirZ))
             return;
@@ -410,10 +427,9 @@ public:
                    - subzoneDiv3d_(scratch, bx, by, bz, D, cx, cy, czB);
         };
 
-        bz(ix, iy, iz)
-            += D[dirZ]
-               * (7.0 * pair(ix, iy) + 2.0 * pair(sx, iy) + 2.0 * pair(ix, sy) + pair(sx, sy))
-               / 24.0;
+        bz(loc) += D[dirZ]
+                   * (7.0 * pair(ix, iy) + 2.0 * pair(sx, iy) + 2.0 * pair(ix, sy) + pair(sx, sy))
+                   / 24.0;
     }
 
 
