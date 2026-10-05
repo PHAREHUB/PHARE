@@ -51,9 +51,9 @@ public:
 
 
     MessengerFactory(std::vector<MessengerDescriptor> messengerDescriptors,
-                     RefinementConfig refinementConfig = {})
+                     RefinementConfig const& refinementConfig = {})
         : descriptors_{messengerDescriptors}
-        , refinementConfig_{std::move(refinementConfig)}
+        , refinementConfig_{refinementConfig}
     {
     }
 

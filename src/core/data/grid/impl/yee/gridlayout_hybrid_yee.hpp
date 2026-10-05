@@ -432,9 +432,13 @@ public:
                 return p;
             };
 
-            return std::array{WeightPoint{make_p(-1), -sign / 8.0},
+            // ū_I + σ·(ū_{I+1} − ū_{I−1})/8: the two neighbours enter with the same magnitude
+            // and opposite signs, so the children mean back to ū_I.
+            constexpr double slopeWeight = 1. / 8.;
+
+            return std::array{WeightPoint{make_p(-1), -sign * slopeWeight},
                               WeightPoint{make_p(0), 1.0},
-                              WeightPoint{make_p(1), sign / 8.0}};
+                              WeightPoint{make_p(1), sign * slopeWeight}};
         }
     }
 
