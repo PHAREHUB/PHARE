@@ -354,7 +354,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     endforeach()
   endfunction(phare_test_labels)
   # use
-  #  phare_test_labels(test_id heavy)
+  #  phare_test_labels(test_id nightly)
 
 
   if(testMPI)
