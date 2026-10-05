@@ -23,7 +23,7 @@ set( SOURCES_INC
      data/field/refine/composite_field_refiner.hpp
      data/field/refine/coarse_cell_round_out.hpp
      data/field/refine/magnetic_composite_refiner.hpp
-     data/field/refine/adpt_magnetic_refine_patch_strategy.hpp
+     data/field/refine/magnetic_refine_patch_strategy.hpp
      data/field/time_interpolate/field_linear_time_interpolate.hpp
      resources_manager/field_resource.hpp
      resources_manager/particle_resource.hpp

@@ -1,5 +1,5 @@
-#ifndef PHARE_AMR_ADPT_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
-#define PHARE_AMR_ADPT_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
+#ifndef PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
+#define PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
 
 #include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
@@ -102,7 +102,7 @@ namespace detail
 
 
 /**
- * @brief Stage 2 of the Balsara ADPT divergence-free magnetic prolongation: the cross-component
+ * @brief Stage 2 of the Balsara divergence-free magnetic prolongation: the cross-component
  *        divB touch-up. Order-independent.
  *
  * Stage 1 (the fill-all composite kernel, magnetic_composite_refiner.hpp) fills every fine face of
@@ -124,7 +124,7 @@ namespace detail
  * stage-1 interior fill survives the touch-up.
  */
 template<typename TensorFieldDataT>
-class ADPTMagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
+class MagneticRefinePatchStrategy : public SAMRAI::xfer::RefinePatchStrategy
 {
 public:
     using Geometry        = typename TensorFieldDataT::Geometry;
@@ -135,7 +135,7 @@ public:
 
     using DivScratch = detail::DivScratch<gridlayout_type>;
 
-    ADPTMagneticRefinePatchStrategy()
+    MagneticRefinePatchStrategy()
         : b_id_{-1}
     {
     }
@@ -144,7 +144,7 @@ public:
     {
         if (b_id_ < 0)
             throw std::runtime_error(
-                "ADPTMagneticRefinePatchStrategy: registerIDs was not called before use");
+                "MagneticRefinePatchStrategy: registerIDs was not called before use");
     }
 
     void registerIDs(int const b_id) { b_id_ = b_id; }
@@ -477,4 +477,4 @@ private:
 
 } // namespace PHARE::amr
 
-#endif // PHARE_AMR_ADPT_MAGNETIC_REFINE_PATCH_STRATEGY_HPP
+#endif // PHARE_AMR_MAGNETIC_REFINE_PATCH_STRATEGY_HPP

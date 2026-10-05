@@ -24,13 +24,13 @@ namespace PHARE::amr
 {
 
 /**
- * @brief Stage 1 of the Balsara ADPT divB-free B prolongation: fill every fine face of a B
+ * @brief Stage 1 of the Balsara divB-free B prolongation: fill every fine face of a B
  * component from its own coarse faces.
  *
  * Per component the fill is the composite one (composite_field_refiner.hpp): the primal-even
  * direction (collocated with coarse) an exact copy, primal-odd (a new fine face) a half-point
  * interpolation, the dual directions the ±¼ child ladder. This stage makes no divB claim — stage
- * 2, the cross-component touch-up (adpt_magnetic_refine_patch_strategy.hpp), is what establishes
+ * 2, the cross-component touch-up (magnetic_refine_patch_strategy.hpp), is what establishes
  * it.
  *
  * What is magnetic here, and the whole reason this is a kernel of its own rather than the plain

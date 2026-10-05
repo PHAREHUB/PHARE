@@ -9,7 +9,7 @@
 #include "amr/data/field/refine/coarse_cell_round_out.hpp"
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
-#include "amr/data/field/refine/adpt_magnetic_refine_patch_strategy.hpp"
+#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 #include "amr/messengers/refinement_config.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
@@ -383,7 +383,7 @@ double fineByAt(int i, int j)
 constexpr int fieldGhosts = static_cast<int>(GridYee2D::options.field_ghost_width);
 
 using VecFieldData2D = PHARE::amr::TensorFieldData<1, GridYee2D, Grid2D, HybridQuantity>;
-using MagStrategy2D  = ADPTMagneticRefinePatchStrategy<VecFieldData2D>;
+using MagStrategy2D  = MagneticRefinePatchStrategy<VecFieldData2D>;
 using FieldGeom2D    = FieldGeometry<GridYee2D, HybridQuantity::Scalar>;
 
 GridYee2D layoutOf(SAMRAI::hier::Box const& cellBox, double dl)
@@ -531,14 +531,14 @@ TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 
 
 // =================================================================================================
-// ADPTMagneticRefinePatchStrategy stage-2 touch-up tests (Balsara divB-free prolongation)
+// MagneticRefinePatchStrategy stage-2 touch-up tests (Balsara divB-free prolongation)
 // =================================================================================================
 //
 // Exercises the public static correctBx2d/correctBy2d directly: they are plain static functions,
 // so no SAMRAI Patch/ResourcesManager machinery is needed. Stage 1 (CompositeFieldRefiner, reused
 // from the value-level tests above) fills every fine face of Bx/By from coarse data; these statics
 // then apply the stage-2 divergence-equalizing correction, sharing one DivScratch per postprocess
-// pass -- the same contract as ADPTMagneticRefinePatchStrategy::postprocessRefine.
+// pass -- the same contract as MagneticRefinePatchStrategy::postprocessRefine.
 //
 // The strategy class only reads, from its TensorFieldDataT template parameter, the compile-time
 // typedefs used at class scope (Geometry/gridlayout_type/N/dimension); Geometry and ResMan are
@@ -561,7 +561,7 @@ struct DummyTensorFieldData2D
     static constexpr std::size_t dimension = 2;
 };
 
-using ADPT2D = ADPTMagneticRefinePatchStrategy<DummyTensorFieldData2D>;
+using TouchUp2D = MagneticRefinePatchStrategy<DummyTensorFieldData2D>;
 
 // A GridLayout whose AMRToLocal is the identity (AMR index == array-local index): avoids
 // depending on GridLayoutImplYee's internal ghost-width value, matching the "lower=0 =>
@@ -609,20 +609,20 @@ void fillFaces2D(Grid2D& bxCoarse, Grid2D& byCoarse, Grid2D& bxFine, Grid2D& byF
 }
 
 // applies the stage-2 touch-up over the same fine box used to fill the faces (matches
-// ADPTMagneticRefinePatchStrategy::postprocessRefine's per-component loop shape: the parity
+// MagneticRefinePatchStrategy::postprocessRefine's per-component loop shape: the parity
 // gate inside correctBx2d/correctBy2d selects only the interior/odd faces).
 void touchUp2D(Grid2D& bxFine, Grid2D& byFine)
 {
     auto const layout  = identityLayout2D();
     auto const destBox = boxOf<2>({6, 6}, {17, 17});
 
-    ADPT2D::DivScratch scratch;
+    TouchUp2D::DivScratch scratch;
     scratch.reset(destBox, layout);
 
     for (auto const& i : phare_box_from<2>(destBox))
-        ADPT2D::correctBx2d(scratch, bxFine, byFine, layout, i);
+        TouchUp2D::correctBx2d(scratch, bxFine, byFine, layout, i);
     for (auto const& i : phare_box_from<2>(destBox))
-        ADPT2D::correctBy2d(scratch, bxFine, byFine, layout, i);
+        TouchUp2D::correctBy2d(scratch, bxFine, byFine, layout, i);
 }
 
 void fillNaN2D(Grid2D& bxFine, Grid2D& byFine)
@@ -669,7 +669,7 @@ static void runDivFreeCase()
                 << "order=" << order << " cx=" << cx << " cy=" << cy;
 }
 
-TEST(ADPTMagneticTouchUp2D, correctsToExactDivBFreeOnGenericDivFreeCoarseData)
+TEST(MagneticTouchUp2D, correctsToExactDivBFreeOnGenericDivFreeCoarseData)
 {
     runDivFreeCase<2>();
 }
@@ -715,7 +715,7 @@ static void runEqualizeCase()
         }
 }
 
-TEST(ADPTMagneticTouchUp2D, equalizesSubzoneDivergenceOnGenericNonDivFreeCoarseData)
+TEST(MagneticTouchUp2D, equalizesSubzoneDivergenceOnGenericNonDivFreeCoarseData)
 {
     runEqualizeCase<2>();
 }

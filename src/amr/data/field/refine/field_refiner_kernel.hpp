@@ -74,10 +74,10 @@ std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
 makeRefineKernel(FieldRefinementOrder order);
 
 /**
- * @brief Build the stage-1 magnetic refinement kernel of the ADPT div-free prolongation.
+ * @brief Build the stage-1 magnetic refinement kernel of the div-free magnetic prolongation.
  *
  * Fills every fine face per component with the composite tensor stencils, and makes no ∇·B claim:
- * ∇·B-freeness comes from the stage-2 touch-up (adpt_magnetic_refine_patch_strategy.hpp).
+ * ∇·B-freeness comes from the stage-2 touch-up (magnetic_refine_patch_strategy.hpp).
  */
 template<typename GridLayoutT, typename FieldT>
 std::unique_ptr<IFieldRefineKernel<GridLayoutT, FieldT>>
