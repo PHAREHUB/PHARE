@@ -50,8 +50,8 @@ TEST(GridLayoutIntegration, MHDConstantReconstruction)
     static constexpr auto opts = mhdOpts(MHDOpts::ReconstructionType::Constant);
     using Layout               = PHARE_Types<opts>::MHD::GridLayout_t;
 
-    // Constant: nghosts=1, field_ghost_width = roundUpToEven(1+2) = 4
-    EXPECT_EQ(Layout::options.field_ghost_width, 4u);
+    // Constant: nghosts=1, field_ghost_width = roundUpToEven(1+1) = 2
+    EXPECT_EQ(Layout::options.field_ghost_width, 2u);
 }
 
 TEST(GridLayoutIntegration, MHDLinearReconstruction)
@@ -59,7 +59,7 @@ TEST(GridLayoutIntegration, MHDLinearReconstruction)
     static constexpr auto opts = mhdOpts(MHDOpts::ReconstructionType::Linear);
     using Layout               = PHARE_Types<opts>::MHD::GridLayout_t;
 
-    // Linear: nghosts=2, field_ghost_width = roundUpToEven(2+2) = 4
+    // Linear: nghosts=2, field_ghost_width = roundUpToEven(2+1) = 4
     EXPECT_EQ(Layout::options.field_ghost_width, 4u);
 }
 
@@ -68,8 +68,8 @@ TEST(GridLayoutIntegration, MHDWENOZReconstruction)
     static constexpr auto opts = mhdOpts(MHDOpts::ReconstructionType::WENOZ);
     using Layout               = PHARE_Types<opts>::MHD::GridLayout_t;
 
-    // WENOZ: nghosts=3, field_ghost_width = roundUpToEven(3+2) = 6
-    EXPECT_EQ(Layout::options.field_ghost_width, 6u);
+    // WENOZ: nghosts=3, field_ghost_width = roundUpToEven(3+1) = 4
+    EXPECT_EQ(Layout::options.field_ghost_width, 4u);
 }
 
 TEST(GridLayoutIntegration, BackwardCompatibilityOrder1)

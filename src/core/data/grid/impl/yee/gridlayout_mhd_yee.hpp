@@ -36,8 +36,8 @@ public:
     struct GridData;
     static constexpr std::size_t dimension = dim;
     static constexpr std::string_view type = "yee";
-    // The MHD layout reserves ghosts based on the reconstruction stencil width,
-    // plus extra layers for J Laplacian and hyper-resistivity corrections.
+    // The MHD layout reserves ghosts based on the reconstruction stencil width, plus the one
+    // layer ampere loses by computing J on the shrinked ghost box.
     // static constexpr std::uint32_t reconstruction_nghosts = reconstruction_nghosts_;
     // Ghost width computed directly based on reconstruction stencil
     // static constexpr std::uint32_t ghost_width
@@ -834,6 +834,144 @@ public:
         using PHARE::core::dirZ;
 
         return directionalInterp<dirZ, InterpDir::PrimalToDual>();
+    }
+
+    NO_DISCARD auto static constexpr edgeYToFaceX()
+    {
+        // edge-Y is primal dual primal
+        // face-X is primal dual dual
+        // operation is thus pdP to pdD, shift only in Z
+
+        using PHARE::core::dirZ;
+
+        return directionalInterp<dirZ, InterpDir::PrimalToDual>();
+    }
+
+    NO_DISCARD auto static constexpr edgeZToFaceX()
+    {
+        // edge-Z is primal primal dual
+        // face-X is primal dual dual
+        // operation is thus pPd to pDd, shift only in Y
+
+        using PHARE::core::dirY;
+
+        return directionalInterp<dirY, InterpDir::PrimalToDual>();
+    }
+
+    NO_DISCARD auto static constexpr edgeXToFaceY()
+    {
+        // edge-X is dual primal primal
+        // face-Y is dual primal dual
+        // operation is thus dpP to dpD, shift only in Z
+
+        using PHARE::core::dirZ;
+
+        return directionalInterp<dirZ, InterpDir::PrimalToDual>();
+    }
+
+    NO_DISCARD auto static constexpr edgeZToFaceY()
+    {
+        // edge-Z is primal primal dual
+        // face-Y is dual primal dual
+        // operation is thus Ppd to Dpd, shift only in X
+
+        using PHARE::core::dirX;
+
+        return directionalInterp<dirX, InterpDir::PrimalToDual>();
+    }
+
+    NO_DISCARD auto static constexpr edgeXToFaceZ()
+    {
+        // edge-X is dual primal primal
+        // face-Z is dual dual primal
+        // operation is thus dPp to dDp, shift only in Y
+
+        using PHARE::core::dirY;
+
+        return directionalInterp<dirY, InterpDir::PrimalToDual>();
+    }
+
+    NO_DISCARD auto static constexpr edgeYToFaceZ()
+    {
+        // edge-Y is primal dual primal
+        // face-Z is dual dual primal
+        // operation is thus Pdp to Ddp, shift only in X
+
+        using PHARE::core::dirX;
+
+        return directionalInterp<dirX, InterpDir::PrimalToDual>();
+    }
+
+    NO_DISCARD auto static constexpr ByToFaceX()
+    {
+        // By is dual primal dual
+        // face-X is primal dual dual
+
+        using PHARE::core::dirX;
+        using PHARE::core::dirY;
+
+        return tensorProduct<dirX, dirY>(directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                                         directionalInterp<dirY, InterpDir::PrimalToDual>());
+    }
+
+    NO_DISCARD auto static constexpr BzToFaceX()
+    {
+        // Bz is dual dual primal
+        // face-X is primal dual dual
+
+        using PHARE::core::dirX;
+        using PHARE::core::dirZ;
+
+        return tensorProduct<dirX, dirZ>(directionalInterp<dirX, InterpDir::DualToPrimal>(),
+                                         directionalInterp<dirZ, InterpDir::PrimalToDual>());
+    }
+
+    NO_DISCARD auto static constexpr BxToFaceY()
+    {
+        // Bx is primal dual dual
+        // face-Y is dual primal dual
+
+        using PHARE::core::dirX;
+        using PHARE::core::dirY;
+
+        return tensorProduct<dirX, dirY>(directionalInterp<dirX, InterpDir::PrimalToDual>(),
+                                         directionalInterp<dirY, InterpDir::DualToPrimal>());
+    }
+
+    NO_DISCARD auto static constexpr BzToFaceY()
+    {
+        // Bz is dual dual primal
+        // face-Y is dual primal dual
+
+        using PHARE::core::dirY;
+        using PHARE::core::dirZ;
+
+        return tensorProduct<dirY, dirZ>(directionalInterp<dirY, InterpDir::DualToPrimal>(),
+                                         directionalInterp<dirZ, InterpDir::PrimalToDual>());
+    }
+
+    NO_DISCARD auto static constexpr BxToFaceZ()
+    {
+        // Bx is primal dual dual
+        // face-Z is dual dual primal
+
+        using PHARE::core::dirX;
+        using PHARE::core::dirZ;
+
+        return tensorProduct<dirX, dirZ>(directionalInterp<dirX, InterpDir::PrimalToDual>(),
+                                         directionalInterp<dirZ, InterpDir::DualToPrimal>());
+    }
+
+    NO_DISCARD auto static constexpr ByToFaceZ()
+    {
+        // By is dual primal dual
+        // face-Z is dual dual primal
+
+        using PHARE::core::dirY;
+        using PHARE::core::dirZ;
+
+        return tensorProduct<dirY, dirZ>(directionalInterp<dirY, InterpDir::PrimalToDual>(),
+                                         directionalInterp<dirZ, InterpDir::DualToPrimal>());
     }
 
     NO_DISCARD auto static constexpr edgeXToCellCenter()

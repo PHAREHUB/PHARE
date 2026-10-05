@@ -252,8 +252,8 @@ def mhdGhostNbrFromReconstruction(reconstruction):
         "constant": 2,
         "linear": 4,
         "weno3": 4,
-        "wenoz": 6,
-        "mp5": 6,
+        "wenoz": 4,
+        "mp5": 4,
     }.get(reconstruction)
 
 

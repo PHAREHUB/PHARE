@@ -28,20 +28,20 @@ TEST(GhostWidthCalculator, HybridOrder3)
 
 TEST(GhostWidthCalculator, MHDConstantReconstruction)
 {
-    // stencil=1, (1+2)=3 -> rounded to 4
-    EXPECT_EQ(nbrGhostsFromReconstruction<1>(), 4);
+    // stencil=1, (1+1)=2 -> 2
+    EXPECT_EQ(nbrGhostsFromReconstruction<1>(), 2);
 }
 
 TEST(GhostWidthCalculator, MHDLinearReconstruction)
 {
-    // stencil=2, (2+2)=4 -> 4
+    // stencil=2, (2+1)=3 -> rounded to 4
     EXPECT_EQ(nbrGhostsFromReconstruction<2>(), 4);
 }
 
 TEST(GhostWidthCalculator, MHDWENOZReconstruction)
 {
-    // stencil=3, (3+2)=5 -> rounded to 6
-    EXPECT_EQ(nbrGhostsFromReconstruction<3>(), 6);
+    // stencil=3, (3+1)=4 -> 4
+    EXPECT_EQ(nbrGhostsFromReconstruction<3>(), 4);
 }
 
 TEST(GhostWidthCalculator, ParticleGhosts)

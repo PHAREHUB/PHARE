@@ -27,12 +27,11 @@ public:
     UpwindConstrainedTransport(UpwindConstrainedTransportInfo const& info, GridLayout const& layout)
         : Super{info}
         , layout_{layout}
-        , is_resistive_{info.isResistive()}
-        , is_hyper_resistive_{info.isHyperResistive()}
+        , is_dissipative_{info.isResistive() || info.isHyperResistive()}
     {
     }
 
-    void operator()(auto& ct_state, auto& mhd_state) const
+    void operator()(auto& ct_state, auto const& dissipative_electric_state, auto& mhd_state) const
     {
         auto& E       = mhd_state.E;
         auto const& B = mhd_state.B;
@@ -45,38 +44,11 @@ public:
         layout_.evalOnBox(Ey, [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}); });
         layout_.evalOnBox(Ez, [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}); });
 
-        if (is_resistive_ || is_hyper_resistive_)
+        if (is_dissipative_)
         {
-            auto const& J = mhd_state.J;
-
-            auto& Jx = J(Component::X);
-            auto& Jy = J(Component::Y);
-            auto& Jz = J(Component::Z);
-
-            if (is_resistive_)
-            {
-                layout_.evalOnBox(
-                    Ex, [&](auto&... args) { resistive_contribution_(Ex, Jx, {args...}); });
-                layout_.evalOnBox(
-                    Ey, [&](auto&... args) { resistive_contribution_(Ey, Jy, {args...}); });
-                layout_.evalOnBox(
-                    Ez, [&](auto&... args) { resistive_contribution_(Ez, Jz, {args...}); });
-            }
-
-            if (is_hyper_resistive_)
-            {
-                auto const& rho = mhd_state.rho;
-
-                layout_.evalOnBox(Ex, [&](auto&... args) {
-                    hyperresistive_contribution_<Component::X>(Ex, Jx, B, rho, {args...});
-                });
-                layout_.evalOnBox(Ey, [&](auto&... args) {
-                    hyperresistive_contribution_<Component::Y>(Ey, Jy, B, rho, {args...});
-                });
-                layout_.evalOnBox(Ez, [&](auto&... args) {
-                    hyperresistive_contribution_<Component::Z>(Ez, Jz, B, rho, {args...});
-                });
-            }
+            auto const& Ediss = dissipative_electric_state.E();
+            for (auto c : {Component::X, Component::Y, Component::Z})
+                layout_.evalOnBox(E(c), [&](auto&... args) { E(c)(args...) += Ediss(c)(args...); });
         }
     }
 
@@ -351,78 +323,8 @@ private:
         }
     }
 
-    template<typename Field>
-    void resistive_contribution_(Field& E, Field const& J, MeshIndex<Field::dimension> index) const
-    {
-        E(index) += eta * J(index);
-    }
-
-    template<auto component, typename Field, typename VecField>
-    void hyperresistive_contribution_(Field& E, Field const& J, VecField const& B, Field const& rho,
-                                      MeshIndex<Field::dimension> index) const
-    {
-        if (hyper_mode == HyperMode::constant)
-            return constant_hyperresistive_<component>(E, J, index);
-        else if (hyper_mode == HyperMode::spatial)
-            return spatial_hyperresistive_<component>(E, J, B, rho, index);
-        else
-            throw std::runtime_error("Error - Ohm - unknown hyper_mode");
-    }
-
-    template<auto component, typename Field>
-    void constant_hyperresistive_(Field& E, Field const& J, MeshIndex<Field::dimension> index) const
-    {
-        E(index) -= nu * layout_.laplacian(J, index);
-    }
-
-    template<auto component, typename Field, typename VecField>
-    void spatial_hyperresistive_(Field& E, Field const& J, VecField const& B, Field const& rho,
-                                 MeshIndex<Field::dimension> index) const
-    {
-        auto minMeshSize = [&]() {
-            auto const meshSize = layout_.meshSize();
-            if constexpr (Field::dimension == 1)
-                return meshSize[0];
-            else if constexpr (Field::dimension == 2)
-                return std::min({meshSize[0], meshSize[1]});
-            else
-                return std::min({meshSize[0], meshSize[1], meshSize[2]});
-        }();
-
-        auto computeHR = [&]<auto BxProj, auto ByProj, auto BzProj, auto rhoProj>() {
-            auto const BxOnE = GridLayout::template project<BxProj>(B(Component::X), index);
-            auto const ByOnE = GridLayout::template project<ByProj>(B(Component::Y), index);
-            auto const BzOnE = GridLayout::template project<BzProj>(B(Component::Z), index);
-            auto const nOnE  = GridLayout::template project<rhoProj>(rho, index);
-            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
-            E(index)
-                -= nu * layout_.laplacian(J, index) * minMeshSize * minMeshSize * (b / nOnE + 1);
-        };
-
-        if constexpr (component == Component::X)
-        {
-            return computeHR
-                .template operator()<GridLayout::BxToEx, GridLayout::ByToEx, GridLayout::BzToEx,
-                                     GridLayout::implT::cellCenterToEdgeX>();
-        }
-        if constexpr (component == Component::Y)
-        {
-            return computeHR
-                .template operator()<GridLayout::BxToEy, GridLayout::ByToEy, GridLayout::BzToEy,
-                                     GridLayout::implT::cellCenterToEdgeY>();
-        }
-        if constexpr (component == Component::Z)
-        {
-            return computeHR
-                .template operator()<GridLayout::BxToEz, GridLayout::ByToEz, GridLayout::BzToEz,
-                                     GridLayout::implT::cellCenterToEdgeZ>();
-        }
-    }
-
-
     GridLayout layout_;
-    bool const is_resistive_;
-    bool const is_hyper_resistive_;
+    bool const is_dissipative_;
 };
 } // namespace PHARE::core
 

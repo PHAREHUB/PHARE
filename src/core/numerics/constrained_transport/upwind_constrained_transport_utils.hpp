@@ -56,11 +56,9 @@ class UpwindConstrainedTransportState
 
 public:
     UpwindConstrainedTransportState() = default;
-    UpwindConstrainedTransportState(bool const isHall, bool const isResistive)
+    explicit UpwindConstrainedTransportState(bool const isHall)
     {
-        // hyper-resistivity implies the Hall term, so isHall || isResistive covers every case in
-        // which jt / rhot are consumed (Hall EMF, resistive and hyper-resistive energy fluxes).
-        if (isHall || isResistive)
+        if (isHall)
             transverse_state_.emplace_back();
     }
 

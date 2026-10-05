@@ -322,49 +322,6 @@ struct AllFluxesNames
 };
 
 
-template<typename VecField, typename Equations>
-class GodunovState
-{
-    using Field                     = VecField::field_type;
-    constexpr static auto dimension = VecField::dimension;
-
-public:
-    GodunovState() = default;
-    GodunovState(bool const isResistive, bool const isHyperResistive)
-    {
-        // bt (transverse magnetic field for the energy ExB term) is only needed when resistivity
-        // or hyper-resistivity is active, so it is registered / allocated only then, through a
-        // runtime resource list.
-        if (isResistive || isHyperResistive)
-        {
-            static constexpr std::array names{"b_t_x", "b_t_y", "b_t_z"};
-            static constexpr std::array quantities{MHDQuantity::Vector::VecFlux_x,
-                                                   MHDQuantity::Vector::VecFlux_y,
-                                                   MHDQuantity::Vector::VecFlux_z};
-            bt_.reserve(dimension);
-            for_N<dimension>([&](auto i) { bt_.emplace_back(names[i], quantities[i]); });
-        }
-    }
-
-    NO_DISCARD std::vector<VecField>& getRunTimeResourcesViewList() { return bt_; }
-    NO_DISCARD std::vector<VecField> const& getRunTimeResourcesViewList() const { return bt_; }
-
-    template<auto direction>
-    auto& getBt()
-    {
-        if constexpr (direction == Direction::X)
-            return bt_[0];
-        else if constexpr (direction == Direction::Y)
-            return bt_[1];
-        else if constexpr (direction == Direction::Z)
-            return bt_[2];
-    }
-
-private:
-    std::vector<VecField> bt_;
-};
-
-
 template<template<typename> typename Op, typename Field, typename VecField>
 void operate(AllFluxes<Field, VecField>& dst, AllFluxes<Field, VecField> const& src, auto&&... args)
 {
