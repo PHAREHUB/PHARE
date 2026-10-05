@@ -258,30 +258,23 @@ def mhdGhostNbrFromReconstruction(reconstruction):
 
 
 class GridLayout(object):
-    """
-    initialized default to -1 as an invalid value allowing the override mechanism. Using None
-    results in a pylint error elsewhere
-    """
-
-    def __init__(
-        self, box=Box(0, 0), origin=0, dl=0.1, interp_order=1, ghosts_nbr=None
-    ):
-        self.box = box
+    def __init__(self, box=None, origin=0, dl=0.1, interp_order=1, ghosts_nbr=None):
+        self.box = box if box is not None else Box(0, 0)
         check_hybrid_ghosts_or_interp("GridLayout", ghosts_nbr, interp_order)
         self.ghosts_nbr = (  # default for tests TORM
             ghosts_nbr
             if ghosts_nbr is not None
-            else [[2, 4, 4][interp_order - 1]] * box.ndim
+            else [[2, 4, 4][interp_order - 1]] * self.box.ndim
         )
 
-        if len(self.ghosts_nbr) != box.ndim:
+        if len(self.ghosts_nbr) != self.box.ndim:
             raise ValueError("Invalid ghosts!")
 
         self.dl = listify(dl)
-        assert len(self.dl) == box.ndim
+        assert len(self.dl) == self.box.ndim
 
         self.origin = listify(origin)
-        assert len(self.origin) == box.ndim
+        assert len(self.origin) == self.box.ndim
 
         self.interp_order = interp_order
         self.impl = "yee"
@@ -314,6 +307,15 @@ class GridLayout(object):
             "Y": self.yeeCentering.centerY,
             "Z": self.yeeCentering.centerZ,
         }
+
+    def copy_as(self, **kwargs):
+        return GridLayout(
+            kwargs.get("box", self.box),
+            kwargs.get("origin", self.origin),
+            kwargs.get("dl", self.dl),
+            kwargs.get("interp_order", self.interp_order),
+            ghosts_nbr=kwargs.get("ghosts_nbr", self.ghosts_nbr),
+        )
 
     @property
     def ndim(self):

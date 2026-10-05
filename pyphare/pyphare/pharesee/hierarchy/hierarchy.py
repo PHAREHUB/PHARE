@@ -26,7 +26,8 @@ class PatchHierarchy(object):
         refinement_ratio=2,
         times=[0.0],
         data_files=None,
-        **kwargs,
+        selection_box=None,
+        ephemerals=None,  # time based computed data cache, e.g. interpolated data
     ):
         if not isinstance(times, (tuple, list)):
             times = listify(times)
@@ -34,7 +35,7 @@ class PatchHierarchy(object):
         if not isinstance(patch_levels, (tuple, list)):
             patch_levels = listify(patch_levels)
 
-        self.selection_box = kwargs.get("selection_box", None)
+        self.selection_box = selection_box
         if self.selection_box is not None:
             if not isinstance(self.selection_box, (tuple, list)):
                 self.selection_box = listify(self.selection_box)
@@ -67,7 +68,18 @@ class PatchHierarchy(object):
         else:
             self.data_files = {}
 
+        self.ephemerals = ephemerals
         self.update()
+
+    def finest(self, time=None, qty=None, interp="nearest"):
+        """
+        Returns the UniformGrid of qty, or of the only quantity
+         OR a UniformGrids, a container of UniformGrid, of all quantities
+        """
+        from . import func
+
+        finest = func.GetFinest(self, time, qty, interp)
+        return next(iter(finest.values())) if len(finest) == 1 else finest
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things
@@ -135,7 +147,7 @@ class PatchHierarchy(object):
             raise RuntimeError(f"Failed to deserialize simulation from data file : {e}")
         return self._sim
 
-    def __call__(self, qty=None, **kwargs):
+    def __call__(self, qty=None, time=None, **kwargs):
         # take slice/slab of 1/2d array from 2/3d array
         def cuts(c, coord):
             return c > coord.min() and c < coord.max()
@@ -156,9 +168,9 @@ class PatchHierarchy(object):
                 return coord[mask], data[mask]
 
         def domain_coords(patch, qty):
-            pd = patch.patch_datas[qty]
-            nbrGhosts = pd.ghosts_nbr[0]
-            return pd.x[nbrGhosts:-nbrGhosts], pd.y[nbrGhosts:-nbrGhosts]
+            from .hierarchy_utils import local_domain_coords
+
+            return local_domain_coords(patch.patch_datas[qty])
 
         if len(kwargs) < 1 or len(kwargs) > 3:
             raise ValueError("Error - must provide coordinates")
@@ -182,10 +194,10 @@ class PatchHierarchy(object):
         extractor = Extractor()
         datas = []
         coords = []
-        ilvls = list(self.levels().keys())[::-1]
+        ilvls = list(self.levels(time).keys())[::-1]
 
         for ilvl in ilvls:
-            lvl = self.patch_levels[ilvl]
+            lvl = self.level(ilvl, time)
             for patch in lvl.patches:
                 slice_coord = domain_coords(patch, qty)[slice_dim]
                 cst_coord = domain_coords(patch, qty)[cst_dim]
@@ -432,9 +444,14 @@ class PatchHierarchy(object):
                 if qty is None:
                     qty = pdata_names[0]
 
-                nbrGhosts = patch.patch_datas[qty].ghosts_nbr
-                val = patch.patch_datas[qty][patch.box]
-                x = patch.patch_datas[qty].x[nbrGhosts[0] : -nbrGhosts[0]]
+                pdat = patch.patch_datas[qty]
+                nbrGhosts = pdat.ghosts_nbr
+                if nbrGhosts[0] > 0:
+                    val = pdat[patch.box]
+                    x = pdat.x[nbrGhosts[0] : -nbrGhosts[0]]
+                else:
+                    val = pdat.dataset[:]
+                    x = pdat.x
                 label = "L{level}P{patch}".format(level=lvl_nbr, patch=ip)
                 marker = kwargs.get("marker", "")
                 ls = kwargs.get("ls", "--")

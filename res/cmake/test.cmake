@@ -83,4 +83,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(pyphare/pyphare_tests/test_core/)
 
 
+  file(COPY "res/eg" DESTINATION "${CMAKE_CURRENT_BINARY_DIR}/res")
+  add_subdirectory(res/eg)
+
 endif()
