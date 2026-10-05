@@ -1,6 +1,6 @@
 # Every review thread started by a human is resolved before merge; bot threads are ignored.
 #
-# Its own workflow because it must also run on reviews: in gate.yml, a review event would
+# Its own workflow because it must also run on reviews and review comments: in gate.yml, a review event would
 # re-run (or skip) every other check, and a skipped check counts as passed.
 # GitHub sends no event when a thread is resolved: re-run this job, or push / review / label.
 
@@ -11,6 +11,8 @@ on:
     types: [opened, synchronize, reopened, labeled, unlabeled]
   pull_request_review:
     types: [submitted, dismissed]
+  pull_request_review_comment:
+    types: [created, deleted]
 
 permissions:
   contents: read

@@ -2,7 +2,8 @@
 """Flag keywords that user scripts can no longer pass to pharein.
 
 pharein validates **kwargs against hard-coded lists (`accepted_keywords` in simulation.py's
-`checker`, `valid_keys`, `mandatory_keywords`, ...). A string removed from such a list breaks every
+`checker`, `valid_keys`, `mandatory_keywords`, ..., and every literal list of a `*keywords`
+function such as `check_optional_keywords`). A string removed from such a list breaks every
 user script that passes it, and no signature-based tool (griffe) can see it. Added strings are
 listed as notices, for the changelog.
 
@@ -39,6 +40,13 @@ def keyword_lists(source):
 
     def visit(node, scope):
         for child in ast.iter_child_nodes(node):
+            if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef)) and child.name.endswith("keywords"):
+                # a helper such as check_optional_keywords returns keywords the caller accepts:
+                # every literal list in it counts, whatever its variable is called
+                for sub in ast.walk(child):
+                    for kw in strings(sub):
+                        found[f"{scope}{child.name}"].setdefault(kw, sub.lineno)
+                continue
             if isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
                 visit(child, f"{scope}{child.name}.")
                 continue

@@ -62,7 +62,10 @@ def fetch(owner, repo, pr, token):
         threads += page["nodes"]
         if not page["pageInfo"]["hasNextPage"]:
             return threads
-        after = page["pageInfo"]["endCursor"]
+        cursor = page["pageInfo"]["endCursor"]
+        if cursor is None or cursor == after:
+            raise RuntimeError("reviewThreads pagination did not advance")
+        after = cursor
 
 
 def is_bot(author):

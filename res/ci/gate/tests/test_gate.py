@@ -124,6 +124,10 @@ class AddedLines(unittest.TestCase):
         f = self.flagged({"tests/test_x.cpp": CPP_TEST}, {"tests/test_x.cpp": cpp(("TEST(Suite, a)", "TEST(Suite, DISABLED_a)"), ("EXPECT_EQ(n, 3);", "GTEST_SKIP();"))})
         self.assertEqual(len(f), 2)
 
+    def test_typed_test_p_disabled(self):
+        f = self.flagged({"tests/test_x.cpp": CPP_TEST}, {"tests/test_x.cpp": cpp(("TEST(Suite, a)", "TYPED_TEST_P(Suite, DISABLED_a)"))})
+        self.assertEqual(len(f), 1)
+
     def test_commented_registration(self):
         cm = "phare_python3_exec(9 x test_x.py ${DIR})\n"
         f = self.flagged({"tests/CMakeLists.txt": cm}, {"tests/CMakeLists.txt": "#" + cm})
@@ -227,6 +231,26 @@ class AssertScan(unittest.TestCase):
     def test_cpp_new_check_is_fine(self):
         self.assertEqual(self.cpp_flags(("EXPECT_EQ(n, 3);", "EXPECT_EQ(n, 3);\n    EXPECT_EQ(m, 4);")), [])
 
+    def test_cpp_check_commented_out(self):
+        for pairs in ([("EXPECT_EQ(n, 3);", "// EXPECT_EQ(n, 3);")], [("EXPECT_EQ(n, 3);", "/* EXPECT_EQ(n, 3); */")]):
+            self.assertEqual(len(self.cpp_flags(*pairs)), 1, pairs)
+
+    def test_cpp_check_in_if0_block(self):
+        f = self.cpp_flags(("    EXPECT_DOUBLE_EQ(u, v);\n", "#if 0\n    EXPECT_DOUBLE_EQ(u, v);\n#endif\n"))
+        self.assertEqual(len(f), 1)
+
+    def test_cpp_if0_else_branch_is_live(self):
+        f = self.cpp_flags(("    EXPECT_DOUBLE_EQ(u, v);\n", "#if 0\n    old();\n#else\n    EXPECT_DOUBLE_EQ(u, v);\n#endif\n"))
+        self.assertEqual(f, [])
+
+    def test_cpp_removing_commented_check_is_fine(self):
+        base = cpp(("EXPECT_EQ(n, 3);", "EXPECT_EQ(n, 3);\n    // EXPECT_EQ(m, 4);"))
+        self.assertEqual(self.flagged({"tests/test_x.cpp": base}, {"tests/test_x.cpp": CPP_TEST}), [])
+
+    def test_cpp_slashes_in_string_are_not_a_comment(self):
+        base = cpp(("EXPECT_EQ(n, 3);", 'EXPECT_EQ(s, "a//b"); EXPECT_EQ(n, 3);'))
+        self.assertEqual(self.flagged({"tests/test_x.cpp": base}, {"tests/test_x.cpp": base.replace("a//b", "a//c")}), [])
+
 
 class TestsRemoved(unittest.TestCase):
     def flagged(self, files, change=None, rename=None):
@@ -261,10 +285,24 @@ class TestsRemoved(unittest.TestCase):
         os.remove(os.path.join(repo.path, "tests/test_x.cpp"))
         self.assertEqual(repo.change({"tests/test_y.cpp": CPP_TEST}).run(tests_removed), [])
 
+    def test_one_of_two_copies_removed(self):
+        files = {"tests/test_x.cpp": CPP_TEST, "tests/test_y.cpp": CPP_TEST}
+        f = self.flagged(files, {"tests/test_x.cpp": CPP_TEST + "\n", "tests/test_y.cpp": "\n"})
+        self.assertEqual([(x.path, x.message) for x in f], [("tests/test_y.cpp", "test Suite.a removed or renamed")])
+
     def test_registration_removed_or_level_changed(self):
         cm = "phare_python3_exec(9 x test_x.py ${DIR})\nadd_no_mpi_phare_test(${PROJECT_NAME}\n    ${CMAKE_CURRENT_BINARY_DIR})\n"
         f = self.flagged({"tests/CMakeLists.txt": cm}, {"tests/CMakeLists.txt": cm.replace("(9 ", "(11 ").replace("add_no_mpi", "# add_no_mpi")})
         self.assertEqual(len(f), 2)
+
+    def test_nested_test_subdirectory_removed(self):
+        cm = "add_subdirectory(copy)\nadd_subdirectory(refine)\n"
+        f = self.flagged({"tests/amr/CMakeLists.txt": cm}, {"tests/amr/CMakeLists.txt": "add_subdirectory(refine)\n"})
+        self.assertEqual([x.message for x in f], ["test registration removed or changed: add_subdirectory(copy)"])
+
+    def test_non_test_subdirectory_removed_is_fine(self):
+        cm = "add_subdirectory(src/core)\nadd_subdirectory(src/amr)\n"
+        self.assertEqual(self.flagged({"CMakeLists.txt": cm}, {"CMakeLists.txt": "add_subdirectory(src/amr)\n"}), [])
 
     def test_registration_reformatted_is_fine(self):
         cm = "add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})\n"
@@ -317,6 +355,13 @@ class PhareinKeywords(unittest.TestCase):
     def test_keyword_added_is_notice(self):
         f = self.flagged(SIM.replace('"dl",', '"dl",\n            "dt",'))
         self.assertEqual([x.level for x in f], ["notice"])
+
+    def test_keyword_helper_keyword_removed(self):
+        helper = '    def check_optional_keywords(**kwargs):\n        extra = []\n        if kwargs:\n            extra += ["max_nbr_levels"]\n        return extra\n'
+        path = "pyphare/pyphare/pharein/simulation.py"
+        f = Repo({path: SIM + helper}).change({path: SIM + helper.replace('"max_nbr_levels"', "")}).run(pharein_keywords)
+        self.assertEqual(len(f), 1)
+        self.assertIn("'max_nbr_levels' no longer accepted by check_optional_keywords", f[0].message)
 
 
 TEMPLATE_BODY = """## Issue
@@ -382,6 +427,15 @@ class Threads(unittest.TestCase):
 
     def test_resolved_is_fine(self):
         self.assertEqual(threads.evaluate([thread(True, "rev")]), [])
+
+    def test_pagination_that_does_not_advance_fails(self):
+        page = {"repository": {"pullRequest": {"reviewThreads": {"nodes": [], "pageInfo": {"hasNextPage": True, "endCursor": None}}}}}
+        real, threads.graphql = threads.graphql, lambda *args: page
+        try:
+            with self.assertRaises(RuntimeError):
+                threads.fetch("o", "r", 1, "t")
+        finally:
+            threads.graphql = real
 
 
 class Report(unittest.TestCase):

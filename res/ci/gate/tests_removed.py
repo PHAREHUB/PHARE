@@ -16,6 +16,7 @@ import os
 import re
 import subprocess
 import sys
+from collections import Counter
 
 from gitdiff import Finding, changed_files, file_at, git, is_test_file, merge_base, report
 
@@ -61,8 +62,12 @@ def python_names(source):
     return names
 
 
-def registrations(source):
-    """Normalised CMake calls that register tests or test directories, in file order."""
+def registrations(source, path):
+    """Normalised CMake calls that register tests or test directories, in file order.
+
+    Under tests/ every add_subdirectory counts (tests/amr/data/particles adds `copy`, `refine`, ...);
+    elsewhere only those whose argument names a test directory.
+    """
     text = CMAKE_COMMENT.sub("", source)
     calls = []
     for m in REGISTRATION.finditer(text):
@@ -72,7 +77,7 @@ def registrations(source):
             if depth == 0:
                 break
         call = " ".join(text[m.start() : end + 1].split())
-        if m.group(1).lower() != "add_subdirectory" or "test" in call.lower():
+        if m.group(1).lower() != "add_subdirectory" or "test" in call.lower() or is_test_file(path):
             calls.append(call)
     return calls
 
@@ -99,25 +104,29 @@ def mentioned_in_cmake(path, head, cwd):
 def check(base, head, cwd=None):
     findings = []
     base_rev = merge_base(base, head, cwd=cwd)
-    before, after = {}, set()  # test name -> path at base; test names at head
+    # a name can be in several files: count the changed files that have it, so that a move
+    # keeps the count and a deletion of one of the copies lowers it
+    before, after = Counter(), Counter()
+    lost_in = {}  # test name -> first path at base whose head version no longer has it
     added_in = {}  # path at base -> number of test names its head version adds
     for change in changed_files(base, head, cwd=cwd):
         old = file_at(base_rev, change.old_path, cwd=cwd) if change.status != "A" else None
         new = file_at(head, change.path, cwd=cwd) if change.status != "D" else None
 
-        for name in test_names(change.old_path or "", old):
-            before.setdefault(name, change.old_path)
         base_names = test_names(change.old_path or "", old)
         head_names = test_names(change.path, new)
-        after |= head_names
+        before.update(base_names)
+        after.update(head_names)
+        for name in base_names - head_names:
+            lost_in.setdefault(name, change.old_path)
         if change.old_path:
             added_in[change.old_path] = len(head_names - base_names)
         if change.path.endswith(".py") and is_test_file(change.path) and new is not None and python_names(new) is None:
             findings.append(Finding(change.path, 0, CHECK, "could not parse: its tests cannot be listed", label=LABEL))
 
         if CMAKE.search(change.path) or (change.old_path and CMAKE.search(change.old_path)):
-            kept = registrations(new) if new is not None else []
-            for call in registrations(old) if old is not None else []:
+            kept = registrations(new, change.path) if new is not None else []
+            for call in registrations(old, change.old_path) if old is not None else []:
                 if call in kept:
                     kept.remove(call)
                 else:
@@ -126,8 +135,8 @@ def check(base, head, cwd=None):
         if change.status == "A" and head_names and change.path.endswith((".py", ".cpp")) and not mentioned_in_cmake(change.path, head, cwd):
             findings.append(Finding(change.path, 0, CHECK, "new test file not mentioned in any CMake file: ctest will not run it", level="warning"))
 
-    for name in sorted(set(before) - after):
-        path = before[name]
+    for name in sorted(n for n in before if after[n] < before[n]):
+        path = lost_in[name]
         hint = f" (this file also gains {added_in[path]} new test name(s): renamed?)" if added_in.get(path) else ""
         findings.append(Finding(path, 0, CHECK, f"test {name} removed or renamed{hint}", label=LABEL))
     return findings

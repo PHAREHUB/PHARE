@@ -2,7 +2,7 @@
 """Flag tests a PR makes easier to pass: removed assertions, looser tolerances, changed seeds.
 
 Python test files are compared as syntax trees (ast), test by test.
-C++ test files are compared on their EXPECT_/ASSERT_ macros.
+C++ test files are compared on their EXPECT_/ASSERT_ macros, comments and #if 0 blocks left out.
 
 usage: assert_scan.py BASE HEAD     (compares HEAD with its merge base with BASE)
 exit:  0 nothing to fix, 1 an error is left after label overrides (label test-values-ok)
@@ -159,6 +159,33 @@ def compare_python(path, old_src, new_src):
 CPP_ASSERT = re.compile(r"\b(EXPECT|ASSERT)_[A-Z_]+\s*\(")
 CPP_CHECK = re.compile(r"\b(EXPECT|ASSERT)_(NEAR|DOUBLE_EQ|FLOAT_EQ|EQ)\s*\(")
 CPP_FLOAT = re.compile(r"^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?[fFlL]?$")
+# string and char literals are matched first so that a "//" inside them is not a comment
+CPP_COMMENT_OR_LITERAL = re.compile(r'"(?:\\.|[^"\\\n])*"|\'(?:\\.|[^\'\\\n])*\'|//[^\n]*|/\*.*?\*/', re.S)
+PP_IF0 = re.compile(r"^\s*#\s*if\s+0\b")
+PP_IF = re.compile(r"^\s*#\s*if")
+PP_ELSE = re.compile(r"^\s*#\s*(else|elif)\b")
+PP_ENDIF = re.compile(r"^\s*#\s*endif\b")
+
+
+def cpp_code(source):
+    """Lines of source with comments and #if 0 blocks blanked: a commented-out check is no check."""
+
+    def blank(m):
+        text = m.group(0)
+        return text if text[0] in "\"'" else "\n" * text.count("\n")
+
+    lines, depth = CPP_COMMENT_OR_LITERAL.sub(blank, source).split("\n"), 0
+    for i, line in enumerate(lines):
+        if depth == 0:
+            if PP_IF0.match(line):
+                depth, lines[i] = 1, ""
+            continue
+        if PP_ENDIF.match(line) or (depth == 1 and PP_ELSE.match(line)):
+            depth -= 1  # the #else branch of an #if 0 is live code
+        elif PP_IF.match(line):
+            depth += 1
+        lines[i] = ""
+    return lines
 
 
 def macro_args(text, start):
@@ -197,10 +224,12 @@ def cpp_checks(lines):
 
 def compare_cpp(path, old_src, new_src, change):
     findings = []
-    before, after = len(CPP_ASSERT.findall(old_src)), len(CPP_ASSERT.findall(new_src))
+    old_code, new_code = cpp_code(old_src), cpp_code(new_src)
+    before, after = (sum(len(CPP_ASSERT.findall(line)) for line in code) for code in (old_code, new_code))
     if after < before:
         findings.append(flag(path, 0, f"{before - after} EXPECT_/ASSERT_ check(s) removed ({before} -> {after})"))
-    old_checks, new_checks = cpp_checks(change.removed), cpp_checks(change.added)
+    old_checks = cpp_checks([(n, old_code[n - 1]) for n, _ in change.removed])
+    new_checks = cpp_checks([(n, new_code[n - 1]) for n, _ in change.added])
     for key, (kind, tol, line_no) in new_checks.items():
         if key not in old_checks:
             continue
