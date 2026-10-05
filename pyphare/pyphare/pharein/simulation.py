@@ -636,7 +636,10 @@ def check_clustering(**kwargs):
 
 
 def check_max_mhd_level(**kwargs):
-    max_mhd_level = kwargs.get("max_mhd_level", 0)
+    # a pure MHD run needs every level to be MHD
+    model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
+    default = kwargs["max_nbr_levels"] if model_options == ["MHDModel"] else 0
+    max_mhd_level = kwargs.get("max_mhd_level", default)
 
     if max_mhd_level > kwargs["max_nbr_levels"]:
         raise ValueError(
