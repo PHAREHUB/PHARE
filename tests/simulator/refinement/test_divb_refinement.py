@@ -1,4 +1,19 @@
-#!/usr/bin/env python3
+#
+#
+import unittest
+
+import numpy as np
+from ddt import ddt, data, unpack
+
+import pyphare.pharein as ph
+from pyphare import cpp
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
+
+from tests.simulator import SimulatorTest
+
+ph.NO_GUI()
+
 # divB e2e for the composite field-refinement kernels (refinement_order 2).
 #
 # Idea: in the discrete Yee scheme Faraday preserves divB exactly, so on a fine level
@@ -26,19 +41,6 @@
 #             2D default tagger (max finite-diff ratio over Bx,By,Bz) and exercises the regrid
 #             path with a div-free field
 #
-# Run: mpirun -n 12 python -u divb_refinement.py [boxes|tagging] [orders...]
-#   orders    : refinement orders to run  (default 2, the only supported order)
-
-import sys
-import numpy as np
-
-import pyphare.pharein as ph
-from pyphare import cpp
-from pyphare.pharesee.run import Run
-from pyphare.simulator.simulator import Simulator, startMPI
-
-ph.NO_GUI()
-startMPI()
 
 # Harris double sheet. Bx = Bx(y) only => divB = dBx/dx (=0, Bx const in x) + dBy/dy (=0,
 # By identically 0) = 0 to machine precision on every level. y must be tall enough that the
@@ -72,22 +74,6 @@ FINE_BOX = [[4, 16], [15, 31]]
 # 1e-15 floor is still under ABS_CAP.
 ABS_CAP = 1e-12  # fine-level max|divB| must be this small in absolute terms ...
 REL_TOL = 20.0  # ... AND must not amplify the inherited coarse floor by more than this
-
-
-def require_double_diagnostics(b_dtype):
-    """Fail loudly unless diagnostics were dumped in double precision.
-
-    PHARE writes float32 diagnostics unless built with -DPHARE_DIAG_DOUBLES=1, and at float32 the
-    write precision ALONE puts max|divB| at ~2e-7 -- five orders above ABS_CAP -- so the absolute
-    arm of the gate would be measuring the dump format instead of the refinement operator. CI
-    always builds with diagnostic doubles (see .github/workflows/cmake_ubuntu.yml), so a float32
-    run is a local-build mistake: say so instead of silently relaxing the threshold.
-    """
-    if np.dtype(b_dtype) != np.float64:
-        raise RuntimeError(
-            f"divb_refinement needs double-precision diagnostics (B was dumped as {b_dtype}). "
-            "Rebuild with -DPHARE_DIAG_DOUBLES=1 -- build.sh takes 'pharediagdouble' as arg 5."
-        )
 
 
 # Shared Harris double-sheet init (both modes). Bx is a function of y ONLY (double tanh,
@@ -207,83 +193,50 @@ def max_divb_per_level(diag_dir, check_time):
     return out, b_dtype
 
 
-def run_variant(mode, order):
-    """(per-level max|divB| on rank 0, dry_run flag); per-level is None under dry run."""
-    diag_dir = f"divb_{mode}_o{order}"
-    sim, check_time = config(mode, order, diag_dir)
-    label = f"order={order}"
-    if cpp.mpi_rank() == 0:
-        print(f"=== divB {mode} {label} ===", flush=True)
-    Simulator(sim).run().reset()
-    dry_run = sim.dry_run
-    ph.global_vars.sim = None
-    if dry_run:  # setup only: nothing advanced, no diagnostics to read back
-        return None, True
-    if cpp.mpi_rank() == 0:
+@ddt
+class DivBRefinementTest(SimulatorTest):
+    """divB preservation of the composite field-refinement kernels, one case per mode."""
+
+    @data(("boxes", 2), ("tagging", 2))
+    @unpack
+    def test_divb_preserved_on_refined_level(self, mode, order):
+        diag_dir = f"divb_{mode}_o{order}"
+        self.register_diag_dir_for_cleanup(diag_dir)
+        sim, check_time = config(mode, order, diag_dir)
+        Simulator(sim).run().reset()
+        dry_run = sim.dry_run
+        ph.global_vars.sim = None
+        if dry_run:  # setup only: nothing advanced, no diagnostics to read back
+            self.skipTest("dry run: setup only, divB not checked")
+        if cpp.mpi_rank() != 0:
+            return
+
         per, b_dtype = max_divb_per_level(diag_dir, check_time)
-        require_double_diagnostics(b_dtype)
-        finest = max(per.keys())
-        coarse = per[min(per.keys())]
+        # PHARE writes float32 diagnostics unless built with -DPHARE_DIAG_DOUBLES=1, and at
+        # float32 the write precision ALONE puts max|divB| at ~2e-7 -- five orders above
+        # ABS_CAP -- so the absolute arm of the gate would be measuring the dump format
+        # instead of the refinement operator. Skip rather than measure the wrong thing.
+        if np.dtype(b_dtype) != np.float64:
+            self.skipTest(
+                f"needs double-precision diagnostics (B was dumped as {b_dtype}): "
+                "rebuild with -DPHARE_DIAG_DOUBLES=1"
+            )
+
+        coarsest, finest = min(per), max(per)
+        self.assertNotEqual(
+            coarsest, finest, f"divB {mode} order={order}: no fine level formed"
+        )
+        fine, coarse = per[finest], per[coarsest]
         print(
-            f"  {label}: levels={sorted(per)}  "
-            f"max|divB|_fine={per[finest]:.3e}  max|divB|_coarse={coarse:.3e}",
+            f"divB {mode} order={order}: fine={fine:.3e} coarse={coarse:.3e} "
+            f"ratio={fine / coarse if coarse else float('inf'):.2f}",
             flush=True,
         )
-        return per, False
-    return None, False
-
-
-def summarize(mode, orders, res):
-    """rank-0 only: print the per-order divB table, True if every order passes."""
-    print(f"=== divB {mode} summary ===", flush=True)
-    ok = True
-    for order in orders:
-        per = res[order]
-        label = f"order={order}"
-        finest = max(per.keys())
-        m = per[finest]
-        if finest == min(per.keys()):
-            ok = False
-            print(f"  {label}: NO FINE LEVEL FORMED  [FAIL]", flush=True)
-            continue
-        coarse = per[min(per.keys())]
-        abs_ok = m <= ABS_CAP  # absolutely div-free, not merely unamplified
-        rel_ok = m <= REL_TOL * coarse  # and no amplification of the inherited floor
-        if not (abs_ok and rel_ok):
-            ok = False
-        failed = "" if abs_ok and rel_ok else f" (abs={abs_ok} rel={rel_ok})"
-        print(
-            f"  {label}: fine={m:.3e}  coarse={coarse:.3e}  "
-            f"fine/coarse={m / coarse if coarse else float('inf'):.2f}  "
-            f"cap={ABS_CAP:.0e}  [{'OK' if abs_ok and rel_ok else 'FAIL'}{failed}]",
-            flush=True,
-        )
-    print(f"DIVB_{mode.upper()}_OK" if ok else f"DIVB_{mode.upper()}_FAIL", flush=True)
-    return ok
+        # absolutely div-free, not merely unamplified ...
+        self.assertLess(fine, ABS_CAP, f"divB {mode} order={order}")
+        # ... AND no amplification of the floor inherited from the coarse level
+        self.assertLessEqual(fine, REL_TOL * coarse, f"divB {mode} order={order}")
 
 
 if __name__ == "__main__":
-    argv = sys.argv[1:]
-    mode = argv[0] if argv and argv[0] in ("boxes", "tagging") else "boxes"
-    rest = argv[1:] if argv and argv[0] in ("boxes", "tagging") else argv
-    if rest:
-        try:
-            orders = [int(a) for a in rest]
-        except ValueError as e:
-            raise ValueError(f"non-integer refinement order in {rest}") from e
-        bad = [o for o in orders if o != 2]
-        if bad:
-            raise ValueError(
-                f"unsupported refinement order(s) {bad}: only order 2 is supported"
-            )
-    else:
-        orders = [2]
-
-    res, dry_run = {}, False
-    for o in orders:
-        res[o], dry_run = run_variant(mode, o)
-    if dry_run:  # setup only: every order's deck was built, no divB to summarize
-        print("dry run: setup only, divB not checked", flush=True)
-        sys.exit(0)
-    if cpp.mpi_rank() == 0 and not summarize(mode, orders, res):
-        raise RuntimeError(f"divB {mode}: refinement did not preserve divB")
+    unittest.main()
