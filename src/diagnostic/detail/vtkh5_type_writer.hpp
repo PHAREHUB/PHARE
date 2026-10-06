@@ -253,10 +253,25 @@ private:
             = std::max<std::size_t>(1, data_chunk_size_bytes / (N * sizeof(FloatType)));
         h5file.create_resizable_2d_data_set<FloatType, N>(level_data_path(ilvl), chunk_rows, N);
         initFileLevel(ilvl);
+        if (!isDumpedLevel(ilvl))
+        {
+            zero_boxes(ilvl);
+            return data_offset;
+        }
         resize_boxes(ilvl);
         resize_data<N>(ilvl);
         return data_offset;
     }
+
+    // dump_level only writes levels in [minLevel, maxLevel], but NSteps grows on every dump
+    bool isDumpedLevel(std::size_t const ilvl) const
+    {
+        auto const& h5Writer = typewriter->h5Writer_;
+        return ilvl >= h5Writer.minLevel and ilvl <= h5Writer.maxLevel;
+    }
+
+    // keep every level at one Steps entry per NSteps, a level not dumped has no data this step
+    void zero_boxes(int const ilvl);
 
 
     template<std::size_t N = 1>
@@ -486,6 +501,21 @@ void H5TypeWriter<Writer>::VTKFileInitializer::initFileLevel(int const ilvl)
         steps_group.createGroup("CellDataOffset");
         steps_group.createGroup("FieldDataOffset");
     }
+}
+
+
+template<typename Writer>
+void H5TypeWriter<Writer>::VTKFileInitializer::zero_boxes(int const ilvl)
+{
+    PHARE_LOG_SCOPE(3, "VTKFileInitializer::zero_boxes");
+
+    auto const lvl = std::to_string(ilvl);
+    data_offset    = h5file.getDataSet(level_data_path(ilvl)).getDimensions()[0];
+
+    append_step_offset(step_level + lvl + "/NumberOfAMRBox", 0);
+    append_step_offset(step_level + lvl + "/AMRBoxOffset",
+                       h5file.getDataSet(level_base + lvl + "/AMRBox").getDimensions()[0]);
+    append_step_offset(step_level + lvl + "/PointDataOffset/data", data_offset);
 }
 
 
