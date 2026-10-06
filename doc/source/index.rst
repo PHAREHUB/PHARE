@@ -57,6 +57,14 @@ Warning: This documentation is a work in progress. It is not complete and may co
    theory/amr
 
 
+.. Numerics
+.. ------
+.. toctree::
+   :caption: NUMERICS
+   :maxdepth: 1
+   :hidden:
+
+   numerics/boundary_conditions
 
 
 .. Getting and Building
@@ -84,7 +92,7 @@ Warning: This documentation is a work in progress. It is not complete and may co
    usage/examples
    usage/environment_variables
    usage/performance_analyses
-
+   usage/physical_boundaries
 
 
 
