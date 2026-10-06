@@ -10,9 +10,7 @@ endif()
 if(HighFive AND testMPI)
   ## divB preservation of the composite field-refinement kernels (order 2).
   ## These tests dump B diagnostics and read them back, so they require HighFive.
-  ## Only the refinement mode is passed: phare_mpi_python3_exec joins its extra
-  ## arguments into a single one, and order 2 is the script's default anyway.
   # exec level 11
-  phare_mpi_python3_exec(11 4 divb_refine_boxes   divb_refinement.py ${CMAKE_CURRENT_BINARY_DIR} boxes)
-  phare_mpi_python3_exec(11 4 divb_refine_tagging divb_refinement.py ${CMAKE_CURRENT_BINARY_DIR} tagging)
+  phare_mpi_python3_exec(11 4 divb_refine_boxes   divb_refinement.py ${CMAKE_CURRENT_BINARY_DIR} boxes 2)
+  phare_mpi_python3_exec(11 4 divb_refine_tagging divb_refinement.py ${CMAKE_CURRENT_BINARY_DIR} tagging 2)
 endif()
