@@ -527,9 +527,9 @@ namespace amr
             // boundaries.
             registerGhostRefinePatchStrategies_(elecPatchStrats, info->ghostElectric);
             for (std::size_t i = 0; i < info->ghostElectric.size(); ++i)
-                elecGhostsRefiners_.addStaticRefiner(
-                    info->ghostElectric[i], EfieldRefineOp_, info->ghostElectric[i],
-                    nonOverwriteInteriorTFfillPattern, elecPatchStrats[i]);
+                elecGhostsRefiners_.addStaticRefiner(info->ghostElectric[i], nullptr,
+                                                     info->ghostElectric[i], noOverlapFillPattern,
+                                                     elecPatchStrats[i]);
 
             currentGhostsRefiners_.addStaticRefiners(info->ghostCurrent, EfieldRefineOp_,
                                                      info->ghostCurrent,
@@ -741,6 +741,7 @@ namespace amr
 
         using InitRefinerPool             = RefinerPool<rm_t, RefinerType::InitField>;
         using GhostRefinerPool            = RefinerPool<rm_t, RefinerType::GhostField>;
+        using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using InitDomPartRefinerPool      = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
         using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
 
@@ -780,7 +781,7 @@ namespace amr
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
             HydroZpatchGhostRefluxedSchedules;
 
-        GhostRefinerPool elecGhostsRefiners_{resourcesManager_};
+        PatchGhostRefinerPool elecGhostsRefiners_{resourcesManager_};
         GhostRefinerPool currentGhostsRefiners_{resourcesManager_};
         GhostRefinerPool rhoGhostsRefiners_{resourcesManager_};
         // GhostRefinerPool velGhostsRefiners_{resourcesManager_};
@@ -861,6 +862,9 @@ namespace amr
 
         std::shared_ptr<TensorFieldFillPattern_t> nonOverwriteInteriorTFfillPattern
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>();
+
+        std::shared_ptr<NoOverlapFillPattern<dimension>> noOverlapFillPattern
+            = std::make_shared<NoOverlapFillPattern<dimension>>();
 
         std::shared_ptr<TensorFieldFillPattern_t> overwriteInteriorTFfillPattern
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
