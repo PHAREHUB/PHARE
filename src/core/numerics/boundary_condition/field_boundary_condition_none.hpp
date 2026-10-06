@@ -29,8 +29,6 @@ public:
     FieldBoundaryConditionNone(FieldBoundaryConditionNone&&)                 = default;
     FieldBoundaryConditionNone& operator=(FieldBoundaryConditionNone&&)      = default;
 
-    virtual ~FieldBoundaryConditionNone() = default;
-
     FieldBoundaryConditionType getType() const override { return FieldBoundaryConditionType::None; }
 
     void apply(ScalarOrTensorFieldT& /*scalarOrTensorField*/,

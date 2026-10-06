@@ -39,8 +39,6 @@ public:
     FieldBoundaryConditionSymmetric(FieldBoundaryConditionSymmetric&&)                 = default;
     FieldBoundaryConditionSymmetric& operator=(FieldBoundaryConditionSymmetric&&)      = default;
 
-    virtual ~FieldBoundaryConditionSymmetric() = default;
-
     FieldBoundaryConditionType getType() const override
     {
         return FieldBoundaryConditionType::Symmetric;

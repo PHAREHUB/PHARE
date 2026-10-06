@@ -10,12 +10,6 @@ namespace PHARE::core
 /** @brief Physical behavior of a boundary. */
 enum class BoundaryType { None, Reflective, SuperMagnetofastInflow, Open };
 
-//@{
-//! @name Definitions for boundary array sizes in 3d (used by the boundary-manager tests):
-constexpr int NUM_3D_EDGES = 12;
-constexpr int NUM_3D_NODES = 8;
-//@}
-
 /**
  * @brief Possible locations of 1-codimensional boundary (a face in 3D, an edge in 2D, an extremity
  * in 1D).

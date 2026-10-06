@@ -11,7 +11,9 @@
 
 using namespace PHARE::core;
 
-constexpr std::size_t dimension = 3;
+constexpr std::size_t dimension    = 3;
+constexpr std::size_t NUM_3D_EDGES = 12;
+constexpr std::size_t NUM_3D_NODES = 8;
 constexpr PHARE::SimOpts opts{.dimension           = dimension,
                               .interp_order        = 1,
                               .reconstruction_type = PHARE::MHDOpts::ReconstructionType::Constant,

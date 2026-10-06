@@ -41,8 +41,6 @@ public:
     FieldBoundaryConditionNeumann(FieldBoundaryConditionNeumann&&)                 = default;
     FieldBoundaryConditionNeumann& operator=(FieldBoundaryConditionNeumann&&)      = default;
 
-    virtual ~FieldBoundaryConditionNeumann() = default;
-
     FieldBoundaryConditionType getType() const override
     {
         return FieldBoundaryConditionType::Neumann;

@@ -40,8 +40,6 @@ public:
     FieldBoundaryConditionAntiSymmetric(FieldBoundaryConditionAntiSymmetric&&)            = default;
     FieldBoundaryConditionAntiSymmetric& operator=(FieldBoundaryConditionAntiSymmetric&&) = default;
 
-    virtual ~FieldBoundaryConditionAntiSymmetric() = default;
-
     FieldBoundaryConditionType getType() const override
     {
         return FieldBoundaryConditionType::AntiSymmetric;

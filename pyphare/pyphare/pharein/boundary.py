@@ -11,7 +11,7 @@ physical and both of its locations must be given.
 
 resolve_boundaries(ndim, **kwargs) is the single entry point used by Simulation's checker()
 pipeline; it returns the per-direction periodicity flags, stored as Simulation.periodicities, and
-a dict[location] -> BoundaryCondition stored as Simulation.boundaries.
+a dict[location] -> Boundary stored as Simulation.boundaries.
 """
 
 import math
@@ -24,7 +24,7 @@ from ..core import phare_utilities
 
 
 @dataclass
-class BoundaryCondition(ABC):
+class Boundary(ABC):
     """Base class holding the serialisation entry point common to every BC type."""
 
     type = None
@@ -38,17 +38,17 @@ def boundary_type_enum_member(boundary_type):
 
 
 @dataclass
-class NoneBC(BoundaryCondition):
+class NoneBoundary(Boundary):
     type = "none"
 
 
 @dataclass
-class OpenBC(BoundaryCondition):
+class OpenBoundary(Boundary):
     type = "open"
 
 
 @dataclass
-class ReflectiveBC(BoundaryCondition):
+class ReflectiveBoundary(Boundary):
     type = "reflective"
 
 
@@ -107,7 +107,7 @@ def _normalize_inflow_velocity(location, velocity, ndim):
 
 
 @dataclass
-class SuperMagnetofastInflowBC(BoundaryCondition):
+class SuperMagnetofastInflowBoundary(Boundary):
     type = "super-magnetofast-inflow"
     density: object
     pressure: object
@@ -137,10 +137,10 @@ class SuperMagnetofastInflowBC(BoundaryCondition):
 # ------------------------------------------------------------------------------
 
 _TYPE_CTORS = {
-    "none": NoneBC,
-    "open": OpenBC,
-    "reflective": ReflectiveBC,
-    "super-magnetofast-inflow": SuperMagnetofastInflowBC,
+    "none": NoneBoundary,
+    "open": OpenBoundary,
+    "reflective": ReflectiveBoundary,
+    "super-magnetofast-inflow": SuperMagnetofastInflowBoundary,
 }
 
 
@@ -183,7 +183,7 @@ def resolve_boundaries(ndim, **kwargs):
     resolved = {}
     for location in all_boundary_locations:
         if location not in raw:
-            resolved[location] = NoneBC()
+            resolved[location] = NoneBoundary()
             continue
 
         bc = raw[location]

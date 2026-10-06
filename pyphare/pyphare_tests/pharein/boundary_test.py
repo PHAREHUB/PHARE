@@ -8,7 +8,7 @@ class TestBoundaryStructural(unittest.TestCase):
         periodicities, resolved = boundary.resolve_boundaries(2)
         self.assertEqual([True, True], periodicities)
         for loc in ("xlower", "xupper", "ylower", "yupper"):
-            self.assertIsInstance(resolved[loc], boundary.NoneBC)
+            self.assertIsInstance(resolved[loc], boundary.NoneBoundary)
             self.assertEqual("none", resolved[loc].type)
 
     def test_one_given_location_makes_direction_physical(self):
@@ -18,7 +18,7 @@ class TestBoundaryStructural(unittest.TestCase):
             model_options=["MHDModel"],
         )
         self.assertEqual([False, True], periodicities)
-        self.assertIsInstance(resolved["ylower"], boundary.NoneBC)
+        self.assertIsInstance(resolved["ylower"], boundary.NoneBoundary)
 
     def test_missing_opposite_location_raises(self):
         for given in ("xlower", "xupper"):
@@ -75,8 +75,8 @@ class TestBoundaryStructural(unittest.TestCase):
             boundaries={"xlower": {"type": "open"}, "xupper": {"type": "reflective"}},
             model_options=["MHDModel"],
         )
-        self.assertIsInstance(resolved["xlower"], boundary.OpenBC)
-        self.assertIsInstance(resolved["xupper"], boundary.ReflectiveBC)
+        self.assertIsInstance(resolved["xlower"], boundary.OpenBoundary)
+        self.assertIsInstance(resolved["xupper"], boundary.ReflectiveBoundary)
 
 
 class TestInflowOutflowData(unittest.TestCase):

@@ -67,8 +67,6 @@ public:
     FieldBoundaryConditionDivergenceFreeTransverseDirichlet&
     operator=(FieldBoundaryConditionDivergenceFreeTransverseDirichlet&&) = default;
 
-    virtual ~FieldBoundaryConditionDivergenceFreeTransverseDirichlet() = default;
-
     FieldBoundaryConditionType getType() const override
     {
         return FieldBoundaryConditionType::DivergenceFreeTransverseDirichlet;

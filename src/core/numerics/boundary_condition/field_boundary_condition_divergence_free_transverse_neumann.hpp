@@ -51,8 +51,6 @@ public:
     FieldBoundaryConditionDivergenceFreeTransverseNeumann&
     operator=(FieldBoundaryConditionDivergenceFreeTransverseNeumann&&) = default;
 
-    virtual ~FieldBoundaryConditionDivergenceFreeTransverseNeumann() = default;
-
     FieldBoundaryConditionType getType() const override
     {
         return FieldBoundaryConditionType::DivergenceFreeTransverseNeumann;

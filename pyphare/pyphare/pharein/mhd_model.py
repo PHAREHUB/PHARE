@@ -1,7 +1,7 @@
 import numpy as np
 
 from . import global_vars
-from .boundary import SuperMagnetofastInflowBC
+from .boundary import SuperMagnetofastInflowBoundary
 
 
 class MHDModel(object):
@@ -66,7 +66,7 @@ class MHDModel(object):
         b_functions = [self.model_dict[name] for name in ("bx", "by", "bz")]
 
         for location, bc in sim.boundaries.items():
-            if not isinstance(bc, SuperMagnetofastInflowBC):
+            if not isinstance(bc, SuperMagnetofastInflowBoundary):
                 continue
 
             normal = "xyz".index(location[0])

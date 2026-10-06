@@ -54,8 +54,6 @@ public:
     FieldBoundaryConditionDirichlet(FieldBoundaryConditionDirichlet&&)                 = default;
     FieldBoundaryConditionDirichlet& operator=(FieldBoundaryConditionDirichlet&&)      = default;
 
-    virtual ~FieldBoundaryConditionDirichlet() = default;
-
     FieldBoundaryConditionType getType() const override
     {
         return FieldBoundaryConditionType::Dirichlet;
