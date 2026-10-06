@@ -70,18 +70,20 @@ private:
                                  auto const v_p2)
     {
         static constexpr auto alpha = 4.;
-        auto const fi1_2  = (2. * v_m2 - 13. * v_m1 + 47. * u + 27. * v_p1 - 3. * v_p2) / 60.;
-        auto const Dil    = u - v_m1;
-        auto const Dir    = v_p1 - u;
-        auto const fMP    = u + MinModLimiter::limit(Dir, alpha * Dil);
-        auto const fUL    = u + alpha * Dil;
-        auto const di     = Dir - Dil;
-        auto const dir    = (v_p2 - v_p1) - Dir;
-        auto const d4i1_2 = MinModLimiter::limit(4. * di - dir, 4. * dir - di, di, dir);
-        auto const fMD    = (u + v_p1) / 2. - d4i1_2 / 2.;
-        auto const fLC    = u + Dil / 2. + (4. / 3.) * d4i1_2;
-        auto const fmin   = std::max(std::min({u, v_p1, fMD}), std::min({u, fUL, fLC}));
-        auto const fmax   = std::min(std::max({u, v_p1, fMD}), std::max({u, fUL, fLC}));
+        auto const fi1_2   = (2. * v_m2 - 13. * v_m1 + 47. * u + 27. * v_p1 - 3. * v_p2) / 60.;
+        auto const Dil     = u - v_m1;
+        auto const Dir     = v_p1 - u;
+        auto const fMP     = u + MinModLimiter::limit(Dir, alpha * Dil);
+        auto const fUL     = u + alpha * Dil;
+        auto const di      = Dir - Dil;
+        auto const dir     = (v_p2 - v_p1) - Dir;
+        auto const d4i1_2  = MinModLimiter::limit(4. * di - dir, 4. * dir - di, di, dir);
+        auto const fMD     = (u + v_p1) / 2. - d4i1_2 / 2.;
+        auto const dil     = Dil - (v_m1 - v_m2);
+        auto const d4im1_2 = MinModLimiter::limit(4. * dil - di, 4. * di - dil, dil, di);
+        auto const fLC     = u + Dil / 2. + (4. / 3.) * d4im1_2;
+        auto const fmin    = std::max(std::min({u, v_p1, fMD}), std::min({u, fUL, fLC}));
+        auto const fmax    = std::min(std::max({u, v_p1, fMD}), std::max({u, fUL, fLC}));
         return (fi1_2 - u) * (fi1_2 - fMP) < 0.0 ? fi1_2 : std::clamp(fi1_2, fmin, fmax);
     }
 };
