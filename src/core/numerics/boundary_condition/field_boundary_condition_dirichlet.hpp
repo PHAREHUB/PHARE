@@ -2,7 +2,6 @@
 #define PHARE_CORE_NUMERICS_BOUNDARY_CONDITION_FIELD_BOUNDARY_CONDITION_DIRICHLET_HPP
 
 #include "core/boundary/boundary_defs.hpp"
-#include "core/data/grid/gridlayout.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/boundary_condition/field_boundary_condition.hpp"
 

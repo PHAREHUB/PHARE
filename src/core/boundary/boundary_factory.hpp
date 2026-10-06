@@ -4,13 +4,14 @@
 #include "core/boundary/boundary.hpp"
 #include "core/boundary/boundary_defs.hpp"
 #include "core/data/field/field_traits.hpp"
-#include "core/numerics/boundary_condition/field_boundary_condition_resolver.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 
 #include "initializer/data_provider.hpp"
 #include "initializer/dict_utils.hpp"
 
 #include <array>
+#include <concepts>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -19,16 +20,8 @@
 namespace PHARE::core
 {
 
-/**
- * @brief Detects whether a physical quantity type carries the conserved-variable set
- * required by super-magnetofast inflow boundary conditions (momentum vector @c rhoV and total
- * energy @c Etot). Satisfied by MHDQuantity, not by HybridQuantity.
- */
 template<typename T>
-concept HasInflowQuantities = requires {
-    { T::Vector::rhoV };
-    { T::Scalar::Etot };
-};
+concept IsMHDModel = std::same_as<T, MHDQuantity>;
 
 /**
  * @brief Contains all the recipes to create a boundary object according to the desired
@@ -87,20 +80,9 @@ public:
                 register_reflective_conditions_(boundary, quantities);
                 break;
             case BoundaryType::SuperMagnetofastInflow:
-                if constexpr (HasInflowQuantities<physical_quantity_type>)
-                    register_inflow_conditions_(boundary, dict, quantities, gamma);
-                else
-                    throw std::runtime_error(
-                        "SuperMagnetofastInflow boundary type is not supported for this physical "
-                        "model.");
+                register_inflow_conditions_(boundary, dict, quantities, gamma);
                 break;
-            case BoundaryType::Open:
-                if constexpr (HasInflowQuantities<physical_quantity_type>)
-                    register_open_conditions_(boundary, quantities);
-                else
-                    throw std::runtime_error(
-                        "Open boundary type is not supported for this physical model.");
-                break;
+            case BoundaryType::Open: register_open_conditions_(boundary, quantities); break;
             default: throw std::runtime_error("Boundary type not implemented.");
         }
         return boundary;
@@ -130,35 +112,39 @@ private:
     static void register_reflective_conditions_(boundary_ptr_type& boundary,
                                                 _model_menu_type const& quantities)
     {
-        for (auto const quantity : quantities.scalars)
+        if constexpr (!IsMHDModel<physical_quantity_type>)
+            throw std::runtime_error(
+                "Reflective boundary type is only supported by the MHD model.");
+        else
         {
-            boundary->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
-                quantity);
-        }
-        for (auto const quantity : quantities.vectors)
-        {
-            switch (quantity)
+            for (auto const quantity : quantities.scalars)
             {
-                case (physical_quantity_type::Vector::B):
-                    // Fill outside-domain B ghosts with a divergence-free transverse Neumann
-                    // extrapolation of the interior field (Faraday runs on the interior box only,
-                    // so the ghost B must be provided by this condition rather than CT).
-                    boundary->template registerFieldCondition<
-                        FieldBoundaryConditionType::DivergenceFreeTransverseNeumann>(quantity);
-                    break;
-                case (physical_quantity_type::Vector::J):
-                    boundary->template registerFieldCondition<
-                        FieldBoundaryConditionType::AntiSymmetric>(quantity);
-                    break;
-                case (physical_quantity_type::Vector::E):
-                    boundary->template registerFieldCondition<
-                        FieldBoundaryConditionType::AntiSymmetric>(quantity);
-                    break;
-                default:
-                    boundary
-                        ->template registerFieldCondition<FieldBoundaryConditionType::Symmetric>(
+                boundary->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
+                    quantity);
+            }
+            for (auto const quantity : quantities.vectors)
+            {
+                switch (quantity)
+                {
+                    case (physical_quantity_type::Vector::B):
+                        // Fill outside-domain B ghosts with a divergence-free transverse Neumann
+                        // extrapolation of the interior field.
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::DivergenceFreeTransverseNeumann>(quantity);
+                        break;
+                    case (physical_quantity_type::Vector::E):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::AntiSymmetric>(quantity);
+                        break;
+                    case (physical_quantity_type::Vector::rhoV):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::Symmetric>(quantity);
+                        break;
+                    default:
+                        boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
                             quantity);
-                    break;
+                        break;
+                }
             }
         }
     }
@@ -167,40 +153,43 @@ private:
     static void register_open_conditions_(boundary_ptr_type& boundary,
                                           _model_menu_type const& quantities)
     {
-        for (auto const quantity : quantities.scalars)
+        if constexpr (!IsMHDModel<physical_quantity_type>)
+            throw std::runtime_error("Open boundary type is only supported by the MHD model.");
+        else
         {
-            switch (quantity)
+            for (auto const quantity : quantities.scalars)
             {
-                case (physical_quantity_type::Scalar::rho):
-                case (physical_quantity_type::Scalar::Etot):
-                    boundary->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
-                        quantity);
-                    break;
-                default:
-                    boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
-                        quantity);
+                switch (quantity)
+                {
+                    case (physical_quantity_type::Scalar::rho):
+                    case (physical_quantity_type::Scalar::Etot):
+                        boundary
+                            ->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
+                                quantity);
+                        break;
+                    default:
+                        boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
+                            quantity);
+                }
             }
-        }
-        for (auto const quantity : quantities.vectors)
-        {
-            switch (quantity)
+            for (auto const quantity : quantities.vectors)
             {
-                case (physical_quantity_type::Vector::rhoV):
-                    boundary->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
-                        quantity);
-                    break;
-                case (physical_quantity_type::Vector::B):
-                    boundary->template registerFieldCondition<
-                        FieldBoundaryConditionType::DivergenceFreeTransverseNeumann>(quantity);
-                    break;
-                case (physical_quantity_type::Vector::E):
-                    boundary->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
-                        quantity);
-                    break;
-                default:
-                    boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
-                        quantity);
-                    break;
+                switch (quantity)
+                {
+                    case (physical_quantity_type::Vector::rhoV):
+                        boundary
+                            ->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
+                                quantity);
+                        break;
+                    case (physical_quantity_type::Vector::B):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::DivergenceFreeTransverseNeumann>(quantity);
+                        break;
+                    default:
+                        boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
+                            quantity);
+                        break;
+                }
             }
         }
     }
@@ -209,76 +198,83 @@ private:
      *
      *  Density, momentum and total energy are imposed, the latter being computed from the
      *  prescribed inflow state (density, velocity, B, pressure). The magnetic field is imposed
-     *  through the motional electric field E = -v x B.
+     *  through the motional electric field E = -v x B on the boundary, and its ghosts are filled
+     *  with the inflow B by a divergence-free transverse Dirichlet condition.
      */
     static void register_inflow_conditions_(boundary_ptr_type& boundary,
                                             initializer::PHAREDict const& data,
                                             _model_menu_type const& quantities, double const gamma)
-        requires HasInflowQuantities<physical_quantity_type>
     {
-        if (!(gamma > 1.0))
-            throw std::runtime_error("BoundaryFactory: a heat capacity ratio > 1 is required for "
-                                     "SuperMagnetofastInflow boundaries, got "
-                                     + std::to_string(gamma) + ".");
-
-        if (!data.contains("B"))
+        if constexpr (!IsMHDModel<physical_quantity_type>)
             throw std::runtime_error(
-                "BoundaryFactory: SuperMagnetofastInflow requires the magnetic field 'B'.");
-
-        auto const rho  = data["density"].template to<double>();
-        auto const P    = data["pressure"].template to<double>();
-        auto const v    = initializer::parseDimXYZType<double, 3>(data, "velocity");
-        auto const B    = initializer::parseDimXYZType<double, 3>(data, "B");
-        auto const Etot = eosPToEtot(gamma, rho, v[0], v[1], v[2], B[0], B[1], B[2], P);
-
-        for (auto const quantity : quantities.scalars)
+                "SuperMagnetofastInflow boundary type is only supported by the MHD model.");
+        else
         {
-            switch (quantity)
+            if (!(gamma > 1.0))
+                throw std::runtime_error(
+                    "BoundaryFactory: a heat capacity ratio > 1 is required for "
+                    "SuperMagnetofastInflow boundaries, got "
+                    + std::to_string(gamma) + ".");
+
+            if (!data.contains("B"))
+                throw std::runtime_error(
+                    "BoundaryFactory: SuperMagnetofastInflow requires the magnetic field 'B'.");
+
+            auto const rho  = data["density"].template to<double>();
+            auto const P    = data["pressure"].template to<double>();
+            auto const v    = initializer::parseDimXYZType<double, 3>(data, "velocity");
+            auto const B    = initializer::parseDimXYZType<double, 3>(data, "B");
+            auto const Etot = eosPToEtot(gamma, rho, v[0], v[1], v[2], B[0], B[1], B[2], P);
+
+            for (auto const quantity : quantities.scalars)
             {
-                case (physical_quantity_type::Scalar::rho):
-                    boundary
-                        ->template registerFieldCondition<FieldBoundaryConditionType::Dirichlet>(
+                switch (quantity)
+                {
+                    case (physical_quantity_type::Scalar::rho):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::Dirichlet>(
                             quantity, rho, DirichletExtrapolation::Constant);
-                    break;
-                case (physical_quantity_type::Scalar::Etot):
-                    boundary
-                        ->template registerFieldCondition<FieldBoundaryConditionType::Dirichlet>(
+                        break;
+                    case (physical_quantity_type::Scalar::Etot):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::Dirichlet>(
                             quantity, Etot, DirichletExtrapolation::Constant);
-                    break;
-                default:
-                    boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
-                        quantity);
-                    break;
+                        break;
+                    default:
+                        boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
+                            quantity);
+                        break;
+                }
             }
-        }
 
-        for (auto const quantity : quantities.vectors)
-        {
-            switch (quantity)
+            for (auto const quantity : quantities.vectors)
             {
-                case (physical_quantity_type::Vector::rhoV):
-                    boundary
-                        ->template registerFieldCondition<FieldBoundaryConditionType::Dirichlet>(
+                switch (quantity)
+                {
+                    case (physical_quantity_type::Vector::rhoV):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::Dirichlet>(
                             quantity, vToRhoV(rho, v), DirichletExtrapolation::Constant);
-                    break;
-                case (physical_quantity_type::Vector::B):
-                    boundary->template registerFieldCondition<
-                        FieldBoundaryConditionType::DivergenceFreeTransverseDirichlet>(
-                        quantity, B, DirichletExtrapolation::Constant);
-                    break;
-                case (physical_quantity_type::Vector::E):
-                    boundary
-                        ->template registerFieldCondition<FieldBoundaryConditionType::Dirichlet>(
+                        break;
+                    case (physical_quantity_type::Vector::B):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::DivergenceFreeTransverseDirichlet>(
+                            quantity, B, DirichletExtrapolation::Constant);
+                        break;
+                    case (physical_quantity_type::Vector::E):
+                        boundary->template registerFieldCondition<
+                            FieldBoundaryConditionType::Dirichlet>(
                             quantity,
                             std::array<double, 3>{v[2] * B[1] - v[1] * B[2],
                                                   v[0] * B[2] - v[2] * B[0],
                                                   v[1] * B[0] - v[0] * B[1]},
                             DirichletExtrapolation::Constant);
-                    break;
-                default:
-                    boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
-                        quantity);
-                    break;
+                        break;
+                    default:
+                        boundary->template registerFieldCondition<FieldBoundaryConditionType::None>(
+                            quantity);
+                        break;
+                }
             }
         }
     }

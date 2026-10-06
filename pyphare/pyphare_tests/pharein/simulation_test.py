@@ -6,6 +6,7 @@ import pyphare.pharein.global_vars as global_vars
 
 from pyphare.core import phare_utilities
 from pyphare.pharein import simulation
+from pyphare.pharein.mhd_model import MHDModel
 
 
 class TestSimulation(unittest.TestCase):
@@ -142,6 +143,64 @@ class TestSimulation(unittest.TestCase):
                     },
                 )
             )
+
+    def _inflow_sim(self, velocity=2.0, B=(0.5, 1.0, 0.0), **overrides):
+        global_vars.sim = None
+        return simulation.Simulation(
+            **self._mhd_kwargs(
+                boundaries={
+                    "xlower": {
+                        "type": "super-magnetofast-inflow",
+                        "velocity": velocity,
+                        "density": 1.0,
+                        "pressure": 1.0,
+                        "B": list(B),
+                    },
+                    "xupper": {"type": "open"},
+                },
+                **overrides,
+            )
+        )
+
+    def test_inflow_consistent_normal_b_accepted(self):
+        s = self._inflow_sim()
+        MHDModel(bx=lambda x: 0.5 + 0.1 * np.sin(np.pi * x / 10.0), by=lambda x: 1.0)
+        self.assertIs(s, global_vars.sim)
+        self.assertIsNotNone(s.model)
+
+    def test_inflow_inconsistent_normal_b_rejected(self):
+        self._inflow_sim()
+        with self.assertRaises(ValueError):
+            MHDModel(bx=lambda x: 0.7 + x * 0, by=lambda x: 1.0)
+
+    def test_inflow_oblique_inconsistent_normal_b_rejected(self):
+        self._inflow_sim(velocity=[2.0, 0.5, 0.0])
+        with self.assertRaises(ValueError):
+            MHDModel(bx=lambda x: 0.7 + x * 0, by=lambda x: 1.0)
+
+    def test_inflow_normal_b_checked_along_whole_face(self):
+        self._inflow_sim(cells=(80, 40), domain_size=(10.0, 8.0))
+        with self.assertRaises(ValueError):
+            MHDModel(bx=lambda x, y: 0.5 + 0.01 * np.sin(2 * np.pi * y / 8.0))
+
+    def test_inflow_normal_b_checked_at_upper_face(self):
+        global_vars.sim = None
+        simulation.Simulation(
+            **self._mhd_kwargs(
+                boundaries={
+                    "xlower": {"type": "open"},
+                    "xupper": {
+                        "type": "super-magnetofast-inflow",
+                        "velocity": 2.0,
+                        "density": 1.0,
+                        "pressure": 1.0,
+                        "B": [0.5, 1.0, 0.0],
+                    },
+                },
+            )
+        )
+        with self.assertRaises(ValueError):
+            MHDModel(bx=lambda x: np.where(x > 9.0, 0.6, 0.5), by=lambda x: 1.0)
 
 
 if __name__ == "__main__":

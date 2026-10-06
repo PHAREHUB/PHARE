@@ -2,7 +2,6 @@
 #define PHARE_FARADAY_HPP
 
 #include <cstddef>
-#include <utility>
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -13,7 +12,7 @@ namespace PHARE::core
 
 
 
-template<typename GridLayout, bool OnGhostBox = false>
+template<typename GridLayout>
 class Faraday
 {
     constexpr static auto dimension = GridLayout::dimension;
@@ -43,24 +42,15 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        eval_(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
-        eval_(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
-        eval_(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
+        layout_.evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
+        layout_.evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
+        layout_.evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
     }
 
 
 private:
     double dt_;
     GridLayout layout_;
-
-    template<typename Field, typename Fn>
-    void eval_(Field& field, Fn&& fn) const
-    {
-        if constexpr (OnGhostBox)
-            layout_.evalOnGhostBox(field, std::forward<Fn>(fn));
-        else
-            layout_.evalOnBox(field, std::forward<Fn>(fn));
-    }
 
     template<typename VecField, typename Field, typename... Indexes>
     void BxEq_(Field const& Bx, VecField const& E, Field& Bxnew, Indexes const&... ijk) const

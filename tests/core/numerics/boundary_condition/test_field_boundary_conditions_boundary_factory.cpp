@@ -104,7 +104,7 @@ TEST(BoundaryFactory, Open)
 {
     checkDispatch(BoundaryType::Open, {{{Scalar::rho, FBC::Neumann}, {Scalar::Etot, FBC::Neumann}},
                                        {{Vector::B, FBC::DivergenceFreeTransverseNeumann},
-                                        {Vector::E, FBC::Neumann},
+                                        {Vector::E, FBC::None},
                                         {Vector::rhoV, FBC::Neumann}}});
 }
 
