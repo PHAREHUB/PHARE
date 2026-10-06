@@ -74,7 +74,7 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
         [&](int const ilvl) { // missing level
             init(ilvl);
         },
-        this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
+        0, modelView.maxLevel()); // all levels, see VTKFileInitializer::zero_boxes
 }
 
 
