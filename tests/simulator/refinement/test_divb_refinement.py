@@ -63,17 +63,20 @@ FINE_BOX = [[4, 16], [15, 31]]
 # init is analytically machine-zero, so after NSTEPS the floor is pure roundoff: the fine level
 # must stay absolutely tiny and not amplify what it inherits. Both arms must hold.
 #
-# Measured floors (2026-08-31, 4 ranks, both modes):
-#   float64 diagnostics: coarse 6.2e-16 .. 2.9e-15, fine 2.6e-15 .. 1.4e-14, ratio 2.96 .. 5.33
-#   float32 diagnostics: coarse 2.2e-07,             fine 4.2e-07 .. 4.5e-07, ratio 1.89 .. 2.04
-# The ratio is not precision-independent -- float32 sits near 2, float64 near 5, the fine level
-# carrying a few more operations' worth of roundoff -- and the float64 ratio wanders run to run
-# with the rank decomposition, which is why REL_TOL has headroom: 5 would have failed a passing
-# run. ABS_CAP is the arm with teeth, ~70x above the worst measured fine value and ~11 orders
-# below the O(B/dx) spike. REL_TOL still catches what the cap cannot: a 100x amplification of a
-# 1e-15 floor is still under ABS_CAP.
-ABS_CAP = 1e-12  # fine-level max|divB| must be this small in absolute terms ...
-REL_TOL = 20.0  # ... AND must not amplify the inherited coarse floor by more than this
+# Measured floors, float64 diagnostics, 1 to 4 ranks, both modes:
+#   boxes  : coarse ~7.0e-16,            fine 1.9e-15 .. 2.8e-15,  ratio 2.77 .. 3.98
+#   tagging: coarse 2.1e-15 .. 2.6e-15,  fine 9.2e-15 .. 1.4e-14,  ratio 3.77 .. 5.33
+# The run is deterministic for a given rank count (the per-rank particle seed is fixed), and
+# the spread above is what changing the decomposition moves. Dumped at float32 instead, the
+# write precision alone puts the fine level at ~4.3e-07 -- which is why the test skips rather
+# than measure the dump format.
+#
+# ABS_CAP is the arm with teeth: ~7x above the worst measured fine value, and still ~12 orders
+# below the O(B/dx) spike, so it catches a touch-up that is merely approximate long before one
+# that is wrong. REL_TOL keeps ~2x over the worst measured ratio and catches what the cap
+# cannot: a 100x amplification of a 1e-15 floor is still under ABS_CAP.
+ABS_CAP = 1e-13  # fine-level max|divB| must be this small in absolute terms ...
+REL_TOL = 10.0  # ... AND must not amplify the inherited coarse floor by more than this
 
 
 # Shared Harris double-sheet init (both modes). Bx is a function of y ONLY (double tanh,
