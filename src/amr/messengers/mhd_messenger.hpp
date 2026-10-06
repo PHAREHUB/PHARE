@@ -434,6 +434,7 @@ namespace amr
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
             fillMagneticGhosts(mhdModel.state.B, level, initDataTime);
+            fillMomentsGhosts(mhdModel.state, level, initDataTime);
         }
 
         void synchronize(SAMRAI::hier::PatchLevel& level) final {}
