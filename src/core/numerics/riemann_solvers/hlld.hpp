@@ -112,7 +112,7 @@ private:
                   auto PtL = PL + 0.5 * BdotBL;
                   auto PtR = PR + 0.5 * BdotBR;
 
-                  auto const Bn = BcompL; // should be the same on both sides
+                  auto const Bn = BcompL; // is the same on both sides
                   // auto const Bn = (SR * BcompR - SL * BcompL) / (SR - SL);
 
                   auto SM_numerator
@@ -546,8 +546,7 @@ private:
                   auto PtL = PL + 0.5 * BdotBL;
                   auto PtR = PR + 0.5 * BdotBR;
 
-                  // auto const Bn = BcompL; // should be the same on both sides
-                  auto const Bn = SR * BcompR - SL * BcompL / (SR - SL);
+                  auto const Bn = BcompL; // is the same on both sides
 
                   auto SM_numerator
                       = rhoR * VcompR * (SR - VcompR) - rhoL * VcompL * (SL - VcompL) - PtR + PtL;
