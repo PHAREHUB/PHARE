@@ -616,22 +616,20 @@ private:
     {
         auto const [SL, SL_s, SM, SR_s, SR] = hlld_speeds;
 
-        SL_ = SL;
-        SR_ = SR;
+        // clipped speeds, as in hll.hpp
+        SL_ = std::min(0.0, SL);
+        SR_ = std::max(0.0, SR);
 
         bool const fallback
             = ((SL_s - SL) < 1.0e-4 * (SM - SL)) || ((SR_s - SR) > -1.0e-4 * (SR - SM));
 
         if (fallback)
         {
-            auto const sl = std::min(0.0, SL);
-            auto const sr = std::max(0.0, SR);
+            auto const inv = 1.0 / (SR_ - SL_);
 
-            auto const inv = 1.0 / (sr - sl);
-
-            uct_coefs[0] = sr * inv;
-            uct_coefs[1] = -sl * inv;
-            uct_coefs[2] = -sr * sl * inv;
+            uct_coefs[0] = SR_ * inv;
+            uct_coefs[1] = -SL_ * inv;
+            uct_coefs[2] = -SR_ * SL_ * inv;
             uct_coefs[3] = uct_coefs[2];
         }
         else
