@@ -21,18 +21,14 @@ class PatchHierarchy(object):
 
     def __init__(
         self,
-        patch_levels,
+        time_hier,  # {time: {ilvl: PatchLevel}}
         domain_box,
         refinement_ratio=2,
-        times=[0.0],
         data_files=None,
         **kwargs,
     ):
-        if not isinstance(times, (tuple, list)):
-            times = listify(times)
-
-        if not isinstance(patch_levels, (tuple, list)):
-            patch_levels = listify(patch_levels)
+        self.time_hier = {format_timestamp(t): lvls for t, lvls in time_hier.items()}
+        times = list(self.time_hier.keys())
 
         self.selection_box = kwargs.get("selection_box", None)
         if self.selection_box is not None:
@@ -43,14 +39,7 @@ class PatchHierarchy(object):
             }
             assert len(times) == len(self.selection_box)
 
-        assert len(times) == len(patch_levels)
-
-        self.patch_levels = patch_levels
         self.ndim = len(domain_box.lower)
-        self.time_hier = {}
-        self.time_hier.update(
-            {format_timestamp(t): pl for t, pl in zip(times, patch_levels)}
-        )
 
         self.domain_box = domain_box
         self.refinement_ratio = refinement_ratio
@@ -88,10 +77,9 @@ class PatchHierarchy(object):
                         new_lvls[ilvl] = PatchLevel(ilvl, patches)
                     if qty not in self.__dict__:
                         self.__dict__[qty] = PatchHierarchy(
-                            new_lvls,
+                            {time: new_lvls},
                             self.domain_box,
                             selection_box=self.domain_box,
-                            times=time,
                             data_files=self.data_files,
                         )
                     else:
@@ -182,10 +170,11 @@ class PatchHierarchy(object):
         extractor = Extractor()
         datas = []
         coords = []
-        ilvls = list(self.levels().keys())[::-1]
+        levels = self.levels()
+        ilvls = list(levels.keys())[::-1]
 
         for ilvl in ilvls:
-            lvl = self.patch_levels[ilvl]
+            lvl = levels[ilvl]
             for patch in lvl.patches:
                 slice_coord = domain_coords(patch, qty)[slice_dim]
                 cst_coord = domain_coords(patch, qty)[cst_dim]

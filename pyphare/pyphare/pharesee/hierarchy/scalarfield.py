@@ -5,13 +5,12 @@ from .hierarchy_utils import compute_hier_from, compute_rename, rename, _compute
 class ScalarField(PatchHierarchy):
     def __init__(self, hier):
         renamed_hier = compute_hier_from(compute_rename, hier, new_names=("value",))
-        patch_levels = renamed_hier.patch_levels
         domain_box = renamed_hier.domain_box
         refinement_ratio = renamed_hier.refinement_ratio
         data_files = renamed_hier.data_files
 
         super().__init__(
-            patch_levels, domain_box, refinement_ratio, renamed_hier.times(), data_files
+            renamed_hier.time_hier, domain_box, refinement_ratio, data_files
         )
 
     def __add__(self, other):
