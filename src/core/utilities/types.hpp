@@ -283,7 +283,7 @@ NO_DISCARD auto sum_from(Container&& container, F fn)
 
 
 template<typename F>
-NO_DISCARD auto generate(F&& f, std::size_t from, std::size_t to)
+NO_DISCARD auto generate_from(F&& f, std::size_t from, std::size_t to)
 {
     assert(from <= to);
     using value_type = std::decay_t<std::invoke_result_t<F&, std::size_t const&>>;
@@ -297,14 +297,14 @@ NO_DISCARD auto generate(F&& f, std::size_t from, std::size_t to)
 }
 
 template<typename F>
-NO_DISCARD auto generate(F&& f, std::size_t count)
+NO_DISCARD auto generate_from(F&& f, std::size_t count)
 {
-    return generate(std::forward<F>(f), 0, count);
+    return generate_from(std::forward<F>(f), 0, count);
 }
 
 
 template<typename F, typename Container>
-NO_DISCARD auto generate(F&& f, Container const& container)
+NO_DISCARD auto generate_from(F&& f, Container const& container)
 {
     using T          = typename Container::value_type;
     using value_type = std::decay_t<std::invoke_result_t<F&, T&>>;
@@ -317,28 +317,18 @@ NO_DISCARD auto generate(F&& f, Container const& container)
 }
 
 template<typename F, typename T>
-NO_DISCARD auto generate(F&& f, std::vector<T>&& v)
+NO_DISCARD auto generate_from(F&& f, std::vector<T>&& v)
 {
-    return generate(std::forward<F>(f), v);
+    return generate_from(std::forward<F>(f), v);
 }
 
-template<std::size_t Idx, typename F, typename Type, std::size_t Size>
-NO_DISCARD auto constexpr generate_array__(F& f, std::array<Type, Size> const& arr)
-{
-    return f(arr[Idx]);
-}
-
-template<typename Type, std::size_t Size, typename F, std::size_t... Is>
-NO_DISCARD auto constexpr generate_array_(F& f, std::array<Type, Size> const& arr,
-                                          std::integer_sequence<std::size_t, Is...>)
-{
-    return std::array{generate_array__<Is>(f, arr)...};
-}
+template<std::uint16_t N, typename Fn>
+constexpr auto for_N_make_array(Fn&& fn);
 
 template<typename F, typename Type, std::size_t Size>
-NO_DISCARD auto constexpr generate(F&& f, std::array<Type, Size> const& arr)
+NO_DISCARD auto constexpr generate_from(F&& f, std::array<Type, Size> const& arr)
 {
-    return generate_array_(f, arr, std::make_integer_sequence<std::size_t, Size>{});
+    return for_N_make_array<Size>([&](auto i) { return f(arr[i]); });
 }
 
 template<typename T>

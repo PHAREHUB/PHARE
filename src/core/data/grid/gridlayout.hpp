@@ -135,7 +135,7 @@ namespace core
             if (AMRBox_.size() != boxFromNbrCells(nbrCells).size())
                 throw std::runtime_error("Error - invalid AMR box, incorrect number of cells");
 
-            inverseMeshSize_ = generate([](auto const e) { return 1. / e; }, meshSize_);
+            inverseMeshSize_ = generate_from([](auto const e) { return 1. / e; }, meshSize_);
         }
 
 
@@ -218,7 +218,7 @@ namespace core
         template<typename T>
         NO_DISCARD auto indices(Box<T, dimension> const& box) const
         {
-            return generate(
+            return generate_from(
                 [](auto const& amr_idx) -> tuple_fixed_type<T, dimension> {
                     return for_N<dimension>([&](auto i) { return amr_idx[i]; });
                 },

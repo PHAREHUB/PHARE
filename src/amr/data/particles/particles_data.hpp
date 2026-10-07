@@ -141,7 +141,7 @@ namespace amr
             using Packer = core::ParticlePacker<dim>;
 
             auto getParticles = [&](std::string const name, auto& particles) {
-                std::array<bool, Packer::n_keys> keys_exist = core::generate(
+                std::array<bool, Packer::n_keys> keys_exist = core::generate_from(
                     [&](auto const& key) { return restart_db->keyExists(name + "_" + key); },
                     Packer::keys());
 
