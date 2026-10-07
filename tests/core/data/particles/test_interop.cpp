@@ -32,7 +32,8 @@ TYPED_TEST(ParticleListTest, SoAandAoSInterop)
         view.weight = 1 + i;
         view.charge = 1 + i;
         view.iCell  = ConstArray<int, dim>(i);
-        view.delta  = ConstArray<double, dim>(i + 1);
+        // in [0, 1) and exactly representable by any delta storage type
+        view.delta  = ConstArray<double, dim>((i + 1) / 16.);
         view.v      = ConstArray<double, 3>(view.weight + 2);
         EXPECT_EQ(std::copy(view), view);
     }

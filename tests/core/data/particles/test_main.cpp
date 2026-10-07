@@ -37,9 +37,11 @@ TEST_F(AParticle, ParticleChargeIsInitiliazedOK)
 
 TEST_F(AParticle, ParticleVelocityIsInitializedOk)
 {
-    EXPECT_DOUBLE_EQ(1.8, part.v[0]);
-    EXPECT_DOUBLE_EQ(1.83, part.v[1]);
-    EXPECT_DOUBLE_EQ(2.28, part.v[2]);
+    // values are as exact as the storage type allows
+    using V_t = Particle<3>::v_type;
+    EXPECT_DOUBLE_EQ(V_t{1.8}, part.v[0]);
+    EXPECT_DOUBLE_EQ(V_t{1.83}, part.v[1]);
+    EXPECT_DOUBLE_EQ(V_t{2.28}, part.v[2]);
 }
 
 TEST_F(AParticle, ParticleDeltaIsInitializedOk)

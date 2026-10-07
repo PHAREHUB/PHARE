@@ -2,6 +2,8 @@
 #define PHARE_CORE_DATA_PARTICLE_PACKER_HPP
 
 
+#include <array>
+#include <tuple>
 #include <cstddef>
 #include <vector>
 
@@ -14,8 +16,6 @@ namespace PHARE::core
 template<std::size_t dim>
 class ParticlePacker
 {
-    constexpr static Particle<dim> default_particle{};
-
 public:
     static constexpr std::size_t n_keys = 5;
 
@@ -30,7 +30,12 @@ public:
                                      particle.delta, particle.v);
     }
 
-    static constexpr auto empty() { return get(default_particle); }
+    // value types as packed into ContiguousParticles, regardless of Particle storage types
+    static constexpr auto empty()
+    {
+        return std::tuple<double, double, std::array<int, dim>, std::array<double, dim>,
+                          std::array<double, 3>>{};
+    }
 
     // sometimes we use this to infer the size of an ParticleArray
     // could be "charge" either

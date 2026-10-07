@@ -17,14 +17,14 @@
 
 namespace PHARE::core
 {
-template<std::size_t dim>
+template<std::size_t dim, typename Particle_ = Particle<dim>>
 class ParticleArray
 {
 public:
     static constexpr bool is_contiguous = false;
     static constexpr auto dimension     = dim;
-    using This                          = ParticleArray<dim>;
-    using Particle_t                    = Particle<dim>;
+    using This                          = ParticleArray<dim, Particle_>;
+    using Particle_t                    = Particle_;
     using Vector                        = std::vector<Particle_t>;
 
 private:
@@ -75,7 +75,7 @@ public:
     NO_DISCARD auto const& operator[](std::size_t i) const { return particles_[i]; }
     NO_DISCARD auto& operator[](std::size_t i) { return particles_[i]; }
 
-    NO_DISCARD bool operator==(ParticleArray<dim> const& that) const
+    NO_DISCARD bool operator==(This const& that) const
     {
         return (this->particles_ == that.particles_);
     }
@@ -151,14 +151,14 @@ public:
     using cell_t = std::array<int, dim>;
     auto nbr_particles_in(cell_t const& cell) const { return cellMap_.size(cell); }
 
-    void export_particles(box_t const& box, ParticleArray<dim>& dest) const
+    void export_particles(box_t const& box, This& dest) const
     {
         PHARE_LOG_SCOPE(3, "ParticleArray::export_particles");
         cellMap_.export_to(box, particles_, dest);
     }
 
     template<typename Fn>
-    void export_particles(box_t const& box, ParticleArray<dim>& dest, Fn&& fn) const
+    void export_particles(box_t const& box, This& dest, Fn&& fn) const
     {
         PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (Fn)");
         cellMap_.export_to(box, particles_.data(), dest, std::forward<Fn>(fn));
@@ -280,21 +280,22 @@ namespace core
 
         NO_DISCARD std::size_t size() const { return weight.size(); }
 
-        template<std::size_t S, typename T>
-        NO_DISCARD static std::array<T, S>* _array_cast(T const* array)
+        template<typename Array, typename T>
+        NO_DISCARD static Array* _array_cast(T const* array)
         {
-            return reinterpret_cast<std::array<T, S>*>(const_cast<T*>(array));
+            static_assert(sizeof(Array) == sizeof(T) * Array{}.size());
+            return reinterpret_cast<Array*>(const_cast<T*>(array));
         }
 
         template<typename Return>
         NO_DISCARD Return _to(std::size_t i)
         {
             return {
-                *const_cast<double*>(weight.data() + i),     //
-                *const_cast<double*>(charge.data() + i),     //
-                *_array_cast<dim>(iCell.data() + (dim * i)), //
-                *_array_cast<dim>(delta.data() + (dim * i)), //
-                *_array_cast<3>(v.data() + (3 * i)),
+                *const_cast<double*>(weight.data() + i),                                  //
+                *const_cast<double*>(charge.data() + i),                                  //
+                *_array_cast<std::array<int, dim>>(iCell.data() + (dim * i)),             //
+                *_array_cast<MultiPrecisionArray<double, dim>>(delta.data() + (dim * i)), //
+                *_array_cast<MultiPrecisionArray<double, 3>>(v.data() + (3 * i)),
             };
         }
 
