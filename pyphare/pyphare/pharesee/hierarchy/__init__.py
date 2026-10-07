@@ -1,6 +1,7 @@
 from .scalarfield import ScalarField
 from .vectorfield import VectorField
 from .hierarchy import PatchHierarchy
+from .hierarchy import TimeNotFoundError
 from pyphare.core.phare_utilities import listify
 
 __all__ = [
