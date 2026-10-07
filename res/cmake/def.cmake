@@ -191,6 +191,11 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
   endfunction(set_exe_paths_)
 
+  # tell ctest how many cores an mpirun test uses, so "ctest -j N" schedules by cores, not tests
+  function(set_test_procs_ test N)
+    set_property(TEST ${test} PROPERTY PROCESSORS ${N})
+  endfunction(set_test_procs_)
+
   # prevents building a target even when added via "add_executable"
   function(skip_building binary)
     set_target_properties(${binary} PROPERTIES EXCLUDE_FROM_ALL 1 EXCLUDE_FROM_DEFAULT_BUILD 1)
@@ -255,6 +260,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       add_phare_test_build_flags_(${binary})
       add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} ./${binary} WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary} ${directory})
+      set_test_procs_(${binary} ${PHARE_MPI_PROCS})
     endfunction(add_phare_test)
 
     function(add_python3_test name file directory)
@@ -263,6 +269,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       endif()
       add_test(NAME py3_${name} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name})
+      set_test_procs_(py3_${name} ${PHARE_MPI_PROCS})
     endfunction(add_python3_test)
 
     function(add_mpi_python3_test N name file directory)
@@ -271,6 +278,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       endif()
       add_test(NAME py3_${name}_mpi_n_${N} COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 ${file} WORKING_DIRECTORY ${directory})
       set_exe_paths_(py3_${name}_mpi_n_${N})
+      set_test_procs_(py3_${name}_mpi_n_${N} ${N})
     endfunction(add_mpi_python3_test)
 
   else()
@@ -334,6 +342,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
             COMMAND mpirun -n ${N} ${PHARE_MPIRUN_POSTFIX} python3 -u ${file} ${ARGN}
             WORKING_DIRECTORY ${directory})
         set_exe_paths_(py3_${target}_mpi_n_${N})
+        set_test_procs_(py3_${target}_mpi_n_${N} ${N})
       endif()
     endif()
   endfunction(phare_mpi_python3_exec)
