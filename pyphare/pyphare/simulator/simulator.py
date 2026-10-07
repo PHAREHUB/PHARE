@@ -13,6 +13,7 @@ from pathlib import Path
 from . import monitoring as mon
 
 from pyphare import cpp
+from pyphare.cpp import validate
 import pyphare.pharein.restarts as restarts
 
 
@@ -111,8 +112,8 @@ class Simulator:
 
             if all([not self.simulation.dry_run, self.simulation.write_reports]):
                 # not necessary during testing
-                cpp.validate.log_runtime_config()
-            cpp.validate.check_build_config_is_runtime_compatible()
+                validate.log_runtime_config()
+            validate.check_build_config_is_runtime_compatible()
 
             if self.log_to_file:
                 self._log_to_file()

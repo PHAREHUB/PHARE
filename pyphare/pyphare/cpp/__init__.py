@@ -5,9 +5,6 @@
 import os
 import json
 import importlib
-from . import validate
-
-__all__ = ["validate"]
 
 _libs = {}
 
