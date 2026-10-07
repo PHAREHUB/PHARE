@@ -36,7 +36,6 @@
 namespace PHARE
 {
 
-
 class ISimulator
 {
 public:
@@ -89,12 +88,6 @@ public:
 
     Simulator(PHARE::initializer::PHAREDict const& dict,
               std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy);
-
-    ~Simulator()
-    {
-        if (coutbuf != nullptr)
-            std::cout.rdbuf(coutbuf);
-    }
 
 
     NO_DISCARD double startTime() override { return startTime_; }
@@ -166,8 +159,7 @@ private:
         return nullptr;
     }
 
-    std::unique_ptr<std::ofstream> log_out{log_file()};
-    std::streambuf* coutbuf = nullptr;
+    CoutRedirect coutRedirect_{log_file()};
     std::shared_ptr<PHARE::amr::Hierarchy> hierarchy_;
     std::unique_ptr<Integrator> integrator_;
 
@@ -217,22 +209,6 @@ private:
 
     void handle_dictionary_exception(core::DictionaryException const& ex);
 };
-
-
-
-namespace
-{
-    inline auto logging(std::unique_ptr<std::ofstream>& log_out)
-    {
-        std::streambuf* buf = nullptr;
-        if (log_out)
-        {
-            buf = std::cout.rdbuf();
-            std::cout.rdbuf(log_out->rdbuf());
-        }
-        return buf;
-    }
-} // namespace
 
 
 
@@ -419,8 +395,7 @@ void Simulator<opts>::mhd_init(initializer::PHAREDict const& dict)
 template<auto opts>
 Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
                            std::shared_ptr<PHARE::amr::Hierarchy> const& hierarchy)
-    : coutbuf{logging(log_out)}
-    , hierarchy_{hierarchy}
+    : hierarchy_{hierarchy}
     , modelNames_{dict["simulation"]["models"].template to<std::vector<std::string>>()}
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
     , messengerFactory_{descriptors_}
@@ -458,9 +433,6 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
             using ResMan_t = PHARETypes::Hybrid::Model_t::resources_manager_type;
             hyb_.resman_   = std::make_shared<ResMan_t>();
             hybrid_init(dict);
-            if (dict["simulation"].contains("restarts"))
-                rMan = restarts::RestartsManagerResolver::make_unique(
-                    *hierarchy_, *hyb_.resman_, dict["simulation"]["restarts"]);
         }
     }
     else
@@ -477,9 +449,6 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
             using ResMan_t = PHARETypes::MHD::Model_t::resources_manager_type;
             mhd_.resman_   = std::make_shared<ResMan_t>();
             mhd_init(dict);
-            if (dict["simulation"].contains("restarts"))
-                rMan = restarts::RestartsManagerResolver::make_unique(
-                    *hierarchy_, *mhd_.resman_, dict["simulation"]["restarts"]);
         }
     }
     else
@@ -495,6 +464,24 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
             names += (names.empty() ? "" : ", ") + name;
         throw std::runtime_error("unsupported model, none of [" + names
                                  + "] is supported by this build");
+    }
+
+    // the following can throw, which results in the destructor not executing as the class
+    //  does not count as "constructed"
+    auto mutated_dict = restarts::inject_simulation_information(
+        dict, amr::ResourcesManagerGlobals::registeredResourcesHash());
+
+    if (mutated_dict["simulation"].contains("restarts"))
+    {
+        if constexpr (has_hybrid_v<opts>)
+            if (hyb_.resman_)
+                rMan = restarts::RestartsManagerResolver::make_unique(
+                    *hierarchy_, *hyb_.resman_, mutated_dict["simulation"]["restarts"]);
+
+        if constexpr (has_mhd_v<opts>)
+            if (mhd_.resman_)
+                rMan = restarts::RestartsManagerResolver::make_unique(
+                    *hierarchy_, *mhd_.resman_, mutated_dict["simulation"]["restarts"]);
     }
 
     amr::ResourcesManagerGlobals::registerForRestarts();
