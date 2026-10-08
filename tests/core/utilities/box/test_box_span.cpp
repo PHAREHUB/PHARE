@@ -5,7 +5,7 @@
 #include "core/data/field/field_box_span.hpp"
 
 #include "phare_core.hpp"
-#include "phare_simulator_options.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
@@ -23,7 +23,7 @@ TEST(BoxSpanTest, test_reverse_iterator)
     static constexpr std::size_t dim = 3;
     static constexpr std::size_t IDX = dim - 1;
     static constexpr PHARE::SimOpts opts{dim, 1};
-    using PHARE_Types  = PHARE::core::PHARE_Types<opts>;
+    using PHARE_Types  = PHARE::core::PHARE_Types<opts>::Hybrid;
     using GridLayout_t = TestGridLayout<typename PHARE_Types::GridLayout_t>;
 
     GridLayout_t layout{3};
@@ -85,17 +85,14 @@ TEST(BoxSpanTest, test_reverse_iterator_unsigned_box)
         }
     }
 
-    std::vector<Point<std::uint32_t, dim>> const expected{
-        {2, 2, 2}, {2, 2, 1}, {2, 2, 0}, //
-        {2, 1, 2}, {2, 1, 1}, {2, 1, 0}, //
-        {2, 0, 2}, {2, 0, 1}, {2, 0, 0}, //
-        {1, 2, 2}, {1, 2, 1}, {1, 2, 0}, //
-        {1, 1, 2}, {1, 1, 1}, {1, 1, 0}, //
-        {1, 0, 2}, {1, 0, 1}, {1, 0, 0}, //
-        {0, 2, 2}, {0, 2, 1}, {0, 2, 0}, //
-        {0, 1, 2}, {0, 1, 1}, {0, 1, 0}, //
-        {0, 0, 2}, {0, 0, 1}, {0, 0, 0},
-    };
+    auto const expected = [] {
+        std::vector<Point<std::uint32_t, dim>> pts;
+        for (std::uint32_t i = 3; i-- > 0;)
+            for (std::uint32_t j = 3; j-- > 0;)
+                for (std::uint32_t k = 3; k-- > 0;)
+                    pts.emplace_back(i, j, k);
+        return pts;
+    }();
 
     EXPECT_EQ(expected, points);
 }

@@ -2,7 +2,7 @@
 #include "core/data/field/field_box_span.hpp"
 
 #include "phare_core.hpp"
-#include "phare_simulator_options.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
@@ -28,7 +28,7 @@ class FieldBoxSpanTest : public ::testing::Test
     static constexpr std::size_t interp = 1;
 
     static constexpr PHARE::SimOpts opts{dim, interp};
-    using PHARE_Types  = PHARE::core::PHARE_Types<opts>;
+    using PHARE_Types  = PHARE::core::PHARE_Types<opts>::Hybrid;
     using GridLayout_t = TestGridLayout<typename PHARE_Types::GridLayout_t>;
     using Grid_t       = PHARE_Types::Grid_t;
 
