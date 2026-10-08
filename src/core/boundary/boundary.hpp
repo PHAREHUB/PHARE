@@ -81,6 +81,8 @@ public:
      * field BC factory.
      */
     template<FieldBoundaryConditionType type, typename TensorPhysicalQuantityT, typename... Args>
+        requires std::same_as<TensorPhysicalQuantityT, scalar_quantity_type>
+                 || std::same_as<TensorPhysicalQuantityT, vector_quantity_type>
     void registerFieldCondition(TensorPhysicalQuantityT quantity, Args&&... args)
     {
         if constexpr (std::same_as<TensorPhysicalQuantityT, scalar_quantity_type>)
@@ -89,37 +91,25 @@ public:
                 = std::make_shared<FieldBoundaryCondition<type, field_type, GridLayoutT>>(
                     std::forward<Args>(args)...);
         }
-        else if constexpr (std::same_as<TensorPhysicalQuantityT, vector_quantity_type>)
+        else
         {
             vector_field_conditions_[quantity]
                 = std::make_shared<FieldBoundaryCondition<type, vector_field_type, GridLayoutT>>(
                     std::forward<Args>(args)...);
         }
-        else
-        {
-            static_assert(dependant_false_<TensorPhysicalQuantityT>,
-                          "Tensoriality of the physical quantity not supported.");
-        }
     }
 
 private:
-    using _scalar_field_condition_map_type
-        = std::unordered_map<scalar_quantity_type, std::shared_ptr<scalar_field_condition_type>>;
-    using _vector_field_condition_map_type
-        = std::unordered_map<vector_quantity_type, std::shared_ptr<vector_field_condition_type>>;
-
-    /** Utility to make compilation fail in certain conditions. */
-    template<typename...>
-    static constexpr bool dependant_false_ = false;
-
     /** The type of the boundary (open, inflow, reflective ...) */
     BoundaryType type_;
     /** The location of the boundary (XLower, XUpper, ...) */
     BoundaryLocation location_;
     /** The list of registered scalar field boundary conditions on the boundary */
-    _scalar_field_condition_map_type scalar_field_conditions_;
+    std::unordered_map<scalar_quantity_type, std::shared_ptr<scalar_field_condition_type>>
+        scalar_field_conditions_;
     /** The list of registered vector field boundary conditions on the boundary */
-    _vector_field_condition_map_type vector_field_conditions_;
+    std::unordered_map<vector_quantity_type, std::shared_ptr<vector_field_condition_type>>
+        vector_field_conditions_;
 };
 
 } // namespace PHARE::core
