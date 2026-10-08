@@ -97,8 +97,8 @@ public:
             accessor, [](auto& view) -> auto& { return std::get<3>(view.args); },
             [this](auto& view, auto const tile_idx) {
                 auto& [electrons_v, B_v, J_v, E_v] = view.args;
-                Super::on_tile(tile_idx, electrons_v.density(), electrons_v.velocity(),
-                               electrons_v.pressure(), B_v, J_v, E_v);
+                this->Super::on_tile(tile_idx, electrons_v.density(), electrons_v.velocity(),
+                                     electrons_v.pressure(), B_v, J_v, E_v);
             });
     }
 
