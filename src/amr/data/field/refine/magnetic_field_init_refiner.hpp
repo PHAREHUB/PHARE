@@ -3,11 +3,10 @@
 
 
 #include "phare_mpi.hpp" // IWYU pragma: keep
-#include "core/utilities/constants.hpp"
-#include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
 #include "amr/resources_manager/amr_utils.hpp"
+#include "amr/data/field/refine/any_field_refiner.hpp"
 
 #include <SAMRAI/hier/Box.h>
 
@@ -30,27 +29,26 @@ using core::dirZ;
  */
 template<std::size_t dimension>
 class MagneticFieldInitRefiner
+    : public AnyFieldRefiner<MagneticFieldInitRefiner<dimension>, dimension>
 {
 public:
-    MagneticFieldInitRefiner(std::array<core::QtyCentering, dimension> const& centering,
-                             SAMRAI::hier::Box const& destinationGhostBox,
-                             SAMRAI::hier::Box const& sourceGhostBox,
-                             SAMRAI::hier::IntVector const& ratio)
-        : fineBox_{destinationGhostBox}
-        , coarseBox_{sourceGhostBox}
-        , centerings_{centering}
-    {
-    }
+    using Super = AnyFieldRefiner<MagneticFieldInitRefiner<dimension>, dimension>;
+    using Super::Super;
 
+protected:
+    using Super::centerings_;
+    using Super::coarseBox_;
+    using Super::fineBox_;
 
+public:
     // magnetic field refinement is made so to conserve the divergence of B
     // it simply copies the value of the magnetic field existing on a coarse face
     // onto the 2 (1D), 4 (2/3D) colocated fine faces. This way the total flux on
     // these fine faces equals that on the overlaped coarse face.
     // see fujimoto et al. 2011 :  doi:10.1016/j.jcp.2011.08.002
     template<typename FieldT>
-    void operator()(FieldT const& coarseField, FieldT& fineField,
-                    core::Point<int, dimension> fineIndex)
+    void refine(FieldT const& coarseField, FieldT& fineField,
+                core::Point<int, dimension> const fineIndex)
     {
         TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
 
@@ -77,7 +75,7 @@ public:
             {
                 if (fineIndex[0] % 2 == 0)
                 {
-                    fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+                    fineField(locFineIdx) = coarseField(locCoarseIdx);
                 }
             }
             // dual case, By, Bz
@@ -90,7 +88,7 @@ public:
             // 101 takes 50 = 101/2
             else
             {
-                fineField(locFineIdx[dirX]) = coarseField(locCoarseIdx[dirX]);
+                fineField(locFineIdx) = coarseField(locCoarseIdx);
             }
         }
 
@@ -107,8 +105,7 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                    fineField(locFineIdx) = coarseField(locCoarseIdx);
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -119,8 +116,7 @@ public:
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY])
-                        = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                    fineField(locFineIdx) = coarseField(locCoarseIdx);
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -129,18 +125,13 @@ public:
                 // Bz
                 // we're always on a coarse Z face since there is no dual in z
                 // all 4 fine Bz take the coarse Z value
-                fineField(locFineIdx[dirX], locFineIdx[dirY])
-                    = coarseField(locCoarseIdx[dirX], locCoarseIdx[dirY]);
+                fineField(locFineIdx) = coarseField(locCoarseIdx);
             }
         }
 
 
         else if constexpr (dimension == 3)
         {
-            auto ix = locCoarseIdx[dirX];
-            auto iy = locCoarseIdx[dirY];
-            auto iz = locCoarseIdx[dirZ];
-
             if (centerings_[dirX] == core::QtyCentering::primal
                 and centerings_[dirY] == core::QtyCentering::dual
                 and centerings_[dirZ] == core::QtyCentering::dual)
@@ -150,8 +141,7 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = coarseField(ix, iy, iz);
+                    fineField(locFineIdx) = coarseField(locCoarseIdx);
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -163,8 +153,7 @@ public:
                 {
                     // we're on a coarse Y face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = coarseField(ix, iy, iz);
+                    fineField(locFineIdx) = coarseField(locCoarseIdx);
                 }
             }
             else if (centerings_[dirX] == core::QtyCentering::dual
@@ -176,17 +165,11 @@ public:
                 {
                     // we're on a coarse X face
                     // take the coarse face value
-                    fineField(locFineIdx[dirX], locFineIdx[dirY], locFineIdx[dirZ])
-                        = coarseField(ix, iy, iz);
+                    fineField(locFineIdx) = coarseField(locCoarseIdx);
                 }
             }
         }
     }
-
-private:
-    SAMRAI::hier::Box const fineBox_;
-    SAMRAI::hier::Box const coarseBox_;
-    std::array<core::QtyCentering, dimension> const centerings_;
 };
 } // namespace PHARE::amr
 

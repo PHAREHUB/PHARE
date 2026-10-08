@@ -1,10 +1,13 @@
 
+
 // PHARE_SIM_STR == template string, between <>
 // PHARE_SIM_ID  == string representing templates
 
 #if !defined(PHARE_SIM_STR) || !defined(PHARE_SIM_ID)
 #error // needs PHARE_SIM_STR! like "1, 1, 1"
 #endif // PHARE_SIM_STR
+
+#include "core/utilities/thread_pool.hpp"
 
 #include "python3/cpp_simulator.hpp"
 
@@ -13,10 +16,28 @@
 #endif
 
 
+namespace PHARE::py
+{
+
+auto static const n_pools   = core::get_env_as("PHARE_THREAD_POOLS", std::size_t{1});
+auto static const n_threads = core::get_env_as("PHARE_THREADS_PER_POOL", std::size_t{1});
+
+// static init!
+bool static const premain = []() {
+    core::ThreadPool::n_pools          = n_pools;
+    core::ThreadPool::threads_per_pool = n_threads;
+    core::ThreadPool::INSTANCE(); // init!
+    return true;
+}();
+
+} // namespace PHARE::py
+
+
+
 namespace PHARE::pydata
 {
 
-PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m)
+PYBIND11_MODULE(PHARE_CPP_MOD_NAME, m, pybind11::mod_gil_not_used())
 {
     declare_macro_sim(m);
 }

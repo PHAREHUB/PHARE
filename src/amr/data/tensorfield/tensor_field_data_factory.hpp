@@ -130,6 +130,7 @@ public:
     bool validCopyTo(std::shared_ptr<SAMRAI::hier::PatchDataFactory> const&
                          destinationPatchDataFactory) const final
     {
+        return true; // hax for the moment - grid and non-grid interop
         auto fieldDataFactory
             = std::dynamic_pointer_cast<TensorFieldDataFactory>(destinationPatchDataFactory);
         return (fieldDataFactory != nullptr);

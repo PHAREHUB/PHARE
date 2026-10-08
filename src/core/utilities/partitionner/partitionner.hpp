@@ -3,9 +3,10 @@
 
 #include <vector>
 
-#include "core/utilities/meta/meta_utilities.hpp"
+// #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/utilities/box/box.hpp"
-#include "core/data/particles/particle.hpp"
+#include "core/utilities/range/range.hpp"
+// #include "core/data/particles/particle.hpp"
 
 namespace PHARE
 {
@@ -31,23 +32,40 @@ namespace core
      * are leaving the patch but not through physical boundaries.
      *
      */
-    template<typename ParticleIterator, typename BoxContainer,
-             is_iterable<BoxContainer> = dummy::value>
-    auto partitionner(ParticleIterator begin, ParticleIterator end, BoxContainer boxes)
+
+
+    template<typename ParticleIterator, typename T, std::size_t dim>
+    auto partitionner(ParticleIterator begin, ParticleIterator end, Box<T, dim> const& box)
     {
-        std::vector<ParticleIterator> iterators;
-        iterators.push_back(begin);
+        return partitionner(begin, end, box,
+                            [&box](auto const& part) { return isIn(cellAsPoint(part), box); });
+    }
+
+
+    template<typename ParticleIterator, typename T, std::size_t dim, typename Fn>
+    auto partitionner(ParticleIterator begin, ParticleIterator end, Box<T, dim> const& box, Fn&& fn)
+    {
+        return BoxRange<Box<T, dim>, ParticleIterator>{box, begin, std::partition(begin, end, fn)};
+    }
+
+    template<typename Particles, typename T, std::size_t dim, typename Fn>
+    auto partitionner(Particles& particles, Box<T, dim> const& box, Fn&& fn)
+    {
+        return partitionner(particles.begin(), particles.end(), box, std::forward<Fn>(fn));
+    }
+
+
+    template<typename ParticleIterator, template<typename> typename Vector, typename Box>
+    auto partitionner(ParticleIterator begin, ParticleIterator end, Vector<Box> const& boxes)
+    {
+        std::vector<BoxRange<Box, ParticleIterator>> iterators;
         auto pivot = begin;
-
         for (auto const& box : boxes)
-        {
-            pivot = std::partition(
-                pivot, end, [&box](auto const& part) { return isIn(cellAsPoint(part), box); });
-            iterators.push_back(pivot);
-        }
-
+            pivot = iterators.emplace_back(partitionner(pivot, end, box)).end();
         return iterators;
     }
+
+
 } // namespace core
 } // namespace PHARE
 #endif

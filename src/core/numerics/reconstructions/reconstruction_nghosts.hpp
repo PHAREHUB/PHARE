@@ -1,7 +1,7 @@
 #ifndef PHARE_RECONSTRUCTION_NGHOSTS_HPP
 #define PHARE_RECONSTRUCTION_NGHOSTS_HPP
 
-#include "phare_simulator_options.hpp"
+#include "core/models/options/mhd_options_def.hpp"
 #include <cstdint>
 
 namespace PHARE::MHDOpts

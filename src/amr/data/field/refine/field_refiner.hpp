@@ -1,20 +1,19 @@
 #ifndef PHARE_FIELD_REFINER_HPP
 #define PHARE_FIELD_REFINER_HPP
 
-
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/data/grid/grid_tiles.hpp"
 
-#include "core/data/field/field.hpp"
-#include "core/utilities/constants.hpp"
+#include "field_linear_refine.hpp"
+#include "any_field_refiner.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
-#include "field_linear_refine.hpp"
+#include "amr/resources_manager/amr_utils.hpp"
 
 #include <SAMRAI/hier/Box.h>
 
 #include <array>
-#include <vector>
 
 
 namespace PHARE
@@ -29,35 +28,26 @@ namespace amr
      * coarse field.
      */
     template<std::size_t dimension>
-    class DefaultFieldRefiner
+    class DefaultFieldRefiner : public AnyFieldRefiner<DefaultFieldRefiner<dimension>, dimension>
     {
+        using Super = AnyFieldRefiner<DefaultFieldRefiner<dimension>, dimension>;
+        using Super::coarseBox_;
+        using Super::fineBox_;
+
     public:
         DefaultFieldRefiner(std::array<core::QtyCentering, dimension> const& centering,
                             SAMRAI::hier::Box const& destinationGhostBox,
                             SAMRAI::hier::Box const& sourceGhostBox,
                             SAMRAI::hier::IntVector const& ratio)
-            : indexesAndWeights_{centering, ratio}
-            , fineBox_{destinationGhostBox}
-            , coarseBox_{sourceGhostBox}
+            : Super{centering, destinationGhostBox, sourceGhostBox, ratio}
+            , indexesAndWeights_{centering, ratio}
         {
         }
 
 
-        /** @brief Given a sourceField , a destinationField, and a fineIndex compute the
-         * interpolation from the coarseField(sourceField) to the fineFiled(destinationField) at the
-         * fineIndex index
-         *
-         *
-         * Strategy :
-         * - for a given fineIndex, we first compute the associated CoarseIndex
-         * - the two coarse indexes to get coarse values are then coarseIndex and coarseIndex+1
-         * - the weights are pre-computed by the FieldRefineIndexesAndWeights object
-         * - we just have to know which one to use, depending on where the fineIndex is in the
-         * coarse cell
-         */
         template<typename FieldT>
-        void operator()(FieldT const& sourceField, FieldT& destinationField,
-                        core::Point<int, dimension> fineIndex)
+        void refine(FieldT const& sourceField, FieldT& destinationField,
+                    core::Point<int, dimension> fineIndex)
         {
             TBOX_ASSERT(sourceField.physicalQuantity() == destinationField.physicalQuantity());
 
@@ -167,8 +157,6 @@ namespace amr
 
     private:
         FieldRefineIndexesAndWeights<dimension> const indexesAndWeights_;
-        SAMRAI::hier::Box const fineBox_;
-        SAMRAI::hier::Box const coarseBox_;
     };
 } // namespace amr
 } // namespace PHARE

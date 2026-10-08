@@ -9,6 +9,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
 
   add_subdirectory(tests/core/data/minimizing_vector)
   add_subdirectory(tests/core/data/ndarray)
+  add_subdirectory(tests/core/data/field)
   add_subdirectory(tests/core/data/grid)
   add_subdirectory(tests/core/data/gridlayout)
   add_subdirectory(tests/core/data/vecfield)
@@ -38,14 +39,9 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/initializer)
 
 
+  add_subdirectory(tests/amr/data/field)
   add_subdirectory(tests/amr/data/particles)
-  add_subdirectory(tests/amr/data/field/coarsening)
-  add_subdirectory(tests/amr/data/field/copy_pack)
-  add_subdirectory(tests/amr/data/field/geometry)
-  add_subdirectory(tests/amr/data/field/overlap)
-  add_subdirectory(tests/amr/data/field/refine)
-  add_subdirectory(tests/amr/data/field/variable)
-  add_subdirectory(tests/amr/data/field/time_interpolate)
+
   add_subdirectory(tests/amr/resources_manager)
   add_subdirectory(tests/amr/messengers)
   add_subdirectory(tests/amr/models)
