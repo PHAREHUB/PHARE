@@ -30,13 +30,13 @@ namespace PHARE::core
 template<std::size_t dimension>
 inline void validatePhysicalBoundariesDeclared(initializer::PHAREDict const& grid)
 {
-    static constexpr std::array<char const*, 3> dirs{"x", "y", "z"};
+    static constexpr std::array<std::string_view, 3> dirs{"x", "y", "z"};
     if (!grid.contains("periodicities"))
         return; // no directions declared (minimal test dict): nothing to validate
 
     for (std::size_t d = 0; d < dimension; ++d)
     {
-        if (grid["periodicities"][dirs[d]].template to<bool>())
+        if (grid["periodicities"][dirs[d].data()])
             continue;
 
         for (auto const* side : {"lower", "upper"})
@@ -69,7 +69,7 @@ template<typename GridLayoutT, IsField FieldT>
 class BoundaryManager
 {
 public:
-    using physical_quantity_type = GridLayoutT::Quantity;
+    using physical_quantity_type = decltype(GridLayoutT::options.field_options)::Quantity;
     using field_type             = FieldT;
     using boundary_type          = Boundary<GridLayoutT, FieldT>;
     using boundary_factory_type  = BoundaryFactory<GridLayoutT, FieldT>;

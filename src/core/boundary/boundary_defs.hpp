@@ -3,6 +3,11 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 
+#include <array>
+#include <cstdint>
+#include <stdexcept>
+#include <string>
+#include <type_traits>
 #include <unordered_map>
 
 namespace PHARE::core
@@ -66,7 +71,7 @@ constexpr Direction getDirection(BoundaryLocation boundaryLoc)
 };
 
 /** @brief Possible locations of a 2-codimensional boundary (an edge in 3D, a corner in 2D) */
-enum class Codim2BoundaryLocation {
+enum class Codim2BoundaryLocation : std::uint16_t {
     XLower_YLower = 0,
     XUpper_YLower = 1,
     XLower_YUpper = 2,
@@ -88,46 +93,34 @@ enum class Codim2BoundaryLocation {
  * @return An array containing the two locations of the adjacent boundaries.
  */
 constexpr std::array<BoundaryLocation, 2>
-getAdjacentBoundaryLocations(Codim2BoundaryLocation location)
+getAdjacentBoundaryLocations(Codim2BoundaryLocation const location)
 {
-    switch (location)
-    {
-        // X-Y Edges
-        case Codim2BoundaryLocation::XLower_YLower:
-            return {BoundaryLocation::XLower, BoundaryLocation::YLower};
-        case Codim2BoundaryLocation::XUpper_YLower:
-            return {BoundaryLocation::XUpper, BoundaryLocation::YLower};
-        case Codim2BoundaryLocation::XLower_YUpper:
-            return {BoundaryLocation::XLower, BoundaryLocation::YUpper};
-        case Codim2BoundaryLocation::XUpper_YUpper:
-            return {BoundaryLocation::XUpper, BoundaryLocation::YUpper};
+    using enum BoundaryLocation;
+    std::array<std::array<BoundaryLocation, 2>, 12> constexpr adjacents{{
+        {XLower, YLower},
+        {XUpper, YLower},
+        {XLower, YUpper},
+        {XUpper, YUpper},
+        {XLower, ZLower},
+        {XUpper, ZLower},
+        {XLower, ZUpper},
+        {XUpper, ZUpper},
+        {YLower, ZLower},
+        {YUpper, ZLower},
+        {YLower, ZUpper},
+        {YUpper, ZUpper},
+    }};
 
-        // X-Z Edges
-        case Codim2BoundaryLocation::XLower_ZLower:
-            return {BoundaryLocation::XLower, BoundaryLocation::ZLower};
-        case Codim2BoundaryLocation::XUpper_ZLower:
-            return {BoundaryLocation::XUpper, BoundaryLocation::ZLower};
-        case Codim2BoundaryLocation::XLower_ZUpper:
-            return {BoundaryLocation::XLower, BoundaryLocation::ZUpper};
-        case Codim2BoundaryLocation::XUpper_ZUpper:
-            return {BoundaryLocation::XUpper, BoundaryLocation::ZUpper};
+    auto const idx = static_cast<std::underlying_type_t<Codim2BoundaryLocation>>(location);
 
-        // Y-Z Edges
-        case Codim2BoundaryLocation::YLower_ZLower:
-            return {BoundaryLocation::YLower, BoundaryLocation::ZLower};
-        case Codim2BoundaryLocation::YUpper_ZLower:
-            return {BoundaryLocation::YUpper, BoundaryLocation::ZLower};
-        case Codim2BoundaryLocation::YLower_ZUpper:
-            return {BoundaryLocation::YLower, BoundaryLocation::ZUpper};
-        case Codim2BoundaryLocation::YUpper_ZUpper:
-            return {BoundaryLocation::YUpper, BoundaryLocation::ZUpper};
+    if (idx >= adjacents.size())
+        throw std::runtime_error("Invalid adjacent boundary location index.");
 
-        default: throw std::runtime_error("Invalid adjacent boundary location index.");
-    }
+    return adjacents[idx];
 }
 
 /** @brief Possible locations of a 3-codimensional boundary (a corner in 3D) */
-enum class Codim3BoundaryLocation {
+enum class Codim3BoundaryLocation : std::uint16_t {
     XLower_YLower_ZLower = 0,
     XUpper_YLower_ZLower = 1,
     XLower_YUpper_ZLower = 2,
@@ -145,32 +138,26 @@ enum class Codim3BoundaryLocation {
  * @return An array containing the three locations of the adjacent boundaries.
  */
 constexpr std::array<BoundaryLocation, 3>
-getAdjacentBoundaryLocations(Codim3BoundaryLocation location)
+getAdjacentBoundaryLocations(Codim3BoundaryLocation const location)
 {
-    switch (location)
-    {
-        // Lower Z Plane
-        case Codim3BoundaryLocation::XLower_YLower_ZLower:
-            return {BoundaryLocation::XLower, BoundaryLocation::YLower, BoundaryLocation::ZLower};
-        case Codim3BoundaryLocation::XUpper_YLower_ZLower:
-            return {BoundaryLocation::XUpper, BoundaryLocation::YLower, BoundaryLocation::ZLower};
-        case Codim3BoundaryLocation::XLower_YUpper_ZLower:
-            return {BoundaryLocation::XLower, BoundaryLocation::YUpper, BoundaryLocation::ZLower};
-        case Codim3BoundaryLocation::XUpper_YUpper_ZLower:
-            return {BoundaryLocation::XUpper, BoundaryLocation::YUpper, BoundaryLocation::ZLower};
+    using enum BoundaryLocation;
+    std::array<std::array<BoundaryLocation, 3>, 8> constexpr adjacents{{
+        {XLower, YLower, ZLower},
+        {XUpper, YLower, ZLower},
+        {XLower, YUpper, ZLower},
+        {XUpper, YUpper, ZLower},
+        {XLower, YLower, ZUpper},
+        {XUpper, YLower, ZUpper},
+        {XLower, YUpper, ZUpper},
+        {XUpper, YUpper, ZUpper},
+    }};
 
-        // Upper Z Plane
-        case Codim3BoundaryLocation::XLower_YLower_ZUpper:
-            return {BoundaryLocation::XLower, BoundaryLocation::YLower, BoundaryLocation::ZUpper};
-        case Codim3BoundaryLocation::XUpper_YLower_ZUpper:
-            return {BoundaryLocation::XUpper, BoundaryLocation::YLower, BoundaryLocation::ZUpper};
-        case Codim3BoundaryLocation::XLower_YUpper_ZUpper:
-            return {BoundaryLocation::XLower, BoundaryLocation::YUpper, BoundaryLocation::ZUpper};
-        case Codim3BoundaryLocation::XUpper_YUpper_ZUpper:
-            return {BoundaryLocation::XUpper, BoundaryLocation::YUpper, BoundaryLocation::ZUpper};
+    auto const idx = static_cast<std::underlying_type_t<Codim3BoundaryLocation>>(location);
 
-        default: throw std::runtime_error("Invalid adjacent boundary location index.");
-    }
+    if (idx >= adjacents.size())
+        throw std::runtime_error("Invalid adjacent boundary location index.");
+
+    return adjacents[idx];
 }
 
 /**

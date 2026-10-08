@@ -27,7 +27,7 @@ template<typename GridLayoutT, IsField FieldT>
 class Boundary
 {
 public:
-    using physical_quantity_type = GridLayoutT::Quantity;
+    using physical_quantity_type = decltype(GridLayoutT::options.field_options)::Quantity;
     using field_type             = FieldT;
     using This                   = Boundary<GridLayoutT, FieldT>;
     using scalar_quantity_type   = field_type::physical_quantity_type;

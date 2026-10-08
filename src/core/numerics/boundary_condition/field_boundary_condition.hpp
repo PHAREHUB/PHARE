@@ -47,7 +47,7 @@ public:
 
     using This = IFieldBoundaryCondition<ScalarOrTensorFieldT, GridLayoutT>;
     // the quantity category (HybridQuantity / MHDQuantity) is carried by the layout options
-    using physical_quantity_type = GridLayoutT::Quantity;
+    using physical_quantity_type = decltype(GridLayoutT::options.field_options)::Quantity;
     using tensor_quantity_type
         = PhysicalQuantityTypeSelector<ScalarOrTensorFieldT, is_scalar>::type;
     using field_type = FieldTypeSelector<ScalarOrTensorFieldT, is_scalar>::type;

@@ -21,7 +21,7 @@ namespace PHARE::core
 {
 
 template<typename T>
-concept IsMHDModel = std::same_as<T, MHDQuantity>;
+concept IsMHDQuantity = std::same_as<T, MHDQuantity>;
 
 /**
  * @brief Contains all the recipes to create a boundary object according to the desired
@@ -36,7 +36,7 @@ template<typename GridLayoutT, IsField FieldT>
 class BoundaryFactory
 {
 public:
-    using physical_quantity_type    = GridLayoutT::Quantity;
+    using physical_quantity_type    = decltype(GridLayoutT::options.field_options)::Quantity;
     using field_type                = FieldT;
     using boundary_type             = Boundary<GridLayoutT, FieldT>;
     using boundary_ptr_type         = std::unique_ptr<boundary_type>;
@@ -112,7 +112,7 @@ private:
     static void register_reflective_conditions_(boundary_ptr_type& boundary,
                                                 _model_menu_type const& quantities)
     {
-        if constexpr (!IsMHDModel<physical_quantity_type>)
+        if constexpr (!IsMHDQuantity<physical_quantity_type>)
             throw std::runtime_error(
                 "Reflective boundary type is only supported by the MHD model.");
         else
@@ -153,7 +153,7 @@ private:
     static void register_open_conditions_(boundary_ptr_type& boundary,
                                           _model_menu_type const& quantities)
     {
-        if constexpr (!IsMHDModel<physical_quantity_type>)
+        if constexpr (!IsMHDQuantity<physical_quantity_type>)
             throw std::runtime_error("Open boundary type is only supported by the MHD model.");
         else
         {
@@ -205,7 +205,7 @@ private:
                                             initializer::PHAREDict const& data,
                                             _model_menu_type const& quantities, double const gamma)
     {
-        if constexpr (!IsMHDModel<physical_quantity_type>)
+        if constexpr (!IsMHDQuantity<physical_quantity_type>)
             throw std::runtime_error(
                 "SuperMagnetofastInflow boundary type is only supported by the MHD model.");
         else
