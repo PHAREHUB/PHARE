@@ -29,7 +29,15 @@ def populate_grid(dp, sim):
     for i, k in enumerate(["x", "y", "z"][: sim.ndim]):
         dp.add_int(f"simulation/grid/nbr_cells/{k}", sim.cells[i])
         dp.add_double(f"simulation/grid/meshsize/{k}", sim.dl[i])
-        dp.add_string(f"simulation/grid/boundary_type/{k}", sim.boundary_types[i])
+        dp.add_bool(f"simulation/grid/periodicities/{k}", sim.periodicities[i])
+
+    if sim.domain_boundaries is not None:
+        for direction in ["x", "y", "z"][: sim.ndim]:
+            for side in ("lower", "upper"):
+                location = f"{direction}{side}"
+                sim.domain_boundaries[location].populate_dict(
+                    dp, f"simulation/grid/domain_boundaries/{location}", sim.ndim
+                )
 
     dp.add_int("simulation/interp_order", sim.interp_order)
     dp.add_int("simulation/refined_particle_nbr", sim.refined_particle_nbr)

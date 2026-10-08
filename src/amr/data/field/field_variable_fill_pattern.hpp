@@ -216,6 +216,45 @@ private:
 };
 
 
+template<std::size_t dimension>
+class NoOverlapFillPattern : public SAMRAI::xfer::VariableFillPattern
+{
+public:
+    std::shared_ptr<SAMRAI::hier::BoxOverlap>
+    calculateOverlap(SAMRAI::hier::BoxGeometry const& dst_geometry,
+                     SAMRAI::hier::BoxGeometry const& /*src_geometry*/,
+                     SAMRAI::hier::Box const& /*dst_patch_box*/,
+                     SAMRAI::hier::Box const& /*src_mask*/, SAMRAI::hier::Box const& /*fill_box*/,
+                     bool const /*overwrite_interior*/,
+                     SAMRAI::hier::Transformation const& transformation) const override
+    {
+        return dst_geometry.setUpOverlap(SAMRAI::hier::BoxContainer{}, transformation);
+    }
+
+    std::shared_ptr<SAMRAI::hier::BoxOverlap>
+    computeFillBoxesOverlap(SAMRAI::hier::BoxContainer const& /*fill_boxes*/,
+                            SAMRAI::hier::BoxContainer const& /*node_fill_boxes*/,
+                            SAMRAI::hier::Box const& patch_box,
+                            SAMRAI::hier::Box const& /*data_box*/,
+                            SAMRAI::hier::PatchDataFactory const& pdf) const override
+    {
+        return pdf.getBoxGeometry(patch_box)->setUpOverlap(
+            SAMRAI::hier::BoxContainer{},
+            SAMRAI::hier::Transformation{SAMRAI::hier::IntVector::getZero(patch_box.getDim())});
+    }
+
+    std::string const& getPatternName() const override { return s_name_id; }
+
+    SAMRAI::hier::IntVector const& getStencilWidth() override
+    {
+        return SAMRAI::hier::IntVector::getZero(SAMRAI::tbox::Dimension{dimension});
+    }
+
+private:
+    static inline std::string const s_name_id = "NO_OVERLAP_FILL_PATTERN";
+};
+
+
 // We use this fill pattern to sum the contributions of border fields like rho and flux
 /** \brief VariableFillPattern that is used to fill incomplete ghost domain moment nodes
  *

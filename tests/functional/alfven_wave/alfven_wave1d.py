@@ -29,7 +29,6 @@ def config():
         largest_patch_size=50,
         time_step_nbr=time_step_nbr,  # number of time steps (not specified if time_step and final_time provided)
         final_time=final_time,  # simulation final time (not specified if time_step and time_step_nbr provided)
-        boundary_types="periodic",  # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=1000,  # integer or tuple length == dimension
         dl=1,  # mesh size of the root level, float or tuple
         hyper_resistivity=0.001,

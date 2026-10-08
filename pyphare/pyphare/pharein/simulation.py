@@ -6,6 +6,7 @@ import numpy as np
 from ..core import box as boxm
 from ..core import phare_utilities
 from ..core.box import Box
+from . import boundary
 from . import global_vars
 from . import timestepper
 
@@ -201,36 +202,6 @@ def check_path(**kwargs):
 
 # ------------------------------------------------------------------------------
 
-
-def check_boundaries(ndim, **kwargs):
-    valid_boundary_types = ("periodic",)
-    boundary_types = kwargs.get("boundary_types", ["periodic"] * ndim)
-    phare_utilities.check_iterables(boundary_types)
-
-    if phare_utilities.none_iterable(boundary_types):
-        bc_length = 1
-        if boundary_types not in valid_boundary_types:
-            raise ValueError(
-                "Error: '{}' is not a valid boundary type".format(boundary_types)
-            )
-        boundary_types = phare_utilities.listify(boundary_types)
-    else:
-        bc_length = len(boundary_types)
-        for bc in boundary_types:
-            if bc not in valid_boundary_types:
-                raise ValueError("Error: '{}' is not a valid boundary type".format(bc))
-
-    if bc_length != ndim:
-        raise ValueError(
-            "Error- boundary_types should have length {} and is of length {}".format(
-                ndim, bc_length
-            )
-        )
-
-    return boundary_types
-
-
-# ------------------------------------------------------------------------------
 
 
 # See: https://github.com/PHAREHUB/PHARE/wiki/exactSplitting
@@ -673,7 +644,10 @@ def check_mhd_constants(**kwargs):
     eta = kwargs.get("eta", 0.0)
     nu = kwargs.get("nu", 0.0)
 
-    return gamma, eta, nu
+    if not isinstance(gamma, (int, float)) or gamma <= 1:
+        raise ValueError(f"'gamma' must be a scalar greater than 1, got {gamma!r}")
+
+    return float(gamma), eta, nu
 
 
 def check_mhd_terms(**kwargs):
@@ -706,7 +680,7 @@ def checker(func):
             "time_step_nbr",
             "layout",
             "interp_order",
-            "boundary_types",
+            "domain_boundaries",
             "refined_particle_nbr",
             "path",
             "nesting_buffer",
@@ -775,7 +749,9 @@ def checker(func):
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
+        kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
+            ndim, **kwargs
+        )
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
 
@@ -1059,7 +1035,7 @@ class Simulation(object):
         * **strict** (``bool``), turns warnings into errors (default False)
         * **resistivity** (``float``), resistivity value (default=0.0)
         * **hyper-resistivity** (``float``), hyper-resistivity value (default=0.0)
-        * **boundary_types** (``str`` or ``tuple``) type of boundary conditions (default is "periodic" for each direction)
+        * **domain_boundaries** (``dict``) domain boundaries per location (e.g. "xlower"); a direction is periodic unless both of its locations are given (MHD only)
 
     """
 

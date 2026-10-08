@@ -77,7 +77,6 @@ out = "phare_outputs/boris_move_test/"
 simArgs = {
     "time_step_nbr": 1,
     "final_time": 0.001,
-    "boundary_types": "periodic",
     "cells": 20,
     "dl": 0.3,
     "diag_options": {

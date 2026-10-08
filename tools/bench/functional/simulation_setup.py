@@ -34,7 +34,6 @@ def setup(**kwargs):
         smallest_patch_size=smallest_patch_size,
         largest_patch_size=largest_patch_size,
         time_step=time_stepper,
-        boundary_types=[kwargs.get("boundary_types", "periodic")] * ndim,
         cells=cells,
         dl=np_array_ify(dl, ndim),
         diag_options={

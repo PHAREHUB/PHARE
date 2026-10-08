@@ -796,6 +796,46 @@ namespace core
         }
 
 
+        /**
+         * @brief Returns the index of @p index mirrored across a boundary.
+         *
+         * @param direction The direction normal to the boundary.
+         * @param side Whether we reflect across the Lower or Upper boundary.
+         * @param centering The staggering of the data along @p direction.
+         * @param index The directional index to be reflected.
+         *
+         * @return The reflected directional index.
+         */
+        NO_DISCARD inline std::uint32_t boundaryMirrored(Direction direction, Side side,
+                                                         QtyCentering centering,
+                                                         std::uint32_t const index) const
+        {
+            int32_t const s         = static_cast<int32_t>(side);
+            std::size_t const iCent = static_cast<std::size_t>(centering);
+            std::size_t const iDir  = static_cast<std::size_t>(direction);
+            int32_t const i         = static_cast<int32_t>(index);
+            uint32_t const limitIdx = (side == Side::Lower) ? physicalStartIndexTable_[iCent][iDir]
+                                                            : physicalEndIndexTable_[iCent][iDir];
+            int32_t const b         = static_cast<int32_t>(limitIdx);
+            if (centering == QtyCentering::primal)
+                return static_cast<std::uint32_t>(i - 2 * (i - b));
+            else
+                return static_cast<std::uint32_t>(i - 2 * (i - b) + s);
+        }
+
+        template<std::size_t dim>
+        NO_DISCARD inline Point<std::uint32_t, dim>
+        boundaryMirrored(Direction direction, Side side, QtyCentering centering,
+                         Point<std::uint32_t, dim> const point) const
+        {
+            std::size_t const iDir = static_cast<std::size_t>(direction);
+            auto mirroredPoint     = point;
+            // iDir < dim always holds for a valid call; the guard lets the compiler drop the
+            // impossible out-of-bounds branch (avoids a GCC -Warray-bounds false positive in 1D).
+            if (iDir < dim)
+                mirroredPoint[iDir] = boundaryMirrored(direction, side, centering, point[iDir]);
+            return mirroredPoint;
+        }
 
         // ----------------------------------------------------------------------
         //                      LAYOUT SPECIFIC METHODS
@@ -944,6 +984,27 @@ namespace core
             return newCentering;
         }
 
+
+        /**
+         * @brief toFieldBox takes a local cell-centered box and creates a box
+         * that is adequate for the specified quantity. The layout is used to know
+         * the centering, nbr of ghosts of the specified quantity.
+         *
+         * @see FieldGeometry::toFieldBox
+         *
+         * */
+        NO_DISCARD Box<std::uint32_t, dimension> toFieldBox(Box<std::uint32_t, dimension> box,
+                                                            Scalar qty) const
+        {
+            auto const centerings = centering(qty);
+            core::for_N<dimension>([&](auto i) {
+                auto const is_primal = (centerings[i] == core::QtyCentering::primal) ? 1 : 0;
+                box.upper[i]         = box.upper[i] + is_primal;
+            } //
+            );
+
+            return box;
+        }
 
         /**
          * @brief momentsToEx return the indexes and associated coef to compute the linear

@@ -76,7 +76,11 @@ public:
                                         model_);
     }
 
-    NO_DISCARD auto boundaryConditions() const { return hierarchy_.boundaryConditions(); }
+    NO_DISCARD auto periodicities() const
+    {
+        auto const& periodicities = hierarchy_.periodicities();
+        return std::vector<int>(periodicities.begin(), periodicities.end());
+    }
     NO_DISCARD auto domainBox() const { return hierarchy_.domainBox(); }
     NO_DISCARD auto origin() const { return std::vector<double>(dimension, 0); }
     NO_DISCARD auto cellWidth() const { return hierarchy_.cellWidth(); }

@@ -24,7 +24,6 @@ def fromNoise():
         # and the largest 2/dt  = 2e3
         time_step_nbr=100000,
         final_time=100.0,
-        boundary_types="periodic",
         # smallest wavelength will be 2*0.2=0.4
         # and largest 50
         cells=500,
@@ -107,7 +106,6 @@ def prescribedModes():
         # and the largest 2/dt  = 2e3
         time_step_nbr=100000,
         final_time=100.0,
-        boundary_types="periodic",
         # smallest wavelength will be 2*0.2=0.4
         # and largest 50
         cells=500,

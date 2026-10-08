@@ -94,7 +94,6 @@ def simulation_params(diagdir, **extra):
         "interp_order": 1,
         "time_step_nbr": 500,
         "time_step": 0.04,
-        "boundary_types": "periodic",
         "cells": 200,
         "hyper_resistivity": 0.01,
         "dl": 1.0,
