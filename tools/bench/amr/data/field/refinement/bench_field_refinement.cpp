@@ -25,8 +25,8 @@ constexpr static auto NaN  = std::numeric_limits<double>::quiet_NaN();
 constexpr static PHARE::SimOpts opts{ndim, 1};
 
 using PHARE_Types  = core::PHARE_Types<opts>;
-using GridLayout_t = TestGridLayout<typename PHARE_Types::GridLayout_t>;
-using Grid_t       = PHARE_Types::Grid_t;
+using GridLayout_t = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
+using Grid_t       = PHARE_Types::Hybrid::Grid_t;
 using Refiner      = MagneticFieldInitRefiner<ndim>;
 
 

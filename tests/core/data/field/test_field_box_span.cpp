@@ -29,8 +29,8 @@ class FieldBoxSpanTest : public ::testing::Test
 
     static constexpr PHARE::SimOpts opts{dim, interp};
     using PHARE_Types  = PHARE::core::PHARE_Types<opts>;
-    using GridLayout_t = TestGridLayout<typename PHARE_Types::GridLayout_t>;
-    using Grid_t       = PHARE_Types::Grid_t;
+    using GridLayout_t = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
+    using Grid_t       = PHARE_Types::Hybrid::Grid_t;
 
 public:
     GridLayout_t layout{9};

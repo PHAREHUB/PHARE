@@ -24,7 +24,7 @@ TEST(BoxSpanTest, test_reverse_iterator)
     static constexpr std::size_t IDX = dim - 1;
     static constexpr PHARE::SimOpts opts{dim, 1};
     using PHARE_Types  = PHARE::core::PHARE_Types<opts>;
-    using GridLayout_t = TestGridLayout<typename PHARE_Types::GridLayout_t>;
+    using GridLayout_t = TestGridLayout<typename PHARE_Types::Hybrid::GridLayout_t>;
 
     GridLayout_t layout{3};
 
