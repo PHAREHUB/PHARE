@@ -165,7 +165,7 @@ class TestBoundaryTypeEnum(unittest.TestCase):
         from pyphare.cpp import cpp_etc_lib
 
         members = cpp_etc_lib().BoundaryType.__members__
-        for boundary_type in boundary._TYPE_CTORS:
+        for boundary_type in boundary._type_to_class:
             self.assertIn(boundary.boundary_type_enum_member(boundary_type), members)
 
 

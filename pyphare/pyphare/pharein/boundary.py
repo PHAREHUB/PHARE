@@ -30,7 +30,9 @@ class Boundary(ABC):
     type = None
 
     def populate_dict(self, dp, bc_path, ndim):
-        dp.add_enum_int(f"{bc_path}/type", "BoundaryType", boundary_type_enum_member(self.type))
+        dp.add_enum_int(
+            f"{bc_path}/type", "BoundaryType", boundary_type_enum_member(self.type)
+        )
 
 
 def boundary_type_enum_member(boundary_type):
@@ -136,11 +138,12 @@ class SuperMagnetofastInflowBoundary(Boundary):
 
 # ------------------------------------------------------------------------------
 
-_TYPE_CTORS = {
-    "none": NoneBoundary,
-    "open": OpenBoundary,
-    "reflective": ReflectiveBoundary,
-    "super-magnetofast-inflow": SuperMagnetofastInflowBoundary,
+# this dict fills itself automatically once a Boundary's subclass
+# has been declared with it type attribute
+_type_to_class = {
+    el.type: el
+    for el in globals().values()
+    if isinstance(el, type) and issubclass(el, Boundary) and el is not Boundary
 }
 
 
@@ -179,7 +182,7 @@ def resolve_boundaries(ndim, **kwargs):
             f"got model_options={model_options}"
         )
 
-    user_types = tuple(t for t in _TYPE_CTORS if t != "none")
+    user_types = tuple(t for t in _type_to_class if t != "none")
     resolved = {}
     for location in all_boundary_locations:
         if location not in raw:
@@ -193,14 +196,16 @@ def resolve_boundaries(ndim, **kwargs):
                 f"boundary condition"
             )
         if "type" not in bc:
-            raise KeyError(f"No key 'type' found in the domain_boundaries dict passed to {location}")
+            raise KeyError(
+                f"No key 'type' found in the domain_boundaries dict passed to {location}"
+            )
         boundary_type = bc["type"]
         if boundary_type not in user_types:
             raise ValueError(
                 f"Boundary type {boundary_type} is not valid: it should belong to {user_types}"
             )
 
-        ctor = _TYPE_CTORS[boundary_type]
+        ctor = _type_to_class[boundary_type]
         params = {key: val for key, val in bc.items() if key != "type"}
         expected = [field.name for field in fields(ctor)]
 
@@ -216,6 +221,8 @@ def resolve_boundaries(ndim, **kwargs):
                     f"Boundary type '{boundary_type}' at '{location}' requires '{key}'"
                 )
 
+        # some Boundary subclass needs to be passed location and ndim at construct, see
+        # SuperMagnetofastInflowBoundary for instance
         if "location" in signature(ctor).parameters:
             resolved[location] = ctor(**params, location=location, ndim=ndim)
         else:
