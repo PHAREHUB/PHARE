@@ -3,6 +3,7 @@
 #include "core/utilities/types.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/data/particles/particle_array_appender.hpp"
+#include "core/data/particles/particle_array_exporter.hpp"
 #include "core/data/particles/particle_array_converter.hpp"
 #include "core/data/particles/particle_array_comparator.hpp"
 
@@ -67,6 +68,7 @@ using Permutations_t = testing::Types< // ! notice commas !
    ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::CPU>
    ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::CPU>
    ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU>
+   ,TestParam<2, LayoutMode::AoSCMTS, AllocatorMode::CPU>
    ,TestParam<3, LayoutMode::AoSCMTS, AllocatorMode::CPU>
 
 >;
@@ -236,6 +238,108 @@ void move_particles(Particles& particles)
 }
 
 
+// level ghost arrays: particles live in the ghost layer (clamp-owner tile for tiled layouts);
+// movers re-bucket anywhere inside the ghost box (including into the domain), ghost-box
+// leavers are deleted at sync
+template<auto layout_mode>
+struct MoveLevelGhostParticles;
+
+template<>
+struct MoveLevelGhostParticles<LayoutMode::AoS>
+{
+    // no registration: move directly, then apply the deletion contract by hand
+    template<typename Particles, typename Offsets, typename Box_t>
+    static void apply(Particles& particles, Offsets const& offsets, Box_t const& ghost_box)
+    {
+        std::size_t counter = 0;
+        for (auto& p : particles)
+        {
+            p.iCell() = add_icell(p.iCell(), offsets[counter % offsets.size()]);
+            ++counter;
+        }
+        std::erase_if(particles.vector(),
+                      [&](auto const& p) { return not isIn(p.iCell(), ghost_box); });
+    }
+};
+
+template<>
+struct MoveLevelGhostParticles<LayoutMode::AoSCMTS>
+{
+    // registers on the vector, as for the domain mover above
+    template<typename Particles, typename Offsets, typename Box_t>
+    static void apply(Particles& particles, Offsets const& offsets, Box_t const&)
+    {
+        auto constexpr dim  = Particles::dimension;
+        std::size_t counter = 0;
+        for (auto& tile : particles())
+        {
+            auto& tile_particles = tile();
+            auto const tile_cell = particles.local_cell(tile.lower);
+            auto const n         = tile_particles.size();
+            for (std::size_t i = 0; i < n; ++i)
+            {
+                auto& p            = tile_particles[i];
+                auto const oldcell = p.iCell();
+                p.iCell()          = add_icell(oldcell, offsets[counter % offsets.size()]);
+                ++counter;
+                auto const pt
+                    = make_particle_tracker<LayoutMode::AoSCMTS, ParticleType::LevelGhost, dim>(
+                        oldcell, tile_cell);
+                particles.template move_check<ParticleType::LevelGhost>(pt, i, p);
+            }
+        }
+        particles.template on_moved<ParticleType::LevelGhost>();
+    }
+};
+
+template<>
+struct MoveLevelGhostParticles<LayoutMode::AoSPCTS>
+{
+    // registration goes through the span, as for the domain mover above
+    template<typename Particles, typename Offsets, typename Box_t>
+    static void apply(Particles& particles, Offsets const& offsets, Box_t const&)
+    {
+        auto constexpr dim  = Particles::dimension;
+        std::size_t counter = 0;
+        auto view           = particles.view();
+        for (auto& tile : view())
+        {
+            auto& tile_particles = tile();
+            for (auto const& bix : tile_particles.local_box())
+            {
+                auto& cell_particles = tile_particles(bix);
+                auto const n         = cell_particles.size();
+                for (std::size_t i = 0; i < n; ++i)
+                {
+                    auto& p              = cell_particles[i];
+                    auto const oldcell   = p.iCell();
+                    auto const tile_cell = view.local_tile_cell(oldcell);
+                    p.iCell()            = add_icell(oldcell, offsets[counter % offsets.size()]);
+                    ++counter;
+                    auto const pt
+                        = make_particle_tracker<LayoutMode::AoSPCTS, ParticleType::LevelGhost, dim>(
+                            oldcell, tile_cell);
+                    view.template move_check<ParticleType::LevelGhost>(pt, i, p);
+                }
+            }
+        }
+        particles.template on_moved<ParticleType::LevelGhost>();
+    }
+};
+
+
+// AoS reference for move_in_domain: split the level ghosts that entered the domain box out
+// into their own (domain) array
+template<typename Particles, typename Box_t>
+auto split_into_domain(Particles& ghosts, Box_t const& domain_box)
+{
+    auto domain = ghosts;
+    std::erase_if(domain.vector(), [&](auto const& p) { return not isIn(p.iCell(), domain_box); });
+    std::erase_if(ghosts.vector(), [&](auto const& p) { return isIn(p.iCell(), domain_box); });
+    return domain;
+}
+
+
 // every per-cell bucket must only hold particles whose iCell maps to that bucket
 template<typename Particles>
 void check_cell_buckets(Particles const& particles)
@@ -337,6 +441,71 @@ TYPED_TEST(ParticleArrayConstructionTest, test_move_sync_works)
 
     auto const report = compare_particles(reference, converted);
     EXPECT_TRUE(report) << report.why();
+}
+
+
+// level ghost arrays fill the ghost layer; after a move they may re-bucket anywhere in the
+// ghost box (including into the domain), ghost-box leavers must be deleted, and those that
+// entered the domain must then be moved into the domain array by move_in_domain
+// (as ParallelIonUpdater::post_move_sync does)
+TYPED_TEST(ParticleArrayConstructionTest, test_level_ghost_move_sync_works)
+{
+    using ParticleArray_t    = TestFixture::ParticleArray_t;
+    using AoSParticleArray_t = AoSParticleArray<TestFixture::dim>;
+    using enum LayoutMode;
+
+    auto constexpr static dim = TestFixture::dim;
+
+    PHARE_LOG_LINE_SS(ParticleArray_t::type_id);
+
+    if constexpr (not any_in(ParticleArray_t::layout_mode, AoS, AoSPCTS, AoSCMTS))
+        GTEST_SKIP() << "level ghost move_check unsupported for this layout";
+    else
+    {
+        auto constexpr static ghosts = TestFixture::GridLayout_t::options.particle_ghost_width;
+        auto const domain_box        = this->layout.AMRBox();
+        auto const ghost_box         = grow(domain_box, ghosts);
+
+        auto particles = make_particles<ParticleArray_t>(this->layout);
+        add_ghost_particles(particles, domain_box, ppc, ghosts);
+
+        auto reference = convert_particles<AoSParticleArray_t>(particles, this->layout);
+
+        auto const offsets = corner_offsets<dim>();
+        MoveLevelGhostParticles<ParticleArray_t::layout_mode>::apply(particles, offsets, ghost_box);
+        MoveLevelGhostParticles<AoS>::apply(reference, offsets, ghost_box);
+
+        check_tile_ownership(particles);
+        check_cell_buckets(particles);
+        if constexpr (ParticleArray_t::layout_mode == AoSCMTS)
+            EXPECT_TRUE(particles.is_consistent());
+
+        auto const compare = [&](auto& ref, auto const& cmp, auto const& name) {
+            auto converted = convert_particles<AoSParticleArray_t>(cmp, this->layout);
+            sort_particles(converted, ghost_box);
+            sort_particles(ref, ghost_box);
+            EXPECT_EQ(ref.size(), converted.size()) << name;
+            auto const report = compare_particles(ref, converted);
+            EXPECT_TRUE(report) << name << ": " << report.why();
+        };
+
+        compare(reference, particles, "level ghosts after sync");
+
+        // move_in_domain: level ghosts that entered the domain box go to the domain array
+        auto ref_domain = split_into_domain(reference, domain_box);
+        if constexpr (ParticleArray_t::layout_mode == AoS)
+        {
+            auto domain = split_into_domain(particles, domain_box);
+            compare(ref_domain, domain, "domain after move_in_domain");
+        }
+        else
+        {
+            auto domain = make_particles<ParticleArray_t>(this->layout);
+            move_in_domain(domain, particles, domain_box);
+            compare(ref_domain, domain, "domain after move_in_domain");
+        }
+        compare(reference, particles, "level ghosts after move_in_domain");
+    }
 }
 
 

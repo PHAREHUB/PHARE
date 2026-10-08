@@ -403,7 +403,7 @@ void MappedTileSetVector<Particles>::on_moved()
             {
                 auto const cell = Point<int, dim>{src()[idx].iCell()};
                 if constexpr (type == ParticleType::LevelGhost)
-                    if (isIn(cell, box_) or not isIn(cell, this->ghost_box()))
+                    if (not isIn(cell, this->ghost_box())) // left the level ghost box
                         continue;
                 if (particles_.at(cell) == &dst)
                     dst().emplace_back(src()[idx]); // maps it

@@ -360,10 +360,10 @@ void PerCellVector<Particles>::sync_moved(locell_t const& bix, std::size_t const
     // add_into_(bix) is deliberately left as-is here (not zeroed): sync_add_new still
     // needs it as the precise "is an arrival actually expected at this cell" signal
     // (move_check only increments it when it intends the particle to land here — a
-    // departure register_particle_ejection registered never does) — a plain isIn(ghost_box())
-    // re-check can't tell "stays local" from "crossed into a sibling tile's own
-    // domain that happens to overlap this tile's ghost reach" apart, since both are
-    // geometrically within ghost_box(). sync_rm_left resets it to 0 once consumed.
+    // departure handed off to another tile is counted at that tile instead) — a plain
+    // isIn(ghost_box()) re-check can't tell "stays local" from "crossed into a sibling
+    // tile's own domain that happens to overlap this tile's ghost reach" apart, since
+    // both are geometrically within ghost_box(). sync_rm_left resets it to 0 once consumed.
 }
 
 
@@ -523,17 +523,6 @@ struct PerCellParticles : public Super_
     template<auto particle_type>
     auto& move_check(auto const& pt, std::size_t const& idx, auto& particle);
 
-    // the new cell isn't ours, even if still within our ghost_box() reach (a
-    // neighbour's domain can overlap it) — register the departure only, no arrival
-    void register_particle_ejection(auto const& pt, std::size_t const& idx)
-    {
-        bool constexpr static ATOMIC = true;
-        using Op                     = Operators<std::size_t, ATOMIC>;
-
-        auto const old_lcl_cell = Super::local_cell(pt.icell);
-        Super::gaps_(old_lcl_cell)[Op{Super::gap_idx_(old_lcl_cell)}.increment_return_old()] = idx;
-    }
-
     void print() const {}
     void check() const {}
 
@@ -647,13 +636,12 @@ void PerCellSpan<Particles>::sync_add_new(locell_t const& bix)
         auto& expected           = add_into_(newcell_local);
         if (expected == 0)
         { // still geometrically within this tile's own ghost_box() reach, but no
-          // arrival was actually registered for it there — move_check only
+          // arrival was actually registered for it here — move_check only
           // increments add_into_ at the destination when it intends the particle to
-          // land there; register_particle_ejection (a departure crossing into a SIBLING
-          // tile's own domain, which this tile's ghost_box() alone can't
-          // distinguish from staying local, since a tile's domain overlaps its
-          // neighbours' grown ghost box) never does. Trust that signal over blind
-          // geometry: drop it here, exactly like a true ghost-box leaver above.
+          // land there; a departure handed off to a SIBLING tile (whose domain this
+          // tile's ghost_box() alone can't distinguish from staying local, since a
+          // tile's domain overlaps its neighbours' grown ghost box) is added there
+          // instead. Trust that signal over blind geometry: nothing to add here.
             ++left;
             continue;
         }

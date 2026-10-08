@@ -85,9 +85,7 @@ void append_particles(Src const& src, Dst& dst)
 
     Appending{0, src.size()}.template operator()<type>(src, dst);
 
-    // tiled level ghosts are duplicated per reaching tile, see append_to_tiles
-    if constexpr (!(type == ParticleType::LevelGhost and is_tiled(Dst::layout_mode)))
-        assert(dst.size() == old_size + src.size());
+    assert(dst.size() == old_size + src.size());
 }
 
 
@@ -148,29 +146,13 @@ void ParticlesAppender<LM::AoS, AM::CPU, LM::AoS, AM::CPU>::operator()( //
 
 
 
-// tiled dst: level ghosts are duplicated into every tile whose grown box reaches their cell
-// (as the refiner does), everything else goes to the owning tile only
+// tiled dst: every particle goes to its owning tile only, emplace_back resolves the owner
+// (clamp-owner for ghost cells, see TileSet::tag_cells_) - level ghosts are not duplicated
 template<auto type, typename Src, typename Dst>
 void append_to_tiles(Src const& src, Dst& dst)
 {
-    if constexpr (type == ParticleType::LevelGhost)
-    {
-        for (auto& tile : dst())
-        {
-            auto const tile_ghost_box = [&]() {
-                if constexpr (Dst::layout_mode == LM::AoSCMTS)
-                    return tile().box();
-                else
-                    return tile().ghost_box();
-            }();
-            for (auto const& p : src)
-                if (isIn(p.iCell(), tile_ghost_box))
-                    tile().emplace_back(p);
-        }
-    }
-    else
-        for (auto const& p : src)
-            dst.emplace_back(p);
+    for (auto const& p : src)
+        dst.emplace_back(p);
 
     dst.template on_appended<type>();
 }

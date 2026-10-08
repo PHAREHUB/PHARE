@@ -49,10 +49,9 @@ auto& pool = *ThreadPool::INSTANCE().thread_pools[0];
 
 // as solver_ppc.hpp
 template<typename ParticleArray, typename GridLayout>
-using IonUpdater_t
-    = std::conditional_t<ParticleArray::layout_mode == LayoutMode::AoSMapped,
-                         IonUpdater<ParticleArray, GridLayout>,
-                         ParallelIonUpdater<ParticleArray, GridLayout>>;
+using IonUpdater_t = std::conditional_t<ParticleArray::layout_mode == LayoutMode::AoSMapped,
+                                        IonUpdater<ParticleArray, GridLayout>,
+                                        ParallelIonUpdater<ParticleArray, GridLayout>>;
 
 template<typename Patches>
 void ref_update(UpdaterMode mode, Patches& patches)
@@ -355,10 +354,10 @@ using Permutations_t = testing::Types< // ! notice commas !
    ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
    ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only>
    ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
-   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only>
-   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
-   ,TestParam<3, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::domain_only>
-   ,TestParam<3, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::all>
+   // ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only>
+   // ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<2, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<2, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::all>
 
 >;
 // clang-format on

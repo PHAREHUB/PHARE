@@ -8,13 +8,13 @@ cls
 set -e
 
 FILE="tests/core/numerics/ion_updater/test_updater.cpp"
-FILE="tests/core/data/particles/test_particle_array_synchronisation.cpp"
 FILE="tests/core/data/particles/test_particles_serialization.cpp"
 FILE="tests/core/data/particles/test_particles_construction.cpp"
 FILE="tests/amr/data/particles/refine/test_particles_data_split.cpp"
 FILE="tests/core/data/particles/test_particle_array_consistency.cpp"
-FILE="tests/core/numerics/ion_updater/test_multi_updater.cpp"
 FILE="tests/amr/data/field/test_fields_schedules.cpp"
+FILE="tests/core/data/particles/test_particle_array_synchronisation.cpp"
+FILE="tests/core/numerics/ion_updater/test_multi_updater.cpp"
 CARGS=${CARGS:-""}
 
 set -x

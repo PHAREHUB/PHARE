@@ -493,17 +493,10 @@ auto& PCTileSetSpan<Particles>::move_check(auto const& pt, std::size_t const idx
     else // LevelGhost
     {
         auto& cur_tile = *particles_.at(pt.tile_cell);
-        if (isIn(newcell, box()))
-        {
-            if (not isIn(newcell, cur_tile))
-            {
-                cur_tile().register_particle_ejection(pt, idx);
-                return *this;
-            }
-        }
         // level ghosts live only in their cell's clamp owner (TileSet::tag_cells_), so
-        // hand off even when the new cell is still within this tile's ghost box
-        else if (isIn(newcell, ghost_box()) and particles_.at(local_cell(newcell)) != &cur_tile)
+        // hand off to the new cell's owner - including into another tile's domain cell,
+        // and even when the new cell is still within this tile's ghost box
+        if (isIn(newcell, ghost_box()) and particles_.at(local_cell(newcell)) != &cur_tile)
         {
             leave();
             Op{add_into_(local_cell(newcell))}.increment_return_old();
