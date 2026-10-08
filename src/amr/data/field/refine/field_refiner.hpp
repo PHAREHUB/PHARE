@@ -43,8 +43,8 @@ namespace amr
         }
 
 
-        /** @brief Given a sourceField , a destinationField, and a fineIndex compute the
-         * interpolation from the coarseField(sourceField) to the fineFiled(destinationField) at the
+        /** @brief Given a coarseField , a fineField, and a fineIndex compute the
+         * interpolation from the coarseField(coarseField) to the fineFiled(fineField) at the
          * fineIndex index
          *
          *
@@ -54,12 +54,36 @@ namespace amr
          * - the weights are pre-computed by the FieldRefineIndexesAndWeights object
          * - we just have to know which one to use, depending on where the fineIndex is in the
          * coarse cell
+         *
+         * This is the FieldRefinerPolicy contract shared by every refiner class in this
+         * directory (ElectricFieldRefiner, MagneticFieldRefiner, ...):
+         * core::operator_across_adjacent_levels() (in core/data/field/field_box.hpp)
+         * calls operator() once per fine cell it visits with:
+         *  - coarseField, fineField   : the whole coarse/fine arrays, for policies that
+         *                               need to read neighboring cells (e.g. averaging)
+         *  - fineIndex, coarseIndex   : that cell's AMR index on the fine grid, and its
+         *                               coarse counterpart (fineIndex divided by the
+         *                               refinement ratio)
+         *  - locFineIdx, locCoarseIdx : the same two indices, translated to each field's
+         *                               local (ghost-box-relative) storage index
+         *  - fineVal, coarseVal       : references to fineField(locFineIdx) and
+         *                               coarseField(locCoarseIdx) themselves, passed
+         *                               through so a policy can read/write the cell
+         *                               value directly instead of re-indexing the field
+         *
+         * A policy must not overwrite a fine cell that was already set (by a boundary
+         * condition or an earlier pass): guard with `if (not std::isnan(fineVal)) return;`
+         * before writing, since NaN is the sentinel for "not yet set".
          */
-        template<typename FieldT>
-        void operator()(FieldT const& sourceField, FieldT& destinationField,
-                        core::Point<int, dimension> fineIndex)
+        void operator()(auto const& coarseField, auto& fineField, auto fineIndex,
+                        auto const& coarseIndex, auto const& locFineIdx, auto const& locCoarseIdx,
+                        auto& fineVal, auto const& coarseVal)
         {
-            TBOX_ASSERT(sourceField.physicalQuantity() == destinationField.physicalQuantity());
+            TBOX_ASSERT(coarseField.physicalQuantity() == fineField.physicalQuantity());
+
+
+            if (not std::isnan(fineVal))
+                return;
 
             // First we get the coarseStartIndex for a given fineIndex
             // then we get the index in weights table for a given fineIndex.
@@ -75,26 +99,20 @@ namespace amr
             coarseStartIndex = AMRToLocal(coarseStartIndex, coarseBox_);
             fineIndex        = AMRToLocal(fineIndex, fineBox_);
 
-            double fieldValue = 0.;
+            assert(coarseField(coarseStartIndex) == coarseVal);
 
-
+            fineVal = 0.;
 
 
             if constexpr (dimension == 1)
             {
-                auto const& xStartIndex = coarseStartIndex[dirX];
-
+                auto const& xStartIndex      = coarseStartIndex[dirX];
                 auto const& xWeights         = indexesAndWeights_.weights(core::Direction::X);
                 auto const& leftRightWeights = xWeights[iWeight[dirX]];
 
                 for (std::size_t iShiftX = 0; iShiftX < leftRightWeights.size(); ++iShiftX)
-                {
-                    fieldValue += sourceField(xStartIndex + iShiftX) * leftRightWeights[iShiftX];
-                }
-                if (std::isnan(destinationField(fineIndex[dirX])))
-                    destinationField(fineIndex[dirX]) = fieldValue;
+                    fineVal += coarseField(xStartIndex + iShiftX) * leftRightWeights[iShiftX];
             }
-
 
 
 
@@ -114,14 +132,11 @@ namespace amr
                     double Yinterp = 0.;
                     for (std::size_t iShiftY = 0; iShiftY < yLeftRightWeights.size(); ++iShiftY)
                     {
-                        Yinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY)
+                        Yinterp += coarseField(xStartIndex + iShiftX, yStartIndex + iShiftY)
                                    * yLeftRightWeights[iShiftY];
                     }
-                    fieldValue += Yinterp * xLeftRightWeights[iShiftX];
+                    fineVal += Yinterp * xLeftRightWeights[iShiftX];
                 }
-
-                if (std::isnan(destinationField(fineIndex[dirX], fineIndex[dirY])))
-                    destinationField(fineIndex[dirX], fineIndex[dirY]) = fieldValue;
             }
 
 
@@ -150,18 +165,14 @@ namespace amr
                         double Zinterp = 0.;
                         for (std::size_t iShiftZ = 0; iShiftZ < zLeftRightWeights.size(); ++iShiftZ)
                         {
-                            Zinterp += sourceField(xStartIndex + iShiftX, yStartIndex + iShiftY,
+                            Zinterp += coarseField(xStartIndex + iShiftX, yStartIndex + iShiftY,
                                                    zStartIndex + iShiftZ)
                                        * zLeftRightWeights[iShiftZ];
                         }
                         Yinterp += Zinterp * yLeftRightWeights[iShiftY];
                     }
-                    fieldValue += Yinterp * xLeftRightWeights[iShiftX];
+                    fineVal += Yinterp * xLeftRightWeights[iShiftX];
                 }
-
-                if (std::isnan(destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ])))
-                    destinationField(fineIndex[dirX], fineIndex[dirY], fineIndex[dirZ])
-                        = fieldValue;
             }
         }
 
