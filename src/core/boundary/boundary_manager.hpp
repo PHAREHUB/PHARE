@@ -43,15 +43,16 @@ inline void validatePhysicalBoundariesDeclared(initializer::PHAREDict const& gri
         {
             std::string const loc = std::string{dirs[d]} + side;
             bool const declared
-                = grid.contains("boundaries") && grid["boundaries"].contains(loc)
-                  && grid["boundaries"][loc].contains("type")
-                  && cppdict::get_value(grid["boundaries"][loc], "type", BoundaryType::None)
+                = grid.contains("domain_boundaries") && grid["domain_boundaries"].contains(loc)
+                  && grid["domain_boundaries"][loc].contains("type")
+                  && cppdict::get_value(grid["domain_boundaries"][loc], "type", BoundaryType::None)
                          != BoundaryType::None;
             if (!declared)
-                throw std::runtime_error("BoundaryManager: direction '" + std::string{dirs[d]}
-                                         + "' is physical but boundary '" + loc
-                                         + "' has no condition declared (expected grid/boundaries/"
-                                         + loc + "/type to be present and not 'none').");
+                throw std::runtime_error(
+                    "BoundaryManager: direction '" + std::string{dirs[d]}
+                    + "' is physical but boundary '" + loc
+                    + "' has no condition declared (expected grid/domain_boundaries/" + loc
+                    + "/type to be present and not 'none').");
         }
     }
 }

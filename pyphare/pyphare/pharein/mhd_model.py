@@ -65,7 +65,7 @@ class MHDModel(object):
         domain = sim.simulation_domain()
         b_functions = [self.model_dict[name] for name in ("bx", "by", "bz")]
 
-        for location, bc in sim.boundaries.items():
+        for location, bc in sim.domain_boundaries.items():
             if not isinstance(bc, SuperMagnetofastInflowBoundary):
                 continue
 

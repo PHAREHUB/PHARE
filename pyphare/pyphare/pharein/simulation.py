@@ -677,7 +677,7 @@ def checker(func):
             "time_step_nbr",
             "layout",
             "interp_order",
-            "boundaries",
+            "domain_boundaries",
             "refined_particle_nbr",
             "path",
             "nesting_buffer",
@@ -746,7 +746,7 @@ def checker(func):
         ndim = compute_dimension(cells)
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
-        kwargs["periodicities"], kwargs["boundaries"] = boundary.resolve_boundaries(
+        kwargs["periodicities"], kwargs["domain_boundaries"] = boundary.resolve_boundaries(
             ndim, **kwargs
         )
 
@@ -1032,7 +1032,7 @@ class Simulation(object):
         * **strict** (``bool``), turns warnings into errors (default False)
         * **resistivity** (``float``), resistivity value (default=0.0)
         * **hyper-resistivity** (``float``), hyper-resistivity value (default=0.0)
-        * **boundaries** (``dict``) physical boundaries per location (e.g. "xlower"); a direction is periodic unless both of its locations are given (MHD only)
+        * **domain_boundaries** (``dict``) domain boundaries per location (e.g. "xlower"); a direction is periodic unless both of its locations are given (MHD only)
 
     """
 

@@ -99,9 +99,9 @@ public:
 
         if (dict.contains("grid"))
             core::validatePhysicalBoundariesDeclared<dimension>(dict["grid"]);
-        auto const has_bcs = dict.contains("grid") && dict["grid"].contains("boundaries");
+        auto const has_bcs = dict.contains("grid") && dict["grid"].contains("domain_boundaries");
         boundaryManager    = std::make_shared<boundary_manager_type>(
-            has_bcs ? dict["grid"]["boundaries"] : PHARE::initializer::PHAREDict{},
+            has_bcs ? dict["grid"]["domain_boundaries"] : PHARE::initializer::PHAREDict{},
             scalarQuantities, vectorQuantities, gamma_);
     }
 

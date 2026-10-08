@@ -103,7 +103,7 @@ def config():
         riemann="Rusanov",
         mhd_timestepper="TVDRK2",
         model_options=["MHDModel"],
-        boundaries={
+        domain_boundaries={
             "xlower": {
                 "type": "super-magnetofast-inflow",
                 "velocity": U_INIT,

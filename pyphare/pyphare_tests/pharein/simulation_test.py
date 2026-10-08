@@ -89,19 +89,19 @@ class TestSimulation(unittest.TestCase):
         return kwargs
 
     def test_boundaries_default_none(self):
-        # without a boundaries dict every location is periodic and defaults to 'none'
+        # without a domain_boundaries dict every location is periodic and defaults to 'none'
         global_vars.sim = None
         s = simulation.Simulation(**self._mhd_kwargs())
         self.assertEqual([True], s.periodicities)
         for loc in ("xlower", "xupper"):
-            self.assertEqual("none", s.boundaries[loc].type)
+            self.assertEqual("none", s.domain_boundaries[loc].type)
 
     def test_physical_direction_requires_both_locations(self):
         # giving only one side of a direction must be rejected
         global_vars.sim = None
         with self.assertRaises(ValueError):
             simulation.Simulation(
-                **self._mhd_kwargs(boundaries={"xlower": {"type": "open"}})
+                **self._mhd_kwargs(domain_boundaries={"xlower": {"type": "open"}})
             )
 
     def test_inflow_velocity_scalar_normalized_signed(self):
@@ -109,7 +109,7 @@ class TestSimulation(unittest.TestCase):
         global_vars.sim = None
         s = simulation.Simulation(
             **self._mhd_kwargs(
-                boundaries={
+                domain_boundaries={
                     "xlower": {
                         "type": "super-magnetofast-inflow",
                         "velocity": 2.0,
@@ -122,7 +122,7 @@ class TestSimulation(unittest.TestCase):
             )
         )
         self.assertEqual([False], s.periodicities)
-        vx, vy, vz = s.boundaries["xlower"].velocity
+        vx, vy, vz = s.domain_boundaries["xlower"].velocity
         self.assertEqual((2.0, 0.0, 0.0), (vx, vy, vz))  # +x inward at lower
 
     def test_inflow_scalar_B_rejected(self):
@@ -131,7 +131,7 @@ class TestSimulation(unittest.TestCase):
         with self.assertRaises((TypeError, ValueError)):
             simulation.Simulation(
                 **self._mhd_kwargs(
-                    boundaries={
+                    domain_boundaries={
                         "xlower": {
                             "type": "super-magnetofast-inflow",
                             "velocity": 2.0,
@@ -148,7 +148,7 @@ class TestSimulation(unittest.TestCase):
         global_vars.sim = None
         return simulation.Simulation(
             **self._mhd_kwargs(
-                boundaries={
+                domain_boundaries={
                     "xlower": {
                         "type": "super-magnetofast-inflow",
                         "velocity": velocity,
@@ -187,7 +187,7 @@ class TestSimulation(unittest.TestCase):
         global_vars.sim = None
         simulation.Simulation(
             **self._mhd_kwargs(
-                boundaries={
+                domain_boundaries={
                     "xlower": {"type": "open"},
                     "xupper": {
                         "type": "super-magnetofast-inflow",

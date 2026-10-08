@@ -60,7 +60,7 @@ def config():
         mhd_timestepper="TVDRK3",
         hall=hall,
         model_options=["MHDModel"],
-        boundaries={
+        domain_boundaries={
             "xlower": {"type": "open"},
             "xupper": {"type": "open"},
             "ylower": {"type": "reflective"},

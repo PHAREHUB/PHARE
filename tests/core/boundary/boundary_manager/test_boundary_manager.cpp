@@ -113,7 +113,7 @@ makeGridDict(std::array<bool, 3> const& periodicities,
     grid["periodicities"]["y"] = periodicities[1];
     grid["periodicities"]["z"] = periodicities[2];
     for (auto const& [loc, type] : bcs)
-        grid["boundaries"][loc]["type"] = static_cast<int>(type);
+        grid["domain_boundaries"][loc]["type"] = static_cast<int>(type);
     return grid;
 }
 } // namespace

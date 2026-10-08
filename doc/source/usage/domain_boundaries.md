@@ -1,20 +1,21 @@
-# Physical boundaries
+# Domain boundaries
 
 By default, every direction of the simulation domain is periodic. A direction becomes non-periodic
-as soon as one of its two boundaries is given in the `Simulation` kwarg `boundaries`, which then
-sets the behavior of each physical boundary.
+as soon as one of its two boundaries is given in the `Simulation` kwarg `domain_boundaries`, which then
+sets the behavior of each domain boundary.
 
 ```{note}
-Physical boundaries are currently only supported by the MHD model (`model_options=["MHDModel"]`).
+Non-periodic domain boundaries are currently only supported by the MHD model
+(`model_options=["MHDModel"]`).
 ```
 
 ## Specifying boundaries
 
-`boundaries` is a dict whose keys are boundary locations, written `"<direction><side>"` with
+`domain_boundaries` is a dict whose keys are boundary locations, written `"<direction><side>"` with
 direction `x`, `y` or `z` and side `lower` or `upper`:
 
 ```text
-boundaries={
+domain_boundaries={
     "<location>": {"type": "<boundary type>", "<parameter>": <value>, ...},
     ...
 }
@@ -26,7 +27,7 @@ boundaries={
 
 The following rules are checked when the `Simulation` is created:
 
-- a direction whose two locations are absent from `boundaries` is periodic;
+- a direction whose two locations are absent from `domain_boundaries` is periodic;
 - a direction with one location given is non-periodic, and its other location must be given too;
 - locations beyond the simulation dimension (e.g. `zlower` in 2D) are rejected.
 
@@ -41,9 +42,10 @@ The resulting periodicity of each direction is available as the list of booleans
 | `reflective`               | perfectly conducting wall | none                                   |
 | `super-magnetofast-inflow` | super-magnetofast inflow  | `density`, `pressure`, `velocity`, `B` |
 
-Each boundary type is implemented by imposing boundary conditions on the conservative variables, on
-the magnetic field and, for some types, on the tangential component of the electric field; see
-{doc}`../numerics/boundary_conditions` for how these conditions are discretized.
+Each boundary type is implemented by imposing domain boundary conditions on the conservative
+variables, on the magnetic field and, for some types, on the tangential component of the electric
+field; see
+{doc}`../numerics/domain_boundary_conditions` for how these conditions are discretized.
 
 ### Open
 
@@ -70,9 +72,9 @@ so that $B_n$ is constant in time on the boundary:
 
 $$
 \eval{B_n}_{\Gamma}(t) = \eval{B_n}_{\Gamma}(t=0).
-$$ (eq:usage_physical_boundaries_reflective_normal_b)
+$$ (eq:usage_domain_boundaries_reflective_normal_b)
 
-Eq. {eq}`eq:usage_physical_boundaries_reflective_normal_b` is the relation that must be satisfied by
+Eq. {eq}`eq:usage_domain_boundaries_reflective_normal_b` is the relation that must be satisfied by
 the magnetic field at the surface of a perfect conductor.
 
 ### Super-magnetofast inflow
@@ -99,7 +101,7 @@ electric field is set on the boundary as:
 
 $$
 \eval{\vb{E}_t}_{\Gamma} = \vb{E}_{\text{in},t}, \qquad \vb{E}_\text{in} \equiv - \vb{v}_\text{in} \cross \vb{B}_\text{in}.
-$$ (eq:usage_physical_boundaries_inflow_convective_electric_field)
+$$ (eq:usage_domain_boundaries_inflow_convective_electric_field)
 
 Hence, according to Faraday's law
 
@@ -111,11 +113,11 @@ so that $B_n$ remains constant throughout the simulation:
 
 $$
 \eval{B_n}_{\Gamma}(t) = \eval{B_n}_{\Gamma}(t=0).
-$$ (eq:usage_physical_boundaries_inflow_normal_b)
+$$ (eq:usage_domain_boundaries_inflow_normal_b)
 
 ```{note}
 Since $B_n$ keeps its initial value on the boundary
-(Eq. {eq}`eq:usage_physical_boundaries_inflow_normal_b`), the initial magnetic field must have the
+(Eq. {eq}`eq:usage_domain_boundaries_inflow_normal_b`), the initial magnetic field must have the
 same normal component as `B` on the whole inflow boundary. This is checked when the `MHDModel` is created, which raises a `ValueError` otherwise. The tangential
 components of the initial magnetic field need not match `B`.
 ```
@@ -128,7 +130,7 @@ A 1D domain with a super-magnetofast inflow at `xlower` and an open outflow at `
 sim = ph.Simulation(
     ...,
     model_options=["MHDModel"],
-    boundaries={
+    domain_boundaries={
         "xlower": {
             "type": "super-magnetofast-inflow",
             "density": 1.0,

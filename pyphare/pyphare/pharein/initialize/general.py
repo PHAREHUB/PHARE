@@ -31,12 +31,12 @@ def populate_grid(dp, sim):
         dp.add_double(f"simulation/grid/meshsize/{k}", sim.dl[i])
         dp.add_bool(f"simulation/grid/periodicities/{k}", sim.periodicities[i])
 
-    if sim.boundaries is not None:
+    if sim.domain_boundaries is not None:
         for direction in ["x", "y", "z"][: sim.ndim]:
             for side in ("lower", "upper"):
                 location = f"{direction}{side}"
-                sim.boundaries[location].populate_dict(
-                    dp, f"simulation/grid/boundaries/{location}", sim.ndim
+                sim.domain_boundaries[location].populate_dict(
+                    dp, f"simulation/grid/domain_boundaries/{location}", sim.ndim
                 )
 
     dp.add_int("simulation/interp_order", sim.interp_order)

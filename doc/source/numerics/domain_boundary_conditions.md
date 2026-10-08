@@ -1,9 +1,9 @@
-# Boundary conditions
+# Domain boundary conditions
 
-## Boundary conditions for fields
+## Domain boundary conditions for fields
 
-PHARE imposes boundary conditions on fields through the values it sets in the ghost cells beyond the
-boundary of the physical domain. In what follows:
+PHARE imposes domain boundary conditions on fields through the values it sets in the ghost cells
+beyond the boundary. In what follows:
 
 - $\phi$ is a scalar field;
 - $\vb*{\phi}$ is a vector field;

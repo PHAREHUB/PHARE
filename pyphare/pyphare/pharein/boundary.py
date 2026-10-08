@@ -1,17 +1,17 @@
 """
 Boundary-condition resolution and validation for pharein.Simulation.
 
-'boundaries' (the public Simulation constructor option) is a per-location dict:
+'domain_boundaries' (the public Simulation constructor option) is a per-location dict:
   {"xlower": {"type": "open"}, "xupper": {"type": "super-magnetofast-inflow", "density": ..., ...}}
 
 Each location dict holds the boundary type and, at the same level, the parameters of that type.
 
-A direction is periodic unless one of its locations appears in 'boundaries', in which case it is
+A direction is periodic unless one of its locations appears in 'domain_boundaries', in which case it is
 physical and both of its locations must be given.
 
 resolve_boundaries(ndim, **kwargs) is the single entry point used by Simulation's checker()
 pipeline; it returns the per-direction periodicity flags, stored as Simulation.periodicities, and
-a dict[location] -> Boundary stored as Simulation.boundaries.
+a dict[location] -> Boundary stored as Simulation.domain_boundaries.
 """
 
 import math
@@ -151,9 +151,9 @@ def resolve_boundaries(ndim, **kwargs):
     all_boundary_locations = [
         f"{direction}{side}" for side in sides for direction in all_directions
     ]
-    raw = kwargs.get("boundaries", {})
+    raw = kwargs.get("domain_boundaries", {})
     if not isinstance(raw, dict):
-        raise TypeError("A dict should be passed to argument 'boundaries'")
+        raise TypeError("A dict should be passed to argument 'domain_boundaries'")
 
     for location in raw:
         if location not in all_boundary_locations:
@@ -168,14 +168,14 @@ def resolve_boundaries(ndim, **kwargs):
             missing = [f"{direction}{side}" for side, g in zip(sides, given) if not g]
             raise ValueError(
                 f"Direction '{direction}' is physical since one of its boundaries is given in "
-                f"'boundaries', but {missing[0]} is missing"
+                f"'domain_boundaries', but {missing[0]} is missing"
             )
         periodicities.append(not all(given))
 
     model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
     if raw and "MHDModel" not in model_options:
         raise ValueError(
-            "physical boundaries are only supported by the MHDModel; "
+            "non-periodic domain boundaries are only supported by the MHDModel; "
             f"got model_options={model_options}"
         )
 
@@ -193,7 +193,7 @@ def resolve_boundaries(ndim, **kwargs):
                 f"boundary condition"
             )
         if "type" not in bc:
-            raise KeyError(f"No key 'type' found in the boundaries dict passed to {location}")
+            raise KeyError(f"No key 'type' found in the domain_boundaries dict passed to {location}")
         boundary_type = bc["type"]
         if boundary_type not in user_types:
             raise ValueError(

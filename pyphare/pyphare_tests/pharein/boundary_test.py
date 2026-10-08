@@ -14,7 +14,7 @@ class TestBoundaryStructural(unittest.TestCase):
     def test_one_given_location_makes_direction_physical(self):
         periodicities, resolved = boundary.resolve_boundaries(
             2,
-            boundaries={"xlower": {"type": "open"}, "xupper": {"type": "open"}},
+            domain_boundaries={"xlower": {"type": "open"}, "xupper": {"type": "open"}},
             model_options=["MHDModel"],
         )
         self.assertEqual([False, True], periodicities)
@@ -25,7 +25,7 @@ class TestBoundaryStructural(unittest.TestCase):
             with self.assertRaises(ValueError):
                 boundary.resolve_boundaries(
                     2,
-                    boundaries={given: {"type": "open"}},
+                    domain_boundaries={given: {"type": "open"}},
                     model_options=["MHDModel"],
                 )
 
@@ -33,7 +33,7 @@ class TestBoundaryStructural(unittest.TestCase):
         with self.assertRaises(ValueError):
             boundary.resolve_boundaries(
                 2,
-                boundaries={"xlower": {"type": "none"}, "xupper": {"type": "open"}},
+                domain_boundaries={"xlower": {"type": "none"}, "xupper": {"type": "open"}},
                 model_options=["MHDModel"],
             )
 
@@ -41,7 +41,7 @@ class TestBoundaryStructural(unittest.TestCase):
         with self.assertRaises(KeyError):
             boundary.resolve_boundaries(
                 2,
-                boundaries={"xlower": {}, "xupper": {"type": "open"}},
+                domain_boundaries={"xlower": {}, "xupper": {"type": "open"}},
                 model_options=["MHDModel"],
             )
 
@@ -49,7 +49,7 @@ class TestBoundaryStructural(unittest.TestCase):
         with self.assertRaises(ValueError):
             boundary.resolve_boundaries(
                 2,
-                boundaries={"xlower": {"type": "open"}, "xupper": {"type": "open"}},
+                domain_boundaries={"xlower": {"type": "open"}, "xupper": {"type": "open"}},
                 model_options=["HybridModel"],
             )
 
@@ -57,7 +57,7 @@ class TestBoundaryStructural(unittest.TestCase):
         with self.assertRaises(ValueError):
             boundary.resolve_boundaries(
                 2,
-                boundaries={"not_a_location": {"type": "open"}},
+                domain_boundaries={"not_a_location": {"type": "open"}},
                 model_options=["MHDModel"],
             )
 
@@ -65,14 +65,14 @@ class TestBoundaryStructural(unittest.TestCase):
         with self.assertRaises(ValueError):
             boundary.resolve_boundaries(
                 1,
-                boundaries={"ylower": {"type": "open"}, "yupper": {"type": "open"}},
+                domain_boundaries={"ylower": {"type": "open"}, "yupper": {"type": "open"}},
                 model_options=["MHDModel"],
             )
 
     def test_open_and_reflective_resolve(self):
         _, resolved = boundary.resolve_boundaries(
             2,
-            boundaries={"xlower": {"type": "open"}, "xupper": {"type": "reflective"}},
+            domain_boundaries={"xlower": {"type": "open"}, "xupper": {"type": "reflective"}},
             model_options=["MHDModel"],
         )
         self.assertIsInstance(resolved["xlower"], boundary.OpenBoundary)
@@ -83,7 +83,7 @@ class TestInflowOutflowData(unittest.TestCase):
     def _resolve(self, **bcs):
         return boundary.resolve_boundaries(
             2,
-            boundaries=bcs,
+            domain_boundaries=bcs,
             model_options=["MHDModel"],
         )[1]
 
