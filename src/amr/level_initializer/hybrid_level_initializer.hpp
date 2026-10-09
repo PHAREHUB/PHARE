@@ -148,7 +148,7 @@ namespace solver
             // physical+1 (exactly the layer Ohm reads) on EVERY level, init and
             // regrid paths included. B ghosts are filled on all paths above, so the
             // first ghost layer of J is the curl of those B ghosts.
-            TimeSetter setTime{level, hybridModel, 0.};
+            TimeSetter setTime{level, hybridModel, initDataTime};
 
             auto& B = hybridModel.state.electromag.B;
             auto& J = hybridModel.state.J;
