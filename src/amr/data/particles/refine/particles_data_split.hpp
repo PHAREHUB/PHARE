@@ -253,7 +253,7 @@ namespace amr
 
             for (auto iDim = 0u; iDim < dim; ++iDim)
             {
-                growingVec[iDim] = Splitter::maxCellDistanceFromSplit();
+                growingVec[iDim] = splitBoxGrowth<Splitter>();
             }
             splitBox.grow(growingVec);
 
