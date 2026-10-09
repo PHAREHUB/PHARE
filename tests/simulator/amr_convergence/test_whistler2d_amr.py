@@ -3,8 +3,8 @@
 analog of test_alfven2d_amr; the ideal CP-Alfven wave is replaced by a weakly
 dispersive whistler (k*d_i = 0.19), which is the characteristic Hall wave and
 therefore the sensitive probe for the coarse-fine time interpolation of the
-Hall term (B/E/J refiners). See amr_convergence_base for the protocol and
-compute_errors for the norm.
+Hall term (the B and E refiners; J is recomputed locally from the B ghosts).
+See amr_convergence_base for the protocol and compute_errors for the norm.
 
 The wave follows Toth, JCP 227, 2008, section 4.1: the dispersion relation
 (54), the transverse amplitude ratio (55), right-hand circular polarization,

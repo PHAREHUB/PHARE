@@ -96,7 +96,7 @@ private:
 
 
 /**
- * @brief Tensor-field (rank 1 = vector) additive kernel operator. Per-component dispatch to the
+ * @brief Tensor-field (rank 1 = vector) kernel operator. Per-component dispatch to the
  * same runtime kernel.
  */
 template<typename TensorFieldData_t>

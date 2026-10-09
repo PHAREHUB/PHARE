@@ -58,9 +58,10 @@ public:
         // U2 = 0.75*Un + 0.25*U1 is the interior node at abscissa t_n + dt/2 (c=1/2).
         RKUtils_t{level, model}(state2, RKPair_t{w00_, state}, RKPair_t{w01_, state1});
 
-        // RKUtils combines the interior only; refill U2's coarse-fine ghosts by linear time
-        // interpolation at its own abscissa before evaluating F(U2). No-op away from
-        // coarse-fine boundaries (same-level fills are time-independent).
+        // RKUtils combines the physical box only, so U2 has no ghosts at all until these fills:
+        // they are what sets its patch, physical-boundary and coarse-fine ghosts before F(U2) is
+        // evaluated, single-level runs included. Only the coarse-fine part depends on stageTime,
+        // where it time-interpolates at U2's own abscissa.
         double const stageTime = currentTime + 0.5 * (newTime - currentTime);
         TimeSetter{level, model, stageTime}(state2.rho, state2.rhoV, state2.Etot, state2.B);
         bc.fillMagneticGhosts(state2.B, level, stageTime);

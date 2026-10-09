@@ -66,7 +66,7 @@ struct IFieldRefineKernel
 /**
  * @brief Build a composite field-refinement kernel for a given order.
  *
- * Defined with the concrete kernels (composite_field_refiner.hpp); declared here so the additive
+ * Defined with the concrete kernels (composite_field_refiner.hpp); declared here so the refine
  * operators and the messengers depend only on the seam.
  */
 template<typename GridLayoutT, typename FieldT>

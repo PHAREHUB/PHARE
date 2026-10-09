@@ -55,7 +55,7 @@ TYPED_TEST_SUITE(aFieldRefineOperator, aFieldRefineOperatorInfos);
 
 
 // instantiation gate: forces full compilation of CompositeFieldRefiner<...,order> (vtable →
-// refineBox) and the additive KernelFieldRefineOperator across all dim/interp, order 2.
+// refineBox) and KernelFieldRefineOperator across all dim/interp, order 2.
 TYPED_TEST(aFieldRefineOperator, kernelRefineOperatorCanBeCreated)
 {
     static constexpr auto dim    = typename TypeParam::first_type{}();

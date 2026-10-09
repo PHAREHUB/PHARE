@@ -16,13 +16,13 @@ namespace PHARE::amr
 /**
  * @brief The whole-coarse-cell invariant of magnetic prolongation, and the helpers enforcing it.
  *
- * Magnetic prolongation (ratio 2) gathers the even-normal (shared) faces from the coarse level,
- * then reconstructs the odd-normal (interior) faces div-free in postprocessRefine. That
- * reconstruction reaches exactly one coarse cell: for an interior face of coarse cell C it reads
- * only faces bounding C, every one of them a shared face the gather just filled.
+ * Magnetic prolongation (ratio 2) runs in two stages: stage 1 fills every fine face of the region
+ * from the coarse level, then postprocessRefine adds a divergence-equalizing touch-up on top of
+ * them. That touch-up reaches exactly one coarse cell: its correction to a face of coarse cell C
+ * reads only the fine faces inside C, every one of them written by stage 1.
  *
  * Hence the invariant: the region a magnetic prolongation runs over must be a union of whole
- * coarse cells, so that every postprocess input is in the region and was written. SAMRAI fill
+ * coarse cells, so that every touch-up input is in the region and was written. SAMRAI fill
  * boxes do not satisfy it: a recursive schedule's coarse-interpolation temporary plus its ring of
  * d_max_stencil_width = 1 cell always cuts a coarse cell in half.
  *
