@@ -31,7 +31,8 @@ public:
 private:
     struct Info
     {
-        std::vector<std::size_t> offset_per_level = std::vector<std::size_t>(amr::MAX_LEVEL_IDX);
+        std::vector<std::size_t> offset_per_level
+            = std::vector<std::size_t>(amr::MAX_LEVEL_IDX + 1);
     };
 
     std::unordered_map<std::string, Info> mem;
