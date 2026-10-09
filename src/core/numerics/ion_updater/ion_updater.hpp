@@ -127,26 +127,27 @@ struct UpdaterSelectionBoxing
     GridLayout_t const layout;
     std::vector<Box_t> const nonLevelGhostBox;
     // domain cells owned by an overlapping same-level patch, usually empty
-    std::vector<Box_t> const foreignBoxes{};
+    std::vector<Box_t> const nonOwnedBoxes{};
     Box_t const domainBox = layout.AMRBox();
     Box_t const ghostBox  = grow(domainBox, partGhostWidth);
 
     static bool isOwned(auto const& cell, Box_t const& domainBox,
-                        std::vector<Box_t> const& foreignBoxes)
+                        std::vector<Box_t> const& nonOwnedBoxes)
     {
-        return isIn(cell, domainBox) and (foreignBoxes.empty() or !isIn(Point{cell}, foreignBoxes));
+        return isIn(cell, domainBox)
+               and (nonOwnedBoxes.empty() or !isIn(Point{cell}, nonOwnedBoxes));
     }
 
-    // a particle belongs to this patch iff its cell is in the domain and not foreign
-    bool isOwned(auto const& cell) const { return isOwned(cell, domainBox, foreignBoxes); }
+    // a particle belongs to this patch if and only if its cell is in the domain and owned
+    bool isOwned(auto const& cell) const { return isOwned(cell, domainBox, nonOwnedBoxes); }
 
     Selector_t const noop = [](auto& particleRange) { return particleRange; };
 
     // lambda copy captures to detach from above references in case of class copy construct
     Selector_t const inOwnedDomain
-        = [domainBox = domainBox, foreignBoxes = foreignBoxes](auto& particleRange) {
+        = [domainBox = domainBox, nonOwnedBoxes = nonOwnedBoxes](auto& particleRange) {
               return particleRange.array().partition(particleRange, [&](auto const& cell) {
-                  return isOwned(cell, domainBox, foreignBoxes);
+                  return isOwned(cell, domainBox, nonOwnedBoxes);
               });
           };
 

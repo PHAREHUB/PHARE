@@ -78,76 +78,87 @@ auto clippedRegion(SAMRAI::pdat::CellGeometry const& dst, SAMRAI::pdat::CellGeom
     return boxes;
 }
 
+// exchange region of one source box, seen directly (offset 0) or through a periodic shift
+template<typename GridLayout>
+struct ExchangeRegionCheck
+{
+    static constexpr auto dim = GridLayout::dimension;
+
+    SAMRAI::hier::IntVector const ghosts;
+    Box_t<dim> const dstBox;
+    SAMRAI::hier::Box const dst = samraiBox(dstBox);
+    SAMRAI::pdat::CellGeometry const dstGeometry{dst, ghosts};
+    amr::ParticleDomainFromGhostFillPattern<GridLayout> pattern{};
+    std::size_t nbrDisjoint = 0, nbrOverlapping = 0;
+
+    void operator()(Box_t<dim> const& srcBox, int const offset)
+    {
+        auto const sdim = ghosts.getDim();
+        Shift_t<dim> shift{};
+        SAMRAI::hier::IntVector offsetVector{sdim, 0};
+        for (std::size_t i = 0; i < dim; ++i)
+            shift[i] = offsetVector[i] = offset;
+        auto const src = samraiBox(core::shift(srcBox, shift * -1));
+        SAMRAI::hier::Transformation const transformation{offsetVector};
+        SAMRAI::pdat::CellGeometry const srcGeometry{src, ghosts};
+
+        // what RefineSchedule passes for a same-level schedule
+        auto fill_box = dst;
+        fill_box.grow(ghosts);
+        auto transformedSrc = src;
+        transformation.transform(transformedSrc);
+        auto src_mask = fill_box * transformedSrc;
+        if (src_mask.empty())
+            return;
+        transformation.inverseTransform(src_mask);
+
+        auto const overlap = pattern.calculateOverlap(dstGeometry, srcGeometry, dst, src_mask,
+                                                      fill_box, true, transformation);
+        auto const& boxes  = dynamic_cast<amr::ParticlesDomainOverlap const&>(*overlap)
+                                .getDestinationBoxContainer();
+        ASSERT_LE(boxes.size(), 1u);
+
+        auto const region = cellsOf<dim>(boxes);
+        auto const shared = srcBox * dstBox;
+        if (!shared)
+        {
+            ++nbrDisjoint;
+            auto const reference = cellsOf<dim>(clippedRegion<GridLayout>(
+                dstGeometry, srcGeometry, src_mask, fill_box, transformation));
+            ASSERT_EQ(region, reference) << "source " << srcBox;
+        }
+        else
+        {
+            // the shared cells may hold particles that left the source
+            ++nbrOverlapping;
+            for (auto const& cell : *shared)
+                ASSERT_TRUE(region.count(cell.toArray())) << "source " << srcBox;
+        }
+    }
+};
+
 template<std::size_t dim, std::size_t interp>
 void checkExchangeRegion()
 {
-    using GridLayout          = GridLayout_t<dim, interp>;
     auto constexpr ghostWidth = core::ghostWidthForParticles<interp>();
-    SAMRAI::tbox::Dimension const sdim{dim};
-    SAMRAI::hier::IntVector const ghosts{sdim, ghostWidth};
-    amr::ParticleDomainFromGhostFillPattern<GridLayout> pattern;
+    int constexpr period      = 40;
 
-    // destination box, sources around it at every position of a small window,
-    // directly or through a periodic shift
-    Box_t<dim> const dstBox{core::ConstArray<int, dim>(0), core::ConstArray<int, dim>(3)};
-    auto const dst = samraiBox(dstBox);
-    SAMRAI::pdat::CellGeometry const dstGeometry{dst, ghosts};
-    int constexpr period = 40;
+    // destination box, sources around it at every position of a small window
+    ExchangeRegionCheck<GridLayout_t<dim, interp>> check{
+        SAMRAI::hier::IntVector{SAMRAI::tbox::Dimension{dim}, ghostWidth},
+        {core::ConstArray<int, dim>(0), core::ConstArray<int, dim>(3)}};
 
-    std::size_t nbrDisjoint = 0, nbrOverlapping = 0;
     std::array<int, dim> lower;
-    auto const visit = [&](auto const& self, std::size_t d) -> void {
+    auto const visit = [&](auto const& self, std::size_t d) {
         if (d == dim)
         {
             for (int size : {1, 3})
                 for (int offset : {0, period})
                 {
-                    Box_t<dim> srcBox;
+                    Box_t<dim> srcBox{lower, lower};
                     for (std::size_t i = 0; i < dim; ++i)
-                    {
-                        srcBox.lower[i] = lower[i];
-                        srcBox.upper[i] = lower[i] + size - 1;
-                    }
-                    Shift_t<dim> shift{};
-                    SAMRAI::hier::IntVector offsetVector{sdim, 0};
-                    for (std::size_t i = 0; i < dim; ++i)
-                        shift[i] = offsetVector[i] = offset;
-                    auto const src = samraiBox(core::shift(srcBox, shift * -1));
-                    SAMRAI::hier::Transformation const transformation{offsetVector};
-                    SAMRAI::pdat::CellGeometry const srcGeometry{src, ghosts};
-
-                    // what RefineSchedule passes for a same-level schedule
-                    auto fill_box = dst;
-                    fill_box.grow(ghosts);
-                    auto transformedSrc = src;
-                    transformation.transform(transformedSrc);
-                    auto src_mask = fill_box * transformedSrc;
-                    if (src_mask.empty())
-                        continue;
-                    transformation.inverseTransform(src_mask);
-
-                    auto const overlap = pattern.calculateOverlap(
-                        dstGeometry, srcGeometry, dst, src_mask, fill_box, true, transformation);
-                    auto const& boxes = dynamic_cast<amr::ParticlesDomainOverlap const&>(*overlap)
-                                            .getDestinationBoxContainer();
-                    ASSERT_LE(boxes.size(), 1u);
-
-                    auto const region = cellsOf<dim>(boxes);
-                    auto const shared = srcBox * dstBox;
-                    if (!shared)
-                    {
-                        ++nbrDisjoint;
-                        auto const reference = cellsOf<dim>(clippedRegion<GridLayout>(
-                            dstGeometry, srcGeometry, src_mask, fill_box, transformation));
-                        ASSERT_EQ(region, reference) << "source " << srcBox;
-                    }
-                    else
-                    {
-                        // the shared cells may hold particles that left the source
-                        ++nbrOverlapping;
-                        for (auto const& cell : *shared)
-                            ASSERT_TRUE(region.count(cell.toArray())) << "source " << srcBox;
-                    }
+                        srcBox.upper[i] += size - 1;
+                    check(srcBox, offset);
                 }
             return;
         }
@@ -159,8 +170,8 @@ void checkExchangeRegion()
     };
     visit(visit, 0);
 
-    EXPECT_GT(nbrDisjoint, 0u);
-    EXPECT_GT(nbrOverlapping, 0u);
+    EXPECT_GT(check.nbrDisjoint, 0u);
+    EXPECT_GT(check.nbrOverlapping, 0u);
 }
 
 TEST(PatchOverlapExchangeRegion, matchesClippedRegionWithoutOverlap1D)
@@ -331,10 +342,10 @@ template<std::size_t dim>
 void checkEveryCoveredCellHasOneOwner(Configuration<dim> const& config, int const domainSize,
                                       std::vector<Shift_t<dim>> const& shifts)
 {
-    std::vector<std::vector<Box_t<dim>>> foreign;
+    std::vector<std::vector<Box_t<dim>>> nonOwned;
     for (std::size_t i = 0; i < config.boxes.size(); ++i)
-        foreign.push_back(
-            amr::makeForeignBoxes(config.boxes[i], config.ids[i], neighborsOf(config, i, shifts)));
+        nonOwned.push_back(
+            amr::makeNonOwnedBoxes(config.boxes[i], config.ids[i], neighborsOf(config, i, shifts)));
 
     Box_t<dim> domain;
     for (std::size_t i = 0; i < dim; ++i)
@@ -352,7 +363,7 @@ void checkEveryCoveredCellHasOneOwner(Configuration<dim> const& config, int cons
             {
                 ++nbrCovering;
                 smallestId = std::min(smallestId, config.ids[i]);
-                if (!core::isIn(cell, foreign[i]))
+                if (!core::isIn(cell, nonOwned[i]))
                 {
                     ++nbrOwners;
                     ownerId = config.ids[i];
@@ -410,10 +421,10 @@ TEST(PatchOverlapOwnership, smallerIdOwnsIdenticalBoxes)
 {
     Box_t<2> const box{{0, 0}, {7, 7}};
     std::vector<std::pair<Box_t<2>, int>> const smaller{{box, 1}}, larger{{box, 2}};
-    EXPECT_TRUE(amr::makeForeignBoxes(box, 1, larger).empty());
-    auto const foreign = amr::makeForeignBoxes(box, 2, smaller);
-    ASSERT_EQ(foreign.size(), 1u);
-    EXPECT_EQ(foreign[0], box);
+    EXPECT_TRUE(amr::makeNonOwnedBoxes(box, 1, larger).empty());
+    auto const nonOwned = amr::makeNonOwnedBoxes(box, 2, smaller);
+    ASSERT_EQ(nonOwned.size(), 1u);
+    EXPECT_EQ(nonOwned[0], box);
 }
 
 
