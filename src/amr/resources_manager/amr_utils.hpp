@@ -223,11 +223,11 @@ namespace amr
         auto const domBox              = phare_box_from<dimension>(domain);
         auto const particleGhostBox    = grow(domBox, GridLayoutT::options.particle_ghost_width);
 
-        auto const& neighbors_ = neighbors.getSameLevelNeighbors(domain, lvlNbr);
+        auto const& neighbor_boxes = neighbors.getSameLevelNeighbors(domain, lvlNbr);
         std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
-        patchGhostLayerBoxes.reserve(neighbors_.size() + 1);
+        patchGhostLayerBoxes.reserve(neighbor_boxes.size() + 1);
         patchGhostLayerBoxes.emplace_back(domBox);
-        for (auto const& neighbox : neighbors_)
+        for (auto const& neighbox : neighbor_boxes)
             patchGhostLayerBoxes.emplace_back(
                 *(particleGhostBox * phare_box_from<dimension>(neighbox)));
 
@@ -239,14 +239,14 @@ namespace amr
     // `neighbors` is a range of (box, id) pairs. With ids that are unique and totally ordered,
     // every cell covered by at least one box is left out of the result of exactly one box.
     template<typename Box_t, typename Id_t, typename Neighbors>
-    NO_DISCARD auto makeForeignBoxes(Box_t const& box, Id_t const& id, Neighbors const& neighbors)
+    NO_DISCARD auto makeNonOwnedBoxes(Box_t const& box, Id_t const& id, Neighbors const& neighbors)
     {
-        std::vector<Box_t> foreign;
+        std::vector<Box_t> nonOwned;
         for (auto const& [neighbox, neighid] : neighbors)
             if (neighid < id)
                 if (auto const overlap = box * neighbox)
-                    foreign.emplace_back(*overlap);
-        return foreign;
+                    nonOwned.emplace_back(*overlap);
+        return nonOwned;
     }
 
 
@@ -255,30 +255,28 @@ namespace amr
     // the patch with the smallest GlobalId (lowest owner rank, then lowest local id).
     // Returns the cells of `patch` owned by another patch. Periodic images carry the GlobalId
     // of their patch, so all ranks agree without communication.
-    template<typename GridLayoutT>
-    NO_DISCARD auto makeForeignBoxesFor(SAMRAI::hier::Patch const& patch,
-                                        SAMRAI::hier::HierarchyNeighbors const& neighbors)
+    template<std::size_t dimension>
+    NO_DISCARD auto makeNonOwnedBoxesFor(SAMRAI::hier::Patch const& patch,
+                                         SAMRAI::hier::HierarchyNeighbors const& neighbors)
     {
-        auto constexpr dimension = GridLayoutT::dimension;
-        using Box_t              = core::Box<int, dimension>;
-
-        auto const& neighbors_
+        auto const& neighbor_boxes
             = neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber());
-        std::vector<std::pair<Box_t, SAMRAI::hier::GlobalId>> neighborIds;
-        neighborIds.reserve(neighbors_.size());
-        for (auto const& neighbox : neighbors_)
-            neighborIds.emplace_back(phare_box_from<dimension>(neighbox), neighbox.getGlobalId());
+        auto const neighborIds = core::generate(
+            [](auto const& neighbox) {
+                return std::make_pair(phare_box_from<dimension>(neighbox), neighbox.getGlobalId());
+            },
+            neighbor_boxes);
 
-        return makeForeignBoxes(phare_box_from<dimension>(patch.getBox()), patch.getGlobalId(),
-                                neighborIds);
+        return makeNonOwnedBoxes(phare_box_from<dimension>(patch.getBox()), patch.getGlobalId(),
+                                 neighborIds);
     }
 
 
-    // drops the domain particles of all populations located in `foreignBoxes`
+    // drops the domain particles of all populations located in `nonOwnedBoxes`
     template<typename Ions, typename Boxes>
-    void eraseForeignDomainParticles(Ions& ions, Boxes const& foreignBoxes)
+    void eraseNonOwnedDomainParticles(Ions& ions, Boxes const& nonOwnedBoxes)
     {
-        if (foreignBoxes.empty())
+        if (nonOwnedBoxes.empty())
             return;
 
         for (auto& pop : ions)
@@ -286,7 +284,7 @@ namespace amr
             auto& particles = pop.domainParticles();
             auto range      = core::makeIndexRange(particles);
             auto const kept = particles.partition(range, [&](auto const& cell) {
-                return !core::isIn(core::Point{cell}, foreignBoxes);
+                return !core::isIn(core::Point{cell}, nonOwnedBoxes);
             });
             particles.erase(core::makeRange(particles, kept.iend(), particles.size()));
         }

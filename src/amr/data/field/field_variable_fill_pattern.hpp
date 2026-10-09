@@ -226,10 +226,7 @@ NO_DISCARD bool isSamePatch(Geometry_t const& dst_geometry, Geometry_t const& sr
     auto const& dst_id = dst_geometry.patchBox.getBoxId();
     auto const& src_id = src_geometry.patchBox.getBoxId();
     if (!dst_id.getLocalId().isValid() or !src_id.getLocalId().isValid())
-    {
-        PHARE_DEBUG_DO(throw std::runtime_error("isSamePatch: geometry box without id");)
-        return dst_geometry.patchBox.isSpatiallyEqual(src_geometry.patchBox);
-    }
+        throw std::runtime_error("isSamePatch: geometry box without id");
     return dst_id == src_id;
 }
 

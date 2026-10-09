@@ -166,7 +166,7 @@ private:
                     amr::to_string(patch->getGlobalId()),
                     Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
                              amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors),
-                             amr::makeForeignBoxesFor<GridLayout>(*patch, neighbors)});
+                             amr::makeNonOwnedBoxesFor<GridLayout::dimension>(*patch, neighbors)});
                 !suc)
                 throw std::runtime_error("boxing map insertion failure");
     }
@@ -660,8 +660,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         // the exchange hands a leaving particle to every patch whose domain contains its
         // cell; on overlapping patches only the owner keeps it
         for (auto& patch : rm.enumerate(level, ions))
-            amr::eraseForeignDomainParticles(
-                ions, levelBoxing.at(amr::to_string(patch->getGlobalId())).foreignBoxes);
+            amr::eraseNonOwnedDomainParticles(
+                ions, levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
     }
 
     for (auto& patch : rm.enumerate(level, ions))

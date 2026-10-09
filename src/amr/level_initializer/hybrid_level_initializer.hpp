@@ -94,8 +94,8 @@ namespace solver
             // keep particles only on the patch owning their cell
             auto const neighbors = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
             for (auto& patch : rm.enumerate(level, ions))
-                amr::eraseForeignDomainParticles(
-                    ions, amr::makeForeignBoxesFor<GridLayoutT>(*patch, neighbors));
+                amr::eraseNonOwnedDomainParticles(
+                    ions, amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
 
             // now all particles are here, we must compute moments.
             for (auto& patch : rm.enumerate(level, ions))
