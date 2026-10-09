@@ -14,6 +14,7 @@
 
 #include "amr/wrappers/hierarchy.hpp"
 #include "amr/wrappers/integrator.hpp"
+#include "amr/messengers/refinement_config.hpp"
 #include "amr/tagging/tagger_factory.hpp"
 #include "amr/messengers/messenger_factory.hpp"
 #include "amr/load_balancing/load_balancer_details.hpp"
@@ -423,7 +424,7 @@ Simulator<opts>::Simulator(PHARE::initializer::PHAREDict const& dict,
     , hierarchy_{hierarchy}
     , modelNames_{dict["simulation"]["models"].template to<std::vector<std::string>>()}
     , descriptors_{PHARE::amr::makeDescriptors(modelNames_)}
-    , messengerFactory_{descriptors_}
+    , messengerFactory_{descriptors_, PHARE::amr::RefinementConfig::FROM(dict)}
     , maxLevelNumber_{dict["simulation"]["AMR"]["max_nbr_levels"].template to<int>()}
     , maxMHDLevel_{dict["simulation"]["AMR"]["max_mhd_level"].template to<int>()}
     , dt_{cppdict::get_value(dict, "simulation/time_step/value", 0.)}

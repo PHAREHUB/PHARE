@@ -18,16 +18,12 @@ set( SOURCES_INC
      data/field/field_geometry.hpp
      data/field/field_overlap.hpp
      data/field/field_variable.hpp
-     data/field/refine/field_linear_refine.hpp
-     data/field/refine/field_refiner.hpp
-     data/field/refine/magnetic_field_init_refiner.hpp
-     data/field/refine/magnetic_field_refiner.hpp
-     data/field/refine/magnetic_field_regrider.hpp
-     data/field/refine/electric_field_refiner.hpp
-     data/field/refine/mhd_field_refiner.hpp
-     data/field/refine/mhd_flux_refiner.hpp
-     data/field/refine/linear_weighter.hpp
      data/field/refine/field_refine_operator.hpp
+     data/field/refine/field_refiner_kernel.hpp
+     data/field/refine/composite_field_refiner.hpp
+     data/field/refine/coarse_cell_round_out.hpp
+     data/field/refine/magnetic_composite_refiner.hpp
+     data/field/refine/magnetic_refine_patch_strategy.hpp
      data/field/time_interpolate/field_linear_time_interpolate.hpp
      resources_manager/field_resource.hpp
      resources_manager/particle_resource.hpp
@@ -81,7 +77,6 @@ set( SOURCES_INC
      samrai.hpp
    )
 set( SOURCES_CPP
-     data/field/refine/linear_weighter.cpp
      resources_manager/amr_utils.cpp
      data/field/coarsening/field_coarsen.cpp
      messengers/messenger_factory.cpp
