@@ -51,6 +51,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   add_subdirectory(tests/amr/models)
   add_subdirectory(tests/amr/multiphysics_integrator)
   add_subdirectory(tests/amr/tagging)
+  add_subdirectory(tests/amr/patch_overlap)
 
   add_subdirectory(tests/diagnostic)
 
