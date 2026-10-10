@@ -65,7 +65,6 @@ void inline declare_etc_hybrid(py::module& m)
 
     py::class_<DW, py::smart_holder>(m, name.c_str(), py::module_local())
         .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def(py::init<std::shared_ptr<ISimulator> const&, std::shared_ptr<amr::Hierarchy> const&>())
         .def("sync_merge", &DW::sync_merge)
         .def("getPatchLevel", &DW::getPatchLevel)
         .def("getNumberOfLevels", &DW::getNumberOfLevels);

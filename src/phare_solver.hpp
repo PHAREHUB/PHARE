@@ -2,7 +2,8 @@
 #ifndef PHARE_SOLVER_INCLUDE_HPP
 #define PHARE_SOLVER_INCLUDE_HPP
 
-#include "phare_amr.hpp" // IWYU pragma: keep
+#include "phare_mpi.hpp" // IWYU pragma: keep
+#include "phare_amr.hpp"
 
 #include "amr/solvers/solver_mhd.hpp"
 #include "amr/solvers/solver_ppc.hpp"
@@ -23,8 +24,20 @@
 
 #include <memory>
 
+namespace PHARE
+{
+
+template<auto opts>
+inline constexpr bool has_hybrid_v = opts.hybrid_enabled;
+
+template<auto opts>
+inline constexpr bool has_mhd_v = opts.mhd_enabled;
+
+} // namespace PHARE
+
 namespace PHARE::solver
 {
+
 // Bool-specialized holders: compile-time model enabling, to avoid expanding templates and
 // emitting binary symbols for a model the opts value does not ask for. The `false`
 // specialization is empty, so hybrid- (or mhd-) disabled opts never name the corresponding

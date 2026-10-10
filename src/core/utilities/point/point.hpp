@@ -1,14 +1,16 @@
 #ifndef PHARE_CORE_UTILITIES_POINT_POINT_HPP
 #define PHARE_CORE_UTILITIES_POINT_POINT_HPP
 
-#include <cassert>
+#include "core/def.hpp"
+#include "core/utilities/types.hpp"
+#include "core/utilities/meta/meta_utilities.hpp"
+
 #include <array>
+#include <vector>
+#include <cassert>
 #include <cstddef>
 #include <sstream>
 #include <ostream>
-
-#include "core/utilities/meta/meta_utilities.hpp"
-#include "core/def.hpp"
 
 namespace PHARE
 {
@@ -137,7 +139,9 @@ namespace core
             Point p;
             std::istringstream split(csv);
             std::vector<std::string> tokens;
-            for (std::string each; std::getline(split, each, ','); tokens.push_back(each)) {}
+            for (std::string each; std::getline(split, each, ','); tokens.push_back(each))
+            {
+            }
             assert(tokens.size() == dimension);
             for (std::size_t i = 0; i < tokens.size(); i++)
             {
