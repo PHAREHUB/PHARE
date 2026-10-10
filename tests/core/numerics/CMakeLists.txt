@@ -1,0 +1,7 @@
+# add_subdirectory(boundary_condition)
+add_subdirectory(interpolator)
+add_subdirectory(pusher)
+add_subdirectory(ampere)
+add_subdirectory(faraday)
+add_subdirectory(ohm)
+add_subdirectory(ion_updater)
