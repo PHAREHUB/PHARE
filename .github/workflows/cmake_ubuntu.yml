@@ -27,14 +27,14 @@ jobs:
 
     - name: CCache
       id: cache
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: ~/.ccache
         key: ${{ runner.os }}-ccache-${{ hashFiles('hashFile.txt') }}
         restore-keys: ${{ runner.os }}-ccache-
 
     - name: Clone PHARE
-      uses: actions/checkout@v4
+      uses: actions/checkout@v7
       with:
         submodules: 'recursive'
 
