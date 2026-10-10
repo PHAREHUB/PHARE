@@ -1,0 +1,48 @@
+# Codecov configuration, see https://docs.codecov.com/docs/codecov-yaml
+# validate with: curl --data-binary @codecov.yml https://codecov.io/validate
+#
+# Silent start: coverage is collected and shown on codecov.io only,
+#  nothing is posted on PRs or commits (no comment, no status, no annotation).
+
+codecov:
+  require_ci_to_pass: false
+
+comment: false
+
+github_checks:
+  annotations: false
+
+coverage:
+  status:
+    project: off
+    patch: off
+
+ignore:
+  - "tests/**"
+  - "subprojects/**"
+  - "tools/**"
+
+# one flag per kind of upload, each covering a different test scope
+flag_management:
+  default_rules:
+    carryforward: false
+  individual_flags:
+    - name: cpp-light # .github/workflows/coverage.yml: test levels 1-10 without the nightly label
+    - name: cpp-full # weekly TeamCity gcov build, kept between its runs
+      carryforward: true
+    - name: python # pyphare, not uploaded yet
+
+component_management:
+  individual_components:
+    - component_id: core
+      paths: ["src/core/**"]
+    - component_id: amr
+      paths: ["src/amr/**"]
+    - component_id: simulator
+      paths: ["src/simulator/**", "src/initializer/**", "src/phare/**", "src/*.hpp"]
+    - component_id: diagnostic-restarts
+      paths: ["src/diagnostic/**", "src/restarts/**", "src/hdf5/**"]
+    - component_id: python-bindings
+      paths: ["src/python3/**"]
+    - component_id: pyphare
+      paths: ["pyphare/**"]

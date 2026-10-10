@@ -1,0 +1,67 @@
+name: Coverage
+
+# gcov line coverage of the C++ sources, uploaded to codecov.io (config in codecov.yml)
+#  test scope: default levels (1-10) without the nightly label
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+  push:
+    branches: [master] # master reports are the base PRs are compared to
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cpp:
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    timeout-minutes: 360
+
+    steps:
+    - name: Clone PHARE
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        submodules: 'recursive'
+        persist-credentials: false
+
+    - name: Configure CMake
+      run: |
+        set -ex
+        . /.venv/bin/activate
+        python3 -m pip install gcovr==8.6
+        mkdir -p build && cd build
+        cmake .. --fresh \
+              -DSAMRAI_ROOT=/usr/local \
+              -DCMAKE_BUILD_TYPE=Debug -Dcoverage=ON \
+              -DPHARE_PYTEST_SIMULATORS=1 -Dphare_configurator=ON
+
+    - name: Build
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; cmake --build . -j 2
+
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; ctest -j 2 -LE nightly --output-on-failure
+
+    # a failing test still leaves coverage worth reporting
+    - name: Coverage report
+      if: ${{ !cancelled() }}
+      working-directory: ${{github.workspace}}/build
+      run: . /.venv/bin/activate; cmake --build . --target gcovr
+
+    # no token on fork PRs: Codecov accepts tokenless uploads to their branches
+    - name: Upload to Codecov
+      if: ${{ !cancelled() }}
+      uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
+      with:
+        files: build/coverage/coverage.xml
+        disable_search: true
+        flags: cpp-light
+        name: gha-gcc
+        token: ${{ secrets.CODECOV_TOKEN }}
+        fail_ci_if_error: false
