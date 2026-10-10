@@ -26,7 +26,13 @@ env:
   BASE: ${{ github.event.pull_request.base.sha }}
   HEAD: ${{ github.event.pull_request.head.sha }}
   GATE_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+  # tool versions: one version for everyone, results differ between versions
   REVIEWDOG_VERSION: v0.21.2
+  CLANG_FORMAT_VERSION: 20.1.8
+  RUFF_VERSION: 0.16.10
+  JSCPD_VERSION: 5.4.0
+  ACTIONLINT_VERSION: 1.7.12
+  ZIZMOR_VERSION: 1.30.1
 
 jobs:
   scripts:
@@ -45,9 +51,9 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
-      - run: python3 "res/ci/gate/${CHECK}.py" "$BASE" "$HEAD"
-        env:
+      - env:
           CHECK: ${{ matrix.check }}
+        run: python3 "res/ci/gate/${CHECK}.py" "$BASE" "$HEAD"
 
   gate-selftest:
     # the scripts' own fixtures
@@ -62,6 +68,8 @@ jobs:
 
   pr-body:
     # the Issue and Tests sections of .github/pull_request_template.md are filled
+    # (not for Dependabot: it writes its own description)
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -69,11 +77,11 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
-      - run: |
+      - env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
           printf '%s' "$PR_BODY" > "$RUNNER_TEMP/body.md"
           python3 res/ci/gate/pr_body.py "$RUNNER_TEMP/body.md"
-        env:
-          PR_BODY: ${{ github.event.pull_request.body }}
 
   format:
     # changed C++ lines follow .clang-format (label format-ok)
@@ -91,8 +99,11 @@ jobs:
       - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
         with:
           reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
-      - run: pip install clang-format==20.1.8 # one version for everyone: formatting differs between versions
-      - run: |
+      - run: pip install "clang-format==$CLANG_FORMAT_VERSION"
+      - env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+          FAIL_LEVEL: ${{ contains(github.event.pull_request.labels.*.name, 'format-ok') && 'none' || 'any' }}
+        run: |
           mb=$(git merge-base "$BASE" "$HEAD")
           # exit 0: nothing to change (prints a message, not a diff); 1: a diff; other: an error
           rc=0
@@ -106,9 +117,6 @@ jobs:
           reviewdog -f=diff -name=clang-format -reporter=github-pr-annotations \
                     -filter-mode=added -fail-level="$FAIL_LEVEL" -diff="git diff $mb" \
                     < "$RUNNER_TEMP/format.diff"
-        env:
-          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
-          FAIL_LEVEL: ${{ contains(github.event.pull_request.labels.*.name, 'format-ok') && 'none' || 'any' }}
 
   ruff:
     # no new ruff finding on changed Python lines. Warning only until #1314 sets the rules.
@@ -126,15 +134,15 @@ jobs:
       - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
         with:
           reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
-      - run: pip install ruff==0.16.10
+      - run: pip install "ruff==$RUFF_VERSION"
       - continue-on-error: true # warning only (step level: the job stays green)
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
         run: |
           mb=$(git merge-base "$BASE" "$HEAD")
           ruff check --exit-zero --output-format=rdjson pyphare tests tools \
             | reviewdog -f=rdjson -name=ruff -reporter=github-pr-annotations \
                         -filter-mode=added -fail-level=warning -diff="git diff $mb"
-        env:
-          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
 
   clang-tidy:
     # .clang-tidy checks on the changed C++ lines. clang-tidy reads the compile commands of a
@@ -178,7 +186,7 @@ jobs:
         run: |
           mb=$(git merge-base "$BASE" "$HEAD")
           status=0
-          npx -y jscpd@5.4.0 --baseline-from-ref "$mb" --fail-on-new-clones \
+          npx -y "jscpd@$JSCPD_VERSION"--baseline-from-ref "$mb" --fail-on-new-clones \
             --min-tokens 70 --format cpp,python --formats-exts "cpp:cpp,hpp,h,cc,ipp;python:py" \
             --ignore "**/subprojects/**,**/build*/**,**/.git/**" \
             --reporters json --silent --output "$RUNNER_TEMP/jscpd" . || status=$?
@@ -210,18 +218,18 @@ jobs:
           echo "files=$files" >> "$GITHUB_OUTPUT"
       - if: steps.changed.outputs.files != ''
         continue-on-error: true # warning only (step level: the job stays green)
-        run: |
-          read -ra files <<< "$FILES"
-          docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color "${files[@]}"
         env:
           FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          read -ra files <<< "$FILES"
+          docker run --rm -v "$PWD:/repo" -w /repo "rhysd/actionlint:$ACTIONLINT_VERSION" -color "${files[@]}"
       - if: steps.changed.outputs.files != ''
         continue-on-error: true
-        run: |
-          read -ra files <<< "$FILES"
-          pipx run --spec zizmor==1.30.1 zizmor --offline --format github "${files[@]}"
         env:
           FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          read -ra files <<< "$FILES"
+          pipx run --spec "zizmor==$ZIZMOR_VERSION" zizmor --offline --format github "${files[@]}"
 
   dependencies:
     # Python dependency changes: fail on a high-severity known vulnerability
