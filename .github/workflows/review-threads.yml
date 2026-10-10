@@ -1,0 +1,40 @@
+# Every review thread started by a human is resolved before merge; bot threads are ignored.
+#
+# Its own workflow because it must also run on reviews and review comments: in gate.yml, a review event would
+# re-run (or skip) every other check, and a skipped check counts as passed.
+# GitHub sends no event when a thread is resolved: re-run this job, or push / review / label.
+
+name: review-threads
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+  pull_request_review:
+    types: [submitted, dismissed]
+  pull_request_review_comment:
+    types: [created, deleted]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-threads-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review-threads:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - run: python3 res/ci/gate/threads.py "$REPO" "$PR"
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}

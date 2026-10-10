@@ -1,0 +1,243 @@
+# Diff checks on every PR: they read the PR's changes and never build it.
+# One job = one status. Findings show inline on the PR's "Files changed" (annotations),
+# which needs no write token and so works for PRs from forks.
+#
+# Some failures can be legitimate (a test removed on purpose, a keyword renamed, ...):
+# a maintainer then adds the label named in the job's output. Labelling re-runs this
+# workflow only, in seconds; the TeamCity build is not re-run.
+#
+# The checks are part of the PR: .github/** and res/ci/** are in CODEOWNERS, so a PR
+# that changes them needs a code owner's approval.
+
+name: gate
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: gate-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+env:
+  BASE: ${{ github.event.pull_request.base.sha }}
+  HEAD: ${{ github.event.pull_request.head.sha }}
+  GATE_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
+  # tool versions: one version for everyone, results differ between versions
+  REVIEWDOG_VERSION: v0.21.2
+  CLANG_FORMAT_VERSION: 20.1.8
+  RUFF_VERSION: 0.16.10
+  JSCPD_VERSION: 5.4.0
+  ACTIONLINT_VERSION: 1.7.12
+  ZIZMOR_VERSION: 1.30.1
+
+jobs:
+  scripts:
+    # res/ci/gate/*.py: tests removed (label tests-removed-ok), skips/layering/conventions
+    # (tests-skip-ok, convention-ok), loosened tolerances (test-values-ok), pharein keywords (api-break-ok)
+    name: ${{ matrix.check }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        check: [tests_removed, added_lines, assert_scan, pharein_keywords]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - env:
+          CHECK: ${{ matrix.check }}
+        run: python3 "res/ci/gate/${CHECK}.py" "$BASE" "$HEAD"
+
+  gate-selftest:
+    # the scripts' own fixtures
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - run: python3 -m unittest discover -s res/ci/gate/tests
+
+  pr-body:
+    # the Issue and Tests sections of .github/pull_request_template.md are filled
+    # (not for Dependabot: it writes its own description)
+    if: github.event.pull_request.user.login != 'dependabot[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: |
+          printf '%s' "$PR_BODY" > "$RUNNER_TEMP/body.md"
+          python3 res/ci/gate/pr_body.py "$RUNNER_TEMP/body.md"
+
+  format:
+    # changed C++ lines follow .clang-format (label format-ok)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
+        with:
+          reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
+      - run: pip install "clang-format==$CLANG_FORMAT_VERSION"
+      - env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+          FAIL_LEVEL: ${{ contains(github.event.pull_request.labels.*.name, 'format-ok') && 'none' || 'any' }}
+        run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          # exit 0: nothing to change (prints a message, not a diff); 1: a diff; other: an error
+          rc=0
+          git clang-format --diff --extensions c,cc,cpp,h,hpp,ipp "$mb" -- src tests tools \
+            > "$RUNNER_TEMP/format.diff" || rc=$?
+          [ "$rc" -le 1 ] || { cat "$RUNNER_TEMP/format.diff"; exit "$rc"; }
+          if ! grep -q '^diff --git' "$RUNNER_TEMP/format.diff"; then
+            cat "$RUNNER_TEMP/format.diff"
+            exit 0
+          fi
+          reviewdog -f=diff -name=clang-format -reporter=github-pr-annotations \
+                    -filter-mode=added -fail-level="$FAIL_LEVEL" -diff="git diff $mb" \
+                    < "$RUNNER_TEMP/format.diff"
+
+  ruff:
+    # no new ruff finding on changed Python lines. Warning only until #1314 sets the rules.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
+        with:
+          reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
+      - run: pip install "ruff==$RUFF_VERSION"
+      - continue-on-error: true # warning only (step level: the job stays green)
+        env:
+          REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
+        run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          ruff check --exit-zero --output-format=rdjson pyphare tests tools \
+            | reviewdog -f=rdjson -name=ruff -reporter=github-pr-annotations \
+                        -filter-mode=added -fail-level=warning -diff="git diff $mb"
+
+  clang-tidy:
+    # .clang-tidy checks on the changed C++ lines. clang-tidy reads the compile commands of a
+    # configured tree: configure only, no build. Same image as cmake_ubuntu.yml. Warning only for now.
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - run: apt-get update -qq && apt-get install -y -qq clang-tidy-18 # same LLVM 18 as the image's clang
+      - name: configure
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . /.venv/bin/activate
+          cmake -S . -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+                -DSAMRAI_ROOT=/usr/local -DCMAKE_BUILD_TYPE=Debug -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+                -Dphare_configurator=ON -Dbench=ON
+      - continue-on-error: true # warning only (step level: the job stays green)
+        run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          git diff -U0 "$mb" "$HEAD" -- src tests tools \
+            | clang-tidy-diff-18.py -clang-tidy-binary clang-tidy-18 -p1 -path build -j "$(nproc)" \
+                                    -quiet -iregex '.*\.(c|cc|cpp|h|hpp|ipp)' > "$RUNNER_TEMP/tidy.log" 2>&1 || true
+          python3 res/ci/gate/clang_tidy.py "$RUNNER_TEMP/tidy.log" "$GITHUB_WORKSPACE"
+
+  clones:
+    # no new copy-pasted block (jscpd, compared with the merge base). Warning only for now.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - continue-on-error: true # warning only (step level: the job stays green)
+        run: |
+          mb=$(git merge-base "$BASE" "$HEAD")
+          status=0
+          npx -y "jscpd@$JSCPD_VERSION"--baseline-from-ref "$mb" --fail-on-new-clones \
+            --min-tokens 70 --format cpp,python --formats-exts "cpp:cpp,hpp,h,cc,ipp;python:py" \
+            --ignore "**/subprojects/**,**/build*/**,**/.git/**" \
+            --reporters json --silent --output "$RUNNER_TEMP/jscpd" . || status=$?
+          python3 - "$RUNNER_TEMP/jscpd/jscpd-report.json" <<'EOF'
+          import json, sys
+          for c in json.load(open(sys.argv[1]))["duplicates"]:
+              if c["isNew"]:
+                  a, b = c["firstFile"], c["secondFile"]
+                  print(f"::warning file={a['name']},line={a['start']},title=new clone::"
+                        f"{c['lines']} lines also in {b['name']}:{b['start']}-{b['end']}")
+          EOF
+          exit $status
+
+  workflows:
+    # actionlint + zizmor on the workflow files the PR changes (not those it leaves alone:
+    # master's own findings are not the PR's). Warning only for now.
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: changed
+        run: |
+          files=$(git diff --name-only --diff-filter=d "$(git merge-base "$BASE" "$HEAD")" "$HEAD" \
+                    -- '.github/workflows/*.yml' '.github/workflows/*.yaml' | tr '\n' ' ')
+          echo "files=$files" >> "$GITHUB_OUTPUT"
+      - if: steps.changed.outputs.files != ''
+        continue-on-error: true # warning only (step level: the job stays green)
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          read -ra files <<< "$FILES"
+          docker run --rm -v "$PWD:/repo" -w /repo "rhysd/actionlint:$ACTIONLINT_VERSION" -color "${files[@]}"
+      - if: steps.changed.outputs.files != ''
+        continue-on-error: true
+        env:
+          FILES: ${{ steps.changed.outputs.files }}
+        run: |
+          read -ra files <<< "$FILES"
+          pipx run --spec "zizmor==$ZIZMOR_VERSION" zizmor --offline --format github "${files[@]}"
+
+  dependencies:
+    # Python dependency changes: fail on a high-severity known vulnerability
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          base-ref: ${{ github.event.pull_request.base.sha }}
+          head-ref: ${{ github.event.pull_request.head.sha }}

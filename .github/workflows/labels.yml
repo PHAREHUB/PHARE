@@ -1,0 +1,51 @@
+# Labels a PR by the paths it touches and by its size.
+#
+# pull_request_target: labelling needs a write token, which PRs from forks don't get on
+# pull_request. Nothing from the PR is checked out or run here: both actions only read the
+# list of changed files through the API, and labeler reads its config from master.
+
+name: labels
+
+on:
+  pull_request_target: # zizmor: ignore[dangerous-triggers] no checkout, no PR code run
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  paths:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/labeler@bf12e9b00b37c5c0ca2b87b79b2daf7891dbda13 # v7.0.0
+        with:
+          sync-labels: true
+
+  size:
+    # information only: a comment above 1500 changed lines, never a failure
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: codelytv/pr-size-labeler@19c335e7695ba922de938806dd129f0a9b992644 # v1.12.0
+        with:
+          xs_label: "size/XS"
+          xs_max_size: "10"
+          s_label: "size/S"
+          s_max_size: "100"
+          m_label: "size/M"
+          m_max_size: "500"
+          l_label: "size/L"
+          l_max_size: "1500"
+          xl_label: "size/XL"
+          fail_if_xl: "false"
+          message_if_xl: >
+            This PR changes more than 1500 lines (excluding notebooks and data files).
+            Consider splitting it: large PRs are hard to review.
+          files_to_ignore: "*.ipynb *.h5 *.json subprojects/*"

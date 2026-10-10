@@ -1,0 +1,15 @@
+# Dependabot opens a PR when an action used in .github/workflows has a new release.
+# It updates both the commit hash and the "# vX.Y.Z" comment next to it.
+# One grouped PR a month at most, to keep the noise low. A release is only proposed once it
+# is a week old: a hijacked release is usually spotted and pulled within days.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      actions:
+        patterns: ["*"]
