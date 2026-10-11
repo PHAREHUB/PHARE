@@ -120,9 +120,6 @@ namespace amr
                                 double const /*fillTime*/) override
         {
         }
-        void fillIonBorders(IonsT& /*ions*/, level_t& /*level*/, double const /*fillTime*/) override
-        {
-        }
 
 
 
