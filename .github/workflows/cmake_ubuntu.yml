@@ -6,6 +6,15 @@ concurrency:
 
 on:
   pull_request:
+    # no build for PRs that only touch CI, docs or markdown; later patterns win
+    paths:
+      - '**'
+      - '!.github/**'
+      - '!res/ci/**'
+      - '!doc/**'
+      - '!**/*.md'
+      - '!codecov.yml'
+      - '.github/workflows/cmake_ubuntu.yml'
   workflow_dispatch:
 
 jobs:
