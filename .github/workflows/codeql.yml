@@ -9,6 +9,16 @@ on:
     branches: [ "master" ]
   pull_request:
     branches: [ "master" ]
+    # no analysis for PRs that only touch CI, docs or markdown; later patterns win
+    paths:
+      - '**'
+      - '!.github/**'
+      - '!res/ci/**'
+      - '!doc/**'
+      - '!**/*.md'
+      - '!codecov.yml'
+      - '.github/workflows/codeql.yml'
+      - '.github/codeql-config.yml'
   schedule:
     - cron: "42 19 * * 4"
 
