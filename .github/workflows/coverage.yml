@@ -54,9 +54,35 @@ jobs:
       working-directory: ${{github.workspace}}/build
       run: . /.venv/bin/activate; cmake --build . --target gcovr
 
+    - name: Keep coverage report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: coverage-cpp
+        path: build/coverage/coverage.xml
+        retention-days: 7
+
+  # separate job on the bare runner: the container has no curl, which the
+  #  Codecov action needs, and a failed upload can be re-run without the build
+  upload:
+    needs: cpp
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Clone PHARE
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Get coverage report
+      uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+      with:
+        name: coverage-cpp
+        path: build/coverage
+
     # no token on fork PRs: Codecov accepts tokenless uploads to their branches
     - name: Upload to Codecov
-      if: ${{ !cancelled() }}
       uses: codecov/codecov-action@303a32d7a59b442fa8d48b6a1cc6825c09c847a5 # v7.1.1
       with:
         files: build/coverage/coverage.xml
@@ -65,3 +91,4 @@ jobs:
         name: gha-gcc
         token: ${{ secrets.CODECOV_TOKEN }}
         fail_ci_if_error: false
+        verbose: true
