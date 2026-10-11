@@ -9,6 +9,16 @@ concurrency:
 
 on:
   pull_request:
+    # no coverage for PRs that only touch CI, docs or markdown; later patterns win
+    paths:
+      - '**'
+      - '!.github/**'
+      - '!res/ci/**'
+      - '!doc/**'
+      - '!**/*.md'
+      - '!codecov.yml'
+      - '.github/workflows/coverage.yml'
+      - 'codecov.yml'
   push:
     branches: [master] # master reports are the base PRs are compared to
   workflow_dispatch:
