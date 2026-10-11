@@ -110,6 +110,12 @@ namespace core
         }
 
 
+        void update()
+        {
+            computeChargeDensity();
+            computeBulkVelocity();
+        }
+
         void computeBulkVelocity()
         {
             computeMassDensity();

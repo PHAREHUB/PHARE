@@ -213,26 +213,19 @@ namespace amr
     }
 
 
-    // potentially to replace with SAMRAI coarse to fine boundary stuff
-    template<typename GridLayoutT> // fow now it gives us a box for only patch ghost layer
-    NO_DISCARD auto makeNonLevelGhostBoxFor(SAMRAI::hier::Patch const& patch,
-                                            SAMRAI::hier::HierarchyNeighbors const& neighbors)
+    // patch ghost layer: overlaps of the particle ghost box with same-level neighbours
+    template<typename GridLayoutT>
+    NO_DISCARD auto patchGhostBoxOverlaps(SAMRAI::hier::Patch const& patch,
+                                          SAMRAI::hier::HierarchyNeighbors const& neighbors)
     {
-        auto constexpr dimension       = GridLayoutT::dimension;
-        auto const lvlNbr              = patch.getPatchLevelNumber();
-        SAMRAI::hier::Box const domain = patch.getBox();
-        auto const domBox              = phare_box_from<dimension>(domain);
-        auto const particleGhostBox    = grow(domBox, GridLayoutT::options.particle_ghost_width);
-
-        auto const& neighbor_boxes = neighbors.getSameLevelNeighbors(domain, lvlNbr);
-        std::vector<core::Box<int, GridLayoutT::dimension>> patchGhostLayerBoxes;
-        patchGhostLayerBoxes.reserve(neighbor_boxes.size() + 1);
-        patchGhostLayerBoxes.emplace_back(domBox);
-        for (auto const& neighbox : neighbor_boxes)
-            patchGhostLayerBoxes.emplace_back(
-                *(particleGhostBox * phare_box_from<dimension>(neighbox)));
-
-        return patchGhostLayerBoxes;
+        auto constexpr dimension    = GridLayoutT::dimension;
+        auto const domBox           = phare_box_from<dimension>(patch.getBox());
+        auto const particleGhostBox = grow(domBox, GridLayoutT::options.particle_ghost_width);
+        return core::generate_from(
+            [&](auto& neighbox) {
+                return *(particleGhostBox * phare_box_from<dimension>(neighbox));
+            },
+            neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber()));
     }
 
 

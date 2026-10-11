@@ -49,7 +49,7 @@ public:
     // void trim(std::size_t max_empty);
 
     // to use if an item in an indexed array is moved at another index
-    void updateIndex(std::size_t oldIndex, std::size_t newIndex)
+    void updateIndex(std::size_t const oldIndex, std::size_t const newIndex)
     {
         //
         auto it = std::find(std::begin(indexes_), std::end(indexes_), oldIndex);
