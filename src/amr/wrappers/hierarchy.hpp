@@ -113,14 +113,10 @@ private:
 class Hierarchy : public HierarchyRestarter, public SAMRAI::hier::PatchHierarchy
 {
 public:
-    NO_DISCARD static auto make();
-
     NO_DISCARD auto const& boundaryConditions() const { return boundaryConditions_; }
     NO_DISCARD auto const& cellWidth() const { return cellWidth_; }
     NO_DISCARD auto const& domainBox() const { return domainBox_; }
     NO_DISCARD auto const& maxLevel() const { return maxLevel_; }
-
-
 
     auto writeRestartFile(std::string directory) const;
 
@@ -212,21 +208,6 @@ std::shared_ptr<Hierarchy> HierarchyMaker::operator()(std::size_t userDim, Dimen
 //-----------------------------------------------------------------------------
 //                       Hierarchy Definitions
 //-----------------------------------------------------------------------------
-
-
-inline auto Hierarchy::make()
-{
-    PHARE::initializer::PHAREDict const& theDict
-        = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-    auto dim  = theDict["simulation"]["dimension"].template to<int>();
-    auto hier = core::makeAtRuntime<HierarchyMaker>(dim, HierarchyMaker{theDict});
-    if (hier)
-        return hier;
-    PHARE_LOG_LINE_SS("hierarchy not found for params:\n"
-                      << dim << " " << theDict["simulation"]["interp_order"].template to<int>()
-                      << " " << theDict["simulation"]["refined_particle_nbr"].template to<int>());
-    throw std::runtime_error("Likely unsupported template parameters");
-}
 
 
 template<std::size_t dimension>

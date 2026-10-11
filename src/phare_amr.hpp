@@ -30,7 +30,7 @@
 
 namespace PHARE::amr
 {
-template<SimOpts opts>
+template<auto opts>
 struct PHARE_Types
 {
     auto static constexpr dimension = opts.dimension;

@@ -1,6 +1,8 @@
 
 
 #include "phare_solver.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "amr/tagging/tagger_factory.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"

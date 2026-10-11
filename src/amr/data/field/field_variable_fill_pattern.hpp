@@ -186,7 +186,7 @@ public:
         auto& toverlap = dynamic_cast<TensorFieldOverlap<rank_> const&>(*basic_overlap);
         auto&& interiorTensorFieldBox = casted.interiorTensorFieldBox();
 
-        auto overlaps = PHARE::core::for_N_make_array<N>([&](auto i) {
+        auto overlaps = core::for_N_make_array<N>([&](auto i) {
             auto& overlap          = toverlap[i];
             auto& interiorFieldBox = interiorTensorFieldBox[i];
             auto destinationBoxes  = overlap->getDestinationBoxContainer();
@@ -351,7 +351,7 @@ public:
         // Skip if src and dst are the same
         if (phare_box_from<dim>(dst_patch_box) == phare_box_from<dim>(src_mask))
         {
-            auto overlaps = PHARE::core::for_N_make_array<N>([&](auto /*i*/) {
+            auto overlaps = core::for_N_make_array<N>([&](auto /*i*/) {
                 return std::make_shared<FieldOverlap>(SAMRAI::hier::BoxContainer{}, transformation);
             });
             return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
@@ -359,7 +359,7 @@ public:
 
         if (dynamic_cast<TensorFieldGeometry_t const*>(&_dst_geometry))
         {
-            auto overlaps = PHARE::core::for_N_make_array<N>([&](auto i) {
+            auto overlaps = core::for_N_make_array<N>([&](auto i) {
                 auto overlap = FieldGhostInterpOverlapFillPattern<Gridlayout_t>::calculateOverlap(
                     dynamic_cast<TensorFieldGeometry_t const&>(_dst_geometry)[i],
                     dynamic_cast<TensorFieldGeometry_t const&>(_src_geometry)[i], dst_patch_box,

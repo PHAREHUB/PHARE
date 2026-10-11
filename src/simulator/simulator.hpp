@@ -1,9 +1,7 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_HPP
 #define PHARE_SIMULATOR_SIMULATOR_HPP
 
-
 #include "phare_solver.hpp"
-
 
 #include "core/def.hpp"
 #include "core/errors.hpp"
@@ -24,6 +22,7 @@
 #include "diagnostic/diagnostics.hpp"
 
 #include "restarts/restarts.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include <stdexcept>
 #include <vector>
@@ -31,41 +30,8 @@
 #include <algorithm>
 
 
-
-
 namespace PHARE
 {
-
-
-class ISimulator
-{
-public:
-    virtual double startTime()   = 0;
-    virtual double endTime()     = 0;
-    virtual double currentTime() = 0;
-    virtual double timeStep()    = 0;
-
-    virtual void initialize() = 0;
-    virtual double advance()  = 0;
-
-    virtual std::vector<int> const& domainBox() const    = 0;
-    virtual std::vector<double> const& cellWidth() const = 0;
-    virtual std::size_t interporder() const              = 0;
-
-    virtual std::string to_str() = 0;
-
-    virtual ~ISimulator() {}
-
-
-    virtual bool dump_diagnostics(double timestamp, double timestep)
-    {
-        return false; // overriding optional
-    }
-    virtual bool dump_restarts(double timestamp, double timestep)
-    {
-        return false; // overriding optional
-    }
-};
 
 template<auto opts>
 class Simulator : public ISimulator
@@ -127,6 +93,7 @@ public:
             return rMan->dump(timestamp, timestep);
         return false;
     }
+
 
 
 protected:
@@ -217,7 +184,6 @@ private:
 
     void handle_dictionary_exception(core::DictionaryException const& ex);
 };
-
 
 
 namespace
@@ -657,6 +623,12 @@ auto Simulator<opts>::find_model(std::string name)
 }
 
 
+template<typename Simulator>
+std::unique_ptr<Simulator> makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
+{
+    return std::make_unique<Simulator>(initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
+}
+
 
 struct SimulatorMaker
 {
@@ -667,38 +639,18 @@ struct SimulatorMaker
 
     std::shared_ptr<PHARE::amr::Hierarchy>& hierarchy_;
 
-    template<typename Dimension, typename InterpOrder, typename NbRefinedPart>
-    std::unique_ptr<ISimulator> operator()(std::size_t userDim, std::size_t userInterpOrder,
-                                           std::size_t userNbRefinedPart, Dimension dimension,
-                                           InterpOrder interp_order, NbRefinedPart nbRefinedPart)
+    template<auto opts>
+    std::unique_ptr<ISimulator> operator()(SimOpts const& r_opts)
     {
-        if (userDim == dimension() and userInterpOrder == interp_order()
-            and userNbRefinedPart == nbRefinedPart())
+        if (r_opts == opts)
         {
-            std::size_t constexpr d  = dimension();
-            std::size_t constexpr io = interp_order();
-            std::size_t constexpr nb = nbRefinedPart();
-
             PHARE::initializer::PHAREDict& theDict
                 = PHARE::initializer::PHAREDictHandler::INSTANCE().dict();
-            SimOpts constexpr static opts{d, io, nb};
             return std::make_unique<Simulator<opts>>(theDict, hierarchy_);
         }
-        else
-        {
-            return nullptr;
-        }
+        return nullptr;
     }
 };
-
-
-
-template<typename Simulator>
-std::unique_ptr<Simulator> makeSimulator(std::shared_ptr<amr::Hierarchy> const& hierarchy)
-{
-    return std::make_unique<Simulator>(initializer::PHAREDictHandler::INSTANCE().dict(), hierarchy);
-}
-
 
 
 } // namespace PHARE
