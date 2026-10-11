@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+
 from pyphare.core import phare_utilities
 from pyphare.pharein import global_vars, simulation
 from pyphare.pharein.mhd_model import MHDModel

@@ -4,11 +4,11 @@
 from pathlib import Path
 
 import numpy as np
+
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
-
-from pyphare import cpp
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()

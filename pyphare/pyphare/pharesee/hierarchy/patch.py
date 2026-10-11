@@ -1,5 +1,3 @@
-
-
 class Patch:
     """
     A patch represents a hyper-rectangular region of space

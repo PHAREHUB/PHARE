@@ -5,7 +5,9 @@
 #
 
 import unittest
+
 import numpy as np
+
 import pyphare.pharein as ph
 
 # minimal valid geometry; time parameters are supplied per-test
@@ -152,7 +154,10 @@ class TimeStepValidation(unittest.TestCase):
     def test_unknown_mode_raises(self):
         with self.assertRaises(ValueError):
             ph.Simulation(
-                time_step={"mode": "variable", "cfl_wave": 0.4},  # only "adaptive" is valid
+                time_step={
+                    "mode": "variable",
+                    "cfl_wave": 0.4,
+                },  # only "adaptive" is valid
                 final_time=1.0,
                 **baseArgs,
             )

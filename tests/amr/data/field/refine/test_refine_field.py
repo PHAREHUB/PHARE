@@ -1,4 +1,5 @@
 import numpy as np
+
 from pyphare.core import box as boxm
 from pyphare.core.gridlayout import GridLayout
 from pyphare.core.phare_utilities import refinement_ratio
@@ -187,7 +188,7 @@ def makeDataset(field, **kwargs):
     """
     assert isinstance(field, FieldData)
     kwarg_keys = ["data"]
-    assert any([key in kwarg_keys for key in list(kwargs.keys())])
+    assert any(key in kwarg_keys for key in list(kwargs.keys()))
 
     refinement_ratio = 2
     primal_directions = field.primal_directions()

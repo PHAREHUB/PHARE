@@ -1,4 +1,3 @@
-
 import atexit
 import datetime
 import os
@@ -93,7 +92,7 @@ class Simulator:
         self.cpp_hier = None  # HERE
         self.cpp_sim = None  # BE
         self.cpp_dw = None  # DRAGONS, i.e. use weakrefs if you have to ref these.
-        self.post_advance = kwargs.get("post_advance", None)
+        self.post_advance = kwargs.get("post_advance")
         self.initialized = False
         self.print_eol = "\n"
         if kwargs.get("print_one_line", False):
@@ -150,10 +149,10 @@ class Simulator:
 
             return self
         except cpp.cpp_error_type() as e:
-            print(
-                f'Exception caught in "Simulator.initialize()": {sys.exc_info()[0]}'
-            )
-            raise ValueError("Error in Simulator.initialize(), see previous error") from e
+            print(f'Exception caught in "Simulator.initialize()": {sys.exc_info()[0]}')
+            raise ValueError(
+                "Error in Simulator.initialize(), see previous error"
+            ) from e
 
     def advance(self):
         self._check_init()

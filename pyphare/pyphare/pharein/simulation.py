@@ -76,10 +76,10 @@ def check_domain(**kwargs):
         try:
             phare_utilities.check_iterables(kwargs["domain_size"], kwargs["dl"])
             phare_utilities.check_equal_size(kwargs["domain_size"], kwargs["dl"])
-        except ValueError:
+        except ValueError as e:
             raise ValueError(
                 "Error: 'domain_size' and 'dl' must have the same dimension"
-            )
+            ) from e
 
         domain_size = phare_utilities.listify(kwargs["domain_size"])
         dl = phare_utilities.listify(kwargs["dl"])
@@ -99,12 +99,11 @@ def check_domain(**kwargs):
         try:
             phare_utilities.check_iterables(kwargs["cells"], kwargs["dl"])
             phare_utilities.check_equal_size(kwargs["cells"], kwargs["dl"])
-        except ValueError:
+        except ValueError as e:
             raise ValueError(
-                "Error: 'cells' and 'dl' must have the same dimension ({} and {})".format(
-                    kwargs["cells"], kwargs["dl"]
-                )
-            )
+                "Error: 'cells' and 'dl' must have the same dimension"
+                f" ({kwargs['cells']} and {kwargs['dl']})"
+            ) from e
 
         dl = phare_utilities.listify(kwargs["dl"])
         cells = phare_utilities.listify(kwargs["cells"])
@@ -113,10 +112,10 @@ def check_domain(**kwargs):
         try:
             phare_utilities.check_iterables(kwargs["cells"], kwargs["domain_size"])
             phare_utilities.check_equal_size(kwargs["cells"], kwargs["domain_size"])
-        except ValueError:
+        except ValueError as e:
             raise ValueError(
                 "Error: 'cells' and 'domain_size' must have the same dimension"
-            )
+            ) from e
 
         cells = phare_utilities.listify(kwargs["cells"])
         domain_size = phare_utilities.listify(kwargs["domain_size"])
@@ -156,7 +155,7 @@ def hybrid_is_active(interp_order):
 
 def check_interp_order(**kwargs):
     model_options = phare_utilities.listify(kwargs.get("model_options", "HybridModel"))
-    interp_order = kwargs.get("interp_order", None)
+    interp_order = kwargs.get("interp_order")
 
     if interp_order is None:
         return 1 if "HybridModel" in model_options else no_hybrid_interp_order
@@ -215,12 +214,14 @@ valid_refined_particle_nbr = {
     },
 }  # Default refined_particle_nbr per dim/interp is considered index 0 of list
 
-no_refined_particle_nbr = 0  # internal, C++-facing counterpart of no_hybrid_interp_order
+no_refined_particle_nbr = (
+    0  # internal, C++-facing counterpart of no_hybrid_interp_order
+)
 
 
 def check_refined_particle_nbr(ndim, **kwargs):
     interp = kwargs["interp_order"]
-    refined_particle_nbr = kwargs.get("refined_particle_nbr", None)
+    refined_particle_nbr = kwargs.get("refined_particle_nbr")
 
     # like interp_order, a run with no hybrid model has no refined particle number, and
     # says so by omitting the key. 0 is again only what C++ SimOpts is given.
@@ -284,7 +285,7 @@ def check_refinement_boxes(ndim, **kwargs):
     returns tuple ( { "L0" : [Boxes]}, max_nbr_levels)
     """
 
-    refinement_boxes = kwargs.get("refinement_boxes", None)
+    refinement_boxes = kwargs.get("refinement_boxes")
 
     if (
         refinement_boxes is None or len(refinement_boxes) == 0
@@ -377,7 +378,7 @@ def check_patch_size(ndim, **kwargs):
             "Error - smallest_patch_size should be less than nbr of cells in all directions"
         )
 
-    largest_patch_size = kwargs.get("largest_patch_size", None)
+    largest_patch_size = kwargs.get("largest_patch_size")
     if largest_patch_size is not None:
         largest_patch_size = phare_utilities.np_array_ify(largest_patch_size, ndim)
 
@@ -420,16 +421,16 @@ def check_directory(directory, key):
     try:
         os.makedirs(directory, exist_ok=True)
         if not os.path.exists(directory):
-            raise ValueError("1. Creation of the directory %s failed" % directory)
-    except FileExistsError:
-        raise ValueError("Creation of the directory %s failed" % directory)
+            raise ValueError(f"1. Creation of the directory {directory} failed")
+    except FileExistsError as e:
+        raise ValueError(f"Creation of the directory {directory} failed") from e
 
     return directory
 
 
 # diag_options = {"format":"phareh5", "options": {"dir": "phare_ouputs/"}}
 def check_diag_options(**kwargs):
-    diag_options = kwargs.get("diag_options", None)
+    diag_options = kwargs.get("diag_options")
     formats = ["phareh5", "pharevtkhdf"]
     if diag_options is not None and "format" in diag_options:
         if diag_options["format"] not in formats:
@@ -469,7 +470,7 @@ def check_restart_options(**kwargs):
         "keep_last",  # delete obsolete
     ]
 
-    restart_options = kwargs.get("restart_options", None)
+    restart_options = kwargs.get("restart_options")
 
     if restart_options:
         for key in restart_options:
@@ -890,7 +891,7 @@ class Simulation:
           is incompatible with ``time_step_nbr``.
 
           * **cfl_wave** (``float``), hyperbolic/wave CFL coefficient. Normalized so 1 is
-            the stability limit; choose in (0, 1]. In hall mhd and hybrid, 
+            the stability limit; choose in (0, 1]. In hall mhd and hybrid,
             whistler wave speed limits is used.
           * **cfl_diffusive** (``float``), diffusive CFL coefficient. Normalized so 1 is
             the diffusion stability limit; choose in (0, 1]. Defaults to ``cfl_wave``. Only
@@ -1211,9 +1212,7 @@ class Simulation:
 
         """
         if diag.name in self.diagnostics:
-            raise ValueError(
-                f"Error: diagnostics {diag.name} already registered"
-            )
+            raise ValueError(f"Error: diagnostics {diag.name} already registered")
 
         # check whether the spatial extent of the diagnostics is valid, given the domain size
         if diag.extent() is not None and not self.within_simulation_extent(

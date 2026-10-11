@@ -5,12 +5,12 @@ for grid sizes, as a function of the interpolation order, the dimensionality (1,
 and the quantity.
 """
 
-
 import os
 import sys
 
 import gridparams
 import utilities
+
 from pyphare.core import gridlayout
 
 

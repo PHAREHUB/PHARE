@@ -7,6 +7,7 @@ import sys
 import cellCenteredCoordinates
 import numpy as np
 import utilities
+
 from pyphare.core import gridlayout
 
 # TODO : FieldNode coords is general case of cellCenteredCoord
@@ -131,7 +132,9 @@ def main(path="./"):
 
                 summaryBasePart = f"{quantity} {params.nbrCell} {params.dl} "
 
-                summaryGridLayoutPart = f"{params.iStart} {params.iEnd} {params.origin}\n"
+                summaryGridLayoutPart = (
+                    f"{params.iStart} {params.iEnd} {params.origin}\n"
+                )
 
                 outSummaryString = summaryBasePart + summaryGridLayoutPart
 

@@ -8,10 +8,10 @@ implemented in GridLayout with a Yee implementation
 We derive a primal quantity and a dual quantity.
 """
 
-
 import os
 
 import numpy as np
+
 from pyphare.core import gridlayout
 
 
@@ -95,7 +95,9 @@ def test_deriv2D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         filename_dxBy = f"dxBy_interpOrder_{interpOrder}_2d.txt"
         filename_dyBy = f"dyBy_interpOrder_{interpOrder}_2d.txt"
         filename_dxEz = f"dxEz_interpOrder_{interpOrder}_2d.txt"
@@ -154,12 +156,6 @@ def test_deriv2D(path):
             - tv.meshSize[0] * nbrGhost_d
             + tv.meshSize[0] * 0.5
         )
-        y_dual = (
-            tv.meshSize[1]
-            * np.arange(layout.allocSize(interpOrder, "dual", tv.nbrCells[1]))
-            - tv.meshSize[1] * nbrGhost_d
-            + tv.meshSize[1] * 0.5
-        )
         x_primal = (
             tv.meshSize[0]
             * np.arange(layout.allocSize(interpOrder, "primal", tv.nbrCells[0]))
@@ -215,7 +211,9 @@ def test_deriv3D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         filename_dxBy = f"dxBy_interpOrder_{interpOrder}_3d.txt"
         filename_dyBy = f"dyBy_interpOrder_{interpOrder}_3d.txt"
         filename_dzBy = f"dzBy_interpOrder_{interpOrder}_3d.txt"
@@ -299,12 +297,6 @@ def test_deriv3D(path):
             - tv.meshSize[0] * nbrGhost_d
             + tv.meshSize[0] * 0.5
         )
-        y_dual = (
-            tv.meshSize[1]
-            * np.arange(layout.allocSize(interpOrder, "dual", tv.nbrCells[1]))
-            - tv.meshSize[1] * nbrGhost_d
-            + tv.meshSize[1] * 0.5
-        )
         z_dual = (
             tv.meshSize[2]
             * np.arange(layout.allocSize(interpOrder, "dual", tv.nbrCells[2]))
@@ -320,11 +312,6 @@ def test_deriv3D(path):
             tv.meshSize[1]
             * np.arange(layout.allocSize(interpOrder, "primal", tv.nbrCells[1]))
             - tv.meshSize[1] * nbrGhost_p
-        )
-        z_primal = (
-            tv.meshSize[2]
-            * np.arange(layout.allocSize(interpOrder, "primal", tv.nbrCells[2]))
-            - tv.meshSize[2] * nbrGhost_p
         )
 
         By = np.tensordot(

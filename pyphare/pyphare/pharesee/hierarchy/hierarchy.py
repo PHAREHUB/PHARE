@@ -121,8 +121,10 @@ class PatchHierarchy:
             self._sim = deserialize(
                 first_file["py_attrs"].attrs["serialized_simulation"]
             )
-        except Exception as e:  # noqa: BLE001 - dill.loads can raise anything
-            raise RuntimeError(f"Failed to deserialize simulation from data file : {e}")
+        except Exception as e:
+            raise RuntimeError(
+                f"Failed to deserialize simulation from data file : {e}"
+            ) from e
         return self._sim
 
     def __call__(self, qty=None, **kwargs):
@@ -398,7 +400,7 @@ class PatchHierarchy:
         plot
         """
         usr_lvls = kwargs.get("levels", (0,))
-        qty = kwargs.get("qty", None)
+        qty = kwargs.get("qty")
         time = kwargs.get("time", self.times()[0])
 
         if "ax" not in kwargs:
@@ -440,7 +442,7 @@ class PatchHierarchy:
         if "ylim" in kwargs:
             ax.set_ylim(kwargs["ylim"])
 
-        if kwargs.get("legend", None) is not None:
+        if kwargs.get("legend") is not None:
             ax.legend()
 
         if "filename" in kwargs:
@@ -477,16 +479,16 @@ class PatchHierarchy:
         glob_min = self.global_min(qty)
         glob_max = self.global_max(qty)
         # assumes max 5 levels...
-        patchcolors = {ilvl: "k" for ilvl in usr_lvls}
+        patchcolors = dict.fromkeys(usr_lvls, "k")
         patchcolors = kwargs.get("patchcolors", patchcolors)
         if not isinstance(patchcolors, dict):
             patchcolors = dict(zip(usr_lvls, patchcolors))
 
-        linewidths = {ilvl: 1 for ilvl in usr_lvls}
+        linewidths = dict.fromkeys(usr_lvls, 1)
         linewidths = kwargs.get("lw", linewidths)
         if not isinstance(linewidths, dict):
             linewidths = dict(zip(usr_lvls, linewidths))
-        linestyles = {ilvl: "-" for ilvl in usr_lvls}
+        linestyles = dict.fromkeys(usr_lvls, "-")
         linestyles = kwargs.get("ls", linestyles)
         if not isinstance(linestyles, dict):
             linestyles = dict(zip(usr_lvls, linestyles))
@@ -532,7 +534,7 @@ class PatchHierarchy:
         cax = divider.append_axes("right", size="5%", pad=0.08)
         plt.colorbar(im, ax=ax, cax=cax)
 
-        if kwargs.get("legend", None) is not None:
+        if kwargs.get("legend") is not None:
             ax.legend()
 
         if "filename" in kwargs:
@@ -579,11 +581,11 @@ class PatchHierarchy:
             kwargs["bins"] = bins
 
         else:
-            final = {pop: None for pop in all_pops}
+            final = dict.fromkeys(all_pops)
             for lvl_nbr, level in self.levels(time).items():
                 if lvl_nbr not in usr_lvls:
                     continue
-                for ip, patch in enumerate(level.patches):
+                for _ip, patch in enumerate(level.patches):
                     if len(pops) == 0:
                         pops = list(patch.patch_datas.keys())
 
@@ -664,17 +666,15 @@ def finest_part_data(hierarchy, time=None):
 
     from ..particles import remove
 
-    i_ref = None
-    for i_ref, p in enumerate(hierarchy.level(0, time=time).patches):
-        if len(p.patch_datas):
-            break
+    patches = hierarchy.level(0, time=time).patches
+    i_ref = next((i for i, p in enumerate(patches) if len(p.patch_datas)), None)
     if i_ref is None:
         raise ValueError("This particle hierarchy seems empty !")
 
     # we are going to return a dict {popname : Particles}
     # we prepare it with population names
     aPatch = hierarchy.level(0, time=time).patches[i_ref]
-    particles = {popname: None for popname in aPatch.patch_datas}
+    particles = dict.fromkeys(aPatch.patch_datas)
 
     # our strategy is to explore the hierarchy from the finest
     # level to the coarsest. at Each level we keep only particles
@@ -686,7 +686,7 @@ def finest_part_data(hierarchy, time=None):
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
         plvl = hierarchy.level(ilvl, time=time)
-        for ip, patch in enumerate(plvl.patches):
+        for _ip, patch in enumerate(plvl.patches):
             lvlPatchBoxes[ilvl].append(patch.box)
             for popname, pdata in patch.patch_datas.items():
                 # if we're at the finest level
@@ -728,7 +728,7 @@ def amr_grid(hierarchy, time):
     associated to the given hierarchy
     """
     lvlPatchBoxes = {ilvl: [] for ilvl in range(hierarchy.finest_level() + 1)}
-    finalCells = {ilvl: None for ilvl in range(hierarchy.finest_level() + 1)}
+    finalCells = dict.fromkeys(range(hierarchy.finest_level() + 1))
     lvl = hierarchy.levels(time)
 
     for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
@@ -768,7 +768,7 @@ def amr_grid(hierarchy, time):
                 ]
                 for coarseBox in coarsenedNextFinerBoxes:
                     ccells = np.arange(coarseBox.lower[0], coarseBox.upper[0] + 1)
-                    inter, icells, iccells = np.intersect1d(
+                    _inter, icells, _iccells = np.intersect1d(
                         cells, ccells, return_indices=True
                     )
                     cells = np.delete(cells, icells)

@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from pyphare.core.phare_utilities import is_scalar, listify

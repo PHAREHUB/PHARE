@@ -38,7 +38,7 @@ def diagnostics_checker(func):
         # at least one way to schedule dumps must be given
         one_of_required = ["write_timestamps", "elapsed_timestamps"]
         for k in one_of_required:
-            if kwargs.get(k, None) is None:
+            if kwargs.get(k) is None:
                 kwargs.pop(k, None)
         if not any(
             phare_utilities.np_array_ify(kwargs[k]).size > 0
@@ -67,7 +67,7 @@ def diagnostics_checker(func):
         try:
             # just take mandatory arguments from the dict
             # since if we arrived here we are sure they are there
-           
+
             kwargs["path"] = kwargs.get("path", "./")
 
             return func(diagnostics_object, name, **kwargs)
@@ -366,7 +366,7 @@ class ElectromagDiagnostics(Diagnostics):
 
 
 def population_in_model(population):
-    return population in [p for p in global_vars.sim.model.populations]
+    return population in global_vars.sim.model.populations
 
 
 class FluidDiagnostics_(Diagnostics):

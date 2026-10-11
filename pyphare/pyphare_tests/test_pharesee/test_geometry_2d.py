@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 from ddt import data, ddt, unpack
+
 from pyphare.core.box import Box, Box2D
 from pyphare.pharesee.geometry import (
     get_periodic_list,
@@ -10,7 +11,6 @@ from pyphare.pharesee.geometry import (
     level_ghost_boxes,
     touch_domain_border,
 )
-
 from pyphare_tests.test_pharesee import build_hierarchy
 
 

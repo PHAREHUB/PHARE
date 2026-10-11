@@ -3,9 +3,9 @@
 # formatted with black
 
 from ddt import data, ddt
+
 from pyphare.core.box import Box, Box2D
 from pyphare.simulator.simulator import Simulator
-
 from tests.simulator import NoOverwriteDict, SimulatorTest, populate_simulation
 
 out = "phare_outputs/valid/refinement_boxes/"

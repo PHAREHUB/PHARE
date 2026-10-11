@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator
-
 from tests.diagnostic import all_timestamps
 
 ph.NO_GUI()

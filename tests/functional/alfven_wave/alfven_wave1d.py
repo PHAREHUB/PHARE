@@ -2,6 +2,7 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
@@ -145,7 +146,7 @@ def main():
         return
 
     if cpp.mpi_rank() == 0:
-        vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)
+        vphi, t, _phi, _a, _k = phase_speed(".", 0.01, 1000)
 
         r = Run(".", 0)
         t = get_times_from_h5("EM_B.h5")

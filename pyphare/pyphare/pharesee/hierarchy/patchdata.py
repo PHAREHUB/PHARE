@@ -1,4 +1,3 @@
-
 import numpy as np
 
 from ...core import box as boxm
@@ -189,7 +188,6 @@ class FieldData(PatchData):
             f"centering not specified and cannot be inferred from field name : {field_name}"
         )
 
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
 
@@ -254,9 +252,7 @@ class ParticleData(PatchData):
         elif layout.interp_order == 2 or layout.interp_order == 3:
             self.ghosts_nbr = np.array([2] * layout.box.ndim)
         else:
-            raise RuntimeError(
-                f"invalid interpolation order {layout.interp_order}"
-            )
+            raise RuntimeError(f"invalid interpolation order {layout.interp_order}")
 
         self.ghost_box = boxm.grow(layout.box, self.ghosts_nbr)
         assert (self.box.lower == self.ghost_box.lower + self.ghosts_nbr).all()

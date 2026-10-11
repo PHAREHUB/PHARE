@@ -5,12 +5,12 @@
 #  expected to be destroyed and recreated
 
 import numpy as np
+
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 from pyphare.simulator.simulator import Simulator, startMPI
-
-from pyphare import cpp
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()

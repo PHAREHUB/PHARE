@@ -3,6 +3,7 @@ import os
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.pharein import global_vars
 from pyphare.pharein.diagnostics import FluidDiagnostics
@@ -15,7 +16,6 @@ from pyphare.pharesee.hierarchy.fromfunc import (
 )
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-
 from tests.diagnostic import all_timestamps
 
 mpl.use("Agg")
@@ -232,7 +232,7 @@ def main():
                 print(f"dim = {pd_H.ndim}, sigma(user v - actual v) = {std}")
                 assert std < 0.062  # empirical value obtained from print just above
 
-    fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(6, 8))
+    _fig, ((ax1, ax2), (ax3, ax4), (ax5, ax6)) = plt.subplots(3, 2, figsize=(6, 8))
 
     # 1d stuffs
     run_path = os.path.join(os.curdir, "nCheck_1d")

@@ -1,14 +1,14 @@
 """
-  This file exists independently from test_initialization.py to isolate dimension
-    test cases and allow each to be overridden in some way if required.
+This file exists independently from test_initialization.py to isolate dimension
+  test cases and allow each to be overridden in some way if required.
 """
 
 import unittest
 
 import matplotlib
 from ddt import data, ddt, unpack
-from pyphare.core.box import Box3D
 
+from pyphare.core.box import Box3D
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
 
 matplotlib.use("Agg")  # for systems without GUI

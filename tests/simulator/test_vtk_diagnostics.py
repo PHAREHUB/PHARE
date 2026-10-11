@@ -1,15 +1,14 @@
-
 import itertools
 import unittest
 from copy import deepcopy
 
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
+
+import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.core import phare_utilities as phut
 from pyphare.simulator.simulator import Simulator, startMPI
-
-from pyphare import cpp
 from tests.diagnostic import dump_all_diags
 from tests.simulator import SimulatorTest
 

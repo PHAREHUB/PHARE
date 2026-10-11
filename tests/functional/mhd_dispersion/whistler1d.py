@@ -2,9 +2,9 @@
 import os
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.simulator.simulator import Simulator, startMPI
-
 from tests.simulator import SimulatorTest
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing

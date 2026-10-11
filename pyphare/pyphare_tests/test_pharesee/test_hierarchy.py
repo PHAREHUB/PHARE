@@ -2,6 +2,7 @@ import unittest
 
 import numpy as np
 from ddt import ddt
+
 from pyphare.core.box import Box
 from pyphare.core.operators import cross, dot, grad, modulus, sqrt
 from pyphare.pharesee.hierarchy import PatchHierarchy, ScalarField, VectorField

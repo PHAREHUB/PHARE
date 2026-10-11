@@ -5,11 +5,11 @@ This file exists independently from test_advance.py to isolate dimension
 
 import unittest
 
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
+
+import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
 from pyphare.core.box import Box2D
-
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 
@@ -74,13 +74,11 @@ class AdvanceTest2D(HybridAdvanceTest, MHDAdvanceTest):
         *permute({"L0": {"B0": Box2D(2, 12), "B1": Box2D(13, 25)}}),
         *permute({"L0": {"B0": Box2D(5, 20)}, "L1": {"B0": Box2D(15, 19)}}),
         *permute(
-            
-                {
-                    "L0": {"B0": Box2D(5, 20)},
-                    "L1": {"B0": Box2D(12, 38)},
-                    "L2": {"B0": Box2D(30, 52)},
-                }
-            
+            {
+                "L0": {"B0": Box2D(5, 20)},
+                "L1": {"B0": Box2D(12, 38)},
+                "L2": {"B0": Box2D(30, 52)},
+            }
         ),
     )
     @unpack

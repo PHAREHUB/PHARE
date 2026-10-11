@@ -261,7 +261,7 @@ def patch_levels_from_h5(h5f, time, selection_box=None):
                         patch_datas,
                         h5_patch.name.split("/")[-1],
                         box=patch_box,
-                        attrs={k: v for k, v in h5_patch.attrs.items()},
+                        attrs=dict(h5_patch.attrs.items()),
                     )
                 )
 
@@ -276,7 +276,7 @@ def add_time_from_h5(hier, filepath, time, **kwargs):
     import h5py  # see doc/conventions.md section 2.1.1
 
     h5f = h5py.File(filepath, "r")
-    selection_box = kwargs.get("selection_box", None)
+    selection_box = kwargs.get("selection_box")
     if hier.has_time(time):
         add_data_from_h5(hier, filepath, time)
 
