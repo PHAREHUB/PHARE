@@ -1,4 +1,3 @@
-
 import copy
 import datetime
 import unittest
@@ -7,14 +6,14 @@ from pathlib import Path
 from time import sleep
 
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
+
+import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
 from pyphare.pharesee.hierarchy.patchdata import ParticleData
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-
-from pyphare import cpp
 from tests.diagnostic import dump_all_diags
 from tests.simulator import SimulatorTest
 
@@ -150,7 +149,7 @@ class RestartsTest(SimulatorTest):
         def count_levels_and_patches(qty):
             n_levels = len(qty.levels())
             n_patches = 0
-            for ilvl in qty.levels().keys():
+            for ilvl in qty.levels():
                 n_patches += len(qty.level(ilvl).patches)
             return n_levels, n_patches
 

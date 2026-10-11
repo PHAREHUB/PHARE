@@ -41,7 +41,7 @@ def dist_plot(particles, **kwargs):
     if isinstance(particles, list):
         particles = aggregate(particles)
     elif isinstance(particles, dict):
-        particles = aggregate([p for p in particles.values()])
+        particles = aggregate(list(particles.values()))
 
     if not isinstance(particles, Particles):
         raise TypeError("Error, 'particles' type should be Particles, list or dict")
@@ -130,7 +130,7 @@ def dist_plot(particles, **kwargs):
 
     elif len(axis) == 1:
         bins = kwargs.get("bins", (50))
-        cuts = kwargs.get("cuts", None)
+        cuts = kwargs.get("cuts")
         ndim = particles.ndim
 
         if cuts is not None:

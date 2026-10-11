@@ -1,15 +1,15 @@
 """
-  This file exists independently from test_initialization.py to isolate dimension
-    test cases and allow each to be overridden in some way if required.
+This file exists independently from test_initialization.py to isolate dimension
+  test cases and allow each to be overridden in some way if required.
 """
 
 import unittest
 
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
-from pyphare.core import phare_utilities as phut
 
+import pyphare.pharein as ph
+from pyphare.core import phare_utilities as phut
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
 from tests.simulator.initialize.test_init_mhd import MHDInitializationTest
 

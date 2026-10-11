@@ -1,5 +1,3 @@
-
-
 class PatchLevel:
     """is a collection of patches"""
 

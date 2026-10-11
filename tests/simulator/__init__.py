@@ -1,9 +1,9 @@
-
 import os
 import unittest
 from datetime import datetime
 
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.pharein import ElectronModel
 
@@ -63,7 +63,7 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
 
 
 def meshify(*xyz):
-    if all([isinstance(v, np.ndarray) for v in xyz]):
+    if all(isinstance(v, np.ndarray) for v in xyz):
         return xyz
     return np.meshgrid(*xyz, indexing="ij")
 

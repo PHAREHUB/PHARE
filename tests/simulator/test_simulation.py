@@ -1,10 +1,9 @@
-
 import unittest
 from copy import deepcopy
 
 import numpy as np
-import pyphare.pharein as ph
 
+import pyphare.pharein as ph
 from tests.simulator import SimulatorTest
 
 simArgs = dict(

@@ -9,11 +9,11 @@
 import unittest
 
 import numpy as np
-import pyphare.pharein as ph
 from ddt import ddt
+
+import pyphare.pharein as ph
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
-
 from tests.simulator import SimulatorTest
 
 
@@ -147,7 +147,7 @@ class InitializationTest(SimulatorTest):
                 )  # primal in all directions
                 select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(dim)])
 
-                def domain(patch_data):
+                def domain(patch_data, select=select, patch=patch, nbrGhosts=nbrGhosts):
                     if dim == 1:
                         return patch_data.dataset[select]
                     return patch_data.dataset[:].reshape(
@@ -201,7 +201,6 @@ class InitializationTest(SimulatorTest):
                 ion_density = patch.patch_datas["rho"].dataset[:]
                 proton_density = patch.patch_datas["protons_rho"].dataset[:]
                 beam_density = patch.patch_datas["beam_rho"].dataset[:]
-                x = patch.patch_datas["rho"].x
 
                 layout = patch.patch_datas["rho"].layout
                 centering = layout.centering["X"][patch.patch_datas["rho"].field_name]

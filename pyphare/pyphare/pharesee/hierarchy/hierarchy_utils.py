@@ -69,7 +69,7 @@ def patch_per_rank(hier):
     nbranks = nbr_ranks(hier)
     ppr = {}
     for t in hier.times():
-        ppr[t] = {ir: 0 for ir in np.arange(nbranks + 1)}
+        ppr[t] = dict.fromkeys(np.arange(nbranks + 1), 0)
         for lvl in hier.levels(t).values():
             for patch in lvl.patches:
                 ppr[t][patch.attrs["mpi_rank"]] += 1
@@ -124,7 +124,7 @@ def getPatch(hier, point):
     {ilevel:patch}  for patches in which the given point is
     """
     patches = {}
-    counts = {ilvl: 0 for ilvl in hier.levels()}
+    counts = dict.fromkeys(hier.levels(), 0)
     for ilvl, lvl in hier.levels().items():
         for p in lvl.patches:
             px, py = point
@@ -579,7 +579,7 @@ def _compute_scalardiv(patch_datas, **kwargs):
     scalar = kwargs["scalar"]
     pd_attrs = []
 
-    left_ops = {k: v for k, v in patch_datas.items()}
+    left_ops = dict(patch_datas.items())
     for name, left_op in zip(names, left_ops.values()):
         pd_attrs.append(
             {

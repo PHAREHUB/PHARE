@@ -15,6 +15,7 @@ import sys
 import gridparams
 import numpy as np
 import utilities
+
 from pyphare.core import gridlayout
 
 
@@ -193,7 +194,9 @@ def main(path="./"):
             outFileS.write(outSummaryString)
             if dimension == 1:
                 for position in np.arange(params.iStart, params.iEnd + 1):
-                    outValuesString = f"{position} {centeredCoords(position, params.dl)}\n"
+                    outValuesString = (
+                        f"{position} {centeredCoords(position, params.dl)}\n"
+                    )
 
                     outFileV.write(utilities.removeTupleFormat(outValuesString))
 

@@ -21,9 +21,7 @@ def none_iterable(*args):
     """
     return true if none of the arguments are either lists or tuples
     """
-    return all(
-        not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args
-    )
+    return all(not isinstance(arg, list) and not isinstance(arg, tuple) for arg in args)
 
 
 def equal_size(*args):
@@ -77,7 +75,7 @@ def not_in_keywords_list(kwd_list, **kwargs):
     """
     return the list of kwargs keys that are not in 'kwd_list'
     """
-    keys = [k for k in kwargs]
+    keys = list(kwargs)
     isIn = [k in kwd_list for k in keys]
     wrong_kwds = [keys[i] for i, wrong in enumerate(isIn) if not wrong]
     return wrong_kwds
@@ -87,7 +85,7 @@ def check_mandatory_keywords(mandatory_kwd_list, **kwargs):
     """
     return those of mandatory_kwd_list not found in the kwargs keys
     """
-    keys = [k for k in kwargs]
+    keys = list(kwargs)
     check = [(mk, mk in keys) for mk in mandatory_kwd_list]
     return [mk[0] for mk in check if mk[1] is False]
 
@@ -162,7 +160,7 @@ def run_cli_cmd(cmd, shell=True, capture_output=True, check=False, print_cmd=Fal
             cmd, shell=shell, capture_output=capture_output, check=check
         )
     except subprocess.CalledProcessError as e:  # only triggers on failure if check=True
-        raise RuntimeError(decode_bytes(e.stderr))
+        raise RuntimeError(decode_bytes(e.stderr)) from e
 
 
 def print_trace():

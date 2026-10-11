@@ -10,13 +10,13 @@ from pathlib import Path
 from time import sleep
 
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
+
+import pyphare.pharein as ph
 from pyphare.pharein.simulation import supported_dimensions
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 from pyphare.simulator.simulator import Simulator, startMPI
-
 from tests.diagnostic import dump_all_diags
 from tests.simulator import SimulatorTest
 
@@ -211,7 +211,7 @@ class DiagnosticsTest(SimulatorTest):
         py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"]]
         py_attrs += ["git_hash", "serialized_simulation"]
         particle_files = 0
-        for diagname, diagInfo in sim.diagnostics.items():
+        for diagInfo in sim.diagnostics.values():
             h5_filepath = os.path.join(diag_path, h5_filename_from(diagInfo))
             self.assertTrue(os.path.exists(h5_filepath))
 
@@ -257,7 +257,7 @@ class DiagnosticsTest(SimulatorTest):
 
                 for patch in hier.level(0).patches:
                     self.assertTrue(len(patch.patch_datas.items()))
-                    for qty_name, pd in patch.patch_datas.items():
+                    for pd in patch.patch_datas.values():
                         splits = pd.dataset.split(ph.global_vars.sim)
                         self.assertTrue(splits.size() > 0)
                         self.assertTrue(pd.dataset.size() > 0)
@@ -292,10 +292,8 @@ class DiagnosticsTest(SimulatorTest):
 
         self.assertTrue(
             any(
-                [
-                    diagInfo.quantity.endswith("domain")
-                    for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
-                ]
+                diagInfo.quantity.endswith("domain")
+                for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
             )
         )
 
@@ -318,7 +316,7 @@ class DiagnosticsTest(SimulatorTest):
         self.assertTrue(len(sim.cells) == ndim)
 
         dump_all_diags(sim.model.populations)
-        for diagname, diagInfo in sim.diagnostics.items():
+        for diagInfo in sim.diagnostics.values():
             diagInfo.write_timestamps = []  # disable
             diagInfo.elapsed_timestamps = [0]  # expect init dump
         simulator = Simulator(sim).setup()
@@ -368,7 +366,9 @@ class DiagnosticsTest(SimulatorTest):
         (currentTime()==endTime()). If dump() re-derived its timestep from a fresh timeStep()
         query instead of the dt that actually produced the current state, a diagnostic scheduled
         exactly at final_time would silently never fire (0 < 0 is always false)."""
-        final_time = 0.2  # small: run() drives the whole thing to completion, few steps expected
+        final_time = (
+            0.2  # small: run() drives the whole thing to completion, few steps expected
+        )
 
         sim = cadence_config(
             self.simulation(

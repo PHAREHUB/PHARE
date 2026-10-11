@@ -1,6 +1,7 @@
 import unittest
 
 from ddt import data, ddt, unpack
+
 from pyphare.core import box as boxm
 from pyphare.core.box import Box, Box1D, Box2D, Box3D
 

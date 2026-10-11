@@ -5,13 +5,13 @@
 import unittest
 
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
+
+import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.hierarchy.hierarchy_utils import hierarchy_compare
 from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
 from pyphare.simulator.simulator import Simulator, startMPI
-
-from pyphare import cpp
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
@@ -164,9 +164,9 @@ def time_info(diag_dir, time=0):
     def _parse_rank(patch_id):
         return patch_id.split("#")[0]
 
-    for ilvl, lvl in hier.levels().items():
+    for lvl in hier.levels().values():
         for patch in lvl:
-            for pd_key, pd in patch.patch_datas.items():
+            for pd in patch.patch_datas.values():
                 per_rank[_parse_rank(patch.id)] += pd.size()
 
     return per_rank

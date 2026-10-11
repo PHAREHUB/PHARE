@@ -1,6 +1,7 @@
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
 import pyphare.pharein.global_vars as gv
 

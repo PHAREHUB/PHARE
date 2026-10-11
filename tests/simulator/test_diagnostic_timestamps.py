@@ -4,8 +4,9 @@ import os
 import unittest
 
 import numpy as np
-import pyphare.pharein as ph
 from ddt import data, ddt
+
+import pyphare.pharein as ph
 from pyphare.core.box import Box1D
 from pyphare.pharein import ElectromagDiagnostics, ElectronModel
 from pyphare.pharesee.hierarchy import hierarchy_from
@@ -128,7 +129,7 @@ class DiagnosticsTest(unittest.TestCase):
         def make_time(stamp):
             return f"{stamp:.10f}"
 
-        for diagname, diagInfo in ph.global_vars.sim.diagnostics.items():
+        for diagInfo in ph.global_vars.sim.diagnostics.values():
             h5_filename = os.path.join(out, h5_filename_from(diagInfo))
             self.assertTrue(os.path.exists(h5_filename))
 
@@ -172,7 +173,7 @@ class DiagnosticsTest(unittest.TestCase):
                 if simulation.dry_run:
                     return
 
-                for diagname, diagInfo in simulation.diagnostics.items():
+                for diagInfo in simulation.diagnostics.values():
                     h5_filename = os.path.join(diag_outputs, h5_filename_from(diagInfo))
                     self.assertTrue(os.path.exists(h5_filename))
 

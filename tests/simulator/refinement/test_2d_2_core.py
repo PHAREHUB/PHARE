@@ -1,20 +1,19 @@
 #!/usr/bin/env python3
 
 """
-  Simple test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
-    grouping of quantity components with distinct geometries.
+Simple test to force Yee Lattice centering discrepancies due to SAMRAI Schedule/Algorithm
+  grouping of quantity components with distinct geometries.
 
-  Should be run with 2 cores
-    mpirun -n 2 tests/simulator/refinement/test_2d_2_core.py
+Should be run with 2 cores
+  mpirun -n 2 tests/simulator/refinement/test_2d_2_core.py
 """
 
-
 import numpy as np
+
 import pyphare.core.box as boxm
 import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
-
 from pyphare import cpp
+from pyphare.simulator.simulator import Simulator, startMPI
 from tests.simulator.test_advance import AdvanceTestBase
 
 ph.NO_GUI()
@@ -158,7 +157,6 @@ def post_advance_0(new_time):
 
 def post_advance_1(new_time):
     if cpp.mpi_rank() == 0:
-        L0_datahier = get_hier(L0_diags)
         L0L1_datahier = get_hier(L0L1_diags)
         extra_collections = []
         errors = test.base_test_overlaped_fields_are_equal(L0L1_datahier, new_time)

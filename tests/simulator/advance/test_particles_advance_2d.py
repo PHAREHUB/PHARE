@@ -5,10 +5,10 @@ This file exists independently from test_advance.py to isolate dimension
 
 import unittest
 
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
-from pyphare.core.box import Box2D
 
+import pyphare.pharein as ph
+from pyphare.core.box import Box2D
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 
 ph.NO_GUI()

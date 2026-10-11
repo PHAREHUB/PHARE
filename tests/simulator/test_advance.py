@@ -9,14 +9,14 @@
 import unittest
 
 import numpy as np
-import pyphare.core.box as boxm
 from ddt import ddt
+
+import pyphare.core.box as boxm
+from pyphare import cpp
 from pyphare.core.box import Box, amr_to_local
 from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharesee.geometry import hierarchy_overlaps, level_ghost_boxes
 from pyphare.pharesee.hierarchy.hierarchy import format_timestamp
-
-from pyphare import cpp
 from tests.simulator import SimulatorTest, diff_boxes
 
 # hard coded in C++ MultiPhysicsIntegrator::getMaxFinerLevelDt
@@ -245,7 +245,7 @@ class AdvanceTestBase(SimulatorTest):
         secondFinestTimeStep = lvl_steps[-2]
 
         finest_level_step_nbr = level_step_nbr(global_vars.sim)[-1]
-        uniqTimes = set([0])
+        uniqTimes = {0}
 
         for step in range(1, finest_level_step_nbr + 1):
             checkTime = format_timestamp(finestTimeStep * step)
@@ -363,7 +363,6 @@ class AdvanceTestBase(SimulatorTest):
             quantities = [f"{EM}{xyz}" for EM in ["E", "B"] for xyz in ["x", "y", "z"]]
 
         from pyphare.pharein import global_vars
-
         from tests.amr.data.field.refine.test_refine_field import (
             refine_time_interpolate,
         )

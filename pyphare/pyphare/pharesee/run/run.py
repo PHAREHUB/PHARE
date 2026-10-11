@@ -357,7 +357,9 @@ class Run:
     def GetDomainSize(self, **kwargs):
         import h5py
 
-        data_file = h5py.File(self.available_diags[0], "r")  # That is the first file in th available diags
+        data_file = h5py.File(
+            self.available_diags[0], "r"
+        )  # That is the first file in th available diags
         root_cell_width = np.asarray(data_file.attrs["cell_width"])
 
         return (data_file.attrs["domain_box"] + 1) * root_cell_width

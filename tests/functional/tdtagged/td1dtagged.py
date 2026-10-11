@@ -4,11 +4,11 @@
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
+
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-
-from pyphare import cpp
 from tests.diagnostic import all_timestamps
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 
@@ -231,7 +231,7 @@ def make_figure():
         v2 = -1
         return v1 + (v2 - v1) * S(x, x0, L)
 
-    popt, pcov = curve_fit(by_fit, xx, bby, p0=(150, 1))
+    popt, _pcov = curve_fit(by_fit, xx, bby, p0=(150, 1))
     x0, L = popt
 
     if np.abs(L - 1) > 0.5:

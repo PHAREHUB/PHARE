@@ -6,6 +6,7 @@ import os
 import sys
 
 import numpy as np
+
 from pyphare.core import gridlayout
 
 
@@ -36,7 +37,9 @@ def test_laplacian_yee1D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         Jx = np.zeros(
             layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
             dtype=np.float64,
@@ -117,7 +120,9 @@ def test_laplacian_yee2D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         Jx = np.zeros(
             [
                 layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
@@ -258,7 +263,9 @@ def test_laplacian_yee3D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         Jx = np.zeros(
             [
                 layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),

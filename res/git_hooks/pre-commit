@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+"""git pre-commit hook: ruff and black on the staged lines of staged python files only
+
+findings on lines the commit does not add or change are ignored, so existing issues
+ in a touched file do not block the commit, nothing is modified, only checked
+
+install:  res/git_hooks/install_git_hooks.sh
+skip:     git commit --no-verify
+"""
+
+import importlib.util
+import json
+import re
+import shutil
+import subprocess
+import sys
+
+HUNK = re.compile(r"^@@ -\S+ \+(\d+)(?:,(\d+))? @@", re.M)
+
+
+def main():
+    has_ruff = shutil.which("ruff") is not None
+    has_black = importlib.util.find_spec("black") is not None
+    if not has_ruff:
+        print("pre-commit: ruff not found, skipping ruff")
+    if not has_black:
+        print("pre-commit: black not found, skipping black")
+
+    findings, unformatted = [], []
+    for path in staged_python_files():
+        ranges = staged_ranges(path)
+        if not ranges:
+            continue
+        source = git("show", f":{path}")  # the staged content, not the working copy
+
+        if has_ruff:
+            lines = {i for start, end in ranges for i in range(start, end + 1)}
+            for f in ruff_findings(path, source):
+                row = f["location"]["row"]
+                if f["code"] is None or row in lines:  # syntax errors always count
+                    col = f["location"]["column"]
+                    findings.append(f"{path}:{row}:{col}: {f['code']} {f['message']}")
+
+        if has_black:
+            diff = black_diff(path, source, ranges)
+            if diff:
+                unformatted.append(diff)
+
+    if findings:
+        print("\n".join(findings))
+        print(f"pre-commit: {len(findings)} ruff finding(s) on staged lines")
+    if unformatted:
+        print("".join(unformatted))
+        print(f"pre-commit: {len(unformatted)} file(s) need black on staged lines")
+    return 1 if findings or unformatted else 0
+
+
+def git(*args):
+    return subprocess.run(
+        ["git", *args], check=True, capture_output=True, text=True
+    ).stdout
+
+
+def staged_python_files():
+    out = git("diff", "--cached", "--name-only", "--diff-filter=ACMR", "-z")
+    return [p for p in out.split("\0") if p.endswith(".py")]
+
+
+def staged_ranges(path):
+    """inclusive (start, end) line ranges in the staged file that the commit adds or changes"""
+    ranges = []
+    for m in HUNK.finditer(git("diff", "--cached", "-U0", "--", path)):
+        start, count = int(m.group(1)), int(m.group(2) or 1)
+        if count:  # 0: deletion only
+            ranges.append((start, start + count - 1))
+    return ranges
+
+
+def ruff_findings(path, source):
+    out = subprocess.run(
+        ["ruff", "check", "--output-format", "json", "--stdin-filename", path, "-"],
+        input=source,
+        capture_output=True,
+        check=False,  # exits 1 when there are findings
+        text=True,
+    ).stdout
+    return json.loads(out or "[]")
+
+
+def black_diff(path, source, ranges):
+    """the diff black wants on the staged lines, empty if none"""
+    line_ranges = [f"--line-ranges={start}-{end}" for start, end in ranges]
+    cmd = [sys.executable, "-m", "black", "--check", "--diff", "-q"]
+    cmd += ["--stdin-filename", path, *line_ranges, "-"]
+    out = subprocess.run(
+        cmd, input=source, capture_output=True, text=True, check=False
+    ).stdout  # exits 1 when it would reformat
+    return re.sub(r"^(---|\+\+\+) \S+", rf"\1 {path}", out, count=2, flags=re.M)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

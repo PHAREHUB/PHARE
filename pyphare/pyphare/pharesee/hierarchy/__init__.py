@@ -12,7 +12,14 @@ __all__ = [
 
 
 def hierarchy_from(
-    simulator=None, qty=None, pop="", h5_filename=None, times=None, hier=None, func=None, **kwargs
+    simulator=None,
+    qty=None,
+    pop="",
+    h5_filename=None,
+    times=None,
+    hier=None,
+    func=None,
+    **kwargs
 ):
     from .fromfunc import hierarchy_from_func
     from .fromh5 import hierarchy_fromh5

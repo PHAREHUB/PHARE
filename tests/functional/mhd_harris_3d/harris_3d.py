@@ -1,10 +1,8 @@
-
-
 import numpy as np
+
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator, startMPI
-
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()

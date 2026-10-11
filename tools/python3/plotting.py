@@ -1,15 +1,15 @@
 # various plotting tools for PHARE development, NOT physics!
 #
 
-import sys
-import logging
 import argparse
-import matplotlib.pyplot as plt
-
+import logging
+import sys
 from pathlib import Path
 
-from pyphare.pharesee.run import Run
+import matplotlib.pyplot as plt
+
 import tools.python3.phloping as phloping
+from pyphare.pharesee.run import Run
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass, field
 
 from . import global_vars as gv

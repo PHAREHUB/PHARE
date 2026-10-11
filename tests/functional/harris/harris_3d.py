@@ -1,10 +1,8 @@
-
-
 import numpy as np
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator, startMPI
 
+import pyphare.pharein as ph
 from pyphare import cpp
+from pyphare.simulator.simulator import Simulator, startMPI
 
 ph.NO_GUI()
 

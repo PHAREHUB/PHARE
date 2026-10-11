@@ -1,7 +1,7 @@
-
 import os
 
 import numpy as np
+
 import pyphare.core.box as boxm
 import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
@@ -9,7 +9,6 @@ from pyphare.pharesee.geometry import hierarchy_overlaps
 from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.simulator.simulator import Simulator
-
 from tests.diagnostic import all_timestamps
 from tests.simulator.test_advance import AdvanceTestBase
 

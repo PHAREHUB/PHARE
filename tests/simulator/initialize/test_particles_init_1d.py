@@ -5,10 +5,10 @@ This file exists independently from test_initialization.py to isolate dimension
 
 import unittest
 
-import pyphare.pharein as ph
 from ddt import data, ddt, unpack
-from pyphare.core.box import Box1D
 
+import pyphare.pharein as ph
+from pyphare.core.box import Box1D
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
 
 ph.NO_GUI()
