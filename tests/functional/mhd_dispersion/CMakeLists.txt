@@ -7,8 +7,8 @@ if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
   file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
-if(HighFive)
+if(HighFive AND testMPI)
 
   ## These test use dump diagnostics so require HighFive!
-	phare_mpi_python3_exec(21 4 test-mhd_dispersion whistler1d.py ${CMAKE_CURRENT_BINARY_DIR})
+  phare_mpi_python3_exec(21 4 test-mhd_dispersion whistler1d.py ${CMAKE_CURRENT_BINARY_DIR})
 endif()

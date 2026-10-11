@@ -7,7 +7,6 @@ import numpy as np
 import pyphare.pharein as ph
 from pyphare.pharesee.run import Run
 
-# Note: this test does not handle mpi yet (would require gathering several patches on rank 0).
 # It scans every reconstruction in one run, each compiled as its own permutation in res/sim/all.txt.
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"
@@ -250,16 +249,20 @@ def run_convergence(reconstruction, limiter):
         Dx, Dy, Dz = 3.0 / Nx, 1.5 / Ny, 1.5 / Nz
 
         ph.global_vars.sim = None
-        # Simulator(config(N_base, reconstruction, limiter)).run().reset()
-
-        run = Run(diag_dir)
-        error = compute_error(run, final_time, Nx, Dx)
-
-        dx_values.append(Dx)
-        N_values.append(N_base)
-        errors.append(error)
-
+        sim = config(N_base, reconstruction, limiter)
+        # Simulator(sim).run().reset()
+        if sim.dry_run:
+            return
+        if cpp.mpi_rank() == 0:
+            run = Run(diag_dir)
+            error = compute_error(run, final_time, Nx, Dx)
+            dx_values.append(Dx)
+            N_values.append(N_base)
+            errors.append(error)
         N_base *= 2
+
+    if cpp.mpi_rank() > 0:
+        return
 
     dx_values = np.array(dx_values)
     slope, intercept = np.polyfit(np.log(dx_values), np.log(errors), 1)

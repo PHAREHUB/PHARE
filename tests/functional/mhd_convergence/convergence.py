@@ -5,10 +5,10 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
 
-# Note: this test does not handle mpi yet (would require gathering several patches on rank 0).
 # It scans every reconstruction in one run, each compiled as its own permutation in res/sim/all.txt.
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"
@@ -142,12 +142,16 @@ def run_convergence(reconstruction, limiter):
         Simulator(sim).run().reset()
         if sim.dry_run:
             return
-        run = Run(diag_dir)
-        error = compute_error(run, final_time, Nx, Dx, ghosts)
-        dx_values.append(Dx)
-        errors.append(error)
+        if cpp.mpi_rank() == 0:
+            run = Run(diag_dir)
+            error = compute_error(run, final_time, Nx, Dx, ghosts)
+            dx_values.append(Dx)
+            errors.append(error)
         Dx /= 2.0
         Nx *= 2
+
+    if cpp.mpi_rank() > 0:
+        return
 
     dx_values = np.array(dx_values)
     log_dx = np.log(dx_values)
