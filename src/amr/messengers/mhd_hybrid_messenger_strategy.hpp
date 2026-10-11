@@ -107,12 +107,8 @@ namespace amr
         }
 
 
-        void fillFluxBorders(IonsT& /*ions*/, level_t& /*level*/,
-                             double const /*fillTime*/) override
-        {
-        }
-        void fillDensityBorders(IonsT& /*ions*/, level_t& /*level*/,
-                                double const /*fillTime*/) override
+        void fillIonPopBorders(IonsT& /*ions*/, level_t& /*level*/,
+                               double const /*fillTime*/) override
         {
         }
         void fillIonBorders(IonsT& /*ions*/, level_t& /*level*/, double const /*fillTime*/) override

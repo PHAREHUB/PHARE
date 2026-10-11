@@ -60,6 +60,15 @@ public:
     void initialize(level_t& level) override;
 
 
+    void registerResources() override
+    {
+        resourcesManager->registerResources(*this);
+        resourcesManager->registerResources(V_diag_);
+        resourcesManager->registerResources(P_diag_);
+        resourcesManager->registerResources(tmpField_);
+        resourcesManager->registerResources(tmpVec_);
+    }
+
     void allocate(patch_t& patch, double const allocateTime) override
     {
         resourcesManager->allocate(state, patch, allocateTime);
@@ -84,11 +93,6 @@ public:
         , resourcesManager{_resourcesManager}
         , gamma_{dict["mhd_state"]["to_conservative_init"]["heat_capacity_ratio"]}
     {
-        resourcesManager->registerResources(V_diag_);
-        resourcesManager->registerResources(P_diag_);
-        resourcesManager->registerResources(tmpField_);
-        resourcesManager->registerResources(tmpVec_);
-
         std::vector<core::MHDQuantity::Scalar> scalarQuantities
             = {core::MHDQuantity::Scalar::rho, core::MHDQuantity::Scalar::Etot};
         std::vector<core::MHDQuantity::Vector> vectorQuantities = {

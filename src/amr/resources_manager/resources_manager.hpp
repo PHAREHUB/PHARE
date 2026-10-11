@@ -4,6 +4,7 @@
 
 #include "core/def.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/variants.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 
 #include "amr/samrai.hpp"
@@ -19,8 +20,9 @@
 #include "SAMRAI/hier/PatchDataRestartManager.h"
 
 #include <map>
-#include <optional>
 #include <tuple>
+#include <variant>
+#include <optional>
 
 
 
@@ -176,15 +178,10 @@ namespace amr
             {
                 for (auto& runtimeResource : obj.getRunTimeResourcesViewList())
                 {
-                    using RuntimeResource = decltype(runtimeResource);
-                    if constexpr (has_sub_resources_v<RuntimeResource>)
-                    {
-                        fn(runtimeResource, args...);
-                    }
-                    else
-                    {
+                    if constexpr (core::std_variant<decltype(runtimeResource)>)
                         std::visit([&](auto&& val) { fn(val, args...); }, runtimeResource);
-                    }
+                    else
+                        fn(runtimeResource, args...);
                 }
             }
 

@@ -11,6 +11,11 @@
 namespace PHARE::core
 {
 template<typename T>
+concept std_variant
+    = requires(std::decay_t<T>& t) { []<typename... Ts>(std::variant<Ts...>&) {}(t); };
+
+
+template<typename T>
 auto decay_to_ptr()
 {
     return [](T& arg) mutable -> void* { return const_cast<std::decay_t<T>*>(&arg); };
@@ -50,13 +55,11 @@ template<typename... Ts>
 using unique_tuple = typename unique<std::tuple<>, Ts...>::type;
 
 
-
 template<typename... Args>
 auto constexpr visit_ptr_overloads()
 {
     return _visit_ptr_overloads(static_cast<unique_tuple<Args...>*>(nullptr));
 }
-
 
 
 template<typename Type, typename Variants>
@@ -100,6 +103,7 @@ auto get_as_tuple_or_throw(Variants& variants, std::size_t start = 0)
         [&](auto i) -> auto& { return *std::get<i>(pointer_tuple); });
 }
 
+
 template<typename Type>
 auto& get_from_variants(auto& variants, Type& arg)
 {
@@ -112,8 +116,7 @@ auto& get_from_variants(auto& variants, Type& arg)
         ++start;
     }
 
-    if (start == variants.size())
-        throw std::runtime_error("Required name not found in variants: " + arg.name());
+    throw std::runtime_error("Required name not found in variants: " + arg.name());
 }
 
 
@@ -123,8 +126,6 @@ auto get_from_variants(auto& variants, Args&... args)
 {
     return std::forward_as_tuple(get_from_variants(variants, args)...);
 }
-
-
 
 
 } // namespace PHARE::core
