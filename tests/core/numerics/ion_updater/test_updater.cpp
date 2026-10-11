@@ -1,3 +1,5 @@
+#include "gtest/gtest.h"
+#include <core/data/grid/gridlayout.hpp>
 
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
@@ -26,17 +28,17 @@ Return density(Param x)
 
 Return vx(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<double>>(x.size(), .1);
 }
 
 Return vy(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<double>>(x.size(), .1);
 }
 
 Return vz(Param x)
 {
-    return std::make_shared<VectorSpan<double>>(x.size(), 0);
+    return std::make_shared<VectorSpan<double>>(x.size(), .1);
 }
 
 Return vthx(Param x)
@@ -82,64 +84,37 @@ PHARE::initializer::PHAREDict createDict()
 
     dict["simulation"]["algo"]["ion_updater"]["pusher"]["name"] = std::string{"modified_boris"};
 
-    dict["ions"]["nbrPopulations"]                          = std::size_t{2};
-    dict["ions"]["pop0"]["name"]                            = std::string{"protons"};
-    dict["ions"]["pop0"]["mass"]                            = 1.;
-    dict["ions"]["pop0"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
-    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
+    dict["ions"]["nbrPopulations"] = std::size_t{2};
 
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<InitFunctionT>(vx);
+    dict["ions"]["pop0"]["name"]           = std::string{"protons"};
+    dict["ions"]["pop0"]["mass"]           = 1.;
+    auto& pop0_initializer                 = dict["ions"]["pop0"]["particle_initializer"];
+    pop0_initializer["name"]               = std::string{"maxwellian"};
+    pop0_initializer["density"]            = static_cast<InitFunctionT>(density);
+    pop0_initializer["bulk_velocity_x"]    = static_cast<InitFunctionT>(vx);
+    pop0_initializer["bulk_velocity_y"]    = static_cast<InitFunctionT>(vy);
+    pop0_initializer["bulk_velocity_z"]    = static_cast<InitFunctionT>(vz);
+    pop0_initializer["thermal_velocity_x"] = static_cast<InitFunctionT>(vthx);
+    pop0_initializer["thermal_velocity_y"] = static_cast<InitFunctionT>(vthy);
+    pop0_initializer["thermal_velocity_z"] = static_cast<InitFunctionT>(vthz);
+    pop0_initializer["nbr_part_per_cell"]  = int{nbrPartPerCell};
+    pop0_initializer["charge"]             = 1.;
+    pop0_initializer["basis"]              = std::string{"cartesian"};
 
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<InitFunctionT>(vy);
-
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<InitFunctionT>(vz);
-
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<InitFunctionT>(vthx);
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<InitFunctionT>(vthy);
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<InitFunctionT>(vthz);
-
-
-    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
-    dict["ions"]["pop0"]["particle_initializer"]["charge"]            = 1.;
-    dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
-
-    dict["ions"]["pop1"]["name"]                            = std::string{"alpha"};
-    dict["ions"]["pop1"]["mass"]                            = 1.;
-    dict["ions"]["pop1"]["particle_initializer"]["name"]    = std::string{"maxwellian"};
-    dict["ions"]["pop1"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
-
-    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<InitFunctionT>(vx);
-
-    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<InitFunctionT>(vy);
-
-    dict["ions"]["pop1"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<InitFunctionT>(vz);
-
-
-    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<InitFunctionT>(vthx);
-
-    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<InitFunctionT>(vthy);
-
-    dict["ions"]["pop1"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<InitFunctionT>(vthz);
-
-
-    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
-    dict["ions"]["pop1"]["particle_initializer"]["charge"]            = 1.;
-    dict["ions"]["pop1"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
+    dict["ions"]["pop1"]["name"]           = std::string{"alpha"};
+    dict["ions"]["pop1"]["mass"]           = 1.;
+    auto& pop1_initializer                 = dict["ions"]["pop1"]["particle_initializer"];
+    pop1_initializer["name"]               = std::string{"maxwellian"};
+    pop1_initializer["density"]            = static_cast<InitFunctionT>(density);
+    pop1_initializer["bulk_velocity_x"]    = static_cast<InitFunctionT>(vx);
+    pop1_initializer["bulk_velocity_y"]    = static_cast<InitFunctionT>(vy);
+    pop1_initializer["bulk_velocity_z"]    = static_cast<InitFunctionT>(vz);
+    pop1_initializer["thermal_velocity_x"] = static_cast<InitFunctionT>(vthx);
+    pop1_initializer["thermal_velocity_y"] = static_cast<InitFunctionT>(vthy);
+    pop1_initializer["thermal_velocity_z"] = static_cast<InitFunctionT>(vthz);
+    pop1_initializer["nbr_part_per_cell"]  = int{nbrPartPerCell};
+    pop1_initializer["charge"]             = 1.;
+    pop1_initializer["basis"]              = std::string{"cartesian"};
 
     dict["electromag"]["name"]             = std::string{"EM"};
     dict["electromag"]["electric"]["name"] = std::string{"E"};
@@ -155,14 +130,6 @@ static auto init_dict = createDict();
 
 
 
-template<std::size_t dim, std::size_t interporder>
-struct DimInterp
-{
-    static constexpr auto dimension    = dim;
-    static constexpr auto interp_order = interporder;
-};
-
-
 
 // the Electromag and Ions used in this test
 // need their resources pointers (Fields and ParticleArrays) to set manually
@@ -174,7 +141,7 @@ template<std::size_t dim, std::size_t interp_order>
 struct ElectromagBuffers
 {
     constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes       = PHARE_Types<opts>;
+    using PHARETypes       = PHARE::core::PHARE_Types<opts>;
     using Grid             = PHARETypes::Hybrid::Grid_t;
     using GridLayout       = PHARETypes::Hybrid::GridLayout_t;
     using Electromag       = PHARETypes::Hybrid::Electromag_t;
@@ -365,23 +332,55 @@ struct IonsBuffers
 };
 
 
-
-
-template<typename DimInterpT>
-struct IonUpdaterTest : public ::testing::Test
+template<auto opts_, std::uint16_t impl_>
+struct TestParam
 {
-    static constexpr auto dim          = DimInterpT::dimension;
-    static constexpr auto interp_order = DimInterpT::interp_order;
-    constexpr static PHARE::SimOpts opts{dim, interp_order};
-    using PHARETypes    = PHARE_Types<opts>;
-    using Ions          = PHARETypes::Hybrid::Ions_t;
-    using Electromag    = PHARETypes::Hybrid::Electromag_t;
-    using GridLayout    = PHARE_Types<PHARE::SimOpts{dim, interp_order}>::Hybrid::GridLayout_t;
-    using ParticleArray = PHARETypes::Hybrid::ParticleArray_t;
-    using ParticleInitializerFactory = PHARETypes::Hybrid::ParticleInitializerFactory_t;
+    auto static constexpr opts         = opts_;
+    auto static constexpr impl         = impl_;
+    static constexpr auto dimension    = opts.dimension;
+    static constexpr auto interp_order = opts.interp_order;
+};
 
-    using IonUpdater_t = IonUpdater<Ions, Electromag, GridLayout>;
-    using Boxing_t     = UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+
+template<auto opts, std::size_t impl>
+struct updater_test_bits;
+
+template<auto opts>
+struct updater_test_bits<opts, 0>
+{
+    using PHARETypes = PHARE::core::PHARE_Types<opts>;
+    using Ions       = PHARETypes::Hybrid::Ions_t;
+    using IonUpdater = IonUpdater0<Ions>;
+};
+
+template<auto opts>
+struct updater_test_bits<opts, 1>
+{
+    using PHARETypes = PHARE::core::PHARE_Types<opts>;
+    using Ions       = PHARETypes::Hybrid::Ions_t;
+    using IonUpdater = IonUpdater1<Ions>;
+};
+
+
+
+
+template<typename TestParam_t>
+struct IonUpdaterTest : public ::testing::Test,
+                        public updater_test_bits<TestParam_t::opts, TestParam_t::impl>
+{
+    auto static constexpr opts         = TestParam_t::opts;
+    static constexpr auto dim          = opts.dimension;
+    static constexpr auto interp_order = opts.interp_order;
+    using PHARETypes                   = PHARE::core::PHARE_Types<opts>;
+    using Ions                         = PHARETypes::Hybrid::Ions_t;
+    using Electromag                   = PHARETypes::Hybrid::Electromag_t;
+    using ParticleArray                = PHARETypes::Hybrid::ParticleArray_t;
+    using ParticleInitializerFactory   = PHARETypes::Hybrid::ParticleInitializerFactory_t;
+    using GridLayout                   = PHARETypes::Hybrid::GridLayout_t;
+
+    using basics       = updater_test_bits<TestParam_t::opts, TestParam_t::impl>;
+    using IonUpdater_t = basics::IonUpdater;
+    using Boxing_t     = UpdaterSelectionBoxing<GridLayout, ParticleArray>;
 
 
     double dt{0.01};
@@ -389,9 +388,10 @@ struct IonUpdaterTest : public ::testing::Test
     // grid configuration
     std::array<int, dim> ncells;
     GridLayout layout;
-    // assumes no level ghost cells
-    Boxing_t const boxing{layout,
-                          {grow(layout.AMRBox(), GridLayout::options.particle_ghost_width)}};
+    // assumes only level ghost cells
+    Box<int, dim> const domainBox = layout.AMRBox();
+    Box<int, dim> const ghostBox  = grow(domainBox, GridLayout::options.particle_ghost_width);
+    Boxing_t const boxing{layout, remove(ghostBox, domainBox)};
 
 
     // data for electromagnetic fields
@@ -537,7 +537,7 @@ struct IonUpdaterTest : public ::testing::Test
 
     void fillIonsMomentsGhosts()
     {
-        using Interpolator = IonUpdater_t::Interpolator;
+        using Interpolator = IonUpdater_t::Interpolator_t;
         Interpolator interpolate;
 
         for (auto& pop : this->ions)
@@ -665,19 +665,18 @@ struct IonUpdaterTest : public ::testing::Test
 
 
 
-using DimInterps = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
+// clang-format off
+using Permutations = ::testing::Types<
+    TestParam<PHARE::SimOpts{1, 1}, 0>
+  , TestParam<PHARE::SimOpts{1, 2}, 0>
+  , TestParam<PHARE::SimOpts{1, 3}, 0>
+  , TestParam<PHARE::SimOpts{1, 1}, 1>
+  , TestParam<PHARE::SimOpts{1, 2}, 1>
+  , TestParam<PHARE::SimOpts{1, 3}, 1>
+>;
+// clang-format on
+TYPED_TEST_SUITE(IonUpdaterTest, Permutations, );
 
-
-TYPED_TEST_SUITE(IonUpdaterTest, DimInterps, );
-
-
-
-
-TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)
-{
-    typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
-        init_dict["simulation"]["algo"]["ion_updater"]};
-}
 
 
 // the following 3 tests are testing the fixture is well configured.
@@ -757,12 +756,11 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, this->boxing, this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
 
     auto& populations = this->ions.getRunTimeResourcesViewList();
@@ -808,7 +806,7 @@ TYPED_TEST(IonUpdaterTest, particlesUntouchedInMomentOnlyMode)
 //
 //    this->fillIonsMomentsGhosts();
 //
-//    ionUpdater.updateIons(this->ions);
+//    this->ions.update();
 //
 //    auto& populations = this->ions.getRunTimeResourcesViewList();
 //
@@ -828,11 +826,11 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInParticlesAndMomentsMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt, UpdaterMode::all);
+    ionUpdater.updatePopulations(UpdaterMode::ref, this->ions, this->EM, this->boxing, this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -848,12 +846,11 @@ TYPED_TEST(IonUpdaterTest, momentsAreChangedInMomentsOnlyMode)
 
     IonsBuffers ionsBufferCpy{this->ionsBuffers, this->layout};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, this->boxing, this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     this->checkMomentsHaveEvolved(ionsBufferCpy);
     this->checkDensityIsAsPrescribed();
@@ -866,12 +863,11 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
     typename IonUpdaterTest<TypeParam>::IonUpdater_t ionUpdater{
         init_dict["simulation"]["algo"]["ion_updater"]};
 
-    ionUpdater.updatePopulations(this->ions, this->EM, this->boxing, this->dt,
-                                 UpdaterMode::domain_only);
+    ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, this->boxing, this->dt);
 
     this->fillIonsMomentsGhosts();
 
-    ionUpdater.updateIons(this->ions);
+    this->ions.update();
 
     auto ix0 = this->layout.physicalStartIndex(QtyCentering::primal, Direction::X);
     auto ix1 = this->layout.physicalEndIndex(QtyCentering::primal, Direction::X);
@@ -900,11 +896,11 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
 
 // Overlapping same-level patches: cells in `nonOwnedBoxes` belong to another patch.
 // Particles move only along x, at a fixed fraction of a cell per step (E = B = 0).
-template<typename DimInterpT>
-struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
+template<typename TestParam_t>
+struct IonUpdaterOwnershipTest : public IonUpdaterTest<TestParam_t>
 {
-    using Super    = IonUpdaterTest<DimInterpT>;
-    using Box_t    = Super::IonUpdater_t::Box;
+    using Super    = IonUpdaterTest<TestParam_t>;
+    using Box_t    = Box<int, Super::dim>;
     using Boxing_t = Super::Boxing_t;
 
     static constexpr double cellsPerStep = 0.5;
@@ -983,7 +979,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
             ASSERT_GT(nbrEntering.back(), 0u);
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+        ionUpdater.updatePopulations(UpdaterMode::ref, this->ions, this->EM, boxing, this->dt);
 
         std::size_t ipop = 0;
         for (auto& pop : this->ions)
@@ -1019,8 +1015,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
                                + (withNonOwned ? 0. : enteringWeights));
         }
 
-        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt,
-                                     UpdaterMode::domain_only);
+        ionUpdater.updatePopulations(UpdaterMode::copy, this->ions, this->EM, boxing, this->dt);
 
         std::size_t ipop = 0;
         for (auto& pop : this->ions)
@@ -1031,8 +1026,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
     }
 };
 
-using DimInterps1D = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
-TYPED_TEST_SUITE(IonUpdaterOwnershipTest, DimInterps1D, );
+TYPED_TEST_SUITE(IonUpdaterOwnershipTest, Permutations, );
 
 
 
@@ -1054,7 +1048,7 @@ TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndI
         ASSERT_GT(nbrCrossing.back(), 0u);
     }
 
-    ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+    ionUpdater.updatePopulations(UpdaterMode::ref, this->ions, this->EM, boxing, this->dt);
 
     std::size_t ipop = 0;
     for (auto& pop : this->ions)
