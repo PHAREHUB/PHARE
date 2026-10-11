@@ -36,11 +36,14 @@ namespace solver
         std::string name() const { return name_; }
 
 
+        virtual void registerResources() = 0;
 
         /**
          * @brief initialize is used to initialize data
          */
         virtual void initialize(level_t& level) = 0;
+
+
 
 
         /**
