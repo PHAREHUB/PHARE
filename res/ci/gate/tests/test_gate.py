@@ -309,6 +309,10 @@ class TestsRemoved(unittest.TestCase):
         cm = "add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})\n"
         self.assertEqual(self.flagged({"tests/CMakeLists.txt": cm}, {"tests/CMakeLists.txt": cm.replace(" $", "\n  $")}), [])
 
+    def test_registration_stray_comma_after_level_is_fine(self):
+        cm = "phare_python3_exec(11, x test_x.py ${DIR})\n"
+        self.assertEqual(self.flagged({"tests/CMakeLists.txt": cm}, {"tests/CMakeLists.txt": cm.replace("11,", "11")}), [])
+
     def test_new_unregistered_test_file_warns(self):
         f = self.flagged({"tests/CMakeLists.txt": "\n"}, {"tests/test_new.py": PY_TEST})
         self.assertEqual([x.level for x in f], ["warning"])
