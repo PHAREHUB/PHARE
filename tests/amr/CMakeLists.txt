@@ -1,0 +1,6 @@
+add_subdirectory(data)
+add_subdirectory(resources_manager)
+add_subdirectory(messengers)
+add_subdirectory(models)
+add_subdirectory(multiphysics_integrator)
+add_subdirectory(tagging)
