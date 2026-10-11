@@ -25,19 +25,12 @@ class PatchHierarchy(object):
         domain_box,
         refinement_ratio=2,
         data_files=None,
-        **kwargs,
+        selection_box=None,
     ):
         self.time_hier = {format_timestamp(t): lvls for t, lvls in time_hier.items()}
         times = list(self.time_hier.keys())
 
-        self.selection_box = kwargs.get("selection_box", None)
-        if self.selection_box is not None:
-            if not isinstance(self.selection_box, (tuple, list)):
-                self.selection_box = listify(self.selection_box)
-            self.selection_box = {
-                format_timestamp(t): box for t, box in zip(times, self.selection_box)
-            }
-            assert len(times) == len(self.selection_box)
+        self.selection_box = self.resolve_selection_boxes(times, selection_box)
 
         self.ndim = len(domain_box.lower)
 
@@ -57,6 +50,17 @@ class PatchHierarchy(object):
             self.data_files = {}
 
         self.update()
+
+    @staticmethod
+    def resolve_selection_boxes(times, selection_box):
+        """returns {time: box} from None, a box, a list of boxes, or an existing {time: box}"""
+        if selection_box is None:
+            return {}
+        if isinstance(selection_box, dict):
+            return {format_timestamp(t): box for t, box in selection_box.items()}
+        selection_box = listify(selection_box)
+        assert len(times) == len(selection_box)
+        return {format_timestamp(t): box for t, box in zip(times, selection_box)}
 
     def __deepcopy__(self, memo):
         no_copy_keys = ["data_files"]  # do not copy these things

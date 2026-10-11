@@ -161,7 +161,13 @@ def compute_hier_from(compute, hierarchies, **kwargs):
                 ilvl, new_patches_from(compute, hierarchies, ilvl, t, **kwargs)
             )
         time_hier[t] = patch_levels
-    return PatchHierarchy(time_hier, domain_box, refinement_ratio)
+    return PatchHierarchy(
+        time_hier,
+        domain_box,
+        refinement_ratio,
+        data_files=reference_hier.data_files,
+        selection_box=reference_hier.selection_box,
+    )
 
 
 def extract_patchdatas(hierarchies, ilvl, t, ipatch):
