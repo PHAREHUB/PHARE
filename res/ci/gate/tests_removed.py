@@ -77,6 +77,7 @@ def registrations(source, path):
             if depth == 0:
                 break
         call = " ".join(text[m.start() : end + 1].split())
+        call = re.sub(r"(?<![\w.])(\d+),(?=\s)", r"\1", call)  # "11," -> "11": CMake reads the leading number
         if m.group(1).lower() != "add_subdirectory" or "test" in call.lower() or is_test_file(path):
             calls.append(call)
     return calls
