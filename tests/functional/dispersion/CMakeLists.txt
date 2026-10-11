@@ -9,5 +9,9 @@ endif()
 
 if(HighFive)
   ## These test use dump diagnostics so require HighFive!
-  phare_python3_exec(11, test-dispersion dispersion.py ${CMAKE_CURRENT_BINARY_DIR})
+  if(testMPI)
+    phare_mpi_python3_exec(11 5 test-dispersion dispersion.py ${CMAKE_CURRENT_BINARY_DIR})
+  else()
+    phare_python3_exec(11 test-dispersion dispersion.py ${CMAKE_CURRENT_BINARY_DIR})
+  endif()
 endif()
