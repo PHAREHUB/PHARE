@@ -100,7 +100,11 @@ PYBIND11_MODULE(cpp_etc, m)
     m.def("mpi_initialized", []() { return mpi::is_init(); });
 
     py::class_<SamraiLifeCycle, std::shared_ptr<SamraiLifeCycle>>(m, "SamraiLifeCycle")
-        .def(py::init<>())
+        .def(py::init([]() {
+            bool mpi_thread_multiple = false;
+            _PHARE_WITH_HIGHFIVE(mpi_thread_multiple = hdf5::h5::mpi_thread_multiple_required());
+            return std::make_shared<SamraiLifeCycle>(0, nullptr, mpi_thread_multiple);
+        }))
         .def("reset", &SamraiLifeCycle::reset);
 
     py::class_<PHARE::amr::Hierarchy, std::shared_ptr<PHARE::amr::Hierarchy>>(m, "AMRHierarchy");

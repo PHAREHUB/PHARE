@@ -8,12 +8,24 @@
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 
+#include <stdexcept>
+
 namespace PHARE
 {
 
-SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
+SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv, bool const mpi_thread_multiple)
+    : owns_mpi_{mpi_thread_multiple}
 {
-    SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
+    if (owns_mpi_)
+    {
+        int provided;
+        MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+        if (provided < MPI_THREAD_MULTIPLE)
+            throw std::runtime_error("MPI_THREAD_MULTIPLE required but not provided");
+        SAMRAI::tbox::SAMRAI_MPI::init(MPI_COMM_WORLD);
+    }
+    else
+        SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
     SAMRAI::tbox::SAMRAIManager::initialize();
     SAMRAI::tbox::SAMRAIManager::startup();
     // uncomment next line for debugging samrai issues
@@ -34,6 +46,8 @@ SamraiLifeCycle::~SamraiLifeCycle()
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::finalize();
     SAMRAI::tbox::SAMRAI_MPI::finalize();
+    if (owns_mpi_)
+        MPI_Finalize();
 }
 
 void SamraiLifeCycle::reset()
