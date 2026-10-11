@@ -37,6 +37,7 @@
 #include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <iomanip>
@@ -257,6 +258,7 @@ namespace amr
 
                 electricInitRefiners_.registerLevel(hierarchy, level);
                 domainParticlesRefiners_.registerLevel(hierarchy, level);
+                populateLvlGhostFillPatterns_(*level, *hierarchy);
                 lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
                 lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
 
@@ -847,14 +849,13 @@ namespace amr
                 info->interiorParticles, interiorParticleRefineOp_, info->interiorParticles);
 
 
-            lvlGhostPartOldRefiners_.addStaticRefiners(info->levelGhostParticlesOld,
-                                                       levelGhostParticlesOldOp_,
-                                                       info->levelGhostParticlesOld);
+            lvlGhostPartOldRefiners_.addStaticRefiners(
+                info->levelGhostParticlesOld, levelGhostParticlesOldOp_,
+                info->levelGhostParticlesOld, lgOldFillPattern_);
 
-
-            lvlGhostPartNewRefiners_.addStaticRefiners(info->levelGhostParticlesNew,
-                                                       levelGhostParticlesNewOp_,
-                                                       info->levelGhostParticlesNew);
+            lvlGhostPartNewRefiners_.addStaticRefiners(
+                info->levelGhostParticlesNew, levelGhostParticlesNewOp_,
+                info->levelGhostParticlesNew, lgNewFillPattern_);
 
 
             domainGhostPartRefiners_.addStaticRefiners(
@@ -907,6 +908,20 @@ namespace amr
         }
 
 
+
+
+        void populateLvlGhostFillPatterns_(level_t const& level,
+                                           SAMRAI::hier::PatchHierarchy const& hierarchy)
+        {
+            lgOldFillPattern_->reset();
+            lgNewFillPattern_->reset();
+            for (auto const& patch : level)
+            {
+                auto const owned = makeLevelGhostParticleBoxFor<GridLayoutT>(*patch, hierarchy);
+                lgOldFillPattern_->setOwnedBoxes(patch->getBox(), owned);
+                lgNewFillPattern_->setOwnedBoxes(patch->getBox(), owned);
+            }
+        }
 
 
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
@@ -1097,6 +1112,9 @@ namespace amr
         RefinerPool<rm_t, LGRefT> lvlGhostPartNewRefiners_{resourcesManager_};
         RefOp_ptr levelGhostParticlesOldOp_{std::make_shared<CoarseToFineRefineOpOld>()};
         RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
+        using LGFillPattern_t = ParticleLevelGhostVariableFillPattern<GridLayoutT>;
+        std::shared_ptr<LGFillPattern_t> lgOldFillPattern_{std::make_shared<LGFillPattern_t>()};
+        std::shared_ptr<LGFillPattern_t> lgNewFillPattern_{std::make_shared<LGFillPattern_t>()};
 
 
         //! to grab particle leaving neighboring patches and inject into domain

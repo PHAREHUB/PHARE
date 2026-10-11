@@ -161,7 +161,7 @@ private:
 
         for (auto const& patch : *level)
             if (auto [it, suc] = levelBoxing.patches.try_emplace(
-                    amr::to_string(patch->getGlobalId()),
+                    core::to_string(patch->getGlobalId()),
                     Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
                              amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors),
                              amr::makeNonOwnedBoxesFor<GridLayout::dimension>(*patch, neighbors)});
@@ -602,7 +602,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         auto dt = newTime - currentTime;
         for (auto& patch : rm.enumerate(level, ions, electromagAvg_))
             ionUpdater_.updatePopulations(ions, electromagAvg_,
-                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt,
+                                          levelBoxing.at(core::to_string(patch->getGlobalId())), dt,
                                           mode);
     }
     catch (core::DictionaryException const& ex)
@@ -616,16 +616,16 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     setTime(ions);
 
     {
+        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
+        fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
+    }
+    {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillFluxBorders");
         fromCoarser.fillFluxBorders(ions, level, newTime);
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillDensityBorders");
         fromCoarser.fillDensityBorders(ions, level, newTime);
-    }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
-        fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
     }
 
     if (mode != core::UpdaterMode::domain_only)
@@ -636,7 +636,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         PHARE_DEBUG_DO({
             for (auto& patch : rm.enumerate(level, ions))
             {
-                auto const& boxes = levelBoxing.at(amr::to_string(patch->getGlobalId()));
+                auto const& boxes = levelBoxing.at(core::to_string(patch->getGlobalId()));
                 for (auto const& pop : ions)
                     for (auto const& particle : pop.domainParticles())
                         if (!boxes.isOwned(particle.iCell))
@@ -650,7 +650,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         // cell; on overlapping patches only the owner keeps it
         for (auto& patch : rm.enumerate(level, ions))
             ions.eraseDomainParticlesIn(
-                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
+                levelBoxing.at(core::to_string(patch->getGlobalId())).nonOwnedBoxes);
     }
 
     for (auto& patch : rm.enumerate(level, ions))
