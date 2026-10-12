@@ -55,7 +55,8 @@ def listify(arg):
 
 
 def is_scalar(arg):
-    return not isinstance(arg, (list, tuple)) and not is_nd_array(arg)
+    # anything with a length is a container (list, tuple, dict, set, str, ndarray...)
+    return not hasattr(arg, "__len__")
 
 
 def is_nd_array(arg):
