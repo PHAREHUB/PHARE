@@ -195,7 +195,6 @@ class FieldData(PatchData):
             f"centering not specified and cannot be inferred from field name : {field_name}"
         )
 
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
 
@@ -282,3 +281,19 @@ class ParticleData(PatchData):
 
     def __eq__(self, that):
         return self.compare(that)
+
+
+class LiveParticleData(PatchData):
+    """
+    PatchData wrapping a LiveParticles (C++ reference, no SoA copy).
+    """
+
+    def __init__(self, layout, data, pop_name):
+        super().__init__(layout, "particles")
+        self.dataset = data
+        self.pop_name = pop_name
+        self.name = pop_name
+        self.ndim = layout.box.ndim
+
+    def size(self):
+        return self.dataset.size()
