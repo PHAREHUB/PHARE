@@ -813,8 +813,8 @@ namespace solver
 
 
         void registerMessenger_(MessengerFactory const& factory,
-                                IPhysicalModel<AMR_Types> const& coarseModel,
-                                IPhysicalModel<AMR_Types> const& fineModel, int iLevel)
+                                IPhysicalModel<AMR_Types>& coarseModel,
+                                IPhysicalModel<AMR_Types>& fineModel, int iLevel)
         {
             if (auto messengerName = factory.name(coarseModel, fineModel); messengerName)
             {

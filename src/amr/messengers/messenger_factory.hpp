@@ -83,8 +83,8 @@ public:
 
 
     NO_DISCARD std::unique_ptr<IMessenger<IPhysicalModel>> create(std::string messengerName,
-                                                                  IPhysicalModel const& coarseModel,
-                                                                  IPhysicalModel const& fineModel,
+                                                                  IPhysicalModel& coarseModel,
+                                                                  IPhysicalModel& fineModel,
                                                                   int const firstLevel) const
     {
         std::unique_ptr<IMessenger<IPhysicalModel>> result;
@@ -101,8 +101,8 @@ private:
     // so a Strategy naming a disabled model is simply never instantiated for that build.
     template<typename Strategy>
     std::unique_ptr<IMessenger<IPhysicalModel>>
-    tryCreate(std::string const& messengerName, IPhysicalModel const& coarseModel,
-              IPhysicalModel const& fineModel, int firstLevel) const
+    tryCreate(std::string const& messengerName, IPhysicalModel& coarseModel,
+              IPhysicalModel& fineModel, int firstLevel) const
     {
         if (messengerName != Strategy::stratName)
             return {};
@@ -118,9 +118,9 @@ private:
         }
         else if constexpr (std::is_base_of_v<HybridMessengerStrategy<HybridModel>, Strategy>)
         {
-            auto& resourcesManager = dynamic_cast<HybridModel const&>(coarseModel).resourcesManager;
+            auto& hybridModel = dynamic_cast<HybridModel&>(coarseModel);
             auto messengerStrategy
-                = std::make_unique<Strategy>(resourcesManager, firstLevel, refinementConfig_);
+                = std::make_unique<Strategy>(hybridModel, firstLevel, refinementConfig_);
             return std::make_unique<HybridMessenger<HybridModel>>(std::move(messengerStrategy));
         }
         else if constexpr (std::is_same_v<Strategy, MHDMessenger<MHDModel>>)

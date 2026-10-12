@@ -48,6 +48,17 @@ public:
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override;
 
+    // momentum tensors are summed on patch borders through a temporary, see compute
+    void requestTemporaries(DiagnosticProperties& diagnostic) override
+    {
+        auto& modelView = this->h5Writer_.modelView();
+        if (isActiveDiag(diagnostic, "/ions/", "momentum_tensor"))
+            return modelView.requestMomentumTensor();
+        for (auto& pop : modelView.getIons())
+            if (isActiveDiag(diagnostic, "/ions/pop/" + pop.name() + "/", "momentum_tensor"))
+                return modelView.requestMomentumTensor();
+    }
+
     void createFiles(DiagnosticProperties& diagnostic) override;
 
     void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,

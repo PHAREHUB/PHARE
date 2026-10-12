@@ -63,7 +63,6 @@ namespace amr
         using IonsT             = HybridModel::ions_type;
         using ElectromagT       = HybridModel::electromag_type;
         using VecFieldT         = HybridModel::vecfield_type;
-        using TensorFieldT      = IonsT::tensorfield_type;
         using GridLayoutT       = HybridModel::gridlayout_type;
         using FieldT            = VecFieldT::field_type;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::HybridQuantity>;
@@ -100,11 +99,11 @@ namespace amr
         static constexpr std::size_t rootLevelNumber = 0;
 
 
-        HybridHybridMessengerStrategy(std::shared_ptr<ResourcesManagerT> const& manager,
-                                      int const firstLevel,
+        HybridHybridMessengerStrategy(HybridModel& model, int const firstLevel,
                                       RefinementConfig const& refinementConfig = {})
             : HybridMessengerStrategy<HybridModel>{stratName}
-            , resourcesManager_{manager}
+            , model_{model}
+            , resourcesManager_{model.resourcesManager}
             , firstLevel_{firstLevel}
         {
             makeRefineOperators_(refinementConfig);
@@ -113,9 +112,9 @@ namespace amr
             resourcesManager_->registerResources(Eold_);
             resourcesManager_->registerResources(NiOld_);
             resourcesManager_->registerResources(ViOld_);
-            resourcesManager_->registerResources(sumVec_);
-            resourcesManager_->registerResources(sumField_);
-            resourcesManager_->registerResources(sumTensor_);
+
+            // scratch to sum the ion moments on patch borders, see fill(Flux|Density)Borders
+            model_.requestTemporaries(core::QtyCentering::primal, core::HybridQuantity::Vector::V);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -137,9 +136,6 @@ namespace amr
             resourcesManager_->allocate(Eold_, patch, allocateTime);
             resourcesManager_->allocate(NiOld_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
-            resourcesManager_->allocate(sumVec_, patch, allocateTime);
-            resourcesManager_->allocate(sumField_, patch, allocateTime);
-            resourcesManager_->allocate(sumTensor_, patch, allocateTime);
         }
 
 
@@ -405,24 +401,26 @@ namespace amr
             auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
             using value_type = FieldT::value_type;
 
+            auto& tmpVecField = model_.getTmp(core::HybridQuantity::Vector::V);
+
 
             // we cannot have the schedule doign the += in place in the flux array
             // because some overlaps could be counted several times.
-            // we therefore first copy flux into a sumVec buffer and then
+            // we therefore first copy flux into a tmp vecfield buffer and then
             // execute the schedule onto that before copying it back onto the flux array
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpVecField))
                     for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
+                        std::memcpy(tmpVecField[c].data(), ions[i].flux()[c].data(),
                                     ions[i].flux()[c].size() * sizeof(value_type));
 
 
                 popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpVecField))
                     for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(ions[i].flux()[c].data(), sumVec_[c].data(),
+                        std::memcpy(ions[i].flux()[c].data(), tmpVecField[c].data(),
                                     ions[i].flux()[c].size() * sizeof(value_type));
             }
         }
@@ -431,35 +429,37 @@ namespace amr
         {
             using value_type = FieldT::value_type;
 
+            auto& tmpField = model_.getTmp(core::QtyCentering::primal);
+
             assert(popDensityBorderSumRefiners_.size() % ions.size() == 0);
 
             std::size_t const fieldsPerPop = popDensityBorderSumRefiners_.size() / ions.size();
 
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField))
+                    std::memcpy(tmpField.data(), ions[i].particleDensity().data(),
                                 ions[i].particleDensity().size() * sizeof(value_type));
 
 
                 popDensityBorderSumRefiners_[i * fieldsPerPop].fill(level.getLevelNumber(),
                                                                     fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField))
+                    std::memcpy(ions[i].particleDensity().data(), tmpField.data(),
                                 ions[i].particleDensity().size() * sizeof(value_type));
 
                 //
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].chargeDensity().data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField))
+                    std::memcpy(tmpField.data(), ions[i].chargeDensity().data(),
                                 ions[i].chargeDensity().size() * sizeof(value_type));
 
                 popDensityBorderSumRefiners_[i * fieldsPerPop + 1].fill(level.getLevelNumber(),
                                                                         fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].chargeDensity().data(), sumField_.data(),
+                for (auto patch : resourcesManager_->enumerate(level, ions, tmpField))
+                    std::memcpy(ions[i].chargeDensity().data(), tmpField.data(),
                                 ions[i].chargeDensity().size() * sizeof(value_type));
             }
         }
@@ -773,8 +773,7 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
-                    result;
+                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>> result;
 
                 result.reserve(info->ghostMagnetic.size());
 
@@ -861,17 +860,21 @@ namespace amr
                 std::make_shared<ParticleDomainFromGhostFillPattern<GridLayoutT>>());
 
 
+            // the model's temporaries, see requestTemporaries
+            auto const tmpVecFieldName = model_.getTmp(core::HybridQuantity::Vector::V).name();
+            auto const tmpFieldName    = model_.getTmp(core::QtyCentering::primal).name();
+
             for (auto const& vecfield : info->ghostFlux)
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumVec_.name(), vecfield, nullptr, sumVec_.name(),
+                        tmpVecFieldName, vecfield, nullptr, tmpVecFieldName,
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
 
             for (auto const& field : info->sumBorderFields)
                 popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumField_.name(), field, nullptr, sumField_.name(),
+                        tmpFieldName, field, nullptr, tmpFieldName,
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
 
@@ -1012,9 +1015,7 @@ namespace amr
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
 
-        TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
-        VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
-        FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
+        HybridModel& model_; // owns the temporaries used here
 
 
 
