@@ -161,11 +161,10 @@ def main():
     if dry_run:
         return
 
-    pngs = glob.glob("shock*/*.png")
-    for png in pngs:
-        os.remove(png)
+    if cpp.mpi_rank() == 0:  # only rank 0 writes the pngs, others would race to remove them
+        for png in glob.glob("shock*/*.png"):
+            os.remove(png)
 
-    if cpp.mpi_rank() == 0:
         t = 30
         runs = [Run(f"shock_{i+1}") for i in range(3)]
         fig, ax = plt.subplots()
