@@ -49,8 +49,9 @@ public:
 
         auto const dt = newTime - currentTime;
 
-        // U1 = Un + w0_*dt*F(Un)
-        euler_(model, state, state1, fluxes, bc, level, currentTime, newTime, w0_ * dt);
+        // U1 = Un + w0_*dt*F(Un). Fill U1's coarse-fine ghosts at its abscissa t_n + c1_*dt.
+        euler_(model, state, state1, fluxes, bc, level, currentTime, currentTime + c1_ * dt,
+               w0_ * dt);
 
         this->accumulateButcherFluxes_(
             model, state.E, fluxes, level,
@@ -58,14 +59,14 @@ public:
 
         // U2 = w10_*Un + w11_*U1 + w12_*dt*F(U1)
         //
-        // U2 = w10_*Un + w11_*U1
-        RKUtils_t{level, model}(newTime, state2, RKPair_t{w10_, state}, RKPair_t{w11_, state1});
+        // U2 = w10_Un + w11_*U1
+        RKUtils_t{level, model}(state2, RKPair_t{w10_, state}, RKPair_t{w11_, state1});
 
         // U2 = U2 + w12_*dt*F(U1)
         compute_fluxes_(model, state1, fluxes, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state2, state2, state1.E, fluxes, bc, level, newTime,
-                                    w12_ * dt);
+        euler_using_butcher_fluxes_(model, state2, state2, state1.E, fluxes, bc, level,
+                                    currentTime + c2_ * dt, w12_ * dt);
 
         this->accumulateButcherFluxes_(
             model, state1.E, fluxes, level,
@@ -74,13 +75,13 @@ public:
         // U3 = w20_*Un + w21_*U2 + w22_*dt*F(U2)
         //
         // U3 = w20_*Un + w21_*U2
-        RKUtils_t{level, model}(newTime, state3, RKPair_t{w20_, state}, RKPair_t{w21_, state2});
+        RKUtils_t{level, model}(state3, RKPair_t{w20_, state}, RKPair_t{w21_, state2});
 
         // U3 = U3 + w22_*dt*F(U2)
         compute_fluxes_(model, state2, fluxes, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state3, state3, state2.E, fluxes, bc, level, newTime,
-                                    w22_ * dt);
+        euler_using_butcher_fluxes_(model, state3, state3, state2.E, fluxes, bc, level,
+                                    currentTime + c3_ * dt, w22_ * dt);
 
         this->accumulateButcherFluxes_(model, state2.E, fluxes, level,
                                        (w22_ * w31_ * w43_ + w22_ * w41_));
@@ -88,15 +89,15 @@ public:
         // U4 = w30_*Un + w31_*U3 + w32_*dt*F(U3)
         //
         // U4 = w30_*Un + w31_*U3
-        RKUtils_t{level, model}(newTime, state4, RKPair_t{w30_, state}, RKPair_t{w31_, state3});
+        RKUtils_t{level, model}(state4, RKPair_t{w30_, state}, RKPair_t{w31_, state3});
 
         // U4 = U4 + w32_*dt*F(U3)
         // if we were not using butcher formulation, we would need a separate flux buffer for F(U3)
         // for the final step
         compute_fluxes_(model, state3, fluxes, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state4, state4, state3.E, fluxes, bc, level, newTime,
-                                    w32_ * dt);
+        euler_using_butcher_fluxes_(model, state4, state4, state3.E, fluxes, bc, level,
+                                    currentTime + c4_ * dt, w32_ * dt);
 
         this->accumulateButcherFluxes_(model, state3.E, fluxes, level, (w32_ * w43_ + w42_));
 
@@ -141,6 +142,15 @@ private:
     static constexpr auto w42_{0.063692468666290};
     static constexpr auto w43_{0.386708617503268};
     static constexpr auto w44_{0.226007483236906};
+
+    // Stage abscissae c_i (row sums of the Shu-Osher tableau): the physical time
+    // t_n + c_i*dt that each intermediate node approximates. Used to fill coarse-fine ghosts
+    // by linear time interpolation at the node's own time. Match Spiteri-Ruuth SSPRK(5,4)
+    // c = [0.39175, 0.58608, 0.47454, 0.93501].
+    static constexpr double c1_{w0_};                // state1
+    static constexpr double c2_{w11_ * c1_ + w12_};  // state2
+    static constexpr double c3_{w21_ * c2_ + w22_};  // state3
+    static constexpr double c4_{w31_ * c3_ + w32_};  // state4
 
     Euler<FVMethodStrategy, MHDModel> euler_;
     ComputeFluxes<FVMethodStrategy, MHDModel> compute_fluxes_;

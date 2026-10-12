@@ -14,9 +14,14 @@ if(HighFive)
     # disabled due to https://github.com/PHAREHUB/PHARE/issues/853
     # phare_mpi_python3_exec(11 10 complex_2d_refinement test_2d_10_core.py  ${CMAKE_CURRENT_BINARY_DIR})
 
+    ## more ranks split the refined level over more patches, so the shared faces the divB
+    ## touch-up has to agree on are spread over more patch boundaries
+    phare_mpi_python3_exec(9 4 divb_refinement test_divb_refinement.py ${CMAKE_CURRENT_BINARY_DIR})
+
   endif(testMPI)
 
   phare_python3_exec(9 simple_2d_refinement test_2d_2_core.py  ${CMAKE_CURRENT_BINARY_DIR})
   phare_python3_exec(9 regridding test_regridding.py  ${CMAKE_CURRENT_BINARY_DIR})
+  phare_python3_exec(9 divb_refinement test_divb_refinement.py  ${CMAKE_CURRENT_BINARY_DIR})
 
 endif()

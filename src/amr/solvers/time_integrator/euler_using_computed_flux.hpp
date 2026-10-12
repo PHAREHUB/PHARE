@@ -24,9 +24,12 @@ public:
     void operator()(MHDModel& model, auto& state, auto& statenew, auto& E, auto& fluxes, auto& bc,
                     level_t& level, double const newTime, double const dt)
     {
-        FiniteVolumeEuler_t{level, model}(newTime, state, statenew, fluxes, dt);
+        FiniteVolumeEuler_t{level, model}(state, statenew, fluxes, dt);
+        TimeSetter{level, model, newTime}(state.rho, state.rhoV, state.Etot);
 
         Faraday_t{level, model}(state.B, E, statenew.B, dt);
+
+        TimeSetter{level, model, newTime}(statenew.B);
 
         bc.fillMagneticGhosts(statenew.B, level, newTime);
 

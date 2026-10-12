@@ -77,7 +77,6 @@ public:
             info.ghostTotalEnergy.push_back(s.Etot.name());
             info.ghostElectric.push_back(s.E.name());
             info.ghostMagnetic.push_back(s.B.name());
-            info.ghostCurrent.push_back(s.J.name());
         }
     }
 

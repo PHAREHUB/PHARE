@@ -75,11 +75,6 @@ namespace amr
             = 0;
 
 
-        virtual void fillCurrentGhosts(VecFieldT& J, SAMRAI::hier::PatchLevel const& level,
-                                       double const fillTime)
-            = 0;
-
-
         virtual void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
                                            double const fillTime)
             = 0;

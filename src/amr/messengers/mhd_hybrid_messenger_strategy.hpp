@@ -93,11 +93,6 @@ namespace amr
         {
         }
 
-        void fillCurrentGhosts(VecFieldT& /*J*/, SAMRAI::hier::PatchLevel const& /*level*/,
-                               double const /*fillTime*/) override
-        {
-        }
-
         void fillIonGhostParticles(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
                                    double const /*fillTime*/) override
         {

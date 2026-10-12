@@ -4,13 +4,22 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
+#include <cstdint>
+
 namespace PHARE::core
 {
 
 
+enum class AmpereMode { ShrinkedGhost, GrownPhysical };
+
+struct AmpereBox // structural type — usable as NTTP
+{
+    AmpereMode mode      = AmpereMode::ShrinkedGhost;
+    std::uint32_t amount = 1;
+};
 
 
-template<typename GridLayout>
+template<typename GridLayout, AmpereBox box = AmpereBox{}>
 class Ampere
 {
     constexpr static auto dimension = GridLayout::dimension;
@@ -31,19 +40,23 @@ public:
         auto& Jy = J(Component::Y);
         auto& Jz = J(Component::Z);
 
-        Point<std::uint32_t, dimension> shrink;
+        Point<std::uint32_t, dimension> amount;
 
         for (size_t i = 0; i < dimension; ++i)
         {
-            shrink[i] = 1;
+            amount[i] = box.amount;
         }
 
-        layout_.evalOnShrinkedGhostBox(Jx, shrink,
-                                       [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
-        layout_.evalOnShrinkedGhostBox(Jy, shrink,
-                                       [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
-        layout_.evalOnShrinkedGhostBox(Jz, shrink,
-                                       [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
+        auto eval = [&](auto& Jc, auto&& fn) {
+            if constexpr (box.mode == AmpereMode::ShrinkedGhost)
+                layout_.evalOnShrinkedGhostBox(Jc, amount, fn);
+            else
+                layout_.evalOnBiggerBox(Jc, amount, fn);
+        };
+
+        eval(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
+        eval(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
+        eval(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
     }
 
 
