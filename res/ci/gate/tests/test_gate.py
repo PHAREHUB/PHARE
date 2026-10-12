@@ -19,6 +19,7 @@ import added_lines  # noqa: E402
 import assert_scan  # noqa: E402
 import clang_tidy  # noqa: E402
 import gitdiff  # noqa: E402
+import list_tests  # noqa: E402
 import pharein_keywords  # noqa: E402
 import pr_body  # noqa: E402
 import tests_removed  # noqa: E402
@@ -324,6 +325,130 @@ class TestsRemoved(unittest.TestCase):
     def test_added_test_is_fine(self):
         f = self.flagged({"tests/test_x.py": PY_TEST}, {"tests/test_x.py": PY_TEST + "\n    def test_c(self):\n        self.assertTrue(True)\n"})
         self.assertEqual(f, [])
+
+
+def listing(ctest=None, python=None):
+    """What list_tests.py prints: {"ctest": {name: {command, processors}}, "python": {script: {Class.method: n}}}."""
+    return {"ctest": ctest or {}, "python": python or {}}
+
+
+def ctest(command="./t", processors=1):
+    return {"command": command.split(), "processors": processors}
+
+
+class TestsRemovedListed(unittest.TestCase):
+    """tests_removed.py --listed: what ctest and unittest would run, from list_tests.py on both trees."""
+
+    def flagged(self, before, after, files=None, change=None):
+        files = files or {"tests/CMakeLists.txt": "\n"}
+        repo = Repo(files).change(change or {"tests/CMakeLists.txt": "# changed\n"})
+        try:
+            return tests_removed.check("base", "head", cwd=repo.path, listed=(before, after))
+        finally:
+            repo.dir.cleanup()
+
+    def test_ctest_test_unregistered(self):
+        f = self.flagged(listing({"a": ctest(), "b": ctest()}), listing({"a": ctest()}))
+        self.assertEqual([(x.level, x.message) for x in f], [("error", "ctest test b is no longer registered")])
+        self.assertEqual(f[0].path, "tests/CMakeLists.txt")
+
+    def test_ctest_fewer_processes(self):
+        f = self.flagged(listing({"a": ctest("mpirun -n 4 ./a", 4)}), listing({"a": ctest("mpirun -n 1 ./a", 1)}))
+        self.assertEqual([x.level for x in f], ["error"])
+        self.assertIn("1 MPI process(es) instead of 4", f[0].message)
+
+    def test_ctest_command_changed_warns(self):
+        # PR #1411: every MPI gtest wrapped in a script, same names and processes
+        cm = "add_test(NAME ${binary} COMMAND mpirun -n 2 ./${binary})\n"
+        f = self.flagged(
+            listing({"a": ctest("mpirun -n 2 ./a", 2), "b": ctest("mpirun -n 2 ./b", 2)}),
+            listing({"a": ctest("mpirun -n 2 sh w.sh ./a", 2), "b": ctest("mpirun -n 2 sh w.sh ./b", 2)}),
+            {"res/cmake/def.cmake": cm}, {"res/cmake/def.cmake": cm.replace("./", "sh w.sh ./")},
+        )
+        self.assertEqual([x.level for x in f], ["warning"])
+        self.assertIn("2 ctest test(s) keep their name", f[0].message)
+
+    def test_ctest_more_processes_is_fine(self):
+        self.assertEqual(self.flagged(listing({"a": ctest("./a")}), listing({"a": ctest("./a")})), [])
+
+    def test_ddt_case_dropped(self):
+        f = self.flagged(listing(python={"tests/test_x.py": {"T.test_a": 3}}), listing(python={"tests/test_x.py": {"T.test_a": 2}}))
+        self.assertEqual([(x.path, x.message) for x in f], [("tests/test_x.py", "test T.test_a has 2 case(s) instead of 3")])
+
+    def test_ddt_case_inserted_is_fine(self):
+        # inserting a @data value renumbers the generated names; the count per method only grows
+        f = self.flagged(listing(python={"tests/test_x.py": {"T.test_a": 3}}), listing(python={"tests/test_x.py": {"T.test_a": 4}}))
+        self.assertEqual(f, [])
+
+    def test_python_test_moved_to_other_script(self):
+        f = self.flagged(
+            listing(python={"tests/test_x.py": {"T.test_a": 1}, "tests/test_y.py": {}}),
+            listing(python={"tests/test_x.py": {}, "tests/test_y.py": {"T.test_a": 1}}),
+        )
+        self.assertEqual(f, [])
+
+    def test_python_import_error_falls_back_to_static(self):
+        # the head script no longer imports: error, and the static reading still sees test_b go
+        f = self.flagged(
+            listing(python={"tests/test_x.py": {"T.test_a": 1, "T.test_b": 1}}),
+            listing(python={"tests/test_x.py": {"error": "ImportError: no module named nope"}}),
+            {"tests/test_x.py": PY_TEST}, {"tests/test_x.py": py(a=("        def test_b(self):\n            assert abs(1.0 - 1.0) < 1e-10\n", ""))},
+        )
+        self.assertEqual(sorted(x.message for x in f), ["cannot be imported, its tests cannot be listed: ImportError: no module named nope", "test T.test_b removed or renamed"])
+
+    def test_registration_text_not_read(self):
+        # a changed registration call only matters through what ctest lists
+        cm = "phare_python3_exec(9 x test_x.py ${DIR})\n"
+        f = self.flagged(listing({"py3_x": ctest()}), listing({"py3_x": ctest()}), {"tests/CMakeLists.txt": cm}, {"tests/CMakeLists.txt": cm.replace("(9 ", "(11 ")})
+        self.assertEqual(f, [])
+
+
+GENERATED = """\
+    import functools
+    import unittest
+
+    def cases(*values):  # what ddt does: one method per value, wrapping the original
+        def deco(cls):
+            for name, func in list(vars(cls).items()):
+                if name.startswith("test"):
+                    delattr(cls, name)
+                    for i, v in enumerate(values):
+                        @functools.wraps(func)
+                        def case(self, func=func, v=v):
+                            return func(self, v)
+                        setattr(cls, f"{name}_{i}_{v}", case)
+            return cls
+        return deco
+
+    print("noise while imported")
+
+    @cases(1, 2, 3)
+    class T(unittest.TestCase):
+        def test_a(self, v):
+            pass
+
+    class U(T):  # inherits the 3 cases
+        pass
+
+    if __name__ == "__main__":  # imported under another name: never runs
+        raise SystemExit(1)
+"""
+
+
+class ListTests(unittest.TestCase):
+    def test_generated_cases_counted_per_method(self):
+        with tempfile.TemporaryDirectory() as tree:
+            os.makedirs(os.path.join(tree, "tests"))
+            with open(os.path.join(tree, "tests", "test_x.py"), "w") as f:
+                f.write(textwrap.dedent(GENERATED))
+            self.assertEqual(list_tests.list_script(tree, "tests/test_x.py"), {"T.test_a": 3, "U.test_a": 3})
+
+    def test_import_error_reported(self):
+        with tempfile.TemporaryDirectory() as tree:
+            os.makedirs(os.path.join(tree, "tests"))
+            with open(os.path.join(tree, "tests", "test_x.py"), "w") as f:
+                f.write("import no_such_module_anywhere\n")
+            self.assertIn("no_such_module_anywhere", list_tests.list_script(tree, "tests/test_x.py")["error"])
 
 
 SIM = """\

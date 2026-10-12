@@ -36,15 +36,15 @@ env:
 
 jobs:
   scripts:
-    # res/ci/gate/*.py: tests removed (label tests-removed-ok), skips/layering/conventions
-    # (tests-skip-ok, convention-ok), loosened tolerances (test-values-ok), pharein keywords (api-break-ok)
+    # res/ci/gate/*.py: skips/layering/conventions (tests-skip-ok, convention-ok),
+    # loosened tolerances (test-values-ok), pharein keywords (api-break-ok)
     name: ${{ matrix.check }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        check: [tests_removed, added_lines, assert_scan, pharein_keywords]
+        check: [added_lines, assert_scan, pharein_keywords]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,6 +54,34 @@ jobs:
       - env:
           CHECK: ${{ matrix.check }}
         run: python3 "res/ci/gate/${CHECK}.py" "$BASE" "$HEAD"
+
+  tests_removed:
+    # tests the PR removes (label tests-removed-ok). Compares what ctest and unittest would run at the
+    # merge base and at the PR head: configure only (no build), with every level and MPI on, and
+    # import the Python test scripts (no test runs). Same image as cmake_ubuntu.yml.
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: list tests
+        run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
+          . /.venv/bin/activate
+          git worktree add -q "$RUNNER_TEMP/base" "$(git merge-base "$BASE" "$HEAD")"
+          for side in base head; do
+            tree=$([ "$side" = base ] && echo "$RUNNER_TEMP/base" || echo "$GITHUB_WORKSPACE")
+            cmake -S "$tree" -B "$RUNNER_TEMP/build-$side" -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ \
+                  -DSAMRAI_ROOT=/usr/local -DCMAKE_BUILD_TYPE=Debug -Dphare_configurator=ON \
+                  -DtestMPI=ON -DforceSerialTests=ON -DPHARE_EXEC_LEVEL_MIN=1 -DPHARE_EXEC_LEVEL_MAX=1000 \
+                  > "$RUNNER_TEMP/configure-$side.log" 2>&1 || { cat "$RUNNER_TEMP/configure-$side.log"; exit 1; }
+            python3 res/ci/gate/list_tests.py "$tree" "$RUNNER_TEMP/build-$side" > "$RUNNER_TEMP/$side.json"
+          done
+      - run: python3 res/ci/gate/tests_removed.py "$BASE" "$HEAD" --listed "$RUNNER_TEMP/base.json" "$RUNNER_TEMP/head.json"
 
   gate-selftest:
     # the scripts' own fixtures
