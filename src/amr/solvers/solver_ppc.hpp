@@ -212,6 +212,8 @@ void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel_t& mode
 
     hmodel.resourcesManager->registerResources(Bold_);
     hmodel.resourcesManager->registerResources(fluxSumE_);
+
+    hmodel.resourcesManager->excludeFromRestarts(Bold_); // refreshed in prepareStep
 }
 
 

@@ -197,6 +197,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::registerResources(
     mhdmodel.resourcesManager->registerResources(fluxSumE_);
 
     mhdmodel.resourcesManager->registerResources(stateOld_);
+    mhdmodel.resourcesManager->excludeFromRestarts(stateOld_); // refreshed in prepareStep
 
     evolve_.registerResources(mhdmodel);
 }
