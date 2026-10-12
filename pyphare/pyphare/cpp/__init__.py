@@ -126,19 +126,22 @@ def mpi_is_root_rank_for_host():
     return cpp_etc_lib().mpi_is_root_rank_for_host()
 
 
-def print_rank0(*args, **kwargs):
-    def should_print():
-        try:
-            if mpi_initialized():
-                return mpi_rank() == 0
-        except ImportError:
-            # missing module or mpi not initialized
-            ...
-        envs = ["OMPI_COMM_WORLD_RANK", "SLURM_PROCID"]
-        for env in envs:
-            if env in os.environ:
-                return int(os.environ[env]) == 0
-        return True  # FALL BACK ALWAYS PRINT
+def is_rank0():
+    """works before MPI is initialized, or without the C++ module, falling back to rank 0"""
+    try:
+        if mpi_initialized():
+            return mpi_rank() == 0
+    except ImportError:
+        # missing module or mpi not initialized
+        ...
+    # Open MPI, PMIx, MPICH/Intel MPI (hydra), slurm srun
+    envs = ["OMPI_COMM_WORLD_RANK", "PMIX_RANK", "PMI_RANK", "SLURM_PROCID"]
+    for env in envs:
+        if env in os.environ:
+            return int(os.environ[env]) == 0
+    return True  # FALL BACK ALWAYS RANK 0
 
-    if should_print():
+
+def print_rank0(*args, **kwargs):
+    if is_rank0():
         print(*args, **kwargs)

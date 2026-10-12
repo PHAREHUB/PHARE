@@ -136,7 +136,9 @@ class MaxwellianFluidModel:
         )
         self.validated = False
         if should_validate:
-            self.validate(global_vars.sim)
+            # same result on every rank, and a strict failure stops the run anyway
+            if cpp.is_rank0():
+                self.validate(global_vars.sim)
             self.validated = True
 
         global_vars.sim.set_model(self)
@@ -266,10 +268,10 @@ class MaxwellianFluidModel:
             else:
                 xL, xR = primal_left, primal_right
 
-            is_periodic &= np.allclose(b_i(xL), b_i(xL), atol=atol, rtol=0)
+            is_periodic &= np.allclose(b_i(xL), b_i(xR), atol=atol, rtol=0)
 
         for pop in self.populations:
-            functions = ("vx", "vy", "vz", "vthx", "vthy", "vthz")
+            functions = ("density", "vx", "vy", "vz", "vthx", "vthy", "vthz")
             xL, xR = primal_left, primal_right
 
             for fn in functions:
@@ -333,7 +335,7 @@ class MaxwellianFluidModel:
                     is_periodic &= check
 
                 for pop in self.populations:
-                    functions = ("vx", "vy", "vz", "vthx", "vthy", "vthz")
+                    functions = ("density", "vx", "vy", "vz", "vthx", "vthy", "vthz")
                     L, R = primal_left, primal_right
                     coordsL, coordsR = getCoord(L, R, idir)
 
@@ -421,7 +423,7 @@ class MaxwellianFluidModel:
                     is_periodic &= check
 
                 for pop in self.populations:
-                    functions = ("vx", "vy", "vz", "vthx", "vthy", "vthz")
+                    functions = ("density", "vx", "vy", "vz", "vthx", "vthy", "vthz")
                     L, R = primal_left, primal_right
                     coordsL, coordsR = getCoord(L, R, idir)
 

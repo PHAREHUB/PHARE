@@ -69,9 +69,16 @@ class HybridAdvanceTest(AdvanceTestBase):
         L = sim.simulation_domain()
 
         def _density(*xyz):
-            hL = np.array(sim.simulation_domain()) / 2
+            # a gaussian bump made periodic: sin(pi * d / L) * L / pi ~ d near the center
+            L = np.array(sim.simulation_domain())
+            hL = L / 2
             return 0.3 + np.exp(
-                sum([-((xyz[i] - hL[i]) ** 2) for i in range(len(xyz))])
+                sum(
+                    [
+                        -((L[i] / np.pi * np.sin(np.pi * (xyz[i] - hL[i]) / L[i])) ** 2)
+                        for i in range(len(xyz))
+                    ]
+                )
             )
 
         def bx(*xyz):
