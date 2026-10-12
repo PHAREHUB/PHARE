@@ -55,43 +55,38 @@ void declareSimulator(PyClass&& sim)
         .def("dump_restarts", &Simulator::dump_restarts, py::arg("timestamp"), py::arg("timestep"));
 }
 
+// every build gets the DataWrangler, with the patch level getters of the models it has
+template<auto opts>
+void inline declare_data_wrangler(py::module& m)
+{
+    using Sim = Simulator<opts>;
+    using DW  = DataWrangler<opts>;
+
+    auto dw
+        = py::class_<DW, py::smart_holder>(m, "DataWrangler", py::module_local())
+              .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
+              .def("sync", &DW::sync)
+              .def("getNumberOfLevels", &DW::getNumberOfLevels);
+
+    if constexpr (has_hybrid_v<opts>)
+        dw.def("getHybridPatchLevel", &DW::getHybridPatchLevel);
+    if constexpr (has_mhd_v<opts>)
+        dw.def("getMHDPatchLevel", &DW::getMHDPatchLevel);
+}
+
 template<auto opts>
 void inline declare_etc_hybrid(py::module& m)
 {
-    using Sim = Simulator<opts>;
-
-    using DW         = DataWrangler<opts>;
-    std::string name = "DataWrangler";
-
-    py::class_<DW, py::smart_holder>(m, name.c_str(), py::module_local())
-        .def(py::init<std::shared_ptr<Sim> const&, std::shared_ptr<amr::Hierarchy> const&>())
-        .def("sync_merge", &DW::sync_merge)
-        .def("getPatchLevel", &DW::getPatchLevel)
-        .def("getNumberOfLevels", &DW::getNumberOfLevels);
-
-    using PL = PatchLevel<opts>;
-    name     = "PatchLevel";
-    py::class_<PL, py::smart_holder>(m, name.c_str(), py::module_local())
-        .def("getEM", &PL::getEM)
-        .def("getE", &PL::getE)
-        .def("getB", &PL::getB)
-        .def("getBx", &PL::getBx)
-        .def("getBy", &PL::getBy)
-        .def("getBz", &PL::getBz)
-        .def("getEx", &PL::getEx)
-        .def("getEy", &PL::getEy)
-        .def("getEz", &PL::getEz)
-        .def("getVix", &PL::getVix)
-        .def("getViy", &PL::getViy)
-        .def("getViz", &PL::getViz)
-        .def("getDensity", &PL::getDensity)
-        .def("getBulkVelocity", &PL::getBulkVelocity)
-        .def("getPopDensities", &PL::getPopDensities)
-        .def("getPopFluxes", &PL::getPopFlux)
-        .def("getFx", &PL::getFx)
-        .def("getFy", &PL::getFy)
-        .def("getFz", &PL::getFz)
-        .def("getParticles", &PL::getParticles, py::arg("userPopName") = "all");
+    using HybPL      = PatchLevel<typename solver::PHARE_Types<opts>::Hybrid::Model_t>;
+    std::string name = "HybridPatchLevel";
+    py::class_<HybPL, py::smart_holder>(m, name.c_str(), py::module_local())
+        .def("getB", &HybPL::getB, py::arg("component"))
+        .def("getE", &HybPL::getE, py::arg("component"))
+        .def("getVi", &HybPL::getVi, py::arg("component"))
+        .def("getN", &HybPL::getN, py::arg("pop_name"))
+        .def("getNi", &HybPL::getNi)
+        .def("getFlux", &HybPL::getFlux, py::arg("component"), py::arg("pop_name"))
+        .def("getParticles", &HybPL::getParticles, py::arg("pop_name"));
 
     using _Splitter
         = PHARE::amr::Splitter<core::DimConst<opts.dimension>, core::InterpConst<opts.interp_order>,
@@ -107,13 +102,32 @@ void inline declare_etc_hybrid(py::module& m)
     m.def(name.c_str(), splitPyArrayParticles<_Splitter>);
 }
 
-// opts is a template parameter, so the discarded branch is never instantiated and an MHD-only
-// build never processes the hybrid-only bindings.
+template<auto opts>
+void inline declare_etc_mhd(py::module& m)
+{
+    using MHDPL      = PatchLevel<typename solver::PHARE_Types<opts>::MHD::Model_t>;
+    std::string name = "MHDPatchLevel";
+    py::class_<MHDPL, py::smart_holder>(m, name.c_str(), py::module_local())
+        .def("getRho", &MHDPL::getRho)
+        .def("getP", &MHDPL::getP)
+        .def("getEtot", &MHDPL::getEtot)
+        .def("getV", &MHDPL::getV, py::arg("component"))
+        .def("getB", &MHDPL::getB, py::arg("component"))
+        .def("getRhoV", &MHDPL::getRhoV, py::arg("component"))
+        .def("getE", &MHDPL::getE, py::arg("component"))
+        .def("getJ", &MHDPL::getJ, py::arg("component"));
+}
+
+// opts is a template parameter, so the discarded branches are never instantiated: a build only
+// processes the bindings of the models it has.
 template<auto opts>
 void inline declare_etc(py::module& m)
 {
+    declare_data_wrangler<opts>(m);
     if constexpr (has_hybrid_v<opts>)
         declare_etc_hybrid<opts>(m);
+    if constexpr (has_mhd_v<opts>)
+        declare_etc_mhd<opts>(m);
 }
 
 
