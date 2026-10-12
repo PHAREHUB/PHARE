@@ -215,6 +215,8 @@ DiagnosticsManager<Writer>::addDiagDict(initializer::PHAREDict const& diagParams
         diagProps.forward_file_attribute(key, diagParams["attribute_" + idx + "_value"]);
     }
 
+    writer_->requestTemporaries(diagProps);
+
     return *this;
 }
 

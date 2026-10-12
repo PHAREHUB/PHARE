@@ -28,6 +28,13 @@ public:
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override {}
 
+    // B and E are converted to primal through a temporary when written
+    void requestTemporaries(DiagnosticProperties& diagnostic) override
+    {
+        if (isActiveDiag(diagnostic, "/", "EM_B") or isActiveDiag(diagnostic, "/", "EM_E"))
+            this->h5Writer_.modelView().requestTmpVecField();
+    }
+
 private:
     struct Info
     {
