@@ -8,6 +8,7 @@
 
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/physical_models/physical_model.hpp"
+#include "amr/physical_models/model_temporaries.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
 #include <SAMRAI/hier/PatchLevel.h>
@@ -21,7 +22,9 @@
 namespace PHARE::solver
 {
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
-class MHDModel : public IPhysicalModel<AMR_Types>
+class MHDModel : public IPhysicalModel<AMR_Types>,
+                 public ModelTemporaries<MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>,
+                                         GridLayoutT, typename VecFieldT::field_type, VecFieldT>
 {
 public:
     static constexpr auto dimension = GridLayoutT::dimension;
@@ -48,25 +51,14 @@ public:
     std::shared_ptr<boundary_manager_type> boundaryManager;
     double gamma_; //!< heat capacity ratio
 
-    // diagnostics buffers
-    vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
-    field_type P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
-
-    // maybe these could have a single allocation shared for hybrid and mhd, as they are strictly
-    // temporaries. Right now the hybrid version is in the hybrid_hybrid_messenger_strategy.hpp
-    field_type tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
-    vecfield_type tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
-
     void initialize(level_t& level) override;
 
+    void registerResources() { resourcesManager->registerResources(*this); }
 
     void allocate(patch_t& patch, double const allocateTime) override
     {
-        resourcesManager->allocate(state, patch, allocateTime);
-        resourcesManager->allocate(V_diag_, patch, allocateTime);
-        resourcesManager->allocate(P_diag_, patch, allocateTime);
-        resourcesManager->allocate(tmpField_, patch, allocateTime);
-        resourcesManager->allocate(tmpVec_, patch, allocateTime);
+        this->temporariesAllocated_ = true;
+        resourcesManager->allocate(*this, patch, allocateTime);
     }
 
 
@@ -84,11 +76,6 @@ public:
         , resourcesManager{_resourcesManager}
         , gamma_{dict["mhd_state"]["to_conservative_init"]["heat_capacity_ratio"]}
     {
-        resourcesManager->registerResources(V_diag_);
-        resourcesManager->registerResources(P_diag_);
-        resourcesManager->registerResources(tmpField_);
-        resourcesManager->registerResources(tmpVec_);
-
         std::vector<core::MHDQuantity::Scalar> scalarQuantities
             = {core::MHDQuantity::Scalar::rho, core::MHDQuantity::Scalar::Etot};
         std::vector<core::MHDQuantity::Vector> vectorQuantities = {
@@ -120,12 +107,15 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
 
+
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
 };
+
+
 
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
 void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& level)

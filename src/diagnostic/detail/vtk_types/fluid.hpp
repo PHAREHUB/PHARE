@@ -36,7 +36,20 @@ public:
     void write(DiagnosticProperties&) override;
     void compute(DiagnosticProperties&) override;
 
+    // quantities are converted to primal through a temporary when written, and MHD V and P are
+    //  first computed into temporaries
+    void requestTemporaries(DiagnosticProperties& diagnostic) override
+    {
+        requestTemporaries_(diagnostic);
+    }
+
 private:
+    void requestTemporaries_(DiagnosticProperties& diagnostic)
+        requires(solver::is_hybrid_model_v<Model_t>);
+
+    void requestTemporaries_(DiagnosticProperties& diagnostic)
+        requires(solver::is_mhd_model_v<Model_t>);
+
     struct Info
     {
         std::vector<std::size_t> offset_per_level
@@ -167,6 +180,55 @@ FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const ilvl
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
 
     return std::nullopt;
+}
+
+
+template<typename H5Writer>
+void FluidDiagnosticWriter<H5Writer>::requestTemporaries_(DiagnosticProperties& diagnostic)
+    requires(solver::is_hybrid_model_v<Model_t>)
+{
+    auto& modelView = this->h5Writer_.modelView();
+
+    std::string const tree{"/ions/"};
+    if (isActiveDiag(diagnostic, tree, "charge_density")
+        or isActiveDiag(diagnostic, tree, "mass_density"))
+        modelView.requestTmpField();
+    else if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
+        modelView.requestTmpVecField();
+
+    for (auto& pop : modelView.getIons())
+    {
+        std::string const pop_tree{tree + "pop/" + pop.name() + "/"};
+        if (isActiveDiag(diagnostic, pop_tree, "density")
+            or isActiveDiag(diagnostic, pop_tree, "charge_density"))
+            modelView.requestTmpField();
+        else if (isActiveDiag(diagnostic, pop_tree, "flux"))
+            modelView.requestTmpVecField();
+    }
+}
+
+
+template<typename H5Writer>
+void FluidDiagnosticWriter<H5Writer>::requestTemporaries_(DiagnosticProperties& diagnostic)
+    requires(solver::is_mhd_model_v<Model_t>)
+{
+    auto& modelView = this->h5Writer_.modelView();
+
+    std::string const tree{"/mhd/"};
+    if (isActiveDiag(diagnostic, tree, "rho") or isActiveDiag(diagnostic, tree, "Etot"))
+        modelView.requestTmpField();
+    else if (isActiveDiag(diagnostic, tree, "rhoV"))
+        modelView.requestTmpVecField();
+    else if (isActiveDiag(diagnostic, tree, "P"))
+    {
+        modelView.requestP();
+        modelView.requestTmpField();
+    }
+    else if (isActiveDiag(diagnostic, tree, "V"))
+    {
+        modelView.requestV();
+        modelView.requestTmpVecField();
+    }
 }
 
 
