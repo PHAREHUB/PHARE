@@ -10,6 +10,7 @@
 #include "initializer/data_provider.hpp"
 
 #include "amr/physical_models/physical_model.hpp"
+#include "amr/physical_models/model_temporaries.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
@@ -24,7 +25,11 @@ namespace PHARE::solver
  */
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
          typename AMR_Types, typename Grid_t>
-class HybridModel : public IPhysicalModel<AMR_Types>
+class HybridModel : public IPhysicalModel<AMR_Types>,
+                    public ModelTemporaries<
+                        HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>,
+                        GridLayoutT, typename Electromag::vecfield_type::field_type,
+                        typename Electromag::vecfield_type, typename Ions::tensorfield_type>
 {
 public:
     static constexpr auto dimension    = GridLayoutT::dimension;
@@ -39,6 +44,7 @@ public:
     using gridlayout_type        = GridLayoutT;
     using electromag_type        = Electromag;
     using vecfield_type          = Electromag::vecfield_type;
+    using tensorfield_type       = Ions::tensorfield_type;
     using field_type             = vecfield_type::field_type;
     using grid_type              = Grid_t;
     using ions_type              = Ions;
@@ -59,6 +65,8 @@ public:
 
     void initialize(level_t& level) override;
 
+    void registerResources() { resourcesManager->registerResources(*this); }
+
 
     /**
      * @brief allocate uses the ResourcesManager to allocate HybridState physical quantities on
@@ -66,7 +74,8 @@ public:
      */
     virtual void allocate(patch_t& patch, double const allocateTime) override
     {
-        resourcesManager->allocate(state, patch, allocateTime);
+        this->temporariesAllocated_ = true;
+        resourcesManager->allocate(*this, patch, allocateTime);
     }
 
 
