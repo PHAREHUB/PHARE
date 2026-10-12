@@ -2,9 +2,10 @@ import math
 import numpy as np
 
 
-def debug_print(*args):
-    from pyphare import cpp
+from pyphare import cpp
 
+
+def debug_print(*args):
     if __debug__:
         cpp.print_rank0(*args)
 

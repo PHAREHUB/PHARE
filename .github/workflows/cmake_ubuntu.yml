@@ -47,13 +47,6 @@ jobs:
       with:
         submodules: 'recursive'
 
-    - name: preconfig
-      run: |
-        set -ex
-        . /.venv/bin/activate;
-        python3 -m pip install pylint -U
-        pylint --disable=all --enable=cyclic-import pyphare/pyphare
-
     - name: Ensure ccache uses ~/.ccache
       run: |
           mkdir -p ~/.ccache

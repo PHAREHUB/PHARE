@@ -30,6 +30,7 @@ env:
   REVIEWDOG_VERSION: v0.21.2
   CLANG_FORMAT_VERSION: 20.1.8
   RUFF_VERSION: 0.16.10
+  PYLINT_VERSION: 4.1.3
   JSCPD_VERSION: 5.4.0
   ACTIONLINT_VERSION: 1.7.12
   ZIZMOR_VERSION: 1.30.1
@@ -143,6 +144,21 @@ jobs:
           ruff check --exit-zero --output-format=rdjson pyphare tests tools \
             | reviewdog -f=rdjson -name=ruff -reporter=github-pr-annotations \
                         -filter-mode=added -fail-level=warning -diff="git diff $mb"
+
+  cyclic-imports:
+    # no import cycle in pyphare: master works but cycles break on a reordered import
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.13"
+      - run: pip install "pylint==$PYLINT_VERSION"
+      - run: pylint --disable=all --enable=cyclic-import pyphare/pyphare
 
   clang-tidy:
     # .clang-tidy checks on the changed C++ lines. clang-tidy reads the compile commands of a
