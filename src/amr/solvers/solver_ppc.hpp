@@ -656,8 +656,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         // the exchange hands a leaving particle to every patch whose domain contains its
         // cell; on overlapping patches only the owner keeps it
         for (auto& patch : rm.enumerate(level, ions))
-            amr::eraseNonOwnedDomainParticles(
-                ions, levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
+            ions.eraseDomainParticlesIn(
+                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
     }
 
     for (auto& patch : rm.enumerate(level, ions))

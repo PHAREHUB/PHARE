@@ -273,24 +273,6 @@ namespace amr
     }
 
 
-    // drops the domain particles of all populations located in `nonOwnedBoxes`
-    template<typename Ions, typename Boxes>
-    void eraseNonOwnedDomainParticles(Ions& ions, Boxes const& nonOwnedBoxes)
-    {
-        if (nonOwnedBoxes.empty())
-            return;
-
-        for (auto& pop : ions)
-        {
-            auto& particles = pop.domainParticles();
-            auto range      = core::makeIndexRange(particles);
-            auto const kept = particles.partition(range, [&](auto const& cell) {
-                return !core::isIn(core::Point{cell}, nonOwnedBoxes);
-            });
-            particles.erase(core::makeRange(particles, kept.iend(), particles.size()));
-        }
-    }
-
     inline auto to_string(auto const& id)
     {
         std::stringstream patchID;
