@@ -2,6 +2,7 @@
 #define PHARE_MHD_MESSENGER_HPP
 
 #include "phare_mpi.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 
 #include "amr/data/field/coarsening/electric_field_coarsener.hpp"
@@ -648,45 +649,24 @@ namespace amr
          * This is needed when the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
          */
-        void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch)
+        void setNaNsOnFieldGhosts(FieldT& field)
         {
-            auto const qty         = field.physicalQuantity();
-            using qty_t            = std::decay_t<decltype(qty)>;
-            using field_geometry_t = FieldGeometry<GridLayoutT, qty_t>;
-
-            auto const box    = patch.getBox();
-            auto const layout = layoutFromPatch<GridLayoutT>(patch);
-
-            // we need to remove the box from the ghost box
-            // to use SAMRAI::removeIntersections we do some conversions to
-            // samrai box.
-            // not gbox is a fieldBox (thanks to the layout)
-
-            auto const gbox  = layout.AMRGhostBoxFor(field.physicalQuantity());
-            auto const sgbox = samrai_box_from(gbox);
-            auto const fbox  = field_geometry_t::toFieldBox(box, qty, layout);
-
-            // we have field samrai boxes so we can now remove one from the other
-            SAMRAI::hier::BoxContainer ghostLayerBoxes{};
-            ghostLayerBoxes.removeIntersections(sgbox, fbox);
-
-            // and now finally set the NaNs on the ghost boxes
-            for (auto const& gb : ghostLayerBoxes)
-                for (auto const& index : layout.AMRToLocal(phare_box_from<dimension>(gb)))
-                    field(index) = std::numeric_limits<typename VecFieldT::value_type>::quiet_NaN();
+            auto const nGhosts = GridLayoutT::nDNbrGhosts(core::QtyCentering::primal)[0];
+            field[core::NdArrayMask{0, nGhosts - 1}]
+                = std::numeric_limits<typename FieldT::type>::quiet_NaN();
         }
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            for (auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field, *patch);
+            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
+                setNaNsOnFieldGhosts(field);
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            for (auto& patch : resourcesManager_->enumerate(level, vf))
+            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
                 for (auto& component : vf)
-                    setNaNsOnFieldGhosts(component, *patch);
+                    setNaNsOnFieldGhosts(component);
         }
 
 
