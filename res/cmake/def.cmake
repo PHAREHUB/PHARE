@@ -258,7 +258,10 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
         return()
       endif()
       add_phare_test_build_flags_(${binary})
-      add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX} ./${binary} WORKING_DIRECTORY ${directory})
+      # only rank 0 writes GTEST_OUTPUT, see res/cmake/gtest_rank0_output.sh
+      add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX}
+                sh ${PHARE_PROJECT_DIR}/res/cmake/gtest_rank0_output.sh ./${binary}
+                WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary} ${directory})
       set_test_procs_(${binary} ${PHARE_MPI_PROCS})
     endfunction(add_phare_test)
