@@ -55,8 +55,8 @@ def listify(arg):
 
 
 def is_scalar(arg):
-    # anything with a length is a container (list, tuple, dict, set, str, ndarray...)
-    return not hasattr(arg, "__len__")
+    # strings are single values, anything else with a length is a container
+    return isinstance(arg, str) or not hasattr(arg, "__len__")
 
 
 def is_nd_array(arg):
