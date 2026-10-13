@@ -474,10 +474,10 @@ namespace amr
             assert(ionFluxBorderMaxRefiners_.size() == 1);
             assert(ionDensityBorderMaxRefiners_.size() == 2);
 
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
+            // for (auto& refiner : ionFluxBorderMaxRefiners_)
+            //     refiner.fill(level.getLevelNumber(), fillTime);
+            // for (auto& refiner : ionDensityBorderMaxRefiners_)
+            //     refiner.fill(level.getLevelNumber(), fillTime);
         }
 
 
