@@ -467,10 +467,10 @@ namespace amr
             assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
             assert(ionDensityBorderMaxRefiners_.size() == 1); // charge density
 
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
+            // for (auto& refiner : ionFluxBorderMaxRefiners_)
+            //     refiner.fill(level.getLevelNumber(), fillTime);
+            // for (auto& refiner : ionDensityBorderMaxRefiners_)
+            //     refiner.fill(level.getLevelNumber(), fillTime);
         }
 
 
