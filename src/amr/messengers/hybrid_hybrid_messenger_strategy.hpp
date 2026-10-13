@@ -4,6 +4,7 @@
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
@@ -950,10 +951,10 @@ namespace amr
 
 
         /** * @brief setNaNsOnFieldGhosts sets NaNs on all the ghost nodes of the field on this
-         * patch: its ghost box minus its own interior field box.
+         * patch.
          *
-         * The ghost refiners (magGhostsRefiners_, elecGhostsRefiners_, currentGhostsRefiners_)
-         * run one SAMRAI RefineSchedule per fill. It first copies from the interiors of the other
+         * The ghost refiners (magGhostsRefiners_, elecGhostsRefiners_) run one
+         * SAMRAI RefineSchedule per fill. It first copies from the interiors of the other
          * patches of the same level (patch ghosts, periodic images included), then refines from
          * the coarser level only where no patch of this level overlaps (level ghosts). The refine
          * operators only write nodes that are still NaN, so the NaNs left after the copy are
@@ -961,46 +962,27 @@ namespace amr
          * overwritten. Setting NaNs on the patch ghosts too is therefore harmless: the copy
          * fills them before the refinement reads anything.
          *
-         * This is the region the schedule writes: the non-overwrite-interior fill pattern removes
-         * the destination patch's interior field box, as we do here. It only needs the patch
-         * itself. Removing every box of the level instead would cost a walk over all the level's
-         * boxes for each local patch and component, which grows with the number of patches and
-         * dominates the step at scale. MHDMessenger does the same.
-         *
          * This is needed because the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
          */
-        void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch)
+        void setNaNsOnFieldGhosts(FieldT& field)
         {
-            auto const qty         = field.physicalQuantity();
-            using field_geometry_t = FieldGeometry<GridLayoutT, std::decay_t<decltype(qty)>>;
-
-            auto const layout = layoutFromPatch<GridLayoutT>(patch);
-            auto const sgbox  = samrai_box_from(layout.AMRGhostBoxFor(qty));
-            auto const fbox   = field_geometry_t::toFieldBox(patch.getBox(), qty, layout);
-
-            SAMRAI::hier::BoxContainer ghostLayerBoxes{};
-            ghostLayerBoxes.removeIntersections(sgbox, fbox);
-
-            for (auto const& gb : ghostLayerBoxes)
-            {
-                auto const pb = phare_box_from<dimension>(gb);
-                for (auto const& index : layout.AMRToLocal(pb))
-                    field(index) = std::numeric_limits<typename VecFieldT::value_type>::quiet_NaN();
-            }
+            auto const nGhosts = GridLayoutT::nDNbrGhosts(core::QtyCentering::primal)[0];
+            field[core::NdArrayMask{0, nGhosts - 1}]
+                = std::numeric_limits<typename FieldT::type>::quiet_NaN();
         }
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            for (auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field, *patch);
+            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
+                setNaNsOnFieldGhosts(field);
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            for (auto& patch : resourcesManager_->enumerate(level, vf))
+            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
                 for (auto& field : vf)
-                    setNaNsOnFieldGhosts(field, *patch);
+                    setNaNsOnFieldGhosts(field);
         }
 
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};
