@@ -4,6 +4,7 @@
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
 
@@ -949,62 +950,39 @@ namespace amr
         }
 
 
-        /** * @brief setNaNsFieldOnGhosts sets NaNs on the level ghost nodes of the field
-         * so that the refinement operators can know nodes at NaN have not been
-         * touched by schedule copy.
+        /** * @brief setNaNsOnFieldGhosts sets NaNs on all the ghost nodes of the field on this
+         * patch.
          *
-         * This is needed when the schedule copy is done before refinement
+         * The ghost refiners (magGhostsRefiners_, elecGhostsRefiners_) run one
+         * SAMRAI RefineSchedule per fill. It first copies from the interiors of the other
+         * patches of the same level (patch ghosts, periodic images included), then refines from
+         * the coarser level only where no patch of this level overlaps (level ghosts). The refine
+         * operators only write nodes that are still NaN, so the NaNs left after the copy are
+         * exactly the level ghost nodes, and the nodes the copy already filled are not
+         * overwritten. Setting NaNs on the patch ghosts too is therefore harmless: the copy
+         * fills them before the refinement reads anything.
+         *
+         * This is needed because the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
-         *
-         * boxes :  are level patch boxes
          */
-        void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch,
-                                  SAMRAI::hier::BoxContainer const& boxes)
+        void setNaNsOnFieldGhosts(FieldT& field)
         {
-            auto const qty         = field.physicalQuantity();
-            using qty_t            = std::decay_t<decltype(qty)>;
-            using field_geometry_t = FieldGeometry<GridLayoutT, qty_t>;
-
-            auto const layout = layoutFromPatch<GridLayoutT>(patch);
-
-            // we need to remove the box from the ghost box
-            // to use SAMRAI::removeIntersections we do some conversions to
-            // samrai box.
-            // note gbox is a fieldBox (thanks to the layout)
-
-            auto const gbox  = layout.AMRGhostBoxFor(field.physicalQuantity());
-            auto const sgbox = samrai_box_from(gbox);
-            auto const fbox  = field_geometry_t::toFieldBoxes(boxes, qty, layout);
-
-            // we create a box container with the ghost box, and then remove the level boxes
-            // from it
-            SAMRAI::hier::BoxContainer ghostLayerBoxes{sgbox};
-            ghostLayerBoxes.removeIntersections(fbox);
-
-            // and now finally set the NaNs on the ghost boxes
-            for (auto const& gb : ghostLayerBoxes)
-            {
-                auto const pb = phare_box_from<dimension>(gb);
-                for (auto const& index : layout.AMRToLocal(pb))
-                    field(index) = std::numeric_limits<typename VecFieldT::value_type>::quiet_NaN();
-            }
+            auto const nGhosts = GridLayoutT::nDNbrGhosts(core::QtyCentering::primal)[0];
+            field[core::NdArrayMask{0, nGhosts - 1}]
+                = std::numeric_limits<typename FieldT::type>::quiet_NaN();
         }
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            auto const& boxes = level.getBoxes();
-
-            for (auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field, *patch, boxes);
+            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
+                setNaNsOnFieldGhosts(field);
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            auto const& boxes = level.getBoxes();
-
-            for (auto& patch : resourcesManager_->enumerate(level, vf))
+            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
                 for (auto& field : vf)
-                    setNaNsOnFieldGhosts(field, *patch, boxes);
+                    setNaNsOnFieldGhosts(field);
         }
 
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};
