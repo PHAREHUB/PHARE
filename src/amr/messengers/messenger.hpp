@@ -151,7 +151,9 @@ namespace amr
          * initDataTime from a coarser level iLevel-1. The initialization is performed on all
          * quantities registered during registerQuantities().
          */
-        virtual void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime)
+        virtual void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               IPhysicalModel& model, level_t& level,
+                               double const initDataTime)
             = 0;
 
 

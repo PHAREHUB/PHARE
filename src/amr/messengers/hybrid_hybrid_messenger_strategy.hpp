@@ -248,13 +248,8 @@ namespace amr
                 auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
                 refluxSchedules[levelNumber] = RefluxAlgo.createSchedule(coarseLevel, level);
 
-                // those are for refinement
-                magInitRefineSchedules[levelNumber] = BalgoInit.createSchedule(
-                    level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
-
-                electricInitRefiners_.registerLevel(hierarchy, level);
-                domainParticlesRefiners_.registerLevel(hierarchy, level);
-                lvlGhostPartOldRefiners_.registerLevel(hierarchy, level);
+                // the init-only refinement schedules (magnetic, electric, domain particles,
+                // level ghost old) are transient, built in initLevel()/regrid() at fill time
                 lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
 
                 // and these for coarsening
@@ -296,7 +291,7 @@ namespace amr
 
             if (levelNumber != rootLevelNumber)
             {
-                lvlGhostPartOldRefiners_.fill(levelNumber, initDataTime);
+                fillLevelGhostParticlesOld_(hierarchy, level, initDataTime);
                 copyLevelGhostOldToPushable_(*level, model);
             }
 
@@ -327,14 +322,21 @@ namespace amr
          * @brief initLevel is used to initialize hybrid data on the level levelNumer at
          * time initDataTime from hybrid coarser data.
          */
-        void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime) override
+        void initLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
+                       IPhysicalModel& model, level_t& level,
+                       double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
 
             auto& hybridModel = static_cast<HybridModel&>(model);
 
-            magInitRefineSchedules[levelNumber]->fillData(initDataTime);
-            electricInitRefiners_.fill(levelNumber, initDataTime);
+            auto const levelPtr = hierarchy->getPatchLevel(levelNumber);
+
+            BalgoInit
+                .createSchedule(levelPtr, nullptr, levelNumber - 1, hierarchy,
+                                &magneticRefinePatchStrategy_)
+                ->fillData(initDataTime);
+            electricInitRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
 
             // no need to call these :
             // magGhostsRefiners_.fill(levelNumber, initDataTime);
@@ -344,10 +346,10 @@ namespace amr
             // so ghost nodes are already filled .
 
             PHARE_LOG_START(3, "hybhybmessengerStrat::initLevel : interior part fill schedule");
-            domainParticlesRefiners_.fill(levelNumber, initDataTime);
+            domainParticlesRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
             PHARE_LOG_STOP(3, "hybhybmessengerStrat::initLevel : interior part fill schedule");
 
-            lvlGhostPartOldRefiners_.fill(levelNumber, initDataTime);
+            fillLevelGhostParticlesOld_(hierarchy, levelPtr, initDataTime);
 
 
             // levelGhostParticles will be pushed during the advance phase
@@ -850,6 +852,14 @@ namespace amr
 
 
 
+        // single build point of the level-ghost-old schedules
+        void fillLevelGhostParticlesOld_(std::shared_ptr<hierarchy_t> const& hierarchy,
+                                         std::shared_ptr<level_t> const& level,
+                                         double const fillTime)
+        {
+            lvlGhostPartOldRefiners_.fillTransient(hierarchy, level, fillTime);
+        }
+
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
         {
             auto& hybridModel = static_cast<HybridModel&>(model);
@@ -979,7 +989,6 @@ namespace amr
         SAMRAI::xfer::RefineAlgorithm BalgoInit;
         SAMRAI::xfer::RefineAlgorithm BregridAlgo;
         SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost;
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magPatchGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> BpredGhostsRefineSchedules;

@@ -80,7 +80,8 @@ namespace amr
 
         std::string coarseModelName() const override { return MHDModel::model_name; }
 
-        void initLevel(IPhysicalModel& /*model*/, level_t& /*level*/,
+        void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+                       IPhysicalModel& /*model*/, level_t& /*level*/,
                        double const /*initDataTime*/) override
         {
         }

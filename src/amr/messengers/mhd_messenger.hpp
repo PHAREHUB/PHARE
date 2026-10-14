@@ -329,13 +329,8 @@ namespace amr
                 HydroZrefluxSchedules[levelNumber]
                     = HydroZrefluxAlgo.createSchedule(coarseLevel, level);
 
-                // refinement
-                magInitRefineSchedules[levelNumber] = BalgoInit.createSchedule(
-                    level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
-
-                densityInitRefiners_.registerLevel(hierarchy, level);
-                momentumInitRefiners_.registerLevel(hierarchy, level);
-                totalEnergyInitRefiners_.registerLevel(hierarchy, level);
+                // the init-only refinement schedules (magnetic, density, momentum, total
+                // energy) are transient, built in initLevel() at fill time
             }
         }
 
@@ -375,16 +370,23 @@ namespace amr
             return std::make_unique<MHDMessengerInfo>();
         }
 
-        void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime) override
+        void initLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
+                       IPhysicalModel& model, level_t& level,
+                       double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
 
             auto& mhdModel = static_cast<MHDModel&>(model);
 
-            magInitRefineSchedules[levelNumber]->fillData(initDataTime);
-            densityInitRefiners_.fill(levelNumber, initDataTime);
-            momentumInitRefiners_.fill(levelNumber, initDataTime);
-            totalEnergyInitRefiners_.fill(levelNumber, initDataTime);
+            auto const levelPtr = hierarchy->getPatchLevel(levelNumber);
+
+            BalgoInit
+                .createSchedule(levelPtr, nullptr, levelNumber - 1, hierarchy,
+                                &magneticRefinePatchStrategy_)
+                ->fillData(initDataTime);
+            densityInitRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
+            momentumInitRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
+            totalEnergyInitRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
         }
 
         void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
@@ -735,7 +737,6 @@ namespace amr
         SAMRAI::xfer::RefineAlgorithm BalgoInit;
         SAMRAI::xfer::RefineAlgorithm BregridAlgo;
         SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost; //
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules; //
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>>
             magPatchGhostsRefineSchedules; //

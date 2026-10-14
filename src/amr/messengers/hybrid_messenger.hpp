@@ -137,9 +137,11 @@ namespace amr
          * @param levelNumber
          * @param initDataTime
          */
-        void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime) override
+        void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                       IPhysicalModel& model, level_t& level,
+                       double const initDataTime) override
         {
-            strat_->initLevel(model, level, initDataTime);
+            strat_->initLevel(hierarchy, model, level, initDataTime);
         }
 
 
