@@ -158,11 +158,14 @@ private:
     {
         auto& levelBoxing = boxing[level->getLevelNumber()] = LevelBoxing{level, {}};
 
+        auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, level->getLevelNumber());
+
         for (auto const& patch : *level)
             if (auto [it, suc] = levelBoxing.patches.try_emplace(
                     amr::to_string(patch->getGlobalId()),
                     Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, hierarchy)});
+                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors),
+                             amr::makeNonOwnedBoxesFor<GridLayout::dimension>(*patch, neighbors)});
                 !suc)
                 throw std::runtime_error("boxing map insertion failure");
     }
@@ -635,7 +638,26 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     if (mode != core::UpdaterMode::domain_only)
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonGhostParticles");
+
+        // the filter below is exact only if the updater kept owned domain particles only
+        PHARE_DEBUG_DO({
+            for (auto& patch : rm.enumerate(level, ions))
+            {
+                auto const& boxes = levelBoxing.at(amr::to_string(patch->getGlobalId()));
+                for (auto const& pop : ions)
+                    for (auto const& particle : pop.domainParticles())
+                        if (!boxes.isOwned(particle.iCell))
+                            throw std::runtime_error("domain particle outside owned cells");
+            }
+        })
+
         fromCoarser.fillIonGhostParticles(ions, level, newTime);
+
+        // the exchange hands a leaving particle to every patch whose domain contains its
+        // cell; on overlapping patches only the owner keeps it
+        for (auto& patch : rm.enumerate(level, ions))
+            ions.eraseDomainParticlesIn(
+                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
     }
 
     for (auto& patch : rm.enumerate(level, ions))

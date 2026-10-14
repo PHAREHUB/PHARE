@@ -8,6 +8,9 @@
 
 #include "gtest/gtest.h"
 
+#include <numeric>
+#include <algorithm>
+
 
 using namespace PHARE::core;
 
@@ -885,6 +888,230 @@ TYPED_TEST(IonUpdaterTest, thatNoNaNsExistOnPhysicalNodesMoments)
             EXPECT_FALSE(std::isnan(fz(ix)));
         }
     }
+}
+
+
+
+
+// Overlapping same-level patches: cells in `nonOwnedBoxes` belong to another patch.
+// Particles move only along x, at a fixed fraction of a cell per step (E = B = 0).
+template<typename DimInterpT>
+struct IonUpdaterOwnershipTest : public IonUpdaterTest<DimInterpT>
+{
+    using Super    = IonUpdaterTest<DimInterpT>;
+    using Box_t    = Super::IonUpdater_t::Box;
+    using Boxing_t = Super::Boxing_t;
+
+    static constexpr double cellsPerStep = 0.5;
+
+    IonUpdaterOwnershipTest()
+    {
+        this->EM.E.zero();
+        this->EM.B.zero();
+    }
+
+    Boxing_t makeBoxing(std::vector<Box_t> const& nonOwned) const
+    {
+        return {this->layout,
+                {grow(this->layout.AMRBox(), Super::GridLayout::options.particle_ghost_width)},
+                nonOwned};
+    }
+
+    static Box_t box(int lower, int upper) { return Box_t{{lower}, {upper}}; }
+
+    void setVelocityX(auto& particles, double const v)
+    {
+        auto const dx = this->layout.meshSize()[0];
+        for (auto& particle : particles)
+            particle.v[0] = v * cellsPerStep * dx / this->dt;
+    }
+
+    // what level initialization does on overlapping patches
+    void eraseNonOwned(std::vector<Box_t> const& nonOwned)
+    {
+        for (auto& pop : this->ions)
+        {
+            auto& particles = pop.domainParticles();
+            auto range      = makeIndexRange(particles);
+            auto const kept = particles.partition(
+                range, [&](auto const& cell) { return !isIn(Point{cell}, nonOwned); });
+            particles.erase(makeRange(particles, kept.iend(), particles.size()));
+        }
+    }
+
+    static std::size_t count(auto const& particles, auto&& predicate)
+    {
+        return sum_from(particles, [&](auto const& p) { return predicate(p) ? 1ul : 0ul; });
+    }
+
+    // particles of `cell` whose displacement takes them into the next cell
+    static auto crossing(auto const& particles, int const cell)
+    {
+        return count(particles, [&](auto const& p) {
+            return p.iCell[0] == cell and p.delta[0] + cellsPerStep >= 1.;
+        });
+    }
+
+    static double weights(auto const& particles)
+    {
+        return sum_from(particles, [](auto const& particle) { return particle.weight; });
+    }
+
+    static double total(auto const& field) { return sum(field); }
+
+    // level ghosts move into the first domain cell, which is owned or not
+    void checkLevelGhostExport(bool const withNonOwned)
+    {
+        typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+        auto const nonOwned = withNonOwned ? std::vector{box(0, 9)} : std::vector<Box_t>{};
+        auto const boxing   = this->makeBoxing(nonOwned);
+        eraseNonOwned(nonOwned);
+
+        std::vector<std::size_t> nbrDomain, nbrEntering;
+        for (auto& pop : this->ions)
+        {
+            setVelocityX(pop.domainParticles(), 0);
+            setVelocityX(pop.levelGhostParticles(), 1);
+            nbrDomain.push_back(pop.domainParticles().size());
+            nbrEntering.push_back(crossing(pop.levelGhostParticles(), -1));
+            ASSERT_GT(nbrEntering.back(), 0u);
+        }
+
+        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+
+        std::size_t ipop = 0;
+        for (auto& pop : this->ions)
+        {
+            auto const& domain = pop.domainParticles();
+            EXPECT_EQ(domain.size(), nbrDomain[ipop] + (withNonOwned ? 0 : nbrEntering[ipop]));
+            EXPECT_EQ(count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell); }), 0u);
+            ++ipop;
+        }
+    }
+
+    void checkLevelGhostDeposit(bool const withNonOwned)
+    {
+        typename Super::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+        auto const nonOwned = withNonOwned ? std::vector{box(0, 9)} : std::vector<Box_t>{};
+        auto const boxing   = this->makeBoxing(nonOwned);
+        eraseNonOwned(nonOwned);
+
+        std::vector<double> expected;
+        for (auto& pop : this->ions)
+        {
+            setVelocityX(pop.domainParticles(), 0);
+            setVelocityX(pop.levelGhostParticles(), 1);
+
+            double enteringWeights = 0;
+            for (auto const& p : pop.levelGhostParticles())
+                if (p.iCell[0] == -1 and p.delta[0] + cellsPerStep >= 1.)
+                    enteringWeights += p.weight;
+            ASSERT_GT(enteringWeights, 0.);
+
+            expected.push_back(weights(pop.domainParticles())
+                               + (withNonOwned ? 0. : enteringWeights));
+        }
+
+        ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt,
+                                     UpdaterMode::domain_only);
+
+        std::size_t ipop = 0;
+        for (auto& pop : this->ions)
+        {
+            EXPECT_NEAR(total(pop.particleDensity()), expected[ipop], 1e-10 * expected[ipop]);
+            ++ipop;
+        }
+    }
+};
+
+using DimInterps1D = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<1, 3>>;
+TYPED_TEST_SUITE(IonUpdaterOwnershipTest, DimInterps1D, );
+
+
+
+TYPED_TEST(IonUpdaterOwnershipTest, particleEnteringNonOwnedCellLeavesDomainAndIsDepositedOnce)
+{
+    typename TestFixture::IonUpdater_t ionUpdater{init_dict["simulation"]["algo"]["ion_updater"]};
+
+    auto const nonOwned = std::vector{TestFixture::box(60, 99)};
+    auto const boxing   = this->makeBoxing(nonOwned);
+    this->eraseNonOwned(nonOwned);
+
+    std::vector<std::size_t> nbrDomain, nbrCrossing;
+    for (auto& pop : this->ions)
+    {
+        this->setVelocityX(pop.domainParticles(), 1);
+        this->setVelocityX(pop.levelGhostParticles(), 0);
+        nbrDomain.push_back(pop.domainParticles().size());
+        nbrCrossing.push_back(TestFixture::crossing(pop.domainParticles(), 59));
+        ASSERT_GT(nbrCrossing.back(), 0u);
+    }
+
+    ionUpdater.updatePopulations(this->ions, this->EM, boxing, this->dt, UpdaterMode::all);
+
+    std::size_t ipop = 0;
+    for (auto& pop : this->ions)
+    {
+        auto const& domain     = pop.domainParticles();
+        auto const& patchGhost = pop.patchGhostParticles();
+
+        EXPECT_EQ(domain.size(), nbrDomain[ipop] - nbrCrossing[ipop]);
+        EXPECT_EQ(
+            TestFixture::count(domain, [&](auto const& p) { return !boxing.isOwned(p.iCell); }),
+            0u);
+
+        // the leaving particles wait in the patch ghost array for the exchange
+        EXPECT_EQ(patchGhost.size(), nbrCrossing[ipop]);
+        EXPECT_EQ(TestFixture::count(patchGhost, [](auto const& p) { return p.iCell[0] == 60; }),
+                  nbrCrossing[ipop]);
+
+        auto const deposited = TestFixture::total(pop.particleDensity());
+        auto const expected  = TestFixture::weights(domain) + TestFixture::weights(patchGhost);
+        EXPECT_NEAR(deposited, expected, 1e-10 * expected);
+        ++ipop;
+    }
+}
+
+
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringOwnedCellIsExported)
+{
+    this->checkLevelGhostExport(/*withNonOwned=*/false);
+}
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotExported)
+{
+    this->checkLevelGhostExport(/*withNonOwned=*/true);
+}
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringOwnedCellIsDepositedInMomentsOnlyMode)
+{
+    this->checkLevelGhostDeposit(/*withNonOwned=*/false);
+}
+
+TYPED_TEST(IonUpdaterOwnershipTest, levelGhostEnteringNonOwnedCellIsNotDepositedInMomentsOnlyMode)
+{
+    this->checkLevelGhostDeposit(/*withNonOwned=*/true);
+}
+
+
+
+TYPED_TEST(IonUpdaterOwnershipTest, ownershipFollowsDomainAndNonOwnedBoxes)
+{
+    auto const boxing = this->makeBoxing({TestFixture::box(10, 19), TestFixture::box(50, 50)});
+    auto const owned  = [&](int i) { return boxing.isOwned(std::array{i}); };
+
+    EXPECT_FALSE(owned(-1));
+    EXPECT_TRUE(owned(0));
+    EXPECT_TRUE(owned(9));
+    EXPECT_FALSE(owned(10));
+    EXPECT_FALSE(owned(19));
+    EXPECT_TRUE(owned(20));
+    EXPECT_FALSE(owned(50));
+    EXPECT_TRUE(owned(99));
+    EXPECT_FALSE(owned(100));
 }
 
 
