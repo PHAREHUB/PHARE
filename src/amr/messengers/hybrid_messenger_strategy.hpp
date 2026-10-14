@@ -60,7 +60,8 @@ namespace amr
 
         // domain filling methods
         // used during level creation
-        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+        virtual void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                               IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                                double const initDataTime)
             = 0;
 
