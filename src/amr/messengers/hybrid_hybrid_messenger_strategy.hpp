@@ -205,14 +205,15 @@ namespace amr
 
 
         /**
-         * @brief all RefinerPool must be notified the level levelNumber now exist.
-         * not doing so will result in communication to/from that level being impossible
+         * @brief builds the schedules reading only level levelNumber. The level's inter-level
+         * schedules are erased first, a re-initialised level makes them stale.
          */
-        void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
+        void registerSameLevelSchedules(hierarchy_ptr const& hierarchy,
+                                        int const levelNumber) override
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
-
+            removeInterLevelSchedules_(levelNumber);
 
             magPatchGhostsRefineSchedules[levelNumber]
                 = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
@@ -222,8 +223,12 @@ namespace amr
             // technically not needed for finest as refluxing is not done onto it.
             patchGhostRefluxedSchedules[levelNumber] = PatchGhostRefluxedAlgo.createSchedule(level);
 
-            elecGhostsRefiners_.registerLevel(hierarchy, level);
-            magGhostsRefiners_.registerLevel(hierarchy, level);
+            // on the root level there is no coarser source, so these are same-level schedules
+            if (levelNumber == rootLevelNumber)
+            {
+                elecGhostsRefiners_.registerLevel(hierarchy, level);
+                magGhostsRefiners_.registerLevel(hierarchy, level);
+            }
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
@@ -238,25 +243,36 @@ namespace amr
                 refiner.registerLevel(hierarchy, level);
             for (auto& refiner : ionDensityBorderMaxRefiners_)
                 refiner.registerLevel(hierarchy, level);
+        }
 
-            // root level is not initialized with a schedule using coarser level data
-            // so we don't create these schedules if root level
-            // TODO this 'if' may not be OK if L0 is regrided
-            if (levelNumber != rootLevelNumber)
-            {
-                // refluxing
-                auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
-                refluxSchedules[levelNumber] = RefluxAlgo.createSchedule(coarseLevel, level);
 
-                // the init-only refinement schedules (magnetic, electric, domain particles,
-                // level ghost old) are transient, built in initLevel()/regrid() at fill time
-                lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
 
-                // and these for coarsening
-                electroSynchronizers_.registerLevel(hierarchy, level);
-                chargeDensitySynchronizers_.registerLevel(hierarchy, level);
-                ionChargeFluxSynchronizers_.registerLevel(hierarchy, level);
-            }
+        /**
+         * @brief builds the schedules reading coarser levels, stale whenever a coarser level is
+         * replaced.
+         */
+        void registerInterLevelSchedules(hierarchy_ptr const& hierarchy,
+                                         int const levelNumber) override
+        {
+            // no coarser level on the root level
+            if (levelNumber == rootLevelNumber)
+                return;
+
+            auto const level = hierarchy->getPatchLevel(levelNumber);
+
+            elecGhostsRefiners_.registerLevel(hierarchy, level);
+            magGhostsRefiners_.registerLevel(hierarchy, level);
+
+            // refluxing
+            auto const& coarseLevel      = hierarchy->getPatchLevel(levelNumber - 1);
+            refluxSchedules[levelNumber] = RefluxAlgo.createSchedule(coarseLevel, level);
+
+            lvlGhostPartNewRefiners_.registerLevel(hierarchy, level);
+
+            // and these for coarsening
+            electroSynchronizers_.registerLevel(hierarchy, level);
+            chargeDensitySynchronizers_.registerLevel(hierarchy, level);
+            ionChargeFluxSynchronizers_.registerLevel(hierarchy, level);
         }
 
 
@@ -332,6 +348,8 @@ namespace amr
 
             auto const levelPtr = hierarchy->getPatchLevel(levelNumber);
 
+            // the init-only refinement schedules (magnetic, electric, domain particles,
+            // level ghost old) are transient, built here and in regrid() at fill time
             BalgoInit
                 .createSchedule(levelPtr, nullptr, levelNumber - 1, hierarchy,
                                 &magneticRefinePatchStrategy_)
@@ -657,8 +675,8 @@ namespace amr
         void reflux(int const coarserLevelNumber, int const fineLevelNumber,
                     double const syncTime) override
         {
-            refluxSchedules[fineLevelNumber]->coarsenData();
-            patchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
+            refluxSchedules.at(fineLevelNumber)->coarsenData();
+            patchGhostRefluxedSchedules.at(coarserLevelNumber)->fillData(syncTime);
         }
 
         // after coarsening, domain nodes have been updated and therefore patch ghost nodes
@@ -680,6 +698,17 @@ namespace amr
         }
 
     private:
+        void removeInterLevelSchedules_(int const levelNumber)
+        {
+            elecGhostsRefiners_.removeLevel(levelNumber);
+            magGhostsRefiners_.removeLevel(levelNumber);
+            lvlGhostPartNewRefiners_.removeLevel(levelNumber);
+            electroSynchronizers_.removeLevel(levelNumber);
+            chargeDensitySynchronizers_.removeLevel(levelNumber);
+            ionChargeFluxSynchronizers_.removeLevel(levelNumber);
+            refluxSchedules.erase(levelNumber);
+        }
+
         // Select the field-refinement operators once at construction. The composite runtime
         // kernels are built from the configured order; B uses the stage-1 magnetic kernel (fills
         // every fine face; the magnetic patch strategy runs the stage-2 divB touch-up afterward).
@@ -852,7 +881,7 @@ namespace amr
 
 
 
-        // single build point of the level-ghost-old schedules
+        // builds, fills and discards the transient level-ghost-old schedules
         void fillLevelGhostParticlesOld_(std::shared_ptr<hierarchy_t> const& hierarchy,
                                          std::shared_ptr<level_t> const& level,
                                          double const fillTime)

@@ -55,7 +55,15 @@ namespace amr
         {
         }
 
-        void registerLevel(hierarchy_ptr const& /*hierarchy*/, int const /*levelNumber*/) override
+        void registerSameLevelSchedules(
+            hierarchy_ptr const& /*hierarchy*/,
+            int const /*levelNumber*/) override
+        {
+        }
+
+        void registerInterLevelSchedules(
+            hierarchy_ptr const& /*hierarchy*/,
+            int const /*levelNumber*/) override
         {
         }
 
