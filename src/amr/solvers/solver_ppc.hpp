@@ -275,16 +275,18 @@ void SolverPPC<HybridModel, AMR_Types>::prepareStep(IPhysicalModel_t& model,
     oldTime_[level.getLevelNumber()] = currentTime;
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
-    auto& B           = hybridModel.state.electromag.B;
 
-    for (auto& patch : level)
-    {
-        auto dataOnPatch = hybridModel.resourcesManager->setOnPatch(*patch, B, Bold_);
-
+    for (auto& patch : level) // SAMRAI patch data times, serial
         hybridModel.resourcesManager->setTime(Bold_, *patch, currentTime);
 
-        Bold_.copyData(B);
-    }
+    auto accessor
+        = amr::make_model_level_accessor(level, hybridModel, hybridModel.state.electromag.B, Bold_);
+    amr::level_exec(
+        accessor, [](auto& view) -> auto& { return std::get<1>(view.args); },
+        [](auto& view, auto const&... tile_idx) {
+            auto& [B, Bold] = view.args;
+            core::copy_data(Bold, B, tile_idx...);
+        });
 }
 
 
@@ -296,11 +298,21 @@ void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& mode
     PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
-    auto& Eavg        = electromagAvg_.E;
-    auto& rm          = *hybridModel.resourcesManager;
-
-    for (auto& patch : rm.enumerate(level, fluxSumE_, Eavg))
-        core::operate<core::PlusEqualsProduct>(fluxSumE_, Eavg, coef);
+    auto accessor = amr::make_model_level_accessor(level, hybridModel, fluxSumE_, electromagAvg_.E);
+    amr::level_exec(
+        accessor, [](auto& view) -> auto& { return std::get<0>(view.args); },
+        [&](auto& view, auto const&... tile_idx) {
+            auto& [fluxSumE, Eavg] = view.args;
+            if constexpr (sizeof...(tile_idx) > 0)
+            {
+                auto dst       = core::tile_at(fluxSumE, tile_idx...);
+                auto const src = core::tile_at(Eavg, tile_idx...);
+                for (std::size_t c = 0; c < dst.size(); ++c)
+                    core::operate_field<core::PlusEqualsProduct>(dst[c], src[c], coef);
+            }
+            else
+                core::operate<core::PlusEqualsProduct>(fluxSumE, Eavg, coef);
+        });
 }
 
 
@@ -312,9 +324,12 @@ void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
     PHARE_LOG_SCOPE(1, "SolverPPC::resetFluxSum");
 
     auto& hybridModel = dynamic_cast<HybridModel&>(model);
-    auto& rm          = *hybridModel.resourcesManager;
-    for (auto& patch : rm.enumerate(level, fluxSumE_))
-        fluxSumE_.zero();
+    auto accessor     = amr::make_model_level_accessor(level, hybridModel, fluxSumE_);
+    amr::level_exec(
+        accessor, [](auto& view) -> auto& { return std::get<0>(view.args); },
+        [](auto& view, auto const&... tile_idx) {
+            core::maybe_tile_at(std::get<0>(view.args), tile_idx...).zero();
+        });
 }
 
 
@@ -564,13 +579,20 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& mo
         PHARE_LOG_SCOPE(1, "SolverPPC::average_");
 
         TimeSetter setTime{level, model, newTime};
-        auto& rm         = *model.resourcesManager;
-        auto& electromag = model.state.electromag;
-        for (auto& _ : rm.enumerate(level, electromag, electromagPred_, electromagAvg_))
-        {
-            PHARE::core::average(electromag.B, electromagPred_.B, electromagAvg_.B);
-            PHARE::core::average(electromag.E, electromagPred_.E, electromagAvg_.E);
-        }
+        auto accessor = amr::make_model_level_accessor(level, model, model.state.electromag,
+                                                       electromagPred_, electromagAvg_);
+        amr::level_exec(
+            accessor, [](auto& view) -> auto& { return std::get<2>(view.args).B; },
+            [](auto& view, auto const&... tile_idx) {
+                auto& [electromag, pred, avg] = view.args;
+                auto const average            = [&](auto& x, auto& x_pred, auto& x_avg) {
+                    auto&& x_avg_t = core::maybe_tile_at(x_avg, tile_idx...);
+                    PHARE::core::average(core::maybe_tile_at(x, tile_idx...),
+                                                    core::maybe_tile_at(x_pred, tile_idx...), x_avg_t);
+                };
+                average(electromag.B, pred.B, avg.B);
+                average(electromag.E, pred.E, avg.E);
+            });
 
         setTime(electromagAvg_.B);
         setTime(electromagAvg_.E);
@@ -688,8 +710,14 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
                 levelBoxing.at(core::to_string(patch->getGlobalId())).nonOwnedBoxes);
     }
 
-    for (auto& patch : rm.enumerate(level, ions)) // can be paralell
-        ions.update();
+    {
+        auto accessor = amr::make_model_level_accessor(level, model, ions);
+        amr::level_exec(
+            accessor, [](auto& view) -> auto& { return std::get<0>(view.args).chargeDensity(); },
+            [](auto& view, auto const&... tile_idx) {
+                std::get<0>(view.args).update(tile_idx...);
+            });
+    }
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonBorders");

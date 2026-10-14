@@ -23,6 +23,7 @@
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
 #include "amr/messengers/refinement_config.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
@@ -441,9 +442,13 @@ namespace amr
 
             domainGhostPartRefiners_.fill(level.getLevelNumber(), fillTime);
 
-            for (auto patch : resourcesManager_->enumerate(level, ions))
-                for (auto& pop : ions)
-                    pop.patchGhostParticles().clear();
+            patch_exec_(
+                level,
+                [](auto& ions_p) {
+                    for (auto& pop : ions_p)
+                        pop.patchGhostParticles().clear();
+                },
+                ions);
         }
 
 
@@ -457,24 +462,32 @@ namespace amr
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
                 {
-                    PHARE_LOG_SCOPE(2,
+                    PHARE_LOG_SCOPE(1,
                                     "HybridHybridMessengerStrategy::fillFluxBorders::reduce_into");
-                    for (auto patch : resourcesManager_->enumerate(level, ions, scratch_vecfield))
-                        for (std::uint8_t c = 0; c < N; ++c)
-                            core::reduce_into(scratch_vecfield[c], ions[i].flux()[c]);
+                    patch_exec_(
+                        level,
+                        [&](auto& ions_p, auto& scratch_p) {
+                            for (std::uint8_t c = 0; c < N; ++c)
+                                core::reduce_into(scratch_p[c], ions_p[i].flux()[c]);
+                        },
+                        ions, scratch_vecfield);
                 }
 
                 {
-                    PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::fillFluxBorders::schedule");
+                    PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillFluxBorders::schedule");
                     popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
                 }
 
                 {
-                    PHARE_LOG_SCOPE(2,
+                    PHARE_LOG_SCOPE(1,
                                     "HybridHybridMessengerStrategy::fillFluxBorders::copy_fields");
-                    for (auto patch : resourcesManager_->enumerate(level, ions, scratch_vecfield))
-                        for (std::uint8_t c = 0; c < N; ++c)
-                            core::copy_fields(ions[i].flux()[c], scratch_vecfield[c]);
+                    level_exec_(
+                        level, [&](auto& ions_p, auto&) -> auto& { return ions_p[i].flux(); },
+                        [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                            for (std::uint8_t c = 0; c < N; ++c)
+                                core::copy_fields(ions_p[i].flux()[c], scratch_p[c], tile_idx...);
+                        },
+                        ions, scratch_vecfield);
                 }
             }
         }
@@ -492,28 +505,35 @@ namespace amr
 
             std::size_t const fieldsPerPop = popDensityBorderSumRefiners_.size() / ions.size();
 
+            auto const border_sum = [&](auto const& density, auto& refiner) {
+                PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillDensityBorders::border_sum");
+                patch_exec_(
+                    level,
+                    [&](auto& ions_p, auto& scratch_p) {
+                        core::reduce_into(scratch_p, density(ions_p));
+                    },
+                    ions, scratch_field);
+
+                {
+                    PHARE_LOG_SCOPE(1,
+                                    "HybridHybridMessengerStrategy::fillDensityBorders::schedule");
+                    refiner.fill(level.getLevelNumber(), fillTime);
+                }
+
+                level_exec_(
+                    level, [&](auto& ions_p, auto&) -> auto& { return density(ions_p); },
+                    [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                        core::copy_fields(density(ions_p), scratch_p, tile_idx...);
+                    },
+                    ions, scratch_field);
+            };
+
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                    core::reduce_into(scratch_field, ions[i].particleDensity());
-
-
-                popDensityBorderSumRefiners_[i * fieldsPerPop].fill(level.getLevelNumber(),
-                                                                    fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                    core::copy_fields(ions[i].particleDensity(), scratch_field);
-
-                //
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                    core::reduce_into(scratch_field, ions[i].chargeDensity());
-
-                popDensityBorderSumRefiners_[i * fieldsPerPop + 1].fill(level.getLevelNumber(),
-                                                                        fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                    core::copy_fields(ions[i].chargeDensity(), scratch_field);
+                border_sum([&](auto& ions_p) -> auto& { return ions_p[i].particleDensity(); },
+                           popDensityBorderSumRefiners_[i * fieldsPerPop]);
+                border_sum([&](auto& ions_p) -> auto& { return ions_p[i].chargeDensity(); },
+                           popDensityBorderSumRefiners_[i * fieldsPerPop + 1]);
             }
         }
 
@@ -527,28 +547,50 @@ namespace amr
 
             auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
 
-            // massDensity
-            for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                core::copy_fields(scratch_field, ions.massDensity());
-            ionDensityBorderMaxRefiners_[0].fill(level.getLevelNumber(), fillTime);
-            for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                core::copy_fields(ions.massDensity(), scratch_field);
+            auto const border_max = [&](auto& scratch, auto const& moment, auto& refiner) {
+                PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonBorders::border_max");
+                patch_exec_(
+                    level,
+                    [&](auto& ions_p, auto& scratch_p) {
+                        core::copy_fields(scratch_p, moment(ions_p));
+                    },
+                    ions, scratch);
 
-            // chargeDensity
-            for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                core::copy_fields(scratch_field, ions.chargeDensity());
-            ionDensityBorderMaxRefiners_[1].fill(level.getLevelNumber(), fillTime);
-            for (auto patch : resourcesManager_->enumerate(level, ions, scratch_field))
-                core::copy_fields(ions.chargeDensity(), scratch_field);
+                {
+                    PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonBorders::schedule");
+                    refiner.fill(level.getLevelNumber(), fillTime);
+                }
 
-            // velocity
-            for (auto patch : resourcesManager_->enumerate(level, ions, scratch_vecfield))
-                for (std::uint8_t c = 0; c < N; ++c)
-                    core::copy_fields(scratch_vecfield[c], ions.velocity()[c]);
+                level_exec_(
+                    level, [&](auto& ions_p, auto&) -> auto& { return moment(ions_p); },
+                    [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                        core::copy_fields(moment(ions_p), scratch_p, tile_idx...);
+                    },
+                    ions, scratch);
+            };
+
+            border_max(
+                scratch_field, [](auto& ions_p) -> auto& { return ions_p.massDensity(); },
+                ionDensityBorderMaxRefiners_[0]);
+            border_max(
+                scratch_field, [](auto& ions_p) -> auto& { return ions_p.chargeDensity(); },
+                ionDensityBorderMaxRefiners_[1]);
+
+            patch_exec_(
+                level,
+                [&](auto& ions_p, auto& scratch_p) {
+                    for (std::uint8_t c = 0; c < N; ++c)
+                        core::copy_fields(scratch_p[c], ions_p.velocity()[c]);
+                },
+                ions, scratch_vecfield);
             ionFluxBorderMaxRefiners_[0].fill(level.getLevelNumber(), fillTime);
-            for (auto patch : resourcesManager_->enumerate(level, ions, scratch_vecfield))
-                for (std::uint8_t c = 0; c < N; ++c)
-                    core::copy_fields(ions.velocity()[c], scratch_vecfield[c]);
+            level_exec_(
+                level, [](auto& ions_p, auto&) -> auto& { return ions_p.velocity(); },
+                [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                    for (std::uint8_t c = 0; c < N; ++c)
+                        core::copy_fields(ions_p.velocity()[c], scratch_p[c], tile_idx...);
+                },
+                ions, scratch_vecfield);
         }
 
 
@@ -573,32 +615,41 @@ namespace amr
                                          + std::to_string(afterPushTime) + " on level "
                                          + std::to_string(level.getLevelNumber()));
             }
-            for (auto const& patch : level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+            if (level.getLevelNumber() == 0) // no levelGhost on root level
+                return;
 
-                for (auto& pop : ions)
-                {
-                    auto& particleDensity = pop.particleDensity();
-                    auto& chargeDensity   = pop.chargeDensity();
-                    auto& flux            = pop.flux();
+            auto accessor = make_level_accessor<GridLayoutT>(level, *resourcesManager_, ions);
+            level_exec(
+                accessor,
+                [](auto& view) -> auto& { return std::get<0>(view.args)[0].particleDensity(); },
+                [&](auto& view, auto const&... tile_idx) {
+                    auto& [ions_p] = view.args;
+                    decltype(interpolate_) interpolate; // one per task, tasks run in parallel
 
-                    if (level.getLevelNumber() > 0) // no levelGhost on root level
+                    for (auto& pop : ions_p)
                     {
+                        auto& particleDensity = pop.particleDensity();
+                        auto& chargeDensity   = pop.chargeDensity();
+                        auto& flux            = pop.flux();
+
+                        auto const deposit = [&](auto const& particles, double const coef) {
+                            using enum core::ParticleType;
+                            if constexpr (sizeof...(tile_idx) > 0)
+                                interpolate.template particleToMesh_tile<LevelGhost>(
+                                    tile_idx..., particles, particleDensity, chargeDensity, flux,
+                                    coef);
+                            else
+                                interpolate.template particleToMesh<LevelGhost>(
+                                    particles, view.layout, particleDensity, chargeDensity, flux,
+                                    coef);
+                        };
+
                         // grab levelGhostParticlesOld and levelGhostParticlesNew
                         // and project them with alpha and (1-alpha) coefs, respectively
-                        auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_.template particleToMesh<core::ParticleType::LevelGhost>(
-                            levelGhostOld, layout, particleDensity, chargeDensity, flux,
-                            1. - alpha);
-
-                        auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_.template particleToMesh<core::ParticleType::LevelGhost>(
-                            levelGhostNew, layout, particleDensity, chargeDensity, flux, alpha);
+                        deposit(pop.levelGhostParticlesOld(), 1. - alpha);
+                        deposit(pop.levelGhostParticlesNew(), alpha);
                     }
-                }
-            }
+                });
         }
 
 
@@ -638,7 +689,7 @@ namespace amr
                        std::shared_ptr<hierarchy_t> const& /*hierarchy*/, double const currentTime,
                        double const prevCoarserTime, double const newCoarserTime) override
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::firstStep");
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::firstStep");
 
             auto levelNumber = level.getLevelNumber();
             if (newCoarserTime < prevCoarserTime)
@@ -674,24 +725,24 @@ namespace amr
             if (level.getLevelNumber() == 0)
                 return;
 
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::lastStep");
 
             auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
+            patch_exec_(
+                level,
+                [](auto& ions) {
+                    for (auto& pop : ions)
+                    {
+                        auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                        auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
+                        auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
-                    levelGhostParticlesNew.clear();
-                    levelGhostParticles = levelGhostParticlesOld;
-                }
-            }
+                        std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
+                        levelGhostParticlesNew.clear();
+                        levelGhostParticles = levelGhostParticlesOld;
+                    }
+                },
+                hybridModel.state.ions);
         }
 
 
@@ -710,28 +761,27 @@ namespace amr
          */
         void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) override
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::prepareStep");
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::prepareStep");
 
             auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
+            for (auto& patch : level) // SAMRAI patch data times, serial
             {
-                auto dataOnPatch = resourcesManager_->setOnPatch(
-                    *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Bold_, Eold_, NiOld_, ViOld_);
-
                 resourcesManager_->setTime(Bold_, *patch, currentTime);
                 resourcesManager_->setTime(Eold_, *patch, currentTime);
                 resourcesManager_->setTime(NiOld_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
-
-                auto& Vi = hybridModel.state.ions.velocity();
-                auto& Ni = hybridModel.state.ions.chargeDensity();
-
-                Bold_.copyData(hybridModel.state.electromag.B);
-                Eold_.copyData(hybridModel.state.electromag.E);
-                ViOld_.copyData(Vi);
-                NiOld_.copyData(Ni);
             }
+
+            level_exec_(
+                level, [](auto&, auto&, auto& Bold, auto&...) -> auto& { return Bold; },
+                [](auto& electromag, auto& ions, auto& Bold, auto& Eold, auto& NiOld, auto& ViOld,
+                   auto const&... tile_idx) {
+                    core::copy_data(Bold, electromag.B, tile_idx...);
+                    core::copy_data(Eold, electromag.E, tile_idx...);
+                    core::copy_data(ViOld, ions.velocity(), tile_idx...);
+                    core::copy_data(NiOld, ions.chargeDensity(), tile_idx...);
+                },
+                hybridModel.state.electromag, hybridModel.state.ions, Bold_, Eold_, NiOld_, ViOld_);
         }
 
 
@@ -986,18 +1036,13 @@ namespace amr
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
         {
             auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
-
-                    levelGhostParticles = levelGhostParticlesOld;
-                }
-            }
+            patch_exec_(
+                level,
+                [](auto& ions) {
+                    for (auto& pop : ions)
+                        pop.levelGhostParticles() = pop.levelGhostParticlesOld();
+                },
+                hybridModel.state.ions);
         }
 
 
@@ -1062,9 +1107,33 @@ namespace amr
         {
             using field_type = typename VecFieldT::field_type;
             if constexpr (core::is_field_tile_set_v<field_type>)
-                for (auto& patch : resourcesManager_->enumerate(level, vf))
-                    for (auto& field : vf)
-                        field.sync_inner_ghosts();
+                level_exec_(
+                    level, [](auto& vf_p) -> auto& { return vf_p; },
+                    [](auto& vf_p, auto const&... tile_idx) {
+                        core::sync_inner_ghosts(vf_p, tile_idx...);
+                    },
+                    vf);
+        }
+
+        // fn(resources...) per patch of the level, a patch per idle pool
+        void patch_exec_(auto& level, auto const& fn, auto&... resources)
+        {
+            auto accessor
+                = make_level_accessor<GridLayoutT>(level, *resourcesManager_, resources...);
+            patch_level_exec(accessor, [&](auto& view) { std::apply(fn, view.args); });
+        }
+
+        // fn(resources..., tile_idx) per tile when tiled(resources...) is tiled (a patch per idle
+        // pool, its tiles on that pool's threads), else fn(resources...) per patch
+        void level_exec_(auto& level, auto const& tiled, auto const& fn, auto&... resources)
+        {
+            auto accessor
+                = make_level_accessor<GridLayoutT>(level, *resourcesManager_, resources...);
+            level_exec(
+                accessor, [&](auto& view) -> auto& { return std::apply(tiled, view.args); },
+                [&](auto& view, auto const&... tile_idx) {
+                    std::apply([&](auto&... r) { fn(r..., tile_idx...); }, view.args);
+                });
         }
 
 

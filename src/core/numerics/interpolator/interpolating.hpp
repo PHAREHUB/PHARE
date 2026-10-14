@@ -11,18 +11,30 @@ namespace PHARE::core
 {
 
 // visits, for tile tidx, the particles of every cell its level ghost halo reaches, read
-// from that cell's clamp-owner tile (TileSet::tag_cells_)
+// from that cell's clamp-owner tile (TileSet::tag_cells_). Level ghosts are never in the
+// patch domain, so only halo cells outside of it are visited: none for interior tiles
 template<typename Particles>
 void on_reachable_level_ghosts(Particles const& particles, std::size_t const tidx, auto&& fn)
 {
-    particles()[tidx].template on_reachable_cells<ParticleType::LevelGhost>([&](auto const& amr) {
+    auto const& patch_box    = particles.box();
+    auto const ghost_cells   = patch_box.lower[0] - particles.ghost_box().lower[0];
+    auto const& tile         = particles()[tidx];
+    auto const tile_halo     = grow(*tile, ghost_cells);
+    auto const halo_in_patch = tile_halo * patch_box;
+    if (halo_in_patch and *halo_in_patch == tile_halo)
+        return; // interior tile
+
+    for (auto const& amr : tile_halo)
+    {
+        if (isIn(amr, patch_box))
+            continue;
         auto const& owner = (*particles().at(amr))();
         if constexpr (Particles::layout_mode == LayoutMode::AoSCMTS)
             for (auto const idx : owner.map(amr))
                 fn(makeRange(owner, idx, idx + 1));
         else
             fn(owner(owner.local_cell(amr)));
-    });
+    }
 }
 
 template<std::size_t dim, std::size_t interpOrder, bool atomic_ops = false,
@@ -45,26 +57,33 @@ public:
                         auto& flux, double coef = 1.)
         requires(is_tiled(Particles::layout_mode))
     {
+        for (std::size_t tidx = 0; tidx < particles().size(); ++tidx)
+            particleToMesh_tile<type>(tidx, particles, rhoP, rhoC, flux, coef);
+    }
+
+    // only writes the moments of tile tidx, distinct tiles can be deposited concurrently
+    template<auto type = ParticleType::Domain, typename Particles>
+    void particleToMesh_tile(std::size_t const tidx, Particles const& particles, auto& rhoP,
+                             auto& rhoC, auto& flux, double coef = 1.)
+        requires(is_tiled(Particles::layout_mode))
+    {
         static_assert(any_in(type, ParticleType::Domain, ParticleType::LevelGhost));
 
-        for (std::size_t tidx = 0; tidx < particles().size(); ++tidx)
-        {
-            auto [rhop, rhoc, F] = tiles_at(tidx, rhoP, rhoC, flux);
-            auto const& rho_lay  = tile_layout(rhoP, tidx);
-            auto const deposit   = [&](auto const& cell_particles) {
-                for (auto const& p : cell_particles)
-                    interp_.particleToMesh(p, rhop, rhoc, F, rho_lay, coef);
-            };
+        auto [rhop, rhoc, F] = tiles_at(tidx, rhoP, rhoC, flux);
+        auto const& rho_lay  = tile_layout(rhoP, tidx);
+        auto const deposit   = [&](auto const& cell_particles) {
+            for (auto const& p : cell_particles)
+                interp_.particleToMesh(p, rhop, rhoc, F, rho_lay, coef);
+        };
 
-            auto& tile_particles = particles()[tidx]();
-            if constexpr (type == ParticleType::LevelGhost)
-                on_reachable_level_ghosts(particles, tidx, deposit);
-            else if constexpr (Particles::layout_mode == LayoutMode::AoSCMTS)
-                deposit(tile_particles);
-            else
-                for (auto const& bix : tile_particles.local_box())
-                    deposit(tile_particles(bix));
-        }
+        auto& tile_particles = particles()[tidx]();
+        if constexpr (type == ParticleType::LevelGhost)
+            on_reachable_level_ghosts(particles, tidx, deposit);
+        else if constexpr (Particles::layout_mode == LayoutMode::AoSCMTS)
+            deposit(tile_particles);
+        else
+            for (auto const& bix : tile_particles.local_box())
+                deposit(tile_particles(bix));
     }
 
     template<auto type = ParticleType::Domain, typename Particles>

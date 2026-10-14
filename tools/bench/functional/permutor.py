@@ -151,6 +151,41 @@ def execute_launches(config_fn, permutables, launches, skip=None, mpirun="mpirun
     make_tarfile(out_dir, rank0=True)  # no MPI in this (parent) process
 
 
+def _cli_value(default, arg):
+    if isinstance(default, list):  # e.g. cells "100,100"
+        return [type(default[0])(v) for v in arg.split(",")]
+    return type(default)(arg)
+
+
+def parse_cli(permutables, launches):
+    """
+    Override permutables/launches from the command line, unlisted keys keep their defaults:
+      --particle_layout AoSMapped AoSPCTS --cells 100,100 200,100 --launches 4:1:1 2:1:2
+    launches are mpirun:pools:threads. Values are cast to the type of the first default value.
+    """
+    import argparse
+
+    if CHILD_ARG in sys.argv:  # child runs only use the record it was given
+        return permutables, launches
+
+    parser = argparse.ArgumentParser()
+    for key, values in permutables:
+        parser.add_argument(f"--{key}", nargs="+", default=None)
+    parser.add_argument("--launches", nargs="+", default=None)
+    args = vars(parser.parse_args())
+
+    permutables = [
+        (key, values if args[key] is None else [_cli_value(values[0], v) for v in args[key]])
+        for key, values in permutables
+    ]
+    if args["launches"] is not None:
+        launch_keys = ("mpirun", "pools", "threads")
+        launches = [launch.split(":") for launch in args["launches"]]
+        assert all(len(launch) == 3 for launch in launches), "expected mpirun:pools:threads"
+        launches = [dict(zip(launch_keys, map(int, launch))) for launch in launches]
+    return permutables, launches
+
+
 def _execute_child(config_fn):
     global out_dir
     from pyphare import cpp

@@ -323,6 +323,17 @@ auto tile_at(T&& tiled, std::size_t const i)
         return std::forward<T>(tiled);
 }
 
+// tile tile_idx of x (a view), or x itself when no tile_idx is given (whole field)
+template<typename T>
+decltype(auto) maybe_tile_at(T&& x, auto const&... tile_idx)
+{
+    static_assert(sizeof...(tile_idx) < 2);
+    if constexpr (sizeof...(tile_idx) == 0)
+        return (x);
+    else
+        return tile_at(std::forward<T>(x), tile_idx...);
+}
+
 template<typename... Tiled>
 auto tiles_at(std::size_t const i, Tiled&&... tiled)
 {
@@ -358,6 +369,27 @@ void tile_exec_with_layout(Fn&& fn, Tiled0&& tiled0, Args&&... args)
 {
     for (std::size_t i = 0; i < tile_count(tiled0); ++i)
         tile_exec_with_layout_at(i, fn, tiled0, args...);
+}
+
+// dst = src for same shape (vec)fields, whole, or only tile tile_idx of tiled ones
+void copy_data(auto& dst, auto& src, auto const&... tile_idx)
+{
+    if constexpr (sizeof...(tile_idx) == 0)
+        dst.copyData(src);
+    else
+    {
+        auto const copy = [](auto& d, auto const& s) {
+            assert(d.size() == s.size());
+            std::copy(s.data(), s.data() + s.size(), d.data());
+        };
+        auto d = tile_at(dst, tile_idx...);
+        auto s = tile_at(src, tile_idx...);
+        if constexpr (is_field_tile_set_v<std::remove_cvref_t<decltype(dst)>>)
+            copy(d, s);
+        else
+            for (std::size_t c = 0; c < d.size(); ++c)
+                copy(d[c], s[c]);
+    }
 }
 
 void sync_inner_ghosts(auto& vf, auto const&... tile_idx)

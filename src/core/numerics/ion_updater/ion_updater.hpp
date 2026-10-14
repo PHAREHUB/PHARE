@@ -233,6 +233,12 @@ private:
     void updateAndDepositAll_(auto& accessor,
                               std::unordered_map<std::string, Boxing_t> const& boxings);
 
+    static auto n_tiles_(auto& view)
+    {
+        auto& ions = std::get<0>(view.args);
+        return ions.size() ? tile_count(ions[0].particleDensity()) : std::size_t{0};
+    }
+
     double dt_ = 0;
 };
 
@@ -244,12 +250,18 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updatePopulations(
 {
     PHARE_LOG_SCOPE(2, "IonUpdater::updatePopulations");
 
-    for (std::size_t i = 0; i < accessor.size(); ++i)
-    {
-        auto view      = accessor[i];
-        auto [ions, _] = view.args;
-        resetMoments(ions);
-    }
+    if constexpr (use_main_thread)
+        for (std::size_t i = 0; i < accessor.size(); ++i)
+        {
+            auto view      = accessor[i];
+            auto [ions, _] = view.args;
+            resetMoments(ions);
+        }
+    else
+        ThreadPool::INSTANCE().tile_exec(
+            accessor.size(), [&](auto const i) { return accessor[i]; },
+            [](auto& view) { return n_tiles_(view); },
+            [](auto& view, auto const t) { resetMoments(std::get<0>(view.args), t); });
     dt_ = dt;
     if (mode == UpdaterMode::domain_only)
         updateAndDepositDomain_(accessor, boxings);
@@ -283,11 +295,13 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
         return;
 
     using Accessor_t = std::remove_reference_t<decltype(accessor)>;
-    MultiBoris<Accessor_t, Interpolator_t>{dt_, accessor}.move(boxings);
+    {
+        PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_::multi_boris");
+        MultiBoris<Accessor_t, Interpolator_t>{dt_, accessor}.move(boxings);
+    }
 
-    auto post_move_sync = [&](auto const i) mutable {
-        auto view                 = accessor[i];
-        auto [ions, _]            = view.args;
+    auto post_move_sync = [&](auto& view) {
+        auto& [ions, _]           = view.args;
         auto const patch_id       = view.patchID();
         auto const& patch_boxings = boxings.at(patch_id);
 
@@ -305,37 +319,42 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
             per_pop(pop);
     };
 
-    auto deposit = [&](auto const i) mutable {
-        auto view            = accessor[i];
-        auto [ions, _]       = view.args;
-        auto const patch_id  = view.patchID();
-        auto const& boxing_i = boxings.at(patch_id);
+    // only writes the moments of tile t, domain and patch ghosts of a tile in the same task
+    auto const deposit_tile = [](auto& view, auto const t) {
         Interpolating_t interp;
-        for (auto& pop : ions)
+        for (auto& pop : std::get<0>(view.args))
         {
-            interp.particleToMesh(pop.domainParticles(), boxing_i.layout, pop.particleDensity(),
-                                  pop.chargeDensity(), pop.flux());
-            interp.particleToMesh(pop.patchGhostParticles(), boxing_i.layout, pop.particleDensity(),
-                                  pop.chargeDensity(), pop.flux());
+            interp.particleToMesh_tile(t, pop.domainParticles(), pop.particleDensity(),
+                                       pop.chargeDensity(), pop.flux());
+            interp.particleToMesh_tile(t, pop.patchGhostParticles(), pop.particleDensity(),
+                                       pop.chargeDensity(), pop.flux());
         }
     };
 
     if constexpr (use_main_thread)
     {
         for (std::size_t i = 0; i < accessor.size(); ++i)
-            post_move_sync(i);
-        for (std::size_t i = 0; i < accessor.size(); ++i)
-            deposit(i);
+        {
+            auto view = accessor[i];
+            post_move_sync(view);
+            for (std::size_t t = 0; t < n_tiles_(view); ++t)
+                deposit_tile(view, t);
+        }
     }
     else
     {
         auto& tp = ThreadPool::INSTANCE();
-        for (std::size_t i = 0; i < accessor.size(); ++i)
-            tp.async([&post_move_sync, i] { post_move_sync(i); });
-        tp.sync();
-        for (std::size_t i = 0; i < accessor.size(); ++i)
-            tp.async([&deposit, i] { deposit(i); });
-        tp.sync();
+        {
+            PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_::post_move_sync");
+            tp.patch_exec( // moves particles between tiles
+                accessor.size(), [&](auto const i) { return accessor[i]; }, post_move_sync);
+        }
+        {
+            PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_::deposit");
+            tp.tile_exec(
+                accessor.size(), [&](auto const i) { return accessor[i]; },
+                [](auto& view) { return n_tiles_(view); }, deposit_tile);
+        }
     }
 }
 

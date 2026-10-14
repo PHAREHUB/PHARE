@@ -113,6 +113,12 @@ struct TensorField
     auto end() const { return std::end(components_); }
     auto constexpr size() const { return N; }
 
+    void zero()
+    {
+        for (auto& component : components_)
+            component.zero();
+    }
+
     void setBuffer(std::nullptr_t ptr)
     {
         for_N<N, for_N_R_mode::forward_tuple>([&](auto i) { components_[i].setBuffer(nullptr); });

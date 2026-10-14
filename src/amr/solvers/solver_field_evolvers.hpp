@@ -16,48 +16,15 @@
 namespace PHARE::solver
 {
 
-// a pool per patch, a task per tile: fn(view, tile_idx) has run for every tile of every patch on
-// return, tiled(view) gives the tile count
-template<typename PatchView_t>
-void tiled_level_exec(std::vector<std::shared_ptr<PatchView_t>> const& views, auto const& tiled,
-                      auto const& fn)
-{
-    auto& tp = core::ThreadPool::INSTANCE();
-    for (auto const& view : views)
-    {
-        auto& pool         = tp.get_pool(tp.first_ready_idx());
-        auto const n_tiles = core::tile_count(tiled(*view));
-        for (std::size_t t = 0; t < n_tiles; ++t)
-            pool.detach_task([=] { fn(*view, t); });
-    }
-    tp.sync();
-}
-
-template<typename Accessor>
-auto make_patch_views(Accessor& accessor)
-{
-    using PatchView_t = decltype(accessor[0]);
-    std::vector<std::shared_ptr<PatchView_t>> views;
-    views.reserve(accessor.size());
-    for (std::size_t i = 0; i < accessor.size(); ++i)
-        views.emplace_back(std::make_shared<PatchView_t>(accessor[i]));
-    return views;
-}
-
-template<typename Accessor>
-void tiled_level_exec(Accessor& accessor, auto const& tiled, auto const& fn)
-{
-    tiled_level_exec(make_patch_views(accessor), tiled, fn);
-}
+using amr::tiled_level_exec;
 
 // on_tile(view, tile_idx) runs for every tile of every patch before the ghosts of output(view)
 // are synced, also per tile, as syncing a tile reads its neighbours' domains
 template<typename Accessor>
 void tiled_level_transform(Accessor& accessor, auto const& output, auto const& on_tile)
 {
-    auto const views = make_patch_views(accessor);
-    tiled_level_exec(views, output, on_tile);
-    tiled_level_exec(views, output, [=](auto& view, auto const tile_idx) {
+    tiled_level_exec(accessor, output, on_tile);
+    tiled_level_exec(accessor, output, [&](auto& view, auto const tile_idx) {
         core::sync_inner_ghosts(output(view), tile_idx);
     });
 }

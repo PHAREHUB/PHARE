@@ -4,6 +4,7 @@
 
 #include "core/def.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/data/field/field_tiles.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -75,9 +76,13 @@ namespace core
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
         tensorfield_type& momentumTensor() { return momentumTensor_; }
 
-        void computeChargeDensity()
+        // the compute functions below work on the whole field, or only on tile tile_idx of tiled
+        // fields, distinct tiles can then be computed concurrently
+
+        void computeChargeDensity(auto const&... tile_idx)
         {
-            chargeDensity_.zero();
+            auto&& chargeDensity = maybe_tile_at(chargeDensity_, tile_idx...);
+            chargeDensity.zero();
 
             for (auto const& pop : populations_)
             {
@@ -85,14 +90,15 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.chargeDensity();
-                core::transform(chargeDensity_, popDensity, chargeDensity_, std::plus<Float>{});
+                auto&& popDensity = maybe_tile_at(pop.chargeDensity(), tile_idx...);
+                core::transform(chargeDensity, popDensity, chargeDensity, std::plus<Float>{});
             }
         }
 
-        void computeMassDensity()
+        void computeMassDensity(auto const&... tile_idx)
         {
-            massDensity_.zero();
+            auto&& massDensity = maybe_tile_at(massDensity_, tile_idx...);
+            massDensity.zero();
 
             for (auto const& pop : populations_)
             {
@@ -100,22 +106,24 @@ namespace core
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.particleDensity();
+                auto&& popDensity = maybe_tile_at(pop.particleDensity(), tile_idx...);
                 core::transform(
-                    massDensity_, popDensity, massDensity_,
+                    massDensity, popDensity, massDensity,
                     [&pop](auto const& n, auto const& pop_n) { return n + pop_n * pop.mass(); });
             }
         }
 
 
-        void computeBulkVelocity()
+        void computeBulkVelocity(auto const&... tile_idx)
         {
-            computeMassDensity();
+            computeMassDensity(tile_idx...);
 
-            bulkVelocity_.zero();
-            auto& vx = bulkVelocity_.getComponent(Component::X);
-            auto& vy = bulkVelocity_.getComponent(Component::Y);
-            auto& vz = bulkVelocity_.getComponent(Component::Z);
+            auto&& massDensity  = maybe_tile_at(massDensity_, tile_idx...);
+            auto&& bulkVelocity = maybe_tile_at(bulkVelocity_, tile_idx...);
+            bulkVelocity.zero();
+            auto& vx = bulkVelocity[0];
+            auto& vy = bulkVelocity[1];
+            auto& vz = bulkVelocity[2];
 
             for (auto& pop : populations_)
             {
@@ -123,16 +131,16 @@ namespace core
                 std::function<Float(Float, Float)> plusMass
                     = [&pop](Float const& v, Float const& f) { return v + f * pop.mass(); };
 
-                auto&& [fx, fy, fz] = pop.flux()();
+                auto&& flux = maybe_tile_at(pop.flux(), tile_idx...);
 
-                core::transform(vy, fy, vy, plusMass);
-                core::transform(vx, fx, vx, plusMass);
-                core::transform(vz, fz, vz, plusMass);
+                core::transform(vy, flux[1], vy, plusMass);
+                core::transform(vx, flux[0], vx, plusMass);
+                core::transform(vz, flux[2], vz, plusMass);
             }
 
-            core::transform(vx, massDensity_, vx, std::divides<Float>{});
-            core::transform(vy, massDensity_, vy, std::divides<Float>{});
-            core::transform(vz, massDensity_, vz, std::divides<Float>{});
+            core::transform(vx, massDensity, vx, std::divides<Float>{});
+            core::transform(vy, massDensity, vy, std::divides<Float>{});
+            core::transform(vz, massDensity, vz, std::divides<Float>{});
         }
 
 
@@ -154,10 +162,10 @@ namespace core
         }
 
 
-        void update()
+        void update(auto const&... tile_idx)
         {
-            computeChargeDensity();
-            computeBulkVelocity();
+            computeChargeDensity(tile_idx...);
+            computeBulkVelocity(tile_idx...);
         }
 
 

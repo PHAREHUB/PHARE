@@ -541,6 +541,17 @@ void copy_fields(FieldTileSet<T0s...>& dst, basic::Field<opts> const& src)
             FieldBox{src, patch_layout, tile.ghost_box()});
 }
 
+// only writes tile tile_idx, distinct tiles can be copied concurrently
+template<typename... T0s, auto opts>
+void copy_fields(FieldTileSet<T0s...>& dst, basic::Field<opts> const& src,
+                 std::size_t const tile_idx)
+{
+    auto const& patch_layout = dst()[0].layout().copy_as(dst.box());
+    auto& tile               = dst()[tile_idx];
+    FieldBox{tile(), tile.layout(), tile.ghost_box()}.op(
+        FieldBox{src, patch_layout, tile.ghost_box()});
+}
+
 template<typename... T0s, auto opts>
 void copy_fields(basic::Field<opts>& dst, FieldTileSet<T0s...> const& src)
 {

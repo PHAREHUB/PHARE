@@ -9,6 +9,7 @@
 
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/hybrid_messenger.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/solvers/solver_field_evolvers.hpp"
 #include "amr/solvers/solver_hybrid_field_evolvers.hpp"
@@ -78,24 +79,21 @@ namespace solver
             if (isRegridding)
             {
                 PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
-                PHARE_LOG_START(3, "hybridLevelInitializer::initialize : regriding block");
+                PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::regrid");
                 messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
-                PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : regriding block");
             }
             else
             {
                 if (isRootLevel(levelNumber))
                 {
-                    PHARE_LOG_START(3, "hybridLevelInitializer::initialize : root level init");
+                    PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::root_init");
                     model.initialize(level);
                     messenger.fillRootGhosts(model, level, initDataTime);
-                    PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : root level init");
                 }
                 else
                 {
-                    PHARE_LOG_START(3, "hybridLevelInitializer::initialize : initlevel");
+                    PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::initLevel");
                     messenger.initLevel(model, level, initDataTime);
-                    PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : initlevel");
                 }
             }
 
@@ -110,11 +108,20 @@ namespace solver
                     amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
 
             // now all particles are here, we must compute moments.
-            for (auto& patch : rm.enumerate(level, ions))
+
+            auto accessor = amr::make_model_level_accessor(level, hybridModel, ions);
+            auto const tiled
+                = [](auto& view) -> auto& { return std::get<0>(view.args).chargeDensity(); };
+
+            // per tile for tiled layouts: no tile reads another's moments
             {
-                auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                core::resetMoments(ions);
-                core::depositParticles(ions, layout, interpolate_, core::DomainDeposit{});
+                PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::domain_deposit");
+                amr::level_exec(accessor, tiled, [&](auto& view, auto const&... tile_idx) {
+                    auto& [ions_p] = view.args;
+                    core::resetMoments(ions_p, tile_idx...);
+                    core::depositParticles(ions_p, view.layout, interpolate_, core::DomainDeposit{},
+                                           tile_idx...);
+                });
             }
 
 
@@ -122,24 +129,32 @@ namespace solver
             // but nodes on ghost box overlaps are not complete because they lack
             // contribution of neighbor particles.
             // The following two calls will += flux and density on these overlaps.
-            hybMessenger.fillFluxBorders(ions, level, initDataTime);
-            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+            {
+                PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::border_sums");
+                hybMessenger.fillFluxBorders(ions, level, initDataTime);
+                hybMessenger.fillDensityBorders(ions, level, initDataTime);
+            }
 
             // the only remaning incomplete nodes are those next to and on level ghost layers
             // we now complete them by depositing levelghost particles
-            for (auto& patch : rm.enumerate(level, ions))
             {
-                if (!isRootLevel(levelNumber))
-                {
-                    auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-                    core::depositParticles(ions, layout, interpolate_, core::LevelGhostDeposit{});
-                }
+                PHARE_LOG_SCOPE(
+                    1, "HybridLevelInitializer::initialize_level::level_ghost_deposit_and_moments");
+                amr::level_exec(accessor, tiled, [&](auto& view, auto const&... tile_idx) {
+                    auto& [ions_p] = view.args;
+                    if (!isRootLevel(levelNumber))
+                        core::depositParticles(ions_p, view.layout, interpolate_,
+                                               core::LevelGhostDeposit{}, tile_idx...);
 
-                // now all nodes are complete, the total ion moments can safely be computed.
-                ions.computeChargeDensity();
-                ions.computeBulkVelocity();
+                    // now all nodes are complete, the total ion moments can safely be computed.
+                    ions_p.computeChargeDensity(tile_idx...);
+                    ions_p.computeBulkVelocity(tile_idx...);
+                });
             }
-            hybMessenger.fillIonBorders(ions, level, initDataTime);
+            {
+                PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::fillIonBorders");
+                hybMessenger.fillIonBorders(ions, level, initDataTime);
+            }
 
             // on level i>0, this relies on 'prepareStep' having been called on when
             // level i-1 was initialized (at the end of this function)
@@ -161,13 +176,17 @@ namespace solver
             auto& B = hybridModel.state.electromag.B;
             auto& J = hybridModel.state.J;
 
-            Ampere_t{level, hybridModel}(B, J);
-            setTime(J);
+            {
+                PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::ampere");
+                Ampere_t{level, hybridModel}(B, J);
+                setTime(J);
+            }
 
             // E only needs computing on a fresh root level: it is regridded on
             // regrid paths and initLevel has done it on new finer levels
             if (!isRegridding and isRootLevel(levelNumber))
             {
+                PHARE_LOG_SCOPE(1, "HybridLevelInitializer::initialize_level::root_ohm");
                 auto& E         = hybridModel.state.electromag.E;
                 auto& electrons = hybridModel.state.electrons;
 

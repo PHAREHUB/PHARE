@@ -1,8 +1,9 @@
 #
 #
-# how to use
+# how to use, any permutable below can be overridden from the CLI, see permutor.parse_cli
 """
-PHARE_SCOPE_TIMING=1 python3 -Ou tools/bench/functional/permute_harris_2d.py
+python3 -Ou tools/bench/functional/permute_harris_2d.py \
+    --particle_layout AoSMapped AoSPCTS --cells 100,100 --launches 4:1:1 2:1:2 1:2:2
 python3 tools/python3/bench.py print_summary -i .phare_bench/20260528-151026.tar.gz > perms
 python3 -c "from tools.bench.functional.permutor import sort_summaries as sort; sort('perms')"
 python3 tools/bench/functional/plot_permutations.py
@@ -11,8 +12,8 @@ python3 tools/bench/functional/plot_permutations.py
 import numpy as np
 from copy import deepcopy
 
+from pyphare import cpp
 import pyphare.pharein as ph
-from pyphare.simulator.simulator import startMPI
 
 ### test defaults
 ndim = 2
@@ -32,14 +33,27 @@ def _cells():
 
 
 permutables = [
+    ("particle_layout", ["AoSMapped", "AoSPCTS", "AoSCMTS"]),
     ("interp_order", [1]),
     ("cells", _cells()),
     ("ppc", [100]),
     ("max_nbr_levels", [3]),
-    ("tag_buffer", [3, 4, 5, 10]),  #
-    ("tagging_threshold", [0.1, 0.2, 0.3, 0.4]),  #
-    ("tile_size", [3, 4, 5, 6, 7, 8]),  #
+    ("tag_buffer", [3]),  # , 4, 5, 10
+    ("tagging_threshold", [0.1]),  # , 0.2, 0.3, 0.4
+    ("tile_size", [3]),  # , 4, 5, 6, 7, 8   (SAMRAI clustering, not PHARE tiling)
+    ("PHARE_TILING_MAX_TILE_SIZE", [10]),  # env var, PHARE tiling
 ]
+
+# equal total cores per launch: flat MPI vs MPI x thread pools x threads per pool
+launches = [
+    {"mpirun": 4, "pools": 1, "threads": 1},
+    {"mpirun": 2, "pools": 1, "threads": 2},
+    {"mpirun": 1, "pools": 2, "threads": 2},
+]
+
+
+def skip(record):  # AoSMapped has no tile threading, only compare it under flat MPI
+    return record["particle_layout"] == "AoSMapped" and record["pools"] * record["threads"] > 1
 
 
 def config(**kwargs):
@@ -48,6 +62,7 @@ def config(**kwargs):
     sim = ph.Simulation(
         refinement="tagging",
         interp_order=kwargs.get("interp_order", 1),
+        particle_layout=kwargs.get("particle_layout", "AoSMapped"),
         time_step=kwargs.get("time_step", time_step),
         final_time=kwargs.get("final_time", final_time),
         dl=kwargs.get("dl", dl),
@@ -144,14 +159,19 @@ def config(**kwargs):
         "vthx": vthx,
         "vthy": vthy,
         "vthz": vthz,
-        "nbr_part_per_cell": 100,
+        "nbr_part_per_cell": kwargs.get("ppc", ppc),
     }
 
     ph.MaxwellianFluidModel(
         bx=bx,
         by=by,
         bz=bz,
-        protons={"charge": 1, "density": density, **vvv, "init": {"seed": 12334}},
+        protons={
+            "charge": 1,
+            "density": density,
+            **vvv,
+            "init": {"seed": cpp.mpi_rank() + 12},
+        },
     )
     ph.ElectronModel(closure="isothermal", Te=0.0)
 
@@ -159,7 +179,6 @@ def config(**kwargs):
 
 
 if __name__ == "__main__":
-    from permutor import execute
+    from permutor import execute_launches, parse_cli
 
-    startMPI()
-    execute(config, permutables)
+    execute_launches(config, *parse_cli(permutables, launches), skip)

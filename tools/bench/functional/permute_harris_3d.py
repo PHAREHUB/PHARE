@@ -29,7 +29,7 @@ ndim = 3
 dl = [0.4] * ndim
 time_step = 0.001
 final_time = 0.001
-cells = [30, 30, 30]
+cells = [20, 40, 20]
 ppc = 100
 
 
@@ -62,7 +62,10 @@ launches = [
 
 
 def skip(record):  # AoSMapped has no tile threading, only compare it under flat MPI
-    return record["particle_layout"] == "AoSMapped" and record["mpirun"] != 4
+    return (
+        record["particle_layout"] == "AoSMapped"
+        and record["pools"] * record["threads"] > 1
+    )
 
 
 def mkdir(dir):
@@ -192,6 +195,6 @@ def config(**kwargs):
 
 
 if __name__ == "__main__":
-    from permutor import execute_launches
+    from permutor import execute_launches, parse_cli
 
-    execute_launches(config, permutables, launches, skip)
+    execute_launches(config, *parse_cli(permutables, launches), skip)
