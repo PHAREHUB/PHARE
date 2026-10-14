@@ -49,8 +49,15 @@ namespace amr
         {
         }
 
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                           int const /*levelNumber*/) override
+        void registerSameLevelSchedules(
+            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+            int const /*levelNumber*/) override
+        {
+        }
+
+        void registerInterLevelSchedules(
+            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
+            int const /*levelNumber*/) override
         {
         }
 

@@ -48,8 +48,14 @@ namespace amr
         virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner()   = 0;
 
 
-        virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+        virtual void
+        registerSameLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                    int const levelNumber)
+            = 0;
+
+        virtual void
+        registerInterLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                    int const levelNumber)
             = 0;
 
         virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,

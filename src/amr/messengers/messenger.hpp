@@ -107,18 +107,34 @@ namespace amr
 
 
         /**
-         * @brief registerLevel tells the messenger which level in the hierarchy data will be
-         * communicated to. When the messenger involves communication from coarser grid, it is from
-         * levelNumber-1.
-         *
-         * This method needs to be called whenever initializing a new level in the
-         * hierarchy so that a valid Messenger be used at this level. The method registerQuantities
-         * must be called before this method. The levelnumber needs to be the one of a level in the
-         * given hierarchy.
+         * @brief registerSameLevelSchedules builds the schedules reading only level levelNumber.
+         * They stay valid as long as the level exists. It also drops this level's inter-level
+         * schedules, which a re-initialised level makes stale. The method registerQuantities must
+         * be called before this method.
          */
-        virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+        virtual void
+        registerSameLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                    int const levelNumber)
             = 0;
+
+        /**
+         * @brief registerInterLevelSchedules builds the schedules reading coarser levels. They go
+         * stale whenever a coarser level is replaced. Nothing is built on the root level.
+         */
+        virtual void
+        registerInterLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                    int const levelNumber)
+            = 0;
+
+        /**
+         * @brief registerLevel builds both the same-level and the inter-level schedules.
+         */
+        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                           int const levelNumber)
+        {
+            registerSameLevelSchedules(hierarchy, levelNumber);
+            registerInterLevelSchedules(hierarchy, levelNumber);
+        }
 
 
 
@@ -145,7 +161,8 @@ namespace amr
         /**
          * @brief initLevel is used by the MultiPhysicsIntegrator to initialize a level at time
          * initDataTime from a coarser level iLevel-1. The initialization is performed on all
-         * quantities registered during registerQuantities().
+         * quantities registered during registerQuantities(). The hierarchy is needed to build
+         * the transient init schedules.
          */
         virtual void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
