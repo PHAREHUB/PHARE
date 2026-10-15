@@ -161,13 +161,15 @@ private:
         auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, level->getLevelNumber());
 
         for (auto const& patch : *level)
+        {
+            auto ghosts = amr::makePatchGhostBoxes<GridLayout>(*patch, neighbors);
             if (auto [it, suc] = levelBoxing.patches.try_emplace(
                     amr::to_string(patch->getGlobalId()),
-                    Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::patchGhostBoxOverlaps<GridLayout>(*patch, neighbors),
-                             amr::makeNonOwnedBoxesFor<GridLayout::dimension>(*patch, neighbors)});
+                    Boxing_t{amr::layoutFromPatch<GridLayout>(*patch), std::move(ghosts.boxes),
+                             ghosts.nNonOwned});
                 !suc)
                 throw std::runtime_error("boxing map insertion failure");
+        }
     }
 
     auto& setup_level(hierarchy_t const& hierarchy, int const levelNumber)
@@ -656,7 +658,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         // cell; on overlapping patches only the owner keeps it
         for (auto& patch : rm.enumerate(level, ions))
             ions.eraseDomainParticlesIn(
-                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
+                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes());
     }
 
     for (auto& patch : rm.enumerate(level, ions))
