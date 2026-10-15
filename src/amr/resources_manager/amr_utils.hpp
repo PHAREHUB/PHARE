@@ -14,6 +14,8 @@
 #include "amr/types/amr_types.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 
+#include <span>
+
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/hier/IntVector.h>
@@ -213,22 +215,6 @@ namespace amr
     }
 
 
-    // patch ghost layer: overlaps of the particle ghost box with same-level neighbours
-    template<typename GridLayoutT>
-    NO_DISCARD auto patchGhostBoxOverlaps(SAMRAI::hier::Patch const& patch,
-                                          SAMRAI::hier::HierarchyNeighbors const& neighbors)
-    {
-        auto constexpr dimension    = GridLayoutT::dimension;
-        auto const domBox           = phare_box_from<dimension>(patch.getBox());
-        auto const particleGhostBox = grow(domBox, GridLayoutT::options.particle_ghost_width);
-        return core::generate_from(
-            [&](auto& neighbox) {
-                return *(particleGhostBox * phare_box_from<dimension>(neighbox));
-            },
-            neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber()));
-    }
-
-
     // Cells of `box` that are also covered by a neighbour with a smaller id.
     // `neighbors` is a range of (box, id) pairs. With ids that are unique and totally ordered,
     // every cell covered by at least one box is left out of the result of exactly one box.
@@ -244,25 +230,50 @@ namespace amr
     }
 
 
+    //! patch ghost boxes of a patch, see makePatchGhostBoxes
+    template<typename Box_t>
+    struct PatchGhostBoxes
+    {
+        std::vector<Box_t> boxes;
+        std::size_t nNonOwned = 0;
+
+        //! the domain cells owned by an overlapping same-level patch, usually none
+        auto nonOwned() const { return std::span<Box_t const>{boxes.data(), nNonOwned}; }
+    };
+
+
     // Same-level patches may overlap: SAMRAI grows small boxes to the minimum patch size
     // without looking at the other new boxes. A cell covered by several patches is owned by
     // the patch with the smallest GlobalId (lowest owner rank, then lowest local id).
-    // Returns the cells of `patch` owned by another patch. Periodic images carry the GlobalId
-    // of their patch, so all ranks agree without communication.
-    template<std::size_t dimension>
-    NO_DISCARD auto makeNonOwnedBoxesFor(SAMRAI::hier::Patch const& patch,
-                                         SAMRAI::hier::HierarchyNeighbors const& neighbors)
+    // Periodic images carry the GlobalId of their patch, so all ranks agree without
+    // communication.
+    //
+    // Returns where particles of `patch` belong to a same-level neighbour: first the domain
+    // cells owned by another patch (makeNonOwnedBoxes), then the overlaps of the particle ghost
+    // box with every neighbour.
+    template<typename GridLayoutT>
+    NO_DISCARD auto makePatchGhostBoxes(SAMRAI::hier::Patch const& patch,
+                                        SAMRAI::hier::HierarchyNeighbors const& neighbors)
     {
-        auto const& neighbor_boxes
-            = neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber());
+        auto constexpr dimension    = GridLayoutT::dimension;
+        auto const domBox           = phare_box_from<dimension>(patch.getBox());
+        auto const particleGhostBox = grow(domBox, GridLayoutT::options.particle_ghost_width);
+
         auto const neighborIds = core::generate_from(
             [](auto const& neighbox) {
                 return std::make_pair(phare_box_from<dimension>(neighbox), neighbox.getGlobalId());
             },
-            neighbor_boxes);
+            neighbors.getSameLevelNeighbors(patch.getBox(), patch.getPatchLevelNumber()));
 
-        return makeNonOwnedBoxes(phare_box_from<dimension>(patch.getBox()), patch.getGlobalId(),
-                                 neighborIds);
+        PatchGhostBoxes<core::Box<int, dimension>> ghosts{
+            makeNonOwnedBoxes(domBox, patch.getGlobalId(), neighborIds)};
+        ghosts.nNonOwned = ghosts.boxes.size();
+
+        ghosts.boxes.reserve(ghosts.nNonOwned + neighborIds.size());
+        for (auto const& [neighbox, _] : neighborIds)
+            ghosts.boxes.emplace_back(*(particleGhostBox * neighbox));
+
+        return ghosts;
     }
 
 

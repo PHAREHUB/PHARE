@@ -6,6 +6,9 @@
 #include "core/utilities/point/point.hpp"
 #include "core/utilities/range/range.hpp"
 
+#include <span>
+#include <vector>
+#include <cstddef>
 #include <functional>
 
 namespace PHARE::core
@@ -25,21 +28,31 @@ struct UpdaterSelectionBoxing
 
 
     GridLayout_t const layout;
+    // where particles belong to a same-level neighbour: the first nNonOwned boxes are the
+    // domain cells owned by an overlapping same-level patch (usually none), the rest the
+    // overlaps of the ghost box with the neighbours (see amr::makePatchGhostBoxes)
     std::vector<Box_t> const patchGhostBox;
-    // domain cells owned by an overlapping same-level patch, usually empty
-    std::vector<Box_t> const nonOwnedBoxes{};
-    Box_t const domainBox = layout.AMRBox();
-    Box_t const ghostBox  = grow(domainBox, partGhostWidth);
+    std::size_t const nNonOwned = 0;
+    Box_t const domainBox       = layout.AMRBox();
+    Box_t const ghostBox        = grow(domainBox, partGhostWidth);
 
-    static bool isOwned(auto const& cell, Box_t const& domainBox,
-                        std::vector<Box_t> const& nonOwnedBoxes)
+    auto nonOwnedBoxes() const { return std::span<Box_t const>{patchGhostBox.data(), nNonOwned}; }
+
+    static bool isOwned(auto const& cell, Box_t const& domainBox, auto const& nonOwnedBoxes)
     {
         return isIn(cell, domainBox)
                and (nonOwnedBoxes.empty() or !isIn(Point{cell}, nonOwnedBoxes));
     }
 
+    // for the selectors, which copy what they use to detach from this object
+    std::vector<Box_t> copyNonOwned_() const
+    {
+        auto const nonOwned = nonOwnedBoxes();
+        return {nonOwned.begin(), nonOwned.end()};
+    }
+
     // a particle belongs to this patch if and only if its cell is in the domain and owned
-    bool isOwned(auto const& cell) const { return isOwned(cell, domainBox, nonOwnedBoxes); }
+    bool isOwned(auto const& cell) const { return isOwned(cell, domainBox, nonOwnedBoxes()); }
 
     bool isInGhostBox(auto& particle) const { return isIn(particle, ghostBox); };
     bool isInDomainBox(auto& particle) const { return isIn(particle, domainBox); };
@@ -54,7 +67,7 @@ struct UpdaterSelectionBoxing
 
     // lambda copy captures to detach from above references in case of class copy construct
     Selector_t const inOwnedDomain
-        = [domainBox = domainBox, nonOwnedBoxes = nonOwnedBoxes](auto& particleRange) {
+        = [domainBox = domainBox, nonOwnedBoxes = copyNonOwned_()](auto& particleRange) {
               return particleRange.array().partition(particleRange, [&](auto const& cell) {
                   return isOwned(cell, domainBox, nonOwnedBoxes);
               });

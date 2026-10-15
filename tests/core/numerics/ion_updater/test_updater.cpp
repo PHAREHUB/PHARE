@@ -911,11 +911,13 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<TestParam_t>
         this->EM.B.zero();
     }
 
-    Boxing_t makeBoxing(std::vector<Box_t> const& nonOwned) const
+    // non-owned boxes first, then the ghost box, as amr::makePatchGhostBoxes orders them
+    Boxing_t makeBoxing(std::vector<Box_t> nonOwned) const
     {
-        return {this->layout,
-                {grow(this->layout.AMRBox(), Super::GridLayout::options.particle_ghost_width)},
-                nonOwned};
+        auto const nNonOwned = nonOwned.size();
+        nonOwned.emplace_back(
+            grow(this->layout.AMRBox(), Super::GridLayout::options.particle_ghost_width));
+        return {this->layout, std::move(nonOwned), nNonOwned};
     }
 
     static Box_t box(int lower, int upper) { return Box_t{{lower}, {upper}}; }
