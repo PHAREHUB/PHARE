@@ -395,8 +395,8 @@ def _compute_to_primal(patchdatas, patch_id, **kwargs):
 
 def _inner_slices(nb_ghosts):
     inner = slice(nb_ghosts, -nb_ghosts)
-    inner_shift_left = slice(nb_ghosts - 1, -nb_ghosts)
-    inner_shift_right = slice(nb_ghosts, -nb_ghosts + 1)
+    inner_shift_left = slice(nb_ghosts - 1 or None, -nb_ghosts)
+    inner_shift_right = slice(nb_ghosts, -nb_ghosts + 1 or None)
 
     return inner, inner_shift_left, inner_shift_right
 
