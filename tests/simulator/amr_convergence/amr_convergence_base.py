@@ -27,7 +27,6 @@ import numpy as np
 
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-
 from tests.simulator import SimulatorTest
 from tests.simulator.amr_convergence import compute_errors
 
@@ -116,7 +115,8 @@ class ConvergenceTestBase(SimulatorTest):
         for sigma in sorted(sigmas):
             by_n.setdefault(self.n_steps(N, sigma), sigma)
         self.assertGreaterEqual(
-            len(by_n), 3,
+            len(by_n),
+            3,
             f"sigma sweep needs >=3 distinct step counts at N={N}, "
             f"got n={sorted(by_n)} from sigmas={sorted(sigmas)}",
         )
@@ -159,7 +159,8 @@ class ConvergenceTestBase(SimulatorTest):
             d = drift(vals)
             print(f"  ratio {label}: {['%.4f' % v for v in vals]}  drift={d:.4f}")
             self.assertLessEqual(
-                d, self.MAX_AMR_SIGMA_DRIFT,
+                d,
+                self.MAX_AMR_SIGMA_DRIFT,
                 f"{self.name} order={order} N={N}: {label} error ratio drifts "
                 f"{d:.3f} > {self.MAX_AMR_SIGMA_DRIFT} over the sigma sweep -- "
                 f"sigma-dependent AMR-specific error (coarse-fine time "

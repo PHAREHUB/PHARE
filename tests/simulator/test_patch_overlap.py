@@ -8,13 +8,13 @@ nodes stay identical on all patches.
 """
 
 import unittest
+
 import numpy as np
 
 import pyphare.pharein as ph
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import yee_centering
 from pyphare.simulator.simulator import Simulator
-
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
