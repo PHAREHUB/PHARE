@@ -4,6 +4,7 @@
 #include "core/utilities/box/box.hpp"
 
 #include <cstddef>
+#include <cstdint>
 
 
 namespace PHARE::core
@@ -231,6 +232,21 @@ template<typename T, std::size_t dim>
 auto make_box_span(Box<T, dim> const box)
 {
     return BoxSpan<T, dim>{box};
+}
+
+
+/** @brief Calls fn(point) for every point of `box`, walking it span-wise.
+ *
+ * `point` is the current span's starting point, advanced in place along the
+ * fastest-varying dimension: it is only valid for the duration of the call.
+ */
+template<typename T, std::size_t dim>
+void for_each_point(Box<T, dim> const& box, auto&& fn)
+{
+    for (auto const& slab : make_box_span(box))
+        for (auto&& [point, size] : slab)
+            for (std::uint32_t i = 0; i < size; ++i, ++point[dim - 1])
+                fn(point);
 }
 
 
