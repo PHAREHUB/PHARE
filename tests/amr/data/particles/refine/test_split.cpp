@@ -40,9 +40,8 @@ using Splitters
                      Splitter<2, 3, 4>, Splitter<2, 3, 5>, Splitter<2, 3, 8>, Splitter<2, 3, 9>,
                      Splitter<2, 3, 25>, //
                      Splitter<3, 1, 6>, Splitter<3, 1, 12>, Splitter<3, 1, 27>, Splitter<3, 2, 6>,
-                     Splitter<3, 2, 12>, Splitter<3, 3, 6>, Splitter<3, 3, 12>>;
-// Splitter<3, 2, 27> and Splitter<3, 3, 27> are disabled in res/sim/all.txt until their weights are
-// known, see the TODO(@rochSmets) in split_3d.hpp
+                     Splitter<3, 2, 12>, Splitter<3, 2, 27>, Splitter<3, 3, 6>, Splitter<3, 3, 12>,
+                     Splitter<3, 3, 27>>;
 
 TYPED_TEST_SUITE(SplitterTest, Splitters);
 
@@ -139,7 +138,7 @@ std::vector<Triplet> triplets(Splitter_t const& splitter)
 using Key = std::tuple<std::size_t, std::size_t, std::size_t>; // dim, interp, nbrRefinedPart
 
 // Best-pattern (tau, w, delta) values of Smets et al. 2021, "A new method to dispatch split
-// particles in Particle-In-Cell codes", CPC, arXiv:2104.10675.
+// particles in Particle-In-Cell codes", CPC 261, 107666 (arXiv:2104.10675).
 // d=1: Tables 1 (w) and 2 (delta); d=2: Tables 3 and 4 (non-dagger rows); d=3: Tables 5 and 6.
 // delta is on the refined grid. tau=0 children have delta 0.
 std::map<Key, std::vector<Triplet>> const paperTriplets{
@@ -175,9 +174,19 @@ std::map<Key, std::vector<Triplet>> const paperTriplets{
     {{3, 3, 12}, {{2, 0.083333, 1.012756, 12}}},
     // d = 3, p = 1, N = 27 is the exact split ((p+2)^3 children, section 5): tensor product of
     // the d = 1 exact N = 3 split of Table 1 (w = 0.5, 0.25; delta = 1).
-    // Tables 5-6 of arXiv:2104.10675 only list the tau = 0 and 1 rows for N = 27.
+    // The arXiv version cuts Tables 5-6 after the N = 27 tau = 1 row, the CPC version does not.
     {{3, 1, 27},
      {{0, 0.125, 0, 1}, {1, 0.0625, 1.0, 6}, {2, 0.03125, 1.0, 12}, {3, 0.015625, 1.0, 8}}},
+    {{3, 2, 27},
+     {{0, 0.099995, 0, 1},
+      {1, 0.055301, 1.111333, 6},
+      {2, 0.035568, 1.107638, 12},
+      {3, 0.017672, 1.216526, 8}}},
+    {{3, 3, 27},
+     {{0, 0.104047, 0, 1},
+      {1, 0.05564, 1.276815, 6},
+      {2, 0.035385, 1.270047, 12},
+      {3, 0.017187, 1.408507, 8}}},
 };
 
 TYPED_TEST(SplitterTest, matches_smets_2021_tables)
