@@ -165,6 +165,18 @@ std::map<Key, std::vector<Triplet>> const paperTriplets{
     {{2, 3, 5}, {{0, 0.242666, 0, 1}, {1, 0.189333, 1.376953, 4}}},
     {{2, 3, 8}, {{1, 0.179318, 0.942365, 4}, {2, 0.070682, 1.423324, 4}}},
     {{2, 3, 9}, {{0, 0.218605, 0, 1}, {1, 0.126871, 1.267689, 4}, {2, 0.068477, 1.315944, 4}}},
+    // d = 2, p = 2, 3 exact splits ((p+2)^2 children) are not tabulated: the paper derives them
+    // from d = 1 (section 5, Eq. 6), as the tensor product of the d = 1 exact splits of Table 1
+    // (p = 2, N = 4: w = 0.375, 0.125, delta = 0.5, 1.5; p = 3, N = 5: w = 0.375, 0.25, 0.0625,
+    // delta = 1, 2). Children at (a, b) with |a| != |b|, both non-zero, have delta = max(|a|, |b|).
+    {{2, 2, 16}, {{2, 0.140625, 0.5, 4}, {2, 0.046875, 1.5, 8}, {2, 0.015625, 1.5, 4}}},
+    {{2, 3, 25},
+     {{0, 0.140625, 0, 1},
+      {1, 0.09375, 1.0, 4},
+      {2, 0.0625, 1.0, 4},
+      {1, 0.0234375, 2.0, 4},
+      {2, 0.015625, 2.0, 8},
+      {2, 0.00390625, 2.0, 4}}},
     // d = 3, Tables 5-6
     {{3, 1, 6}, {{1, 0.166666, 0.966431, 6}}},
     {{3, 2, 6}, {{1, 0.166666, 1.149658, 6}}},
@@ -192,8 +204,8 @@ std::map<Key, std::vector<Triplet>> const paperTriplets{
 TYPED_TEST(SplitterTest, matches_smets_2021_tables)
 {
     Key const key{TypeParam::dimension, TypeParam::interp_order, TypeParam::nbRefinedPart};
-    if (!paperTriplets.count(key))
-        GTEST_SKIP() << "no reference values in Smets et al. 2021 for this configuration";
+    ASSERT_TRUE(paperTriplets.count(key))
+        << "no reference values in Smets et al. 2021 for this configuration";
 
     auto const expected = paperTriplets.at(key);
     auto const actual   = triplets(TypeParam{});
