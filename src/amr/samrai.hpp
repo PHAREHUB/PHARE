@@ -2,6 +2,7 @@
 #define PHARE_AMR_SAMRAI_HPP
 
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/vector.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/field/field_box.hpp"
 #include "core/data/particles/particle_array.hpp"
@@ -144,7 +145,10 @@ void getFieldFromRestart(auto& db, auto const& path, Grid_t& field)
 template<typename ParticleArray_t>
 void putParticlesToRestart(auto& db, std::string const& name, ParticleArray_t& particles)
 {
-    using Packer              = core::ParticlePacker<ParticleArray_t>;
+    using Packer = core::ParticlePacker<ParticleArray_t>;
+    auto constexpr static is_host_mem
+        = ParticleArray_t::alloc_mode == AllocatorMode::CPU
+          || ParticleArray_t::alloc_mode == AllocatorMode::GPU_UNIFIED;
     auto constexpr static dim = ParticleArray_t::dimension;
 
     // SAMRAI errors on writing 0 size arrays
@@ -174,7 +178,22 @@ void putParticlesToRestart(auto& db, std::string const& name, ParticleArray_t& p
 
     std::size_t part_idx = 0;
     core::apply(soa.as_tuple(), [&](auto const& v) {
-        putVectorToRestart(db, name + "_" + packer.keys()[part_idx++], v);
+        using Vector = std::decay_t<decltype(v)>;
+        using T      = typename Vector::value_type;
+
+        auto const put_vec = [&](auto const& vec) {
+            putVectorToRestart(db, name + "_" + packer.keys()[part_idx++], vec);
+        };
+
+        if constexpr (is_host_mem)
+            put_vec(v);
+        else
+        {
+            static std::vector<T> put_host_vec;
+            put_host_vec.resize(v.size());
+            PHARE::Vector<T>::copy(put_host_vec, v);
+            put_vec(put_host_vec);
+        }
     });
 }
 
@@ -182,7 +201,10 @@ void putParticlesToRestart(auto& db, std::string const& name, ParticleArray_t& p
 template<typename ParticleArray_t>
 void getParticlesFromRestart(auto& db, std::string const& name, ParticleArray_t& particles)
 {
-    using Packer              = core::ParticlePacker<ParticleArray_t>;
+    using Packer = core::ParticlePacker<ParticleArray_t>;
+    auto constexpr static is_host_mem
+        = ParticleArray_t::alloc_mode == AllocatorMode::CPU
+          || ParticleArray_t::alloc_mode == AllocatorMode::GPU_UNIFIED;
     auto constexpr static dim = ParticleArray_t::dimension;
 
     std::array<bool, Packer::n_keys> const keys_exist = core::generate_from(
@@ -203,13 +225,32 @@ void getParticlesFromRestart(auto& db, std::string const& name, ParticleArray_t&
     {
         std::size_t part_idx = 0;
         core::apply(soa.as_tuple(), [&](auto& arg) {
-            getVectorFromRestart(db, name + "_" + Packer::keys()[part_idx++], arg);
+            using Vector = std::decay_t<decltype(arg)>;
+            using T      = typename Vector::value_type;
+
+            auto& vec = [](auto& v) -> auto& {
+                if constexpr (is_host_mem)
+                    return v;
+                else
+                {
+                    static std::vector<T> get_host_vec;
+                    get_host_vec.clear();
+                    return get_host_vec;
+                }
+            }(arg);
+
+            getVectorFromRestart(db, name + "_" + Packer::keys()[part_idx++], vec);
+
+            if constexpr (not is_host_mem)
+                PHARE::Vector<T>::copy(arg, vec);
         });
     }
 
     assert(particles.size() == 0);
     for (std::size_t i = 0; i < n_particles; ++i)
         particles.emplace_back(soa.copy(i));
+
+    particles.check();
 }
 
 

@@ -1,6 +1,4 @@
-#
-#
-#
+# pyphare/pyphare/pharesee/phare_vtk/plot.py
 
 
 import vtk

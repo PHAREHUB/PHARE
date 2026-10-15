@@ -1,5 +1,4 @@
-#
-#
+# tests/functional/ionIonBeam/ion_ion_beam1d.py
 
 import os
 import numpy as np

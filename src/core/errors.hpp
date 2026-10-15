@@ -89,6 +89,4 @@ private:
 } // namespace PHARE::core
 
 
-
-
 #endif /* PHARE_CORE_ERRORS_H */

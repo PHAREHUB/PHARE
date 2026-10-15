@@ -5,6 +5,10 @@
 #include "core/def.hpp"
 #include "core/logger.hpp" // IWYU pragma: keep
 
+#include "magic_enum/magic_enum_switch.hpp"  // IWYU pragma: keep
+#include "magic_enum/magic_enum_utility.hpp" // IWYU pragma: keep
+
+
 #include <array>
 #include <cmath>
 #include <tuple>
@@ -293,7 +297,7 @@ namespace core
 namespace PHARE::core
 {
 template<typename Container, typename Multiplies = typename Container::value_type>
-NO_DISCARD Multiplies product(Container const& container, Multiplies mul = 1)
+NO_DISCARD Multiplies product(Container const& container, Multiplies mul = 1) _PHARE_ALL_FN_
 {
     // std accumulate doesn't exist on GPU
     for (auto const& v : container)
@@ -302,7 +306,7 @@ NO_DISCARD Multiplies product(Container const& container, Multiplies mul = 1)
 }
 
 template<typename Container, typename Return = typename Container::value_type>
-NO_DISCARD Return sum(Container const& container, Return r = 0)
+NO_DISCARD Return sum(Container const& container, Return r = 0) _PHARE_HST_FN_
 {
     return std::accumulate(container.begin(), container.end(), r);
 }
@@ -320,7 +324,7 @@ NO_DISCARD auto sum_from(Container&& container, F fn)
 
 
 template<typename Type>
-auto& deref(Type&& type)
+auto& deref(Type&& type) _PHARE_ALL_FN_
 {
     if constexpr (std::is_pointer_v<std::decay_t<Type>>)
         return *type;
@@ -473,7 +477,7 @@ NO_DISCARD auto constexpr min_from(Container const& container, Fn fn = accessor)
 
 
 template<typename SignedInt, typename UnsignedInt>
-bool diff_sign_int_equals(SignedInt const& i0, UnsignedInt const& i1)
+bool diff_sign_int_equals(SignedInt const& i0, UnsignedInt const& i1) _PHARE_ALL_FN_
 {
     static_assert(std::is_unsigned_v<UnsignedInt>);
     static_assert(std::is_signed_v<SignedInt>);
@@ -485,7 +489,7 @@ bool diff_sign_int_equals(SignedInt const& i0, UnsignedInt const& i1)
 
 
 template<typename Int0, typename Int1>
-bool int_equals(Int0 const& i0, Int1 const& i1)
+bool int_equals(Int0 const& i0, Int1 const& i1) _PHARE_ALL_FN_
 {
     if constexpr (std::is_same_v<Int0, Int1>)
         return i0 == i1;
@@ -632,7 +636,7 @@ enum class for_N_R_mode {
 };
 
 template<std::uint16_t N, auto M = for_N_R_mode::make_tuple, typename Fn>
-constexpr auto for_N(Fn& fn)
+constexpr auto for_N(Fn& fn) _PHARE_ALL_FN_
 {
     /*  // how to use
         for_N<2>([](auto ic) {
@@ -852,20 +856,20 @@ static constexpr auto to_string_view_v = to_string_view<T, t>::value;
 
 
 template<typename T0, typename T1, std::size_t... Is>
-bool _array_equals(T0 const& a, T1 const& b, std::index_sequence<Is...> const&&)
+bool _array_equals(T0 const& a, T1 const& b, std::index_sequence<Is...> const&&) _PHARE_ALL_FN_
 {
     return (... && (a[Is] == b[Is]));
 }
 
 template<typename T, std::size_t S> // array == doesn't exist on GPU!
-bool array_equals(std::array<T, S> const& a, std::array<T, S> const& b)
+bool array_equals(std::array<T, S> const& a, std::array<T, S> const& b) _PHARE_ALL_FN_
 {
     return _array_equals(a, b, std::make_index_sequence<S>{});
 }
 
 
 template<typename As, typename T, std::size_t... Is>
-auto _array_minus(T const& a, T const& b, std::index_sequence<Is...> const&&)
+auto _array_minus(T const& a, T const& b, std::index_sequence<Is...> const&&) _PHARE_ALL_FN_
 {
     std::array<As, sizeof...(Is)> arr;
     ((arr[Is] = a[Is] - b[Is]), ...);
@@ -873,7 +877,7 @@ auto _array_minus(T const& a, T const& b, std::index_sequence<Is...> const&&)
 }
 
 template<typename As, typename T, std::size_t S>
-auto array_minus(std::array<T, S> const& a, std::array<T, S> const& b)
+auto array_minus(std::array<T, S> const& a, std::array<T, S> const& b) _PHARE_ALL_FN_
 {
     return _array_minus<As>(a, b, std::make_index_sequence<S>{});
 }
@@ -892,7 +896,7 @@ void array_op(A0<T, S>& a, T const& b)
 }
 
 template<typename T>
-auto constexpr pow(T const v, std::uint16_t const power)
+auto constexpr pow(T const v, std::uint16_t const power) _PHARE_ALL_FN_
 {
     T out = 1;
     for (std::uint16_t i = 0; i < power; ++i)
@@ -901,18 +905,18 @@ auto constexpr pow(T const v, std::uint16_t const power)
 }
 
 
-auto constexpr all_in(auto const a, auto&&... ts)
+auto constexpr all_in(auto const a, auto&&... ts) _PHARE_ALL_FN_
 {
     return ((a == ts) && ...);
 }
 
-auto constexpr any_in([[maybe_unused]] auto const a, auto&&... ts)
+auto constexpr any_in([[maybe_unused]] auto const a, auto&&... ts) _PHARE_ALL_FN_
 {
     return ((a == ts) || ...);
 }
 
 template<typename T>
-auto constexpr any_are(auto&&... ts)
+auto constexpr any_are(auto&&... ts) _PHARE_ALL_FN_
 {
     return ((std::is_same_v<T, std::decay_t<decltype(ts)>>) || ...);
 }
@@ -920,13 +924,13 @@ auto constexpr any_are(auto&&... ts)
 
 
 template<typename... Ts>
-auto constexpr is_any_of(auto const& t)
+auto constexpr is_any_of(auto const& t) _PHARE_ALL_FN_
 {
     return ((std::is_same_v<Ts, std::decay_t<decltype(t)>>) || ...);
 }
 
 template<typename T, typename... Ts>
-auto constexpr is_any_of()
+auto constexpr is_any_of() _PHARE_ALL_FN_
 {
     return ((std::is_same_v<Ts, T>) || ...);
 }

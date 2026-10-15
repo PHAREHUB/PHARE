@@ -206,7 +206,7 @@ def check_particle_layout(**kwargs):
     return particle_layout
 
 
-valid_allocators = ("CPU",)
+valid_allocators = ("CPU", "GPU_UNIFIED")
 
 
 def check_allocator(**kwargs):
@@ -1054,7 +1054,7 @@ class Simulation(object):
 
             * **layout** (``str``), layout of the physical quantities on the mesh (default = "yee")
             * **particle_layout** (``str``), in-memory particle array layout, one of "AoSMapped", "AoSPCTS" (default = "AoSMapped")
-            * **allocator** (``str``), particle/field data allocator, one of "CPU" (default = "CPU")
+            * **allocator** (``str``), particle/field data allocator, one of "CPU", "GPU_UNIFIED" (default = "CPU")
 
 
     For instance:

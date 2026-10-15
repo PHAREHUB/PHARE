@@ -2,8 +2,10 @@
 #define PHARE_ELECTRONS_HPP
 
 #include "core/def.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 #include "core/data/field/field_tiles.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include "initializer/data_provider.hpp"
@@ -106,6 +108,7 @@ public:
     void computeChargeDensity() {}
 
 
+
     void static Vxyz(auto const& layout, auto const& Ne, auto&&... args)
     {
         auto&& [J, Vi, Ve] = std::forward_as_tuple(args...);
@@ -119,7 +122,7 @@ public:
         auto& Vey          = Ve(Component::Y);
         auto& Vez          = Ve(Component::Z);
 
-        layout.evalGrownOnBox(Ne, 0, [=](auto const& ijk) mutable {
+        layout.evalOnBox(Ne, [=] _PHARE_ALL_FN_(auto const& ijk) mutable {
             auto const JxOnVx = GridLayout::template project<GridLayout::JxToMoments>(Jx, ijk);
             auto const JyOnVy = GridLayout::template project<GridLayout::JyToMoments>(Jy, ijk);
             auto const JzOnVz = GridLayout::template project<GridLayout::JzToMoments>(Jz, ijk);
@@ -132,11 +135,17 @@ public:
 
     void computeBulkVelocity(GridLayout const& layout)
     {
+        check_field(ions_.chargeDensity(), layout);
+        check_tensor_field(ions_.velocity(), layout);
+        check_tensor_field(J_, layout);
+
         if constexpr (is_field_tile_set_v<Field>)
             core::tile_exec_with_layout([&](auto&&... args) { Vxyz(args...); },
                                         ions_.chargeDensity(), J_, ions_.velocity(), Ve_);
         else
             Vxyz(layout, ions_.chargeDensity(), J_, ions_.velocity(), Ve_);
+
+        check_tensor_field(Ve_, layout);
     }
 
     void computeBulkVelocity(std::size_t const tile_idx)

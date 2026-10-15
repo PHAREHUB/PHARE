@@ -1,4 +1,4 @@
-#
+# tests/simulator/initialize/test_init_mhd.py
 
 import os
 import numpy as np

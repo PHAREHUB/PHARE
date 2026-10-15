@@ -1,14 +1,21 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_AOS_HPP
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_AOS_HPP
 
-#include "core/def/phare_config.hpp" // IWYU pragma: keep
 
-#include "core/data/vector.hpp"
+#include "core/def/phare_config.hpp"
+
+
+#include "core/vector.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/cellmap.hpp"
+#include "core/utilities/monitoring.hpp"
+// #include "core/utilities/point/point.hpp"
+// #include "core/utilities/range/range.hpp"
+// #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array_def.hpp"
 #include "core/data/particles/particle_array_type_options.hpp" // IWYU pragma: keep
+
 
 #include <vector>
 #include <cstddef>
@@ -17,6 +24,7 @@
 
 namespace PHARE::core
 {
+
 
 template<auto opts>
 class AoSArray
@@ -33,8 +41,8 @@ public:
     auto end() const { return particles_.end(); }
     auto end() { return particles_.end(); }
     auto constexpr static size() { return opts.size; }
-    auto& operator[](std::size_t const i) const { return particles_.data()[i]; }
-    auto& operator[](std::size_t const i) { return particles_.data()[i]; }
+    auto& operator[](std::size_t i) const { return particles_.data()[i]; }
+    auto& operator[](std::size_t i) { return particles_.data()[i]; }
 
 protected:
     container_type particles_;
@@ -73,23 +81,23 @@ public:
     }
 
 
-    auto size() { return particles_.size(); }
-    void clear() { particles_.s = 0; }
+    auto size() _PHARE_ALL_FN_ { return particles_.size(); }
+    void clear() _PHARE_ALL_FN_ { particles_.s = 0; }
     void resize(std::size_t const& s) // potential out of bounds - so be careful!
     {
         particles_.s = s;
     }
 
-    auto& operator[](std::size_t const i) const { return particles_[i]; }
-    auto& operator[](std::size_t const i) { return particles_[i]; }
+    auto& operator[](std::size_t i) const _PHARE_ALL_FN_ { return particles_[i]; }
+    auto& operator[](std::size_t i) _PHARE_ALL_FN_ { return particles_[i]; }
 
 
-    auto data() const { return particles_.data(); }
-    auto data() { return particles_.data(); }
+    auto data() const _PHARE_ALL_FN_ { return particles_.data(); }
+    auto data() _PHARE_ALL_FN_ { return particles_.data(); }
 
-    void pop_back() { --particles_.s; }
+    void pop_back() _PHARE_ALL_FN_ { --particles_.s; }
 
-    auto size_address() { return &particles_.s; }
+    auto size_address() _PHARE_ALL_FN_ { return &particles_.s; }
 
 
     template<typename Particles_t>
@@ -124,7 +132,7 @@ public:
     }
 
 
-    // auto map_size_address()  { return &particles_.s; }
+    // auto map_size_address() _PHARE_ALL_FN_ { return &particles_.s; }
 
     box_t box_;
     CellMap_t cellMap_;
@@ -147,6 +155,13 @@ class AoSVector
         return static_cast<std::size_t>(dist);
     }
 
+    std::uint8_t constexpr static alloc_impl()
+    {
+        if (opts.alloc_mode == AllocatorMode::GPU_UNIFIED)
+            return 1;
+        return 0;
+    }
+
 public:
     auto static constexpr storage_mode = StorageMode::VECTOR;
     auto static constexpr alloc_mode   = opts.alloc_mode;
@@ -154,7 +169,8 @@ public:
 
     using Particle_t     = ParticleDefaults<opts.dim>::Particle_t;
     using value_type     = Particle_t;
-    using container_type = std::vector<Particle_t>;
+    using vec_helper     = PHARE::Vector<Particle_t, alloc_mode, alloc_impl()>;
+    using container_type = typename vec_helper::vector_t;
 
 
     AoSVector(AoSVector&& that)
@@ -167,13 +183,13 @@ public:
     AoSVector& operator=(AoSVector const& from) = default;
 
     AoSVector(std::size_t size = 0)
-        : particles_(size)
+        : particles_(vec_helper::make(size))
     {
     }
 
     template<typename Particle_t>
     AoSVector(std::size_t size, Particle_t const& particle)
-        : particles_(size, particle)
+        : particles_(vec_helper::make(size, particle))
     {
     }
 
@@ -190,23 +206,33 @@ public:
     auto size() const { return particles_.size(); }
     auto capacity() const { return particles_.capacity(); }
     void clear() { particles_.clear(); }
-    void reserve(std::size_t newSize) { particles_.reserve(newSize); }
+    void reserve(std::size_t newSize)
+    {
+        if (newSize > particles_.capacity())
+            MemoryMonitoring::LOG(__PRETTY_FUNCTION__);
+        particles_.reserve(newSize);
+    }
     void resize(std::size_t newSize) { return particles_.resize(newSize); }
+    // void shrink_to_fit() { particles_.shrink_to_fit(); }
 
 
     template<auto type>
-    void on_moved() // noop
+    void on_moved()
     {
+        // noop
     }
 
     template<auto type>
-    void on_appended() // noop
+    void on_appended()
     {
+        // noop
     }
 
-    auto& operator[](std::size_t const i) const { return particles_.data()[i]; }
-    auto& operator[](std::size_t const i) { return particles_.data()[i]; }
+
+    auto& operator[](std::size_t i) const _PHARE_ALL_FN_ { return particles_.data()[i]; }
+    auto& operator[](std::size_t i) _PHARE_ALL_FN_ { return particles_.data()[i]; }
     bool operator==(This const& that) const { return (this->particles_ == that.particles_); }
+
 
     void pop_back() { particles_.pop_back(); }
 
@@ -214,7 +240,19 @@ public:
     auto front() { return particles_.front(); }
 
     template<typename Iterator>
-    auto erase(Iterator first, Iterator last);
+    auto erase(Iterator first, Iterator last)
+    {
+        // should we erase particles indexes associated with these iterators from the cellmap?
+        // probably it does not matter if not. The reason is that
+        // particles erased from the particlearray are so because they left
+        // the patch cells to an outside cell.
+        // But in principle that cell will never be accessed because it is outside the patch.
+        // The only thing "bad" if these indexes are not deleted is that the
+        // size of the cellmap becomes unequal to the size of the particleArray.
+        // but  ¯\_(ツ)_/¯
+        return particles_.erase(particles_.begin() + first.curr_pos,
+                                particles_.begin() + last.curr_pos);
+    }
 
     Particle_t& emplace_back() { return get_vec(particles_).emplace_back(); }
 
@@ -266,8 +304,8 @@ public:
     void push_back(Particle_t const& p) { get_vec(particles_).push_back(p); }
     void push_back(Particle_t&& p) { get_vec(particles_).push_back(std::forward<Particle_t>(p)); }
 
-    auto data() const { return particles_.data(); }
-    auto data() { return particles_.data(); }
+    auto data() const _PHARE_ALL_FN_ { return particles_.data(); }
+    auto data() _PHARE_ALL_FN_ { return particles_.data(); }
 
 protected:
     container_type particles_;
@@ -275,25 +313,16 @@ protected:
     template<typename V>
     static auto& get_vec(V& v)
     {
-        return v;
+        if constexpr (CompileOptions::WithMknGpu and alloc_mode == AllocatorMode::GPU_UNIFIED)
+        {
+            PHARE_WITH_MKN_GPU(return mkn::gpu::as_super(v));
+        }
+        else
+        {
+            return v;
+        }
     }
 };
-
-template<auto opts>
-template<typename Iterator>
-auto AoSVector<opts>::erase(Iterator first, Iterator last)
-{
-    // should we erase particles indexes associated with these iterators from the cellmap?
-    // probably it does not matter if not. The reason is that
-    // particles erased from the particlearray are so because they left
-    // the patch cells to an outside cell.
-    // But in principle that cell will never be accessed because it is outside the patch.
-    // The only thing "bad" if these indexes are not deleted is that the
-    // size of the cellmap becomes unequal to the size of the particleArray.
-    // but  ¯\_(ツ)_/¯
-    return particles_.erase(particles_.begin() + first.curr_pos,
-                            particles_.begin() + last.curr_pos);
-}
 
 
 template<auto opts>
@@ -342,26 +371,38 @@ struct AoSParticles : public Super_<opts>
     auto static constexpr size_of_particle() { return sizeof(Particle_t); }
 
     using Span_t = AoSParticles<AoSSpan, opts>;
+
+    // template<auto>
+    // friend struct AoSParticles; //<AoSSpan<dimension, alloc_mode>>;
+
+    // template<std::size_t size>
+    // using array_type = AoSParticles<AoSArray<dimension, size>>;
+
     using Super::particles_;
 
-    AoSParticles(AoSParticles&& that)
-        : Super{std::forward<AoSParticles>(that)}
-    {
-    }
-    AoSParticles(AoSParticles const&)            = default;
-    AoSParticles& operator=(AoSParticles&&)      = default;
-    AoSParticles& operator=(AoSParticles const&) = default;
+
+    AoSParticles(AoSParticles&& that) _PHARE_ALL_FN_ : Super{std::forward<AoSParticles>(that)} {}
+    AoSParticles(AoSParticles const&) _PHARE_ALL_FN_       = default;
+    AoSParticles& operator=(AoSParticles&&) _PHARE_ALL_FN_ = default;
+    AoSParticles& operator=(AoSParticles const&)           = default;
 
     template<typename... Args>
     AoSParticles(Args&&... args)
         requires(self_excluding_constructible<This, Super, Args...>())
-        : Super{std::forward<Args>(args)...}
+    _PHARE_ALL_FN_ : Super{std::forward<Args>(args)...}
     {
     }
 
 
+
     template<typename T>
     struct iterator_impl;
+
+    // void erase(auto const& box)
+    //     requires(storage_mode == StorageMode::VECTOR)
+    // {
+    //     Super::erase(box);
+    // }
 
     template<auto S = storage_mode, typename = std::enable_if_t<S == StorageMode::VECTOR>>
     auto erase(iterator_impl<This*> a, iterator_impl<This*> b)
@@ -370,43 +411,47 @@ struct AoSParticles : public Super_<opts>
     }
 
     template<typename T, typename... Args>
-    auto static it(T* t, Args&&... args)
+    auto static it(T* t, Args&&... args) _PHARE_ALL_FN_
     {
+        // static_assert(storage_mode == StorageMode::SPAN);
+
         if constexpr (storage_mode == StorageMode::SPAN)
             return iterator_impl<T>{*t, args...};
         else
             return iterator_impl<T*>{t, args...};
     }
-    auto begin() const { return it(this); }
-    auto begin() { return it(this); }
-    auto end() const { return it(this, size()); }
-    auto end() { return it(this, size()); }
+    auto begin() const _PHARE_ALL_FN_ { return it(this); }
+    auto begin() _PHARE_ALL_FN_ { return it(this); }
+    auto end() const _PHARE_ALL_FN_ { return it(this, size()); }
+    auto end() _PHARE_ALL_FN_ { return it(this, size()); }
 
 
-    auto& weight(std::size_t const i) const { return particles_[i].weight(); }
-    auto& weight(std::size_t const i) { return particles_[i].weight(); }
+    auto& weight(std::size_t i) const { return particles_[i].weight(); }
+    auto& weight(std::size_t i) { return particles_[i].weight(); }
 
-    auto& charge(std::size_t const i) const { return particles_[i].charge(); }
-    auto& charge(std::size_t const i) { return particles_[i].charge(); }
+    auto& charge(std::size_t i) const { return particles_[i].charge(); }
+    auto& charge(std::size_t i) _PHARE_ALL_FN_ { return particles_[i].charge(); }
 
-    auto& iCell(std::size_t const i) const { return particles_[i].iCell(); }
-    auto& iCell(std::size_t const i) { return particles_[i].iCell(); }
+    auto& iCell(std::size_t i) const _PHARE_ALL_FN_ { return particles_[i].iCell(); }
+    auto& iCell(std::size_t i) _PHARE_ALL_FN_ { return particles_[i].iCell(); }
 
-    auto& delta(std::size_t const i) const { return particles_[i].delta(); }
-    auto& delta(std::size_t const i) { return particles_[i].delta(); }
+    auto& delta(std::size_t i) const _PHARE_ALL_FN_ { return particles_[i].delta(); }
+    auto& delta(std::size_t i) _PHARE_ALL_FN_ { return particles_[i].delta(); }
 
-    auto& v(std::size_t const i) const { return particles_[i].v(); }
-    auto& v(std::size_t const i) { return particles_[i].v(); }
+    auto& v(std::size_t i) const { return particles_[i].v(); }
+    auto& v(std::size_t i) _PHARE_ALL_FN_ { return particles_[i].v(); }
 
-    auto data() const { return particles_.data(); }
-    auto data() { return particles_.data(); }
+
+    auto data() const _PHARE_ALL_FN_ { return particles_.data(); }
+    auto data() _PHARE_ALL_FN_ { return particles_.data(); }
+
 
     template<auto S = storage_mode, typename = std::enable_if_t<S == StorageMode::VECTOR>>
     auto capacity() const
     {
         return particles_.capacity();
     }
-    auto size() const { return particles_.size(); }
+    auto size() const _PHARE_ALL_FN_ { return particles_.size(); }
 
     template<typename IndexRange, typename Predicate>
     auto partition(IndexRange&& range, Predicate&& pred)
@@ -431,22 +476,38 @@ struct AoSParticles : public Super_<opts>
     {
         if (a == b)
             return;
+
         std::swap(particles_[a], particles_[b]);
     }
+
+
 
     void check() const {}
 
     template<typename _Particles>
-    void assign(_Particles const& src, std::size_t const& idx, std::size_t const& dst)
+    void assign(_Particles const& src, std::size_t const& idx,
+                std::size_t const& dst) _PHARE_ALL_FN_
     {
         particles_[dst] = src[idx];
+        // if constexpr (layout_mode == LayoutMode::AoSMapped)
+        // {
+        //     this->cellmap_assign();
+        // }
     }
 
-    void assign(Particle_t const& src, std::size_t const& dst) { particles_[dst] = src; }
+    void assign(Particle_t const& src, std::size_t const& dst) _PHARE_ALL_FN_
+    {
+        particles_[dst] = src;
+    }
 
-    void assign(std::size_t const& src, std::size_t const& dst)
+    void assign(std::size_t const& src, std::size_t const& dst) _PHARE_ALL_FN_
     {
         particles_[dst] = particles_[src];
+        // assign(particles_[src], dst);
+        // if constexpr (layout_mode == LayoutMode::AoSMapped)
+        // {
+        //     //
+        // }
     }
 
     auto nbr_particles_in(Box<int, dimension> const /*box*/) const
@@ -462,12 +523,14 @@ struct AoSParticles : public Super_<opts>
 template<template<auto> typename Super_, auto opts>
 class AoSMappedParticles : public AoSParticles<Super_, opts>
 {
-    using Super  = AoSParticles<Super_, opts>;
-    using This   = AoSMappedParticles;
+    using Super = AoSParticles<Super_, opts>;
+    using This  = AoSMappedParticles; //<Super>;
+
     using Super2 = Super::Super;
 
     template<template<auto> typename, auto>
     friend class AoSMappedParticles;
+
 
 public:
     auto static constexpr dimension    = Super::dimension;
@@ -475,9 +538,29 @@ public:
 
     using Particle_t = Super::Particle_t;
     using box_t      = Box<int, dimension>;
+
+    // template<std::size_t size>
+    //  using array_type = typename Super::template array_type<size>;
+
     using Super::particles_;
     using Super2::box_;
     using Super2::cellMap_;
+
+
+    // AoSMappedParticles(std::size_t size) // TORM?
+    //     : Super_(size)
+    //     , box_{}
+    //     , cellMap_{box_}
+    // {
+    // }
+
+    // template<typename Particle_t>
+    // AoSMappedParticles(std::size_t size, Particle_t const& from)
+    //     : Super_(size, from)
+    //     , box_{}
+    //     , cellMap_{box_}
+    // {
+    // }
 
     AoSMappedParticles(box_t box = {}, std::size_t size = 0)
         : Super(box, size)
@@ -487,14 +570,16 @@ public:
     template<typename Particle_t>
     AoSMappedParticles(box_t box, std::size_t size, Particle_t const& from)
         : Super(box, size, from)
+    // , cellMap_{box_}
     {
         PHARE_ASSERT(box_.size() > 0);
     }
 
+
     template<typename... Args>
     AoSMappedParticles(Args&&... args)
         requires(self_excluding_constructible<This, Super, Args...>())
-        : Super{std::forward<Args>(args)...}
+    _PHARE_ALL_FN_ : Super{std::forward<Args>(args)...}
     {
     }
 
@@ -503,11 +588,15 @@ public:
     AoSMappedParticles& operator=(AoSMappedParticles&&)      = default;
     AoSMappedParticles& operator=(AoSMappedParticles const&) = default;
 
+
+
+
     void clear()
     {
         Super::clear();
         cellMap_.clear();
     }
+
 
     void erase(box_t const& box)
         requires(storage_mode == StorageMode::VECTOR)
@@ -515,17 +604,32 @@ public:
         Super::Super::erase(box);
     }
 
+
     template<typename IndexRange>
     auto erase(IndexRange range)
     {
         cellMap_.erase(range);
     }
 
+
+    // template<typename IndexRange>
+    // auto erase(IndexRange& range)
+    // {
+    //     cellMap_.erase(particles_, range);
+    // }
+    // template<typename IndexRange>
+    // auto erase(IndexRange&& range)
+    // {
+    //     // TODO move ctor for range?
+    //     cellMap_.erase(std::forward<IndexRange>(range));
+    // }
+
     template<typename It>
     auto erase(It a, It b)
     {
         return Super::erase(a, b);
     }
+
 
     auto& emplace_back()
     {
@@ -562,7 +666,6 @@ public:
         cellMap_.add(particles_, particles_.size() - 1);
         return part;
     }
-
     template<typename... Args>
     auto& emplace_back(Args&&... args)
     {
@@ -582,6 +685,7 @@ public:
         Super::push_back(std::forward<Particle_t>(p));
         cellMap_.add(particles_, particles_.size() - 1);
     }
+
 
     void map_particles() const { cellMap_.add(particles_); }
     void empty_map() { cellMap_.empty(); }
@@ -605,26 +709,31 @@ public:
 
     void export_particles(box_t const& box, auto& dest) const
     {
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles");
         cellMap_.export_to(box, *this, dest);
     }
 
     template<typename Dest, typename Fn>
     void export_particles(box_t const& box, Dest& dest, Fn&& fn) const
     {
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (Fn)");
         cellMap_.export_to(box, *this, dest, std::forward<Fn>(fn));
     }
 
     template<typename Fn>
     void export_particles(box_t const& box, std::vector<Particle_t>& dest, Fn&& fn) const
     {
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (box, vector, Fn)");
         cellMap_.export_to(box, *this, dest, std::forward<Fn>(fn));
     }
 
     template<typename Predicate>
     void export_particles(This& dest, Predicate&& pred) const
     {
+        PHARE_LOG_SCOPE(3, "ParticleArray::export_particles (Fn,vector)");
         cellMap_.export_if(*this, dest, std::forward<Predicate>(pred));
     }
+
 
     template<typename Cell>
     void change_icell(Cell const& newCell, std::size_t particleIndex)
@@ -635,6 +744,7 @@ public:
         if (box_is_valid)
             cellMap_.update(particles_, particleIndex, oldCell);
     }
+
 
     template<typename IndexRange, typename Predicate>
     auto partition(IndexRange&& range, Predicate&& pred)
@@ -647,6 +757,7 @@ public:
     {
         cellMap_.print(cell);
     }
+
 
     void sortMapping() const { cellMap_.sort(); }
 
@@ -661,7 +772,34 @@ public:
         return true;
     }
 
-    void check() const;
+
+
+    void check() const
+    {
+        if (particles_.size() != cellMap_.size())
+        {
+            PHARE_LOG_LINE_STR(particles_.size());
+            PHARE_LOG_LINE_STR(cellMap_.size());
+        }
+
+        core::abort_if(particles_.size() != cellMap_.size());
+        core::abort_if(!is_consistent());
+
+        // throw std::runtime_error("particle array not mapped, map.size() != array.size()");
+    }
+
+
+    // template<template<typename, std::size_t> typename Arr>
+    // NO_DISCARD auto& map(Arr<std::uint32_t, dimension> const& arr)
+    // {
+    //     return cellMap_(arr);
+    // }
+
+    // template<template<typename, std::size_t> typename Arr>
+    // NO_DISCARD auto& map(Arr<std::uint32_t, dimension> const& arr) const
+    // {
+    //     return cellMap_(arr);
+    // }
 
     // AMR INDEXES!
     NO_DISCARD auto& map(auto const& arr) { return cellMap_(arr); }
@@ -670,18 +808,7 @@ public:
     auto& box() const { return box_; }
 };
 
-template<template<auto> typename Super_, auto opts>
-void AoSMappedParticles<Super_, opts>::check() const
-{
-    if (particles_.size() != cellMap_.size())
-    {
-        PHARE_LOG_LINE_STR(particles_.size());
-        PHARE_LOG_LINE_STR(cellMap_.size());
-    }
 
-    core::abort_if(particles_.size() != cellMap_.size());
-    core::abort_if(!is_consistent());
-}
 
 
 template<template<auto> typename Super, auto opts>
@@ -698,13 +825,13 @@ struct AoSParticles<Super, opts>::iterator_impl
     using pointer           = Particle_t*;
     using reference         = Particle_t&;
 
-    iterator_impl(T& particles_, std::size_t const s = 0)
-        : particles{particles_}
-        , curr_pos{s}
+
+    iterator_impl(T& particles_, std::size_t const s = 0) _PHARE_ALL_FN_ : particles{particles_},
+                                                                           curr_pos{s}
     {
     }
-    iterator_impl(iterator_impl&& that)      = default;
-    iterator_impl(iterator_impl const& that) = default;
+    iterator_impl(iterator_impl&& that) _PHARE_ALL_FN_      = default;
+    iterator_impl(iterator_impl const& that) _PHARE_ALL_FN_ = default;
 
     iterator_impl& operator=(iterator_impl&& that)      = default;
     iterator_impl& operator=(iterator_impl const& that) = default;
@@ -722,19 +849,19 @@ struct AoSParticles<Super, opts>::iterator_impl
         return copy;
     }
 
-    auto& operator+=(std::int64_t i)
+    auto& operator+=(std::int64_t i) _PHARE_ALL_FN_
     {
         curr_pos += i;
         return *this;
     }
 
 
-    auto& operator--()
+    auto& operator--() _PHARE_ALL_FN_
     {
         --curr_pos;
         return *this;
     }
-    auto operator+(std::int64_t i) const
+    auto operator+(std::int64_t i) const _PHARE_ALL_FN_
     {
         auto copy = *this;
         copy.curr_pos += i;
@@ -753,28 +880,39 @@ struct AoSParticles<Super, opts>::iterator_impl
     auto operator<(iterator_impl const& that) const { return curr_pos < that.curr_pos; }
     auto operator-(iterator_impl const& that) const { return curr_pos - that.curr_pos; }
 
-    auto& weight() { return deref(particles)[curr_pos].weight(); }
-    auto& weight() const { return deref(particles)[curr_pos].weight(); }
+    auto& weight() _PHARE_ALL_FN_ { return deref(particles)[curr_pos].weight(); }
+    auto& weight() const _PHARE_ALL_FN_ { return deref(particles)[curr_pos].weight(); }
 
-    auto& charge() { return deref(particles)[curr_pos].charge(); }
-    auto& charge() const { return deref(particles)[curr_pos].charge(); }
+    auto& charge() _PHARE_ALL_FN_ { return deref(particles)[curr_pos].charge(); }
+    auto& charge() const _PHARE_ALL_FN_ { return deref(particles)[curr_pos].charge(); }
 
-    auto& iCell() { return deref(particles)[curr_pos].iCell(); }
-    auto& iCell() const { return deref(particles)[curr_pos].iCell(); }
+    auto& iCell() _PHARE_ALL_FN_ { return deref(particles)[curr_pos].iCell(); }
+    auto& iCell() const _PHARE_ALL_FN_ { return deref(particles)[curr_pos].iCell(); }
 
-    auto& delta() { return deref(particles)[curr_pos].delta(); }
-    auto& delta() const { return deref(particles)[curr_pos].delta(); }
+    auto& delta() _PHARE_ALL_FN_ { return deref(particles)[curr_pos].delta(); }
+    auto& delta() const _PHARE_ALL_FN_ { return deref(particles)[curr_pos].delta(); }
 
-    auto& v() { return deref(particles)[curr_pos].v(); }
-    auto& v() const { return deref(particles)[curr_pos].v(); }
+    auto& v() _PHARE_ALL_FN_ { return deref(particles)[curr_pos].v(); }
+    auto& v() const _PHARE_ALL_FN_ { return deref(particles)[curr_pos].v(); }
 
-    auto& operator*() { return deref(particles)[curr_pos]; }
-    auto& operator*() const { return deref(particles)[curr_pos]; }
+    auto& operator*() _PHARE_ALL_FN_
+    {
+        // PHARE_ASSERT(curr_pos < particles->size());
+        return deref(particles)[curr_pos];
+    }
+    auto& operator*() const _PHARE_ALL_FN_
+    {
+        // PHARE_ASSERT(curr_pos < particles->size());
+        return deref(particles)[curr_pos];
+    }
 
-    auto& operator[](std::size_t const i) { return deref(particles)[curr_pos + i]; }
-    auto& operator[](std::size_t const i) const { return deref(particles)[curr_pos + i]; }
+    auto& operator[](std::size_t const i) _PHARE_ALL_FN_ { return deref(particles)[curr_pos + i]; }
+    auto& operator[](std::size_t const i) const _PHARE_ALL_FN_
+    {
+        return deref(particles)[curr_pos + i];
+    }
 
-    auto copy() const { return deref(particles)[curr_pos]; }
+    auto copy() const _PHARE_ALL_FN_ { return deref(particles)[curr_pos]; }
 
     T particles;
     std::size_t curr_pos;
@@ -782,6 +920,8 @@ struct AoSParticles<Super, opts>::iterator_impl
 
 
 } // namespace PHARE::core
+
+
 
 
 #endif /* PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_AOS_HPP */

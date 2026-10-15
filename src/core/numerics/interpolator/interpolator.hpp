@@ -66,7 +66,7 @@ class Weighter<1>
 {
 public:
     inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(1)>& weights)
+                              std::array<double, nbrPointsSupport(1)>& weights) _PHARE_ALL_FN_
     {
         weights[1] = normalizedPos - static_cast<double>(startIndex);
         weights[0] = 1. - weights[1];
@@ -74,7 +74,7 @@ public:
     }
 
     // template<typename... Args>
-    inline void compute(auto&&... args) const
+    inline void compute(auto&&... args) const _PHARE_ALL_FN_
     {
         auto&& [pos, starts, weights] = std::forward_as_tuple(args...);
 
@@ -95,7 +95,7 @@ class Weighter<2>
 {
 public:
     inline void computeWeight(double normalizedPos, int startIndex,
-                              std::array<double, nbrPointsSupport(2)>& weights)
+                              std::array<double, nbrPointsSupport(2)>& weights) _PHARE_ALL_FN_
     {
         auto index = startIndex + 1;
         auto delta = static_cast<double>(index) - normalizedPos;
@@ -110,7 +110,7 @@ public:
     }
 
     template<typename M, typename... Args>
-    inline void compute(Args&&... args) const
+    inline void compute(Args&&... args) const _PHARE_ALL_FN_
     {
     }
 
@@ -126,7 +126,7 @@ class Weighter<3>
 {
 public:
     inline void computeWeight(double const normalizedPos, int const startIndex,
-                              std::array<double, nbrPointsSupport(3)>& weights) const
+                              std::array<double, nbrPointsSupport(3)>& weights) const _PHARE_ALL_FN_
     {
         constexpr double _4_over_3 = 4. / 3.;
         constexpr double _2_over_3 = 2. / 3.;
@@ -149,7 +149,7 @@ public:
     }
 
     template<typename M, typename... Args>
-    inline void compute(Args&&... args) const
+    inline void compute(Args&&... args) const _PHARE_ALL_FN_
     {
         constexpr M _4_over_3 = 4. / 3.;
         constexpr M _2_over_3 = 2. / 3.;
@@ -190,7 +190,7 @@ class MeshToParticle
 
 template<std::size_t dimdex, typename GridLayout, auto quantity, typename IndexWeights>
 NO_DISCARD auto static resolve_start_index_and_weights(IndexWeights const& indexWeights)
-
+    _PHARE_ALL_FN_
 {
     auto constexpr centerings                              = GridLayout::centering(quantity);
     auto const& [d_starts, d_weights, p_starts, p_weights] = indexWeights;
@@ -214,7 +214,8 @@ public:
      * the field \param[in] weights are the nbrPointsSupport weights used for the interpolation
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    NO_DISCARD inline auto op(Field const& field, IndexWeights const& indexWeights) const
+    NO_DISCARD inline auto op(Field const& field,
+                              IndexWeights const& indexWeights) const _PHARE_ALL_FN_
     {
         auto const& [xStartIndex, xWeights]
             = resolve_start_index_and_weights<0, GridLayout, quantity>(indexWeights);
@@ -231,7 +232,7 @@ public:
 
 
     template<typename... Args>
-    inline void avx(Args&&... args) const
+    inline void avx(Args&&... args) const _PHARE_ALL_FN_
     {
         auto const& [field, weight, value] = std::forward_as_tuple(args...);
 
@@ -257,7 +258,8 @@ public:
      * weights used for the interpolation in both directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    NO_DISCARD inline auto op(Field const& field, IndexWeights const& indexWeights) const
+    NO_DISCARD inline auto op(Field const& field,
+                              IndexWeights const& indexWeights) const _PHARE_ALL_FN_
     {
         auto const& [xStartIndex, xWeights]
             = resolve_start_index_and_weights<0, GridLayout, quantity>(indexWeights);
@@ -275,6 +277,16 @@ public:
             {
                 auto const& v = field(xStartIndex + ix, yStartIndex + iy) * yWeights[iy];
 
+#if !PHARE_HAVE_GPU
+                PHARE_DEBUG_DO({
+                    if (std::isnan(v))
+                    {
+                        PHARE_LOG_LINE_SS("\n" << field);
+                    }
+                    assert(not std::isnan(v));
+                })
+#endif
+
                 Yinterp += v;
             }
             fieldAtParticle += Yinterp * xWeights[ix];
@@ -285,7 +297,7 @@ public:
 
 
     template<typename... Args>
-    inline void avx(Args&&... args) const
+    inline void avx(Args&&... args) const _PHARE_ALL_FN_
     {
     }
 };
@@ -306,7 +318,8 @@ public:
      * weights used for the interpolation in the 3 directions
      */
     template<typename GridLayout, auto quantity, typename Field, typename IndexWeights>
-    NO_DISCARD inline auto op(Field const& field, IndexWeights const& indexWeights) const
+    NO_DISCARD inline auto op(Field const& field,
+                              IndexWeights const& indexWeights) const _PHARE_ALL_FN_
     {
         auto const& [xStartIndex, xWeights]
             = resolve_start_index_and_weights<0, GridLayout, quantity>(indexWeights);
@@ -337,7 +350,7 @@ public:
     }
 
     template<typename GridLayout, typename... Args>
-    inline auto avx(Args&&... args) const
+    inline auto avx(Args&&... args) const _PHARE_ALL_FN_
     {
         auto constexpr scalar_qts = []() constexpr {
             using enum HybridQuantity::Scalar;
@@ -438,7 +451,7 @@ public: /** Performs the 1D interpolation
                                Indexes const& startIndex, Weights const& weights,
                                double coef = 1.) */
     template<typename... Args>
-    auto operator()(Args&&... args)
+    auto operator()(Args&&... args) _PHARE_ALL_FN_
     {
         auto&& [field, particle, func, startIndex, weights, coef] = std::forward_as_tuple(args...);
         auto const& [xStartIndex]                                 = startIndex;
@@ -469,7 +482,7 @@ public: /** Performs the 2D interpolation
          * contribute \param[in] weights is the arrays of weights for the associated index
          */
     template<typename... Args>
-    auto operator()(Args&&... args)
+    auto operator()(Args&&... args) _PHARE_ALL_FN_
     {
         auto&& [field, particle, func, startIndex, weights, coef] = std::forward_as_tuple(args...);
         auto const& [xStartIndex, yStartIndex]                    = startIndex;
@@ -504,7 +517,7 @@ public: /** Performs the 3D interpolation
          * contribute \param[in] weights is the arrays of weights for the associated index
          */
     template<typename... Args>
-    auto operator()(Args&&... args)
+    auto operator()(Args&&... args) _PHARE_ALL_FN_
     {
         auto&& [field, particle, func, startIndex, weights, coef] = std::forward_as_tuple(args...);
         auto const& [xStartIndex, yStartIndex, zStartIndex]       = startIndex;
@@ -548,7 +561,7 @@ protected:
     // is offseted compared to primal ones.
 
     template<auto centering, typename Tuple>
-    auto static centered_index_and_weights_from_tuple(Tuple&& tup)
+    auto static centered_index_and_weights_from_tuple(Tuple&& tup) _PHARE_ALL_FN_
     {
         auto& [dSi, dw, pSi, pw] = tup;
 
@@ -559,13 +572,13 @@ protected:
     }
 
     template<auto centering, typename... Args>
-    auto static centered_index_and_weights(Args&... args)
+    auto static centered_index_and_weights(Args&... args) _PHARE_ALL_FN_
     {
         return centered_index_and_weights_from_tuple<centering>(std::forward_as_tuple(args...));
     }
 
     template<auto centering>
-    auto centered_index_and_weights()
+    auto centered_index_and_weights() _PHARE_ALL_FN_
     {
         return centered_index_and_weights<centering>( //
             dual_startIndex_, dual_weights_, primal_startIndex_, primal_weights_);
@@ -574,7 +587,8 @@ protected:
 
 
     template<auto centering, typename Fn, typename ICell, typename Delta>
-    auto indexAndWeights__(Fn const& transformer, ICell const& iCell_, Delta const& delta)
+    auto indexAndWeights__(Fn const& transformer, ICell const& iCell_,
+                           Delta const& delta) _PHARE_ALL_FN_
     {
         // dual weights require -.5 to take the correct position weight
         auto constexpr dual_offset = .5;
@@ -598,22 +612,25 @@ protected:
 
 
     template<auto centering, typename ICell, typename Delta>
-    auto indexAndWeights_(Box<int, dim> const& amrbox, ICell const& iCell_, Delta const& delta)
+    auto indexAndWeights_(Box<int, dim> const& amrbox, ICell const& iCell_,
+                          Delta const& delta) _PHARE_ALL_FN_
     {
-        indexAndWeights__<centering>([&](auto const& point) { return point - amrbox.lower; },
-                                     iCell_, delta);
+        indexAndWeights__<centering>(
+            [&] _PHARE_ALL_FN_(auto const& point) { return point - amrbox.lower; }, iCell_, delta);
     }
 
     template<auto centering, typename GridLayout, typename ICell, typename Delta>
-    auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_, Delta const& delta)
+    auto indexAndWeights_(GridLayout const& layout, ICell const& iCell_,
+                          Delta const& delta) _PHARE_ALL_FN_
     {
         return indexAndWeights__<centering>(
-            [&](auto const& point) { return layout.AMRToLocal(point); }, iCell_, delta);
+            [&] _PHARE_ALL_FN_(auto const& point) { return layout.AMRToLocal(point); }, iCell_,
+            delta);
     }
 
 
 public:
-    using Operator = core::Operators<double, atomic_ops>;
+    using Operator = core::Operators<double, atomic_ops, atomic_ops>;
 
     auto static constexpr interp_order = interpOrder;
     auto static constexpr dimension    = dim;
@@ -628,7 +645,8 @@ public:
      */
 
     template<typename Particle, typename Electromag, typename GridLayout>
-    inline auto m2p(Particle const& particle, Electromag const& Em, GridLayout const& layout)
+    inline auto m2p(Particle const& particle, Electromag const& Em,
+                    GridLayout const& layout) _PHARE_ALL_FN_
     {
         // using E_B_tuple = std::array<std::array<double, 3>, 2>;
         using E_B_tuple = std::tuple<std::array<double, 3>, std::array<double, 3>>;
@@ -662,7 +680,7 @@ public:
 
     template<std::uint8_t N, template<typename, std::size_t> typename Array_t, typename GridLayout,
              typename... Args>
-    inline auto m2p_avx(GridLayout const& layout, Args&&... args)
+    inline auto m2p_avx(GridLayout const& layout, Args&&... args) _PHARE_ALL_FN_
     {
         static_assert(interpOrder == 1);
 
@@ -719,7 +737,7 @@ public:
 
     template<typename Particles, typename Electromag, typename GridLayout>
     inline auto m2p(Particles const& particles, Electromag const& Em, GridLayout const& layout,
-                    std::size_t idx)
+                    std::size_t idx) _PHARE_ALL_FN_
     {
         using E_B_tuple = std::tuple<std::array<double, 3>, std::array<double, 3>>;
         using Scalar    = HybridQuantity::Scalar;
@@ -762,7 +780,7 @@ public:
 
     template<typename Particles, typename Electromag, typename GridLayout>
     inline auto operator()(Particles& particles, Electromag const& Em, GridLayout const& layout,
-                           std::size_t idx)
+                           std::size_t idx) _PHARE_ALL_FN_
     {
         return m2p(particles, Em, layout, idx);
     }
@@ -781,7 +799,7 @@ public:
 
     template<typename Particle_t, typename VecField, typename Field>
     void particleToMesh(Particle_t const& particle, Field& particleDensity, Field& chargeDensity,
-                        VecField& flux, Box<int, dim> const amrBox, double coef = 1.)
+                        VecField& flux, Box<int, dim> const amrBox, double coef = 1.) _PHARE_ALL_FN_
     {
         static_assert(not std::is_const_v<Field>);    // bad!
         static_assert(not std::is_const_v<VecField>); // bad!
@@ -808,19 +826,20 @@ public:
     }
     template<typename Particle_t, typename VecField, typename GridLayout, typename Field>
     void particleToMesh(Particle_t const& particle, Field& particleDensity, Field& chargeDensity,
-                        VecField& flux, GridLayout const& layout, double coef = 1.)
+                        VecField& flux, GridLayout const& layout, double coef = 1.) _PHARE_ALL_FN_
     {
         particleToMesh(particle, particleDensity, chargeDensity, flux,
                        grow(layout.AMRBox(), GridLayout::options.field_ghost_width), coef);
     }
 
     template<typename Particle_t, typename GridLayout>
-    void p2m_setup(Particle_t const& particle, GridLayout const& layout)
+    void p2m_setup(Particle_t const& particle, GridLayout const& layout) _PHARE_ALL_FN_
     {
         indexAndWeights_<QtyCentering::primal>(layout, particle.iCell(), particle.delta());
     }
     template<std::uint8_t IDX, typename Particle_t, typename Field>
-    void p2m_per_component(Particle_t const& particle, Field& feeld, double coef = 1.)
+    void p2m_per_component(Particle_t const& particle, Field& feeld,
+                           double coef = 1.) _PHARE_ALL_FN_
     {
         static_assert(IDX < 4); // noooooo
         auto const& startIndex_ = primal_startIndex_;
@@ -871,7 +890,7 @@ public:
      * traversing from
      */
     template<auto centering>
-    NO_DISCARD static int computeStartLeftShift([[maybe_unused]] double delta)
+    NO_DISCARD static int computeStartLeftShift([[maybe_unused]] double delta) _PHARE_ALL_FN_
     {
         static_assert(interpOrder > 0 and interpOrder < 4);
 

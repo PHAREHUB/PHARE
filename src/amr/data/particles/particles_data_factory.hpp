@@ -47,6 +47,18 @@ namespace amr
         allocate(SAMRAI::hier::Patch const& patch) const final
         {
             return std::make_shared<ParticlesData<ParticleArray>>(patch.getBox(), d_ghosts, name_);
+
+            if (patch.inHierarchy())
+                return std::make_shared<ParticlesData<ParticleArray>>(patch.getBox(), d_ghosts,
+                                                                      name_);
+            else
+            {
+                // consider scratch space - no ghosts, but bigger box - maybe bad for regridding
+                auto box = patch.getBox();
+                box.grow(d_ghosts);
+                return std::make_shared<ParticlesData<ParticleArray>>(
+                    box, d_ghosts - d_ghosts /*0*/, name_);
+            }
         }
 
         std::shared_ptr<SAMRAI::hier::BoxGeometry>

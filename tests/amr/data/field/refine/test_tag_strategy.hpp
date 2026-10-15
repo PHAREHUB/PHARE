@@ -1,10 +1,12 @@
 #ifndef PHARE_TEST_TAG_STRATEGY_HPP
 #define PHARE_TEST_TAG_STRATEGY_HPP
 
-#include "core/utilities/constants.hpp"
-#include "core/utilities/point/point.hpp"
+#include "phare_mpi.hpp"
 
+#include "core/utilities/constants.hpp"
 #include "amr/data/field/field_data.hpp"
+#include "core/utilities/point/point.hpp"
+#include "core/data/grid/gridlayoutdefs.hpp"
 
 #include <SAMRAI/hier/RefineOperator.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>

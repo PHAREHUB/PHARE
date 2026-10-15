@@ -4,7 +4,9 @@
 #include "core/def.hpp"
 #include "core/operators.hpp"
 #include "core/utilities/span.hpp"
+#include "core/utilities/kernels.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/monitoring.hpp"
 #include "core/data/tiles/tile_set.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array_def.hpp"
@@ -41,11 +43,11 @@ public:
     {
     }
 
-    auto& operator()() { return particles; }
-    auto& operator()() const { return particles; }
+    auto& operator()() _PHARE_ALL_FN_ { return particles; }
+    auto& operator()() const _PHARE_ALL_FN_ { return particles; }
 
-    Super& operator*() { return *this; }
-    Super const& operator*() const { return *this; }
+    Super& operator*() _PHARE_ALL_FN_ { return *this; }
+    Super const& operator*() const _PHARE_ALL_FN_ { return *this; }
 
     auto& link(std::size_t const idx) { return _links[idx]; }
     auto& links() { return _links; }
@@ -55,7 +57,7 @@ public:
     // its own ghost halo (unfiltered: adjacent tiles' halos legitimately overlap).
     // callers wanting a deduped subset filter fn themselves
     template<ParticleType type>
-    void on_reachable_cells(auto&& fn) const
+    void on_reachable_cells(auto&& fn) const _PHARE_ALL_FN_
     {
         Super const& tbox = *this;
         for (auto const& amr : tbox)
@@ -96,6 +98,7 @@ protected:
     using Base::size_;
 
 public:
+    using SIZE_T                     = typename Base::SIZE_T;
     auto static constexpr alloc_mode = Particles::alloc_mode;
     auto static constexpr dim        = Particles::dimension;
 
@@ -139,23 +142,27 @@ public:
     template<typename PCTileSetArray>
     PCTileSetSpan(PCTileSetArray& arr);
 
-    auto size(std::size_t const& idx) const { return particles_.data()[idx]().size(); }
-    auto size(locell_t const& icell) const { return cell_size_(icell); }
+    auto size(std::size_t const& idx) const _PHARE_ALL_FN_
+    {
+        return particles_.data()[idx]().size();
+    }
+    auto size(locell_t const& icell) const _PHARE_ALL_FN_ { return cell_size_(icell); }
 
-    auto& operator()() { return particles_; }
-    auto& operator()() const { return particles_; }
-    auto& operator()(locell_t const& cell) { return (*particles_.at(cell))(); }
-    auto& operator()(locell_t const& cell) const { return (*particles_.at(cell))(); }
+    auto& operator()() _PHARE_ALL_FN_ { return particles_; }
+    auto& operator()() const _PHARE_ALL_FN_ { return particles_; }
+    auto& operator()(locell_t const& cell) _PHARE_ALL_FN_ { return (*particles_.at(cell))(); }
+    auto& operator()(locell_t const& cell) const _PHARE_ALL_FN_ { return (*particles_.at(cell))(); }
 
-    auto local_tile_cell(std::array<int, dim> const& cell) const
+    auto local_tile_cell(std::array<int, dim> const& cell) const _PHARE_ALL_FN_
     {
         PHARE_ASSERT(particles_.at(local_cell(cell)));
         return local_cell((*particles_.at(local_cell(cell))).lower);
     }
 
     template<auto particle_type>
-    auto& move_check(auto const& pt, std::size_t const idx, auto& particle);
+    auto& move_check(auto const& pt, std::size_t const idx, auto& particle) _PHARE_ALL_FN_;
 
+    // CPU: tile-by-tile on the host; GPU_UNIFIED: one kernel thread per tile on the given stream
     template<auto type, typename... Args>
     void sync(Args&&... args);
 
@@ -163,9 +170,9 @@ public:
 
 protected:
     template<auto type>
-    void sync_tile_add_new(std::size_t const tidx);
+    void sync_tile_add_new(std::size_t const tidx) _PHARE_ALL_FN_;
     template<auto type>
-    void sync_tile_rm_left(std::size_t const tidx);
+    void sync_tile_rm_left(std::size_t const tidx) _PHARE_ALL_FN_;
 
     TileSetView<Tile_t> particles_;
     NdArrayView<dim, std::size_t> cell_size_;
@@ -197,6 +204,7 @@ protected:
     using Base::total_size;
 
 public:
+    using SIZE_T                       = typename Base::SIZE_T;
     auto static constexpr dim          = Particles::dimension;
     auto static constexpr alloc_mode   = Particles::alloc_mode;
     auto static constexpr layout_mode  = Particles::layout_mode;
@@ -211,7 +219,7 @@ public:
     using per_tile_particles           = Particles;
     using Tile_t                       = PCParticlesTile<Particles>;
     using SpnTile                      = PCParticlesTile<PSpan_t>;
-    using size_t_vector                = std::vector<std::size_t>;
+    using size_t_vector                = typename Base::size_t_vector;
     using Base::box;
     using Base::ghost_box;
     using Base::local_box;
@@ -355,7 +363,7 @@ struct PCTileSetParticles : public Super_
     template<typename... Args>
     PCTileSetParticles(Args&&... args)
         requires std::is_constructible_v<Super, Args&&...>
-        : Super{std::forward<Args>(args)...}
+    _PHARE_ALL_FN_ : Super{std::forward<Args>(args)...}
     {
     }
 
@@ -363,8 +371,8 @@ struct PCTileSetParticles : public Super_
     // supported (see ParticleArray::begin()/end() in particle_array.hpp); use
     // enumerate()/per_particle() instead.
 
-    auto data() const { return static_cast<Particle_t const*>(nullptr); } // TODO
-    auto data() { return static_cast<Particle_t*>(nullptr); }             // TODO
+    auto data() const _PHARE_ALL_FN_ { return static_cast<Particle_t const*>(nullptr); } // TODO
+    auto data() _PHARE_ALL_FN_ { return static_cast<Particle_t*>(nullptr); }             // TODO
 
     // move_check lives on PCTileSetSpan — no stub here or it shadows the span's version
     auto nbr_particles_in(std::array<int, dimension> const arr) const
@@ -388,8 +396,11 @@ struct PCTileSetParticles : public Super_
 
     template<typename T>
     struct index_wrapper;
-    auto operator[](std::size_t const& s) { return index_wrapper<This>{this, s}; }
-    auto operator[](std::size_t const& s) const { return index_wrapper<This const>{this, s}; }
+    auto operator[](std::size_t const& s) _PHARE_ALL_FN_ { return index_wrapper<This>{this, s}; }
+    auto operator[](std::size_t const& s) const _PHARE_ALL_FN_
+    {
+        return index_wrapper<This const>{this, s};
+    }
 
 }; // PCTileSetParticles<Super>
 
@@ -403,7 +414,7 @@ struct PCCrossTileCopyDAO
     // the tile's own box plus (LevelGhost) the ghost cells it clamp-owns - the
     // tile-set bookkeeping read here is shared, and non-owned halo cells hold nothing
     template<auto type>
-    void on_owned_cells(auto&& fn)
+    void on_owned_cells(auto&& fn) _PHARE_ALL_FN_
     {
         Box<int, dim> const& tbox = tile;
         tile.template on_reachable_cells<type>([&](auto const& amr) {
@@ -413,12 +424,12 @@ struct PCCrossTileCopyDAO
     }
 
     template<auto type>
-    void copy_in();
+    void copy_in() _PHARE_ALL_FN_;
 
     // both leaver lists of a cell are consumed by one merged rm pass on the per-cell
     // container — see sync_rm_left for why they cannot be two separate passes
     template<auto type>
-    void rm_left()
+    void rm_left() _PHARE_ALL_FN_
     {
         auto& pc = tile();
 
@@ -454,7 +465,8 @@ PCTileSetSpan<Particles>::PCTileSetSpan(PCTileSetArray& arr)
 
 template<typename Particles>
 template<auto particle_type>
-auto& PCTileSetSpan<Particles>::move_check(auto const& pt, std::size_t const idx, auto& particle)
+auto& PCTileSetSpan<Particles>::move_check(auto const& pt, std::size_t const idx,
+                                           auto& particle) _PHARE_ALL_FN_
 {
     using enum ParticleType;
     static_assert(any_in(particle_type, Domain, LevelGhost));
@@ -465,12 +477,13 @@ auto& PCTileSetSpan<Particles>::move_check(auto const& pt, std::size_t const idx
         return *this; // old cell == new cell, no change required
 
     bool constexpr static ATOMIC = true;
-    using Op                     = Operators<std::size_t, ATOMIC>;
+    bool constexpr static GPU    = alloc_mode == AllocatorMode::GPU_UNIFIED;
+    using Op                     = Operators<SIZE_T, ATOMIC, GPU>;
 
     // register the departure against the tile-set cell — mirrors
     // TileSetParticles::move_check: only register here, the actual cross-tile copy
     // (or removal) happens later during sync
-    auto const leave = [&]() {
+    auto const leave = [&] _PHARE_ALL_FN_() {
         auto const old_lcl_cell = local_cell(pt.icell);
 
         auto& gidx      = gap_idx_(old_lcl_cell);
@@ -521,6 +534,8 @@ template<typename Particles>
 template<auto type>
 void PCTileSetVector<Particles>::on_appended()
 {
+    MemoryMonitoring::LOG(__PRETTY_FUNCTION__);
+
     total_size = 0;
     for (auto& tile : particles_)
     {
@@ -658,7 +673,7 @@ void PCTileSetVector<Particles>::on_tile_wall_cells(auto const& tile, auto&& fn)
 
 template<typename Particles>
 template<auto type>
-void PCCrossTileCopyDAO<Particles>::copy_in()
+void PCCrossTileCopyDAO<Particles>::copy_in() _PHARE_ALL_FN_
 {
     auto& pc = tile();
 
@@ -715,17 +730,37 @@ void PCTileSetSpan<Particles>::sync(Args&&... args)
 {
     PHARE_LOG_SCOPE(3, "PCTileSetSpan::sync(stream)");
 
-    for (std::size_t tidx = 0; tidx < particles_.size(); ++tidx)
-        sync_tile_add_new<type>(tidx);
+    if constexpr (alloc_mode == AllocatorMode::CPU)
+    {
+        for (std::size_t tidx = 0; tidx < particles_.size(); ++tidx)
+            sync_tile_add_new<type>(tidx);
 
-    for (std::size_t tidx = 0; tidx < particles_.size(); ++tidx)
-        sync_tile_rm_left<type>(tidx);
+        for (std::size_t tidx = 0; tidx < particles_.size(); ++tidx)
+            sync_tile_rm_left<type>(tidx);
+    }
+    else if constexpr (alloc_mode == AllocatorMode::GPU_UNIFIED)
+    {
+        if (!PHARE_HAVE_MKN_GPU)
+            throw std::runtime_error("no gpu impl");
+
+        PHARE_WITH_MKN_GPU({
+            auto view            = *this;
+            auto const& [stream] = std::forward_as_tuple(args...);
+            kernel::launch(stream, particles_.size(), [=] _PHARE_ALL_FN_() mutable {
+                view.template sync_tile_add_new<type>(kernel::idx());
+                __syncthreads();
+                view.template sync_tile_rm_left<type>(kernel::idx());
+            });
+        })
+    }
+    else
+        throw std::runtime_error(__func__);
 }
 
 
 template<typename Particles>
 template<auto type>
-void PCTileSetSpan<Particles>::sync_tile_add_new(std::size_t const tidx)
+void PCTileSetSpan<Particles>::sync_tile_add_new(std::size_t const tidx) _PHARE_ALL_FN_
 {
     PCCrossTileCopyDAO<std::decay_t<decltype(*this)>>{*this, tidx}.template copy_in<type>();
 }
@@ -733,7 +768,7 @@ void PCTileSetSpan<Particles>::sync_tile_add_new(std::size_t const tidx)
 
 template<typename Particles>
 template<auto type>
-void PCTileSetSpan<Particles>::sync_tile_rm_left(std::size_t const tidx)
+void PCTileSetSpan<Particles>::sync_tile_rm_left(std::size_t const tidx) _PHARE_ALL_FN_
 {
     PCCrossTileCopyDAO<std::decay_t<decltype(*this)>>{*this, tidx}.template rm_left<type>();
 }

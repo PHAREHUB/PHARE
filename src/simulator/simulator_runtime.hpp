@@ -1,7 +1,9 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_RUNTIME_HPP
 #define PHARE_SIMULATOR_SIMULATOR_RUNTIME_HPP
 
+#include "core/def.hpp"
 #include "core/logger.hpp"
+#include "core/models/options/mhd_options_def.hpp"
 
 #include "initializer/data_provider.hpp"
 

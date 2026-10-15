@@ -1,28 +1,22 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_SOA_HPP
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_SOA_HPP
 
-#include "core/data/vector.hpp"
+#include "core/def/detail/mkn_avx.hpp"
+#include "core/logger.hpp"
+#include "core/vector.hpp"
+// #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
+#include "core/utilities/monitoring.hpp"
+
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array_def.hpp"
+
+#include "core/data/particles/arrays/particle_array_soa_thrust.hpp"
+
 
 namespace PHARE::core
 {
 
-template<std::size_t dim>
-using SoAParticle_crt = std::tuple<double const&,                  //  weight
-                                   double const&,                  // charge
-                                   std::array<int, dim> const&,    // iCell
-                                   std::array<double, dim> const&, // delta
-                                   std::array<double, 3> const&    // v
-                                   >;
-template<std::size_t dim>
-using SoAParticle_rt = std::tuple<double&,                  //  weight
-                                  double&,                  // charge
-                                  std::array<int, dim>&,    // iCell
-                                  std::array<double, dim>&, // delta
-                                  std::array<double, 3>&    // v
-                                  >;
 
 template<std::size_t dim, std::size_t size_>
 struct SoAArray
@@ -39,7 +33,7 @@ struct SoAArray
     auto constexpr static size() { return size_; }
 
     template<typename Particles_t>
-    void assign(Particles_t const& src, std::size_t const idx, std::size_t const dst)
+    void assign(Particles_t const& src, std::size_t const idx, std::size_t const dst) _PHARE_ALL_FN_
     {
         assert(dst < size_);
         assert(idx < src.size());
@@ -51,7 +45,7 @@ struct SoAArray
     }
 
     template<typename Particle_t>
-    void assign(Particle_t const& src, std::size_t const dst)
+    void assign(Particle_t const& src, std::size_t const dst) _PHARE_ALL_FN_
     {
         assert(dst < size_);
         this->weight_[dst] = src.weight();
@@ -61,21 +55,41 @@ struct SoAArray
         this->v_[dst]      = src.v();
     }
 
-    auto as_tuple() { return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_); }
-    auto as_tuple() const { return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_); }
+#if PHARE_HAVE_THRUST
+
+    auto operator[](std::size_t const& s) _PHARE_ALL_FN_ { return SoAZipParticle(*this, s); }
+
+    auto operator[](std::size_t const& s) const _PHARE_ALL_FN_
+    {
+        return SoAZipConstParticle(*this, s);
+    }
+
+#endif
+
+    auto as_tuple() _PHARE_ALL_FN_
+    {
+        return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+    }
+    auto as_tuple() const _PHARE_ALL_FN_
+    {
+        return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+    }
 };
+
+
 
 // used when the memory is owned elsewhere, e.g. numpy arrays
 template<std::size_t dim, auto alloc_mode_, auto _const_ = 0>
 struct SoASpan
 {
-    static_assert(std::is_same_v<decltype(alloc_mode_), AllocatorMode>);
+    static_assert(std::is_same_v<decltype(alloc_mode_), PHARE::AllocatorMode>);
 
     auto static constexpr alloc_mode   = alloc_mode_;
     auto static constexpr storage_mode = StorageMode::SPAN;
     auto static constexpr dimension    = dim;
     template<typename T>
     using container_t = std::conditional_t<_const_, T const*, T*>;
+    using SIZE_T      = default_span_size_t;
 
     SoASpan() = default;
 
@@ -89,6 +103,7 @@ struct SoASpan
         , v_{reinterpret_cast<container_t<std::array<double, 3>>>(_v.data())}
     {
     }
+
 
     template<typename ParticleArray>
     SoASpan(ParticleArray&& array, std::size_t const& beg, std::size_t const& siz)
@@ -120,19 +135,27 @@ struct SoASpan
     {
     }
 
-    auto size() const { return size_; }
-    void clear() { size_ = 0; }
+    auto size() const _PHARE_ALL_FN_ { return size_; }
+    void clear() _PHARE_ALL_FN_ { size_ = 0; }
     void resize(std::size_t const& s)
     {
         PHARE_ASSERT(s <= size_); // can't be bigger
         size_ = s;
     }
 
-    void pop_back() { --size_; }
-    auto size_address() { return &size_; }
 
-    auto as_tuple() { return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_); }
-    auto as_tuple() const { return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_); }
+    void pop_back() _PHARE_ALL_FN_ { --size_; }
+    auto size_address() _PHARE_ALL_FN_ { return &size_; }
+
+
+    auto as_tuple() _PHARE_ALL_FN_
+    {
+        return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+    }
+    auto as_tuple() const _PHARE_ALL_FN_
+    {
+        return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+    }
 
     template<typename Particles_t>
     void reset(Particles_t& particles)
@@ -144,12 +167,13 @@ struct SoASpan
         size_ = particles.size();
     }
 
-    std::size_t size_;
+    SIZE_T size_;
     container_t<double> weight_, charge_;
     container_t<std::array<int, dim>> iCell_;
     container_t<std::array<double, dim>> delta_;
     container_t<std::array<double, 3>> v_;
 };
+
 
 
 template<std::size_t dim, auto alloc_mode_>
@@ -159,8 +183,16 @@ struct SoAVector
     auto static constexpr alloc_mode   = alloc_mode_;
     auto static constexpr dimension    = dim;
 
+    std::uint8_t constexpr static alloc_impl()
+    {
+        if (alloc_mode_ == AllocatorMode::GPU_UNIFIED)
+            return 1;
+        return PHARE_HAVE_MKN_AVX;
+    }
+
+
     template<typename Type>
-    using container_t = std::vector<Type>;
+    using container_t = typename Vector<Type, alloc_mode, alloc_impl()>::vector_t;
 
     SoAVector() {}
 
@@ -183,7 +215,8 @@ struct SoAVector
     {
     }
 
-    auto size() const { return weight_.size(); }
+    auto size() const _PHARE_ALL_FN_ { return weight_.size(); }
+
 
     void pop_back()
     {
@@ -198,9 +231,19 @@ struct SoAVector
         std::apply([](auto&... container) { ((container.clear()), ...); }, as_tuple());
     }
 
+
     void resize(std::size_t const& size)
     {
-        std::apply([&](auto&... container) { ((container.resize(size)), ...); }, as_tuple());
+        if constexpr (CompileOptions::WithMknGpu and alloc_mode == AllocatorMode::GPU_UNIFIED)
+        {
+            PHARE_WITH_MKN_GPU(std::apply(
+                [&](auto&... container) {
+                    ((mkn::gpu::resize(container, size, /*copy=*/true)), ...);
+                },
+                as_tuple()));
+        }
+        else
+            std::apply([&](auto&... container) { ((container.resize(size)), ...); }, as_tuple());
     }
 
     template<auto type>
@@ -215,15 +258,23 @@ struct SoAVector
         // noop
     }
 
+
     container_t<double> weight_, charge_;
     container_t<std::array<int, dim>> iCell_;
     container_t<std::array<double, dim>> delta_;
     container_t<std::array<double, 3>> v_;
 
     template<typename V>
-    static auto& get_vec(V& v) // we can probably delete this now
+    static auto& get_vec(V& v)
     {
-        return v;
+        if constexpr (CompileOptions::WithMknGpu and alloc_mode == AllocatorMode::GPU_UNIFIED)
+        {
+            PHARE_WITH_MKN_GPU(return mkn::gpu::as_super(v));
+        }
+        else
+        {
+            return v;
+        }
     }
 };
 
@@ -239,23 +290,29 @@ public:
     auto static constexpr layout_mode  = LayoutMode::SoA;
     auto static constexpr storage_mode = Super::storage_mode;
 
+    using SIZE_T     = default_span_size_t;
     using Particle_t = SoAParticle_crt<dimension>;
     using Super::size;
 
     using Span_t = SoAParticles<SoASpan<dimension, alloc_mode>>;
     friend class SoAParticles<SoASpan<dimension, alloc_mode>>;
 
+    // template<std::size_t size>
+    //  using array_type = SoAParticles<SoAArray<dimension, size>>;
+
     // public for pybind but avoid otherwise
     using Super::charge_;
     using Super::delta_;
     using Super::iCell_;
+    // using Super::resize;
     using Super::v_;
     using Super::weight_;
+
 
     template<typename... Args>
     SoAParticles(Args&&... args)
         requires std::is_constructible_v<Super, Args&&...>
-        : Super{std::forward<Args>(args)...}
+    _PHARE_ALL_FN_ : Super{std::forward<Args>(args)...}
     {
     }
 
@@ -264,54 +321,65 @@ public:
     This& operator=(This&& that)      = default;
     This& operator=(This const& that) = default;
 
-    // no begin()/end() here - SoA has no single Particle_t& to hand back (fields live in
-    // separate arrays), only index-based access (see weight(i)/charge(i)/... below).
 
-    auto& weight(std::size_t i) const { return weight_[i]; }
-    auto& weight(std::size_t i) { return weight_[i]; }
+    auto& weight(std::size_t i) const _PHARE_ALL_FN_ { return weight_[i]; }
+    auto& weight(std::size_t i) _PHARE_ALL_FN_ { return weight_[i]; }
 
-    auto& charge(std::size_t i) const { return charge_[i]; }
-    auto& charge(std::size_t i) { return charge_[i]; }
+    auto& charge(std::size_t i) const _PHARE_ALL_FN_ { return charge_[i]; }
+    auto& charge(std::size_t i) _PHARE_ALL_FN_ { return charge_[i]; }
 
-    auto& iCell(std::size_t i) const { return iCell_[i]; }
-    auto& iCell(std::size_t i) { return iCell_[i]; }
+    auto& iCell(std::size_t i) const _PHARE_ALL_FN_ { return iCell_[i]; }
+    auto& iCell(std::size_t i) _PHARE_ALL_FN_ { return iCell_[i]; }
 
-    auto& delta(std::size_t i) const { return delta_[i]; }
-    auto& delta(std::size_t i) { return delta_[i]; }
+    auto& delta(std::size_t i) const _PHARE_ALL_FN_ { return delta_[i]; }
+    auto& delta(std::size_t i) _PHARE_ALL_FN_ { return delta_[i]; }
 
-    auto& v(std::size_t i) const { return v_[i]; }
-    auto& v(std::size_t i) { return v_[i]; }
+    auto& v(std::size_t i) const _PHARE_ALL_FN_ { return v_[i]; }
+    auto& v(std::size_t i) _PHARE_ALL_FN_ { return v_[i]; }
 
-    auto& weight() { return weight_; }
-    auto& charge() { return charge_; }
-    auto& iCell() { return iCell_; }
-    auto& delta() { return delta_; }
-    auto& v() { return v_; }
+    auto& weight() _PHARE_ALL_FN_ { return weight_; }
+    auto& charge() _PHARE_ALL_FN_ { return charge_; }
+    auto& iCell() _PHARE_ALL_FN_ { return iCell_; }
+    auto& delta() _PHARE_ALL_FN_ { return delta_; }
+    auto& v() _PHARE_ALL_FN_ { return v_; }
 
-    auto& weight() const { return weight_; }
-    auto& charge() const { return charge_; }
-    auto& iCell() const { return iCell_; }
-    auto& delta() const { return delta_; }
-    auto& v() const { return v_; }
+    auto& weight() const _PHARE_ALL_FN_ { return weight_; }
+    auto& charge() const _PHARE_ALL_FN_ { return charge_; }
+    auto& iCell() const _PHARE_ALL_FN_ { return iCell_; }
+    auto& delta() const _PHARE_ALL_FN_ { return delta_; }
+    auto& v() const _PHARE_ALL_FN_ { return v_; }
+
 
     // for performing the same operation across all vectors e.g. with std apply
-    auto as_tuple(std::size_t i)
+    auto as_tuple(std::size_t i) _PHARE_ALL_FN_
     {
         return std::forward_as_tuple(this->weight_[i], this->charge_[i], this->iCell_[i],
                                      this->delta_[i], this->v_[i]);
     }
 
-    auto as_tuple(std::size_t i) const
+    auto as_tuple(std::size_t i) const _PHARE_ALL_FN_
     {
         return std::forward_as_tuple(this->weight_[i], this->charge_[i], this->iCell_[i],
                                      this->delta_[i], this->v_[i]);
     }
 
-    auto as_tuple() { return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_); }
-    auto as_tuple() const { return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_); }
+    auto as_tuple() _PHARE_ALL_FN_
+    {
+        return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+    }
+    auto as_tuple() const _PHARE_ALL_FN_
+    {
+        return std::forward_as_tuple(weight_, charge_, iCell_, delta_, v_);
+    }
 
-    template<typename Particle_t, auto S = storage_mode>
-        requires(S == StorageMode::VECTOR)
+
+    // no begin()/end() here - SoA has no single Particle_t& to hand back (fields live in
+    // separate arrays), only index-based access (see weight(i)/charge(i)/... above), or
+    // the thrust zip iterator when needed.
+
+
+    template<typename Particle_t, auto S = storage_mode,
+             typename = std::enable_if_t<S == StorageMode::VECTOR>>
     void push_back(Particle_t const& particle)
     {
         auto const& [w, c, i, d, v] = particle;
@@ -323,8 +391,35 @@ public:
     }
 
 
-    template<typename Particle_t, auto S = storage_mode>
-        requires(S == StorageMode::VECTOR)
+#if PHARE_HAVE_THRUST // needs thrust or no compile on non-const access
+
+    template<typename Particle_t>
+    auto emplace_back_zip(Particle_t const& particle)
+    {
+        Super::get_vec(this->weight_).emplace_back(particle.weight());
+        Super::get_vec(this->charge_).emplace_back(particle.charge());
+        Super::get_vec(this->iCell_).emplace_back(particle.iCell());
+        Super::get_vec(this->delta_).emplace_back(particle.delta());
+        Super::get_vec(this->v_).emplace_back(particle.v());
+        return size() - 1; // index of the appended particle
+    }
+
+    template<typename That>
+    auto emplace_back(SoAZipParticle<That> const& particle)
+    {
+        return emplace_back_zip(particle);
+    }
+    template<typename That>
+    auto emplace_back(SoAZipConstParticle<That> const& particle)
+    {
+        return emplace_back_zip(particle);
+    }
+
+#endif
+
+
+    template<typename Particle_t, auto S = storage_mode,
+             typename = std::enable_if_t<S == StorageMode::VECTOR>>
     auto emplace_back(Particle_t const& particle)
     {
         Super::get_vec(this->weight_).emplace_back(particle.weight());
@@ -339,7 +434,17 @@ public:
     template<typename That, auto S = storage_mode,
              typename
              = std::enable_if_t<S == StorageMode::VECTOR and That::layout_mode == LayoutMode::SoA>>
-    void emplace_back(That const& src);
+    void emplace_back(That const& src)
+    {
+        auto this_tuple = as_tuple();
+        auto that_tuple = src.as_tuple();
+        for_N<std::tuple_size_v<decltype(this_tuple)>>([&](auto vi) {
+            auto& vec            = Super::get_vec(std::get<vi>(this_tuple));
+            auto const& that_vec = std::get<vi>(that_tuple);
+            for (std::size_t i = 0; i < src.size(); ++i)
+                vec.emplace_back(that_vec[i]);
+        });
+    }
 
 
     template<typename That, auto S = storage_mode,
@@ -355,14 +460,61 @@ public:
     }
 
     template<typename... Args>
-    auto emplace_back(Args const&... args);
+    auto emplace_back(Args const&... args)
+    {
+        auto arg_tuple = std::forward_as_tuple(args...);
+
+        if constexpr (std::tuple_size_v<decltype(arg_tuple)> == 5)
+        {
+            auto this_tuple = as_tuple();
+            for_N<std::tuple_size_v<decltype(arg_tuple)>>([&](auto ic) {
+                auto constexpr i = ic();
+                Super::get_vec(std::get<i>(this_tuple)).emplace_back(std::get<i>(arg_tuple));
+            });
+        }
+
+        else
+            throw std::runtime_error("NO IMPL!");
+
+        return size() - 1; // index of the appended particle - see emplace_back(Particle_t const&)
+    }
+
 
 
     template<auto S = storage_mode, typename = std::enable_if_t<S == StorageMode::VECTOR>>
     void reserve(std::size_t const& size)
     {
-        std::apply([&](auto&... container) { ((container.reserve(size)), ...); }, as_tuple());
+        if (size > capacity())
+            MemoryMonitoring::LOG(__PRETTY_FUNCTION__);
+
+        if constexpr (CompileOptions::WithMknGpu
+                      and Super::alloc_mode == AllocatorMode::GPU_UNIFIED)
+        {
+            PHARE_WITH_MKN_GPU(std::apply(
+                [&](auto&... container) {
+                    ((mkn::gpu::reserve(container, size, /*copy=*/true)), ...);
+                },
+                as_tuple()));
+        }
+        else
+            std::apply([&](auto&... container) { ((container.reserve(size)), ...); }, as_tuple());
     }
+
+    // template<typename Src>
+    // void append(Src const& src, std::size_t const start, std::size_t const size)
+    // {
+    //     if (capacity() < this->size() + size)
+    //         reserve(this->size() + size);
+    //     for (std::size_t i = 0; i < size; ++i)
+    //         emplace_back(src[i + start]);
+    // }
+
+    // template<typename Src>
+    // void append(Src const& src)
+    // {
+    //     append(src, 0, src.size());
+    // }
+
 
     void swap(This& that)
     {
@@ -372,7 +524,19 @@ public:
             [&](auto i) { std::get<i>(this_tuple).swap(std::get<i>(that_tuple)); });
     }
 
-    void swap(std::size_t const& a, std::size_t const& b);
+    void swap(std::size_t const& a, std::size_t const& b)
+    {
+        if (a == b)
+            return;
+
+        std::swap(weight_[a], weight_[b]);
+        std::swap(charge_[a], charge_[b]);
+        std::swap(iCell_[a], iCell_[b]);
+        std::swap(delta_[a], delta_[b]);
+        std::swap(v_[a], v_[b]);
+    }
+
+
 
     template<auto S = storage_mode, typename = std::enable_if_t<S == StorageMode::VECTOR>>
     std::size_t capacity() const
@@ -380,15 +544,19 @@ public:
         return weight_.capacity(); // they're all the same
     }
 
-    auto copy(std::size_t i) const
+
+    auto copy(std::size_t i) const _PHARE_ALL_FN_
     {
         return Particle<dimension>{
             weight_[i], charge_[i], iCell_[i], delta_[i], v_[i],
         };
     }
 
+
     auto back() { return (*this)[size() - 1]; }
     auto front() { return (*this)[0]; }
+
+
 
     auto constexpr static size_of_particle()
     {
@@ -399,15 +567,21 @@ public:
                + sizeof(typename decltype(v_)::value_type);
     }
 
+
     void check() const {}
 
-    void assign(std::size_t const& src, std::size_t const& dst)
+    void assign(std::size_t const& src, std::size_t const& dst) _PHARE_ALL_FN_
+    {
+        std::apply([&](auto&... v) { ((v[dst] = v[src]), ...); }, as_tuple());
+    }
+    void assign(SIZE_T const& src, std::size_t const& dst) _PHARE_ALL_FN_
     {
         std::apply([&](auto&... v) { ((v[dst] = v[src]), ...); }, as_tuple());
     }
 
+
     template<typename Particle_t>
-    void assign(Particle_t const& src, std::size_t const& dst)
+    void assign(Particle_t const& src, std::size_t const& dst) _PHARE_ALL_FN_
     {
         auto this_tuple = as_tuple();
         for_N<std::tuple_size_v<decltype(this_tuple)>>(
@@ -415,61 +589,26 @@ public:
     }
 
     template<typename _Particles>
-    void assign(_Particles const& src, std::size_t const& idx, std::size_t const& dst)
+    void assign(_Particles const& src, std::size_t const& idx,
+                std::size_t const& dst) _PHARE_ALL_FN_
     {
         auto this_tuple = as_tuple();
         auto that_tuple = src.as_tuple();
         for_N<std::tuple_size_v<decltype(this_tuple)>>(
             [&](auto vi) { std::get<vi>(this_tuple)[dst] = std::get<vi>(that_tuple)[idx]; });
     }
-};
 
-template<typename Super_>
-template<typename That, auto S, typename>
-void SoAParticles<Super_>::emplace_back(That const& src)
-{
-    auto this_tuple = as_tuple();
-    auto that_tuple = src.as_tuple();
-    for_N<std::tuple_size_v<decltype(this_tuple)>>([&](auto vi) {
-        auto& vec            = Super::get_vec(std::get<vi>(this_tuple));
-        auto const& that_vec = std::get<vi>(that_tuple);
-        for (std::size_t i = 0; i < src.size(); ++i)
-            vec.emplace_back(that_vec[i]);
-    });
-}
+#if PHARE_HAVE_THRUST // needs thrust or no compile on non-const access
+    auto operator[](std::size_t const& s) _PHARE_ALL_FN_ { return SoAZipParticle(*this, s); }
+#endif
 
-template<typename Super_>
-template<typename... Args>
-auto SoAParticles<Super_>::emplace_back(Args const&... args)
-{
-    auto arg_tuple = std::forward_as_tuple(args...);
-
-    if constexpr (std::tuple_size_v<decltype(arg_tuple)> == 5)
+    auto operator[](std::size_t const& s) const _PHARE_ALL_FN_
     {
-        auto this_tuple = as_tuple();
-        for_N<std::tuple_size_v<decltype(arg_tuple)>>([&](auto ic) {
-            auto constexpr i = ic();
-            Super::get_vec(std::get<i>(this_tuple)).emplace_back(std::get<i>(arg_tuple));
-        });
+        return PHARE_WITH_THRUST(SoAZipConstParticle(*this, s));
+        // else
+        PHARE_WITH_THRUST_ELSE(copy(s));
     }
-    else
-        throw std::runtime_error("NO IMPL!");
-
-    return size() - 1; // index of the appended particle - see emplace_back(Particle_t const&)
-}
-
-template<typename Super_>
-void SoAParticles<Super_>::swap(std::size_t const& a, std::size_t const& b)
-{
-    if (a == b)
-        return;
-
-    std::swap(weight_[a], weight_[b]);
-    std::swap(charge_[a], charge_[b]);
-    std::swap(iCell_[a], iCell_[b]);
-    std::swap(delta_[a], delta_[b]);
-    std::swap(v_[a], v_[b]);
-}
+};
 
 
 // Per-index particle-like proxy for generic code (e.g. amr::Splitter) written against a
@@ -497,6 +636,7 @@ using SoAVectorParticles = SoAParticles<SoAVector<dim, alloc_mode>>;
 
 template<std::size_t dim, std::size_t size>
 using SoAArrayParticles = SoAParticles<SoAArray<dim, size>>;
+
 
 template<std::size_t dim, auto alloc_mode = AllocatorMode::CPU>
 using ParticleArray_SOAView = SoAParticles<SoASpan<dim, alloc_mode>>;

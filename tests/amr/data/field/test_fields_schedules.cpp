@@ -1,4 +1,3 @@
-
 #include "core/utilities/box/box.hpp"
 #include "core/data/grid/grid_tiles.hpp"
 #include "core/utilities/types.hpp"
@@ -245,7 +244,7 @@ TYPED_TEST(FieldScheduleHierarchyTest, testing_hyhy_field_refine_schedules)
     for (auto& patch : *lvl1)
         n_cells += patch->getBox().size();
 
-    PHARE_LOG_LINE_SS(core::enum_name(TypeParam::layout)
+    PHARE_LOG_LINE_SS(magic_enum::enum_name(TypeParam::layout)
                       << " L1 patches " << lvl1->getLocalNumberOfPatches() << " cells " << n_cells
                       << " fillElectricGhosts " << e_ms / n_repeats << " ms"
                       << " fillMagneticGhosts " << b_ms / n_repeats << " ms");

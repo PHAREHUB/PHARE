@@ -1,6 +1,8 @@
 #ifndef PHARE_SIMULATOR_SIMULATOR_DEF_HPP
 #define PHARE_SIMULATOR_SIMULATOR_DEF_HPP
 
+#include "core/def.hpp"
+#include "core/logger.hpp"
 #include "core/models/options/mhd_options_def.hpp"
 #include "core/data/particles/particle_array_def.hpp"
 
@@ -46,8 +48,8 @@ struct SimOpts
     std::size_t interp_order  = 1;
     std::size_t nbRefinedPart = defaultNbrRefinedParts(dimension, interp_order);
 
-    core::LayoutMode layout_mode   = core::LayoutMode::AoSMapped;
-    core::AllocatorMode alloc_mode = core::AllocatorMode::CPU;
+    core::LayoutMode layout_mode = core::LayoutMode::AoSMapped;
+    AllocatorMode alloc_mode     = AllocatorMode::CPU;
 
     MHDOpts::ReconstructionType reconstruction_type = MHDOpts::ReconstructionType::MHDOff;
     MHDOpts::SlopeLimiterType slope_limiter_type    = MHDOpts::SlopeLimiterType::MHDOff;

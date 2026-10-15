@@ -84,7 +84,7 @@ set( SOURCES_CPP
      samrai.cpp
    )
 
-# single source of entry for static SAMRAI things
+
 add_library(${PROJECT_NAME} SHARED ${SOURCES_INC} ${SOURCES_CPP})
 target_compile_options(${PROJECT_NAME} PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 set_property(TARGET ${PROJECT_NAME} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
@@ -106,6 +106,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC
   SAMRAI_xfer
   MPI::MPI_C
   cppdict
+  magic_enum
   ${PHARE_BASE_LIBS}
 )
 

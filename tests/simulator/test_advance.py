@@ -1,4 +1,4 @@
-#
+# tests/simulator/test_advance.py
 #  Common base class across hybrid and mhd tests
 #   see
 #      tests/simulator/advance/test_advance_mhd.py
@@ -369,7 +369,7 @@ class AdvanceTestBase(SimulatorTest):
 
         from pyphare.pharein import global_vars
 
-        from tests.amr.data.field.refine.test_refine_field import (
+        from tests.simulator.utilities.test_refine_field import (
             refine_time_interpolate,
         )
 

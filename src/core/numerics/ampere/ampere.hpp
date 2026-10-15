@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_NUMERICS_AMPERE_AMPERE_HPP
 #define PHARE_CORE_NUMERICS_AMPERE_AMPERE_HPP
 
+#include "core/def.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -32,7 +33,7 @@ public:
     }
 
     template<typename VecField>
-    void operator()(VecField const& B, VecField& J)
+    void operator()(VecField const& B, VecField& J) _PHARE_ALL_FN_
     {
         // can't use structured bindings because
         //   "reference to local binding declared in enclosing function"
@@ -43,16 +44,16 @@ public:
         Point<std::uint32_t, dimension> const amount{
             ConstArray<std::uint32_t, dimension>(box.amount)};
 
-        auto const eval = [&](auto& Jc, auto&& fn) {
+        auto const eval = [&] _PHARE_ALL_FN_(auto& Jc, auto&& fn) {
             if constexpr (box.mode == AmpereMode::ShrinkedGhost)
                 layout_.evalOnShrinkedGhostBox(Jc, amount, fn, Jc, B, layout_);
             else
                 layout_.evalOnBiggerBox(Jc, amount, fn, Jc, B, layout_);
         };
 
-        eval(Jx, [](auto&&... args) { JxEq_(args...); });
-        eval(Jy, [](auto&&... args) { JyEq_(args...); });
-        eval(Jz, [](auto&&... args) { JzEq_(args...); });
+        eval(Jx, [] _PHARE_ALL_FN_(auto&&... args) { JxEq_(args...); });
+        eval(Jy, [] _PHARE_ALL_FN_(auto&&... args) { JyEq_(args...); });
+        eval(Jz, [] _PHARE_ALL_FN_(auto&&... args) { JzEq_(args...); });
     }
 
 
@@ -61,7 +62,7 @@ private:
 
 
     template<typename IJK, typename... Args>
-    static void JxEq_(IJK const& ijk, Args&&... args)
+    static void JxEq_(IJK const& ijk, Args&&... args) _PHARE_ALL_FN_
     {
         auto&& [Jx, B, layout] = std::forward_as_tuple(args...);
         auto&& [_, By, Bz]     = B();
@@ -79,7 +80,7 @@ private:
     }
 
     template<typename IJK, typename... Args>
-    static void JyEq_(IJK const& ijk, Args&&... args)
+    static void JyEq_(IJK const& ijk, Args&&... args) _PHARE_ALL_FN_
     {
         auto&& [Jy, B, layout] = std::forward_as_tuple(args...);
         auto&& [Bx, By, Bz]    = B();
@@ -93,7 +94,7 @@ private:
     }
 
     template<typename IJK, typename... Args>
-    static void JzEq_(IJK const& ijk, Args&&... args)
+    static void JzEq_(IJK const& ijk, Args&&... args) _PHARE_ALL_FN_
     {
         auto&& [Jz, B, layout] = std::forward_as_tuple(args...);
         auto&& [Bx, By, Bz]    = B();

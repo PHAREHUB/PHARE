@@ -1,6 +1,4 @@
-#
-#
-#
+# pyphare/pyphare/simulator/simulator.py
 
 import os
 import sys

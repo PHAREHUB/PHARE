@@ -1,41 +1,69 @@
 #ifndef PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 #define PHARE_CORE_DATA_NDARRAY_NDARRAY_VECTOR_HPP
 
-#include "core/data/vector.hpp"
+#include "core/def.hpp"
+#include "core/vector.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/ndarray/ndarray_view.hpp"
 
 #include <array>
-#include <vector>
 #include <cstdint>
 #include <optional>
-#include <algorithm>
 
 namespace PHARE::core
 {
 
+
+template<typename Type, auto allocator_mode_>
+struct NdArrayConsts
+{
+    auto static constexpr allocator_mode = allocator_mode_;
+
+    using vector_t  = typename Vector<Type, allocator_mode_>::vector_t;
+    using stack_var = StackVar<vector_t>;
+};
+
+
 template<std::size_t dim, typename Type = double, bool c_ordering = true,
-         auto allocator_mode_ = AllocatorMode::CPU>
-class NdArrayVector : public StackVar<std::vector<Type>>, public NdArrayView<dim, Type>
+         auto allocator_mode_ = AllocatorMode::CPU,
+         typename Consts      = NdArrayConsts<Type, allocator_mode_>>
+class NdArrayVector : public Consts::stack_var, public NdArrayView<dim, Type>
 {
 public:
     auto static constexpr allocator_mode = allocator_mode_;
     auto static constexpr dimension      = dim;
 
-    using vector_t = std::vector<Type>;
-    using Storage  = StackVar<vector_t>;
-    using View     = NdArrayView<dim, Type>;
+    using Storage = typename Consts::stack_var;
+    using View    = NdArrayView<dim, Type>;
     using Storage::var;
     using value_type = Type;
     using View::data;
     using View::shape;
     using View::size;
 
+    using vec_helper = PHARE::Vector<Type, allocator_mode>;
+
+
     NdArrayVector() = delete;
+
 
     explicit NdArrayVector(std::array<std::uint32_t, dim> const& ncells,
                            std::optional<Type> const& value = std::nullopt)
-        : Storage{value ? vector_t(core::product(ncells), *value) : vector_t(core::product(ncells))}
+        : Storage{[&] {
+            if constexpr (std::is_trivially_copyable_v<Type>)
+                return value ? vec_helper::make(core::product(ncells), *value)
+                             : vec_helper::make(core::product(ncells));
+            else
+            {
+                (void)value;
+                auto v = vec_helper::make(core::product(ncells));
+                // NoConstructAllocator skips element construction; place-new each element.
+                if constexpr (allocator_mode_ != AllocatorMode::CPU)
+                    for (std::size_t i = 0; i < v.size(); ++i)
+                        new (&v.data()[i]) Type{};
+                return v;
+            }
+        }()}
         , View{Storage::var.data(), ncells}
     {
     }
@@ -48,48 +76,69 @@ public:
         static_assert(sizeof...(Nodes) == dim);
     }
 
+
+
     NdArrayVector(NdArrayVector const& that)
-        : Storage{that.var}
+        : Storage{vec_helper::from(that.var)}
         , View{Storage::var.data(), that.shape()}
     {
     }
 
-    template<std::size_t d, typename T, bool c, auto a>
-    NdArrayVector(NdArrayVector<d, T, c, a>&& that)
-        : Storage{std::move(that.var)}
+
+    template<std::size_t d, typename T, bool c, auto a, typename C>
+    NdArrayVector(NdArrayVector<d, T, c, a, C>&& that)
+        : Storage{vec_helper::from(std::move(that.var))}
         , View{Storage::var.data(), that.shape()}
     {
     }
+
+
 
     NdArrayVector(NdArrayVector&& that) = default;
 
+
     auto& operator=(std::array<std::uint32_t, dim> const& ncells)
     {
-        Storage::var = vector_t(core::product(ncells));
+        Storage::var = std::move(vec_helper::make(core::product(ncells)));
         View::reset(this->var, ncells);
         return *this;
     }
 
+
     auto& operator=(NdArrayVector const& that)
     {
-        this->var = that.var;
+        if constexpr (allocator_mode == AllocatorMode::CPU)
+            this->var = that.var;
+        else
+            vec_helper::copy(this->var, that.var);
+
         View::reset(this->var, that.shape());
+
         return *this;
     }
 
     auto& operator=(NdArrayVector&& that)
     {
-        this->var = std::move(that.var);
+        if constexpr (allocator_mode == AllocatorMode::CPU)
+            this->var = std::move(that.var);
+        else
+            vec_helper::copy(this->var, that.var);
+
         View::reset(this->var, that.shape());
+
         return *this;
     }
+
+
+
 
     void zero()
     {
         if (size() == 0)
             return;
-        std::fill(this->var.begin(), this->var.end(), Type{0});
+        vec_helper::fill(this->var, 0);
     }
+
 
     auto& vector() { return Storage::var; }
     auto& vector() const { return Storage::var; }
@@ -111,6 +160,8 @@ public:
 };
 
 
+
+
 template<typename F, std::size_t dim, typename Type, bool c_ordering, auto alloc_mode>
 auto& update_from(F f, NdArrayVector<dim, Type, c_ordering, alloc_mode> const& in)
 {
@@ -118,6 +169,8 @@ auto& update_from(F f, NdArrayVector<dim, Type, c_ordering, alloc_mode> const& i
         in.data()[i] = f(i);
     return in;
 }
+
+
 
 template<auto alloc_mode0, typename F, std::size_t dim, typename Type, bool c_ordering,
          auto alloc_mode1>

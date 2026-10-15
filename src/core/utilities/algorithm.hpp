@@ -237,41 +237,41 @@ void average(basic::TensorField<Field_t, rank> const& vf1,
 }
 
 
-// template<typename Field_t>
-// void accumulate_field(Field_t& dst, Field_t const& src, auto const coef)
-//     requires(not is_field_tile_set_v<Field_t>)
-// {
-//     if (dst.size() != src.size())
-//         throw std::runtime_error("Cannot accumulate fields with different sizes");
+template<typename Field_t>
+void accumulate_field(Field_t& dst, Field_t const& src, auto const coef)
+    requires(not is_field_tile_set_v<Field_t>)
+{
+    if (dst.size() != src.size())
+        throw std::runtime_error("Cannot accumulate fields with different sizes");
 
-//     for (std::size_t i = 0; i < dst.size(); ++i)
-//         dst.data()[i] = src.data()[i] * coef;
-// }
-
-
-// template<typename Field_t>
-// void accumulate_field(Field_t& dst, Field_t const& src, auto const coef)
-//     requires(is_field_tile_set_v<Field_t>)
-// {
-//     auto& dst_tiles = dst();
-//     auto& src_tiles = src();
-
-//     if (dst_tiles.size() != src_tiles.size())
-//         throw std::runtime_error("Cannot accumulate fields with different number of tiles");
-
-//     for (std::size_t i = 0; i < dst_tiles.size(); ++i)
-//         accumulate_field(dst_tiles[i](), src_tiles[i](), coef);
-// }
+    for (std::size_t i = 0; i < dst.size(); ++i)
+        dst.data()[i] = src.data()[i] * coef;
+}
 
 
+template<typename Field_t>
+void accumulate_field(Field_t& dst, Field_t const& src, auto const coef)
+    requires(is_field_tile_set_v<Field_t>)
+{
+    auto& dst_tiles = dst();
+    auto& src_tiles = src();
 
-// template<typename Field_t>
-// void accumulate(basic::TensorField<Field_t, 1>& dst, basic::TensorField<Field_t, 1> const& src,
-//                 auto const coeff)
-// {
-//     for (std::size_t c = 0; c < dst.size(); ++c)
-//         accumulate_field(dst[c], src[c], coeff);
-// }
+    if (dst_tiles.size() != src_tiles.size())
+        throw std::runtime_error("Cannot accumulate fields with different number of tiles");
+
+    for (std::size_t i = 0; i < dst_tiles.size(); ++i)
+        accumulate_field(dst_tiles[i](), src_tiles[i](), coef);
+}
+
+
+
+template<typename Field_t>
+void accumulate(basic::TensorField<Field_t, 1>& dst, basic::TensorField<Field_t, 1> const& src,
+                auto const coeff)
+{
+    for (std::size_t c = 0; c < dst.size(); ++c)
+        accumulate_field(dst[c], src[c], coeff);
+}
 
 template<template<typename> typename Op, typename Field_t>
 void operate_field(Field_t& dst, Field_t const& src, auto&&... args)

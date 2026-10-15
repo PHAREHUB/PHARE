@@ -1,8 +1,12 @@
 
+#include <string>
 
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include "test_range.hpp"
+#include "test_ranges.hpp"
+// #include "test_range_replacer.hpp"
 
 int main(int argc, char** argv)
 {

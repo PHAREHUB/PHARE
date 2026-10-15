@@ -1,4 +1,4 @@
-#
+# tests/simulator/test_vtk_diagnostics.py
 
 import unittest
 import itertools

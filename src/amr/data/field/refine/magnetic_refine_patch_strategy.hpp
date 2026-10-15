@@ -217,8 +217,8 @@ public:
         if constexpr (core::is_field_tile_set_v<Field_t>)
         {
             // TODO: no dynamic allocation, see refine_field in field_refine_operator.hpp
-            auto flat = core::for_N_make_array<N>(
-                [&](auto i) { return core::reduce_single(fields[i]); });
+            auto flat
+                = core::for_N_make_array<N>([&](auto i) { return core::reduce_single(fields[i]); });
             touchUpInteriorFaces(flat, layout, region, scratch_);
             for (std::size_t i = 0; i < N; ++i)
                 core::copy_fields(fields[i], *flat[i]); // every tile's ghost box

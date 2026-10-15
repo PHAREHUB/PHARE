@@ -1,65 +1,63 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_DEF_HPP
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_DEF_HPP
 
-#include "core/def.hpp"
-#include "core/data/vector.hpp"
+
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/particles/particle.hpp"
 
+
 #include <array>
 #include <tuple>
 #include <cstdint>
 #include <type_traits>
-#include <string_view>
 
 namespace PHARE::core
 {
 
-enum class StorageMode : std::uint16_t { ARRAY = 0, VECTOR, SPAN };
 
 enum class LayoutMode : std::uint16_t {
     AoS = 0,
     AoSMapped, // 1
-    AoSPCTS,   // 2
-    AoSCMTS,   // 3
-    AoSPC,     // 4 - internal only: per-cell inner storage of AoSPCTS, not user-selectable
-    SoA,       // 5 - internal only: HDF5/restart write buffer + python particle-splitting
-               //     interop (zero-copy span over numpy arrays), not user-selectable
+    AoSPC,     // 2
+    AoSTS,     // 3
+    AoSCMTS,   // 4
+    SoA,       // 5
+    SoAVX,     // 6
+    SoATS,     // 7
+    SoAVXTS,   // 8
+    SoAPC,     // 9
+    AoSPCTS,
 };
 
 bool constexpr is_tiled(LayoutMode lm)
 {
     using enum LayoutMode;
-    return any_in(lm, AoSPCTS, AoSCMTS);
+    return any_in(lm, AoSTS, AoSCMTS, SoATS, SoAVXTS, AoSPCTS);
 }
 
-std::string_view constexpr enum_name(LayoutMode const mode)
+// guards a forwarding constructor `template<typename... Args> This(Args&&...)` so that a
+// single self-type argument (e.g. a non-const `This&`) is excluded and falls through to the
+// real copy/move constructor instead - otherwise the forwarding ctor is an exact match that
+// beats the copy ctor's `This const&` in overload resolution.
+template<typename This, typename Super, typename... Args>
+bool consteval self_excluding_constructible()
 {
-    switch (mode)
+    using Tup = std::tuple<Args...>;
+
+    bool constexpr base = std::is_constructible_v<Super, Args&&...>;
+    if constexpr (std::tuple_size_v<Tup> > 0)
     {
-        case LayoutMode::AoS: return "AoS";
-        case LayoutMode::AoSMapped: return "AoSMapped";
-        case LayoutMode::AoSPCTS: return "AoSPCTS";
-        case LayoutMode::AoSCMTS: return "AoSCMTS";
-        case LayoutMode::AoSPC: return "AoSPC";
-        case LayoutMode::SoA: return "SoA";
+        bool constexpr isself
+            = std::is_same_v<std::decay_t<std::tuple_element_t<0, Tup>>, This>;
+        return !isself and base;
     }
-    return "UNKNOWN";
+    else
+        return base;
 }
 
-
-std::string_view constexpr enum_name(StorageMode const mode)
-{
-    switch (mode)
-    {
-        case StorageMode::ARRAY: return "ARRAY";
-        case StorageMode::VECTOR: return "VECTOR";
-        case StorageMode::SPAN: return "SPAN";
-    }
-    return "UNKNOWN";
-}
+enum class StorageMode : std::uint16_t { ARRAY = 0, VECTOR, SPAN };
 
 enum class ParticleType : std::uint16_t { Domain = 0, Ghost, PatchGhost, LevelGhost, All };
 
@@ -136,24 +134,25 @@ using ParticleTracker_t = std::conditional_t<
     ParticleTracker<dim>>;
 
 template<LayoutMode layout_mode, ParticleType particle_type, std::size_t dim>
-auto make_particle_tracker(auto&&... args)
+auto make_particle_tracker(auto&&... args) _PHARE_ALL_FN_
 {
     return ParticleTracker_t<layout_mode, particle_type, dim>{args...};
 }
 
 
 template<typename R = std::uint32_t, std::size_t dim>
-auto as_local_cell(std::array<int, dim> const& lower, std::array<int, dim> const& icell)
+auto as_local_cell(std::array<int, dim> const& lower,
+                   std::array<int, dim> const& icell) _PHARE_ALL_FN_
 {
     return array_minus<R>(icell, lower);
 }
 template<std::size_t dim>
-auto as_local_cell(Box<int, dim> const& box, std::array<int, dim> const& icell)
+auto as_local_cell(Box<int, dim> const& box, std::array<int, dim> const& icell) _PHARE_ALL_FN_
 {
     return as_local_cell(box.lower.toArray(), icell);
 }
 template<std::size_t dim>
-auto as_local_cell(Box<int, dim> const& box, Point<int, dim> const& icell)
+auto as_local_cell(Box<int, dim> const& box, Point<int, dim> const& icell) _PHARE_ALL_FN_
 {
     return as_local_cell(box.lower.toArray(), icell.toArray());
 }
@@ -167,6 +166,7 @@ auto it_dist(I0&& i0, I1&& i1)
     PHARE_ASSERT(d < 1e18); // should never happen // eg 2635249153387078728
     return d;
 }
+
 
 
 template<typename Box_t, typename RValue = std::uint32_t>
@@ -205,16 +205,21 @@ private:
 };
 
 
+
+
 template<typename Particles_t, typename T, std::size_t D>
 Particles_t make_particles(Box<T, D> const& box, std::size_t const ghost_cells)
 {
     static_assert(Particles_t::storage_mode == StorageMode::VECTOR);
 
     using enum LayoutMode;
-    if constexpr (is_tiled(Particles_t::layout_mode))
+    if constexpr (any_in(Particles_t::layout_mode, AoSPC, SoAPC))
+        return Particles_t{box, ghost_cells};
+    else if constexpr (is_tiled(Particles_t::layout_mode))
         return Particles_t{box, ghost_cells};
     else if constexpr (any_in(Particles_t::layout_mode, AoSMapped))
         return Particles_t{grow(box, ghost_cells)};
+
     else
         return Particles_t{};
 }
@@ -225,25 +230,6 @@ Particles_t make_particles(GridLayout_t const& layout)
     return make_particles<Particles_t>(layout.AMRBox(), GridLayout_t::options.particle_ghost_width);
 }
 
-
-// guards a forwarding constructor `template<typename... Args> This(Args&&...)` so that a
-// single self-type argument (e.g. a non-const `This&`) is excluded and falls through to the
-// real copy/move constructor instead - otherwise the forwarding ctor is an exact match that
-// beats the copy ctor's `This const&` in overload resolution.
-template<typename This, typename Super, typename... Args>
-bool consteval self_excluding_constructible()
-{
-    using Tup = std::tuple<Args...>;
-
-    bool constexpr base = std::is_constructible_v<Super, Args&&...>;
-    if constexpr (std::tuple_size_v<Tup> > 0)
-    {
-        bool constexpr isself = std::is_same_v<std::decay_t<std::tuple_element_t<0, Tup>>, This>;
-        return !isself and base;
-    }
-    else
-        return base;
-}
 
 
 } // namespace PHARE::core

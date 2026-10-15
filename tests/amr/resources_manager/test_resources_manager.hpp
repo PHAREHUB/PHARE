@@ -15,14 +15,8 @@
 
 #include "gtest/gtest.h"
 
-#include "core/data/grid/grid.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
-
-#include "amr/resources_manager/resources_manager.hpp"
-
-#include "simulator/simulator_def.hpp"
-
 #include <memory>
+
 
 using namespace PHARE::core;
 using namespace PHARE::amr;

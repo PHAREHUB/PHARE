@@ -2,18 +2,10 @@
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_ARRAY_APPENDER
 
 #include "core/data/particles/particle_array_def.hpp"
-
-#include <iterator>
-#include <cstddef>
+#include "core/data/particles/appending/particles_appending.hpp"
 
 namespace PHARE::core
 {
-
-// --- public API ---
-
-// hides the per layout/alloc impl behind operator() - see implementation section below
-template<auto src_layout_mde, auto src_alloc_mde, auto dst_layout_mde, auto dst_alloc_mde>
-struct ParticlesAppender;
 
 
 // Deals with one box at a time - no ParticleType, no domain/ghost distinction, so callers
@@ -42,9 +34,9 @@ void reserve(Dst& dst, Box_t const& box, std::size_t const& ppc)
                 for (auto const& bix : tile().local_box(*overlap))
                     tile()(bix).reserve(ppc);
     }
-    else if constexpr (Dst::layout_mode == AoSCMTS)
+    else if constexpr (Dst::layout_mode == AoSTS or Dst::layout_mode == AoSCMTS)
     {
-        // one flat vector per tile - same box*tile approximation as above
+        // tiles are flat here, so a tile-level reserve makes sense. Same box*tile caveat.
         for (auto& tile : dst())
             if (auto const overlap = box * tile)
                 tile().reserve(tile().size() + ppc * overlap->size());
@@ -83,111 +75,13 @@ void append_particles(Src const& src, Dst& dst)
 
     PHARE_DEBUG_DO(int const old_size = dst.size();)
 
+    std::string_view constexpr static FN_ID     = "append_particles,";
+    [[maybe_unused]] auto constexpr function_id = join_string_views_v<FN_ID, Dst::type_id>;
+    PHARE_LOG_SCOPE(3, function_id);
+
     Appending{0, src.size()}.template operator()<type>(src, dst);
 
     assert(dst.size() == old_size + src.size());
-}
-
-
-// --- implementations ---
-
-template<auto src_layout_mde, auto src_alloc_mde, auto dst_layout_mde, auto dst_alloc_mde>
-struct ParticlesAppender
-{
-    static_assert(all_are<LayoutMode>(src_layout_mde, dst_layout_mde));
-    static_assert(all_are<AllocatorMode>(src_alloc_mde, dst_alloc_mde));
-
-    auto constexpr static src_layout_mode = src_layout_mde;
-    auto constexpr static src_alloc_mode  = src_alloc_mde;
-
-    auto constexpr static dst_layout_mode = dst_layout_mde;
-    auto constexpr static dst_alloc_mode  = dst_alloc_mde;
-
-    template<auto type, typename Src, typename Dst>
-    void operator()(Src const& src, Dst& dst);
-
-    std::size_t const start;
-    std::size_t const end;
-};
-
-using LM = LayoutMode;
-using AM = AllocatorMode;
-
-
-template<>
-template<auto type, typename Src, typename Dst>
-void ParticlesAppender<LM::AoSMapped, AM::CPU, LM::AoS, AM::CPU>::operator()( //
-    Src const& src, Dst& dst)
-{
-    // reserve_flat's upfront estimate is average-case, not a hard bound - reserving here on
-    // every chunk would force an exact-size reallocation instead of amortized push_back
-    // growth for any shortfall.
-    std::copy(src.begin(), src.end(), std::back_inserter(dst));
-}
-
-
-template<>
-template<auto type, typename Src, typename Dst>
-void ParticlesAppender<LM::AoS, AM::CPU, LM::AoSMapped, AM::CPU>::operator()( //
-    Src const& src, Dst& dst)
-{
-    std::copy(src.begin(), src.end(), std::back_inserter(dst));
-}
-
-
-template<>
-template<auto type, typename Src, typename Dst>
-void ParticlesAppender<LM::AoS, AM::CPU, LM::AoS, AM::CPU>::operator()( //
-    Src const& src, Dst& dst)
-{
-    std::copy(src.begin(), src.end(), std::back_inserter(dst));
-}
-
-
-
-
-// tiled dst: every particle goes to its owning tile only, emplace_back resolves the owner
-// (clamp-owner for ghost cells, see TileSet::tag_cells_) - level ghosts are not duplicated
-template<auto type, typename Src, typename Dst>
-void append_to_tiles(Src const& src, Dst& dst)
-{
-    for (auto const& p : src)
-        dst.emplace_back(p);
-
-    dst.template on_appended<type>();
-}
-
-template<>
-template<auto type, typename Src, typename Dst>
-void ParticlesAppender<LM::AoSMapped, AM::CPU, LM::AoSPCTS, AM::CPU>::operator()( //
-    Src const& src, Dst& dst)
-{
-    PHARE_LOG_SCOPE(3, "ParticlesAppender<AoSMapped, CPU, AoSPCTS, CPU>::operator()");
-    append_to_tiles<type>(src, dst);
-}
-
-
-
-
-template<>
-template<auto type, typename Src, typename Dst>
-void ParticlesAppender<LM::AoSMapped, AM::CPU, LM::AoSCMTS, AM::CPU>::operator()( //
-    Src const& src, Dst& dst)
-{
-    PHARE_LOG_SCOPE(3, "ParticlesAppender<AoSMapped, CPU, AoSCMTS, CPU>::operator()");
-    append_to_tiles<type>(src, dst);
-}
-
-
-template<>
-template<auto type, typename Src, typename Dst>
-void ParticlesAppender<LM::AoS, AM::CPU, LM::AoSPC, AM::CPU>::operator()( //
-    Src const& src, Dst& dst)
-{
-    for (auto const& p : src)
-        dst.emplace_back(p);
-
-    dst.template on_appended<type>();
 }
 
 

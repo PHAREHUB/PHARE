@@ -1,3 +1,6 @@
+# pyphare/pyphare/pharesee/particles.py
+
+
 import numpy as np
 from ..core import phare_utilities as phut
 
@@ -177,6 +180,21 @@ class Particles:
             )
             for i in range(self.size())
         ]
+
+
+class LiveParticles:
+    """
+    Wraps a live C++ ParticleArray by reference
+    """
+
+    def __init__(self, cpp_particles):
+        self._cpp = cpp_particles
+
+    def __iter__(self):
+        return iter(self._cpp)
+
+    def size(self):
+        return np.asarray(self._cpp.size())
 
 
 def compare_particles(part1, part2, atol=1e-12):

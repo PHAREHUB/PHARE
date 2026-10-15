@@ -26,19 +26,18 @@ namespace core
         using value_type                       = Type;
 
 
-        // template<typename... Indexes>
-        // constexpr Point(std::tuple<Indexes...> index)
-        //     : r{std::apply([](auto const&... args) { return std::array<Type, dim>{args...}; },
-        //                    index)}
-        // {
-        //     static_assert(sizeof...(Indexes) == dimension,
-        //                   "Error dimension does match number of arguments");
-        // }
+        template<typename... Indexes>
+        constexpr Point(std::tuple<Indexes...> index) _PHARE_ALL_FN_
+            : r{std::apply([](auto const&... args) { return std::array<Type, dim>{args...}; },
+                           index)}
+        {
+            static_assert(sizeof...(Indexes) == dimension,
+                          "Error dimension does match number of arguments");
+        }
 
 
         template<typename... Indexes>
-        constexpr Point(Indexes... index)
-            : r{{index...}}
+        constexpr Point(Indexes... index) _PHARE_ALL_FN_ : r{{index...}}
         {
             allsame(index...);
             static_assert(sizeof...(Indexes) == dimension,
@@ -46,13 +45,10 @@ namespace core
         }
 
 
-        constexpr Point(std::array<Type, dim> const& coords)
-            : r{coords}
-        {
-        }
+        constexpr Point(std::array<Type, dim> const& coords) _PHARE_ALL_FN_ : r{coords} {}
 
         template<Spannable Container>
-        Point(Container c)
+        Point(Container c) _PHARE_ALL_FN_
         {
             for (std::size_t i = 0; i < dim; ++i)
             {
@@ -62,12 +58,15 @@ namespace core
 
         constexpr Point() { core::fill(Type{0}, r); }
 
-        NO_DISCARD constexpr auto& operator[](std::size_t const i) { return r[i]; }
-        NO_DISCARD constexpr auto const& operator[](std::size_t const i) const { return r[i]; }
+        NO_DISCARD constexpr auto& operator[](std::size_t const i) _PHARE_ALL_FN_ { return r[i]; }
+        NO_DISCARD constexpr auto const& operator[](std::size_t const i) const _PHARE_ALL_FN_
+        {
+            return r[i];
+        }
 
 
         template<typename T2>
-        NO_DISCARD bool operator==(Point<T2, dim> const& p) const
+        NO_DISCARD bool operator==(Point<T2, dim> const& p) const _PHARE_ALL_FN_
         {
             bool areEqual = true;
             for (std::size_t i = 0; i < dim; ++i)
@@ -80,12 +79,52 @@ namespace core
             return areEqual;
         }
 
-        NO_DISCARD bool operator!=(Point const& other) const { return !(*this == other); }
+        NO_DISCARD bool operator!=(Point const& other) const _PHARE_ALL_FN_
+        {
+            return !(*this == other);
+        }
+
+
+        // template<template<typename, std::size_t> typename Arr, typename T>
+        // auto operator<(Arr<T, dim> const& arr) const _PHARE_ALL_FN_
+        // {
+        //     return for_N_all<dim>([&](auto iDim) { return r[iDim] < arr[iDim]; });
+        // }
+        // auto operator<(auto const& v) const _PHARE_ALL_FN_
+        // {
+        //     return for_N_all<dim>([&](auto iDim) { return r[iDim] < v; });
+        // }
+        // template<template<typename, std::size_t> typename Arr, typename T>
+        // auto operator<=(Arr<T, dim> const& arr) const _PHARE_ALL_FN_
+        // {
+        //     return for_N_all<dim>([&](auto iDim) { return r[iDim] <= arr[iDim]; });
+        // }
+
+
+        // template<template<typename, std::size_t> typename Arr, typename T>
+        // auto operator>(Arr<T, dim> const& arr) const _PHARE_ALL_FN_
+        // {
+        //     return for_N_all<dim>([&](auto iDim) { return r[iDim] > arr[iDim]; });
+        // }
+        // auto operator>(auto const& v) const _PHARE_ALL_FN_
+        // {
+        //     return for_N_all<dim>([&](auto iDim) { return r[iDim] > v; });
+        // }
+        // template<template<typename, std::size_t> typename Arr, typename T>
+        // auto operator>=(Arr<T, dim> const& arr) const _PHARE_ALL_FN_
+        // {
+        //     return for_N_all<dim>([&](auto iDim) { return r[iDim] >= arr[iDim]; });
+        // }
+        // auto operator>=(auto const& v) const _PHARE_ALL_FN_
+        // {
+        //     return for_N_all<dim>([&](auto iDim) { return r[iDim] >= v; });
+        // }
+
 
 
 
         template<typename DestType = Type>
-        NO_DISCARD auto toArray() const
+        NO_DISCARD auto toArray() const _PHARE_ALL_FN_
         {
             std::array<DestType, dimension> destArray;
             for (auto i = 0u; i < dimension; ++i)
@@ -151,7 +190,7 @@ namespace core
 
 
         template<template<typename, std::size_t> typename Arr, typename T>
-        auto& operator+=(Arr<T, dim> const& value)
+        auto& operator+=(Arr<T, dim> const& value) _PHARE_ALL_FN_
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 r[iDim] += value[iDim];
@@ -159,7 +198,7 @@ namespace core
         }
 
         template<template<typename, std::size_t> typename Arr, typename T>
-        auto& operator-=(Arr<T, dim> const& value)
+        auto& operator-=(Arr<T, dim> const& value) _PHARE_ALL_FN_
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 r[iDim] -= value[iDim];
@@ -167,66 +206,127 @@ namespace core
         }
 
 
-        auto& operator+=(Type const& value)
+        auto& operator+=(Type const& value) _PHARE_ALL_FN_
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 r[iDim] += value;
             return *this;
         }
+        // auto& operator+=(std::array<Type, dim> const& value) _PHARE_ALL_FN_
+        // {
+        //     for (auto iDim = 0u; iDim < dim; ++iDim)
+        //         r[iDim] += value[iDim];
+        //     return *this;
+        // }
 
-        auto& operator-=(Type const& value)
+        auto& operator-=(Type const& value) _PHARE_ALL_FN_
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 r[iDim] -= value;
             return *this;
         }
+        // auto& operator-=(std::array<Type, dim> const& value) _PHARE_ALL_FN_
+        // {
+        //     for (auto iDim = 0u; iDim < dim; ++iDim)
+        //         r[iDim] -= value[iDim];
+        //     return *this;
+        // }
 
-        auto& operator*=(Type const& value)
+        auto& operator*=(Type const& value) _PHARE_ALL_FN_
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 r[iDim] *= value;
             return *this;
         }
-        auto& operator*=(std::array<Type, dim> const& value)
+        auto& operator*=(std::array<Type, dim> const& value) _PHARE_ALL_FN_
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 r[iDim] *= value[iDim];
             return *this;
         }
 
-        auto operator+(Type const& value) const { return Point{r} += value; }
-        auto operator+(std::array<Type, dim> const& value) const { return Point{r} += value; }
-        auto operator+(Point<Type, dim> const& value) const { return (*this) + value.r; }
+        auto operator+(Type const& value) const _PHARE_ALL_FN_ { return Point{r} += value; }
+        auto operator+(std::array<Type, dim> const& value) const _PHARE_ALL_FN_
+        {
+            return Point{r} += value;
+        }
+        auto operator+(Point<Type, dim> const& value) const _PHARE_ALL_FN_
+        {
+            return (*this) + value.r;
+        }
 
-        auto operator-(Type const& value) const { return Point{r} -= value; }
-        auto operator-(std::array<Type, dim> const& value) const { return Point{r} -= value; }
-        auto operator-(Point<Type, dim> const& value) const { return (*this) - value.r; }
+        auto operator-(Type const& value) const _PHARE_ALL_FN_ { return Point{r} -= value; }
+        auto operator-(std::array<Type, dim> const& value) const _PHARE_ALL_FN_
+        {
+            return Point{r} -= value;
+        }
+        auto operator-(Point<Type, dim> const& value) const _PHARE_ALL_FN_
+        {
+            return (*this) - value.r;
+        }
 
-        auto operator*(Type const& value) const { return Point{r} *= value; }
-        auto operator*(std::array<Type, dim> const& value) const { return Point{r} *= value; }
-        auto operator*(Point<Type, dim> const& value) const { return (*this) * value.r; }
+        auto operator*(Type const& value) const _PHARE_ALL_FN_ { return Point{r} *= value; }
+        auto operator*(std::array<Type, dim> const& value) const _PHARE_ALL_FN_
+        {
+            return Point{r} *= value;
+        }
+        auto operator*(Point<Type, dim> const& value) const _PHARE_ALL_FN_
+        {
+            return (*this) * value.r;
+        }
+
+
+
+
+        // auto operator*(Type const& value) const
+        // {
+        //     auto copy = *this;
+        //     for (auto iDim = 0u; iDim < dim; ++iDim)
+        //         copy[iDim] *= value;
+        //     return copy;
+        // }
+        // auto operator*(std::array<Type, dim> const& value) const
+        // {
+        //     auto copy = *this;
+        //     for (auto iDim = 0u; iDim < dim; ++iDim)
+        //         copy[iDim] *= value[iDim];
+        //     return copy;
+        // }
+        // auto operator*(Point<Type, dim> const& value) const { return (*this) * value.r; }
+
+
+        // Point operator%(Type const& value) const _PHARE_ALL_FN_
+        // {
+        //     return {for_N_make_array<dim>([&](auto i) { return (*this)[i] % value; })};
+        // }
+
+
+        // Point operator/(Type const& value) const _PHARE_ALL_FN_
+        // {
+        //     return {for_N_make_array<dim>([&](auto i) { return (*this)[i] / value; })};
+        // }
 
 
         NO_DISCARD constexpr auto size() const { return dim; }
         NO_DISCARD auto data() const { return r.data(); }
-        NO_DISCARD auto begin() { return r.begin(); }
-        NO_DISCARD auto begin() const { return r.begin(); }
-        NO_DISCARD auto end() { return r.end(); }
-        NO_DISCARD auto end() const { return r.end(); }
+        NO_DISCARD auto begin() _PHARE_ALL_FN_ { return r.begin(); }
+        NO_DISCARD auto begin() const _PHARE_ALL_FN_ { return r.begin(); }
+        NO_DISCARD auto end() _PHARE_ALL_FN_ { return r.end(); }
+        NO_DISCARD auto end() const _PHARE_ALL_FN_ { return r.end(); }
 
-        NO_DISCARD auto& operator*() const { return r; }
-        NO_DISCARD auto& operator()() const { return r; }
+        NO_DISCARD auto& operator*() const _PHARE_ALL_FN_ { return r; }
+        NO_DISCARD auto& operator()() const _PHARE_ALL_FN_ { return r; }
 
-        operator std::array<Type, dim>() const { return r; }
+        operator std::array<Type, dim>() const _PHARE_ALL_FN_ { return r; }
 
 
         template<typename To>
-        auto as() const
+        auto as() const _PHARE_ALL_FN_
         {
             return Point<To, dim>{this->template toArray<To>()};
         }
 
-        auto as_unsigned() const
+        auto as_unsigned() const _PHARE_ALL_FN_
         {
             for (auto iDim = 0u; iDim < dim; ++iDim)
                 if (r[iDim] < 0)
@@ -236,10 +336,11 @@ namespace core
             // else no return cause not yet handled
         }
 
-        auto as_signed() const
+        auto as_signed() const _PHARE_ALL_FN_
         {
             if constexpr (sizeof(Type) == 4)
                 return as<std::int32_t>();
+
             // else no return cause not yet handled
         }
 
@@ -275,7 +376,7 @@ namespace PHARE::core
 {
 
 template<typename T0, typename... Args>
-auto to_point(Args&&... args)
+auto to_point(Args&&... args) _PHARE_ALL_FN_
 {
     std::array<T0, sizeof...(Args)> arr;
     std::size_t idx = -1;

@@ -8,28 +8,6 @@
 
 if (bench)
 
-  if (NOT DEFINED PHARE_BENCH_PROFILING)
-    set(PHARE_BENCH_PROFILE 0)
-  endif()
-
-  if(DEFINED GBENCH_ROOT)
-    set(GBENCH_ROOT ${GBENCH_ROOT} CACHE PATH "Path to googlebenchmark")
-    find_package(benchmark REQUIRED)
-    set(GBENCH_LIBS benchmark::benchmark)
-  else()
-    set(GBENCH_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/subprojects/googlebench)
-
-    if (NOT EXISTS ${GBENCH_ROOT})
-      execute_process(COMMAND ${Git} clone https://github.com/google/benchmark ${GBENCH_ROOT} --depth 1)
-    endif()
-
-    option(BENCHMARK_ENABLE_TESTING "Enable building the unit tests which depend on gtest" OFF)
-    option(BENCHMARK_ENABLE_GTEST_TESTS "Enable building the unit tests which depend on gtest" OFF)
-    add_subdirectory(subprojects/googlebench)
-    set(GBENCH_LIBS "benchmark")
-
-  endif()
-
   function(add_phare_cpp_benchmark_ exec_level target file directory)
     add_executable(${target} ${file})
     target_compile_options(${target} PRIVATE ${PHARE_WERROR_FLAGS} -DPHARE_HAS_HIGHFIVE=${PHARE_HAS_HIGHFIVE})

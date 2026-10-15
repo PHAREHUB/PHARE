@@ -77,7 +77,7 @@ class Initialization1DTest(HybridInitializationTest):
             dim,
             interp_order,
             "particles",
-            {"L0": {"B0": [(10,), (20,)]}},
+            {"L0": {"B0": [(10,), (21,)]}},
             clustering=clustering,
         )
 

@@ -62,7 +62,7 @@ endif(withPhlop)
 add_library(${PROJECT_NAME}  ${SOURCES_INC} ${SOURCES_CPP} ${CORE_EXTRA_SOURCES_CPP} )
 target_compile_options(${PROJECT_NAME}  PRIVATE ${PHARE_FLAGS} ${PHARE_WERROR_FLAGS})
 target_link_libraries(${PROJECT_NAME}  PRIVATE phare_initializer
-    PUBLIC cppdict ${PHARE_BASE_LIBS}
+    PUBLIC cppdict magic_enum ${PHARE_BASE_LIBS}
   )
 
 

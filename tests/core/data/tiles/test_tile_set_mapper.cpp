@@ -56,15 +56,15 @@ struct TestTileSet
 
     NO_DISCARD auto& box() const { return box_; }
     NO_DISCARD auto shape() const { return shape_; }
-    NO_DISCARD auto size() const { return tiles_.size(); }
+    NO_DISCARD auto size() const _PHARE_ALL_FN_ { return tiles_.size(); }
     NO_DISCARD auto begin() { return tiles_.begin(); }
     NO_DISCARD auto begin() const { return tiles_.begin(); }
     NO_DISCARD auto end() { return tiles_.end(); }
     NO_DISCARD auto end() const { return tiles_.end(); }
     NO_DISCARD auto& operator()() { return tiles_; }
     NO_DISCARD auto& operator()() const { return tiles_; }
-    NO_DISCARD auto& operator[](std::size_t const i) { return tiles_[i]; }
-    NO_DISCARD auto& operator[](std::size_t const i) const { return tiles_[i]; }
+    NO_DISCARD auto& operator[](std::size_t const i) _PHARE_ALL_FN_ { return tiles_[i]; }
+    NO_DISCARD auto& operator[](std::size_t const i) const _PHARE_ALL_FN_ { return tiles_[i]; }
 
     Box<int, dimension> box_;
     std::array<std::uint32_t, dimension> shape_;

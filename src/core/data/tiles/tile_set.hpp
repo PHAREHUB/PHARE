@@ -2,7 +2,7 @@
 #define PHARE_TILE_SET_HPP
 
 #include "core/def.hpp"
-#include "core/data/vector.hpp"
+#include "core/vector.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
@@ -12,7 +12,6 @@
 
 #include <array>
 #include <tuple>
-#include <vector>
 
 namespace PHARE::core
 {
@@ -52,21 +51,21 @@ public:
     NO_DISCARD auto data() { return tiles_.data(); }
     NO_DISCARD auto data() const { return tiles_.data(); }
 
-    NO_DISCARD auto& operator[](std::size_t const i) { return tiles_[i]; }
-    NO_DISCARD auto& operator[](std::size_t const i) const { return tiles_[i]; }
+    NO_DISCARD auto& operator[](std::size_t const i) _PHARE_ALL_FN_ { return tiles_[i]; }
+    NO_DISCARD auto& operator[](std::size_t const i) const _PHARE_ALL_FN_ { return tiles_[i]; }
 
     NO_DISCARD auto& operator()() { return tiles_; }
     NO_DISCARD auto& operator()() const { return tiles_; }
 
     template<typename... Index>
-    NO_DISCARD auto at(Index... indexes)
+    NO_DISCARD auto at(Index... indexes) _PHARE_ALL_FN_
     {
         auto const& idx = cell_idx(indexes...);
         assert(idx < cells_.size());
         return cells_[idx];
     }
     template<typename... Index>
-    NO_DISCARD auto at(Index... indexes) const
+    NO_DISCARD auto at(Index... indexes) const _PHARE_ALL_FN_
     {
         auto const& idx = cell_idx(indexes...);
         return cells_[idx];
@@ -88,7 +87,7 @@ public:
     void reset() { tiles_.ptr = nullptr; }
 
 protected:
-    auto cell_idx(auto const&... ijk) const
+    auto cell_idx(auto const&... ijk) const _PHARE_ALL_FN_
     {
         return NdArrayViewer<dimension>::idx(cells_shape_, ijk...);
     }
@@ -125,11 +124,14 @@ class TileSet
     friend class TileSet;
 
 public:
+    template<typename T>
+    using vector_t = typename PHARE::Vector<T, alloc_mode>::vector_t;
+
     using value_type                = Tile;
     using Box_t                     = Box<int, Tile::dimension>;
     static auto constexpr dimension = Tile::dimension;
 
-    TileSet(Box_t const& box, nd_array_t<Tile*> const& cells, std::vector<Tile> const& tiles)
+    TileSet(Box_t const& box, nd_array_t<Tile*> const& cells, vector_t<Tile> const& tiles)
         : box_{box}
         , cells_{cells}
         , tiles_{tiles}
@@ -189,11 +191,24 @@ public:
                     grow(setter.box, setter.ghosts).shape().template toArray<std::uint32_t>()},
                 {}};
 
+        // ts.box_   = that.box_;
+        // ts.cells_ = {ts.cells_.shape()};
         for (auto& tile : that())
             ts.tiles_.emplace_back(accessor(tile), args...);
         ts.tag_cells_(setter);
         return ts;
     }
+
+    // auto static make_from(auto const& that, auto&&... args)
+    // {
+    //     This ts{};
+    //     ts.box_   = that.box_;
+    //     ts.cells_ = {ts.cells_.shape()};
+    //     for (auto const& tile : that())
+    //         ts.tiles_.emplace_back(tile, args...);
+    //     ts.tag_cells_();
+    //     return ts;
+    // }
 
     NO_DISCARD auto box() const { return box_; }
     NO_DISCARD auto size() const { return tiles_.size(); }
@@ -446,7 +461,7 @@ private:
 
     Box_t box_;
     nd_array_t<Tile*> cells_;
-    std::vector<Tile> tiles_{};
+    vector_t<Tile> tiles_{};
 };
 
 

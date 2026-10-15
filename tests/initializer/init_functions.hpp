@@ -124,7 +124,7 @@ Return inline bz(Param x, Param /*y*/)
 
 namespace PHARE::initializer::test_fn::func_3d
 {
-using Param  = std::vector<double> const&;
+using Param  = PHARE::core::Span<double const> const&;
 using Return = std::shared_ptr<PHARE::core::Span<double>>;
 
 Return inline density(Param x, Param /*y*/, Param /*z*/)

@@ -113,6 +113,28 @@ private:
     }
 };
 
+// tiled layouts whose tiles hold a flat particle array
+template<LayoutMode layout_mode, typename ParticleArray_>
+    requires(any_in(layout_mode, LayoutMode::AoSTS, LayoutMode::AoSCMTS, LayoutMode::SoATS,
+                    LayoutMode::SoAVXTS))
+struct PackerBackend<layout_mode, ParticleArray_>
+{
+    template<ParticleType>
+    NO_DISCARD static std::size_t size(ParticleArray_ const& particles)
+    {
+        return particles.size();
+    }
+
+    template<ParticleType, typename SoAParticles_t>
+    static void pack(ParticleArray_ const& particles, SoAParticles_t& copy)
+    {
+        std::size_t idx = 0;
+        for (auto const& tile : particles())
+            for (std::size_t i = 0; i < tile().size(); ++i)
+                pack_one(copy, idx++, tile()[i]);
+    }
+};
+
 
 template<typename ParticleArray_>
 struct PackerBackend<LayoutMode::AoSCMTS, ParticleArray_>

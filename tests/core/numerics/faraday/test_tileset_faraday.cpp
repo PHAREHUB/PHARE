@@ -1,3 +1,14 @@
+//  tests/core/numerics/faraday/test_tileset_faraday.cpp
+//
+//  requires
+//  - cmake:    -DwithPhlop
+//  - cxxflags: -DPHARE_LOG_LEVEL=1
+//  - env:      PHARE_SCOPE_TIMING=1
+
+// USE HIP_VISIBLE_DEVICES OR CUDA_VISIBLE_DEVICES env vars
+// #define PHARE_UNDEF_ASSERT
+
+#include "core/def/phare_config.hpp"
 
 #include "core/utilities/types.hpp"
 #include "core/numerics/faraday/faraday.hpp"
@@ -60,6 +71,9 @@ void compare(GridLayout_t const& layout, R& ref, C& cmp)
 
     double diff = 1e-15;
 
+    // if constexpr (alloc_mode == GPU_UNIFIED)
+    //     diff *= 1e3; // atomic no order guaranteed
+
     auto const& patch_box = layout.AMRBox();
 
     for (std::size_t c = 0; c < n_components; ++c)
@@ -67,6 +81,20 @@ void compare(GridLayout_t const& layout, R& ref, C& cmp)
         auto const eq = compare_fields(ref.emNew.B[c], cmp.emNew.B[c]);
         PHARE_LOG_LINE_SS(eq.why());
         EXPECT_TRUE(eq) << "Failure for B New: " << eq.why();
+
+        // auto const& ref_Bxyz = ref.emNew.B[c];
+        // auto const& cmp_Bxyz = cmp.emNew.B[c];
+
+        // for (auto const& tile : cmp_Bxyz)
+        // {
+        //     auto const& tile_field = tile();
+        //     for (auto const& tix : *tile)
+        //     {
+        //         auto const tlix = tix - tile.lower;
+        //         auto const plix = tix - patch_box.lower;
+        //         EXPECT_TRUE(float_equals(tile_field(tlix), ref_Bxyz(plix), diff));
+        //     }
+        // }
     }
 }
 
@@ -165,8 +193,11 @@ struct FaradayTileTest : public ::testing::Test
 };
 
 // clang-format off
-using Permutations_t = testing::Types<
+using Permutations_t = testing::Types< // ! notice commas !
      TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU>
+PHARE_WITH_GPU(
+    ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED>
+)
 >;
 // clang-format on
 

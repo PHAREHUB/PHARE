@@ -335,7 +335,14 @@ namespace amr
         template<typename ParticleArray_t>
         void pack_(SAMRAI::tbox::MessageStream& stream, ParticleArray_t const& outBuffer) const
         {
-            stream.pack(outBuffer.data(), outBuffer.size());
+            if constexpr (any_in(ParticleArray_t::layout_mode, core::LayoutMode::SoA))
+                std::apply(
+                    [&](auto const&... container) {
+                        ((stream.pack(container.data(), outBuffer.size())), ...);
+                    },
+                    outBuffer.as_tuple());
+            else
+                stream.pack(outBuffer.data(), outBuffer.size());
         }
 
 
@@ -411,7 +418,15 @@ namespace amr
         template<typename ParticleArray_t>
         void unpack_(SAMRAI::tbox::MessageStream& stream, ParticleArray_t& specie) const
         {
-            stream.unpack(specie.data(), specie.size());
+            using enum core::LayoutMode;
+            if constexpr (any_in(ParticleArray_t::layout_mode, SoA /*, SoATS*/))
+                std::apply(
+                    [&](auto&... container) {
+                        ((stream.unpack(container.data(), specie.size())), ...);
+                    },
+                    specie.as_tuple());
+            else
+                stream.unpack(specie.data(), specie.size());
         }
 
         core::ParticlesPack<ParticleArray>* getPointer() { return &pack; }

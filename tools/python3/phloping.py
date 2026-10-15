@@ -1,4 +1,4 @@
-#
+# tools/python3/phloping.py
 # parsing PHARE scope funtion timers
 #
 
@@ -94,9 +94,8 @@ class ScopeTimerFile(phst.ScopeTimerFile):
         inits = ["HybridLevelInitializer::initialize_level"]
         for root in self.roots:
             if self(root.k) == "Simulator::initialize":
-                init_levels = sum(1 if self(c.k) in inits else 0 for c in root.c)
-                if init_levels > 0:
-                    return init_levels
+                if nlevels := sum(1 if self(c.k) in inits else 0 for c in root.c):
+                    return nlevels
 
         # of if for some reason init logs are missing fallback
         first_advance = self.advances[0]  # all should be the same
