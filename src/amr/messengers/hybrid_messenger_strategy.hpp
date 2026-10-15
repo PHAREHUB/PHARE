@@ -5,10 +5,14 @@
 
 #include "amr/messengers/messenger_info.hpp"
 
+#include "amr/messengers/scheduler.hpp"
+
 #include <SAMRAI/hier/PatchLevel.h>
 #include <SAMRAI/hier/PatchHierarchy.h>
 
 
+#include <string>
+#include <cstdint>
 #include <utility>
 
 
@@ -16,6 +20,34 @@ namespace PHARE
 {
 namespace amr
 {
+    //! hybrid communications that are not named after a single resource
+    enum class HybridSchedule : std::uint8_t { IonPopBorderSum, IonBorderMax, IonGhostParticles };
+
+    //! the scheduler key and RefinerType of each HybridSchedule
+    template<HybridSchedule schedule>
+    struct HybridScheduleTraits;
+
+    template<>
+    struct HybridScheduleTraits<HybridSchedule::IonPopBorderSum>
+    {
+        static constexpr auto type = RefinerType::PatchIonPopBorderSum;
+        static inline std::string const key{"PHARE_ionPopBorderSum"};
+    };
+
+    template<>
+    struct HybridScheduleTraits<HybridSchedule::IonBorderMax>
+    {
+        static constexpr auto type = RefinerType::PatchIonPopBorderMax;
+        static inline std::string const key{"PHARE_ionBorderMax"};
+    };
+
+    template<>
+    struct HybridScheduleTraits<HybridSchedule::IonGhostParticles>
+    {
+        static constexpr auto type = RefinerType::ExteriorGhostParticles;
+        static inline std::string const key{"PHARE_ionGhostParticles"};
+    };
+
     template<typename HybridModel>
     class HybridMessengerStrategy
     {
@@ -48,6 +80,7 @@ namespace amr
                            [[maybe_unused]] std::unique_ptr<IMessengerInfo> fromFinerInfo)
             = 0;
 
+        virtual void registerQuantities(IPhysicalModel& coarseModel, IPhysicalModel& fineModel) {}
 
 
         virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() = 0;
@@ -55,6 +88,12 @@ namespace amr
 
 
         virtual void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) = 0;
+
+        virtual void registerLevel(IPhysicalModel& model, hierarchy_ptr const& hierarchy,
+                                   int const levelNumber)
+        {
+            registerLevel(hierarchy, levelNumber);
+        }
 
         virtual void regrid(hierarchy_ptr const& hierarchy, int const levelNumber,
                             level_ptr const& oldLevel, IPhysicalModel& model,
@@ -123,6 +162,14 @@ namespace amr
         virtual ~HybridMessengerStrategy() = default;
 
 
+        template<auto rtype>
+        void fill(std::string const& dst, SAMRAI::hier::PatchLevel const& level, double time)
+        {
+            scheduler_.template fill<rtype>(dst, level, time);
+        }
+
+        auto& scheduler() { return scheduler_; }
+
     protected:
         explicit HybridMessengerStrategy(std::string stratName)
             : stratname_{stratName}
@@ -130,6 +177,7 @@ namespace amr
         }
 
         std::string stratname_;
+        RefinerScheduler scheduler_;
     };
 } // namespace amr
 } // namespace PHARE

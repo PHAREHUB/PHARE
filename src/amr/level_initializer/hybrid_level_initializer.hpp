@@ -16,6 +16,7 @@
 
 #include "initializer/data_provider.hpp"
 
+#include <string>
 #include <exception>
 
 namespace PHARE
@@ -161,7 +162,7 @@ namespace solver
 
                 Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
                 setTime(E);
-                hybMessenger.fillElectricGhosts(E, level, 0.);
+                hybMessenger.template fill<amr::RefinerType::GhostField>(E.name(), level, 0.);
             }
 
 

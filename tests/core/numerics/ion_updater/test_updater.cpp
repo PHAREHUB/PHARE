@@ -1,6 +1,7 @@
 
 #include "phare_core.hpp"
 
+#include "core/utilities/box/box.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -71,7 +72,7 @@ Return bz(Param x)
 
 
 
-int nbrPartPerCell = 1000;
+std::size_t nbrPartPerCell = 1000;
 
 using InitFunctionT = PHARE::initializer::InitFunction<1>;
 
@@ -107,9 +108,10 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<InitFunctionT>(vthz);
 
 
-    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
-    dict["ions"]["pop0"]["particle_initializer"]["charge"]            = 1.;
-    dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
+    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"]
+        = static_cast<int>(nbrPartPerCell);
+    dict["ions"]["pop0"]["particle_initializer"]["charge"] = 1.;
+    dict["ions"]["pop0"]["particle_initializer"]["basis"]  = std::string{"cartesian"};
 
     dict["ions"]["pop1"]["name"]                            = std::string{"alpha"};
     dict["ions"]["pop1"]["mass"]                            = 1.;
@@ -136,9 +138,10 @@ PHARE::initializer::PHAREDict createDict()
         = static_cast<InitFunctionT>(vthz);
 
 
-    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"] = int{nbrPartPerCell};
-    dict["ions"]["pop1"]["particle_initializer"]["charge"]            = 1.;
-    dict["ions"]["pop1"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
+    dict["ions"]["pop1"]["particle_initializer"]["nbr_part_per_cell"]
+        = static_cast<int>(nbrPartPerCell);
+    dict["ions"]["pop1"]["particle_initializer"]["charge"] = 1.;
+    dict["ions"]["pop1"]["particle_initializer"]["basis"]  = std::string{"cartesian"};
 
     dict["electromag"]["name"]             = std::string{"EM"};
     dict["electromag"]["electric"]["name"] = std::string{"E"};
@@ -511,6 +514,10 @@ struct IonUpdaterTest : public ::testing::Test
                 std::copy(std::begin(levelGhostPartOld), std::end(levelGhostPartOld),
                           std::back_inserter(levelGhostPart));
 
+                std::size_t const ghosts_cells = (interp_order == 1 ? 1 : 2);
+                EXPECT_EQ(pop.domainParticles().size(), 100 * nbrPartPerCell);
+                EXPECT_EQ(levelGhostPartOld.size(), ghosts_cells * nbrPartPerCell);
+                EXPECT_EQ(patchGhostPart.size(), 0);
 
                 EXPECT_GT(pop.domainParticles().size(), 0ull);
                 EXPECT_GT(levelGhostPartOld.size(), 0ull);
@@ -664,8 +671,6 @@ using DimInterps = ::testing::Types<DimInterp<1, 1>, DimInterp<1, 2>, DimInterp<
 
 
 TYPED_TEST_SUITE(IonUpdaterTest, DimInterps, );
-
-
 
 
 TYPED_TEST(IonUpdaterTest, ionUpdaterTakesPusherParamsFromPHAREDictAtConstruction)

@@ -9,6 +9,7 @@
 
 #include "initializer/data_provider.hpp"
 
+#include "amr/messengers/scheduler.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
@@ -118,7 +119,18 @@ public:
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
+
+    void scheduler(amr::RefinerScheduler& schedulr) { scheduler_ = &schedulr; }
+
+    template<auto rtype>
+    void fill(std::string const& dst, auto& level, double time, auto&&... args)
+    {
+        scheduler_->template fill<rtype>(dst, level, time, args...);
+    }
+
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
+
+    amr::RefinerScheduler* scheduler_ = nullptr;
 };
 
 
