@@ -61,6 +61,7 @@ public:
         solver_->fillMessengerInfo(infoFromFiner);
 
         messenger_->registerQuantities(std::move(infoFromFiner), std::move(infoFromCoarser));
+        messenger_->registerQuantities(*model_, *model_);
     }
 
 
@@ -82,7 +83,7 @@ public:
             }
         }
 
-        messenger_->registerLevel(hierarchy, levelNumber);
+        messenger_->registerLevel(*model_, hierarchy, levelNumber);
 
         if (oldLevel)
         {
