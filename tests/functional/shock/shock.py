@@ -157,7 +157,9 @@ def main():
     if dry_run:
         return
 
-    if cpp.mpi_rank() == 0:  # only rank 0 writes the pngs, others would race to remove them
+    if (
+        cpp.mpi_rank() == 0
+    ):  # only rank 0 writes the pngs, others would race to remove them
         for png in glob.glob("shock*/*.png"):
             os.remove(png)
 

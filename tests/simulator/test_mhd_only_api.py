@@ -10,15 +10,14 @@ import unittest
 import numpy as np
 
 import pyphare.pharein as ph
-from pyphare.cpp import simulator_id
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import MHDGridLayoutFor
+from pyphare.cpp import simulator_id
 from pyphare.pharesee.hierarchy.hierarchy import PatchHierarchy
 from pyphare.pharesee.hierarchy.hierarchy_utils import single_patch_for_LO
 from pyphare.pharesee.hierarchy.patch import Patch
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 from pyphare.pharesee.hierarchy.patchlevel import PatchLevel
-
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
