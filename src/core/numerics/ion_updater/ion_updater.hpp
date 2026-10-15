@@ -305,13 +305,23 @@ void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
         auto const patch_id       = view.patchID();
         auto const& patch_boxings = boxings.at(patch_id);
 
+        auto const& nonOwnedBoxes = patch_boxings.nonOwnedBoxes;
+
         auto const per_pop = [&](auto& pop) {
-            auto& domain = pop.domainParticles();
+            auto& domain     = pop.domainParticles();
+            auto& patchGhost = pop.patchGhostParticles();
+            auto& levelGhost = pop.levelGhostParticles();
             delete_particles_not_in(domain, patch_boxings.nonLevelGhostBox);
-            move_in_ghost_layer(pop.patchGhostParticles(), domain, patch_boxings.domainBox,
+            move_in_ghost_layer(patchGhost, domain, patch_boxings.domainBox,
                                 patch_boxings.nonLevelGhostBox);
-            move_in_domain(domain, pop.levelGhostParticles(), patch_boxings.domainBox);
-            delete_particles_not_in(pop.levelGhostParticles(), patch_boxings.ghostBox);
+            if (!nonOwnedBoxes.empty())
+            {
+                for (auto const& box : nonOwnedBoxes)
+                    move_in_domain(patchGhost, domain, box);
+                delete_particles_in(levelGhost, nonOwnedBoxes);
+            }
+            move_in_domain(domain, levelGhost, patch_boxings.domainBox);
+            delete_particles_not_in(levelGhost, patch_boxings.ghostBox);
             delete_particles_not_in(domain, patch_boxings.domainBox);
         };
 

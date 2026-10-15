@@ -827,13 +827,7 @@ struct IonUpdaterOwnershipTest : public IonUpdaterTest<TestParam_t>
     void eraseNonOwned(std::vector<Box_t> const& nonOwned)
     {
         for (auto& pop : this->ions)
-        {
-            auto& particles = pop.domainParticles();
-            auto range      = makeIndexRange(particles);
-            auto const kept = particles.partition(
-                range, [&](auto const& cell) { return !isIn(Point{cell}, nonOwned); });
-            particles.erase(makeRange(particles, kept.iend(), particles.size()));
-        }
+            delete_particles_in(pop.domainParticles(), nonOwned);
     }
 
     static std::size_t count(auto const& particles, auto&& predicate)

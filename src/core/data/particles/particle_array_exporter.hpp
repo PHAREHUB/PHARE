@@ -8,11 +8,13 @@
 
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
+#include "core/utilities/range/range.hpp"
 #include "core/data/particles/particle_array_def.hpp"
 #include "core/data/particles/particle_array_appender.hpp"
 #include "core/data/particles/particle_array_partitioner.hpp"
 
 #include <cstddef>
+#include <algorithm>
 #include <stdexcept>
 
 namespace PHARE::core
@@ -120,22 +122,45 @@ template<>
 template<typename Src, std::size_t dim>
 void ParticlesExporter<AoS, CPU>::delete_particles_not_in(Src& src, Box<int, dim> const& box)
 {
-    src.erase(box);
-    src.sortMapping();
+    auto const kept = std::partition(src.begin(), src.end(),
+                                     [&](auto const& p) { return isIn(p.iCell(), box); });
+    src.erase(kept, src.end());
 }
+
 template<>
 template<typename Src, typename Boxes>
 void ParticlesExporter<AoSMapped, CPU>::delete_particles_not_in(Src& src, Boxes const& boxes)
 {
-    for (auto const& box : boxes)
-        src.erase(box);
+    auto range      = makeIndexRange(src);
+    auto const kept = src.partition(range, [&](auto const& cell) { return isIn(cell, boxes); });
+    src.erase(makeRange(src, kept.iend(), src.size()));
 }
 
 template<>
 template<typename Src, std::size_t dim>
 void ParticlesExporter<AoSMapped, CPU>::delete_particles_not_in(Src& src, Box<int, dim> const& box)
 {
-    throw std::runtime_error("todo");
+    auto range      = makeIndexRange(src);
+    auto const kept = src.partition(range, [&](auto const& cell) { return isIn(cell, box); });
+    src.erase(makeRange(src, kept.iend(), src.size()));
+}
+
+template<>
+template<typename Src, typename Boxes>
+void ParticlesExporter<AoS, CPU>::delete_particles_in(Src& src, Boxes const& boxes)
+{
+    auto const kept = std::partition(src.begin(), src.end(),
+                                     [&](auto const& p) { return !isIn(p.iCell(), boxes); });
+    src.erase(kept, src.end());
+}
+
+template<>
+template<typename Src, typename Boxes>
+void ParticlesExporter<AoSMapped, CPU>::delete_particles_in(Src& src, Boxes const& boxes)
+{
+    auto range      = makeIndexRange(src);
+    auto const kept = src.partition(range, [&](auto const& cell) { return !isIn(cell, boxes); });
+    src.erase(makeRange(src, kept.iend(), src.size()));
 }
 template<>
 template<typename Src, std::size_t dim>
@@ -186,6 +211,31 @@ void ParticlesExporter<AoSPCTS, CPU>::delete_particles_not_in(Src& src, Boxes co
                     break;
                 }
             if (!in_any)
+                cell_parts.clear();
+        }
+        cps.template on_appended<ParticleType::Ghost>();
+    }
+    src.template on_appended<ParticleType::Domain>();
+}
+
+template<>
+template<typename Src, typename Boxes>
+void ParticlesExporter<AoSPCTS, CPU>::delete_particles_in(Src& src, Boxes const& boxes)
+{
+    auto constexpr dim = Src::dimension;
+    for (auto& tile : src())
+    {
+        auto& cps      = tile();
+        auto const& gb = cps.ghost_box();
+        for (auto const& bix : cps.local_box(gb))
+        {
+            auto& cell_parts = cps(bix);
+            if (cell_parts.size() == 0)
+                continue;
+            std::array<int, dim> gcell;
+            for (std::size_t d = 0; d < dim; ++d)
+                gcell[d] = gb.lower[d] + static_cast<int>(bix[d]);
+            if (isIn(gcell, boxes))
                 cell_parts.clear();
         }
         cps.template on_appended<ParticleType::Ghost>();
@@ -285,6 +335,13 @@ template<typename Src, typename Boxes>
 void ParticlesExporter<AoSCMTS, CPU>::delete_particles_not_in(Src& src, Boxes const& boxes)
 {
     src.erase_if([&](auto const& p) { return !isIn(p.iCell(), boxes); });
+}
+
+template<>
+template<typename Src, typename Boxes>
+void ParticlesExporter<AoSCMTS, CPU>::delete_particles_in(Src& src, Boxes const& boxes)
+{
+    src.erase_if([&](auto const& p) { return isIn(p.iCell(), boxes); });
 }
 
 template<>

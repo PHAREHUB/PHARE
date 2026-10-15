@@ -8,8 +8,7 @@
 #include "initializer/data_provider.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
-#include "core/utilities/box/box.hpp"
-#include "core/utilities/range/range.hpp"
+#include "core/data/particles/particle_array_exporter.hpp"
 // #include "particle_initializers/particle_initializer_factory.hpp"
 
 
@@ -177,13 +176,7 @@ namespace core
                 return;
 
             for (auto& pop : populations_)
-            {
-                auto& particles = pop.domainParticles();
-                auto range      = makeIndexRange(particles);
-                auto const kept = particles.partition(
-                    range, [&](auto const& cell) { return !isIn(Point{cell}, boxes); });
-                particles.erase(makeRange(particles, kept.iend(), particles.size()));
-            }
+                delete_particles_in(pop.domainParticles(), boxes);
         }
 
 

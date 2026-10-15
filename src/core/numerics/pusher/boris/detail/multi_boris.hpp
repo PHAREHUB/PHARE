@@ -514,7 +514,7 @@ struct MultiBorisFunctors
                     // level ghosts live only in their clamp-owner tile, so each is seen
                     // once: deposit any entering the patch domain into this tile's fields,
                     // the tile reduction folds halo contributions into the neighbours
-                    if (isIn(p.iCell(), patch_box))
+                    if (patch_boxings.isOwned(p.iCell()))
                         interp.particleToMesh(p, rhoP(), rhoC(), F, layout);
                 }
             }

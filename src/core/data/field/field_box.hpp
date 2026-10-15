@@ -760,7 +760,9 @@ template<typename Field_t>
 void fill_ghost(Field_t& field, auto const& layout, auto const v)
     requires(!is_field_tile_set_v<Field_t>)
 {
-    field[NdArrayMask{0, layout.options.field_ghost_width - 1}] = v;
+    auto constexpr ghost_width = std::remove_cvref_t<decltype(layout)>::options.field_ghost_width;
+    if constexpr (ghost_width > 0)
+        field[NdArrayMask{0, ghost_width - 1}] = v;
 }
 
 template<typename Field_t>
