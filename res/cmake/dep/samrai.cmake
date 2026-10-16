@@ -39,4 +39,5 @@ endif(DEFINED SAMRAI_ROOT)
 
 if(DEFINED SKBUILD)
   unset(SAMRAI_ROOT CACHE)
+  unset(SAMRAI_DIR CACHE)
 endif()
