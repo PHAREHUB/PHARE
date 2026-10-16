@@ -59,6 +59,7 @@ add_subdirectory(src/diagnostic)
 add_subdirectory(src/simulator)
 add_subdirectory(src/python3)
 add_subdirectory(src/phare)
+include("${PHARE_PROJECT_DIR}/res/cmake/install.cmake")
 #*******************************************************************************
 
 include("${PHARE_PROJECT_DIR}/res/cmake/bench.cmake")
