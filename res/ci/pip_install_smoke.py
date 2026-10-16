@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -30,6 +31,26 @@ def check_install(editable):
         assert outside_repository(pyphare.__file__), pyphare.__file__
     assert "PHARE_CONFIG_ERROR" not in cpp.build_config()
     validate.check_build_config_is_runtime_compatible()
+
+
+def check_bundled_libraries():
+    import pybindlibs
+
+    lib_dir = Path(pybindlibs.__file__).resolve().parent / "lib"
+    if not lib_dir.is_dir() or not sys.platform.startswith("linux"):
+        return
+    bundled = {path.name for path in lib_dir.iterdir()}
+    loaded = set()
+    for line in Path("/proc/self/maps").read_text().splitlines():
+        fields = line.split(maxsplit=5)
+        if len(fields) < 6:
+            continue
+        path = Path(fields[5].strip())
+        if re.match(r"lib(phare|SAMRAI)_\w+\.so", path.name) and path.name in bundled:
+            loaded.add(path.resolve())
+    assert loaded, f"no library of {lib_dir} is loaded"
+    for path in loaded:
+        assert path.parent == lib_dir, f"{path} loaded instead of the one in {lib_dir}"
 
 
 def config():
@@ -66,6 +87,7 @@ def main():
     startMPI()
     rank = cpp.mpi_rank()
     Simulator(config()).run()
+    check_bundled_libraries()
     if rank == 0:
         print("pip install smoke: OK")
 
