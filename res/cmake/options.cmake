@@ -97,6 +97,13 @@ endif()
 option(bench "Compile PHARE Benchmarks" OFF)
 
 
+# -DPHARE_PARTICLE_DELTA_BYTES=6 -DPHARE_PARTICLE_V_BYTES=6
+#  bytes used to store each particle delta/velocity component, 8 is plain double
+#  see src/core/data/particles/particle_storage.hpp
+set(PHARE_PARTICLE_DELTA_BYTES 6 CACHE STRING "Particle delta storage bytes (1-6, or 8 for double)")
+set(PHARE_PARTICLE_V_BYTES 6 CACHE STRING "Particle velocity storage bytes (2-7, or 8 for double)")
+
+
 # -Dphare_configurator=OFF
 option(phare_configurator "Best guess setup for compile" OFF)
 
@@ -138,6 +145,8 @@ function(print_phare_options)
     message("PHARE_BASE_LIBS                             : " ${PHARE_BASE_LIBS})
     message("Exclude heavier tests                       : " ${lowResourceTests})
     message("PHARE_MPI_PROCS                             : " ${PHARE_MPI_PROCS})
+    message("PHARE_PARTICLE_DELTA_BYTES                  : " ${PHARE_PARTICLE_DELTA_BYTES})
+    message("PHARE_PARTICLE_V_BYTES                      : " ${PHARE_PARTICLE_V_BYTES})
     message("Selected Compiler                           : " ${CMAKE_CXX_COMPILER_ID})
   endif()
 
