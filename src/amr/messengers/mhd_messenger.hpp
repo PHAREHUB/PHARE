@@ -17,6 +17,7 @@
 #include "amr/messengers/refiner_pool.hpp"
 #include "amr/messengers/synchronizer_pool.hpp"
 #include "amr/messengers/messenger.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
 #include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
@@ -394,27 +395,20 @@ namespace amr
         void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) final
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
-            for (auto& patch : level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(
-                    *patch, mhdModel.state.rho, mhdModel.state.V, mhdModel.state.P,
-                    mhdModel.state.rhoV, mhdModel.state.Etot, mhdModel.state.B, rhoOld_, Vold_,
-                    Pold_, rhoVold_, EtotOld_, Bold_);
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_,
+                                                               mhdModel.state, rhoOld_, Vold_,
+                                                               Pold_, rhoVold_, EtotOld_, Bold_),
+                         [&](auto& view) {
+                             auto& [state, rhoOld, Vold, Pold, rhoVold, EtotOld, Bold] = view.args;
+                             view.setTime(currentTime, rhoOld, Vold, Pold, rhoVold, EtotOld, Bold);
 
-                resourcesManager_->setTime(rhoOld_, *patch, currentTime);
-                resourcesManager_->setTime(Vold_, *patch, currentTime);
-                resourcesManager_->setTime(Pold_, *patch, currentTime);
-                resourcesManager_->setTime(rhoVold_, *patch, currentTime);
-                resourcesManager_->setTime(EtotOld_, *patch, currentTime);
-                resourcesManager_->setTime(Bold_, *patch, currentTime);
-
-                rhoOld_.copyData(mhdModel.state.rho);
-                Vold_.copyData(mhdModel.state.V);
-                Pold_.copyData(mhdModel.state.P);
-                rhoVold_.copyData(mhdModel.state.rhoV);
-                EtotOld_.copyData(mhdModel.state.Etot);
-                Bold_.copyData(mhdModel.state.B);
-            }
+                             rhoOld.copyData(state.rho);
+                             Vold.copyData(state.V);
+                             Pold.copyData(state.P);
+                             rhoVold.copyData(state.rhoV);
+                             EtotOld.copyData(state.Etot);
+                             Bold.copyData(state.B);
+                         });
         }
 
         void fillRootGhosts(IPhysicalModel& model, level_t& level, double const initDataTime) final
@@ -651,15 +645,20 @@ namespace amr
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field);
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, field),
+                         [&](auto& view) {
+                             auto& [field_v] = view.args;
+                             setNaNsOnFieldGhosts(field_v);
+                         });
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
-                for (auto& component : vf)
-                    setNaNsOnFieldGhosts(component);
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, vf),
+                         [&](auto& view) {
+                             for (auto& component : std::get<0>(view.args))
+                                 setNaNsOnFieldGhosts(component);
+                         });
         }
 
 
