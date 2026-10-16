@@ -42,6 +42,8 @@ struct NullOpDiagnosticsManager : public IDiagnosticsManager
     {
         throw std::runtime_error("NOOP");
     }
+
+    void dump_all(double /*timestamp*/) override { throw std::runtime_error("NOOP"); }
 };
 
 struct DiagnosticsManagerResolver
