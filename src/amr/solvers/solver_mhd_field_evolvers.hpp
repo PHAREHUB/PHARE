@@ -33,12 +33,11 @@ public:
 
     void operator()(auto& state, double const gamma)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, state))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout, gamma}(state.rho, state.V, state.B, state.P, state.rhoV, state.Etot);
-        }
+        amr::onLevel(amr::make_model_level_accessor(level, model, state), [&](auto& view) {
+            auto& [state_v] = view.args;
+            core_type{view.layout, gamma}(state_v.rho, state_v.V, state_v.B, state_v.P,
+                                          state_v.rhoV, state_v.Etot);
+        });
     }
 
     level_t& level;
@@ -66,12 +65,11 @@ public:
 
     void operator()(auto& state, double const gamma)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, state))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout}(gamma, state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
-        }
+        amr::onLevel(amr::make_model_level_accessor(level, model, state), [&](auto& view) {
+            auto& [state_v] = view.args;
+            core_type{view.layout}(gamma, state_v.rho, state_v.rhoV, state_v.B, state_v.Etot,
+                                   state_v.V, state_v.P);
+        });
     }
 
     level_t& level;
@@ -110,13 +108,13 @@ public:
 
     void operator()(auto& ct_state, auto& dissipative_electric_state, auto& state, auto& fluxes)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, state, fluxes))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type finite_volume_method{info, layout};
-            finite_volume_method(ct_state, dissipative_electric_state, state, fluxes);
-        }
+        amr::onLevel(amr::make_model_level_accessor(level, model, ct_state,
+                                                    dissipative_electric_state, state, fluxes),
+                     [&](auto& view) {
+                         auto& [ct_state_v, dissipative_v, state_v, fluxes_v] = view.args;
+                         core_type finite_volume_method{info, view.layout};
+                         finite_volume_method(ct_state_v, dissipative_v, state_v, fluxes_v);
+                     });
     }
 
     level_t& level;
@@ -143,12 +141,11 @@ public:
     void operator()(Model::state_type& state, Model::state_type& statenew, auto& fluxes,
                     double const dt)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, state, statenew, fluxes))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout}(state, statenew, fluxes, dt);
-        }
+        amr::onLevel(amr::make_model_level_accessor(level, model, state, statenew, fluxes),
+                     [&](auto& view) {
+                         auto& [state_v, statenew_v, fluxes_v] = view.args;
+                         core_type{view.layout}(state_v, statenew_v, fluxes_v, dt);
+                     });
     }
 
 
@@ -182,12 +179,12 @@ public:
 
     void operator()(auto& dissipative_electric_state, auto& mhd_state)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, dissipative_electric_state, mhd_state))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{info, layout}(dissipative_electric_state, mhd_state);
-        }
+        amr::onLevel(
+            amr::make_model_level_accessor(level, model, dissipative_electric_state, mhd_state),
+            [&](auto& view) {
+                auto& [dissipative_v, mhd_state_v] = view.args;
+                core_type{info, view.layout}(dissipative_v, mhd_state_v);
+            });
     }
 
     level_t& level;
@@ -216,13 +213,13 @@ public:
 
     void operator()(auto& ct_state, auto& dissipative_electric_state, auto& mhd_state)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, mhd_state))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type constrained_transport_{info, layout};
-            constrained_transport_(ct_state, dissipative_electric_state, mhd_state);
-        }
+        amr::onLevel(amr::make_model_level_accessor(level, model, ct_state,
+                                                    dissipative_electric_state, mhd_state),
+                     [&](auto& view) {
+                         auto& [ct_state_v, dissipative_v, mhd_state_v] = view.args;
+                         core_type constrained_transport_{info, view.layout};
+                         constrained_transport_(ct_state_v, dissipative_v, mhd_state_v);
+                     });
     }
 
 
@@ -244,12 +241,14 @@ class RKUtilsTransformer
 public:
     void operator()(Model::state_type& res, auto... pairs)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, res, pairs.state...))
-        {
-            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout}(res, pairs...);
-        }
+        amr::onLevel(
+            amr::make_model_level_accessor(level, model, res, pairs.state...), [&](auto& view) {
+                std::apply(
+                    [&](auto& res_v, auto&... states_v) {
+                        core_type{view.layout}(res_v, decltype(pairs){pairs.weight, states_v}...);
+                    },
+                    view.args);
+            });
     }
 
 

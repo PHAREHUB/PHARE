@@ -9,6 +9,7 @@
 
 #include "initializer/data_provider.hpp"
 
+#include "amr/physical_models/models.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
@@ -137,22 +138,22 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
 void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::initialize(
     level_t& level)
 {
-    for (auto& patch : level)
-    {
-        // first initialize the ions
-        auto layout = amr::layoutFromPatch<gridlayout_type>(*patch);
-        auto& ions  = state.ions;
-        auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions, state.J);
+    amr::onLevel(
+        amr::make_model_level_accessor(level, *this, state.electromag, state.ions, state.J),
+        [&](auto& view) {
+            auto& [electromag, ions, J] = view.args;
+            auto& layout                = view.layout;
 
-        for (auto& pop : ions)
-        {
-            auto const& info         = pop.particleInitializerInfo();
-            auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout);
-        }
+            // first initialize the ions
+            for (auto& pop : ions)
+            {
+                auto const& info         = pop.particleInitializerInfo();
+                auto particleInitializer = ParticleInitializerFactory::create(info);
+                particleInitializer->loadParticles(pop.domainParticles(), layout);
+            }
 
-        state.electromag.initialize(layout);
-    }
+            electromag.initialize(layout);
+        });
 }
 
 
