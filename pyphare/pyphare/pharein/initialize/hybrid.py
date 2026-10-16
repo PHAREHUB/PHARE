@@ -1,6 +1,7 @@
-def populateDict(sim):
-    from . import DictPopulator
+from .dict_populator import DictPopulator
 
+
+def populateDict(sim):
     dp = DictPopulator()
 
     if sim.refinement == "tagging":
