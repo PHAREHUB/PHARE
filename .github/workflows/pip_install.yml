@@ -16,6 +16,7 @@ on:
       - '!codecov.yml'
       - '.github/workflows/cmake_ubuntu.yml'
       - '.github/workflows/pip_install.yml'
+      - 'res/ci/pip_install_smoke.py'
   workflow_dispatch:
 
 permissions:
