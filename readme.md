@@ -123,6 +123,8 @@ should install only the python dependencies, since a plain `uv sync` builds PHAR
   export PYTHONPATH=/path/to/PHARE/pyphare:/path/to/PHARE/build:$PYTHONPATH
 ```
 
+Do not mix this build with an environment where `uv sync` or `uv run` installed PHARE: that install is editable, and its import finder takes precedence over `PYTHONPATH`, so the installed `pybindlibs` is used instead of your build (a non-editable `pip install .` does not do this). `uv sync` and `uv run` also manage `.venv` as the project environment, and may recreate it (for example with a uv-managed python), dropping packages installed by hand. Use a separate environment for your own build, or keep uv from touching it: `uv sync --no-install-project`, `uv run --no-sync <cmd>`, or `UV_NO_SYNC=1` for scripts calling `uv run`. A `.venv` shared between checkouts (for example symlinked into git worktrees) is synced by whichever checkout runs uv.
+
 The clang-format and ruff versions checked by CI are pinned in the `lint` dependency group of `pyproject.toml`. `uv sync` installs them, or with pip >= 25.1:
 
 ```

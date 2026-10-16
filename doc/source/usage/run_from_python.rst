@@ -67,6 +67,16 @@ builds PHARE with every permutation:
 
 or, with pip, `pip3 install -r requirements.txt` in a virtual environment.
 
+Do not mix your own CMake build with an environment where `uv sync` or `uv run` installed PHARE.
+That install is editable, and its import finder takes precedence over `PYTHONPATH`:
+the installed `pybindlibs` is used instead of your build (a non-editable `pip install .` does not do this).
+`uv sync` and `uv run` also manage `.venv` as the project environment, and may recreate it
+(for example with a uv-managed python), dropping packages installed there by hand.
+Use a separate environment for your own build, or keep uv from touching it:
+`uv sync --no-install-project`, `uv run --no-sync <cmd>`, or the environment variable `UV_NO_SYNC=1`
+for scripts that call `uv run`.
+A `.venv` shared between several checkouts (for example symlinked into git worktrees) is synced by whichever checkout runs uv.
+
 Installing on a cluster / overriding defaults
 ---------------------------------------------
 
