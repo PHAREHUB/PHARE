@@ -104,12 +104,23 @@ namespace amr
 
 
         /**
-         * @brief see IMessenger::registerLevel
+         * @brief see IMessenger::registerSameLevelSchedules
          */
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           int const levelNumber) override
+        void
+        registerSameLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber) override
         {
-            strat_->registerLevel(hierarchy, levelNumber);
+            strat_->registerSameLevelSchedules(hierarchy, levelNumber);
+        }
+
+        /**
+         * @brief see IMessenger::registerInterLevelSchedules
+         */
+        void
+        registerInterLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                    int const levelNumber) override
+        {
+            strat_->registerInterLevelSchedules(hierarchy, levelNumber);
         }
 
 
@@ -133,10 +144,11 @@ namespace amr
          * @param levelNumber
          * @param initDataTime
          */
-        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+        void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                       IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
                        double const initDataTime) override
         {
-            strat_->initLevel(model, level, initDataTime);
+            strat_->initLevel(hierarchy, model, level, initDataTime);
         }
 
 

@@ -102,7 +102,7 @@ public:
 
             else
             {
-                messenger_->initLevel(*model_, *level, initDataTime);
+                messenger_->initLevel(hierarchy, *model_, *level, initDataTime);
             }
         }
 
