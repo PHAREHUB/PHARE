@@ -1,12 +1,14 @@
 import os
+import sys
 import json
 import subprocess
 import dataclasses
 from pathlib import Path
 
 FILE_DIR = Path(__file__).resolve().parent
-BUILD_DIR = FILE_DIR / "build"
 PHARE_BUILD_DIR = Path(os.environ["PHARE_BUILD_DIR"])
+BUILD_DIR = PHARE_BUILD_DIR / "configurator"
+MPI_VERSION_FILE = BUILD_DIR / "PHARE_MPI_Get_library_version.txt"
 ROOT_DIR = FILE_DIR.parent.parent
 DOT_PHARE_DIR = ROOT_DIR / ".phare"
 FILES = list(BUILD_DIR.glob("PHARE_*"))
@@ -246,7 +248,7 @@ message("")
         content += """set (PHARE_MPIRUN_POSTFIX "${PHARE_MPIRUN_POSTFIX};--bind-to;none")
                 """
 
-    write_if_changed("local.cmake", content)
+    write_if_changed(BUILD_DIR / "local.cmake", content)
 
 
 def mkdirs(*dirs):
@@ -254,7 +256,19 @@ def mkdirs(*dirs):
         directory.mkdir(exist_ok=True, parents=True)
 
 
+def check_probe_output():
+    try:
+        MPI_VERSION_FILE.read_text()
+    except OSError as error:
+        sys.exit(
+            f"PHARE configurator: cannot read the probe output {MPI_VERSION_FILE}"
+            f" ({error.strerror}),"
+            " the next configure rebuilds the probe"
+        )
+
+
 def main():
+    check_probe_output()
     mkdirs(DEF_DIR, DOT_PHARE_DIR)
     mpi_results = config_mpi()
     gen_system_file()
