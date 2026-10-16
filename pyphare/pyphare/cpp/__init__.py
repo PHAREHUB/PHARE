@@ -118,7 +118,9 @@ def _no_such_module_message(sim, mod_str):
         f"pybindlibs loaded from: {_pybindlibs_location()}\n"
         f"To add it, either:\n"
         f"  - CMake build: add the line to a res/sim permutation file (res/sim/all.txt) and rebuild\n"
-        f"  - installed package: put the line in a file and reinstall with\n"
+        f"  - installed package: reinstall with a permutation file that lists every permutation\n"
+        f"    you need, for example a copy of res/sim/all.txt plus this line, since a reinstall\n"
+        f"    installs exactly the file's set:\n"
         f"    pip install . -C cmake.define.PHARE_PERMUTATIONS=<file>\n"
         f"Permutations currently built:\n{listing}"
     )

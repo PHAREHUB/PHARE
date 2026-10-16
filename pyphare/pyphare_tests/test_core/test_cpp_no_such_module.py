@@ -23,6 +23,9 @@ class CppNoSuchModuleTest(unittest.TestCase):
             "/some/where/pybindlibs",
             "res/sim",
             "pip install . -C cmake.define.PHARE_PERMUTATIONS=",
+            "every permutation",
+            "a copy of res/sim/all.txt plus this line",
+            "installs exactly",
         ]:
             self.assertIn(expected, message)
 
