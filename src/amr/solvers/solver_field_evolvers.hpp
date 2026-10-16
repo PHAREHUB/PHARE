@@ -4,6 +4,7 @@
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 
+#include "amr/physical_models/models.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 
@@ -31,12 +32,10 @@ public:
 
     void operator()(auto& B, auto& E, auto& Bnew, auto& dt)
     {
-        auto& rm = *model_.resourcesManager;
-        for (auto& patch : rm.enumerate(level_, B, E, Bnew))
-        {
-            auto layout = amr::layoutFromPatch<GridLayout>(*patch);
-            (*this)(layout, B, E, Bnew, dt);
-        }
+        amr::onLevel(amr::make_model_level_accessor(level_, model_, B, E, Bnew), [&](auto& view) {
+            auto& [B_v, E_v, Bnew_v] = view.args;
+            (*this)(view.layout, B_v, E_v, Bnew_v, dt);
+        });
     }
 
     level_t& level_;
@@ -67,12 +66,10 @@ public:
 
     void operator()(auto& B, auto& J)
     {
-        auto& rm = *model_.resourcesManager;
-        for (auto& patch : rm.enumerate(level_, B, J))
-        {
-            auto layout = amr::layoutFromPatch<GridLayout>(*patch);
-            (*this)(layout, B, J);
-        }
+        amr::onLevel(amr::make_model_level_accessor(level_, model_, B, J), [&](auto& view) {
+            auto& [B_v, J_v] = view.args;
+            (*this)(view.layout, B_v, J_v);
+        });
     }
 
     level_t& level_;
@@ -92,9 +89,8 @@ struct TimeSetter
 {
     void operator()(auto&... quantities)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, quantities...))
-            (model.resourcesManager->setTime(quantities, *patch, newTime), ...);
+        amr::onLevel(amr::make_model_level_accessor(level, model, quantities...),
+                     [&](auto& view) { view.setTime(newTime, quantities...); });
     }
 
     level_t& level;
