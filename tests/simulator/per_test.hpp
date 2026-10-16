@@ -160,50 +160,28 @@ using Simulators = testing::Types<SimulatorTestParam<SimOpts{1, 1, 2}>>;
 TYPED_TEST_SUITE(SimulatorTest, Simulators);
 
 
-template<typename SimulatorParam>
-struct Simulator1dTest : public ::testing::Test
-{
-};
+template<std::size_t dim, std::size_t interp, std::size_t... nbRefinedParts>
+using SimulatorTestParams
+    = testing::Types<SimulatorTestParam<SimOpts{dim, interp, nbRefinedParts}>...>;
+
+// one set per dim/interp so each test binary instantiates only a few simulators
+//  to prevent OOM when compiling, all permutations of a dim in a single source file exceeds CI memory
+//  limits, see tests/diagnostic/CMakeLists.txt
+template<std::size_t dim, std::size_t interp>
+struct SimulatorPermutations;
 
 // clang-format off
-using Simulators1d = testing::Types<
-    SimulatorTestParam<SimOpts{1, 1, 2}>, SimulatorTestParam<SimOpts{1, 1, 3}>,
-    SimulatorTestParam<SimOpts{1, 2, 2}>, SimulatorTestParam<SimOpts{1, 2, 3}>,
-    SimulatorTestParam<SimOpts{1, 2, 4}>, SimulatorTestParam<SimOpts{1, 3, 2}>,
-    SimulatorTestParam<SimOpts{1, 3, 3}>, SimulatorTestParam<SimOpts{1, 3, 4}>,
-    SimulatorTestParam<SimOpts{1, 3, 5}>
->;
+template<> struct SimulatorPermutations<1, 1> { using type = SimulatorTestParams<1, 1, 2, 3>; };
+template<> struct SimulatorPermutations<1, 2> { using type = SimulatorTestParams<1, 2, 2, 3, 4>; };
+template<> struct SimulatorPermutations<1, 3> { using type = SimulatorTestParams<1, 3, 2, 3, 4, 5>; };
 
-TYPED_TEST_SUITE(Simulator1dTest, Simulators1d);
+template<> struct SimulatorPermutations<2, 1> { using type = SimulatorTestParams<2, 1, 4, 5, 8, 9>; };
+template<> struct SimulatorPermutations<2, 2> { using type = SimulatorTestParams<2, 2, 4, 5, 8, 9, 16>; };
+template<> struct SimulatorPermutations<2, 3> { using type = SimulatorTestParams<2, 3, 4, 5, 8, 25>; };
 
-
-template<typename SimulatorParam>
-struct Simulator2dTest : public ::testing::Test
-{
-};
-
-
-using Simulators2d = testing::Types<
-    SimulatorTestParam<SimOpts{2, 1, 4}>, SimulatorTestParam<SimOpts{2, 1, 5}>,
-    SimulatorTestParam<SimOpts{2, 1, 8}>, SimulatorTestParam<SimOpts{2, 1, 9}>,
-    SimulatorTestParam<SimOpts{2, 2, 4}>, SimulatorTestParam<SimOpts{2, 2, 5}>,
-    SimulatorTestParam<SimOpts{2, 2, 8}>, SimulatorTestParam<SimOpts{2, 2, 9}>,
-    SimulatorTestParam<SimOpts{2, 2, 16}>, SimulatorTestParam<SimOpts{2, 3, 4}>,
-    SimulatorTestParam<SimOpts{2, 3, 5}>, SimulatorTestParam<SimOpts{2, 3, 8}>,
-    SimulatorTestParam<SimOpts{2, 3, 25}>
->;
-TYPED_TEST_SUITE(Simulator2dTest, Simulators2d);
-
-
-template<typename Simulator>
-struct Simulator3dTest : public ::testing::Test
-{
-};
-using Simulator3d = testing::Types<SimulatorTestParam<SimOpts{3, 1, 6}>,
-                                   SimulatorTestParam<SimOpts{3, 2, 6}>,
-                                   SimulatorTestParam<SimOpts{3, 3, 6}>>;
-TYPED_TEST_SUITE(Simulator3dTest, Simulator3d);
-
+template<> struct SimulatorPermutations<3, 1> { using type = SimulatorTestParams<3, 1, 6>; };
+template<> struct SimulatorPermutations<3, 2> { using type = SimulatorTestParams<3, 2, 6>; };
+template<> struct SimulatorPermutations<3, 3> { using type = SimulatorTestParams<3, 3, 6>; };
 // clang-format on
 
 #endif /* PHARE_TEST_SIMULATOR_PER_TEST_H */
