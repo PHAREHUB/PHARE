@@ -47,6 +47,7 @@ if(PHARE_WITH_CCACHE)
 endif()
 ####
 
+include("${PHARE_PROJECT_DIR}/res/cmake/jobs.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 
 #*******************************************************************************

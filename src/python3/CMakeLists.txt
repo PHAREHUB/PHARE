@@ -66,6 +66,7 @@ while(THIS_FILE)
     set_property(TARGET ${MOD_STR} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
     set_property(TARGET ${MOD_STR} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
     set_property(GLOBAL APPEND PROPERTY PHARE_PYTHON_MODULES ${MOD_STR})
+    phare_limit_module_compile(${MOD_STR})
 endwhile()
 
 # cpp_etc == everything not simulator related!
@@ -80,3 +81,4 @@ set_target_properties(cpp_etc
 set_property(TARGET cpp_etc PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
 set_property(TARGET cpp_etc APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
 set_property(GLOBAL APPEND PROPERTY PHARE_PYTHON_MODULES cpp_etc)
+phare_limit_module_compile(cpp_etc)
