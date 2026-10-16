@@ -1,6 +1,10 @@
+[build-system]
+requires = ["scikit-build-core>=0.11", "pybind11>=2.13"]
+build-backend = "scikit_build_core.build"
+
 [project]
 name = "pyphare"
-version = "0.0.0"
+dynamic = ["version"]
 requires-python = ">=3.11"
 dependencies = [
     "numpy",
@@ -47,8 +51,28 @@ dev = [
     { include-group = "lint" },
 ]
 
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.version = ">=3.20.1"
+build-dir = "_skbuild/{wheel_tag}"
+wheel.packages = ["pyphare/pyphare"]
+install.components = ["pyphare"]
+metadata.version.provider = "scikit_build_core.metadata.regex"
+metadata.version.input = "CMakeLists.txt"
+metadata.version.regex = 'project\(PHARE VERSION (?P<value>[0-9.]+)'
+
+[tool.scikit-build.cmake.define]
+test = "OFF"
+devMode = "OFF"
+phare_configurator = "ON"
+
 [tool.uv]
-package = false
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "CMakeLists.txt" },
+    { file = "res/sim/*.txt" },
+    { git = { commit = true } },
+]
 
 [tool.ruff]
 src = [".", "pyphare"]

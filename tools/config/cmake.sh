@@ -15,6 +15,6 @@ export PHARE_BUILD_DIR=${4}
     mkdir -p build && cd build
     "$CMAKE_COMMAND" -DCMAKE_BUILD_TYPE=Release .. \
                      -DCMAKE_CXX_COMPILER="${CMAKE_CXX_COMPILER}" # 2>&1 > /dev/null
-    make VERBOSE=1 && ./phare_configurator
+    "$CMAKE_COMMAND" --build . --verbose && ./phare_configurator
 )
 $PYTHON_EXECUTABLE config.py

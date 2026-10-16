@@ -36,3 +36,7 @@ else()
   include_directories(${CMAKE_BINARY_DIR}/include) # this is needed to find build-dir/include/SAMRAI/SAMRAI_config.h
 
 endif(DEFINED SAMRAI_ROOT)
+
+if(DEFINED SKBUILD)
+  unset(SAMRAI_ROOT CACHE)
+endif()
