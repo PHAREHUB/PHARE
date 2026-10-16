@@ -656,10 +656,6 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     for (auto& patch : rm.enumerate(level, ions))
         ionUpdater_.updateIons(ions);
 
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonBorders");
-        fromCoarser.fillIonBorders(ions, level, newTime);
-    }
     // no need to update time, since it has been done before
 }
 

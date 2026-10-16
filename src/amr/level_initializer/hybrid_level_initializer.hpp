@@ -121,7 +121,6 @@ namespace solver
                 ions.computeBulkVelocity();
                 ions.computeChargeFlux();
             }
-            hybMessenger.fillIonBorders(ions, level, initDataTime);
 
             // moments are not time interpolated: their level ghost nodes come from the
             // deposit of level ghost particles above. Only E and B ghosts are, from the

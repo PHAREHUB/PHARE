@@ -235,11 +235,6 @@ namespace amr
             for (auto& refiner : popDensityBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
 
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
             // TODO this 'if' may not be OK if L0 is regrided
@@ -278,8 +273,6 @@ namespace amr
         {
             auto& hybridModel = dynamic_cast<HybridModel&>(model);
             auto level        = hierarchy->getPatchLevel(levelNumber);
-
-            bool const isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             magneticRegriding_(hierarchy, level, oldLevel, hybridModel, initDataTime);
             electricInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -448,19 +441,6 @@ namespace amr
                                 ions[i].particleDensity().size() * sizeof(value_type));
             }
         }
-
-
-        void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
-        {
-            assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
-            assert(ionDensityBorderMaxRefiners_.size() == 1); // charge density
-
-            // for (auto& refiner : ionFluxBorderMaxRefiners_)
-            //     refiner.fill(level.getLevelNumber(), fillTime);
-            // for (auto& refiner : ionDensityBorderMaxRefiners_)
-            //     refiner.fill(level.getLevelNumber(), fillTime);
-        }
-
 
 
         /**
@@ -814,22 +794,6 @@ namespace amr
                     .addStaticRefiner(
                         sumField_.name(), field, nullptr, sumField_.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-
-            assert(info->maxBorderFields.size() == 1); // charge density
-            for (auto const& field : info->maxBorderFields)
-                ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        field, field, nullptr, field,
-                        std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
-
-            assert(info->maxBorderVecFields.size() == 1); // charge flux
-            for (auto const& vecfield : info->maxBorderVecFields)
-                ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
-                    .addStaticRefiner(
-                        vecfield, vecfield, nullptr, vecfield,
-                        std::make_shared<
-                            TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
 
 
@@ -974,8 +938,6 @@ namespace amr
         using PatchGhostRefinerPool       = RefinerPool<rm_t, RefinerType::PatchGhostField>;
         using FieldGhostSumRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderSum>;
         using VecFieldGhostSumRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderSum>;
-        using FieldGhostMaxRefinerPool    = RefinerPool<rm_t, RefinerType::PatchFieldBorderMax>;
-        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
         using FieldFillPattern_t          = FieldFillPattern<dimension>;
         using TensorFieldFillPattern_t    = TensorFieldFillPattern<dimension /*, rank=1*/>;
 
@@ -983,9 +945,6 @@ namespace amr
         std::vector<VecFieldGhostSumRefinerPool> popFluxBorderSumRefiners_;
         //! += density on ghost box overlap incomplete population moment nodes
         std::vector<FieldGhostSumRefinerPool> popDensityBorderSumRefiners_;
-
-        std::vector<FieldGhostMaxRefinerPool> ionDensityBorderMaxRefiners_;
-        std::vector<VecFieldGhostMaxRefinerPool> ionFluxBorderMaxRefiners_;
 
         InitRefinerPool electricInitRefiners_{resourcesManager_};
 
@@ -996,8 +955,6 @@ namespace amr
         SAMRAI::xfer::RefineAlgorithm EalgoPatchGhost;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magInitRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magPatchGhostsRefineSchedules;
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> magGhostsRefineSchedules;
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> BpredGhostsRefineSchedules;
         std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> elecPatchGhostsRefineSchedules;
 
         SAMRAI::xfer::CoarsenAlgorithm RefluxAlgo{SAMRAI::tbox::Dimension{dimension}};
