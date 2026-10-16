@@ -56,6 +56,15 @@ def built_simulator_ids():
     )
 
 
+def _pybindlibs_location():
+    try:
+        import pybindlibs
+    except ModuleNotFoundError:
+        return "pybindlibs not importable"
+
+    return ", ".join(pybindlibs.__path__)
+
+
 def _no_such_module_message(sim, mod_str):
     built = built_simulator_ids()
     if built is None:
@@ -68,7 +77,11 @@ def _no_such_module_message(sim, mod_str):
         f"No module named '{mod_str}'.\n"
         f"This run needs the build permutation\n"
         f"    {permutation_line(sim)}\n"
-        f"Add it to a res/sim permutation file (res/sim/all.txt) and rebuild.\n"
+        f"pybindlibs loaded from: {_pybindlibs_location()}\n"
+        f"To add it, either:\n"
+        f"  - CMake build: add the line to a res/sim permutation file (res/sim/all.txt) and rebuild\n"
+        f"  - installed package: put the line in a file and reinstall with\n"
+        f"    pip install . -C cmake.define.PHARE_PERMUTATIONS=<file>\n"
         f"Permutations currently built:\n{listing}"
     )
 
