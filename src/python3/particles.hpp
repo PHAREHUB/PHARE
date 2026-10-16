@@ -3,6 +3,7 @@
 
 
 #include "amr/data/particles/refine/particles_data_split.hpp"
+#include "core/data/particles/arrays/particle_array_soa.hpp"
 
 #include "python3/pybind_def.hpp"
 
@@ -13,8 +14,10 @@
 
 namespace PHARE::pydata
 {
-template<std::size_t dim, typename PyArrayTuple>
-core::ContiguousParticlesView<dim> contiguousViewFrom(PyArrayTuple const& py_particles)
+template<std::size_t dim, bool _const_ = false, typename PyArrayTuple>
+core::ParticleArray<core::ParticleArrayOptions{dim, core::LayoutMode::SoA, core::StorageMode::SPAN,
+                                               core::AllocatorMode::CPU, _const_}>
+contiguousViewFrom(PyArrayTuple& py_particles)
 {
     return {makeSpan<int>(std::get<0>(py_particles)),     // iCell
             makeSpan<double>(std::get<1>(py_particles)),  // delta
@@ -62,20 +65,23 @@ template<typename Splitter>
 pyarray_particles_t splitPyArrayParticles(pyarray_particles_crt const& py_particles)
 {
     constexpr auto dim           = Splitter::dimension;
-    constexpr auto interp_order  = Splitter::interp_order;
     constexpr auto nbRefinedPart = Splitter::nbRefinedPart;
 
     PHARE_DEBUG_DO(assertParticlePyArraySizes<dim>(py_particles));
 
-    auto particlesInView  = contiguousViewFrom<dim>(py_particles);
-    auto particlesOut     = makePyArrayTuple<dim>(particlesInView.size() * nbRefinedPart);
-    auto particlesOutView = contiguousViewFrom<dim>(particlesOut);
+    auto const particlesInView = contiguousViewFrom<dim, /*const=*/1>(py_particles);
+    auto particlesOut          = makePyArrayTuple<dim>(particlesInView.size() * nbRefinedPart);
+    auto particlesOutView      = contiguousViewFrom<dim>(particlesOut);
 
     Splitter splitter;
 
+    // SoA has no begin()/end() (no single Particle_t& to hand back) -- use the per-index
+    // view instead, same as amr::Splitter's own PatternDispatcher does for its output side.
     for (std::size_t i = 0; i < particlesInView.size(); i++)
-        splitter(amr::toFineGrid<interp_order>(std::copy(particlesInView[i])), particlesOutView,
-                 i * nbRefinedPart);
+    {
+        core::SoAParticleView it{particlesInView, i};
+        splitter(amr::toFineGrid(it), it, particlesOutView, i * nbRefinedPart);
+    }
 
     return particlesOut;
 }

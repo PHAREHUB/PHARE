@@ -1,49 +1,50 @@
 #ifndef PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 #define PHARE_HYBRID_HYBRID_MESSENGER_STRATEGY_HPP
 
+
 #include "core/def.hpp" // IWYU pragma: keep
 #include "core/logger.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/types.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/interpolator/interpolating.hpp"
 
-#include "refiner_pool.hpp"
-#include "synchronizer_pool.hpp"
-
-#include "amr/data/field/coarsening/moments_coarsener.hpp"
-#include "amr/types/amr_types.hpp"
+#include "amr/data/field/field_data.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
-#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
-#include "amr/data/field/coarsening/electric_field_coarsener.hpp"
 #include "amr/data/field/field_variable_fill_pattern.hpp"
+#include "amr/data/field/coarsening/moments_coarsener.hpp"
 #include "amr/data/field/refine/field_refine_operator.hpp"
 #include "amr/data/field/refine/composite_field_refiner.hpp"
 #include "amr/data/field/refine/magnetic_composite_refiner.hpp"
 #include "amr/messengers/refinement_config.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/data/field/coarsening/field_coarsen_operator.hpp"
 #include "amr/data/field/coarsening/default_field_coarsener.hpp"
 #include "amr/data/particles/particles_variable_fill_pattern.hpp"
+#include "amr/data/field/coarsening/electric_field_coarsener.hpp"
+#include "amr/data/field/refine/magnetic_refine_patch_strategy.hpp"
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 
+#include "refiner_pool.hpp"
+#include "synchronizer_pool.hpp"
+
 #include <SAMRAI/hier/IntVector.h>
-#include <SAMRAI/hier/Patch.h>
 #include <SAMRAI/xfer/RefineSchedule.h>
 #include <SAMRAI/xfer/RefineAlgorithm.h>
 #include <SAMRAI/hier/CoarseFineBoundary.h>
-#include <SAMRAI/xfer/BoxGeometryVariableFillPattern.h>
 
 #include <memory>
 #include <string>
 #include <utility>
 #include <iomanip>
 #include <iostream>
-
-
-
+#include <stdexcept>
 
 namespace PHARE
 {
@@ -60,14 +61,20 @@ namespace amr
         using patch_t     = amr_types::patch_t;
         using hierarchy_t = amr_types::hierarchy_t;
 
-        using GridT             = HybridModel::grid_type;
-        using IonsT             = HybridModel::ions_type;
-        using ElectromagT       = HybridModel::electromag_type;
-        using VecFieldT         = HybridModel::vecfield_type;
-        using TensorFieldT      = IonsT::tensorfield_type;
-        using GridLayoutT       = HybridModel::gridlayout_type;
-        using FieldT            = VecFieldT::field_type;
-        using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::HybridQuantity>;
+        using GridT       = HybridModel::grid_type;
+        using IonsT       = HybridModel::ions_type;
+        using ElectromagT = HybridModel::electromag_type;
+        using GridLayoutT = HybridModel::gridlayout_type;
+
+        using FieldT     = HybridModel::vecfield_type::field_type;
+        using FieldDataT = FieldData<GridLayoutT, GridT>;
+
+        using VecFieldT        = HybridModel::vecfield_type;
+        using VectorFieldDataT = TensorFieldData<1, GridLayoutT, GridT, core::HybridQuantity>;
+
+        using TensorFieldT     = IonsT::tensorfield_type;
+        using TensorFieldDataT = TensorFieldData<2, GridLayoutT, GridT, core::HybridQuantity>;
+
         using ResourcesManagerT = HybridModel::resources_manager_type;
         using IPhysicalModel    = HybridModel::Interface;
 
@@ -96,6 +103,35 @@ namespace amr
         using MomentsVecFieldCoarsenOp = VecFieldCoarsenOp<MomentsCoarsener<dimension>>;
         using ElectricFieldCoarsenOp   = VecFieldCoarsenOp<ElectricFieldCoarsener<dimension>>;
 
+        // if FieldT is tiled, Field_t is not! always not tiled!
+        using Grid_t        = HybridModel::Super::storage_t::grid_type;
+        using Field_t       = HybridModel::Super::storage_t::field_type;
+        using VecField_t    = HybridModel::Super::storage_t::vecfield_type;
+        using TensorField_t = HybridModel::Super::storage_t::tensorfield_type;
+
+        using FieldData_t       = FieldData<GridLayoutT, Grid_t>;
+        using VectorFieldData_t = TensorFieldData<1, GridLayoutT, Grid_t, core::HybridQuantity>;
+        using TensorFieldData_t = TensorFieldData<2, GridLayoutT, Grid_t, core::HybridQuantity>;
+
+        using SetMaxOp     = core::SetMax<typename FieldData_t::value_type>;
+        using PlusEqualsOp = core::PlusEquals<typename FieldData_t::value_type>;
+        using BorderSumOp  = core::FieldBorderSumOp<typename FieldData_t::value_type>;
+        using BorderMaxOp  = core::FieldBorderMaxOp<typename FieldData_t::value_type>;
+
+        using FieldBorderSumTransactionFactory_t
+            = FieldBorderOpTransactionFactory<FieldDataT, BorderSumOp, FieldData_t>;
+        using VecFieldBorderSumTransactionFactory_t
+            = FieldBorderOpTransactionFactory<VectorFieldDataT, BorderSumOp, VectorFieldData_t>;
+        using TensorFieldBorderSumTransactionFactory_t
+            = FieldBorderOpTransactionFactory<TensorFieldDataT, BorderSumOp, TensorFieldData_t>;
+
+        using FieldBorderMaxTransactionFactory_t
+            = FieldBorderOpTransactionFactory<FieldDataT, BorderMaxOp, FieldData_t>;
+        using VecFieldBorderMaxTransactionFactory_t
+            = FieldBorderOpTransactionFactory<VectorFieldDataT, BorderMaxOp, VectorFieldData_t>;
+
+        static_assert(core::is_field_v<Grid_t> and !core::is_field_tile_set_v<Grid_t>);
+
     public:
         static inline std::string const stratName    = "HybridModel-HybridModel";
         static constexpr std::size_t rootLevelNumber = 0;
@@ -114,9 +150,9 @@ namespace amr
             resourcesManager_->registerResources(Eold_);
             resourcesManager_->registerResources(NiOld_);
             resourcesManager_->registerResources(ViOld_);
-            resourcesManager_->registerResources(sumVec_);
-            resourcesManager_->registerResources(sumField_);
-            resourcesManager_->registerResources(sumTensor_);
+            resourcesManager_->registerResources(scratch_field);
+            resourcesManager_->registerResources(scratch_vecfield);
+            resourcesManager_->registerResources(scratch_tensor_field);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -138,9 +174,9 @@ namespace amr
             resourcesManager_->allocate(Eold_, patch, allocateTime);
             resourcesManager_->allocate(NiOld_, patch, allocateTime);
             resourcesManager_->allocate(ViOld_, patch, allocateTime);
-            resourcesManager_->allocate(sumVec_, patch, allocateTime);
-            resourcesManager_->allocate(sumField_, patch, allocateTime);
-            resourcesManager_->allocate(sumTensor_, patch, allocateTime);
+            resourcesManager_->allocate(scratch_field, patch, allocateTime);
+            resourcesManager_->allocate(scratch_vecfield, patch, allocateTime);
+            resourcesManager_->allocate(scratch_tensor_field, patch, allocateTime);
         }
 
 
@@ -211,8 +247,6 @@ namespace amr
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
-
-
             magPatchGhostsRefineSchedules[levelNumber]
                 = BalgoPatchGhost.createSchedule(level, &magneticRefinePatchStrategy_);
 
@@ -230,17 +264,28 @@ namespace amr
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
             velPatchGhostsRefiners_.registerLevel(hierarchy, level);
 
-            for (auto& refiner : popFluxBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
+            {
+                auto border_sum_factory = std::make_shared<VecFieldBorderSumTransactionFactory_t>();
+                for (auto& refiner : popFluxBorderSumRefiners_)
+                    refiner.registerLevel(hierarchy, level, border_sum_factory);
+            }
 
-            for (auto& refiner : popDensityBorderSumRefiners_)
-                refiner.registerLevel(hierarchy, level);
+            {
+                auto border_sum_factory = std::make_shared<FieldBorderSumTransactionFactory_t>();
+                for (auto& refiner : popDensityBorderSumRefiners_)
+                    refiner.registerLevel(hierarchy, level, border_sum_factory);
+            }
 
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.registerLevel(hierarchy, level);
-
+            {
+                auto border_max_factory = std::make_shared<VecFieldBorderMaxTransactionFactory_t>();
+                for (auto& refiner : ionFluxBorderMaxRefiners_)
+                    refiner.registerLevel(hierarchy, level, border_max_factory);
+            }
+            {
+                auto border_max_factory = std::make_shared<FieldBorderMaxTransactionFactory_t>();
+                for (auto& refiner : ionDensityBorderMaxRefiners_)
+                    refiner.registerLevel(hierarchy, level, border_max_factory);
+            }
             // root level is not initialized with a schedule using coarser level data
             // so we don't create these schedules if root level
             // TODO this 'if' may not be OK if L0 is regrided
@@ -253,6 +298,7 @@ namespace amr
                 // those are for refinement
                 magInitRefineSchedules[levelNumber] = BalgoInit.createSchedule(
                     level, nullptr, levelNumber - 1, hierarchy, &magneticRefinePatchStrategy_);
+
 
                 electricInitRefiners_.registerLevel(hierarchy, level);
                 domainParticlesRefiners_.registerLevel(hierarchy, level);
@@ -370,6 +416,7 @@ namespace amr
 
             setNaNsOnVecfieldGhosts(B, level);
             magGhostsRefiners_.fill(B, level.getLevelNumber(), fillTime);
+            syncInnerGhostsOnVecfield(B, level);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime) override
@@ -378,6 +425,7 @@ namespace amr
 
             setNaNsOnVecfieldGhosts(E, level);
             elecGhostsRefiners_.fill(E, level.getLevelNumber(), fillTime);
+            syncInnerGhostsOnVecfield(E, level);
         }
 
 
@@ -390,93 +438,160 @@ namespace amr
          */
         void fillIonGhostParticles(IonsT& ions, level_t& level, double const fillTime) override
         {
-            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonGhostParticles");
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::fillIonGhostParticles");
 
             domainGhostPartRefiners_.fill(level.getLevelNumber(), fillTime);
 
-            for (auto patch : resourcesManager_->enumerate(level, ions))
-                for (auto& pop : ions)
-                    pop.patchGhostParticles().clear();
+            patch_exec_(
+                level,
+                [](auto& ions_p) {
+                    for (auto& pop : ions_p)
+                        pop.patchGhostParticles().clear();
+                },
+                ions);
         }
 
 
-
-        void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime) override
+        void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                             double const fillTime) override
         {
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::fillFluxBorders");
+
             auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
-            using value_type = FieldT::value_type;
 
-
-            // we cannot have the schedule doign the += in place in the flux array
-            // because some overlaps could be counted several times.
-            // we therefore first copy flux into a sumVec buffer and then
-            // execute the schedule onto that before copying it back onto the flux array
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
+                {
+                    PHARE_LOG_SCOPE(1,
+                                    "HybridHybridMessengerStrategy::fillFluxBorders::reduce_into");
+                    patch_exec_(
+                        level,
+                        [&](auto& ions_p, auto& scratch_p) {
+                            for (std::uint8_t c = 0; c < N; ++c)
+                                core::reduce_into(scratch_p[c], ions_p[i].flux()[c]);
+                        },
+                        ions, scratch_vecfield);
+                }
 
+                {
+                    PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillFluxBorders::schedule");
+                    popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
+                }
 
-                popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
-                    for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(ions[i].flux()[c].data(), sumVec_[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
+                {
+                    PHARE_LOG_SCOPE(1,
+                                    "HybridHybridMessengerStrategy::fillFluxBorders::copy_fields");
+                    level_exec_(
+                        level, [&](auto& ions_p, auto&) -> auto& { return ions_p[i].flux(); },
+                        [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                            for (std::uint8_t c = 0; c < N; ++c)
+                                core::copy_fields(ions_p[i].flux()[c], scratch_p[c], tile_idx...);
+                        },
+                        ions, scratch_vecfield);
+                }
             }
         }
 
-        void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime) override
+
+
+        void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+                                double const fillTime) override
         {
-            using value_type = FieldT::value_type;
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::fillDensityBorders");
+
+            static_assert(core::is_field_v<decltype(scratch_field)>);
 
             assert(popDensityBorderSumRefiners_.size() % ions.size() == 0);
 
             std::size_t const fieldsPerPop = popDensityBorderSumRefiners_.size() / ions.size();
 
+            auto const border_sum = [&](auto const& density, auto& refiner) {
+                PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillDensityBorders::border_sum");
+                patch_exec_(
+                    level,
+                    [&](auto& ions_p, auto& scratch_p) {
+                        core::reduce_into(scratch_p, density(ions_p));
+                    },
+                    ions, scratch_field);
+
+                {
+                    PHARE_LOG_SCOPE(1,
+                                    "HybridHybridMessengerStrategy::fillDensityBorders::schedule");
+                    refiner.fill(level.getLevelNumber(), fillTime);
+                }
+
+                level_exec_(
+                    level, [&](auto& ions_p, auto&) -> auto& { return density(ions_p); },
+                    [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                        core::copy_fields(density(ions_p), scratch_p, tile_idx...);
+                    },
+                    ions, scratch_field);
+            };
+
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-
-
-                popDensityBorderSumRefiners_[i * fieldsPerPop].fill(level.getLevelNumber(),
-                                                                    fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-
-                //
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].chargeDensity().data(),
-                                ions[i].chargeDensity().size() * sizeof(value_type));
-
-                popDensityBorderSumRefiners_[i * fieldsPerPop + 1].fill(level.getLevelNumber(),
-                                                                        fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].chargeDensity().data(), sumField_.data(),
-                                ions[i].chargeDensity().size() * sizeof(value_type));
+                border_sum([&](auto& ions_p) -> auto& { return ions_p[i].particleDensity(); },
+                           popDensityBorderSumRefiners_[i * fieldsPerPop]);
+                border_sum([&](auto& ions_p) -> auto& { return ions_p[i].chargeDensity(); },
+                           popDensityBorderSumRefiners_[i * fieldsPerPop + 1]);
             }
         }
 
 
-        void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
+        void fillIonBorders(IonsT& ions, level_t& level, double const fillTime) override
         {
+            PHARE_LOG_SCOPE(2, "HybridHybridMessengerStrategy::fillIonBorders");
+
             assert(ionFluxBorderMaxRefiners_.size() == 1);
             assert(ionDensityBorderMaxRefiners_.size() == 2);
 
-            for (auto& refiner : ionFluxBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-            for (auto& refiner : ionDensityBorderMaxRefiners_)
-                refiner.fill(level.getLevelNumber(), fillTime);
-        }
+            auto constexpr N = core::detail::tensor_field_dim_from_rank<1>();
 
+            auto const border_max = [&](auto& scratch, auto const& moment, auto& refiner) {
+                PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonBorders::border_max");
+                patch_exec_(
+                    level,
+                    [&](auto& ions_p, auto& scratch_p) {
+                        core::copy_fields(scratch_p, moment(ions_p));
+                    },
+                    ions, scratch);
+
+                {
+                    PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonBorders::schedule");
+                    refiner.fill(level.getLevelNumber(), fillTime);
+                }
+
+                level_exec_(
+                    level, [&](auto& ions_p, auto&) -> auto& { return moment(ions_p); },
+                    [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                        core::copy_fields(moment(ions_p), scratch_p, tile_idx...);
+                    },
+                    ions, scratch);
+            };
+
+            border_max(
+                scratch_field, [](auto& ions_p) -> auto& { return ions_p.massDensity(); },
+                ionDensityBorderMaxRefiners_[0]);
+            border_max(
+                scratch_field, [](auto& ions_p) -> auto& { return ions_p.chargeDensity(); },
+                ionDensityBorderMaxRefiners_[1]);
+
+            patch_exec_(
+                level,
+                [&](auto& ions_p, auto& scratch_p) {
+                    for (std::uint8_t c = 0; c < N; ++c)
+                        core::copy_fields(scratch_p[c], ions_p.velocity()[c]);
+                },
+                ions, scratch_vecfield);
+            ionFluxBorderMaxRefiners_[0].fill(level.getLevelNumber(), fillTime);
+            level_exec_(
+                level, [](auto& ions_p, auto&) -> auto& { return ions_p.velocity(); },
+                [&](auto& ions_p, auto& scratch_p, auto const&... tile_idx) {
+                    for (std::uint8_t c = 0; c < N; ++c)
+                        core::copy_fields(ions_p.velocity()[c], scratch_p[c], tile_idx...);
+                },
+                ions, scratch_vecfield);
+        }
 
 
         /**
@@ -500,31 +615,41 @@ namespace amr
                                          + std::to_string(afterPushTime) + " on level "
                                          + std::to_string(level.getLevelNumber()));
             }
-            for (auto const& patch : level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+            if (level.getLevelNumber() == 0) // no levelGhost on root level
+                return;
 
-                for (auto& pop : ions)
-                {
-                    auto& particleDensity = pop.particleDensity();
-                    auto& chargeDensity   = pop.chargeDensity();
-                    auto& flux            = pop.flux();
+            auto accessor = make_level_accessor<GridLayoutT>(level, *resourcesManager_, ions);
+            level_exec(
+                accessor,
+                [](auto& view) -> auto& { return std::get<0>(view.args)[0].particleDensity(); },
+                [&](auto& view, auto const&... tile_idx) {
+                    auto& [ions_p] = view.args;
+                    decltype(interpolate_) interpolate; // one per task, tasks run in parallel
 
-                    if (level.getLevelNumber() > 0) // no levelGhost on root level
+                    for (auto& pop : ions_p)
                     {
+                        auto& particleDensity = pop.particleDensity();
+                        auto& chargeDensity   = pop.chargeDensity();
+                        auto& flux            = pop.flux();
+
+                        auto const deposit = [&](auto const& particles, double const coef) {
+                            using enum core::ParticleType;
+                            if constexpr (sizeof...(tile_idx) > 0)
+                                interpolate.template particleToMesh_tile<LevelGhost>(
+                                    tile_idx..., particles, particleDensity, chargeDensity, flux,
+                                    coef);
+                            else
+                                interpolate.template particleToMesh<LevelGhost>(
+                                    particles, view.layout, particleDensity, chargeDensity, flux,
+                                    coef);
+                        };
+
                         // grab levelGhostParticlesOld and levelGhostParticlesNew
                         // and project them with alpha and (1-alpha) coefs, respectively
-                        auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux,
-                                     layout, 1. - alpha);
-
-                        auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), particleDensity, chargeDensity, flux,
-                                     layout, alpha);
+                        deposit(pop.levelGhostParticlesOld(), 1. - alpha);
+                        deposit(pop.levelGhostParticlesNew(), alpha);
                     }
-                }
-            }
+                });
         }
 
 
@@ -564,7 +689,7 @@ namespace amr
                        std::shared_ptr<hierarchy_t> const& /*hierarchy*/, double const currentTime,
                        double const prevCoarserTime, double const newCoarserTime) override
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::firstStep");
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::firstStep");
 
             auto levelNumber = level.getLevelNumber();
             if (newCoarserTime < prevCoarserTime)
@@ -600,24 +725,24 @@ namespace amr
             if (level.getLevelNumber() == 0)
                 return;
 
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::lastStep");
 
             auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
+            patch_exec_(
+                level,
+                [](auto& ions) {
+                    for (auto& pop : ions)
+                    {
+                        auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                        auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
+                        auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
-                    levelGhostParticlesNew.clear();
-                    levelGhostParticles = levelGhostParticlesOld;
-                }
-            }
+                        std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
+                        levelGhostParticlesNew.clear();
+                        levelGhostParticles = levelGhostParticlesOld;
+                    }
+                },
+                hybridModel.state.ions);
         }
 
 
@@ -636,28 +761,27 @@ namespace amr
          */
         void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) override
         {
-            PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::prepareStep");
+            PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::prepareStep");
 
             auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
+            for (auto& patch : level) // SAMRAI patch data times, serial
             {
-                auto dataOnPatch = resourcesManager_->setOnPatch(
-                    *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Bold_, Eold_, NiOld_, ViOld_);
-
                 resourcesManager_->setTime(Bold_, *patch, currentTime);
                 resourcesManager_->setTime(Eold_, *patch, currentTime);
                 resourcesManager_->setTime(NiOld_, *patch, currentTime);
                 resourcesManager_->setTime(ViOld_, *patch, currentTime);
-
-                auto& Vi = hybridModel.state.ions.velocity();
-                auto& Ni = hybridModel.state.ions.chargeDensity();
-
-                Bold_.copyData(hybridModel.state.electromag.B);
-                Eold_.copyData(hybridModel.state.electromag.E);
-                ViOld_.copyData(Vi);
-                NiOld_.copyData(Ni);
             }
+
+            level_exec_(
+                level, [](auto&, auto&, auto& Bold, auto&...) -> auto& { return Bold; },
+                [](auto& electromag, auto& ions, auto& Bold, auto& Eold, auto& NiOld, auto& ViOld,
+                   auto const&... tile_idx) {
+                    core::copy_data(Bold, electromag.B, tile_idx...);
+                    core::copy_data(Eold, electromag.E, tile_idx...);
+                    core::copy_data(ViOld, ions.velocity(), tile_idx...);
+                    core::copy_data(NiOld, ions.chargeDensity(), tile_idx...);
+                },
+                hybridModel.state.electromag, hybridModel.state.ions, Bold_, Eold_, NiOld_, ViOld_);
         }
 
 
@@ -737,15 +861,15 @@ namespace amr
         {
             auto fieldKernel = [&] {
                 return std::make_shared<KernelFieldRefineOperator<GridLayoutT, GridT>>(
-                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(config.order));
             };
             auto vecKernel = [&] {
                 return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(config.order));
             };
             auto magKernel = [&] {
                 return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                    makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeMagneticRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(config.order));
             };
 
             fieldRefineOp_    = fieldKernel();
@@ -835,6 +959,7 @@ namespace amr
             BalgoInit.registerRefine(*b_id, *b_id, *b_id, BInitRefineOp_,
                                      overwriteInteriorTFfillPattern);
 
+
             // no fill pattern given for this init
             // will use boxgeometryvariable fillpattern, itself using the
             // field geometry with overwrite_interior true from SAMRAI
@@ -851,7 +976,6 @@ namespace amr
                                                        levelGhostParticlesOldOp_,
                                                        info->levelGhostParticlesOld);
 
-
             lvlGhostPartNewRefiners_.addStaticRefiners(info->levelGhostParticlesNew,
                                                        levelGhostParticlesNewOp_,
                                                        info->levelGhostParticlesNew);
@@ -865,14 +989,14 @@ namespace amr
             for (auto const& vecfield : info->ghostFlux)
                 popFluxBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumVec_.name(), vecfield, nullptr, sumVec_.name(),
+                        scratch_vecfield.name(), vecfield, nullptr, scratch_vecfield.name(),
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
 
             for (auto const& field : info->sumBorderFields)
                 popDensityBorderSumRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        sumField_.name(), field, nullptr, sumField_.name(),
+                        scratch_field.name(), field, nullptr, scratch_field.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
 
@@ -880,14 +1004,14 @@ namespace amr
             for (auto const& field : info->maxBorderFields)
                 ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        field, field, nullptr, field,
+                        scratch_field.name(), field, nullptr, scratch_field.name(),
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
             assert(info->maxBorderVecFields.size() == 1);
             for (auto const& vecfield : info->maxBorderVecFields)
                 ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
-                        vecfield, vecfield, nullptr, vecfield,
+                        scratch_vecfield.name(), vecfield, nullptr, scratch_vecfield.name(),
                         std::make_shared<
                             TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
@@ -912,18 +1036,13 @@ namespace amr
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
         {
             auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
-
-                    levelGhostParticles = levelGhostParticlesOld;
-                }
-            }
+            patch_exec_(
+                level,
+                [](auto& ions) {
+                    for (auto& pop : ions)
+                        pop.levelGhostParticles() = pop.levelGhostParticlesOld();
+                },
+                hybridModel.state.ions);
         }
 
 
@@ -965,35 +1084,68 @@ namespace amr
          * This is needed because the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
          */
-        void setNaNsOnFieldGhosts(FieldT& field)
+        void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch)
         {
-            auto const nGhosts = GridLayoutT::nDNbrGhosts(core::QtyCentering::primal)[0];
-            field[core::NdArrayMask{0, nGhosts - 1}]
-                = std::numeric_limits<typename FieldT::type>::quiet_NaN();
+            core::fill_ghost(field, layoutFromPatch<GridLayoutT>(patch),
+                             std::numeric_limits<typename FieldT::type>::quiet_NaN());
         }
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field);
+            for (auto& patch : resourcesManager_->enumerate(level, field))
+                setNaNsOnFieldGhosts(field, *patch);
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
+            for (auto& patch : resourcesManager_->enumerate(level, vf))
                 for (auto& field : vf)
-                    setNaNsOnFieldGhosts(field);
+                    setNaNsOnFieldGhosts(field, *patch);
         }
+
+        void syncInnerGhostsOnVecfield(VecFieldT& vf, level_t const& level)
+        {
+            using field_type = typename VecFieldT::field_type;
+            if constexpr (core::is_field_tile_set_v<field_type>)
+                level_exec_(
+                    level, [](auto& vf_p) -> auto& { return vf_p; },
+                    [](auto& vf_p, auto const&... tile_idx) {
+                        core::sync_inner_ghosts(vf_p, tile_idx...);
+                    },
+                    vf);
+        }
+
+        // fn(resources...) per patch of the level, a patch per idle pool
+        void patch_exec_(auto& level, auto const& fn, auto&... resources)
+        {
+            auto accessor
+                = make_level_accessor<GridLayoutT>(level, *resourcesManager_, resources...);
+            patch_level_exec(accessor, [&](auto& view) { std::apply(fn, view.args); });
+        }
+
+        // fn(resources..., tile_idx) per tile when tiled(resources...) is tiled (a patch per idle
+        // pool, its tiles on that pool's threads), else fn(resources...) per patch
+        void level_exec_(auto& level, auto const& tiled, auto const& fn, auto&... resources)
+        {
+            auto accessor
+                = make_level_accessor<GridLayoutT>(level, *resourcesManager_, resources...);
+            level_exec(
+                accessor, [&](auto& view) -> auto& { return std::apply(tiled, view.args); },
+                [&](auto& view, auto const&... tile_idx) {
+                    std::apply([&](auto&... r) { fn(r..., tile_idx...); }, view.args);
+                });
+        }
+
 
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};
         VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
         VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
         FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
 
-        TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
-        VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
-        FieldT sumField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
 
+        Field_t scratch_field              = HybridModel::tmpField;
+        VecField_t scratch_vecfield        = HybridModel::tmpVec;
+        TensorField_t scratch_tensor_field = HybridModel::tmpTensor;
 
 
         //! ResourceManager shared with other objects (like the HybridModel)
@@ -1004,7 +1156,7 @@ namespace amr
         std::unordered_map<std::size_t, double> beforePushCoarseTime_;
         std::unordered_map<std::size_t, double> afterPushCoarseTime_;
 
-        core::Interpolator<dimension, interpOrder> interpolate_;
+        core::Interpolating<dimension, interpOrder> interpolate_;
 
         using rm_t                    = ResourcesManagerT;
         using RefineOperator          = SAMRAI::hier::RefineOperator;
@@ -1100,7 +1252,6 @@ namespace amr
         RefOp_ptr levelGhostParticlesNewOp_{std::make_shared<CoarseToFineRefineOpNew>()};
 
 
-        //! to grab particle leaving neighboring patches and inject into domain
         DomainGhostPartRefinerPool domainGhostPartRefiners_{resourcesManager_};
 
         SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
@@ -1129,6 +1280,7 @@ namespace amr
         std::shared_ptr<TensorFieldFillPattern_t> overwriteInteriorTFfillPattern
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
                 /*overwrite_interior=*/true);
+
 
         std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{

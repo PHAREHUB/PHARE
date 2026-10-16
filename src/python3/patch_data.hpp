@@ -1,6 +1,8 @@
 #ifndef PHARE_PYTHON_PATCH_DATA_HPP
 #define PHARE_PYTHON_PATCH_DATA_HPP
 
+#include "core/data/field/field_box.hpp"
+
 #include "pybind_def.hpp"
 
 #include <string>
@@ -57,7 +59,17 @@ void setPatchDataFromField(PatchData& pdata, Field const& field, GridLayout& gri
 {
     setPatchDataFromGrid(pdata, grid, patchID);
     pdata.nGhosts = GridLayout::options.field_ghost_width;
-    pdata.data.assign(field.data(), field.data() + field.size());
+
+    // A tiled field has no single contiguous data()/size() of its own -- reduce it to a
+    // plain (non-tiled) field first, same as for diagnostics/restarts (see
+    // diagnostic::BaseModelView::field_reducer, amr::putFieldToRestart).
+    if constexpr (core::is_field_tile_set_v<Field>)
+    {
+        auto const reduced = core::reduce_single(field);
+        pdata.data.assign(reduced.data(), reduced.data() + reduced.size());
+    }
+    else
+        pdata.data.assign(field.data(), field.data() + field.size());
 }
 
 

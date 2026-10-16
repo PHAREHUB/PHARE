@@ -3,6 +3,7 @@
 
 #include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
+#include "core/data/field/field_box.hpp"
 
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/data/field/field_geometry.hpp"
@@ -212,7 +213,18 @@ public:
         auto const layout = PHARE::amr::layoutFromPatch<gridlayout_type>(fine);
         auto const region = reconstructionRegion(fine_box, fine.getPatchData(b_id_)->getGhostBox());
 
-        touchUpInteriorFaces(fields, layout, region, scratch_);
+        using Field_t = std::decay_t<decltype(fields[0])>;
+        if constexpr (core::is_field_tile_set_v<Field_t>)
+        {
+            // TODO: no dynamic allocation, see refine_field in field_refine_operator.hpp
+            auto flat = core::for_N_make_array<N>(
+                [&](auto i) { return core::reduce_single(fields[i]); });
+            touchUpInteriorFaces(flat, layout, region, scratch_);
+            for (std::size_t i = 0; i < N; ++i)
+                core::copy_fields(fields[i], *flat[i]); // every tile's ghost box
+        }
+        else
+            touchUpInteriorFaces(fields, layout, region, scratch_);
     }
 
 

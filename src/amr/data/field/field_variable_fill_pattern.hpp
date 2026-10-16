@@ -36,7 +36,6 @@ public:
     // defaulted param makes this the default constructor also
     FieldFillPattern(bool overwrite_interior = false)
         : overwrite_interior_{overwrite_interior}
-
     {
     }
 
@@ -187,7 +186,7 @@ public:
         auto& toverlap = dynamic_cast<TensorFieldOverlap<rank_> const&>(*basic_overlap);
         auto&& interiorTensorFieldBox = casted.interiorTensorFieldBox();
 
-        auto overlaps = PHARE::core::for_N_make_array<N>([&](auto i) {
+        auto overlaps = core::for_N_make_array<N>([&](auto i) {
             auto& overlap          = toverlap[i];
             auto& interiorFieldBox = interiorTensorFieldBox[i];
             auto destinationBoxes  = overlap->getDestinationBoxContainer();
@@ -365,13 +364,13 @@ public:
 
         if (isSamePatch(dst_geometry, src_geometry))
         {
-            auto overlaps = PHARE::core::for_N_make_array<N>([&](auto /*i*/) {
+            auto overlaps = core::for_N_make_array<N>([&](auto /*i*/) {
                 return std::make_shared<FieldOverlap>(SAMRAI::hier::BoxContainer{}, transformation);
             });
             return std::make_shared<TensorFieldOverlap<rank_>>(std::move(overlaps));
         }
 
-        auto overlaps = PHARE::core::for_N_make_array<N>([&](auto i) {
+        auto overlaps = core::for_N_make_array<N>([&](auto i) {
             auto overlap = FieldGhostInterpOverlapFillPattern<Gridlayout_t>::calculateOverlap(
                 dst_geometry[i], src_geometry[i], dst_patch_box, src_mask, fill_box,
                 overwrite_interior, transformation);
