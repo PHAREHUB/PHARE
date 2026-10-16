@@ -110,8 +110,9 @@ For example:
          -C cmake.build-type=Release \
          -C cmake.define.CMAKE_CXX_FLAGS="-DNDEBUG -g0 -O3 -march=native -mtune=native"
 
-- The persistent CMake cache keeps compilers, flags and modules: delete `_skbuild/` after changing them
-  (only `SAMRAI_ROOT` and `PHARE_PERMUTATIONS` are forgotten automatically).
+- Every pip/uv install configures from scratch, so give the `-C` options each time. `_skbuild/` keeps the compiled
+  objects (changed flags or sources are recompiled automatically) and the probe of the compiler, MPI and HDF5:
+  delete `_skbuild/` after changing compilers or the loaded MPI/HDF5 modules, so the probe runs again.
 - `-march=native` binaries only run on the CPU type they were built on: build on the compute-node architecture.
 - At run time, launch with the `mpirun`/`srun` of the MPI PHARE was built with. The launcher of a different MPI
   starts N independent single-rank runs, and a different MPI on `LD_LIBRARY_PATH` takes precedence over the recorded RUNPATH.
