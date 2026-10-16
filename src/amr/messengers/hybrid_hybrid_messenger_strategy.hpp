@@ -14,6 +14,7 @@
 #include "amr/data/field/coarsening/moments_coarsener.hpp"
 #include "amr/types/amr_types.hpp"
 #include "amr/messengers/messenger_info.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/messengers/hybrid_messenger_strategy.hpp"
@@ -39,8 +40,6 @@
 #include <memory>
 #include <string>
 #include <utility>
-#include <iomanip>
-#include <iostream>
 
 
 
@@ -395,9 +394,11 @@ namespace amr
 
             domainGhostPartRefiners_.fill(level.getLevelNumber(), fillTime);
 
-            for (auto patch : resourcesManager_->enumerate(level, ions))
-                for (auto& pop : ions)
-                    pop.patchGhostParticles().clear();
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, ions),
+                         [&](auto& view) {
+                             for (auto& pop : std::get<0>(view.args))
+                                 pop.patchGhostParticles().clear();
+                         });
         }
 
 
@@ -412,20 +413,25 @@ namespace amr
             // because some overlaps could be counted several times.
             // we therefore first copy flux into a sumVec buffer and then
             // execute the schedule onto that before copying it back onto the flux array
+            auto accessor
+                = amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, ions, sumVec_);
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
+                amr::onLevel(accessor, [&](auto& view) {
+                    auto& [ions_v, sumVec] = view.args;
                     for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(sumVec_[c].data(), ions[i].flux()[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
-
+                        std::memcpy(sumVec[c].data(), ions_v[i].flux()[c].data(),
+                                    ions_v[i].flux()[c].size() * sizeof(value_type));
+                });
 
                 popFluxBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumVec_))
+                amr::onLevel(accessor, [&](auto& view) {
+                    auto& [ions_v, sumVec] = view.args;
                     for (std::uint8_t c = 0; c < N; ++c)
-                        std::memcpy(ions[i].flux()[c].data(), sumVec_[c].data(),
-                                    ions[i].flux()[c].size() * sizeof(value_type));
+                        std::memcpy(ions_v[i].flux()[c].data(), sumVec[c].data(),
+                                    ions_v[i].flux()[c].size() * sizeof(value_type));
+                });
             }
         }
 
@@ -437,32 +443,41 @@ namespace amr
 
             std::size_t const fieldsPerPop = popDensityBorderSumRefiners_.size() / ions.size();
 
+            auto accessor
+                = amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, ions, sumField_);
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
-
+                amr::onLevel(accessor, [&](auto& view) {
+                    auto& [ions_v, sumField] = view.args;
+                    std::memcpy(sumField.data(), ions_v[i].particleDensity().data(),
+                                ions_v[i].particleDensity().size() * sizeof(value_type));
+                });
 
                 popDensityBorderSumRefiners_[i * fieldsPerPop].fill(level.getLevelNumber(),
                                                                     fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
-                                ions[i].particleDensity().size() * sizeof(value_type));
+                amr::onLevel(accessor, [&](auto& view) {
+                    auto& [ions_v, sumField] = view.args;
+                    std::memcpy(ions_v[i].particleDensity().data(), sumField.data(),
+                                ions_v[i].particleDensity().size() * sizeof(value_type));
+                });
 
                 //
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].chargeDensity().data(),
-                                ions[i].chargeDensity().size() * sizeof(value_type));
+                amr::onLevel(accessor, [&](auto& view) {
+                    auto& [ions_v, sumField] = view.args;
+                    std::memcpy(sumField.data(), ions_v[i].chargeDensity().data(),
+                                ions_v[i].chargeDensity().size() * sizeof(value_type));
+                });
 
                 popDensityBorderSumRefiners_[i * fieldsPerPop + 1].fill(level.getLevelNumber(),
                                                                         fillTime);
 
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].chargeDensity().data(), sumField_.data(),
-                                ions[i].chargeDensity().size() * sizeof(value_type));
+                amr::onLevel(accessor, [&](auto& view) {
+                    auto& [ions_v, sumField] = view.args;
+                    std::memcpy(ions_v[i].chargeDensity().data(), sumField.data(),
+                                ions_v[i].chargeDensity().size() * sizeof(value_type));
+                });
             }
         }
 
@@ -492,40 +507,37 @@ namespace amr
         {
             PHARE_LOG_SCOPE(1, "HybridHybridMessengerStrategy::fillIonPopMomentGhosts");
 
+            if (level.getLevelNumber() == 0) // no levelGhost on root level
+                return;
+
             auto alpha = timeInterpCoef_(afterPushTime, level.getLevelNumber());
-            if (level.getLevelNumber() > 0 and (alpha < 0 or alpha > 1))
-            {
-                std::cout << std::setprecision(12) << alpha << "\n";
+            if (alpha < 0 or alpha > 1)
                 throw std::runtime_error("ion moment ghost time interp coef invalid : alpha: "
-                                         + std::to_string(alpha) + " beforePushTime "
-                                         + std::to_string(afterPushTime) + " on level "
-                                         + std::to_string(level.getLevelNumber()));
-            }
-            for (auto const& patch : level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                auto layout      = layoutFromPatch<GridLayoutT>(*patch);
+                                         + core::to_string_with_precision(alpha, 12)
+                                         + " beforePushTime " + std::to_string(afterPushTime)
+                                         + " on level " + std::to_string(level.getLevelNumber()));
 
-                for (auto& pop : ions)
-                {
-                    auto& particleDensity = pop.particleDensity();
-                    auto& chargeDensity   = pop.chargeDensity();
-                    auto& flux            = pop.flux();
+            auto const per_pop = [&](auto& pop, auto const& layout) {
+                auto& particleDensity = pop.particleDensity();
+                auto& chargeDensity   = pop.chargeDensity();
+                auto& flux            = pop.flux();
 
-                    if (level.getLevelNumber() > 0) // no levelGhost on root level
-                    {
-                        // grab levelGhostParticlesOld and levelGhostParticlesNew
-                        // and project them with alpha and (1-alpha) coefs, respectively
-                        auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux,
-                                     layout, 1. - alpha);
+                // grab levelGhostParticlesOld and levelGhostParticlesNew
+                // and project them with alpha and (1-alpha) coefs, respectively
+                auto& levelGhostOld = pop.levelGhostParticlesOld();
+                interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux, layout,
+                             1. - alpha);
 
-                        auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), particleDensity, chargeDensity, flux,
-                                     layout, alpha);
-                    }
-                }
-            }
+                auto& levelGhostNew = pop.levelGhostParticlesNew();
+                interpolate_(makeRange(levelGhostNew), particleDensity, chargeDensity, flux, layout,
+                             alpha);
+            };
+
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, ions),
+                         [&](auto& view) {
+                             for (auto& pop : std::get<0>(view.args))
+                                 per_pop(pop, view.layout);
+                         });
         }
 
 
@@ -602,22 +614,21 @@ namespace amr
 
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::lastStep");
 
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
+            amr::onLevel(
+                amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_,
+                                                      static_cast<HybridModel&>(model).state.ions),
+                [&](auto& view) {
+                    for (auto& pop : std::get<0>(view.args))
+                    {
+                        auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                        auto& levelGhostParticlesNew = pop.levelGhostParticlesNew();
+                        auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
-                    levelGhostParticlesNew.clear();
-                    levelGhostParticles = levelGhostParticlesOld;
-                }
-            }
+                        std::swap(levelGhostParticlesNew, levelGhostParticlesOld);
+                        levelGhostParticlesNew.clear();
+                        levelGhostParticles = levelGhostParticlesOld;
+                    }
+                });
         }
 
 
@@ -638,26 +649,22 @@ namespace amr
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::prepareStep");
 
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto dataOnPatch = resourcesManager_->setOnPatch(
-                    *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Bold_, Eold_, NiOld_, ViOld_);
+            auto& state = static_cast<HybridModel&>(model).state;
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(
+                             level, *resourcesManager_, state.electromag, state.J, state.ions,
+                             Bold_, Eold_, NiOld_, ViOld_),
+                         [&](auto& view) {
+                             auto& [electromag, J, ions, Bold, Eold, NiOld, ViOld] = view.args;
+                             view.setTime(currentTime, Bold, Eold, NiOld, ViOld);
 
-                resourcesManager_->setTime(Bold_, *patch, currentTime);
-                resourcesManager_->setTime(Eold_, *patch, currentTime);
-                resourcesManager_->setTime(NiOld_, *patch, currentTime);
-                resourcesManager_->setTime(ViOld_, *patch, currentTime);
+                             auto& Vi = ions.velocity();
+                             auto& Ni = ions.chargeDensity();
 
-                auto& Vi = hybridModel.state.ions.velocity();
-                auto& Ni = hybridModel.state.ions.chargeDensity();
-
-                Bold_.copyData(hybridModel.state.electromag.B);
-                Eold_.copyData(hybridModel.state.electromag.E);
-                ViOld_.copyData(Vi);
-                NiOld_.copyData(Ni);
-            }
+                             Bold.copyData(electromag.B);
+                             Eold.copyData(electromag.E);
+                             ViOld.copyData(Vi);
+                             NiOld.copyData(Ni);
+                         });
         }
 
 
@@ -774,8 +781,7 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
-                    result;
+                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>> result;
 
                 result.reserve(info->ghostMagnetic.size());
 
@@ -911,19 +917,18 @@ namespace amr
 
         void copyLevelGhostOldToPushable_(level_t& level, IPhysicalModel& model)
         {
-            auto& hybridModel = static_cast<HybridModel&>(model);
-            for (auto& patch : level)
-            {
-                auto& ions       = hybridModel.state.ions;
-                auto dataOnPatch = resourcesManager_->setOnPatch(*patch, ions);
-                for (auto& pop : ions)
-                {
-                    auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
-                    auto& levelGhostParticles    = pop.levelGhostParticles();
+            amr::onLevel(
+                amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_,
+                                                      static_cast<HybridModel&>(model).state.ions),
+                [&](auto& view) {
+                    for (auto& pop : std::get<0>(view.args))
+                    {
+                        auto& levelGhostParticlesOld = pop.levelGhostParticlesOld();
+                        auto& levelGhostParticles    = pop.levelGhostParticles();
 
-                    levelGhostParticles = levelGhostParticlesOld;
-                }
-            }
+                        levelGhostParticles = levelGhostParticlesOld;
+                    }
+                });
         }
 
 
@@ -973,15 +978,20 @@ namespace amr
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field);
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, field),
+                         [&](auto& view) {
+                             auto& [field_v] = view.args;
+                             setNaNsOnFieldGhosts(field_v);
+                         });
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
-                for (auto& field : vf)
-                    setNaNsOnFieldGhosts(field);
+            amr::onLevel(amr::make_level_accessor<GridLayoutT>(level, *resourcesManager_, vf),
+                         [&](auto& view) {
+                             for (auto& field : std::get<0>(view.args))
+                                 setNaNsOnFieldGhosts(field);
+                         });
         }
 
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};

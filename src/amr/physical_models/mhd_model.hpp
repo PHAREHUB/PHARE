@@ -6,6 +6,7 @@
 #include "core/models/mhd_state.hpp"
 
 #include "amr/messengers/mhd_messenger_info.hpp"
+#include "amr/physical_models/models.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
@@ -108,13 +109,10 @@ public:
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
 void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& level)
 {
-    for (auto& patch : level)
-    {
-        auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        auto _      = this->resourcesManager->setOnPatch(*patch, state);
-
-        state.initialize(layout);
-    }
+    amr::onLevel(amr::make_model_level_accessor(level, *this, state), [&](auto& view) {
+        auto& [state_v] = view.args;
+        state_v.initialize(view.layout);
+    });
 }
 
 template<typename GridLayoutT, typename VecFieldT, typename AMR_Types, typename Grid_t>
