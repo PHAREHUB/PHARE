@@ -30,9 +30,8 @@ env:
   BASE_REF: ${{ github.event.pull_request.base.ref }}
   GATE_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
   # tool versions: one version for everyone, results differ between versions
+  # (clang-format and ruff: the "lint" dependency group of pyproject.toml)
   REVIEWDOG_VERSION: v0.21.2
-  CLANG_FORMAT_VERSION: 20.1.8
-  RUFF_VERSION: 0.16.10
   PYLINT_VERSION: 4.1.3
   JSCPD_VERSION: 5.4.0
   ACTIONLINT_VERSION: 1.7.12
@@ -133,7 +132,7 @@ jobs:
       - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
         with:
           reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
-      - run: pip install "clang-format==$CLANG_FORMAT_VERSION"
+      - run: python -m pip install "pip>=25.1" && python -m pip install --group lint
       - env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
           FAIL_LEVEL: ${{ contains(github.event.pull_request.labels.*.name, 'format-ok') && 'none' || 'any' }}
@@ -168,7 +167,7 @@ jobs:
       - uses: reviewdog/action-setup@d8a7baabd7f3e8544ee4dbde3ee41d0011c3a93f # v1.5.0
         with:
           reviewdog_version: ${{ env.REVIEWDOG_VERSION }}
-      - run: pip install "ruff==$RUFF_VERSION"
+      - run: python -m pip install "pip>=25.1" && python -m pip install --group lint
       - continue-on-error: true # warning only (step level: the job stays green)
         env:
           REVIEWDOG_GITHUB_API_TOKEN: ${{ github.token }}
