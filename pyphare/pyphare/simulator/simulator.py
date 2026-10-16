@@ -1,18 +1,17 @@
-#
-#
-#
+# pyphare/pyphare/simulator/simulator.py
 
 import os
 import sys
-import datetime
 import atexit
-import time as timem
+import datetime
+import traceback
 import numpy as np
-import pyphare.pharein as ph
+import time as timem
 from pathlib import Path
-from . import monitoring as mon
 
 from pyphare import cpp
+import pyphare.pharein as ph
+from . import monitoring as mon
 import pyphare.pharein.restarts as restarts
 
 
@@ -95,11 +94,11 @@ class Simulator:
             self.print_eol = "\r"
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
-
         self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
 
         _simulator.obj = self
+        self.cpp_lib = None
 
     def __del__(self):
         self.reset()
@@ -123,8 +122,6 @@ class Simulator:
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
             return self
         except Exception:
-            import traceback
-
             print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
             print(traceback.format_exc())
             raise ValueError("Error in Simulator.setup(), see previous error")
@@ -150,6 +147,7 @@ class Simulator:
                     sys.exc_info()[0]
                 )
             )
+            print(traceback.format_exc())
             raise ValueError("Error in Simulator.initialize(), see previous error")
 
     def _throw(self, e):
@@ -160,7 +158,7 @@ class Simulator:
         raise RuntimeError(e)
 
     def advance(self):
-        self._check_init()
+        self._check_setup()
         if self.simulation.dry_run:
             return self
 
@@ -188,17 +186,15 @@ class Simulator:
         Run the simulation until the end time
         monitoring requires phlop
         """
-
-        self._check_init()
+        if not self.initialized:
+            self.initialize()
 
         if monitoring is None:  # check env
             monitoring = SIM_MONITOR
-
         if self.simulation.dry_run:
             return self
         if monitoring:
-            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
-            mon.setup_monitoring(interval)
+            mon.setup_monitoring(monitoring)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -214,6 +210,7 @@ class Simulator:
             perf.append(ticktock)
             tot += ticktock
             t = self.cpp_sim.currentTime()
+
             if cpp.mpi_rank() == 0:
                 delta = datetime.timedelta(seconds=tot)
                 print(
@@ -230,7 +227,7 @@ class Simulator:
             plot_timestep_time(perf)
 
         mon.monitoring_shutdown()
-        return self.reset()
+        return self
 
     def _auto_dump(self):
         return self.auto_dump and self.dump()
@@ -246,7 +243,7 @@ class Simulator:
         return self.cpp_sim.dump_diagnostics(timestamp=time, timestep=timestep)
 
     def data_wrangler(self):
-        self._check_init()
+        self._check_setup()
         if self.cpp_dw is None:
             from pyphare.data.wrangler import DataWrangler
 
@@ -267,28 +264,37 @@ class Simulator:
         return self
 
     def timeStep(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.timeStep()
 
     def currentTime(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.currentTime()
 
     def domain_box(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.domain_box()
 
     def cell_width(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.cell_width()
 
     def interp_order(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.interp_order  # constexpr static value
 
-    def _check_init(self):
-        if not self.initialized:
-            self.initialize()
+    def _check_setup(self):
+        if not self.cpp_sim:
+            self.setup()
+
+    def print_summary(self):
+        summary = self.summary()  # NO DEADLOCK!
+        if cpp.mpi_rank() == 0:
+            print("SUMMARY:", summary)
+
+    def summary(self):
+        self._check_setup()
+        return self.cpp_sim.summary()
 
     def _log_to_file(self):
         """

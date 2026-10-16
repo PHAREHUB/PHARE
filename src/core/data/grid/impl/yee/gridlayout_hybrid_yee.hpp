@@ -3,6 +3,7 @@
 
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
@@ -102,7 +103,7 @@ public:
     // ------------------------------------------------------------------------
 public:
     NO_DISCARD constexpr static std::array<QtyCentering, dim>
-    centering(HybridQuantity::Scalar hybridQuantity)
+    centering(HybridQuantity::Scalar hybridQuantity) _PHARE_ALL_FN_
     {
         constexpr GridData gridData_{};
         if constexpr (dim == 1)
@@ -149,7 +150,9 @@ public:
                     return {{qtyCentering_[gridData_.iMyz][gridData_.idirX]}};
                 case HybridQuantity::Scalar::Mzz:
                     return {{qtyCentering_[gridData_.iMzz][gridData_.idirX]}};
-                default: throw std::runtime_error("Wrong hybridQuantity");
+                default:
+                    throw_runtime_error("Wrong hybridQuantity");
+                    return ConstArray<QtyCentering, dim>(QtyCentering::primal);
             }
         }
 
@@ -217,7 +220,9 @@ public:
                 case HybridQuantity::Scalar::Mzz:
                     return {{qtyCentering_[gridData_.iMzz][gridData_.idirX],
                              qtyCentering_[gridData_.iMzz][gridData_.idirY]}};
-                default: throw std::runtime_error("Wrong hybridQuantity");
+                default:
+                    throw_runtime_error("Wrong hybridQuantity");
+                    return ConstArray<QtyCentering, dim>(QtyCentering::primal);
             }
         }
 
@@ -305,7 +310,9 @@ public:
                     return {{qtyCentering_[gridData_.iMzz][gridData_.idirX],
                              qtyCentering_[gridData_.iMzz][gridData_.idirY],
                              qtyCentering_[gridData_.iMzz][gridData_.idirZ]}};
-                default: throw std::runtime_error("Wrong hybridQuantity");
+                default:
+                    throw_runtime_error("Wrong hybridQuantity");
+                    return ConstArray<QtyCentering, dim>(QtyCentering::primal);
             }
         }
     }
@@ -313,7 +320,7 @@ public:
 
 
     NO_DISCARD constexpr static std::array<std::array<QtyCentering, dim>, 3>
-    centering(HybridQuantity::Vector hybridQuantity)
+    centering(HybridQuantity::Vector hybridQuantity) _PHARE_ALL_FN_
     {
         switch (hybridQuantity)
         {
@@ -338,7 +345,10 @@ public:
                          centering(HybridQuantity::Scalar::Ez)}};
 
 
-            default: throw std::runtime_error("Wrong hybridQuantity");
+            default:
+                throw_runtime_error("Wrong hybridQuantity");
+                return ConstArray<std::array<QtyCentering, dim>, 3>(
+                    ConstArray<QtyCentering, dim>(QtyCentering::primal));
         }
     }
 

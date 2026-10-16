@@ -38,7 +38,7 @@ void add_array_as_vector(std::string path, PHARE::pydata::py_array_t<T>& array)
 }
 
 
-PYBIND11_MODULE(dictator, m)
+PYBIND11_MODULE(dictator, m, pybind11::mod_gil_not_used())
 {
     // expose dict add function per template type to force casts/error when used from python
     m.def("add_size_t", add<std::size_t>, "add_size_t");

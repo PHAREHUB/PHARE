@@ -1,9 +1,8 @@
 #include <type_traits>
 
 
-
-
 #include "core/data/ions/ion_population/ion_population.hpp"
+#include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
@@ -50,6 +49,8 @@ struct DummyParticleInitializer
 };
 
 
+
+
 PHAREDict getDict()
 {
     PHAREDict dict;
@@ -61,7 +62,7 @@ PHAREDict getDict()
 
 struct AnIonPopulation : public ::testing::Test
 {
-    IonPopulation<ParticleArray<1>, DummyVecField, DummyTensorField> protons{getDict()};
+    IonPopulation<AoSMappedParticleArray<1>, DummyVecField, DummyTensorField> protons{getDict()};
     virtual ~AnIonPopulation();
 };
 

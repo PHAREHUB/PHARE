@@ -1,7 +1,9 @@
-// C++11 version of https://en.cppreference.com/w/cpp/container/span
+// to #include "core/utilities/span.hpp"
 
+// C++11 version of https://en.cppreference.com/w/cpp/container/span
 #ifndef PHARE_CORE_UTILITIES_SPAN_HPP
 #define PHARE_CORE_UTILITIES_SPAN_HPP
+
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
@@ -11,8 +13,10 @@
 #include <cstddef>
 #include <numeric>
 
+
 namespace PHARE::core
 {
+
 
 template<typename T>
 concept Spannable = requires(T t) {
@@ -20,20 +24,41 @@ concept Spannable = requires(T t) {
     { t.data() };
     { t.begin() };
     { t.end() };
+    { t[std::size_t{}] };
 };
 
 
-template<typename T, typename SIZE = std::size_t>
+
+using default_span_size_t = unsigned long long int; // CUDA doesn't like std::size_t
+
+
+template<typename T, typename SIZE = default_span_size_t>
 struct Span
 {
-    using value_type = T;
+    using value_type = std::decay_t<T>;
 
-    NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
-    NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
-    NO_DISCARD T* data() const { return ptr; }
-    NO_DISCARD T* begin() const { return ptr; }
-    NO_DISCARD T* end() const { return ptr + s; }
-    NO_DISCARD SIZE const& size() const { return s; }
+    Span(T* ptr_ = nullptr, SIZE s_ = 0)
+        : ptr{ptr_}
+        , s{s_}
+    {
+    }
+
+    Span(Span&&)                 = default;
+    Span(Span const&)            = default;
+    Span& operator=(Span&&)      = default;
+    Span& operator=(Span const&) = default;
+
+    NO_DISCARD auto& operator[](SIZE i) _PHARE_ALL_FN_ { return ptr[i]; }
+    NO_DISCARD auto& operator[](SIZE i) const _PHARE_ALL_FN_ { return ptr[i]; }
+    NO_DISCARD T const* cdata() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto data() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto data() _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto begin() _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto begin() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto end() _PHARE_ALL_FN_ { return ptr + s; }
+    NO_DISCARD auto end() const _PHARE_ALL_FN_ { return ptr + s; }
+    NO_DISCARD SIZE const& size() const _PHARE_ALL_FN_ { return s; }
+    NO_DISCARD auto size_address() { return &s; }
 
     T* ptr = nullptr;
     SIZE s = 0;
@@ -46,6 +71,17 @@ auto make_span(Container_t& container)
     using value_type = std::remove_reference_t<decltype(*container.data())>;
     return Span<value_type>{container.data(), container.size()};
 }
+template<typename Container_t>
+auto make_span(Container_t& container, std::size_t const& size)
+{
+    using value_type = std::remove_reference_t<decltype(*container.data())>;
+    return Span<value_type>{container.data(), size};
+}
+template<typename Data>
+auto make_span(Data* data, std::size_t const& size)
+{
+    return Span<Data>{data, size};
+}
 
 template<typename Container_t>
 auto make_const_span(Container_t const& container)
@@ -54,14 +90,14 @@ auto make_const_span(Container_t const& container)
 }
 
 
-template<typename T, typename SIZE = std::size_t>
+template<typename T, typename SIZE = default_span_size_t>
 class VectorSpan : private StackVar<std::vector<T>>, public core::Span<T, SIZE>
 {
     using Vector = StackVar<std::vector<T>>;
     using Span_  = Span<T, SIZE>;
 
 public:
-    VectorSpan(std::size_t size, T value)
+    VectorSpan(SIZE size, T value)
         : Vector{std::vector<T>(size, value)}
         , Span_{Vector::var.data(), Vector::var.size()}
     {
@@ -97,16 +133,16 @@ private:
 
 
 
-template<typename T, typename SIZE = std::size_t>
+template<typename T, typename SIZE = default_span_size_t, typename Alloc = std::allocator<T>>
 struct SpanSet
 {
     using value_type = T;
-    using SpanSet_   = SpanSet<T, SIZE>;
+    using SpanSet_   = SpanSet<T, SIZE, Alloc>;
 
     SpanSet() = default;
 
     SpanSet(std::vector<SIZE>&& sizes_)
-        : size{std::accumulate(sizes_.begin(), sizes_.end(), 0)}
+        : size{std::accumulate(sizes_.begin(), sizes_.end(), SIZE{0})}
         , sizes(sizes_)
         , displs(core::displacementFrom(sizes))
         , vec(size)
@@ -121,6 +157,16 @@ struct SpanSet
     {
     }
 
+    SpanSet& operator=(SpanSet&& from)
+    {
+        size   = from.size;
+        sizes  = std::move(from.sizes);
+        displs = std::move(from.displs);
+        vec    = std::move(from.vec);
+        return *this;
+    }
+
+
     NO_DISCARD Span<T, SIZE> operator[](SIZE i)
     {
         return {this->vec.data() + displs[i], this->sizes[i]};
@@ -130,7 +176,8 @@ struct SpanSet
         return {this->vec.data() + displs[i], this->sizes[i]};
     }
 
-    NO_DISCARD T* data() const { return const_cast<T*>(vec.data()); }
+    NO_DISCARD auto data() const { return vec.data(); }
+    NO_DISCARD auto data() { return const_cast<T*>(vec.data()); }
 
     struct iterator
     {
@@ -143,7 +190,7 @@ struct SpanSet
             curr_pos += sv->sizes[curr_ptr++];
             return *this;
         }
-        bool operator!=(iterator const& other) const { return curr_ptr != sv->sizes.size(); }
+        bool operator!=(iterator const& /*other*/) const { return curr_ptr != sv->sizes.size(); }
         Span<T, SIZE> operator*() const { return {sv->vec.data() + curr_pos, sv->sizes[curr_ptr]}; }
 
         SpanSet_* sv  = nullptr;
@@ -159,8 +206,75 @@ struct SpanSet
     SIZE size;
     std::vector<SIZE> sizes;
     std::vector<SIZE> displs;
-    std::vector<T> vec;
+    std::vector<T, Alloc> vec;
 };
+
+
+
+
+template<typename T, std::size_t size>
+auto flatten(std::vector<std::array<T, size>> const& data)
+{
+    assert(data.size() > 0);
+
+    return Span<T const, std::size_t>{data.data()->data(), data.size() * size};
+}
+
+
+template<typename T, std::size_t size>
+auto flatten(std::vector<std::array<T, size>>& data)
+{
+    assert(data.size() > 0);
+
+    return Span<T, std::size_t>{data.data()->data(), data.size() * size};
+}
+
+
+template<typename V, typename T, typename SIZE = default_span_size_t>
+struct ViewSpan // represent vector of T as Span of V
+{
+    auto constexpr static real_size = sizeof(T);
+    using value_type                = std::decay_t<V>;
+
+    ViewSpan(V* ptr_ = nullptr, SIZE s_ = 0)
+        : ptr{ptr_}
+        , s{s_}
+    {
+    }
+
+    ViewSpan(ViewSpan&&)                 = default;
+    ViewSpan(ViewSpan const&)            = default;
+    ViewSpan& operator=(ViewSpan&&)      = default;
+    ViewSpan& operator=(ViewSpan const&) = default;
+
+    template<typename P>
+    auto static as(auto&& ptr) _PHARE_ALL_FN_
+    {
+        return reinterpret_cast<P>(ptr);
+    }
+
+    auto hax(std::size_t const i) _PHARE_ALL_FN_ { return as<V*>(as<T*>(ptr) + i); }
+    auto hax(std::size_t const i) const _PHARE_ALL_FN_
+    {
+        return as<V const*>(as<T const*>(ptr) + i);
+    }
+
+    NO_DISCARD auto& operator[](SIZE const i) _PHARE_ALL_FN_ { return *hax(i); }
+    NO_DISCARD auto& operator[](SIZE const i) const _PHARE_ALL_FN_ { return *hax(i); }
+    NO_DISCARD auto data() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto data() _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD SIZE const& size() const _PHARE_ALL_FN_ { return s; }
+
+    // DO NOT USE ON GPU! // USE operator[]!!!!
+    NO_DISCARD auto begin() _PHARE_HST_FN_ { return as<T*>(ptr); }
+    NO_DISCARD auto begin() const _PHARE_HST_FN_ { return as<T const*>(ptr); }
+    NO_DISCARD auto end() _PHARE_HST_FN_ { return as<T*>(ptr) + s; }
+    NO_DISCARD auto end() const _PHARE_HST_FN_ { return as<T const*>(ptr) + s; }
+
+    V* ptr = nullptr;
+    SIZE s = 0;
+};
+
 } // namespace PHARE::core
 
 #endif // PHARE_CORE_UTILITIES_SPAN_HPP

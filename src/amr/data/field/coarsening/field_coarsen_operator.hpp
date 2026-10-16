@@ -8,7 +8,6 @@
 #include "amr/data/field/field_geometry.hpp"
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
-
 #include <SAMRAI/hier/Box.h>
 #include <SAMRAI/hier/IntVector.h>
 #include <SAMRAI/hier/CoarsenOperator.h>
@@ -18,12 +17,51 @@ namespace PHARE::amr
 {
 
 
-template<typename Dst>
-void coarsen_field(Dst& destinationField, auto& sourceField, auto& intersectionBox, auto& coarsener)
+template<typename Coarsener, typename FieldT>
+void coarsen_field(FieldT& dst, auto const& dstGhostBox, auto const& dstLayout, FieldT const& src,
+                   auto const& srcGhostBox, auto& box, auto ratio)
+    requires(not core::is_field_tile_set_v<FieldT>)
 {
-    for (auto const bix : phare_box_from<Dst::dimension>(intersectionBox))
-        coarsener(sourceField, destinationField, bix);
+    auto const& qty = dst.physicalQuantity();
+
+    Coarsener coarsener{dstLayout.centering(qty), srcGhostBox, dstGhostBox, ratio};
+    for (auto const bix : box)
+        coarsener(src, dst, bix);
 }
+
+
+
+template<typename Coarsener, typename FieldT>
+void coarsen_field(FieldT& dst, auto const& dstGhostBox, auto const& dstLayout, FieldT const& src,
+                   auto const& srcGhostBox, auto& box, auto ratio)
+    requires(core::is_field_tile_set_v<FieldT>)
+{
+    auto const& qty = dst.physicalQuantity();
+    for (auto& dst_tile : dst())
+    {
+        auto const dst_box = dst_tile.ghost_box();
+        if (auto const dst_overlap = dst_box * box)
+        {
+            for (auto const& src_tile : src())
+            {
+                auto const src_box = src_tile.field_box();
+                if (auto const src_overlap = src_box * refine_box(box))
+                {
+                    if (auto const& overlap = *dst_overlap * coarsen_box(*src_overlap))
+                    {
+                        Coarsener coarsener{dstLayout.centering(qty),
+                                            samrai_box_from(src_tile.ghost_box()),
+                                            samrai_box_from(dst_tile.ghost_box()), ratio};
+
+                        for (auto const bix : *overlap)
+                            coarsener(src_tile(), dst_tile(), bix);
+                    }
+                }
+            }
+        }
+    }
+}
+
 
 
 } // namespace PHARE::amr
@@ -54,7 +92,7 @@ namespace amr
         FieldCoarsenOperator(FieldCoarsenOperator const&)            = delete;
         FieldCoarsenOperator(FieldCoarsenOperator&&)                 = delete;
         FieldCoarsenOperator& operator=(FieldCoarsenOperator const&) = delete;
-        FieldCoarsenOperator&& operator=(FieldCoarsenOperator&&)     = delete;
+        FieldCoarsenOperator& operator=(FieldCoarsenOperator&&)      = delete;
 
 
         virtual ~FieldCoarsenOperator() = default;
@@ -122,10 +160,11 @@ namespace amr
             auto coarseLayout          = FieldGeometryT::layoutFromBox(coarseBox, destLayout);
             auto coarseFieldBox        = FieldGeometryT::toFieldBox(coarseBox, qty, coarseLayout);
             auto const intersectionBox = destGBox * coarseFieldBox;
-            // We can now create the coarsening operator
-            FieldCoarsenerPolicy coarsener{destLayout.centering(qty), srcGBox, destGBox, ratio};
 
-            coarsen_field(destinationField, sourceField, intersectionBox, coarsener);
+            auto const box = phare_box_from<dimension>(intersectionBox);
+
+            coarsen_field<FieldCoarsenerPolicy>( //
+                destinationField, destGBox, destLayout, sourceField, srcGBox, box, ratio);
         }
     };
 } // namespace amr
@@ -207,7 +246,6 @@ public:
         auto const& sourceLayout = TensorFieldDataT::getLayout(sourcePatch, sourceId);
         auto const& destLayout   = TensorFieldDataT::getLayout(destinationPatch, destinationId);
 
-
         // we assume that quantity are the same
         // note that an assertion will be raised in coarseIt operator
 
@@ -215,7 +253,6 @@ public:
         {
             auto const& qty      = destinationFields[c].physicalQuantity();
             using FieldGeometryT = FieldGeometry<GridLayoutT, std::decay_t<decltype(qty)>>;
-
 
             // We get different boxes : destination , source, restrictBoxes
             // and transform them in the correct indexing.
@@ -229,9 +266,10 @@ public:
             auto const& coarseFieldBox = FieldGeometryT::toFieldBox(coarseBox, qty, coarseLayout);
             auto const intersectionBox = destGBox * coarseFieldBox;
             // We can now create the coarsening operator
-            FieldCoarsenerPolicy coarsener{destLayout.centering(qty), srcGBox, destGBox, ratio};
 
-            coarsen_field(destinationFields[c], sourceFields[c], intersectionBox, coarsener);
+            auto const box = phare_box_from<dimension>(intersectionBox);
+            coarsen_field<FieldCoarsenerPolicy>( //
+                destinationFields[c], destGBox, destLayout, sourceFields[c], srcGBox, box, ratio);
         }
     }
 };

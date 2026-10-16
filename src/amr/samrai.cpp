@@ -1,4 +1,5 @@
 
+#include "core/def/pragma_disable.hpp"
 #include "core/def/phlop.hpp" // IWYU pragma: keep // scope timing
 #include "mpi/mpi_utils.hpp"
 
@@ -11,6 +12,10 @@
 namespace PHARE
 {
 
+// GCC (observed on 16.x, -O3) mis-attributes the template argument of
+// _Sp_counted_ptr_inplace<Tp,...>::_M_dispose() for this shared_ptr<Appender>, reporting it as
+// instantiated for std::string instead of StreamAppender -- a false positive.
+DISABLE_WARNING(array-bounds, array-bounds, 42)
 SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
 {
     SAMRAI::tbox::SAMRAI_MPI::init(&argc, &argv);
@@ -19,7 +24,7 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
     // uncomment next line for debugging samrai issues
     // SAMRAI::tbox::SAMRAI_MPI::setCallAbortInParallelInsteadOfMPIAbort();
     std::shared_ptr<SAMRAI::tbox::Logger::Appender> appender
-        = std::make_shared<StreamAppender>(StreamAppender{&std::cout});
+        = std::make_shared<StreamAppender>(&std::cout);
     SAMRAI::tbox::Logger::getInstance()->setWarningAppender(appender);
     PHARE_WITH_PHLOP({
         if (auto e = core::get_env("PHARE_SCOPE_TIMING", "false"); e == "1" || e == "true")
@@ -27,10 +32,14 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
                 .file_name(".phare/timings/rank." + std::to_string(mpi::rank()) + ".txt")
                 .init();
     })
+    PHARE_WITH_KOKKOS(Kokkos::initialize(argc, argv); Kokkos::print_configuration(std::cout);)
 }
+ENABLE_WARNING(array-bounds, array-bounds, 42)
 
 SamraiLifeCycle::~SamraiLifeCycle()
 {
+    PHARE_WITH_KOKKOS(Kokkos::finalize();)
+
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::finalize();
     SAMRAI::tbox::SAMRAI_MPI::finalize();
@@ -38,6 +47,7 @@ SamraiLifeCycle::~SamraiLifeCycle()
 
 void SamraiLifeCycle::reset()
 {
+    PHARE_WITH_PHLOP(phlop::reset_scope_timer());
     PHARE::initializer::PHAREDictHandler::INSTANCE().stop();
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::startup();

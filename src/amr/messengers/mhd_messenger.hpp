@@ -16,6 +16,7 @@
 #include "amr/messengers/refiner.hpp"
 #include "amr/messengers/refiner_pool.hpp"
 #include "amr/messengers/synchronizer_pool.hpp"
+#include "amr/messengers/field_operate_transaction.hpp"
 #include "amr/messengers/messenger.hpp"
 #include "amr/messengers/messenger_info.hpp"
 #include "amr/messengers/mhd_messenger_info.hpp"
@@ -50,6 +51,10 @@ namespace amr
         using GridT             = MHDModel::grid_type;
         using ResourcesManagerT = MHDModel::resources_manager_type;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::MHDQuantity>;
+
+        using BorderMaxOp = core::FieldBorderMaxOp<typename VecFieldT::value_type>;
+        using VecFieldBorderMaxTransactionFactory_t
+            = FieldBorderOpTransactionFactory<VectorFieldDataT, BorderMaxOp>;
 
         static constexpr auto dimension = MHDModel::dimension;
 
@@ -308,8 +313,12 @@ namespace amr
             magFluxesZGhostRefiners_.registerLevel(hierarchy, level);
 
             magGhostsRefiners_.registerLevel(hierarchy, level);
-            magMaxRefiners_.registerLevel(hierarchy, level);
-            magMaxModelRefiners_.registerLevel(hierarchy, level);
+
+            {
+                auto border_max_factory = std::make_shared<VecFieldBorderMaxTransactionFactory_t>();
+                magMaxRefiners_.registerLevel(hierarchy, level, border_max_factory);
+                magMaxModelRefiners_.registerLevel(hierarchy, level, border_max_factory);
+            }
 
             if (levelNumber != rootLevelNumber)
             {
@@ -504,15 +513,16 @@ namespace amr
         {
             auto fieldKernel = [&] {
                 return std::make_shared<KernelFieldRefineOperator<GridLayoutT, GridT>>(
-                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(config.order));
             };
             auto vecKernel = [&] {
                 return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                    makeRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(config.order));
             };
             auto magKernel = [&] {
                 return std::make_shared<KernelVecFieldRefineOperator<VectorFieldDataT>>(
-                    makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
+                    makeMagneticRefineKernel<GridLayoutT, refine_kernel_field_t<GridT>>(
+                        config.order));
             };
 
             mhdFluxRefineOp_     = fieldKernel();
@@ -649,24 +659,23 @@ namespace amr
          * This is needed when the schedule copy is done before refinement
          * as a result of FieldVariable::fineBoundaryRepresentsVariable=false
          */
-        void setNaNsOnFieldGhosts(FieldT& field)
+        void setNaNsOnFieldGhosts(FieldT& field, patch_t const& patch)
         {
-            auto const nGhosts = GridLayoutT::nDNbrGhosts(core::QtyCentering::primal)[0];
-            field[core::NdArrayMask{0, nGhosts - 1}]
-                = std::numeric_limits<typename FieldT::type>::quiet_NaN();
+            core::fill_ghost(field, layoutFromPatch<GridLayoutT>(patch),
+                             std::numeric_limits<typename FieldT::type>::quiet_NaN());
         }
 
         void setNaNsOnFieldGhosts(FieldT& field, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, field))
-                setNaNsOnFieldGhosts(field);
+            for (auto& patch : resourcesManager_->enumerate(level, field))
+                setNaNsOnFieldGhosts(field, *patch);
         }
 
         void setNaNsOnVecfieldGhosts(VecFieldT& vf, level_t const& level)
         {
-            for ([[maybe_unused]] auto& patch : resourcesManager_->enumerate(level, vf))
+            for (auto& patch : resourcesManager_->enumerate(level, vf))
                 for (auto& component : vf)
-                    setNaNsOnFieldGhosts(component);
+                    setNaNsOnFieldGhosts(component, *patch);
         }
 
 

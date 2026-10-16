@@ -21,8 +21,8 @@ namespace solver
     class IPhysicalModel
     {
     protected:
-        IPhysicalModel(std::string modelName)
-            : name_{std::move(modelName)}
+        IPhysicalModel(std::string const& modelName)
+            : name_{modelName}
         {
         }
 

@@ -55,7 +55,7 @@ struct SystemConfig {{
 
 }};
 
-std::unordered_map<std::string, std::string> build_config(){{
+inline std::unordered_map<std::string, std::string> build_config(){{
   return {{
       {{"CMAKE_BINARY", std::string{{SystemConfig::CMAKE_BINARY}}}},
       {{"CMAKE_VERSION", std::string{{SystemConfig::CMAKE_VERSION}}}},

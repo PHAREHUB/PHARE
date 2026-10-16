@@ -1,6 +1,4 @@
-#
-#
-#
+# pyphare/pyphare/pharesee/hierarchy/patchlevel.py
 
 
 class PatchLevel:
@@ -9,9 +7,6 @@ class PatchLevel:
     def __init__(self, lvl_nbr, patches):
         self.level_number = lvl_nbr
         self.patches = patches
-
-    def __iter__(self):
-        return self.patches.__iter__()
 
     def level_range(self):
         name = list(self.patches[0].patch_datas.keys())[0]
@@ -23,6 +18,9 @@ class PatchLevel:
         if type(idx) is int:
             return self.patches[idx]
         raise IndexError(f"PatchLevel::__getitem__ unhandled input type: {type(idx)}")
+
+    def __iter__(self):
+        return self.patches.__iter__()
 
     @property
     def cell_width(self):

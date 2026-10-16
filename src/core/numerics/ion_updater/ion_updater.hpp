@@ -1,190 +1,87 @@
 #ifndef PHARE_ION_UPDATER_HPP
 #define PHARE_ION_UPDATER_HPP
 
+#include "core/def/phare_config.hpp"
 
+#include "core/errors.hpp"
 #include "core/logger.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
-#include "core/numerics/pusher/pusher.hpp"
+#include "core/numerics/pusher/boris.hpp"
 #include "core/numerics/moments/moments.hpp"
-#include "core/numerics/pusher/pusher_factory.hpp"
 #include "core/numerics/interpolator/interpolator.hpp"
+#include "core/numerics/interpolator/interpolating.hpp"
 #include "core/numerics/boundary_condition/boundary_condition.hpp"
 
-#include "initializer/data_provider.hpp"
+#include "core/numerics/pusher/boris/detail/multi_boris.hpp"
+#include "core/data/particles/particle_array_exporter.hpp"
 
+#include "ion_updater_def.hpp" // = UpdaterMode
 
-#include <memory>
+#include <string>
+#include <optional>
+#include <unordered_map>
 
 
 namespace PHARE::core
 {
-enum class UpdaterMode { domain_only = 1, all = 2 };
 
-template<typename Ions, typename Electromag, typename GridLayout>
+/**
+ * @brief IonUpdater moves/deposits a single patch's ions/electromag, given directly.
+ */
+template<typename ParticleArray_t, typename GridLayout>
 class IonUpdater
 {
-    using This = IonUpdater<Ions, Electromag, GridLayout>;
-
-public:
     static constexpr auto dimension    = GridLayout::dimension;
     static constexpr auto interp_order = GridLayout::options.interp_order;
-
-    using Box               = PHARE::core::Box<int, dimension>;
-    using Interpolator      = PHARE::core::Interpolator<dimension, interp_order>;
-    using VecField          = typename Ions::vecfield_type;
-    using ParticleArray     = typename Ions::particle_array_type;
-    using Particle_t        = typename ParticleArray::Particle_t;
-    using PartIterator      = typename ParticleArray::iterator;
-    using ParticleRange     = IndexRange<ParticleArray>;
-    using BoundaryCondition = PHARE::core::BoundaryCondition<dimension, interp_order>;
-    using Pusher = PHARE::core::Pusher<dimension, ParticleRange, Electromag, Interpolator,
-                                       BoundaryCondition, GridLayout>;
-
-private:
-    constexpr static auto makePusher
-        = PHARE::core::PusherFactory::makePusher<dimension, ParticleRange, Electromag, Interpolator,
-                                                 BoundaryCondition, GridLayout>;
-
-    std::unique_ptr<Pusher> pusher_;
-    Interpolator interpolator_;
+    using ParticleRange                = IndexRange<ParticleArray_t>;
+    using Selector_t                   = std::function<ParticleRange(ParticleRange&)>;
+    using Interpolator                 = PHARE::core::Interpolator<dimension, interp_order>;
+    using BoundaryCondition            = PHARE::core::BoundaryCondition<dimension, interp_order>;
+    using Pusher                       = PHARE::core::BorisPusher<dimension>;
 
 public:
-    IonUpdater(PHARE::initializer::PHAREDict const& dict)
-        : pusher_{makePusher(dict["pusher"]["name"].template to<std::string>())}
-    {
-    }
+    using Boxing_t = UpdaterCellMapSelectionBoxing<Selector_t, GridLayout>;
 
-    template<typename Boxing_t>
-    void updatePopulations(Ions& ions, Electromag const& em, Boxing_t const& boxing, double dt,
-                           UpdaterMode = UpdaterMode::all);
+    void updatePopulations(auto& ions, auto const& em, Boxing_t const& boxing, double dt,
+                           UpdaterMode mode = UpdaterMode::all);
 
-
-    void updateIons(Ions& ions);
-
-
-    void reset()
-    {
-        // clear memory
-        tmp_particles_ = std::move(ParticleArray{Box{}});
-    }
-
+    void reset() { tmp_particles_ = ParticleArray_t{}; }
 
 private:
-    template<typename Boxing_t>
-    void updateAndDepositDomain_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
+    void updateAndDepositDomain_(auto& ions, auto const& em, Boxing_t const& boxing);
+    void updateAndDepositAll_(auto& ions, auto const& em, Boxing_t const& boxing);
 
-    template<typename Boxing_t>
-    void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
-
-
-    // dealloced on regridding/load balancing coarsest
-    ParticleArray tmp_particles_{Box{}}; //{std::make_unique<ParticleArray>(Box{})};
+    Pusher pusher_;
+    Interpolator interpolator_;
+    std::optional<ParticleArray_t> tmp_particles_;
 };
 
 
-
-
-template<typename Ions, typename Electromag, typename GridLayout>
-template<typename Boxing_t>
-void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Electromag const& em,
-                                                                 Boxing_t const& boxing, double dt,
-                                                                 UpdaterMode mode)
+template<typename ParticleArray_t, typename GridLayout>
+void IonUpdater<ParticleArray_t, GridLayout>::updatePopulations(auto& ions, auto const& em,
+                                                                Boxing_t const& boxing, double dt,
+                                                                UpdaterMode mode)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updatePopulations");
 
     resetMoments(ions);
-    pusher_->setMeshAndTimeStep(boxing.layout.meshSize(), dt);
+    pusher_.setMeshAndTimeStep(boxing.layout.meshSize(), dt);
 
     if (mode == UpdaterMode::domain_only)
-    {
         updateAndDepositDomain_(ions, em, boxing);
-    }
     else
-    {
         updateAndDepositAll_(ions, em, boxing);
-    }
 }
 
-
-
-template<typename Ions, typename Electromag, typename GridLayout>
-void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
-{
-    ions.computeChargeDensity();
-    ions.computeBulkVelocity();
-}
-
-// this is to detach how we partition particles from the updater directly
-template<typename IonUpdater_t, typename GridLayout>
-struct UpdaterSelectionBoxing
-{
-    auto constexpr static partGhostWidth = GridLayout::options.particle_ghost_width;
-    using GridLayout_t                   = GridLayout;
-    using Box_t                          = IonUpdater_t::Box;
-    using Selector_t                     = IonUpdater_t::Pusher::ParticleSelector;
-
-    GridLayout_t const layout;
-    std::vector<Box_t> const nonLevelGhostBox;
-    // domain cells owned by an overlapping same-level patch, usually empty
-    std::vector<Box_t> const nonOwnedBoxes{};
-    Box_t const domainBox = layout.AMRBox();
-    Box_t const ghostBox  = grow(domainBox, partGhostWidth);
-
-    static bool isOwned(auto const& cell, Box_t const& domainBox,
-                        std::vector<Box_t> const& nonOwnedBoxes)
-    {
-        return isIn(cell, domainBox)
-               and (nonOwnedBoxes.empty() or !isIn(Point{cell}, nonOwnedBoxes));
-    }
-
-    // a particle belongs to this patch if and only if its cell is in the domain and owned
-    bool isOwned(auto const& cell) const { return isOwned(cell, domainBox, nonOwnedBoxes); }
-
-    Selector_t const noop = [](auto& particleRange) { return particleRange; };
-
-    // lambda copy captures to detach from above references in case of class copy construct
-    Selector_t const inOwnedDomain
-        = [domainBox = domainBox, nonOwnedBoxes = nonOwnedBoxes](auto& particleRange) {
-              return particleRange.array().partition(particleRange, [&](auto const& cell) {
-                  return isOwned(cell, domainBox, nonOwnedBoxes);
-              });
-          };
-
-    Selector_t const inGhostBox = [ghostBox = ghostBox](auto& particleRange) {
-        return particleRange.array().partition(
-            particleRange, [&](auto const& cell) { return isIn(cell, ghostBox); });
-    };
-
-    Selector_t const inNonLevelGhostBox
-        = [nonLevelGhostBox = nonLevelGhostBox](auto& particleRange) {
-              return particleRange.array().partition(particleRange, [&](auto const& cell) {
-                  return isIn(Point{cell}, nonLevelGhostBox);
-              });
-          };
-
-    Selector_t const inGhostLayer
-        = [ghostBox = ghostBox, domainBox = domainBox](auto& particleRange) {
-              return particleRange.array().partition(particleRange, [&](auto const& cell) {
-                  return isIn(cell, ghostBox) and !isIn(cell, domainBox);
-              });
-          };
-
-    Selector_t const outsideGhostBox = [ghostBox = ghostBox](auto& particleRange) {
-        return particleRange.array().partition(
-            particleRange, [&](auto const& cell) { return !isIn(cell, ghostBox); });
-    };
-};
 
 /**
- * @brief IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_
+ * @brief IonUpdater::updateAndDepositDomain_
    evolves moments from time n to n+1 without updating particles, which stay at time n
  */
-template<typename Ions, typename Electromag, typename GridLayout>
-template<typename Boxing_t>
-void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ions,
-                                                                       Electromag const& em,
-                                                                       Boxing_t const& boxing)
+template<typename ParticleArray_t, typename GridLayout>
+void IonUpdater<ParticleArray_t, GridLayout>::updateAndDepositDomain_(auto& ions, auto const& em,
+                                                                      Boxing_t const& boxing)
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositDomain_");
 
@@ -192,16 +89,16 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
     for (auto& pop : ions)
     {
-        auto& domain = (tmp_particles_ = pop.domainParticles()); // make local copy
+        tmp_particles_ = pop.domainParticles(); // make local copy
+        auto& domain   = *tmp_particles_;
 
         // first push all domain particles twice
         // accumulate those inNonLevelGhostBox
         auto outRange = makeIndexRange(domain);
-        auto allowed = outRange = pusher_->move(outRange, outRange, em, pop.mass(), interpolator_,
-                                                layout, boxing.noop, boxing.inNonLevelGhostBox);
+        auto allowed = outRange = pusher_.move(outRange, outRange, em, pop.mass(), interpolator_,
+                                               layout, boxing.noop, boxing.inNonLevelGhostBox);
 
         interpolator_(allowed, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
-
 
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
         // deposit moments on those which leave to go inOwnedDomain
@@ -209,15 +106,16 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         auto pushAndAccumulateGhosts = [&](auto const& inputArray) {
             tmp_particles_ = inputArray; // work on local copy
 
-            auto outRange = makeIndexRange(tmp_particles_);
+            auto outRange = makeIndexRange(*tmp_particles_);
 
-            auto enteredInDomain = pusher_->move(outRange, outRange, em, pop.mass(), interpolator_,
-                                                 layout, boxing.inGhostBox, boxing.inOwnedDomain);
+            auto enteredInDomain = pusher_.move(outRange, outRange, em, pop.mass(), interpolator_,
+                                                layout, boxing.inGhostBox, boxing.inOwnedDomain);
 
             interpolator_(enteredInDomain, pop.particleDensity(), pop.chargeDensity(), pop.flux(),
                           layout);
         };
 
+        // !TODO REVISE!
         // After this function is done domain particles overlaping ghost layers of neighbor patches
         // are sent to these neighbor's patchghost particle array.
         // After being pushed, some patch ghost particles may enter the domain. These need to be
@@ -234,16 +132,14 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
 
 /**
- * @brief IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_
+ * @brief IonUpdater::updateAndDepositAll_
    evolves moments and particles from time n to n+1
  */
-template<typename Ions, typename Electromag, typename GridLayout>
-template<typename Boxing_t>
-void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
-                                                                    Electromag const& em,
-                                                                    Boxing_t const& boxing)
+template<typename ParticleArray_t, typename GridLayout>
+void IonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(auto& ions, auto const& em,
+                                                                   Boxing_t const& boxing)
 {
-    PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositAll_");
+    PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_");
 
     auto const& layout = boxing.layout;
 
@@ -256,8 +152,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto& domainParticles = pop.domainParticles();
         auto domainPartRange  = makeIndexRange(domainParticles);
 
-        auto inDomain = pusher_->move(domainPartRange, domainPartRange, em, pop.mass(),
-                                      interpolator_, layout, boxing.noop, boxing.inOwnedDomain);
+        auto inDomain = pusher_.move(domainPartRange, domainPartRange, em, pop.mass(),
+                                     interpolator_, layout, boxing.noop, boxing.inOwnedDomain);
 
         auto now_ghosts = makeRange(domainParticles, inDomain.iend(), domainParticles.size());
         auto const not_level_ghosts = boxing.inNonLevelGhostBox(now_ghosts);
@@ -272,7 +168,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
             for (auto const& particle : outsideGhostBox)
             {
                 PHARE_LOG_LINE_SS(particle);
-                auto const nearbyBox = grow(Box(particle.iCell, particle.iCell), 3);
+                auto const nearbyBox = grow(Box(particle.iCell(), particle.iCell()), 3);
                 for (auto const& xyz : em.E)
                     if (auto const overlap = nearbyBox * layout.AMRGhostBoxFor(xyz))
                         for (auto const [bix, lix] : layout.amr_lcl_idx(*overlap))
@@ -290,8 +186,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         {
             auto particleRange = makeIndexRange(pop.levelGhostParticles());
             auto inGhostLayerRange
-                = pusher_->move(particleRange, particleRange, em, pop.mass(), interpolator_, layout,
-                                boxing.inGhostBox, boxing.inGhostLayer);
+                = pusher_.move(particleRange, particleRange, em, pop.mass(), interpolator_, layout,
+                               boxing.inGhostBox, boxing.inGhostLayer);
 
             auto& particleArray = particleRange.array();
             particleArray.export_particles(domainParticles,
@@ -309,8 +205,428 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
 }
 
 
+/**
+ * @brief ParallelIonUpdater moves/deposits ions across every patch of a level in parallel,
+ * given a ModelAccessor rather than direct ions/electromag references.
+ */
+template<typename ParticleArray_t, typename GridLayout>
+class ParallelIonUpdater
+{
+    static constexpr auto dimension    = GridLayout::dimension;
+    static constexpr auto interp_order = GridLayout::options.interp_order;
+    using Interpolator_t               = Interpolator<dimension, interp_order, /*atomic=*/false>;
+    using Interpolating_t              = Interpolating<dimension, interp_order, /*atomic=*/false>;
+
+public:
+    using Boxing_t = UpdaterSelectionBoxing<GridLayout>;
+
+    auto constexpr static use_main_thread = MultiBorisOptions{}.use_main_thread;
+
+    void updatePopulations(auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings,
+                           double const& dt, UpdaterMode mode = UpdaterMode::all);
+
+    void reset() {}
+
+protected:
+    // per patch steps, shared with mkn_xyz::ParallelIonUpdater (different dispatch)
+    static void reset_moments(auto& accessor);
+    static void post_move_sync(auto& accessor, auto const& boxings, std::size_t const i);
+    static void deposit(auto& accessor, auto const& boxings, std::size_t const i);
+
+    double dt_ = 0;
+
+private:
+    void updateAndDepositDomain_(auto& accessor,
+                                 std::unordered_map<std::string, Boxing_t> const& boxings);
+    void updateAndDepositAll_(auto& accessor,
+                              std::unordered_map<std::string, Boxing_t> const& boxings);
+
+    static auto n_tiles_(auto& view)
+    {
+        auto& ions = std::get<0>(view.args);
+        return ions.size() ? tile_count(ions[0].particleDensity()) : std::size_t{0};
+    }
+
+    static void post_move_sync_(auto& view, auto const& boxings);
+    static void deposit_tile_(auto& view, std::size_t const t);
+};
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::reset_moments(auto& accessor)
+{
+    if constexpr (use_main_thread)
+        for (std::size_t i = 0; i < accessor.size(); ++i)
+        {
+            auto view      = accessor[i];
+            auto [ions, _] = view.args;
+            resetMoments(ions);
+        }
+    else
+        ThreadPool::INSTANCE().tile_exec(
+            accessor.size(), [&](auto const i) { return accessor[i]; },
+            [](auto& view) { return n_tiles_(view); },
+            [](auto& view, auto const t) { resetMoments(std::get<0>(view.args), t); });
+}
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::post_move_sync_(auto& view,
+                                                                      auto const& boxings)
+{
+    auto& [ions, _]           = view.args;
+    auto const& patch_boxings = boxings.at(view.patchID());
+    auto const& nonOwnedBoxes = patch_boxings.nonOwnedBoxes;
+
+    for (auto& pop : ions)
+    {
+        auto& domain     = pop.domainParticles();
+        auto& patchGhost = pop.patchGhostParticles();
+        auto& levelGhost = pop.levelGhostParticles();
+        delete_particles_not_in(domain, patch_boxings.nonLevelGhostBox);
+        move_in_ghost_layer(patchGhost, domain, patch_boxings.domainBox,
+                            patch_boxings.nonLevelGhostBox);
+        if (!nonOwnedBoxes.empty())
+        {
+            for (auto const& box : nonOwnedBoxes)
+                move_in_domain(patchGhost, domain, box);
+            delete_particles_in(levelGhost, nonOwnedBoxes);
+        }
+        move_in_domain(domain, levelGhost, patch_boxings.domainBox);
+        delete_particles_not_in(levelGhost, patch_boxings.ghostBox);
+        delete_particles_not_in(domain, patch_boxings.domainBox);
+    }
+}
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::post_move_sync(auto& accessor,
+                                                                     auto const& boxings,
+                                                                     std::size_t const i)
+{
+    auto view = accessor[i];
+    post_move_sync_(view, boxings);
+}
+
+
+// only writes the moments of tile t, domain and patch ghosts of a tile in the same task
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::deposit_tile_(auto& view,
+                                                                    std::size_t const t)
+{
+    Interpolating_t interp;
+    for (auto& pop : std::get<0>(view.args))
+    {
+        interp.particleToMesh_tile(t, pop.domainParticles(), pop.particleDensity(),
+                                   pop.chargeDensity(), pop.flux());
+        interp.particleToMesh_tile(t, pop.patchGhostParticles(), pop.particleDensity(),
+                                   pop.chargeDensity(), pop.flux());
+    }
+}
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::deposit(auto& accessor, auto const& boxings,
+                                                              std::size_t const i)
+{
+    auto view            = accessor[i];
+    auto [ions, _]       = view.args;
+    auto const patch_id  = view.patchID();
+    auto const& boxing_i = boxings.at(patch_id);
+    Interpolating_t interp;
+    for (auto& pop : ions)
+    {
+        interp.particleToMesh(pop.domainParticles(), boxing_i.layout, pop.particleDensity(),
+                              pop.chargeDensity(), pop.flux());
+        interp.particleToMesh(pop.patchGhostParticles(), boxing_i.layout, pop.particleDensity(),
+                              pop.chargeDensity(), pop.flux());
+    }
+}
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::updatePopulations(
+    auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings, double const& dt,
+    UpdaterMode mode)
+{
+    PHARE_LOG_SCOPE(2, "IonUpdater::updatePopulations");
+
+    reset_moments(accessor);
+    dt_ = dt;
+    if (mode == UpdaterMode::domain_only)
+        updateAndDepositDomain_(accessor, boxings);
+    else
+        updateAndDepositAll_(accessor, boxings);
+}
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositDomain_(
+    auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings)
+{
+    PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositDomain_");
+
+    if (accessor.size() == 0)
+        return;
+
+    using Accessor_t = std::remove_reference_t<decltype(accessor)>;
+    MultiBoris<Accessor_t, Interpolator_t>{dt_, accessor}.template move<MultiBorisMode::COPY>(
+        boxings);
+}
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
+    auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings)
+{
+    PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_");
+
+    if (accessor.size() == 0)
+        return;
+
+    using Accessor_t = std::remove_reference_t<decltype(accessor)>;
+    {
+        PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_::multi_boris");
+        MultiBoris<Accessor_t, Interpolator_t>{dt_, accessor}.move(boxings);
+    }
+
+    static constexpr bool per_tile_deposit
+        = any_in(ParticleArray_t::layout_mode, LayoutMode::AoSPCTS, LayoutMode::AoSCMTS);
+
+    if constexpr (use_main_thread)
+    {
+        for (std::size_t i = 0; i < accessor.size(); ++i)
+            post_move_sync(accessor, boxings, i);
+        for (std::size_t i = 0; i < accessor.size(); ++i)
+            deposit(accessor, boxings, i);
+    }
+    else
+    {
+        auto& tp = ThreadPool::INSTANCE();
+        {
+            PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_::post_move_sync");
+            tp.patch_exec( // moves particles between tiles
+                accessor.size(), [&](auto const i) { return accessor[i]; },
+                [&](auto& view) { post_move_sync_(view, boxings); });
+        }
+        {
+            PHARE_LOG_SCOPE(1, "IonUpdater::updateAndDepositAll_::deposit");
+            if constexpr (per_tile_deposit)
+                tp.tile_exec(
+                    accessor.size(), [&](auto const i) { return accessor[i]; },
+                    [](auto& view) { return n_tiles_(view); },
+                    [](auto& view, auto const t) { deposit_tile_(view, t); });
+            else
+            {
+                for (std::size_t i = 0; i < accessor.size(); ++i)
+                    tp.async([&, i] { deposit(accessor, boxings, i); });
+                tp.sync();
+            }
+        }
+    }
+}
+
 
 } // namespace PHARE::core
+
+
+#if PHARE_HAVE_MKN_GPU
+
+namespace PHARE::core::mkn_xyz
+{
+
+/**
+ * @brief mkn_xyz::ParallelIonUpdater: core::ParallelIonUpdater steps dispatched with mkn.gpu
+ * ThreadedStreamLauncher (one host thread + stream per patch), and GPU deposit kernels
+ */
+template<typename ParticleArray_t, typename GridLayout>
+class ParallelIonUpdater : public core::ParallelIonUpdater<ParticleArray_t, GridLayout>
+{
+    using Super = core::ParallelIonUpdater<ParticleArray_t, GridLayout>;
+
+    static constexpr auto dimension     = GridLayout::dimension;
+    static constexpr auto interp_order  = GridLayout::options.interp_order;
+    static constexpr bool atomic_interp = ParticleArray_t::alloc_mode == AllocatorMode::GPU_UNIFIED;
+    using Interpolator_t                = Interpolator<dimension, interp_order, atomic_interp>;
+    using Interpolating_t               = Interpolating<dimension, interp_order, atomic_interp>;
+
+public:
+    using Boxing_t = Super::Boxing_t;
+
+    auto constexpr static use_main_thread = Super::use_main_thread;
+
+    void updatePopulations(auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings,
+                           double const& dt, UpdaterMode mode = UpdaterMode::all);
+
+private:
+    void updateAndDepositDomain_(auto& accessor,
+                                 std::unordered_map<std::string, Boxing_t> const& boxings);
+    void updateAndDepositAll_(auto& accessor,
+                              std::unordered_map<std::string, Boxing_t> const& boxings);
+};
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::updatePopulations(
+    auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings, double const& dt,
+    UpdaterMode mode)
+{
+    PHARE_LOG_SCOPE(2, "mkn_xyz::IonUpdater::updatePopulations");
+
+    Super::reset_moments(accessor);
+    this->dt_ = dt;
+    if (mode == UpdaterMode::domain_only)
+        updateAndDepositDomain_(accessor, boxings);
+    else
+        updateAndDepositAll_(accessor, boxings);
+}
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositDomain_(
+    auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings)
+{
+    PHARE_LOG_SCOPE(1, "mkn_xyz::IonUpdater::updateAndDepositDomain_");
+
+    if (accessor.size() == 0)
+        return;
+
+    using Accessor_t = std::remove_reference_t<decltype(accessor)>;
+    MultiBoris<Accessor_t, Interpolator_t> in{this->dt_, accessor};
+    in.template move<MultiBorisMode::COPY>(boxings);
+
+    if constexpr (not use_main_thread)
+    {
+        in.streamer.join();
+        in.streamer.dump_times(detail::timings_dir_str + "/updateAndDepositDomain.txt");
+    }
+}
+
+
+template<typename ParticleArray_t, typename GridLayout>
+void ParallelIonUpdater<ParticleArray_t, GridLayout>::updateAndDepositAll_(
+    auto& accessor, std::unordered_map<std::string, Boxing_t> const& boxings)
+{
+    PHARE_LOG_SCOPE(1, "mkn_xyz::IonUpdater::updateAndDepositAll_");
+
+    if (accessor.size() == 0)
+        return;
+
+    using Accessor_t = std::remove_reference_t<decltype(accessor)>;
+    using Tile_vt    = Accessor_t::Model_t::electromag_type::vecfield_type::field_type::value_type;
+
+    MultiBoris<Accessor_t, Interpolator_t> in{this->dt_, accessor};
+    in.move(boxings);
+
+    auto post_move_sync
+        = [&](auto const i) mutable { Super::post_move_sync(accessor, boxings, i); };
+
+    if constexpr (use_main_thread)
+        for (std::size_t i = 0; i < accessor.size(); ++i)
+            post_move_sync(i);
+    else
+        in.streamer.host(std::move(post_move_sync));
+
+    if constexpr (ParticleArray_t::alloc_mode == AllocatorMode::GPU_UNIFIED)
+    {
+        auto deposit = [&](auto const i) mutable {
+            auto view      = accessor[i];
+            auto [ions, _] = view.args;
+            for (std::size_t j = 0; j < ions.size(); ++j)
+            {
+                auto& pop = ions[j];
+
+                if constexpr (ParticleArray_t::layout_mode == LayoutMode::AoSPCTS)
+                {
+                    // block = (tile, cell), threads stride the cell (see on_tile_cells)
+                    auto const deposit_tiles = [&](auto& particles) {
+                        using Launcher       = gpu::TileCellLauncher<false>;
+                        auto const parts     = *particles;
+                        auto const max_cells = Launcher::max_cells(parts);
+                        if (max_cells == 0)
+                            return;
+
+                        std::size_t const threads = kernel::warp_size();
+                        auto pdensity             = pop.particleDensity();
+                        auto cdensity             = pop.chargeDensity();
+                        auto flux                 = *pop.flux();
+                        Launcher{parts().size(), max_cells, threads}.stream(
+                            in.streamer.streams[i], [=] __device__() mutable {
+                                Interpolating_t::template on_tile_cells<Tile_vt, Launcher>(
+                                    parts, flux, pdensity, cdensity, threads);
+                            });
+                    };
+                    deposit_tiles(pop.domainParticles());
+                    deposit_tiles(pop.patchGhostParticles());
+                }
+                else
+                {
+                    std::uint32_t const ds = ions.chargeDensity().max_tile_size();
+                    auto const domain      = *pop.domainParticles();
+                    using Launcher         = gpu::ChunkLauncher<false>;
+                    Launcher launcher{1, 0};
+                    launcher.b.x = kernel::warp_size();
+                    launcher.g.x = domain().size();
+                    launcher.ds  = ds * 5 * 8;
+                    assert(launcher.ds < 65000);
+                    auto pdensity = pop.particleDensity();
+                    auto cdensity = pop.chargeDensity();
+                    auto flux     = *pop.flux();
+                    launcher.stream(in.streamer.streams[i], [=] __device__() mutable {
+                        Interpolating_t::template on_tiles<Tile_vt>(domain, flux, pdensity,
+                                                                    cdensity);
+                    });
+                }
+            }
+        };
+
+        if constexpr (use_main_thread)
+            for (std::size_t i = 0; i < accessor.size(); ++i)
+                deposit(i);
+        else
+            in.streamer.host(std::move(deposit));
+    }
+    else
+    {
+        auto deposit = [&](auto const i) mutable { Super::deposit(accessor, boxings, i); };
+
+        if constexpr (use_main_thread)
+            for (std::size_t i = 0; i < accessor.size(); ++i)
+                deposit(i);
+        else
+            in.streamer.host(std::move(deposit));
+    }
+
+    if constexpr (not use_main_thread)
+    {
+        in.streamer.join();
+        in.streamer.dump_times(detail::timings_dir_str + "/updateAndDepositAll.txt");
+    }
+
+
+#if PHARE_DEBUG
+    for (std::size_t i = 0; i < accessor.size(); ++i)
+    {
+        auto view                 = accessor[i];
+        auto [ions, _]            = view.args;
+        auto const patch_id       = view.patchID();
+        auto const& patch_boxings = boxings.at(patch_id);
+
+        for (std::size_t j = 0; j < ions.size(); ++j)
+        {
+            auto& pop = ions[j];
+            particle_array_domain_is_valid(pop.domainParticles(), patch_boxings.domainBox);
+            particle_array_ghost_is_valid(pop.patchGhostParticles(), patch_boxings.domainBox,
+                                          patch_boxings.ghostBox);
+            particle_array_ghost_is_valid(pop.levelGhostParticles(), patch_boxings.domainBox,
+                                          patch_boxings.ghostBox);
+        }
+    }
+#endif /* PHARE_DEBUG */
+}
+
+
+} // namespace PHARE::core::mkn_xyz
+
+#endif // PHARE_HAVE_MKN_GPU
 
 
 #endif // ION_UPDATER_HPP

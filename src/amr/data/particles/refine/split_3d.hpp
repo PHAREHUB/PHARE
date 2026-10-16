@@ -1,3 +1,4 @@
+// IWYU pragma: private, include "amr/data/particles/refine/split.hpp"
 /*
 Splitting reference material can be found @
   https://github.com/PHAREHUB/PHARE/wiki/SplitPattern
@@ -6,11 +7,13 @@ Splitting reference material can be found @
 #ifndef PHARE_SPLIT_3D_HPP
 #define PHARE_SPLIT_3D_HPP
 
+#include "core/utilities/types.hpp"
+#include "core/utilities/point/point.hpp"
+
+#include "splitter.hpp"
+
 #include <array>
 #include <cstddef>
-#include "core/utilities/point/point.hpp"
-#include "core/utilities/types.hpp"
-#include "splitter.hpp"
 
 namespace PHARE::amr
 {

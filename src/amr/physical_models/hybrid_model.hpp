@@ -3,37 +3,77 @@
 
 
 #include "core/def.hpp"
+#include "phare_mpi.hpp" // IWYU pragma: keep
+#include "core/utilities/types.hpp"
+#include "mpi/mpi_utils.hpp"
 #include "core/models/hybrid_state.hpp"
+#include "core/utilities/thread_pool.hpp"
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 
 #include "initializer/data_provider.hpp"
 
+#include "amr/resources_manager/amr_utils.hpp"
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
-#include "amr/resources_manager/resources_manager.hpp"
 
+#include "hybrid_model_storage.hpp"
 
 #include <string>
+#include <sstream>
+#include <stdexcept>
+#include <algorithm>
+#include <type_traits>
 
 namespace PHARE::solver
 {
+
+// for optional compile time per patch resources - eg grids for reducing during diags
+template<typename AMR_Types, typename Ions, typename Grid_t>
+class HybridModelBase
+    : public IPhysicalModel<AMR_Types>,
+      public hybrid_model_storage<Ions::particle_array_type::layout_mode, Ions, Grid_t>
+{
+public:
+    using Super     = IPhysicalModel<AMR_Types>;
+    using storage_t = hybrid_model_storage<Ions::particle_array_type::layout_mode, Ions, Grid_t>;
+    using resources_manager_type = storage_t::resources_manager_type;
+
+    HybridModelBase(std::string const& model_name)
+        : Super{model_name}
+        , storage_t{}
+    {
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return storage_t::getCompileTimeResourcesViewList();
+    }
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return storage_t::getCompileTimeResourcesViewList();
+    }
+};
+
+
 /**
  * @brief The HybridModel class is a concrete implementation of a IPhysicalModel. The class
  * holds a HybridState and a ResourcesManager.
  */
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
          typename AMR_Types, typename Grid_t>
-class HybridModel : public IPhysicalModel<AMR_Types>
+class HybridModel : public HybridModelBase<AMR_Types, Ions, Grid_t>
 {
 public:
     static constexpr auto dimension    = GridLayoutT::dimension;
     static constexpr auto interp_order = GridLayoutT::options.interp_order;
 
     using Interface              = IPhysicalModel<AMR_Types>;
+    using Super                  = HybridModelBase<AMR_Types, Ions, Grid_t>;
     using amr_types              = AMR_Types;
     using electrons_t            = Electrons;
     using patch_t                = AMR_Types::patch_t;
     using level_t                = AMR_Types::level_t;
+    using State_t                = core::HybridState<Electromag, Ions, Electrons>;
     using physical_quantity_type = core::HybridQuantity;
     using gridlayout_type        = GridLayoutT;
     using electromag_type        = Electromag;
@@ -42,15 +82,20 @@ public:
     using grid_type              = Grid_t;
     using ions_type              = Ions;
     using particle_array_type    = Ions::particle_array_type;
-    using resources_manager_type = amr::ResourcesManager<gridlayout_type, grid_type>;
-    using ParticleInitializerFactory
+    using resources_manager_type = Super::resources_manager_type;
+    using ParticleInitializerFactory_t
         = core::ParticleInitializerFactory<particle_array_type, gridlayout_type>;
+    // *_rt = real type, not tiled!
+    using Field_rt       = Super::storage_t::field_type;
+    using VecField_rt    = Super::storage_t::vecfield_type;
+    using TensorField_rt = Super::storage_t::tensorfield_type;
 
     static constexpr std::string_view model_type_name = "HybridModel";
     static inline std::string const model_name{model_type_name};
 
 
-    core::HybridState<Electromag, Ions, Electrons> state;
+
+    State_t state;
     std::shared_ptr<resources_manager_type> resourcesManager;
 
 
@@ -63,7 +108,8 @@ public:
      */
     virtual void allocate(patch_t& patch, double const allocateTime) override
     {
-        resourcesManager->allocate(state, patch, allocateTime);
+        core::apply(getCompileTimeResourcesViewList(),
+                    [&](auto& el) { resourcesManager->allocate(el, patch, allocateTime); });
     }
 
 
@@ -84,7 +130,7 @@ public:
 
     HybridModel(PHARE::initializer::PHAREDict const& dict,
                 std::shared_ptr<resources_manager_type> const& _resourcesManager)
-        : IPhysicalModel<AMR_Types>{model_name}
+        : Super{model_name}
         , state{dict}
         , resourcesManager{_resourcesManager}
     {
@@ -92,6 +138,8 @@ public:
 
 
     virtual ~HybridModel() override {}
+
+    std::string summarize(auto& hierarchy, std::string const& format = "");
 
     //-------------------------------------------------------------------------
     //                  start the ResourcesUser interface
@@ -101,14 +149,35 @@ public:
 
     NO_DISCARD bool isSettable() const { return state.isSettable(); }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        auto tup = std::tuple_cat(std::forward_as_tuple(state),
+                                  Super::getCompileTimeResourcesViewList());
+        core::for_N<std::tuple_size_v<decltype(tup)>>([&](auto i) {
+            static_assert(std::is_reference_v<std::tuple_element_t<i, decltype(tup)>>);
+        });
+        return tup;
+    }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() { return std::forward_as_tuple(state); }
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        auto tup = std::tuple_cat(std::forward_as_tuple(state),
+                                  Super::getCompileTimeResourcesViewList());
+        core::for_N<std::tuple_size_v<decltype(tup)>>([&](auto i) {
+            static_assert(std::is_reference_v<std::tuple_element_t<i, decltype(tup)>>);
+        });
+        return tup;
+    }
 
     //-------------------------------------------------------------------------
     //                  ends the ResourcesUser interface
     //-------------------------------------------------------------------------
 
+
+    Field_rt static inline tmpField{"phare_scratch_field", core::HybridQuantity::Scalar::Vx};
+    VecField_rt static inline tmpVec{"phare_scratch_vec_field", core::HybridQuantity::Vector::V};
+    TensorField_rt static inline tmpTensor{"phare_scratch_tensor_field",
+                                           core::HybridQuantity::Tensor::M};
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
 };
 
@@ -120,27 +189,186 @@ public:
 //-------------------------------------------------------------------------
 
 
+template<typename GridLayoutT>
+struct LevelStats
+{
+    std::size_t patches = 0, cells = 0, patch_ghosts = 0, level_ghosts = 0;
+
+    static auto GET(auto& rm, auto& V, auto& lvl, auto& hierarchy)
+    {
+        using namespace PHARE::core;
+
+        auto const& Vx = V[0]; // Any is fine, all primal!
+
+        LevelStats stats;
+        for (auto const& patch : rm.enumerate(lvl, V))
+        {
+            auto const layout    = amr::layoutFromPatch<GridLayoutT>(*patch);
+            auto const box       = layout.AMRBoxFor(Vx);
+            auto const ghost_box = layout.AMRGhostBoxFor(Vx);
+
+            auto const cells  = box.size();
+            auto const ghosts = ghost_box.size() - cells;
+            auto const patch_ghost_cells
+                = sum_from(patchGhostBoxOverlaps<GridLayoutT>(*patch, hierarchy), [](auto box) {
+                      box.upper += 1;
+                      return box.size();
+                  });
+
+            stats.cells += cells;
+            stats.patch_ghosts += patch_ghost_cells;
+            stats.level_ghosts += ghosts - patch_ghost_cells;
+            ++stats.patches;
+        }
+
+        return stats;
+    }
+
+    auto collect() const
+    {
+        using namespace PHARE::core;
+        LevelStats stats;
+        stats.cells        = mpi::sum_on_rank_0(cells);
+        stats.patch_ghosts = mpi::sum_on_rank_0(patch_ghosts);
+        stats.level_ghosts = mpi::sum_on_rank_0(level_ghosts);
+        stats.patches      = mpi::sum_on_rank_0(patches);
+        return stats;
+    }
+};
+
+template<typename GridLayoutT>
+inline std::ostream& operator<<(std::ostream& out, LevelStats<GridLayoutT> const& stats)
+{
+    out << stats.patches << ",";
+    out << stats.cells << ",";
+    out << stats.patch_ghosts << ",";
+    out << stats.level_ghosts;
+
+    return out;
+}
+
+
+
+template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
+         typename AMR_Types, typename Grid_t>
+std::string HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::summarize(
+    auto& hierarchy, std::string const& format)
+{
+    auto& rm = *this->resourcesManager;
+
+    std::stringstream ss;
+
+    std::size_t total = 0;
+
+    amr::onLevels(hierarchy, [&](auto& lvl) mutable {
+        auto const lcl = core::sum_from(rm.enumerate(lvl, state.ions), [&](auto const&) {
+            return core::sum_from(state.ions,
+                                  [](auto const& pop) { return pop.domainParticles().size(); });
+        });
+
+        auto const on_lvl = mpi::sum_on_rank_0(lcl);
+        total += on_lvl;
+
+        auto const level_stats
+            = LevelStats<GridLayoutT>::GET(rm, state.ions.velocity(), lvl, hierarchy).collect();
+
+        if (mpi::rank() == 0)
+            ss << "lvl:" << lvl.getLevelNumber() << " (" << level_stats << ") " // << minmax
+               << " parts(" << on_lvl << "), " << std::endl;
+    });
+
+    if (mpi::rank() == 0)
+        ss << "tot:" << total;
+
+    return ss.str();
+}
+
+
 template<typename GridLayoutT, typename Electromag, typename Ions, typename Electrons,
          typename AMR_Types, typename Grid_t>
 void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::initialize(
     level_t& level)
 {
-    for (auto& patch : level)
-    {
-        // first initialize the ions
-        auto layout = amr::layoutFromPatch<gridlayout_type>(*patch);
-        auto& ions  = state.ions;
-        auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions, state.J);
+    auto static const init_mode = core::get_env_as("PHARE_MODEL_INIT_MODE", std::size_t{0});
 
+    auto const init = [this](auto& patch, auto& electromag, auto& ions) {
+        auto const& _      = this->resourcesManager->setOnPatch(*patch, electromag, ions);
+        auto const& layout = amr::layoutFromPatch<gridlayout_type>(*patch);
         for (auto& pop : ions)
-        {
-            auto const& info         = pop.particleInitializerInfo();
-            auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout);
-        }
+            ParticleInitializerFactory_t::create(pop.particleInitializerInfo())
+                ->loadParticles(pop.domainParticles(), layout);
 
-        state.electromag.initialize(layout);
+        electromag.initialize(layout);
+    };
+
+    // first initialize the ions
+
+    // DEADLOCK with python functions IF NOT GIL-LESS!
+    if (init_mode == 3) // round robin thread pools per patch, thread per tile
+    {
+        if constexpr (core::is_tiled(particle_array_type::layout_mode))
+        {
+            using TileParticleArray_t = particle_array_type::per_tile_particles;
+            using TileParticleInitializerFactory_t
+                = core::ParticleInitializerFactory<TileParticleArray_t, gridlayout_type>;
+
+            for (auto& patch : resourcesManager->enumerate(level, state.ions))
+            {
+                auto const pool_idx = core::ThreadPool::INSTANCE().first_ready_idx();
+                auto& pool          = core::ThreadPool::INSTANCE().get_pool(pool_idx);
+                auto const& layout  = amr::layoutFromPatch<gridlayout_type>(*patch);
+                for (auto& pop : state.ions)
+                    for (auto& tile : pop.domainParticles()())
+                    {
+                        auto& particles = tile();
+                        pool.detach_task([layout = layout, tile = &tile, &particles, pop = &pop]() {
+                            TileParticleInitializerFactory_t::create(pop->particleInitializerInfo())
+                                ->loadParticles(particles, layout.copy_as(**tile));
+                        });
+                    }
+            }
+
+            for (auto& patch : resourcesManager->enumerate(level, state.electromag))
+                state.electromag.initialize(amr::layoutFromPatch<gridlayout_type>(*patch));
+
+            core::ThreadPool::INSTANCE().wait();
+        }
+        else
+        {
+            throw std::runtime_error("Wrong layout");
+        }
     }
+
+
+    // DEADLOCK with python functions IF NOT GIL-LESS!
+    else if (init_mode == 2) // round robin thread pools
+    {
+        auto& pool = core::ThreadPool::INSTANCE();
+        for (auto& patch : level)
+            pool.async([&, ions = state.ions, electromag = state.electromag,
+                        patch = &*patch]() mutable { init(patch, electromag, ions); });
+    }
+
+
+    // DEADLOCK with python functions IF NOT GIL-LESS!
+    else if (init_mode == 1) // single thread pool
+    {
+        auto& pool = core::ThreadPool::pool(0);
+        for (auto& patch : level)
+            pool.detach_task([&, ions = state.ions, electromag = state.electromag,
+                              patch = patch]() mutable { init(patch, electromag, ions); });
+        pool.wait();
+    }
+
+
+    else if (init_mode == 0) // default serial
+    {
+        for (auto& patch : level)
+            init(patch, state.electromag, state.ions);
+    }
+
+    else
+        throw std::runtime_error("no HybridModel::initialize impl");
 }
 
 
