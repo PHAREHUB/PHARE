@@ -3,7 +3,7 @@ import types
 import unittest
 from unittest.mock import patch
 
-import pyphare.cpp as cpp
+from pyphare import cpp
 
 
 class CppNoSuchModuleTest(unittest.TestCase):

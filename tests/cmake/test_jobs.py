@@ -12,7 +12,7 @@ def run_driver(body):
         driver = Path(tmp) / "driver.cmake"
         driver.write_text(f'include("{JOBS}")\n{body}\nmessage("RESULT=${{out}}")\n')
         proc = subprocess.run(
-            ["cmake", "-P", str(driver)], capture_output=True, text=True
+            ["cmake", "-P", str(driver)], capture_output=True, text=True, check=False
         )
     output = proc.stdout + proc.stderr
     match = re.search(r"RESULT=(.*)", output)
