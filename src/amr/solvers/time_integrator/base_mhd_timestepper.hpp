@@ -6,6 +6,8 @@
 
 #include "initializer/data_provider.hpp"
 
+#include "amr/physical_models/models.hpp"
+
 #include <SAMRAI/hier/Patch.h>
 #include <vector>
 
@@ -104,23 +106,24 @@ public:
 protected:
     void resetButcherFluxes_(MHDModel& model, auto& level)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_))
-        {
-            butcherFluxes_.zero();
-            butcherE_.zero();
-        }
+        amr::onLevel(amr::make_model_level_accessor(level, model, butcherFluxes_, butcherE_),
+                     [&](auto& view) {
+                         auto& [butcherFluxes, butcherE] = view.args;
+                         butcherFluxes.zero();
+                         butcherE.zero();
+                     });
     }
 
     void accumulateButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
                                   double const coef = 1.0)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_, fluxes, E))
-        {
-            core::operate<core::PlusEqualsProduct>(butcherFluxes_, fluxes, coef);
-            core::operate<core::PlusEqualsProduct>(butcherE_, E, coef);
-        }
+        amr::onLevel(
+            amr::make_model_level_accessor(level, model, butcherFluxes_, butcherE_, fluxes, E),
+            [&](auto& view) {
+                auto& [butcherFluxes, butcherE, fluxes_v, E_v] = view.args;
+                core::operate<core::PlusEqualsProduct>(butcherFluxes, fluxes_v, coef);
+                core::operate<core::PlusEqualsProduct>(butcherE, E_v, coef);
+            });
     }
 
     std::vector<MHDStateT> extra_states_;
