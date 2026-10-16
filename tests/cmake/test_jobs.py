@@ -13,7 +13,7 @@ GIB = 1024**3
 def run_cmake(body):
     with tempfile.TemporaryDirectory() as tmp:
         driver = Path(tmp) / "driver.cmake"
-        driver.write_text(f'include("{JOBS}")\n{body}\nmessage("RESULT=${{out}}")\n')
+        driver.write_text(f'cmake_minimum_required(VERSION 3.20)\ninclude("{JOBS}")\n{body}\nmessage("RESULT=${{out}}")\n')
         proc = subprocess.run(
             [CMAKE, "-P", str(driver)], capture_output=True, text=True, check=False
         )
