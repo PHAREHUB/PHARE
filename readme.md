@@ -44,7 +44,7 @@ resolution wherever the solution needs it.
 PHARE is an open-source projet licenced under the GPLv3. Please refer to [LICENCE.TXT](LICENCE.TXT)
 
 
-## Building the code
+## Install PHARE
 
 Basic tools and library requirements:
 
@@ -55,36 +55,44 @@ Basic tools and library requirements:
 - C++ and Fortran compiler
 - MPI
 - Parallel HDF5
-- Python 3.x devel package
+- Python 3.11+ devel package
 ```
 
-
-
-PHARE input and post-processing scripts are in python. Install dependencies with [uv](https://docs.astral.sh/uv/), which creates a `.venv` from `pyproject.toml`:
+From a source checkout, `pip install .` builds PHARE with CMake and installs the `pyphare` python package together with the compiled simulator modules. Nothing needs to be added to `PYTHONPATH` or `LD_LIBRARY_PATH` afterwards:
 
 ```
-  uv sync
+  python3 -m venv phare_venv
+  source phare_venv/bin/activate
+  pip install .
 ```
 
-or with pip:
+PHARE depends on [SAMRAI](https://github.com/llnl/samrai) to manage the adaptive mesh refinement. By default the latest version is built from `subprojects/`. To use a pre-installed SAMRAI instead:
 
 ```
-  python3 -m pip install -r requirements.txt
+  pip install . -C cmake.define.SAMRAI_ROOT=/path/to/SAMRAI/install
 ```
 
-PHARE depends on [SAMRAI](https://github.com/llnl/samrai) to manage the adaptive mesh refinement. You can either
-
-- build PHARE with the latest version of [SAMRAI](https://github.com/llnl/samrai):
+By default every simulation permutation listed in `res/sim/all.txt` is compiled, which takes a long time. To build only the permutations listed in your own file:
 
 ```
-  mkdir build; cd build; cmake ..; make
+  pip install . -C cmake.define.PHARE_PERMUTATIONS=/path/to/permutations.txt
 ```
 
-- build PHARE with a pre-installed version of [SAMRAI](https://github.com/llnl/samrai):
+The number of simulator modules compiled concurrently is limited according to the available memory. Override it with `-C cmake.define.PHARE_MODULE_COMPILE_JOBS=<n>` (`0` disables the limit) or `-C cmake.define.PHARE_MODULE_COMPILE_MEMORY_MB=<mb>` (default 2048, memory assumed per compile job).
+
+The build directory `_skbuild/` is kept between installs, so rebuilds are incremental. `SAMRAI_ROOT` and `PHARE_PERMUTATIONS` are not remembered from one install to the next: pass them again each time. Delete `_skbuild/` after changing compilers, flags or loaded modules.
+
+With [uv](https://docs.astral.sh/uv/), `uv sync` creates a `.venv`, installs the python dependencies and builds PHARE the same way. Since `-C` options are not available, pass CMake definitions through the `SKBUILD_CMAKE_DEFINE` environment variable (semicolon-separated `KEY=VALUE`):
 
 ```
-  mkdir build; cd build; cmake .. -DSAMRAI_ROOT=/path/to/SAMRAI/install; make
+  SKBUILD_CMAKE_DEFINE="SAMRAI_ROOT=/path/to/SAMRAI/install;PHARE_PERMUTATIONS=/path/to/permutations.txt" uv sync
 ```
+
+uv does not detect changes to these options, nor to a permutation file outside the repository. After changing them, run `uv sync --reinstall-package pyphare` (pip reinstalls on every `pip install .`).
+
+Do not run `ninja` or `cmake --build` by hand inside `_skbuild/`: after a CMake file changes, the automatic reconfigure does not have your `-C` options and falls back to the defaults. Reinstall with pip or uv instead.
+
+To install on a cluster, or to choose compilers and flags, see [Run PHARE from python](https://phare.readthedocs.io/en/latest/usage/run_from_python.html).
 
 ## Documentation
 
@@ -101,6 +109,19 @@ All contributions are welcome. If you are interested in participating to the pro
 ### Development environnment
 
 For system library requirements see the following [Docker File](https://github.com/PHARCHIVE/phare-teamcity-agent/blob/master/Dockerfile)
+
+Developers who keep their own CMake build:
+
+```
+  mkdir build; cd build; cmake .. -DSAMRAI_ROOT=/path/to/SAMRAI/install; make
+```
+
+should install only the python dependencies, since a plain `uv sync` builds PHARE with every permutation:
+
+```
+  uv sync --no-install-project
+  export PYTHONPATH=/path/to/PHARE/pyphare:/path/to/PHARE/build:$PYTHONPATH
+```
 
 The clang-format and ruff versions checked by CI are pinned in the `lint` dependency group of `pyproject.toml`. `uv sync` installs them, or with pip >= 25.1:
 
