@@ -168,12 +168,14 @@ def plot(diag_dir, plot_dir):
     run = Run(diag_dir)
     pop_name = "protons"
     for time in timestamps:
-        run.GetDivB(time).plot(
-            filename=plot_file_for_qty(plot_dir, "divb", time),
-            plot_patches=True,
-            vmin=-1e-11,
-            vmax=1e-11,
-        )
+        divB = run.GetDivB(time)
+        for tol in [1e-11, 1e-12, 1e-13]:
+            divB.plot(
+                filename=plot_file_for_qty(plot_dir, f"divb_{tol:.0e}", time),
+                plot_patches=True,
+                vmin=-tol,
+                vmax=tol,
+            )
         run.GetRanks(time).plot(
             filename=plot_file_for_qty(plot_dir, "Ranks", time), plot_patches=True
         )
