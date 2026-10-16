@@ -119,25 +119,22 @@ namespace amr
          * schedules, which a re-initialised level makes stale. The method registerQuantities must
          * be called before this method.
          */
-        virtual void
-        registerSameLevelSchedules(hierarchy_ptr const& hierarchy,
-                                   int const levelNumber)
+        virtual void registerSameLevelSchedules(hierarchy_ptr const& hierarchy,
+                                                int const levelNumber)
             = 0;
 
         /**
          * @brief registerInterLevelSchedules builds the schedules reading coarser levels. They go
          * stale whenever a coarser level is replaced. Nothing is built on the root level.
          */
-        virtual void
-        registerInterLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                    int const levelNumber)
+        virtual void registerInterLevelSchedules(hierarchy_ptr const& hierarchy,
+                                                 int const levelNumber)
             = 0;
 
         /**
          * @brief registerLevel builds both the same-level and the inter-level schedules.
          */
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           int const levelNumber)
+        void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber)
         {
             registerSameLevelSchedules(hierarchy, levelNumber);
             registerInterLevelSchedules(hierarchy, levelNumber);
@@ -170,9 +167,8 @@ namespace amr
          * quantities registered during registerQuantities(). The hierarchy is needed to build
          * the transient init schedules.
          */
-        virtual void initLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                               IPhysicalModel& model, level_t& level,
-                               double const initDataTime)
+        virtual void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model,
+                               level_t& level, double const initDataTime)
             = 0;
 
 
