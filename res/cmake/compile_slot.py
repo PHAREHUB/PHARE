@@ -14,8 +14,17 @@ def acquire(slots, lock_dir):
         for fd in fds:
             try:
                 fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-            except OSError:
+            except BlockingIOError:
                 continue
+            except OSError as error:
+                for other in fds:
+                    os.close(other)
+                print(
+                    f"compile_slot: file locking unavailable ({error}), "
+                    "running without a slot limit",
+                    file=sys.stderr,
+                )
+                return None
             os.set_inheritable(fd, True)
             for other in fds:
                 if other != fd:
@@ -26,7 +35,10 @@ def acquire(slots, lock_dir):
 
 def main(argv):
     if len(argv) < 4:
-        print("usage: compile_slot.py <slots> <lock_dir> <command> [args...]", file=sys.stderr)
+        print(
+            "usage: compile_slot.py <slots> <lock_dir> <command> [args...]",
+            file=sys.stderr,
+        )
         return 2
     try:
         slots = int(argv[1])
