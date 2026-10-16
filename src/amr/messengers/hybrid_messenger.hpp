@@ -106,9 +106,9 @@ namespace amr
         /**
          * @brief see IMessenger::registerSameLevelSchedules
          */
-        void registerSameLevelSchedules(
-            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-            int const levelNumber) override
+        void
+        registerSameLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber) override
         {
             strat_->registerSameLevelSchedules(hierarchy, levelNumber);
         }
@@ -116,9 +116,9 @@ namespace amr
         /**
          * @brief see IMessenger::registerInterLevelSchedules
          */
-        void registerInterLevelSchedules(
-            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-            int const levelNumber) override
+        void
+        registerInterLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                    int const levelNumber) override
         {
             strat_->registerInterLevelSchedules(hierarchy, levelNumber);
         }

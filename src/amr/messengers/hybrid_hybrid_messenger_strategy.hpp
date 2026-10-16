@@ -338,9 +338,8 @@ namespace amr
          * @brief initLevel is used to initialize hybrid data on the level levelNumer at
          * time initDataTime from hybrid coarser data.
          */
-        void initLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
-                       IPhysicalModel& model, level_t& level,
-                       double const initDataTime) override
+        void initLevel(std::shared_ptr<hierarchy_t> const& hierarchy, IPhysicalModel& model,
+                       level_t& level, double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
 

@@ -278,9 +278,9 @@ namespace amr
          * @brief builds the schedules reading only level levelNumber. The level's inter-level
          * schedules are erased first, a re-initialised level makes them stale.
          */
-        void registerSameLevelSchedules(
-            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-            int const levelNumber) override
+        void
+        registerSameLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber) override
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
@@ -313,9 +313,9 @@ namespace amr
          * @brief builds the schedules reading coarser levels, stale whenever a coarser level is
          * replaced.
          */
-        void registerInterLevelSchedules(
-            std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-            int const levelNumber) override
+        void
+        registerInterLevelSchedules(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                    int const levelNumber) override
         {
             if (levelNumber == rootLevelNumber)
                 return;
@@ -333,7 +333,6 @@ namespace amr
                 = HydroYrefluxAlgo.createSchedule(coarseLevel, level);
             HydroZrefluxSchedules[levelNumber]
                 = HydroZrefluxAlgo.createSchedule(coarseLevel, level);
-
         }
 
 
@@ -373,9 +372,8 @@ namespace amr
             return std::make_unique<MHDMessengerInfo>();
         }
 
-        void initLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
-                       IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       double const initDataTime) override
+        void initLevel(std::shared_ptr<hierarchy_t> const& hierarchy, IPhysicalModel& model,
+                       SAMRAI::hier::PatchLevel& level, double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
 
