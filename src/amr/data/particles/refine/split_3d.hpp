@@ -168,12 +168,14 @@ struct Splitter<DimConst<3>, InterpConst<1>, RefinedParticlesConst<27>>
 {
     constexpr Splitter()
         : SplitPattern_3_1_27_Dispatcher{
-              {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
+              {weight[0]}, {weight[1], delta[0]}, {weight[2], delta[0]}, {weight[3], delta[0]}}
     {
     }
 
-    static constexpr std::array<float, 1> delta  = {1};
-    static constexpr std::array<float, 2> weight = {0.125, 0.0625};
+    static constexpr std::array<float, 1> delta = {1};
+    // exact split: tensor product of the 1D {0.5, 0.25} split, ordered as the dispatcher
+    // (centre, 6 faces, 8 corners, 12 edges)
+    static constexpr std::array<float, 4> weight = {0.125, 0.0625, 0.015625, 0.03125};
 };
 
 
@@ -228,12 +230,14 @@ struct Splitter<DimConst<3>, InterpConst<2>, RefinedParticlesConst<27>>
 {
     constexpr Splitter()
         : SplitPattern_3_2_27_Dispatcher{
-              {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
+              {weight[0]}, {weight[1], delta[0]}, {weight[2], delta[1]}, {weight[3], delta[2]}}
     {
     }
 
-    static constexpr std::array<float, 1> delta  = {1.111333};
-    static constexpr std::array<float, 2> weight = {.099995, .055301};
+    // Smets et al. 2021 (CPC 261, 107666) Tables 5-6, ordered as the dispatcher
+    // (centre, 6 faces, 8 corners, 12 edges)
+    static constexpr std::array<float, 3> delta  = {1.111333, 1.216526, 1.107638};
+    static constexpr std::array<float, 4> weight = {.099995, .055301, .017672, .035568};
 };
 
 
@@ -287,12 +291,14 @@ struct Splitter<DimConst<3>, InterpConst<3>, RefinedParticlesConst<27>>
 {
     constexpr Splitter()
         : SplitPattern_3_3_27_Dispatcher{
-              {weight[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}, {weight[1], delta[0]}}
+              {weight[0]}, {weight[1], delta[0]}, {weight[2], delta[1]}, {weight[3], delta[2]}}
     {
     }
 
-    static constexpr std::array<float, 1> delta  = {1.276815};
-    static constexpr std::array<float, 2> weight = {.104047, .05564};
+    // Smets et al. 2021 (CPC 261, 107666) Tables 5-6, ordered as the dispatcher
+    // (centre, 6 faces, 8 corners, 12 edges)
+    static constexpr std::array<float, 3> delta  = {1.276815, 1.408507, 1.270047};
+    static constexpr std::array<float, 4> weight = {.104047, .05564, .017187, .035385};
 };
 
 

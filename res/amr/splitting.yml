@@ -55,7 +55,7 @@ dimension_2:
 
     N_particles_9:
       delta:  1
-      weight: .25 .125 .01625
+      weight: .25 .125 .0625
 
   interp_2:
     N_particles_4:
@@ -112,7 +112,7 @@ dimension_3:
 
     N_particles_27:
       delta:  1
-      weight: .125 .0625
+      weight: .125 .0625 .015625 .03125
 
   interp_2:
     N_particles_6:
@@ -124,8 +124,8 @@ dimension_3:
       weight: .083333
 
     N_particles_27:
-      delta:  1.111333
-      weight: .099995 .055301
+      delta:  1.111333 1.216526 1.107638
+      weight: .099995 .055301 .017672 .035568
 
   interp_3:
     N_particles_6:
@@ -137,5 +137,5 @@ dimension_3:
       weight: .083333
 
     N_particles_27:
-      delta:  1.276815
-      weight: .104047 .05564
+      delta:  1.276815 1.408507 1.270047
+      weight: .104047 .05564 .017187 .035385
