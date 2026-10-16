@@ -47,6 +47,9 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
     using HybridMessenger  = amr::HybridMessenger<HybridModel>;
 
+    using enum amr::RefinerType;
+    using enum amr::HybridSchedule;
+
     using FE_t         = FieldEvolverDispatchers<HybridModel>;
     using Faraday_t    = FE_t::Faraday_t;
     using Ampere_t     = FE_t::Ampere_t;
@@ -152,6 +155,22 @@ private:
 
     void moveIons_(level_t& level, HybridModel& model, Messenger& fromCoarser,
                    double const currentTime, double const newTime, core::UpdaterMode mode);
+
+
+    //! fills the ghosts of the vector field `vf` (e.g. B, E), by name
+    static void fill_(Messenger& messenger, VecFieldT const& vf, level_t const& level,
+                      double const time)
+    {
+        messenger.template fill<GhostField>(vf.name(), level, time);
+    }
+
+    //! fills the hybrid communication `schedule`
+    template<amr::HybridSchedule schedule>
+    static void fill_(Messenger& messenger, level_t const& level, double const time)
+    {
+        using Schedule = amr::HybridScheduleTraits<schedule>;
+        messenger.template fill<Schedule::type>(Schedule::key, level, time);
+    }
 
 
     void make_boxes(hierarchy_t const& hierarchy, std::shared_ptr<level_t> const& level)
@@ -321,7 +340,7 @@ void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
 
     Faraday_t{level, hybridModel}(Bold_, Eavg, B, dt);
 
-    hybridMessenger.fillMagneticGhosts(B, level, time);
+    fill_(hybridMessenger, B, level, time);
 }
 
 
@@ -429,7 +448,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.faraday::schedules");
-        fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
+        fill_(fromCoarser, electromagPred_.B, level, newTime);
     }
 
     Ampere_t ampere{level, model};
@@ -468,7 +487,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.faraday::schedules");
-        fromCoarser.fillMagneticGhosts(electromagPred_.B, level, newTime);
+        fill_(fromCoarser, electromagPred_.B, level, newTime);
     }
 
     Ampere_t ampere{level, model};
@@ -510,7 +529,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.faraday::schedules");
-        fromCoarser.fillMagneticGhosts(model.state.electromag.B, level, newTime);
+        fill_(fromCoarser, model.state.electromag.B, level, newTime);
     }
 
     Ampere_t ampere{level, model};
@@ -530,7 +549,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ohm::schedules");
-        fromCoarser.fillElectricGhosts(model.state.electromag.E, level, newTime);
+        fill_(fromCoarser, model.state.electromag.E, level, newTime);
     }
 }
 
@@ -563,7 +582,7 @@ void SolverPPC<HybridModel, AMR_Types>::average_(level_t& level, HybridModel& mo
     // next coarser level E average
 
     PHARE_LOG_SCOPE(1, "SolverPPC::average::schedules");
-    fromCoarser.fillElectricGhosts(electromagAvg_.E, level, (currentTime + newTime) / 2.);
+    fill_(fromCoarser, electromagAvg_.E, level, (currentTime + newTime) / 2.);
 }
 
 
@@ -623,12 +642,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     setTime(ions);
 
     {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillFluxBorders");
-        fromCoarser.fillFluxBorders(ions, level, newTime);
-    }
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillDensityBorders");
-        fromCoarser.fillDensityBorders(ions, level, newTime);
+        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopBorders");
+        fill_<IonPopBorderSum>(fromCoarser, level, newTime);
     }
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
@@ -651,7 +666,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
             }
         })
 
-        fromCoarser.fillIonGhostParticles(ions, level, newTime);
+        fill_<IonGhostParticles>(fromCoarser, level, newTime);
 
         // the exchange hands a leaving particle to every patch whose domain contains its
         // cell; on overlapping patches only the owner keeps it
@@ -665,7 +680,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonBorders");
-        fromCoarser.fillIonBorders(ions, level, newTime);
+        fill_<IonBorderMax>(fromCoarser, level, newTime);
     }
     // no need to update time, since it has been done before
     // now Ni and Vi are calculated we can fill pure ghost nodes

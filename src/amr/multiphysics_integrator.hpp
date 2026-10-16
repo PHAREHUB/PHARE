@@ -326,7 +326,7 @@ namespace solver
 
             if (isRegriddingL0)
             {
-                messenger.registerLevel(hierarchy, levelNumber);
+                messenger.registerLevel(model, hierarchy, levelNumber);
             }
             else if (isRegridding)
             {
@@ -338,14 +338,14 @@ namespace solver
 
                 for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
                 {
-                    messenger.registerLevel(hierarchy, ilvl);
+                    messenger.registerLevel(model, hierarchy, ilvl);
                 }
                 solver.onRegrid();
             }
             else
             {
                 // we're not regriding, just making a new level
-                messenger.registerLevel(hierarchy, levelNumber);
+                messenger.registerLevel(model, hierarchy, levelNumber);
             }
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
@@ -354,7 +354,7 @@ namespace solver
             if (isRegriddingL0)
             {
                 for (auto ilvl = 1; ilvl <= hierarchy->getFinestLevelNumber(); ++ilvl)
-                    messenger.registerLevel(hierarchy, ilvl);
+                    messenger.registerLevel(model, hierarchy, ilvl);
 
                 solver.onRegrid();
             }
@@ -376,7 +376,8 @@ namespace solver
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
                 {
-                    messenger.registerLevel(hierarchy, ilvl);
+                    auto& model = getModel_(ilvl);
+                    messenger.registerLevel(model, hierarchy, ilvl);
 
                     auto level = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
@@ -385,7 +386,7 @@ namespace solver
                         load_balancer_manager_->allocate(*patch, time);
                     }
                     // if load balance on restart advance
-                    load_balancer_manager_->estimate(*level, getModel_(ilvl));
+                    load_balancer_manager_->estimate(*level, model);
                 }
                 restartInitialized_ = true;
             }

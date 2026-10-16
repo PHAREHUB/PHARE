@@ -94,13 +94,17 @@ namespace amr
          * @param fromCoarserInfo see IMessenger
          * @param fromFinerInfo see IMessenger
          */
+
         void registerQuantities(std::unique_ptr<IMessengerInfo> fromCoarserInfo,
                                 std::unique_ptr<IMessengerInfo> fromFinerInfo) override
         {
             strat_->registerQuantities(std::move(fromCoarserInfo), std::move(fromFinerInfo));
         }
 
-
+        void registerQuantities(IPhysicalModel& coarseModel, IPhysicalModel& fineModel) override
+        {
+            strat_->registerQuantities(coarseModel, fineModel);
+        }
 
 
         /**
@@ -110,6 +114,13 @@ namespace amr
                            int const levelNumber) override
         {
             strat_->registerLevel(hierarchy, levelNumber);
+        }
+
+        void registerLevel(IPhysicalModel& model,
+                           std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                           int const levelNumber) override
+        {
+            strat_->registerLevel(model, hierarchy, levelNumber);
         }
 
 
@@ -330,14 +341,9 @@ namespace amr
         void syncIonMoments(IonsT& ions) { strat_->syncIonMoments(ions); }
 
 
-        void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
+        void fillIonPopBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
         {
-            strat_->fillFluxBorders(ions, level, fillTime);
-        }
-
-        void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
-        {
-            strat_->fillDensityBorders(ions, level, fillTime);
+            strat_->fillIonPopBorders(ions, level, fillTime);
         }
 
         void fillIonBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
@@ -352,6 +358,12 @@ namespace amr
 
 
         virtual ~HybridMessenger() = default;
+
+        template<auto rtype>
+        void fill(std::string const& dst, SAMRAI::hier::PatchLevel const& level, double time)
+        {
+            (*strat_).template fill<rtype>(dst, level, time);
+        }
 
 
     private:

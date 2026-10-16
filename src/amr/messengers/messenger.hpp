@@ -104,7 +104,7 @@ namespace amr
                                         std::unique_ptr<IMessengerInfo> fromFinerInfo)
             = 0;
 
-
+        virtual void registerQuantities(IPhysicalModel& coarseModel, IPhysicalModel& fineModel) {}
 
         /**
          * @brief registerLevel tells the messenger which level in the hierarchy data will be
@@ -120,7 +120,12 @@ namespace amr
                                    int const levelNumber)
             = 0;
 
-
+        virtual void registerLevel(IPhysicalModel& model,
+                                   std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                   int const levelNumber)
+        {
+            registerLevel(hierarchy, levelNumber);
+        }
 
         /**
          * @brief regrid performs communications necessary to fill a new level when regridding.
