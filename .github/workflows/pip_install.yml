@@ -1,0 +1,65 @@
+name: pip install
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+on:
+  pull_request:
+    # no build for PRs that only touch CI, docs or markdown; later patterns win
+    paths:
+      - '**'
+      - '!.github/**'
+      - '!res/ci/**'
+      - '!doc/**'
+      - '!**/*.md'
+      - '!codecov.yml'
+      - '.github/workflows/cmake_ubuntu.yml'
+      - '.github/workflows/pip_install.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pip-install:
+    runs-on: ubuntu-latest
+    container: ghcr.io/pharchive/phare_dep/ubuntu:24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        samrai: [preinstalled, subproject]
+    env:
+      OMPI_ALLOW_RUN_AS_ROOT: "1"
+      OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Allow git to read the checkout
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Create a venv outside the checkout
+        run: python3 -m venv "$RUNNER_TEMP/venv"
+
+      - name: pip install .
+        env:
+          SAMRAI: ${{ matrix.samrai }}
+        run: |
+          set -ex
+          printf '1,1,2\n' > "$RUNNER_TEMP/perms.txt"
+          opts=(-C "cmake.define.PHARE_PERMUTATIONS=$RUNNER_TEMP/perms.txt")
+          if [ "$SAMRAI" = "preinstalled" ]; then
+            opts+=(-C cmake.define.SAMRAI_ROOT=/usr/local)
+          fi
+          "$RUNNER_TEMP/venv/bin/python" -m pip install . "${opts[@]}"
+
+      - name: Smoke simulation from outside the repository
+        working-directory: ${{ runner.temp }}
+        run: |
+          set -ex
+          env -u PYTHONPATH -u LD_LIBRARY_PATH \
+            mpirun -n 2 "$RUNNER_TEMP/venv/bin/python" "$GITHUB_WORKSPACE/res/ci/pip_install_smoke.py"
