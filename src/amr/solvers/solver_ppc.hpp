@@ -68,6 +68,7 @@ public:
     using patch_t     = AMR_Types::patch_t;
     using level_t     = AMR_Types::level_t;
     using hierarchy_t = AMR_Types::hierarchy_t;
+    using level_ptr   = AMR_Types::level_ptr;
 
 
     explicit SolverPPC(PHARE::initializer::PHAREDict const& dict)
@@ -89,21 +90,19 @@ public:
     void registerResources(IPhysicalModel_t& model) override;
 
 
-    void allocate(IPhysicalModel_t& model, SAMRAI::hier::Patch& patch,
+    void allocate(IPhysicalModel_t& model, patch_t& patch,
                   double const allocateTime) const override;
 
-    void prepareStep(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
-                     double const currentTime) override;
+    void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime) override;
 
-    void accumulateFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
-                           double const coef) override;
+    void accumulateFluxSum(IPhysicalModel_t& model, level_t& level, double const coef) override;
 
-    void resetFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level) override;
+    void resetFluxSum(IPhysicalModel_t& model, level_t& level) override;
 
-    void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
+    void reflux(IPhysicalModel_t& model, level_t& level, IMessenger& messenger,
                 double const time) override;
 
-    double computeStableDt(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+    double computeStableDt(IPhysicalModel_t& model, level_t& level,
                            CFLNumbers const& cflNumbers) override;
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
@@ -154,7 +153,7 @@ private:
                    double const currentTime, double const newTime, core::UpdaterMode mode);
 
 
-    void make_boxes(hierarchy_t const& hierarchy, std::shared_ptr<level_t> const& level)
+    void make_boxes(hierarchy_t const& hierarchy, level_ptr const& level)
     {
         auto& levelBoxing = boxing[level->getLevelNumber()] = LevelBoxing{level, {}};
 
@@ -221,8 +220,7 @@ void SolverPPC<HybridModel, AMR_Types>::registerResources(IPhysicalModel_t& mode
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::allocate(IPhysicalModel_t& model,
-                                                 SAMRAI::hier::Patch& patch,
+void SolverPPC<HybridModel, AMR_Types>::allocate(IPhysicalModel_t& model, patch_t& patch,
                                                  double const allocateTime) const
 {
     auto& hmodel = dynamic_cast<HybridModel&>(model);
@@ -254,8 +252,7 @@ void SolverPPC<HybridModel, AMR_Types>::fillMessengerInfo(
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::prepareStep(IPhysicalModel_t& model,
-                                                    SAMRAI::hier::PatchLevel& level,
+void SolverPPC<HybridModel, AMR_Types>::prepareStep(IPhysicalModel_t& model, level_t& level,
                                                     double const currentTime)
 {
     oldTime_[level.getLevelNumber()] = currentTime;
@@ -275,8 +272,7 @@ void SolverPPC<HybridModel, AMR_Types>::prepareStep(IPhysicalModel_t& model,
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& model,
-                                                          SAMRAI::hier::PatchLevel& level,
+void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& model, level_t& level,
                                                           double const coef)
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::accumulateFluxSum");
@@ -291,8 +287,7 @@ void SolverPPC<HybridModel, AMR_Types>::accumulateFluxSum(IPhysicalModel_t& mode
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
-                                                     SAMRAI::hier::PatchLevel& level)
+void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model, level_t& level)
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::resetFluxSum");
 
@@ -309,8 +304,7 @@ void SolverPPC<HybridModel, AMR_Types>::resetFluxSum(IPhysicalModel_t& model,
 
 
 template<typename HybridModel, typename AMR_Types>
-void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
-                                               SAMRAI::hier::PatchLevel& level,
+void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model, level_t& level,
                                                IMessenger& messenger, double const time)
 {
     auto& hybridModel     = dynamic_cast<HybridModel&>(model);
@@ -326,8 +320,7 @@ void SolverPPC<HybridModel, AMR_Types>::reflux(IPhysicalModel_t& model,
 
 
 template<typename HybridModel, typename AMR_Types>
-double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& model,
-                                                          SAMRAI::hier::PatchLevel& level,
+double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& model, level_t& level,
                                                           CFLNumbers const& cflNumbers)
 {
     PHARE_LOG_SCOPE(1, "SolverPPC::computeStableDt");

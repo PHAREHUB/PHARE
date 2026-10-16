@@ -110,22 +110,20 @@ public:
     void allocate(IPhysicalModel<AMR_Types>& model, patch_t& patch,
                   double const allocateTime) const override;
 
-    void prepareStep(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
-                     double const currentTime) override;
+    void prepareStep(IPhysicalModel_t& model, level_t& level, double const currentTime) override;
 
-    void accumulateFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
-                           double const coef) override;
+    void accumulateFluxSum(IPhysicalModel_t& model, level_t& level, double const coef) override;
 
-    void resetFluxSum(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level) override;
+    void resetFluxSum(IPhysicalModel_t& model, level_t& level) override;
 
-    void reflux(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, IMessenger& messenger,
+    void reflux(IPhysicalModel_t& model, level_t& level, IMessenger& messenger,
                 double const time) override;
 
     void advanceLevel(hierarchy_t const& hierarchy, int const levelNumber, IPhysicalModel_t& model,
                       IMessenger& fromCoarserMessenger, double const currentTime,
                       double const newTime) override;
 
-    double computeStableDt(IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level,
+    double computeStableDt(IPhysicalModel_t& model, level_t& level,
                            CFLNumbers const& cflNumbers) override;
 
     void onRegrid() override {}
@@ -289,8 +287,9 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::fillMessengerInfo(
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
-void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::prepareStep(
-    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, double const currentTime)
+void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::prepareStep(IPhysicalModel_t& model,
+                                                                         level_t& level,
+                                                                         double const currentTime)
 {
     PHARE_LOG_SCOPE(1, "SolverMHD::prepareStep");
 
@@ -323,7 +322,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::prepareStep(
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
 void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::accumulateFluxSum(
-    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, double const coef)
+    IPhysicalModel_t& model, level_t& level, double const coef)
 {
     PHARE_LOG_SCOPE(1, "SolverMHD::accumulateFluxSum");
 
@@ -343,8 +342,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::accumulateFluxSum(
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
-void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::resetFluxSum(
-    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level)
+void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::resetFluxSum(IPhysicalModel_t& model,
+                                                                          level_t& level)
 {
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
     auto& rm       = *mhdModel.resourcesManager;
@@ -359,7 +358,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::resetFluxSum(
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
 void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::reflux(IPhysicalModel_t& model,
-                                                                    SAMRAI::hier::PatchLevel& level,
+                                                                    level_t& level,
                                                                     IMessenger& messenger,
                                                                     double const time)
 {
@@ -399,7 +398,7 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::advanceLevel(
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
 double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
-    IPhysicalModel_t& model, SAMRAI::hier::PatchLevel& level, CFLNumbers const& cflNumbers)
+    IPhysicalModel_t& model, level_t& level, CFLNumbers const& cflNumbers)
 {
     PHARE_LOG_SCOPE(1, "SolverMHD::computeStableDt");
 

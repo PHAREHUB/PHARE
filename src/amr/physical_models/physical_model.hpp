@@ -30,8 +30,12 @@ namespace solver
         std::string name_;
 
     public:
-        using patch_t = typename AMR_Types::patch_t;
-        using level_t = typename AMR_Types::level_t;
+        using amr_types     = AMR_Types;
+        using patch_t       = AMR_Types::patch_t;
+        using level_t       = AMR_Types::level_t;
+        using hierarchy_t   = AMR_Types::hierarchy_t;
+        using level_ptr     = AMR_Types::level_ptr;
+        using hierarchy_ptr = AMR_Types::hierarchy_ptr;
 
         std::string name() const { return name_; }
 

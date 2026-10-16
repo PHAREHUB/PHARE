@@ -125,7 +125,7 @@ namespace solver
 
 
         void registerTagger(int coarsestLevel, int finestLevel,
-                            std::unique_ptr<PHARE::amr::Tagger> tagger)
+                            std::unique_ptr<PHARE::amr::Tagger<AMR_Types>> tagger)
         {
             if (!validLevelRange_(coarsestLevel, finestLevel))
             {
@@ -446,7 +446,7 @@ namespace solver
          * @brief computeStableDt returns the adaptive L0 time step satisfying the
          * CFL constraints on every existing level.
          */
-        double computeStableDt(SAMRAI::hier::PatchHierarchy& hierarchy, CFLNumbers const& stability)
+        double computeStableDt(AMR_Types::hierarchy_t& hierarchy, CFLNumbers const& stability)
         {
             double dt0 = std::numeric_limits<double>::max();
 
@@ -538,8 +538,7 @@ namespace solver
             if (firstStep)
             {
                 PHARE_LOG_SCOPE(3, "Multiphys::advanceLevel.firstStep");
-                fromCoarser.firstStep(model, *level, hierarchy, currentTime,
-                                      subcycleStartTimes_[iLevel - 1],
+                fromCoarser.firstStep(model, *level, currentTime, subcycleStartTimes_[iLevel - 1],
                                       subcycleEndTimes_[iLevel - 1]);
 
                 solver.resetFluxSum(model, *level);
@@ -664,7 +663,7 @@ namespace solver
         std::vector<std::unique_ptr<ISolver<AMR_Types>>> solvers_;
         std::vector<std::shared_ptr<IPhysicalModel<AMR_Types>>> models_;
 
-        std::vector<std::shared_ptr<PHARE::amr::Tagger>> taggers_;
+        std::vector<std::shared_ptr<PHARE::amr::Tagger<AMR_Types>>> taggers_;
         std::map<std::string, std::unique_ptr<IMessengerT>> messengers_;
         std::map<std::string, std::unique_ptr<LevelInitializerT>> levelInitializers_;
         SimFunctors const& simFuncs_;
@@ -712,7 +711,7 @@ namespace solver
         }
 
 
-        void addTagger_(std::unique_ptr<PHARE::amr::Tagger> tagger, int coarsestLevel,
+        void addTagger_(std::unique_ptr<PHARE::amr::Tagger<AMR_Types>> tagger, int coarsestLevel,
                         int finestLevel)
         {
             if (core::notIn(tagger, taggers_))
@@ -911,7 +910,7 @@ namespace solver
         }
 
 
-        amr::Tagger const& getTagger(int iLevel) const
+        amr::Tagger<AMR_Types> const& getTagger(int iLevel) const
         {
             auto& descriptor = levelDescriptors_[iLevel];
             if (taggers_[descriptor.taggerIndex] == nullptr)
@@ -924,7 +923,7 @@ namespace solver
 
 
 
-        amr::Tagger& getTagger_(int iLevel)
+        amr::Tagger<AMR_Types>& getTagger_(int iLevel)
         {
             auto& descriptor = levelDescriptors_[iLevel];
             if (taggers_[descriptor.taggerIndex] == nullptr)

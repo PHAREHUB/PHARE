@@ -37,10 +37,12 @@ namespace amr
     template<typename MHDModel>
     class MHDMessenger : public IMessenger<typename MHDModel::Interface>
     {
-        using amr_types   = PHARE::amr::SAMRAI_Types;
-        using level_t     = amr_types::level_t;
-        using patch_t     = amr_types::patch_t;
-        using hierarchy_t = amr_types::hierarchy_t;
+        using amr_types     = MHDModel::amr_types;
+        using level_t       = amr_types::level_t;
+        using patch_t       = amr_types::patch_t;
+        using hierarchy_t   = amr_types::hierarchy_t;
+        using level_ptr     = amr_types::level_ptr;
+        using hierarchy_ptr = amr_types::hierarchy_ptr;
 
         using IPhysicalModel    = MHDModel::Interface;
         using FieldT            = MHDModel::field_type;
@@ -79,7 +81,7 @@ namespace amr
 
         virtual ~MHDMessenger() = default;
 
-        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+        void allocate(patch_t& patch, double const allocateTime) const override
         {
             resourcesManager_->allocate(rhoOld_, patch, allocateTime);
             resourcesManager_->allocate(Vold_, patch, allocateTime);
@@ -275,8 +277,7 @@ namespace amr
 
 
 
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           int const levelNumber) override
+        void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
@@ -334,10 +335,9 @@ namespace amr
         }
 
 
-        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                    int const levelNumber,
-                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                    IPhysicalModel& model, double const initDataTime) override
+        void regrid(hierarchy_ptr const& hierarchy, int const levelNumber,
+                    level_ptr const& oldLevel, IPhysicalModel& model,
+                    double const initDataTime) override
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
             auto level     = hierarchy->getPatchLevel(levelNumber);
@@ -370,8 +370,7 @@ namespace amr
             return std::make_unique<MHDMessengerInfo>();
         }
 
-        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       double const initDataTime) override
+        void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime) override
         {
             auto levelNumber = level.getLevelNumber();
 
@@ -383,19 +382,16 @@ namespace amr
             totalEnergyInitRefiners_.fill(levelNumber, initDataTime);
         }
 
-        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                       double const currentTime, double const prevCoarserTIme,
-                       double const newCoarserTime) final
+        void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
+                       double const prevCoarserTIme, double const newCoarserTime) final
         {
         }
 
 
-        void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) final {}
+        void lastStep(IPhysicalModel& model, level_t& level) final {}
 
 
-        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                         double currentTime) final
+        void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) final
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
             for (auto& patch : level)
@@ -421,12 +417,11 @@ namespace amr
             }
         }
 
-        void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                            double const initDataTime) final
+        void fillRootGhosts(IPhysicalModel& model, level_t& level, double const initDataTime) final
         {
         }
 
-        void synchronize(SAMRAI::hier::PatchLevel& level) final {}
+        void synchronize(level_t& level) final {}
 
         void reflux(int const coarserLevelNumber, int const fineLevelNumber,
                     double const syncTime) override
@@ -442,8 +437,7 @@ namespace amr
             HydroZpatchGhostRefluxedSchedules[coarserLevelNumber]->fillData(syncTime);
         }
 
-        void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                             double const time) override
+        void postSynchronize(IPhysicalModel& model, level_t& level, double const time) override
         {
             // The ghosts for B are obtained in the solver's reflux_euler. For B, this is because
             // refluxing is done through faraday which is computed on the ghost box for the other
@@ -629,9 +623,8 @@ namespace amr
         }
 
 
-        void magneticRegriding_(std::shared_ptr<hierarchy_t> const& hierarchy,
-                                std::shared_ptr<level_t> const& level,
-                                std::shared_ptr<level_t> const& oldLevel, double const initDataTime)
+        void magneticRegriding_(hierarchy_ptr const& hierarchy, level_ptr const& level,
+                                level_ptr const& oldLevel, double const initDataTime)
         {
             auto magSchedule = BregridAlgo.createSchedule(
                 level, oldLevel, level->getNextCoarserHierarchyLevelNumber(), hierarchy,

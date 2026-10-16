@@ -23,11 +23,13 @@ class TaggerFactory
 public:
     TaggerFactory() = delete;
 
-    NO_DISCARD static std::unique_ptr<Tagger> make(PHARE::initializer::PHAREDict const& dict);
+    NO_DISCARD static std::unique_ptr<Tagger<typename Model::amr_types>>
+    make(PHARE::initializer::PHAREDict const& dict);
 };
 
 template<typename Model>
-std::unique_ptr<Tagger> TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
+std::unique_ptr<Tagger<typename Model::amr_types>>
+TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
 {
     using HT  = ConcreteTagger<Model>;
     using HTS = DefaultTaggerStrategy<Model>;

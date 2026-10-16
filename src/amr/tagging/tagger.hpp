@@ -3,17 +3,17 @@
 #define PHARE_TAGGER_HPP
 
 #include "amr/physical_models/physical_model.hpp"
-#include "amr/types/amr_types.hpp"
 
 #include <memory>
 
 namespace PHARE::amr
 {
+template<typename AMR_Types>
 class Tagger
 {
 protected:
-    using patch_t = PHARE::amr::SAMRAI_Types::patch_t;
-    using amr_t   = PHARE::amr::SAMRAI_Types;
+    using patch_t = AMR_Types::patch_t;
+    using amr_t   = AMR_Types;
     std::string name_;
 
 public:

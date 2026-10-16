@@ -62,7 +62,7 @@ public:
         model.resourcesManager->registerResources(*this);
     }
 
-    virtual void allocate(MHDModel& model, SAMRAI::hier::Patch& patch,
+    virtual void allocate(MHDModel& model, MHDModel::patch_t& patch,
                           double const allocateTime) const
     {
         model.resourcesManager->allocate(*this, patch, allocateTime);
