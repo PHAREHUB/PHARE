@@ -12,6 +12,7 @@ foreach(_mod IN LISTS _phare_python_modules)
   )
   install(TARGETS ${_mod} LIBRARY DESTINATION pybindlibs COMPONENT pyphare)
 endforeach()
+install(FILES "${CMAKE_BINARY_DIR}/pybindlibs/__init__.py" DESTINATION pybindlibs COMPONENT pyphare)
 
 set(_phare_candidate_libs
   phare_core phare_mpi phare_amr phare_initializer

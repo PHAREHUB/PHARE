@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.20.1)
 
 project(phare_python3)
 
+file(WRITE "${CMAKE_BINARY_DIR}/pybindlibs/__init__.py" "")
+
 if(NOT PHARE_PERMUTATIONS)
   set(PHARE_PERMUTATIONS "${PHARE_PROJECT_DIR}/res/sim/all.txt")
 endif()
