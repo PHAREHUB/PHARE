@@ -120,7 +120,6 @@ namespace solver
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
             }
-            hybMessenger.fillIonBorders(ions, level, initDataTime);
 
             // on level i>0, this relies on 'prepareStep' having been called on when
             // level i-1 was initialized (at the end of this function)
