@@ -1,5 +1,5 @@
 # explicit rule selection: ruff's default rule set changes between versions,
-#  this keeps local runs, res/git_hooks/pre-commit and the CI gate checking the same rules
+#  this keeps local runs and the CI gate checking the same rules
 
 target-version = "py311" # CMakeLists.txt find_package(Python 3.11 ...)
 
@@ -17,6 +17,9 @@ select = [
     "PLE", "PLW",          # pylint errors, warnings
     "EXE",                 # shebangs
     "TID253",              # banned module level imports, see below
+    "TRY004",              # TypeError for invalid types
+    "BLE001",              # blind except Exception
+    "PLR0402",             # from a import b over import a.b as b
 ]
 ignore = [
     "EXE001",  # test scripts have shebangs but are run by ctest via python3

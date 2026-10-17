@@ -126,7 +126,7 @@ class Simulator:
             self.cpp_hier = cpp.cpp_etc_lib().make_hierarchy()
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
             return self
-        except cpp.cpp_error_type() as e:
+        except Exception as e:  # see #1434
             import traceback
 
             print(f'Exception caught in "Simulator.setup()": {sys.exc_info()}')
@@ -148,7 +148,7 @@ class Simulator:
             self._auto_dump()  # first dump might be before first advance
 
             return self
-        except cpp.cpp_error_type() as e:
+        except Exception as e:  # see #1434
             print(f'Exception caught in "Simulator.initialize()": {sys.exc_info()[0]}')
             raise ValueError(
                 "Error in Simulator.initialize(), see previous error"
@@ -162,7 +162,7 @@ class Simulator:
         try:
             # dt lives on the C++ side: fixed by config, or recomputed per step when adaptive
             self.cpp_sim.advance()
-        except cpp.cpp_error_type() as e:
+        except (RuntimeError, TypeError, NameError, ValueError) as e:
             self._throw(f"Exception caught in simulator.py::advance: \n{e}")
         except KeyboardInterrupt as e:
             self._throw(f"KeyboardInterrupt in simulator.py::advance: \n{e}")

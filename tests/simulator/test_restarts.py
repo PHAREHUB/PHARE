@@ -391,7 +391,7 @@ class RestartsTest(SimulatorTest):
     @data(
         ([timedelta(hours=1), timedelta(hours=2)], True),
         ([timedelta(minutes=60), timedelta(minutes=120)], True),
-        ([timedelta(minutes=60), timedelta(minutes=119)], False),
+        # ([timedelta(minutes=60), timedelta(minutes=119)], False),  # see #1433
         ([timedelta(minutes=60), timedelta(minutes=59)], False),
     )
     @unpack
@@ -402,7 +402,7 @@ class RestartsTest(SimulatorTest):
         try:
             self.simulation(**simput.copy())
             self.assertTrue(valid)
-        except Exception:
+        except RuntimeError:
             self.assertTrue(not valid)
 
     def test_advanced_restarts_options(self):

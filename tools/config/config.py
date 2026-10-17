@@ -81,7 +81,7 @@ def subprocess_run(cmd, on_error="error message"):
     try:
         proc = subprocess.run(cmd.split(" "), check=True, capture_output=True)
         return (proc.stdout + proc.stderr).decode().strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return on_error
 
 
