@@ -126,7 +126,6 @@ if (asan)   # -Dasan=ON
   else()
     message(FATAL_ERROR "ASAN Unhandled compiler: ${CMAKE_CXX_COMPILER_ID}")
   endif()
-  set(testDuringBuild OFF) # can need LD_PRELOAD/etc
 endif(asan)
 
 if (ubsan)  # -Dubsan=ON
@@ -209,18 +208,10 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
   endfunction(add_phare_test_build_flags_)
 
   # ctest-registration decoration only - assumes add_test() was already called
-  function(add_phare_test_ binary directory)
+  function(add_phare_test_ binary)
     set_exe_paths_(${binary})
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT GMON_OUT_PREFIX=gprof.${binary})
     set_property(TEST ${binary} APPEND PROPERTY ENVIRONMENT PHARE_MPI_PROCS=${PHARE_MPI_PROCS})
-    if(testDuringBuild)
-      add_custom_command(
-           TARGET ${binary}
-           POST_BUILD
-           WORKING_DIRECTORY ${directory}
-           COMMAND ${CMAKE_CTEST_COMMAND} -C $<CONFIGURATION> -R \"^${binary}$$\" --output-on-failure
-      )
-    endif(testDuringBuild)
   endfunction(add_phare_test_)
 
   function(add_no_mpi_phare_test binary directory)
@@ -233,7 +224,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     if(NOT testMPI OR (testMPI AND forceSerialTests))
       add_phare_test_build_flags_(${binary})
       add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
-      add_phare_test_(${binary} ${directory})
+      add_phare_test_(${binary})
     else()
       skip_building(${binary})
     endif()
@@ -262,7 +253,7 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
       add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX}
                 sh ${PHARE_PROJECT_DIR}/res/cmake/gtest_rank0_output.sh ./${binary}
                 WORKING_DIRECTORY ${directory})
-      add_phare_test_(${binary} ${directory})
+      add_phare_test_(${binary})
       set_test_procs_(${binary} ${PHARE_MPI_PROCS})
     endfunction(add_phare_test)
 
