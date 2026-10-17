@@ -51,7 +51,7 @@ private:
     using Faraday_t    = FE_t::Faraday_t;
     using Ampere_t     = FE_t::Ampere_t;
     using Ohm_t        = OhmLevelTransformer<HybridModel>;
-    using IonUpdater_t = PHARE::core::IonUpdater<Ions, Electromag, GridLayout>;
+    using IonUpdater_t = core::IonUpdater<Ions>;
 
     Electromag electromagPred_{"EMPred"};
     Electromag electromagAvg_{"EMAvg"};
@@ -160,13 +160,15 @@ private:
         auto const neighbors = amr::makeSameLevelNeighbors(hierarchy, level->getLevelNumber());
 
         for (auto const& patch : *level)
+        {
+            auto ghosts = amr::makePatchGhostBoxes<GridLayout>(*patch, neighbors);
             if (auto [it, suc] = levelBoxing.patches.try_emplace(
                     amr::to_string(patch->getGlobalId()),
-                    Boxing_t{amr::layoutFromPatch<GridLayout>(*patch),
-                             amr::makeNonLevelGhostBoxFor<GridLayout>(*patch, neighbors),
-                             amr::makeNonOwnedBoxesFor<GridLayout::dimension>(*patch, neighbors)});
+                    Boxing_t{amr::layoutFromPatch<GridLayout>(*patch), std::move(ghosts.boxes),
+                             ghosts.nNonOwned});
                 !suc)
                 throw std::runtime_error("boxing map insertion failure");
+        }
     }
 
     auto& setup_level(hierarchy_t const& hierarchy, int const levelNumber)
@@ -188,7 +190,7 @@ private:
     }
 
 
-    using Boxing_t = core::UpdaterSelectionBoxing<IonUpdater_t, GridLayout>;
+    using Boxing_t = core::UpdaterSelectionBoxing<GridLayout, ParticleArray>;
     struct LevelBoxing
     {
         std::weak_ptr<level_t> level; // identity of the level the boxes were built for
@@ -389,14 +391,14 @@ void SolverPPC<HybridModel, AMR_Types>::advanceLevel(hierarchy_t const& hierarch
 
     average_(level, model, fromCoarser, currentTime, newTime);
 
-    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::domain_only);
+    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::copy);
 
     predictor2_(level, model, fromCoarser, currentTime, newTime);
 
 
     average_(level, model, fromCoarser, currentTime, newTime);
 
-    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::all);
+    moveIons_(level, model, fromCoarser, currentTime, newTime, core::UpdaterMode::ref);
 
     corrector_(level, model, fromCoarser, currentTime, newTime);
 }
@@ -601,9 +603,8 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons");
         auto dt = newTime - currentTime;
         for (auto& patch : rm.enumerate(level, ions, electromagAvg_))
-            ionUpdater_.updatePopulations(ions, electromagAvg_,
-                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt,
-                                          mode);
+            ionUpdater_.updatePopulations(mode, ions, electromagAvg_,
+                                          levelBoxing.at(amr::to_string(patch->getGlobalId())), dt);
     }
     catch (core::DictionaryException const& ex)
     {
@@ -628,7 +629,7 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
     }
 
-    if (mode != core::UpdaterMode::domain_only)
+    if (mode != core::UpdaterMode::copy) // copy leaves the particles untouched
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonGhostParticles");
 
@@ -650,11 +651,11 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         // cell; on overlapping patches only the owner keeps it
         for (auto& patch : rm.enumerate(level, ions))
             ions.eraseDomainParticlesIn(
-                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
+                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes());
     }
 
     for (auto& patch : rm.enumerate(level, ions))
-        ionUpdater_.updateIons(ions);
+        ions.update();
 
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonBorders");

@@ -125,7 +125,7 @@ public:
             Super::getRunTimeResourcesViewList().emplace_back(*pop);
     }
 
-    UsableIons(GridLayout_t const& layout, std::string const& pop_name)
+    UsableIons(GridLayout_t const& layout, std::string const& pop_name = "protons")
         : UsableIons{layout, std::vector<std::string>{pop_name}}
     {
     }
