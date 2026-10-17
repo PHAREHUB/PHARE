@@ -119,6 +119,10 @@ namespace amr
             resourcesManager_->registerResources(sumVec_);
             resourcesManager_->registerResources(sumField_);
             resourcesManager_->registerResources(sumTensor_);
+
+            // refreshed in prepareStep, or temporaries
+            resourcesManager_->excludeFromRestarts(Bold_, Eold_, NiOld_, ViOld_, sumVec_, sumField_,
+                                                   sumTensor_);
         }
 
         virtual ~HybridHybridMessengerStrategy() = default;
@@ -774,8 +778,7 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
-                    result;
+                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>> result;
 
                 result.reserve(info->ghostMagnetic.size());
 

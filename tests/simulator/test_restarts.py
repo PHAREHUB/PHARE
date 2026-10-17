@@ -134,6 +134,43 @@ def dup(dic={}):
     return args
 
 
+mhdArgs = dict(
+    model_options=["MHDModel"],
+    hyper_mode="spatial",
+    eta=0.0,
+    nu=0.0,
+    gamma=5.0 / 3.0,
+    reconstruction="Linear",
+    limiter="VanLeer",
+    riemann="Rusanov",
+    mhd_timestepper="TVDRK2",
+)
+
+
+def setup_mhd_model(sim):
+    L = sim.simulation_domain()[0]
+
+    def density(x):
+        return 0.3 + np.exp(-((x - L / 2) ** 2))
+
+    def bx(x):
+        return 1.0
+
+    def cos(x):
+        return 0.1 * np.cos(2 * np.pi * x / L)
+
+    def p(x):
+        return 1.0
+
+    ph.MHDModel(density=density, vx=cos, vy=cos, vz=cos, bx=bx, by=cos, bz=cos, p=p)
+
+
+def dump_mhd_diags(timestamps):
+    ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+    for quantity in ph.MHDDiagnostics.mhd_quantities:
+        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
+
+
 @ddt
 class RestartsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
@@ -356,6 +393,43 @@ class RestartsTest(SimulatorTest):
         self.check_diags(
             diag_dir0, diag_dir1, model.populations, timestamps, expected_num_levels
         )
+
+    @data(False, True)
+    def test_restarts_mhd(self, hall):
+        print(f"test_restarts_mhd hall:{hall}")
+
+        ndim = 1
+        simput = dup(dict(**mhdArgs, hall=hall, max_mhd_level=2))
+        for key in ["cells", "dl", "boundary_types"]:
+            simput[key] = [simput[key]] * ndim
+        simput["refinement_boxes"] = {"L0": {"B0": [[10] * ndim, [19] * ndim]}}
+
+        time_step = simput["time_step"]
+        restart_time = time_step * 4
+        timestamps = np.array([restart_time, time_step * simput["time_step_nbr"]])
+
+        # first simulation, writes a restart at restart_time
+        simput["restart_options"]["timestamps"] = [restart_time]
+        sim = self.simulation(**simput)
+        setup_mhd_model(sim)
+        dump_mhd_diags(timestamps)
+        Simulator(sim).run().reset()
+        diag_dir0 = sim.diag_options["options"]["dir"]
+        diag_dir1 = diag_dir0 + "_mhd_n2"
+
+        # second simulation, restarted from the first at restart_time
+        simput["restart_options"]["dir"] = diag_dir0
+        simput["restart_options"]["restart_time"] = restart_time
+        simput["diag_options"]["options"]["dir"] = diag_dir1
+
+        ph.global_vars.sim = None
+        sim = ph.Simulation(**simput)
+        setup_mhd_model(sim)
+        dump_mhd_diags(timestamps)
+        Simulator(sim).run().reset()
+        self.register_diag_dir_for_cleanup(diag_dir1)
+
+        self.check_diags(diag_dir0, diag_dir1, [], timestamps, expected_num_levels=2)
 
     def test_mode_conserve(self, ndim=1, interp=1, simput=dup(simArgs)):
         print(f"test_mode_conserve dim/interp:{ndim}/{interp}")

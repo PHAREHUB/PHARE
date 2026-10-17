@@ -81,6 +81,8 @@ public:
         resourcesManager->registerResources(P_diag_);
         resourcesManager->registerResources(tmpField_);
         resourcesManager->registerResources(tmpVec_);
+
+        resourcesManager->excludeFromRestarts(tmpField_, tmpVec_); // temporaries
     }
 
     ~MHDModel() override = default;

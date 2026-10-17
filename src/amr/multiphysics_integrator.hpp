@@ -369,8 +369,9 @@ namespace solver
                                     int const coarsestLevel, int const finestLevel) override
         {
             // handle samrai restarts / schedule creation
-            // allocation of patch datas which may not want to be saved to restart files will
-            // likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
+            // patch datas not saved to restart files are allocated here as on a new level, see
+            // ResourcesManager::excludeFromRestarts and
+            // https://github.com/PHAREHUB/PHARE/issues/664
             if (!restartInitialized_ and SamraiLifeCycle::getRestartManager()->isFromRestart())
             {
                 auto& messenger = getMessengerWithCoarser_(coarsestLevel);
@@ -378,10 +379,17 @@ namespace solver
                 {
                     messenger.registerLevel(hierarchy, ilvl);
 
+                    auto& model          = getModel_(ilvl);
+                    auto& solver         = getSolver_(ilvl);
+                    auto& levelMessenger = getMessengerWithCoarser_(ilvl);
+
                     auto level = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
                     {
                         auto time = dict_["restarts"]["restart_time"].template to<double>();
+                        model.allocate(*patch, time); // restored datas are already allocated
+                        solver.allocate(model, *patch, time);
+                        levelMessenger.allocate(*patch, time);
                         load_balancer_manager_->allocate(*patch, time);
                     }
                     // if load balance on restart advance
