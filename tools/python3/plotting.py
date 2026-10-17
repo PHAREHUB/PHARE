@@ -8,8 +8,8 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-import tools.python3.phloping as phloping
 from pyphare.pharesee.run import Run
+from tools.python3 import phloping
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
