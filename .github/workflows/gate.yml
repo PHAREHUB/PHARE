@@ -6,8 +6,10 @@
 # a maintainer then adds the label named in the job's output. Labelling re-runs this
 # workflow only, in seconds; the TeamCity build is not re-run.
 #
-# The checks are part of the PR: .github/** and res/ci/** are in CODEOWNERS, so a PR
-# that changes them needs a code owner's approval.
+# The scripts that judge a PR (res/ci/gate/) are taken from the base branch (master), never
+# from the PR: a PR cannot change the rules it is judged by. gate-selftest runs the PR's own
+# scripts on their fixtures. This file itself comes from the PR (pull_request event): .github/**
+# and res/ci/** are in CODEOWNERS, so a PR that changes them needs a code owner's approval.
 
 name: gate
 
@@ -25,6 +27,7 @@ concurrency:
 env:
   BASE: ${{ github.event.pull_request.base.sha }}
   HEAD: ${{ github.event.pull_request.head.sha }}
+  BASE_REF: ${{ github.event.pull_request.base.ref }}
   GATE_LABELS: ${{ toJSON(github.event.pull_request.labels.*.name) }}
   # tool versions: one version for everyone, results differ between versions
   REVIEWDOG_VERSION: v0.21.2
@@ -52,9 +55,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 0
           persist-credentials: false
+      - name: scripts from master
+        run: git archive "origin/$BASE_REF" res/ci/gate | tar -x -C "$RUNNER_TEMP"
       - env:
           CHECK: ${{ matrix.check }}
-        run: python3 "res/ci/gate/${CHECK}.py" "$BASE" "$HEAD"
+        run: python3 "$RUNNER_TEMP/res/ci/gate/${CHECK}.py" "$BASE" "$HEAD"
 
   gate-selftest:
     # the scripts' own fixtures
@@ -76,7 +81,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.ref }} # the script from master; the body comes from the event
           persist-credentials: false
       - env:
           PR_BODY: ${{ github.event.pull_request.body }}
@@ -186,7 +191,8 @@ jobs:
           git diff -U0 "$mb" "$HEAD" -- src tests tools \
             | clang-tidy-diff-18.py -clang-tidy-binary clang-tidy-18 -p1 -path build -j "$(nproc)" \
                                     -quiet -iregex '.*\.(c|cc|cpp|h|hpp|ipp)' > "$RUNNER_TEMP/tidy.log" 2>&1 || true
-          python3 res/ci/gate/clang_tidy.py "$RUNNER_TEMP/tidy.log" "$GITHUB_WORKSPACE"
+          git archive "origin/$BASE_REF" res/ci/gate | tar -x -C "$RUNNER_TEMP" # the script from master
+          python3 "$RUNNER_TEMP/res/ci/gate/clang_tidy.py" "$RUNNER_TEMP/tidy.log" "$GITHUB_WORKSPACE"
 
   clones:
     # no new copy-pasted block (jscpd, compared with the merge base). Warning only for now.
