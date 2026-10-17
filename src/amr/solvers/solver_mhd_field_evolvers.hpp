@@ -245,7 +245,8 @@ public:
             amr::make_model_level_accessor(level, model, res, pairs.state...), [&](auto& view) {
                 std::apply(
                     [&](auto& res_v, auto&... states_v) {
-                        core_type{view.layout}(res_v, decltype(pairs){pairs.weight, states_v}...);
+                        core_type{view.layout}(
+                            res_v, std::remove_cvref_t<decltype(pairs)>{pairs.weight, states_v}...);
                     },
                     view.args);
             });
