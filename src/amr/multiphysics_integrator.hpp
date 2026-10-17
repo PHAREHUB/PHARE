@@ -3,6 +3,7 @@
 
 #include "phare_core.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "mpi/mpi_utils.hpp"
 
 #include "amr/level_initializer/level_initializer.hpp"
 #include "amr/messenger_registration.hpp"
@@ -304,12 +305,16 @@ namespace solver
 
             bool const isRegridding = oldLevel != nullptr;
             auto level              = hierarchy->getPatchLevel(levelNumber);
+            bool const reuseOldData
+                = isRegridding and canReuseOldLevelData_(*hierarchy, *level, *oldLevel);
 
 
             PHARE_LOG_LINE_SS("init level " << levelNumber << " with regriding = " << isRegridding);
 
             PHARE_LOG_START(3, "initializeLevelData::allocate block");
-            if (allocateData)
+            if (reuseOldData)
+                moveOldLevelData_(*level, *oldLevel);
+            else if (allocateData)
             {
                 for (auto patch : *level)
                 {
@@ -348,8 +353,9 @@ namespace solver
                 messenger.registerLevel(hierarchy, levelNumber);
             }
 
-            levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
-                                        initDataTime, isRegridding);
+            if (!reuseOldData)
+                levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
+                                            initDataTime, isRegridding);
 
             if (isRegriddingL0)
             {
@@ -954,6 +960,48 @@ namespace solver
                 return *messenger;
             else
                 throw std::runtime_error("no found messenger");
+        }
+
+
+        // the finest level was recreated with unchanged boxes and owners on all ranks
+        // see amr/wrappers/regrid_skip.hpp
+        bool canReuseOldLevelData_(SAMRAI::hier::PatchHierarchy const& hierarchy,
+                                   SAMRAI::hier::PatchLevel const& level,
+                                   SAMRAI::hier::PatchLevel const& oldLevel) const
+        {
+            auto const levelNumber = level.getLevelNumber();
+            if (levelNumber == 0 or levelNumber != hierarchy.getFinestLevelNumber())
+                return false;
+
+            bool sameBoxes = level.getLocalNumberOfPatches() == oldLevel.getLocalNumberOfPatches();
+            for (auto const& patch : level)
+                sameBoxes = sameBoxes and oldPatchWithSameBox_(*patch, oldLevel);
+
+            return !mpi::any(!sameBoxes);
+        }
+
+        // the new patch takes the patch datas of the old one, no allocation or copy
+        void moveOldLevelData_(SAMRAI::hier::PatchLevel& level,
+                               SAMRAI::hier::PatchLevel const& oldLevel)
+        {
+            for (auto& patch : level)
+            {
+                auto const& oldPatch = *oldPatchWithSameBox_(*patch, oldLevel);
+                auto const nbrIds = patch->getPatchDescriptor()->getMaxNumberRegisteredComponents();
+                for (int id = 0; id < nbrIds; ++id)
+                    if (oldPatch.checkAllocated(id))
+                        patch->setPatchData(id, oldPatch.getPatchData(id));
+            }
+        }
+
+        static std::shared_ptr<SAMRAI::hier::Patch>
+        oldPatchWithSameBox_(SAMRAI::hier::Patch const& patch,
+                             SAMRAI::hier::PatchLevel const& oldLevel)
+        {
+            for (auto const& oldPatch : oldLevel)
+                if (oldPatch->getBox().isSpatiallyEqual(patch.getBox()))
+                    return oldPatch;
+            return nullptr;
         }
     };
 } // namespace solver
