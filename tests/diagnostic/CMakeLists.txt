@@ -12,9 +12,14 @@ set(SOURCES_INC
 )
 
 if(HighFive)
-  function(_add_diagnostics_test src_name)
+  # one binary per dim/interp, see SimulatorPermutations in tests/simulator/per_test.hpp
+  #  to prevent OOM when compiling: all 2d permutations in one source file can exceed
+  #  github actions runner memory (16GB) with -O3 -g
+  function(_add_diagnostics_test dim interp)
+    set(src_name test-diagnostics_${dim}d_interp${interp})
 
-    add_executable(${src_name} ${SOURCES_INC} ${src_name}.cpp)
+    add_executable(${src_name} ${SOURCES_INC} test-diagnostics.cpp)
+    target_compile_definitions(${src_name} PRIVATE PHARE_TEST_DIM=${dim} PHARE_TEST_INTERP=${interp})
 
     target_include_directories(${src_name} PRIVATE
       $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
@@ -37,9 +42,11 @@ if(HighFive)
 
   endfunction(_add_diagnostics_test)
 
-  _add_diagnostics_test(test-diagnostics_1d)
-  _add_diagnostics_test(test-diagnostics_2d)
-  _add_diagnostics_test(test-diagnostics_3d)
+  foreach(dim 1 2 3)
+    foreach(interp 1 2 3)
+      _add_diagnostics_test(${dim} ${interp})
+    endforeach()
+  endforeach()
 
   message(STATUS "diagnostic working directory " ${PHARE_PROJECT_DIR})
 
