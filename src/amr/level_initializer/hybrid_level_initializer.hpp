@@ -26,11 +26,9 @@ namespace solver
     class HybridLevelInitializer : public LevelInitializer<typename HybridModel::amr_types>
     {
         using amr_types                    = HybridModel::amr_types;
-        using hierarchy_t                  = amr_types::hierarchy_t;
-        using level_t                      = amr_types::level_t;
-        using patch_t                      = amr_types::patch_t;
+        using level_ptr                    = amr_types::level_ptr;
+        using hierarchy_ptr                = amr_types::hierarchy_ptr;
         using IPhysicalModelT              = IPhysicalModel<amr_types>;
-        using IMessengerT                  = amr::IMessenger<IPhysicalModelT>;
         using HybridMessenger              = amr::HybridMessenger<HybridModel>;
         using GridLayoutT                  = HybridModel::gridlayout_type;
         static constexpr auto dimension    = GridLayoutT::dimension;
@@ -50,8 +48,8 @@ namespace solver
         {
         }
 
-        virtual void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
-                                std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
+        virtual void initialize(hierarchy_ptr const& hierarchy, int levelNumber,
+                                level_ptr const& oldLevel, IPhysicalModelT& model,
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
                                 bool isRegridding) override
         {

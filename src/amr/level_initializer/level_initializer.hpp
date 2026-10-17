@@ -11,15 +11,13 @@ namespace solver
     template<typename AMRTypes>
     class LevelInitializer
     {
-        using level_t         = typename AMRTypes::level_t;
-        using patch_t         = typename AMRTypes::patch_t;
-        using hierarchy_t     = typename AMRTypes::hierarchy_t;
+        using level_ptr       = AMRTypes::level_ptr;
+        using hierarchy_ptr   = AMRTypes::hierarchy_ptr;
         using IPhysicalModelT = IPhysicalModel<AMRTypes>;
-        using IMessengerT     = amr::IMessenger<IPhysicalModelT>;
 
     public:
-        virtual void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
-                                std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
+        virtual void initialize(hierarchy_ptr const& hierarchy, int levelNumber,
+                                level_ptr const& oldLevel, IPhysicalModelT& model,
                                 amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
                                 bool isRegridding)
             = 0;

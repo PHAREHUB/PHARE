@@ -53,6 +53,13 @@ namespace amr
     class IMessenger
     {
     public:
+        using amr_types     = IPhysicalModel::amr_types;
+        using patch_t       = amr_types::patch_t;
+        using level_t       = amr_types::level_t;
+        using hierarchy_t   = amr_types::hierarchy_t;
+        using level_ptr     = amr_types::level_ptr;
+        using hierarchy_ptr = amr_types::hierarchy_ptr;
+
         virtual std::string name() = 0;
 
         virtual std::unique_ptr<IMessengerInfo> emptyInfoFromCoarser() = 0;
@@ -72,7 +79,7 @@ namespace amr
          * @param patch is the samrai Patch onto which we want to allocate the data
          * @param allocateTime is the time at which data is allocated
          */
-        virtual void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const = 0;
+        virtual void allocate(patch_t& patch, double const allocateTime) const = 0;
 
 
         /**
@@ -116,9 +123,7 @@ namespace amr
          * must be called before this method. The levelnumber needs to be the one of a level in the
          * given hierarchy.
          */
-        virtual void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                                   int const levelNumber)
-            = 0;
+        virtual void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) = 0;
 
 
 
@@ -133,10 +138,9 @@ namespace amr
          * take data where the new level overlaps it
          * @param initDataTime is the time of the regridding
          */
-        virtual void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                            int const levelNumber,
-                            std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                            IPhysicalModel& model, double const initDataTime)
+        virtual void regrid(hierarchy_ptr const& hierarchy, int const levelNumber,
+                            level_ptr const& oldLevel, IPhysicalModel& model,
+                            double const initDataTime)
             = 0;
 
 
@@ -147,8 +151,7 @@ namespace amr
          * initDataTime from a coarser level iLevel-1. The initialization is performed on all
          * quantities registered during registerQuantities().
          */
-        virtual void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               double const initDataTime)
+        virtual void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime)
             = 0;
 
 
@@ -166,10 +169,8 @@ namespace amr
          * @param level
          * @param time
          */
-        virtual void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                               std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                               double const currentTime, double const prevCoarserTime,
-                               double const newCoarserTime)
+        virtual void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
+                               double const prevCoarserTime, double const newCoarserTime)
             = 0;
 
 
@@ -182,7 +183,7 @@ namespace amr
          *
          * @param model
          */
-        virtual void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) = 0;
+        virtual void lastStep(IPhysicalModel& model, level_t& level) = 0;
 
 
 
@@ -192,27 +193,23 @@ namespace amr
          * advanceLevel function. The method sets the Messenger in a state that is ready for the
          * solver to actually use it during advanceLevel.
          */
-        virtual void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                                 double currentTime)
-            = 0;
+        virtual void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) = 0;
 
 
 
-        virtual void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+        virtual void fillRootGhosts(IPhysicalModel& model, level_t& level,
                                     double const initDataTime)
             = 0;
 
 
 
-        virtual void synchronize(SAMRAI::hier::PatchLevel& level) = 0;
+        virtual void synchronize(level_t& level) = 0;
 
         virtual void reflux(int const coarserLevelNumber, int const fineLevelNumber,
                             double const syncTime)
             = 0;
 
-        virtual void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                                     double const time)
-            = 0;
+        virtual void postSynchronize(IPhysicalModel& model, level_t& level, double const time) = 0;
 
 
         /**

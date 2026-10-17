@@ -17,6 +17,12 @@ namespace amr
         using IonsT          = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
         using IPhysicalModel = typename HybridModel::Interface;
+        using amr_types      = HybridModel::amr_types;
+        using patch_t        = amr_types::patch_t;
+        using level_t        = amr_types::level_t;
+        using hierarchy_t    = amr_types::hierarchy_t;
+        using level_ptr      = amr_types::level_ptr;
+        using hierarchy_ptr  = amr_types::hierarchy_ptr;
 
         using resources_manager_type = HybridModel::resources_manager_type;
 
@@ -36,7 +42,7 @@ namespace amr
          * @brief allocate the internal resources to the hybrid and MHD
          * resourcesManagers
          */
-        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+        void allocate(patch_t& patch, double const allocateTime) const override
         {
             // hybModel.resourcesManager->allocate(EM_old_.E, patch, allocateTime);
             // hybModel.resourcesManager->allocate(EM_old_.B, patch, allocateTime);
@@ -49,8 +55,7 @@ namespace amr
         {
         }
 
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                           int const /*levelNumber*/) override
+        void registerLevel(hierarchy_ptr const& /*hierarchy*/, int const /*levelNumber*/) override
         {
         }
 
@@ -64,10 +69,9 @@ namespace amr
             return std::make_unique<HybridMessengerInfo>();
         }
 
-        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                    int const /*levelNumber*/,
-                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& /*oldLevel*/,
-                    IPhysicalModel& /*model*/, double const /*initDataTime*/) override
+        void regrid(hierarchy_ptr const& /*hierarchy*/, int const /*levelNumber*/,
+                    level_ptr const& /*oldLevel*/, IPhysicalModel& /*model*/,
+                    double const /*initDataTime*/) override
         {
             //
         }
@@ -76,73 +80,70 @@ namespace amr
 
         std::string coarseModelName() const override { return MHDModel::model_name; }
 
-        void initLevel(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void initLevel(IPhysicalModel& /*model*/, level_t& /*level*/,
                        double const /*initDataTime*/) override
         {
         }
 
         virtual ~MHDHybridMessengerStrategy() = default;
 
-        void fillMagneticGhosts(VecFieldT& /*B*/, SAMRAI::hier::PatchLevel const& /*level*/,
+        void fillMagneticGhosts(VecFieldT& /*B*/, level_t const& /*level*/,
                                 double const /*fillTime*/) override
         {
         }
 
-        void fillElectricGhosts(VecFieldT& /*E*/, SAMRAI::hier::PatchLevel const& /*level*/,
+        void fillElectricGhosts(VecFieldT& /*E*/, level_t const& /*level*/,
                                 double const /*fillTime*/) override
         {
         }
 
-        void fillIonGhostParticles(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void fillIonGhostParticles(IonsT& /*ions*/, level_t& /*level*/,
                                    double const /*fillTime*/) override
         {
         }
-        void fillIonPopMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void fillIonPopMomentGhosts(IonsT& /*ions*/, level_t& /*level*/,
                                     double const /*fillTime*/) override
         {
         }
 
-        // void fillIonMomentGhosts(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+        // void fillIonMomentGhosts(IonsT& /*ions*/, level_t& /*level*/,
         //                          double const /*fillTime*/) override
         // {
         // }
 
 
-        void fillFluxBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void fillFluxBorders(IonsT& /*ions*/, level_t& /*level*/,
                              double const /*fillTime*/) override
         {
         }
-        void fillDensityBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void fillDensityBorders(IonsT& /*ions*/, level_t& /*level*/,
                                 double const /*fillTime*/) override
         {
         }
-        void fillIonBorders(IonsT& /*ions*/, SAMRAI::hier::PatchLevel& /*level*/,
-                            double const /*fillTime*/) override
+        void fillIonBorders(IonsT& /*ions*/, level_t& /*level*/, double const /*fillTime*/) override
         {
         }
 
 
 
-        void firstStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
-                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& /*hierarchy*/,
-                       double const /*currentTime*/, double const /*prevCoarserTime*/,
-                       double const /*newCoarserTime*/) override
+        void firstStep(IPhysicalModel& /*model*/, level_t& /*level*/, double const /*currentTime*/,
+                       double const /*prevCoarserTime*/, double const /*newCoarserTime*/) override
         {
         }
 
-        void lastStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/) override {}
+        void lastStep(IPhysicalModel& /*model*/, level_t& /*level*/) override {}
 
-        void prepareStep(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void prepareStep(IPhysicalModel& /*model*/, level_t& /*level*/,
                          double /*currentTime*/) final
         {
         }
 
-        void fillRootGhosts(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void fillRootGhosts(IPhysicalModel& /*model*/, level_t& /*level*/,
                             double const /*initDataTime*/) final
         {
         }
 
-        void synchronize(SAMRAI::hier::PatchLevel& /*level*/) final
+        void synchronize(level_t& /*level*/) final
         {
             // call coarsning schedules...
         }
@@ -152,7 +153,7 @@ namespace amr
         {
         }
 
-        void postSynchronize(IPhysicalModel& /*model*/, SAMRAI::hier::PatchLevel& /*level*/,
+        void postSynchronize(IPhysicalModel& /*model*/, level_t& /*level*/,
                              double const /*time*/) override
         {
         }

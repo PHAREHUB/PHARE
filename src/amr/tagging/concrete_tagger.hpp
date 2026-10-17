@@ -22,16 +22,17 @@
 namespace PHARE::amr
 {
 template<typename Model>
-class ConcreteTagger : public Tagger
+class ConcreteTagger : public Tagger<typename Model::amr_types>
 {
-    using patch_t         = typename Tagger::patch_t;
-    using amr_t           = PHARE::amr::SAMRAI_Types;
+    using amr_t           = Model::amr_types;
+    using Super           = Tagger<amr_t>;
+    using patch_t         = Super::patch_t;
     using IPhysicalModel  = PHARE::solver::IPhysicalModel<amr_t>;
     using gridlayout_type = typename Model::gridlayout_type;
 
 public:
     ConcreteTagger(std::unique_ptr<TaggerStrategy<Model>> strat)
-        : Tagger{Model::model_name == "HybridModel" ? "HybridTagger" : "MHDTagger"}
+        : Super{Model::model_name == "HybridModel" ? "HybridTagger" : "MHDTagger"}
         , strat_{std::move(strat)}
     {
     }

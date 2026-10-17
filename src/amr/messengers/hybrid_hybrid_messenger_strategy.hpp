@@ -55,10 +55,12 @@ namespace amr
     template<typename HybridModel, typename RefinementParams>
     class HybridHybridMessengerStrategy : public HybridMessengerStrategy<HybridModel>
     {
-        using amr_types   = PHARE::amr::SAMRAI_Types;
-        using level_t     = amr_types::level_t;
-        using patch_t     = amr_types::patch_t;
-        using hierarchy_t = amr_types::hierarchy_t;
+        using amr_types     = HybridModel::amr_types;
+        using level_t       = amr_types::level_t;
+        using patch_t       = amr_types::patch_t;
+        using hierarchy_t   = amr_types::hierarchy_t;
+        using level_ptr     = amr_types::level_ptr;
+        using hierarchy_ptr = amr_types::hierarchy_ptr;
 
         using GridT             = HybridModel::grid_type;
         using IonsT             = HybridModel::ions_type;
@@ -206,8 +208,7 @@ namespace amr
          * @brief all RefinerPool must be notified the level levelNumber now exist.
          * not doing so will result in communication to/from that level being impossible
          */
-        void registerLevel(std::shared_ptr<hierarchy_t> const& hierarchy,
-                           int const levelNumber) override
+        void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
             auto const level = hierarchy->getPatchLevel(levelNumber);
 
@@ -272,8 +273,8 @@ namespace amr
          * @brief regrid performs the regriding communications for Hybrid to Hybrid messengers
          , all quantities that are in initialization refiners need to be regridded
          */
-        void regrid(std::shared_ptr<hierarchy_t> const& hierarchy, int const levelNumber,
-                    std::shared_ptr<level_t> const& oldLevel, IPhysicalModel& model,
+        void regrid(hierarchy_ptr const& hierarchy, int const levelNumber,
+                    level_ptr const& oldLevel, IPhysicalModel& model,
                     double const initDataTime) override
         {
             auto& hybridModel = dynamic_cast<HybridModel&>(model);
@@ -560,8 +561,7 @@ namespace amr
          * the level is the root level because the root level cannot get levelGhost from
          * next coarser (it has none).
          */
-        void firstStep(IPhysicalModel& /*model*/, level_t& level,
-                       std::shared_ptr<hierarchy_t> const& /*hierarchy*/, double const currentTime,
+        void firstStep(IPhysicalModel& /*model*/, level_t& level, double const currentTime,
                        double const prevCoarserTime, double const newCoarserTime) override
         {
             PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::firstStep");
@@ -938,9 +938,8 @@ namespace amr
 
 
 
-        void magneticRegriding_(std::shared_ptr<hierarchy_t> const& hierarchy,
-                                std::shared_ptr<level_t> const& level,
-                                std::shared_ptr<level_t> const& oldLevel, HybridModel& hybridModel,
+        void magneticRegriding_(hierarchy_ptr const& hierarchy, level_ptr const& level,
+                                level_ptr const& oldLevel, HybridModel& hybridModel,
                                 double const initDataTime)
         {
             auto magSchedule = BregridAlgo.createSchedule(

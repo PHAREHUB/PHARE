@@ -12,14 +12,11 @@ namespace PHARE::solver
 template<typename MHDModel>
 class MHDLevelInitializer : public LevelInitializer<typename MHDModel::amr_types>
 {
-    using amr_types                    = MHDModel::amr_types;
-    using hierarchy_t                  = amr_types::hierarchy_t;
-    using level_t                      = amr_types::level_t;
-    using patch_t                      = amr_types::patch_t;
-    using IPhysicalModelT              = IPhysicalModel<amr_types>;
-    using IMessengerT                  = amr::IMessenger<IPhysicalModelT>;
-    using MHDMessenger                 = amr::MHDMessenger<MHDModel>;
-    using GridLayoutT                  = MHDModel::gridlayout_type;
+    using amr_types                 = MHDModel::amr_types;
+    using level_ptr                 = amr_types::level_ptr;
+    using hierarchy_ptr             = amr_types::hierarchy_ptr;
+    using IPhysicalModelT           = IPhysicalModel<amr_types>;
+    using GridLayoutT               = MHDModel::gridlayout_type;
     static constexpr auto dimension = GridLayoutT::dimension;
 
     inline bool isRootLevel(int levelNumber) const { return levelNumber == 0; }
@@ -29,10 +26,9 @@ public:
 
     MHDLevelInitializer() = default;
 
-    void initialize(std::shared_ptr<hierarchy_t> const& hierarchy, int levelNumber,
-                    std::shared_ptr<level_t> const& oldLevel, IPhysicalModelT& model,
-                    amr::IMessenger<IPhysicalModelT>& messenger, double initDataTime,
-                    bool isRegridding) override
+    void initialize(hierarchy_ptr const& hierarchy, int levelNumber, level_ptr const& oldLevel,
+                    IPhysicalModelT& model, amr::IMessenger<IPhysicalModelT>& messenger,
+                    double initDataTime, bool isRegridding) override
     {
         auto& mhdModel = static_cast<MHDModel&>(model);
         auto& level    = amr_types::getLevel(*hierarchy, levelNumber);

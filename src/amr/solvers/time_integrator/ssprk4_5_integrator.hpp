@@ -116,7 +116,7 @@ public:
         // no need to register compute_fluxes_, as it shares its resources with euler_
     }
 
-    void allocate(MHDModel& model, SAMRAI::hier::Patch& patch,
+    void allocate(MHDModel& model, MHDModel::patch_t& patch,
                   double const allocateTime) const override
     {
         Super::allocate(model, patch, allocateTime);

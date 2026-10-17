@@ -57,6 +57,12 @@ namespace amr
         using IonsT          = decltype(std::declval<HybridModel>().state.ions);
         using VecFieldT      = decltype(std::declval<HybridModel>().state.electromag.E);
         using IPhysicalModel = typename HybridModel::Interface;
+        using amr_types      = HybridModel::amr_types;
+        using patch_t        = amr_types::patch_t;
+        using level_t        = amr_types::level_t;
+        using hierarchy_t    = amr_types::hierarchy_t;
+        using level_ptr      = amr_types::level_ptr;
+        using hierarchy_ptr  = amr_types::hierarchy_ptr;
 
 
         using stratT = HybridMessengerStrategy<HybridModel>;
@@ -78,7 +84,7 @@ namespace amr
          * @brief see IMessenger::allocate. Allocate calls the abstract HybridMessengerStrategy to
          * perform the allocation of its internal resources
          */
-        void allocate(SAMRAI::hier::Patch& patch, double const allocateTime) const override
+        void allocate(patch_t& patch, double const allocateTime) const override
         {
             strat_->allocate(patch, allocateTime);
         }
@@ -106,8 +112,7 @@ namespace amr
         /**
          * @brief see IMessenger::registerLevel
          */
-        void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                           int const levelNumber) override
+        void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
         {
             strat_->registerLevel(hierarchy, levelNumber);
         }
@@ -117,10 +122,9 @@ namespace amr
         /**
          * @brief see IMessenger::registerLevel
          */
-        void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                    int const levelNumber,
-                    std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel,
-                    IPhysicalModel& model, double const initDataTime) final
+        void regrid(hierarchy_ptr const& hierarchy, int const levelNumber,
+                    level_ptr const& oldLevel, IPhysicalModel& model,
+                    double const initDataTime) final
         {
             strat_->regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
         }
@@ -133,8 +137,7 @@ namespace amr
          * @param levelNumber
          * @param initDataTime
          */
-        void initLevel(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       double const initDataTime) override
+        void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime) override
         {
             strat_->initLevel(model, level, initDataTime);
         }
@@ -144,13 +147,10 @@ namespace amr
          * @brief see IMessenger::firstStep
          * @param model
          */
-        void firstStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                       std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
-                       double const currentTime, double const prevCoarserTime,
-                       double const newCoarserTime) final
+        void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
+                       double const prevCoarserTime, double const newCoarserTime) final
         {
-            strat_->firstStep(model, level, hierarchy, currentTime, prevCoarserTime,
-                              newCoarserTime);
+            strat_->firstStep(model, level, currentTime, prevCoarserTime, newCoarserTime);
         }
 
 
@@ -159,7 +159,7 @@ namespace amr
          * @brief see IMessenger::lastStep
          * @param model
          */
-        void lastStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level) override
+        void lastStep(IPhysicalModel& model, level_t& level) override
         {
             strat_->lastStep(model, level);
         }
@@ -169,15 +169,14 @@ namespace amr
         /**
          * @brief prepareStep see IMessenger::prepareStep
          */
-        void prepareStep(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                         double currentTime) override
+        void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) override
         {
             strat_->prepareStep(model, level, currentTime);
         }
 
 
 
-        void fillRootGhosts(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
+        void fillRootGhosts(IPhysicalModel& model, level_t& level,
                             double const initDataTime) override
         {
             strat_->fillRootGhosts(model, level, initDataTime);
@@ -185,7 +184,7 @@ namespace amr
 
 
 
-        void synchronize(SAMRAI::hier::PatchLevel& level) override { strat_->synchronize(level); }
+        void synchronize(level_t& level) override { strat_->synchronize(level); }
 
 
         void reflux(int const coarserLevelNumber, int const fineLevelNumber,
@@ -195,8 +194,7 @@ namespace amr
         }
 
 
-        void postSynchronize(IPhysicalModel& model, SAMRAI::hier::PatchLevel& level,
-                             double const time) override
+        void postSynchronize(IPhysicalModel& model, level_t& level, double const time) override
         {
             strat_->postSynchronize(model, level, time);
         }
@@ -266,8 +264,7 @@ namespace amr
                             Start HybridMessenger Interface
            -------------------------------------------------------------------------*/
 
-        void fillMagneticGhosts(VecFieldT& B, SAMRAI::hier::PatchLevel const& level,
-                                double const fillTime)
+        void fillMagneticGhosts(VecFieldT& B, level_t const& level, double const fillTime)
         {
             strat_->fillMagneticGhosts(B, level, fillTime);
         }
@@ -280,8 +277,7 @@ namespace amr
          * @param levelNumber
          * @param fillTime
          */
-        void fillElectricGhosts(VecFieldT& E, SAMRAI::hier::PatchLevel const& level,
-                                double const fillTime)
+        void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime)
         {
             strat_->fillElectricGhosts(E, level, fillTime);
         }
@@ -295,8 +291,7 @@ namespace amr
          * @param levelNumber
          * @param fillTime
          */
-        void fillIonGhostParticles(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                   double const fillTime)
+        void fillIonGhostParticles(IonsT& ions, level_t& level, double const fillTime)
         {
             strat_->fillIonGhostParticles(ions, level, fillTime);
         }
@@ -310,14 +305,13 @@ namespace amr
          * @param levelNumber
          * @param fillTime
          */
-        void fillIonPopMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
-                                    double const fillTime)
+        void fillIonPopMomentGhosts(IonsT& ions, level_t& level, double const fillTime)
         {
             strat_->fillIonPopMomentGhosts(ions, level, fillTime);
         }
 
 
-        // void fillIonMomentGhosts(IonsT& ions, SAMRAI::hier::PatchLevel& level,
+        // void fillIonMomentGhosts(IonsT& ions, level_t& level,
         //                          double const fillTime)
         // {
         //     strat_->fillIonMomentGhosts(ions, level, fillTime);
@@ -330,17 +324,17 @@ namespace amr
         void syncIonMoments(IonsT& ions) { strat_->syncIonMoments(ions); }
 
 
-        void fillFluxBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
+        void fillFluxBorders(IonsT& ions, level_t& level, double const fillTime)
         {
             strat_->fillFluxBorders(ions, level, fillTime);
         }
 
-        void fillDensityBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
+        void fillDensityBorders(IonsT& ions, level_t& level, double const fillTime)
         {
             strat_->fillDensityBorders(ions, level, fillTime);
         }
 
-        void fillIonBorders(IonsT& ions, SAMRAI::hier::PatchLevel& level, double const fillTime)
+        void fillIonBorders(IonsT& ions, level_t& level, double const fillTime)
         {
             strat_->fillIonBorders(ions, level, fillTime);
         }
