@@ -1,6 +1,7 @@
 """Read a git diff between two revisions, as the diff checks need it.
 
-The checks read the PR as text: they never build or run its code.
+The checks read the PR as text: they never build it. tests_removed.py may also be given what
+list_tests.py found by configuring both trees and importing their Python test scripts.
 """
 
 import json
