@@ -191,8 +191,7 @@ TYPED_TEST(AWeighter, computesPrimalBSplineWeightsForAnyParticlePosition)
     using Interpolator_t = AWeighter_t::Interpolator_t;
     using GridLayout_t   = AWeighter_t::GridLayout_t;
 
-    static_assert(Interpolator_t::interp_order
-                  == decltype(GridLayout_t::options)::interp_order);
+    static_assert(Interpolator_t::interp_order == decltype(GridLayout_t::options)::interp_order);
 
     check_bspline<AWeighter_t, QtyCentering, QtyCentering::primal>(this->weighter, "primal");
 }
@@ -202,8 +201,7 @@ TYPED_TEST(AWeighter, computesDualBSplineWeightsForAnyParticlePosition)
     using Interpolator_t = AWeighter_t::Interpolator_t;
     using GridLayout_t   = AWeighter_t::GridLayout_t;
 
-    static_assert(Interpolator_t::interp_order
-                  == decltype(GridLayout_t::options)::interp_order);
+    static_assert(Interpolator_t::interp_order == decltype(GridLayout_t::options)::interp_order);
 
     check_bspline<AWeighter_t, QtyCentering, QtyCentering::dual>(this->weighter, "dual");
 }

@@ -163,7 +163,8 @@ auto& convert_to_fortran_primal(               //
 }
 
 
-template<template<typename> typename Op, std::size_t dim, typename PhysicalQuantity, typename Data_t>
+template<template<typename> typename Op, std::size_t dim, typename PhysicalQuantity,
+         typename Data_t>
 void operate(Field<dim, PhysicalQuantity, Data_t>& dst,
              Field<dim, PhysicalQuantity, Data_t> const& src, auto&&... args)
 {

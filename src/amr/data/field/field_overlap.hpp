@@ -40,21 +40,21 @@ namespace amr
 
 
 
-        const SAMRAI::hier::IntVector& getSourceOffset() const final
+        SAMRAI::hier::IntVector const& getSourceOffset() const final
         {
             return transformation_.getOffset();
         }
 
 
 
-        const SAMRAI::hier::Transformation& getTransformation() const final
+        SAMRAI::hier::Transformation const& getTransformation() const final
         {
             return transformation_;
         }
 
 
 
-        const SAMRAI::hier::BoxContainer& getDestinationBoxContainer() const
+        SAMRAI::hier::BoxContainer const& getDestinationBoxContainer() const
         {
             return destinationBoxes_;
         }

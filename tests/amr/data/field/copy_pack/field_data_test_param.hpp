@@ -214,7 +214,7 @@ struct AFieldData1DCenteredOnEx : public ::testing::Test
 
     AFieldData1DCenteredOnEx()
     {
-        ghosts[0] = param.destinationFieldData->gridLayout.options.field_ghost_width;
+        ghosts[0]              = param.destinationFieldData->gridLayout.options.field_ghost_width;
         destinationCellFactory = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
         sourceCellFactory      = std::make_shared<SAMRAI::pdat::CellDataFactory<double>>(1, ghosts);
 

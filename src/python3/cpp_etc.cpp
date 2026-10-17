@@ -5,6 +5,7 @@
 #include "core/def/phare_config.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/boundary/boundary_defs.hpp"
 
 #include "phare_simulator_options.hpp"
 
@@ -158,6 +159,12 @@ PYBIND11_MODULE(cpp_etc, m)
     py::enum_<core::HyperMode>(m, "HyperMode")
         .value("constant", core::HyperMode::constant)
         .value("spatial", core::HyperMode::spatial);
+
+    py::enum_<core::BoundaryType>(m, "BoundaryType")
+        .value("none", core::BoundaryType::None)
+        .value("reflective", core::BoundaryType::Reflective)
+        .value("super_magnetofast_inflow", core::BoundaryType::SuperMagnetofastInflow)
+        .value("open", core::BoundaryType::Open);
 
     declareDim<1>(m);
     declareDim<2>(m);

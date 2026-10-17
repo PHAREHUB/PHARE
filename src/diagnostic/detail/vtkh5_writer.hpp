@@ -188,8 +188,8 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     fileAttributes_["dimension"] = dimension;
     if constexpr (solver::is_hybrid_model_v<Model_t>)
         fileAttributes_["interpOrder"] = GridLayout::options.interp_order;
-    fileAttributes_["domain_box"]          = modelView_.domainBox();
-    fileAttributes_["boundary_conditions"] = modelView_.boundaryConditions();
+    fileAttributes_["domain_box"]    = modelView_.domainBox();
+    fileAttributes_["periodicities"] = modelView_.periodicities();
 
     HierarchyData<dimension>::reset(*this);
 

@@ -71,6 +71,7 @@ namespace amr
         using FieldT            = VecFieldT::field_type;
         using VectorFieldDataT  = TensorFieldData<1, GridLayoutT, GridT, core::HybridQuantity>;
         using ResourcesManagerT = HybridModel::resources_manager_type;
+        using BoundaryManagerT  = HybridModel::boundary_manager_type;
         using IPhysicalModel    = HybridModel::Interface;
 
         static constexpr std::size_t dimension   = GridLayoutT::dimension;
@@ -104,10 +105,13 @@ namespace amr
 
 
         HybridHybridMessengerStrategy(std::shared_ptr<ResourcesManagerT> const& manager,
+                                      std::shared_ptr<BoundaryManagerT> const& boundaryManager,
                                       int const firstLevel,
                                       RefinementConfig const& refinementConfig = {})
+
             : HybridMessengerStrategy<HybridModel>{stratName}
             , resourcesManager_{manager}
+            , boundaryManager_{boundaryManager}
             , firstLevel_{firstLevel}
         {
             makeRefineOperators_(refinementConfig);
@@ -774,7 +778,8 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
+                std::vector<std::shared_ptr<
+                    MagneticRefinePatchStrategy<VectorFieldDataT, BoundaryManagerT>>>
                     result;
 
                 result.reserve(info->ghostMagnetic.size());
@@ -783,8 +788,9 @@ namespace amr
                 {
                     auto&& [id] = resourcesManager_->getIDsList(key);
 
-                    auto patch_strat
-                        = std::make_shared<MagneticRefinePatchStrategy<VectorFieldDataT>>();
+                    auto patch_strat = std::make_shared<
+                        MagneticRefinePatchStrategy<VectorFieldDataT, BoundaryManagerT>>(
+                        *boundaryManager_);
 
                     patch_strat->registerIDs(id);
 
@@ -793,10 +799,7 @@ namespace amr
                 return result;
             }();
 
-            // B (and Bpred) C-F ghosts are time interpolated between Bold_ (t=n) and model
-            // B (t=n+1). Per-refiner magnetic patch strategy is carried through so the
-            // divB touch-up still runs after spatial refine.
-            for (size_t i = 0; i < info->ghostMagnetic.size(); ++i)
+            for (std::size_t i = 0; i < info->ghostMagnetic.size(); ++i)
             {
                 magGhostsRefiners_.addTimeRefiner(
                     info->ghostMagnetic[i], info->modelMagnetic, Bold_.name(), BRefineOp_,
@@ -997,6 +1000,7 @@ namespace amr
 
         //! ResourceManager shared with other objects (like the HybridModel)
         std::shared_ptr<ResourcesManagerT> resourcesManager_;
+        std::shared_ptr<BoundaryManagerT> boundaryManager_;
 
 
         int const firstLevel_;
@@ -1140,9 +1144,11 @@ namespace amr
             std::make_shared<MomentsVecFieldCoarsenOp>()};
         CoarsenOperator_ptr electricFieldCoarseningOp_{std::make_shared<ElectricFieldCoarsenOp>()};
 
-        MagneticRefinePatchStrategy<VectorFieldDataT> magneticRefinePatchStrategy_{};
+        MagneticRefinePatchStrategy<VectorFieldDataT, BoundaryManagerT>
+            magneticRefinePatchStrategy_{*boundaryManager_};
 
-        std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
+        std::vector<
+            std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT, BoundaryManagerT>>>
             magneticPatchStratPerGhostRefiner_;
     };
 

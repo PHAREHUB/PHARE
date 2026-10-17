@@ -270,7 +270,7 @@ class MaxwellianFluidModel(object):
         phare_utilities.debug_print("2d periodic validation")
         for idir in np.arange(sim.ndim):
             phare_utilities.debug_print("validating direction ...", idir)
-            if sim.boundary_types[idir] == "periodic":
+            if sim.periodicities[idir]:
                 phare_utilities.debug_print(f"direction {idir} is periodic?")
                 dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts) + 0.5) * sim.dl[
                     idir
@@ -358,7 +358,7 @@ class MaxwellianFluidModel(object):
         phare_utilities.debug_print("3d periodic validation")
         for idir in np.arange(sim.ndim):
             phare_utilities.debug_print("validating direction ...", idir)
-            if sim.boundary_types[idir] == "periodic":
+            if sim.periodicities[idir]:
                 phare_utilities.debug_print(f"direction {idir} is periodic?")
                 dual_left = (np.arange(-nbrDualGhosts, nbrDualGhosts) + 0.5) * sim.dl[
                     idir

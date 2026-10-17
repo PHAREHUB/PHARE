@@ -49,7 +49,6 @@ def basicSimulatorArgs(dim: int, interp: int, **kwargs):
         "largest_patch_size": [20] * dim,
         "time_step_nbr": 1000,
         "final_time": 1.0,
-        "boundary_types": ["periodic"] * dim,
         "cells": cells,
         "dl": dl,
         "refinement_boxes": {"L0": {"B0": b0}},
