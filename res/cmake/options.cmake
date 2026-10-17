@@ -67,10 +67,6 @@ option(withCaliper "Use LLNL Caliper" OFF)
 option(withPhlop "Use phlop for scope timings and such" OFF)
 
 
-# -DtestDuringBuild=ON enabled if devMode=ON, disabled if asan=ON (needs LD_PRELOAD)
-option(testDuringBuild "Runs C++ unit tests after they are built" OFF)
-
-
 # -DuseExceptionsInsteadOfMPIAbort=ON
 option(useExceptionsInsteadOfMPIAbort "Exceptions use AllReduce!" OFF)
 
