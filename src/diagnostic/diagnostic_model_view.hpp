@@ -29,7 +29,7 @@ public:
 IModelView::~IModelView() {}
 
 
-template<typename Derived, typename Hierarchy, typename Model>
+template<typename Hierarchy, typename Model>
 class BaseModelView : public IModelView
 {
 public:
@@ -72,8 +72,7 @@ public:
     void visitHierarchy(Action&& action, int minLevel = 0, int maxLevel = 0)
     {
         amr::visitHierarchy<GridLayout>(hierarchy_, *model_.resourcesManager,
-                                        std::forward<Action>(action), minLevel, maxLevel, *this,
-                                        model_);
+                                        std::forward<Action>(action), minLevel, maxLevel, model_);
     }
 
     NO_DISCARD auto boundaryConditions() const { return hierarchy_.boundaryConditions(); }
@@ -120,24 +119,9 @@ public:
         return model_.tags.at(key);
     }
 
-
-    NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        return derived().getCompileTimeResourcesViewList();
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        return derived().getCompileTimeResourcesViewList();
-    }
-
 protected:
     Model& model_;
     Hierarchy& hierarchy_;
-
-private:
-    Derived& derived() { return static_cast<Derived&>(*this); }
-    Derived const& derived() const { return static_cast<Derived const&>(*this); }
 };
 
 
@@ -147,9 +131,9 @@ class ModelView;
 
 template<typename Hierarchy, typename Model>
 class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_hybrid_model_v<Model>>>
-    : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
+    : public BaseModelView<Hierarchy, Model>
 {
-    using Super        = BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>;
+    using Super        = BaseModelView<Hierarchy, Model>;
     using Field        = Model::field_type;
     using VecField     = Model::vecfield_type;
     using TensorFieldT = Model::ions_type::tensorfield_type;
@@ -161,7 +145,6 @@ public:
     ModelView(Hierarchy& hierarchy, Model& model)
         : Super{hierarchy, model}
     {
-        declareMomentumTensorAlgos();
     }
 
     NO_DISCARD VecField& getB() const { return this->model_.state.electromag.B; }
@@ -170,18 +153,31 @@ public:
 
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 
-    auto& tmpField() { return tmpField_; }
+    auto& tmpField() { return this->model_.getTmp(core::QtyCentering::primal); }
 
-    auto& tmpVecField() { return tmpVec_; }
+    auto& tmpVecField() { return this->model_.getTmp(core::HybridQuantity::Vector::V); }
 
     template<std::size_t rank = 2>
     auto& tmpTensorField()
     {
         static_assert(rank > 0 and rank < 3);
         if constexpr (rank == 1)
-            return tmpVec_;
+            return tmpVecField();
         else
-            return tmpTensor_;
+            return this->model_.getTmp(core::HybridQuantity::Tensor::M);
+    }
+
+    // requests for the temporaries above, see TypeWriter::requestTemporaries
+    void requestTmpField() { this->model_.requestTemporaries(core::QtyCentering::primal); }
+
+    void requestTmpVecField() { this->model_.requestTemporaries(core::HybridQuantity::Vector::V); }
+
+    // scratch for fillPopMomTensor
+    void requestMomentumTensor()
+    {
+        this->model_.requestTemporaries(core::HybridQuantity::Tensor::M);
+        if (MTAlgos.empty())
+            declareMomentumTensorAlgos();
     }
 
     void fillPopMomTensor(auto& lvl, auto const time, auto const popidx)
@@ -191,28 +187,19 @@ public:
 
         auto& rm   = *this->model_.resourcesManager;
         auto& ions = this->model_.state.ions;
+        auto& tmp  = tmpTensorField();
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, tmp))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(tmpTensor_[c].data(), ions[popidx].momentumTensor()[c].data(),
+                std::memcpy(tmp[c].data(), ions[popidx].momentumTensor()[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
 
         MTAlgos[popidx].getOrCreateSchedule(this->hierarchy_, lvl.getLevelNumber()).fillData(time);
 
-        for (auto patch : rm.enumerate(lvl, ions, tmpTensor_))
+        for (auto patch : rm.enumerate(lvl, ions, tmp))
             for (std::uint8_t c = 0; c < N; ++c)
-                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmpTensor_[c].data(),
+                std::memcpy(ions[popidx].momentumTensor()[c].data(), tmp[c].data(),
                             ions[popidx].momentumTensor()[c].size() * sizeof(value_type));
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList()
-    {
-        return std::forward_as_tuple(tmpField_, tmpVec_, tmpTensor_);
-    }
-
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        return std::forward_as_tuple(tmpField_, tmpVec_, tmpTensor_);
     }
 
 protected:
@@ -220,7 +207,7 @@ protected:
     {
         auto& rm = *this->model_.resourcesManager;
 
-        auto const dst_name = tmpTensor_.name();
+        auto const dst_name = tmpTensorField().name();
 
         for (auto& pop : this->model_.state.ions)
         {
@@ -276,15 +263,12 @@ protected:
     };
 
     std::vector<MTAlgo> MTAlgos;
-    Field tmpField_{"PHARE_sumField", core::HybridQuantity::Scalar::rho};
-    VecField tmpVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
-    TensorFieldT tmpTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
 };
 
 
 template<typename Hierarchy, typename Model>
 class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>>>
-    : public BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>
+    : public BaseModelView<Hierarchy, Model>
 {
     using Field    = Model::field_type;
     using VecField = Model::vecfield_type;
@@ -292,7 +276,7 @@ class ModelView<Hierarchy, Model, std::enable_if_t<solver::is_mhd_model_v<Model>
 public:
     using Model_t                = Model;
     using physical_quantity_type = Model::physical_quantity_type;
-    using BaseModelView<ModelView<Hierarchy, Model>, Hierarchy, Model>::BaseModelView;
+    using BaseModelView<Hierarchy, Model>::BaseModelView;
 
     NO_DISCARD const Field& getRho() const { return this->model_.state.rho; }
 
@@ -321,45 +305,34 @@ public:
         throw std::runtime_error("E not currently available in MHD diagnostics");
     }
 
-    // diag only
-    NO_DISCARD VecField& getV() { return V_diag_; }
+    // diag only, temporaries the writers compute V and P into from the conservative variables
+    //  cell centered, so never the all primal destination of convert_to_fortran_primal
+    NO_DISCARD VecField& getV() { return this->model_.getTmp(core::MHDQuantity::Vector::V); }
 
-    NO_DISCARD const VecField& getV() const { return V_diag_; }
+    NO_DISCARD Field& getP() { return this->model_.getTmp(core::QtyCentering::dual); }
 
-    NO_DISCARD Field& getP() { return P_diag_; }
+    // requests for the temporaries of getV/getP and below, see TypeWriter::requestTemporaries
+    void requestV() { this->model_.requestTemporaries(core::MHDQuantity::Vector::V); }
 
-    NO_DISCARD const Field& getP() const { return P_diag_; }
+    void requestP() { this->model_.requestTemporaries(core::QtyCentering::dual); }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList()
+    void requestTmpField() { this->model_.requestTemporaries(core::QtyCentering::primal); }
+
+    void requestTmpVecField()
     {
-        return std::forward_as_tuple(V_diag_, P_diag_, tmpField_, tmpVec_);
+        this->model_.requestTemporaries(core::MHDQuantity::Vector::VecAllPrimal);
     }
 
-    NO_DISCARD auto getCompileTimeResourcesViewList() const
-    {
-        return std::forward_as_tuple(V_diag_, P_diag_, tmpField_, tmpVec_);
-    }
+    auto& tmpField() { return this->model_.getTmp(core::QtyCentering::primal); }
 
-    auto& tmpField() { return tmpField_; }
-
-    auto& tmpVecField() { return tmpVec_; }
+    auto& tmpVecField() { return this->model_.getTmp(core::MHDQuantity::Vector::VecAllPrimal); }
 
     template<std::size_t rank = 2>
     auto& tmpTensorField()
     {
         static_assert(rank == 1);
-        return tmpVec_;
+        return tmpVecField();
     }
-
-protected:
-    // these quantities are not always up to date in the calculations but we can compute them from
-    // the conservative variables when needed their registration and allocation are handled in the
-    // model
-    VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
-    Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
-
-    Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
-    VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};
 };
 
 

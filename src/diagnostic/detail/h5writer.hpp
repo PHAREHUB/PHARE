@@ -102,6 +102,12 @@ public:
         return typeWriters_.at(type);
     }
 
+    void requestTemporaries(DiagnosticProperties& diagnostic)
+    {
+        if (auto it = typeWriters_.find(diagnostic.type); it != typeWriters_.end())
+            it->second->requestTemporaries(diagnostic);
+    }
+
     static std::string fileString(std::string fileStr)
     {
         if (fileStr[0] == '/')
