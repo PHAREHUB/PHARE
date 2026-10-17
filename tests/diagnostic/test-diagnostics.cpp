@@ -1,6 +1,9 @@
 
 #include "phare_mpi.hpp"
 
+#include <cstdlib>
+#include <filesystem>
+
 #include "test_diagnostics.ipp"
 
 // PHARE_TEST_DIM/PHARE_TEST_INTERP set per binary by CMake
@@ -14,7 +17,7 @@ using DiagnosticsSimulators = SimulatorPermutations<PHARE_TEST_DIM, PHARE_TEST_I
 TYPED_TEST_SUITE(SimulatorDiagnosticsTest, DiagnosticsSimulators);
 
 static std::string const job_file = "job_" + std::to_string(PHARE_TEST_DIM) + "d";
-static std::string out_dir        = "phare_outputs/diags_" + std::to_string(PHARE_TEST_DIM) + "d/";
+static std::string out_dir; // set in main, unique per test binary
 
 TYPED_TEST(SimulatorDiagnosticsTest, fluid)
 {
@@ -41,6 +44,8 @@ int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);
     PHARE::SamraiLifeCycle samsam(argc, argv);
-    out_dir += std::to_string(mpi::size()) + "/"; // concurrent tests
+    out_dir = "phare_outputs/" + std::filesystem::path{argv[0]}.filename().string() + "/"
+              + std::to_string(mpi::size()) + "/";      // concurrent tests
+    setenv("PHARE_DIAGS_TEST_DIR", out_dir.c_str(), 1); // read by job_*d.py
     return RUN_ALL_TESTS();
 }

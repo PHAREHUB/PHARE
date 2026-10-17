@@ -40,10 +40,6 @@ if(HighFive)
 
     add_phare_test(${src_name} ${CMAKE_CURRENT_BINARY_DIR})
 
-    if(TEST ${src_name}) # same dim binaries share phare_outputs/diags_${dim}d
-      set_tests_properties(${src_name} PROPERTIES RESOURCE_LOCK diags_${dim}d)
-    endif()
-
   endfunction(_add_diagnostics_test)
 
   foreach(dim 1 2 3)
