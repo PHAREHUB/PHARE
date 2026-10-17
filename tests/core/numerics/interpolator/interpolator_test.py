@@ -1,5 +1,6 @@
 import os
 import sys
+
 import numpy as np
 
 
@@ -47,7 +48,6 @@ def main():
     orders = [1, 2, 3]
     particle_positions = 3.0 + np.arange(0, 1.0, 0.1)
 
-    bsplines = []
     path = sys.argv[1]
 
     for centering in ["primal", "dual"]:

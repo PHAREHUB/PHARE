@@ -1,12 +1,10 @@
-#
-
 import numpy as np
 
-from ..core import box as boxm
-from .hierarchy.patchdata import FieldData
-from .hierarchy.hierarchy_utils import is_root_lvl
+from pyphare.core.phare_utilities import is_scalar, listify
 
-from pyphare.core.phare_utilities import listify, is_scalar
+from ..core import box as boxm
+from .hierarchy.hierarchy_utils import is_root_lvl
+from .hierarchy.patchdata import FieldData
 
 
 def toFieldBox(box, patch_data):
@@ -249,7 +247,7 @@ def get_periodic_list(patches, domain_box, n_ghosts):
     """
     assert len(patches) > 0
     dim = patches[-1].box.ndim
-    assert all([p.box.ndim == dim for p in patches])
+    assert all(p.box.ndim == dim for p in patches)
 
     from copy import copy
 
@@ -280,7 +278,7 @@ def get_periodic_list(patches, domain_box, n_ghosts):
     return sorted(sorted_patches, key=lambda p: p.origin.all())
 
 
-def ghost_area_boxes(hierarchy, quantities, levelNbrs=[], time=0):
+def ghost_area_boxes(hierarchy, quantities, levelNbrs=None, time=0):
     """
     this function returns boxes representing ghost cell boxes for all levels
     a ghost cell box is a box containing cells of contiguous AMR index not
@@ -294,7 +292,7 @@ def ghost_area_boxes(hierarchy, quantities, levelNbrs=[], time=0):
     return : {level_number : [{"pdata":patch_data1, "boxes":ghost_boxes},
                               {"pdata":patch_data2, "boxes":ghost_boxes}, ...]}
     """
-    levelNbrs = listify(levelNbrs)
+    levelNbrs = listify(levelNbrs if levelNbrs is not None else [])
     if len(levelNbrs) == 0:
         levelNbrs = list(hierarchy.levels(time).keys())
 
@@ -303,8 +301,8 @@ def ghost_area_boxes(hierarchy, quantities, levelNbrs=[], time=0):
     for ilvl in levelNbrs:
         lvl = hierarchy.level(ilvl, time)
         for patch in lvl.patches:
-            for pd_key, pd in patch.patch_datas.items():
-                skip = not any([pd_key.endswith(qty) for qty in quantities])
+            for pd_key in patch.patch_datas:
+                skip = not any(pd_key.endswith(qty) for qty in quantities)
 
                 if skip:
                     continue
@@ -326,7 +324,7 @@ def ghost_area_boxes(hierarchy, quantities, levelNbrs=[], time=0):
     return gaboxes
 
 
-def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
+def level_ghost_boxes(hierarchy, quantities, levelNbrs=None, time=None):
     """
     this function returns boxes representing level ghost cell boxes for all levels
     A level ghost cell box is a ghost cell box that does not overlap any cell contained
@@ -348,6 +346,7 @@ def level_ghost_boxes(hierarchy, quantities, levelNbrs=[], time=None):
     """
     quantities = listify(quantities)
 
+    levelNbrs = levelNbrs if levelNbrs is not None else []
     levelNbrs_is_scalar = is_scalar(levelNbrs)
     levelNbrs = listify(levelNbrs)
     if len(levelNbrs) == 0:

@@ -1,17 +1,17 @@
 """
-  This file exists independently from test_advance.py to isolate dimension
-    test cases and allow each to be overridden in some way if required.
+This file exists independently from test_advance.py to isolate dimension
+  test cases and allow each to be overridden in some way if required.
 """
 
 import unittest
 
 import matplotlib
 from ddt import data, ddt, unpack
-from pyphare.core.box import Box3D
-from pyphare.core import phare_utilities as phut
 
-from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
+from pyphare.core import phare_utilities as phut
+from pyphare.core.box import Box3D
 from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
+from tests.simulator.advance.test_advance_mhd import MHDAdvanceTest
 
 matplotlib.use("Agg")  # for systems without GUI
 

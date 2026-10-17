@@ -3,13 +3,12 @@
 import unittest
 
 import numpy as np
-from ddt import ddt, data, unpack
+from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
 from pyphare import cpp
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
-
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()

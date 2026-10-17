@@ -1,18 +1,16 @@
 #!/usr/bin/env python3
 
 
-import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.run import Run
-
-
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
 import numpy as np
 
-from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
-from tests.diagnostic import all_timestamps
+import pyphare.pharein as ph
 from pyphare import cpp
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
+from tests.diagnostic import all_timestamps
+from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 
 mpl.use("Agg")
 
@@ -233,7 +231,7 @@ def make_figure():
         v2 = -1
         return v1 + (v2 - v1) * S(x, x0, L)
 
-    popt, pcov = curve_fit(by_fit, xx, bby, p0=(150, 1))
+    popt, _pcov = curve_fit(by_fit, xx, bby, p0=(150, 1))
     x0, L = popt
 
     if np.abs(L - 1) > 0.5:
@@ -247,7 +245,7 @@ test = HybridAdvanceTest()
 
 def get_time(path, time):
     if time is not None:
-        time = "{:.10f}".format(time)
+        time = f"{time:.10f}"
     from pyphare.pharesee.hierarchy import hierarchy_from
 
     return hierarchy_from(h5_filename=path + "/ions_pop_protons_domain.h5", times=time)

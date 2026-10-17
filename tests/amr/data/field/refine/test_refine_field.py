@@ -5,7 +5,6 @@ from pyphare.core.gridlayout import GridLayout
 from pyphare.core.phare_utilities import refinement_ratio
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 
-
 # below is a drawing  representing a 1D coarse FieldData, its ghost box and the
 # associated refined  FieldData this module aims at creating.
 # o : coarse primal node
@@ -189,7 +188,7 @@ def makeDataset(field, **kwargs):
     """
     assert isinstance(field, FieldData)
     kwarg_keys = ["data"]
-    assert any([key in kwarg_keys for key in list(kwargs.keys())])
+    assert any(key in kwarg_keys for key in list(kwargs.keys()))
 
     refinement_ratio = 2
     primal_directions = field.primal_directions()

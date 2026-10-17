@@ -7,7 +7,7 @@ from pyphare.core.gridlayout import HybridGridLayoutFor
 from pyphare.pharein import global_vars
 
 
-class MaxwellianFluidModel(object):
+class MaxwellianFluidModel:
     """
     MaxwellianFluidModel is used to setup ion populations in a simulation
     along with the magnetic field.
@@ -120,7 +120,7 @@ class MaxwellianFluidModel(object):
         vthx=None,
         vthy=None,
         vthz=None,
-        init={},
+        init=None,
         density_cut_off=1e-16,
     ):
         """
@@ -142,13 +142,15 @@ class MaxwellianFluidModel(object):
         anisotropy  : Pperp/Ppara of the species, float (default = 1)
         """
 
+        init = init if init is not None else {}
+
         init_keys = ["seed"]
         wrong_keys = phare_utilities.not_in_keywords_list(init_keys, **init)
         if len(wrong_keys) > 0:
             raise ValueError(
                 "Model Error: invalid init arguments - " + " ".join(wrong_keys)
             )
-        init["seed"] = init["seed"] if "seed" in init else None
+        init["seed"] = init.get("seed", None)
 
         density = self.defaulter(density, 1.0)
 

@@ -8,16 +8,16 @@ omits them, and post-processing of such a run must not need them either.
 import unittest
 
 import numpy as np
+
 import pyphare.pharein as ph
-from pyphare.cpp import simulator_id
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import MHDGridLayoutFor
+from pyphare.cpp import simulator_id
 from pyphare.pharesee.hierarchy.hierarchy import PatchHierarchy
 from pyphare.pharesee.hierarchy.hierarchy_utils import single_patch_for_LO
 from pyphare.pharesee.hierarchy.patch import Patch
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 from pyphare.pharesee.hierarchy.patchlevel import PatchLevel
-
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
@@ -57,7 +57,9 @@ def field_data(box, name):
 def mhd_hierarchy(sim):
     """two level-0 patches tiling the domain, as an MHD run's hierarchy would be"""
     boxes = [Box([0], [cells // 2 - 1]), Box([cells // 2], [cells - 1])]
-    patches = [Patch({"rho": field_data(box, "rho")}, f"0#{i}") for i, box in enumerate(boxes)]
+    patches = [
+        Patch({"rho": field_data(box, "rho")}, f"0#{i}") for i, box in enumerate(boxes)
+    ]
     hier = PatchHierarchy({0.0: {0: PatchLevel(0, patches)}}, Box([0], [cells - 1]))
     hier._sim = sim
     return hier

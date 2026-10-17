@@ -1,27 +1,24 @@
 #!/usr/bin/env python3
 
 
-import os
 import copy
-import unittest
 import itertools
-import numpy as np
-from time import sleep
-from pathlib import Path
+import os
+import unittest
 from copy import deepcopy
+from pathlib import Path
+from time import sleep
+
+import numpy as np
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
-
 from pyphare.pharein.simulation import supported_dimensions
-from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
 from pyphare.pharesee.hierarchy import hierarchy_from
-from pyphare.simulator.simulator import Simulator
-from pyphare.simulator.simulator import startMPI
-
-from tests.simulator import SimulatorTest
+from pyphare.pharesee.hierarchy.fromh5 import h5_filename_from, h5_time_grp_key
+from pyphare.simulator.simulator import Simulator, startMPI
 from tests.diagnostic import dump_all_diags
-
+from tests.simulator import SimulatorTest
 
 ppc_per_dim = [100, 25, 10]
 
@@ -197,7 +194,7 @@ def cadence_args(diagdir, **extra):
 @ddt
 class DiagnosticsTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(DiagnosticsTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
@@ -214,7 +211,7 @@ class DiagnosticsTest(SimulatorTest):
         py_attrs = [f"{dep}_version" for dep in ["samrai", "highfive", "pybind"]]
         py_attrs += ["git_hash", "serialized_simulation"]
         particle_files = 0
-        for diagname, diagInfo in sim.diagnostics.items():
+        for diagInfo in sim.diagnostics.values():
             h5_filepath = os.path.join(diag_path, h5_filename_from(diagInfo))
             self.assertTrue(os.path.exists(h5_filepath))
 
@@ -260,7 +257,7 @@ class DiagnosticsTest(SimulatorTest):
 
                 for patch in hier.level(0).patches:
                     self.assertTrue(len(patch.patch_datas.items()))
-                    for qty_name, pd in patch.patch_datas.items():
+                    for pd in patch.patch_datas.values():
                         splits = pd.dataset.split(ph.global_vars.sim)
                         self.assertTrue(splits.size() > 0)
                         self.assertTrue(pd.dataset.size() > 0)
@@ -278,7 +275,7 @@ class DiagnosticsTest(SimulatorTest):
     )
     @unpack
     def test_dump_diags(self, ndim, interp, simInput):
-        print("test_dump_diags ndim/interp:{}/{}".format(ndim, interp))
+        print(f"test_dump_diags ndim/interp:{ndim}/{interp}")
 
         # configure simulation ndim sized values
         for key in ["cells", "dl", "boundary_types"]:
@@ -295,17 +292,15 @@ class DiagnosticsTest(SimulatorTest):
 
         self.assertTrue(
             any(
-                [
-                    diagInfo.quantity.endswith("domain")
-                    for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
-                ]
+                diagInfo.quantity.endswith("domain")
+                for diagname, diagInfo in ph.global_vars.sim.diagnostics.items()
             )
         )
 
         self._check_diags(sim, ["0.0000000000", "0.0010000000"])
 
     def test_dump_elapsed_time_diags(self, ndim=1, interp=1):
-        print("test_dump_elapsed_time_diags dim/interp:{}/{}".format(ndim, interp))
+        print(f"test_dump_elapsed_time_diags dim/interp:{ndim}/{interp}")
 
         simInput = copy.deepcopy(simArgs)
         # configure simulation ndim sized values
@@ -321,7 +316,7 @@ class DiagnosticsTest(SimulatorTest):
         self.assertTrue(len(sim.cells) == ndim)
 
         dump_all_diags(sim.model.populations)
-        for diagname, diagInfo in sim.diagnostics.items():
+        for diagInfo in sim.diagnostics.values():
             diagInfo.write_timestamps = []  # disable
             diagInfo.elapsed_timestamps = [0]  # expect init dump
         simulator = Simulator(sim).setup()
@@ -371,7 +366,9 @@ class DiagnosticsTest(SimulatorTest):
         (currentTime()==endTime()). If dump() re-derived its timestep from a fresh timeStep()
         query instead of the dt that actually produced the current state, a diagnostic scheduled
         exactly at final_time would silently never fire (0 < 0 is always false)."""
-        final_time = 0.2  # small: run() drives the whole thing to completion, few steps expected
+        final_time = (
+            0.2  # small: run() drives the whole thing to completion, few steps expected
+        )
 
         sim = cadence_config(
             self.simulation(

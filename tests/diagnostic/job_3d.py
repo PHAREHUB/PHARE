@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 
 import pyphare.pharein as ph
+from pyphare import cpp  # concurrent serial vs parallel tests
 from tests.diagnostic import dump_all_diags
 from tests.simulator import basicSimulatorArgs, makeBasicModel
-
-from pyphare import cpp  # concurrent serial vs parallel tests
 
 out = f"phare_outputs/diags_3d/{cpp.mpi_size()}"
 simInput = {

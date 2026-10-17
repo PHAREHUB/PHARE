@@ -5,12 +5,12 @@
 #  expected to be destroyed and recreated
 
 import numpy as np
+
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.hierarchy.fromh5 import get_all_available_quantities_from_h5
 from pyphare.pharesee.hierarchy.patchdata import FieldData
 from pyphare.simulator.simulator import Simulator, startMPI
-
-from pyphare import cpp
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
@@ -173,11 +173,11 @@ def config(diag_dir_, write_timestamps, restart_source_dir=None, restart_time=No
 
 class RegriddingTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(RegriddingTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(RegriddingTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None

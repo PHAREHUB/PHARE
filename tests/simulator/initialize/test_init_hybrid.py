@@ -1,18 +1,14 @@
-#
-
-
 import os
-import numpy as np
 
+import numpy as np
 
 import pyphare.pharein as ph
 from pyphare.core.box import nDBox
-from pyphare.simulator.simulator import Simulator
-from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.geometry import level_ghost_boxes
+from pyphare.pharesee.hierarchy import hierarchy_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.pharesee.particles import aggregate as aggregate_particles
-
+from pyphare.simulator.simulator import Simulator
 from tests.simulator.test_initialization import InitializationTest
 
 
@@ -244,17 +240,15 @@ class HybridInitializationTest(InitializationTest):
             **kwargs,
         )
 
-        for pi, patch in enumerate(datahier.level(0).patches):
+        for _pi, patch in enumerate(datahier.level(0).patches):
             pd = patch.patch_datas["protons_particles"]
             icells = pd.dataset[patch.box].iCells
-            H, edges = np.histogramdd(icells, bins=patch.box.shape)
-            self.assertTrue((H == default_ppc).all())
+            H, _edges = np.histogramdd(icells, bins=patch.box.shape)
+            self.assertTrue((default_ppc == H).all())
 
     def _domainParticles_for(self, datahier, ilvl):
         patch0 = datahier.levels()[ilvl].patches[0]
-        pop_names = [
-            key for key in patch0.patch_datas.keys() if key.endswith("particles")
-        ]
+        pop_names = [key for key in patch0.patch_datas if key.endswith("particles")]
         particlePatchDatas = {k: [] for k in pop_names}
         for patch in datahier.levels()[ilvl].patches:
             for pop_name, patch_data in patch.patch_datas.items():
@@ -270,9 +264,7 @@ class HybridInitializationTest(InitializationTest):
         self, ndim, interp_order, refinement_boxes, **kwargs
     ):
         print(
-            "test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {}/{}".format(
-                ndim, interp_order
-            )
+            f"test_domainparticles_have_correct_split_from_coarser_particle for dim/interp : {ndim}/{interp_order}"
         )
         datahier = self.getHierarchy(
             ndim,
@@ -296,7 +288,7 @@ class HybridInitializationTest(InitializationTest):
             coarse_particles = self._domainParticles_for(datahier, ilvl - 1)
 
             self.assertTrue(
-                all([particles.size() > 0 for _, particles in coarse_particles.items()])
+                all(particles.size() > 0 for _, particles in coarse_particles.items())
             )
 
             coarse_split_particles = {
@@ -312,7 +304,7 @@ class HybridInitializationTest(InitializationTest):
 
             for patch in level.patches:
                 for pop_name in [
-                    key for key in patch.patch_datas.keys() if key.endswith("particles")
+                    key for key in patch.patch_datas if key.endswith("particles")
                 ]:
                     part1 = patch.patch_datas[pop_name].dataset.select(
                         patch.box

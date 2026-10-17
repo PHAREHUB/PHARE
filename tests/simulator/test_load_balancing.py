@@ -3,16 +3,15 @@
 # basically a harris run
 
 import unittest
+
 import numpy as np
 from ddt import data, ddt, unpack
 
 import pyphare.pharein as ph
-
 from pyphare import cpp
-from pyphare.simulator.simulator import Simulator, startMPI
 from pyphare.pharesee.hierarchy.hierarchy_utils import hierarchy_compare
 from pyphare.pharesee.particles import single_patch_per_level_per_pop_from
-
+from pyphare.simulator.simulator import Simulator, startMPI
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
@@ -143,7 +142,7 @@ def config(sim, loadbalancing={}):
 
 
 def get_time(path, time=0, pop="protons", datahier=None):
-    time = "{:.10f}".format(time)
+    time = f"{time:.10f}"
     from pyphare.pharesee.hierarchy import hierarchy_from
 
     return hierarchy_from(
@@ -165,9 +164,9 @@ def time_info(diag_dir, time=0):
     def _parse_rank(patch_id):
         return patch_id.split("#")[0]
 
-    for ilvl, lvl in hier.levels().items():
+    for lvl in hier.levels().values():
         for patch in lvl:
-            for pd_key, pd in patch.patch_datas.items():
+            for pd in patch.patch_datas.values():
                 per_rank[_parse_rank(patch.id)] += pd.size()
 
     return per_rank

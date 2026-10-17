@@ -1,7 +1,7 @@
-import os
-import json
-import subprocess
 import dataclasses
+import json
+import os
+import subprocess
 from pathlib import Path
 
 FILE_DIR = Path(__file__).resolve().parent
@@ -81,7 +81,7 @@ def subprocess_run(cmd, on_error="error message"):
     try:
         proc = subprocess.run(cmd.split(" "), check=True, capture_output=True)
         return (proc.stdout + proc.stderr).decode().strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return on_error
 
 
@@ -148,10 +148,9 @@ def ifndef_define(var, val, buf, comment=None):
 
 
 def deduce_mpi_type_from(version):
-    mpi_type = "unknown"
-    if any([s in version for s in ["Open MPI", "OpenMPI"]]):
+    if any(s in version for s in ["Open MPI", "OpenMPI"]):
         return "OMPI"
-    if any([s in version for s in ["MPICH"]]):
+    if any(s in version for s in ["MPICH"]):
         return "MPICH"
     return "unknown"
 
@@ -231,15 +230,13 @@ def config_mpi():
 
 def write_local_cmake_file(mpi_results):
     with open("local.cmake", "w") as file:
-        file.write(
-            """cmake_minimum_required (VERSION 3.20.1)
+        file.write("""cmake_minimum_required (VERSION 3.20.1)
 project(configured_phare)
 message("")
 message("!!PHARE CONFIGURATED!!")
 message("")
 
-"""
-        )
+""")
 
         mpi_type = deduce_mpi_type_from(mpi_results["MPI_Get_library_version"])
         if mpi_type == "OMPI":

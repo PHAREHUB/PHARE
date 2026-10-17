@@ -3,15 +3,15 @@
 
 # the code consists in calculating the curl of a function numerically
 
-import sys
 import os
-
+import sys
 
 import numpy as np
+
 from pyphare.core import gridlayout
 
 
-class TestVariables(object):
+class TestVariables:
     def __init__(self):
         """This class only has a constructor
         in order to set the variables to test the derivatives
@@ -65,7 +65,6 @@ def test_ampere_yee1D(path):
     psi_d_X = layout.physicalStartIndex(tv.interpOrder, "dual")
     pei_d_X = layout.physicalEndIndex(tv.interpOrder, "dual", tv.nbrCells[0])
 
-    nbrGhost_p = layout.nbrGhosts(tv.interpOrder, "primal")
     nbrGhost_d = layout.nbrGhosts(tv.interpOrder, "dual")
 
     x_dual = (
@@ -73,11 +72,6 @@ def test_ampere_yee1D(path):
         * np.arange(layout.allocSize(tv.interpOrder, "dual", tv.nbrCells[0]))
         - tv.meshSize[0] * nbrGhost_d
         + tv.meshSize[0] * 0.5
-    )
-    x_primal = (
-        tv.meshSize[0]
-        * np.arange(layout.allocSize(tv.interpOrder, "primal", tv.nbrCells[0]))
-        - tv.meshSize[0] * nbrGhost_p
     )
 
     By = np.cos(2 * np.pi / tv.domainSize[0] * x_dual)

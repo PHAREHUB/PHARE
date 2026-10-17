@@ -1,5 +1,5 @@
 from . import tensorfield
-from .hierarchy_utils import compute_hier_from, compute_rename, rename, _compute_neg
+from .hierarchy_utils import _compute_neg, compute_hier_from, compute_rename, rename
 
 
 class ScalarField(tensorfield.AnyTensorField):
@@ -24,7 +24,7 @@ class ScalarField(tensorfield.AnyTensorField):
         elif isinstance(other, (int, float)):
             h = compute_hier_from(self._compute_add, (h_self,), other=other)
         else:
-            raise RuntimeError("right operand not supported")
+            raise TypeError("right operand not supported")
 
         return ScalarField.FROM(h)
 
@@ -44,7 +44,7 @@ class ScalarField(tensorfield.AnyTensorField):
         elif isinstance(other, (int, float)):
             h = compute_hier_from(self._compute_sub, (h_self,), other=other)
         else:
-            raise RuntimeError("right operand not supported")
+            raise TypeError("right operand not supported")
 
         return ScalarField.FROM(h)
 
@@ -58,7 +58,7 @@ class ScalarField(tensorfield.AnyTensorField):
         elif isinstance(other, (int, float)):
             h = compute_hier_from(self._compute_mul, (h_self,), other=other)
         else:
-            raise RuntimeError("right operand not supported")
+            raise TypeError("right operand not supported")
 
         return ScalarField.FROM(h)
 
@@ -75,7 +75,7 @@ class ScalarField(tensorfield.AnyTensorField):
         elif isinstance(other, (int, float)):
             h = compute_hier_from(self._compute_truediv, (h_self,), other=other)
         else:
-            raise RuntimeError("right operand not supported")
+            raise TypeError("right operand not supported")
 
         return ScalarField.FROM(h)
 

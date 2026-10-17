@@ -1,8 +1,3 @@
-#
-#
-#
-
-
 class PatchLevel:
     """is a collection of patches"""
 
@@ -14,7 +9,7 @@ class PatchLevel:
         return self.patches.__iter__()
 
     def level_range(self):
-        name = list(self.patches[0].patch_datas.keys())[0]
+        name = next(iter(self.patches[0].patch_datas.keys()))
         return min([patch.patch_datas[name].x.min() for patch in self.patches]), max(
             [patch.patch_datas[name].x.max() for patch in self.patches]
         )

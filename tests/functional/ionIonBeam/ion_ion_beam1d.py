@@ -1,15 +1,13 @@
-#
-#
-
 import os
-import numpy as np
-import pyphare.pharein as ph
-import matplotlib.pyplot as plt
 
+import matplotlib.pyplot as plt
+import numpy as np
+
+import pyphare.pharein as ph
 from pyphare import cpp
-from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
 
 ph.NO_GUI()
 
@@ -141,7 +139,7 @@ def growth_b_right_hand(run_path, time_offset):
 
     # the curve_fit is performed from time index 0 to imax-ioffset as this offset prevent to use
     # the final part of the curve which is no more exponential as this is the end of the linear mode
-    popt, pcov = curve_fit(
+    popt, _pcov = curve_fit(
         yaebx, times[: imax - ioffset], first_mode[: imax - ioffset], p0=[0.08, 0.09]
     )
 
@@ -183,7 +181,7 @@ def main():
         return
 
     if cpp.mpi_rank() == 0:
-        times, first_mode, ampl, gamma, damped_mode, omega = growth_b_right_hand(
+        times, first_mode, ampl, gamma, _damped_mode, _omega = growth_b_right_hand(
             os.path.join(os.curdir, "ion_ion_beam1d"), time_offset
         )
 
@@ -200,16 +198,14 @@ def main():
             times,
             first_mode,
             color="k",
-            label="|$\hat{B}_y (m=1,t)-i\hat{B}_z (m=1,t)$|",
+            label=r"|$\hat{B}_y (m=1,t)-i\hat{B}_z (m=1,t)$|",
         )
         ax1.plot(
             times[:imax],
             yaebx(times[:imax], ampl, gamma),
             color="r",
             linestyle="-",
-            label="$B_0. \exp(\gamma t), \ with\ \gamma =${:5.5f} (expected 0.09)".format(
-                gamma
-            ),
+            label=rf"$B_0. \exp(\gamma t), \ with\ \gamma =${gamma:5.5f} (expected 0.09)",
         )
         ax1.axvline(0, 0, yaebx(times[imax], ampl, gamma), color="red", linestyle="--")
         ax1.axvline(
@@ -245,7 +241,7 @@ def main():
                 vmin=vmin,
                 vmax=vmax,
                 dv=0.05,
-                title="t = {:.1f}".format(t),
+                title=f"t = {t:.1f}",
                 xlabel="",
                 ylabel="",
             )

@@ -4,11 +4,13 @@
 
 import os
 import sys
+
 import numpy as np
+
 from pyphare.core import gridlayout
 
 
-class TestVariables(object):
+class TestVariables:
     def __init__(self):
         """This class only has a constructor
         in order to set the variables to test the derivatives
@@ -35,7 +37,9 @@ def test_laplacian_yee1D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         Jx = np.zeros(
             layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
             dtype=np.float64,
@@ -103,9 +107,9 @@ def test_laplacian_yee1D(path):
             + Jz[psi_p_X - 1 : pei_p_X]
         ) / (tv.meshSize[0] * tv.meshSize[0])
 
-        filename_lapJx = "lapJx_interpOrder_{}_1d.txt".format(interpOrder)
-        filename_lapJy = "lapJy_interpOrder_{}_1d.txt".format(interpOrder)
-        filename_lapJz = "lapJz_interpOrder_{}_1d.txt".format(interpOrder)
+        filename_lapJx = f"lapJx_interpOrder_{interpOrder}_1d.txt"
+        filename_lapJy = f"lapJy_interpOrder_{interpOrder}_1d.txt"
+        filename_lapJz = f"lapJz_interpOrder_{interpOrder}_1d.txt"
 
         np.savetxt(os.path.join(path, filename_lapJx), lapJx, delimiter=" ")
         np.savetxt(os.path.join(path, filename_lapJy), lapJy, delimiter=" ")
@@ -116,7 +120,9 @@ def test_laplacian_yee2D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         Jx = np.zeros(
             [
                 layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
@@ -244,9 +250,9 @@ def test_laplacian_yee2D(path):
         lapJy = Jy_x + Jy_y
         lapJz = Jz_x + Jz_y
 
-        filename_lapJx = "lapJx_interpOrder_{}_2d.txt".format(interpOrder)
-        filename_lapJy = "lapJy_interpOrder_{}_2d.txt".format(interpOrder)
-        filename_lapJz = "lapJz_interpOrder_{}_2d.txt".format(interpOrder)
+        filename_lapJx = f"lapJx_interpOrder_{interpOrder}_2d.txt"
+        filename_lapJy = f"lapJy_interpOrder_{interpOrder}_2d.txt"
+        filename_lapJz = f"lapJz_interpOrder_{interpOrder}_2d.txt"
 
         np.savetxt(os.path.join(path, filename_lapJx), lapJx, delimiter=" ")
         np.savetxt(os.path.join(path, filename_lapJy), lapJy, delimiter=" ")
@@ -257,7 +263,9 @@ def test_laplacian_yee3D(path):
     tv = TestVariables()
 
     for interpOrder in tv.interpOrders:
-        layout = gridlayout.HybridGridLayoutFor(gridlayout.Box(0, 0), 0, 0.1, interpOrder)
+        layout = gridlayout.HybridGridLayoutFor(
+            gridlayout.Box(0, 0), 0, 0.1, interpOrder
+        )
         Jx = np.zeros(
             [
                 layout.allocSize(interpOrder, tv.JxCentering[0], tv.nbrCells[0]),
@@ -436,9 +444,9 @@ def test_laplacian_yee3D(path):
         lapJy = Jy_x + Jy_y + Jy_z
         lapJz = Jz_x + Jz_y + Jz_z
 
-        filename_lapJx = "lapJx_interpOrder_{}_3d.txt".format(interpOrder)
-        filename_lapJy = "lapJy_interpOrder_{}_3d.txt".format(interpOrder)
-        filename_lapJz = "lapJz_interpOrder_{}_3d.txt".format(interpOrder)
+        filename_lapJx = f"lapJx_interpOrder_{interpOrder}_3d.txt"
+        filename_lapJy = f"lapJy_interpOrder_{interpOrder}_3d.txt"
+        filename_lapJz = f"lapJz_interpOrder_{interpOrder}_3d.txt"
 
         np.savetxt(
             os.path.join(path, filename_lapJx), lapJx.flatten("C"), delimiter=" "

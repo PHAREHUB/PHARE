@@ -1,7 +1,7 @@
 import os
 from pathlib import Path
-from pyphare.pharein.simulation import supported_dimensions
 
+from pyphare.pharein.simulation import supported_dimensions
 
 FILE_DIR = Path(__file__).resolve().parent
 this_file_name, file_ext = os.path.splitext(os.path.basename(__file__))

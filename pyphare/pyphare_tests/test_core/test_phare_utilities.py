@@ -1,7 +1,7 @@
 import unittest
 
 import numpy as np
-from ddt import ddt, data
+from ddt import data, ddt
 
 from pyphare.core.phare_utilities import is_scalar
 

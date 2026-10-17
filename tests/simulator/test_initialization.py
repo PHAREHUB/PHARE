@@ -7,13 +7,13 @@
 
 
 import unittest
+
 import numpy as np
 from ddt import ddt
 
 import pyphare.pharein as ph
 from pyphare.core.box import nDBox
 from pyphare.core.phare_utilities import assert_fp_any_all_close
-
 from tests.simulator import SimulatorTest
 
 
@@ -21,9 +21,7 @@ from tests.simulator import SimulatorTest
 class InitializationTest(SimulatorTest):
     def _test_B_is_as_provided_by_user(self, dim, interp_order, **kwargs):
         print(
-            "test_B_is_as_provided_by_user : dim  {} interp_order : {}".format(
-                dim, interp_order
-            )
+            f"test_B_is_as_provided_by_user : dim  {dim} interp_order : {interp_order}"
         )
         now = self.datetime_now()
         hier = self.getHierarchy(
@@ -46,7 +44,7 @@ class InitializationTest(SimulatorTest):
         bz_fn = model.model_dict["bz"]
         for ilvl, level in hier.levels().items():
             self.assertTrue(ilvl == 0)  # only level 0 is expected perfect precision
-            print("checking level {}".format(ilvl))
+            print(f"checking level {ilvl}")
             for patch in level.patches:
                 bx_pd = patch.patch_datas["Bx"]
                 by_pd = patch.patch_datas["By"]
@@ -137,9 +135,9 @@ class InitializationTest(SimulatorTest):
         nbeam = model.model_dict["beam"]["density"]
 
         for ilvl, level in hier.levels().items():
-            print("checking density on level {}".format(ilvl))
+            print(f"checking density on level {ilvl}")
             for ip, patch in enumerate(level.patches):
-                print("patch {}".format(ip))
+                print(f"patch {ip}")
 
                 pdatas = patch.patch_datas
                 layout = pdatas["protons_Fx"].layout
@@ -149,7 +147,7 @@ class InitializationTest(SimulatorTest):
                 )  # primal in all directions
                 select = tuple([slice(nbrGhosts, -nbrGhosts) for i in range(dim)])
 
-                def domain(patch_data):
+                def domain(patch_data, select=select, patch=patch, nbrGhosts=nbrGhosts):
                     if dim == 1:
                         return patch_data.dataset[select]
                     return patch_data.dataset[:].reshape(
@@ -196,14 +194,13 @@ class InitializationTest(SimulatorTest):
         beam_density_fn = model.model_dict["beam"]["density"]
 
         for ilvl, level in hier.levels().items():
-            print("checking density on level {}".format(ilvl))
+            print(f"checking density on level {ilvl}")
             for ip, patch in enumerate(level.patches):
-                print("patch {}".format(ip))
+                print(f"patch {ip}")
 
                 ion_density = patch.patch_datas["rho"].dataset[:]
                 proton_density = patch.patch_datas["protons_rho"].dataset[:]
                 beam_density = patch.patch_datas["beam_rho"].dataset[:]
-                x = patch.patch_datas["rho"].x
 
                 layout = patch.patch_datas["rho"].layout
                 centering = layout.centering["X"][patch.patch_datas["rho"].field_name]
@@ -282,7 +279,7 @@ class InitializationTest(SimulatorTest):
                 plt.plot(x[nbrGhosts:-nbrGhosts], actual, label="actual")
                 plt.plot(x[nbrGhosts:-nbrGhosts], expected, label="expected")
                 plt.legend()
-                plt.title(r"$\sigma =$ {}".format(noise[inbr]))
+                plt.title(rf"$\sigma =$ {noise[inbr]}")
                 plt.savefig(f"noise_{nbrpart}_interp_{dim}_{interp_order}.png")
                 plt.close("all")
 
