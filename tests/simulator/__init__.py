@@ -84,10 +84,15 @@ def fn_periodic(sim, *xyz):
     ).prod(axis=0)
 
 
+def periodic_offset(x, L):
+    """offset from the domain center, ~ x - L/2 near the center but periodic over L"""
+    return L / np.pi * np.sin(np.pi * (x - 0.5 * L) / L)
+
+
 def density_1d_periodic(sim, x):
     xmax = sim.simulation_domain()[0]
     background_particles = 0.3  # avoids 0 density
-    return 1.0 / np.cosh((x - xmax * 0.5) ** 2 + background_particles)
+    return 1.0 / np.cosh(periodic_offset(x, xmax) ** 2 + background_particles)
 
 
 def density_2d_periodic(sim, x, y):
@@ -95,7 +100,8 @@ def density_2d_periodic(sim, x, y):
     background_particles = 0.3  # avoids 0 density
     xx, yy = meshify(x, y)
     return (
-        np.exp(-((xx - 0.5 * xmax) ** 2)) * np.exp(-((yy - ymax / 2.0) ** 2))
+        np.exp(-(periodic_offset(xx, xmax) ** 2))
+        * np.exp(-(periodic_offset(yy, ymax) ** 2))
         + background_particles
     )
 
@@ -105,9 +111,9 @@ def density_3d_periodic(sim, x, y, z):
     background_particles = 0.3  # avoids 0 density
     xx, yy, zz = meshify(x, y, z)
     r = (
-        np.exp(-((xx - 0.5 * xmax) ** 2))
-        * np.exp(-((yy - ymax / 2.0) ** 2))
-        * np.exp(-((zz - zmax / 2.0) ** 2))
+        np.exp(-(periodic_offset(xx, xmax) ** 2))
+        * np.exp(-(periodic_offset(yy, ymax) ** 2))
+        * np.exp(-(periodic_offset(zz, zmax) ** 2))
         + background_particles
     )
     return r
