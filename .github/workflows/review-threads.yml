@@ -31,7 +31,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.base.ref }} # the script from master, never from the PR
           persist-credentials: false
       - run: python3 res/ci/gate/threads.py "$REPO" "$PR"
         env:
