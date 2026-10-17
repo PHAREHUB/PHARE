@@ -321,6 +321,26 @@ class TestsRemoved(unittest.TestCase):
         f = self.flagged({"tests/CMakeLists.txt": "\n"}, {"tests/test_new.py": PY_TEST, "tests/CMakeLists.txt": "add_python3_test(t test_new.py ${D})\n"})
         self.assertEqual(f, [])
 
+    def test_new_test_file_registered_in_foreach_is_fine(self):
+        cm = "foreach(suffix a b)\n  add_executable(t-${suffix} test_x_${suffix}.cpp)\n  add_no_mpi_phare_test(t-${suffix} ${D})\nendforeach()\n"
+        f = self.flagged({"tests/x/CMakeLists.txt": "\n"}, {"tests/x/test_x_a.cpp": CPP_TEST, "tests/x/CMakeLists.txt": cm})
+        self.assertEqual(f, [])
+
+    def test_new_test_file_registered_by_function_is_fine(self):
+        cm = "function(_add_test name)\n  add_executable(${name} ${name}.cpp)\nendfunction()\n_add_test(test-x_1d)\n"
+        f = self.flagged({"tests/x/CMakeLists.txt": "\n"}, {"tests/x/test-x_1d.cpp": CPP_TEST, "tests/x/CMakeLists.txt": cm})
+        self.assertEqual(f, [])
+
+    def test_new_test_file_only_variable_pattern_warns(self):
+        cm = "function(_add_test name)\n  add_executable(${name} ${name}.cpp)\nendfunction()\n_add_test(test_other)\n"
+        f = self.flagged({"tests/x/CMakeLists.txt": cm}, {"tests/x/test_x.cpp": CPP_TEST})
+        self.assertEqual([x.level for x in f], ["warning"])
+
+    def test_new_test_file_pattern_in_unrelated_directory_warns(self):
+        cm = "foreach(s a)\n  add_executable(t ${s}/test_x_${s}.cpp)\nendforeach()\n"
+        f = self.flagged({"tests/y/CMakeLists.txt": cm}, {"tests/x/test_x_a.cpp": CPP_TEST})
+        self.assertEqual([x.level for x in f], ["warning"])
+
     def test_added_test_is_fine(self):
         f = self.flagged({"tests/test_x.py": PY_TEST}, {"tests/test_x.py": PY_TEST + "\n    def test_c(self):\n        self.assertTrue(True)\n"})
         self.assertEqual(f, [])

@@ -5,7 +5,8 @@
   class) and module-level `test*` functions. A test moved to another file is not a removal.
 - CMake registrations: add_*test, phare_*exec and test add_subdirectory calls, per file. A changed
   call (e.g. a level moved from 9 to 11) counts as removed: it changes what runs, and when.
-- new test files that no CMake file mentions (warning: never run by ctest).
+- new test files that no CMake file mentions, by name or built from variables in a loop or a
+  function (warning: never run by ctest).
 
 usage: tests_removed.py BASE HEAD     (compares HEAD with its merge base with BASE)
 exit:  0 nothing to fix, 1 an error is left after label overrides (label tests-removed-ok)
@@ -32,6 +33,8 @@ CMAKE_COMMENT = re.compile(r"#[^\n]*")
 REGISTRATION = re.compile(
     r"\b(add_\w*test|phare_\w*exec|add_subdirectory)\s*\(", re.I
 )  # add_test, add_phare_test, add_no_mpi_phare_test, add_python3_test, add_mpi_python3_test, ...
+CMAKE_TOKEN = re.compile(r'[^\s()"]+')
+CMAKE_VAR = re.compile(r"\$\{[^}]*\}")
 
 
 def gtest_names(source):
@@ -93,13 +96,45 @@ def test_names(path, source):
     return set()
 
 
+def builds_name(cmake, name):
+    """True if CMake text builds this file name from variables, as a loop or a function does.
+
+    - its stem as a whole word: `_add_test(test_x)` with `add_executable(${n} ${n}.cpp)` in the function
+    - a token with variables and some fixed text besides the extension: `test_x_${suffix}.cpp` in a
+      foreach; `${n}.cpp` alone would match any file and is skipped
+    """
+    text = CMAKE_COMMENT.sub("", cmake)
+    stem = os.path.splitext(name)[0]
+    if re.search(rf"(?<![\w.-]){re.escape(stem)}(?![\w.-])", text):
+        return True
+    for token in CMAKE_TOKEN.findall(text):
+        literals = CMAKE_VAR.split(token.rsplit("/", 1)[-1])
+        fixed = re.sub(r"\.\w+$", "", "".join(literals))  # fixed text without the extension
+        if len(literals) > 1 and re.search(r"\w", fixed) and re.fullmatch(r"[\w-]*".join(map(re.escape, literals)), name):
+            return True
+    return False
+
+
 def mentioned_in_cmake(path, head, cwd):
-    """True if a CMakeLists.txt or .cmake file at head names this file (gtest source or python script)."""
+    """True if a CMake file at head names this file (gtest source or python script).
+
+    The name anywhere in a CMakeLists.txt or .cmake file, or built from variables in the
+    CMakeLists.txt of its directory or of a directory above it.
+    """
     try:
         out = git("grep", "-l", "-F", os.path.basename(path), head, "--", ":(top,glob)**/CMakeLists.txt", ":(top,glob)**/*.cmake", cwd=cwd)
+        if out.strip():
+            return True
     except subprocess.CalledProcessError:  # git grep exits 1 when nothing matches
-        return False
-    return bool(out.strip())
+        pass
+    directory = os.path.dirname(path)
+    while True:
+        cmake = file_at(head, f"{directory}/CMakeLists.txt" if directory else "CMakeLists.txt", cwd=cwd)
+        if cmake is not None and builds_name(cmake, os.path.basename(path)):
+            return True
+        if not directory:
+            return False
+        directory = os.path.dirname(directory)
 
 
 def check(base, head, cwd=None):
