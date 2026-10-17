@@ -5,6 +5,12 @@
 #include "amr/wrappers/hierarchy.hpp"
 #include "initializer/python_data_provider.hpp"
 
+#include "hdf5/phare_hdf5.hpp"
+
+#if PHARE_HAS_HIGHFIVE
+#include "hdf5/detail/h5/h5_file.hpp"
+#endif
+
 #include <atomic>
 #include <csignal>
 #include <algorithm>
@@ -79,7 +85,9 @@ int main(int argc, char** argv)
     std::cout << "\n";
     std::cout << "\n";
 
-    PHARE::SamraiLifeCycle slc{argc, argv};
+    bool mpi_thread_multiple = false;
+    _PHARE_WITH_HIGHFIVE(mpi_thread_multiple = PHARE::hdf5::h5::mpi_thread_multiple_required());
+    PHARE::SamraiLifeCycle slc{argc, argv, mpi_thread_multiple};
 
     std::cerr << "creating python data provider\n";
     auto provider = fromCommandLine(argc, argv);

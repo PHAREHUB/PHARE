@@ -29,7 +29,7 @@ private:
 class SamraiLifeCycle //
 {
 public:
-    SamraiLifeCycle(int argc = 0, char** argv = nullptr);
+    SamraiLifeCycle(int argc = 0, char** argv = nullptr, bool const mpi_thread_multiple = false);
 
     ~SamraiLifeCycle();
 
@@ -40,6 +40,9 @@ public:
     static SAMRAI::hier::PatchDataRestartManager* getPatchDataRestartManager();
 
     static SAMRAI::tbox::RestartManager* getRestartManager();
+
+private:
+    bool const owns_mpi_; // MPI_Init_thread done here rather than by SAMRAI
 };
 
 
