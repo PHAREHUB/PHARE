@@ -60,7 +60,13 @@ Basic tools and library requirements:
 
 
 
-PHARE input and post-processing scripts are in python. Install dependencies with:
+PHARE input and post-processing scripts are in python. Install dependencies with [uv](https://docs.astral.sh/uv/), which creates a `.venv` from `pyproject.toml`:
+
+```
+  uv sync
+```
+
+or with pip:
 
 ```
   python3 -m pip install -r requirements.txt
@@ -95,6 +101,12 @@ All contributions are welcome. If you are interested in participating to the pro
 ### Development environnment
 
 For system library requirements see the following [Docker File](https://github.com/PHARCHIVE/phare-teamcity-agent/blob/master/Dockerfile)
+
+The clang-format and ruff versions checked by CI are pinned in the `lint` dependency group of `pyproject.toml`. `uv sync` installs them, or with pip >= 25.1:
+
+```
+  python3 -m pip install --group lint
+```
 
 ### Active core team
 
