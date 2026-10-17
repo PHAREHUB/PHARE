@@ -3,6 +3,7 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include <core/utilities/types.hpp>
 
 #include <cstdint>
 
@@ -40,70 +41,64 @@ public:
         auto& Jy = J(Component::Y);
         auto& Jz = J(Component::Z);
 
-        Point<std::uint32_t, dimension> amount;
+        auto const amount = ConstArray<std::size_t, dimension>(box.amount);
 
-        for (size_t i = 0; i < dimension; ++i)
-        {
-            amount[i] = box.amount;
-        }
-
-        auto eval = [&](auto& Jc, auto&& fn) {
+        // evalOn* calls fn(point, trailingArgs...); trailing args (Jc, B, layout_)
+        // are passed through it rather than captured, so the lambdas stay
+        // capture-free and JxEq_/JyEq_/JzEq_ can remain static
+        auto const eval = [&](auto& Jc, auto&& fn) {
             if constexpr (box.mode == AmpereMode::ShrinkedGhost)
-                layout_.evalOnShrinkedGhostBox(Jc, amount, fn);
+                layout_.evalOnShrinkedGhostBox(Jc, amount, fn, Jc, B, layout_);
             else
-                layout_.evalOnBiggerBox(Jc, amount, fn);
+                layout_.evalOnBiggerBox(Jc, amount, fn, Jc, B, layout_);
         };
 
-        eval(Jx, [&](auto&... args) mutable { JxEq_(Jx, B, args...); });
-        eval(Jy, [&](auto&... args) mutable { JyEq_(Jy, B, args...); });
-        eval(Jz, [&](auto&... args) mutable { JzEq_(Jz, B, args...); });
+        eval(Jx, [](auto&&... args) { JxEq_(args...); });
+        eval(Jy, [](auto&&... args) { JyEq_(args...); });
+        eval(Jz, [](auto&&... args) { JzEq_(args...); });
     }
 
 
 private:
     GridLayout layout_;
 
-
-    template<typename VecField, typename Field, typename... Indexes>
-    void JxEq_(Field& Jx, VecField const& B, Indexes const&... ijk) const
+    static void JxEq_(auto const& ijk, auto& Jx, auto const& B, auto const& layout)
     {
         auto const& [_, By, Bz] = B();
 
         if constexpr (dimension == 1)
-            Jx(ijk...) = 0.0;
+            Jx(ijk) = 0.0;
 
         if constexpr (dimension == 2)
-            Jx(ijk...) = layout_.template deriv<Direction::Y>(Bz, {ijk...});
+            Jx(ijk) = layout.template deriv<Direction::Y>(Bz, ijk);
 
         if constexpr (dimension == 3)
-            Jx(ijk...) = layout_.template deriv<Direction::Y>(Bz, {ijk...})
-                         - layout_.template deriv<Direction::Z>(By, {ijk...});
+            Jx(ijk) = layout.template deriv<Direction::Y>(Bz, ijk)
+                      - layout.template deriv<Direction::Z>(By, ijk);
     }
 
-    template<typename VecField, typename Field, typename... Indexes>
-    void JyEq_(Field& Jy, VecField const& B, Indexes const&... ijk) const
+    static void JyEq_(auto const& ijk, auto& Jy, auto const& B, auto const& layout)
     {
         auto const& [Bx, By, Bz] = B();
 
         if constexpr (dimension == 1 || dimension == 2)
-            Jy(ijk...) = -layout_.template deriv<Direction::X>(Bz, {ijk...});
+            Jy(ijk) = -layout.template deriv<Direction::X>(Bz, ijk);
 
         if constexpr (dimension == 3)
-            Jy(ijk...) = layout_.template deriv<Direction::Z>(Bx, {ijk...})
-                         - layout_.template deriv<Direction::X>(Bz, {ijk...});
+            Jy(ijk) = layout.template deriv<Direction::Z>(Bx, ijk)
+                      - layout.template deriv<Direction::X>(Bz, ijk);
     }
 
-    template<typename VecField, typename Field, typename... Indexes>
-    void JzEq_(Field& Jz, VecField const& B, Indexes const&... ijk) const
+    static void JzEq_(auto const& ijk, auto& Jz, auto const& B, auto const& layout)
     {
         auto const& [Bx, By, Bz] = B();
 
         if constexpr (dimension == 1)
-            Jz(ijk...) = layout_.template deriv<Direction::X>(By, {ijk...});
+            Jz(ijk) = layout.template deriv<Direction::X>(By, ijk);
 
         else
-            Jz(ijk...) = layout_.template deriv<Direction::X>(By, {ijk...})
-                         - layout_.template deriv<Direction::Y>(Bx, {ijk...});
+            Jz(ijk) = layout.template deriv<Direction::X>(By, ijk)
+                      - layout.template deriv<Direction::Y>(Bx, ijk);
     }
 };
 
