@@ -44,7 +44,7 @@ resolution wherever the solution needs it.
 PHARE is an open-source projet licenced under the GPLv3. Please refer to [LICENCE.TXT](LICENCE.TXT)
 
 
-## Building the code
+## Install PHARE
 
 Basic tools and library requirements:
 
@@ -55,30 +55,47 @@ Basic tools and library requirements:
 - C++ and Fortran compiler
 - MPI
 - Parallel HDF5
-- Python 3.x devel package
+- Python 3.11+ devel package
 ```
 
-
-
-PHARE input and post-processing scripts are in python. Install dependencies with:
+From a source checkout, `pip install .` builds PHARE with CMake and installs the `pyphare` python package together with the compiled simulator modules. Nothing needs to be added to `PYTHONPATH` or `LD_LIBRARY_PATH` afterwards:
 
 ```
-  python3 -m pip install -r requirements.txt
+  python3 -m venv phare_venv
+  source phare_venv/bin/activate
+  pip install .
 ```
 
-PHARE depends on [SAMRAI](https://github.com/llnl/samrai) to manage the adaptive mesh refinement. You can either
+Building needs network access: pip downloads the build backend from PyPI into an isolated build environment, and CMake clones the subprojects (SAMRAI, pybind11, HighFive, ...) from GitHub unless `subprojects/` is already populated. `pip install -v .` shows the build output.
 
-- build PHARE with the latest version of [SAMRAI](https://github.com/llnl/samrai):
-
-```
-  mkdir build; cd build; cmake ..; make
-```
-
-- build PHARE with a pre-installed version of [SAMRAI](https://github.com/llnl/samrai):
+PHARE depends on [SAMRAI](https://github.com/llnl/samrai) to manage the adaptive mesh refinement. By default the latest version is built from `subprojects/`. To use a pre-installed SAMRAI instead:
 
 ```
-  mkdir build; cd build; cmake .. -DSAMRAI_ROOT=/path/to/SAMRAI/install; make
+  pip install . -C cmake.define.SAMRAI_ROOT=/path/to/SAMRAI/install
 ```
+
+By default every simulation permutation listed in `res/sim/all.txt` is compiled, which takes a long time. To build only the permutations listed in your own file:
+
+```
+  pip install . -C cmake.define.PHARE_PERMUTATIONS=/path/to/permutations.txt
+```
+
+Simulator modules take a lot of memory to compile and link, so the number compiled or linked at once is limited to 3/4 of the available memory divided by `PHARE_MODULE_COMPILE_MEMORY_MB` (default 2048, the peak memory in MiB of one module compile or link). The available memory is the physical memory, or the cgroup limit when it is lower (containers, SLURM jobs). The limit is computed again at every install and printed in the build output (`PHARE module compiles and links: ...`). Override it with `-C cmake.define.PHARE_MODULE_COMPILE_MEMORY_MB=<mb>`, or set it directly with `-C cmake.define.PHARE_MODULE_COMPILE_JOBS=<n>` (`0` disables the limit). An override applies to the install it is passed to and is not remembered: pass it again on later installs.
+
+The build directory `_skbuild/` is kept between installs, but every install configures from scratch, so pass the `-C` options each time. What `_skbuild/` keeps is the compiled objects (changed flags or sources are recompiled automatically) and the probe of the compiler, MPI and HDF5. Delete `_skbuild/` after changing compilers or the loaded MPI/HDF5 modules, so the probe runs again.
+
+With [uv](https://docs.astral.sh/uv/), `uv sync` creates a `.venv`, installs the python dependencies and builds and installs PHARE the same way. `uv run` does the same before running its command. Both accept the same `-C` options, or the CMake definitions can be passed through the `SKBUILD_CMAKE_DEFINE` environment variable (semicolon-separated `KEY=VALUE`):
+
+```
+  uv sync -C cmake.define.SAMRAI_ROOT=/path/to/SAMRAI/install -C cmake.define.PHARE_PERMUTATIONS=/path/to/permutations.txt
+  SKBUILD_CMAKE_DEFINE="SAMRAI_ROOT=/path/to/SAMRAI/install;PHARE_PERMUTATIONS=/path/to/permutations.txt" uv sync
+```
+
+uv may not detect changes to these options, and does not detect changes to a permutation file outside the repository. After changing them, run `uv sync --reinstall-package pyphare` (pip reinstalls on every `pip install .`).
+
+Do not run `ninja` or `cmake --build` by hand inside `_skbuild/`: after a CMake file changes, the automatic reconfigure does not have your `-C` options and falls back to the defaults. Reinstall with pip or uv instead.
+
+To install on a cluster, or to choose compilers and flags, see [Run PHARE from python](https://phare.readthedocs.io/en/latest/usage/run_from_python.html).
 
 ## Documentation
 
@@ -95,6 +112,27 @@ All contributions are welcome. If you are interested in participating to the pro
 ### Development environnment
 
 For system library requirements see the following [Docker File](https://github.com/PHARCHIVE/phare-teamcity-agent/blob/master/Dockerfile)
+
+Developers who keep their own CMake build:
+
+```
+  mkdir build; cd build; cmake .. -DSAMRAI_ROOT=/path/to/SAMRAI/install; make
+```
+
+should install only the python dependencies, since a plain `uv sync` or `uv run` builds and installs PHARE with every permutation:
+
+```
+  uv sync --no-install-project
+  export PYTHONPATH=/path/to/PHARE/pyphare:/path/to/PHARE/build:$PYTHONPATH
+```
+
+Do not mix this build with an environment where `uv sync` or `uv run` installed PHARE: that install is editable, and its import finder takes precedence over `PYTHONPATH`, so the installed `pybindlibs` would be used instead of your build. `pip install -e .` creates the same finder; a non-editable `pip install .` does not. `pyphare` refuses to load a `pybindlibs` other than the one found on `PYTHONPATH`, with an `ImportError` naming both. `uv sync` and `uv run` also manage `.venv` as the project environment, and may recreate it (for example with a uv-managed python), dropping packages installed by hand. Use a separate environment for your own build, or keep uv from touching it: `uv sync --no-install-project`, `uv run --no-sync <cmd>`, or `UV_NO_SYNC=1` for scripts calling `uv run`. A `.venv` shared between checkouts (for example symlinked into git worktrees) is synced by whichever checkout runs uv.
+
+The clang-format and ruff versions checked by CI are pinned in the `lint` dependency group of `pyproject.toml`. `uv sync --no-install-project` installs them (with the default `dev` group) without building PHARE, or with pip >= 25.1:
+
+```
+  python3 -m pip install --group lint
+```
 
 ### Active core team
 

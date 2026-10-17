@@ -30,7 +30,8 @@
 
 ## 2.2 dependencies and imports
 
-Third party depenencies are stated in the file `requirements.txt` in the project root.
+Third party dependencies are stated in `pyproject.toml` in the project root: runtime dependencies in `[project].dependencies`, test, docs, optional and development tool dependencies in `[dependency-groups]`.
+Until the CI image and Read the Docs install from `pyproject.toml`, runtime dependencies are also listed in `requirements.txt`, and docs dependencies in `doc/source/requirements.txt`.
 Fewer dependencies is generally better but there should be a cost/benefit assessment for adding new dependencies.
 
 ### 2.2.1 Python file import structure.

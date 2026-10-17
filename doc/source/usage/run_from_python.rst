@@ -5,37 +5,133 @@ Run PHARE from python
 
 PHARE can run as a python script.
 
-Python dependencies
--------------------
+Installing PHARE
+----------------
 
 PHARE requires a minimmum version of python 3.11 to run properly.
-Make sure `python3` shows the version is at least 3.11. 
-Python package dependencies are listed in `requirements.txt` file.
-Install dependencies for the user:
-
-.. code-block:: bash
-
-     pip3 install --user -r requirements.txt
-
-Install dependencies in a virtual environment:
+Make sure `python3` shows the version is at least 3.11.
+From the PHARE source directory, `pip install .` builds PHARE with CMake and installs the `pyphare`
+python package together with the compiled simulator modules, in the active (virtual) environment:
 
 .. code-block:: bash
 
      python3 -m venv phare_venv
      source phare_venv/bin/activate
-     pip3 install -r requirements.txt
+     pip install .
+
+or with `uv <https://docs.astral.sh/uv/>`_, which also creates the environment:
+
+.. code-block:: bash
+
+     uv sync
+     source .venv/bin/activate
+
+`uv run <cmd>` also builds and installs PHARE, like `uv sync`, before running its command.
+Python package dependencies are listed in `pyproject.toml`.
+Building needs network access (see `Installing on a cluster / overriding defaults`_), and `pip install -v .` shows the build output.
+By default SAMRAI is built from `subprojects/` and every permutation of `res/sim/all.txt` is compiled, which takes a long time.
+To use a pre-installed SAMRAI, or to build only some permutations:
+
+.. code-block:: bash
+
+     pip install . -C cmake.define.SAMRAI_ROOT=/path/to/SAMRAI/install \
+                   -C cmake.define.PHARE_PERMUTATIONS=/path/to/permutations.txt
+
+`uv sync` and `uv run` accept the same `-C` options, or the definitions can be passed through the
+`SKBUILD_CMAKE_DEFINE` environment variable (semicolon-separated `KEY=VALUE`):
+
+.. code-block:: bash
+
+     uv sync -C cmake.define.SAMRAI_ROOT=/path/to/SAMRAI/install \
+             -C cmake.define.PHARE_PERMUTATIONS=/path/to/permutations.txt
+     SKBUILD_CMAKE_DEFINE="SAMRAI_ROOT=/path/to/SAMRAI/install;PHARE_PERMUTATIONS=/path/to/permutations.txt" uv sync
+
+`SAMRAI_ROOT` and `PHARE_PERMUTATIONS` are not remembered between installs: pass them each time.
+uv may not detect changes to these options, and does not detect changes to a permutation file outside the repository.
+After changing them, run `uv sync --reinstall-package pyphare` (pip reinstalls on every `pip install .`).
+
+Simulator modules take a lot of memory to compile and link, so the number compiled or linked at once is
+limited to 3/4 of the available memory divided by `PHARE_MODULE_COMPILE_MEMORY_MB`
+(default 2048, the peak memory in MiB of one module compile or link).
+The available memory is the physical memory, or the cgroup limit when it is lower (containers, SLURM jobs).
+The limit is computed again at every install and printed in the build output (`PHARE module compiles and links: ...`).
+Override it with `-C cmake.define.PHARE_MODULE_COMPILE_MEMORY_MB=<mb>`, or set it directly with
+`-C cmake.define.PHARE_MODULE_COMPILE_JOBS=<n>` (`0` disables the limit).
+An override applies to the install it is passed to and is not remembered: pass it again on later installs.
+
+The build directory `_skbuild/` is kept between installs, so rebuilds are incremental.
+Do not run `ninja` or `cmake --build` by hand inside `_skbuild/`: after a CMake file changes,
+the automatic reconfigure does not have your `-C` options and falls back to the defaults.
+Reinstall with pip or uv instead.
+
+Building PHARE with your own CMake build
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Developers who keep their own CMake build should install only the python dependencies, since a plain `uv sync`
+or `uv run` builds and installs PHARE with every permutation:
+
+.. code-block:: bash
+
+     uv sync --no-install-project
+     source .venv/bin/activate
+
+or, with pip, `pip3 install -r requirements.txt` in a virtual environment.
+
+Do not mix your own CMake build with an environment where `uv sync` or `uv run` installed PHARE.
+That install is editable, and its import finder takes precedence over `PYTHONPATH`:
+the installed `pybindlibs` would be used instead of your build.
+`pip install -e .` creates the same finder; a non-editable `pip install .` does not.
+`pyphare` refuses to load a `pybindlibs` other than the one found on `PYTHONPATH`, with an `ImportError` naming both.
+`uv sync` and `uv run` also manage `.venv` as the project environment, and may recreate it
+(for example with a uv-managed python), dropping packages installed there by hand.
+Use a separate environment for your own build, or keep uv from touching it:
+`uv sync --no-install-project`, `uv run --no-sync <cmd>`, or the environment variable `UV_NO_SYNC=1`
+for scripts that call `uv run`.
+A `.venv` shared between several checkouts (for example symlinked into git worktrees) is synced by whichever checkout runs uv.
+
+Installing on a cluster / overriding defaults
+---------------------------------------------
+
+PHARE is always compiled locally against your compilers, MPI and parallel HDF5: there are no prebuilt wheels.
+Load the same modules before installing and before running.
+Building needs network access: pip downloads the build backend from PyPI into an isolated build environment,
+and CMake clones the subprojects (SAMRAI, pybind11, HighFive, ...) from GitHub unless `subprojects/` is already populated.
+Compute nodes are often offline: build where both are reachable, for example on a login node
+(of the compute-node architecture when building with `-march=native`).
+`pip install -v .` shows the build output, including the compile limit in use.
+Choose compilers with the `CC`, `CXX` and `FC` environment variables, CMake options with
+`-C cmake.define.<VAR>=...` (or the `CMAKE_ARGS` environment variable) and the build type with `-C cmake.build-type=...`.
+For example:
+
+.. code-block:: bash
+
+     module load cray-python gcc-native cray-hdf5-parallel
+     FC=mpif90 pip install . \
+         -C cmake.build-type=Release \
+         -C cmake.define.CMAKE_CXX_FLAGS="-DNDEBUG -g0 -O3 -march=native -mtune=native"
+
+- Every pip/uv install configures from scratch, so give the `-C` options each time. `_skbuild/` keeps the compiled
+  objects (changed flags or sources are recompiled automatically) and the probe of the compiler, MPI and HDF5:
+  delete `_skbuild/` after changing compilers or the loaded MPI/HDF5 modules, so the probe runs again.
+- `-march=native` binaries only run on the CPU type they were built on: build on the compute-node architecture.
+- At run time, launch with the `mpirun`/`srun` of the MPI PHARE was built with. The launcher of a different MPI
+  starts N independent single-rank runs, and a different MPI on `LD_LIBRARY_PATH` takes precedence over the recorded RUNPATH.
 
 
 Running PHARE
 -------------
-First, make sure it is accessible to python.
+After `pip install .` or `uv sync`, PHARE is accessible to python: there is nothing to set.
+
+With your own CMake build only, let python know where to find PHARE.
 Assuming PHARE source directory is in  `/path/to/PHARE`, and the build directory is
-`/path/to/build/`, then use the following to let python know where to find PHARE:
+`/path/to/build/`:
 
 
 .. code-block:: bash
 
      export PYTHONPATH=/path/to/PHARE/pyphare:/path/to/build:$PYTHONPATH
+
+Set both paths together, or not at all.
 
 Write a :doc:`simulation_inputs` and run the following command:
 
