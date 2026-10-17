@@ -131,15 +131,15 @@ class Simulator:
             raise ValueError("Error in Simulator.setup(), see previous error")
 
     def initialize(self):
+        if self.initialized:
+            return self
+
+        self._check_setup()
+
+        if self.simulation.dry_run:  # needs setup
+            return self
+
         try:
-            if self.initialized:
-                return
-            if self.cpp_hier is None:
-                self.setup()
-
-            if self.simulation.dry_run:
-                return self
-
             self.cpp_sim.initialize()
             self.initialized = True
             self._auto_dump()  # first dump might be before first advance
@@ -152,13 +152,6 @@ class Simulator:
                 )
             )
             raise ValueError("Error in Simulator.initialize(), see previous error")
-
-    def _throw(self, e):
-        print_rank0(e)
-        if exit_on_exception:
-            sys.exit(1)
-        # or reraise
-        raise RuntimeError(e)
 
     def advance(self):
         self._check_init()
@@ -233,9 +226,6 @@ class Simulator:
         mon.monitoring_shutdown()
         return self.reset()
 
-    def _auto_dump(self):
-        return self.auto_dump and self.dump()
-
     def dump(self, *args):
         assert len(args) == 0 or len(args) == 2
 
@@ -247,7 +237,7 @@ class Simulator:
         return self.cpp_sim.dump_diagnostics(timestamp=time, timestep=timestep)
 
     def data_wrangler(self):
-        self._check_init()
+        self._check_setup()
         if self.cpp_dw is None:
             from pyphare.data.wrangler import DataWrangler
 
@@ -268,28 +258,35 @@ class Simulator:
         return self
 
     def timeStep(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.timeStep()
 
     def currentTime(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.currentTime()
 
     def domain_box(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.domain_box()
 
     def cell_width(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.cell_width()
 
     def interp_order(self):
-        self._check_init()
+        self._check_setup()
         return self.cpp_sim.interp_order  # constexpr static value
+
+    def _auto_dump(self):
+        return self.auto_dump and self.dump()
 
     def _check_init(self):
         if not self.initialized:
             self.initialize()
+
+    def _check_setup(self):
+        if not self.cpp_sim:
+            self.setup()
 
     def _log_to_file(self):
         """
@@ -307,3 +304,9 @@ class Simulator:
             Path(".log").mkdir(exist_ok=True)
         cpp.mpi_barrier()
 
+    def _throw(self, e):
+        print_rank0(e)
+        if exit_on_exception:
+            sys.exit(1)
+        # or reraise
+        raise RuntimeError(e)
