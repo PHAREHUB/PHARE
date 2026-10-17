@@ -334,11 +334,6 @@ namespace amr
             strat_->fillDensityBorders(ions, level, fillTime);
         }
 
-        void fillIonBorders(IonsT& ions, level_t& level, double const fillTime)
-        {
-            strat_->fillIonBorders(ions, level, fillTime);
-        }
-
         /* -------------------------------------------------------------------------
                             End HybridMessenger Interface
            -------------------------------------------------------------------------*/
