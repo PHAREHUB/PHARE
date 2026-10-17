@@ -65,6 +65,7 @@ void registerDiagnostics(DiagManager& dMan, initializer::PHAREDict const& diagsP
 class IDiagnosticsManager
 {
 public:
+    virtual bool dump(double timeStamp)                          = 0;
     virtual bool dump(double timeStamp, double timeStep)         = 0;
     virtual void dump_level(std::size_t level, double timeStamp) = 0;
     inline virtual ~IDiagnosticsManager();
@@ -79,6 +80,7 @@ class DiagnosticsManager : public IDiagnosticsManager
 public:
     using Model_t = typename Writer::Model_t;
 
+    bool dump(double timeStamp) override;
     bool dump(double timeStamp, double timeStep) override;
 
 
@@ -250,6 +252,22 @@ bool DiagnosticsManager<Writer>::dump(double timeStamp, double timeStep)
     }
 
     return activeDiagnostics.size() > 0;
+}
+
+
+template<typename Writer>
+bool DiagnosticsManager<Writer>::dump(double const timeStamp)
+{
+    auto const diagnostics
+        = core::generate([&](auto const i) { return &diagnostics_[i]; }, diagnostics_.size());
+
+    if (diagnostics.size() > 0)
+    {
+        PHARE_LOG_SCOPE(1, "DiagnosticsManager::dump()");
+        writer_->dump(diagnostics, timeStamp);
+    }
+
+    return diagnostics.size() > 0;
 }
 
 } // namespace PHARE::diagnostic

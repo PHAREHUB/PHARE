@@ -191,6 +191,42 @@ class VTKDiagnosticsTest(SimulatorTest):
             except ModuleNotFoundError:
                 print("WARNING: vtk python module not found - cannot make plots")
 
+    @data(*permute({}))
+    @unpack
+    def test_fine_dump_steps(self, ndim, interp, simInput):
+        print(f"test_fine_dump_steps dim/interp:{ndim}/{interp}")
+
+        b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
+        simInput["refinement_boxes"] = {"L0": {"B0": b0}}
+        simInput["diag_options"]["options"]["dir"] += "/fine_dump"
+        simInput["diag_options"]["options"]["fine_dump_lvl_max"] = 10
+        local_out = self._run(ndim, interp, simInput)
+
+        if cpp.mpi_rank() == 0:
+            # full dump t0, 3 L1 fine dumps (L1 dt = L0 dt / ratio**2), full dump t1
+            self._assert_steps_per_level(local_out + "/EM_B.vtkhdf", 5)
+
+    def _assert_steps_per_level(self, path, n_steps):
+        import h5py
+
+        step_datasets = ["NumberOfAMRBox", "AMRBoxOffset", "PointDataOffset/data"]
+
+        with h5py.File(path, "r") as h5:
+            steps = h5["VTKHDF/Steps"]
+            self.assertEqual(steps.attrs["NSteps"], n_steps)
+            self.assertEqual(len(steps["Values"]), n_steps)
+
+            levels = [key for key in steps if key.startswith("Level")]
+            self.assertEqual(sorted(levels), ["Level0", "Level1"])
+            for level in levels:
+                for ds in step_datasets:
+                    self.assertEqual(len(steps[f"{level}/{ds}"]), n_steps)
+
+            # L0 is not written during L1 fine dumps, it has no boxes at those steps
+            for step in range(1, n_steps - 1):
+                self.assertEqual(steps["Level0/NumberOfAMRBox"][step], 0)
+                self.assertTrue(steps["Level1/NumberOfAMRBox"][step] > 0)
+
 
 if __name__ == "__main__":
     startMPI()
