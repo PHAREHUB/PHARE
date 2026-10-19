@@ -628,7 +628,7 @@ public:
             this->template indexAndWeights_<QtyCentering, QtyCentering::primal>(
                 layout, particle.iCell, particle.delta);
 
-            auto const v_squared = sum(generate([](auto const v) { return v * v; }, particle.v));
+            auto const v_squared       = sum_from(particle.v, [](auto const v) { return v * v; });
             auto const scaled_v_sq_sum = v_squared * coeff;
 
             this->particleToMesh_(
