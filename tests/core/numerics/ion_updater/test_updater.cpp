@@ -1108,7 +1108,9 @@ TYPED_TEST(IonUpdaterOwnershipTest, exchangedLeaversAreDepositedOnce)
         ASSERT_GT(patchGhost.size(), 0u);
         expected.push_back(TestFixture::weights(domain) + TestFixture::weights(patchGhost));
 
-        // what the exchange does, the receiving patch being this one
+        // what the exchange does, the receiving patch being this one: this checks that
+        // depositDomain deposits each particle once, test_moment_deposit.py checks that no
+        // particle is lost or counted twice across patches
         for (auto const& particle : patchGhost)
             domain.push_back(particle);
         patchGhost.clear();
