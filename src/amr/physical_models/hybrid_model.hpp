@@ -159,6 +159,7 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
     hybridInfo.modelElectric        = state.electromag.E.name();
     hybridInfo.modelIonDensity      = state.ions.chargeDensityName();
     hybridInfo.modelIonBulkVelocity = state.ions.velocity().name();
+    hybridInfo.modelIonChargeFlux   = state.ions.chargeFlux().name();
 
     hybridInfo.initElectric.emplace_back(state.electromag.E.name());
     hybridInfo.initMagnetic.emplace_back(state.electromag.B.name());
@@ -186,6 +187,7 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
     hybridInfo.maxBorderFields.emplace_back(state.ions.massDensity().name());
     hybridInfo.maxBorderFields.emplace_back(state.ions.chargeDensity().name());
     hybridInfo.maxBorderVecFields.emplace_back(state.ions.velocity().name());
+    hybridInfo.maxBorderVecFields.emplace_back(state.ions.chargeFlux().name());
 }
 
 
