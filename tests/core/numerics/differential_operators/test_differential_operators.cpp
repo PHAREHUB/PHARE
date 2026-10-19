@@ -526,7 +526,10 @@ TYPED_TEST(DifferentialOperators, nonSimulatedDirectionsAreZero)
             for (auto const& idx : ghostBox(layout, dsts[0]))
                 EXPECT_EQ(curlX(idx), 0.);
             for (auto const& idx : ghostBox(layout, dsts[1]))
+            {
                 EXPECT_EQ(curlY(idx), -dxAz(idx));
+                EXPECT_EQ(std::signbit(curlY(idx)), std::signbit(-dxAz(idx)));
+            }
             for (auto const& idx : ghostBox(layout, dsts[2]))
                 EXPECT_EQ(curlZ(idx), dxAy(idx));
         }
