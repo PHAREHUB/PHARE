@@ -159,6 +159,14 @@ class VtkPatchLevelInfo:
             boxes[bi] = Box(lo, up)
         return boxes
 
+    def next_patch(self, patch_box):
+        """patch data is contiguous per level, so every patch must be stepped over, loaded or not"""
+        # data in file is sometimes duplicated
+        X_TIMES = [4, 2, 1][self.vtk_file.dimension - 1]
+        # vtk data is always primal in all directions for all components, so +1 everywhere
+        field_box = Box(patch_box.lower, patch_box.upper + 1)
+        self.rolling_data_offset += field_box.size() * X_TIMES
+
     def __deepcopy__(self, memo):
         no_copy_keys = ["vtk_file"]  # do not copy these things
         cpy = phut.deep_copy(self, memo, no_copy_keys)
@@ -213,7 +221,6 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
     if is_particle_file(basename):
         raise RuntimeError("Particle diagnostics are not supported under vtkhdf")
 
-    X_TIMES = [4, 2, 1][vtk_file.dimension - 1]  # data in file is sometimes duplicated
     dataset = vtk_file._data_set(lvl_info.ilvl)
     ncols = dataset.shape[1]  # decides if scalar/tensor
 
@@ -221,7 +228,6 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
         raise RuntimeError(f"unsupported dataset column count {ncols} in {basename}")
 
     qty = qty_from_basename(basename)
-    data_size = 0
 
     for cmp_id, suffix in enumerate(_suffixes_per_ncols[ncols]):
         ds_name = qty + suffix
@@ -242,9 +248,7 @@ def add_to_patchdata(vtk_file, lvl_info, patch_idx, patch_datas, basename, layou
         if pdata_name in patch_datas:
             raise ValueError("error - {} already in patchdata".format(ds_name))
         patch_datas[pdata_name] = pdata
-        data_size = pdata.field_box.size()  # constant across components
 
-    lvl_info.rolling_data_offset += data_size * X_TIMES
     return True  # valid patch assumed
 
 
@@ -328,6 +332,8 @@ def patch_levels_from_h5(vtk_file, time, selection_box=None):
                     layout,
                 )
                 patches.append(Patch(patch_datas, h5_patch, box=patch_box))
+            # iterate to next data even if we skip the current
+            vtk_patch_level_info.next_patch(patch_box)
 
         if len(patches):
             patch_levels[ilvl] = PatchLevel(ilvl, patches)
@@ -364,9 +370,7 @@ def add_data_from_h5(hier, filepath, time):
     vtk_file = VtkFile(filepath)
 
     # force using the hierarchy selection box at that time if existing
-    selection_box = None
-    if hier.selection_box is not None:
-        selection_box = hier.selection_box[format_timestamp(time)]
+    selection_box = hier.selection_box.get(format_timestamp(time))
     patch_levels = patch_levels_from_h5(vtk_file, time, selection_box=selection_box)
 
     for ilvl, lvl in hier.levels(time).items():
@@ -381,7 +385,7 @@ def new_from_h5(filepath, times, **kwargs):
     if phut.none_iterable(selection_box) and phut.all_iterables(times):
         selection_box = [selection_box] * len(times)
 
-    patch_levels_per_time = []
+    time_hier = {}
 
     vtk_file = VtkFile(filepath)
     for it, time in enumerate(times):
@@ -390,16 +394,15 @@ def new_from_h5(filepath, times, **kwargs):
         patch_levels = patch_levels_from_h5(
             vtk_file, time, selection_box=selection_box[it]
         )
-        patch_levels_per_time.append(patch_levels)
+        time_hier[time] = patch_levels
 
     # in hierarchy, we need to keep selection_box now
     # because we want that operations involving several hierarchies will need to check
     # that each time has the same patch layout.
     hier = PatchHierarchy(
-        patch_levels_per_time,
+        time_hier,
         vtk_file.domain_box,
         phut.refinement_ratio,
-        times,
         vtk_file.file,
         selection_box=selection_box,
     )
