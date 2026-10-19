@@ -1,5 +1,6 @@
 // cost of one collision step per particle, to compare with the pusher benchmark, for the
-// particle counts per cell met in PHARE runs, one and two species groups
+// particle counts per cell met in PHARE runs, one and two species groups, without and with the
+// momentum and energy fix
 
 #include "core/numerics/collisions/collisions.hpp"
 
@@ -15,6 +16,7 @@ void collide(benchmark::State& state)
 {
     auto const ppc       = static_cast<std::size_t>(state.range(0));
     auto const nbrGroups = state.range(1);
+    auto const exact     = state.range(2) == 1;
     auto constexpr cells = 64;
 
     std::mt19937_64 rng{1};
@@ -27,7 +29,7 @@ void collide(benchmark::State& state)
         ions.populations[1].load(ppc, 0.1, {0.1, 0., 0.}, {0.1, 0.1, 0.1}, rng, true);
     }
 
-    Collisions<TestIons> collisions{{1e-3, 1, ScatteringLaw::nanbu, 1}};
+    Collisions<TestIons> collisions{{1e-3, 1, ScatteringLaw::nanbu, exact, 1}};
     auto const box = Box<int, 1>{{0}, {cells - 1}};
 
     std::uint64_t step = 0;
@@ -36,8 +38,6 @@ void collide(benchmark::State& state)
 
     state.SetItemsProcessed(state.iterations() * cells * ppc * nbrGroups);
 }
-BENCHMARK(collide)
-    ->ArgsProduct({{20, 100, 500}, {1, 2}})
-    ->Unit(benchmark::kMicrosecond);
+BENCHMARK(collide)->ArgsProduct({{20, 100, 500}, {1, 2}, {0, 1}})->Unit(benchmark::kMicrosecond);
 
 BENCHMARK_MAIN();
