@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/numerics/differential_operators.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
@@ -72,7 +73,7 @@ public:
                         e += eta * Jc(idx);
                     if constexpr (isHyperResistive)
                         e -= hyper_coef_<component, hyper>(B, rho, idx)
-                             * layout_.laplacian(Jc, idx);
+                             * laplacian(layout_, Jc, idx);
                     Ec(idx) = e;
                 });
             });
