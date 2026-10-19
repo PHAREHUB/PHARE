@@ -111,8 +111,9 @@ struct SimulatorTestParam : private HierarchyMaker<opts.dimension>, public PHARE
 
     SimulatorTestParam(std::string job_py = "job")
         : HierarchyMaker<dim>{dict(job_py)}
-        , Simulator{dict(job_py), this->hierarchy}
+        , Simulator{this->hierarchy}
     {
+        Simulator::setup(dict(job_py));
         Simulator::initialize();
     }
 
