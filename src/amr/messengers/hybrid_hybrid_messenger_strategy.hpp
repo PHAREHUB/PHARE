@@ -801,16 +801,15 @@ namespace amr
             for (std::size_t i = 0; i < info->patchGhostParticles.size(); ++i)
             {
                 using Schedule = HybridScheduleTraits<HybridSchedule::IonGhostParticles>;
-                auto const idx
-                    = scheduler.template n_algorithms<Schedule::type>(Schedule::key);
+                auto const idx = scheduler.template n_algorithms<Schedule::type>(Schedule::key);
                 scheduler
                     .template add_algorithm<Schedule::type>(
                         Schedule::key,
                         [this, i, idx](auto const& level, double const fillTime) {
-                            PHARE_LOG_SCOPE(
-                                1, "HybridHybridMessengerStrategy::fillIonGhostParticles");
-                            Super::scheduler().template call<Schedule::type>(
-                                Schedule::key, level, fillTime, idx);
+                            PHARE_LOG_SCOPE(1,
+                                            "HybridHybridMessengerStrategy::fillIonGhostParticles");
+                            Super::scheduler().template call<Schedule::type>(Schedule::key, level,
+                                                                             fillTime, idx);
 
                             for (auto patch : resourcesManager_->enumerate(level, *ions_))
                                 (*ions_)[i].patchGhostParticles().clear();
@@ -834,8 +833,7 @@ namespace amr
                 // then execute the (fused) schedule onto them before copying the result back
                 // onto the real arrays.
                 using Schedule = HybridScheduleTraits<HybridSchedule::IonPopBorderSum>;
-                auto const idx
-                    = scheduler.template n_algorithms<Schedule::type>(Schedule::key);
+                auto const idx = scheduler.template n_algorithms<Schedule::type>(Schedule::key);
                 scheduler
                     .template add_algorithm<Schedule::type>(
                         Schedule::key,
@@ -845,8 +843,8 @@ namespace amr
                                      level, ions, tmpVecField0_, tmpField0_, tmpField1_))
                                 copyIonPopBorderScratch_(ions[i], /*toScratch=*/true);
 
-                            Super::scheduler().template call<Schedule::type>(
-                                Schedule::key, level, fillTime, idx);
+                            Super::scheduler().template call<Schedule::type>(Schedule::key, level,
+                                                                             fillTime, idx);
 
                             for (auto patch : resourcesManager_->enumerate(
                                      level, ions, tmpVecField0_, tmpField0_, tmpField1_))

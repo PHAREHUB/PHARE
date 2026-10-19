@@ -126,8 +126,8 @@ struct RefinerScheduler : public Scheduler
 
     template<auto rtype>
     auto& register_time_interpolated_resource(std::string const& key, auto& rm, auto const& dst,
-                                              auto const& src, auto const& told,
-                                              auto const& tnew, auto&&... args)
+                                              auto const& src, auto const& told, auto const& tnew,
+                                              auto&&... args)
     {
         auto&& [idDst, idSrc, idTold, idTnew] = rm->getIDsList(dst, src, told, tnew);
 
