@@ -1,0 +1,17 @@
+cmake_minimum_required (VERSION 3.20.1)
+
+project(test-mhd-harris-time-varying-b0)
+
+if(NOT ${PHARE_PROJECT_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+  file(GLOB PYFILES "*.py")
+  file(COPY ${PYFILES} DESTINATION ${CMAKE_CURRENT_BINARY_DIR})
+endif()
+
+if(HighFive AND testMPI)
+  ## These test use dump diagnostics so require HighFive!
+  # exec level 11
+  # mpirun -n 10
+
+  phare_mpi_python3_exec(11 10 harris_mhd_2d_time_varying_b0 harris_time_varying_b0.py ${CMAKE_CURRENT_BINARY_DIR})
+
+endif(HighFive AND testMPI)

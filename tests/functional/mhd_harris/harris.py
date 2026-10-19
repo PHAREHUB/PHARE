@@ -24,7 +24,7 @@ diag_dir = "phare_outputs/mhd_harris"
 hall = True
 
 
-def config():
+def config(diag_dir=diag_dir, external_field=None):
     L = 0.5
 
     sim = ph.Simulation(
@@ -53,6 +53,7 @@ def config():
         mhd_timestepper="TVDRK3",
         hall=hall,
         model_options=["MHDModel"],
+        external_field=external_field,
     )
 
     def S(y, y0, l):
