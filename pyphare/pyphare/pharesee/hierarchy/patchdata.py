@@ -331,3 +331,13 @@ def _aligned_self(patch_data, inputs, aligned):
     if aligned is inputs:
         return patch_data
     return next(a for i, a in zip(inputs, aligned) if i is patch_data)
+
+
+def local_domain_coords(pdata):
+    """coordinates of the patch data nodes, without ghosts, per direction"""
+    lbox = boxm.amr_to_local(pdata.box, pdata.ghost_box)
+    lbox.upper += pdata.primal_directions()
+    return tuple(
+        getattr(pdata, "xyz"[i])[lbox.lower[i] : lbox.upper[i] + 1]
+        for i in range(pdata.ndim)
+    )

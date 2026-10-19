@@ -442,7 +442,7 @@ class PatchHierarchyTest(unittest.TestCase):
         ghost values are not guaranteed to be valid, so they are poisoned
         with NaN which must not appear in the finest data
         """
-        from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+        from pyphare.pharesee.run.utils import flat_finest_field
 
         r = Run(self.diag_dir())
         time = 0.0

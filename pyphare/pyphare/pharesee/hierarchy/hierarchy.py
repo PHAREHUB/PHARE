@@ -8,12 +8,7 @@ from ...core import box as boxm
 from ...core.phare_utilities import listify
 from ...core.phare_utilities import deep_copy
 from ...core.phare_utilities import refinement_ratio
-
-
-def format_timestamp(timestamp):
-    if isinstance(timestamp, str):
-        return timestamp
-    return "{:.10f}".format(timestamp)
+from ...core.phare_utilities import format_timestamp
 
 
 class PatchHierarchy(object):
@@ -160,7 +155,7 @@ class PatchHierarchy(object):
                 return coord[mask], data[mask]
 
         def domain_coords(patch, qty):
-            from .hierarchy_utils import local_domain_coords
+            from .patchdata import local_domain_coords
 
             return local_domain_coords(patch.patch_datas[qty])
 

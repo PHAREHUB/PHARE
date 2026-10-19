@@ -7,7 +7,7 @@ from pyphare.pharesee.hierarchy import ScalarField, VectorField
 from pyphare.pharesee.hierarchy import hierarchy_compute as hc
 
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
-from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+from pyphare.pharesee.run.utils import flat_finest_field
 from pyphare.core.phare_utilities import listify
 
 from pyphare.logger import getLogger
