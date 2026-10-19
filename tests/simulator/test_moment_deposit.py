@@ -231,7 +231,7 @@ class MomentDepositTest(SimulatorTest):
 
         print(f"{ndim}D interp {interp}: {crossed} particles crossed a patch border")
         # the test is meaningful only if particles changed patch during the run
-        self.assertGreater(crossed, 0)
+        self.assertGreater(crossed, 10)
 
     @staticmethod
     def crossings(patches, name, ndim):
