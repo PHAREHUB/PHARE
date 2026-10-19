@@ -38,6 +38,7 @@ class Repo:
         sh(self.path, "git", "init", "-q", "-b", "base")
         sh(self.path, "git", "config", "user.email", "t@t")
         sh(self.path, "git", "config", "user.name", "t")
+        sh(self.path, "git", "config", "maintenance.auto", "false")
         self.write(files)
         sh(self.path, "git", "add", "-A")
         sh(self.path, "git", "commit", "-qm", "base")
