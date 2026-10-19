@@ -168,7 +168,8 @@ struct ElectronsTest : public ::testing::Test
     {
         auto const& [ionFlux, ionChargeDensity, ionMassDensity, protonParticleDensity,
                      protonChargeDensity, protonKineticEnergyFlux, Vi, Si, ionTensor, protonTensor,
-                     pack] = std::forward_as_tuple(args...);
+                     pack]
+            = std::forward_as_tuple(args...);
         IonsT ions{createDict<dim>()["ions"]};
         {
             auto const& [V, m, d_c, d_m, s] = ions.getCompileTimeResourcesViewList();
