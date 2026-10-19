@@ -580,6 +580,61 @@ def check_resistivity(**kwargs):
     return resistivity
 
 
+def check_collisions(**kwargs):
+    collisions = kwargs.get("collisions", None)
+    if collisions is None:
+        return None
+    if not isinstance(collisions, dict) or "nu0" not in collisions:
+        raise ValueError("Error: collisions should be a dict with at least 'nu0'")
+
+    known = {"nu0", "every", "scheme", "exact_conservation", "seed"}
+    if unknown := set(collisions) - known:
+        raise ValueError(
+            f"Error: unknown collisions keys {sorted(unknown)}, known {sorted(known)}"
+        )
+
+    checked = {
+        "nu0": float(collisions["nu0"]),
+        "every": int(collisions.get("every", 1)),
+        "scheme": collisions.get("scheme", "nanbu"),
+        "exact_conservation": bool(collisions.get("exact_conservation", True)),
+        "seed": int(collisions.get("seed", 0)),
+    }
+    if checked["nu0"] < 0.0:
+        raise ValueError("Error: collisions 'nu0' should not be negative")
+    if checked["every"] < 1:
+        raise ValueError("Error: collisions 'every' should be at least 1")
+    if checked["scheme"] not in ("nanbu", "takizuka_abe", "bobylev"):
+        raise ValueError(
+            "Error: collisions 'scheme' should be 'nanbu', 'takizuka_abe' or 'bobylev'"
+        )
+    if checked["seed"] < 0:
+        raise ValueError("Error: collisions 'seed' should not be negative")
+    if kwargs["time_stepper"].mode != "constant":
+        raise ValueError("Error: collisions need a constant time step")
+    return checked
+
+
+def collision_nu0(n0_cm3, B0_nT, coulomb_log):
+    """
+    nu0 for ``Simulation(collisions={"nu0": ...})`` from the physical reference density and
+    magnetic field: the Coulomb logarithm times e^4 n0 / (4 pi eps0^2 mp^2 VA^3 Omega_p), which
+    is also (c / VA)^4 / (4 pi n0 di^3). For n0 = 5 /cm3 and B0 = 5 nT, nu0 / coulomb_log = 2.15e-8.
+    """
+    import scipy.constants as sc
+
+    n0 = n0_cm3 * 1e6
+    B0 = B0_nT * 1e-9
+    VA = B0 / np.sqrt(sc.mu_0 * n0 * sc.m_p)
+    Omega_p = sc.e * B0 / sc.m_p
+    return (
+        coulomb_log
+        * sc.e**4
+        * n0
+        / (4 * np.pi * sc.epsilon_0**2 * sc.m_p**2 * VA**3 * Omega_p)
+    )
+
+
 def check_hyper_resistivity(**kwargs):
     hyper_resistivity = kwargs.get("hyper_resistivity", 0.0001)
     if hyper_resistivity < 0.0:
@@ -718,6 +773,7 @@ def checker(func):
             "limiter",
             "riemann",
             "mhd_timestepper",
+            "collisions",
             "refinement_order",
         ]
 
@@ -787,6 +843,7 @@ def checker(func):
             kwargs["tagging_threshold"] = kwargs.get("tagging_threshold", 0.1)
 
         kwargs["resistivity"] = check_resistivity(**kwargs)
+        kwargs["collisions"] = check_collisions(**kwargs)
 
         nu, hyper_mode = check_hyper_resistivity(**kwargs)
         kwargs["hyper_resistivity"] = nu
@@ -1102,6 +1159,23 @@ class Simulation:
         * **hyper_resistivity** (``float``), default=0.0001, Hybrid Ohm's law hyper-resistivity value
         * **hyper_mode** (``str``), {"constant" (default), "spatial"}, "constant" uses `hyper_resistivity`
           as is; "spatial" scales it locally by ``(|B|/(n + 0.1) + 1) / 4**level``
+        * **collisions** (``dict``), ion-ion Coulomb collisions, binary Monte-Carlo between the
+          macro-ions of each cell (default None: collisionless). Populations with the same mass
+          and charge collide as one species. Keys:
+
+          * **nu0** (``float``), required, the Coulomb logarithm times
+            e^4 n0 / (4 pi eps0^2 mp^2 VA^3 Omega_p); :func:`collision_nu0` computes it from
+            physical n0 and B0. 0 disables collisions.
+          * **every** (``int``), default 1, collide every `every` time steps of each level
+          * **scheme** (``str``), {"nanbu" (default), "takizuka_abe", "bobylev"}, scattering law
+          * **exact_conservation** (``bool``), default True, restores the momentum and energy that
+            unequal macro-particle weights conserve only on average (Angus et al. 2025)
+          * **seed** (``int``), default 0, of the random draws, which do not depend on the
+            domain decomposition
+
+          Rates are accurate to roughly 0.23 sqrt(s) where s = nu0 n (Za Zb)^2 dt every /
+          (m_ab^2 u^3) at the thermal relative speed u; a warning is printed above s = 0.02.
+          Requires a constant time step.
 
         **Expert parameters:**
 
