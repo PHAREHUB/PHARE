@@ -214,9 +214,7 @@ valid_refined_particle_nbr = {
     },
 }  # Default refined_particle_nbr per dim/interp is considered index 0 of list
 
-no_refined_particle_nbr = (
-    0  # internal, C++-facing counterpart of no_hybrid_interp_order
-)
+no_refined_particle_nbr = 0  # internal, C++-facing counterpart of no_hybrid_interp_order
 
 
 def check_refined_particle_nbr(ndim, **kwargs):
@@ -1170,8 +1168,9 @@ class Simulation:
           * **scheme** (``str``), {"nanbu" (default), "takizuka_abe", "bobylev"}, scattering law
           * **exact_conservation** (``bool``), default True, restores the momentum and energy that
             unequal macro-particle weights conserve only on average (Angus et al. 2025)
-          * **seed** (``int``), default 0, of the random draws, which do not depend on the
-            domain decomposition
+          * **seed** (``int``), default 0, of the random draws. For given particles the draws do
+            not depend on the domain decomposition, but runs on different numbers of ranks differ
+            at round-off, which changes the pairing: they are different statistical realizations
 
           Rates are accurate to roughly 0.23 sqrt(s) where s = nu0 n (Za Zb)^2 dt every /
           (m_ab^2 u^3) at the thermal relative speed u; a warning is printed above s = 0.02.
