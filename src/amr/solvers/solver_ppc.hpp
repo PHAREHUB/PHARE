@@ -7,6 +7,7 @@
 #include "mpi/mpi_utils.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
+#include "core/numerics/collisions/collisions.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
 
 #include "amr/solvers/solver.hpp"
@@ -20,6 +21,7 @@
 #include <SAMRAI/hier/Patch.h>
 #include "SAMRAI/hier/PatchLevel.h"
 
+#include <iostream>
 #include <memory>
 #include <stdexcept>
 #include <tuple>
@@ -62,6 +64,9 @@ private:
 
     core::OhmInfo ohm_info;
     IonUpdater_t ionUpdater_;
+    core::Collisions<Ions> collisions_;
+    std::size_t collisionSteps_ = 0;
+    bool collisionsWarned_      = false;
 
 
 public:
@@ -75,6 +80,7 @@ public:
         : ISolver<AMR_Types>{"PPC"}
         , ohm_info{core::OhmInfo::FROM(dict["ohm"])}
         , ionUpdater_{dict["ion_updater"]}
+        , collisions_{core::CollisionInfo::FROM(dict)}
 
     {
     }
@@ -148,6 +154,20 @@ private:
     void average_(level_t& level, HybridModel& model, Messenger& fromCoarser,
                   double const currentTime, double const newTime);
 
+
+    // once per run, when more than 1% of this rank's pairs deflect beyond s = 1 at a non thermal
+    // speed, or its blocks fail to restore their energy as often. The counters add up from the
+    // start of the run, so a problem appearing late is diluted.
+    void warnOnCollisions_()
+    {
+        auto const& counters = collisions_.counters();
+        auto const often     = [&](std::size_t const n) { return n * 100 > counters.pairs; };
+        auto const flagged   = mpi::any(often(counters.large_s) or often(counters.unconverged));
+        if (flagged and !collisionsWarned_ and mpi::rank() == 0)
+            std::cerr << "WARNING: collisions: s > 1 or energy not restored for more than 1% of "
+                         "the pairs, reduce the time step or 'every'\n";
+        collisionsWarned_ = collisionsWarned_ or flagged;
+    }
 
     void moveIons_(level_t& level, HybridModel& model, Messenger& fromCoarser,
                    double const currentTime, double const newTime, core::UpdaterMode mode);
@@ -643,6 +663,21 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
             for (auto& patch : rm.enumerate(level, ions))
                 ions.eraseDomainParticlesIn(
                     levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
+        }
+
+        // every cell's particles are now on one patch: collide them before depositing
+        auto const dt   = newTime - currentTime;
+        auto const step = std::llround(currentTime / dt); // the same after a restart
+        if (collisions_.collidesAt(step))
+        {
+            PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::collisions");
+            using core::collisions::combine;
+            auto const key = combine(combine(collisions_.seed, level.getLevelNumber()), step);
+            for (auto& patch : rm.enumerate(level, ions))
+                collisions_(ions, levelBoxing.at(amr::to_string(patch->getGlobalId())).domainBox,
+                            key, dt * collisions_.every);
+            if (++collisionSteps_ % 100 == 0)
+                warnOnCollisions_();
         }
         {
             PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::depositDomain");

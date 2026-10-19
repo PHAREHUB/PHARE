@@ -67,6 +67,44 @@ class TestSimulation(unittest.TestCase):
             final_time=1000,
         )
 
+    def make(self, **kwargs):
+        global_vars.sim = None
+        return simulation.Simulation(
+            time_step_nbr=10, time_step=0.001, cells=80, dl=0.1, **kwargs
+        )
+
+    def test_collisions_defaults(self):
+        self.assertIsNone(self.make().collisions)
+        collisions = self.make(collisions={"nu0": 1e-3}).collisions
+        self.assertEqual(
+            collisions,
+            {
+                "nu0": 1e-3,
+                "every": 1,
+                "scheme": "nanbu",
+                "exact_conservation": True,
+                "seed": 0,
+            },
+        )
+
+    def test_collisions_invalid(self):
+        for bad in [
+            {},
+            {"nu0": -1.0},
+            {"nu0": 1.0, "every": 0},
+            {"nu0": 1.0, "scheme": "boltzmann"},
+            {"nu0": 1.0, "seed": -1},
+            {"nu0": 1.0, "frequency": 2},
+        ]:
+            with self.assertRaises(ValueError, msg=str(bad)):
+                self.make(collisions=bad)
+
+    def test_collision_nu0_for_the_solar_wind(self):
+        # n = 5 /cm3, B = 5 nT: (c / VA)^4 / (4 pi n0 di^3) = 2.15e-8
+        self.assertAlmostEqual(
+            simulation.collision_nu0(5.0, 5.0, 1.0) / 2.1512e-8, 1.0, places=3
+        )
+
     def test_time_step(self):
         s = simulation.Simulation(
             time_step_nbr=1000,
