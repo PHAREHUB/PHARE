@@ -26,6 +26,7 @@ if(HighFive)
   phare_python3_exec(9       run         test_run.py          ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       moment_deposit test_moment_deposit.py ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   phare_python3_exec(9       collisions  test_collisions.py   ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
+  phare_test_labels(collisions nightly) # ~8 min in debug
   phare_python3_exec(9       vtk_diagnostics test_vtk_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
   # phare_python3_exec(9       tagging     test_tagging.py      ${CMAKE_CURRENT_BINARY_DIR}) # serial or n = 2
 
@@ -34,6 +35,9 @@ if(HighFive)
     phare_mpi_python3_exec(9 4 diagnostics test_diagnostics.py  ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 3 moment_deposit test_moment_deposit.py ${CMAKE_CURRENT_BINARY_DIR})
     phare_mpi_python3_exec(9 3 collisions test_collisions.py ${CMAKE_CURRENT_BINARY_DIR})
+    if(TEST py3_collisions_mpi_n_3) # phare_test_labels does not know n = 3
+      set_property(TEST py3_collisions_mpi_n_3 APPEND PROPERTY LABELS nightly)
+    endif()
 
     # doesn't make sense in serial
     phare_mpi_python3_exec(9 3 load_balancing test_load_balancing.py ${CMAKE_CURRENT_BINARY_DIR})
