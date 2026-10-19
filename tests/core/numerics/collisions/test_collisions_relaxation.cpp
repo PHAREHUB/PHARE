@@ -258,7 +258,9 @@ TEST(CollisionRelaxation, aBoostedPlasmaRelaxesTheSameWithTheFix)
 
 // Angus et al. 2025, Test 1: a beam of 1/10 of the density, macro-particles ten times lighter,
 // in one species. It must end at rest in the frame of the centre of mass and at the temperature
-// given by the conservation of energy
+// given by the conservation of energy. This checks the weighted scattering: the tolerances do
+// not resolve the fix, whose absence costs 0.5-1.5% (Angus Fig. 6); the round-off conservation
+// test checks the fix
 TEST(CollisionRelaxation, beamAndBackgroundReachTheConservedEndState)
 {
     auto constexpr cells = 4;
@@ -287,12 +289,16 @@ TEST(CollisionRelaxation, beamAndBackgroundReachTheConservedEndState)
         collide(ions, Box<int, 1>{{0}, {cells - 1}}, collisions::combine(seed, step), 0.01);
     EXPECT_EQ(collide.counters().unconverged, 0u);
 
-    for (auto const& pop : ions)
-    {
-        auto const m = Moments{pop, cells};
-        EXPECT_NEAR(m.velocity[0], Uf, 0.03 * Uf);
-        EXPECT_NEAR(m.isotropic(), Tf, 0.05 * Tf);
-    }
+    // at equilibrium the beam's mean velocity has the thermal noise of its particles, 4.5% of Uf;
+    // the background's is ten times smaller since the total momentum is exact
+    auto const m
+        = std::array{Moments{ions.populations[0], cells}, Moments{ions.populations[1], cells}};
+    auto const noise
+        = std::sqrt(Tf / static_cast<double>(ions.populations[1].domainParticles().size()));
+    EXPECT_NEAR(m[0].velocity[0], Uf, 4. * m0[1].density / m0[0].density * noise);
+    EXPECT_NEAR(m[1].velocity[0], Uf, 4. * noise);
+    for (auto const& mi : m)
+        EXPECT_NEAR(mi.isotropic(), Tf, 0.05 * Tf);
 }
 
 

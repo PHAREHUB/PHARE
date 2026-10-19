@@ -9,6 +9,7 @@
 #include <numeric>
 #include <random>
 #include <set>
+#include <tuple>
 
 using namespace PHARE::core;
 using namespace PHARE::core::collisions;
@@ -392,15 +393,17 @@ TEST(CollisionConservation, unequalWeightsConserveMomentumAndEnergyExactlyWithTh
     EXPECT_EQ(collide.counters().unconverged, 0u);
 }
 
-TEST(CollisionConservation, oddCellOfSplitSiblingsConverges)
+namespace
 {
-    // children of one parent share weight and velocity: only pairs with another parent's
-    // children can exchange energy
+// children of one parent share weight and velocity: only pairs with another parent's children
+// can exchange energy
+TestIons splitSiblings(int const parents, std::uint64_t const rngSeed)
+{
     TestIons ions;
     ions.populations.emplace_back(1., 1., 1);
-    std::mt19937_64 rng{4};
+    std::mt19937_64 rng{rngSeed};
     std::normal_distribution<double> normal{0., 0.2};
-    for (int parent = 0; parent < 3; ++parent)
+    for (int parent = 0; parent < parents; ++parent)
     {
         Particle<1> particle;
         particle.weight = 0.1 * (parent + 1);
@@ -412,7 +415,14 @@ TEST(CollisionConservation, oddCellOfSplitSiblingsConverges)
             ions.populations[0].domainParticles().push_back(particle);
         }
     }
-    Collisions<TestIons> collide{{0.5, 1, ScatteringLaw::nanbu, true, 3}};
+    return ions;
+}
+} // namespace
+
+TEST(CollisionConservation, oddCellOfSplitSiblingsConverges)
+{
+    auto ions = splitSiblings(5, 4);
+    Collisions<TestIons> collide{{0.1, 1, ScatteringLaw::nanbu, true, 3}};
 
     auto const before = momentumAndEnergy(ions);
     for (std::uint64_t step = 0; step < 10; ++step)
@@ -422,6 +432,82 @@ TEST(CollisionConservation, oddCellOfSplitSiblingsConverges)
     EXPECT_EQ(collide.counters().unconverged, 0u);
     for (std::size_t i = 0; i < 4; ++i)
         EXPECT_NEAR(after[i], before[i], 1e-12 * before[3]);
+}
+
+// three parents leave too few exchanges to restore the energy of strong collisions in about a
+// third of the cells at nu0 = 0.5: momentum stays exact and the energy left is counted
+TEST(CollisionConservation, sparseCellsCountTheEnergyTheyCannotRestore)
+{
+    std::size_t unconverged = 0;
+    for (std::uint64_t seed = 0; seed < 30; ++seed)
+    {
+        auto ions = splitSiblings(3, seed);
+        Collisions<TestIons> collide{{0.5, 1, ScatteringLaw::nanbu, true, seed}};
+
+        auto const before = momentumAndEnergy(ions);
+        for (std::uint64_t step = 0; step < 10; ++step)
+            collide(ions, Box<int, 1>{{0}, {0}}, combine(seed, step), 0.01);
+        auto const after = momentumAndEnergy(ions);
+
+        for (std::size_t i = 0; i < 3; ++i)
+            EXPECT_NEAR(after[i], before[i], 1e-12 * before[3]);
+        EXPECT_NEAR(after[3] - before[3], collide.counters().residualEnergy, 1e-12 * before[3]);
+        unconverged += collide.counters().unconverged;
+    }
+    EXPECT_GT(unconverged, 0u);
+}
+
+
+
+namespace
+{
+// one particle per group, weights 1 and 1/1000: the heavy one is almost never deflected, so
+// the pair loses energy that neither single particle can give back
+TestIons twoLoneParticles(std::array<double, 3> const& v0, std::array<double, 3> const& v1)
+{
+    TestIons ions;
+    ions.populations.emplace_back(1., 1., 1);
+    ions.populations.emplace_back(4., 2., 1);
+    for (auto const& [ipop, weight, v] : {std::tuple{0, 1., v0}, std::tuple{1, 1e-3, v1}})
+    {
+        Particle<1> particle;
+        particle.weight = weight;
+        particle.iCell  = {0};
+        particle.delta  = {0.5};
+        particle.v      = v;
+        ions.populations[ipop].domainParticles().push_back(particle);
+    }
+    return ions;
+}
+} // namespace
+
+TEST(CollisionConservation, aBlockThatCannotAbsorbItsEnergyIsKeptAndCounted)
+{
+    auto ions = twoLoneParticles({0.1, 0., 0.}, {-0.3, 0.2, 0.});
+    Collisions<TestIons> collide{{1., 1, ScatteringLaw::nanbu, true, 3}};
+
+    auto const before = momentumAndEnergy(ions);
+    collide(ions, Box<int, 1>{{0}, {0}}, 7, 0.1);
+    auto const after = momentumAndEnergy(ions);
+
+    ASSERT_EQ(collide.counters().unconverged, 1u);
+    for (std::size_t i = 0; i < 3; ++i)
+        EXPECT_NEAR(after[i], before[i], 1e-14);
+    EXPECT_NEAR(after[3] - before[3], collide.counters().residualEnergy, 1e-14);
+    EXPECT_NE(after[3], before[3]);
+}
+
+TEST(CollisionConservation, coldCoMovingGroupsDoNothing)
+{
+    auto ions = twoLoneParticles({0.1, 0.2, 0.3}, {0.1, 0.2, 0.3});
+    Collisions<TestIons> collide{{1., 1, ScatteringLaw::nanbu, true, 3}};
+
+    collide(ions, Box<int, 1>{{0}, {0}}, 7, 0.1);
+
+    EXPECT_EQ(collide.counters().unconverged, 0u);
+    EXPECT_EQ(collide.counters().residualEnergy, 0.);
+    for (auto const& pop : ions)
+        EXPECT_EQ(pop.domainParticles()[0].v, (std::array{0.1, 0.2, 0.3}));
 }
 
 
