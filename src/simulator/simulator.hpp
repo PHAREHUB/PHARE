@@ -295,16 +295,23 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
           P=0000000:than the destination level
         */
 
-        if (find_model("HybridModel"))
+        if constexpr (has_hybrid_v<opts>)
         {
-            auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(
-                lb_info.mode, lbm_->getId());
-            lbm_->addLoadBalancerEstimator(maxMHDLevel_, maxLevelNumber_ - 1, std::move(lbe_));
+            if (find_model("HybridModel"))
+            {
+                auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorHybrid<PHARETypes>>(
+                    lb_info.mode, lbm_->getId());
+                lbm_->addLoadBalancerEstimator(maxMHDLevel_, maxLevelNumber_ - 1, std::move(lbe_));
+            }
         }
-        if (find_model("MHDModel"))
+        if constexpr (has_mhd_v<opts>)
         {
-            auto lbe_ = std::make_shared<amr::LoadBalancerEstimatorMHD<PHARETypes>>(lbm_->getId());
-            lbm_->addLoadBalancerEstimator(0, maxMHDLevel_ - 1, std::move(lbe_));
+            if (find_model("MHDModel"))
+            {
+                auto lbe_
+                    = std::make_shared<amr::LoadBalancerEstimatorMHD<PHARETypes>>(lbm_->getId());
+                lbm_->addLoadBalancerEstimator(0, maxMHDLevel_ - 1, std::move(lbe_));
+            }
         }
         lbm_->setLoadBalancer(loadBalancer);
     }
