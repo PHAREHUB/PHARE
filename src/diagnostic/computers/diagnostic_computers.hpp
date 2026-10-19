@@ -61,10 +61,15 @@ struct KineticEnergyFluxVectorComputer
         _fill_one_pop_schedule(h5Writer, std::mem_fn(fillFn), pop);
     }
 
-    auto interpolate(auto& pop, auto& layout)
+    auto interpolate_domain(auto& pop, auto& layout)
     {
         pop.kineticEnergyFlux().zero();
         interpolator(pop, pop.domainParticles(), layout);
+    };
+
+    // after the schedules, so the level ghost contributions are not summed across patches
+    auto interpolate_ghost(auto& pop, auto& layout)
+    {
         interpolator(pop, pop.levelGhostParticlesOld(), layout);
     };
 
@@ -77,27 +82,36 @@ KineticEnergyFluxVectorComputer(FluidWriter&) -> KineticEnergyFluxVectorComputer
 void compute_kinetic_energy_flux_vector(auto& h5Writer)
 {
     KineticEnergyFluxVectorComputer computer{h5Writer};
-    auto& modelView        = h5Writer.modelView();
-    auto const minLvl      = h5Writer.minLevel;
-    auto const maxLvl      = h5Writer.maxLevel;
-    auto& ions             = modelView.getIons();
-    auto const interpolate = [&](auto& layout, auto&&...) {
+    auto& modelView               = h5Writer.modelView();
+    auto const minLvl             = h5Writer.minLevel;
+    auto const maxLvl             = h5Writer.maxLevel;
+    auto& ions                    = modelView.getIons();
+    auto const interpolate_domain = [&](auto& layout, auto&&...) {
         for (auto& pop : ions)
-            computer.interpolate(pop, layout);
+            computer.interpolate_domain(pop, layout);
     };
-    modelView.visitHierarchy(interpolate, minLvl, maxLvl);
+    auto const interpolate_ghost = [&](auto& layout, auto&&...) {
+        for (auto& pop : ions)
+            computer.interpolate_ghost(pop, layout);
+        ions.computeFullKineticEnergyFluxVector();
+    };
+    modelView.visitHierarchy(interpolate_domain, minLvl, maxLvl);
     computer.fillAllSchedules(h5Writer);
-    modelView.visitHierarchy([&](auto&&...) { ions.computeFullKineticEnergyFluxVector(); }, minLvl,
-                             maxLvl);
+    modelView.visitHierarchy(interpolate_ghost, minLvl, maxLvl);
 }
 
 
 void compute_pop_kinetic_energy_flux_vector(auto& h5Writer, auto& pop)
 {
     KineticEnergyFluxVectorComputer computer{h5Writer};
-    auto const interpolate = [&](auto& layout, auto&&...) { computer.interpolate(pop, layout); };
-    h5Writer.modelView().visitHierarchy(interpolate, h5Writer.minLevel, h5Writer.maxLevel);
+    auto& modelView = h5Writer.modelView();
+    auto const interpolate_domain
+        = [&](auto& layout, auto&&...) { computer.interpolate_domain(pop, layout); };
+    auto const interpolate_ghost
+        = [&](auto& layout, auto&&...) { computer.interpolate_ghost(pop, layout); };
+    modelView.visitHierarchy(interpolate_domain, h5Writer.minLevel, h5Writer.maxLevel);
     computer.fillPopSchedules(h5Writer, pop);
+    modelView.visitHierarchy(interpolate_ghost, h5Writer.minLevel, h5Writer.maxLevel);
 }
 
 
