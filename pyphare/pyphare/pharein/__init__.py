@@ -14,7 +14,7 @@ from .electron_model import ElectronModel
 from .load_balancer import LoadBalancer
 from .maxwellian_fluid_model import MaxwellianFluidModel
 from .mhd_model import MHDModel
-from .simulation import Simulation
+from .simulation import Simulation, collision_nu0
 from .uniform_model import UniformModel
 
 __all__ = [
