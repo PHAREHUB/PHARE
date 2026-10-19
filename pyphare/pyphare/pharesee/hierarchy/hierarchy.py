@@ -3,15 +3,14 @@ import numpy as np
 
 from ...core import box as boxm
 from ...core.box import Box
-from ...core.phare_utilities import deep_copy, listify, refinement_ratio
+from ...core.phare_utilities import (
+    deep_copy,
+    format_timestamp,
+    listify,
+    refinement_ratio,
+)
 from .patch import Patch
 from .patchlevel import PatchLevel
-
-
-def format_timestamp(timestamp):
-    if isinstance(timestamp, str):
-        return timestamp
-    return f"{timestamp:.10f}"
 
 
 class PatchHierarchy:
@@ -160,7 +159,7 @@ class PatchHierarchy:
                 return coord[mask], data[mask]
 
         def domain_coords(patch, qty):
-            from .hierarchy_utils import local_domain_coords
+            from .patchdata import local_domain_coords
 
             return local_domain_coords(patch.patch_datas[qty])
 

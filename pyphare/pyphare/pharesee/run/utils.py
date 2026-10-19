@@ -1,6 +1,7 @@
 import numpy as np
 
 from pyphare.core.gridlayout import yee_centering
+from pyphare.pharesee.hierarchy.patchdata import local_domain_coords
 
 
 def _current1d(by, bz, xby, xbz):
@@ -539,6 +540,195 @@ def finest_coords_for(domain, dl, qty, nbrGhosts, origin=None):
         raise ValueError("finest_coords_for is not yet 3d")
 
 
+def GetDomainSize(hier):
+    root_cell_width = hier.level(0).cell_width
+    domain_box = hier.domain_box
+    return (domain_box.upper + 1) * root_cell_width
+
+
+def GetDl(hier, time, level="finest"):
+    level = hier.finest_level(time) if level == "finest" else level
+    return hier.level(level, time).cell_width
+
+
+def overlap_mask_1d(x, dl, level, qty):
+    """
+    return the mask for x where x is overlaped by the qty patch datas
+    on the given level, assuming that this level is finer than the one of x
+
+    :param x: 1d array containing the [x] position
+    :param dl: list containing the grid steps where x is defined
+    :param level: a given level associated to a hierarchy
+    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
+    """
+
+    is_overlaped = np.ones(x.shape[0], dtype=bool) * False
+
+    for patch in level.patches:
+        pdata = patch.patch_datas[qty]
+        (fine_x,) = local_domain_coords(pdata)
+        fine_dl = pdata.dl
+        local_dl = dl
+
+        if fine_dl[0] < local_dl[0]:
+            # fine patches have no ghosts here, so their boundary points are included
+            tol = 0.5 * fine_dl[0]
+            xmin, xmax = fine_x.min() - tol, fine_x.max() + tol
+
+            overlaped_idx = np.where((x > xmin) & (x < xmax))[0]
+
+            is_overlaped[overlaped_idx] = True
+
+        else:
+            raise ValueError("level needs to have finer grid resolution than that of x")
+
+    return is_overlaped
+
+
+def overlap_mask_2d(x, y, dl, level, qty):
+    """
+    return the mask for x & y where ix & y are overlaped by the qty patch datas
+    on the given level, assuming that this level is finer than the one of x & y
+    important note : this mask is flatten
+
+    :param x: 1d array containing the [x] position
+    :param y: 1d array containing the [y] position
+    :param dl: list containing the grid steps where x and y are defined
+    :param level: a given level associated to a hierarchy
+    :param qty: ['Bx', 'By', 'Bz', 'Ex', 'Ey', 'Ez', 'Fx', 'Fy', 'Fz', 'Vx', 'Vy', 'Vz', 'rho']
+    """
+
+    is_overlaped = np.ones([x.shape[0] * y.shape[0]], dtype=bool) * False
+
+    for patch in level.patches:
+        pdata = patch.patch_datas[qty]
+        fine_x, fine_y = local_domain_coords(pdata)
+        fine_dl = pdata.dl
+        local_dl = dl
+
+        if (fine_dl[0] < local_dl[0]) and (fine_dl[1] < local_dl[1]):
+            # fine patches have no ghosts here, so their boundary points are included
+            tolx, toly = 0.5 * fine_dl[0], 0.5 * fine_dl[1]
+            xmin, xmax = fine_x.min() - tolx, fine_x.max() + tolx
+            ymin, ymax = fine_y.min() - toly, fine_y.max() + toly
+
+            xv, yv = np.meshgrid(x, y, indexing="ij")
+            xf = xv.flatten()
+            yf = yv.flatten()
+
+            overlaped_idx = np.where(
+                (xf > xmin) & (xf < xmax) & (yf > ymin) & (yf < ymax)
+            )[0]
+
+            is_overlaped[overlaped_idx] = True
+
+        else:
+            raise ValueError(
+                "level needs to have finer grid resolution than that of x or y"
+            )
+
+    return is_overlaped
+
+
+def flat_finest_field(hierarchy, qty, time=None, neghosts=1):
+    """
+    returns 2 flattened arrays containing the data (with shape [Npoints])
+    and the coordinates (with shape [Npoints, Ndim]) for the given
+    hierarchy of qty.
+
+    :param hierarchy: the hierarchy where qty is defined
+    :param qty: the field (eg "Bx") that we want
+    """
+
+    dim = hierarchy.ndim
+
+    if dim == 1:
+        return flat_finest_field_1d(hierarchy, qty, time, neghosts)
+    elif dim == 2:
+        return flat_finest_field_2d(hierarchy, qty, time)
+    elif dim == 3:
+        raise RuntimeError("Not implemented")
+        # return flat_finest_field_3d(hierarchy, qty, time)
+    else:
+        raise ValueError("the dim of a hierarchy should be 1, 2 or 3")
+
+
+def flat_finest_field_1d(hierarchy, qty, time=None, neghosts=1):
+    lvl = hierarchy.levels(time)
+
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
+        patches = lvl[ilvl].patches
+
+        for ip, patch in enumerate(patches):
+            pdata = patch[qty]
+            data = pdata[pdata.box]
+            (x,) = local_domain_coords(pdata)
+
+            if ilvl == hierarchy.finest_level(time):
+                if ip == 0:
+                    final_data = data
+                    final_x = x
+                else:
+                    final_data = np.concatenate((final_data, data))
+                    final_x = np.concatenate((final_x, x))
+
+            else:
+                is_overlaped = overlap_mask_1d(
+                    x, pdata.dl, hierarchy.level(ilvl + 1, time), qty
+                )
+
+                finest_data = data[~is_overlaped]
+                finest_x = x[~is_overlaped]
+
+                final_data = np.concatenate((final_data, finest_data))
+                final_x = np.concatenate((final_x, finest_x))
+
+    return final_data, final_x
+
+
+def flat_finest_field_2d(hierarchy, qty, time=None):
+    lvl = hierarchy.levels(time)
+
+    for ilvl in range(hierarchy.finest_level(time) + 1)[::-1]:
+        patches = lvl[ilvl].patches
+
+        for ip, patch in enumerate(patches):
+            pdata = patch[qty]
+            data = pdata[pdata.box]
+            x, y = local_domain_coords(pdata)
+
+            xv, yv = np.meshgrid(x, y, indexing="ij")
+
+            data_f = data.flatten()
+            xv_f = xv.flatten()
+            yv_f = yv.flatten()
+
+            if ilvl == hierarchy.finest_level(time):
+                if ip == 0:
+                    final_data = data_f
+                    tmp_x = xv_f
+                    tmp_y = yv_f
+                else:
+                    final_data = np.concatenate((final_data, data_f))
+                    tmp_x = np.concatenate((tmp_x, xv_f))
+                    tmp_y = np.concatenate((tmp_y, yv_f))
+
+            else:
+                is_overlaped = overlap_mask_2d(
+                    x, y, pdata.dl, hierarchy.level(ilvl + 1, time), qty
+                )
+
+                finest_data = data_f[~is_overlaped]
+                finest_x = xv_f[~is_overlaped]
+                finest_y = yv_f[~is_overlaped]
+
+                final_data = np.concatenate((final_data, finest_data))
+                tmp_x = np.concatenate((tmp_x, finest_x))
+                tmp_y = np.concatenate((tmp_y, finest_y))
+
+    return final_data, np.stack((tmp_x, tmp_y), axis=1)
+
+
 def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
     """
     Interpolate a hierarchy onto a uniform finest-level grid, returning UniformGrids.
@@ -549,9 +739,7 @@ def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
     """
 
     from pyphare.core.box import Box
-    from pyphare.pharesee.hierarchy import hierarchy_utils as hootils
     from pyphare.pharesee.hierarchy import uniformgrid as uniform
-    from pyphare.pharesee.hierarchy.func import GetDl, GetDomainSize
 
     if isinstance(box, (list, tuple)):
         raise TypeError(
@@ -591,7 +779,7 @@ def interpolate_hierarchy(hier, box=None, quantity=None, interp="nearest"):
     datas = {}
     for qty in [quantity] if quantity else hier.quantities():
         nbrGhosts = ref_patch[qty].ghosts_nbr
-        data, coords = hootils.flat_finest_field(hier, qty, time=time)
+        data, coords = flat_finest_field(hier, qty, time=time)
         interpolator = make_interpolator(data, coords, interp)
         finest_coords = finest_coords_for(domain, dl, qty, nbrGhosts, origin)
         mesh = np.meshgrid(*finest_coords, indexing="ij")

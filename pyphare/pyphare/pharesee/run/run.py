@@ -8,10 +8,7 @@ from pyphare.logger import getLogger
 from pyphare.pharesee.hierarchy import ScalarField, VectorField, hierarchy_from
 from pyphare.pharesee.hierarchy import hierarchy_compute as hc
 from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
-from pyphare.pharesee.hierarchy.hierarchy_utils import (
-    compute_hier_from,
-    flat_finest_field,
-)
+from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 
 from .utils import (
     _compute_current,
@@ -21,6 +18,7 @@ from .utils import (
     _compute_to_primal,
     _get_rank,
     finest_coords_for,
+    flat_finest_field,
     make_interpolator,
 )
 
