@@ -5,6 +5,7 @@
 #include <functional>
 #include <iterator>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <cmath>
 #include <vector>
@@ -52,6 +53,7 @@ namespace core
                   },
                   dict["nbrPopulations"].template to<std::size_t>())}
             , momentumTensor_{"momentumTensor", HybridQuantity::Tensor::M}
+            , kineticEnergyFlux_{"kineticEnergyFlux", HybridQuantity::Vector::V}
         {
         }
 
@@ -73,6 +75,9 @@ namespace core
 
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
         tensorfield_type& momentumTensor() { return momentumTensor_; }
+
+        vecfield_type const& kineticEnergyFlux() const { return kineticEnergyFlux_; }
+        vecfield_type& kineticEnergyFlux() { return kineticEnergyFlux_; }
 
         void computeChargeDensity()
         {
@@ -164,6 +169,23 @@ namespace core
         }
 
 
+        void computeFullKineticEnergyFluxVector()
+        {
+            kineticEnergyFlux_.zero();
+            auto& q = kineticEnergyFlux_;
+
+            for (auto& pop : populations_)
+            {
+                auto& p_q = pop.kineticEnergyFlux();
+                for (auto p_qi = p_q.begin(), qi = q.begin(); p_qi != p_q.end(); ++p_qi, ++qi)
+                {
+                    std::transform(std::begin(*qi), std::end(*qi), std::begin(*p_qi),
+                                   std::begin(*qi), std::plus<typename field_type::type>{});
+                }
+            }
+        }
+
+
         // drops the domain particles of all populations located in `boxes`
         template<typename Boxes>
         void eraseDomainParticlesIn(Boxes const& boxes)
@@ -205,8 +227,8 @@ namespace core
         // because it is for internal use only so no object will ever need to access it.
         NO_DISCARD bool isUsable() const
         {
-            bool usable = chargeDensity_.isUsable() and bulkVelocity_.isUsable()
-                          and momentumTensor_.isUsable() and massDensity_.isUsable();
+            bool usable = core::isUsable(chargeDensity_, bulkVelocity_, momentumTensor_,
+                                         massDensity_, kineticEnergyFlux_);
 
             for (auto const& pop : populations_)
             {
@@ -219,8 +241,8 @@ namespace core
 
         NO_DISCARD bool isSettable() const
         {
-            bool settable = massDensity_.isSettable() and chargeDensity_.isSettable()
-                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
+            bool settable = core::isSettable(massDensity_, chargeDensity_, bulkVelocity_,
+                                             momentumTensor_, kineticEnergyFlux_);
 
             for (auto const& pop : populations_)
             {
@@ -245,7 +267,7 @@ namespace core
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
             return std::forward_as_tuple(bulkVelocity_, momentumTensor_, chargeDensity_,
-                                         massDensity_);
+                                         massDensity_, kineticEnergyFlux_);
         }
 
 
@@ -266,6 +288,14 @@ namespace core
             return ss.str();
         }
 
+        std::size_t pop_index(std::string const& name) const
+        {
+            for (std::size_t i = 0; i < size(); ++i)
+                if (name == populations_[i].name())
+                    return i;
+            throw std::runtime_error("No known population " + name);
+        }
+
 
         auto& operator[](std::size_t const i) const { return populations_[i]; }
         auto& operator[](std::size_t const i) { return populations_[i]; }
@@ -276,6 +306,7 @@ namespace core
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_;
         tensorfield_type momentumTensor_;
+        vecfield_type kineticEnergyFlux_;
     };
 
 } // namespace core
