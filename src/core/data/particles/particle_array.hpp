@@ -151,6 +151,14 @@ public:
     using cell_t = std::array<int, dim>;
     auto nbr_particles_in(cell_t const& cell) const { return cellMap_.size(cell); }
 
+    // indexes of the particles in `cell`, which must be inside the array box
+    template<typename Cell>
+    NO_DISCARD auto const& cellIndexes(Cell const& cell) const
+    {
+        assert(isIn(Point{cell}, box_));
+        return cellMap_(cell);
+    }
+
     void export_particles(box_t const& box, ParticleArray<dim>& dest) const
     {
         PHARE_LOG_SCOPE(3, "ParticleArray::export_particles");
