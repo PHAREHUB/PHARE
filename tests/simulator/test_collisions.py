@@ -159,10 +159,10 @@ class CollisionsTest(SimulatorTest):
             )
 
     def test_restart_gives_the_same_particles(self):
-        if cpp.mpi_size() > 1:
-            # restarts are not bitwise under MPI without collisions either: observed, cause not
-            # verified
-            self.skipTest("bitwise restarts are serial only")
+        if cpp.mpi_size() > 2:
+            # from 3 ranks on, two identical runs already differ in the last bit, with or
+            # without collisions or restarts (#1526)
+            self.skipTest("not bitwise reproducible on more than 2 ranks (#1526)")
         restart_time = time_step * (time_step_nbr // 2)
         full_dir = "phare_outputs/collisions/restart_full"
         restarts = {"dir": full_dir, "mode": "overwrite", "timestamps": [restart_time]}
