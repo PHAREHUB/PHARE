@@ -102,7 +102,8 @@ TEST(CollisionRelaxation, temperatureAnisotropyRelaxesAtTheNRLRate)
 
 TEST(CollisionRelaxation, temperatureAnisotropyRelaxesAtTheNRLRateWithUnequalWeights)
 {
-    EXPECT_NEAR(isotropizationRatio(0.0025, true), 1., 0.1);
+    // weights over two decades double the dt error: smaller dt for the same tolerance
+    EXPECT_NEAR(isotropizationRatio(0.000625, true), 1., 0.1);
 }
 
 TEST(CollisionRelaxation, unequalWeightsRateConvergesInDt)
@@ -113,42 +114,114 @@ TEST(CollisionRelaxation, unequalWeightsRateConvergesInDt)
 }
 
 
-TEST(CollisionRelaxation, protonsAndAlphasEquilibrateAtTheNRLRate)
+namespace
+{
+// protons (n = 1) and alphas (n = 0.25), between groups only since each is a maxwellian
+struct ProtonsAndAlphas
+{
+    double nu0;
+    TestIons ions;
+    Collisions<TestIons> collide;
+    int step = 0;
+
+    ProtonsAndAlphas(double const nu0_, std::array<double, 3> const& protonDrift,
+                     double const protonVth, std::array<double, 3> const& alphaDrift,
+                     double const alphaVth, bool const randomWeights)
+        : nu0{nu0_}
+        , collide{{nu0_, 1, ScatteringLaw::nanbu, seed}}
+    {
+        std::mt19937_64 rng{11};
+        ions.populations.emplace_back(1., 1., nbrCells);
+        ions.populations.emplace_back(4., 2., nbrCells);
+        auto const iso = [](double v) { return std::array{v, v, v}; };
+        ions.populations[0].load(5000, 1., protonDrift, iso(protonVth), rng, randomWeights);
+        ions.populations[1].load(2500, 0.25, alphaDrift, iso(alphaVth), rng, randomWeights);
+    }
+
+    auto moments() const
+    {
+        return std::array{Moments{ions.populations[0], nbrCells},
+                          Moments{ions.populations[1], nbrCells}};
+    }
+
+    void advance(int const steps, double const dt) { ::advance(collide, ions, steps, step, dt); }
+};
+
+
+// ln of the relaxed fraction of the temperature difference, simulated over NRL, early time
+double equilibrationRatio(bool const randomWeights)
 {
     auto const nu0 = 0.01, dt = 0.0025;
-    std::mt19937_64 rng{11};
-    TestIons ions;
-    ions.populations.emplace_back(1., 1., nbrCells);
-    ions.populations.emplace_back(4., 2., nbrCells);
-    ions.populations[0].load(5000, 1., {0., 0., 0.}, {0.2, 0.2, 0.2}, rng, false);
-    ions.populations[1].load(2500, 0.25, {0., 0., 0.}, {0.05, 0.05, 0.05}, rng, false);
-    Collisions<TestIons> collide{{nu0, 1, ScatteringLaw::nanbu, seed}};
+    ProtonsAndAlphas plasma{nu0, {0., 0., 0.}, 0.2, {0., 0., 0.}, 0.05, randomWeights};
 
-    auto temperatures = [&]() {
-        return std::array{Moments{ions.populations[0], nbrCells}.isotropic(),
-                          Moments{ions.populations[1], nbrCells}.isotropic()};
-    };
-    auto const T0  = temperatures();
-    auto T         = T0;
-    auto const nH  = Moments{ions.populations[0], nbrCells}.density;
-    auto const nHe = Moments{ions.populations[1], nbrCells}.density;
+    auto const m0 = plasma.moments();
+    std::array const T0{m0[0].isotropic(), m0[1].isotropic()};
+    auto T = T0;
 
     auto const rate = [&](std::array<double, 2> const& t) {
-        return std::array{equilibrationRate(nu0, 1., 2., nHe, 1., 4., t[0], t[1]) * (t[1] - t[0]),
-                          equilibrationRate(nu0, 2., 1., nH, 4., 1., t[1], t[0]) * (t[0] - t[1])};
+        return std::array{
+            equilibrationRate(nu0, 1., 2., m0[1].density, 1., 4., t[0], t[1]) * (t[1] - t[0]),
+            equilibrationRate(nu0, 2., 1., m0[0].density, 4., 1., t[1], t[0]) * (t[0] - t[1])};
     };
 
     // about a tenth of the temperature difference relaxes
     auto constexpr steps = 52;
-    int step             = 0;
-    advance(collide, ions, steps, step, dt);
+    plasma.advance(steps, dt);
     for (int i = 0; i < 10 * steps; ++i)
         T = rk4(T, dt / 10., rate);
 
-    auto const measured  = temperatures();
+    auto const m         = plasma.moments();
     auto const reference = std::log((T[0] - T[1]) / (T0[0] - T0[1]));
     EXPECT_LT(reference, -0.05);
-    EXPECT_NEAR(std::log((measured[0] - measured[1]) / (T0[0] - T0[1])) / reference, 1., 0.1);
+    return std::log((m[0].isotropic() - m[1].isotropic()) / (T0[0] - T0[1])) / reference;
+}
+
+
+// friction between maxwellians at the same temperature with a small relative drift:
+// dU_a/dt = nu_ab (U_b - U_a), the momentum transfer frequency being
+// nu_ab = nu_eps^{a|b} (ma + mb) / (2 ma) (Burgers 1969, Schunk 1977)
+double frictionRatio(bool const randomWeights)
+{
+    auto const nu0 = 0.01, dt = 0.0025;
+    // T = 0.04 for both, zero total momentum, drift small against the relative thermal speed
+    ProtonsAndAlphas plasma{nu0, {0.03, 0., 0.}, 0.2, {-0.03, 0., 0.}, 0.1, randomWeights};
+
+    auto const m0 = plasma.moments();
+    auto const T  = m0[0].isotropic();
+    auto const nuPA
+        = equilibrationRate(nu0, 1., 2., m0[1].density, 1., 4., T, T) * (1. + 4.) / (2. * 1.);
+    auto const nuAP
+        = equilibrationRate(nu0, 2., 1., m0[0].density, 4., 1., T, T) * (4. + 1.) / (2. * 4.);
+    auto const dU0 = m0[0].velocity[0] - m0[1].velocity[0];
+
+    // about a fifth of the relative drift is lost
+    auto const steps = static_cast<int>(0.2 / (nuPA + nuAP) / dt);
+    plasma.advance(steps, dt);
+
+    auto const m = plasma.moments();
+    return std::log((m[0].velocity[0] - m[1].velocity[0]) / dU0) / (-(nuPA + nuAP) * steps * dt);
+}
+} // namespace
+
+
+TEST(CollisionRelaxation, protonsAndAlphasEquilibrateAtTheNRLRate)
+{
+    EXPECT_NEAR(equilibrationRatio(false), 1., 0.1);
+}
+
+TEST(CollisionRelaxation, protonsAndAlphasEquilibrateAtTheNRLRateWithUnequalWeights)
+{
+    EXPECT_NEAR(equilibrationRatio(true), 1., 0.1);
+}
+
+TEST(CollisionRelaxation, protonsAndAlphasDriftRelaxesAtTheMomentumTransferRate)
+{
+    EXPECT_NEAR(frictionRatio(false), 1., 0.15);
+}
+
+TEST(CollisionRelaxation, protonsAndAlphasDriftRelaxesAtTheMomentumTransferRateWithUnequalWeights)
+{
+    EXPECT_NEAR(frictionRatio(true), 1., 0.15);
 }
 
 
