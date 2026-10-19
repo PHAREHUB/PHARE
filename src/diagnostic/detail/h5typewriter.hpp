@@ -1,16 +1,16 @@
 #ifndef HIGHFIVEDIAGNOSTICWRITER_HPP
 #define HIGHFIVEDIAGNOSTICWRITER_HPP
 
-#include <string>
-#include <algorithm>
-#include <unordered_map>
-
 #include "mpi/mpi_utils.hpp"
 
+#include "diagnostic/diagnostic_props.hpp"
 #include "diagnostic/diagnostic_writer.hpp"
+#include "diagnostic/diagnostic_model_view.hpp"
 
 #include "hdf5/detail/h5/h5_file.hpp"
 
+#include <string>
+#include <unordered_map>
 
 namespace PHARE::diagnostic::h5
 {
@@ -21,6 +21,8 @@ class H5TypeWriter : public PHARE::diagnostic::TypeWriter
 {
 public:
     using Attributes                = Writer::Attributes;
+    using ModelMapper_t             = Writer::ModelMapper_t;
+    using ModelViewVariant          = ModelMapper_t::ModelViewVariant;
     static constexpr auto dimension = Writer::dimension;
 
     H5TypeWriter(Writer& h5Writer)
@@ -32,17 +34,21 @@ public:
     virtual void createFiles(DiagnosticProperties& diagnostic) = 0;
 
     virtual void getDataSetInfo(DiagnosticProperties& diagnostic, std::size_t iLevel,
-                                std::string const& patchID, Attributes& patchAttributes) = 0;
+                                std::string const& patchID, Attributes& patchAttributes,
+                                ModelViewVariant& modelView)
+        = 0;
 
     virtual void
     initDataSets(DiagnosticProperties& diagnostic,
                  std::unordered_map<std::size_t, std::vector<std::string>> const& patchIDs,
-                 Attributes& patchAttributes, std::size_t maxLevel) = 0;
+                 Attributes& patchAttributes, std::size_t maxLevel)
+        = 0;
 
     virtual void writeAttributes(
         DiagnosticProperties&, Attributes&,
         std::unordered_map<std::size_t, std::vector<std::pair<std::string, Attributes>>>&,
-        std::size_t maxLevel) = 0;
+        std::size_t maxLevel)
+        = 0;
     //------------------------------------------------------------------------
 
 
@@ -100,9 +106,8 @@ protected:
                 h5Writer_.writeAttributeDict(file, attr,
                                              h5Writer_.getPatchPathAddTimestamp(lvl, patch));
             for (std::size_t i = patchNbr; i < maxPatches; i++)
-                h5Writer_.writeAttributeDict(
-                    file, h5Writer_.modelView().getEmptyPatchProperties(defaultPatchAttributes),
-                    "");
+                h5Writer_.writeAttributeDict(file, getEmptyPatchProperties(defaultPatchAttributes),
+                                             "");
         }
 
         if (diagnostic.nAttributes > 0)

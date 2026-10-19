@@ -101,7 +101,7 @@ namespace amr
             std::unique_ptr<MHDMessengerInfo> mhdInfo{
                 dynamic_cast<MHDMessengerInfo*>(fromFinerInfo.release())};
 
-            auto b_id = resourcesManager_->getID(mhdInfo->modelMagnetic);
+            auto b_id = ids().getID(mhdInfo->modelMagnetic);
 
             if (!b_id)
             {
@@ -117,7 +117,7 @@ namespace amr
             BregridAlgo.registerRefine(*b_id, *b_id, *b_id, BfieldRegridOp_,
                                        overwriteInteriorTFfillPattern);
 
-            auto e_id = resourcesManager_->getID(mhdInfo->modelElectric);
+            auto e_id = ids().getID(mhdInfo->modelElectric);
 
             if (!e_id)
             {
@@ -130,9 +130,9 @@ namespace amr
 
             // refluxing
             // we first want to coarsen the flux sum onto the coarser level
-            auto rho_fx_reflux_id  = resourcesManager_->getID(mhdInfo->reflux.rho_fx);
-            auto rhoV_fx_reflux_id = resourcesManager_->getID(mhdInfo->reflux.rhoV_fx);
-            auto Etot_fx_reflux_id = resourcesManager_->getID(mhdInfo->reflux.Etot_fx);
+            auto rho_fx_reflux_id  = ids().getID(mhdInfo->reflux.rho_fx);
+            auto rhoV_fx_reflux_id = ids().getID(mhdInfo->reflux.rhoV_fx);
+            auto Etot_fx_reflux_id = ids().getID(mhdInfo->reflux.Etot_fx);
 
             if (!rho_fx_reflux_id or !rhoV_fx_reflux_id or !Etot_fx_reflux_id)
             {
@@ -140,9 +140,9 @@ namespace amr
                     "MHDMessenger: missing reflux variable IDs for fluxes in x direction");
             }
 
-            auto rho_fx_fluxsum_id  = resourcesManager_->getID(mhdInfo->fluxSum.rho_fx);
-            auto rhoV_fx_fluxsum_id = resourcesManager_->getID(mhdInfo->fluxSum.rhoV_fx);
-            auto Etot_fx_fluxsum_id = resourcesManager_->getID(mhdInfo->fluxSum.Etot_fx);
+            auto rho_fx_fluxsum_id  = ids().getID(mhdInfo->fluxSum.rho_fx);
+            auto rhoV_fx_fluxsum_id = ids().getID(mhdInfo->fluxSum.rhoV_fx);
+            auto Etot_fx_fluxsum_id = ids().getID(mhdInfo->fluxSum.Etot_fx);
 
 
             if (!rho_fx_fluxsum_id or !rhoV_fx_fluxsum_id or !Etot_fx_fluxsum_id)
@@ -175,9 +175,9 @@ namespace amr
 
             if constexpr (dimension >= 2)
             {
-                auto rho_fy_reflux_id  = resourcesManager_->getID(mhdInfo->reflux.rho_fy);
-                auto rhoV_fy_reflux_id = resourcesManager_->getID(mhdInfo->reflux.rhoV_fy);
-                auto Etot_fy_reflux_id = resourcesManager_->getID(mhdInfo->reflux.Etot_fy);
+                auto rho_fy_reflux_id  = ids().getID(mhdInfo->reflux.rho_fy);
+                auto rhoV_fy_reflux_id = ids().getID(mhdInfo->reflux.rhoV_fy);
+                auto Etot_fy_reflux_id = ids().getID(mhdInfo->reflux.Etot_fy);
 
                 if (!rho_fy_reflux_id or !rhoV_fy_reflux_id or !Etot_fy_reflux_id)
                 {
@@ -185,9 +185,9 @@ namespace amr
                         "MHDMessenger: missing reflux variable IDs for fluxes in y direction");
                 }
 
-                auto rho_fy_fluxsum_id  = resourcesManager_->getID(mhdInfo->fluxSum.rho_fy);
-                auto rhoV_fy_fluxsum_id = resourcesManager_->getID(mhdInfo->fluxSum.rhoV_fy);
-                auto Etot_fy_fluxsum_id = resourcesManager_->getID(mhdInfo->fluxSum.Etot_fy);
+                auto rho_fy_fluxsum_id  = ids().getID(mhdInfo->fluxSum.rho_fy);
+                auto rhoV_fy_fluxsum_id = ids().getID(mhdInfo->fluxSum.rhoV_fy);
+                auto Etot_fy_fluxsum_id = ids().getID(mhdInfo->fluxSum.Etot_fy);
 
                 if (!rho_fy_fluxsum_id or !rhoV_fy_fluxsum_id or !Etot_fy_fluxsum_id)
                 {
@@ -214,9 +214,9 @@ namespace amr
 
                 if constexpr (dimension == 3)
                 {
-                    auto rho_fz_reflux_id  = resourcesManager_->getID(mhdInfo->reflux.rho_fz);
-                    auto rhoV_fz_reflux_id = resourcesManager_->getID(mhdInfo->reflux.rhoV_fz);
-                    auto Etot_fz_reflux_id = resourcesManager_->getID(mhdInfo->reflux.Etot_fz);
+                    auto rho_fz_reflux_id  = ids().getID(mhdInfo->reflux.rho_fz);
+                    auto rhoV_fz_reflux_id = ids().getID(mhdInfo->reflux.rhoV_fz);
+                    auto Etot_fz_reflux_id = ids().getID(mhdInfo->reflux.Etot_fz);
 
 
                     if (!rho_fz_reflux_id or !rhoV_fz_reflux_id or !Etot_fz_reflux_id)
@@ -225,9 +225,9 @@ namespace amr
                             "MHDMessenger: missing reflux variable IDs for fluxes in z direction");
                     }
 
-                    auto rho_fz_fluxsum_id  = resourcesManager_->getID(mhdInfo->fluxSum.rho_fz);
-                    auto rhoV_fz_fluxsum_id = resourcesManager_->getID(mhdInfo->fluxSum.rhoV_fz);
-                    auto Etot_fz_fluxsum_id = resourcesManager_->getID(mhdInfo->fluxSum.Etot_fz);
+                    auto rho_fz_fluxsum_id  = ids().getID(mhdInfo->fluxSum.rho_fz);
+                    auto rhoV_fz_fluxsum_id = ids().getID(mhdInfo->fluxSum.rhoV_fz);
+                    auto Etot_fz_fluxsum_id = ids().getID(mhdInfo->fluxSum.Etot_fz);
 
                     if (!rho_fz_fluxsum_id or !rhoV_fz_fluxsum_id or !Etot_fz_fluxsum_id)
                     {
@@ -255,9 +255,9 @@ namespace amr
                 }
             }
 
-            auto e_reflux_id = resourcesManager_->getID(mhdInfo->refluxElectric);
+            auto e_reflux_id = ids().getID(mhdInfo->refluxElectric);
 
-            auto e_fluxsum_id = resourcesManager_->getID(mhdInfo->fluxSumElectric);
+            auto e_fluxsum_id = ids().getID(mhdInfo->fluxSumElectric);
 
             if (!e_reflux_id or !e_fluxsum_id)
             {
@@ -492,6 +492,9 @@ namespace amr
 
 
     private:
+        // resource lookups by name, restricted to this model's resources
+        auto ids() const { return resourcesManager_->template scoped<MHDModel>(); }
+
         // Select the field-refinement operators once at construction. The composite runtime
         // kernels are built from the configured order.
         void makeRefineOperators_(RefinementConfig const& config)
@@ -567,14 +570,13 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
-                    result;
+                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>> result;
 
                 result.reserve(info->ghostMagnetic.size());
 
                 for (auto const& key : info->ghostMagnetic)
                 {
-                    auto&& [id] = resourcesManager_->getIDsList(key);
+                    auto&& [id] = ids().getIDsList(key);
 
                     auto patch_strat
                         = std::make_shared<MagneticRefinePatchStrategy<VectorFieldDataT>>();
@@ -677,10 +679,11 @@ namespace amr
         std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
         int const firstLevel_;
 
-        using InitRefinerPool             = RefinerPool<rm_t, RefinerType::InitField>;
-        using GhostRefinerPool            = RefinerPool<rm_t, RefinerType::GhostField>;
-        using InitDomPartRefinerPool      = RefinerPool<rm_t, RefinerType::InitInteriorPart>;
-        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, RefinerType::PatchVecFieldBorderMax>;
+        using InitRefinerPool        = RefinerPool<rm_t, MHDModel, RefinerType::InitField>;
+        using GhostRefinerPool       = RefinerPool<rm_t, MHDModel, RefinerType::GhostField>;
+        using InitDomPartRefinerPool = RefinerPool<rm_t, MHDModel, RefinerType::InitInteriorPart>;
+        using VecFieldGhostMaxRefinerPool
+            = RefinerPool<rm_t, MHDModel, RefinerType::PatchVecFieldBorderMax>;
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost; //
@@ -761,7 +764,7 @@ namespace amr
         using MHDVecFluxCoarsenOp    = VecFieldCoarsenOp<MHDFluxCoarsener<dimension>>;
         using ElectricFieldCoarsenOp = VecFieldCoarsenOp<ElectricFieldCoarsener<dimension>>;
 
-        SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t, MHDModel> electroSynchronizers_{resourcesManager_};
 
         // built in the ctor body (makeRefineOperators_) from the composite runtime kernels.
         RefOp_ptr mhdFluxRefineOp_;
