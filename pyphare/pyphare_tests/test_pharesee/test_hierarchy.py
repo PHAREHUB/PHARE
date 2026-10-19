@@ -5,6 +5,7 @@ from ddt import ddt
 
 from pyphare.core.box import Box
 from pyphare.core.operators import cross, dot, grad, modulus, sqrt
+from pyphare.core.phare_utilities import assert_fp_any_all_close
 from pyphare.pharesee.hierarchy import PatchHierarchy, ScalarField, VectorField
 from pyphare.pharesee.run import Run
 from pyphare.simulator.simulator import Simulator
@@ -385,7 +386,7 @@ class PatchHierarchyTest(unittest.TestCase):
                 inner = (slice(1, -1),) * 2
                 vi_patch = Vi.level(ilvl, time).patches[ip]
                 for c in ["x", "y", "z"]:
-                    np.testing.assert_allclose(
+                    assert_fp_any_all_close(
                         patch_box_data(V.level(ilvl, time).patches[ip], c)[inner],
                         patch_box_data(vi_patch, c)[inner],
                         atol=1e-12,
@@ -406,7 +407,7 @@ class PatchHierarchyTest(unittest.TestCase):
                         self.assertFalse(np.isnan(computed).any())
                         # np.gradient is one sided on the edges of the patch data
                         inner = (slice(1, -1),) * 2
-                        np.testing.assert_allclose(
+                        assert_fp_any_all_close(
                             computed[inner], expected[i][inner], atol=1e-12
                         )
 
