@@ -78,15 +78,15 @@ private:
 
         layout_.evalOnBox(Exnew, [&](auto&... args) {
             this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
-                Pack{Enew, n, Pe, Ve, B, J}, gradPeX, args...);
+                Pack{Enew, n, Ve, B, J}, gradPeX, args...);
         });
         layout_.evalOnBox(Eynew, [&](auto&... args) {
             this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
-                Pack{Enew, n, Pe, Ve, B, J}, gradPeY, args...);
+                Pack{Enew, n, Ve, B, J}, gradPeY, args...);
         });
         layout_.evalOnBox(Eznew, [&](auto&... args) {
             this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
-                Pack{Enew, n, Pe, Ve, B, J}, gradPeZ, args...);
+                Pack{Enew, n, Ve, B, J}, gradPeZ, args...);
         });
     }
 
@@ -94,7 +94,7 @@ private:
     struct OhmPack
     {
         VecField& Exyz;
-        Field const &n, &Pe;
+        Field const& n;
         VecField const &Ve, &B, &J;
     };
 
@@ -103,7 +103,7 @@ private:
              typename... IDXs>
     void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
     {
-        auto const& [E, n, Pe, Ve, B, J] = pack;
+        auto const& [E, n, Ve, B, J]     = pack;
         auto& Exyz                       = E(Tag);
 
         static_assert(Components::check<Tag>());

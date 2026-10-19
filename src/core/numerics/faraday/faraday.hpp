@@ -16,8 +16,6 @@ namespace PHARE::core
 template<typename GridLayout>
 class Faraday
 {
-    constexpr static auto dimension = GridLayout::dimension;
-
 public:
     Faraday(GridLayout const& layout)
         : layout_{layout}
