@@ -9,6 +9,7 @@ from ..core.box import Box
 from . import boundary
 from . import global_vars
 from . import timestepper
+from .tagging import resolve_tagging
 
 # ------------------------------------------------------------------------------
 
@@ -42,11 +43,21 @@ def de_numpify_simulation(sim):
     return sim
 
 
+def _is_purely_numeric(obj):
+    if isinstance(obj, bool):
+        return False
+    if isinstance(obj, (int, float)):
+        return True
+    if isinstance(obj, (list, tuple)):
+        return len(obj) > 0 and all(_is_purely_numeric(item) for item in obj)
+    return False
+
+
 def re_numpify_recursive(owner, key):
     obj = getattr(owner, key)
     if obj is None:
         return
-    if isinstance(obj, list) and len(obj) and not isinstance(obj[0], str):
+    if isinstance(obj, list) and len(obj) and _is_purely_numeric(obj):
         object.__setattr__(owner, key, np.array(obj))
     elif hasattr(obj, "__dict__"):
         for k in obj.__dict__:
@@ -217,7 +228,9 @@ valid_refined_particle_nbr = {
     },
 }  # Default refined_particle_nbr per dim/interp is considered index 0 of list
 
-no_refined_particle_nbr = 0  # internal, C++-facing counterpart of no_hybrid_interp_order
+no_refined_particle_nbr = (
+    0  # internal, C++-facing counterpart of no_hybrid_interp_order
+)
 
 
 def check_refined_particle_nbr(ndim, **kwargs):
@@ -698,6 +711,7 @@ def checker(func):
             "nesting_buffer",
             "refinement_boxes",
             "refinement",
+            "tagging",
             "tagging_threshold",
             "clustering",
             "smallest_patch_size",
@@ -776,6 +790,7 @@ def checker(func):
 
         kwargs["tag_buffer"] = kwargs.get("tag_buffer", 1)
 
+        kwargs["tagging"] = resolve_tagging(**kwargs)
         kwargs["refinement"] = check_refinement(**kwargs)
         if kwargs["refinement"] == "boxes":
             (
@@ -895,7 +910,7 @@ class Simulation(object):
           is incompatible with ``time_step_nbr``.
 
           * **cfl_wave** (``float``), hyperbolic/wave CFL coefficient. Normalized so 1 is
-            the stability limit; choose in (0, 1]. In hall mhd and hybrid, 
+            the stability limit; choose in (0, 1]. In hall mhd and hybrid,
             whistler wave speed limits is used.
           * **cfl_diffusive** (``float``), diffusive CFL coefficient. Normalized so 1 is
             the diffusion stability limit; choose in (0, 1]. Defaults to ``cfl_wave``. Only
@@ -1030,6 +1045,7 @@ class Simulation(object):
             * "boxes" - refined regions are the fixed, user-given `refinement_boxes`, identical at every time step. Mostly used in tests, where fully deterministic, reproducible refined regions matter more than adapting to the physics.
 
         * **tagging_threshold** (``float``), default=0.1, used only when `refinement="tagging"`. Threshold of the tagging criterion above which a cell is flagged for refinement. Lower values tag more cells and produce more/larger refined regions. See :ref:`tagging-for-refinement` for the underlying theory.
+        * **tagging** (``dict``), default=None, used only when `refinement="tagging"`. Chooses the tagging criterion and the quantities it is applied to, as ``{"method": ..., "quantities": {name: threshold, ...}, "params": {...}}``, every key being optional. `method` is "default" (the gradient criterion used when `tagging` is not given) or "lohner" (Löhner's second-derivative error estimator, with `params` `reltol`, default=0.02, the weight of its noise filter, and `abstol`, default=1e-30, a floor of its denominator). Each quantity has its own threshold and a cell is tagged if any quantity exceeds its threshold. Without `quantities`, the criterion is applied to B with threshold `tagging_threshold`. Quantities that can be used: "B", "Bx", "By", "Bz" for both models, plus "rho" (or "density"), "rhoV" (or "momentum"), "rhoVx", "rhoVy", "rhoVz" and "Etot" for the MHD model. Other quantities (E, J, velocities, pressures, hybrid densities) are not available for tagging yet. Example: ``tagging={"method": "lohner", "quantities": {"B": 0.1, "rho": 0.4}}``.
         * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. With `refinement="boxes"` this is derived automatically from the number of levels given in `refinement_boxes`; with `refinement="tagging"` it must be given explicitly (it otherwise silently defaults to 1, i.e. no refinement).
         * **tag_buffer** (``int``), default=1, number of cells by which each tagged cell is grown, in every direction, before clustering into boxes. E.g. with `tag_buffer=1`, a single tagged cell becomes surrounded by a 1-cell-wide layer of also-tagged cells: 3 tagged cells in 1D, 9 in 2D. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
         * **clustering** (``str``), {"berger", "tile" (default)}, type of :ref:`clustering` to use for AMR. :ref:`tile <tiling>` results in wider patches, less artifacts and better scalability than :ref:`berger <berger-rigoutsos>`.

@@ -7,6 +7,8 @@ import pyphare.pharein.global_vars as global_vars
 from pyphare.core import phare_utilities
 from pyphare.pharein import simulation
 from pyphare.pharein.mhd_model import MHDModel
+from pyphare.pharein import tagging
+from pyphare.pharein.initialize import general
 
 
 class TestSimulation(unittest.TestCase):
@@ -201,6 +203,164 @@ class TestSimulation(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             MHDModel(bx=lambda x: np.where(x > 9.0, 0.6, 0.5), by=lambda x: 1.0)
+
+    def tagging_simulation(self, **kwargs):
+        return simulation.Simulation(
+            time_step_nbr=self.time_step_nbr,
+            cells=self.cells_array[0],
+            domain_size=self.domain_size_array[0],
+            final_time=self.final_time,
+            max_nbr_levels=2,
+            refinement="tagging",
+            **kwargs,
+        )
+
+    def test_tagging_unknown_top_level_key_raises(self):
+        with self.assertRaises(ValueError):
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={"method": "lohner", "quantites": {"rho": 0.4}},
+            )
+
+    def test_tagging_without_refinement_raises(self):
+        with self.assertRaises(ValueError):
+            tagging.resolve_tagging(
+                max_nbr_levels=3,
+                tagging={"method": "lohner", "quantities": {"B": 0.1}},
+            )
+
+    def test_tagging_valid_spec_normalizes(self):
+        tag = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "lohner",
+                "quantities": {"B": 0.1},
+                "params": {"reltol": 0.02},
+            },
+        )
+        self.assertIsInstance(tag, tagging.LohnerTagging)
+        self.assertEqual(tag.method, "lohner")
+        self.assertEqual(tag.quantities, [("B", 0.1)])
+        self.assertEqual(tag.reltol, 0.02)
+        self.assertEqual(tag.abstol, 1e-30)
+
+    def test_tagging_none_when_not_tagging(self):
+        self.assertIsNone(tagging.resolve_tagging())
+
+    def test_tagging_unknown_method_raises(self):
+        with self.assertRaises(ValueError):
+            tagging.resolve_tagging(refinement="tagging", tagging={"method": "wavelet"})
+
+    def test_tagging_unknown_param_raises(self):
+        with self.assertRaises(ValueError):
+            tagging.resolve_tagging(
+                refinement="tagging",
+                tagging={"method": "default", "params": {"reltol": 0.1}},
+            )
+
+    def test_tagging_not_available_rejected(self):
+        for name in ("J", "Ey", "V", "pressure", "massDensity"):
+            with self.assertRaises(ValueError) as error:
+                tagging.resolve_tagging(
+                    refinement="tagging", tagging={"quantities": {name: 0.1}}
+                )
+            self.assertIn("not available for tagging yet", str(error.exception))
+
+    def test_tagging_fallback_uses_tagging_threshold(self):
+        for spec in ({"method": "lohner"}, {"quantities": {}}):
+            tag = tagging.resolve_tagging(
+                refinement="tagging", tagging_threshold=0.3, tagging=spec
+            )
+            self.assertEqual(tag.quantities, [("B", 0.3)])
+
+    def test_re_numpify_does_not_corrupt_tagging_quantities(self):
+        tag = tagging.LohnerTagging(quantities=[("B", 0.1), ("rho", 0.4)])
+        simulation.re_numpify_recursive(tag, "quantities")
+        self.assertEqual(tag.quantities, [("B", 0.1), ("rho", 0.4)])
+        self.assertIsInstance(tag.quantities, list)
+        self.assertIsInstance(tag.quantities[0], tuple)
+        self.assertIsInstance(tag.quantities[0][1], float)
+
+    def test_re_numpify_still_numpifies_homogeneous_numeric_lists(self):
+        owner = simulation.Simulation.__new__(simulation.Simulation)
+        object.__setattr__(owner, "cells", [80, 40, 12])
+        simulation.re_numpify_recursive(owner, "cells")
+        self.assertIsInstance(owner.cells, np.ndarray)
+        np.testing.assert_array_equal(owner.cells, np.array([80, 40, 12]))
+
+    def test_tagging_serialize_deserialize_roundtrip_preserves_quantities(self):
+        sim = self.tagging_simulation(
+            tagging={
+                "method": "lohner",
+                "quantities": {"B": 0.1, "rho": 0.4},
+                "params": {"reltol": 0.02},
+            },
+        )
+        restored = simulation.deserialize(simulation.serialize(sim))
+        self.assertEqual(restored.tagging.quantities, [("B", 0.1), ("rho", 0.4)])
+        self.assertIsInstance(restored.tagging.quantities[0][1], float)
+        self.assertIsInstance(restored.tagging.quantities[1][1], float)
+
+    def test_default_path_populates_legacy_keys(self):
+        sim = self.tagging_simulation()
+        dp = FakeDictPopulator()
+        general.populate_amr(dp, sim)
+
+        base = "simulation/AMR/refinement/tagging/"
+        tagging_calls = {
+            path[len(base) :]: value
+            for path, value in dp.calls.items()
+            if path.startswith(base)
+        }
+        self.assertEqual(
+            tagging_calls,
+            {
+                "method": "auto",
+                "threshold": 0.1,
+                "nbr_quantities": 1,
+                "Q0/name": "B",
+                "Q0/threshold": 0.1,
+            },
+        )
+        self.assertEqual(sim.tagging.method, "default")
+
+
+class FakeDictPopulator:
+    def __init__(self):
+        self.calls = {}
+
+    def _record(self, path, value):
+        assert path not in self.calls, f"duplicate path populated: {path}"
+        self.calls[path] = value
+
+    def __getattr__(self, name):
+        if name.startswith("add_"):
+            return self._record
+        raise AttributeError(name)
+
+
+class TestTaggingPopulateDict(unittest.TestCase):
+    def test_lohner_multi_quantity_populate_dict(self):
+        tag = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={
+                "method": "lohner",
+                "quantities": {"B": 0.1, "rho": 0.4},
+                "params": {"reltol": 0.02, "abstol": 1e-20},
+            },
+        )
+        dp = FakeDictPopulator()
+        tag.populate_dict(dp)
+
+        base = "simulation/AMR/refinement/tagging/"
+        self.assertEqual(dp.calls[base + "nbr_quantities"], 2)
+        self.assertEqual(dp.calls[base + "Q0/name"], "B")
+        self.assertEqual(dp.calls[base + "Q0/threshold"], 0.1)
+        self.assertEqual(dp.calls[base + "Q1/name"], "rho")
+        self.assertEqual(dp.calls[base + "Q1/threshold"], 0.4)
+        self.assertEqual(dp.calls[base + "params/reltol"], 0.02)
+        self.assertEqual(dp.calls[base + "params/abstol"], 1e-20)
+        self.assertNotIn(base + "method", dp.calls)
 
 
 if __name__ == "__main__":
