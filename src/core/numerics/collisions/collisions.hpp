@@ -6,6 +6,8 @@
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 
+#include "initializer/data_provider.hpp"
+
 #include <algorithm>
 #include <array>
 #include <bit>
@@ -15,6 +17,7 @@
 #include <cstdint>
 #include <numbers>
 #include <numeric>
+#include <stdexcept>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -55,6 +58,22 @@ struct CollisionInfo
     std::uint64_t const seed;
 
     NO_DISCARD bool isActive() const { return nu0 > 0.; }
+
+    // from simulation/algo, inactive when it has no "collisions" entry
+    CollisionInfo static FROM(initializer::PHAREDict const& algo)
+    {
+        if (!algo.contains("collisions"))
+            return {0., 1, ScatteringLaw::nanbu, false, 0};
+
+        auto const& dict = algo["collisions"];
+        auto const every = cppdict::get_value(dict, "every", 1);
+        if (every < 1)
+            throw std::runtime_error("collisions: 'every' must be at least 1");
+        return {dict["nu0"].template to<double>(), every,
+                static_cast<ScatteringLaw>(cppdict::get_value(dict, "scheme", 0)),
+                cppdict::get_value(dict, "exact_conservation", true),
+                cppdict::get_value(dict, "seed", std::size_t{0})};
+    }
     NO_DISCARD bool collidesAt(std::int64_t const step) const
     {
         assert(every > 0);

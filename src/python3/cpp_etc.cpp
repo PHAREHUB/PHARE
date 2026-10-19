@@ -5,6 +5,7 @@
 #include "core/def/phare_config.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/numerics/collisions/collisions.hpp"
 
 #include "phare_simulator_options.hpp"
 
@@ -158,6 +159,11 @@ PYBIND11_MODULE(cpp_etc, m)
     py::enum_<core::HyperMode>(m, "HyperMode")
         .value("constant", core::HyperMode::constant)
         .value("spatial", core::HyperMode::spatial);
+
+    py::enum_<core::ScatteringLaw>(m, "ScatteringLaw")
+        .value("nanbu", core::ScatteringLaw::nanbu)
+        .value("takizuka_abe", core::ScatteringLaw::takizuka_abe)
+        .value("bobylev", core::ScatteringLaw::bobylev);
 
     declareDim<1>(m);
     declareDim<2>(m);
