@@ -231,7 +231,7 @@ TEST(CollisionPairing, intraPairsGiveEachParticleTheDensityOfTheOthers)
                 if (sibling[a] == sibling[b])
                     return;
                 auto const [pA, pB] = acceptance(weight[a], weight[b]);
-                auto const strength = factor * (n - 1) * std::max(weight[a], weight[b]);
+                auto const strength = intraStrength(n, factor) * std::max(weight[a], weight[b]);
                 seen[a] += strength * pA;
                 seen[b] += strength * pB;
             });
@@ -271,7 +271,7 @@ TEST(CollisionPairing, interPairsGiveEachParticleTheDensityOfTheOtherGroup)
             forEachInterPair(nLarge, nSmall, [&](auto const i, auto const j) {
                 auto const a = oLarge[i], b = oSmall[j];
                 auto const [pA, pB] = acceptance(wLarge[a], wSmall[b]);
-                auto const strength = nSmall * std::max(wLarge[a], wSmall[b]);
+                auto const strength = interStrength(nSmall) * std::max(wLarge[a], wSmall[b]);
                 seenLarge[a] += strength * pA;
                 seenSmall[b] += strength * pB;
             });
