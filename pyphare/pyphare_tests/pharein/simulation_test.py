@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 import numpy as np
 
 
@@ -8,7 +9,8 @@ from pyphare.core import phare_utilities
 from pyphare.pharein import simulation
 from pyphare.pharein.mhd_model import MHDModel
 from pyphare.pharein import tagging
-from pyphare.pharein.initialize import general
+from pyphare.pharein.initialize import general, hybrid, mhd
+import pyphare.pharein as ph
 
 
 class TestSimulation(unittest.TestCase):
@@ -324,6 +326,37 @@ class TestSimulation(unittest.TestCase):
         )
         self.assertEqual(sim.tagging.method, "default")
 
+    def model_method(self, module, key):
+        dp = FakeDictPopulator()
+        with mock.patch.object(module, "DictPopulator", lambda: dp):
+            module.populateDict(global_vars.sim)
+        return dp.calls[f"simulation/AMR/refinement/tagging/{key}"]
+
+    def test_method_reaches_model_method_keys(self):
+        def one(x):
+            return 1.0 + 0.0 * x
+
+        for method in ("default", "lohner"):
+            global_vars.sim = None
+            self.tagging_simulation(tagging={"method": method})
+            ph.MaxwellianFluidModel(bx=one, by=one, bz=one, protons={"density": one})
+            ph.ElectronModel(closure="isothermal", Te=0.0)
+            self.assertEqual(self.model_method(hybrid, "hybrid_method"), method)
+
+            global_vars.sim = None
+            self.tagging_simulation(
+                tagging={"method": method},
+                model_options=["MHDModel"],
+                reconstruction="Linear",
+                limiter="VanLeer",
+                riemann="Rusanov",
+                mhd_timestepper="TVDRK2",
+            )
+            ph.MHDModel(
+                density=one, vx=one, vy=one, vz=one, bx=one, by=one, bz=one, p=one
+            )
+            self.assertEqual(self.model_method(mhd, "mhd_method"), method)
+
 
 class FakeDictPopulator:
     def __init__(self):
@@ -334,8 +367,10 @@ class FakeDictPopulator:
         self.calls[path] = value
 
     def __getattr__(self, name):
-        if name.startswith("add_"):
+        if name in ("add_string", "add_int", "add_double", "add_bool"):
             return self._record
+        if name.startswith("add_"):
+            return lambda *args: None
         raise AttributeError(name)
 
 

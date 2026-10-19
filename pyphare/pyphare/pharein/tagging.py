@@ -62,9 +62,7 @@ _TAGGER_SPECS = {
 
 
 def resolve_tagging(**kwargs):
-    from .simulation import check_refinement
-
-    if check_refinement(**kwargs) != "tagging":
+    if kwargs.get("refinement", "boxes") != "tagging":
         if kwargs.get("tagging", None) is not None:
             raise ValueError(
                 "Error: a 'tagging' configuration was provided but refinement is not"
