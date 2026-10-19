@@ -29,8 +29,12 @@ cells = 24
 ppc = 2100
 
 
-def config(diag_dir, collisions=True, populations=1, restart_options=None):
+def config(
+    diag_dir, collisions=True, populations=1, restart_options=None, refined=False
+):
+    # the refined level is made of split particles, of weights unequal within a fine cell
     sim = ph.Simulation(
+        refinement_boxes={"L0": {"B0": [(6,), (17,)]}} if refined else None,
         time_step=time_step,
         time_step_nbr=time_step_nbr,
         cells=cells,
@@ -84,18 +88,19 @@ def config(diag_dir, collisions=True, populations=1, restart_options=None):
     return sim
 
 
-def temperatures(run, time, populations):
-    """T_par and T_perp of all the domain particles of the domain"""
-    v, w = [], []
+def temperatures(run, time, populations, level=0):
+    """T_par, T_perp and density of all the domain particles of a level"""
+    v, w, level_cells = [], [], 0
     for i in range(populations):
-        for patch in run.GetParticles(time, f"protons{i}").level(0, time).patches:
+        for patch in run.GetParticles(time, f"protons{i}").level(level, time).patches:
             particles = patch.patch_datas[f"protons{i}_domain"].dataset
             v.append(particles.v)
             w.append(particles.weights.reshape(-1))
+            level_cells += patch.box.shape[0] if i == 0 else 0
     v, w = np.concatenate(v), np.concatenate(w)
     mean = np.average(v, axis=0, weights=w)
     T = np.average((v - mean) ** 2, axis=0, weights=w)
-    return T[0], 0.5 * (T[1] + T[2]), w.sum() / cells
+    return T[0], 0.5 * (T[1] + T[2]), w.sum() / level_cells
 
 
 def nrl_decay(T_par, T_perp, density, t):
@@ -132,9 +137,9 @@ class CollisionsTest(SimulatorTest):
         ph.global_vars.sim = None
         return Run(diag_dir)
 
-    def decay_ratio(self, run, populations):
-        T_par0, T_perp0, density = temperatures(run, 0.0, populations)
-        T_par, T_perp, _ = temperatures(run, final_time, populations)
+    def decay_ratio(self, run, populations, level=0):
+        T_par0, T_perp0, density = temperatures(run, 0.0, populations, level)
+        T_par, T_perp, _ = temperatures(run, final_time, populations, level)
         simulated = np.log((T_perp - T_par) / (T_perp0 - T_par0))
         return simulated / nrl_decay(T_par0, T_perp0, density, final_time)
 
@@ -148,6 +153,26 @@ class CollisionsTest(SimulatorTest):
             ratio = self.decay_ratio(run, populations)
             print(f"{populations} population(s): anisotropy decay over NRL {ratio:.3f}")
             self.assertAlmostEqual(ratio, 1.0, delta=0.15)
+
+    def test_refined_level_relaxes_at_the_nrl_rate(self):
+        run = self.run_sim("phare_outputs/collisions/refined", refined=True)
+        if cpp.mpi_rank() == 0:
+            ratio = self.decay_ratio(run, 1, level=1)
+            print(f"refined level: anisotropy decay over NRL {ratio:.3f}")
+            self.assertAlmostEqual(ratio, 1.0, delta=0.15)
+
+    def test_refined_level_without_collisions_keeps_its_anisotropy(self):
+        # split particles of unequal weights must not relax by themselves (Lehe et al. 2026
+        # warn that bare PIC drives different weights towards equal weight x temperature)
+        run = self.run_sim(
+            "phare_outputs/collisions/refined_off", collisions=False, refined=True
+        )
+        if cpp.mpi_rank() == 0:
+            T_par0, T_perp0, _ = temperatures(run, 0.0, 1, level=1)
+            T_par, T_perp, _ = temperatures(run, final_time, 1, level=1)
+            self.assertAlmostEqual(
+                (T_perp - T_par) / (T_perp0 - T_par0), 1.0, delta=0.03
+            )
 
     def test_no_collisions_no_relaxation(self):
         run = self.run_sim("phare_outputs/collisions/off", collisions=False)

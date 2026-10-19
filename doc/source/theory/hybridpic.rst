@@ -22,7 +22,8 @@ The hybrid model consists in evolving in space :math:`\mathbf{r}` and time
 populations p under the influence of the electric :math:`\mathbf{E}`
 and magnetic field :math:`\mathbf{B}`.
 This is done by solving the Vlasov equation for all ion populations when
-collisions are negligible.
+collisions are negligible. Ion-ion Coulomb collisions can be added, see
+:doc:`collisions`.
 
 
 .. math::

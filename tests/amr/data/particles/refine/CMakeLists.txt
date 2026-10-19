@@ -27,3 +27,9 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 add_no_mpi_phare_test(${PROJECT_NAME} ${CMAKE_CURRENT_BINARY_DIR})
 
 
+
+
+add_executable(test-split-collisions test_split_collisions.cpp)
+target_include_directories(test-split-collisions PRIVATE ${GTEST_INCLUDE_DIRS})
+target_link_libraries(test-split-collisions PRIVATE phare_amr ${GTEST_LIBS})
+add_no_mpi_phare_test(test-split-collisions ${CMAKE_CURRENT_BINARY_DIR})
