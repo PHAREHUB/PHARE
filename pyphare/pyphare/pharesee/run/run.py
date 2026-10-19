@@ -27,6 +27,7 @@ quantities_per_file = {
     "EM_B": "B",
     "EM_E": "E",
     "ions_bulkVelocity": "Vi",
+    "ions_charge_flux": "CF",
     "ions_charge_density": "Ni",
     "ions_mass_density": "rho",
     "particle_count": "nppc",

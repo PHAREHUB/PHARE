@@ -18,6 +18,7 @@ namespace PHARE::diagnostic::h5
  *
  * /t#/pl#/p#/ions/density
  * /t#/pl#/p#/ions/bulkVelocity/(x,y,z)
+ * /t#/pl#/p#/ions/charge_flux/(x,y,z)
  * /t#/pl#/p#/ions/pop_(1,2,...)/density
  * /t#/pl#/p#/ions/pop_(1,2,...)/bulkVelocity/(x,y,z)
  */
@@ -161,7 +162,7 @@ void FluidDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnost
 
     std::string tree{"/ions/"};
     checkCreateFileFor_(diagnostic, fileData_, tree, "charge_density", "mass_density",
-                        "bulkVelocity", "momentum_tensor");
+                        "bulkVelocity", "charge_flux", "momentum_tensor");
 }
 
 
@@ -223,6 +224,8 @@ void FluidDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagn
         infoDS(ions.massDensity(), "mass_density", patchAttributes[lvlPatchID]["ion"]);
     if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
         infoVF(ions.velocity(), "bulkVelocity", patchAttributes[lvlPatchID]["ion"]);
+    if (isActiveDiag(diagnostic, tree, "charge_flux"))
+        infoVF(ions.chargeFlux(), "charge_flux", patchAttributes[lvlPatchID]["ion"]);
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         infoTF(ions.momentumTensor(), "momentum_tensor", patchAttributes[lvlPatchID]["ion"]);
 }
@@ -288,6 +291,8 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
             initDS(path, attr["ion"], "mass_density", null);
         if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
             initVF(path, attr["ion"], "bulkVelocity", null);
+        if (isActiveDiag(diagnostic, tree, "charge_flux"))
+            initVF(path, attr["ion"], "charge_flux", null);
         if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
             initTF(path, attr["ion"], "momentum_tensor", null);
     };
@@ -330,6 +335,8 @@ void FluidDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         writeDS(path + "mass_density", ions.massDensity());
     if (isActiveDiag(diagnostic, tree, "bulkVelocity"))
         writeTF(path + "bulkVelocity", ions.velocity());
+    if (isActiveDiag(diagnostic, tree, "charge_flux"))
+        writeTF(path + "charge_flux", ions.chargeFlux());
     if (isActiveDiag(diagnostic, tree, "momentum_tensor"))
         writeTF(path + "momentum_tensor", ions.momentumTensor());
 }
