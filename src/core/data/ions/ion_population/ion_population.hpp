@@ -2,6 +2,7 @@
 #define PHARE_ION_POPULATION_HPP
 
 #include <tuple>
+#include <algorithm>
 #include <string>
 #include <sstream>
 
@@ -29,6 +30,7 @@ namespace core
         IonPopulation(initializer::PHAREDict const& initializer)
             : name_{initializer["name"].template to<std::string>()}
             , mass_{initializer["mass"].template to<double>()}
+            , charge_{initializer["particle_initializer"]["charge"].template to<double>()}
             , flux_{name_ + "_flux", HybridQuantity::Vector::V}
             , momentumTensor_{name_ + "_momentumTensor", HybridQuantity::Tensor::M}
             , particleDensity_{name_ + "_particleDensity", HybridQuantity::Scalar::rho}
@@ -40,6 +42,9 @@ namespace core
 
 
         NO_DISCARD double mass() const { return mass_; }
+
+        //! all particles of a population carry this charge, see particlesHaveCharge()
+        NO_DISCARD double charge() const { return charge_; }
 
         NO_DISCARD std::string const& name() const { return name_; }
 
@@ -98,6 +103,22 @@ namespace core
         NO_DISCARD TensorField& momentumTensor() { return momentumTensor_; }
 
 
+        //! true if every particle, in every array set on the population, carries charge()
+        NO_DISCARD bool particlesHaveCharge() const
+        {
+            auto const haveCharge = [this](ParticleArray const* particles) {
+                return particles == nullptr
+                       or std::all_of(std::begin(*particles), std::end(*particles),
+                                      [this](auto const& part) { return part.charge == charge_; });
+            };
+            return haveCharge(particles_._domainParticles)
+                   and haveCharge(particles_._patchGhostParticles)
+                   and haveCharge(particles_._levelGhostParticles)
+                   and haveCharge(particles_._levelGhostParticlesOld)
+                   and haveCharge(particles_._levelGhostParticlesNew);
+        }
+
+
 
         //-------------------------------------------------------------------------
         //                  start the ResourcesUser interface
@@ -131,6 +152,7 @@ namespace core
     private:
         std::string name_;
         double mass_;
+        double charge_;
         VecField flux_;
         TensorField momentumTensor_;
         field_type particleDensity_;

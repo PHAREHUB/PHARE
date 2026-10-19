@@ -113,6 +113,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateIons(Ions& ions)
 {
     ions.computeChargeDensity();
     ions.computeBulkVelocity();
+    ions.computeChargeFlux();
 }
 
 // this is to detach how we partition particles from the updater directly
