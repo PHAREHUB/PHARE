@@ -9,6 +9,7 @@
 #include <cmath>
 #include <vector>
 #include <array>
+#include <stdexcept>
 
 
 #include "core/def.hpp"
@@ -52,6 +53,7 @@ namespace core
                   },
                   dict["nbrPopulations"].template to<std::size_t>())}
             , momentumTensor_{"momentumTensor", HybridQuantity::Tensor::M}
+            , chargeFlux_{"chargeFlux", HybridQuantity::Vector::V}
         {
         }
 
@@ -67,6 +69,9 @@ namespace core
 
         NO_DISCARD vecfield_type const& velocity() const { return bulkVelocity_; }
         NO_DISCARD vecfield_type& velocity() { return bulkVelocity_; }
+
+        NO_DISCARD vecfield_type const& chargeFlux() const { return chargeFlux_; }
+        NO_DISCARD vecfield_type& chargeFlux() { return chargeFlux_; }
 
         NO_DISCARD std::string static chargeDensityName() { return "chargeDensity"; }
         NO_DISCARD std::string static massDensityName() { return "massDensity"; }
@@ -146,6 +151,35 @@ namespace core
         }
 
 
+        // sum_s q_s F_s, the charge flux entering the electron velocity.
+        // Exact only if every particle of a population carries the population charge.
+        void computeChargeFlux()
+        {
+            PHARE_DEBUG_DO({
+                for (auto const& pop : populations_)
+                    if (!pop.particlesHaveCharge())
+                        throw std::runtime_error("Ions::computeChargeFlux: population " + pop.name()
+                                                 + " has particles not carrying its charge");
+            })
+
+            chargeFlux_.zero();
+
+            for (auto const& pop : populations_)
+            {
+                auto const plusCharge
+                    = [q = pop.charge()](Float const& c, Float const& f) { return c + q * f; };
+
+                for (std::size_t i = 0; i < chargeFlux_.size(); ++i)
+                {
+                    auto& c       = chargeFlux_[i];
+                    auto const& f = pop.flux()[i];
+                    std::transform(std::begin(c), std::end(c), std::begin(f), std::begin(c),
+                                   plusCharge);
+                }
+            }
+        }
+
+
         void computeFullMomentumTensor()
         {
             momentumTensor_.zero();
@@ -206,7 +240,8 @@ namespace core
         NO_DISCARD bool isUsable() const
         {
             bool usable = chargeDensity_.isUsable() and bulkVelocity_.isUsable()
-                          and momentumTensor_.isUsable() and massDensity_.isUsable();
+                          and momentumTensor_.isUsable() and massDensity_.isUsable()
+                          and chargeFlux_.isUsable();
 
             for (auto const& pop : populations_)
             {
@@ -220,7 +255,8 @@ namespace core
         NO_DISCARD bool isSettable() const
         {
             bool settable = massDensity_.isSettable() and chargeDensity_.isSettable()
-                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable();
+                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable()
+                            and chargeFlux_.isSettable();
 
             for (auto const& pop : populations_)
             {
@@ -245,7 +281,7 @@ namespace core
         NO_DISCARD auto getCompileTimeResourcesViewList()
         {
             return std::forward_as_tuple(bulkVelocity_, momentumTensor_, chargeDensity_,
-                                         massDensity_);
+                                         massDensity_, chargeFlux_);
         }
 
 
@@ -276,6 +312,7 @@ namespace core
         vecfield_type bulkVelocity_;
         std::vector<IonPopulation> populations_;
         tensorfield_type momentumTensor_;
+        vecfield_type chargeFlux_;
     };
 
 } // namespace core

@@ -224,7 +224,7 @@ struct IonsBuffers
     Grid alphaParticleDensity;
     Grid alphaChargeDensity;
 
-    UsableVecFieldND protonF, alphaF, Vi;
+    UsableVecFieldND protonF, alphaF, Vi, chargeFlux;
     UsableTensorField<dim> M, alpha_M, protons_M;
 
     static constexpr int ghostSafeMapLayer = ghostWidthForParticles<interp_order>() + 1;
@@ -260,6 +260,7 @@ struct IonsBuffers
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -297,6 +298,7 @@ struct IonsBuffers
         , protonF{"protons_flux", layout, HybridQuantity::Vector::V}
         , alphaF{"alpha_flux", layout, HybridQuantity::Vector::V}
         , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , chargeFlux{"chargeFlux", layout, HybridQuantity::Vector::V}
         , M{"momentumTensor", layout, HybridQuantity::Tensor::M}
         , alpha_M{"alpha_momentumTensor", layout, HybridQuantity::Tensor::M}
         , protons_M{"protons_momentumTensor", layout, HybridQuantity::Tensor::M}
@@ -326,13 +328,15 @@ struct IonsBuffers
         protonF.copyData(source.protonF);
         alphaF.copyData(source.alphaF);
         Vi.copyData(source.Vi);
+        chargeFlux.copyData(source.chargeFlux);
     }
 
     void setBuffers(Ions& ions)
     {
         {
-            auto const& [V, m, cd, md] = ions.getCompileTimeResourcesViewList();
+            auto const& [V, m, cd, md, cf] = ions.getCompileTimeResourcesViewList();
             Vi.set_on(V);
+            chargeFlux.set_on(cf);
             M.set_on(m);
             cd.setBuffer(&ionChargeDensity);
             md.setBuffer(&ionMassDensity);
