@@ -66,6 +66,11 @@ def magnetic_model_dict(ndim, defaulter, bx, by, bz, ax, ay, az):
 
 
 def populate_magnetic_initializer(dp, ndim, maginit_path, model_dict):
+    """
+    B mode: x/y/z_component from bx, by, bz.
+    A mode: all three vector_potential/x/y/z_component, plus the x/y/z_component
+    of each B component given directly (2D bz).
+    """
     if "vector_potential" not in model_dict:
         for c in _components:
             dp.add_init_function(

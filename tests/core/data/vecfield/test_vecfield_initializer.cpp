@@ -100,7 +100,7 @@ InitFunction<dim> make_fn(F f)
 
 
 template<typename CaseT>
-struct VecFieldInitializerTest : public ::testing::Test
+struct MagneticFieldInitializerTest : public ::testing::Test
 {
     static constexpr auto dim = CaseT::dim;
     using Layout              = typename CaseT::Layout;
@@ -134,7 +134,7 @@ struct VecFieldInitializerTest : public ::testing::Test
                                  Grid_t{"Ay", layout, Scalar::Ey, 0.},
                                  Grid_t{"Az", layout, Scalar::Ez, 0.}};
 
-    VecFieldInitializerTest()
+    MagneticFieldInitializerTest()
     {
         for (std::size_t i = 0; i < 3; ++i)
             B[i].setBuffer(&bgrids[i]);
@@ -300,10 +300,10 @@ struct VecFieldInitializerTest : public ::testing::Test
 
 
 using Cases = ::testing::Types<HybridCase<2>, HybridCase<3>, MHDCase<2>, MHDCase<3>>;
-TYPED_TEST_SUITE(VecFieldInitializerTest, Cases);
+TYPED_TEST_SUITE(MagneticFieldInitializerTest, Cases);
 
 
-TYPED_TEST(VecFieldInitializerTest, curlOfEdgeFieldMatchesStencilOverGhostBox)
+TYPED_TEST(MagneticFieldInitializerTest, curlOfEdgeFieldMatchesStencilOverGhostBox)
 {
     this->sample_A();
     curl_edges_to_faces(
@@ -315,7 +315,7 @@ TYPED_TEST(VecFieldInitializerTest, curlOfEdgeFieldMatchesStencilOverGhostBox)
     }
 }
 
-TYPED_TEST(VecFieldInitializerTest, curlOfEdgeFieldIsDivergenceFreeOverGhostBox)
+TYPED_TEST(MagneticFieldInitializerTest, curlOfEdgeFieldIsDivergenceFreeOverGhostBox)
 {
     this->sample_A();
     curl_edges_to_faces(
@@ -325,7 +325,7 @@ TYPED_TEST(VecFieldInitializerTest, curlOfEdgeFieldIsDivergenceFreeOverGhostBox)
     EXPECT_LE(this->max_divB(), this->divB_tolerance());
 }
 
-TYPED_TEST(VecFieldInitializerTest, vectorPotentialModeSetsBToCurlA)
+TYPED_TEST(MagneticFieldInitializerTest, vectorPotentialModeSetsBToCurlA)
 {
     MagneticFieldInitializer<TestFixture::dim> init{this->vecpot_dict()};
     init.initialize(this->B, this->layout);
@@ -338,7 +338,7 @@ TYPED_TEST(VecFieldInitializerTest, vectorPotentialModeSetsBToCurlA)
     EXPECT_LE(this->max_divB(), this->divB_tolerance());
 }
 
-TYPED_TEST(VecFieldInitializerTest, directComponentOverridesCurlInVectorPotentialMode)
+TYPED_TEST(MagneticFieldInitializerTest, directComponentOverridesCurlInVectorPotentialMode)
 {
     constexpr auto dim = TestFixture::dim;
     if constexpr (dim == 2)
@@ -363,7 +363,7 @@ TYPED_TEST(VecFieldInitializerTest, directComponentOverridesCurlInVectorPotentia
     }
 }
 
-TYPED_TEST(VecFieldInitializerTest, componentModeStillSamplesUserFunctions)
+TYPED_TEST(MagneticFieldInitializerTest, componentModeStillSamplesUserFunctions)
 {
     constexpr auto dim = TestFixture::dim;
     PHAREDict dict;
@@ -379,7 +379,7 @@ TYPED_TEST(VecFieldInitializerTest, componentModeStillSamplesUserFunctions)
     this->expect_B_is_sampled(2, make_fn<dim>(bz_fn));
 }
 
-TYPED_TEST(VecFieldInitializerTest, componentModeRequiresAllComponents)
+TYPED_TEST(MagneticFieldInitializerTest, componentModeRequiresAllComponents)
 {
     constexpr auto dim = TestFixture::dim;
     PHAREDict dict;
