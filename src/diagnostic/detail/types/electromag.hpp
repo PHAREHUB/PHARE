@@ -35,7 +35,7 @@ public:
     }
 
     void write(DiagnosticProperties&) override;
-    void compute(DiagnosticProperties&) override {}
+    void compute(DiagnosticProperties&) override;
 
     void createFiles(DiagnosticProperties& diagnostic) override;
 
@@ -61,10 +61,23 @@ private:
 
 
 template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
+{
+    auto& modelView = this->h5Writer_.modelView();
+
+    if constexpr (requires { modelView.getB1(); })
+        if (isActiveDiag(diagnostic, "/", "EM_B"))
+            modelView.visitHierarchy(
+                [&](auto& layout, auto const&, auto const) { modelView.computeTotalB(layout); },
+                this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
+}
+
+
+template<typename H5Writer>
 void ElectromagDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
     std::string tree = "/";
-    checkCreateFileFor_(diagnostic, fileData_, tree, "EM_B", "EM_E", "EM_B0");
+    checkCreateFileFor_(diagnostic, fileData_, tree, "EM_B", "EM_E", "EM_B0", "EM_B1");
 }
 
 
@@ -108,6 +121,10 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
         auto& B0 = h5Writer.modelView().getB0();
         infoVF(B0, "EM_B0", patchAttributes[lvlPatchID]);
     }
+
+    if constexpr (requires { h5Writer.modelView().getB1(); })
+        if (isActiveDiag(diagnostic, "/", "EM_B1"))
+            infoVF(h5Writer.modelView().getB1(), "EM_B1", patchAttributes[lvlPatchID]);
 }
 
 
@@ -146,6 +163,8 @@ void ElectromagDiagnosticWriter<H5Writer>::initDataSets(
             initVF(path, attr, "EM_E", null);
         if (isActiveDiag(diagnostic, tree, "EM_B0"))
             initVF(path, attr, "EM_B0", null);
+        if (isActiveDiag(diagnostic, tree, "EM_B1"))
+            initVF(path, attr, "EM_B1", null);
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -177,6 +196,10 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
         auto& B0 = h5Writer.modelView().getB0();
         h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B0", B0);
     }
+    if constexpr (requires { h5Writer.modelView().getB1(); })
+        if (isActiveDiag(diagnostic, tree, "EM_B1"))
+            h5Writer.writeTensorFieldAsDataset(h5file, path + "EM_B1",
+                                               h5Writer.modelView().getB1());
 }
 
 

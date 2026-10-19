@@ -126,7 +126,7 @@ private:
             {
                 switch (quantity)
                 {
-                    case (physical_quantity_type::Vector::B):
+                    case (physical_quantity_type::Vector::B1):
                         // Fill outside-domain B ghosts with a divergence-free transverse Neumann
                         // extrapolation of the interior field.
                         boundary->template registerFieldCondition<
@@ -162,7 +162,7 @@ private:
                 switch (quantity)
                 {
                     case (physical_quantity_type::Scalar::rho):
-                    case (physical_quantity_type::Scalar::Etot):
+                    case (physical_quantity_type::Scalar::Etot1):
                         boundary
                             ->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
                                 quantity);
@@ -181,7 +181,7 @@ private:
                             ->template registerFieldCondition<FieldBoundaryConditionType::Neumann>(
                                 quantity);
                         break;
-                    case (physical_quantity_type::Vector::B):
+                    case (physical_quantity_type::Vector::B1):
                         boundary->template registerFieldCondition<
                             FieldBoundaryConditionType::DivergenceFreeTransverseNeumann>(quantity);
                         break;
@@ -235,7 +235,7 @@ private:
                             FieldBoundaryConditionType::Dirichlet>(
                             quantity, rho, DirichletExtrapolation::Constant);
                         break;
-                    case (physical_quantity_type::Scalar::Etot):
+                    case (physical_quantity_type::Scalar::Etot1):
                         boundary->template registerFieldCondition<
                             FieldBoundaryConditionType::Dirichlet>(
                             quantity, Etot, DirichletExtrapolation::Constant);
@@ -256,7 +256,7 @@ private:
                             FieldBoundaryConditionType::Dirichlet>(
                             quantity, vToRhoV(rho, v), DirichletExtrapolation::Constant);
                         break;
-                    case (physical_quantity_type::Vector::B):
+                    case (physical_quantity_type::Vector::B1):
                         boundary->template registerFieldCondition<
                             FieldBoundaryConditionType::DivergenceFreeTransverseDirichlet>(
                             quantity, B, DirichletExtrapolation::Constant);

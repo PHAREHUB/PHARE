@@ -129,7 +129,12 @@ declared with one of the blocks below, right after the
 time, is an error. Without such a block there is no B0: it is neither
 allocated nor dumped.
 
-No solver uses it yet.
+The MHD solver splits the magnetic field as B = B0 + B1 and evolves the
+perturbation B1 and the energy density without the external field
+contributions, ``Etot1``. The ``bx``, ``by``, ``bz`` given to ``MHDModel``
+are the total field; ``b1x``, ``b1y``, ``b1z`` give B1 instead.
+``ElectromagDiagnostics`` dumps the total field with ``quantity="B"`` and the
+perturbation with ``quantity="B1"``. The Hybrid solver does not use B0 yet.
 
 .. autoclass:: pyphare.pharein.DipoleExternalField
 

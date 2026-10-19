@@ -31,12 +31,24 @@ public:
     void tag(Model& model, gridlayout_type const& layout, int* tags) const override;
 
 private:
-    auto& getB(auto& model) const
+    auto getB(auto& model) const
     {
         if constexpr (solver::is_hybrid_model_v<Model>)
-            return model.state.electromag.B;
+            return model.state.electromag.B();
         else if constexpr (solver::is_mhd_model_v<Model>)
-            return model.state.B;
+        {
+            auto const* B0 = model.B0OrNull();
+            auto total     = [B0](auto const& B1c, core::Component const c) {
+                auto const* B0c = B0 ? &(*B0)(c) : nullptr;
+                return [&B1c, B0c](auto const... indices) {
+                    return B0c ? B1c(indices...) + (*B0c)(indices...) : B1c(indices...);
+                };
+            };
+            auto const& B1 = model.state.B1;
+            return std::make_tuple(total(B1(core::Component::X), core::Component::X),
+                                   total(B1(core::Component::Y), core::Component::Y),
+                                   total(B1(core::Component::Z), core::Component::Z));
+        }
         else
             static_assert(core::dependent_false_v<Model>);
 
@@ -49,7 +61,7 @@ private:
 template<typename Model>
 void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layout, int* tags) const
 {
-    auto&& [Bx, By, Bz] = getB(model)();
+    auto&& [Bx, By, Bz] = getB(model);
 
     // we loop on cell indexes for all qties regardless of their centering
     auto const& start_x = layout.physicalStartIndex(core::QtyCentering::dual, core::Direction::X);

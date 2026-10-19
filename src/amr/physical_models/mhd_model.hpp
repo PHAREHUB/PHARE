@@ -55,6 +55,9 @@ public:
     // diagnostics buffers
     vecfield_type V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     field_type P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
+    vecfield_type BTotal_diag_{"diagnostics_BTotal_", core::MHDQuantity::Vector::B};
+    field_type EtotTotal_diag_{"diagnostics_EtotTotal_", core::MHDQuantity::Scalar::Etot};
+    field_type divB_diag_{"diagnostics_divB_", core::MHDQuantity::Scalar::divB};
 
     // maybe these could have a single allocation shared for hybrid and mhd, as they are strictly
     // temporaries. Right now the hybrid version is in the hybrid_hybrid_messenger_strategy.hpp
@@ -69,6 +72,9 @@ public:
         resourcesManager->allocate(state, patch, allocateTime);
         resourcesManager->allocate(V_diag_, patch, allocateTime);
         resourcesManager->allocate(P_diag_, patch, allocateTime);
+        resourcesManager->allocate(BTotal_diag_, patch, allocateTime);
+        resourcesManager->allocate(EtotTotal_diag_, patch, allocateTime);
+        resourcesManager->allocate(divB_diag_, patch, allocateTime);
         resourcesManager->allocate(tmpField_, patch, allocateTime);
         resourcesManager->allocate(tmpVec_, patch, allocateTime);
         resourcesManager->allocate(externalFieldManager.state(), patch, allocateTime);
@@ -92,13 +98,16 @@ public:
     {
         resourcesManager->registerResources(V_diag_);
         resourcesManager->registerResources(P_diag_);
+        resourcesManager->registerResources(BTotal_diag_);
+        resourcesManager->registerResources(EtotTotal_diag_);
+        resourcesManager->registerResources(divB_diag_);
         resourcesManager->registerResources(tmpField_);
         resourcesManager->registerResources(tmpVec_);
 
         std::vector<core::MHDQuantity::Scalar> scalarQuantities
-            = {core::MHDQuantity::Scalar::rho, core::MHDQuantity::Scalar::Etot};
+            = {core::MHDQuantity::Scalar::rho, core::MHDQuantity::Scalar::Etot1};
         std::vector<core::MHDQuantity::Vector> vectorQuantities = {
-            core::MHDQuantity::Vector::B,
+            core::MHDQuantity::Vector::B1,
             core::MHDQuantity::Vector::E,
             core::MHDQuantity::Vector::rhoV,
         };
@@ -119,6 +128,12 @@ public:
     void updateExternalField(level_t& level, double time) override
     {
         externalFieldManager.update(*resourcesManager, level, time);
+    }
+
+    NO_DISCARD vecfield_type const* B0OrNull() const
+    {
+        auto const& field = externalFieldManager.state();
+        return field.isEnabled() ? &field.B0() : nullptr;
     }
 
     ~MHDModel() override = default;
@@ -159,7 +174,7 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::initialize(level_t& le
     for (auto& patch : rm.enumerate(level, *this))
     {
         auto layout = amr::layoutFromPatch<GridLayoutT>(*patch);
-        state.initialize(layout);
+        state.initialize(layout, B0OrNull());
     }
 }
 
@@ -171,10 +186,10 @@ void MHDModel<GridLayoutT, VecFieldT, AMR_Types, Grid_t>::fillMessengerInfo(
 
     MHDInfo.modelDensity     = state.rho.name();
     MHDInfo.modelVelocity    = state.V.name();
-    MHDInfo.modelMagnetic    = state.B.name();
+    MHDInfo.modelMagnetic    = state.B1.name();
     MHDInfo.modelPressure    = state.P.name();
     MHDInfo.modelMomentum    = state.rhoV.name();
-    MHDInfo.modelTotalEnergy = state.Etot.name();
+    MHDInfo.modelTotalEnergy = state.Etot1.name();
     MHDInfo.modelElectric    = state.E.name();
 
     MHDInfo.initDensity.push_back(MHDInfo.modelDensity);
