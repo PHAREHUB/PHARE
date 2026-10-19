@@ -35,8 +35,9 @@
  *
  * Accuracy: relaxation rates converge to the Landau-Fokker-Planck ones as dt -> 0, the error
  * growing like sqrt(s_th) (Wang et al. 2008), s_th being s at the thermal relative speed:
- * about 0.23 sqrt(s_th) for Nanbu's law, half that for Bobylev's, twice that with weights
- * spread over two decades (measured on temperature isotropization, see the tests).
+ * roughly 0.23 sqrt(s_th) for Nanbu's law, 1.5 times that for Takizuka & Abe's, half that for
+ * Bobylev's, twice that with weights spread over two decades (measured on temperature
+ * isotropization within about 30 %, see the tests).
  */
 namespace PHARE::core
 {
@@ -213,6 +214,19 @@ namespace collisions
             std::swap(range[i - 1], range[std::min(static_cast<std::size_t>(draw() * i), i - 1)]);
     }
 
+    // n_eff / w_max for a pair, s being nu0 (Za Zb)^2 n_eff dt / (m_ab^2 u^3): within a group
+    // of n, the n - 1 others (halved in the odd triangle); between groups, the size of the
+    // smaller one (Angus et al. 2025, Eq. 12)
+    NO_DISCARD inline double intraStrength(std::size_t const n, double const factor)
+    {
+        return factor * static_cast<double>(n - 1);
+    }
+
+    NO_DISCARD inline double interStrength(std::size_t const nSmall)
+    {
+        return static_cast<double>(nSmall);
+    }
+
     // probabilities that each partner of a pair is deflected, s being built on the larger
     // weight: the lighter partner always, the heavier one with the ratio of the weights
     struct Acceptance
@@ -239,6 +253,7 @@ class Collisions : public CollisionInfo
     struct Slot
     {
         std::array<double, 3> v;
+        std::array<double, dimension> delta;
         double weight;
         std::uint64_t key;
         ParticleArray_t* particles;
@@ -310,7 +325,7 @@ private:
                 h = (h ^ std::bit_cast<std::uint64_t>(x)) * 0x9e3779b97f4a7c15ULL;
             };
             add(slot.weight);
-            for (auto const x : (*slot.particles)[slot.index].delta)
+            for (auto const x : slot.delta)
                 add(x);
             for (auto const x : slot.v)
                 add(x);
@@ -390,8 +405,11 @@ private:
             auto& particles = pop.domainParticles();
             auto& slots     = groups_[groupOf_[ipop]].slots;
             for (auto const index : particles.cellIndexes(cell))
+            {
+                auto const& particle = particles[index];
                 slots.push_back(
-                    {particles[index].v, particles[index].weight, 0, &particles, index, ipop});
+                    {particle.v, particle.delta, particle.weight, 0, &particles, index, ipop});
+            }
             ++ipop;
         }
 
@@ -410,7 +428,8 @@ private:
             auto const vth      = thermalSpeed_(slots);
             sortRandomly_(slots, blockKey);
             collisions::forEachIntraPair(n, [&](auto const i, auto const j, double const factor) {
-                collidePair_<law>(slots[i], slots[j], g, g, factor * (n - 1) * dt, vth, draw);
+                collidePair_<law>(slots[i], slots[j], g, g,
+                                  collisions::intraStrength(n, factor) * dt, vth, draw);
             });
         }
 
@@ -431,7 +450,7 @@ private:
                 auto const gIsLarge = g.slots.size() >= h.slots.size();
                 auto& large         = gIsLarge ? g : h;
                 auto& small         = gIsLarge ? h : g;
-                auto const strength = small.slots.size() * dt;
+                auto const strength = collisions::interStrength(small.slots.size()) * dt;
                 collisions::forEachInterPair(
                     large.slots.size(), small.slots.size(), [&](auto const i, auto const j) {
                         collidePair_<law>(large.slots[i], small.slots[j], large, small, strength,
