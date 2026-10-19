@@ -14,8 +14,8 @@
 #include <cstddef>
 #include <cstdint>
 #include <numbers>
-#include <tuple>
 #include <numeric>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -405,11 +405,6 @@ private:
         return sums;
     }
 
-    // Angus et al. 2025, Eqs. 17-24: the weighted acceptance conserves momentum and energy only
-    // on average. A velocity shift proportional to the weight restores the momentum the block had
-    // before its pairs scattered, then zero-angle exchanges of relative energy between neighbours
-    // of each group restore its energy, shared between two groups in proportion to their mean
-    // weight times their energy in the block's centre of mass frame.
     // equal weights: every pair conserves exactly, nothing to restore
     static bool equalWeights_(auto const&... groups)
     {
@@ -421,6 +416,11 @@ private:
         return (all(groups) and ...);
     }
 
+    // Angus et al. 2025, Eqs. 17-24: the weighted acceptance conserves momentum and energy only
+    // on average. A velocity shift proportional to the weight restores the momentum the block had
+    // before its pairs scattered, then zero-angle exchanges of relative energy between neighbours
+    // of each group restore its energy, shared between two groups in proportion to their mean
+    // weight times their energy in the block's centre of mass frame.
     void conserve_(Sums const& before, Group& g)
     {
         if (equalWeights_(g))
@@ -435,6 +435,8 @@ private:
             return;
         shiftMomentum_(before, g, h);
         auto const dE = sums_(g, h).energy - before.energy;
+        if (dE == 0.)
+            return;
 
         auto const centreOfMass = [&](std::size_t i) { return before.momentum[i] / before.mass; };
         auto const share        = [&](Group const& group) {
@@ -443,16 +445,20 @@ private:
             {
                 weight += slot.weight;
                 for (std::size_t i = 0; i < 3; ++i)
-                    energy += 0.5 * group.mass * slot.weight
-                              * std::pow(slot.v[i] - centreOfMass(i), 2);
+                {
+                    auto const dv = slot.v[i] - centreOfMass(i);
+                    energy += 0.5 * group.mass * slot.weight * dv * dv;
+                }
             }
             return weight / group.slots.size() * energy;
         };
 
+        // a single particle cannot exchange energy, and groups at rest in the centre of mass
+        // frame have no share: the other group takes it all
         auto const shareG = share(g), shareH = share(h);
-        auto const dEg = g.slots.size() == 1   ? 0.
-                         : h.slots.size() == 1 ? dE
-                                               : dE * shareG / (shareG + shareH);
+        auto const dEg = g.slots.size() == 1 or shareG == 0.   ? 0.
+                         : h.slots.size() == 1 or shareH == 0. ? dE
+                                                               : dE * shareG / (shareG + shareH);
         record_(absorb_(g, dEg) + absorb_(h, dE - dEg));
     }
 
@@ -482,9 +488,15 @@ private:
         sortBy_(slots, [](auto const& a, auto const& b) {
             return std::tuple{-a.weight, a.key} < std::tuple{-b.weight, b.key};
         });
+        // partners close in that order, one place apart then two, three...: split siblings share a
+        // weight, sit next to each other and have no relative energy to exchange
         for (auto sweep = 0; sweep < maxSweeps and dE != 0.; ++sweep)
-            for (auto p = static_cast<std::size_t>(sweep % 2); p < n and dE != 0.; p += 2)
-                exchange_(slots[p], slots[(p + 1) % n], g.mass, dE);
+        {
+            auto const distance = static_cast<std::size_t>(1 + sweep / 2);
+            for (auto p = static_cast<std::size_t>(sweep % 2); p + distance < n and dE != 0.;
+                 p += 2)
+                exchange_(slots[p], slots[p + distance], g.mass, dE);
+        }
         return dE;
     }
 

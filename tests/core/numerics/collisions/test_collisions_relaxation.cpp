@@ -257,7 +257,9 @@ TEST(CollisionRelaxation, aBoostedPlasmaRelaxesTheSameWithTheFix)
 
 // Angus et al. 2025, Test 1: a beam of 1/10 of the density, macro-particles ten times lighter,
 // in one species. It must end at rest in the frame of the centre of mass and at the temperature
-// given by the conservation of energy
+// given by the conservation of energy. This checks the weighted scattering: the tolerances do
+// not resolve the fix, whose absence costs 0.5-1.5% (Angus Fig. 6); the round-off conservation
+// test checks the fix
 TEST(CollisionRelaxation, beamAndBackgroundReachTheConservedEndState)
 {
     auto constexpr cells = 4;
