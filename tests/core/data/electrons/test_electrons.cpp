@@ -31,7 +31,8 @@ double const Te = 0.12;
 
 
 template<int dim>
-PHARE::initializer::PHAREDict createDict()
+void setPopulation(PHARE::initializer::PHAREDict& dict, std::string const& popKey,
+                   std::string const& name, double const mass, double const charge)
 {
     using InitFunctionT = PHARE::initializer::InitFunction<dim>;
 
@@ -42,43 +43,42 @@ PHARE::initializer::PHAREDict createDict()
     auto vthx    = makeSharedPtr<dim>();
     auto vthy    = makeSharedPtr<dim>();
     auto vthz    = makeSharedPtr<dim>();
-    auto bx      = makeSharedPtr<dim>();
-    auto by      = makeSharedPtr<dim>();
-    auto bz      = makeSharedPtr<dim>();
-    auto ex      = makeSharedPtr<dim>();
-    auto ey      = makeSharedPtr<dim>();
-    auto ez      = makeSharedPtr<dim>();
+
+    auto& pop                           = dict["ions"][popKey];
+    pop["name"]                         = name;
+    pop["mass"]                         = mass;
+    pop["particle_initializer"]["name"] = std::string{"maxwellian"};
+
+    pop["particle_initializer"]["density"]            = static_cast<InitFunctionT>(density);
+    pop["particle_initializer"]["bulk_velocity_x"]    = static_cast<InitFunctionT>(vx);
+    pop["particle_initializer"]["bulk_velocity_y"]    = static_cast<InitFunctionT>(vy);
+    pop["particle_initializer"]["bulk_velocity_z"]    = static_cast<InitFunctionT>(vz);
+    pop["particle_initializer"]["thermal_velocity_x"] = static_cast<InitFunctionT>(vthx);
+    pop["particle_initializer"]["thermal_velocity_y"] = static_cast<InitFunctionT>(vthy);
+    pop["particle_initializer"]["thermal_velocity_z"] = static_cast<InitFunctionT>(vthz);
+
+    pop["particle_initializer"]["nbr_part_per_cell"] = int{100};
+    pop["particle_initializer"]["charge"]            = charge;
+    pop["particle_initializer"]["basis"]             = std::string{"cartesian"};
+}
+
+
+template<int dim>
+PHARE::initializer::PHAREDict createDict()
+{
+    using InitFunctionT = PHARE::initializer::InitFunction<dim>;
+
+    auto bx = makeSharedPtr<dim>();
+    auto by = makeSharedPtr<dim>();
+    auto bz = makeSharedPtr<dim>();
+    auto ex = makeSharedPtr<dim>();
+    auto ey = makeSharedPtr<dim>();
+    auto ez = makeSharedPtr<dim>();
 
 
     PHARE::initializer::PHAREDict dict;
-    dict["ions"]["nbrPopulations"]                       = std::size_t{1};
-    dict["ions"]["pop0"]["name"]                         = std::string{"protons"};
-    dict["ions"]["pop0"]["mass"]                         = 1.;
-    dict["ions"]["pop0"]["particle_initializer"]["name"] = std::string{"maxwellian"};
-
-    dict["ions"]["pop0"]["particle_initializer"]["density"] = static_cast<InitFunctionT>(density);
-
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_x"]
-        = static_cast<InitFunctionT>(vx);
-
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_y"]
-        = static_cast<InitFunctionT>(vy);
-
-    dict["ions"]["pop0"]["particle_initializer"]["bulk_velocity_z"]
-        = static_cast<InitFunctionT>(vz);
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_x"]
-        = static_cast<InitFunctionT>(vthx);
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_y"]
-        = static_cast<InitFunctionT>(vthy);
-
-    dict["ions"]["pop0"]["particle_initializer"]["thermal_velocity_z"]
-        = static_cast<InitFunctionT>(vthz);
-
-    dict["ions"]["pop0"]["particle_initializer"]["nbr_part_per_cell"] = int{100};
-    dict["ions"]["pop0"]["particle_initializer"]["charge"]            = -1.;
-    dict["ions"]["pop0"]["particle_initializer"]["basis"]             = std::string{"cartesian"};
+    dict["ions"]["nbrPopulations"] = std::size_t{1};
+    setPopulation<dim>(dict, "pop0", "protons", /*mass=*/1., /*charge=*/-1.);
 
     dict["electromag"]["name"]             = std::string{"EM"};
     dict["electromag"]["electric"]["name"] = std::string{"E"};
@@ -516,6 +516,185 @@ TYPED_TEST(ElectronsTest, ThatElectronsPressureEqualsNeTe)
                 }
             }
         }
+    }
+}
+
+
+
+
+// two populations with different q/m drifting relative to each other:
+// the electron velocity must be (sum_s q_s F_s - J) / Ne, see issue #1466
+template<typename TypeInfo>
+struct TwoPopulationElectronsTest : public ::testing::Test
+{
+    using Base = ElectronsTest<TypeInfo>;
+
+    static constexpr auto dim = Base::dim;
+
+    using GridYee         = typename Base::GridYee;
+    using GridND          = typename Base::GridND;
+    using ParticleArray_t = typename Base::ParticleArray_t;
+    using PartPackND      = typename Base::PartPackND;
+    using IonsT           = typename Base::IonsT;
+
+    struct Population
+    {
+        std::string name;
+        double mass, charge, density;
+        std::array<double, 3> velocity;
+    };
+
+    static constexpr std::size_t nbrPops = 2;
+    std::array<Population, nbrPops> const pops{{
+        {"protons", /*mass=*/1., /*charge=*/1., /*density=*/1., {1., 0.5, -0.3}},
+        {"sodium", /*mass=*/23., /*charge=*/1., /*density=*/0.1, {-0.2, 0.4, 0.1}},
+    }};
+    std::array<double, 3> const current{0.1, -0.2, 0.3};
+
+    struct PopulationBuffers
+    {
+        PopulationBuffers(std::string const& name, GridYee const& layout)
+            : flux{name + "_flux", layout, HybridQuantity::Vector::V}
+            , momentumTensor{name + "_momentumTensor", layout, HybridQuantity::Tensor::M}
+            , particleDensity{name + "_particleDensity", HybridQuantity::Scalar::rho,
+                              layout.allocSize(HybridQuantity::Scalar::rho)}
+            , chargeDensity{name + "_chargeDensity", HybridQuantity::Scalar::rho,
+                            layout.allocSize(HybridQuantity::Scalar::rho)}
+            , domainParticles{layout.AMRBox()}
+            , pack{name, &domainParticles, &patchGhostParticles, &levelGhostParticles}
+        {
+        }
+
+        UsableVecField<dim> flux;
+        UsableTensorField<dim> momentumTensor;
+        GridND particleDensity, chargeDensity;
+        ParticleArray_t domainParticles;
+        ParticleArray_t patchGhostParticles = domainParticles;
+        ParticleArray_t levelGhostParticles = domainParticles;
+        PartPackND pack;
+    };
+
+
+    static auto createTwoPopulationDict(auto const& pops_)
+    {
+        auto dict                      = createDict<dim>();
+        dict["ions"]["nbrPopulations"] = nbrPops;
+        for (std::size_t i = 0; i < nbrPops; ++i)
+            setPopulation<dim>(dict, "pop" + std::to_string(i), pops_[i].name, pops_[i].mass,
+                               pops_[i].charge);
+        return dict;
+    }
+
+
+    IonsT makeIons()
+    {
+        IonsT ions_{dict["ions"]};
+        {
+            auto const& [V, m, d_c, d_m] = ions_.getCompileTimeResourcesViewList();
+            d_c.setBuffer(&ionChargeDensity);
+            d_m.setBuffer(&ionMassDensity);
+            Vi.set_on(V);
+            ionTensor.set_on(m);
+        }
+        auto& populations = ions_.getRunTimeResourcesViewList();
+        assert(populations.size() == nbrPops);
+        for (std::size_t i = 0; i < nbrPops; ++i)
+        {
+            auto& buffers                       = popBuffers[i];
+            auto const& [F, m, Np, Nc, poppack] = populations[i].getCompileTimeResourcesViewList();
+            Np.setBuffer(&buffers.particleDensity);
+            Nc.setBuffer(&buffers.chargeDensity);
+            buffers.flux.set_on(F);
+            buffers.momentumTensor.set_on(m);
+            poppack.setBuffer(&buffers.pack);
+        }
+        return ions_;
+    }
+
+
+    TwoPopulationElectronsTest()
+        : J{"J", layout, HybridQuantity::Vector::J}
+        , Ve{"StandardHybridElectronFluxComputer_Ve", layout, HybridQuantity::Vector::V}
+        , Vi{"bulkVel", layout, HybridQuantity::Vector::V}
+        , ionTensor{"momentumTensor", layout, HybridQuantity::Tensor::M}
+        , ionChargeDensity{"chargeDensity", HybridQuantity::Scalar::rho,
+                           layout.allocSize(HybridQuantity::Scalar::rho)}
+        , ionMassDensity{"massDensity", HybridQuantity::Scalar::rho,
+                         layout.allocSize(HybridQuantity::Scalar::rho)}
+        , Pe{"Pe", HybridQuantity::Scalar::P, layout.allocSize(HybridQuantity::Scalar::P)}
+        , popBuffers{{{pops[0].name, layout}, {pops[1].name, layout}}}
+        , ions{makeIons()}
+        , electrons{dict["electrons"], ions, J}
+    {
+        auto&& emm = std::get<0>(electrons.getCompileTimeResourcesViewList());
+        auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
+        Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
+
+        auto&& pc          = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto const& [_, P] = pc.getCompileTimeResourcesViewList();
+        P.setBuffer(&Pe);
+
+        // uniform moments everywhere, ghost nodes included
+        auto fill = [](auto& field, double const value) {
+            std::fill(std::begin(field), std::end(field), value);
+        };
+
+        for (std::size_t i = 0; i < nbrPops; ++i)
+        {
+            auto const& pop = pops[i];
+            auto& buffers   = popBuffers[i];
+            fill(buffers.particleDensity, pop.density);
+            fill(buffers.chargeDensity, pop.charge * pop.density);
+            for (std::size_t c = 0; c < 3; ++c)
+                fill(buffers.flux[c], pop.density * pop.velocity[c]);
+        }
+        for (std::size_t c = 0; c < 3; ++c)
+            fill(J[c], current[c]);
+    }
+
+
+    GridYee layout                     = NDlayout<dim, Base::interp>::create();
+    PHARE::initializer::PHAREDict dict = createTwoPopulationDict(pops);
+
+    UsableVecField<dim> J, Ve, Vi;
+    UsableTensorField<dim> ionTensor;
+    GridND ionChargeDensity, ionMassDensity, Pe;
+    std::array<PopulationBuffers, nbrPops> popBuffers;
+
+    IonsT ions;
+    Electrons<IonsT> electrons;
+};
+
+
+TYPED_TEST_SUITE(TwoPopulationElectronsTest, ElectronsTupleInfos, );
+
+
+TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
+{
+    auto& ions      = this->ions;
+    auto& electrons = this->electrons;
+    auto& layout    = this->layout;
+
+    ions.computeChargeDensity();
+    ions.computeBulkVelocity();
+    electrons.update(layout);
+
+    double Ne = 0;
+    std::array<double, 3> chargeFlux{0., 0., 0.};
+    for (auto const& pop : this->pops)
+    {
+        Ne += pop.charge * pop.density;
+        for (std::size_t c = 0; c < 3; ++c)
+            chargeFlux[c] += pop.charge * pop.density * pop.velocity[c];
+    }
+
+    for (std::size_t c = 0; c < 3; ++c)
+    {
+        auto const expected = (chargeFlux[c] - this->current[c]) / Ne;
+        auto& Vecomp        = this->Ve[c];
+        layout.evalOnBox(Vecomp, [&](auto const&... args) {
+            EXPECT_DOUBLE_EQ(Vecomp(args...), expected) << "component " << c;
+        });
     }
 }
 
