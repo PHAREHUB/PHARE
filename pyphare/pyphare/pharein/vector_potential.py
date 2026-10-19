@@ -15,25 +15,25 @@ _components = ("x", "y", "z")
 _directions = ("X", "Y", "Z")
 
 
-def resolve_magnetic_init(ndim, defaulter, bx, by, bz, ax, ay, az):
+def magnetic_model_dict(ndim, defaulter, bx, by, bz, ax, ay, az):
     """
-    Decide between the B mode (``bx, by, bz``) and the A mode (``ax, ay, az``).
+    Magnetic entries of a model dict, from either the B mode (``bx, by, bz``) or the
+    A mode (``ax, ay, az``).
 
-    B mode, when no ``a*`` is given: returns ``{"mode": "b", "bx", "by", "bz"}``
-    with the defaults (1, 0, 0) for missing components.
+    B mode, when no ``a*`` is given: returns ``{"bx", "by", "bz"}`` with the defaults
+    (1, 0, 0) for missing components.
 
     A mode: only components of B along non-simulated directions may be given directly
     (``bz`` in 2D, none in 3D), and ``bz`` excludes ``ax``/``ay`` in 2D since those
     feed Bz. Missing ``a*`` default to 0. Returns
-    ``{"mode": "a", "ax", "ay", "az", "direct": {"z": bz}}``, ``direct`` being
-    non-empty only for a 2D ``bz``.
+    ``{"vector_potential": {"ax", "ay", "az"}, "direct_b": {"z": bz}}``, ``direct_b``
+    being non-empty only for a 2D ``bz``.
     """
     a_given = {c: f is not None for c, f in zip(_components, (ax, ay, az))}
     b_given = {c: f is not None for c, f in zip(_components, (bx, by, bz))}
 
     if not any(a_given.values()):
         return {
-            "mode": "b",
             "bx": defaulter(bx, 1.0),
             "by": defaulter(by, 0.0),
             "bz": defaulter(bz, 0.0),
@@ -56,16 +56,32 @@ def resolve_magnetic_init(ndim, defaulter, bx, by, bz, ax, ay, az):
             "bz cannot be given together with ax or ay in 2D: both define Bz"
         )
 
-    resolved = {
-        "mode": "a",
+    vector_potential = {
         "ax": defaulter(ax, 0.0),
         "ay": defaulter(ay, 0.0),
         "az": defaulter(az, 0.0),
-        "direct": {},
     }
-    if ndim == 2 and b_given["z"]:
-        resolved["direct"]["z"] = defaulter(bz, 0.0)
-    return resolved
+    direct_b = {"z": defaulter(bz, 0.0)} if ndim == 2 and b_given["z"] else {}
+    return {"vector_potential": vector_potential, "direct_b": direct_b}
+
+
+def populate_magnetic_initializer(dp, ndim, maginit_path, model_dict):
+    if "vector_potential" not in model_dict:
+        for c in _components:
+            dp.add_init_function(
+                ndim, maginit_path + f"{c}_component", model_dict["b" + c]
+            )
+        return
+
+    vecpot_path = maginit_path + "vector_potential/"
+    for c in _components:
+        dp.add_init_function(
+            ndim,
+            vecpot_path + f"{c}_component",
+            model_dict["vector_potential"]["a" + c],
+        )
+    for c, fn in model_dict["direct_b"].items():
+        dp.add_init_function(ndim, maginit_path + f"{c}_component", fn)
 
 
 def _validation_layout(sim):
@@ -84,7 +100,9 @@ def _plane_coords(L, R, idir, ndim):
     """coordinates along idir, zero along the other directions"""
 
     def coords(values):
-        return tuple(values if d == idir else np.zeros_like(values) for d in range(ndim))
+        return tuple(
+            values if d == idir else np.zeros_like(values) for d in range(ndim)
+        )
 
     return coords(L), coords(R)
 
@@ -189,9 +207,7 @@ def magnetic_non_periodic(sim, model_dict, atol):
     """A-mode periodicity check: curl of A, then direct components"""
     vecpot = model_dict["vector_potential"]
     direct = model_dict["direct_b"]
-    curl_bad = curl_non_periodic(
-        sim, vecpot["ax"], vecpot["ay"], vecpot["az"], atol
-    )
+    curl_bad = curl_non_periodic(sim, vecpot["ax"], vecpot["ay"], vecpot["az"], atol)
     overridden = {"B" + c for c in direct}
     return [nb for nb in curl_bad if nb[0] not in overridden] + direct_non_periodic(
         sim, direct, atol

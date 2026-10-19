@@ -5,7 +5,6 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 
 #include <array>
-#include <cstddef>
 
 namespace PHARE::core
 {
@@ -31,10 +30,12 @@ void curl_edges_to_faces(GridLayout const& layout, std::array<AField, 3> const& 
     constexpr auto dimension = GridLayout::dimension;
     static_assert(dimension > 1, "curl of a vector potential needs at least 2 dimensions");
 
-    auto const& [Ax, Ay, Az] = A;
-    auto& Bx                 = B(Component::X);
-    auto& By                 = B(Component::Y);
-    auto& Bz                 = B(Component::Z);
+    auto const& Ax = A[0];
+    auto const& Ay = A[1];
+    auto const& Az = A[2];
+    auto& Bx       = B(Component::X);
+    auto& By       = B(Component::Y);
+    auto& Bz       = B(Component::Z);
 
     layout.evalOnGhostBox(Bx, [&](auto const&... ijk) {
         if constexpr (dimension == 2)

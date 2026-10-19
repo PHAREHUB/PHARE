@@ -149,9 +149,7 @@ def config():
 
         v1 = -1
         v2 = 1.0
-        background = v1 * y + (v2 - v1) * 0.5 * L * (
-            logcosh(y1 / L) - logcosh(y2 / L)
-        )
+        background = v1 * y + (v2 - v1) * 0.5 * L * (logcosh(y1 / L) - logcosh(y2 / L))
         return background + dAz1 + dAz2
 
     ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, az=az, p=p)

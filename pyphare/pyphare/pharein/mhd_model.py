@@ -3,7 +3,7 @@ import numbers
 from pyphare import cpp
 
 from . import global_vars
-from .vector_potential import magnetic_non_periodic, resolve_magnetic_init
+from .vector_potential import magnetic_model_dict, magnetic_non_periodic
 
 
 class MHDModel(object):
@@ -96,9 +96,6 @@ class MHDModel(object):
         vx = self.defaulter(vx, 1.0)
         vy = self.defaulter(vy, 0.0)
         vz = self.defaulter(vz, 0.0)
-        magnetic = resolve_magnetic_init(
-            self.dim, self.defaulter, bx, by, bz, ax, ay, az
-        )
         p = self.defaulter(p, 1.0)
 
         self.model_dict = {}
@@ -112,13 +109,9 @@ class MHDModel(object):
                 "p": p,
             }
         )
-        if magnetic["mode"] == "b":
-            self.model_dict.update({k: magnetic[k] for k in ("bx", "by", "bz")})
-        else:
-            self.model_dict["vector_potential"] = {
-                k: magnetic[k] for k in ("ax", "ay", "az")
-            }
-            self.model_dict["direct_b"] = magnetic["direct"]
+        self.model_dict.update(
+            magnetic_model_dict(self.dim, self.defaulter, bx, by, bz, ax, ay, az)
+        )
 
         should_validate = not any(
             [global_vars.sim.dry_run, global_vars.sim.is_from_restart()]

@@ -1,5 +1,5 @@
+from ..vector_potential import populate_magnetic_initializer
 from .dict_populator import DictPopulator
-from .general import add_magnetic_initializer
 
 
 def populateDict(sim):
@@ -60,7 +60,7 @@ def _populate_electromagnetic(dp, sim):
     dp.add_string("simulation/electromag/electric/name", "E")
     dp.add_string("simulation/electromag/magnetic/name", "B")
 
-    add_magnetic_initializer(
+    populate_magnetic_initializer(
         dp, sim.ndim, "simulation/electromag/magnetic/initializer/", modelDict
     )
 

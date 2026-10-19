@@ -5,6 +5,7 @@
 #include "core/models/physical_state.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_initializer.hpp"
+#include "core/data/vecfield/magnetic_field_initializer.hpp"
 #include "core/data/field/initializers/field_user_initializer.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 
@@ -138,7 +139,7 @@ namespace core
     private:
         initializer::InitFunction<dimension> rhoinit_;
         VecFieldInitializer<dimension> Vinit_;
-        VecFieldInitializer<dimension> Binit_;
+        MagneticFieldInitializer<dimension> Binit_;
         initializer::InitFunction<dimension> Pinit_;
 
         double const gamma_;

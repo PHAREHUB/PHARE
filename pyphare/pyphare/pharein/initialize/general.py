@@ -21,27 +21,6 @@ def populateDict(sim):
     populate_restarts(dp, sim, serialized_sim)
 
 
-def add_magnetic_initializer(dp, ndim, maginit_path, modelDict):
-    """
-    B mode: x/y/z_component from bx, by, bz.
-    A mode: all three vector_potential/x/y/z_component, plus the x/y/z_component
-    of each B component given directly (2D bz).
-    """
-    if "vector_potential" not in modelDict:
-        for c in ("x", "y", "z"):
-            dp.add_init_function(
-                ndim, maginit_path + f"{c}_component", modelDict["b" + c]
-            )
-        return
-
-    vecpot_path = maginit_path + "vector_potential/"
-    for c in ("x", "y", "z"):
-        fn = modelDict["vector_potential"]["a" + c]
-        dp.add_init_function(ndim, vecpot_path + f"{c}_component", fn)
-    for c, fn in modelDict["direct_b"].items():
-        dp.add_init_function(ndim, maginit_path + f"{c}_component", fn)
-
-
 def populate_grid(dp, sim):
     dp.add_string("simulation/name", "simulation_test")
     dp.add_int("simulation/dimension", sim.ndim)

@@ -1,5 +1,5 @@
+from ..vector_potential import populate_magnetic_initializer
 from .dict_populator import DictPopulator
-from .general import add_magnetic_initializer
 
 
 def populateDict(sim):
@@ -51,7 +51,7 @@ def _populate_state(dp, sim):
         dp.add_init_function(
             sim.ndim, velinit_path + f"{k}_component", modelDict[f"v{k}"]
         )
-    add_magnetic_initializer(
+    populate_magnetic_initializer(
         dp, sim.ndim, "simulation/mhd_state/magnetic/initializer/", modelDict
     )
 

@@ -6,10 +6,7 @@ from pyphare.core import phare_utilities
 from pyphare.core.box import Box
 from pyphare.core.gridlayout import HybridGridLayoutFor
 from pyphare.pharein import global_vars
-from pyphare.pharein.vector_potential import (
-    magnetic_non_periodic,
-    resolve_magnetic_init,
-)
+from pyphare.pharein.vector_potential import magnetic_model_dict, magnetic_non_periodic
 
 
 class MaxwellianFluidModel(object):
@@ -132,18 +129,11 @@ class MaxwellianFluidModel(object):
             raise RuntimeError("A model is already created")
 
         self.dim = global_vars.sim.ndim
-        magnetic = resolve_magnetic_init(
-            self.dim, self.defaulter, bx, by, bz, ax, ay, az
-        )
 
         self.model_dict = {"model": "model", "model_name": "custom"}
-        if magnetic["mode"] == "b":
-            self.model_dict.update({k: magnetic[k] for k in ("bx", "by", "bz")})
-        else:
-            self.model_dict["vector_potential"] = {
-                k: magnetic[k] for k in ("ax", "ay", "az")
-            }
-            self.model_dict["direct_b"] = magnetic["direct"]
+        self.model_dict.update(
+            magnetic_model_dict(self.dim, self.defaulter, bx, by, bz, ax, ay, az)
+        )
 
         self.populations = list(kwargs.keys())
         for population in self.populations:

@@ -5,7 +5,7 @@
 #include <tuple>
 
 #include "core/models/quantities/hybrid_quantities.hpp"
-#include "core/data/vecfield/vecfield_initializer.hpp"
+#include "core/data/vecfield/magnetic_field_initializer.hpp"
 #include "initializer/data_provider.hpp"
 #include "core/def.hpp"
 
@@ -78,7 +78,7 @@ namespace core
         VecFieldT B;
 
     private:
-        VecFieldInitializer<dimension> Binit_;
+        MagneticFieldInitializer<dimension> Binit_;
     };
 } // namespace core
 } // namespace PHARE

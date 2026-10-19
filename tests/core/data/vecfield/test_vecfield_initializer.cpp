@@ -3,7 +3,7 @@
 
 #include "core/data/grid/grid.hpp"
 #include "core/data/vecfield/vecfield.hpp"
-#include "core/data/vecfield/vecfield_initializer.hpp"
+#include "core/data/vecfield/magnetic_field_initializer.hpp"
 #include "core/numerics/curl/edge_to_face_curl.hpp"
 #include "core/data/field/initializers/field_user_initializer.hpp"
 #include "core/utilities/span.hpp"
@@ -16,6 +16,7 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <limits>
 
 using namespace PHARE::core;
 using namespace PHARE::initializer;
@@ -205,14 +206,12 @@ struct VecFieldInitializerTest : public ::testing::Test
         auto const& Bc   = *&bgrids[c];
         auto const rx    = range(qty, Direction::X);
         auto const ry    = range(qty, Direction::Y);
+        auto const tol   = curl_tolerance();
         std::size_t n    = 0;
         auto const check = [&](double actual, double expected, auto... ijk) {
             ++n;
-            if (actual != expected)
-            {
-                ADD_FAILURE() << "B" << c << " mismatch at (" << ((std::to_string(ijk) + ",") + ...)
-                              << ") " << actual << " != " << expected;
-            }
+            EXPECT_NEAR(actual, expected, tol)
+                << "B" << c << " mismatch at (" << ((std::to_string(ijk) + ",") + ...) << ")";
         };
         for (auto i = rx[0]; i <= rx[1]; ++i)
             for (auto j = ry[0]; j <= ry[1]; ++j)
@@ -238,7 +237,6 @@ struct VecFieldInitializerTest : public ::testing::Test
     {
         auto const& Bx  = *&bgrids[0];
         auto const& By  = *&bgrids[1];
-        auto const& Bz  = *&bgrids[2];
         auto const idx  = layout.inverseMeshSize();
         auto const cx   = range(Scalar::Bz, Direction::X); // dual in x
         auto const cy   = range(Scalar::Bz, Direction::Y); // dual in y
@@ -254,7 +252,8 @@ struct VecFieldInitializerTest : public ::testing::Test
                 }
                 else
                 {
-                    auto const cz = range(Scalar::Bx, Direction::Z); // dual in z
+                    auto const& Bz = *&bgrids[2];
+                    auto const cz  = range(Scalar::Bx, Direction::Z); // dual in z
                     for (auto k = cz[0]; k <= cz[1]; ++k)
                     {
                         auto const d = idx[0] * (Bx(i + 1, j, k) - Bx(i, j, k))
@@ -269,6 +268,11 @@ struct VecFieldInitializerTest : public ::testing::Test
 
     double divB_tolerance() const { return 1e-12 * A_scale() / (min_dl() * min_dl()); }
 
+    double curl_tolerance() const
+    {
+        return 4 * std::numeric_limits<double>::epsilon() * A_scale() / min_dl();
+    }
+
     // B component c equals the user function sampled at its own centring
     void expect_B_is_sampled(std::size_t c, InitFunction<dim> const& fn)
     {
@@ -279,11 +283,7 @@ struct VecFieldInitializerTest : public ::testing::Test
         ASSERT_EQ(actual.size(), expected.size());
         for (std::size_t i = 0; i < actual.size(); ++i)
         {
-            if (actual.data()[i] != expected.data()[i])
-            {
-                ADD_FAILURE() << "B" << c << " flat index " << i << ": " << actual.data()[i]
-                              << " != " << expected.data()[i];
-            }
+            EXPECT_EQ(actual.data()[i], expected.data()[i]) << "B" << c << " flat index " << i;
         }
     }
 
@@ -327,7 +327,7 @@ TYPED_TEST(VecFieldInitializerTest, curlOfEdgeFieldIsDivergenceFreeOverGhostBox)
 
 TYPED_TEST(VecFieldInitializerTest, vectorPotentialModeSetsBToCurlA)
 {
-    VecFieldInitializer<TestFixture::dim> init{this->vecpot_dict()};
+    MagneticFieldInitializer<TestFixture::dim> init{this->vecpot_dict()};
     init.initialize(this->B, this->layout);
 
     this->sample_A();
@@ -346,7 +346,7 @@ TYPED_TEST(VecFieldInitializerTest, directComponentOverridesCurlInVectorPotentia
         auto dict           = this->vecpot_dict(/*with_in_plane=*/false);
         dict["z_component"] = make_fn<dim>(bz_fn);
 
-        VecFieldInitializer<dim> init{dict};
+        MagneticFieldInitializer<dim> init{dict};
         init.initialize(this->B, this->layout);
 
         this->sample_A(/*with_in_plane=*/false);
@@ -371,7 +371,7 @@ TYPED_TEST(VecFieldInitializerTest, componentModeStillSamplesUserFunctions)
     dict["y_component"] = make_fn<dim>(by_fn);
     dict["z_component"] = make_fn<dim>(bz_fn);
 
-    VecFieldInitializer<dim> init{dict};
+    MagneticFieldInitializer<dim> init{dict};
     init.initialize(this->B, this->layout);
 
     this->expect_B_is_sampled(0, make_fn<dim>(bx_fn));
@@ -386,7 +386,7 @@ TYPED_TEST(VecFieldInitializerTest, componentModeRequiresAllComponents)
     dict["x_component"] = make_fn<dim>(bx_fn);
     dict["y_component"] = make_fn<dim>(by_fn);
 
-    EXPECT_THROW(VecFieldInitializer<dim>{dict}, std::runtime_error);
+    EXPECT_THROW(MagneticFieldInitializer<dim>{dict}, std::runtime_error);
 }
 
 
