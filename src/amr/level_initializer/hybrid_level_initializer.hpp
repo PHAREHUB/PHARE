@@ -16,6 +16,7 @@
 
 #include "initializer/data_provider.hpp"
 
+#include <string>
 #include <exception>
 
 namespace PHARE
@@ -105,9 +106,8 @@ namespace solver
             // at this point flux and density is computed for all pops
             // but nodes on ghost box overlaps are not complete because they lack
             // contribution of neighbor particles.
-            // The following two calls will += flux and density on these overlaps.
-            hybMessenger.fillFluxBorders(ions, level, initDataTime);
-            hybMessenger.fillDensityBorders(ions, level, initDataTime);
+            // The following call will += flux and density on these overlaps.
+            hybMessenger.fillIonPopBorders(ions, level, initDataTime);
 
             // the only remaning incomplete nodes are those next to and on level ghost layers
             // we now complete them by depositing levelghost particles
@@ -162,7 +162,7 @@ namespace solver
 
                 Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
                 setTime(E);
-                hybMessenger.fillElectricGhosts(E, level, 0.);
+                hybMessenger.template fill<amr::RefinerType::GhostField>(E.name(), level, 0.);
             }
 
 
