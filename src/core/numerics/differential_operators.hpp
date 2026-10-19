@@ -129,7 +129,10 @@ public:
 
     NO_DISCARD double operator()(MeshIndex<dim> const idx) const
     {
-        return dj_vk_(idx) - dk_vj_(idx);
+        if constexpr (j >= dim && k < dim)
+            return -dk_vj_(idx);
+        else
+            return dj_vk_(idx) - dk_vj_(idx);
     }
 
 private:
