@@ -62,7 +62,7 @@ double isotropizationRatio(double const dt, bool const randomWeights, std::uint6
     TestIons ions;
     ions.populations.emplace_back(mass, 1., nbrCells);
     ions.populations[0].load(2000, 1., {0., 0., 0.}, {0.2, 0.3, 0.3}, rng, randomWeights);
-    Collisions<TestIons> collide{{nu0, 1, ScatteringLaw::nanbu, seed}};
+    Collisions<TestIons> collide{{nu0, 1, ScatteringLaw::nanbu, false, seed}};
 
     auto const m0 = Moments{ions.populations[0], nbrCells};
     std::array<double, 2> T{m0.parallel(), m0.perpendicular()};
@@ -137,9 +137,9 @@ struct ProtonsAndAlphas
 
     ProtonsAndAlphas(double const nu0_, std::array<double, 3> const& protonDrift,
                      double const protonVth, std::array<double, 3> const& alphaDrift,
-                     double const alphaVth, bool const randomWeights)
+                     double const alphaVth, bool const randomWeights, bool const exact)
         : nu0{nu0_}
-        , collide{{nu0_, 1, ScatteringLaw::nanbu, seed}}
+        , collide{{nu0_, 1, ScatteringLaw::nanbu, exact, seed}}
     {
         std::mt19937_64 rng{11};
         ions.populations.emplace_back(1., 1., nbrCells);
@@ -160,10 +160,10 @@ struct ProtonsAndAlphas
 
 
 // ln of the relaxed fraction of the temperature difference, simulated over NRL, early time
-double equilibrationRatio(bool const randomWeights)
+double equilibrationRatio(bool const randomWeights, bool const exact = false)
 {
     auto const nu0 = 0.01, dt = 0.0025;
-    ProtonsAndAlphas plasma{nu0, {0., 0., 0.}, 0.2, {0., 0., 0.}, 0.05, randomWeights};
+    ProtonsAndAlphas plasma{nu0, {0., 0., 0.}, 0.2, {0., 0., 0.}, 0.05, randomWeights, exact};
 
     auto const m0 = plasma.moments();
     std::array const T0{m0[0].isotropic(), m0[1].isotropic()};
@@ -191,11 +191,13 @@ double equilibrationRatio(bool const randomWeights)
 // friction between maxwellians at the same temperature with a small relative drift:
 // dU_a/dt = nu_ab (U_b - U_a), the momentum transfer frequency being
 // nu_ab = nu_eps^{a|b} (ma + mb) / (2 ma) (Burgers 1969, Schunk 1977)
-double frictionRatio(bool const randomWeights)
+double frictionRatio(bool const randomWeights, bool const exact = false, double const boost = 0.)
 {
     auto const nu0 = 0.01, dt = 0.0025;
-    // T = 0.04 for both, zero total momentum, drift small against the relative thermal speed
-    ProtonsAndAlphas plasma{nu0, {0.03, 0., 0.}, 0.2, {-0.03, 0., 0.}, 0.1, randomWeights};
+    // T = 0.04 for both, zero total momentum, drift small against the relative thermal speed;
+    // `boost` moves the whole plasma, which must not change anything
+    ProtonsAndAlphas plasma{nu0, {boost + 0.03, 0., 0.}, 0.2,  {boost - 0.03, 0., 0.},
+                            0.1, randomWeights,          exact};
 
     auto const m0 = plasma.moments();
     auto const T  = m0[0].isotropic();
@@ -236,6 +238,63 @@ TEST(CollisionRelaxation, protonsAndAlphasDriftRelaxesAtTheMomentumTransferRateW
 }
 
 
+// with the momentum and energy fix, which must keep the exchanges between groups
+TEST(CollisionRelaxation, protonsAndAlphasEquilibrateAtTheNRLRateWithTheConservationFix)
+{
+    EXPECT_NEAR(equilibrationRatio(true, true), 1., 0.1);
+}
+
+TEST(CollisionRelaxation, protonsAndAlphasDriftRelaxesAtTheMomentumTransferRateWithTheFix)
+{
+    EXPECT_NEAR(frictionRatio(true, true), 1., 0.15);
+}
+
+TEST(CollisionRelaxation, aBoostedPlasmaRelaxesTheSameWithTheFix)
+{
+    EXPECT_NEAR(frictionRatio(true, true, 2.), 1., 0.15);
+}
+
+
+// Angus et al. 2025, Test 1: a beam of 1/10 of the density, macro-particles ten times lighter,
+// in one species. It must end at rest in the frame of the centre of mass and at the temperature
+// given by the conservation of energy
+TEST(CollisionRelaxation, beamAndBackgroundReachTheConservedEndState)
+{
+    auto constexpr cells = 4;
+    std::mt19937_64 rng{31};
+    TestIons ions;
+    ions.populations.emplace_back(1., 1., cells);
+    ions.populations.emplace_back(1., 1., cells); // the beam, same species
+    ions.populations[0].load(1000, 1., {0., 0., 0.}, {0.1, 0.1, 0.1}, rng, false);
+    ions.populations[1].load(1000, 0.1, {0.5, 0., 0.}, {0.1, 0.1, 0.1}, rng, false);
+    Collisions<TestIons> collide{{1., 1, ScatteringLaw::nanbu, true, seed}};
+
+    auto const m0
+        = std::array{Moments{ions.populations[0], cells}, Moments{ions.populations[1], cells}};
+    auto const n  = m0[0].density + m0[1].density;
+    auto const Uf = (m0[0].density * m0[0].velocity[0] + m0[1].density * m0[1].velocity[0]) / n;
+    auto const kinetic = [&](auto const& m) {
+        return 0.5 * m.density
+               * (std::pow(m.velocity[0], 2) + std::pow(m.velocity[1], 2)
+                  + std::pow(m.velocity[2], 2));
+    };
+    auto const Tf = (1.5 * (m0[0].density * m0[0].isotropic() + m0[1].density * m0[1].isotropic())
+                     + kinetic(m0[0]) + kinetic(m0[1]) - 0.5 * n * Uf * Uf)
+                    / (1.5 * n);
+
+    for (int step = 0; step < 400; ++step)
+        collide(ions, Box<int, 1>{{0}, {cells - 1}}, collisions::combine(seed, step), 0.01);
+    EXPECT_EQ(collide.counters().unconverged, 0u);
+
+    for (auto const& pop : ions)
+    {
+        auto const m = Moments{pop, cells};
+        EXPECT_NEAR(m.velocity[0], Uf, 0.03 * Uf);
+        EXPECT_NEAR(m.isotropic(), Tf, 0.05 * Tf);
+    }
+}
+
+
 TEST(CollisionRelaxation, equalWeightsConserveMomentumAndEnergyExactly)
 {
     std::mt19937_64 rng{17};
@@ -244,7 +303,7 @@ TEST(CollisionRelaxation, equalWeightsConserveMomentumAndEnergyExactly)
     ions.populations.emplace_back(4., 2., nbrCells);
     ions.populations[0].load(200, 1., {0.1, 0., 0.}, {0.2, 0.3, 0.3}, rng, false);
     ions.populations[1].load(200, 1., {-0.1, 0., 0.}, {0.1, 0.1, 0.1}, rng, false);
-    Collisions<TestIons> collide{{0.05, 1, ScatteringLaw::nanbu, seed}};
+    Collisions<TestIons> collide{{0.05, 1, ScatteringLaw::nanbu, false, seed}};
 
     auto totals = [&]() {
         std::array<double, 4> sum{};
@@ -274,7 +333,7 @@ TEST(CollisionRelaxation, maxwellianStaysMaxwellianWithUnequalWeights)
     TestIons ions;
     ions.populations.emplace_back(1., 1., nbrCells);
     ions.populations[0].load(1000, 1., {0., 0., 0.}, {0.2, 0.2, 0.2}, rng, true);
-    Collisions<TestIons> collide{{0.1, 1, ScatteringLaw::nanbu, seed}};
+    Collisions<TestIons> collide{{0.1, 1, ScatteringLaw::nanbu, false, seed}};
 
     auto const T0 = Moments{ions.populations[0], nbrCells}.isotropic();
     int step      = 0;
