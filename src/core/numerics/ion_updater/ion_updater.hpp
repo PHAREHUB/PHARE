@@ -55,10 +55,24 @@ public:
     {
     }
 
+    /**
+     * domain_only: pushes a copy of the domain particles and deposits their moments, the
+     * particles themselves stay at time n.
+     * all: pushes domain and level ghost particles to time n+1 and copies those leaving for a
+     * same-level neighbor into the patch ghost array, without depositing. Moments are deposited
+     * by depositDomain once the particles have been exchanged.
+     */
     template<typename Boxing_t>
     void updatePopulations(Ions& ions, Electromag const& em, Boxing_t const& boxing, double dt,
                            UpdaterMode = UpdaterMode::all);
 
+    // moments of the domain particles of this patch, to be completed by border sums
+    void depositDomain(Ions& ions, GridLayout const& layout)
+    {
+        PHARE_LOG_SCOPE(3, "IonUpdater::depositDomain");
+        resetMoments(ions);
+        depositParticles(ions, layout, interpolator_, DomainDeposit{});
+    }
 
     void updateIons(Ions& ions);
 
@@ -75,7 +89,7 @@ private:
     void updateAndDepositDomain_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
 
     template<typename Boxing_t>
-    void updateAndDepositAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
+    void updateAll_(Ions& ions, Electromag const& em, Boxing_t const& boxing);
 
 
     // dealloced on regridding/load balancing coarsest
@@ -93,16 +107,16 @@ void IonUpdater<Ions, Electromag, GridLayout>::updatePopulations(Ions& ions, Ele
 {
     PHARE_LOG_SCOPE(3, "IonUpdater::updatePopulations");
 
-    resetMoments(ions);
     pusher_->setMeshAndTimeStep(boxing.layout.meshSize(), dt);
 
     if (mode == UpdaterMode::domain_only)
     {
+        resetMoments(ions);
         updateAndDepositDomain_(ions, em, boxing);
     }
     else
     {
-        updateAndDepositAll_(ions, em, boxing);
+        updateAll_(ions, em, boxing);
     }
 }
 
@@ -234,23 +248,21 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
 
 /**
- * @brief IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_
-   evolves moments and particles from time n to n+1
+ * @brief IonUpdater<Ions, Electromag, GridLayout>::updateAll_
+   evolves particles from time n to n+1
  */
 template<typename Ions, typename Electromag, typename GridLayout>
 template<typename Boxing_t>
-void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
-                                                                    Electromag const& em,
-                                                                    Boxing_t const& boxing)
+void IonUpdater<Ions, Electromag, GridLayout>::updateAll_(Ions& ions, Electromag const& em,
+                                                          Boxing_t const& boxing)
 {
-    PHARE_LOG_SCOPE(3, "IonUpdater::updateAndDepositAll_");
+    PHARE_LOG_SCOPE(3, "IonUpdater::updateAll_");
 
     auto const& layout = boxing.layout;
 
     // push domain particles, erase from array those leaving domain
     // push level ghost particles that are in ghost area (==ghost box without domain)
     // copy ghost particles out of ghost area that are in domain, in particle array
-    // finally all particles in non level ghost box are to be interpolated on mesh.
     for (auto& pop : ions)
     {
         auto& domainParticles = pop.domainParticles();
@@ -262,7 +274,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto now_ghosts = makeRange(domainParticles, inDomain.iend(), domainParticles.size());
         auto const not_level_ghosts = boxing.inNonLevelGhostBox(now_ghosts);
 
-        // copy out new patch ghosts
+        // leavers with a same-level owner wait in the patch ghost array, the exchange hands
+        // them to their new patch
         auto& patchGhost = pop.patchGhostParticles();
         patchGhost.reserve(patchGhost.size() + not_level_ghosts.size());
         std::copy(not_level_ghosts.begin(), not_level_ghosts.end(), std::back_inserter(patchGhost));
@@ -300,11 +313,6 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
             particleArray.erase(
                 makeRange(particleArray, inGhostLayerRange.iend(), particleArray.size()));
         }
-
-        interpolator_( //
-            domainParticles, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
-        interpolator_( //
-            patchGhost, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
     }
 }
 

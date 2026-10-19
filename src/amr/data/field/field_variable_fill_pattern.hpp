@@ -240,30 +240,15 @@ NO_DISCARD bool isSamePatch(Geometry_t const& dst_geometry, Geometry_t const& sr
  *
  * Example, at interpolation order 1, only the border node will be incomplete after
  * depositing domain particles since these hit only the two primal nodes surronding its position.
- * However, we deposit also leaving domain particles before they are sent to patchGhost particles
- * and shipped to neighrboring patches.
- * Leaving particles can be found in the first ghost cell from domain, so the first primal
- * ghost node from domain will also have some incomplete contribution.
- *
- * At order 1, thus, there is an overlap of 3 primal nodes that are incomplete:
- * the shared border node and the first domain and first ghost.
- *
- *                        ghost cells <-|-> patch
- *                          +           +           +
- *                          |  leaving  | domain particles
- *                          | particles |
- *
+ * At higher orders, the stencil of domain particles close to the border also reaches the first
+ * ghost nodes, which then hold contributions the neighbor lacks.
+ * Particles leaving the patch are not deposited by it: once exchanged, the neighbor deposits
+ * them as its own domain particles.
  *
  * As a first try and to keep it simple, this fill pattern simply creates the overlap
  * that is the intersection of the field ghost boxes of the source and destination patch datas.
  * That is, at interpolation 1 we have 2 ghost cells  thus it is 5 nodes that overlap
- * even though the outermost ghost should have 0 contribution.
- *
- *                        ghost cells <-|-> patch
- *               +          +           +           +          +
- *               ^          |  leaving  | domain particles
- *               |          | particles |
- *               0
+ * even though only the border node has contributions from both sides.
  * */
 template<typename Gridlayout_t> // ASSUMED ALL PRIMAL!
 class FieldGhostInterpOverlapFillPattern : public SAMRAI::xfer::VariableFillPattern
