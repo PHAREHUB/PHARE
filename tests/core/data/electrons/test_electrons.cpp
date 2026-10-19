@@ -549,7 +549,7 @@ struct TwoPopulationElectronsTest : public ::testing::Test
     static constexpr std::size_t nbrPops = 2;
     std::array<Population, nbrPops> const pops{{
         {"protons", /*mass=*/1., /*charge=*/1., /*density=*/1., {1., 0.5, -0.3}},
-        {"sodium", /*mass=*/23., /*charge=*/1., /*density=*/0.1, {-0.2, 0.4, 0.1}},
+        {"sodium", /*mass=*/23., /*charge=*/2., /*density=*/0.1, {-0.2, 0.4, 0.1}},
     }};
     std::array<double, 3> const current{0.1, -0.2, 0.3};
 
