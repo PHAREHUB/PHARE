@@ -50,6 +50,7 @@ Warning: This documentation is a work in progress. It is not complete and may co
    :hidden:
 
    theory/hybridpic
+   theory/collisions
    theory/pic
    theory/mhd
    theory/normalization

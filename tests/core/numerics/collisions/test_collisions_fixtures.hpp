@@ -15,15 +15,22 @@
 namespace PHARE::core
 {
 // the population interface Collisions uses: mass, charge and domain particles
-struct TestPopulation
+template<std::size_t dim>
+struct TestPopulationND
 {
-    using ParticleArray_t = ParticleArray<1>;
+    using ParticleArray_t = ParticleArray<dim>;
 
-    TestPopulation(double const mass, double const charge, int const nbrCells)
+    TestPopulationND(double const mass, double const charge, Box<int, dim> const& cells)
         : mass_{mass}
-        , particles_{Box<int, 1>{{0}, {nbrCells - 1}}}
+        , particles_{cells}
     {
         info_["charge"] = charge;
+    }
+
+    TestPopulationND(double const mass, double const charge, int const nbrCells)
+        requires(dim == 1)
+        : TestPopulationND{mass, charge, Box<int, 1>{{0}, {nbrCells - 1}}}
+    {
     }
 
     NO_DISCARD double mass() const { return mass_; }
@@ -37,9 +44,8 @@ struct TestPopulation
     {
         std::uniform_real_distribution<double> uniform{0., 1.};
         std::normal_distribution<double> normal{0., 1.};
-        auto const nbrCells = particles_.box().upper[0] + 1;
 
-        for (int cell = 0; cell < nbrCells; ++cell)
+        for (auto const& cell : particles_.box())
         {
             std::vector<double> weights(ppc, 1.);
             if (randomWeights) // log-uniform over two decades
@@ -51,10 +57,13 @@ struct TestPopulation
 
             for (auto const w : weights)
             {
-                Particle<1> particle;
+                Particle<dim> particle;
                 particle.weight = w * density / total;
-                particle.iCell  = {cell};
-                particle.delta  = {uniform(rng)};
+                for (std::size_t d = 0; d < dim; ++d)
+                {
+                    particle.iCell[d] = cell[d];
+                    particle.delta[d] = uniform(rng);
+                }
                 for (std::size_t i = 0; i < 3; ++i)
                     particle.v[i] = drift[i] + vth[i] * normal(rng);
                 particles_.push_back(particle);
@@ -67,17 +76,22 @@ struct TestPopulation
     ParticleArray_t particles_;
 };
 
-struct TestIons
+using TestPopulation = TestPopulationND<1>;
+
+template<std::size_t dim>
+struct TestIonsND
 {
-    using particle_array_type = ParticleArray<1>;
+    using particle_array_type = ParticleArray<dim>;
 
     NO_DISCARD auto begin() { return populations.begin(); }
     NO_DISCARD auto end() { return populations.end(); }
     NO_DISCARD auto begin() const { return populations.begin(); }
     NO_DISCARD auto end() const { return populations.end(); }
 
-    std::vector<TestPopulation> populations;
+    std::vector<TestPopulationND<dim>> populations;
 };
+
+using TestIons = TestIonsND<1>;
 
 
 // density weighted moments of one population, over all its particles
