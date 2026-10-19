@@ -19,6 +19,9 @@ field_qties = {
     "EM_B_x": "Bx",
     "EM_B_y": "By",
     "EM_B_z": "Bz",
+    "EM_B1_x": "B1x",
+    "EM_B1_y": "B1y",
+    "EM_B1_z": "B1z",
     "EM_E_x": "Ex",
     "EM_E_y": "Ey",
     "EM_E_z": "Ez",
@@ -50,6 +53,7 @@ field_qties = {
     "rhoV_y": "mhdRhoVy",
     "rhoV_z": "mhdRhoVz",
     "Etot": "mhdEtot",
+    "Etot1": "mhdEtot1",
 }
 
 

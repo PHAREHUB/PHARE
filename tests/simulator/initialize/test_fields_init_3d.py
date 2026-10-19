@@ -1,6 +1,6 @@
 """
-  This file exists independently from test_initialization.py to isolate dimension
-    test cases and allow each to be overridden in some way if required.
+This file exists independently from test_initialization.py to isolate dimension
+  test cases and allow each to be overridden in some way if required.
 """
 
 import unittest
@@ -10,7 +10,10 @@ from ddt import data, ddt, unpack
 import pyphare.pharein as ph
 from pyphare.core import phare_utilities as phut
 
-from tests.simulator.initialize.test_init_mhd import MHDInitializationTest
+from tests.simulator.initialize.test_init_mhd import (
+    MHDInitializationTest,
+    mhd_split_cases,
+)
 from tests.simulator.initialize.test_init_hybrid import HybridInitializationTest
 
 ph.NO_GUI()
@@ -68,6 +71,24 @@ class Initialization3DTest(MHDInitializationTest, HybridInitializationTest):
         self._test_density_decreases_as_1overSqrtN(
             ndim, nbr_particles=np.asarray([20, 50, 75]), cells=10, **kwargs
         )
+
+    @data(*mhd_split_cases(ndim))
+    def test_mhd_B0_B1_split_is_as_provided_by_user(self, case):
+        print(f"\n{self._testMethodName}_{ndim}d {case['name']}")
+        phut.cast_to(self, MHDInitializationTest)
+        self._test_mhd_split_is_as_provided(
+            ndim,
+            case["name"],
+            case["model_kwargs"],
+            case["external_field"],
+            case["b0"],
+            case["b1"],
+        )
+
+    def test_mhd_time_dependent_uniform_B0(self):
+        print(f"\n{self._testMethodName}_{ndim}d")
+        phut.cast_to(self, MHDInitializationTest)
+        self._test_mhd_time_dependent_uniform_B0(ndim)
 
 
 if __name__ == "__main__":

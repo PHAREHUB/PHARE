@@ -24,8 +24,9 @@ public:
         uL.to_conservative(gamma_);
         uR.to_conservative(gamma_);
 
-        auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot] = hll_(
-            uL.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hydro_speedL, hydro_speedR);
+        auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
+            = hll_(uL.as_reduced_conservative_tuple(), uR.as_reduced_conservative_tuple(),
+                   fL.as_tuple(), fR.as_tuple(), hydro_speedL, hydro_speedR);
 
         return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
     }
@@ -39,17 +40,17 @@ public:
         uL.to_conservative(gamma_);
         uR.to_conservative(gamma_);
 
-        auto split = [](auto const& a) {
-            auto hydro = std::make_tuple(a.rho, a.rhoV().x, a.rhoV().y, a.rhoV().z);
-            auto mag   = std::make_tuple(a.B.x, a.B.y, a.B.z, a.Etot());
-            return std::make_pair(hydro, mag);
+        auto split = [](auto const& t) {
+            auto const& [rho, rhoVx, rhoVy, rhoVz, Bx, By, Bz, Etot] = t;
+            return std::make_pair(std::make_tuple(rho, rhoVx, rhoVy, rhoVz),
+                                  std::make_tuple(Bx, By, Bz, Etot));
         };
 
-        auto [uLhydro, uLmag] = split(uL);
-        auto [uRhydro, uRmag] = split(uR);
+        auto [uLhydro, uLmag] = split(uL.as_reduced_conservative_tuple());
+        auto [uRhydro, uRmag] = split(uR.as_reduced_conservative_tuple());
 
-        auto const [fLhydro, fLmag] = split(fL);
-        auto const [fRhydro, fRmag] = split(fR);
+        auto const [fLhydro, fLmag] = split(fL.as_tuple());
+        auto const [fRhydro, fRmag] = split(fR.as_tuple());
 
         auto [Frho, FrhoVx, FrhoVy, FrhoVz]
             = hll_(uLhydro, uRhydro, fLhydro, fRhydro, hydro_speedL, hydro_speedR);
@@ -92,8 +93,10 @@ private:
     template<auto direction>
     auto hll_speeds_(auto const& uL, auto const& uR)
     {
-        auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
-        auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
+        auto const BtL    = uL.totalB();
+        auto const BtR    = uR.totalB();
+        auto const BdotBL = BtL.x * BtL.x + BtL.y * BtL.y + BtL.z * BtL.z;
+        auto const BdotBR = BtR.x * BtR.x + BtR.y * BtR.y + BtR.z * BtR.z;
 
         auto compute_speeds = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR,
                                   auto VcompL, auto VcompR, auto BcompL, auto BcompR) {
@@ -108,21 +111,23 @@ private:
         };
 
         if constexpr (direction == Direction::X)
-            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x,
-                                  uL.B.x, uR.B.x);
+            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x, BtL.x,
+                                  BtR.x);
         else if constexpr (direction == Direction::Y)
-            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y,
-                                  uL.B.y, uR.B.y);
+            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y, BtL.y,
+                                  BtR.y);
         else if constexpr (direction == Direction::Z)
-            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z,
-                                  uL.B.z, uR.B.z);
+            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z, BtL.z,
+                                  BtR.z);
     }
 
     template<auto direction>
     auto hll_speeds_(auto const& uL, auto const& uR, auto const& jL, auto const& jR)
     {
-        auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
-        auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
+        auto const BtL    = uL.totalB();
+        auto const BtR    = uR.totalB();
+        auto const BdotBL = BtL.x * BtL.x + BtL.y * BtL.y + BtL.z * BtL.z;
+        auto const BdotBR = BtR.x * BtR.x + BtR.y * BtR.y + BtR.z * BtR.z;
 
         auto compute_speeds = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR,
                                   auto VcompL, auto VcompR, auto BcompL, auto BcompR) {
@@ -141,14 +146,14 @@ private:
         };
 
         if constexpr (direction == Direction::X)
-            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x,
-                                  uL.B.x, uR.B.x);
+            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.x, uR.V.x, BtL.x,
+                                  BtR.x);
         else if constexpr (direction == Direction::Y)
-            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y,
-                                  uL.B.y, uR.B.y);
+            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.y, uR.V.y, BtL.y,
+                                  BtR.y);
         else if constexpr (direction == Direction::Z)
-            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z,
-                                  uL.B.z, uR.B.z);
+            return compute_speeds(uL.rho, uR.rho, uL.P, uR.P, BdotBL, BdotBR, uL.V.z, uR.V.z, BtL.z,
+                                  BtR.z);
     }
 
     auto hll_(auto const& uL, auto const& uR, auto const& fL, auto const& fR, auto const& SL,

@@ -69,20 +69,42 @@ PerIndexVector<typename Field::value_type&> toPerIndexVector(Field& field,
 template<typename Float>
 struct PerIndex
 {
-    PerIndex(Float rho, PerIndexVector<Float> V, PerIndexVector<Float> B, Float P)
+    using Value = std::remove_cvref_t<Float>;
+
+    PerIndex(Float rho, PerIndexVector<Float> V, PerIndexVector<Float> B1, Float P)
         : rho{rho}
         , V{V}
-        , B{B}
+        , B1{B1}
+        , B0{}
         , P{P}
     {
     }
 
-    auto as_tuple() const { return std::make_tuple(rho, V.x, V.y, V.z, B.x, B.y, B.z, P); }
+    PerIndex(Float rho, PerIndexVector<Float> V, PerIndexVector<Float> B1, Float P,
+             PerIndexVector<Value> B0)
+        : rho{rho}
+        , V{V}
+        , B1{B1}
+        , B0{B0}
+        , P{P}
+    {
+    }
+
+    auto as_tuple() const { return std::make_tuple(rho, V.x, V.y, V.z, B1.x, B1.y, B1.z, P); }
+
+    auto as_reduced_conservative_tuple() const
+    {
+        return std::make_tuple(rho, V.x, V.y, V.z, B1.x, B1.y, B1.z,
+                               etotToEtot1(P, B1.x, B1.y, B1.z, B0.x, B0.y, B0.z));
+    }
+
+    auto totalB() const { return PerIndexVector<Value>{B1.x + B0.x, B1.y + B0.y, B1.z + B0.z}; }
 
     void to_conservative(auto const& gamma)
     {
         auto const [rhoVx, rhoVy, rhoVz] = vToRhoV(rho, V.x, V.y, V.z);
-        Float Etot                       = eosPToEtot(gamma, rho, V.x, V.y, V.z, B.x, B.y, B.z, P);
+        auto const Bt                    = totalB();
+        Float Etot = eosPToEtot(gamma, rho, V.x, V.y, V.z, Bt.x, Bt.y, Bt.z, P);
 
         V.x = rhoVx;
         V.y = rhoVy;
@@ -93,14 +115,17 @@ struct PerIndex
     template<typename T>
     PerIndex& operator=(PerIndex<T> const& other)
     {
-        rho = other.rho;
-        V.x = other.V.x;
-        V.y = other.V.y;
-        V.z = other.V.z;
-        B.x = other.B.x;
-        B.y = other.B.y;
-        B.z = other.B.z;
-        P   = other.P;
+        rho  = other.rho;
+        V.x  = other.V.x;
+        V.y  = other.V.y;
+        V.z  = other.V.z;
+        B1.x = other.B1.x;
+        B1.y = other.B1.y;
+        B1.z = other.B1.z;
+        B0.x = other.B0.x;
+        B0.y = other.B0.y;
+        B0.z = other.B0.z;
+        P    = other.P;
         return *this;
     }
 
@@ -114,7 +139,8 @@ struct PerIndex
 
     Float rho;
     PerIndexVector<Float> V;
-    PerIndexVector<Float> B;
+    PerIndexVector<Float> B1;
+    PerIndexVector<Value> B0;
     Float P;
 
 #ifndef NDEBUG
@@ -284,6 +310,31 @@ struct AllFluxes
     Field Etot_fz;
 };
 
+template<typename Field, typename VecField>
+struct MHDSources
+{
+    static constexpr auto dimension = Field::dimension;
+
+    NO_DISCARD auto getCompileTimeResourcesViewList()
+    {
+        return std::forward_as_tuple(B1_source, Etot_source);
+    }
+
+    NO_DISCARD auto getCompileTimeResourcesViewList() const
+    {
+        return std::forward_as_tuple(B1_source, Etot_source);
+    }
+
+    void zero()
+    {
+        B1_source.zero();
+        Etot_source.zero();
+    }
+
+    VecField B1_source;
+    Field Etot_source;
+};
+
 struct AllFluxesNames
 {
     std::string rho_fx;
@@ -344,6 +395,14 @@ void operate(AllFluxes<Field, VecField>& dst, AllFluxes<Field, VecField> const& 
         operate<Op>(dst.B_fz, src.B_fz, args...);
         operate<Op>(dst.Etot_fz, src.Etot_fz, args...);
     }
+}
+
+template<template<typename> typename Op, typename Field, typename VecField>
+void operate(MHDSources<Field, VecField>& dst, MHDSources<Field, VecField> const& src,
+             auto&&... args)
+{
+    operate<Op>(dst.B1_source, src.B1_source, args...);
+    operate<Op>(dst.Etot_source, src.Etot_source, args...);
 }
 
 } // namespace PHARE::core

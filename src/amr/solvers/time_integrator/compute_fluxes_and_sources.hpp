@@ -1,5 +1,5 @@
-#ifndef PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_HPP
-#define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_HPP
+#ifndef PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_AND_SOURCES_HPP
+#define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_COMPUTE_FLUXES_AND_SOURCES_HPP
 
 #include "amr/solvers/solver_mhd_field_evolvers.hpp"
 
@@ -14,7 +14,7 @@
 namespace PHARE::solver
 {
 template<typename FVMethodStrategy, typename MHDModel>
-class ComputeFluxes
+class ComputeFluxesAndSources
 {
     using level_t = MHDModel::level_t;
     // using Layout        = MHDModel::gridlayout_type;
@@ -36,13 +36,14 @@ class ComputeFluxes
 
     using ToPrimitiveConverter_t    = Dispatchers_t::ToPrimitiveConverter_t;
     using ToConservativeConverter_t = Dispatchers_t::ToConservativeConverter_t;
+    using ExternalFieldSource_t     = Dispatchers_t::ExternalFieldSource_t;
 
     using VecField    = MHDModel::vecfield_type;
     using Equations_t = FVMethod_t::Equations_t;
 
 
 public:
-    ComputeFluxes(PHARE::initializer::PHAREDict const& dict)
+    ComputeFluxesAndSources(PHARE::initializer::PHAREDict const& dict)
         : fVMethodInfo_{FVMethodInfo_t::FROM(dict["fv_method"])}
         , constrainedTransportInfo_{ConstrainedTransportInfo_t::FROM(dict["constrained_transport"])}
         , to_primitive_gamma_{dict["to_primitive"]["heat_capacity_ratio"]}
@@ -60,16 +61,16 @@ public:
                     "Error - hyper-resistivity (nu > 0) requires the Hall term to be enabled");
     }
 
-    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& bc, level_t& level,
-                    double const newTime)
+    void operator()(MHDModel& model, auto& state, auto& fluxes, auto& sources, auto& bc,
+                    level_t& level, double const newTime)
     {
         ToPrimitiveConverter_t{level, model}(state, to_primitive_gamma_);
-        TimeSetter{level, model, newTime}(state.rho, state.rhoV, state.Etot, state.V, state.P);
+        TimeSetter{level, model, newTime}(state.rho, state.rhoV, state.Etot1, state.V, state.P);
 
         if (needsCurrent_)
         {
-            Ampere_t{level, model}(state.B, state.J);
-            TimeSetter{level, model, newTime}(state.B, state.J);
+            Ampere_t{level, model}(state.B1, state.J);
+            TimeSetter{level, model, newTime}(state.B1, state.J);
         }
 
         if (isDissipative_)
@@ -81,10 +82,12 @@ public:
 
         // unecessary if we decide to store both primitive and conservative variables
         ToConservativeConverter_t{level, model}(state, to_conservative_gamma_);
-        TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.rhoV, state.Etot);
+        TimeSetter{level, model, newTime}(state.rho, state.V, state.P, state.rhoV, state.Etot1);
 
         ConstrainedTransport_t{level, model,
                                constrainedTransportInfo_}(ct_, dissipative_electric_state_, state);
+
+        ExternalFieldSource_t{level, model}(state, sources);
     }
 
     void registerResources(MHDModel& model)

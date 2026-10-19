@@ -37,7 +37,8 @@ public:
         for (auto& patch : rm.enumerate(level, state))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout, gamma}(state.rho, state.V, state.B, state.P, state.rhoV, state.Etot);
+            core_type{layout, gamma}(state.rho, state.V, state.B1, state.P, state.rhoV,
+                                     state.Etot1);
         }
     }
 
@@ -70,7 +71,8 @@ public:
         for (auto& patch : rm.enumerate(level, state))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{layout}(gamma, state.rho, state.rhoV, state.B, state.Etot, state.V, state.P);
+            core_type{layout}(gamma, state.rho, state.rhoV, state.B1, state.Etot1, state.V,
+                              state.P);
         }
     }
 
@@ -111,11 +113,13 @@ public:
     void operator()(auto& ct_state, auto& dissipative_electric_state, auto& state, auto& fluxes)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, state, fluxes))
+        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, state, fluxes,
+                                        model.externalField))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type finite_volume_method{info, layout};
-            finite_volume_method(ct_state, dissipative_electric_state, state, fluxes);
+            finite_volume_method(ct_state, dissipative_electric_state, state,
+                                 model.externalField.B0, fluxes);
         }
     }
 
@@ -183,10 +187,11 @@ public:
     void operator()(auto& dissipative_electric_state, auto& mhd_state)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, dissipative_electric_state, mhd_state))
+        for (auto& patch :
+             rm.enumerate(level, dissipative_electric_state, mhd_state, model.externalField))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
-            core_type{info, layout}(dissipative_electric_state, mhd_state);
+            core_type{info, layout}(dissipative_electric_state, mhd_state, model.externalField.B0);
         }
     }
 
@@ -217,11 +222,13 @@ public:
     void operator()(auto& ct_state, auto& dissipative_electric_state, auto& mhd_state)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, mhd_state))
+        for (auto& patch : rm.enumerate(level, ct_state, dissipative_electric_state, mhd_state,
+                                        model.externalField))
         {
             auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
             core_type constrained_transport_{info, layout};
-            constrained_transport_(ct_state, dissipative_electric_state, mhd_state);
+            constrained_transport_(ct_state, dissipative_electric_state, mhd_state,
+                                   model.externalField.B0);
         }
     }
 
@@ -229,6 +236,77 @@ public:
     level_t& level;
     Model& model;
     info_type const info;
+};
+
+
+
+
+template<typename Model>
+class ExternalFieldSourceTransformer
+{
+    using GridLayout = Model::gridlayout_type;
+    using level_t    = Model::amr_types::level_t;
+
+public:
+    explicit ExternalFieldSourceTransformer(level_t& level, Model& model)
+        : level{level}
+        , model{model}
+    {
+    }
+
+    void operator()(Model::state_type& state, auto& sources)
+    {
+        auto& rm = *model.resourcesManager;
+
+        if (not model.externalFieldUpdater->isTimeDependent())
+        {
+            for (auto& _ : rm.enumerate(level, sources))
+                sources.zero();
+            return;
+        }
+
+        for (auto& patch : rm.enumerate(level, state, sources, model.externalField))
+        {
+            auto const layout = amr::layoutFromPatch<GridLayout>(*patch);
+            auto const& dB0dt = model.externalField.dB0dt;
+
+            for (auto const c : {core::Component::X, core::Component::Y, core::Component::Z})
+            {
+                auto& s        = sources.B1_source(c);
+                auto const& dc = dB0dt(c);
+                layout.evalOnBox(s, [&](auto&... args) { s(args...) = -dc(args...); });
+            }
+
+            layout.evalOnBox(sources.Etot_source, [&](auto&... args) {
+                sources.Etot_source(args...) = -dotOnCellCenter_(dB0dt, state.B1, {args...});
+            });
+        }
+    }
+
+private:
+    static auto dotOnCellCenter_(auto const& A, auto const& B,
+                                 core::MeshIndex<GridLayout::dimension> index)
+    {
+        using implT = GridLayout::implT;
+
+        auto const ax
+            = GridLayout::template project<implT::faceXToCellCenter>(A(core::Component::X), index);
+        auto const ay
+            = GridLayout::template project<implT::faceYToCellCenter>(A(core::Component::Y), index);
+        auto const az
+            = GridLayout::template project<implT::faceZToCellCenter>(A(core::Component::Z), index);
+        auto const bx
+            = GridLayout::template project<implT::faceXToCellCenter>(B(core::Component::X), index);
+        auto const by
+            = GridLayout::template project<implT::faceYToCellCenter>(B(core::Component::Y), index);
+        auto const bz
+            = GridLayout::template project<implT::faceZToCellCenter>(B(core::Component::Z), index);
+
+        return ax * bx + ay * by + az * bz;
+    }
+
+    level_t& level;
+    Model& model;
 };
 
 
@@ -274,6 +352,8 @@ struct Dispatchers : FieldEvolverDispatchers<Model>
     using FiniteVolumeEuler_t = FiniteVolumeEulerTransformer<Model>;
 
     using DissipativeElectricField_t = DissipativeElectricFieldTransformer<Model>;
+
+    using ExternalFieldSource_t = ExternalFieldSourceTransformer<Model>;
 
     template<template<typename> typename Reconstruction, auto Hall>
     using ConstrainedTransport_t

@@ -52,11 +52,11 @@ public:
     {
     }
 
-    void operator()(auto& dissipative_electric_state, auto const& mhd_state) const
+    void operator()(auto& dissipative_electric_state, auto const& mhd_state, auto const& B0) const
     {
         auto& E         = dissipative_electric_state.E();
         auto const& J   = mhd_state.J;
-        auto const& B   = mhd_state.B;
+        auto const& B1  = mhd_state.B1;
         auto const& rho = mhd_state.rho;
 
         Constexprifier{isResistive(), isHyperResistive(),
@@ -71,7 +71,7 @@ public:
                     if constexpr (isResistive)
                         e += eta * Jc(idx);
                     if constexpr (isHyperResistive)
-                        e -= hyper_coef_<component, hyper>(B, rho, idx)
+                        e -= hyper_coef_<component, hyper>(B1, B0, rho, idx)
                              * layout_.laplacian(Jc, idx);
                     Ec(idx) = e;
                 });
@@ -81,7 +81,8 @@ public:
 
 private:
     template<auto component, HyperMode hyper>
-    double hyper_coef_(auto const& B, auto const& rho, MeshIndex<dimension> idx) const
+    double hyper_coef_(auto const& B1, auto const& B0, auto const& rho,
+                       MeshIndex<dimension> idx) const
     {
         if constexpr (hyper == HyperMode::constant)
             return nu;
@@ -91,9 +92,12 @@ private:
             auto const dx        = *std::min_element(meshSize.begin(), meshSize.end());
 
             auto coef = [&]<auto BxProj, auto ByProj, auto BzProj, auto rhoProj>() {
-                auto const bx = GridLayout::template project<BxProj>(B(Component::X), idx);
-                auto const by = GridLayout::template project<ByProj>(B(Component::Y), idx);
-                auto const bz = GridLayout::template project<BzProj>(B(Component::Z), idx);
+                auto const bx = GridLayout::template project<BxProj>(B1(Component::X), idx)
+                                + GridLayout::template project<BxProj>(B0(Component::X), idx);
+                auto const by = GridLayout::template project<ByProj>(B1(Component::Y), idx)
+                                + GridLayout::template project<ByProj>(B0(Component::Y), idx);
+                auto const bz = GridLayout::template project<BzProj>(B1(Component::Z), idx)
+                                + GridLayout::template project<BzProj>(B0(Component::Z), idx);
                 auto const n  = GridLayout::template project<rhoProj>(rho, idx);
                 auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);

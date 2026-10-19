@@ -3,6 +3,8 @@
 
 #include "core/def.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
+#include "core/numerics/primite_conservative_converter/mhd_conversion.hpp"
+#include "core/utilities/types.hpp"
 #include "mpi/mpi_utils.hpp"
 
 #include "amr/amr_constants.hpp"
@@ -300,11 +302,15 @@ public:
 
     NO_DISCARD const VecField& getRhoV() const { return this->model_.state.rhoV; }
 
-    NO_DISCARD const VecField& getB() const { return this->model_.state.B; }
+    NO_DISCARD const VecField& getB() const { return BTotal_; }
+
+    NO_DISCARD const VecField& getB1() const { return this->model_.state.B1; }
 
     NO_DISCARD const VecField& getB0() const { return this->model_.externalField.B0; }
 
-    NO_DISCARD const Field& getEtot() const { return this->model_.state.Etot; }
+    NO_DISCARD const Field& getEtot() const { return EtotTotal_; }
+
+    NO_DISCARD const Field& getEtot1() const { return this->model_.state.Etot1; }
 
     NO_DISCARD const VecField& getE() const
     {
@@ -316,11 +322,15 @@ public:
 
     NO_DISCARD VecField& getRhoV() { return this->model_.state.rhoV; }
 
-    NO_DISCARD VecField& getB() { return this->model_.state.B; }
+    NO_DISCARD VecField& getB() { return BTotal_; }
+
+    NO_DISCARD VecField& getB1() { return this->model_.state.B1; }
 
     NO_DISCARD VecField& getB0() { return this->model_.externalField.B0; }
 
-    NO_DISCARD Field& getEtot() { return this->model_.state.Etot; }
+    NO_DISCARD Field& getEtot() { return EtotTotal_; }
+
+    NO_DISCARD Field& getEtot1() { return this->model_.state.Etot1; }
 
     NO_DISCARD VecField& getE()
     {
@@ -336,14 +346,79 @@ public:
 
     NO_DISCARD const Field& getP() const { return P_diag_; }
 
+    NO_DISCARD Field& getDivB() { return divB_diag_; }
+
+    NO_DISCARD const Field& getDivB() const { return divB_diag_; }
+
+    void computeTotalB(auto const& layout)
+    {
+        auto const& B1 = this->model_.state.B1;
+        auto const& B0 = this->model_.externalField.B0;
+
+        for (auto const c : {core::Component::X, core::Component::Y, core::Component::Z})
+        {
+            auto& Bc        = BTotal_(c);
+            auto const& B1c = B1(c);
+            auto const& B0c = B0(c);
+            layout.evalOnGhostBox(
+                Bc, [&](auto&... args) { Bc(args...) = B1c(args...) + B0c(args...); });
+        }
+    }
+
+    void computeTotalEtot(auto const& layout)
+    {
+        using GridLayout = std::decay_t<decltype(layout)>;
+        using implT      = GridLayout::implT;
+
+        auto const& Etot1 = this->model_.state.Etot1;
+        auto const& B1    = this->model_.state.B1;
+        auto const& B0    = this->model_.externalField.B0;
+
+        auto onCellCenter = [&](auto const& B, core::MeshIndex<GridLayout::dimension> idx) {
+            return std::make_tuple(
+                GridLayout::template project<implT::faceXToCellCenter>(B(core::Component::X), idx),
+                GridLayout::template project<implT::faceYToCellCenter>(B(core::Component::Y), idx),
+                GridLayout::template project<implT::faceZToCellCenter>(B(core::Component::Z), idx));
+        };
+
+        layout.evalOnGhostBox(EtotTotal_, [&](auto&... args) {
+            core::MeshIndex<GridLayout::dimension> const idx{args...};
+            auto const [b1x, b1y, b1z] = onCellCenter(B1, idx);
+            auto const [b0x, b0y, b0z] = onCellCenter(B0, idx);
+            EtotTotal_(idx) = core::etot1ToEtot(Etot1(idx), b1x, b1y, b1z, b0x, b0y, b0z);
+        });
+    }
+
+    void computeDivB(auto const& layout)
+    {
+        using GridLayout = std::decay_t<decltype(layout)>;
+
+        auto const& B1 = this->model_.state.B1;
+        auto const& B0 = this->model_.externalField.B0;
+
+        layout.evalOnGhostBox(divB_diag_, [&](auto&... args) {
+            core::MeshIndex<GridLayout::dimension> const idx{args...};
+            double divB = 0;
+            core::for_N<GridLayout::dimension>([&](auto i) {
+                constexpr auto direction = static_cast<core::Direction>(i());
+                constexpr auto component = static_cast<core::Component>(i());
+                divB += layout.template deriv<direction>(B1(component), idx)
+                        + layout.template deriv<direction>(B0(component), idx);
+            });
+            divB_diag_(idx) = divB;
+        });
+    }
+
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(V_diag_, P_diag_, tmpField_, tmpVec_);
+        return std::forward_as_tuple(V_diag_, P_diag_, BTotal_, EtotTotal_, divB_diag_, tmpField_,
+                                     tmpVec_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(V_diag_, P_diag_, tmpField_, tmpVec_);
+        return std::forward_as_tuple(V_diag_, P_diag_, BTotal_, EtotTotal_, divB_diag_, tmpField_,
+                                     tmpVec_);
     }
 
     auto& tmpField() { return tmpField_; }
@@ -363,6 +438,9 @@ protected:
     // model
     VecField V_diag_{"diagnostics_V_", core::MHDQuantity::Vector::V};
     Field P_diag_{"diagnostics_P_", core::MHDQuantity::Scalar::P};
+    VecField BTotal_{"diagnostics_BTotal_", core::MHDQuantity::Vector::B};
+    Field EtotTotal_{"diagnostics_EtotTotal_", core::MHDQuantity::Scalar::Etot};
+    Field divB_diag_{"diagnostics_divB_", core::MHDQuantity::Scalar::divB};
 
     Field tmpField_{"PHARE_sumField_MHD", core::MHDQuantity::Scalar::ScalarAllPrimal};
     VecField tmpVec_{"PHARE_sumVec_MHD", core::MHDQuantity::Vector::VecAllPrimal};

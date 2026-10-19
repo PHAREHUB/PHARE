@@ -23,51 +23,59 @@ public:
     {
         auto const rho = u.rho;
         auto const V   = u.V;
-        auto const B   = u.B;
+        auto const B   = u.totalB();
+        auto const B1  = u.B1;
+        auto const B0  = u.B0;
         auto const P   = u.P;
 
-        auto const GeneralisedPressure = P + 0.5 * (B.x * B.x + B.y * B.y + B.z * B.z);
-        auto const TotalEnergy         = eosPToEtot(gamma_, rho, V.x, V.y, V.z, B.x, B.y, B.z, P);
+        auto const MagPressure = 0.5 * (B1.x * B1.x + B1.y * B1.y + B1.z * B1.z)
+                                 + (B1.x * B0.x + B1.y * B0.y + B1.z * B0.z);
+        auto const GeneralisedPressure = P + MagPressure;
+
+        auto const HydroEnergy = P / (gamma_ - 1.0) + kineticEnergy(rho, V.x, V.y, V.z);
+        auto const Ex          = V.z * B.y - V.y * B.z;
+        auto const Ey          = V.x * B.z - V.z * B.x;
+        auto const Ez          = V.y * B.x - V.x * B.y;
 
         if constexpr (direction == Direction::X)
         {
             auto F_rho   = rho * V.x;
-            auto F_rhoVx = rho * V.x * V.x + GeneralisedPressure - B.x * B.x;
-            auto F_rhoVy = rho * V.x * V.y - B.x * B.y;
-            auto F_rhoVz = rho * V.x * V.z - B.x * B.z;
+            auto F_rhoVx
+                = rho * V.x * V.x + GeneralisedPressure - (B1.x * B1.x + B1.x * B0.x + B0.x * B1.x);
+            auto F_rhoVy = rho * V.x * V.y - (B1.x * B1.y + B1.x * B0.y + B0.x * B1.y);
+            auto F_rhoVz = rho * V.x * V.z - (B1.x * B1.z + B1.x * B0.z + B0.x * B1.z);
             auto F_Bx    = 0.0;
             auto F_By    = B.y * V.x - V.y * B.x;
             auto F_Bz    = B.z * V.x - V.z * B.x;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.x
-                           - B.x * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (HydroEnergy + P) * V.x + Ey * B1.z - Ez * B1.y;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
         if constexpr (direction == Direction::Y)
         {
             auto F_rho   = rho * V.y;
-            auto F_rhoVx = rho * V.y * V.x - B.y * B.x;
-            auto F_rhoVy = rho * V.y * V.y + GeneralisedPressure - B.y * B.y;
-            auto F_rhoVz = rho * V.y * V.z - B.y * B.z;
+            auto F_rhoVx = rho * V.y * V.x - (B1.y * B1.x + B1.y * B0.x + B0.y * B1.x);
+            auto F_rhoVy
+                = rho * V.y * V.y + GeneralisedPressure - (B1.y * B1.y + B1.y * B0.y + B0.y * B1.y);
+            auto F_rhoVz = rho * V.y * V.z - (B1.y * B1.z + B1.y * B0.z + B0.y * B1.z);
             auto F_Bx    = B.x * V.y - V.x * B.y;
             auto F_By    = 0.0;
             auto F_Bz    = B.z * V.y - V.z * B.y;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.y
-                           - B.y * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (HydroEnergy + P) * V.y + Ez * B1.x - Ex * B1.z;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
         if constexpr (direction == Direction::Z)
         {
             auto F_rho   = rho * V.z;
-            auto F_rhoVx = rho * V.z * V.x - B.z * B.x;
-            auto F_rhoVy = rho * V.z * V.y - B.z * B.y;
-            auto F_rhoVz = rho * V.z * V.z + GeneralisedPressure - B.z * B.z;
+            auto F_rhoVx = rho * V.z * V.x - (B1.z * B1.x + B1.z * B0.x + B0.z * B1.x);
+            auto F_rhoVy = rho * V.z * V.y - (B1.z * B1.y + B1.z * B0.y + B0.z * B1.y);
+            auto F_rhoVz
+                = rho * V.z * V.z + GeneralisedPressure - (B1.z * B1.z + B1.z * B0.z + B0.z * B1.z);
             auto F_Bx    = B.x * V.z - V.x * B.z;
             auto F_By    = B.y * V.z - V.y * B.z;
             auto F_Bz    = 0.0;
-            auto F_Etot  = (TotalEnergy + GeneralisedPressure) * V.z
-                           - B.z * (V.x * B.x + V.y * B.y + V.z * B.z);
+            auto F_Etot  = (HydroEnergy + P) * V.z + Ex * B1.y - Ey * B1.x;
 
             return PerIndex{F_rho, {F_rhoVx, F_rhoVy, F_rhoVz}, {F_Bx, F_By, F_Bz}, F_Etot};
         }
@@ -79,7 +87,7 @@ public:
         PerIndex f = compute<direction>(u);
 
         if constexpr (Hall)
-            hall_contribution_<direction>(u.rho, u.B, J, f.B, f.P);
+            hall_contribution_<direction>(u.rho, u.totalB(), u.B1, J, f.B1, f.P);
 
         return f;
     }
@@ -111,8 +119,8 @@ private:
     double const gamma_;
 
     template<auto direction>
-    void hall_contribution_(auto const& rho, auto const& B, auto const& J, auto& F_B,
-                            auto& F_Etot) const
+    void hall_contribution_(auto const& rho, auto const& B, auto const& B1, auto const& J,
+                            auto& F_B, auto& F_Etot) const
     {
         auto const invRho = 1.0 / rho;
 
@@ -120,26 +128,26 @@ private:
         auto const JxB_y = J.z * B.x - J.x * B.z;
         auto const JxB_z = J.x * B.y - J.y * B.x;
 
-        auto const BdotJ = B.x * J.x + B.y * J.y + B.z * J.z;
-        auto const BdotB = B.x * B.x + B.y * B.y + B.z * B.z;
+        auto const B1dotJ = B1.x * J.x + B1.y * J.y + B1.z * J.z;
+        auto const BdotB1 = B.x * B1.x + B.y * B1.y + B.z * B1.z;
 
         if constexpr (direction == Direction::X)
         {
             F_B.y += -JxB_z * invRho;
             F_B.z += JxB_y * invRho;
-            F_Etot += (BdotJ * B.x - BdotB * J.x) * invRho;
+            F_Etot += (B1dotJ * B.x - BdotB1 * J.x) * invRho;
         }
         if constexpr (direction == Direction::Y)
         {
             F_B.x += JxB_z * invRho;
             F_B.z += -JxB_x * invRho;
-            F_Etot += (BdotJ * B.y - BdotB * J.y) * invRho;
+            F_Etot += (B1dotJ * B.y - BdotB1 * J.y) * invRho;
         }
         if constexpr (direction == Direction::Z)
         {
             F_B.x += -JxB_y * invRho;
             F_B.y += JxB_x * invRho;
-            F_Etot += (BdotJ * B.z - BdotB * J.z) * invRho;
+            F_Etot += (B1dotJ * B.z - BdotB1 * J.z) * invRho;
         }
     }
 };

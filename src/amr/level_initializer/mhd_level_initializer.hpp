@@ -33,6 +33,8 @@ public:
         auto& mhdModel = static_cast<MHDModel&>(model);
         auto& level    = amr_types::getLevel(*hierarchy, levelNumber);
 
+        mhdModel.initializeExternalField(level, initDataTime);
+
         if (isRegridding)
         {
             PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
@@ -56,7 +58,6 @@ public:
                 PHARE_LOG_STOP(3, "mhdLevelInitializer::initialize : initlevel");
             }
         }
-        mhdModel.initializeExternalField(level, initDataTime);
     }
 };
 

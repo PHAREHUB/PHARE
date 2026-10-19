@@ -4,6 +4,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
+#include <type_traits>
 #include <utility>
 
 namespace PHARE::core
@@ -14,8 +15,9 @@ struct Reconstructor
 public:
     using GridLayout = Reconstruction::GridLayout_t;
 
-    template<auto direction, typename State>
-    static auto reconstruct(State const& S, MeshIndex<GridLayout::dimension> index)
+    template<auto direction, typename State, typename ExternalB>
+    static auto reconstruct(State const& S, ExternalB const& b0,
+                            MeshIndex<GridLayout::dimension> index)
     {
         auto [rhoL, rhoR] = Reconstruction::template reconstruct<direction>(S.rho, index);
         auto [VxL, VxR] = Reconstruction::template reconstruct<direction>(S.V(Component::X), index);
@@ -23,14 +25,13 @@ public:
         auto [VzL, VzR] = Reconstruction::template reconstruct<direction>(S.V(Component::Z), index);
         auto [PL, PR]   = Reconstruction::template reconstruct<direction>(S.P, index);
 
-        // auto [BL, BR] = center_reconstruct<direction>(S.B, GridLayout::faceXToCellCenter(),
-        //                                               GridLayout::faceYToCellCenter(),
-        //                                               GridLayout::faceZToCellCenter(), index);
+        auto [B1L, B1R] = transverse_reconstruct<direction>(S.B1, index);
+        auto const B0f  = B0_at_face<direction>(b0, index);
 
-        auto [BL, BR] = transverse_reconstruct<direction>(S.B, index);
+        using Float = std::decay_t<decltype(rhoL)>;
 
-        PerIndex uL{rhoL, {VxL, VyL, VzL}, BL, PL};
-        PerIndex uR{rhoR, {VxR, VyR, VzR}, BR, PR};
+        PerIndex<Float> uL{rhoL, PerIndexVector<Float>{VxL, VyL, VzL}, B1L, PL, B0f};
+        PerIndex<Float> uR{rhoR, PerIndexVector<Float>{VxR, VyR, VzR}, B1R, PR, B0f};
 
         return std::make_pair(uL, uR);
     }
@@ -96,6 +97,31 @@ public:
         BR(transverse[1]) = Bt1R;
 
         return std::make_pair(BL, BR);
+    }
+
+    template<auto direction, typename VecField>
+    static auto B0_at_face(VecField const& b0, MeshIndex<GridLayout::dimension> index)
+    {
+        using implT = GridLayout::implT;
+
+        PerIndexVector<typename VecField::value_type> B0f;
+        B0f(direction) = b0(static_cast<Component>(direction))(index);
+        if constexpr (direction == Direction::X)
+        {
+            B0f.y = GridLayout::template project<implT::ByToFaceX>(b0(Component::Y), index);
+            B0f.z = GridLayout::template project<implT::BzToFaceX>(b0(Component::Z), index);
+        }
+        else if constexpr (direction == Direction::Y)
+        {
+            B0f.x = GridLayout::template project<implT::BxToFaceY>(b0(Component::X), index);
+            B0f.z = GridLayout::template project<implT::BzToFaceY>(b0(Component::Z), index);
+        }
+        else
+        {
+            B0f.x = GridLayout::template project<implT::BxToFaceZ>(b0(Component::X), index);
+            B0f.y = GridLayout::template project<implT::ByToFaceZ>(b0(Component::Y), index);
+        }
+        return B0f;
     }
 
     template<auto direction, typename VecField>

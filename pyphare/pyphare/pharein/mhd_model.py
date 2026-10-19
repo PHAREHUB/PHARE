@@ -27,7 +27,9 @@ class MHDModel(object):
 
         * **density** (*function or number*), default=1, mass density profile.
         * **vx**, **vy**, **vz** (*function or number*), default=(1, 0, 0), velocity profile, per direction.
-        * **bx**, **by**, **bz** (*function or number*), default=(1, 0, 0), magnetic field profile, per direction.
+        * **bx**, **by**, **bz** (*function or number*), default=(1, 0, 0), total magnetic field profile, per direction.
+        * **b1x**, **b1y**, **b1z** (*function or number*), default=(0, 0, 0), magnetic field profile minus the external field
+          of ``Simulation(external_field=...)``, per direction. Exclusive with **bx**, **by**, **bz**.
         * **p** (*function or number*), default=1, thermal pressure profile.
 
     Each parameter is a function of the spatial coordinates (one argument per
@@ -60,7 +62,18 @@ class MHDModel(object):
             return lambda x, y, z: value
 
     def __init__(
-        self, density=None, vx=None, vy=None, vz=None, bx=None, by=None, bz=None, p=None
+        self,
+        density=None,
+        vx=None,
+        vy=None,
+        vz=None,
+        bx=None,
+        by=None,
+        bz=None,
+        p=None,
+        b1x=None,
+        b1y=None,
+        b1z=None,
     ):
         if global_vars.sim is None:
             raise RuntimeError("A simulation must be declared before a model")
@@ -74,10 +87,22 @@ class MHDModel(object):
         vx = self.defaulter(vx, 1.0)
         vy = self.defaulter(vy, 0.0)
         vz = self.defaulter(vz, 0.0)
-        bx = self.defaulter(bx, 1.0)
-        by = self.defaulter(by, 0.0)
-        bz = self.defaulter(bz, 0.0)
         p = self.defaulter(p, 1.0)
+
+        b1_given = any(b is not None for b in (b1x, b1y, b1z))
+        if b1_given and any(b is not None for b in (bx, by, bz)):
+            raise ValueError(
+                "MHDModel: provide either (bx, by, bz) or (b1x, b1y, b1z), not both"
+            )
+
+        if b1_given:
+            bx = self.defaulter(b1x, 0.0)
+            by = self.defaulter(b1y, 0.0)
+            bz = self.defaulter(b1z, 0.0)
+        else:
+            bx = self.defaulter(bx, 1.0)
+            by = self.defaulter(by, 0.0)
+            bz = self.defaulter(bz, 0.0)
 
         self.model_dict = {}
 
@@ -91,6 +116,7 @@ class MHDModel(object):
                 "by": by,
                 "bz": bz,
                 "p": p,
+                "b_is_total": not b1_given,
             }
         )
 
