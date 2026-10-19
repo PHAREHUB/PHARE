@@ -61,17 +61,17 @@ struct KineticEnergyFluxVectorComputer
         _fill_one_pop_schedule(h5Writer, std::mem_fn(fillFn), pop);
     }
 
-    auto interpolate_domain(auto& pop, auto& layout)
+    void interpolate_domain(auto& pop, auto& layout)
     {
         pop.kineticEnergyFlux().zero();
         interpolator(pop, pop.domainParticles(), layout);
-    };
+    }
 
     // after the schedules, so the level ghost contributions are not summed across patches
-    auto interpolate_ghost(auto& pop, auto& layout)
+    void interpolate_ghost(auto& pop, auto& layout)
     {
         interpolator(pop, pop.levelGhostParticlesOld(), layout);
-    };
+    }
 
     FluidWriter& h5Writer;
     core::KineticEnergyFluxVectorInterpolator<dimension, interp_order> interpolator{};
@@ -146,18 +146,18 @@ struct MomentumTensorComputer
         _fill_one_pop_schedule(h5Writer, std::mem_fn(fillFn), pop);
     }
 
-    auto interpolate_domain(auto& pop, auto& layout)
+    void interpolate_domain(auto& pop, auto& layout)
     {
         auto& pop_momentum_tensor = pop.momentumTensor();
         pop_momentum_tensor.zero();
         interpolator(pop.domainParticles(), pop_momentum_tensor, layout, pop.mass());
-    };
+    }
 
     // after the schedules, so the level ghost contributions are not summed across patches
-    auto interpolate_ghost(auto& pop, auto& layout)
+    void interpolate_ghost(auto& pop, auto& layout)
     {
         interpolator(pop.levelGhostParticlesOld(), pop.momentumTensor(), layout, pop.mass());
-    };
+    }
 
     FluidWriter& h5Writer;
     core::MomentumTensorInterpolator<dimension, interp_order> interpolator{};
