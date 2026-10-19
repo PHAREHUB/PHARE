@@ -27,6 +27,7 @@ class BaseMHDTimestepper
 public:
     using MHDStateT = MHDModel::state_type;
     using FluxT     = core::AllFluxes<FieldT, VecFieldT>;
+    using SourcesT  = core::MHDSources<FieldT, VecFieldT>;
     using level_t   = MHDModel::level_t;
     using Messenger = MessengerT;
 
@@ -46,6 +47,8 @@ public:
                          {"timeB_fz", core::MHDQuantity::Vector::VecFlux_z},
                          {"timeEtot_fz", core::MHDQuantity::Scalar::ScalarFlux_z}}
         , butcherE_{"timeE", core::MHDQuantity::Vector::E}
+        , butcherSources_{{"timeB1_source", core::MHDQuantity::Vector::B1},
+                          {"timeEtot1_source", core::MHDQuantity::Scalar::Etot1}}
     {
         for (std::size_t i = 0; i < n_extra_states; ++i)
             extra_states_.emplace_back("state" + std::to_string(i + 1));
@@ -53,8 +56,8 @@ public:
 
     virtual ~BaseMHDTimestepper() = default;
 
-    virtual void operator()(MHDModel& model, MHDStateT& state, FluxT& fluxes, Messenger& bc,
-                            level_t& level, double currentTime, double newTime)
+    virtual void operator()(MHDModel& model, MHDStateT& state, FluxT& fluxes, SourcesT& sources,
+                            Messenger& bc, level_t& level, double currentTime, double newTime)
         = 0;
 
     virtual void registerResources(MHDModel& model)
@@ -74,20 +77,20 @@ public:
         {
             info.ghostDensity.push_back(s.rho.name());
             info.ghostMomentum.push_back(s.rhoV.name());
-            info.ghostTotalEnergy.push_back(s.Etot.name());
+            info.ghostTotalEnergy.push_back(s.Etot1.name());
             info.ghostElectric.push_back(s.E.name());
-            info.ghostMagnetic.push_back(s.B.name());
+            info.ghostMagnetic.push_back(s.B1.name());
         }
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(butcherFluxes_, butcherE_);
+        return std::forward_as_tuple(butcherFluxes_, butcherE_, butcherSources_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(butcherFluxes_, butcherE_);
+        return std::forward_as_tuple(butcherFluxes_, butcherE_, butcherSources_);
     }
 
     NO_DISCARD std::vector<MHDStateT>& getRunTimeResourcesViewList() { return extra_states_; }
@@ -101,31 +104,39 @@ public:
 
     auto exposeFluxes() const { return std::forward_as_tuple(butcherFluxes_, butcherE_); }
 
+    auto& exposeSources() { return butcherSources_; }
+
+    auto const& exposeSources() const { return butcherSources_; }
+
 protected:
     void resetButcherFluxes_(MHDModel& model, auto& level)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_))
+        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_, butcherSources_))
         {
             butcherFluxes_.zero();
             butcherE_.zero();
+            butcherSources_.zero();
         }
     }
 
-    void accumulateButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
-                                  double const coef = 1.0)
+    void accumulateButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& sources,
+                                  auto& level, double const coef = 1.0)
     {
         auto& rm = *model.resourcesManager;
-        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_, fluxes, E))
+        for (auto& _ :
+             rm.enumerate(level, butcherFluxes_, butcherE_, butcherSources_, fluxes, E, sources))
         {
             core::operate<core::PlusEqualsProduct>(butcherFluxes_, fluxes, coef);
             core::operate<core::PlusEqualsProduct>(butcherE_, E, coef);
+            core::operate<core::PlusEqualsProduct>(butcherSources_, sources, coef);
         }
     }
 
     std::vector<MHDStateT> extra_states_;
     core::AllFluxes<FieldT, VecFieldT> butcherFluxes_;
     VecFieldT butcherE_;
+    SourcesT butcherSources_;
 };
 
 

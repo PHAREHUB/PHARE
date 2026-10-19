@@ -6,6 +6,7 @@
 
 #include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/primite_conservative_converter/mhd_conversion.hpp"
 
 namespace PHARE::core
 {
@@ -23,16 +24,6 @@ inline auto vToRhoV(auto const& rho, auto const& V)
     return vToRhoV(rho, V[0], V[1], V[2]);
 }
 
-inline auto eosPToEtot(double const gamma, auto const& rho, auto const& vx, auto const& vy,
-                       auto const& vz, auto const& bx, auto const& by, auto const& bz,
-                       auto const& p)
-{
-    auto const v2 = vx * vx + vy * vy + vz * vz;
-    auto const b2 = bx * bx + by * by + bz * bz;
-    return p / (gamma - 1.0) + 0.5 * rho * v2 + 0.5 * b2;
-}
-
-
 template<typename GridLayout>
 class ToConservativeConverter
 {
@@ -47,14 +38,14 @@ public:
     }
 
     template<typename Field, typename VecField>
-    void operator()(Field const& rho, VecField const& V, VecField const& B, Field const& P,
-                    VecField& rhoV, Field& Etot) const
+    void operator()(Field const& rho, VecField const& V, VecField const& B1, Field const& P,
+                    VecField& rhoV, Field& Etot1) const
     {
         layout_.evalOnGhostBox(rho,
                                [&](auto&... args) mutable { vToRhoV_(rho, V, rhoV, {args...}); });
 
         layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
-            eosPToEtot_(gamma_, rho, V, B, P, Etot, {args...});
+            eosPToEtot1_(gamma_, rho, V, B1, P, Etot1, {args...});
         });
     }
 
@@ -78,26 +69,24 @@ private:
     }
 
     template<typename Field, typename VecField>
-    static void eosPToEtot_(double const gamma, Field const& rho, VecField const& V,
-                            VecField const& B, Field const& P, Field& Etot,
-                            MeshIndex<Field::dimension> index)
+    static void eosPToEtot1_(double const gamma, Field const& rho, VecField const& V,
+                             VecField const& B1, Field const& P, Field& Etot1,
+                             MeshIndex<Field::dimension> index)
     {
         auto const& Vx = V(Component::X);
         auto const& Vy = V(Component::Y);
         auto const& Vz = V(Component::Z);
 
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
+        auto const& B1x = B1(Component::X);
+        auto const& B1y = B1(Component::Y);
+        auto const& B1z = B1(Component::Z);
 
+        auto const b1x = GridLayout::template project<Scalar::Bx, Scalar::rho>(B1x, index);
+        auto const b1y = GridLayout::template project<Scalar::By, Scalar::rho>(B1y, index);
+        auto const b1z = GridLayout::template project<Scalar::Bz, Scalar::rho>(B1z, index);
 
-
-        auto const bx = GridLayout::template project<Scalar::Bx, Scalar::rho>(Bx, index);
-        auto const by = GridLayout::template project<Scalar::By, Scalar::rho>(By, index);
-        auto const bz = GridLayout::template project<Scalar::Bz, Scalar::rho>(Bz, index);
-
-        Etot(index)
-            = eosPToEtot(gamma, rho(index), Vx(index), Vy(index), Vz(index), bx, by, bz, P(index));
+        Etot1(index) = eosPToEtot1(gamma, rho(index), Vx(index), Vy(index), Vz(index), b1x, b1y,
+                                   b1z, P(index));
     }
 
 private:

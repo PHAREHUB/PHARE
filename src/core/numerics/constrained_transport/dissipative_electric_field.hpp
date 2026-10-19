@@ -2,6 +2,7 @@
 #define PHARE_CORE_NUMERICS_CONSTRAINED_TRANSPORT_DISSIPATIVE_ELECTRIC_FIELD_HPP
 
 #include "core/def.hpp"
+#include "core/numerics/external_field_projection.hpp"
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/numerics/differential_operators.hpp"
 #include "core/utilities/index/index.hpp"
@@ -53,11 +54,11 @@ public:
     {
     }
 
-    void operator()(auto& dissipative_electric_state, auto const& mhd_state) const
+    void operator()(auto& dissipative_electric_state, auto const& mhd_state, auto const* B0) const
     {
         auto& E         = dissipative_electric_state.E();
         auto const& J   = mhd_state.J;
-        auto const& B   = mhd_state.B;
+        auto const& B1  = mhd_state.B1;
         auto const& rho = mhd_state.rho;
 
         Constexprifier{isResistive(), isHyperResistive(),
@@ -72,7 +73,7 @@ public:
                     if constexpr (isResistive)
                         e += eta * Jc(idx);
                     if constexpr (isHyperResistive)
-                        e -= hyper_coef_<component, hyper>(B, rho, idx)
+                        e -= hyper_coef_<component, hyper>(B1, B0, rho, idx)
                              * laplacian(layout_, Jc, idx);
                     Ec(idx) = e;
                 });
@@ -82,7 +83,8 @@ public:
 
 private:
     template<auto component, HyperMode hyper>
-    double hyper_coef_(auto const& B, auto const& rho, MeshIndex<dimension> idx) const
+    double hyper_coef_(auto const& B1, auto const* B0, auto const& rho,
+                       MeshIndex<dimension> idx) const
     {
         if constexpr (hyper == HyperMode::constant)
             return nu;
@@ -91,15 +93,16 @@ private:
             auto const& meshSize = layout_.meshSize();
             auto const dx        = *std::min_element(meshSize.begin(), meshSize.end());
 
+            using Scalar = MHDQuantity::Scalar;
+
             auto coef = [&]<auto dst>() {
-                auto const bx = GridLayout::template project<MHDQuantity::Scalar::Bx, dst>(
-                    B(Component::X), idx);
-                auto const by = GridLayout::template project<MHDQuantity::Scalar::By, dst>(
-                    B(Component::Y), idx);
-                auto const bz = GridLayout::template project<MHDQuantity::Scalar::Bz, dst>(
-                    B(Component::Z), idx);
-                auto const n
-                    = GridLayout::template project<MHDQuantity::Scalar::rho, dst>(rho, idx);
+                auto const bx = GridLayout::template project<Scalar::Bx, dst>(B1(Component::X), idx)
+                                + projectB0<GridLayout, Scalar::Bx, dst>(B0, Component::X, idx);
+                auto const by = GridLayout::template project<Scalar::By, dst>(B1(Component::Y), idx)
+                                + projectB0<GridLayout, Scalar::By, dst>(B0, Component::Y, idx);
+                auto const bz = GridLayout::template project<Scalar::Bz, dst>(B1(Component::Z), idx)
+                                + projectB0<GridLayout, Scalar::Bz, dst>(B0, Component::Z, idx);
+                auto const n  = GridLayout::template project<Scalar::rho, dst>(rho, idx);
                 auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);
             };

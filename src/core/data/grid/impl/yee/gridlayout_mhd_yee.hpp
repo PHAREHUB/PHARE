@@ -67,13 +67,18 @@ public:
         std::array<QtyCentering, NBR_COMPO> const By = {{data.dual, data.primal, data.dual}};
         std::array<QtyCentering, NBR_COMPO> const Bz = {{data.dual, data.dual, data.primal}};
 
+        std::array<QtyCentering, NBR_COMPO> const B1x = {{data.primal, data.dual, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const B1y = {{data.dual, data.primal, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const B1z = {{data.dual, data.dual, data.primal}};
+
         std::array<QtyCentering, NBR_COMPO> const P = {{data.dual, data.dual, data.dual}};
 
         std::array<QtyCentering, NBR_COMPO> const rhoVx = {{data.dual, data.dual, data.dual}};
         std::array<QtyCentering, NBR_COMPO> const rhoVy = {{data.dual, data.dual, data.dual}};
         std::array<QtyCentering, NBR_COMPO> const rhoVz = {{data.dual, data.dual, data.dual}};
 
-        std::array<QtyCentering, NBR_COMPO> const Etot = {{data.dual, data.dual, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const Etot  = {{data.dual, data.dual, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const Etot1 = {{data.dual, data.dual, data.dual}};
 
         std::array<QtyCentering, NBR_COMPO> const Ex = {{data.dual, data.primal, data.primal}};
         std::array<QtyCentering, NBR_COMPO> const Ey = {{data.primal, data.dual, data.primal}};
@@ -114,6 +119,8 @@ public:
         std::array<QtyCentering, NBR_COMPO> const VecFluxZ_z
             = {{data.dual, data.dual, data.primal}};
 
+        std::array<QtyCentering, NBR_COMPO> const divB = {{data.dual, data.dual, data.dual}};
+
         std::array<QtyCentering, NBR_COMPO> const ScalarAllPrimal
             = {{data.primal, data.primal, data.primal}};
 
@@ -133,8 +140,12 @@ public:
             {Qty::Bx, Bx},
             {Qty::By, By},
             {Qty::Bz, Bz},
+            {Qty::B1x, B1x},
+            {Qty::B1y, B1y},
+            {Qty::B1z, B1z},
             {Qty::P, P},
             {Qty::Etot, Etot},
+            {Qty::Etot1, Etot1},
             {Qty::rhoVx, rhoVx},
             {Qty::rhoVy, rhoVy},
             {Qty::rhoVz, rhoVz},
@@ -156,6 +167,7 @@ public:
             {Qty::VecFluxX_z, VecFluxX_z},
             {Qty::VecFluxY_z, VecFluxY_z},
             {Qty::VecFluxZ_z, VecFluxZ_z},
+            {Qty::divB, divB},
             {Qty::ScalarAllPrimal, ScalarAllPrimal},
             {Qty::VecAllPrimalX, VecAllPrimalX},
             {Qty::VecAllPrimalY, VecAllPrimalY},
@@ -242,9 +254,14 @@ struct GridLayoutImplYee<options>::GridData
     static constexpr std::uint32_t iBy = static_cast<std::uint32_t>(MHDQuantity::Scalar::By);
     static constexpr std::uint32_t iBz = static_cast<std::uint32_t>(MHDQuantity::Scalar::Bz);
 
+    static constexpr std::uint32_t iB1x = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1x);
+    static constexpr std::uint32_t iB1y = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1y);
+    static constexpr std::uint32_t iB1z = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1z);
+
     static constexpr std::uint32_t iP = static_cast<std::uint32_t>(MHDQuantity::Scalar::P);
 
     static constexpr std::uint32_t iEtot = static_cast<std::uint32_t>(MHDQuantity::Scalar::Etot);
+    static constexpr std::uint32_t iEtot1 = static_cast<std::uint32_t>(MHDQuantity::Scalar::Etot1);
 
     static constexpr std::uint32_t irhoVx = static_cast<std::uint32_t>(MHDQuantity::Scalar::rhoVx);
     static constexpr std::uint32_t irhoVy = static_cast<std::uint32_t>(MHDQuantity::Scalar::rhoVy);
@@ -285,6 +302,8 @@ struct GridLayoutImplYee<options>::GridData
         = static_cast<std::uint32_t>(MHDQuantity::Scalar::VecFluxY_z);
     static constexpr std::uint32_t iVecFluxZ_z
         = static_cast<std::uint32_t>(MHDQuantity::Scalar::VecFluxZ_z);
+
+    static constexpr std::uint32_t idivB = static_cast<std::uint32_t>(MHDQuantity::Scalar::divB);
 
     static constexpr std::uint32_t iScalarAllPrimal
         = static_cast<std::uint32_t>(MHDQuantity::Scalar::ScalarAllPrimal);

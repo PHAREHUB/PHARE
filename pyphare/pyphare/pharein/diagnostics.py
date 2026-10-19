@@ -288,9 +288,10 @@ class MHDDiagnostics(Diagnostics):
         * "P" - thermal pressure
         * "rhoV" - momentum density
         * "Etot" - total energy density
+        * "Etot1" - energy density without the external field contributions
     """
 
-    mhd_quantities = ("rho", "V", "P", "rhoV", "Etot")
+    mhd_quantities = ("rho", "V", "P", "rhoV", "Etot", "Etot1")
     type = "mhd"
 
     def __init__(self, **kwargs):
@@ -339,10 +340,12 @@ class ElectromagDiagnostics(Diagnostics):
     **quantity**, one of: "E" (electric field), "B" (magnetic field),
     "B0" (external magnetic field, requires a
     :class:`~pyphare.pharein.DipoleExternalField` or a
-    :class:`~pyphare.pharein.UserDefinedExternalField`).
+    :class:`~pyphare.pharein.UserDefinedExternalField`), and for MHD only "B1" (magnetic
+    field minus the external field) and "divB" (divergence of the magnetic field, vtkhdf
+    format only).
     """
 
-    em_quantities = ("E", "B", "B0")
+    em_quantities = ("E", "B", "B0", "B1", "divB")
     type = "electromag"
 
     def __init__(self, **kwargs):

@@ -65,7 +65,7 @@ template<typename H5Writer>
 void MHDDiagnosticWriter<H5Writer>::createFiles(DiagnosticProperties& diagnostic)
 {
     std::string tree{"/mhd/"};
-    checkCreateFileFor_(diagnostic, fileData_, tree, "rho", "V", "P", "rhoV", "Etot");
+    checkCreateFileFor_(diagnostic, fileData_, tree, "rho", "V", "P", "rhoV", "Etot", "Etot1");
 }
 
 template<typename H5Writer>
@@ -76,14 +76,18 @@ void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
     auto minLvl     = h5Writer.minLevel;
     auto maxLvl     = h5Writer.maxLevel;
 
-    auto& rho  = modelView.getRho();
-    auto& V    = modelView.getV();
-    auto& B    = modelView.getB();
-    auto& P    = modelView.getP();
-    auto& rhoV = modelView.getRhoV();
-    auto& Etot = modelView.getEtot();
+    auto& rho   = modelView.getRho();
+    auto& V     = modelView.getV();
+    auto& B1    = modelView.getB1();
+    auto& P     = modelView.getP();
+    auto& rhoV  = modelView.getRhoV();
+    auto& Etot1 = modelView.getEtot1();
 
     std::string tree{"/mhd/"};
+    if (isActiveDiag(diagnostic, tree, "Etot"))
+        modelView.visitHierarchy([&](GridLayout& layout, std::string,
+                                     std::size_t) { modelView.computeTotalEtot(layout); },
+                                 minLvl, maxLvl);
     if (isActiveDiag(diagnostic, tree, "V"))
     {
         auto computeVelocity = [&](GridLayout& layout, std::string patchID, std::size_t iLevel) {
@@ -99,7 +103,7 @@ void MHDDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
                                    .template to<double>(); // or FloatType if we want to expose that
                                                            // to DiagnosticProperties
             core::ToPrimitiveConverter<GridLayout> toPrim{layout};
-            toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
+            toPrim.eosEtot1ToPOnGhostBox(gamma, rho, rhoV, B1, Etot1, P);
         };
         modelView.visitHierarchy(computePressure, minLvl, maxLvl);
     }
@@ -116,6 +120,7 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
     auto& P                = h5Writer.modelView().getP();
     auto& rhoV             = h5Writer.modelView().getRhoV();
     auto& Etot             = h5Writer.modelView().getEtot();
+    auto& Etot1            = h5Writer.modelView().getEtot1();
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
     auto setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
@@ -150,6 +155,8 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
         infoVF(rhoV, "rhoV", patchAttributes[lvlPatchID]["mhd"]);
     if (isActiveDiag(diagnostic, tree, "Etot"))
         infoDS(Etot, "Etot", patchAttributes[lvlPatchID]["mhd"]);
+    if (isActiveDiag(diagnostic, tree, "Etot1"))
+        infoDS(Etot1, "Etot1", patchAttributes[lvlPatchID]["mhd"]);
 }
 
 template<typename H5Writer>
@@ -201,6 +208,8 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
             initVF(path, attr["mhd"], "rhoV", null);
         if (isActiveDiag(diagnostic, tree, "Etot"))
             initDS(path, attr["mhd"], "Etot", null);
+        if (isActiveDiag(diagnostic, tree, "Etot1"))
+            initDS(path, attr["mhd"], "Etot1", null);
     };
 
     initDataSets_(patchIDs, patchAttributes, maxLevel, initPatch);
@@ -215,6 +224,7 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
     auto& P        = h5Writer.modelView().getP();
     auto& rhoV     = h5Writer.modelView().getRhoV();
     auto& Etot     = h5Writer.modelView().getEtot();
+    auto& Etot1    = h5Writer.modelView().getEtot1();
     auto& h5file   = *fileData_.at(diagnostic.quantity);
 
     auto hasNaN = [](auto const& container) {
@@ -253,6 +263,8 @@ void MHDDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnostic)
         writeTF(path + "rhoV", rhoV);
     if (isActiveDiag(diagnostic, tree, "Etot"))
         writeDS(path + "Etot", Etot);
+    if (isActiveDiag(diagnostic, tree, "Etot1"))
+        writeDS(path + "Etot1", Etot1);
 }
 
 template<typename H5Writer>
