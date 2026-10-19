@@ -58,7 +58,7 @@ def cropToFieldData(fine_data, field):
             field.ghosts_nbr[2] : -field.ghosts_nbr[2],
         ]
     fine_layout = fine_layout_from(field)
-    return FieldData(fine_layout, field.field_name, data=fine_data)
+    return FieldData(fine_layout, field.name, data=fine_data)
 
 
 def refine_electric(field, **kwargs):
@@ -77,7 +77,7 @@ def refine_electric(field, **kwargs):
         # the algo for electric refinement is that fine edges falling on top of coarse
         # ones share their value. So here we just take the coarse value whatever the
         # centering.
-        print(field.field_name)
+        print(field.name)
         print(field.box.shape)
         print(field.dataset.shape)
         fine_data[::2] = coarse_data
