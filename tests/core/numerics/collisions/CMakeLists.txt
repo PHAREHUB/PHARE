@@ -17,3 +17,7 @@ foreach(target test-collisions test-collisions-relaxation)
   add_no_mpi_phare_test(${target} ${CMAKE_CURRENT_BINARY_DIR})
 endforeach()
 
+# relaxation runs, about a minute in debug, are kept out of the PR tier
+if(TEST test-collisions-relaxation)
+  set_property(TEST test-collisions-relaxation APPEND PROPERTY LABELS nightly)
+endif()

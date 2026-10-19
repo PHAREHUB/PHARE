@@ -6,6 +6,7 @@
 
 #include <cmath>
 #include <map>
+#include <numeric>
 #include <random>
 #include <set>
 
@@ -31,12 +32,12 @@ TEST(CollisionRandom, neighbourCellsHaveUnrelatedStreams)
 {
     // a stream must not be a shifted copy of its neighbour's
     auto const key = std::uint64_t{12345};
-    std::set<std::uint64_t> draws;
+    std::set<double> draws;
     for (std::uint64_t cell = 0; cell < 64; ++cell)
     {
         auto stream = Stream{combine(key, cell)};
         for (int i = 0; i < 64; ++i)
-            draws.insert(splitmix64(stream.key + stream.index++ * 0x9e3779b97f4a7c15ULL));
+            draws.insert(stream());
     }
     EXPECT_EQ(draws.size(), 64u * 64u);
 }
@@ -193,6 +194,96 @@ TEST(CollisionPairing, interPairsMeetEveryLargeOnceAndShareTheSmallEvenly)
                 EXPECT_LE(count, nLarge / nSmall + 1);
             }
         }
+}
+
+
+
+// Each pair adds strength x larger weight x acceptance to the scattering of each partner.
+// Averaged over shuffles, a particle must see the density of the particles it can scatter on:
+// the others of its group, skipping its siblings (no relative velocity), or the other group.
+TEST(CollisionPairing, intraPairsGiveEachParticleTheDensityOfTheOthers)
+{
+    std::mt19937_64 rng{9};
+    std::uniform_real_distribution<double> uniform{0.01, 1.};
+    auto constexpr shuffles = 20000;
+
+    for (std::size_t const n : {2u, 3u, 4u, 5u, 7u})
+    {
+        std::vector<double> weight(n);
+        std::vector<std::size_t> sibling(n), order(n);
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            weight[i]  = uniform(rng);
+            sibling[i] = order[i] = i;
+        }
+        if (n >= 4) // children of one split parent: same weight, same velocity
+        {
+            weight[1]  = weight[0];
+            sibling[1] = 0;
+        }
+
+        std::vector<double> seen(n, 0.);
+        for (int shuffle = 0; shuffle < shuffles; ++shuffle)
+        {
+            std::shuffle(order.begin(), order.end(), rng);
+            forEachIntraPair(n, [&](auto const i, auto const j, double const factor) {
+                auto const a = order[i], b = order[j];
+                if (sibling[a] == sibling[b])
+                    return;
+                auto const [pA, pB] = acceptance(weight[a], weight[b]);
+                auto const strength = factor * (n - 1) * std::max(weight[a], weight[b]);
+                seen[a] += strength * pA;
+                seen[b] += strength * pB;
+            });
+        }
+
+        for (std::size_t i = 0; i < n; ++i)
+        {
+            double expected = 0;
+            for (std::size_t j = 0; j < n; ++j)
+                if (sibling[j] != sibling[i])
+                    expected += weight[j];
+            EXPECT_NEAR(seen[i] / shuffles, expected, 0.03 * expected) << "n " << n << " i " << i;
+        }
+    }
+}
+
+TEST(CollisionPairing, interPairsGiveEachParticleTheDensityOfTheOtherGroup)
+{
+    std::mt19937_64 rng{10};
+    std::uniform_real_distribution<double> uniform{0.01, 1.};
+    auto constexpr shuffles = 20000;
+
+    for (auto const [nLarge, nSmall] : {std::pair{5u, 2u}, {7u, 3u}, {4u, 4u}, {6u, 1u}})
+    {
+        std::vector<double> wLarge(nLarge), wSmall(nSmall);
+        std::vector<std::size_t> oLarge(nLarge), oSmall(nSmall);
+        for (std::size_t i = 0; i < nLarge; ++i)
+            wLarge[i] = uniform(rng), oLarge[i] = i;
+        for (std::size_t i = 0; i < nSmall; ++i)
+            wSmall[i] = uniform(rng), oSmall[i] = i;
+
+        std::vector<double> seenLarge(nLarge, 0.), seenSmall(nSmall, 0.);
+        for (int shuffle = 0; shuffle < shuffles; ++shuffle)
+        {
+            std::shuffle(oLarge.begin(), oLarge.end(), rng);
+            std::shuffle(oSmall.begin(), oSmall.end(), rng);
+            forEachInterPair(nLarge, nSmall, [&](auto const i, auto const j) {
+                auto const a = oLarge[i], b = oSmall[j];
+                auto const [pA, pB] = acceptance(wLarge[a], wSmall[b]);
+                auto const strength = nSmall * std::max(wLarge[a], wSmall[b]);
+                seenLarge[a] += strength * pA;
+                seenSmall[b] += strength * pB;
+            });
+        }
+
+        auto const nL = std::accumulate(wLarge.begin(), wLarge.end(), 0.);
+        auto const nS = std::accumulate(wSmall.begin(), wSmall.end(), 0.);
+        for (auto const seen : seenLarge)
+            EXPECT_NEAR(seen / shuffles, nS, 0.03 * nS);
+        for (auto const seen : seenSmall)
+            EXPECT_NEAR(seen / shuffles, nL, 0.03 * nL);
+    }
 }
 
 
