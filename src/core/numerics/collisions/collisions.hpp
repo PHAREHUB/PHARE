@@ -9,10 +9,12 @@
 #include <algorithm>
 #include <array>
 #include <bit>
+#include <cassert>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <numbers>
+#include <utility>
 #include <vector>
 
 
@@ -30,6 +32,11 @@
  *
  * Random draws are pure functions of (seed, level, step, cell, block, draw index), so results do
  * not depend on how the level is split into patches and ranks.
+ *
+ * Accuracy: relaxation rates converge to the Landau-Fokker-Planck ones as dt -> 0, the error
+ * growing like sqrt(s_th) (Wang et al. 2008), s_th being s at the thermal relative speed:
+ * about 0.23 sqrt(s_th) for Nanbu's law, half that for Bobylev's, twice that with weights
+ * spread over two decades (measured on temperature isotropization, see the tests).
  */
 namespace PHARE::core
 {
@@ -46,6 +53,7 @@ struct CollisionInfo
     NO_DISCARD bool isActive() const { return nu0 > 0.; }
     NO_DISCARD bool collidesAt(std::int64_t const step) const
     {
+        assert(every > 0);
         return isActive() and step % every == 0;
     }
 };
@@ -142,10 +150,10 @@ namespace collisions
                         bool const updateB)
     {
         std::array<double, 3> const u{va[0] - vb[0], va[1] - vb[1], va[2] - vb[2]};
-        auto const uPerp  = std::hypot(u[0], u[1]);
-        auto const uNorm  = std::hypot(uPerp, u[2]);
+        auto const uPerp  = std::sqrt(u[0] * u[0] + u[1] * u[1]);
+        auto const uNorm  = std::sqrt(uPerp * uPerp + u[2] * u[2]);
         auto const sinChi = std::sqrt(std::max(0., 1. - cosChi * cosChi));
-        auto const cosPhi = std::cos(phi);
+        auto const cosPhi = std::cos(phi); // the compiler fuses these into one sincos
         auto const sinPhi = std::sin(phi);
 
         std::array<double, 3> du;
@@ -197,6 +205,26 @@ namespace collisions
         for (std::size_t i = 0; i < nLarge; ++i)
             fn(i, i % nSmall);
     }
+
+    // Fisher-Yates, drawing from `draw`
+    void shuffle(auto& range, Stream& draw)
+    {
+        for (auto i = range.size(); i > 1; --i)
+            std::swap(range[i - 1], range[std::min(static_cast<std::size_t>(draw() * i), i - 1)]);
+    }
+
+    // probabilities that each partner of a pair is deflected, s being built on the larger
+    // weight: the lighter partner always, the heavier one with the ratio of the weights
+    struct Acceptance
+    {
+        double a, b;
+    };
+
+    NO_DISCARD inline Acceptance acceptance(double const wa, double const wb)
+    {
+        auto const wMax = std::max(wa, wb);
+        return {wb / wMax, wa / wMax};
+    }
 } // namespace collisions
 
 
@@ -215,6 +243,7 @@ class Collisions : public CollisionInfo
         std::uint64_t key;
         ParticleArray_t* particles;
         std::size_t index;
+        std::uint64_t population;
     };
 
     struct Group
@@ -269,27 +298,42 @@ private:
         return key;
     }
 
-    // shuffles a group: sorted by a hash of the block key and of every bit of the particle,
-    // a random order that does not depend on how the particles are stored
-    static void shuffle_(std::vector<Slot>& slots, std::uint64_t const blockKey)
+    // sorts a group by a hash of the key, of the population and of every bit of the particle:
+    // a random order that does not depend on how the particles are stored. Only bitwise
+    // identical particles of one population tie, and their order does not matter.
+    void sortRandomly_(std::vector<Slot>& slots, std::uint64_t const blockKey)
     {
-        for (auto& slot : slots)
-        {
-            auto const& particle = (*slot.particles)[slot.index];
-            auto key             = blockKey;
-            for (auto const x : particle.delta)
-                key = collisions::combine(key, std::bit_cast<std::uint64_t>(x));
+        // words folded by an odd multiplication, a bijection, then one full mix
+        auto const hash = [&](Slot const& slot) {
+            auto h         = blockKey ^ slot.population;
+            auto const add = [&](double const x) {
+                h = (h ^ std::bit_cast<std::uint64_t>(x)) * 0x9e3779b97f4a7c15ULL;
+            };
+            add(slot.weight);
+            for (auto const x : (*slot.particles)[slot.index].delta)
+                add(x);
             for (auto const x : slot.v)
-                key = collisions::combine(key, std::bit_cast<std::uint64_t>(x));
-            slot.key = key;
-        }
-        std::sort(slots.begin(), slots.end(),
-                  [](auto const& a, auto const& b) { return a.key < b.key; });
+                add(x);
+            return collisions::splitmix64(h);
+        };
+
+        order_.clear();
+        for (std::size_t i = 0; i < slots.size(); ++i)
+            order_.emplace_back(hash(slots[i]), i);
+        std::sort(order_.begin(), order_.end());
+
+        sorted_.clear();
+        for (auto const& [_, i] : order_)
+            sorted_.push_back(slots[i]);
+        slots.swap(sorted_);
     }
+
+    static double thermalSpeed_(std::vector<Slot> const& a) { return thermalSpeed_(a, {}); }
 
     static double thermalSpeed_(std::vector<Slot> const& a, std::vector<Slot> const& b)
     {
-        double w = 0, mean[3] = {0, 0, 0}, sq = 0;
+        double w = 0, sq = 0;
+        std::array<double, 3> mean{};
         for (auto const* slots : {&a, &b})
             for (auto const& slot : *slots)
             {
@@ -308,16 +352,16 @@ private:
     void collidePair_(Slot& a, Slot& b, Group const& ga, Group const& gb, double const strength,
                       double const vth, collisions::Stream& draw)
     {
-        std::array<double, 3> const u{a.v[0] - b.v[0], a.v[1] - b.v[1], a.v[2] - b.v[2]};
-        auto const uNorm = std::sqrt(u[0] * u[0] + u[1] * u[1] + u[2] * u[2]);
-        auto const vNorm = std::hypot(a.v[0], a.v[1], a.v[2]) + std::hypot(b.v[0], b.v[1], b.v[2]);
+        auto const squared = [](auto const& x) { return x[0] * x[0] + x[1] * x[1] + x[2] * x[2]; };
+        auto const uSq     = squared(std::array{a.v[0] - b.v[0], a.v[1] - b.v[1], a.v[2] - b.v[2]});
 
         ++counters_.pairs;
-        if (uNorm <= 1e-14 * vNorm)
+        if (uSq <= 1e-28 * (squared(a.v) + squared(b.v))) // split siblings
         {
             ++counters_.skipped;
             return;
         }
+        auto const uNorm = std::sqrt(uSq);
 
         auto const wMax = std::max(a.weight, b.weight);
         auto const mab  = ga.mass * gb.mass / (ga.mass + gb.mass);
@@ -326,10 +370,11 @@ private:
         if (s > 1. and uNorm > 0.1 * vth)
             ++counters_.large_s;
 
-        auto const cosChi  = collisions::cosChi<law>(s, draw);
-        auto const phi     = 2. * std::numbers::pi * draw();
-        auto const updateA = b.weight >= wMax or draw() * wMax < b.weight;
-        auto const updateB = a.weight >= wMax or draw() * wMax < a.weight;
+        auto const cosChi   = collisions::cosChi<law>(s, draw);
+        auto const phi      = 2. * std::numbers::pi * draw();
+        auto const [pA, pB] = collisions::acceptance(a.weight, b.weight);
+        auto const updateA  = pA >= 1. or draw() < pA;
+        auto const updateB  = pB >= 1. or draw() < pB;
         collisions::scatter(a.v, b.v, ga.mass, gb.mass, cosChi, phi, updateA, updateB);
     }
 
@@ -339,16 +384,18 @@ private:
         for (auto& group : groups_)
             group.slots.clear();
 
-        std::size_t ipop = 0;
+        std::uint64_t ipop = 0;
         for (auto& pop : ions)
         {
             auto& particles = pop.domainParticles();
-            auto& slots     = groups_[groupOf_[ipop++]].slots;
+            auto& slots     = groups_[groupOf_[ipop]].slots;
             for (auto const index : particles.cellIndexes(cell))
                 slots.push_back(
-                    {particles[index].v, particles[index].weight, 0, &particles, index});
+                    {particles[index].v, particles[index].weight, 0, &particles, index, ipop});
+            ++ipop;
         }
 
+        // one sort per group, then each block between groups shuffles that order further
         std::uint64_t block = 0;
         for (auto& g : groups_)
         {
@@ -360,8 +407,8 @@ private:
             auto const blockKey = collisions::combine(key, block);
             auto draw           = collisions::Stream{blockKey};
             auto const n        = slots.size();
-            auto const vth      = thermalSpeed_(slots, {});
-            shuffle_(slots, blockKey);
+            auto const vth      = thermalSpeed_(slots);
+            sortRandomly_(slots, blockKey);
             collisions::forEachIntraPair(n, [&](auto const i, auto const j, double const factor) {
                 collidePair_<law>(slots[i], slots[j], g, g, factor * (n - 1) * dt, vth, draw);
             });
@@ -376,11 +423,10 @@ private:
                 if (g.slots.empty() or h.slots.empty())
                     continue;
 
-                auto const blockKey = collisions::combine(key, block);
-                auto draw           = collisions::Stream{blockKey};
-                auto const vth      = thermalSpeed_(g.slots, h.slots);
-                shuffle_(g.slots, blockKey);
-                shuffle_(h.slots, collisions::combine(blockKey, block));
+                auto draw      = collisions::Stream{collisions::combine(key, block)};
+                auto const vth = thermalSpeed_(g.slots, h.slots);
+                collisions::shuffle(g.slots, draw);
+                collisions::shuffle(h.slots, draw);
 
                 auto const gIsLarge = g.slots.size() >= h.slots.size();
                 auto& large         = gIsLarge ? g : h;
@@ -399,7 +445,9 @@ private:
     }
 
     std::vector<Group> groups_;
-    std::vector<std::size_t> groupOf_; // population index -> group index
+    std::vector<std::size_t> groupOf_;                         // population index -> group index
+    std::vector<std::pair<std::uint64_t, std::size_t>> order_; // sort scratch
+    std::vector<Slot> sorted_;                                 // sort scratch
     CollisionCounters counters_;
 };
 
