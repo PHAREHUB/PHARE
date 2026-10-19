@@ -40,6 +40,7 @@ namespace amr
         std::string modelMagnetic;
         std::string modelElectric;
         std::string modelIonBulkVelocity;
+        std::string modelIonChargeFlux;
         std::string modelIonDensity;
 
         // store names of vector fields that need to be initialized by refinement
