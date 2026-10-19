@@ -180,6 +180,16 @@ std::vector<tagged_component_t<Model>> resolveQuantity(Model& model, std::string
                              + "' is unknown for this model, allowed: " + allowed);
 }
 
+
+template<typename Model>
+auto resolveQuantities(Model& model, std::vector<QuantityThreshold> const& quantities)
+{
+    std::vector<std::pair<std::vector<tagged_component_t<Model>>, double>> resolved;
+    for (auto const& [name, threshold] : quantities)
+        resolved.emplace_back(resolveQuantity(model, name), threshold);
+    return resolved;
+}
+
 } // namespace PHARE::amr::tagging
 
 #endif

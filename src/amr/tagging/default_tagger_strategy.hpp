@@ -56,9 +56,7 @@ private:
 template<typename Model>
 void DefaultTaggerStrategy<Model>::tag(Model& model, gridlayout_type const& layout, int* tags) const
 {
-    std::vector<std::pair<components_type, double>> quantities;
-    for (auto const& [name, threshold] : quantities_)
-        quantities.emplace_back(tagging::resolveQuantity(model, name), threshold);
+    auto const quantities = tagging::resolveQuantities(model, quantities_);
 
     auto const exceeds = [&](auto const& criterion) {
         return std::any_of(std::begin(quantities), std::end(quantities), [&](auto const& quantity) {

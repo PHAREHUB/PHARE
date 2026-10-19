@@ -59,6 +59,7 @@ set( SOURCES_INC
      tagging/tagger_strategy.hpp
      tagging/tagging_quantities.hpp
      tagging/default_tagger_strategy.hpp
+     tagging/lohner_tagger_strategy.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
      solvers/solver_mhd.hpp

@@ -11,6 +11,7 @@
 #include "tagger.hpp"
 #include "concrete_tagger.hpp"
 #include "default_tagger_strategy.hpp"
+#include "lohner_tagger_strategy.hpp"
 
 #include <string>
 #include <memory>
@@ -33,6 +34,7 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
 {
     using HT  = ConcreteTagger<Model>;
     using HTS = DefaultTaggerStrategy<Model>;
+    using LTS = LohnerTaggerStrategy<Model>;
 
     if constexpr (solver::is_hybrid_model_v<Model>)
     {
@@ -40,6 +42,8 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
 
         if (methodName == "default")
             return std::make_unique<HT>(std::make_unique<HTS>(dict));
+        if (methodName == "lohner")
+            return std::make_unique<HT>(std::make_unique<LTS>(dict));
     }
     else if constexpr (solver::is_mhd_model_v<Model>)
     {
@@ -47,6 +51,8 @@ TaggerFactory<Model>::make(PHARE::initializer::PHAREDict const& dict)
 
         if (methodName == "default")
             return std::make_unique<HT>(std::make_unique<HTS>(dict));
+        if (methodName == "lohner")
+            return std::make_unique<HT>(std::make_unique<LTS>(dict));
     }
     else
         static_assert(core::dependent_false_v<Model>);

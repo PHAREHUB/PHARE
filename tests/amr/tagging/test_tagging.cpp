@@ -6,6 +6,7 @@
 #include "amr/tagging/tagger_factory.hpp"
 #include "amr/tagging/tagging_quantities.hpp"
 #include "amr/tagging/default_tagger_strategy.hpp"
+#include "amr/tagging/lohner_tagger_strategy.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -768,6 +769,106 @@ TEST(DefaultStrategy, PerQuantityThreshold)
     EXPECT_NE(std::count(low.begin(), low.end(), 1), 0);
     auto const high = strategyTags(model, quantitiesDict({{"rho", 1e10}}));
     EXPECT_EQ(std::count(high.begin(), high.end(), 1), 0);
+}
+
+
+
+template<typename Fn>
+double lohnerOnDualBy(Fn&& fn, std::uint32_t i, double reltol)
+{
+    MockHybridModel<1> model;
+    fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
+              [&](auto const& idx) { return fn(idx[0]); });
+    return lohner::indicator<1>(tagging::resolveQuantity(model, "By"),
+                                std::array<std::uint32_t, 1>{i}, reltol, 1e-30);
+}
+
+TEST(LohnerIndicator, FlatAndLinearRampAreZero)
+{
+    EXPECT_EQ(lohnerOnDualBy([](auto) { return 3.0; }, 10, 0.02), 0.0);
+    EXPECT_EQ(lohnerOnDualBy([](auto i) { return static_cast<double>(i); }, 10, 0.02), 0.0);
+}
+
+TEST(LohnerIndicator, StepNearOne)
+{
+    auto const step = [](auto i) { return i <= 10 ? 0.0 : 1.0; };
+    EXPECT_DOUBLE_EQ(lohnerOnDualBy(step, 10, 0.02), 1.0 / 1.02);
+}
+
+TEST(LohnerIndicator, ReltolDampsSmallVariations)
+{
+    auto const step = [](auto i) { return i <= 10 ? 100.0 : 100.01; };
+    EXPECT_LT(lohnerOnDualBy(step, 10, 0.02), 0.01);
+    EXPECT_GT(lohnerOnDualBy(step, 10, 0.0), 0.9);
+}
+
+TEST(LohnerIndicator, CellCenteredAveragesPrimal)
+{
+    MockHybridModel<1> model;
+    auto& B = model.state.electromag.B;
+    fillField(B.getComponent(PHARE::core::Component::X),
+              [](auto const& idx) { return static_cast<double>(idx[0]); });
+    fillField(B.getComponent(PHARE::core::Component::Y),
+              [](auto const& idx) { return static_cast<double>(idx[0]); });
+    auto const idx = std::array<std::uint32_t, 1>{7};
+    EXPECT_DOUBLE_EQ(lohner::cellCentered<1>(tagging::resolveQuantity(model, "Bx")[0], idx), 7.5);
+    EXPECT_DOUBLE_EQ(lohner::cellCentered<1>(tagging::resolveQuantity(model, "By")[0], idx), 7.0);
+}
+
+
+template<typename Model>
+std::vector<int> lohnerTags(Model& model, PHARE::initializer::PHAREDict const& dict)
+{
+    auto tags = sentinelTags(model);
+    LohnerTaggerStrategy<Model>{dict}.tag(model, model.layout, tags.data());
+    return tags;
+}
+
+TEST(LohnerStrategy, TagsStepNotRamp)
+{
+    MockMHDModel<2> model;
+    fillMHDStep(model, 1., 2.);
+    auto const step = lohnerTags(model, quantitiesDict({{"rho", 0.5}}));
+    expectColumns(model, step, {9, 10}, {0, 1, 2, 3, 4, 5, 6, 13, 14, 15, 16, 17, 18, 19});
+
+    fillField(model.state.rho, [](auto const& idx) { return static_cast<double>(idx[0]); });
+    auto const ramp = lohnerTags(model, quantitiesDict({{"rho", 0.5}}));
+    EXPECT_EQ(std::count(ramp.begin(), ramp.end(), 1), 0);
+    EXPECT_EQ(std::count(ramp.begin(), ramp.end(), -1), 0);
+}
+
+TEST(LohnerStrategy, ParamsFromDict)
+{
+    MockMHDModel<2> model;
+    fillMHDStep(model, 100., 100.01);
+    auto const damped = lohnerTags(model, quantitiesDict({{"rho", 0.5}}));
+    EXPECT_EQ(std::count(damped.begin(), damped.end(), 1), 0);
+
+    auto dict                = quantitiesDict({{"rho", 0.5}});
+    dict["params"]["reltol"] = 0.0;
+    auto const undamped      = lohnerTags(model, dict);
+    expectColumns(model, undamped, {9, 10}, {0, 1, 2, 3, 4, 5, 6, 13, 14, 15, 16, 17, 18, 19});
+}
+
+TEST(TaggerFactory, hybridAndMHDMethods)
+{
+    using hybrid_model = PHARE::solver::PHARE_Types<PHARE::SimOpts{1ul, 1ul, 2ul}>::Hybrid::Model_t;
+    using mhd_model    = PHARE::solver::PHARE_Types<mhdOpts(1)>::MHD::Model_t;
+
+    for (std::string const method : {"default", "lohner"})
+    {
+        PHARE::initializer::PHAREDict dict;
+        dict["hybrid_method"] = method;
+        dict["mhd_method"]    = method;
+        EXPECT_TRUE(TaggerFactory<hybrid_model>::make(dict) != nullptr) << method;
+        EXPECT_TRUE(TaggerFactory<mhd_model>::make(dict) != nullptr) << method;
+    }
+
+    PHARE::initializer::PHAREDict dict;
+    dict["hybrid_method"] = std::string{"nope"};
+    dict["mhd_method"]    = std::string{"nope"};
+    EXPECT_TRUE(TaggerFactory<hybrid_model>::make(dict) == nullptr);
+    EXPECT_TRUE(TaggerFactory<mhd_model>::make(dict) == nullptr);
 }
 
 
