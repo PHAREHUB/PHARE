@@ -257,16 +257,18 @@ void Simulator<opts>::finalize_init(initializer::PHAREDict const& dict)
     auto loadBalancer = std::make_shared<SAMRAI::mesh::CascadePartitioner>(
         SAMRAI::tbox::Dimension{dimension}, "LoadBalancer", loadBalancer_db);
 
-    if (lb_info.active and dict["simulation"]["AMR"]["refinement"].contains("tagging"))
-    {
-        // Load balancers break with refinement boxes - only tagging supported
-        /*
-          P=0000000:Program abort called in file ``/.../SAMRAI/xfer/RefineSchedule.cpp'' at line
-          369 P=0000000:ERROR MESSAGE: P=0000000:RefineSchedule:RefineSchedule error: We are not
-          currently P=0000000:supporting RefineSchedules with the source level finer
-          P=0000000:than the destination level
-        */
+    // Load balancers break with refinement boxes - only tagging supported
+    /*
+      P=0000000:Program abort called in file ``/.../SAMRAI/xfer/RefineSchedule.cpp'' at line
+      369 P=0000000:ERROR MESSAGE: P=0000000:RefineSchedule:RefineSchedule error: We are not
+      currently P=0000000:supporting RefineSchedules with the source level finer
+      P=0000000:than the destination level
+    */
+    if (lb_info.active and !dict["simulation"]["AMR"]["refinement"].contains("tagging"))
+        throw std::runtime_error("LoadBalancer is not supported with refinement boxes");
 
+    if (lb_info.active)
+    {
         if constexpr (has_hybrid_v<opts>)
         {
             if (find_model("HybridModel"))
