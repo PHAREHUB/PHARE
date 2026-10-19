@@ -86,8 +86,6 @@ def config_uni(**kwargs):
     for quantity in ["charge_density", "bulkVelocity"]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-    ph.LoadBalancer(auto=True, mode="nppc", tol=0.05)
-
     return sim
 
 
@@ -182,8 +180,6 @@ def config_td(**kwargs):
 
     for quantity in ["charge_density", "bulkVelocity"]:
         ph.FluidDiagnostics(quantity=quantity, write_timestamps=timestamps)
-
-    ph.LoadBalancer(auto=True, mode="nppc", tol=0.05)
 
     return sim
 
