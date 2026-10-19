@@ -156,7 +156,8 @@ private:
 
 
     // once per run, when more than 1% of this rank's pairs deflect beyond s = 1 at a non thermal
-    // speed, or its blocks fail to restore their energy as often
+    // speed, or its blocks fail to restore their energy as often. The counters add up from the
+    // start of the run, so a problem appearing late is diluted.
     void warnOnCollisions_()
     {
         auto const& counters = collisions_.counters();
