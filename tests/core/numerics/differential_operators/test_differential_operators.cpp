@@ -157,6 +157,11 @@ struct OwnedField
         field.setBuffer(&grid);
     }
 
+    OwnedField(OwnedField const&)            = delete;
+    OwnedField(OwnedField&&)                 = delete;
+    OwnedField& operator=(OwnedField const&) = delete;
+    OwnedField& operator=(OwnedField&&)      = delete;
+
     Model::Grid_t grid;
     Model::Field_t field;
 };
@@ -171,6 +176,11 @@ struct OwnedVecField
     {
         view.setBuffer(&grids);
     }
+
+    OwnedVecField(OwnedVecField const&)            = delete;
+    OwnedVecField(OwnedVecField&&)                 = delete;
+    OwnedVecField& operator=(OwnedVecField const&) = delete;
+    OwnedVecField& operator=(OwnedVecField&&)      = delete;
 
     Model::VecField_t view;
     std::array<typename Model::Grid_t, 3> grids;
@@ -266,7 +276,10 @@ Box_t<Layout> reach(Layout const& layout, Centering_t<Layout> const& src,
 template<typename Box>
 Box intersect(Box const& a, Box const& b)
 {
-    return *(a * b);
+    auto const box = a * b;
+    if (!box)
+        throw std::runtime_error("empty box intersection");
+    return *box;
 }
 
 template<typename Layout>
@@ -358,6 +371,25 @@ using DifferentialOperatorsParams
                        HybridParam<3, 3>, MHDParam<3, Constant>, MHDParam<3, WENOZ>>;
 
 TYPED_TEST_SUITE(DifferentialOperators, DifferentialOperatorsParams);
+
+using LowDimParams  = ::testing::Types<HybridParam<1, 1>, HybridParam<1, 3>, MHDParam<1, Constant>,
+                                       MHDParam<1, WENOZ>, HybridParam<2, 1>, HybridParam<2, 3>,
+                                       MHDParam<2, Constant>, MHDParam<2, WENOZ>>;
+using HighDimParams = ::testing::Types<HybridParam<2, 1>, HybridParam<2, 3>, MHDParam<2, Constant>,
+                                       MHDParam<2, WENOZ>, HybridParam<3, 1>, HybridParam<3, 3>,
+                                       MHDParam<3, Constant>, MHDParam<3, WENOZ>>;
+
+template<typename Param>
+struct NonSimulatedDirections : public DifferentialOperators<Param>
+{
+};
+template<typename Param>
+struct TransverseMismatch : public DifferentialOperators<Param>
+{
+};
+
+TYPED_TEST_SUITE(NonSimulatedDirections, LowDimParams);
+TYPED_TEST_SUITE(TransverseMismatch, HighDimParams);
 
 
 TYPED_TEST(DifferentialOperators, partialIsExactOnQuadratics)
@@ -488,70 +520,66 @@ TYPED_TEST(DifferentialOperators, divGradEqualsLaplacian)
 }
 
 
-TYPED_TEST(DifferentialOperators, nonSimulatedDirectionsAreZero)
+TYPED_TEST(NonSimulatedDirections, nonSimulatedDirectionsAreZero)
 {
     using Model               = TypeParam::Model;
     using Layout              = TestFixture::Layout;
     static constexpr auto dim = TestFixture::dim;
     auto const& layout        = this->layout;
 
-    if constexpr (dim == 3)
-        GTEST_SKIP();
-    else
+    OwnedField<Model> f{layout, TypeParam::nodalScalar};
+    fill(layout, f.field, [](auto const& x) { return quadratic(x); });
+    auto const nodal = layout.centering(f.field);
+
+    auto const dz = partial<Direction::Z>(layout, f.field, nodal);
+    for (auto const& idx : ghostBox(layout, nodal))
+        EXPECT_EQ(dz(idx), 0.);
+
+    if constexpr (dim == 1)
     {
-        OwnedField<Model> f{layout, TypeParam::nodalScalar};
-        fill(layout, f.field, [](auto const& x) { return quadratic(x); });
-        auto const nodal = layout.centering(f.field);
-
-        auto const dz = partial<Direction::Z>(layout, f.field, nodal);
+        auto const dy = partial<Direction::Y>(layout, f.field, nodal);
         for (auto const& idx : ghostBox(layout, nodal))
-            EXPECT_EQ(dz(idx), 0.);
+            EXPECT_EQ(dy(idx), 0.);
 
-        if constexpr (dim == 1)
+        OwnedVecField<Model> a{layout, TypeParam::edgeVector};
+        fillWave(layout, a.view);
+        auto const dsts = Layout::centering(TypeParam::faceVector);
+
+        auto const curlX = curl<Component::X>(layout, a.view, dsts[0]);
+        auto const curlY = curl<Component::Y>(layout, a.view, dsts[1]);
+        auto const curlZ = curl<Component::Z>(layout, a.view, dsts[2]);
+        auto const dxAz  = partial<Direction::X>(layout, a.view[2], dsts[1]);
+        auto const dxAy  = partial<Direction::X>(layout, a.view[1], dsts[2]);
+
+        for (auto const& idx : ghostBox(layout, dsts[0]))
         {
-            auto const dy = partial<Direction::Y>(layout, f.field, nodal);
-            for (auto const& idx : ghostBox(layout, nodal))
-                EXPECT_EQ(dy(idx), 0.);
-
-            OwnedVecField<Model> a{layout, TypeParam::edgeVector};
-            fillWave(layout, a.view);
-            auto const dsts = Layout::centering(TypeParam::faceVector);
-
-            auto const curlX = curl<Component::X>(layout, a.view, dsts[0]);
-            auto const curlY = curl<Component::Y>(layout, a.view, dsts[1]);
-            auto const curlZ = curl<Component::Z>(layout, a.view, dsts[2]);
-            auto const dxAz  = partial<Direction::X>(layout, a.view[2], dsts[1]);
-            auto const dxAy  = partial<Direction::X>(layout, a.view[1], dsts[2]);
-
-            for (auto const& idx : ghostBox(layout, dsts[0]))
-                EXPECT_EQ(curlX(idx), 0.);
-            for (auto const& idx : ghostBox(layout, dsts[1]))
-            {
-                EXPECT_EQ(curlY(idx), -dxAz(idx));
-                EXPECT_EQ(std::signbit(curlY(idx)), std::signbit(-dxAz(idx)));
-            }
-            for (auto const& idx : ghostBox(layout, dsts[2]))
-                EXPECT_EQ(curlZ(idx), dxAy(idx));
+            EXPECT_EQ(curlX(idx), 0.);
+            EXPECT_FALSE(std::signbit(curlX(idx)));
+        }
+        for (auto const& idx : ghostBox(layout, dsts[1]))
+        {
+            EXPECT_EQ(curlY(idx), -dxAz(idx));
+            EXPECT_EQ(std::signbit(curlY(idx)), std::signbit(-dxAz(idx)));
+        }
+        for (auto const& idx : ghostBox(layout, dsts[2]))
+        {
+            EXPECT_EQ(curlZ(idx), dxAy(idx));
+            EXPECT_EQ(std::signbit(curlZ(idx)), std::signbit(dxAy(idx)));
         }
     }
 }
 
 
-TYPED_TEST(DifferentialOperators, transverseMismatchThrows)
+TYPED_TEST(TransverseMismatch, transverseMismatchThrows)
 {
     using Model               = TypeParam::Model;
     static constexpr auto dim = TestFixture::dim;
     auto const& layout        = this->layout;
 
-    if constexpr (dim == 1)
-        GTEST_SKIP();
-    else
-    {
-        OwnedVecField<Model> b{layout, TypeParam::faceVector};
-        auto const& Bx   = b.view(Component::X);
-        auto const nodal = ConstArray<QtyCentering, dim>(QtyCentering::primal);
-        EXPECT_THROW(partial<Direction::X>(layout, Bx, nodal), std::runtime_error);
-    }
+    OwnedVecField<Model> b{layout, TypeParam::faceVector};
+    auto const& Bx   = b.view(Component::X);
+    auto const nodal = ConstArray<QtyCentering, dim>(QtyCentering::primal);
+    EXPECT_THROW(partial<Direction::X>(layout, Bx, nodal), std::runtime_error);
 }
 
 
@@ -582,6 +610,12 @@ TYPED_TEST(DifferentialOperators, arrayAndFieldDestinationsAgree)
     for (auto const& idx : ghostBox(layout, layout.centering(Bx)))
         EXPECT_EQ(std::bit_cast<std::uint64_t>(fromField(idx)),
                   std::bit_cast<std::uint64_t>(fromArray(idx)));
+
+    std::array const components{e.view[0], e.view[1], e.view[2]};
+    auto const fromComponents = curl<Component::X>(layout, components, Bx);
+    for (auto const& idx : ghostBox(layout, layout.centering(Bx)))
+        EXPECT_EQ(std::bit_cast<std::uint64_t>(fromField(idx)),
+                  std::bit_cast<std::uint64_t>(fromComponents(idx)));
 }
 
 } // namespace PHARE::core

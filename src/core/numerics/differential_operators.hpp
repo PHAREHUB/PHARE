@@ -195,6 +195,9 @@ template<typename GridLayout, typename Src>
 NO_DISCARD double laplacian(GridLayout const& layout, Src const& f,
                             MeshIndex<GridLayout::dimension> const idx)
 {
+    static_assert(Src::dimension == GridLayout::dimension,
+                  "field and layout dimensions must match");
+
     auto const along = [&]<std::size_t d>(std::integral_constant<std::size_t, d>) {
         auto const inv = layout.inverseMeshSize(static_cast<Direction>(d));
         return inv * inv
