@@ -1,19 +1,12 @@
 
 #include "phare_core.hpp"
-#include "core/utilities/types.hpp"
-#include "core/utilities/span.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "core/data/ions/particle_initializers/particle_initializer_factory.hpp"
 #include "core/data/particles/particle_array.hpp"
 #include "initializer/data_provider.hpp"
 
-
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
-
-#include <vector>
-#include <type_traits>
 
 using namespace PHARE::core;
 using namespace PHARE::initializer;

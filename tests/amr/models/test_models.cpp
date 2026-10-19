@@ -1,6 +1,7 @@
 
 #include "phare_core.hpp"
-#include "amr/types/amr_types.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "core/data/grid/grid.hpp"
 #include "core/data/electromag/electromag.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
@@ -10,6 +11,8 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "initializer/data_provider.hpp"
+
+#include "amr/types/amr_types.hpp"
 #include "amr/physical_models/hybrid_model.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
 
