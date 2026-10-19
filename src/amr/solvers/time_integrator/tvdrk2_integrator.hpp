@@ -35,6 +35,7 @@ public:
         this->accumulateButcherFluxes_(model, state.E, fluxes, sources, level, w0_);
 
         // U1 = Euler(U1)
+        model.updateExternalField(level, newTime);
         euler_(model, state1, state1, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state1.E, fluxes, sources, level, w1_);
