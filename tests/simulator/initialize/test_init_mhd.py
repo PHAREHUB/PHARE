@@ -34,18 +34,18 @@ def linear_potential(ndim):
     return potential, (-0.3, 0.1, -0.1)
 
 
-def linear_potential_growing_in_time(ndim):
+def linear_potential_growing_in_time(ndim, power=1):
     (ax, ay, az), b = linear_potential(ndim)
 
     def grows(a):
         if ndim == 2:
-            return lambda x, y, t: t * a(x, y)
-        return lambda x, y, z, t: t * a(x, y, z)
+            return lambda x, y, t: t**power * a(x, y)
+        return lambda x, y, z, t: t**power * a(x, y, z)
 
     def rate(a):
         if ndim == 2:
-            return lambda x, y, t: a(x, y) + 0.0 * t
-        return lambda x, y, z, t: a(x, y, z) + 0.0 * t
+            return lambda x, y, t: power * t ** (power - 1) * a(x, y)
+        return lambda x, y, z, t: power * t ** (power - 1) * a(x, y, z)
 
     potential = tuple(grows(a) for a in (ax, ay, az))
     derivative = tuple(rate(a) for a in (ax, ay, az))
@@ -245,6 +245,7 @@ class MHDInitializationTest(InitializationTest):
         time_step=0.001,
         run=False,
         quantities=("B0", "B1", "B"),
+        mhd_timestepper="TVDRK2",
     ):
         cells = {2: 20, 3: 16}[ndim]
 
@@ -273,7 +274,7 @@ class MHDInitializationTest(InitializationTest):
             reconstruction="Linear",
             limiter="VanLeer",
             riemann="Rusanov",
-            mhd_timestepper="TVDRK2",
+            mhd_timestepper=mhd_timestepper,
             hall=False,
             model_options=["MHDModel"],
             max_mhd_level=1,
@@ -352,3 +353,25 @@ class MHDInitializationTest(InitializationTest):
             hiers["B1"], "B1", tuple(-final_time * b for b in b_lin), atol=1e-12
         )
         self._assert_uniform_field(hiers["B"], "B", (0.0, 0.0, 0.0), atol=1e-12)
+
+    def _test_mhd_B0_follows_the_rk_stages(self, ndim, mhd_timestepper):
+        potential, derivative, b_lin = linear_potential_growing_in_time(ndim, power=2)
+        time_step, time_step_nbr = 0.001, 5
+        final_time = time_step * time_step_nbr
+        hiers = self.getMHDSplitHierarchies(
+            ndim,
+            dict(b1x=_const(0.0), b1y=_const(0.0), b1z=_const(0.0)),
+            external_field={
+                "type": "user-defined",
+                "potential": potential,
+                "potential_time_derivative": derivative,
+            },
+            time_step_nbr=time_step_nbr,
+            time_step=time_step,
+            run=True,
+            mhd_timestepper=mhd_timestepper,
+        )
+        b0 = tuple(final_time**2 * b for b in b_lin)
+        self._assert_uniform_field(hiers["B0"], "B0", b0, atol=1e-14)
+        self._assert_uniform_field(hiers["B1"], "B1", tuple(-b for b in b0), atol=1e-14)
+        self._assert_uniform_field(hiers["B"], "B", (0.0, 0.0, 0.0), atol=1e-14)

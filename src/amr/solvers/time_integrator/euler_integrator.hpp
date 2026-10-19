@@ -32,6 +32,8 @@ public:
         euler_(model, state, state, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state.E, fluxes, sources, level);
+
+        model.updateExternalField(level, newTime);
     }
 
     void registerResources(MHDModel& model) override
