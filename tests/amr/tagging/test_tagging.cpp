@@ -4,14 +4,19 @@
 #include "simulator/simulator_def.hpp"
 
 #include "amr/tagging/tagger_factory.hpp"
+#include "amr/tagging/tagging_quantities.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
+#include "tests/core/data/mhd_state/test_mhd_state_fixtures.hpp"
 
 #include "gtest/gtest.h"
 
 #include <cmath>
+#include <string>
+#include <vector>
 #include <algorithm>
+#include <stdexcept>
 
 using namespace PHARE::amr;
 
@@ -239,6 +244,210 @@ TYPED_TEST(TestTagger, scaledAvg)
           }
       }
   */
+}
+
+
+
+template<std::size_t dim, std::size_t interp>
+using HybridLayout = PHARE::core::PHARE_Types<PHARE::SimOpts{dim, interp}>::Hybrid::GridLayout_t;
+
+constexpr PHARE::SimOpts mhdOpts(std::size_t dim)
+{
+    return PHARE::SimOpts{dim,
+                          0,
+                          0,
+                          PHARE::MHDOpts::ReconstructionType::Linear,
+                          PHARE::MHDOpts::SlopeLimiterType::VanLeer,
+                          PHARE::MHDOpts::RiemannSolverType::Rusanov};
+}
+
+template<std::size_t dim>
+using MHDLayout = PHARE::core::PHARE_Types<mhdOpts(dim)>::MHD::GridLayout_t;
+
+
+template<std::size_t dim, std::size_t interp = 1>
+struct MockHybridModel
+{
+    static constexpr std::string_view model_type_name = "HybridModel";
+    using gridlayout_type                             = HybridLayout<dim, interp>;
+    static constexpr auto dimension                   = dim;
+
+    struct Electromag
+    {
+        PHARE::core::UsableVecField<dim> E;
+        PHARE::core::UsableVecField<dim> B;
+    };
+
+    struct State
+    {
+        Electromag electromag;
+    };
+
+    explicit MockHybridModel(std::uint32_t cells = 20)
+        : layout{TestGridLayout<gridlayout_type>::make(cells)}
+        , state{{{"EM_E", layout, PHARE::core::HybridQuantity::Vector::E},
+                 {"EM_B", layout, PHARE::core::HybridQuantity::Vector::B}}}
+    {
+    }
+
+    gridlayout_type layout;
+    State state;
+};
+
+
+template<std::size_t dim>
+struct MockMHDModel
+{
+    static constexpr std::string_view model_type_name = "MHDModel";
+    using gridlayout_type                             = MHDLayout<dim>;
+    static constexpr auto dimension                   = dim;
+
+    explicit MockMHDModel(std::uint32_t cells = 20)
+        : layout{TestGridLayout<gridlayout_type>::make(cells)}
+        , usable{layout, std::string{"MHD"}}
+        , state{std::string{"MHD"}}
+    {
+        usable.set_on(state);
+    }
+
+    gridlayout_type layout;
+    PHARE::core::UsableMHDState<dim> usable;
+    PHARE::core::MHDState<PHARE::core::VecFieldMHD<dim>> state;
+};
+
+
+template<typename Model>
+std::string resolveError(Model& model, std::string const& name)
+{
+    try
+    {
+        tagging::resolveQuantity(model, name);
+    }
+    catch (std::runtime_error const& e)
+    {
+        return e.what();
+    }
+    return {};
+}
+
+bool contains(std::string const& s, std::string const& sub)
+{
+    return s.find(sub) != std::string::npos;
+}
+
+
+TEST(TaggingQuantities, parseQuantitiesReadsList)
+{
+    PHARE::initializer::PHAREDict dict;
+    dict["nbr_quantities"]  = 2;
+    dict["Q0"]["name"]      = std::string{"B"};
+    dict["Q0"]["threshold"] = 0.1;
+    dict["Q1"]["name"]      = std::string{"rho"};
+    dict["Q1"]["threshold"] = 0.4;
+    auto const expected     = std::vector<tagging::QuantityThreshold>{{"B", 0.1}, {"rho", 0.4}};
+    EXPECT_TRUE(tagging::parseQuantities(dict) == expected);
+}
+
+TEST(TaggingQuantities, parseQuantitiesFallsBackToBAtThreshold)
+{
+    PHARE::initializer::PHAREDict dict;
+    dict["threshold"] = 0.2;
+    EXPECT_TRUE(tagging::parseQuantities(dict)
+                == (std::vector<tagging::QuantityThreshold>{{"B", 0.2}}));
+
+    PHARE::initializer::PHAREDict empty;
+    EXPECT_TRUE(tagging::parseQuantities(empty)
+                == (std::vector<tagging::QuantityThreshold>{{"B", 0.1}}));
+}
+
+TEST(TaggingQuantities, hybridB)
+{
+    using PHARE::core::Component;
+    MockHybridModel<2> model;
+    auto& B = model.state.electromag.B;
+
+    auto const comps = tagging::resolveQuantity(model, "B");
+    ASSERT_EQ(comps.size(), 3u);
+    EXPECT_EQ(comps[0].field(), &B.getComponent(Component::X));
+    EXPECT_EQ(comps[1].field(), &B.getComponent(Component::Y));
+    EXPECT_EQ(comps[2].field(), &B.getComponent(Component::Z));
+
+    auto const by = tagging::resolveQuantity(model, "By");
+    ASSERT_EQ(by.size(), 1u);
+    EXPECT_EQ(by[0].field(), &B.getComponent(Component::Y));
+}
+
+TEST(TaggingQuantities, componentCentering)
+{
+    using Model = MockHybridModel<2>;
+    Model model;
+    auto const bx = tagging::resolveQuantity(model, "Bx");
+    ASSERT_EQ(bx.size(), 1u);
+    EXPECT_EQ(bx[0].centering(),
+              Model::gridlayout_type::centering(PHARE::core::HybridQuantity::Scalar::Bx));
+}
+
+TEST(TaggingQuantities, mhdAllowed)
+{
+    using PHARE::core::Component;
+    MockMHDModel<2> model;
+    auto& s = model.state;
+
+    for (std::string const name : {"rho", "density"})
+    {
+        auto const c = tagging::resolveQuantity(model, name);
+        ASSERT_EQ(c.size(), 1u) << name;
+        EXPECT_EQ(c[0].field(), &s.rho) << name;
+    }
+    for (std::string const name : {"rhoV", "momentum"})
+    {
+        auto const c = tagging::resolveQuantity(model, name);
+        ASSERT_EQ(c.size(), 3u) << name;
+        EXPECT_EQ(c[0].field(), &s.rhoV.getComponent(Component::X)) << name;
+        EXPECT_EQ(c[1].field(), &s.rhoV.getComponent(Component::Y)) << name;
+        EXPECT_EQ(c[2].field(), &s.rhoV.getComponent(Component::Z)) << name;
+    }
+
+    auto const rhoVy = tagging::resolveQuantity(model, "rhoVy");
+    ASSERT_EQ(rhoVy.size(), 1u);
+    EXPECT_EQ(rhoVy[0].field(), &s.rhoV.getComponent(Component::Y));
+
+    auto const etot = tagging::resolveQuantity(model, "Etot");
+    ASSERT_EQ(etot.size(), 1u);
+    EXPECT_EQ(etot[0].field(), &s.Etot);
+
+    auto const b = tagging::resolveQuantity(model, "B");
+    ASSERT_EQ(b.size(), 3u);
+    EXPECT_EQ(b[0].field(), &s.B.getComponent(Component::X));
+    EXPECT_EQ(b[1].field(), &s.B.getComponent(Component::Y));
+    EXPECT_EQ(b[2].field(), &s.B.getComponent(Component::Z));
+}
+
+TEST(TaggingQuantities, notAvailableForTaggingYet)
+{
+    MockHybridModel<2> hybrid;
+    for (std::string const name :
+         {"J", "Jx", "Jy", "Jz", "E", "Ex", "Ey", "Ez", "density", "massDensity", "chargeDensity",
+          "velocity", "bulkVel", "momentum", "pressure"})
+        EXPECT_TRUE(contains(resolveError(hybrid, name), "not available for tagging yet")) << name;
+
+    MockMHDModel<2> mhd;
+    for (std::string const name : {"J", "Jx", "Jy", "Jz", "E", "Ex", "Ey", "Ez", "V", "Vx", "Vy",
+                                   "Vz", "velocity", "P", "pressure"})
+        EXPECT_TRUE(contains(resolveError(mhd, name), "not available for tagging yet")) << name;
+}
+
+TEST(TaggingQuantities, unknownListsAllowed)
+{
+    MockHybridModel<2> hybrid;
+    auto const hybridError = resolveError(hybrid, "rho");
+    EXPECT_TRUE(contains(hybridError, "unknown")) << hybridError;
+    EXPECT_TRUE(contains(hybridError, "Bz")) << hybridError;
+
+    MockMHDModel<2> mhd;
+    auto const mhdError = resolveError(mhd, "nonsense");
+    EXPECT_TRUE(contains(mhdError, "unknown")) << mhdError;
+    EXPECT_TRUE(contains(mhdError, "Etot")) << mhdError;
 }
 
 
