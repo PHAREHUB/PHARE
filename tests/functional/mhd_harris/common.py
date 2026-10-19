@@ -26,7 +26,7 @@ def timestamps(final_time):
     return np.arange(0, final_time + time_step, final_time / 5)
 
 
-def config(cells, final_time, diag_dir, **kwargs):
+def config(cells, final_time, diag_dir, external_field=None, **kwargs):
     L = 0.5
 
     sim = ph.Simulation(
@@ -57,6 +57,8 @@ def config(cells, final_time, diag_dir, **kwargs):
         model_options=["MHDModel"],
         **kwargs,
     )
+    if external_field is not None:
+        external_field()
 
     def S(y, y0, l):
         return 0.5 * (1.0 + np.tanh((y - y0) / l))
