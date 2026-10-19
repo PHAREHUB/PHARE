@@ -217,13 +217,11 @@ struct DiagnosticsModelMapper
     {
         using PQ = Field_t::physical_quantity_type;
         if constexpr (std::is_same_v<PQ, core::HybridQuantity::Scalar>)
-            return distinct_tmp_(quantity, idx, [&](auto i) -> auto& {
-                return hyridModelView().tmpField(i);
-            });
+            return distinct_tmp_(quantity, idx,
+                                 [&](auto i) -> auto& { return hyridModelView().tmpField(i); });
         else if constexpr (std::is_same_v<PQ, core::MHDQuantity::Scalar>)
-            return distinct_tmp_(quantity, idx, [&](auto i) -> auto& {
-                return mhdModelView().tmpField(i);
-            });
+            return distinct_tmp_(quantity, idx,
+                                 [&](auto i) -> auto& { return mhdModelView().tmpField(i); });
         else
             static_assert(core::dependent_false_v<Field_t>);
     }

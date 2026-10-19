@@ -195,15 +195,15 @@ void FluidDiagnosticWriter<H5Writer>::initDataSets(
     auto const initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
-        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr,
-                                bool const null) {
-            using Field = std::decay_t<decltype(field)>;
-            if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
-                initDS(path, fieldAttr, name, null);
-            else
-                for (auto& [id, type] : core::Components::componentMap<Field::rank>())
-                    initDS(path, fieldAttr, name + "_" + id, null);
-        };
+        auto const action
+            = [&](auto& field, std::string const& name, auto& fieldAttr, bool const null) {
+                  using Field = std::decay_t<decltype(field)>;
+                  if constexpr (std::is_same_v<Field, typename Accessors::Field_t>)
+                      initDS(path, fieldAttr, name, null);
+                  else
+                      for (auto& [id, type] : core::Components::componentMap<Field::rank>())
+                          initDS(path, fieldAttr, name + "_" + id, null);
+              };
 
         accessors.dispatch(qty, model,
                            [&](auto& field, std::string const& name, std::string const& ownerKey) {

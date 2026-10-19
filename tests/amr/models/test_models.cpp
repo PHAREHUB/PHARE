@@ -52,8 +52,7 @@ struct HybridTypes
     using Grid_t       = Grid1D;
     using amr_types    = SAMRAI_Types;
 
-    using ResourcesManager_t
-        = ResourcesManager<PHARE::SimOpts{dim, interpOrder}, HybridTypes>;
+    using ResourcesManager_t = ResourcesManager<PHARE::SimOpts{dim, interpOrder}, HybridTypes>;
 };
 
 using HybridModelT      = HybridModel<HybridTypes>;

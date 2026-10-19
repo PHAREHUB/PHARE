@@ -21,9 +21,9 @@ public:
     using Super::h5Writer_;
     using Super::initDataSets_;
     using Super::writeAttributes_;
-    using Attributes       = typename Super::Attributes;
-    using ModelViewVariant = typename Super::ModelViewVariant;
-    using FloatType        = typename H5Writer::FloatType;
+    using Attributes                = Super::Attributes;
+    using ModelViewVariant          = Super::ModelViewVariant;
+    using FloatType                 = H5Writer::FloatType;
     static constexpr auto dimension = H5Writer::dimension;
 
     MetaDiagnosticWriter(H5Writer& h5Writer)

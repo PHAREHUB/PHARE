@@ -78,8 +78,7 @@ private:
     template<typename ModelView>
     std::optional<std::size_t>
     initHybridFluidLevel(ModelView& modelView, DiagnosticProperties& diagnostic,
-                         VTKFileInitializer& file_initializer, auto const ilvl,
-                         bool const provided)
+                         VTKFileInitializer& file_initializer, auto const ilvl, bool const provided)
     {
         using Model_t = ModelView::Model_t;
         if constexpr (solver::is_hybrid_model_v<Model_t>)
@@ -218,7 +217,8 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
                 if (auto ret
                     = initHybridFluidLevel(modelView, diagnostic, initializer, ilvl, provided))
                     return ret;
-                if (auto ret = initMhdFluidLevel(modelView, diagnostic, initializer, ilvl, provided))
+                if (auto ret
+                    = initMhdFluidLevel(modelView, diagnostic, initializer, ilvl, provided))
                     return ret;
                 return std::nullopt;
             },

@@ -326,7 +326,8 @@ public:
     {
         if (this->algos.empty())
             this->add_algorithm();
-        auto&& [idDst, idSrc, idScrtch] = rm->template scoped<Model>().getIDsList(dst, src, scratch);
+        auto&& [idDst, idSrc, idScrtch]
+            = rm->template scoped<Model>().getIDsList(dst, src, scratch);
         this->algos[0]->registerRefine(idDst, idSrc, idScrtch, args...);
         return *this;
     }
@@ -335,7 +336,8 @@ public:
 
     auto& register_resource(auto& rm, auto& dst, auto& src, auto& scratch, auto&&... args)
     {
-        auto&& [idDst, idSrc, idScrtch] = rm->template scoped<Model>().getIDsList(dst, src, scratch);
+        auto&& [idDst, idSrc, idScrtch]
+            = rm->template scoped<Model>().getIDsList(dst, src, scratch);
         this->add_algorithm()->registerRefine(idDst, idSrc, idScrtch, args...);
         return *this;
     }
@@ -344,7 +346,8 @@ public:
     auto& register_time_interpolated_resource(auto& rm, auto& dst, auto& src, auto& told,
                                               auto& tnew, auto&&... args)
     {
-        auto&& [idDst, idSrc, idTold, idTnew] = rm->template scoped<Model>().getIDsList(dst, src, told, tnew);
+        auto&& [idDst, idSrc, idTold, idTnew]
+            = rm->template scoped<Model>().getIDsList(dst, src, told, tnew);
         this->add_algorithm()->registerRefine(idDst, idSrc, idTold, idTnew, idDst, args...);
         return *this;
     }

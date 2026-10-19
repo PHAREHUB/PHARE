@@ -25,9 +25,9 @@ public:
     using Super::initDataSets_;
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
-    using Attributes       = Super::Attributes;
-    using ModelViewVariant = Super::ModelViewVariant;
-    using FloatType        = H5Writer::FloatType;
+    using Attributes                = Super::Attributes;
+    using ModelViewVariant          = Super::ModelViewVariant;
+    using FloatType                 = H5Writer::FloatType;
     static constexpr auto dimension = H5Writer::dimension;
 
     ElectromagDiagnosticWriter(H5Writer& h5Writer)
@@ -88,7 +88,7 @@ void ElectromagDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& 
                 {
                     // highfive doesn't accept uint32 which ndarray.shape() is
                     auto const& array_shape = vecF.getComponent(type).shape();
-                    attr[name][id] = std::vector<std::size_t>(
+                    attr[name][id]          = std::vector<std::size_t>(
                         array_shape.data(), array_shape.data() + array_shape.size());
                     auto ghosts
                         = GridLayout::nDNbrGhosts(vecF.getComponent(type).physicalQuantity());

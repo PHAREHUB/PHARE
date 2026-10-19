@@ -227,8 +227,7 @@ public:
     template<std::size_t rank = 2>
     std::size_t initTensorFieldFileLevel(auto const ilvl, bool const provided = true)
     {
-        return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(ilvl,
-                                                                                   provided);
+        return initAnyFieldLevel<core::detail::tensor_field_dim_from_rank<rank>()>(ilvl, provided);
     }
 
 private:
@@ -480,10 +479,10 @@ void H5TypeWriter<Writer>::VTKFileInitializer::resize_boxes(int const ilvl, bool
 {
     PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes");
 
-    auto const lvl          = std::to_string(ilvl);
-    auto const& hier_data   = HierData::INSTANCE();
-    auto const& rank_boxes  = hier_data.level_boxes_per_rank[ilvl];
-    auto const total_boxes  = provided ? hier_data.n_boxes_per_level[ilvl] : std::size_t{0};
+    auto const lvl         = std::to_string(ilvl);
+    auto const& hier_data  = HierData::INSTANCE();
+    auto const& rank_boxes = hier_data.level_boxes_per_rank[ilvl];
+    auto const total_boxes = provided ? hier_data.n_boxes_per_level[ilvl] : std::size_t{0};
 
     {
         PHARE_LOG_SCOPE(3, "VTKFileInitializer::resize_boxes::0");

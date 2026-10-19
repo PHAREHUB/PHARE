@@ -33,14 +33,14 @@ public:
     using Super::writeAttributes_;
     using Super::writeGhostsAttr_;
     using Super::writeIonPopAttributes_;
-    using HybridModel_t                = typename H5Writer::ModelMapper_t::HasModels_t::HybridModel_t;
-    using GridLayout                  = typename HybridModel_t::gridlayout_type;
+    using HybridModel_t               = H5Writer::ModelMapper_t::HasModels_t::HybridModel_t;
+    using GridLayout                  = HybridModel_t::gridlayout_type;
     static constexpr auto dimension   = H5Writer::dimension;
     static constexpr auto interpOrder = GridLayout::options.interp_order;
-    using Attributes                  = typename Super::Attributes;
-    using ModelViewVariant            = typename Super::ModelViewVariant;
+    using Attributes                  = Super::Attributes;
+    using ModelViewVariant            = Super::ModelViewVariant;
     using Packer                      = core::ParticlePacker<dimension>;
-    using FloatType                   = typename H5Writer::FloatType;
+    using FloatType                   = H5Writer::FloatType;
 
     ParticlesDiagnosticWriter(H5Writer& h5Writer)
         : Super{h5Writer}

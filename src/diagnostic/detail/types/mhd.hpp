@@ -99,10 +99,10 @@ void MHDDiagnosticWriter<H5Writer>::getDataSetInfo(DiagnosticProperties& diagnos
     if (!h5Writer.mapper().is_mhd_model(modelViewVariant))
         return; // patch is on a level owned by another model
 
-    auto& modelView         = h5Writer.mapper().mhdModelView();
-    auto& model             = modelView.model();
-    auto& accessors         = Accessors::getOrCreateFor(modelView);
-    auto const& qty         = diagnostic.quantity;
+    auto& modelView        = h5Writer.mapper().mhdModelView();
+    auto& model            = modelView.model();
+    auto& accessors        = Accessors::getOrCreateFor(modelView);
+    auto const& qty        = diagnostic.quantity;
     std::string lvlPatchID = std::to_string(iLevel) + "_" + patchID;
 
     auto setGhostNbr = [](auto const& field, auto& attr, auto const& name) {
@@ -176,15 +176,15 @@ void MHDDiagnosticWriter<H5Writer>::initDataSets(
     auto initPatch = [&](auto& lvl, auto& attr, std::string patchID = "") {
         std::string path = h5Writer.getPatchPathAddTimestamp(lvl, patchID) + "/";
 
-        auto const action = [&](auto& field, std::string const& name, auto& fieldAttr,
-                                bool const null) {
-            using Quantity = std::decay_t<decltype(field)>;
-            if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
-                initDS(path, fieldAttr, name, null);
-            else
-                for (auto& [id, type] : core::VectorComponents::map())
-                    initDS(path, fieldAttr, name + "_" + id, null);
-        };
+        auto const action
+            = [&](auto& field, std::string const& name, auto& fieldAttr, bool const null) {
+                  using Quantity = std::decay_t<decltype(field)>;
+                  if constexpr (std::is_same_v<Quantity, typename Accessors::Field_t>)
+                      initDS(path, fieldAttr, name, null);
+                  else
+                      for (auto& [id, type] : core::VectorComponents::map())
+                          initDS(path, fieldAttr, name + "_" + id, null);
+              };
 
         accessors.dispatch(qty, model,
                            [&](auto& field, std::string const& name, std::string const& ownerKey) {

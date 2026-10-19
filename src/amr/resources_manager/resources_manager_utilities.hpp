@@ -102,9 +102,9 @@ namespace amr
     template<typename Model, typename core_types0, typename... core_types_rest>
     struct find_model_core_types<Model, core_types0, core_types_rest...>
     {
-        using type = std::conditional_t<
-            is_model_core_types<Model, core_types0>(), core_types0,
-            typename find_model_core_types<Model, core_types_rest...>::type>;
+        using type
+            = std::conditional_t<is_model_core_types<Model, core_types0>(), core_types0,
+                                 typename find_model_core_types<Model, core_types_rest...>::type>;
     };
 
     template<typename Model, typename TypeTuple>
@@ -155,7 +155,7 @@ namespace amr
         if constexpr (is_field_v<ResourceView> or is_tensor_field_v<ResourceView>)
         {
             using Quantity = typename ResourcesManagerTypes<core_types>::QuantityType;
-            using Qty_t    = std::decay_t<decltype(std::declval<ResourceView>().physicalQuantity())>;
+            using Qty_t = std::decay_t<decltype(std::declval<ResourceView>().physicalQuantity())>;
 
             return std::is_same_v<Qty_t, typename Quantity::Scalar>
                    or std::is_same_v<Qty_t, typename Quantity::Vector>
@@ -183,9 +183,9 @@ namespace amr
     template<typename ResourceView, typename core_types0, typename... core_types_rest>
     struct find_owner_model<ResourceView, core_types0, core_types_rest...>
     {
-        using type = std::conditional_t<
-            owns_resource<core_types0, ResourceView>(), core_types0,
-            typename find_owner_model<ResourceView, core_types_rest...>::type>;
+        using type
+            = std::conditional_t<owns_resource<core_types0, ResourceView>(), core_types0,
+                                 typename find_owner_model<ResourceView, core_types_rest...>::type>;
     };
 
     template<typename ResourceView, typename TypeTuple>
@@ -241,7 +241,6 @@ namespace amr
         }
 
     private:
-
         auto constexpr static resolve_t()
         {
             if constexpr (is_tensor_field_v<ResourceView>)

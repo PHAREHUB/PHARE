@@ -570,8 +570,7 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
-                    result;
+                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>> result;
 
                 result.reserve(info->ghostMagnetic.size());
 
@@ -680,10 +679,11 @@ namespace amr
         std::shared_ptr<typename MHDModel::resources_manager_type> resourcesManager_;
         int const firstLevel_;
 
-        using InitRefinerPool             = RefinerPool<rm_t, MHDModel, RefinerType::InitField>;
-        using GhostRefinerPool            = RefinerPool<rm_t, MHDModel, RefinerType::GhostField>;
-        using InitDomPartRefinerPool      = RefinerPool<rm_t, MHDModel, RefinerType::InitInteriorPart>;
-        using VecFieldGhostMaxRefinerPool = RefinerPool<rm_t, MHDModel, RefinerType::PatchVecFieldBorderMax>;
+        using InitRefinerPool        = RefinerPool<rm_t, MHDModel, RefinerType::InitField>;
+        using GhostRefinerPool       = RefinerPool<rm_t, MHDModel, RefinerType::GhostField>;
+        using InitDomPartRefinerPool = RefinerPool<rm_t, MHDModel, RefinerType::InitInteriorPart>;
+        using VecFieldGhostMaxRefinerPool
+            = RefinerPool<rm_t, MHDModel, RefinerType::PatchVecFieldBorderMax>;
 
 
         SAMRAI::xfer::RefineAlgorithm BalgoPatchGhost; //

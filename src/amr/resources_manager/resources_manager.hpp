@@ -602,7 +602,8 @@ namespace amr
         SAMRAI::tbox::Dimension dimension_;
         template<typename Model>
         static constexpr std::size_t model_index_of_
-            = index_in_tuple<typename model_core_types_of<Model, TypeTuple>::type, TypeTuple>::value;
+            = index_in_tuple<typename model_core_types_of<Model, TypeTuple>::type,
+                             TypeTuple>::value;
 
         // one map per model: names are unique within a model, not across models
         std::array<std::map<std::string, ResourcesInfo>, std::tuple_size_v<TypeTuple>>
