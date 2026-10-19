@@ -50,6 +50,7 @@ public:
         this->accumulateButcherFluxes_(model, state.E, fluxes, sources, level, w01_ * w11_);
 
         // U1 = Euler(U1)
+        model.updateExternalField(level, newTime);
         euler_(model, state1, state1, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state1.E, fluxes, sources, level, w01_ * w11_);
@@ -67,6 +68,7 @@ public:
         bc.fillMomentsGhosts(state2, level, stageTime);
 
         // U2 = Euler(U2)
+        model.updateExternalField(level, stageTime);
         euler_(model, state2, state2, fluxes, sources, bc, level, currentTime, newTime);
 
         this->accumulateButcherFluxes_(model, state2.E, fluxes, sources, level, w11_);
@@ -75,6 +77,8 @@ public:
         euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_,
                                     this->butcherSources_, bc, level, newTime,
                                     newTime - currentTime);
+
+        model.updateExternalField(level, newTime);
     }
 
     void registerResources(MHDModel& model) override

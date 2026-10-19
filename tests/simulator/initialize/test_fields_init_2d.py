@@ -89,6 +89,12 @@ class Initialization2DTest(MHDInitializationTest, HybridInitializationTest):
         phut.cast_to(self, MHDInitializationTest)
         self._test_mhd_time_dependent_uniform_B0(ndim)
 
+    @data("TVDRK2", "TVDRK3", "SSPRK4_5")
+    def test_mhd_B0_follows_the_rk_stages(self, mhd_timestepper):
+        print(f"\n{self._testMethodName}_{ndim}d {mhd_timestepper}")
+        phut.cast_to(self, MHDInitializationTest)
+        self._test_mhd_B0_follows_the_rk_stages(ndim, mhd_timestepper)
+
 
 if __name__ == "__main__":
     unittest.main()

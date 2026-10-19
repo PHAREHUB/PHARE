@@ -63,6 +63,7 @@ public:
         RKUtils_t{level, model}(state2, RKPair_t{w10_, state}, RKPair_t{w11_, state1});
 
         // U2 = U2 + w12_*dt*F(U1)
+        model.updateExternalField(level, currentTime + c1_ * dt);
         compute_fluxes_and_sources_(model, state1, fluxes, sources, bc, level, newTime);
 
         euler_using_butcher_fluxes_(model, state2, state2, state1.E, fluxes, sources, bc, level,
@@ -78,6 +79,7 @@ public:
         RKUtils_t{level, model}(state3, RKPair_t{w20_, state}, RKPair_t{w21_, state2});
 
         // U3 = U3 + w22_*dt*F(U2)
+        model.updateExternalField(level, currentTime + c2_ * dt);
         compute_fluxes_and_sources_(model, state2, fluxes, sources, bc, level, newTime);
 
         euler_using_butcher_fluxes_(model, state3, state3, state2.E, fluxes, sources, bc, level,
@@ -94,6 +96,7 @@ public:
         // U4 = U4 + w32_*dt*F(U3)
         // if we were not using butcher formulation, we would need a separate flux buffer for F(U3)
         // for the final step
+        model.updateExternalField(level, currentTime + c3_ * dt);
         compute_fluxes_and_sources_(model, state3, fluxes, sources, bc, level, newTime);
 
         euler_using_butcher_fluxes_(model, state4, state4, state3.E, fluxes, sources, bc, level,
@@ -102,12 +105,15 @@ public:
         this->accumulateButcherFluxes_(model, state3.E, fluxes, sources, level,
                                        (w32_ * w43_ + w42_));
 
+        model.updateExternalField(level, currentTime + c4_ * dt);
         compute_fluxes_and_sources_(model, state4, fluxes, sources, bc, level, newTime);
 
         this->accumulateButcherFluxes_(model, state4.E, fluxes, sources, level, w44_);
 
         euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_,
                                     this->butcherSources_, bc, level, newTime, dt);
+
+        model.updateExternalField(level, newTime);
     }
 
     void registerResources(MHDModel& model) override
