@@ -336,19 +336,35 @@ protected:
         auto& getOrCreateSchedule(auto& hierarchy, int const ilvl)
         {
             using PlusEqualsOp = core::PlusEquals<typename VecField::value_type>;
-            if (not KEFschedules.count(ilvl))
-                KEFschedules.try_emplace(
-                    ilvl,
-                    KEFalgo->createSchedule(
-                        hierarchy.getPatchLevel(ilvl), 0,
-                        std::make_shared<
-                            amr::FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>()));
-            return *KEFschedules[ilvl];
+
+            auto const level           = hierarchy.getPatchLevel(ilvl);
+            auto schedule_iter         = KEFschedules.find(ilvl);
+            auto const create_schedule = schedule_iter == KEFschedules.end()
+                                         or schedule_iter->second.level.lock() != level;
+
+            if (create_schedule)
+                schedule_iter
+                    = KEFschedules
+                          .insert_or_assign(
+                              ilvl, Entry{level,
+                                          KEFalgo->createSchedule(
+                                              level, 0,
+                                              std::make_shared<amr::FieldBorderOpTransactionFactory<
+                                                  VecFieldData_t, PlusEqualsOp>>())})
+                          .first;
+
+            return *schedule_iter->second.schedule;
         }
+
+        struct Entry
+        {
+            std::weak_ptr<SAMRAI::hier::PatchLevel> level; // invalidadted if the Level is destroyed
+            std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule;
+        };
 
         std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> KEFalgo
             = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
-        std::map<int, std::shared_ptr<SAMRAI::xfer::RefineSchedule>> KEFschedules;
+        std::map<int, Entry> KEFschedules;
     };
 
     std::vector<MTAlgo> MTAlgos;
