@@ -29,6 +29,7 @@ public:
     TVDRK3Integrator(PHARE::initializer::PHAREDict const& dict)
         : Super{dict, /*n_extra_states=*/2}
         , euler_{dict}
+        , compute_fluxes_{dict}
     {
     }
 
@@ -42,12 +43,10 @@ public:
         auto& state1 = this->extra_states_[0];
         auto& state2 = this->extra_states_[1];
 
-        this->resetButcherFluxes_(model, level);
-
         // U1 = Euler(Un)
         euler_(model, state, state1, fluxes, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level, w01_ * w11_);
+        this->setButcherFluxes_(model, state.E, fluxes, level, w01_ * w11_);
 
         // U1 = Euler(U1)
         euler_(model, state1, state1, fluxes, bc, level, currentTime, newTime);
@@ -66,8 +65,8 @@ public:
         bc.fillMagneticGhosts(state2.B, level, stageTime);
         bc.fillMomentsGhosts(state2, level, stageTime);
 
-        // U2 = Euler(U2)
-        euler_(model, state2, state2, fluxes, bc, level, currentTime, newTime);
+        // only F(U2) is needed: the update below starts again from Un
+        compute_fluxes_(model, state2, fluxes, bc, level, newTime);
 
         this->accumulateButcherFluxes_(model, state2.E, fluxes, level, w11_);
 
@@ -98,6 +97,8 @@ private:
     static constexpr auto w11_{2. / 3.};
 
     Euler<FVMethodStrategy, MHDModel> euler_;
+    // shares its resources with euler_
+    ComputeFluxes<FVMethodStrategy, MHDModel> compute_fluxes_;
     EulerUsingComputedFlux<MHDModel> euler_using_butcher_fluxes_;
 };
 
