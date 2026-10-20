@@ -426,9 +426,8 @@ namespace amr
         {
             using value_type = FieldT::value_type;
 
-            assert(popDensityBorderSumRefiners_.size() % ions.size() == 0);
-
-            std::size_t const fieldsPerPop = popDensityBorderSumRefiners_.size() / ions.size();
+            // one particle density per population, the charge density is computed from it
+            assert(popDensityBorderSumRefiners_.size() == ions.size());
 
             for (std::size_t i = 0; i < ions.size(); ++i)
             {
@@ -436,26 +435,11 @@ namespace amr
                     std::memcpy(sumField_.data(), ions[i].particleDensity().data(),
                                 ions[i].particleDensity().size() * sizeof(value_type));
 
-
-                popDensityBorderSumRefiners_[i * fieldsPerPop].fill(level.getLevelNumber(),
-                                                                    fillTime);
+                popDensityBorderSumRefiners_[i].fill(level.getLevelNumber(), fillTime);
 
                 for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
                     std::memcpy(ions[i].particleDensity().data(), sumField_.data(),
                                 ions[i].particleDensity().size() * sizeof(value_type));
-
-                //
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(sumField_.data(), ions[i].chargeDensity().data(),
-                                ions[i].chargeDensity().size() * sizeof(value_type));
-
-                popDensityBorderSumRefiners_[i * fieldsPerPop + 1].fill(level.getLevelNumber(),
-                                                                        fillTime);
-
-                for (auto patch : resourcesManager_->enumerate(level, ions, sumField_))
-                    std::memcpy(ions[i].chargeDensity().data(), sumField_.data(),
-                                ions[i].chargeDensity().size() * sizeof(value_type));
             }
         }
 
@@ -502,7 +486,6 @@ namespace amr
                 for (auto& pop : ions)
                 {
                     auto& particleDensity = pop.particleDensity();
-                    auto& chargeDensity   = pop.chargeDensity();
                     auto& flux            = pop.flux();
 
                     if (level.getLevelNumber() > 0) // no levelGhost on root level
@@ -510,12 +493,10 @@ namespace amr
                         // grab levelGhostParticlesOld and levelGhostParticlesNew
                         // and project them with alpha and (1-alpha) coefs, respectively
                         auto& levelGhostOld = pop.levelGhostParticlesOld();
-                        interpolate_(makeRange(levelGhostOld), particleDensity, chargeDensity, flux,
-                                     layout, 1. - alpha);
+                        interpolate_(makeRange(levelGhostOld), particleDensity, flux, layout, 1. - alpha);
 
                         auto& levelGhostNew = pop.levelGhostParticlesNew();
-                        interpolate_(makeRange(levelGhostNew), particleDensity, chargeDensity, flux,
-                                     layout, alpha);
+                        interpolate_(makeRange(levelGhostNew), particleDensity, flux, layout, alpha);
                     }
                 }
             }

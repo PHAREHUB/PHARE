@@ -544,12 +544,12 @@ struct IonUpdaterTest : public ::testing::Test
         {
             double alpha = 0.5;
             interpolate(makeIndexRange(pop.levelGhostParticlesNew()), pop.particleDensity(),
-                        pop.chargeDensity(), pop.flux(), layout,
+                        pop.flux(), layout,
                         /*coef = */ alpha);
 
 
             interpolate(makeIndexRange(pop.levelGhostParticlesOld()), pop.particleDensity(),
-                        pop.chargeDensity(), pop.flux(), layout,
+                        pop.flux(), layout,
                         /*coef = */ (1. - alpha));
         }
     }

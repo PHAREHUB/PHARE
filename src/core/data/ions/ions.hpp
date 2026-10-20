@@ -79,17 +79,23 @@ namespace core
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
         tensorfield_type& momentumTensor() { return momentumTensor_; }
 
+        // the charge density of a population is its charge times its particle density,
+        // which is complete (border sums, level ghost particles) when this is called
         void computeChargeDensity()
         {
             chargeDensity_.zero();
 
-            for (auto const& pop : populations_)
+            for (auto& pop : populations_)
             {
                 // we sum over all nodes contiguously, including ghosts
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.chargeDensity();
+                auto const& particleDensity = pop.particleDensity();
+                auto& popDensity            = pop.chargeDensity();
+                std::transform(std::begin(particleDensity), std::end(particleDensity),
+                               std::begin(popDensity),
+                               [q = pop.charge()](Float const& n) { return q * n; });
                 std::transform(std::begin(chargeDensity_), std::end(chargeDensity_),
                                std::begin(popDensity), std::begin(chargeDensity_),
                                std::plus<Float>{});
