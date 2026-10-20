@@ -1152,6 +1152,28 @@ namespace core
 
             evalOnBox_(field, fn, indices);
         }
+        // evalOnBox / evalOnGhostBox for fn that writes only at its own index (pointwise
+        // updates): the innermost loop is marked free of cross-iteration aliasing
+        template<typename Field, typename Fn>
+        void evalOnBoxIndependent(Field& field, Fn&& fn) const
+        {
+            auto indices = [&](auto const& centering, auto const direction) {
+                return this->physicalStartToEnd(centering, direction);
+            };
+
+            evalOnBox_<true>(field, fn, indices);
+        }
+
+        template<typename Field, typename Fn>
+        void evalOnGhostBoxIndependent(Field& field, Fn&& fn) const
+        {
+            auto indices = [&](auto const& centering, auto const direction) {
+                return this->ghostStartToEnd(centering, direction);
+            };
+
+            evalOnBox_<true>(field, fn, indices);
+        }
+
         auto levelNumber() const { return levelNumber_; }
 
 
@@ -1164,33 +1186,42 @@ namespace core
         }
 
     private:
-        template<typename Field, typename IndicesFn, typename Fn>
+        // innermost loop of evalOnBox_; `independent` promises the compiler that iterations
+        // do not alias each other's writes (see evalOnBoxIndependent)
+        template<bool independent>
+        static void evalOnLine_(auto const i0, auto const i1, auto&& fn)
+        {
+            if constexpr (independent)
+            {
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC ivdep
+#endif
+                for (auto i = i0; i <= i1; ++i)
+                    fn(i);
+            }
+            else
+                for (auto i = i0; i <= i1; ++i)
+                    fn(i);
+        }
+
+        template<bool independent = false, typename Field, typename IndicesFn, typename Fn>
         static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd)
         {
             auto const [ix0, ix1] = startToEnd(field, Direction::X);
-            for (auto ix = ix0; ix <= ix1; ++ix)
+            if constexpr (dimension == 1)
+                evalOnLine_<independent>(ix0, ix1, [&](auto ix) { fn(ix); });
+            else
             {
-                if constexpr (dimension == 1)
+                auto const [iy0, iy1] = startToEnd(field, Direction::Y);
+                for (auto ix = ix0; ix <= ix1; ++ix)
                 {
-                    fn(ix);
-                }
-                else
-                {
-                    auto const [iy0, iy1] = startToEnd(field, Direction::Y);
-
-                    for (auto iy = iy0; iy <= iy1; ++iy)
+                    if constexpr (dimension == 2)
+                        evalOnLine_<independent>(iy0, iy1, [&](auto iy) { fn(ix, iy); });
+                    else
                     {
-                        if constexpr (dimension == 2)
-                        {
-                            fn(ix, iy);
-                        }
-                        else
-                        {
-                            auto const [iz0, iz1] = startToEnd(field, Direction::Z);
-
-                            for (auto iz = iz0; iz <= iz1; ++iz)
-                                fn(ix, iy, iz);
-                        }
+                        auto const [iz0, iz1] = startToEnd(field, Direction::Z);
+                        for (auto iy = iy0; iy <= iy1; ++iy)
+                            evalOnLine_<independent>(iz0, iz1, [&](auto iz) { fn(ix, iy, iz); });
                     }
                 }
             }

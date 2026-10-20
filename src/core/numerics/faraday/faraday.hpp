@@ -44,13 +44,13 @@ public:
 
         auto const curlE = curl(layout_, E);
 
-        layout_.evalOnBox(Bxnew, [&](auto const&... ijk) {
+        layout_.evalOnBoxIndependent(Bxnew, [&](auto const&... ijk) {
             Bxnew(ijk...) = Bx(ijk...) - dt_ * curlE.x({ijk...});
         });
-        layout_.evalOnBox(Bynew, [&](auto const&... ijk) {
+        layout_.evalOnBoxIndependent(Bynew, [&](auto const&... ijk) {
             Bynew(ijk...) = By(ijk...) - dt_ * curlE.y({ijk...});
         });
-        layout_.evalOnBox(Bznew, [&](auto const&... ijk) {
+        layout_.evalOnBoxIndependent(Bznew, [&](auto const&... ijk) {
             Bznew(ijk...) = Bz(ijk...) - dt_ * curlE.z({ijk...});
         });
     }
