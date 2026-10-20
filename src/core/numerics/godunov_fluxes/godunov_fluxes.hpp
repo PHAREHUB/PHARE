@@ -10,6 +10,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/reconstructions/reconstructor.hpp"
+#include "core/numerics/reconstructions/stencil.hpp"
 
 #include "initializer/data_provider.hpp"
 
@@ -193,19 +194,24 @@ private:
             }
         });
 
-        for_each_index<dimension>(cellLo, hi, [&](MeshIndex<dimension> const& c) {
-            auto store = [&](std::size_t v, auto const& F) {
-                auto const [l, u] = Reconstruction_t::template cell_faces<direction>(F, c);
-                lower(v)(c)       = l;
-                upper(v)(c)       = u;
-            };
-            store(0, state.rho);
-            store(1, state.V(Component::X));
-            store(2, state.V(Component::Y));
-            store(3, state.V(Component::Z));
-            store(4, state.P);
-            for (std::size_t v = 0; v < nCt; ++v)
-                store(5 + v, centred(v));
+        // cell pass, one contiguous line (last dimension) at a time per variable
+        std::array<double const*, nRec> src{state.rho.data(), state.V(Component::X).data(),
+                                            state.V(Component::Y).data(),
+                                            state.V(Component::Z).data(), state.P.data()};
+        for (std::size_t v = 0; v < nCt; ++v)
+            src[5 + v] = scratch + v * N;
+        std::ptrdiff_t stride = 1; // between neighbours along direction, all arrays share shape
+        for (std::size_t i = d + 1; i < dimension; ++i)
+            stride *= shape[i];
+        auto lineHi           = hi;
+        lineHi[dimension - 1] = cellLo[dimension - 1];
+        int const n           = hi[dimension - 1] - cellLo[dimension - 1] + 1;
+        for_each_index<dimension>(cellLo, lineHi, [&](MeshIndex<dimension> const& c) {
+            auto const o = NdArrayViewer<dimension>::idx(shape, c);
+            for (std::size_t v = 0; v < nRec; ++v)
+                cell_faces_line<Reconstruction_t>(src[v] + o, stride, n,
+                                                  scratch + (nCt + v) * N + o,
+                                                  scratch + (nCt + nRec + v) * N + o);
         });
 
         auto const& Bn = state.B(static_cast<Component>(direction));

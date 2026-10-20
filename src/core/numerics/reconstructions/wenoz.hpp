@@ -3,6 +3,7 @@
 
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/numerics/reconstructions/stencil.hpp"
 #include <utility>
 
 namespace PHARE::core
@@ -58,20 +59,19 @@ public:
     template<auto direction, typename Field>
     static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
     {
-        auto const u_2 = F(GridLayout::template previous<direction>(
-            GridLayout::template previous<direction>(index)));
-        auto const u_1 = F(GridLayout::template previous<direction>(index));
-        auto const u   = F(index);
-        auto const u1  = F(GridLayout::template next<direction>(index));
-        auto const u2
-            = F(GridLayout::template next<direction>(GridLayout::template next<direction>(index)));
+        return faces_of(centred_stencil<GridLayout, nghosts - 1, direction>(F, index));
+    }
 
+    // lower and upper face values of the centre cell of a 2 * (nghosts - 1) + 1 stencil
+    static auto faces_of(auto const& u)
+    {
         // both faces share the smoothness indicators, only the linear weights differ
-        auto const [r0, r1, r2] = wenoz_ratios_(u_2, u_1, u, u1, u2);
+        auto const [r0, r1, r2] = wenoz_ratios_(u[0], u[1], u[2], u[3], u[4]);
 
-        return std::make_pair(
-            recons_wenoz_R_from_(u_2, u_1, u, u1, u2, normalized_(r0, r1, r2, dR0, dR1, dR2)),
-            recons_wenoz_L_from_(u_2, u_1, u, u1, u2, normalized_(r0, r1, r2, dL0, dL1, dL2)));
+        return std::make_pair(recons_wenoz_R_from_(u[0], u[1], u[2], u[3], u[4],
+                                                   normalized_(r0, r1, r2, dR0, dR1, dR2)),
+                              recons_wenoz_L_from_(u[0], u[1], u[2], u[3], u[4],
+                                                   normalized_(r0, r1, r2, dL0, dL1, dL2)));
     }
 
 private:

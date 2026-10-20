@@ -3,6 +3,7 @@
 
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/numerics/reconstructions/stencil.hpp"
 #include <utility>
 
 namespace PHARE::core
@@ -34,9 +35,11 @@ public:
     template<auto direction, typename Field>
     static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
     {
-        auto const u = F(index);
-        return std::make_pair(u, u);
+        return faces_of(centred_stencil<GridLayout, nghosts - 1, direction>(F, index));
     }
+
+    // lower and upper face values of the centre cell of a 2 * (nghosts - 1) + 1 stencil
+    static auto faces_of(auto const& u) { return std::make_pair(u[0], u[0]); }
 };
 
 } // namespace PHARE::core

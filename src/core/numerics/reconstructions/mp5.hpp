@@ -4,6 +4,7 @@
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/slope_limiters/min_mod.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/numerics/reconstructions/stencil.hpp"
 #include <utility>
 
 namespace PHARE::core
@@ -59,16 +60,14 @@ public:
     template<auto direction, typename Field>
     static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
     {
-        auto const u_2 = F(GridLayout::template previous<direction>(
-            GridLayout::template previous<direction>(index)));
-        auto const u_1 = F(GridLayout::template previous<direction>(index));
-        auto const u   = F(index);
-        auto const u1  = F(GridLayout::template next<direction>(index));
-        auto const u2
-            = F(GridLayout::template next<direction>(GridLayout::template next<direction>(index)));
+        return faces_of(centred_stencil<GridLayout, nghosts - 1, direction>(F, index));
+    }
 
-        return std::make_pair(recons_mp5_R_(u_2, u_1, u, u1, u2),
-                              recons_mp5_L_(u_2, u_1, u, u1, u2));
+    // lower and upper face values of the centre cell of a 2 * (nghosts - 1) + 1 stencil
+    static auto faces_of(auto const& u)
+    {
+        return std::make_pair(recons_mp5_R_(u[0], u[1], u[2], u[3], u[4]),
+                              recons_mp5_L_(u[0], u[1], u[2], u[3], u[4]));
     }
 
 private:
