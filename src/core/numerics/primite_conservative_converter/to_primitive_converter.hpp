@@ -57,15 +57,15 @@ public:
     template<typename Field, typename VecField>
     void rhoVToVOnGhostBox(Field& rho, VecField const& rhoV, VecField& V) const
     {
-        layout_.evalOnGhostBox(rho,
-                               [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
+        layout_.evalOnGhostBoxIndependent(
+            rho, [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
     }
 
     template<typename Field, typename VecField>
     void eosEtotToPOnGhostBox(double const gamma, Field const& rho, VecField const& rhoV,
                               VecField const& B, Field& Etot, Field& P) const
     {
-        layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
+        layout_.evalOnGhostBoxIndependent(rho, [&](auto&... args) mutable {
             eosEtotToP_(gamma, rho, rhoV, B, Etot, P, {args...});
         });
     }

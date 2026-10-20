@@ -6,6 +6,7 @@
 #include "core/utilities/index/index.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
+#include <array>
 #include <tuple>
 
 
@@ -28,8 +29,11 @@ public:
     template<typename Field, typename... Fluxes>
     void operator()(Field const& U, Field& Unew, Fluxes const&... fluxes) const
     {
-        layout_.evalOnBox(Unew, [&](auto&... args) mutable {
-            finite_volume_euler_(U, Unew, {args...}, fluxes...);
+        // flux centerings are looked up once, not per cell
+        std::array<std::array<QtyCentering, dimension>, sizeof...(Fluxes)> const centerings{
+            layout_.centering(fluxes.physicalQuantity())...};
+        layout_.evalOnBoxIndependent(Unew, [&](auto&... args) mutable {
+            finite_volume_euler_(U, Unew, {args...}, centerings, fluxes...);
         });
     }
 
@@ -39,12 +43,12 @@ private:
 
     template<typename Field, typename... Fluxes>
     void finite_volume_euler_(Field const& U, Field& Unew, MeshIndex<Field::dimension> index,
-                              Fluxes const&... fluxes) const
+                              auto const& centerings, Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
-        auto&& F_x          = std::get<0>(flux_tuple);
-        auto fluxCenteringX = layout_.centering(F_x.physicalQuantity());
+        auto&& F_x                 = std::get<0>(flux_tuple);
+        auto const& fluxCenteringX = centerings[0];
 
         if constexpr (dimension == 1)
         {
@@ -55,8 +59,8 @@ private:
         }
         else if constexpr (dimension >= 2)
         {
-            auto&& F_y          = std::get<1>(flux_tuple);
-            auto fluxCenteringY = layout_.centering(F_y.physicalQuantity());
+            auto&& F_y                 = std::get<1>(flux_tuple);
+            auto const& fluxCenteringY = centerings[1];
 
             if constexpr (dimension == 2)
             {
@@ -71,8 +75,8 @@ private:
             }
             else if constexpr (dimension == 3)
             {
-                auto&& F_z          = std::get<2>(flux_tuple);
-                auto fluxCenteringZ = layout_.centering(F_z.physicalQuantity());
+                auto&& F_z                 = std::get<2>(flux_tuple);
+                auto const& fluxCenteringZ = centerings[2];
 
                 Unew(index)
                     = U(index)
