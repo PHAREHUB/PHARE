@@ -156,13 +156,13 @@ private:
     {
         auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(uL)>>;
 
-        auto hll = [&](auto const ul, auto const ur, auto const fl, auto const fr) {
-            if (SL > 0.0)
-                return fl;
-            else if (SR < 0.0)
-                return fr;
-            else
-                return (SR * fl - SL * fr + SL * SR * (ur - ul)) / (SR - SL);
+        // with speeds clipped at zero the HLL average reduces to the upwind flux on supersonic
+        // faces, so one shared reciprocal replaces a branch and a divide per variable
+        auto const sl  = std::min(0.0, SL);
+        auto const sr  = std::max(0.0, SR);
+        auto const inv = 1.0 / (sr - sl);
+        auto hll       = [&](auto const ul, auto const ur, auto const fl, auto const fr) {
+            return (sr * fl - sl * fr + sl * sr * (ur - ul)) * inv;
         };
 
         return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
