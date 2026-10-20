@@ -45,7 +45,7 @@ class H5Writer
                     "No diagnostic writer found for " + prop.type + ":" + prop.quantity);
             }
         }
-        void compute(DiagnosticProperties&) {}
+        void compute_as_needed(DiagnosticProperties&) {}
     };
 
 public:
@@ -205,7 +205,11 @@ void H5Writer<ModelView>::dump(std::vector<DiagnosticProperties*> const& diagnos
     }
 
     for (auto* diagnostic : diagnostics)
-        typeWriters_.at(diagnostic->type)->write(*diagnostic);
+    {
+        auto& typeWriter = *typeWriters_.at(diagnostic->type);
+        typeWriter.compute_as_needed(*diagnostic); // compute to temporaries then write immediately!
+        typeWriter.write(*diagnostic);
+    }
 
     for (auto* diagnostic : diagnostics)
     {

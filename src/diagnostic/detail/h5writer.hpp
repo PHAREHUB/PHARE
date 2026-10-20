@@ -339,18 +339,26 @@ void H5Writer<ModelView>::writeDatasets_(std::vector<DiagnosticProperties*> cons
         patchAttributes;
 
     std::size_t maxLocalLevel = 0;
-    auto writePatch = [&](GridLayout& gridLayout, std::string patchID, std::size_t iLevel) {
+    auto collectPatch = [&](GridLayout& gridLayout, std::string patchID, std::size_t iLevel) {
         if (!patchAttributes.count(iLevel))
             patchAttributes.emplace(iLevel, std::vector<std::pair<std::string, Attributes>>{});
-        patchPath_ = getPatchPathAddTimestamp(iLevel, patchID);
         patchAttributes[iLevel].emplace_back(patchID,
                                              modelView_.getPatchProperties(patchID, gridLayout));
-        for (auto* diagnostic : diagnostics)
-            typeWriters_.at(diagnostic->type)->write(*diagnostic);
         maxLocalLevel = iLevel;
     };
+    modelView_.visitHierarchy(collectPatch, minLevel, maxLevel);
 
-    modelView_.visitHierarchy(writePatch, minLevel, maxLevel);
+    for (auto* diagnostic : diagnostics)
+    {
+        auto& typeWriter = *typeWriters_.at(diagnostic->type);
+        typeWriter.compute_as_needed(*diagnostic); // compute to temporaries then write immediately!
+        modelView_.visitHierarchy(
+            [&](GridLayout&, std::string patchID, std::size_t iLevel) {
+                patchPath_ = getPatchPathAddTimestamp(iLevel, patchID);
+                typeWriter.write(*diagnostic);
+            },
+            minLevel, maxLevel);
+    }
 
     std::size_t maxMPILevel = mpi::max(maxLocalLevel);
     // sets empty vectors in case current process lacks patch on a level
