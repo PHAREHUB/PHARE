@@ -49,7 +49,8 @@ public:
     /** see Pusher::move() documentation*/
 #if 0
     ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
-                       Electromag const& emFields, double mass, Interpolator& interpolator,
+                       Electromag const& emFields, double charge, double mass,
+                       Interpolator& interpolator,
                        ParticleSelector const& particleIsNotLeaving, BoundaryCondition& bc,
                        GridLayout const& layout) override
     {

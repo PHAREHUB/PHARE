@@ -360,8 +360,15 @@ class Run:
             file = os.path.join(self.path, "ions_pop_{}_{}.h5".format(pop_name, qty))
             if os.path.isfile(file):
                 with h5py.File(file, "r") as h5_file:
+                    if attribute not in h5_file.attrs:
+                        raise ValueError(
+                            f"{file} has no {attribute} attribute, it was probably written "
+                            "by an older PHARE version"
+                        )
                     values.append(h5_file.attrs[attribute])
 
+        if not values:
+            raise ValueError(f"no file of population {pop_name} found in {self.path}")
         assert all(v == values[0] for v in values)
 
         return values[0]

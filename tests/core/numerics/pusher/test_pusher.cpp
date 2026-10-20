@@ -392,9 +392,9 @@ TEST_F(APusherWithLeavingParticles, pusherWithOrWithoutBCReturnsSameNbrOfStaying
     {
         auto layout = DummyLayout<1>{};
         newEndWithBC
-            = pusher->move(rangeIn, rangeOut1, em, mass, interpolator, selector, bc, layout);
+            = pusher->move(rangeIn, rangeOut1, em, charge, mass, interpolator, selector, bc, layout);
         newEndWithoutBC
-            = pusher->move(rangeIn, rangeOut2, em, mass, interpolator, selector, layout);
+            = pusher->move(rangeIn, rangeOut2, em, charge, mass, interpolator, selector, layout);
 
         if (newEndWithBC != std::end(particlesOut1) || newEndWithoutBC != std::end(particlesOut2))
         {
