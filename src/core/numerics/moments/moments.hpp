@@ -17,7 +17,6 @@ namespace core
         for (auto& pop : ions)
         {
             pop.particleDensity().zero();
-            pop.chargeDensity().zero();
             pop.flux().zero();
         }
     }
@@ -38,18 +37,17 @@ namespace core
         for (auto& pop : ions)
         {
             auto& particleDensity = pop.particleDensity();
-            auto& chargeDensity   = pop.chargeDensity();
             auto& flux            = pop.flux();
 
             if constexpr (std::is_same_v<DepositTag, DomainDeposit>)
             {
                 auto& partArray = pop.domainParticles();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
+                interpolate(partArray, particleDensity, flux, layout);
             }
             else if constexpr (std::is_same_v<DepositTag, LevelGhostDeposit>)
             {
                 auto& partArray = pop.levelGhostParticlesOld();
-                interpolate(partArray, particleDensity, chargeDensity, flux, layout);
+                interpolate(partArray, particleDensity, flux, layout);
             }
             else
                 throw std::runtime_error("unknown deposit tag");

@@ -202,7 +202,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
             = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_, layout,
                             boxing.noop, boxing.inNonLevelGhostBox);
 
-        interpolator_(allowed, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+        interpolator_(allowed, pop.particleDensity(), pop.flux(), layout);
 
 
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
@@ -217,8 +217,7 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
                 = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_,
                                 layout, boxing.inGhostBox, boxing.inOwnedDomain);
 
-            interpolator_(enteredInDomain, pop.particleDensity(), pop.chargeDensity(), pop.flux(),
-                          layout);
+            interpolator_(enteredInDomain, pop.particleDensity(), pop.flux(), layout);
         };
 
         // After this function is done domain particles overlaping ghost layers of neighbor patches
@@ -306,9 +305,9 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         }
 
         interpolator_( //
-            domainParticles, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+            domainParticles, pop.particleDensity(), pop.flux(), layout);
         interpolator_( //
-            patchGhost, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+            patchGhost, pop.particleDensity(), pop.flux(), layout);
     }
 }
 
