@@ -261,10 +261,14 @@ private:
             auto riemann = riemann_;
 
             auto state_at = [&](double const* p, int k) PHARE_LAMBDA_ALWAYS_INLINE {
-                PerIndexVector<double> B;
-                B(direction)     = bn[k];
-                B(transverse[0]) = p[5 * N + k];
-                B(transverse[1]) = p[6 * N + k];
+                auto const B = [&]() -> PerIndexVector<double> {
+                    if constexpr (direction == Direction::X)
+                        return {bn[k], p[5 * N + k], p[6 * N + k]};
+                    else if constexpr (direction == Direction::Y)
+                        return {p[5 * N + k], bn[k], p[6 * N + k]};
+                    else
+                        return {p[5 * N + k], p[6 * N + k], bn[k]};
+                }();
                 return PerIndex{p[k], {p[N + k], p[2 * N + k], p[3 * N + k]}, B, p[4 * N + k]};
             };
             auto store = [&](int k, auto const& F) PHARE_LAMBDA_ALWAYS_INLINE {
