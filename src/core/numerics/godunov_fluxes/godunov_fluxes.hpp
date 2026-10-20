@@ -165,11 +165,16 @@ private:
 
         auto const shape    = state.rho.shape();
         std::size_t const N = product(shape, std::size_t{1});
+        // cells per line along the last dimension; also the variable stride in a line buffer
+        int const n = hi[dimension - 1] - cellLo[dimension - 1] + 1;
+        // projected fields over the whole patch, then two line buffers of nRec lower and nRec
+        // upper face values, so face states stay in cache between the cell and face passes
         static thread_local std::vector<double> buffer;
-        if (buffer.size() < N * (nCt + 2 * nRec))
-            buffer.resize(N * (nCt + 2 * nRec));
+        if (buffer.size() < N * nCt + 4 * nRec * n)
+            buffer.resize(N * nCt + 4 * nRec * n);
         double* const scratch = buffer.data(); // one thread_local lookup, not one per access
-        auto view             = [&](std::size_t slot) {
+        std::array<double*, 2> lines{scratch + N * nCt, scratch + N * nCt + 2 * nRec * n};
+        auto view = [&](std::size_t slot) {
             return NdArrayView<dimension, double>{scratch + slot * N, shape};
         };
         auto centred = [&](std::size_t v) { return view(v); }; // then nRec lower, nRec upper
@@ -192,7 +197,7 @@ private:
             }
         });
 
-        // cell pass, one contiguous line (last dimension) at a time per variable
+        // cell pass of one contiguous line (last dimension) starting at cell c, into a line buffer
         std::array<double const*, nRec> src{state.rho.data(), state.V[Component::X].data(),
                                             state.V[Component::Y].data(),
                                             state.V[Component::Z].data(), state.P.data()};
@@ -201,21 +206,18 @@ private:
         std::ptrdiff_t stride = 1; // between neighbours along direction, all arrays share shape
         for (std::size_t i = d + 1; i < dimension; ++i)
             stride *= shape[i];
-        auto lineHi           = hi;
-        lineHi[dimension - 1] = cellLo[dimension - 1];
-        int const n           = hi[dimension - 1] - cellLo[dimension - 1] + 1;
-        for_each_index<dimension>(cellLo, lineHi, [&](MeshIndex<dimension> const& c) {
+        auto cell_line = [&](MeshIndex<dimension> const& c, double* line) {
             auto const o = NdArrayViewer<dimension>::idx(shape, c);
             for (std::size_t v = 0; v < nRec; ++v)
-                cell_faces_line<Reconstruction_t>(src[v] + o, stride, n,
-                                                  scratch + (nCt + v) * N + o,
-                                                  scratch + (nCt + nRec + v) * N + o);
-        });
+                cell_faces_line<Reconstruction_t>(src[v] + o, stride, n, line + v * n,
+                                                  line + (nRec + v) * n);
+        };
 
-        // face pass, one contiguous line (last dimension) at a time. Every array is read and
-        // written through a pointer to the line start, so consecutive faces are consecutive
-        // elements whatever each array's shape; the Riemann solver is copied so the per-face
-        // state it keeps in members (vt, jt, rhot, uct_coefs) lives in registers.
+        // face pass of one contiguous line (last dimension) starting at face f0, from the upper
+        // values of its left cells (up) and the lower values of its right cells (lw). Every array
+        // is read and written through a pointer to the line start, so consecutive faces are
+        // consecutive elements whatever each array's shape; the Riemann solver is copied so the
+        // per-face state it keeps in members (vt, jt, rhot, uct_coefs) lives in registers.
         auto const& Bn = state.B[static_cast<Component>(direction)];
         auto const ct  = [&]() {
             if constexpr (direction == Direction::X)
@@ -232,11 +234,7 @@ private:
         faceHi[dimension - 1] = lo[dimension - 1];
         int const nf          = hi[dimension - 1] - lo[dimension - 1] + 1;
 
-        for_each_index<dimension>(lo, faceHi, [&](MeshIndex<dimension> const& f0) {
-            auto const cl0 = GridLayout::template previous<direction>(f0);
-            double const* up
-                = scratch + (nCt + nRec) * N + NdArrayViewer<dimension>::idx(shape, cl0);
-            double const* lw = scratch + nCt * N + NdArrayViewer<dimension>::idx(shape, f0);
+        auto face_line = [&](MeshIndex<dimension> const& f0, double const* up, double const* lw) {
             double const* bn = &Bn(f0);
 
             auto F0      = fluxes.template get_dir<direction>(f0);
@@ -260,13 +258,13 @@ private:
             auto state_at = [&](double const* p, int k) PHARE_LAMBDA_ALWAYS_INLINE {
                 auto const B = [&]() -> PerIndexVector<double> {
                     if constexpr (direction == Direction::X)
-                        return {bn[k], p[5 * N + k], p[6 * N + k]};
+                        return {bn[k], p[5 * n + k], p[6 * n + k]};
                     else if constexpr (direction == Direction::Y)
-                        return {p[5 * N + k], bn[k], p[6 * N + k]};
+                        return {p[5 * n + k], bn[k], p[6 * n + k]};
                     else
-                        return {p[5 * N + k], p[6 * N + k], bn[k]};
+                        return {p[5 * n + k], p[6 * n + k], bn[k]};
                 }();
-                return PerIndex{p[k], {p[N + k], p[2 * N + k], p[3 * N + k]}, B, p[4 * N + k]};
+                return PerIndex{p[k], {p[n + k], p[2 * n + k], p[3 * n + k]}, B, p[4 * n + k]};
             };
             auto store = [&](int k, auto const& F) PHARE_LAMBDA_ALWAYS_INLINE {
                 fRho[k] = F.rho;
@@ -298,8 +296,8 @@ private:
                 {
                     auto uL = state_at(up, k);
                     auto uR = state_at(lw, k);
-                    PerIndexVector<double> jL{up[7 * N + k], up[8 * N + k], up[9 * N + k]};
-                    PerIndexVector<double> jR{lw[7 * N + k], lw[8 * N + k], lw[9 * N + k]};
+                    PerIndexVector<double> jL{up[7 * n + k], up[8 * n + k], up[9 * n + k]};
+                    PerIndexVector<double> jR{lw[7 * n + k], lw[8 * n + k], lw[9 * n + k]};
 
                     auto const fL = equations_.template compute<direction>(uL, jL);
                     auto const fR = equations_.template compute<direction>(uR, jR);
@@ -327,7 +325,34 @@ private:
                     store(k, riemann.template solve<direction>(uL, uR, fL, fR));
                 }
             }
-        });
+        };
+
+        if constexpr (d == dimension - 1)
+        {
+            // faces and their two cells share a line: face k sits between cells k and k + 1
+            for_each_index<dimension>(lo, faceHi, [&](MeshIndex<dimension> const& f0) {
+                cell_line(GridLayout::template previous<direction>(f0), lines[0]);
+                face_line(f0, lines[0] + nRec * n, lines[0] + 1);
+            });
+        }
+        else
+        {
+            // the lines along direction are walked in order, so a face line reads the upper
+            // values of the previous cell line and the lower values of the current one
+            auto outerHi = faceHi;
+            outerHi[d]   = lo[d];
+            for_each_index<dimension>(lo, outerHi, [&](MeshIndex<dimension> const& f) {
+                auto c = GridLayout::template previous<direction>(f);
+                cell_line(c, lines[0]);
+                for (int i = lo[d]; i <= hi[d]; ++i)
+                {
+                    c[d] = i;
+                    std::swap(lines[0], lines[1]);
+                    cell_line(c, lines[0]);
+                    face_line(c, lines[1] + nRec * n, lines[0]);
+                }
+            });
+        }
     }
 
     template<auto direction>
