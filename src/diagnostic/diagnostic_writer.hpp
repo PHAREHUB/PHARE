@@ -10,8 +10,15 @@ namespace PHARE::diagnostic
 class TypeWriter
 {
 public:
-    virtual void write(DiagnosticProperties&)   = 0;
-    virtual void compute(DiagnosticProperties&) = 0;
+    virtual void write(DiagnosticProperties&) = 0;
+
+    // called by the writer immediately before write(), computes to temporaries
+    virtual void compute_as_needed(DiagnosticProperties&) = 0;
+
+    // called by the DiagnosticsManager on compute_timestamps, which may be more frequent than
+    // write_timestamps (e.g. for time averaging)
+    virtual void compute(DiagnosticProperties&) {}
+
     virtual ~TypeWriter() {}
 };
 
