@@ -82,10 +82,6 @@ namespace amr
             = 0;
 
 
-        // virtual void fillIonMomentGhosts(IonsT& ions, level_t& level,
-        //                                  double const afterPushTime)
-        //     = 0;
-
         virtual std::string fineModelName() const = 0;
 
         virtual std::string coarseModelName() const = 0;

@@ -661,9 +661,6 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
         fromCoarser.fillIonBorders(ions, level, newTime);
     }
     // no need to update time, since it has been done before
-    // now Ni and Vi are calculated we can fill pure ghost nodes
-    // these were not completed by the deposition of patch and levelghost particles
-    // fromCoarser.fillIonMomentGhosts(model.state.ions, level, newTime);
 }
 
 
