@@ -172,9 +172,7 @@ private:
         auto view             = [&](std::size_t slot) {
             return NdArrayView<dimension, double>{scratch + slot * N, shape};
         };
-        auto centred = [&](std::size_t v) { return view(v); };
-        auto lower   = [&](std::size_t v) { return view(nCt + v); };
-        auto upper   = [&](std::size_t v) { return view(nCt + nRec + v); };
+        auto centred = [&](std::size_t v) { return view(v); }; // then nRec lower, nRec upper
 
         for_each_index<dimension>(projLo, projHi, [&](MeshIndex<dimension> const& c) {
             centred(0)(c)
@@ -214,45 +212,122 @@ private:
                                                   scratch + (nCt + nRec + v) * N + o);
         });
 
+        // face pass, one contiguous line (last dimension) at a time. Every array is read and
+        // written through a pointer to the line start, so consecutive faces are consecutive
+        // elements whatever each array's shape; the Riemann solver is copied so the per-face
+        // state it keeps in members (vt, jt, rhot, uct_coefs) lives in registers.
         auto const& Bn = state.B(static_cast<Component>(direction));
-        for_each_index<dimension>(lo, hi, [&](MeshIndex<dimension> const& f) {
-            auto const cl = GridLayout::template previous<direction>(f);
-            auto face     = [&](auto&& side, MeshIndex<dimension> const& c) {
+        auto const ct  = [&]() {
+            if constexpr (direction == Direction::X)
+                return std::forward_as_tuple(ct_state.vt_x, ct_state.aL_x, ct_state.aR_x,
+                                              ct_state.dL_x, ct_state.dR_x);
+            else if constexpr (direction == Direction::Y)
+                return std::forward_as_tuple(ct_state.vt_y, ct_state.aL_y, ct_state.aR_y,
+                                              ct_state.dL_y, ct_state.dR_y);
+            else
+                return std::forward_as_tuple(ct_state.vt_z, ct_state.aL_z, ct_state.aR_z,
+                                              ct_state.dL_z, ct_state.dR_z);
+        }();
+        auto faceHi           = hi;
+        faceHi[dimension - 1] = lo[dimension - 1];
+        int const nf          = hi[dimension - 1] - lo[dimension - 1] + 1;
+
+        for_each_index<dimension>(lo, faceHi, [&](MeshIndex<dimension> const& f0) {
+            auto const cl0 = GridLayout::template previous<direction>(f0);
+            double const* up
+                = scratch + (nCt + nRec) * N + NdArrayViewer<dimension>::idx(shape, cl0);
+            double const* lw = scratch + nCt * N + NdArrayViewer<dimension>::idx(shape, f0);
+            double const* bn = &Bn(f0);
+
+            auto F0      = fluxes.template get_dir<direction>(f0);
+            double* fRho = &F0.rho;
+            double* fVx  = &F0.V.x;
+            double* fVy  = &F0.V.y;
+            double* fVz  = &F0.V.z;
+            double* fBx  = &F0.B.x;
+            double* fBy  = &F0.B.y;
+            double* fBz  = &F0.B.z;
+            double* fE   = &F0.P;
+
+            auto& [vT, aL, aR, dL, dR] = ct;
+            double* vtx                = &vT(Component::X)(f0);
+            double* vty                = &vT(Component::Y)(f0);
+            double* vtz                = &vT(Component::Z)(f0);
+            double* aLp                = &aL(f0);
+            double* aRp                = &aR(f0);
+            double* dLp                = &dL(f0);
+            double* dRp                = &dR(f0);
+
+            auto riemann = riemann_;
+
+            auto state_at = [&](double const* p, int k) PHARE_LAMBDA_ALWAYS_INLINE {
                 PerIndexVector<double> B;
-                B(direction)     = Bn(f);
-                B(transverse[0]) = side(5)(c);
-                B(transverse[1]) = side(6)(c);
-                return PerIndex{side(0)(c), {side(1)(c), side(2)(c), side(3)(c)}, B, side(4)(c)};
+                B(direction)     = bn[k];
+                B(transverse[0]) = p[5 * N + k];
+                B(transverse[1]) = p[6 * N + k];
+                return PerIndex{p[k], {p[N + k], p[2 * N + k], p[3 * N + k]}, B, p[4 * N + k]};
             };
-            auto uL  = face(upper, cl);
-            auto uR  = face(lower, f);
-            auto&& u = std::forward_as_tuple(uL, uR);
+            auto store = [&](int k, auto const& F) PHARE_LAMBDA_ALWAYS_INLINE {
+                fRho[k] = F.rho;
+                fVx[k]  = F.V.x;
+                fVy[k]  = F.V.y;
+                fVz[k]  = F.V.z;
+                fBx[k]  = F.B.x;
+                fBy[k]  = F.B.y;
+                fBz[k]  = F.B.z;
+                fE[k]   = F.P;
+                vtx[k]  = riemann.vt.x;
+                vty[k]  = riemann.vt.y;
+                vtz[k]  = riemann.vt.z;
+                aLp[k]  = riemann.uct_coefs[0];
+                aRp[k]  = riemann.uct_coefs[1];
+                dLp[k]  = riemann.uct_coefs[2];
+                dRp[k]  = riemann.uct_coefs[3];
+            };
 
             if constexpr (Hall)
             {
-                PerIndexVector<double> jL{upper(7)(cl), upper(8)(cl), upper(9)(cl)};
-                PerIndexVector<double> jR{lower(7)(f), lower(8)(f), lower(9)(f)};
-                auto const& j = std::forward_as_tuple(jL, jR);
+                auto& jT     = ct_state.template getJt<direction>();
+                double* jtx  = &jT(Component::X)(f0);
+                double* jty  = &jT(Component::Y)(f0);
+                double* jtz  = &jT(Component::Z)(f0);
+                double* rhot = &ct_state.template getRhot<direction>()(f0);
 
-                auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                    return equations_.template compute<direction>(std::get<i>(u), std::get<i>(j));
-                });
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC ivdep
+#endif
+                for (int k = 0; k < nf; ++k)
+                {
+                    auto uL = state_at(up, k);
+                    auto uR = state_at(lw, k);
+                    PerIndexVector<double> jL{up[7 * N + k], up[8 * N + k], up[9 * N + k]};
+                    PerIndexVector<double> jR{lw[7 * N + k], lw[8 * N + k], lw[9 * N + k]};
 
-                fluxes.template get_dir<direction>(f)
-                    = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
+                    auto const fL = equations_.template compute<direction>(uL, jL);
+                    auto const fR = equations_.template compute<direction>(uR, jR);
 
-                ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
-                                                  riemann_.uct_coefs, f);
+                    store(k, riemann.template solve<direction>(uL, uR, fL, fR, jL, jR));
+                    jtx[k]  = riemann.jt.x;
+                    jty[k]  = riemann.jt.y;
+                    jtz[k]  = riemann.jt.z;
+                    rhot[k] = riemann.rhot;
+                }
             }
             else
             {
-                auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>(
-                    [&](auto i) { return equations_.template compute<direction>(std::get<i>(u)); });
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC ivdep
+#endif
+                for (int k = 0; k < nf; ++k)
+                {
+                    auto uL = state_at(up, k);
+                    auto uR = state_at(lw, k);
 
-                fluxes.template get_dir<direction>(f)
-                    = riemann_.template solve<direction>(uL, uR, fL, fR);
+                    auto const fL = equations_.template compute<direction>(uL);
+                    auto const fR = equations_.template compute<direction>(uR);
 
-                ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs, f);
+                    store(k, riemann.template solve<direction>(uL, uR, fL, fR));
+                }
             }
         });
     }

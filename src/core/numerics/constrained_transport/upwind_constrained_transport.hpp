@@ -2,6 +2,7 @@
 #define PHARE_UPWIND_CONSTRAINED_TRANSPORT_HPP
 
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/ohm/ohm.hpp"
@@ -58,12 +59,13 @@ public:
             double* const scratch = buffer.data(); // one thread_local lookup, not one per access
 
             auto slots = [&](auto const& E, std::size_t first) {
-                return [&, first](std::size_t slot, MeshIndex<dimension> const& idx) {
-                    auto const s = 2 * (first + slot) * N;
-                    return std::make_pair(
-                        NdArrayView<dimension, double>{scratch + s, E.shape()}(idx),
-                        NdArrayView<dimension, double>{scratch + s + N, E.shape()}(idx));
-                };
+                return [&, first](std::size_t slot, MeshIndex<dimension> const& idx)
+                           PHARE_LAMBDA_ALWAYS_INLINE {
+                               auto const s = 2 * (first + slot) * N;
+                               return std::make_pair(
+                                   NdArrayView<dimension, double>{scratch + s, E.shape()}(idx),
+                                   NdArrayView<dimension, double>{scratch + s + N, E.shape()}(idx));
+                           };
             };
             // slots sharing a direction and an edge box go through one cell loop, so their
             // independent stencils overlap instead of each running as its own latency chain
@@ -403,12 +405,13 @@ private:
                       * (ct_state.dR_y(idx)
                          + ct_state.dR_y(layout_.template previous<Direction::X>(idx)));
 
-            auto const rec = [&]<auto D>(std::size_t slot, auto const& F) {
-                if constexpr (dimension == 2)
-                    return faces(slot, idx);
-                else
-                    return Reconstruction_t::template reconstruct<D>(F, idx);
-            };
+            auto const rec
+                = [&]<auto D>(std::size_t slot, auto const& F) PHARE_LAMBDA_ALWAYS_INLINE {
+                      if constexpr (dimension == 2)
+                          return faces(slot, idx);
+                      else
+                          return Reconstruction_t::template reconstruct<D>(F, idx);
+                  };
             constexpr std::size_t x0 = Hall ? 4 : 2; // first Ez slot reconstructed along X
             auto [vyS, vyN] = rec.template operator()<Direction::Y>(0, ct_state.vt_x(Component::Y));
             auto [vxW, vxE]

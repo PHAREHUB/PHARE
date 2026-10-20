@@ -5,6 +5,14 @@
 
 #define NO_DISCARD [[nodiscard]]
 
+// after a lambda's parameters, for small helpers called inside loops that must vectorise,
+// where the inliner's cost model otherwise keeps them out of line
+#if defined(__GNUC__) || defined(__clang__)
+#define PHARE_LAMBDA_ALWAYS_INLINE __attribute__((always_inline))
+#else
+#define PHARE_LAMBDA_ALWAYS_INLINE
+#endif
+
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)
 #define PHARE_DEBUG_DO(...) __VA_ARGS__
 #else
