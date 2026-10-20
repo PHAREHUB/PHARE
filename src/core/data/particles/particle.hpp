@@ -40,10 +40,10 @@ struct Particle
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static std::size_t constexpr dimension = dim;
 
-    Particle(double a_weight, double a_charge, std::array<int, dim> cell,
-             std::array<double, dim> a_delta, std::array<double, 3> a_v)
+    // the charge is a property of the population, see IonPopulation::charge()
+    Particle(double a_weight, std::array<int, dim> cell, std::array<double, dim> a_delta,
+             std::array<double, 3> a_v)
         : weight{a_weight}
-        , charge{a_charge}
         , iCell{cell}
         , delta{a_delta}
         , v{a_v}
@@ -53,7 +53,6 @@ struct Particle
     Particle() = default;
 
     double weight = 0;
-    double charge = 0;
 
     // {} zero initialization
     std::array<int, dim> iCell{};
@@ -63,7 +62,6 @@ struct Particle
     NO_DISCARD bool operator==(Particle<dim> const& that) const
     {
         return (this->weight == that.weight) && //
-               (this->charge == that.charge) && //
                (this->iCell == that.iCell) &&   //
                (this->delta == that.delta) &&   //
                (this->v == that.v);
@@ -91,7 +89,7 @@ std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
     {
         out << v << ",";
     }
-    out << "), charge : " << particle.charge << ", weight : " << particle.weight;
+    out << "), weight : " << particle.weight;
     out << '\n';
     return out;
 }
@@ -104,7 +102,6 @@ struct ParticleView
     static constexpr std::size_t dimension = dim;
 
     double& weight;
-    double& charge;
     std::array<int, dim>& iCell;
     std::array<double, dim>& delta;
     std::array<double, 3>& v;
@@ -126,7 +123,6 @@ NO_DISCARD typename std::enable_if_t<is_phare_particle_type<dim, ParticleA<dim>>
 operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
 {
     return particleA.weight == particleB.weight and //
-           particleA.charge == particleB.charge and //
            particleA.iCell == particleB.iCell and   //
            particleA.delta == particleB.delta and   //
            particleA.v == particleB.v;
@@ -143,7 +139,7 @@ NO_DISCARD typename std::enable_if_t<PHARE::core::is_phare_particle_type<dim, Pa
                                      PHARE::core::Particle<dim>>
 copy(Particle_t<dim> const& from)
 {
-    return {from.weight, from.charge, from.iCell, from.delta, from.v};
+    return {from.weight, from.iCell, from.delta, from.v};
 }
 
 

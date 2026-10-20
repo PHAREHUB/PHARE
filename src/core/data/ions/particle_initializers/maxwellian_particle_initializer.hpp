@@ -38,18 +38,19 @@ public:
     static constexpr auto dimension = GridLayout::dimension;
     using InputFunction             = initializer::InitFunction<dimension>;
 
-    MaxwellianParticleInitializer(
-        InputFunction density, std::array<InputFunction, 3> const& bulkVelocity,
-        std::array<InputFunction, 3> const& thermalVelocity, double const particleCharge,
-        std::uint32_t const& nbrParticlesPerCell, std::optional<std::size_t> seed = {},
-        Basis const basis                                 = Basis::Cartesian,
-        std::array<InputFunction, 3> const& magneticField = {nullptr, nullptr, nullptr},
-        double densityCutOff                              = 1e-5)
+    MaxwellianParticleInitializer(InputFunction density,
+                                  std::array<InputFunction, 3> const& bulkVelocity,
+                                  std::array<InputFunction, 3> const& thermalVelocity,
+                                  std::uint32_t const& nbrParticlesPerCell,
+                                  std::optional<std::size_t> seed = {},
+                                  Basis const basis               = Basis::Cartesian,
+                                  std::array<InputFunction, 3> const& magneticField
+                                  = {nullptr, nullptr, nullptr},
+                                  double densityCutOff = 1e-5)
         : density_{density}
         , bulkVelocity_{bulkVelocity}
         , thermalVelocity_{thermalVelocity}
         , magneticField_{magneticField}
-        , particleCharge_{particleCharge}
         , densityCutOff_{densityCutOff}
         , nbrParticlePerCell_{nbrParticlesPerCell}
         , basis_{basis}
@@ -87,7 +88,6 @@ private:
     std::array<InputFunction, 3> thermalVelocity_;
     std::array<InputFunction, 3> magneticField_;
 
-    double particleCharge_;
     double densityCutOff_ = 1e-5;
     std::uint32_t nbrParticlePerCell_;
     Basis basis_;
@@ -192,8 +192,8 @@ void MaxwellianParticleInitializer<ParticleArray, GridLayout>::loadParticles(
             if (basis_ == Basis::Magnetic)
                 particleVelocity = basisTransform(basis, particleVelocity);
 
-            particles.emplace_back(Particle{cellWeight, particleCharge_, iCell,
-                                            deltas(deltaDistrib, randGen), particleVelocity});
+            particles.emplace_back(
+                Particle{cellWeight, iCell, deltas(deltaDistrib, randGen), particleVelocity});
         }
     }
 }

@@ -23,7 +23,7 @@ protected:
 
 public:
     AParticle()
-        : part{0.01, 1., {43, 75, 92}, {0.002, 0.2, 0.8}, {1.8, 1.83, 2.28}}
+        : part{0.01, {43, 75, 92}, {0.002, 0.2, 0.8}, {1.8, 1.83, 2.28}}
     {
     }
 };
@@ -32,11 +32,6 @@ public:
 TEST_F(AParticle, ParticleWeightIsWellInitialized)
 {
     EXPECT_DOUBLE_EQ(0.01, part.weight);
-}
-
-TEST_F(AParticle, ParticleChargeIsInitiliazedOK)
-{
-    EXPECT_DOUBLE_EQ(1., part.charge);
 }
 
 

@@ -30,7 +30,6 @@ TYPED_TEST(ParticleListTest, SoAandAoSInterop)
     {
         auto view   = contiguous[i];
         view.weight = 1 + i;
-        view.charge = 1 + i;
         view.iCell  = ConstArray<int, dim>(i);
         view.delta  = ConstArray<double, dim>(i + 1);
         view.v      = ConstArray<double, 3>(view.weight + 2);

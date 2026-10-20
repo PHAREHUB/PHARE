@@ -28,8 +28,7 @@ public:
     TestMaxwellianParticleInitializer(ParticleArray& particles, GridLayout const& layout);
 
 private:
-    Basis basis_           = Basis::Cartesian;
-    double particleCharge_ = 1.1;
+    Basis basis_ = Basis::Cartesian;
     std::optional<std::size_t> rngSeed_{1337};
 };
 
@@ -110,7 +109,6 @@ TestMaxwellianParticleInitializer<ParticleArray, GridLayout> //
             auto AMRCellIndex = layout.localToAMR(Point{ix});
 
             tmpParticle.weight = cellWeight;
-            tmpParticle.charge = particleCharge_;
             tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
             tmpParticle.delta  = delta;
             tmpParticle.v      = particleVelocity;
@@ -135,8 +133,7 @@ public:
     TestMaxwellianParticleInitializer(ParticleArray& particles, GridLayout const& layout);
 
 private:
-    Basis basis_           = Basis::Cartesian;
-    double particleCharge_ = 1.1;
+    Basis basis_ = Basis::Cartesian;
     std::optional<std::size_t> rngSeed_{1337};
 };
 
@@ -224,7 +221,6 @@ TestMaxwellianParticleInitializer<ParticleArray, GridLayout>::TestMaxwellianPart
 
 
                 tmpParticle.weight = cellWeight;
-                tmpParticle.charge = particleCharge_;
                 tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
                 tmpParticle.delta  = delta;
                 tmpParticle.v      = particleVelocity;
@@ -251,8 +247,7 @@ public:
     TestMaxwellianParticleInitializer(ParticleArray& particles, GridLayout const& layout);
 
 private:
-    Basis basis_           = Basis::Cartesian;
-    double particleCharge_ = 1.1;
+    Basis basis_ = Basis::Cartesian;
     std::optional<std::size_t> rngSeed_{1337};
 };
 
@@ -348,16 +343,15 @@ TestMaxwellianParticleInitializer<ParticleArray, GridLayout>::TestMaxwellianPart
                     auto AMRCellIndex = layout.localToAMR(Point{ix, iy, iz});
 
                     tmpParticle.weight = cellWeight;
-                    tmpParticle.charge = particleCharge_;
                     tmpParticle.iCell  = AMRCellIndex.template toArray<int>();
                     tmpParticle.delta  = delta;
                     tmpParticle.v      = particleVelocity;
 
                     particles.push_back(std::move(tmpParticle));
                 } // end particle looop
-            }     // end z
-        }         // end y
-    }             // end x
+            } // end z
+        } // end y
+    } // end x
 }
 
 

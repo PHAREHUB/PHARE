@@ -19,8 +19,7 @@ core::ContiguousParticlesView<dim> contiguousViewFrom(PyArrayTuple const& py_par
     return {makeSpan<int>(std::get<0>(py_particles)),     // iCell
             makeSpan<double>(std::get<1>(py_particles)),  // delta
             makeSpan<double>(std::get<2>(py_particles)),  // weight
-            makeSpan<double>(std::get<3>(py_particles)),  // charge
-            makeSpan<double>(std::get<4>(py_particles))}; // v
+            makeSpan<double>(std::get<3>(py_particles))}; // v
 }
 
 template<std::size_t dim>
@@ -29,7 +28,6 @@ pyarray_particles_t makePyArrayTuple(std::size_t const size)
     return std::make_tuple(py_array_t<int>(size * dim),    // iCell
                            py_array_t<double>(size * dim), // delta
                            py_array_t<double>(size),       // weight
-                           py_array_t<double>(size),       // charge
                            py_array_t<double>(size * 3));  // v
 }
 
@@ -45,13 +43,11 @@ void assertParticlePyArraySizes(PyArrayTuple const& py_particles)
     auto const& n_iCell  = ndSize(std::get<0>(py_particles).request());
     auto const& n_delta  = ndSize(std::get<1>(py_particles).request());
     auto const& n_weight = shape_nd(std::get<2>(py_particles));
-    auto const& n_charge = shape_nd(std::get<3>(py_particles));
 
-    assert(n_weight == n_charge);
     assert(n_delta == n_weight * dim);
     assert(n_iCell == n_weight * dim);
 
-    auto const& v     = std::get<4>(py_particles);
+    auto const& v     = std::get<3>(py_particles);
     auto const& vDims = v.request().ndim;
 
     assert((vDims == 1 and shape_nd(v) == n_weight * 3)

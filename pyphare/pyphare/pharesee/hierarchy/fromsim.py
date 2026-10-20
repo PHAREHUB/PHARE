@@ -72,7 +72,6 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                     deltas=np.asarray(patch.data.delta),
                     v=v,
                     weights=np.asarray(patch.data.weight),
-                    charges=np.asarray(patch.data.charge),
                 )
 
                 patch_datas[pop + "_particles"] = ParticleData(
@@ -98,7 +97,6 @@ def hierarchy_from_sim(simulator, qty, pop=""):
                             deltas=np.asarray(dwpatch.data.delta),
                             v=v,
                             weights=np.asarray(dwpatch.data.weight),
-                            charges=np.asarray(dwpatch.data.charge),
                         )
 
                         box = Box(dwpatch.lower, dwpatch.upper)

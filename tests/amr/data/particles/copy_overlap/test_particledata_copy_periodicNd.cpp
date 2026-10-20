@@ -69,7 +69,6 @@ struct twoParticlesDataNDTouchingPeriodicBorders : public testing::Test
     twoParticlesDataNDTouchingPeriodicBorders()
     {
         particle.weight = 1.0;
-        particle.charge = 1.0;
         particle.v      = {{1.0, 1.0, 1.0}};
     }
 };
@@ -138,7 +137,6 @@ TYPED_TEST(twoParticlesDataNDTouchingPeriodicBorders, preserveParticleAttributes
     }
     EXPECT_THAT(this->destPdat.domainParticles[0].delta, Eq(this->particle.delta));
     EXPECT_THAT(this->destPdat.domainParticles[0].weight, Eq(this->particle.weight));
-    EXPECT_THAT(this->destPdat.domainParticles[0].charge, Eq(this->particle.charge));
 }
 
 

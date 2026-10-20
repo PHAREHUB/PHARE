@@ -49,7 +49,6 @@ struct AParticlesDataND : public testing::Test
     AParticlesDataND()
     {
         particle.weight = 1.0;
-        particle.charge = 1.0;
         particle.v      = {1.0, 1.0, 1.0};
     }
 };
@@ -104,7 +103,6 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
     EXPECT_THAT(this->destData.domainParticles[0].delta,
                 Pointwise(DoubleEq(), this->particle.delta));
     EXPECT_THAT(this->destData.domainParticles[0].weight, DoubleEq(this->particle.weight));
-    EXPECT_THAT(this->destData.domainParticles[0].charge, DoubleEq(this->particle.charge));
 
     // particle is in the domain of the source patchdata
     // and in last ghost of the destination patchdata
@@ -134,7 +132,6 @@ TYPED_TEST(AParticlesDataND, PreservesAllParticleAttributesAfterCopy)
     EXPECT_THAT(this->destData.domainParticles[0].delta,
                 Pointwise(DoubleEq(), this->particle.delta));
     EXPECT_THAT(this->destData.domainParticles[0].weight, DoubleEq(this->particle.weight));
-    EXPECT_THAT(this->destData.domainParticles[0].charge, DoubleEq(this->particle.charge));
 }
 
 

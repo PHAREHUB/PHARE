@@ -95,7 +95,6 @@ def add_to_patchdata(patch_datas, h5_patch_grp, basename, interp_order, lvl_cell
             deltas=h5_patch_grp["delta"],
             v=v,
             weights=h5_patch_grp["weight"],
-            charges=h5_patch_grp["charge"],
             dl=dl,
         )
 

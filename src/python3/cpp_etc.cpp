@@ -51,7 +51,6 @@ void declareDim(py::module& m)
         .def_readwrite("iCell", &CP::iCell)
         .def_readwrite("delta", &CP::delta)
         .def_readwrite("weight", &CP::weight)
-        .def_readwrite("charge", &CP::charge)
         .def_readwrite("v", &CP::v)
         .def("size", &CP::size);
 

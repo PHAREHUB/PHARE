@@ -117,7 +117,8 @@ protected:
         auto& h5Writer = this->h5Writer_;
 
         Attributes popAttributes;
-        popAttributes["pop_mass"] = pop.mass();
+        popAttributes["pop_mass"]   = pop.mass();
+        popAttributes["pop_charge"] = pop.charge();
         h5Writer.writeGlobalAttributeDict(file, popAttributes, "/");
     }
 

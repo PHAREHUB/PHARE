@@ -126,7 +126,7 @@ void validateFluidDump(Simulator& sim, Hi5Diagnostic& hi5)
         auto& ions = hi5.modelView.getIons();
         for (auto& pop : ions)
         {
-            checkF(layout, path, "/ions/pop/" + pop.name(), "/density"s, pop.chargeDensity());
+            checkF(layout, path, "/ions/pop/" + pop.name(), "/density"s, pop.particleDensity());
             checkVF(layout, path, "/ions/pop/" + pop.name(), "/flux"s, pop.flux());
         }
         checkF(layout, path, "/ions"s, "/charge_density"s, ions.chargeDensity());
@@ -184,7 +184,6 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
         if (!particles.size())
             return;
         auto weightV = hifile.template read_data_set_flat<float, 2>(path + "weight");
-        auto chargeV = hifile.template read_data_set_flat<float, 2>(path + "charge");
         auto vV      = hifile.template read_data_set_flat<float, 2>(path + "v");
         auto iCellV  = hifile.template read_data_set_flat<float, 2>(path + "iCell");
         auto deltaV  = hifile.template read_data_set_flat<float, 2>(path + "delta");
@@ -192,22 +191,22 @@ void validateParticleDump(Simulator& sim, Hi5Diagnostic& hi5)
         core::ParticlePacker packer{particles};
 
         auto first            = packer.empty();
-        std::size_t iCellSize = std::get<2>(first).size();
-        std::size_t deltaSize = std::get<3>(first).size();
-        std::size_t vSize     = std::get<4>(first).size();
+        std::size_t iCellSize = std::get<1>(first).size();
+        std::size_t deltaSize = std::get<2>(first).size();
+        std::size_t vSize     = std::get<3>(first).size();
         std::size_t part_idx  = 0;
         while (packer.hasNext())
         {
             auto next = packer.next();
 
             for (std::size_t i = 0; i < iCellSize; i++)
-                EXPECT_EQ(iCellV[(part_idx * iCellSize) + i], std::get<2>(next)[i]);
+                EXPECT_EQ(iCellV[(part_idx * iCellSize) + i], std::get<1>(next)[i]);
 
             for (std::size_t i = 0; i < deltaSize; i++)
-                EXPECT_FLOAT_EQ(deltaV[(part_idx * deltaSize) + i], std::get<3>(next)[i]);
+                EXPECT_FLOAT_EQ(deltaV[(part_idx * deltaSize) + i], std::get<2>(next)[i]);
 
             for (std::size_t i = 0; i < vSize; i++)
-                EXPECT_FLOAT_EQ(vV[(part_idx * vSize) + i], std::get<4>(next)[i]);
+                EXPECT_FLOAT_EQ(vV[(part_idx * vSize) + i], std::get<3>(next)[i]);
 
             part_idx++;
         }
@@ -299,6 +298,9 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
             double pop_mass = 0;
             rootGroup.getAttribute("pop_mass").read(pop_mass);
             EXPECT_DOUBLE_EQ(pop_mass, 1.0);
+            double pop_charge = 0;
+            rootGroup.getAttribute("pop_charge").read(pop_charge);
+            EXPECT_DOUBLE_EQ(pop_charge, 1.0);
             _check_equal(rootGroup, boundaryTypes, "boundary_conditions");
         }
     }

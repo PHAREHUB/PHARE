@@ -19,7 +19,6 @@ template<std::size_t dim>
 PHARE::core::Particle<dim> particle(int icell = 15)
 {
     return {/*.weight = */ 0,
-            /*.charge = */ 1,
             /*.iCell  = */ PHARE::core::ConstArray<int, dim>(icell),
             /*.delta  = */ PHARE::core::ConstArray<double, dim>(.5),
             /*.v      = */ {{.00001, .00001, .00001}}};

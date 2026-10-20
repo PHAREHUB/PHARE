@@ -345,20 +345,26 @@ class Run:
         return c
 
     def GetMass(self, pop_name, **kwargs):
-        list_of_qty = ["density", "flux", "domain", "levelGhost"]
-        list_of_mass = []
+        return self._get_pop_attribute(pop_name, "pop_mass")
+
+    def GetCharge(self, pop_name, **kwargs):
+        return self._get_pop_attribute(pop_name, "pop_charge")
+
+    def _get_pop_attribute(self, pop_name, attribute):
+        list_of_qty = ["density", "charge_density", "flux", "domain", "levelGhost"]
+        values = []
 
         import h5py
 
         for qty in list_of_qty:
             file = os.path.join(self.path, "ions_pop_{}_{}.h5".format(pop_name, qty))
             if os.path.isfile(file):
-                h5_file = h5py.File(file, "r")
-                list_of_mass.append(h5_file.attrs["pop_mass"])
+                with h5py.File(file, "r") as h5_file:
+                    values.append(h5_file.attrs[attribute])
 
-        assert all(m == list_of_mass[0] for m in list_of_mass)
+        assert all(v == values[0] for v in values)
 
-        return list_of_mass[0]
+        return values[0]
 
     def GetDomainSize(self, **kwargs):
         import h5py

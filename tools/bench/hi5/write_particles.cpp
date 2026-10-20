@@ -42,10 +42,9 @@ void do_bench(benchmark::State& state)
 
     auto writeParticles = [](auto& datasets, auto const& particles) {
         datasets[0].write(particles.weight.data());
-        datasets[1].write(particles.charge.data());
-        datasets[2].write(particles.iCell.data());
-        datasets[3].write(particles.delta.data());
-        datasets[4].write(particles.v.data());
+        datasets[1].write(particles.iCell.data());
+        datasets[2].write(particles.delta.data());
+        datasets[3].write(particles.v.data());
     };
 
     std::string path{"/lol/"};

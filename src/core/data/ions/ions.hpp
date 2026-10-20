@@ -157,17 +157,9 @@ namespace core
         }
 
 
-        // sum_s q_s F_s, the charge flux entering the electron velocity.
-        // Exact only if every particle of a population carries the population charge.
+        // sum_s q_s F_s, the charge flux entering the electron velocity
         void computeChargeFlux()
         {
-            PHARE_DEBUG_DO({
-                for (auto const& pop : populations_)
-                    if (!pop.particlesHaveCharge())
-                        throw std::runtime_error("Ions::computeChargeFlux: population " + pop.name()
-                                                 + " has particles not carrying its charge");
-            })
-
             chargeFlux_.zero();
 
             for (auto const& pop : populations_)
