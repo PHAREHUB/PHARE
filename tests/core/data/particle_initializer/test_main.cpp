@@ -36,7 +36,6 @@ TEST(AParticleIinitializerFactory, takesAPHAREDictToCreateAParticleVectorInitial
     dict["thermal_velocity_y"] = static_cast<PHARE::initializer::InitFunction<1>>(vthy);
     dict["thermal_velocity_z"] = static_cast<PHARE::initializer::InitFunction<1>>(vthz);
 
-    dict["charge"]         = 1.;
     dict["nbrPartPerCell"] = int{100};
     dict["basis"]          = std::string{"Cartesian"};
 

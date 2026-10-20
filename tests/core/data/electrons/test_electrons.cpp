@@ -647,7 +647,6 @@ struct TwoPopulationElectronsTest : public ::testing::Test
             auto const& pop = pops[i];
             auto& buffers   = popBuffers[i];
             fill(buffers.particleDensity, pop.density);
-            fill(buffers.chargeDensity, pop.charge * pop.density);
             for (std::size_t c = 0; c < 3; ++c)
                 fill(buffers.flux[c], pop.density * pop.velocity[c]);
         }
