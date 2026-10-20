@@ -4,6 +4,7 @@
 #include "core/numerics/slope_limiters/van_leer.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/numerics/reconstructions/stencil.hpp"
 #include <utility>
 
 namespace PHARE::core
@@ -47,13 +48,15 @@ public:
     template<auto direction, typename Field>
     static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
     {
-        auto const u_1 = F(GridLayout::template previous<direction>(index));
-        auto const u   = F(index);
-        auto const u1  = F(GridLayout::template next<direction>(index));
+        return faces_of(centred_stencil<GridLayout, nghosts - 1, direction>(F, index));
+    }
 
-        auto const Di = linear_slope_(u_1, u, u1);
+    // lower and upper face values of the centre cell of a 2 * (nghosts - 1) + 1 stencil
+    static auto faces_of(auto const& u)
+    {
+        auto const Di = linear_slope_(u[0], u[1], u[2]);
 
-        return std::make_pair(u - 0.5 * Di, u + 0.5 * Di);
+        return std::make_pair(u[1] - 0.5 * Di, u[1] + 0.5 * Di);
     }
 
 private:
