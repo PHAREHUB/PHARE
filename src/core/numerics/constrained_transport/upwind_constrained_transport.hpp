@@ -47,67 +47,79 @@ public:
         auto& Ey = E[Component::Y];
         auto& Ez = E[Component::Z];
 
-        if constexpr (dimension == 2)
-        {
-            // edge states from a cell pass (see face_states_), slot numbers as in ExEq_ EyEq_ EzEq_
-            constexpr std::size_t nSlots = Hall ? 10 : 6;
-            auto const N = product(Ez.shape(), std::size_t{1}); // primal-primal: largest 2D field
-            static thread_local std::vector<double> buffer;
-            if (buffer.size() < 2 * nSlots * N)
-                buffer.resize(2 * nSlots * N);
+        // edge states from a cell pass (see face_states_), one E component at a time so the
+        // scratch holds one component's slots; slot numbers as in ExEq_ EyEq_ EzEq_
+        constexpr std::size_t perDir = Hall ? 4 : 2; // slots per reconstruction direction
+        constexpr std::size_t nSlots = dimension == 1 ? 1 : 2 * perDir;
+        auto const N
+            = std::max({product(Ex.shape(), std::size_t{1}), product(Ey.shape(), std::size_t{1}),
+                        product(Ez.shape(), std::size_t{1})});
+        static thread_local std::vector<double> buffer;
+        if (buffer.size() < 2 * nSlots * N)
+            buffer.resize(2 * nSlots * N);
 
-            double* const scratch = buffer.data(); // one thread_local lookup, not one per access
+        double* const scratch = buffer.data(); // one thread_local lookup, not one per access
 
-            auto slots = [&](auto const& E, std::size_t first) {
-                return [&, first](std::size_t slot, MeshIndex<dimension> const& idx)
-                           PHARE_LAMBDA_ALWAYS_INLINE {
-                               auto const s = 2 * (first + slot) * N;
-                               return std::make_pair(
-                                   NdArrayView<dimension, double>{scratch + s, E.shape()}(idx),
-                                   NdArrayView<dimension, double>{scratch + s + N, E.shape()}(idx));
-                           };
-            };
-            // slots sharing a direction and an edge box go through one cell loop, so their
-            // independent stencils overlap instead of each running as its own latency chain
-            face_states_<Direction::Y>(Ex, scratch, N, 0, B[Component::Z]);
-            face_states_<Direction::X>(Ey, scratch, N, 1, B[Component::Z]);
+        auto slots = [&](auto const& Ec) {
+            return [&](std::size_t slot, MeshIndex<dimension> const& idx)
+                       PHARE_LAMBDA_ALWAYS_INLINE {
+                           auto const s = 2 * slot * N;
+                           return std::make_pair(
+                               NdArrayView<dimension, double>{scratch + s, Ec.shape()}(idx),
+                               NdArrayView<dimension, double>{scratch + s + N, Ec.shape()}(idx));
+                       };
+        };
+        // slots sharing a direction go through one cell loop, so their independent stencils
+        // overlap instead of each running as its own latency chain
+        auto const transverse = [&]<auto D, auto Dt>(auto const& Ec, std::size_t first,
+                                                     auto const& Vt, auto const& Bc) {
             if constexpr (Hall)
-            {
-                face_states_<Direction::Y>(Ez, scratch, N, 2, ct_state.vt_x[Component::Y],
-                                           B[Component::X],
-                                           ct_state.template getJt<Direction::X>()[Component::Y],
-                                           ct_state.template getRhot<Direction::X>());
-                face_states_<Direction::X>(Ez, scratch, N, 6, ct_state.vt_y[Component::X],
-                                           B[Component::Y],
-                                           ct_state.template getJt<Direction::Y>()[Component::X],
-                                           ct_state.template getRhot<Direction::Y>());
-            }
+                face_states_<D>(Ec, scratch, N, first, Vt, Bc,
+                                ct_state.template getJt<Dt>()[static_cast<Component>(D)],
+                                ct_state.template getRhot<Dt>());
             else
-            {
-                face_states_<Direction::Y>(Ez, scratch, N, 2, ct_state.vt_x[Component::Y],
-                                           B[Component::X]);
-                face_states_<Direction::X>(Ez, scratch, N, 4, ct_state.vt_y[Component::X],
-                                           B[Component::Y]);
-            }
+                face_states_<D>(Ec, scratch, N, first, Vt, Bc);
+        };
 
-            auto const exFaces = slots(Ex, 0);
-            auto const eyFaces = slots(Ey, 1);
-            auto const ezFaces = slots(Ez, 2);
+        if constexpr (dimension == 2)
+            face_states_<Direction::Y>(Ex, scratch, N, 0, B[Component::Z]);
+        else if constexpr (dimension == 3)
+        {
+            transverse.template operator()<Direction::Y, Direction::Z>(
+                Ex, 0, ct_state.vt_z[Component::Y], B[Component::Z]);
+            transverse.template operator()<Direction::Z, Direction::Y>(
+                Ex, perDir, ct_state.vt_y[Component::Z], B[Component::Y]);
+        }
+        if constexpr (dimension > 1)
+        {
+            auto const exFaces = slots(Ex);
             layout_.evalOnBox(Ex,
                               [&](auto&... args) { ExEq_(ct_state, Ex, B, {args...}, exFaces); });
-            layout_.evalOnBox(Ey,
-                              [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}, eyFaces); });
-            layout_.evalOnBox(Ez,
-                              [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}, ezFaces); });
         }
+
+        if constexpr (dimension <= 2)
+            face_states_<Direction::X>(Ey, scratch, N, 0, B[Component::Z]);
         else
         {
-            auto const none
-                = [](std::size_t, MeshIndex<dimension> const&) { return std::make_pair(0., 0.); };
-            layout_.evalOnBox(Ex, [&](auto&... args) { ExEq_(ct_state, Ex, B, {args...}, none); });
-            layout_.evalOnBox(Ey, [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}, none); });
-            layout_.evalOnBox(Ez, [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}, none); });
+            transverse.template operator()<Direction::X, Direction::Z>(
+                Ey, 0, ct_state.vt_z[Component::X], B[Component::Z]);
+            transverse.template operator()<Direction::Z, Direction::X>(
+                Ey, perDir, ct_state.vt_x[Component::Z], B[Component::X]);
         }
+        auto const eyFaces = slots(Ey);
+        layout_.evalOnBox(Ey, [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}, eyFaces); });
+
+        if constexpr (dimension == 1)
+            face_states_<Direction::X>(Ez, scratch, N, 0, B[Component::Y]);
+        else
+        {
+            transverse.template operator()<Direction::Y, Direction::X>(
+                Ez, 0, ct_state.vt_x[Component::Y], B[Component::X]);
+            transverse.template operator()<Direction::X, Direction::Y>(
+                Ez, perDir, ct_state.vt_y[Component::X], B[Component::Y]);
+        }
+        auto const ezFaces = slots(Ez);
+        layout_.evalOnBox(Ez, [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}, ezFaces); });
 
         if (is_dissipative_)
         {
@@ -219,30 +231,21 @@ private:
                       * (ct_state.dR_z(idx)
                          + ct_state.dR_z(layout_.template previous<Direction::Y>(idx)));
 
-            auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                ct_state.vt_z[Component::Y], idx);
-            auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                ct_state.vt_y[Component::Z], idx);
-
-            auto [BzS, BzN]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B[Component::Z], idx);
-            auto [ByB, ByT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B[Component::Y], idx);
+            constexpr std::size_t z0 = Hall ? 4 : 2; // first slot reconstructed along Z
+            auto [vyS, vyN]          = faces(0, idx);
+            auto [vzB, vzT]          = faces(z0, idx);
+            auto [BzS, BzN]          = faces(1, idx);
+            auto [ByB, ByT]          = faces(z0 + 1, idx);
 
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
 
             if constexpr (Hall)
             {
-                auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.template getJt<Direction::Z>()[Component::Y], idx);
-                auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getJt<Direction::Y>()[Component::Z], idx);
-
-                auto [rhoS, rhoN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.template getRhot<Direction::Z>(), idx);
-                auto [rhoB, rhoT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getRhot<Direction::Y>(), idx);
+                auto [jyS, jyN]   = faces(2, idx);
+                auto [jzB, jzT]   = faces(z0 + 2, idx);
+                auto [rhoS, rhoN] = faces(3, idx);
+                auto [rhoB, rhoT] = faces(z0 + 3, idx);
 
                 Ex(idx) += -(aB * jzB * ByB / rhoB + aT * jzT * ByT / rhoT)
                            + (aS * jyS * BzS / rhoS + aN * jyN * BzN / rhoN);
@@ -255,13 +258,7 @@ private:
     {
         if constexpr (dimension <= 2)
         {
-            auto [BzL, BzR] = [&]() {
-                if constexpr (dimension == 2)
-                    return faces(0, idx);
-                else
-                    return Reconstruction_t::template reconstruct<Direction::X>(B[Component::Z],
-                                                                                idx);
-            }();
+            auto [BzL, BzR] = faces(0, idx);
 
             auto FL = BzL * ct_state.vt_x[Component::X](idx)
                       - B[Component::X](idx) * ct_state.vt_x[Component::Z](idx);
@@ -316,28 +313,21 @@ private:
                       * (ct_state.dR_z(idx)
                          + ct_state.dR_z(layout_.template previous<Direction::X>(idx)));
 
-            auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                ct_state.vt_z[Component::X], idx);
-            auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                ct_state.vt_x[Component::Z], idx);
-            auto [BzW, BzE]
-                = Reconstruction_t::template reconstruct<Direction::X>(B[Component::Z], idx);
-            auto [BxB, BxT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B[Component::X], idx);
+            constexpr std::size_t z0 = Hall ? 4 : 2; // first slot reconstructed along Z
+            auto [vxW, vxE]          = faces(0, idx);
+            auto [vzB, vzT]          = faces(z0, idx);
+            auto [BzW, BzE]          = faces(1, idx);
+            auto [BxB, BxT]          = faces(z0 + 1, idx);
 
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
 
             if constexpr (Hall)
             {
-                auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.template getJt<Direction::Z>()[Component::X], idx);
-                auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getJt<Direction::X>()[Component::Z], idx);
-                auto [rhoW, rhoE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.template getRhot<Direction::Z>(), idx);
-                auto [rhoB, rhoT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getRhot<Direction::X>(), idx);
+                auto [jxW, jxE]   = faces(2, idx);
+                auto [jzB, jzT]   = faces(z0 + 2, idx);
+                auto [rhoW, rhoE] = faces(3, idx);
+                auto [rhoB, rhoT] = faces(z0 + 3, idx);
                 Ey(idx) += -(aW * jxW * BzW / rhoW + aE * jxE * BzE / rhoE)
                            + (aB * jzB * BxB / rhoB + aT * jzT * BxT / rhoT);
             }
@@ -349,8 +339,7 @@ private:
     {
         if constexpr (dimension == 1)
         {
-            auto [ByL, ByR]
-                = Reconstruction_t::template reconstruct<Direction::X>(B[Component::Y], idx);
+            auto [ByL, ByR] = faces(0, idx);
 
             auto FL = ByL * ct_state.vt_x[Component::X](idx)
                       - B[Component::X](idx) * ct_state.vt_x[Component::Y](idx);
@@ -405,35 +394,21 @@ private:
                       * (ct_state.dR_y(idx)
                          + ct_state.dR_y(layout_.template previous<Direction::X>(idx)));
 
-            auto const rec
-                = [&]<auto D>(std::size_t slot, auto const& F) PHARE_LAMBDA_ALWAYS_INLINE {
-                      if constexpr (dimension == 2)
-                          return faces(slot, idx);
-                      else
-                          return Reconstruction_t::template reconstruct<D>(F, idx);
-                  };
-            constexpr std::size_t x0 = Hall ? 4 : 2; // first Ez slot reconstructed along X
-            auto [vyS, vyN] = rec.template operator()<Direction::Y>(0, ct_state.vt_x[Component::Y]);
-            auto [vxW, vxE]
-                = rec.template operator()<Direction::X>(x0, ct_state.vt_y[Component::X]);
-
-            auto [BxS, BxN] = rec.template operator()<Direction::Y>(1, B[Component::X]);
-            auto [ByW, ByE] = rec.template operator()<Direction::X>(x0 + 1, B[Component::Y]);
+            constexpr std::size_t x0 = Hall ? 4 : 2; // first slot reconstructed along X
+            auto [vyS, vyN]          = faces(0, idx);
+            auto [vxW, vxE]          = faces(x0, idx);
+            auto [BxS, BxN]          = faces(1, idx);
+            auto [ByW, ByE]          = faces(x0 + 1, idx);
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);
 
             if constexpr (Hall)
             {
-                auto [jyS, jyN] = rec.template operator()<Direction::Y>(
-                    2, ct_state.template getJt<Direction::X>()[Component::Y]);
-                auto [jxW, jxE] = rec.template operator()<Direction::X>(
-                    x0 + 2, ct_state.template getJt<Direction::Y>()[Component::X]);
-
-                auto [rhoS, rhoN] = rec.template operator()<Direction::Y>(
-                    3, ct_state.template getRhot<Direction::X>());
-                auto [rhoW, rhoE] = rec.template operator()<Direction::X>(
-                    x0 + 3, ct_state.template getRhot<Direction::Y>());
+                auto [jyS, jyN]   = faces(2, idx);
+                auto [jxW, jxE]   = faces(x0 + 2, idx);
+                auto [rhoS, rhoN] = faces(3, idx);
+                auto [rhoW, rhoE] = faces(x0 + 3, idx);
 
                 Ez(idx) += (aW * jxW * ByW / rhoW + aE * jxE * ByE / rhoE)
                            - (aS * jyS * BxS / rhoS + aN * jyN * BxN / rhoN);
