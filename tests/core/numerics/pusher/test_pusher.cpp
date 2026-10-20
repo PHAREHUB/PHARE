@@ -135,6 +135,7 @@ public:
         , particlesIn{layout.AMRBox()}
         , particlesOut(layout.AMRBox())
         , pusher{std::make_unique<Pusher_>()}
+        , charge{1}
         , mass{1}
         , dt{0.0001}
         , tstart{0}
@@ -159,6 +160,7 @@ protected:
     ParticleArray<dim> particlesIn;
     ParticleArray<dim> particlesOut;
     std::unique_ptr<Pusher_> pusher;
+    double charge;
     double mass;
     double dt;
     double tstart, tend;
@@ -189,7 +191,7 @@ TEST_F(APusher3D, trajectoryIsOk)
         actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
         actual[2][i] = (particlesOut[0].iCell[2] + particlesOut[0].delta[2]) * dxyz[2];
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
+        pusher->move(rangeIn, rangeOut, em, charge, mass, interpolator, layout, selector, selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -213,7 +215,7 @@ TEST_F(APusher2D, trajectoryIsOk)
         actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
         actual[1][i] = (particlesOut[0].iCell[1] + particlesOut[0].delta[1]) * dxyz[1];
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
+        pusher->move(rangeIn, rangeOut, em, charge, mass, interpolator, layout, selector, selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -234,7 +236,38 @@ TEST_F(APusher1D, trajectoryIsOk)
     {
         actual[0][i] = (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0];
 
-        pusher->move(rangeIn, rangeOut, em, mass, interpolator, layout, selector, selector);
+        pusher->move(rangeIn, rangeOut, em, charge, mass, interpolator, layout, selector, selector);
+
+        std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
+    }
+
+    EXPECT_THAT(actual[0], ::testing::Pointwise(::testing::DoubleNear(1e-5), expectedTrajectory.x));
+}
+
+
+
+// dv/dt = (q/m) (E + v x B): with q/m = 2 and a time step dt/2, Boris gives exactly the
+// velocities of the q/m = 1 trajectory and half its displacements. A pusher swapping
+// charge and mass would push with q/m = 1/2.
+TEST_F(APusher1D, trajectoryDependsOnChargeOverMass)
+{
+    auto rangeIn  = makeIndexRange(particlesIn);
+    auto rangeOut = makeIndexRange(particlesOut);
+    std::copy(rangeIn.begin(), rangeIn.end(), rangeOut.begin());
+
+    pusher->setMeshAndTimeStep(dxyz, dt / 2);
+    double const twoCharge = 2 * mass;
+
+    auto const x
+        = [&]() { return (particlesOut[0].iCell[0] + particlesOut[0].delta[0]) * dxyz[0]; };
+    auto const x0 = x();
+
+    for (decltype(nt) i = 0; i < nt; ++i)
+    {
+        actual[0][i] = x0 + 2 * (x() - x0);
+
+        pusher->move(rangeIn, rangeOut, em, twoCharge, mass, interpolator, layout, selector,
+                     selector);
 
         std::copy(rangeOut.begin(), rangeOut.end(), rangeIn.begin());
     }
@@ -255,6 +288,7 @@ public:
         : pusher{std::make_unique<
               BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
                           BoundaryCondition<1, 1>, DummyLayout<1>>>()}
+        , charge{1}
         , mass{1}
         , dt{0.001}
         , tstart{0}
@@ -284,6 +318,7 @@ protected:
     std::unique_ptr<BorisPusher<1, IndexRange<ParticleArray<1>>, Electromag, Interpolator,
                                 BoundaryCondition<1, 1>, DummyLayout<1>>>
         pusher;
+    double charge;
     double mass;
     double dt;
     double tstart;
@@ -318,8 +353,8 @@ TEST_F(APusherWithLeavingParticles, splitLeavingFromNonLeavingParticles)
     for (decltype(nt) i = 0; i < nt; ++i)
     {
         auto layout = DummyLayout<1>{};
-        inDomain
-            = pusher->move(rangeIn, rangeIn, em, mass, interpolator, layout, selector, selector);
+        inDomain = pusher->move(rangeIn, rangeIn, em, charge, mass, interpolator, layout, selector,
+                                selector);
 
         if (inDomain.end() != std::end(particlesIn))
         {

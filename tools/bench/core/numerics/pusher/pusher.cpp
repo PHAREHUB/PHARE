@@ -48,6 +48,7 @@ void push(benchmark::State& state)
             /*ParticleRange const&*/ rangeIn,  //
             /*ParticleRange&      */ rangeOut, //
             /*Electromag const&   */ em,       //
+            /*double charge       */ 1,
             /*double mass         */ 1,
             /*Interpolator&*/ interpolator,
             /*GridLayout const&*/ layout, //
