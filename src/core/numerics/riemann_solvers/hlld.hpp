@@ -1,6 +1,7 @@
 #ifndef CORE_NUMERICS_RIEMANN_SOLVERS_HLLD_HPP
 #define CORE_NUMERICS_RIEMANN_SOLVERS_HLLD_HPP
 
+#include "core/def.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/godunov_fluxes/godunov_utils.hpp"
 #include "core/numerics/riemann_solvers/mhd_speeds.hpp"
@@ -22,39 +23,20 @@ public:
     }
 
     template<auto direction>
-    auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR)
+    PHARE_ALWAYS_INLINE auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR)
     {
         auto hlld_speeds = hlld_speeds_<direction>(uL, uR);
 
-        auto const [uL_s, uL_ss, uR_ss, uR_s]
-            = hlld_intermediate_states_<direction>(uL, uR, fL, fR, hlld_speeds);
-
-        uL.to_conservative(gamma_);
-        uR.to_conservative(gamma_);
-
-        auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
-            = hlld_(uL.as_tuple(), uL_s.as_tuple(), uL_ss.as_tuple(), uR_ss.as_tuple(),
-                    uR_s.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hlld_speeds);
-
-        return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
+        return fluxes_<direction>(uL, uR, fL, fR, hlld_speeds);
     }
 
     template<auto direction>
-    auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR, auto const& jL, auto const& jR)
+    PHARE_ALWAYS_INLINE auto solve(auto& uL, auto& uR, auto const& fL, auto const& fR,
+                                   auto const& jL, auto const& jR)
     {
         auto hlld_speeds = hlld_speeds_<direction>(uL, uR, jL, jR);
 
-        auto const [uL_s, uL_ss, uR_ss, uR_s]
-            = hlld_intermediate_states_<direction>(uL, uR, fL, fR, hlld_speeds);
-
-        uL.to_conservative(gamma_);
-        uR.to_conservative(gamma_);
-
-        auto const [Frho, FrhoVx, FrhoVy, FrhoVz, FBx, FBy, FBz, FEtot]
-            = hlld_(uL.as_tuple(), uL_s.as_tuple(), uL_ss.as_tuple(), uR_ss.as_tuple(),
-                    uR_s.as_tuple(), uR.as_tuple(), fL.as_tuple(), fR.as_tuple(), hlld_speeds);
-
-        return PerIndex{Frho, {FrhoVx, FrhoVy, FrhoVz}, {FBx, FBy, FBz}, FEtot};
+        return fluxes_<direction>(uL, uR, fL, fR, hlld_speeds);
     }
 
     // using HLL averages here following PLUTO and Idefix implementation
@@ -80,6 +62,23 @@ public:
 private:
     double const gamma_;
 
+    // the star states reach the flux through a continuation rather than a returned tuple, which
+    // GCC keeps in memory and which then blocks the face loop's vectorisation
+    template<auto direction>
+    PHARE_ALWAYS_INLINE auto fluxes_(auto& uL, auto& uR, auto const& fL, auto const& fR,
+                                     auto& hlld_speeds)
+    {
+        return hlld_intermediate_states_<direction>(
+            uL, uR, fL, fR, hlld_speeds,
+            [&](auto const& uL_s, auto const& uL_ss, auto const& uR_ss, auto const& uR_s)
+                PHARE_LAMBDA_ALWAYS_INLINE {
+                    uL.to_conservative(gamma_);
+                    uR.to_conservative(gamma_);
+
+                    return hlld_(uL, uL_s, uL_ss, uR_ss, uR_s, uR, fL, fR, hlld_speeds);
+                });
+    }
+
     // these are used for the riemann averagings that are always done after speed computation per
     // index. This is needed for the save transverse magnetic field in godunov fluxes for any
     // riemann solver, but maybe not the best interface.
@@ -87,7 +86,7 @@ private:
     double SR_;
 
     template<auto direction>
-    auto hlld_speeds_(auto const& uL, auto const& uR)
+    PHARE_ALWAYS_INLINE auto hlld_speeds_(auto const& uL, auto const& uR)
     {
         auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
         auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
@@ -148,8 +147,9 @@ private:
 
     // need some optimization, the star states should only be computed if we are in a star region
     template<auto direction>
-    auto hlld_intermediate_states_(auto const& uL, auto const& uR, auto const& fL, auto const& fR,
-                                   auto& hlld_speeds) const
+    PHARE_ALWAYS_INLINE auto hlld_intermediate_states_(auto const& uL, auto const& uR,
+                                                       auto const& fL, auto const& fR,
+                                                       auto& hlld_speeds, auto&& then) const
     {
         auto& [SL, SL_s, SM, SR_s, SR] = hlld_speeds;
 
@@ -181,7 +181,8 @@ private:
             return Bhll;
         };
 
-        auto hlld_intermediate_states = [&](auto const fl, auto const fr) {
+        auto hlld_intermediate_states = [&](auto const fl,
+                                            auto const fr) PHARE_LAMBDA_ALWAYS_INLINE {
             auto const rhoL_s = uL.rho * (SL - uL.V(direction)) / (SL - SM);
             auto const rhoR_s = uR.rho * (SR - uR.V(direction)) / (SR - SM);
 
@@ -205,19 +206,24 @@ private:
             auto Bt0R_s = compute_tranverse_magnetic_s(uR, SR, transverse[0]);
             auto Bt1R_s = compute_tranverse_magnetic_s(uR, SR, transverse[1]);
 
+            // | rather than ||: both comparisons always run, so neither is a branch
             bool const hllc_fallback
-                = (SL_s - SL) < 1.0e-4 * (SM - SL) || (SR_s - SR) > -1.0e-4 * (SR - SM);
+                = ((SL_s - SL) < 1.0e-4 * (SM - SL)) | ((SR_s - SR) > -1.0e-4 * (SR - SM));
 
-            auto Bn_s = Bn;
-            // Fallback to HLLC as in idefix/PLUTO (Maybe Bn should also use HLL averaging?)
-            if (hllc_fallback)
-            {
-                Bn_s   = compute_tranverse_magnetic_s_hllc(direction);
-                Bt0L_s = Bt0R_s = compute_tranverse_magnetic_s_hllc(transverse[0]);
-                Bt1L_s = Bt1R_s = compute_tranverse_magnetic_s_hllc(transverse[1]);
+            // Fallback to HLLC as in idefix/PLUTO (Maybe Bn should also use HLL averaging?).
+            // Both branches are computed and selected, so the face loop has no control flow and
+            // vectorises.
+            auto const Bn_hllc  = compute_tranverse_magnetic_s_hllc(direction);
+            auto const Bt0_hllc = compute_tranverse_magnetic_s_hllc(transverse[0]);
+            auto const Bt1_hllc = compute_tranverse_magnetic_s_hllc(transverse[1]);
 
-                SL_s = SR_s = SM;
-            }
+            auto const Bn_s = hllc_fallback ? Bn_hllc : Bn;
+            Bt0L_s          = hllc_fallback ? Bt0_hllc : Bt0L_s;
+            Bt0R_s          = hllc_fallback ? Bt0_hllc : Bt0R_s;
+            Bt1L_s          = hllc_fallback ? Bt1_hllc : Bt1L_s;
+            Bt1R_s          = hllc_fallback ? Bt1_hllc : Bt1R_s;
+            SL_s            = hllc_fallback ? SM : SL_s;
+            SR_s            = hllc_fallback ? SM : SR_s;
 
             // auto compute_tranverse_velocity_s = [&](auto const u, auto const S, auto const tdir)
             // {
@@ -330,7 +336,7 @@ private:
             auto const uL_ss = PerIndex{rhoL_s, rhoVL_ss, BL_ss, EtotL_ss};
             auto const uR_ss = PerIndex{rhoR_s, rhoVR_ss, BR_ss, EtotR_ss};
 
-            return std::make_tuple(uL_s, uL_ss, uR_ss, uR_s);
+            return then(uL_s, uL_ss, uR_ss, uR_s);
         };
 
         return hlld_intermediate_states(fL, fR);
@@ -521,7 +527,8 @@ private:
     // }
 
     template<auto direction>
-    auto hlld_speeds_(auto const& uL, auto const& uR, auto const& jL, auto const& jR)
+    PHARE_ALWAYS_INLINE auto hlld_speeds_(auto const& uL, auto const& uR, auto const& jL,
+                                          auto const& jR)
     {
         auto const BdotBL = uL.B.x * uL.B.x + uL.B.y * uL.B.y + uL.B.z * uL.B.z;
         auto const BdotBR = uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z;
@@ -579,39 +586,49 @@ private:
                                        uL.B.z, uR.B.z);
     }
 
-    auto hlld_(auto const uL, auto const uL_s, auto const uL_ss, auto const uR_ss, auto const uR_s,
-               auto const uR, auto const fL, auto const fR, auto const hlld_speeds) const
+    PHARE_ALWAYS_INLINE auto hlld_(auto const& uL, auto const& uL_s, auto const& uL_ss,
+                                   auto const& uR_ss, auto const& uR_s, auto const& uR,
+                                   auto const& fL, auto const& fR, auto const& hlld_speeds) const
     {
         auto const [SL, SL_s, SM, SR_s, SR] = hlld_speeds;
 
-        auto constexpr N_elements = std::tuple_size_v<std::decay_t<decltype(fL)>>;
-
         auto const hlld = [&](auto const ul, auto const ul_s, auto const ul_ss, auto const ur_ss,
-                              auto const ur_s, auto const ur, auto const fl, auto const fr) {
-            if (SL >= 0.0) // L
-                return fl;
-            else if (SR <= 0.0) // R
-                return fr;
-            else if (SL_s >= 0) // L*
-                return fl + SL * ul_s - SL * ul;
-            else if (SR_s <= 0) // R*
-                return fr + SR * ur_s - SR * ur;
-            else if (SM >= 0) // L**
-                return fl + SL_s * ul_ss - (SL_s - SL) * ul_s - SL * ul;
-            else // R**
-                return fr + SR_s * ur_ss - (SR_s - SR) * ur_s - SR * ur;
+                              auto const ur_s, auto const ur, auto const fl,
+                              auto const fr) PHARE_LAMBDA_ALWAYS_INLINE {
+            auto const fl_s  = fl + SL * ul_s - SL * ul;
+            auto const fr_s  = fr + SR * ur_s - SR * ur;
+            auto const fl_ss = fl + SL_s * ul_ss - (SL_s - SL) * ul_s - SL * ul;
+            auto const fr_ss = fr + SR_s * ur_ss - (SR_s - SR) * ur_s - SR * ur;
+
+            // innermost region first, one two-way select at a time: a single six-way select is
+            // one branch join that GCC cannot if-convert
+            auto const f_ss = SM >= 0 ? fl_ss : fr_ss; // L** or R**
+            auto const f_sr = SR_s <= 0 ? fr_s : f_ss; // R*
+            auto const f_sl = SL_s >= 0 ? fl_s : f_sr; // L*
+            auto const f_r  = SR <= 0.0 ? fr : f_sl;   // R
+            return SL >= 0.0 ? fl : f_r;               // L
         };
 
-        return for_N<N_elements, for_N_R_mode::make_tuple>([&](auto i) {
-            return hlld(std::get<i>(uL), std::get<i>(uL_s), std::get<i>(uL_ss), std::get<i>(uR_ss),
-                        std::get<i>(uR_s), std::get<i>(uR), std::get<i>(fL), std::get<i>(fR));
-        });
+        // one explicit call per component: a generic for_N here is left out of line in the large
+        // face loop, which then stays scalar
+        auto const flux = [&](auto const& get) PHARE_LAMBDA_ALWAYS_INLINE {
+            return hlld(get(uL), get(uL_s), get(uL_ss), get(uR_ss), get(uR_s), get(uR), get(fL),
+                        get(fR));
+        };
+
+        return PerIndex{
+            flux([](auto const& u) { return u.rho; }),
+            {flux([](auto const& u) { return u.V.x; }), flux([](auto const& u) { return u.V.y; }),
+             flux([](auto const& u) { return u.V.z; })},
+            {flux([](auto const& u) { return u.B.x; }), flux([](auto const& u) { return u.B.y; }),
+             flux([](auto const& u) { return u.B.z; })},
+            flux([](auto const& u) { return u.P; })};
     }
 
     // in the hllc fallback used in idefix/pluto, they use hll averages for the magnetic field. we
     // do the same here for consistency.
     template<auto direction>
-    void uct_coefs_(auto const& uL, auto const& uR, auto const& hlld_speeds)
+    PHARE_ALWAYS_INLINE void uct_coefs_(auto const& uL, auto const& uR, auto const& hlld_speeds)
     {
         auto const [SL, SL_s, SM, SR_s, SR] = hlld_speeds;
 
@@ -620,42 +637,35 @@ private:
         SR_ = std::max(0.0, SR);
 
         bool const fallback
-            = ((SL_s - SL) < 1.0e-4 * (SM - SL)) || ((SR_s - SR) > -1.0e-4 * (SR - SM));
+            = ((SL_s - SL) < 1.0e-4 * (SM - SL)) | ((SR_s - SR) > -1.0e-4 * (SR - SM));
 
-        if (fallback)
-        {
-            auto const inv = 1.0 / (SR_ - SL_);
+        // both branches are computed and selected, so the face loop has no control flow
+        auto const inv = 1.0 / (SR_ - SL_);
 
-            uct_coefs[0] = SR_ * inv;
-            uct_coefs[1] = -SL_ * inv;
-            uct_coefs[2] = -SR_ * SL_ * inv;
-            uct_coefs[3] = uct_coefs[2];
-        }
-        else
-        {
-            auto const nuL = (SL_s + SL) / (std::abs(SL_s) + std::abs(SL));
-            auto const nuR = (SR_s + SR) / (std::abs(SR_s) + std::abs(SR));
+        auto const nuL = (SL_s + SL) / (std::abs(SL_s) + std::abs(SL));
+        auto const nuR = (SR_s + SR) / (std::abs(SR_s) + std::abs(SR));
 
-            auto const nu_s = std::abs(SR_s - SL_s) > 1.0e-9 * std::abs(SR - SL)
-                                  ? (SR_s + SL_s) / (std::abs(SR_s) + std::abs(SL_s))
-                                  : 0.0;
+        auto const nu_s_ratio = (SR_s + SL_s) / (std::abs(SR_s) + std::abs(SL_s));
+        auto const nu_s = std::abs(SR_s - SL_s) > 1.0e-9 * std::abs(SR - SL) ? nu_s_ratio : 0.0;
 
-            uct_coefs[0] = (1 + nu_s) * 0.5;
-            uct_coefs[1] = (1 - nu_s) * 0.5;
+        auto const xiL = ((uL.V(direction) - SM) * (SL - SM)) / (SL_s + SL - 2. * SM);
+        auto const xiR = ((uR.V(direction) - SM) * (SR - SM)) / (SR_s + SR - 2. * SM);
 
-            auto const xiL = ((uL.V(direction) - SM) * (SL - SM)) / (SL_s + SL - 2. * SM);
-            auto const xiR = ((uR.V(direction) - SM) * (SR - SM)) / (SR_s + SR - 2. * SM);
+        auto const hll_d = -SR_ * SL_ * inv;
 
-            uct_coefs[2] = 0.5 * (nuL - nu_s) * xiL + 0.5 * (std::abs(SL_s) - nu_s * SL_s);
-            uct_coefs[3] = 0.5 * (nuR - nu_s) * xiR + 0.5 * (std::abs(SR_s) - nu_s * SR_s);
-        }
+        uct_coefs[0] = fallback ? SR_ * inv : (1 + nu_s) * 0.5;
+        uct_coefs[1] = fallback ? -SL_ * inv : (1 - nu_s) * 0.5;
+        uct_coefs[2]
+            = fallback ? hll_d : 0.5 * (nuL - nu_s) * xiL + 0.5 * (std::abs(SL_s) - nu_s * SL_s);
+        uct_coefs[3]
+            = fallback ? hll_d : 0.5 * (nuR - nu_s) * xiR + 0.5 * (std::abs(SR_s) - nu_s * SR_s);
 
         vt = vector_riemann_averaging(uL.V, uR.V);
     }
 
     template<auto direction>
-    void uct_coefs_(auto const& uL, auto const& uR, auto const& jL, auto const& jR,
-                    auto const& hlld_speeds)
+    PHARE_ALWAYS_INLINE void uct_coefs_(auto const& uL, auto const& uR, auto const& jL,
+                                        auto const& jR, auto const& hlld_speeds)
     {
         uct_coefs_<direction>(uL, uR, hlld_speeds);
 
