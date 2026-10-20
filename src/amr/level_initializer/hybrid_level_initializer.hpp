@@ -124,6 +124,7 @@ namespace solver
                 // can safely be computed.
                 ions.computeChargeDensity();
                 ions.computeBulkVelocity();
+                ions.computeChargeFlux();
             }
             hybMessenger.fillIonBorders(ions, level, initDataTime);
 
