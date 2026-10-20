@@ -54,37 +54,72 @@ public:
                               recons_wenoz_R_(u_2, u_1, u, u1, u2));
     }
 
+    // values at the lower and upper faces of cell `index`, from the one stencil centred on it
+    template<auto direction, typename Field>
+    static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
+    {
+        auto const u_2 = F(GridLayout::template previous<direction>(
+            GridLayout::template previous<direction>(index)));
+        auto const u_1 = F(GridLayout::template previous<direction>(index));
+        auto const u   = F(index);
+        auto const u1  = F(GridLayout::template next<direction>(index));
+        auto const u2
+            = F(GridLayout::template next<direction>(GridLayout::template next<direction>(index)));
+
+        // both faces share the smoothness indicators, only the linear weights differ
+        auto const [r0, r1, r2] = wenoz_ratios_(u_2, u_1, u, u1, u2);
+
+        return std::make_pair(
+            recons_wenoz_R_from_(u_2, u_1, u, u1, u2, normalized_(r0, r1, r2, dR0, dR1, dR2)),
+            recons_wenoz_L_from_(u_2, u_1, u, u1, u2, normalized_(r0, r1, r2, dL0, dL1, dL2)));
+    }
+
 private:
+    static constexpr auto dL0 = 1. / 10.;
+    static constexpr auto dL1 = 3. / 5.;
+    static constexpr auto dL2 = 3. / 10.;
+    static constexpr auto dR0 = 3. / 10.;
+    static constexpr auto dR1 = 3. / 5.;
+    static constexpr auto dR2 = 1. / 10.;
+
     static auto recons_wenoz_L_(auto const ull, auto const ul, auto const u, auto const ur,
                                 auto const urr)
     {
-        static constexpr auto dL0 = 1. / 10.;
-        static constexpr auto dL1 = 3. / 5.;
-        static constexpr auto dL2 = 3. / 10.;
+        auto const [r0, r1, r2] = wenoz_ratios_(ull, ul, u, ur, urr);
+        return recons_wenoz_L_from_(ull, ul, u, ur, urr, normalized_(r0, r1, r2, dL0, dL1, dL2));
+    }
 
-        auto const [wL0, wL1, wL2] = compute_wenoz_weights(ull, ul, u, ur, urr, dL0, dL1, dL2);
+    static auto recons_wenoz_R_(auto const ull, auto const ul, auto const u, auto const ur,
+                                auto const urr)
+    {
+        auto const [r0, r1, r2] = wenoz_ratios_(ull, ul, u, ur, urr);
+        return recons_wenoz_R_from_(ull, ul, u, ur, urr, normalized_(r0, r1, r2, dR0, dR1, dR2));
+    }
+
+    static auto recons_wenoz_L_from_(auto const ull, auto const ul, auto const u, auto const ur,
+                                     auto const urr, auto const& w)
+    {
+        auto const [wL0, wL1, wL2] = w;
 
         return wL0 * ((1. / 3.) * ull - (7. / 6.) * ul + (11. / 6.) * u)
                + wL1 * (-(1. / 6.) * ul + (5. / 6.) * u + (1. / 3.) * ur)
                + wL2 * ((1. / 3.) * u + (5. / 6.) * ur - (1. / 6.) * urr);
     }
 
-    static auto recons_wenoz_R_(auto const ull, auto const ul, auto const u, auto const ur,
-                                auto const urr)
+    static auto recons_wenoz_R_from_(auto const ull, auto const ul, auto const u, auto const ur,
+                                     auto const urr, auto const& w)
     {
-        static constexpr auto dR0 = 3. / 10.;
-        static constexpr auto dR1 = 3. / 5.;
-        static constexpr auto dR2 = 1. / 10.;
-
-        auto const [wR0, wR1, wR2] = compute_wenoz_weights(ull, ul, u, ur, urr, dR0, dR1, dR2);
+        auto const [wR0, wR1, wR2] = w;
 
         return wR0 * ((1. / 3.) * u + (5. / 6.) * ul - (1. / 6.) * ull)
                + wR1 * (-(1. / 6.) * ur + (5. / 6.) * u + (1. / 3.) * ul)
                + wR2 * ((1. / 3.) * urr - (7. / 6.) * ur + (11. / 6.) * u);
     }
 
-    static auto compute_wenoz_weights(auto const ull, auto const ul, auto const u, auto const ur,
-                                      auto const urr, auto const d0, auto const d1, auto const d2)
+    // 1 + tau5 / (beta_k + eps): the stencil-dependent part of the WENO-Z weights, independent
+    // of which face is reconstructed
+    static auto wenoz_ratios_(auto const ull, auto const ul, auto const u, auto const ur,
+                              auto const urr)
     {
         static constexpr auto eps = 1.e-40;
 
@@ -97,9 +132,16 @@ private:
 
         auto const tau5 = std::abs(beta0 - beta2);
 
-        auto const alpha0 = d0 * (1. + tau5 / (beta0 + eps));
-        auto const alpha1 = d1 * (1. + tau5 / (beta1 + eps));
-        auto const alpha2 = d2 * (1. + tau5 / (beta2 + eps));
+        return std::make_tuple(1. + tau5 / (beta0 + eps), 1. + tau5 / (beta1 + eps),
+                               1. + tau5 / (beta2 + eps));
+    }
+
+    static auto normalized_(auto const r0, auto const r1, auto const r2, auto const d0,
+                            auto const d1, auto const d2)
+    {
+        auto const alpha0 = d0 * r0;
+        auto const alpha1 = d1 * r1;
+        auto const alpha2 = d2 * r2;
 
         auto const sum_alpha = alpha0 + alpha1 + alpha2;
 
