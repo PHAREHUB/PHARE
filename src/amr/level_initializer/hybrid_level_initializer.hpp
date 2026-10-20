@@ -133,8 +133,8 @@ namespace solver
             // it seems SAMRAI does not call timeInterpolate() at this point although
             // moments need time interpolation. It probably knows that
             // we are at a sync time across levels and that the time interpolation
-            // is not needed. But is still seems to use the messenger temporaries like
-            // NiOld etc. so prepareStep() must be called, see end of the function.
+            // is not needed. But is still seems to use the messenger temporaries
+            // Bold_ and Eold_ so prepareStep() must be called, see end of the function.
             // - TODO more better comment(s)
             // hybMessenger.fillIonMomentGhosts(ions, level, initDataTime);
 

@@ -33,6 +33,7 @@ def dump_all_diags(pops=[], flush_every=100, timestamps=None):
         "charge_density",
         "mass_density",
         "bulkVelocity",
+        "charge_flux",
         "pressure_tensor",
     ]:
         ph.FluidDiagnostics(

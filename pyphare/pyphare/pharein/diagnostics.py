@@ -468,7 +468,9 @@ class FluidDiagnostics:
 
         * "charge_density" - charge density
         * "mass_density" - mass density
-        * "bulkVelocity" - bulk velocity
+        * "bulkVelocity" - mass-weighted bulk velocity. For the ions as a whole it is
+          a diagnostic only: on regions covered by a finer level it is the coarse
+          level's own value, and ghost nodes are not made consistent between patches
         * "momentum_tensor" - momentum tensor
         * "pressure_tensor" - pressure tensor. This is a convenience quantity:
           declaring it registers the underlying moments it is computed from

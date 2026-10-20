@@ -735,11 +735,10 @@ namespace amr
                     makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
             };
 
-            fieldRefineOp_    = fieldKernel();
-            vecFieldRefineOp_ = vecKernel();
-            BInitRefineOp_    = magKernel();
-            BRefineOp_        = magKernel();
-            EfieldRefineOp_   = vecKernel();
+            fieldRefineOp_  = fieldKernel();
+            BInitRefineOp_  = magKernel();
+            BRefineOp_      = magKernel();
+            EfieldRefineOp_ = vecKernel();
         }
 
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
@@ -1093,7 +1092,6 @@ namespace amr
 
         // built in the ctor body (makeRefineOperators_) from the composite runtime kernels.
         RefOp_ptr fieldRefineOp_;
-        RefOp_ptr vecFieldRefineOp_;
 
 
         RefOp_ptr BInitRefineOp_;
@@ -1113,7 +1111,6 @@ namespace amr
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
                 /*overwrite_interior=*/true);
 
-        std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
             std::make_shared<VecFieldTimeInterp>()};
 

@@ -35,6 +35,18 @@ class SimulatorValidation(SimulatorTest):
         if self.simulator is not None:
             self.simulator.reset()
 
+    def test_charge_flux_diagnostic_is_for_all_ions_only(self):
+        import pyphare.pharein as ph
+
+        # invalid diagnostics are reported and not registered
+        sim = populate_simulation(1, 1, **dup({"cells": [65]}))
+        ph.FluidDiagnostics(quantity="charge_flux", write_timestamps=[0.0])
+        self.assertEqual(sim.count_diagnostics("fluid"), 1)
+        ph.FluidDiagnostics(
+            quantity="charge_flux", write_timestamps=[0.0], population_name="protons"
+        )
+        self.assertEqual(sim.count_diagnostics("fluid"), 1)
+
     def _do_dim(self, dim, input, valid: bool = False):
         for interp in range(1, 4):
             try:

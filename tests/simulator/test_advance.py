@@ -239,8 +239,8 @@ class AdvanceTestBase(SimulatorTest):
             qties = ["mhdRho"]
 
         else:  # hybrid
-            # the bulk velocity is a diagnostic only and is not coarsened,
-            # the charge flux used for the electron velocity is
+            # the bulk velocity is a diagnostic only and is not coarsened, unlike
+            # the charge flux, which gives the electron velocity
             qties = ["rho"]
             qties += [f"{qty}{xyz}" for qty in ["E", "CF"] for xyz in ["x", "y", "z"]]
 
