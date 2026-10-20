@@ -574,6 +574,13 @@ struct SetMax
 };
 
 template<typename D>
+struct SetEqualProduct
+{
+    void operator()(auto& d0, auto& o) { d = d0 * o; }
+    D& d;
+};
+
+template<typename D>
 struct PlusEqualsProduct
 {
     void operator()(auto& d0, auto& o) { d += d0 * o; }
