@@ -5,7 +5,6 @@
 #include "core/utilities/types.hpp"
 
 #include <array>
-#include <memory>
 #include <vector>
 #include <cstdint>
 #include <numeric>
@@ -19,7 +18,7 @@ template<std::size_t dim, bool c_ordering = true>
 struct NdArrayViewer
 {
     template<typename NCells, template<typename, std::size_t> typename Indexes, typename Index>
-    static inline std::uint32_t idx(NCells const& nCells, Indexes<Index, dim> const& indexes)
+    static inline std::size_t idx(NCells const& nCells, Indexes<Index, dim> const& indexes)
     {
         if constexpr (dim == 1)
             return idx(nCells, indexes[0]);
@@ -31,9 +30,8 @@ struct NdArrayViewer
             return idx(nCells, indexes[0], indexes[1], indexes[2]);
     }
 
-    static inline std::uint32_t idx(auto const& /*nCells*/, std::uint32_t const i) { return i; }
-    static inline std::uint32_t idx(auto const& nCells, std::uint32_t const i,
-                                    std::uint32_t const j)
+    static inline std::size_t idx(auto const& /*nCells*/, std::size_t const i) { return i; }
+    static inline std::size_t idx(auto const& nCells, std::size_t const i, std::size_t const j)
     {
         if constexpr (c_ordering)
             return j + i * nCells[1];
@@ -41,8 +39,8 @@ struct NdArrayViewer
             return i + j * nCells[0];
     }
 
-    static inline std::uint32_t idx(auto const& nCells, std::uint32_t const i,
-                                    std::uint32_t const j, std::uint32_t const k)
+    static inline std::size_t idx(auto const& nCells, std::size_t const i, std::size_t const j,
+                                  std::size_t const k)
     {
         if constexpr (c_ordering)
             return k + j * nCells[2] + i * nCells[1] * nCells[2];
@@ -56,14 +54,14 @@ struct NdArrayViewer
 
     {
         auto const& i = idx(nCells, indexes);
-        assert(i < product(nCells, std::uint32_t{1}));
+        assert(i < product(nCells, std::size_t{1}));
         return data[i];
     }
 
-    static inline auto& at(auto* data, auto const nCells, auto const... indexes)
+    static inline auto& at(auto* data, auto const& nCells, auto const... indexes)
     {
         auto const& i = idx(nCells, indexes...);
-        assert(i < product(nCells, std::uint32_t{1}));
+        assert(i < product(nCells, std::size_t{1}));
         return data[i];
     }
 };
