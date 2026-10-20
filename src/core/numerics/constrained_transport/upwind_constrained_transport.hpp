@@ -43,9 +43,9 @@ public:
         auto& E       = mhd_state.E;
         auto const& B = mhd_state.B;
 
-        auto& Ex = E(Component::X);
-        auto& Ey = E(Component::Y);
-        auto& Ez = E(Component::Z);
+        auto& Ex = E[Component::X];
+        auto& Ey = E[Component::Y];
+        auto& Ez = E[Component::Z];
 
         if constexpr (dimension == 2)
         {
@@ -69,25 +69,25 @@ public:
             };
             // slots sharing a direction and an edge box go through one cell loop, so their
             // independent stencils overlap instead of each running as its own latency chain
-            face_states_<Direction::Y>(Ex, scratch, N, 0, B(Component::Z));
-            face_states_<Direction::X>(Ey, scratch, N, 1, B(Component::Z));
+            face_states_<Direction::Y>(Ex, scratch, N, 0, B[Component::Z]);
+            face_states_<Direction::X>(Ey, scratch, N, 1, B[Component::Z]);
             if constexpr (Hall)
             {
-                face_states_<Direction::Y>(Ez, scratch, N, 2, ct_state.vt_x(Component::Y),
-                                           B(Component::X),
-                                           ct_state.template getJt<Direction::X>()(Component::Y),
+                face_states_<Direction::Y>(Ez, scratch, N, 2, ct_state.vt_x[Component::Y],
+                                           B[Component::X],
+                                           ct_state.template getJt<Direction::X>()[Component::Y],
                                            ct_state.template getRhot<Direction::X>());
-                face_states_<Direction::X>(Ez, scratch, N, 6, ct_state.vt_y(Component::X),
-                                           B(Component::Y),
-                                           ct_state.template getJt<Direction::Y>()(Component::X),
+                face_states_<Direction::X>(Ez, scratch, N, 6, ct_state.vt_y[Component::X],
+                                           B[Component::Y],
+                                           ct_state.template getJt<Direction::Y>()[Component::X],
                                            ct_state.template getRhot<Direction::Y>());
             }
             else
             {
-                face_states_<Direction::Y>(Ez, scratch, N, 2, ct_state.vt_x(Component::Y),
-                                           B(Component::X));
-                face_states_<Direction::X>(Ez, scratch, N, 4, ct_state.vt_y(Component::X),
-                                           B(Component::Y));
+                face_states_<Direction::Y>(Ez, scratch, N, 2, ct_state.vt_x[Component::Y],
+                                           B[Component::X]);
+                face_states_<Direction::X>(Ez, scratch, N, 4, ct_state.vt_y[Component::X],
+                                           B[Component::Y]);
             }
 
             auto const exFaces = slots(Ex, 0);
@@ -166,10 +166,10 @@ private:
         {
             auto [BzL, BzR] = faces(0, idx);
 
-            auto FL = BzL * ct_state.vt_y(Component::Y)(idx)
-                      - B(Component::Y)(idx) * ct_state.vt_y(Component::Z)(idx);
-            auto FR = BzR * ct_state.vt_y(Component::Y)(idx)
-                      - B(Component::Y)(idx) * ct_state.vt_y(Component::Z)(idx);
+            auto FL = BzL * ct_state.vt_y[Component::Y](idx)
+                      - B[Component::Y](idx) * ct_state.vt_y[Component::Z](idx);
+            auto FR = BzR * ct_state.vt_y[Component::Y](idx)
+                      - B[Component::Y](idx) * ct_state.vt_y[Component::Z](idx);
 
             Ex(idx) = -(ct_state.aL_y(idx) * FL + ct_state.aR_y(idx) * FR)
                       + (ct_state.dR_y(idx) * BzR - ct_state.dL_y(idx) * BzL);
@@ -177,12 +177,12 @@ private:
             if constexpr (Hall)
             {
                 auto invRho  = 1.0 / ct_state.template getRhot<Direction::Y>()(idx);
-                auto JxB_x_L = ct_state.template getJt<Direction::Y>()(Component::Y)(idx)*BzL
-                               - ct_state.template getJt<Direction::Y>()(Component::Z)(idx)*B(
-                                   Component::Y)(idx);
-                auto JxB_x_R = ct_state.template getJt<Direction::Y>()(Component::Y)(idx)*BzR
-                               - ct_state.template getJt<Direction::Y>()(Component::Z)(idx)*B(
-                                   Component::Y)(idx);
+                auto JxB_x_L = ct_state.template getJt<Direction::Y>()[Component::Y](idx) * BzL
+                               - ct_state.template getJt<Direction::Y>()[Component::Z](idx)
+                                     * B(Component::Y)(idx);
+                auto JxB_x_R = ct_state.template getJt<Direction::Y>()[Component::Y](idx) * BzR
+                               - ct_state.template getJt<Direction::Y>()[Component::Z](idx)
+                                     * B(Component::Y)(idx);
 
                 auto HallL = -JxB_x_L * invRho;
                 auto HallR = -JxB_x_R * invRho;
@@ -220,14 +220,14 @@ private:
                          + ct_state.dR_z(layout_.template previous<Direction::Y>(idx)));
 
             auto [vyS, vyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                ct_state.vt_z(Component::Y), idx);
+                ct_state.vt_z[Component::Y], idx);
             auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                ct_state.vt_y(Component::Z), idx);
+                ct_state.vt_y[Component::Z], idx);
 
             auto [BzS, BzN]
-                = Reconstruction_t::template reconstruct<Direction::Y>(B(Component::Z), idx);
+                = Reconstruction_t::template reconstruct<Direction::Y>(B[Component::Z], idx);
             auto [ByB, ByT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B(Component::Y), idx);
+                = Reconstruction_t::template reconstruct<Direction::Z>(B[Component::Y], idx);
 
             Ex(idx) = (aB * vzB * ByB + aT * vzT * ByT) - (aS * vyS * BzS + aN * vyN * BzN)
                       - (dT * ByT - dB * ByB) + (dN * BzN - dS * BzS);
@@ -235,9 +235,9 @@ private:
             if constexpr (Hall)
             {
                 auto [jyS, jyN] = Reconstruction_t::template reconstruct<Direction::Y>(
-                    ct_state.template getJt<Direction::Z>()(Component::Y), idx);
+                    ct_state.template getJt<Direction::Z>()[Component::Y], idx);
                 auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getJt<Direction::Y>()(Component::Z), idx);
+                    ct_state.template getJt<Direction::Y>()[Component::Z], idx);
 
                 auto [rhoS, rhoN] = Reconstruction_t::template reconstruct<Direction::Y>(
                     ct_state.template getRhot<Direction::Z>(), idx);
@@ -259,14 +259,14 @@ private:
                 if constexpr (dimension == 2)
                     return faces(0, idx);
                 else
-                    return Reconstruction_t::template reconstruct<Direction::X>(B(Component::Z),
+                    return Reconstruction_t::template reconstruct<Direction::X>(B[Component::Z],
                                                                                 idx);
             }();
 
-            auto FL = BzL * ct_state.vt_x(Component::X)(idx)
-                      - B(Component::X)(idx) * ct_state.vt_x(Component::Z)(idx);
-            auto FR = BzR * ct_state.vt_x(Component::X)(idx)
-                      - B(Component::X)(idx) * ct_state.vt_x(Component::Z)(idx);
+            auto FL = BzL * ct_state.vt_x[Component::X](idx)
+                      - B[Component::X](idx) * ct_state.vt_x[Component::Z](idx);
+            auto FR = BzR * ct_state.vt_x[Component::X](idx)
+                      - B[Component::X](idx) * ct_state.vt_x[Component::Z](idx);
 
             Ey(idx) = (ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       - (ct_state.dR_x(idx) * BzR - ct_state.dL_x(idx) * BzL);
@@ -274,12 +274,12 @@ private:
             if constexpr (Hall)
             {
                 auto invRho  = 1.0 / ct_state.template getRhot<Direction::X>()(idx);
-                auto JxB_y_L = ct_state.template getJt<Direction::X>()(Component::Z)(idx)*B(
-                                   Component::X)(idx)
-                               - ct_state.template getJt<Direction::X>()(Component::X)(idx)*BzL;
-                auto JxB_y_R = ct_state.template getJt<Direction::X>()(Component::Z)(idx)*B(
-                                   Component::X)(idx)
-                               - ct_state.template getJt<Direction::X>()(Component::X)(idx)*BzR;
+                auto JxB_y_L = ct_state.template getJt<Direction::X>()[Component::Z](idx)
+                                   * B(Component::X)(idx)
+                               - ct_state.template getJt<Direction::X>()[Component::X](idx) * BzL;
+                auto JxB_y_R = ct_state.template getJt<Direction::X>()[Component::Z](idx)
+                                   * B(Component::X)(idx)
+                               - ct_state.template getJt<Direction::X>()[Component::X](idx) * BzR;
 
                 auto HallL = JxB_y_L * invRho;
                 auto HallR = JxB_y_R * invRho;
@@ -317,13 +317,13 @@ private:
                          + ct_state.dR_z(layout_.template previous<Direction::X>(idx)));
 
             auto [vxW, vxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                ct_state.vt_z(Component::X), idx);
+                ct_state.vt_z[Component::X], idx);
             auto [vzB, vzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                ct_state.vt_x(Component::Z), idx);
+                ct_state.vt_x[Component::Z], idx);
             auto [BzW, BzE]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Z), idx);
+                = Reconstruction_t::template reconstruct<Direction::X>(B[Component::Z], idx);
             auto [BxB, BxT]
-                = Reconstruction_t::template reconstruct<Direction::Z>(B(Component::X), idx);
+                = Reconstruction_t::template reconstruct<Direction::Z>(B[Component::X], idx);
 
             Ey(idx) = (aW * vxW * BzW + aE * vxE * BzE) - (aB * vzB * BxB + aT * vzT * BxT)
                       - (dE * BzE - dW * BzW) + (dT * BxT - dB * BxB);
@@ -331,9 +331,9 @@ private:
             if constexpr (Hall)
             {
                 auto [jxW, jxE] = Reconstruction_t::template reconstruct<Direction::X>(
-                    ct_state.template getJt<Direction::Z>()(Component::X), idx);
+                    ct_state.template getJt<Direction::Z>()[Component::X], idx);
                 auto [jzB, jzT] = Reconstruction_t::template reconstruct<Direction::Z>(
-                    ct_state.template getJt<Direction::X>()(Component::Z), idx);
+                    ct_state.template getJt<Direction::X>()[Component::Z], idx);
                 auto [rhoW, rhoE] = Reconstruction_t::template reconstruct<Direction::X>(
                     ct_state.template getRhot<Direction::Z>(), idx);
                 auto [rhoB, rhoT] = Reconstruction_t::template reconstruct<Direction::Z>(
@@ -350,12 +350,12 @@ private:
         if constexpr (dimension == 1)
         {
             auto [ByL, ByR]
-                = Reconstruction_t::template reconstruct<Direction::X>(B(Component::Y), idx);
+                = Reconstruction_t::template reconstruct<Direction::X>(B[Component::Y], idx);
 
-            auto FL = ByL * ct_state.vt_x(Component::X)(idx)
-                      - B(Component::X)(idx) * ct_state.vt_x(Component::Y)(idx);
-            auto FR = ByR * ct_state.vt_x(Component::X)(idx)
-                      - B(Component::X)(idx) * ct_state.vt_x(Component::Y)(idx);
+            auto FL = ByL * ct_state.vt_x[Component::X](idx)
+                      - B[Component::X](idx) * ct_state.vt_x[Component::Y](idx);
+            auto FR = ByR * ct_state.vt_x[Component::X](idx)
+                      - B[Component::X](idx) * ct_state.vt_x[Component::Y](idx);
 
             Ez(idx) = -(ct_state.aL_x(idx) * FL + ct_state.aR_x(idx) * FR)
                       + (ct_state.dR_x(idx) * ByR - ct_state.dL_x(idx) * ByL);
@@ -363,12 +363,12 @@ private:
             if constexpr (Hall)
             {
                 auto invRho  = 1.0 / ct_state.template getRhot<Direction::X>()(idx);
-                auto JxB_z_L = ct_state.template getJt<Direction::X>()(Component::X)(idx)*ByL
-                               - ct_state.template getJt<Direction::X>()(Component::Y)(idx)*B(
-                                   Component::X)(idx);
-                auto JxB_z_R = ct_state.template getJt<Direction::X>()(Component::X)(idx)*ByR
-                               - ct_state.template getJt<Direction::X>()(Component::Y)(idx)*B(
-                                   Component::X)(idx);
+                auto JxB_z_L = ct_state.template getJt<Direction::X>()[Component::X](idx) * ByL
+                               - ct_state.template getJt<Direction::X>()[Component::Y](idx)
+                                     * B(Component::X)(idx);
+                auto JxB_z_R = ct_state.template getJt<Direction::X>()[Component::X](idx) * ByR
+                               - ct_state.template getJt<Direction::X>()[Component::Y](idx)
+                                     * B(Component::X)(idx);
 
                 auto HallL = -JxB_z_L * invRho;
                 auto HallR = -JxB_z_R * invRho;
@@ -413,12 +413,12 @@ private:
                           return Reconstruction_t::template reconstruct<D>(F, idx);
                   };
             constexpr std::size_t x0 = Hall ? 4 : 2; // first Ez slot reconstructed along X
-            auto [vyS, vyN] = rec.template operator()<Direction::Y>(0, ct_state.vt_x(Component::Y));
+            auto [vyS, vyN] = rec.template operator()<Direction::Y>(0, ct_state.vt_x[Component::Y]);
             auto [vxW, vxE]
-                = rec.template operator()<Direction::X>(x0, ct_state.vt_y(Component::X));
+                = rec.template operator()<Direction::X>(x0, ct_state.vt_y[Component::X]);
 
-            auto [BxS, BxN] = rec.template operator()<Direction::Y>(1, B(Component::X));
-            auto [ByW, ByE] = rec.template operator()<Direction::X>(x0 + 1, B(Component::Y));
+            auto [BxS, BxN] = rec.template operator()<Direction::Y>(1, B[Component::X]);
+            auto [ByW, ByE] = rec.template operator()<Direction::X>(x0 + 1, B[Component::Y]);
 
             Ez(idx) = -(aW * vxW * ByW + aE * vxE * ByE) + (aS * vyS * BxS + aN * vyN * BxN)
                       + (dE * ByE - dW * ByW) - (dN * BxN - dS * BxS);
@@ -426,9 +426,9 @@ private:
             if constexpr (Hall)
             {
                 auto [jyS, jyN] = rec.template operator()<Direction::Y>(
-                    2, ct_state.template getJt<Direction::X>()(Component::Y));
+                    2, ct_state.template getJt<Direction::X>()[Component::Y]);
                 auto [jxW, jxE] = rec.template operator()<Direction::X>(
-                    x0 + 2, ct_state.template getJt<Direction::Y>()(Component::X));
+                    x0 + 2, ct_state.template getJt<Direction::Y>()[Component::X]);
 
                 auto [rhoS, rhoN] = rec.template operator()<Direction::Y>(
                     3, ct_state.template getRhot<Direction::X>());

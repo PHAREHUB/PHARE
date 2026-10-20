@@ -177,25 +177,25 @@ private:
         for_each_index<dimension>(projLo, projHi, [&](MeshIndex<dimension> const& c) {
             centred(0)(c)
                 = GridLayout::template project<Reconstructor_t::template projection<transverse[0]>>(
-                    state.B(static_cast<Component>(transverse[0])), c);
+                    state.B[static_cast<Component>(transverse[0])], c);
             centred(1)(c)
                 = GridLayout::template project<Reconstructor_t::template projection<transverse[1]>>(
-                    state.B(static_cast<Component>(transverse[1])), c);
+                    state.B[static_cast<Component>(transverse[1])], c);
             if constexpr (Hall)
             {
                 centred(2)(c) = GridLayout::template project<implT::edgeXToCellCenter>(
-                    state.J(Component::X), c);
+                    state.J[Component::X], c);
                 centred(3)(c) = GridLayout::template project<implT::edgeYToCellCenter>(
-                    state.J(Component::Y), c);
+                    state.J[Component::Y], c);
                 centred(4)(c) = GridLayout::template project<implT::edgeZToCellCenter>(
-                    state.J(Component::Z), c);
+                    state.J[Component::Z], c);
             }
         });
 
         // cell pass, one contiguous line (last dimension) at a time per variable
-        std::array<double const*, nRec> src{state.rho.data(), state.V(Component::X).data(),
-                                            state.V(Component::Y).data(),
-                                            state.V(Component::Z).data(), state.P.data()};
+        std::array<double const*, nRec> src{state.rho.data(), state.V[Component::X].data(),
+                                            state.V[Component::Y].data(),
+                                            state.V[Component::Z].data(), state.P.data()};
         for (std::size_t v = 0; v < nCt; ++v)
             src[5 + v] = scratch + v * N;
         std::ptrdiff_t stride = 1; // between neighbours along direction, all arrays share shape
@@ -216,7 +216,7 @@ private:
         // written through a pointer to the line start, so consecutive faces are consecutive
         // elements whatever each array's shape; the Riemann solver is copied so the per-face
         // state it keeps in members (vt, jt, rhot, uct_coefs) lives in registers.
-        auto const& Bn = state.B(static_cast<Component>(direction));
+        auto const& Bn = state.B[static_cast<Component>(direction)];
         auto const ct  = [&]() {
             if constexpr (direction == Direction::X)
                 return std::forward_as_tuple(ct_state.vt_x, ct_state.aL_x, ct_state.aR_x,
@@ -250,9 +250,9 @@ private:
             double* fE   = &F0.P;
 
             auto& [vT, aL, aR, dL, dR] = ct;
-            double* vtx                = &vT(Component::X)(f0);
-            double* vty                = &vT(Component::Y)(f0);
-            double* vtz                = &vT(Component::Z)(f0);
+            double* vtx                = &vT[Component::X](f0);
+            double* vty                = &vT[Component::Y](f0);
+            double* vtz                = &vT[Component::Z](f0);
             double* aLp                = &aL(f0);
             double* aRp                = &aR(f0);
             double* dLp                = &dL(f0);
@@ -288,9 +288,9 @@ private:
             if constexpr (Hall)
             {
                 auto& jT     = ct_state.template getJt<direction>();
-                double* jtx  = &jT(Component::X)(f0);
-                double* jty  = &jT(Component::Y)(f0);
-                double* jtz  = &jT(Component::Z)(f0);
+                double* jtx  = &jT[Component::X](f0);
+                double* jty  = &jT[Component::Y](f0);
+                double* jtz  = &jT[Component::Z](f0);
                 double* rhot = &ct_state.template getRhot<direction>()(f0);
 
 #if defined(__GNUC__) && !defined(__clang__)
@@ -338,12 +338,12 @@ private:
         using implT        = GridLayout::implT;
         auto constexpr nan = std::numeric_limits<double>::quiet_NaN();
 
-        auto const& Ex = E(Component::X);
-        auto const& Ey = E(Component::Y);
-        auto const& Ez = E(Component::Z);
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
+        auto const& Ex = E[Component::X];
+        auto const& Ey = E[Component::Y];
+        auto const& Ez = E[Component::Z];
+        auto const& Bx = B[Component::X];
+        auto const& By = B[Component::Y];
+        auto const& Bz = B[Component::Z];
 
         if constexpr (direction == Direction::X)
             return std::make_pair(
