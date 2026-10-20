@@ -167,14 +167,15 @@ private:
         static thread_local std::vector<double> buffer;
         if (buffer.size() < N * (nCt + 2 * nRec))
             buffer.resize(N * (nCt + 2 * nRec));
-        auto view = [&](std::size_t slot) {
-            return NdArrayView<dimension, double>{buffer.data() + slot * N, shape};
+        double* const scratch = buffer.data(); // one thread_local lookup, not one per access
+        auto view             = [&](std::size_t slot) {
+            return NdArrayView<dimension, double>{scratch + slot * N, shape};
         };
         auto centred = [&](std::size_t v) { return view(v); };
         auto lower   = [&](std::size_t v) { return view(nCt + v); };
         auto upper   = [&](std::size_t v) { return view(nCt + nRec + v); };
 
-        for_box_(projLo, projHi, [&](MeshIndex<dimension> const& c) {
+        for_each_index<dimension>(projLo, projHi, [&](MeshIndex<dimension> const& c) {
             centred(0)(c)
                 = GridLayout::template project<Reconstructor_t::template projection<transverse[0]>>(
                     state.B(static_cast<Component>(transverse[0])), c);
@@ -192,7 +193,7 @@ private:
             }
         });
 
-        for_box_(cellLo, hi, [&](MeshIndex<dimension> const& c) {
+        for_each_index<dimension>(cellLo, hi, [&](MeshIndex<dimension> const& c) {
             auto store = [&](std::size_t v, auto const& F) {
                 auto const [l, u] = Reconstruction_t::template cell_faces<direction>(F, c);
                 lower(v)(c)       = l;
@@ -208,7 +209,7 @@ private:
         });
 
         auto const& Bn = state.B(static_cast<Component>(direction));
-        for_box_(lo, hi, [&](MeshIndex<dimension> const& f) {
+        for_each_index<dimension>(lo, hi, [&](MeshIndex<dimension> const& f) {
             auto const cl = GridLayout::template previous<direction>(f);
             auto face     = [&](auto&& side, MeshIndex<dimension> const& c) {
                 PerIndexVector<double> B;
@@ -248,20 +249,6 @@ private:
                 ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs, f);
             }
         });
-    }
-
-    static void for_box_(auto const& lo, auto const& hi, auto&& fn)
-    {
-        for (int i = lo[0]; i <= hi[0]; ++i)
-            if constexpr (dimension == 1)
-                fn(make_index(i));
-            else
-                for (int j = lo[1]; j <= hi[1]; ++j)
-                    if constexpr (dimension == 2)
-                        fn(make_index(i, j));
-                    else
-                        for (int k = lo[2]; k <= hi[2]; ++k)
-                            fn(make_index(i, j, k));
     }
 
     template<auto direction>
