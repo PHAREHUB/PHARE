@@ -6,6 +6,7 @@ class Particles:
     """
     this class represent a set of particles
     particles can either be loaded randomly in a given box or have there attribute set from caller
+    the particle charge is the population charge, see Run.GetCharge
     """
 
     def __init__(self, **kwargs):
@@ -18,7 +19,6 @@ class Particles:
             self.deltas = np.random.rand(box.nCells() * 100, box.ndim)
             self.v = np.random.randn(box.nCells() * 100, 3)
             self.weights = np.zeros(self.deltas.shape[0]) + 0.01
-            self.charges = np.zeros_like(self.weights) + 1
             self.dl = np.zeros((self.weights.size, box.ndim)) + 0.1
             ndim = len(box.lower)
 
@@ -27,7 +27,6 @@ class Particles:
             self.deltas = kwargs["deltas"][:]
             self.v = kwargs["v"][:]
             self.weights = kwargs["weights"][:]
-            self.charges = kwargs["charges"][:]
             self.dl = kwargs["dl"][:]
             ndim = self.iCells.shape[1]
 
@@ -62,7 +61,6 @@ class Particles:
         self.iCells = np.concatenate((self.iCells, particles.iCells))
         self.deltas = np.concatenate((self.deltas, particles.deltas))
         self.v = np.concatenate((self.v, particles.v))
-        self.charges = np.concatenate((self.charges, particles.charges))
         self.weights = np.concatenate((self.weights, particles.weights))
         self.dl = np.concatenate((self.dl, particles.dl))
         self._reset()
@@ -124,7 +122,6 @@ class Particles:
             deltas=self.deltas[idx],
             v=self.v[idx, :],
             weights=self.weights[idx],
-            charges=self.charges[idx],
             dl=self.dl[idx],
         )
 
@@ -136,7 +133,6 @@ class Particles:
         self.deltas = np.delete(self.deltas, idx, axis=0)
         self.v = np.delete(self.v, idx, axis=0)
         self.weights = np.delete(self.weights, idx, axis=0)
-        self.charges = np.delete(self.charges, idx, axis=0)
         self.dl = np.delete(self.dl, idx, axis=0)
 
     def pop(self, idx):
@@ -145,7 +141,6 @@ class Particles:
             deltas=self.deltas[idx].copy(),
             v=self.v[idx].copy(),
             weights=self.weights[idx].copy(),
-            charges=self.charges[idx].copy(),
             dl=self.dl[idx].copy(),
         )
         self.erase(idx)
@@ -155,7 +150,7 @@ class Particles:
         from pyphare.cpp import split_pyarrays_fn
 
         split_pyarrays = split_pyarrays_fn(sim)(
-            (self.iCells, self.deltas, self.weights, self.charges, self.v)
+            (self.iCells, self.deltas, self.weights, self.v)
         )
         return Particles(
             icells=split_pyarrays[0].reshape(
@@ -165,8 +160,7 @@ class Particles:
                 int(len(split_pyarrays[1]) / self.ndim), self.ndim
             ),
             weights=split_pyarrays[2].reshape(int(len(split_pyarrays[2])), 1),
-            charges=split_pyarrays[3].reshape(int(len(split_pyarrays[3])), 1),
-            v=split_pyarrays[4].reshape(int(len(split_pyarrays[4]) / 3), 3),
+            v=split_pyarrays[3].reshape(int(len(split_pyarrays[3]) / 3), 3),
             dl=self.dl[0] / refinement_ratio
             + np.zeros((split_pyarrays[2].size, self.ndim)),
         )
@@ -179,7 +173,6 @@ class Particles:
                 *self.v[i],
                 *self.dl[i],
                 *self.weights[i],
-                *self.charges[i],
             )
             for i in range(self.size())
         ]
@@ -215,7 +208,6 @@ def any_assert(part1, part2):
         assert part1.iCells[part1_idx] in part2.iCells
         assert part1.v[part1_idx] in part2.v
         assert part1.weights[part1_idx] in part2.weights
-        assert part1.charges[part1_idx] in part2.charges
         assert part1.dl[part1_idx] in part2.dl
 
 
@@ -254,11 +246,7 @@ def remove(particles, idx):
     for i in range(particles.ndim):
         dl[:, i] = np.delete(particles.dl[:, i], idx)
 
-    charges = np.delete(particles.charges, idx, axis=0)
-
-    return Particles(
-        icells=icells, deltas=deltas, v=v, weights=weights, charges=charges, dl=dl
-    )
+    return Particles(icells=icells, deltas=deltas, v=v, weights=weights, dl=dl)
 
 
 def _arg_sort(particles):

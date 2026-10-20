@@ -705,26 +705,6 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
 
 
 
-TYPED_TEST(TwoPopulationElectronsTest, ThatParticlesMustCarryTheirPopulationCharge)
-{
-    auto& sodium    = this->ions[1];
-    auto& particles = this->popBuffers[1].domainParticles;
-
-    typename TestFixture::ParticleArray_t::Particle_t particle;
-    particle.weight = 1.;
-    particle.charge = sodium.charge();
-    particle.iCell  = this->layout.AMRBox().lower.toArray();
-    particles.push_back(particle);
-    EXPECT_TRUE(sodium.particlesHaveCharge());
-
-    particles[0].charge = 2. * sodium.charge();
-    EXPECT_FALSE(sodium.particlesHaveCharge());
-    PHARE_DEBUG_DO(EXPECT_THROW(this->ions.computeChargeFlux(), std::runtime_error);)
-}
-
-
-
-
 int main(int argc, char** argv)
 {
     ::testing::InitGoogleTest(&argc, argv);

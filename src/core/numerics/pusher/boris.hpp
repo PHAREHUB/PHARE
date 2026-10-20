@@ -189,13 +189,12 @@ private:
             // we push to rangeOut, which contains crap
             // the push will only touch the particle position
             // but the next step being the acceleration of
-            // rangeOut, we need to copy rangeIn weights, charge
+            // rangeOut, we need to copy rangeIn weights
             // and velocity. This is done here although
             // not strictly speaking this function's business
             // to take advantage that we're already looping
             // over rangeIn particles.
 
-            outParticles[outIdx].charge = inParticles[inIdx].charge;
             outParticles[outIdx].weight = inParticles[inIdx].weight;
             outParticles[outIdx].v      = inParticles[inIdx].v;
 

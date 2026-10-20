@@ -29,7 +29,7 @@ public:
         : layout{{{0.1}}, {{50}}, Point{0.}, Box{Point{50}, Point{99}}}
         , particles{layout.AMRBox()}
         , initializer{std::make_unique<MaxwellianParticleInitializer<ParticleArrayT, GridLayoutT>>(
-              density, InitFunctionArray{vx, vy, vz}, InitFunctionArray{vthx, vthy, vthz}, 1.,
+              density, InitFunctionArray{vx, vy, vz}, InitFunctionArray{vthx, vthy, vthz},
               nbrParticlesPerCell)}
     {
         //

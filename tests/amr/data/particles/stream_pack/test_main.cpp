@@ -80,7 +80,6 @@ struct AParticlesData
     AParticlesData()
     {
         particle.weight = 1.0;
-        particle.charge = 1.0;
         particle.v      = {1.0, 1.0, 1.0};
     }
 };
@@ -226,7 +225,6 @@ TYPED_TEST(StreamPackTest,
     EXPECT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
     EXPECT_THAT(destData.domainParticles[0].delta, Eq(particle.delta));
     EXPECT_THAT(destData.domainParticles[0].weight, Eq(particle.weight));
-    EXPECT_THAT(destData.domainParticles[0].charge, Eq(particle.charge));
 }
 
 
@@ -263,7 +261,6 @@ TYPED_TEST(StreamPackTest,
     EXPECT_THAT(destData.domainParticles[0].iCell, Eq(expectediCell));
     EXPECT_THAT(destData.domainParticles[0].delta, Eq(particle.delta));
     EXPECT_THAT(destData.domainParticles[0].weight, Eq(particle.weight));
-    EXPECT_THAT(destData.domainParticles[0].charge, Eq(particle.charge));
 }
 
 

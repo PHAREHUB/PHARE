@@ -246,6 +246,7 @@ class DiagnosticsTest(SimulatorTest):
             if h5_filepath.endswith("domain.h5"):
                 particle_files += 1
                 self.assertTrue("pop_mass" in h5_file.attrs)
+                self.assertEqual(h5_file.attrs["pop_charge"], 1)
 
                 if "protons" in h5_filepath:
                     self.assertTrue(h5_file.attrs["pop_mass"] == 1)

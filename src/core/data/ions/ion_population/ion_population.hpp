@@ -2,7 +2,6 @@
 #define PHARE_ION_POPULATION_HPP
 
 #include <tuple>
-#include <algorithm>
 #include <string>
 #include <sstream>
 
@@ -43,7 +42,7 @@ namespace core
 
         NO_DISCARD double mass() const { return mass_; }
 
-        //! all particles of a population carry this charge, see particlesHaveCharge()
+        //! the charge of every particle of the population
         NO_DISCARD double charge() const { return charge_; }
 
         NO_DISCARD std::string const& name() const { return name_; }
@@ -102,21 +101,6 @@ namespace core
         NO_DISCARD TensorField const& momentumTensor() const { return momentumTensor_; }
         NO_DISCARD TensorField& momentumTensor() { return momentumTensor_; }
 
-
-        //! true if every particle, in every array set on the population, carries charge()
-        NO_DISCARD bool particlesHaveCharge() const
-        {
-            auto const haveCharge = [this](ParticleArray const* particles) {
-                return particles == nullptr
-                       or std::all_of(std::begin(*particles), std::end(*particles),
-                                      [this](auto const& part) { return part.charge == charge_; });
-            };
-            return haveCharge(particles_._domainParticles)
-                   and haveCharge(particles_._patchGhostParticles)
-                   and haveCharge(particles_._levelGhostParticles)
-                   and haveCharge(particles_._levelGhostParticlesOld)
-                   and haveCharge(particles_._levelGhostParticlesNew);
-        }
 
 
 
