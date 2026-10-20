@@ -18,6 +18,7 @@
 #include "initializer/data_provider.hpp"
 #include "particle_initializers/particle_initializer_factory.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
 
@@ -233,34 +234,20 @@ namespace core
             return populations_[i];
         }
 
-        // in the following isUsable and isSettable the massDensity_ is not checked
-        // because it is for internal use only so no object will ever need to access it.
         NO_DISCARD bool isUsable() const
         {
-            bool usable = chargeDensity_.isUsable() and bulkVelocity_.isUsable()
-                          and momentumTensor_.isUsable() and massDensity_.isUsable()
-                          and chargeFlux_.isUsable();
-
-            for (auto const& pop : populations_)
-            {
-                usable = usable and pop.isUsable();
-            }
-            return usable;
+            return core::isUsable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
+                                  chargeFlux_)
+                   and core::all(populations_, [](auto const& pop) { return pop.isUsable(); });
         }
 
 
 
         NO_DISCARD bool isSettable() const
         {
-            bool settable = massDensity_.isSettable() and chargeDensity_.isSettable()
-                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable()
-                            and chargeFlux_.isSettable();
-
-            for (auto const& pop : populations_)
-            {
-                settable = settable and pop.isSettable();
-            }
-            return settable;
+            return core::isSettable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
+                                    chargeFlux_)
+                   and core::all(populations_, [](auto const& pop) { return pop.isSettable(); });
         }
 
 
