@@ -174,9 +174,11 @@ private:
 
         auto sgn = [](auto const x) { return (x > 0.0) - (x < 0.0); };
 
+        auto const inv_SRmSL = 1.0 / (SR - SL);
+
         auto compute_tranverse_magnetic_s_hllc = [&](auto const tdir) {
             auto const Bhll
-                = (SR * uR.B(tdir) - SL * uL.B(tdir) + fL.B(tdir) - fR.B(tdir)) / (SR - SL);
+                = (SR * uR.B(tdir) - SL * uL.B(tdir) + fL.B(tdir) - fR.B(tdir)) * inv_SRmSL;
 
             return Bhll;
         };
@@ -193,18 +195,18 @@ private:
             // auto const Bn = (SR * uR.B(direction) - SL * uL.B(direction)) / (SR - SL);
 
 
-            auto compute_tranverse_magnetic_s = [&](auto const u, auto const S, auto const tdir) {
-                auto const Bt_s = u.B(tdir)
-                                  * (u.rho * (S - u.V(direction)) * (S - u.V(direction)) - Bn * Bn)
-                                  / (u.rho * (S - u.V(direction)) * (S - SM) - Bn * Bn);
-
-                return Bt_s;
+            // the factor scaling both transverse components of B on one side
+            auto transverse_magnetic_factor = [&](auto const& u, auto const S) {
+                return (u.rho * (S - u.V(direction)) * (S - u.V(direction)) - Bn * Bn)
+                       / (u.rho * (S - u.V(direction)) * (S - SM) - Bn * Bn);
             };
+            auto const btL = transverse_magnetic_factor(uL, SL);
+            auto const btR = transverse_magnetic_factor(uR, SR);
 
-            auto Bt0L_s = compute_tranverse_magnetic_s(uL, SL, transverse[0]);
-            auto Bt1L_s = compute_tranverse_magnetic_s(uL, SL, transverse[1]);
-            auto Bt0R_s = compute_tranverse_magnetic_s(uR, SR, transverse[0]);
-            auto Bt1R_s = compute_tranverse_magnetic_s(uR, SR, transverse[1]);
+            auto Bt0L_s = uL.B(transverse[0]) * btL;
+            auto Bt1L_s = uL.B(transverse[1]) * btL;
+            auto Bt0R_s = uR.B(transverse[0]) * btR;
+            auto Bt1R_s = uR.B(transverse[1]) * btR;
 
             // | rather than ||: both comparisons always run, so neither is a branch
             bool const hllc_fallback
@@ -239,18 +241,13 @@ private:
             // auto const vt0R_s = compute_tranverse_velocity_s(uR, SR, transverse[0]);
             // auto const vt1R_s = compute_tranverse_velocity_s(uR, SR, transverse[1]);
 
-            auto const vt0L_s
-                = uL.V(transverse[0])
-                  - Bn * (Bt0L_s - uL.B(transverse[0])) / (uL.rho * (SL - uL.V(direction)));
-            auto const vt1L_s
-                = uL.V(transverse[1])
-                  - Bn * (Bt1L_s - uL.B(transverse[1])) / (uL.rho * (SL - uL.V(direction)));
-            auto const vt0R_s
-                = uR.V(transverse[0])
-                  - Bn * (Bt0R_s - uR.B(transverse[0])) / (uR.rho * (SR - uR.V(direction)));
-            auto const vt1R_s
-                = uR.V(transverse[1])
-                  - Bn * (Bt1R_s - uR.B(transverse[1])) / (uR.rho * (SR - uR.V(direction)));
+            auto const BnL = Bn / (uL.rho * (SL - uL.V(direction)));
+            auto const BnR = Bn / (uR.rho * (SR - uR.V(direction)));
+
+            auto const vt0L_s = uL.V(transverse[0]) - (Bt0L_s - uL.B(transverse[0])) * BnL;
+            auto const vt1L_s = uL.V(transverse[1]) - (Bt1L_s - uL.B(transverse[1])) * BnL;
+            auto const vt0R_s = uR.V(transverse[0]) - (Bt0R_s - uR.B(transverse[0])) * BnR;
+            auto const vt1R_s = uR.V(transverse[1]) - (Bt1R_s - uR.B(transverse[1])) * BnR;
 
 
             auto const p_tot_s
@@ -276,28 +273,30 @@ private:
                   / (SR - SM);
 
 
-            auto const vt0_ss = (std::sqrt(rhoL_s) * vt0L_s + std::sqrt(rhoR_s) * vt0R_s
-                                 + (Bt0R_s - Bt0L_s) * sgn(Bn))
-                                / (std::sqrt(rhoL_s) + std::sqrt(rhoR_s));
-            auto const vt1_ss = (std::sqrt(rhoL_s) * vt1L_s + std::sqrt(rhoR_s) * vt1R_s
-                                 + (Bt1R_s - Bt1L_s) * sgn(Bn))
-                                / (std::sqrt(rhoL_s) + std::sqrt(rhoR_s));
+            auto const sqrtL   = std::sqrt(rhoL_s);
+            auto const sqrtR   = std::sqrt(rhoR_s);
+            auto const sqrtLR  = sqrtL * sqrtR;
+            auto const inv_sum = 1.0 / (sqrtL + sqrtR);
 
-            auto const Bt0_ss = (std::sqrt(rhoL_s) * Bt0R_s + std::sqrt(rhoR_s) * Bt0L_s
-                                 + std::sqrt(rhoL_s * rhoR_s) * (vt0R_s - vt0L_s) * sgn(Bn))
-                                / (std::sqrt(rhoL_s) + std::sqrt(rhoR_s));
+            auto const vt0_ss
+                = (sqrtL * vt0L_s + sqrtR * vt0R_s + (Bt0R_s - Bt0L_s) * sgn(Bn)) * inv_sum;
+            auto const vt1_ss
+                = (sqrtL * vt1L_s + sqrtR * vt1R_s + (Bt1R_s - Bt1L_s) * sgn(Bn)) * inv_sum;
 
-            auto const Bt1_ss = (std::sqrt(rhoL_s) * Bt1R_s + std::sqrt(rhoR_s) * Bt1L_s
-                                 + std::sqrt(rhoL_s * rhoR_s) * (vt1R_s - vt1L_s) * sgn(Bn))
-                                / (std::sqrt(rhoL_s) + std::sqrt(rhoR_s));
+            auto const Bt0_ss
+                = (sqrtL * Bt0R_s + sqrtR * Bt0L_s + sqrtLR * (vt0R_s - vt0L_s) * sgn(Bn))
+                  * inv_sum;
+            auto const Bt1_ss
+                = (sqrtL * Bt1R_s + sqrtR * Bt1L_s + sqrtLR * (vt1R_s - vt1L_s) * sgn(Bn))
+                  * inv_sum;
 
             auto const EtotL_ss = EtotL_s
-                                  - std::sqrt(rhoL_s)
+                                  - sqrtL
                                         * (vn * Bn + vt0L_s * Bt0L_s + vt1L_s * Bt1L_s
                                            - (vn * Bn + vt0_ss * Bt0_ss + vt1_ss * Bt1_ss))
                                         * sgn(Bn);
             auto const EtotR_ss = EtotR_s
-                                  + std::sqrt(rhoR_s)
+                                  + sqrtR
                                         * (vn * Bn + vt0R_s * Bt0R_s + vt1R_s * Bt1R_s
                                            - (vn * Bn + vt0_ss * Bt0_ss + vt1_ss * Bt1_ss))
                                         * sgn(Bn);
