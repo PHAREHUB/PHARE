@@ -9,6 +9,7 @@
 
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/types.hpp"
+#include "core/numerics/reconstructions/stencil.hpp"
 
 #include <array>
 #include <cmath>
@@ -131,15 +132,25 @@ private:
         }
         lo[static_cast<std::size_t>(D)] -= 1;
 
-        auto const shape = E.shape();
-        for_each_index<dimension>(lo, hi, [&](MeshIndex<dimension> const& c) {
-            auto const above = GridLayout::template next<D>(c);
+        // one contiguous line (last dimension) at a time per field
+        auto const shape      = E.shape();
+        auto lineHi           = hi;
+        lineHi[dimension - 1] = lo[dimension - 1];
+        int const n           = hi[dimension - 1] - lo[dimension - 1] + 1;
+        for_each_index<dimension>(lo, lineHi, [&](MeshIndex<dimension> const& c) {
+            auto const atC = NdArrayViewer<dimension>::idx(shape, c);
+            auto const atAbove
+                = NdArrayViewer<dimension>::idx(shape, GridLayout::template next<D>(c));
             std::size_t slot = first;
             (
                 [&] {
-                    auto const [lower, upper] = Reconstruction_t::template cell_faces<D>(F, c);
-                    NdArrayView<dimension, double>{scratch + 2 * slot * N, shape}(above) = upper;
-                    NdArrayView<dimension, double>{scratch + 2 * slot * N + N, shape}(c) = lower;
+                    auto const fShape     = F.shape();
+                    std::ptrdiff_t stride = 1;
+                    for (std::size_t i = static_cast<std::size_t>(D) + 1; i < dimension; ++i)
+                        stride *= fShape[i];
+                    cell_faces_line<Reconstruction_t>(
+                        F.data() + NdArrayViewer<dimension>::idx(fShape, c), stride, n,
+                        scratch + 2 * slot * N + N + atC, scratch + 2 * slot * N + atAbove);
                     ++slot;
                 }(),
                 ...);
