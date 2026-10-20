@@ -244,9 +244,6 @@ private:
             double* fVx  = &F0.V.x;
             double* fVy  = &F0.V.y;
             double* fVz  = &F0.V.z;
-            double* fBx  = &F0.B.x;
-            double* fBy  = &F0.B.y;
-            double* fBz  = &F0.B.z;
             double* fE   = &F0.P;
 
             auto& [vT, aL, aR, dL, dR] = ct;
@@ -276,9 +273,6 @@ private:
                 fVx[k]  = F.V.x;
                 fVy[k]  = F.V.y;
                 fVz[k]  = F.V.z;
-                fBx[k]  = F.B.x;
-                fBy[k]  = F.B.y;
-                fBz[k]  = F.B.z;
                 fE[k]   = F.P;
                 vtx[k]  = riemann.vt.x;
                 vty[k]  = riemann.vt.y;
