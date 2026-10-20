@@ -55,6 +55,22 @@ public:
                               recons_mp5_R_(u_2, u_1, u, u1, u2));
     }
 
+    // values at the lower and upper faces of cell `index`, from the one stencil centred on it
+    template<auto direction, typename Field>
+    static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
+    {
+        auto const u_2 = F(GridLayout::template previous<direction>(
+            GridLayout::template previous<direction>(index)));
+        auto const u_1 = F(GridLayout::template previous<direction>(index));
+        auto const u   = F(index);
+        auto const u1  = F(GridLayout::template next<direction>(index));
+        auto const u2
+            = F(GridLayout::template next<direction>(GridLayout::template next<direction>(index)));
+
+        return std::make_pair(recons_mp5_R_(u_2, u_1, u, u1, u2),
+                              recons_mp5_L_(u_2, u_1, u, u1, u2));
+    }
+
 private:
     static auto recons_mp5_L_(auto ull, auto ul, auto u, auto ur, auto urr)
     {

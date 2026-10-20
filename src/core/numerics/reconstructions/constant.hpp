@@ -30,6 +30,13 @@ public:
 
         return std::make_pair(u_1, u);
     }
+    // values at the lower and upper faces of cell `index`, from the one stencil centred on it
+    template<auto direction, typename Field>
+    static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
+    {
+        auto const u = F(index);
+        return std::make_pair(u, u);
+    }
 };
 
 } // namespace PHARE::core

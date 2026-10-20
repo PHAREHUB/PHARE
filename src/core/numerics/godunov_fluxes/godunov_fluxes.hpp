@@ -3,6 +3,7 @@
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/types.hpp"
+#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -12,7 +13,9 @@
 
 #include "initializer/data_provider.hpp"
 
+#include <array>
 #include <limits>
+#include <vector>
 #include <utility>
 #include <tuple>
 #include <cstddef>
@@ -105,46 +108,7 @@ public:
         for_N<num_directions>([&](auto i) {
             constexpr Direction direction = std::get<i>(directions);
 
-            layout_.evalOnBiggerBox(
-                fluxes.template expose_centering<direction>(),
-                getGrow<direction, dimension>(Reconstruction_t::nghosts), [&](auto&... indices) {
-                    auto&& [uL, uR]
-                        = Reconstructor_t::template reconstruct<direction>(state, {indices...});
-                    auto&& u = std::forward_as_tuple(uL, uR);
-
-                    if constexpr (Hall)
-                    {
-                        auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, GridLayout::implT::edgeXToCellCenter,
-                            GridLayout::implT::edgeYToCellCenter,
-                            GridLayout::implT::edgeZToCellCenter>(state.J, {indices...});
-
-                        auto const& j = std::forward_as_tuple(jL, jR);
-
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u),
-                                                                          std::get<i>(j));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
-                                                          riemann_.uct_coefs, {indices...});
-                    }
-                    else
-                    {
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
-                                                          {indices...});
-                    }
-                });
+            riemann_fluxes_<direction>(ct_state, state, fluxes);
 
             if (is_resistive_ || is_hyper_resistive_)
                 layout_.evalOnBox(fluxes.template expose_centering<direction>(),
@@ -162,6 +126,144 @@ public:
     bool isHyperResistive() const { return is_hyper_resistive_; }
 
 private:
+    // Face states come from a cell pass: each cell reconstructs the values at both of its faces
+    // from one stencil (Reconstruction::cell_faces), and the face pass reads its left cell's
+    // upper value and its right cell's lower value. Fields that are not cell-centred (transverse
+    // B, J) are projected to cell centres once beforehand.
+    template<auto direction>
+    void riemann_fluxes_(auto& ct_state, auto const& state, auto& fluxes)
+    {
+        using implT                = GridLayout::implT;
+        constexpr auto d           = static_cast<std::size_t>(direction);
+        constexpr int ng           = Reconstruction_t::nghosts;
+        constexpr std::size_t nCt  = Hall ? 5 : 2; // projected to cell centres: Bt0 Bt1 (Jx Jy Jz)
+        constexpr std::size_t nRec = 5 + nCt;      // rho Vx Vy Vz P, then the projected ones
+
+        constexpr auto transverse = []() {
+            if constexpr (direction == Direction::X)
+                return std::array{Direction::Y, Direction::Z};
+            else if constexpr (direction == Direction::Y)
+                return std::array{Direction::X, Direction::Z};
+            else
+                return std::array{Direction::X, Direction::Y};
+        }();
+
+        auto const& faces = fluxes.template expose_centering<direction>();
+        std::array<int, dimension> lo, hi;
+        for (std::size_t i = 0; i < dimension; ++i)
+        {
+            auto const [start, end] = layout_.physicalStartToEnd(faces, static_cast<Direction>(i));
+            lo[i]                   = static_cast<int>(start) - (i == d ? 0 : ng);
+            hi[i]                   = static_cast<int>(end) + (i == d ? 0 : ng);
+        }
+        auto cellLo = lo;
+        cellLo[d] -= 1; // cells on both sides of the faces
+        auto projLo = cellLo, projHi = hi;
+        projLo[d] -= ng - 1; // cell_faces stencil reach
+        projHi[d] += ng - 1;
+
+        auto const shape    = state.rho.shape();
+        std::size_t const N = product(shape, std::size_t{1});
+        static thread_local std::vector<double> buffer;
+        if (buffer.size() < N * (nCt + 2 * nRec))
+            buffer.resize(N * (nCt + 2 * nRec));
+        auto view = [&](std::size_t slot) {
+            return NdArrayView<dimension, double>{buffer.data() + slot * N, shape};
+        };
+        auto centred = [&](std::size_t v) { return view(v); };
+        auto lower   = [&](std::size_t v) { return view(nCt + v); };
+        auto upper   = [&](std::size_t v) { return view(nCt + nRec + v); };
+
+        for_box_(projLo, projHi, [&](MeshIndex<dimension> const& c) {
+            centred(0)(c)
+                = GridLayout::template project<Reconstructor_t::template projection<transverse[0]>>(
+                    state.B(static_cast<Component>(transverse[0])), c);
+            centred(1)(c)
+                = GridLayout::template project<Reconstructor_t::template projection<transverse[1]>>(
+                    state.B(static_cast<Component>(transverse[1])), c);
+            if constexpr (Hall)
+            {
+                centred(2)(c) = GridLayout::template project<implT::edgeXToCellCenter>(
+                    state.J(Component::X), c);
+                centred(3)(c) = GridLayout::template project<implT::edgeYToCellCenter>(
+                    state.J(Component::Y), c);
+                centred(4)(c) = GridLayout::template project<implT::edgeZToCellCenter>(
+                    state.J(Component::Z), c);
+            }
+        });
+
+        for_box_(cellLo, hi, [&](MeshIndex<dimension> const& c) {
+            auto store = [&](std::size_t v, auto const& F) {
+                auto const [l, u] = Reconstruction_t::template cell_faces<direction>(F, c);
+                lower(v)(c)       = l;
+                upper(v)(c)       = u;
+            };
+            store(0, state.rho);
+            store(1, state.V(Component::X));
+            store(2, state.V(Component::Y));
+            store(3, state.V(Component::Z));
+            store(4, state.P);
+            for (std::size_t v = 0; v < nCt; ++v)
+                store(5 + v, centred(v));
+        });
+
+        auto const& Bn = state.B(static_cast<Component>(direction));
+        for_box_(lo, hi, [&](MeshIndex<dimension> const& f) {
+            auto const cl = GridLayout::template previous<direction>(f);
+            auto face     = [&](auto&& side, MeshIndex<dimension> const& c) {
+                PerIndexVector<double> B;
+                B(direction)     = Bn(f);
+                B(transverse[0]) = side(5)(c);
+                B(transverse[1]) = side(6)(c);
+                return PerIndex{side(0)(c), {side(1)(c), side(2)(c), side(3)(c)}, B, side(4)(c)};
+            };
+            auto uL  = face(upper, cl);
+            auto uR  = face(lower, f);
+            auto&& u = std::forward_as_tuple(uL, uR);
+
+            if constexpr (Hall)
+            {
+                PerIndexVector<double> jL{upper(7)(cl), upper(8)(cl), upper(9)(cl)};
+                PerIndexVector<double> jR{lower(7)(f), lower(8)(f), lower(9)(f)};
+                auto const& j = std::forward_as_tuple(jL, jR);
+
+                auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
+                    return equations_.template compute<direction>(std::get<i>(u), std::get<i>(j));
+                });
+
+                fluxes.template get_dir<direction>(f)
+                    = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
+
+                ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
+                                                  riemann_.uct_coefs, f);
+            }
+            else
+            {
+                auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>(
+                    [&](auto i) { return equations_.template compute<direction>(std::get<i>(u)); });
+
+                fluxes.template get_dir<direction>(f)
+                    = riemann_.template solve<direction>(uL, uR, fL, fR);
+
+                ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs, f);
+            }
+        });
+    }
+
+    static void for_box_(auto const& lo, auto const& hi, auto&& fn)
+    {
+        for (int i = lo[0]; i <= hi[0]; ++i)
+            if constexpr (dimension == 1)
+                fn(make_index(i));
+            else
+                for (int j = lo[1]; j <= hi[1]; ++j)
+                    if constexpr (dimension == 2)
+                        fn(make_index(i, j));
+                    else
+                        for (int k = lo[2]; k <= hi[2]; ++k)
+                            fn(make_index(i, j, k));
+    }
+
     template<auto direction>
     auto transverse_on_face_(auto const& E, auto const& B, MeshIndex<dimension> idx) const
     {

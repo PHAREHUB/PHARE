@@ -43,6 +43,19 @@ public:
         return std::make_pair(recons_linear_L_(u_2, u_1, u), recons_linear_R_(u_1, u, u1));
     }
 
+    // values at the lower and upper faces of cell `index`, from the one stencil centred on it
+    template<auto direction, typename Field>
+    static auto cell_faces(Field const& F, MeshIndex<Field::dimension> index)
+    {
+        auto const u_1 = F(GridLayout::template previous<direction>(index));
+        auto const u   = F(index);
+        auto const u1  = F(GridLayout::template next<direction>(index));
+
+        auto const Di = linear_slope_(u_1, u, u1);
+
+        return std::make_pair(u - 0.5 * Di, u + 0.5 * Di);
+    }
+
 private:
     static auto recons_linear_L_(auto ul, auto u, auto ur)
     {
