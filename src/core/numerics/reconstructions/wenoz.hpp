@@ -143,9 +143,9 @@ private:
         auto const alpha1 = d1 * r1;
         auto const alpha2 = d2 * r2;
 
-        auto const sum_alpha = alpha0 + alpha1 + alpha2;
+        auto const inv_sum = 1. / (alpha0 + alpha1 + alpha2);
 
-        return std::make_tuple(alpha0 / sum_alpha, alpha1 / sum_alpha, alpha2 / sum_alpha);
+        return std::make_tuple(alpha0 * inv_sum, alpha1 * inv_sum, alpha2 * inv_sum);
     }
 };
 
