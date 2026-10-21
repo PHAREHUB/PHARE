@@ -47,7 +47,7 @@ class LohnerTagging(Tagging):
     method = "lohner"
 
     reltol: float = 0.02
-    abstol: float = 1e-30
+    abstol: float = 1e-8
 
     def populate_dict(self, dp):
         super().populate_dict(dp)

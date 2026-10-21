@@ -26,7 +26,7 @@ public:
     explicit LohnerTaggerStrategy(initializer::PHAREDict const& dict)
         : Super{dict}
         , reltol_{cppdict::get_value(dict, "params/reltol", 0.02)}
-        , abstol_{cppdict::get_value(dict, "params/abstol", 1e-30)}
+        , abstol_{cppdict::get_value(dict, "params/abstol", 1e-8)}
     {
     }
 

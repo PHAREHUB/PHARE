@@ -244,7 +244,7 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(tag.method, "lohner")
         self.assertEqual(tag.quantities, [("B", 0.1)])
         self.assertEqual(tag.reltol, 0.02)
-        self.assertEqual(tag.abstol, 1e-30)
+        self.assertEqual(tag.abstol, 1e-8)
 
     def test_tagging_none_when_not_tagging(self):
         self.assertIsNone(tagging.resolve_tagging())

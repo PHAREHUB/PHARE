@@ -1076,6 +1076,53 @@ TEST(LohnerStrategy, VectorQuantityIsOrOverComponents)
     EXPECT_TRUE(allEqual(lohnerTags(model, onBx), 0));
 }
 
+template<typename Model>
+void fillAlternatingBy(Model& model, double amplitude)
+{
+    fillB(model, 0., 0., 0.);
+    fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
+              [&](auto const& idx) { return idx[0] % 2 ? amplitude : -amplitude; });
+}
+
+TEST(LohnerStrategy, AbstolIsANoiseFloor)
+{
+    MockHybridModel<1> model;
+    fillAlternatingBy(model, 1e-3);
+
+    auto below                = quantitiesDict({{"By", 0.5}});
+    below["params"]["abstol"] = 1e-8;
+    auto above                = quantitiesDict({{"By", 0.5}});
+    above["params"]["abstol"] = 1e-2;
+    EXPECT_TRUE(allEqual(lohnerTags(model, below), 1));
+    EXPECT_TRUE(allEqual(lohnerTags(model, above), 0));
+}
+
+TEST(LohnerStrategy, AbstolMustBeSeveralTimesTheNoise)
+{
+    MockHybridModel<1> model;
+    double constexpr sigma     = 1e-3;
+    double constexpr threshold = 0.5;
+    fillAlternatingBy(model, sigma);
+
+    auto atNoise                     = quantitiesDict({{"By", threshold}});
+    atNoise["params"]["abstol"]      = sigma;
+    auto severalTimes                = quantitiesDict({{"By", threshold}});
+    severalTimes["params"]["abstol"] = 4. * sigma * (1. / threshold - 1.);
+    EXPECT_TRUE(allEqual(lohnerTags(model, atNoise), 1));
+    EXPECT_TRUE(allEqual(lohnerTags(model, severalTimes), 0));
+}
+
+TEST(LohnerStrategy, DefaultAbstolIs1e8)
+{
+    MockHybridModel<1> model;
+    fillAlternatingBy(model, 1e-9);
+
+    auto noFloor                = quantitiesDict({{"By", 0.5}});
+    noFloor["params"]["abstol"] = 0.;
+    EXPECT_TRUE(allEqual(lohnerTags(model, quantitiesDict({{"By", 0.5}})), 0));
+    EXPECT_TRUE(allEqual(lohnerTags(model, noFloor), 1));
+}
+
 TEST(TaggerFactory, hybridAndMHDMethods)
 {
     using hybrid_model = PHARE::solver::PHARE_Types<PHARE::SimOpts{1ul, 1ul, 2ul}>::Hybrid::Model_t;
