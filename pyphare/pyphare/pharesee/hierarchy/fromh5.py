@@ -159,6 +159,41 @@ def get_times_from_h5(filepath, as_float=True):
     return times
 
 
+def pop_attribute_from_h5(path, pop_name, attribute):
+    """returns the population attribute, which must be the same in all its files"""
+    import h5py  # see doc/conventions.md section 2.1.1
+
+    list_of_qty = [
+        "density",
+        "charge_density",
+        "flux",
+        "momentum_tensor",
+        "domain",
+        "levelGhost",
+    ]
+    values = []
+
+    for qty in list_of_qty:
+        file = os.path.join(path, "ions_pop_{}_{}.h5".format(pop_name, qty))
+        if os.path.isfile(file):
+            with h5py.File(file, "r") as h5_file:
+                if attribute not in h5_file.attrs:
+                    raise ValueError(
+                        f"{file} has no {attribute} attribute, it was probably written "
+                        "by an older PHARE version"
+                    )
+                values.append(h5_file.attrs[attribute])
+
+    if not values:
+        raise ValueError(f"no file of population {pop_name} found in {path}")
+    if any(v != values[0] for v in values):
+        raise ValueError(
+            f"inconsistent {attribute} across the files of population {pop_name}"
+        )
+
+    return values[0]
+
+
 def create_from_all_times(time, hier):
     return time is None and hier is None
 
