@@ -134,7 +134,7 @@ class Simulator:
 
             print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
             print(traceback.format_exc())
-            raise ValueError("Error in Simulator.setup(), see previous error")
+            raise
 
     def initialize(self):
         if self.initialized:
@@ -157,7 +157,7 @@ class Simulator:
                     sys.exc_info()[0]
                 )
             )
-            raise ValueError("Error in Simulator.initialize(), see previous error")
+            raise
 
     def advance(self):
         self._check_init()
