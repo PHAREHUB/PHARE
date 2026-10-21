@@ -289,9 +289,7 @@ private:
                 double* jtz  = &jT[Component::Z](f0);
                 double* rhot = &ct_state.template getRhot<direction>()(f0);
 
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC ivdep
-#endif
+                PHARE_IVDEP
                 for (int k = 0; k < nf; ++k)
                 {
                     auto uL = state_at(up, k);
@@ -311,9 +309,7 @@ private:
             }
             else
             {
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC ivdep
-#endif
+                PHARE_IVDEP
                 for (int k = 0; k < nf; ++k)
                 {
                     auto uL = state_at(up, k);
