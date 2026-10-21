@@ -142,7 +142,7 @@ class HybridAdvanceTest(AdvanceTestBase):
         for quantity in ["E", "B"]:
             ph.ElectromagDiagnostics(quantity=quantity, write_timestamps=timestamps)
 
-        for quantity in ["charge_density", "bulkVelocity"]:
+        for quantity in ["charge_density", "bulkVelocity", "charge_flux"]:
             ph.FluidDiagnostics(
                 quantity=quantity,
                 write_timestamps=timestamps,
@@ -182,6 +182,9 @@ class HybridAdvanceTest(AdvanceTestBase):
             )
             mom_hier = hierarchy_from(
                 h5_filename=diag_outputs + "/ions_bulkVelocity.h5", hier=mom_hier
+            )
+            mom_hier = hierarchy_from(
+                h5_filename=diag_outputs + "/ions_charge_flux.h5", hier=mom_hier
             )
             return mom_hier
 

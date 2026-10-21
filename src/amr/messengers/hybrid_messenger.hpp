@@ -41,7 +41,7 @@ namespace amr
      *
      * - fillElectricGhosts()
      * - fillIonGhostParticles()
-     * - fillIonMomentGhosts()
+     * - fillIonPopMomentGhosts()
      *
      * Synchronization methods of Hybrid quantities:
      *
@@ -310,12 +310,6 @@ namespace amr
             strat_->fillIonPopMomentGhosts(ions, level, fillTime);
         }
 
-
-        // void fillIonMomentGhosts(IonsT& ions, level_t& level,
-        //                          double const fillTime)
-        // {
-        //     strat_->fillIonMomentGhosts(ions, level, fillTime);
-        // }
 
         // synchronization/coarsening methods
 

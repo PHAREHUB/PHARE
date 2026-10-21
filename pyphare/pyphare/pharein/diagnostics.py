@@ -379,6 +379,7 @@ class FluidDiagnostics_(Diagnostics):
         "mass_density",
         "flux",
         "bulkVelocity",
+        "charge_flux",
         "momentum_tensor",
     ]
     type = "fluid"
@@ -405,6 +406,8 @@ class FluidDiagnostics_(Diagnostics):
                 FluidDiagnostics_.fluid_quantities
             )
             raise ValueError(error_msg.format(kwargs["quantity"]))
+        elif kwargs["quantity"] == "charge_flux" and self.population_name is not None:
+            raise ValueError("'charge_flux' is only available for the ions as a whole")
         elif kwargs["quantity"] == "flux" and kwargs["population_name"] == "ions":
             raise ValueError(
                 "'flux' is only available for specific populations, try 'bulkVelocity"
@@ -465,13 +468,20 @@ class FluidDiagnostics:
 
         * "charge_density" - charge density
         * "mass_density" - mass density
-        * "bulkVelocity" - bulk velocity
+        * "bulkVelocity" - mass-weighted bulk velocity. For the ions as a whole it is
+          a diagnostic only: on regions covered by a finer level it is the coarse
+          level's own value, and ghost nodes are not made consistent between patches
         * "momentum_tensor" - momentum tensor
         * "pressure_tensor" - pressure tensor. This is a convenience quantity:
           declaring it registers the underlying moments it is computed from
           (`mass_density`, `bulkVelocity` and `momentum_tensor` for the ions
           as a whole; `density`, `flux` and `momentum_tensor` for a named
           population) as separate diagnostics under the hood.
+
+    **quantity**, only for the ions as a whole (omit `population_name`):
+
+        * "charge_flux" - charge flux sum_s q_s n_s V_s, the ion current
+          density used in the electron velocity
 
     **population_name** (``str``), name of the ion population this
     diagnostics applies to, as declared in

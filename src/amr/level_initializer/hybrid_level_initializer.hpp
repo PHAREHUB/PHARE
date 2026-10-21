@@ -128,15 +128,9 @@ namespace solver
             }
             hybMessenger.fillIonBorders(ions, level, initDataTime);
 
-            // on level i>0, this relies on 'prepareStep' having been called on when
-            // level i-1 was initialized (at the end of this function)
-            // it seems SAMRAI does not call timeInterpolate() at this point although
-            // moments need time interpolation. It probably knows that
-            // we are at a sync time across levels and that the time interpolation
-            // is not needed. But is still seems to use the messenger temporaries like
-            // NiOld etc. so prepareStep() must be called, see end of the function.
-            // - TODO more better comment(s)
-            // hybMessenger.fillIonMomentGhosts(ions, level, initDataTime);
+            // moments are not time interpolated: their level ghost nodes come from the
+            // deposit of level ghost particles above. Only E and B ghosts are, from the
+            // Bold_ and Eold_ copies saved by prepareStep() (see end of this function).
 
 
             // J is never messenger-communicated: compute it locally via Ampere on

@@ -239,8 +239,10 @@ class AdvanceTestBase(SimulatorTest):
             qties = ["mhdRho"]
 
         else:  # hybrid
+            # the bulk velocity is a diagnostic only and is not coarsened, unlike
+            # the charge flux, which gives the electron velocity
             qties = ["rho"]
-            qties += [f"{qty}{xyz}" for qty in ["E", "V"] for xyz in ["x", "y", "z"]]
+            qties += [f"{qty}{xyz}" for qty in ["E", "CF"] for xyz in ["x", "y", "z"]]
 
         lvl_steps = level_time_steps(global_vars.sim)
         print("LEVELSTEPS === ", lvl_steps)

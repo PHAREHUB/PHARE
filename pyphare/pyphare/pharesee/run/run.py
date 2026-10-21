@@ -27,6 +27,7 @@ quantities_per_file = {
     "EM_B": "B",
     "EM_E": "E",
     "ions_bulkVelocity": "Vi",
+    "ions_charge_flux": "CF",
     "ions_charge_density": "Ni",
     "ions_mass_density": "rho",
     "particle_count": "nppc",
@@ -129,6 +130,10 @@ class Run:
 
     def GetVi(self, time, merged=False, interp="nearest", **kwargs):
         hier = self._get_hierarchy(time, "ions_bulkVelocity.h5", **kwargs)
+        return VectorField.FROM(self._get(hier, time, merged, interp))
+
+    def GetChargeFlux(self, time, merged=False, interp="nearest", **kwargs):
+        hier = self._get_hierarchy(time, "ions_charge_flux.h5", **kwargs)
         return VectorField.FROM(self._get(hier, time, merged, interp))
 
     def GetFlux(self, time, pop_name, merged=False, interp="nearest", **kwargs):
