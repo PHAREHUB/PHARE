@@ -1157,19 +1157,23 @@ namespace core
         {
             auto const [ix0, ix1] = startToEnd(field, Direction::X);
             if constexpr (dimension == 1)
-                evalOnLine_<independent>(ix0, ix1, [&](auto ix) { fn(ix); });
+                evalOnLine_<independent>(ix0, ix1,
+                                         [&](auto ix) PHARE_LAMBDA_ALWAYS_INLINE { fn(ix); });
             else
             {
                 auto const [iy0, iy1] = startToEnd(field, Direction::Y);
                 for (auto ix = ix0; ix <= ix1; ++ix)
                 {
                     if constexpr (dimension == 2)
-                        evalOnLine_<independent>(iy0, iy1, [&](auto iy) { fn(ix, iy); });
+                        evalOnLine_<independent>(
+                            iy0, iy1, [&](auto iy) PHARE_LAMBDA_ALWAYS_INLINE { fn(ix, iy); });
                     else
                     {
                         auto const [iz0, iz1] = startToEnd(field, Direction::Z);
                         for (auto iy = iy0; iy <= iy1; ++iy)
-                            evalOnLine_<independent>(iz0, iz1, [&](auto iz) { fn(ix, iy, iz); });
+                            evalOnLine_<independent>(
+                                iz0, iz1,
+                                [&](auto iz) PHARE_LAMBDA_ALWAYS_INLINE { fn(ix, iy, iz); });
                     }
                 }
             }
