@@ -25,6 +25,7 @@ class SystemSettings:
     cxx_compiler_version: str
     hdf5_version: str
     hdf5_is_parallel: str
+    hdf5_has_subfiling: str
     mpi_version: str
     python_binary: str
     python_version: str
@@ -34,6 +35,7 @@ class SystemSettings:
 
 
 SYSTEM_CPP_ = """
+#include <string>
 #include <string_view>
 #include <unordered_map>
 
@@ -46,6 +48,7 @@ struct SystemConfig {{
     constexpr static std::string_view CXX_COMPILER_VERSION = R"({})";
     constexpr static std::string_view HDF5_VERSION = R"({})";
     constexpr static std::string_view HDF5_IS_PARALLEL = R"({})";
+    constexpr static std::string_view HDF5_HAS_SUBFILING = R"({})";
     constexpr static std::string_view _MPI_VERSION_ = R"({})";
     constexpr static std::string_view PYTHON_BINARY = R"({})";
     constexpr static std::string_view PYTHON_VERSION = R"({})";
@@ -55,7 +58,7 @@ struct SystemConfig {{
 
 }};
 
-std::unordered_map<std::string, std::string> build_config(){{
+std::unordered_map<std::string, std::string> inline build_config(){{
   return {{
       {{"CMAKE_BINARY", std::string{{SystemConfig::CMAKE_BINARY}}}},
       {{"CMAKE_VERSION", std::string{{SystemConfig::CMAKE_VERSION}}}},
@@ -63,6 +66,7 @@ std::unordered_map<std::string, std::string> build_config(){{
       {{"CXX_COMPILER_VERSION", std::string{{SystemConfig::CXX_COMPILER_VERSION}}}},
       {{"HDF5_VERSION", std::string{{SystemConfig::HDF5_VERSION}}}},
       {{"HDF5_IS_PARALLEL", std::string{{SystemConfig::HDF5_IS_PARALLEL}}}},
+      {{"HDF5_HAS_SUBFILING", std::string{{SystemConfig::HDF5_HAS_SUBFILING}}}},
       {{"MPI_VERSION", std::string{{SystemConfig::_MPI_VERSION_}}}},
       {{"PYTHON_BINARY", std::string{{SystemConfig::PYTHON_BINARY}}}},
       {{"PYTHON_VERSION", std::string{{SystemConfig::PYTHON_VERSION}}}},
@@ -196,6 +200,9 @@ def gen_system_file():
         hdf5_version=file_string_or("PHARE_HDF5_version.txt", "HDF5 version failed"),
         hdf5_is_parallel=file_string_or(
             "PHARE_HDF5_is_parallel.txt", "HDF5 is parallel check failed"
+        ),
+        hdf5_has_subfiling=file_string_or(
+            "PHARE_HDF5_has_subfiling.txt", "HDF5 has subfiling check failed"
         ),
         mpi_version=file_string_or(
             "PHARE_MPI_Get_library_version.txt", "MPI version failed"
