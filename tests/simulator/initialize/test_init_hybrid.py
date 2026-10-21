@@ -14,6 +14,7 @@ from pyphare.pharesee.hierarchy.hierarchy_utils import merge_particles
 from pyphare.pharesee.particles import aggregate as aggregate_particles
 
 from tests.simulator.test_initialization import InitializationTest
+from tests.simulator.test_initialization import vector_potential_init
 
 
 class HybridInitializationTest(InitializationTest):
@@ -33,6 +34,7 @@ class HybridInitializationTest(InitializationTest):
         cells=120,
         dl=0.1,
         diag_outputs="",
+        vecpot=False,
         **kwargs,
     ):
         if smallest_patch_size is None:
@@ -88,6 +90,10 @@ class HybridInitializationTest(InitializationTest):
                 [0.1 * np.sin(2 * np.pi * xyz[i] / L[i]) for i in range(len(xyz))]
             ).prod(axis=0)
 
+        magnetic = (
+            vector_potential_init(ndim, L) if vecpot else dict(bx=bx, by=by, bz=bz)
+        )
+
         def vx(*xyz):
             return np.asarray(
                 [0.1 * np.cos(2 * np.pi * xyz[i] / L[i]) for i in range(len(xyz))]
@@ -130,9 +136,7 @@ class HybridInitializationTest(InitializationTest):
 
         if beam:
             ph.MaxwellianFluidModel(
-                bx=bx,
-                by=by,
-                bz=bz,
+                **magnetic,
                 protons=protons,
                 beam={
                     "charge": 1,
@@ -149,7 +153,7 @@ class HybridInitializationTest(InitializationTest):
             )
 
         else:
-            ph.MaxwellianFluidModel(bx=bx, by=by, bz=bz, protons=protons)
+            ph.MaxwellianFluidModel(**magnetic, protons=protons)
 
         ph.ElectronModel(closure="isothermal", Te=0.12)
 
