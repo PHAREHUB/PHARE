@@ -1,7 +1,6 @@
 #ifndef PHARE_TAGGING_QUANTITIES_HPP
 #define PHARE_TAGGING_QUANTITIES_HPP
 
-#include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/utilities/types.hpp"
 
 #include "amr/physical_models/mhd_model.hpp"
@@ -10,6 +9,7 @@
 #include "initializer/data_provider.hpp"
 
 #include <array>
+#include <functional>
 #include <string>
 #include <vector>
 #include <utility>
@@ -58,38 +58,12 @@ auto& magneticField(Model& model)
 }
 
 
-template<typename GridLayout, typename Field>
-class TaggedComponent
-{
-public:
-    explicit TaggedComponent(Field const& field)
-        : field_{&field}
-        , centering_{GridLayout::centering(field)}
-    {
-    }
-
-    template<typename... Idx>
-    double operator()(Idx... idx) const
-    {
-        return (*field_)(idx...);
-    }
-
-    auto const& centering() const { return centering_; }
-
-    Field const* field() const { return field_; }
-
-private:
-    Field const* field_;
-    std::array<core::QtyCentering, GridLayout::dimension> centering_;
-};
-
-
 template<typename Model>
 using tagged_field_t = std::decay_t<
     decltype(magneticField(std::declval<Model&>()).getComponent(core::Component::X))>;
 
 template<typename Model>
-using tagged_component_t = TaggedComponent<typename Model::gridlayout_type, tagged_field_t<Model>>;
+using tagged_component_t = std::reference_wrapper<tagged_field_t<Model> const>;
 
 
 template<typename Model>

@@ -73,7 +73,7 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
     std::vector<std::pair<recentered_field_type, double>> components;
     for (auto const& [quantity, threshold] : tagging::resolveQuantities(model, quantities_))
         for (auto const& component : quantity)
-            components.emplace_back(recentered_field_type{*component.field(), allDual}, threshold);
+            components.emplace_back(recentered_field_type{component.get(), allDual}, threshold);
 
     auto const nbrCells = layout.nbrCells();
     std::array<std::uint32_t, dimension> start;
