@@ -76,7 +76,7 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
         auto& [fields, quantityThreshold] = quantities.emplace_back();
         quantityThreshold                 = threshold;
         for (auto const& component : components)
-            fields.emplace_back(component.get(), allDual);
+            fields.emplace_back(component, allDual);
     }
 
     constexpr bool hasCombine

@@ -373,13 +373,13 @@ TEST(TaggingQuantities, hybridB)
 
     auto const comps = tagging::resolveQuantity(model, "B");
     ASSERT_EQ(comps.size(), 3u);
-    EXPECT_EQ(&comps[0].get(), &B.getComponent(Component::X));
-    EXPECT_EQ(&comps[1].get(), &B.getComponent(Component::Y));
-    EXPECT_EQ(&comps[2].get(), &B.getComponent(Component::Z));
+    EXPECT_EQ(comps[0].data(), B.getComponent(Component::X).data());
+    EXPECT_EQ(comps[1].data(), B.getComponent(Component::Y).data());
+    EXPECT_EQ(comps[2].data(), B.getComponent(Component::Z).data());
 
     auto const by = tagging::resolveQuantity(model, "By");
     ASSERT_EQ(by.size(), 1u);
-    EXPECT_EQ(&by[0].get(), &B.getComponent(Component::Y));
+    EXPECT_EQ(by[0].data(), B.getComponent(Component::Y).data());
 }
 
 TEST(TaggingQuantities, mhdAllowed)
@@ -392,30 +392,30 @@ TEST(TaggingQuantities, mhdAllowed)
     {
         auto const c = tagging::resolveQuantity(model, name);
         ASSERT_EQ(c.size(), 1u) << name;
-        EXPECT_EQ(&c[0].get(), &s.rho) << name;
+        EXPECT_EQ(c[0].data(), s.rho.data()) << name;
     }
     for (std::string const name : {"rhoV", "momentum"})
     {
         auto const c = tagging::resolveQuantity(model, name);
         ASSERT_EQ(c.size(), 3u) << name;
-        EXPECT_EQ(&c[0].get(), &s.rhoV.getComponent(Component::X)) << name;
-        EXPECT_EQ(&c[1].get(), &s.rhoV.getComponent(Component::Y)) << name;
-        EXPECT_EQ(&c[2].get(), &s.rhoV.getComponent(Component::Z)) << name;
+        EXPECT_EQ(c[0].data(), s.rhoV.getComponent(Component::X).data()) << name;
+        EXPECT_EQ(c[1].data(), s.rhoV.getComponent(Component::Y).data()) << name;
+        EXPECT_EQ(c[2].data(), s.rhoV.getComponent(Component::Z).data()) << name;
     }
 
     auto const rhoVy = tagging::resolveQuantity(model, "rhoVy");
     ASSERT_EQ(rhoVy.size(), 1u);
-    EXPECT_EQ(&rhoVy[0].get(), &s.rhoV.getComponent(Component::Y));
+    EXPECT_EQ(rhoVy[0].data(), s.rhoV.getComponent(Component::Y).data());
 
     auto const etot = tagging::resolveQuantity(model, "Etot");
     ASSERT_EQ(etot.size(), 1u);
-    EXPECT_EQ(&etot[0].get(), &s.Etot);
+    EXPECT_EQ(etot[0].data(), s.Etot.data());
 
     auto const b = tagging::resolveQuantity(model, "B");
     ASSERT_EQ(b.size(), 3u);
-    EXPECT_EQ(&b[0].get(), &s.B.getComponent(Component::X));
-    EXPECT_EQ(&b[1].get(), &s.B.getComponent(Component::Y));
-    EXPECT_EQ(&b[2].get(), &s.B.getComponent(Component::Z));
+    EXPECT_EQ(b[0].data(), s.B.getComponent(Component::X).data());
+    EXPECT_EQ(b[1].data(), s.B.getComponent(Component::Y).data());
+    EXPECT_EQ(b[2].data(), s.B.getComponent(Component::Z).data());
 }
 
 TEST(TaggingQuantities, notAvailableForTaggingYet)

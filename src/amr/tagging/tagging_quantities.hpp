@@ -9,7 +9,6 @@
 #include "initializer/data_provider.hpp"
 
 #include <array>
-#include <functional>
 #include <string>
 #include <vector>
 #include <utility>
@@ -39,8 +38,7 @@ inline std::vector<QuantityThreshold> parseQuantities(initializer::PHAREDict con
     for (int i = 0; i < nbrQuantities; ++i)
     {
         auto const& quantity = dict["Q" + std::to_string(i)];
-        quantities.push_back({quantity["name"].template to<std::string>(),
-                              quantity["threshold"].template to<double>()});
+        quantities.emplace_back(quantity["name"], quantity["threshold"]);
     }
     return quantities;
 }
@@ -63,7 +61,7 @@ using tagged_field_t = std::decay_t<
     decltype(magneticField(std::declval<Model&>()).getComponent(core::Component::X))>;
 
 template<typename Model>
-using tagged_component_t = std::reference_wrapper<tagged_field_t<Model> const>;
+using tagged_component_t = tagged_field_t<Model>;
 
 template<typename Model>
 auto constexpr max_tagged_components_v
