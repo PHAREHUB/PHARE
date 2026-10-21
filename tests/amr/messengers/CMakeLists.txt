@@ -36,3 +36,4 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/job.py.in ${CMAKE_CURRENT_BINARY_DIR}
 
 
 add_subdirectory(composite_refine_patch_strategy)
+add_subdirectory(mhd_regrid)

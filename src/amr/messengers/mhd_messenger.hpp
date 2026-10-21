@@ -263,6 +263,8 @@ namespace amr
                 interLevelBuiltOn_[levelNumber]
                     = levelsOf_(hierarchy, rootLevelNumber, levelNumber);
             }
+
+            refillGhostsAtInitTime_(hierarchy, levelNumber);
         }
 
 
@@ -277,6 +279,8 @@ namespace amr
 
             stateInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             magMaxRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
+
+            fillGhostsAtInitTime_(mhdModel, *level, initDataTime);
         }
 
 
@@ -305,6 +309,8 @@ namespace amr
 
             // init-only schedules are used once, so they are built at fill time, not stored
             stateInitRefiners_.fillTransient(hierarchy, levelPtr, initDataTime);
+
+            fillGhostsAtInitTime_(mhdModel, level, initDataTime);
         }
 
         void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
@@ -341,6 +347,9 @@ namespace amr
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
             fillStateGhosts(mhdModel.state, level, initDataTime);
+
+            // the finer levels refill their ghosts from this level's old data
+            prepareStep(model, level, initDataTime);
         }
 
         void synchronize(level_t& level) final {}
@@ -449,6 +458,35 @@ namespace amr
         {
             forEachGhostFieldPool_([&](auto& pool) { pool.removeLevel(levelNumber); });
             refluxSchedules_.erase(levelNumber);
+        }
+
+        // The init and regrid schedules interpolate in space only, reading coarser levels at their
+        // latest time, so a level made between two coarser syncs gets ghosts from coarser data
+        // ahead of its init time. Its ghosts are refilled, interpolated in time as in a step, once
+        // onHierarchyChanged has built the schedules that do so. The root level has no coarser
+        // level: only its old data is set.
+        void fillGhostsAtInitTime_(MHDModel& model, level_t& level, double const initDataTime)
+        {
+            if (level.getLevelNumber() == rootLevelNumber)
+                prepareStep(model, level, initDataTime);
+            else
+                pendingGhostRefills_[level.getLevelNumber()] = {&model, initDataTime};
+        }
+
+        // The refill reads the coarser levels' old data, so the level keeps its own as of its init
+        // time for the levels made finer than it.
+        void refillGhostsAtInitTime_(hierarchy_ptr const& hierarchy, int const levelNumber)
+        {
+            auto const pending = pendingGhostRefills_.find(levelNumber);
+            if (pending == pendingGhostRefills_.end())
+                return;
+
+            auto const [model, initDataTime] = pending->second;
+            pendingGhostRefills_.erase(pending);
+
+            auto& level = *hierarchy->getPatchLevel(levelNumber);
+            fillStateGhosts(model->state, level, initDataTime);
+            prepareStep(*model, level, initDataTime);
         }
 
         // Select the field-refinement operators once at construction. The composite runtime
@@ -697,6 +735,14 @@ namespace amr
         // replaces a reinitialised level object and never changes a kept one in place.
         std::map<int, std::vector<std::weak_ptr<level_t>>> sameLevelBuiltOn_;
         std::map<int, std::vector<std::weak_ptr<level_t>>> interLevelBuiltOn_;
+
+        // levels made in the current regrid pass, whose ghosts await refillGhostsAtInitTime_
+        struct PendingGhostRefill
+        {
+            MHDModel* model;
+            double initDataTime;
+        };
+        std::map<int, PendingGhostRefill> pendingGhostRefills_;
 
         PatchGhostRefinerPool elecGhostsRefiners_{resourcesManager_};
         // B, rho, rhoV and Etot of each state, keyed by the state's B name

@@ -65,6 +65,8 @@ public:
 
     void initialize() { timeRefIntegrator_->initializeHierarchy(); }
 
+    auto griddingAlgorithm() const { return timeRefIntegrator_->getGriddingAlgorithm(); }
+
     Integrator(PHARE::initializer::PHAREDict const& dict,
                std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy,
                std::shared_ptr<SAMRAI::algs::TimeRefinementLevelStrategy> timeRefLevelStrategy,
