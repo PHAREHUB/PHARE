@@ -261,18 +261,6 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::fillMessengerInfo(
 {
     auto& mhdInfo = dynamic_cast<amr::MHDMessengerInfo&>(*info);
 
-    mhdInfo.ghostMagneticFluxesX.emplace_back(fluxes_.B_fx.name());
-
-    if constexpr (dimension >= 2)
-    {
-        mhdInfo.ghostMagneticFluxesY.emplace_back(fluxes_.B_fy.name());
-
-        if constexpr (dimension == 3)
-        {
-            mhdInfo.ghostMagneticFluxesZ.emplace_back(fluxes_.B_fz.name());
-        }
-    }
-
     evolve_.fillMessengerInfo(mhdInfo);
 
     auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
