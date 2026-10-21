@@ -17,6 +17,8 @@ target_include_directories(${PROJECT_NAME} PRIVATE
   ${GTEST_INCLUDE_DIRS}
   )
 
+target_compile_definitions(${PROJECT_NAME} PRIVATE PHARE_FORCE_LOG_LINE)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
   phare_amr
   phare_diagnostic

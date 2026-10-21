@@ -1,13 +1,12 @@
 #ifndef PHARE_COMPONENT_WISE_TAGGER_STRATEGY_HPP
 #define PHARE_COMPONENT_WISE_TAGGER_STRATEGY_HPP
 
+#include "core/logger.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/field/recentered_field.hpp"
 
 #include "initializer/data_provider.hpp"
-#include "mpi/mpi_utils.hpp"
 
 #include "tagger_strategy.hpp"
 #include "tagging_quantities.hpp"
@@ -18,8 +17,6 @@
 #include <span>
 #include <utility>
 #include <vector>
-#include <iostream>
-#include <algorithm>
 
 namespace PHARE::amr
 {
@@ -38,10 +35,12 @@ public:
         auto constexpr reach  = Derived::stencil_reach;
         auto constexpr ghosts = ghostWidth_();
         if constexpr (reach > ghosts)
-            if (!mpi::is_init() or mpi::rank() == 0)
-                std::cout << "tagging: criterion stencil reach " << reach
-                          << " exceeds the field ghost width " << ghosts << ", the outer "
-                          << reach - ghosts << " cell layers of each patch are not tagged\n";
+        {
+            PHARE_LOG_LINE_SS("tagging: criterion stencil reach "
+                              << reach << " exceeds the field ghost width " << ghosts
+                              << ", the outer " << reach - ghosts
+                              << " cell layers of each patch are not tagged");
+        }
     }
 
     void tag(Model& model, gridlayout_type const& layout, int* tags) const final;
@@ -90,19 +89,21 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
         start[d]
             = layout.physicalStartIndex(core::QtyCentering::dual, static_cast<core::Direction>(d));
 
-    bool constexpr c_ordering = false;
-    auto tagsv                = core::NdArrayView<dimension, int, c_ordering>(tags, nbrCells);
-    auto constexpr margin     = margin_();
+    auto constexpr margin = margin_();
+    auto const nbrTags    = core::product(nbrCells);
 
-    auto const tagCell = [&](auto... tagIndex) {
-        std::array<std::uint32_t, dimension> const tagIdx{tagIndex...};
+    for (std::size_t i = 0; i < nbrTags; ++i)
+    {
         std::array<std::uint32_t, dimension> cell;
         bool inBorder = false;
+        auto rest     = i;
         for (std::size_t d = 0; d < dimension; ++d)
         {
+            auto const t = static_cast<std::uint32_t>(rest % nbrCells[d]);
+            rest /= nbrCells[d];
             if constexpr (margin > 0)
-                inBorder = inBorder or tagIdx[d] < margin or tagIdx[d] + margin >= nbrCells[d];
-            cell[d] = tagIdx[d] + start[d];
+                inBorder = inBorder or t < margin or t + margin >= nbrCells[d];
+            cell[d] = t + start[d];
         }
 
         auto const passes = [&](auto const& quantity) {
@@ -115,27 +116,12 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
                        > threshold;
             }
             else
-                return std::any_of(std::begin(fields), std::end(fields), [&](auto const& field) {
+                return core::any(fields, [&](auto const& field) {
                     return derived_().indicator(field, cell) > threshold;
                 });
         };
-        tagsv(tagIndex...)
-            = !inBorder and std::any_of(std::begin(quantities), std::end(quantities), passes) ? 1
-                                                                                              : 0;
-    };
-
-    if constexpr (dimension == 1)
-        for (std::uint32_t ix = 0; ix < nbrCells[0]; ++ix)
-            tagCell(ix);
-    if constexpr (dimension == 2)
-        for (std::uint32_t ix = 0; ix < nbrCells[0]; ++ix)
-            for (std::uint32_t iy = 0; iy < nbrCells[1]; ++iy)
-                tagCell(ix, iy);
-    if constexpr (dimension == 3)
-        for (std::uint32_t ix = 0; ix < nbrCells[0]; ++ix)
-            for (std::uint32_t iy = 0; iy < nbrCells[1]; ++iy)
-                for (std::uint32_t iz = 0; iz < nbrCells[2]; ++iz)
-                    tagCell(ix, iy, iz);
+        tags[i] = !inBorder and core::any(quantities, passes) ? 1 : 0;
+    }
 }
 
 } // namespace PHARE::amr
