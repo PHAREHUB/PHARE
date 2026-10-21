@@ -356,6 +356,8 @@ namespace amr
             momentumInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             totalEnergyInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
 
+            fillGhostsAtInitTime_(mhdModel, *level, initDataTime);
+
             // magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
             // elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
         }
@@ -385,6 +387,8 @@ namespace amr
             densityInitRefiners_.fill(levelNumber, initDataTime);
             momentumInitRefiners_.fill(levelNumber, initDataTime);
             totalEnergyInitRefiners_.fill(levelNumber, initDataTime);
+
+            fillGhostsAtInitTime_(mhdModel, level, initDataTime);
         }
 
         void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
@@ -434,6 +438,9 @@ namespace amr
             magMaxModelRefiners_.fill(mhdModel.state.B, level.getLevelNumber(), initDataTime);
 
             fillMomentsGhosts(mhdModel.state, level, initDataTime);
+
+            // the finer levels refill their ghosts from this level's old data
+            prepareStep(model, level, initDataTime);
         }
 
         void synchronize(level_t& level) final {}
@@ -507,6 +514,20 @@ namespace amr
 
 
     private:
+        // The init and regrid schedules interpolate in space only, reading coarser levels at their
+        // latest time. A level made between two coarser syncs gets ghosts from coarser data ahead
+        // of its init time: refill them, interpolated in time as in a step. The refill reads the
+        // coarser levels' old data, so every level made keeps its own as of its init time.
+        void fillGhostsAtInitTime_(MHDModel& model, level_t& level, double const initDataTime)
+        {
+            if (level.getLevelNumber() != rootLevelNumber)
+            {
+                fillMagneticGhosts(model.state.B, level, initDataTime);
+                fillMomentsGhosts(model.state, level, initDataTime);
+            }
+            prepareStep(model, level, initDataTime);
+        }
+
         // Select the field-refinement operators once at construction. The composite runtime
         // kernels are built from the configured order.
         void makeRefineOperators_(RefinementConfig const& config)

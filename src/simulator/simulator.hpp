@@ -79,6 +79,7 @@ public:
     NO_DISCARD auto& getHybridModel() { return hyb_.model_; }
     NO_DISCARD auto& getMHDModel() { return mhd_.model_; }
     NO_DISCARD auto& getMultiPhysicsIntegrator() { return multiphysInteg_; }
+    NO_DISCARD auto& getIntegrator() { return integrator_; }
 
     NO_DISCARD std::string to_str() override;
 
