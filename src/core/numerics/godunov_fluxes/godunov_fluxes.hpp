@@ -94,9 +94,9 @@ public:
     {
     }
 
-    template<typename State, typename Fluxes>
+    template<typename State, typename ExternalB, typename Fluxes>
     void operator()(auto& ct_state, auto const& dissipative_electric_state, State& state,
-                    Fluxes& fluxes)
+                    ExternalB const& b0, Fluxes& fluxes)
     {
         constexpr auto directions = getDirections<dimension>();
 
@@ -109,7 +109,7 @@ public:
                 fluxes.template expose_centering<direction>(),
                 getGrow<direction, dimension>(Reconstruction_t::nghosts), [&](auto&... indices) {
                     auto&& [uL, uR]
-                        = Reconstructor_t::template reconstruct<direction>(state, {indices...});
+                        = Reconstructor_t::template reconstruct<direction>(state, b0, {indices...});
                     auto&& u = std::forward_as_tuple(uL, uR);
 
                     if constexpr (Hall)
@@ -151,9 +151,9 @@ public:
                                   [&](auto&... indices) {
                                       auto F = fluxes.template get_dir<direction>({indices...});
                                       auto const [Et, Bt] = transverse_on_face_<direction>(
-                                          dissipative_electric_state.E(), state.B, {indices...});
+                                          dissipative_electric_state.E(), state.B1, {indices...});
                                       equations_.template dissipative_contributions<direction>(
-                                          Et, Bt, F.B, F.Etot());
+                                          Et, Bt, F.B1, F.Etot());
                                   });
         });
     }

@@ -3,7 +3,7 @@
 
 #include "initializer/data_provider.hpp"
 #include "amr/solvers/time_integrator/base_mhd_timestepper.hpp"
-#include "amr/solvers/time_integrator/compute_fluxes.hpp"
+#include "amr/solvers/time_integrator/compute_fluxes_and_sources.hpp"
 #include "amr/solvers/time_integrator/euler_using_computed_flux.hpp"
 #include "amr/solvers/solver_mhd_field_evolvers.hpp"
 #include "amr/solvers/time_integrator/euler.hpp"
@@ -29,7 +29,7 @@ public:
     SSPRK4_5Integrator(PHARE::initializer::PHAREDict const& dict)
         : Super{dict, /*n_extra_states=*/4}
         , euler_{dict}
-        , compute_fluxes_{dict}
+        , compute_fluxes_and_sources_{dict}
     {
     }
 
@@ -37,8 +37,8 @@ public:
     // should only contain the fluxes over one time step. The accumulation over all substeps is
     // delegated to the solver.
     void operator()(MHDModel& model, Super::MHDStateT& state, Super::FluxT& fluxes,
-                    Super::Messenger& bc, Super::level_t& level, double const currentTime,
-                    double const newTime) override
+                    Super::SourcesT& sources, Super::Messenger& bc, Super::level_t& level,
+                    double const currentTime, double const newTime) override
     {
         auto& state1 = this->extra_states_[0];
         auto& state2 = this->extra_states_[1];
@@ -50,11 +50,11 @@ public:
         auto const dt = newTime - currentTime;
 
         // U1 = Un + w0_*dt*F(Un). Fill U1's coarse-fine ghosts at its abscissa t_n + c1_*dt.
-        euler_(model, state, state1, fluxes, bc, level, currentTime, currentTime + c1_ * dt,
-               w0_ * dt);
+        euler_(model, state, state1, fluxes, sources, bc, level, currentTime,
+               currentTime + c1_ * dt, w0_ * dt);
 
         this->accumulateButcherFluxes_(
-            model, state.E, fluxes, level,
+            model, state.E, fluxes, sources, level,
             (w0_ * w11_ * w21_ * w31_ * w43_ + w0_ * w11_ * w21_ * w41_ + w0_ * w11_ * w40_));
 
         // U2 = w10_*Un + w11_*U1 + w12_*dt*F(U1)
@@ -63,13 +63,14 @@ public:
         RKUtils_t{level, model}(state2, RKPair_t{w10_, state}, RKPair_t{w11_, state1});
 
         // U2 = U2 + w12_*dt*F(U1)
-        compute_fluxes_(model, state1, fluxes, bc, level, newTime);
+        model.updateExternalField(level, currentTime + c1_ * dt);
+        compute_fluxes_and_sources_(model, state1, fluxes, sources, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state2, state2, state1.E, fluxes, bc, level,
+        euler_using_butcher_fluxes_(model, state2, state2, state1.E, fluxes, sources, bc, level,
                                     currentTime + c2_ * dt, w12_ * dt);
 
         this->accumulateButcherFluxes_(
-            model, state1.E, fluxes, level,
+            model, state1.E, fluxes, sources, level,
             (w12_ * w21_ * w31_ * w43_ + w12_ * w21_ * w41_ + w12_ * w40_));
 
         // U3 = w20_*Un + w21_*U2 + w22_*dt*F(U2)
@@ -78,12 +79,13 @@ public:
         RKUtils_t{level, model}(state3, RKPair_t{w20_, state}, RKPair_t{w21_, state2});
 
         // U3 = U3 + w22_*dt*F(U2)
-        compute_fluxes_(model, state2, fluxes, bc, level, newTime);
+        model.updateExternalField(level, currentTime + c2_ * dt);
+        compute_fluxes_and_sources_(model, state2, fluxes, sources, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state3, state3, state2.E, fluxes, bc, level,
+        euler_using_butcher_fluxes_(model, state3, state3, state2.E, fluxes, sources, bc, level,
                                     currentTime + c3_ * dt, w22_ * dt);
 
-        this->accumulateButcherFluxes_(model, state2.E, fluxes, level,
+        this->accumulateButcherFluxes_(model, state2.E, fluxes, sources, level,
                                        (w22_ * w31_ * w43_ + w22_ * w41_));
 
         // U4 = w30_*Un + w31_*U3 + w32_*dt*F(U3)
@@ -94,26 +96,31 @@ public:
         // U4 = U4 + w32_*dt*F(U3)
         // if we were not using butcher formulation, we would need a separate flux buffer for F(U3)
         // for the final step
-        compute_fluxes_(model, state3, fluxes, bc, level, newTime);
+        model.updateExternalField(level, currentTime + c3_ * dt);
+        compute_fluxes_and_sources_(model, state3, fluxes, sources, bc, level, newTime);
 
-        euler_using_butcher_fluxes_(model, state4, state4, state3.E, fluxes, bc, level,
+        euler_using_butcher_fluxes_(model, state4, state4, state3.E, fluxes, sources, bc, level,
                                     currentTime + c4_ * dt, w32_ * dt);
 
-        this->accumulateButcherFluxes_(model, state3.E, fluxes, level, (w32_ * w43_ + w42_));
+        this->accumulateButcherFluxes_(model, state3.E, fluxes, sources, level,
+                                       (w32_ * w43_ + w42_));
 
-        compute_fluxes_(model, state4, fluxes, bc, level, newTime);
+        model.updateExternalField(level, currentTime + c4_ * dt);
+        compute_fluxes_and_sources_(model, state4, fluxes, sources, bc, level, newTime);
 
-        this->accumulateButcherFluxes_(model, state4.E, fluxes, level, w44_);
+        this->accumulateButcherFluxes_(model, state4.E, fluxes, sources, level, w44_);
 
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, dt);
+        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_,
+                                    this->butcherSources_, bc, level, newTime, dt);
+
+        model.updateExternalField(level, newTime);
     }
 
     void registerResources(MHDModel& model) override
     {
         Super::registerResources(model);
         euler_.registerResources(model);
-        // no need to register compute_fluxes_, as it shares its resources with euler_
+        // no need to register compute_fluxes_and_sources_, as it shares its resources with euler_
     }
 
     void allocate(MHDModel& model, MHDModel::patch_t& patch,
@@ -121,7 +128,7 @@ public:
     {
         Super::allocate(model, patch, allocateTime);
         euler_.allocate(model, patch, allocateTime);
-        // no need to allocate compute_fluxes_, as it shares its resources with euler_
+        // no need to allocate compute_fluxes_and_sources_, as it shares its resources with euler_
     }
 
     using Super::exposeFluxes;
@@ -153,7 +160,7 @@ private:
     static constexpr double c4_{w31_ * c3_ + w32_};  // state4
 
     Euler<FVMethodStrategy, MHDModel> euler_;
-    ComputeFluxes<FVMethodStrategy, MHDModel> compute_fluxes_;
+    ComputeFluxesAndSources<FVMethodStrategy, MHDModel> compute_fluxes_and_sources_;
     EulerUsingComputedFlux<MHDModel> euler_using_butcher_fluxes_;
 };
 

@@ -44,6 +44,8 @@ private:
     using IMessenger       = amr::IMessenger<IPhysicalModel_t>;
 
     core::AllFluxes<FieldT, VecFieldT> fluxes_;
+    core::MHDSources<FieldT, VecFieldT> sources_{{"B1_source", MHDQuantity::Vector::B1},
+                                                 {"Etot1_source", MHDQuantity::Scalar::Etot1}};
 
     TimeIntegratorStrategy evolve_;
 
@@ -131,12 +133,12 @@ public:
 
     NO_DISCARD auto getCompileTimeResourcesViewList()
     {
-        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_);
+        return std::forward_as_tuple(fluxes_, sources_, fluxSum_, fluxSumE_, stateOld_);
     }
 
     NO_DISCARD auto getCompileTimeResourcesViewList() const
     {
-        return std::forward_as_tuple(fluxes_, fluxSum_, fluxSumE_, stateOld_);
+        return std::forward_as_tuple(fluxes_, sources_, fluxSum_, fluxSumE_, stateOld_);
     }
 
 private:
@@ -194,6 +196,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::registerResources(
     }
     mhdmodel.resourcesManager->registerResources(fluxSumE_);
 
+    mhdmodel.resourcesManager->registerResources(sources_);
+
     mhdmodel.resourcesManager->registerResources(stateOld_);
 
     evolve_.registerResources(mhdmodel);
@@ -249,6 +253,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::allocate(
     }
     mhdmodel.resourcesManager->allocate(fluxSumE_, patch, allocateTime);
 
+    mhdmodel.resourcesManager->allocate(sources_, patch, allocateTime);
+
     mhdmodel.resourcesManager->allocate(stateOld_, patch, allocateTime);
 
     evolve_.allocate(mhdmodel, patch, allocateTime);
@@ -297,25 +303,25 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::prepareStep(IPhysic
 
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
 
-    auto& rho  = mhdModel.state.rho;
-    auto& rhoV = mhdModel.state.rhoV;
-    auto& B    = mhdModel.state.B;
-    auto& Etot = mhdModel.state.Etot;
+    auto& rho   = mhdModel.state.rho;
+    auto& rhoV  = mhdModel.state.rhoV;
+    auto& B1    = mhdModel.state.B1;
+    auto& Etot1 = mhdModel.state.Etot1;
 
     for (auto& patch : level)
     {
         auto dataOnPatch
-            = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot, stateOld_);
+            = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B1, Etot1, stateOld_);
 
         mhdModel.resourcesManager->setTime(stateOld_.rho, *patch, currentTime);
         mhdModel.resourcesManager->setTime(stateOld_.rhoV, *patch, currentTime);
-        mhdModel.resourcesManager->setTime(stateOld_.B, *patch, currentTime);
-        mhdModel.resourcesManager->setTime(stateOld_.Etot, *patch, currentTime);
+        mhdModel.resourcesManager->setTime(stateOld_.B1, *patch, currentTime);
+        mhdModel.resourcesManager->setTime(stateOld_.Etot1, *patch, currentTime);
 
         stateOld_.rho.copyData(rho);
         stateOld_.rhoV.copyData(rhoV);
-        stateOld_.B.copyData(B);
-        stateOld_.Etot.copyData(Etot);
+        stateOld_.B1.copyData(B1);
+        stateOld_.Etot1.copyData(Etot1);
     }
 }
 
@@ -365,9 +371,10 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::reflux(IPhysicalMod
     auto& bc                          = dynamic_cast<Messenger&>(messenger);
     auto& mhdModel                    = dynamic_cast<MHDModel&>(model);
     auto&& [timeFluxes, timeElectric] = evolve_.exposeFluxes();
+    auto& timeSources                 = evolve_.exposeSources();
 
-    reflux_euler_(mhdModel, stateOld_, mhdModel.state, timeElectric, timeFluxes, bc, level, time,
-                  time - oldTime_[level.getLevelNumber()]);
+    reflux_euler_(mhdModel, stateOld_, mhdModel.state, timeElectric, timeFluxes, timeSources, bc,
+                  level, time, time - oldTime_[level.getLevelNumber()]);
 }
 
 template<typename MHDModel, typename AMR_Types, typename TimeIntegratorStrategy>
@@ -383,7 +390,8 @@ void SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::advanceLevel(
 
     try
     {
-        evolve_(mhdModel, mhdModel.state, fluxes_, fromCoarser, *level, currentTime, newTime);
+        evolve_(mhdModel, mhdModel.state, fluxes_, sources_, fromCoarser, *level, currentTime,
+                newTime);
 
         PHARE_DEBUG_DO({ mhdNaNCheck_(mhdModel, *level, currentTime); })
     }
@@ -407,15 +415,16 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
     auto& mhdModel = dynamic_cast<MHDModel&>(model);
     auto& rho      = mhdModel.state.rho;
     auto& rhoV     = mhdModel.state.rhoV;
-    auto& B        = mhdModel.state.B;
-    auto& Etot     = mhdModel.state.Etot;
+    auto& B1       = mhdModel.state.B1;
+    auto& Etot1    = mhdModel.state.Etot1;
+    auto& B0       = mhdModel.externalField.B0;
 
     double dt = std::numeric_limits<double>::max();
 
     for (auto& patch : level)
     {
         auto const& layout = amr::layoutFromPatch<GridLayout>(*patch);
-        auto _             = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B, Etot);
+        auto _ = mhdModel.resourcesManager->setOnPatch(*patch, rho, rhoV, B1, Etot1, B0);
 
         auto const meshSize = layout.meshSize();
 
@@ -431,9 +440,12 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
         auto const& rhoVx = rhoV(core::Component::X);
         auto const& rhoVy = rhoV(core::Component::Y);
         auto const& rhoVz = rhoV(core::Component::Z);
-        auto const& Bx    = B(core::Component::X);
-        auto const& By    = B(core::Component::Y);
-        auto const& Bz    = B(core::Component::Z);
+        auto const& B1x   = B1(core::Component::X);
+        auto const& B1y   = B1(core::Component::Y);
+        auto const& B1z   = B1(core::Component::Z);
+        auto const& B0x   = B0(core::Component::X);
+        auto const& B0y   = B0(core::Component::Y);
+        auto const& B0z   = B0(core::Component::Z);
 
         // wave cfl constraint
         layout.evalOnBox(rho, [&](auto&... args) mutable {
@@ -444,14 +456,20 @@ double SolverMHD<MHDModel, AMR_Types, TimeIntegratorStrategy>::computeStableDt(
             auto const vy = rhoVy(index) / r;
             auto const vz = rhoVz(index) / r;
 
-            auto const bx
-                = GridLayout::template project<GridLayout::implT::faceXToCellCenter>(Bx, index);
-            auto const by
-                = GridLayout::template project<GridLayout::implT::faceYToCellCenter>(By, index);
-            auto const bz
-                = GridLayout::template project<GridLayout::implT::faceZToCellCenter>(Bz, index);
+            using implT = GridLayout::implT;
 
-            auto const P     = core::eosEtotToP(gamma_, r, vx, vy, vz, bx, by, bz, Etot(index));
+            auto const b1x = GridLayout::template project<implT::faceXToCellCenter>(B1x, index);
+            auto const b1y = GridLayout::template project<implT::faceYToCellCenter>(B1y, index);
+            auto const b1z = GridLayout::template project<implT::faceZToCellCenter>(B1z, index);
+
+            auto const bx
+                = b1x + GridLayout::template project<implT::faceXToCellCenter>(B0x, index);
+            auto const by
+                = b1y + GridLayout::template project<implT::faceYToCellCenter>(B0y, index);
+            auto const bz
+                = b1z + GridLayout::template project<implT::faceZToCellCenter>(B0z, index);
+
+            auto const P = core::eosEtot1ToP(gamma_, r, vx, vy, vz, b1x, b1y, b1z, Etot1(index));
             auto const BdotB = bx * bx + by * by + bz * bz;
 
             std::array<double, 3> const v{vx, vy, vz};

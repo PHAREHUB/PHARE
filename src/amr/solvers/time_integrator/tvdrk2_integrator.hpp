@@ -22,25 +22,27 @@ public:
     }
 
     void operator()(MHDModel& model, Super::MHDStateT& state, Super::FluxT& fluxes,
-                    Super::Messenger& bc, Super::level_t& level, double const currentTime,
-                    double const newTime) override
+                    Super::SourcesT& sources, Super::Messenger& bc, Super::level_t& level,
+                    double const currentTime, double const newTime) override
     {
         auto& state1 = this->extra_states_[0];
 
         this->resetButcherFluxes_(model, level);
 
         // U1 = Euler(Un)
-        euler_(model, state, state1, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state1, fluxes, sources, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level, w0_);
+        this->accumulateButcherFluxes_(model, state.E, fluxes, sources, level, w0_);
 
         // U1 = Euler(U1)
-        euler_(model, state1, state1, fluxes, bc, level, currentTime, newTime);
+        model.updateExternalField(level, newTime);
+        euler_(model, state1, state1, fluxes, sources, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state1.E, fluxes, level, w1_);
+        this->accumulateButcherFluxes_(model, state1.E, fluxes, sources, level, w1_);
 
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, newTime - currentTime);
+        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_,
+                                    this->butcherSources_, bc, level, newTime,
+                                    newTime - currentTime);
     }
 
     void registerResources(MHDModel& model) override

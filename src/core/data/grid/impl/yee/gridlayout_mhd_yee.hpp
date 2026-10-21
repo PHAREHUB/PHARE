@@ -66,13 +66,18 @@ public:
         std::array<QtyCentering, NBR_COMPO> const By = {{data.dual, data.primal, data.dual}};
         std::array<QtyCentering, NBR_COMPO> const Bz = {{data.dual, data.dual, data.primal}};
 
+        std::array<QtyCentering, NBR_COMPO> const B1x = {{data.primal, data.dual, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const B1y = {{data.dual, data.primal, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const B1z = {{data.dual, data.dual, data.primal}};
+
         std::array<QtyCentering, NBR_COMPO> const P = {{data.dual, data.dual, data.dual}};
 
         std::array<QtyCentering, NBR_COMPO> const rhoVx = {{data.dual, data.dual, data.dual}};
         std::array<QtyCentering, NBR_COMPO> const rhoVy = {{data.dual, data.dual, data.dual}};
         std::array<QtyCentering, NBR_COMPO> const rhoVz = {{data.dual, data.dual, data.dual}};
 
-        std::array<QtyCentering, NBR_COMPO> const Etot = {{data.dual, data.dual, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const Etot  = {{data.dual, data.dual, data.dual}};
+        std::array<QtyCentering, NBR_COMPO> const Etot1 = {{data.dual, data.dual, data.dual}};
 
         std::array<QtyCentering, NBR_COMPO> const Ex = {{data.dual, data.primal, data.primal}};
         std::array<QtyCentering, NBR_COMPO> const Ey = {{data.primal, data.dual, data.primal}};
@@ -113,6 +118,8 @@ public:
         std::array<QtyCentering, NBR_COMPO> const VecFluxZ_z
             = {{data.dual, data.dual, data.primal}};
 
+        std::array<QtyCentering, NBR_COMPO> const divB = {{data.dual, data.dual, data.dual}};
+
         std::array<QtyCentering, NBR_COMPO> const ScalarAllPrimal
             = {{data.primal, data.primal, data.primal}};
 
@@ -132,11 +139,15 @@ public:
             Bx,
             By,
             Bz,
+            B1x,
+            B1y,
+            B1z,
             P,
+            Etot,
+            Etot1,
             rhoVx,
             rhoVy,
             rhoVz,
-            Etot,
             Ex,
             Ey,
             Ez,
@@ -155,6 +166,7 @@ public:
             VecFluxX_z,
             VecFluxY_z,
             VecFluxZ_z,
+            divB,
             ScalarAllPrimal,
             VecAllPrimalX,
             VecAllPrimalY,
@@ -196,6 +208,12 @@ public:
                     return {{qtyCentering_[gridData_.iBy][gridData_.idirX]}};
                 case MHDQuantity::Scalar::Bz:
                     return {{qtyCentering_[gridData_.iBz][gridData_.idirX]}};
+                case MHDQuantity::Scalar::B1x:
+                    return {{qtyCentering_[gridData_.iB1x][gridData_.idirX]}};
+                case MHDQuantity::Scalar::B1y:
+                    return {{qtyCentering_[gridData_.iB1y][gridData_.idirX]}};
+                case MHDQuantity::Scalar::B1z:
+                    return {{qtyCentering_[gridData_.iB1z][gridData_.idirX]}};
                 case MHDQuantity::Scalar::P:
                     return {{qtyCentering_[gridData_.iP][gridData_.idirX]}};
                 case MHDQuantity::Scalar::rhoVx:
@@ -206,6 +224,8 @@ public:
                     return {{qtyCentering_[gridData_.irhoVz][gridData_.idirX]}};
                 case MHDQuantity::Scalar::Etot:
                     return {{qtyCentering_[gridData_.iEtot][gridData_.idirX]}};
+                case MHDQuantity::Scalar::Etot1:
+                    return {{qtyCentering_[gridData_.iEtot1][gridData_.idirX]}};
                 case MHDQuantity::Scalar::Ex:
                     return {{qtyCentering_[gridData_.iEx][gridData_.idirX]}};
                 case MHDQuantity::Scalar::Ey:
@@ -226,6 +246,8 @@ public:
                     return {{qtyCentering_[gridData_.iVecFluxY_x][gridData_.idirX]}};
                 case MHDQuantity::Scalar::VecFluxZ_x:
                     return {{qtyCentering_[gridData_.iVecFluxZ_x][gridData_.idirX]}};
+                case MHDQuantity::Scalar::divB:
+                    return {{qtyCentering_[gridData_.idivB][gridData_.idirX]}};
                 case MHDQuantity::Scalar::ScalarAllPrimal:
                     return {{qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirX]}};
                 case MHDQuantity::Scalar::VecAllPrimalX:
@@ -263,6 +285,15 @@ public:
                 case MHDQuantity::Scalar::Bz:
                     return {{qtyCentering_[gridData_.iBz][gridData_.idirX],
                              qtyCentering_[gridData_.iBz][gridData_.idirY]}};
+                case MHDQuantity::Scalar::B1x:
+                    return {{qtyCentering_[gridData_.iB1x][gridData_.idirX],
+                             qtyCentering_[gridData_.iB1x][gridData_.idirY]}};
+                case MHDQuantity::Scalar::B1y:
+                    return {{qtyCentering_[gridData_.iB1y][gridData_.idirX],
+                             qtyCentering_[gridData_.iB1y][gridData_.idirY]}};
+                case MHDQuantity::Scalar::B1z:
+                    return {{qtyCentering_[gridData_.iB1z][gridData_.idirX],
+                             qtyCentering_[gridData_.iB1z][gridData_.idirY]}};
                 case MHDQuantity::Scalar::P:
                     return {{qtyCentering_[gridData_.iP][gridData_.idirX],
                              qtyCentering_[gridData_.iP][gridData_.idirY]}};
@@ -278,6 +309,9 @@ public:
                 case MHDQuantity::Scalar::Etot:
                     return {{qtyCentering_[gridData_.iEtot][gridData_.idirX],
                              qtyCentering_[gridData_.iEtot][gridData_.idirY]}};
+                case MHDQuantity::Scalar::Etot1:
+                    return {{qtyCentering_[gridData_.iEtot1][gridData_.idirX],
+                             qtyCentering_[gridData_.iEtot1][gridData_.idirY]}};
                 case MHDQuantity::Scalar::Ex:
                     return {{qtyCentering_[gridData_.iEx][gridData_.idirX],
                              qtyCentering_[gridData_.iEx][gridData_.idirY]}};
@@ -320,6 +354,9 @@ public:
                 case MHDQuantity::Scalar::VecFluxZ_y:
                     return {{qtyCentering_[gridData_.iVecFluxZ_y][gridData_.idirX],
                              qtyCentering_[gridData_.iVecFluxZ_y][gridData_.idirY]}};
+                case MHDQuantity::Scalar::divB:
+                    return {{qtyCentering_[gridData_.idivB][gridData_.idirX],
+                             qtyCentering_[gridData_.idivB][gridData_.idirY]}};
                 case MHDQuantity::Scalar::ScalarAllPrimal:
                     return {{qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirX],
                              qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirY]}};
@@ -368,6 +405,18 @@ public:
                     return {{qtyCentering_[gridData_.iBz][gridData_.idirX],
                              qtyCentering_[gridData_.iBz][gridData_.idirY],
                              qtyCentering_[gridData_.iBz][gridData_.idirZ]}};
+                case MHDQuantity::Scalar::B1x:
+                    return {{qtyCentering_[gridData_.iB1x][gridData_.idirX],
+                             qtyCentering_[gridData_.iB1x][gridData_.idirY],
+                             qtyCentering_[gridData_.iB1x][gridData_.idirZ]}};
+                case MHDQuantity::Scalar::B1y:
+                    return {{qtyCentering_[gridData_.iB1y][gridData_.idirX],
+                             qtyCentering_[gridData_.iB1y][gridData_.idirY],
+                             qtyCentering_[gridData_.iB1y][gridData_.idirZ]}};
+                case MHDQuantity::Scalar::B1z:
+                    return {{qtyCentering_[gridData_.iB1z][gridData_.idirX],
+                             qtyCentering_[gridData_.iB1z][gridData_.idirY],
+                             qtyCentering_[gridData_.iB1z][gridData_.idirZ]}};
                 case MHDQuantity::Scalar::P:
                     return {{qtyCentering_[gridData_.iP][gridData_.idirX],
                              qtyCentering_[gridData_.iP][gridData_.idirY],
@@ -388,6 +437,10 @@ public:
                     return {{qtyCentering_[gridData_.iEtot][gridData_.idirX],
                              qtyCentering_[gridData_.iEtot][gridData_.idirY],
                              qtyCentering_[gridData_.iEtot][gridData_.idirZ]}};
+                case MHDQuantity::Scalar::Etot1:
+                    return {{qtyCentering_[gridData_.iEtot1][gridData_.idirX],
+                             qtyCentering_[gridData_.iEtot1][gridData_.idirY],
+                             qtyCentering_[gridData_.iEtot1][gridData_.idirZ]}};
                 case MHDQuantity::Scalar::Ex:
                     return {{qtyCentering_[gridData_.iEx][gridData_.idirX],
                              qtyCentering_[gridData_.iEx][gridData_.idirY],
@@ -460,6 +513,10 @@ public:
                     return {{qtyCentering_[gridData_.iVecFluxZ_z][gridData_.idirX],
                              qtyCentering_[gridData_.iVecFluxZ_z][gridData_.idirY],
                              qtyCentering_[gridData_.iVecFluxZ_z][gridData_.idirZ]}};
+                case MHDQuantity::Scalar::divB:
+                    return {{qtyCentering_[gridData_.idivB][gridData_.idirX],
+                             qtyCentering_[gridData_.idivB][gridData_.idirY],
+                             qtyCentering_[gridData_.idivB][gridData_.idirZ]}};
                 case MHDQuantity::Scalar::ScalarAllPrimal:
                     return {{qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirX],
                              qtyCentering_[gridData_.iScalarAllPrimal][gridData_.idirY],
@@ -493,6 +550,10 @@ public:
             case MHDQuantity::Vector::B:
                 return {{centering(MHDQuantity::Scalar::Bx), centering(MHDQuantity::Scalar::By),
                          centering(MHDQuantity::Scalar::Bz)}};
+
+            case MHDQuantity::Vector::B1:
+                return {{centering(MHDQuantity::Scalar::B1x), centering(MHDQuantity::Scalar::B1y),
+                         centering(MHDQuantity::Scalar::B1z)}};
 
             case MHDQuantity::Vector::rhoV:
                 return {{centering(MHDQuantity::Scalar::rhoVx),
@@ -1143,9 +1204,14 @@ struct GridLayoutImplYee<options>::GridData
     static constexpr std::uint32_t iBy = static_cast<std::uint32_t>(MHDQuantity::Scalar::By);
     static constexpr std::uint32_t iBz = static_cast<std::uint32_t>(MHDQuantity::Scalar::Bz);
 
+    static constexpr std::uint32_t iB1x = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1x);
+    static constexpr std::uint32_t iB1y = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1y);
+    static constexpr std::uint32_t iB1z = static_cast<std::uint32_t>(MHDQuantity::Scalar::B1z);
+
     static constexpr std::uint32_t iP = static_cast<std::uint32_t>(MHDQuantity::Scalar::P);
 
     static constexpr std::uint32_t iEtot = static_cast<std::uint32_t>(MHDQuantity::Scalar::Etot);
+    static constexpr std::uint32_t iEtot1 = static_cast<std::uint32_t>(MHDQuantity::Scalar::Etot1);
 
     static constexpr std::uint32_t irhoVx = static_cast<std::uint32_t>(MHDQuantity::Scalar::rhoVx);
     static constexpr std::uint32_t irhoVy = static_cast<std::uint32_t>(MHDQuantity::Scalar::rhoVy);
@@ -1186,6 +1252,8 @@ struct GridLayoutImplYee<options>::GridData
         = static_cast<std::uint32_t>(MHDQuantity::Scalar::VecFluxY_z);
     static constexpr std::uint32_t iVecFluxZ_z
         = static_cast<std::uint32_t>(MHDQuantity::Scalar::VecFluxZ_z);
+
+    static constexpr std::uint32_t idivB = static_cast<std::uint32_t>(MHDQuantity::Scalar::divB);
 
     static constexpr std::uint32_t iScalarAllPrimal
         = static_cast<std::uint32_t>(MHDQuantity::Scalar::ScalarAllPrimal);

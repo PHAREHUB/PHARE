@@ -26,7 +26,7 @@ public:
 
     void setup(DiagnosticProperties&) override;
     void write(DiagnosticProperties&) override;
-    void compute(DiagnosticProperties&) override {}
+    void compute(DiagnosticProperties&) override;
 
 private:
     struct Info
@@ -46,6 +46,28 @@ private:
 
 
 template<typename H5Writer>
+void ElectromagDiagnosticWriter<H5Writer>::compute(DiagnosticProperties& diagnostic)
+{
+    auto& modelView   = this->h5Writer_.modelView();
+    auto const minLvl = this->h5Writer_.minLevel;
+    auto const maxLvl = this->h5Writer_.maxLevel;
+
+    if constexpr (requires { modelView.getB1(); })
+    {
+        if (isActiveDiag(diagnostic, "/", "EM_B"))
+            modelView.visitHierarchy(
+                [&](auto& layout, auto const&, auto const) { modelView.computeTotalB(layout); },
+                minLvl, maxLvl);
+
+        if (isActiveDiag(diagnostic, "/", "EM_divB"))
+            modelView.visitHierarchy(
+                [&](auto& layout, auto const&, auto const) { modelView.computeDivB(layout); },
+                minLvl, maxLvl);
+    }
+}
+
+
+template<typename H5Writer>
 void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
 {
     auto& modelView = this->h5Writer_.modelView();
@@ -62,6 +84,18 @@ void ElectromagDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnosti
 
         if (isActiveDiag(diagnostic, "/", "EM_E"))
             return initializer.template initTensorFieldFileLevel<1>(level);
+
+        if (isActiveDiag(diagnostic, "/", "EM_B0"))
+            return initializer.template initTensorFieldFileLevel<1>(level);
+
+        if constexpr (requires { modelView.getB1(); })
+        {
+            if (isActiveDiag(diagnostic, "/", "EM_B1"))
+                return initializer.template initTensorFieldFileLevel<1>(level);
+
+            if (isActiveDiag(diagnostic, "/", "EM_divB"))
+                return initializer.initFieldFileLevel(level);
+        }
 
         return std::nullopt;
     };
@@ -104,6 +138,21 @@ void ElectromagDiagnosticWriter<H5Writer>::write(DiagnosticProperties& diagnosti
                 {
                     auto& E = this->h5Writer_.modelView().getE();
                     writer.template writeTensorField<1>(E, layout);
+                }
+
+                if (isActiveDiag(diagnostic, "/", "EM_B0"))
+                {
+                    auto& B0 = this->h5Writer_.modelView().getB0();
+                    writer.template writeTensorField<1>(B0, layout);
+                }
+
+                if constexpr (requires { modelView.getB1(); })
+                {
+                    if (isActiveDiag(diagnostic, "/", "EM_B1"))
+                        writer.template writeTensorField<1>(modelView.getB1(), layout);
+
+                    if (isActiveDiag(diagnostic, "/", "EM_divB"))
+                        writer.writeField(modelView.getDivB(), layout);
                 }
             };
 

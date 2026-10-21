@@ -35,10 +35,9 @@ public:
     // Butcher fluxes are used to accumulate fluxes over multiple stages, the corresponding buffer
     // should only contain the fluxes over one time step. The accumulation over all substeps is
     // delegated to the solver.
-    void operator()(MHDModel& model, Super::MHDStateT& state,
-                    Super::FluxT& fluxes, Super::Messenger& bc,
-                    Super::level_t& level, double const currentTime,
-                    double const newTime) override
+    void operator()(MHDModel& model, Super::MHDStateT& state, Super::FluxT& fluxes,
+                    Super::SourcesT& sources, Super::Messenger& bc, Super::level_t& level,
+                    double const currentTime, double const newTime) override
     {
         auto& state1 = this->extra_states_[0];
         auto& state2 = this->extra_states_[1];
@@ -46,14 +45,15 @@ public:
         this->resetButcherFluxes_(model, level);
 
         // U1 = Euler(Un)
-        euler_(model, state, state1, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state1, fluxes, sources, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level, w01_ * w11_);
+        this->accumulateButcherFluxes_(model, state.E, fluxes, sources, level, w01_ * w11_);
 
         // U1 = Euler(U1)
-        euler_(model, state1, state1, fluxes, bc, level, currentTime, newTime);
+        model.updateExternalField(level, newTime);
+        euler_(model, state1, state1, fluxes, sources, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state1.E, fluxes, level, w01_ * w11_);
+        this->accumulateButcherFluxes_(model, state1.E, fluxes, sources, level, w01_ * w11_);
 
         // U2 = 0.75*Un + 0.25*U1 is the interior node at abscissa t_n + dt/2 (c=1/2).
         RKUtils_t{level, model}(state2, RKPair_t{w00_, state}, RKPair_t{w01_, state1});
@@ -63,18 +63,22 @@ public:
         // evaluated, single-level runs included. Only the coarse-fine part depends on stageTime,
         // where it time-interpolates at U2's own abscissa.
         double const stageTime = currentTime + 0.5 * (newTime - currentTime);
-        TimeSetter{level, model, stageTime}(state2.rho, state2.rhoV, state2.Etot, state2.B);
-        bc.fillMagneticGhosts(state2.B, level, stageTime);
+        TimeSetter{level, model, stageTime}(state2.rho, state2.rhoV, state2.Etot1, state2.B1);
+        bc.fillMagneticGhosts(state2.B1, level, stageTime);
         bc.fillMomentsGhosts(state2, level, stageTime);
 
         // U2 = Euler(U2)
-        euler_(model, state2, state2, fluxes, bc, level, currentTime, newTime);
+        model.updateExternalField(level, stageTime);
+        euler_(model, state2, state2, fluxes, sources, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state2.E, fluxes, level, w11_);
+        this->accumulateButcherFluxes_(model, state2.E, fluxes, sources, level, w11_);
 
         // Un+1 = 1/3*Un + 2/3*Euler(U2)
-        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_, bc,
-                                    level, newTime, newTime - currentTime);
+        euler_using_butcher_fluxes_(model, state, state, this->butcherE_, this->butcherFluxes_,
+                                    this->butcherSources_, bc, level, newTime,
+                                    newTime - currentTime);
+
+        model.updateExternalField(level, newTime);
     }
 
     void registerResources(MHDModel& model) override

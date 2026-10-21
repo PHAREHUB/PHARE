@@ -19,13 +19,14 @@ class UsableMHDState : public MHDState<VecFieldMHD<dim>>
 
     void _set()
     {
-        auto&& [_rho, _V, _B, _P, _rhoV, _Etot, _J, _E] = Super::getCompileTimeResourcesViewList();
+        auto&& [_rho, _V, _B1, _P, _rhoV, _Etot1, _J, _E]
+            = Super::getCompileTimeResourcesViewList();
         _rho.setBuffer(&rho);
         V.set_on(_V);
-        B.set_on(_B);
+        B1.set_on(_B1);
         _P.setBuffer(&P);
         rhoV.set_on(_rhoV);
-        _Etot.setBuffer(&Etot);
+        _Etot1.setBuffer(&Etot1);
         J.set_on(_J);
         E.set_on(_E);
     }
@@ -40,12 +41,12 @@ public:
         , rho{dict["name"].template to<std::string>() + "_" + "rho", layout,
               MHDQuantity::Scalar::rho}
         , V{dict["name"].template to<std::string>() + "_" + "V", layout, MHDQuantity::Vector::V}
-        , B{dict["name"].template to<std::string>() + "_" + "B", layout, MHDQuantity::Vector::B}
+        , B1{dict["name"].template to<std::string>() + "_" + "B1", layout, MHDQuantity::Vector::B1}
         , P{dict["name"].template to<std::string>() + "_" + "P", layout, MHDQuantity::Scalar::P}
         , rhoV{dict["name"].template to<std::string>() + "_" + "rhoV", layout,
                MHDQuantity::Vector::rhoV}
-        , Etot{dict["name"].template to<std::string>() + "_" + "Etot", layout,
-               MHDQuantity::Scalar::Etot}
+        , Etot1{dict["name"].template to<std::string>() + "_" + "Etot1", layout,
+                MHDQuantity::Scalar::Etot1}
         , J{dict["name"].template to<std::string>() + "_" + "J", layout, MHDQuantity::Vector::J}
         , E{dict["name"].template to<std::string>() + "_" + "E", layout, MHDQuantity::Vector::E}
     {
@@ -57,10 +58,10 @@ public:
         : Super{name}
         , rho{name + "_rho", layout, MHDQuantity::Scalar::rho}
         , V{name + "_V", layout, MHDQuantity::Vector::V}
-        , B{name + "_B", layout, MHDQuantity::Vector::B}
+        , B1{name + "_B1", layout, MHDQuantity::Vector::B1}
         , P{name + "_P", layout, MHDQuantity::Scalar::P}
         , rhoV{name + "_rhoV", layout, MHDQuantity::Vector::rhoV}
-        , Etot{name + "_Etot", layout, MHDQuantity::Scalar::Etot}
+        , Etot1{name + "_Etot1", layout, MHDQuantity::Scalar::Etot1}
         , J{name + "_J", layout, MHDQuantity::Vector::J}
         , E{name + "_E", layout, MHDQuantity::Vector::E}
     {
@@ -73,10 +74,10 @@ public:
         : Super{std::forward<Super>(that)}
         , rho{std::move(that.rho)}
         , V{std::move(that.V)}
-        , B{std::move(that.B)}
+        , B1{std::move(that.B1)}
         , P{std::move(that.P)}
         , rhoV{std::move(that.rhoV)}
-        , Etot{std::move(that.Etot)}
+        , Etot1{std::move(that.Etot1)}
         , J{std::move(that.J)}
         , E{std::move(that.E)}
     {
@@ -85,14 +86,14 @@ public:
 
     void set_on(Super& state)
     {
-        auto&& [_rho, _V, _B, _P, _rhoV, _Etot, _J, _E] = state.getCompileTimeResourcesViewList();
+        auto&& [_rho, _V, _B1, _P, _rhoV, _Etot1, _J, _E] = state.getCompileTimeResourcesViewList();
 
         _rho.setBuffer(&rho);
         V.set_on(_V);
-        B.set_on(_B);
+        B1.set_on(_B1);
         _P.setBuffer(&P);
         rhoV.set_on(_rhoV);
-        _Etot.setBuffer(&Etot);
+        _Etot1.setBuffer(&Etot1);
         J.set_on(_J);
         E.set_on(_E);
     }
@@ -104,11 +105,11 @@ public:
 
     Grid_t rho;
     UsableVecFieldMHD<dim> V;
-    UsableVecFieldMHD<dim> B;
+    UsableVecFieldMHD<dim> B1;
     Grid_t P;
 
     UsableVecFieldMHD<dim> rhoV;
-    Grid_t Etot;
+    Grid_t Etot1;
 
     UsableVecFieldMHD<dim> J, E;
 };

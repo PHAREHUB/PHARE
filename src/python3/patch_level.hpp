@@ -189,6 +189,23 @@ public:
         return patchDatas;
     }
 
+    auto getB0(std::string componentName)
+    {
+        std::vector<PatchData<std::vector<double>, dimension>> patchDatas;
+
+        auto& B0 = model_.externalField.B0;
+
+        auto visit = [&](GridLayout& grid, std::string patchID, std::size_t /*iLevel*/) {
+            auto compo = PHARE::core::Components::componentMap().at(componentName);
+            setPatchDataFromField(patchDatas.emplace_back(), B0.getComponent(compo), grid, patchID);
+        };
+
+        PHARE::amr::visitLevel<GridLayout>(*hierarchy_.getPatchLevel(lvl_),
+                                           *model_.resourcesManager, visit, B0);
+
+        return patchDatas;
+    }
+
 
 
     auto getVi(std::string componentName)
@@ -240,6 +257,11 @@ public:
     auto getBx() { return getB("x"); }
     auto getBy() { return getB("y"); }
     auto getBz() { return getB("z"); }
+
+    auto getB0x() { return getB0("x"); }
+    auto getB0y() { return getB0("y"); }
+    auto getB0z() { return getB0("z"); }
+
 
     auto getVix() { return getVi("x"); }
     auto getViy() { return getVi("y"); }

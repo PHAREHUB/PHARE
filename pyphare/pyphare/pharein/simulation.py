@@ -8,6 +8,7 @@ from ..core import phare_utilities
 from ..core.box import Box
 from . import global_vars
 from . import timestepper
+from .external_field import resolve_external_field
 
 # ------------------------------------------------------------------------------
 
@@ -749,6 +750,7 @@ def checker(func):
             "riemann",
             "mhd_timestepper",
             "refinement_order",
+            "external_field",
         ]
 
         kwargs = deepcopy(kwargs_in)  # local copy - dictionaries are weird
@@ -789,6 +791,8 @@ def checker(func):
         kwargs["diag_options"] = check_diag_options(**kwargs)
 
         kwargs["boundary_types"] = check_boundaries(ndim, **kwargs)
+
+        kwargs["external_field"] = resolve_external_field(ndim, **kwargs)
 
         kwargs["refined_particle_nbr"] = check_refined_particle_nbr(ndim, **kwargs)
 
@@ -1172,6 +1176,10 @@ class Simulation(object):
         * **strict** (``bool``), turns warnings into errors (default False)
         * **boundary_types** (``str`` or ``tuple``) type of boundary conditions (default is "periodic" for each direction)
         * **dry_run** (``bool``), default=False (or the `PHARE_DRY_RUN` environment variable if set), builds and validates the simulation - constructing models, populating the dict, building the hierarchy - without actually initializing or advancing it. `Simulator.initialize()`, `advance()` and `run()` become no-ops. Useful to check that a script is well-formed without paying for a real run.
+        * **external_field** (``dict``), prescribed background magnetic field, e.g.
+          ``{"type": "dipole", "position": (0.5, 0.5), "moment": (0., 1.), "radius": 0.1}``
+          (vectors have one component per dimension)
+          (default is ``{"type": "zero"}``)
 
     """
 

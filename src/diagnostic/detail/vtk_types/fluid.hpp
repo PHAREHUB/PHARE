@@ -161,6 +161,8 @@ FluidDiagnosticWriter<H5Writer>::MhdFluidInitializer::operator()(auto const ilvl
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
     if (isActiveDiag(diagnostic, tree, "Etot"))
         return file_initializer.initFieldFileLevel(ilvl);
+    if (isActiveDiag(diagnostic, tree, "Etot1"))
+        return file_initializer.initFieldFileLevel(ilvl);
     if (isActiveDiag(diagnostic, tree, "P"))
         return file_initializer.initFieldFileLevel(ilvl);
     if (isActiveDiag(diagnostic, tree, "V"))
@@ -267,6 +269,8 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidWriter::operator()(auto const& lay
         file_writer.template writeTensorField<1>(rhoV, layout);
     else if (isActiveDiag(diagnostic, tree, "Etot"))
         file_writer.writeField(Etot, layout);
+    else if (isActiveDiag(diagnostic, tree, "Etot1"))
+        file_writer.writeField(modelView.getEtot1(), layout);
     else if (isActiveDiag(diagnostic, tree, "P"))
         file_writer.writeField(P, layout);
     else if (isActiveDiag(diagnostic, tree, "V"))
@@ -319,16 +323,22 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
     auto minLvl     = writer->h5Writer_.minLevel;
     auto maxLvl     = writer->h5Writer_.maxLevel;
 
-    auto& rho  = modelView.getRho();
-    auto& V    = modelView.getV();
-    auto& B    = modelView.getB();
-    auto& P    = modelView.getP();
-    auto& rhoV = modelView.getRhoV();
-    auto& Etot = modelView.getEtot();
+    auto& rho   = modelView.getRho();
+    auto& V     = modelView.getV();
+    auto& B1    = modelView.getB1();
+    auto& P     = modelView.getP();
+    auto& rhoV  = modelView.getRhoV();
+    auto& Etot1 = modelView.getEtot1();
 
     std::string tree{"/mhd/"};
 
-    if (isActiveDiag(diagnostic, tree, "V"))
+    if (isActiveDiag(diagnostic, tree, "Etot"))
+    {
+        modelView.visitHierarchy([&](GridLayout& layout, std::string,
+                                     std::size_t) { modelView.computeTotalEtot(layout); },
+                                 minLvl, maxLvl);
+    }
+    else if (isActiveDiag(diagnostic, tree, "V"))
     {
         modelView.visitHierarchy(
             [&](GridLayout& layout, std::string, std::size_t) {
@@ -345,7 +355,7 @@ void FluidDiagnosticWriter<H5Writer>::MhdFluidComputer::operator()()
                                        .template to<double>(); // or FloatType if we want to expose
                                                                // that to DiagnosticProperties
                 core::ToPrimitiveConverter<GridLayout> toPrim{layout};
-                toPrim.eosEtotToPOnGhostBox(gamma, rho, rhoV, B, Etot, P);
+                toPrim.eosEtot1ToPOnGhostBox(gamma, rho, rhoV, B1, Etot1, P);
             },
             minLvl, maxLvl);
     }

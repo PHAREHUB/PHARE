@@ -55,6 +55,8 @@ def _populate_state(dp, sim):
             sim.ndim, maginit_path + f"{k}_component", modelDict[f"b{k}"]
         )
 
+    dp.add_bool("simulation/mhd_state/magnetic/total", modelDict["b_is_total"])
+
     dp.add_init_function(
         sim.ndim, "simulation/mhd_state/pressure/initializer", modelDict["p"]
     )

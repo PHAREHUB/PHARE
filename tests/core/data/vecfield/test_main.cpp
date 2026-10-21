@@ -8,6 +8,14 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/models/quantities/mhd_quantities.hpp"
+
+#include "phare_core.hpp"
+
+#include "tests/core/data/gridlayout/test_gridlayout.hpp"
+#include "tests/core/data/vecfield/test_vecfield_fixtures_mhd.hpp"
+
+#include <stdexcept>
 
 
 using namespace PHARE::core;
@@ -273,6 +281,48 @@ TEST(aVecField, dataCanBeCopiedIntoAnother)
     EXPECT_DOUBLE_EQ(12, bx2(1, 1, 1));
     EXPECT_DOUBLE_EQ(13, by2(1, 1, 1));
     EXPECT_DOUBLE_EQ(14, bz2(1, 1, 1));
+}
+
+
+
+namespace
+{
+constexpr PHARE::SimOpts mhd_opts{
+    .dimension           = 2,
+    .interp_order        = 1,
+    .reconstruction_type = PHARE::MHDOpts::ReconstructionType::Constant,
+    .slope_limiter_type  = PHARE::MHDOpts::SlopeLimiterType::None,
+    .riemann_solver_type = PHARE::MHDOpts::RiemannSolverType::Rusanov};
+
+using MHDGridLayout_t = PHARE_Types<mhd_opts>::MHD::GridLayout_t;
+} // namespace
+
+
+TEST(VecFieldViewAs, viewsTheSourceBuffersWithTheRequestedCentering)
+{
+    TestGridLayout<MHDGridLayout_t> layout{8};
+    UsableVecFieldMHD<2> allPrimal{"tmp", layout, MHDQuantity::Vector::VecAllPrimal};
+
+    auto E = view_as(allPrimal.super(), MHDQuantity::Vector::E, layout);
+
+    EXPECT_EQ(E.physicalQuantity(), MHDQuantity::Vector::E);
+    for (std::size_t i = 0; i < E.size(); ++i)
+    {
+        EXPECT_EQ(E[i].data(), allPrimal[i].data());
+        EXPECT_EQ(E[i].name(), allPrimal[i].name());
+        EXPECT_EQ(E[i].shape(), layout.allocSize(E[i].physicalQuantity()));
+        EXPECT_LE(E[i].size(), allPrimal[i].size());
+    }
+}
+
+
+TEST(VecFieldViewAs, throwsIfTheSourceBuffersAreTooSmall)
+{
+    TestGridLayout<MHDGridLayout_t> layout{8};
+    UsableVecFieldMHD<2> E{"E", layout, MHDQuantity::Vector::E};
+
+    EXPECT_THROW((void)view_as(E.super(), MHDQuantity::Vector::VecAllPrimal, layout),
+                 std::runtime_error);
 }
 
 

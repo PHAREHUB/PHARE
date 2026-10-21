@@ -289,9 +289,10 @@ class MHDDiagnostics(Diagnostics):
         * "P" - thermal pressure
         * "rhoV" - momentum density
         * "Etot" - total energy density
+        * "Etot1" - energy density without the external field contributions
     """
 
-    mhd_quantities = ["rho", "V", "P", "rhoV", "Etot"]
+    mhd_quantities = ["rho", "V", "P", "rhoV", "Etot", "Etot1"]
     type = "mhd"
 
     def __init__(self, **kwargs):
@@ -337,10 +338,12 @@ class ElectromagDiagnostics(Diagnostics):
         ph.ElectromagDiagnostics(quantity="E", write_timestamps=timestamps)
         ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
 
-    **quantity**, one of: "E" (electric field), "B" (magnetic field).
+    **quantity**, one of: "E" (electric field), "B" (magnetic field), "B0" (external
+    magnetic field), and for MHD only "B1" (magnetic field minus the external field) and
+    "divB" (divergence of the magnetic field, vtkhdf format only).
     """
 
-    em_quantities = ["E", "B"]
+    em_quantities = ["E", "B", "B0", "B1", "divB"]
     type = "electromag"
 
     def __init__(self, **kwargs):

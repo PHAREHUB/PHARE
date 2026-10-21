@@ -12,6 +12,7 @@
 #include "amr/amr_constants.hpp"
 
 #include "initializer/data_provider.hpp"
+#include "initializer/dict_utils.hpp"
 
 #include <SAMRAI/algs/TimeRefinementIntegrator.h>
 #include <SAMRAI/geom/CartesianGridGeometry.h>
@@ -276,32 +277,14 @@ inline auto Hierarchy::writeRestartFile(std::string directory) const
 
 
 
-template<typename Type, std::size_t dimension>
-void parseDimXYZType(PHARE::initializer::PHAREDict const& grid, std::string key, Type* arr)
-{
-    arr[0] = grid[key]["x"].template to<Type>();
-    if constexpr (dimension > 1)
-        arr[1] = grid[key]["y"].template to<Type>();
-    if constexpr (dimension > 2)
-        arr[2] = grid[key]["z"].template to<Type>();
-}
-
-template<typename Type, std::size_t dimension>
-auto parseDimXYZType(PHARE::initializer::PHAREDict const& grid, std::string key)
-{
-    std::array<Type, dimension> arr;
-    parseDimXYZType<Type, dimension>(grid, key, arr.data());
-    return arr;
-}
-
 template<std::size_t dimension>
 void getDomainCoords(PHARE::initializer::PHAREDict const& grid, double lower[dimension],
                      double upper[dimension])
 {
     static_assert(dimension > 0 and dimension <= 3, "invalid dimension should be >0 and <=3");
 
-    auto nbr_cells = parseDimXYZType<int, dimension>(grid, "nbr_cells");
-    auto mesh_size = parseDimXYZType<double, dimension>(grid, "meshsize");
+    auto nbr_cells = initializer::parseDimXYZType<int, dimension>(grid, "nbr_cells");
+    auto mesh_size = initializer::parseDimXYZType<double, dimension>(grid, "meshsize");
 
     for (std::size_t i = 0; i < dimension; i++)
     {
@@ -322,7 +305,7 @@ auto griddingAlgorithmDatabase(PHARE::initializer::PHAREDict const& grid)
     {
         int lowerCell[dimension], upperCell[dimension];
         std::fill_n(lowerCell, dimension, 0);
-        parseDimXYZType<int, dimension>(grid, "nbr_cells", upperCell);
+        initializer::parseDimXYZType<int, dimension>(grid, "nbr_cells", upperCell);
 
         upperCell[0] = grid["nbr_cells"]["x"].template to<int>() - 1;
 
@@ -439,9 +422,11 @@ DimHierarchy<_dimension>::DimHierarchy(PHARE::initializer::PHAREDict const& dict
               SAMRAI::tbox::Dimension{dimension}, "CartesianGridGeom",
               griddingAlgorithmDatabase<dimension>(dict["simulation"]["grid"])),
           patchHierarchyDatabase<dimension>(dict["simulation"]["AMR"]),
-          shapeToBox(parseDimXYZType<int, dimension>(dict["simulation"]["grid"], "nbr_cells")),
-          parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"),
-          parseDimXYZType<std::string, dimension>(dict["simulation"]["grid"], "boundary_type")}
+          shapeToBox(initializer::parseDimXYZType<int, dimension>(dict["simulation"]["grid"],
+                                                                  "nbr_cells")),
+          initializer::parseDimXYZType<double, dimension>(dict["simulation"]["grid"], "meshsize"),
+          initializer::parseDimXYZType<std::string, dimension>(dict["simulation"]["grid"],
+                                                               "boundary_type")}
 {
 }
 

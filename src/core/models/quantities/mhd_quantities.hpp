@@ -21,9 +21,13 @@ public:
         Bx,
         By,
         Bz,
+        B1x,
+        B1y,
+        B1z,
         P, // pressure
 
-        Etot,  // total energy
+        Etot, // total energy
+        Etot1,
         rhoVx, // momentum components
         rhoVy,
         rhoVz,
@@ -48,6 +52,8 @@ public:
         VecFluxY_z,
         VecFluxZ_z,
 
+        divB,
+
         ScalarAllPrimal,
         VecAllPrimalX,
         VecAllPrimalY,
@@ -55,7 +61,7 @@ public:
 
         count
     };
-    enum class Vector { V, B, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal };
+    enum class Vector { V, B, B1, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal };
     enum class Tensor { count };
 
     static constexpr auto all_primal_field = Scalar::ScalarAllPrimal;
@@ -65,6 +71,7 @@ public:
 
     NO_DISCARD static constexpr auto V() { return componentsQuantities(Vector::V); }
     NO_DISCARD static constexpr auto B() { return componentsQuantities(Vector::B); }
+    NO_DISCARD static constexpr auto B1() { return componentsQuantities(Vector::B1); }
     NO_DISCARD static constexpr auto rhoV() { return componentsQuantities(Vector::rhoV); }
 
     NO_DISCARD static constexpr auto E() { return componentsQuantities(Vector::E); }
@@ -86,6 +93,9 @@ public:
 
         if (qty == Vector::B)
             return {{Scalar::Bx, Scalar::By, Scalar::Bz}};
+
+        if (qty == Vector::B1)
+            return {{Scalar::B1x, Scalar::B1y, Scalar::B1z}};
 
         if (qty == Vector::rhoV)
             return {{Scalar::rhoVx, Scalar::rhoVy, Scalar::rhoVz}};

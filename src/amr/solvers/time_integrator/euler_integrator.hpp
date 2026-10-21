@@ -23,16 +23,17 @@ public:
     {
     }
 
-    void operator()(MHDModel& model, Super::MHDStateT& state,
-                    Super::FluxT& fluxes, Super::Messenger& bc,
-                    Super::level_t& level, double const currentTime,
-                    double const newTime) override
+    void operator()(MHDModel& model, Super::MHDStateT& state, Super::FluxT& fluxes,
+                    Super::SourcesT& sources, Super::Messenger& bc, Super::level_t& level,
+                    double const currentTime, double const newTime) override
     {
         this->resetButcherFluxes_(model, level);
 
-        euler_(model, state, state, fluxes, bc, level, currentTime, newTime);
+        euler_(model, state, state, fluxes, sources, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level);
+        this->accumulateButcherFluxes_(model, state.E, fluxes, sources, level);
+
+        model.updateExternalField(level, newTime);
     }
 
     void registerResources(MHDModel& model) override

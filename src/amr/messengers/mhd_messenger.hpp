@@ -345,7 +345,7 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
-            magMaxModelRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
+            magMaxModelRefiners_.fill(mhdModel.state.B1, level->getLevelNumber(), initDataTime);
 
             densityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             momentumInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -398,7 +398,7 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, mhdModel.state.rho, mhdModel.state.V, mhdModel.state.P,
-                    mhdModel.state.rhoV, mhdModel.state.Etot, mhdModel.state.B, rhoOld_, Vold_,
+                    mhdModel.state.rhoV, mhdModel.state.Etot1, mhdModel.state.B1, rhoOld_, Vold_,
                     Pold_, rhoVold_, EtotOld_, Bold_);
 
                 resourcesManager_->setTime(rhoOld_, *patch, currentTime);
@@ -412,8 +412,8 @@ namespace amr
                 Vold_.copyData(mhdModel.state.V);
                 Pold_.copyData(mhdModel.state.P);
                 rhoVold_.copyData(mhdModel.state.rhoV);
-                EtotOld_.copyData(mhdModel.state.Etot);
-                Bold_.copyData(mhdModel.state.B);
+                EtotOld_.copyData(mhdModel.state.Etot1);
+                Bold_.copyData(mhdModel.state.B1);
             }
         }
 
@@ -448,10 +448,10 @@ namespace amr
         {
             setNaNsOnFieldGhosts(state.rho, level);
             setNaNsOnVecfieldGhosts(state.rhoV, level);
-            setNaNsOnFieldGhosts(state.Etot, level);
+            setNaNsOnFieldGhosts(state.Etot1, level);
             rhoGhostsRefiners_.fill(state.rho, level.getLevelNumber(), fillTime);
             momentumGhostsRefiners_.fill(state.rhoV, level.getLevelNumber(), fillTime);
-            totalEnergyGhostsRefiners_.fill(state.Etot, level.getLevelNumber(), fillTime);
+            totalEnergyGhostsRefiners_.fill(state.Etot1, level.getLevelNumber(), fillTime);
         }
 
         void fillMagneticFluxesXGhosts(VecFieldT& Fx_B, level_t const& level, double const fillTime)
@@ -668,9 +668,9 @@ namespace amr
         FieldT Pold_{stratName + "Pold", core::MHDQuantity::Scalar::P};
 
         VecFieldT rhoVold_{stratName + "rhoVold", core::MHDQuantity::Vector::rhoV};
-        FieldT EtotOld_{stratName + "EtotOld", core::MHDQuantity::Scalar::Etot};
+        FieldT EtotOld_{stratName + "EtotOld", core::MHDQuantity::Scalar::Etot1};
 
-        VecFieldT Bold_{stratName + "Bold", core::MHDQuantity::Vector::B};
+        VecFieldT Bold_{stratName + "Bold", core::MHDQuantity::Vector::B1};
 
 
         using rm_t = typename MHDModel::resources_manager_type;
