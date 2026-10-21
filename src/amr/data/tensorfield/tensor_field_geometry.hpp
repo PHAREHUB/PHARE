@@ -28,7 +28,7 @@ namespace PHARE::amr
 
 
 template<std::size_t dimension, std::size_t rank = 1>
-class TensorFieldGeometryBase : public SAMRAI::hier::BoxGeometry
+class TensorFieldGeometryBase : public FillPatternGeometry
 {
     using FieldGeometryBase_t = FieldGeometryBase<dimension>;
 
@@ -122,6 +122,25 @@ public:
             auto overlap = components_[i]->calculateOverlap(
                 *destinationCast[i], *sourceCast[i], sourceMask, fillBox, overwriteInterior,
                 sourceOffset, retry, destinationRestrictBoxes);
+
+            return std::dynamic_pointer_cast<FieldOverlap>(overlap);
+        });
+
+        return std::make_shared<TensorFieldOverlap<rank>>(std::move(overlaps));
+    }
+
+
+    std::shared_ptr<SAMRAI::hier::BoxOverlap>
+    calculateUnroundedOverlap(SAMRAI::hier::BoxGeometry const& sourceGeometry,
+                              SAMRAI::hier::Box const& sourceMask, SAMRAI::hier::Box const& fillBox,
+                              bool const overwriteInterior,
+                              SAMRAI::hier::Transformation const& sourceOffset) const override
+    {
+        auto& sourceCast = dynamic_cast<TensorFieldGeometry const&>(sourceGeometry);
+
+        auto overlaps = core::for_N_make_array<N>([&](auto i) {
+            auto overlap = components_[i]->calculateUnroundedOverlap(
+                *sourceCast[i], sourceMask, fillBox, overwriteInterior, sourceOffset);
 
             return std::dynamic_pointer_cast<FieldOverlap>(overlap);
         });

@@ -54,9 +54,9 @@ public:
 
         assert(fn_overwrite_interior == true); // expect default as true
 
-        return dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
-
-                                             transformation);
+        return dynamic_cast<FillPatternGeometry const&>(dst_geometry)
+            .calculateUnroundedOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
+                                       transformation);
     }
 
     /*
@@ -147,8 +147,9 @@ public:
         // Note fn_overwrite_interior is the boolean passed by SAMRAI and is always true
         // this `VariableFillPattern` overrides this behavior using its own `overwrite_interior`
         // set by its type and depending on the use case.
-        return dst_geometry.calculateOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
-                                             transformation);
+        return dynamic_cast<FillPatternGeometry const&>(dst_geometry)
+            .calculateUnroundedOverlap(src_geometry, src_mask, fill_box, overwrite_interior,
+                                       transformation);
     }
 
     std::shared_ptr<SAMRAI::hier::BoxOverlap>
