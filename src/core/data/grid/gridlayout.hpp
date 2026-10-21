@@ -1193,9 +1193,7 @@ namespace core
         {
             if constexpr (independent)
             {
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC ivdep
-#endif
+                PHARE_IVDEP
                 for (auto i = i0; i <= i1; ++i)
                     fn(i);
             }

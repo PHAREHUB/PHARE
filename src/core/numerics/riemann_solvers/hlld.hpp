@@ -93,18 +93,20 @@ private:
 
         auto compute_hll_speeds
             = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
-                  auto VcompR, auto BcompL, auto BcompR) {
+                  auto VcompR, auto BcompL, auto BcompR) PHARE_LAMBDA_ALWAYS_INLINE {
                   auto cfastL = compute_fast_magnetosonic_(gamma_, uL.rho, BcompL, BdotBL, uL.P);
                   auto cfastR = compute_fast_magnetosonic_(gamma_, uR.rho, BcompR, BdotBR, uR.P);
-                  auto SL     = std::min({VcompL - cfastL, VcompR - cfastR});
-                  auto SR     = std::max({VcompL + cfastL, VcompR + cfastR});
+                  // two-argument min/max: the initializer_list overloads keep their operands in
+                  // memory, which stops clang vectorising the face loop
+                  auto SL = std::min(VcompL - cfastL, VcompR - cfastR);
+                  auto SR = std::max(VcompL + cfastL, VcompR + cfastR);
 
                   return std::make_tuple(SL, SR);
               };
 
         auto compute_hlld_speeds
             = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
-                  auto VcompR, auto BcompL, auto BcompR) {
+                  auto VcompR, auto BcompL, auto BcompR) PHARE_LAMBDA_ALWAYS_INLINE {
                   auto [SL, SR] = compute_hll_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VcompL,
                                                      VcompR, BcompL, BcompR);
 
@@ -163,7 +165,7 @@ private:
         auto const p_tot_R = uR.P + 0.5 * (uR.B.x * uR.B.x + uR.B.y * uR.B.y + uR.B.z * uR.B.z);
 
 
-        auto constexpr transverse = [&]() {
+        auto constexpr transverse = [&]() PHARE_LAMBDA_ALWAYS_INLINE {
             if constexpr (direction == Direction::X)
                 return std::array{Direction::Y, Direction::Z};
             else if constexpr (direction == Direction::Y)
@@ -172,11 +174,11 @@ private:
                 return std::array{Direction::X, Direction::Y};
         }();
 
-        auto sgn = [](auto const x) { return (x > 0.0) - (x < 0.0); };
+        auto sgn = [](auto const x) PHARE_LAMBDA_ALWAYS_INLINE { return (x > 0.0) - (x < 0.0); };
 
         auto const inv_SRmSL = 1.0 / (SR - SL);
 
-        auto compute_tranverse_magnetic_s_hllc = [&](auto const tdir) {
+        auto compute_tranverse_magnetic_s_hllc = [&](auto const tdir) PHARE_LAMBDA_ALWAYS_INLINE {
             auto const Bhll
                 = (SR * uR.B(tdir) - SL * uL.B(tdir) + fL.B(tdir) - fR.B(tdir)) * inv_SRmSL;
 
@@ -196,10 +198,11 @@ private:
 
 
             // the factor scaling both transverse components of B on one side
-            auto transverse_magnetic_factor = [&](auto const& u, auto const S) {
-                return (u.rho * (S - u.V(direction)) * (S - u.V(direction)) - Bn * Bn)
-                       / (u.rho * (S - u.V(direction)) * (S - SM) - Bn * Bn);
-            };
+            auto transverse_magnetic_factor
+                = [&](auto const& u, auto const S) PHARE_LAMBDA_ALWAYS_INLINE {
+                      return (u.rho * (S - u.V(direction)) * (S - u.V(direction)) - Bn * Bn)
+                             / (u.rho * (S - u.V(direction)) * (S - SM) - Bn * Bn);
+                  };
             auto const btL = transverse_magnetic_factor(uL, SL);
             auto const btR = transverse_magnetic_factor(uR, SR);
 
@@ -534,18 +537,18 @@ private:
 
         auto compute_hll_speeds
             = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
-                  auto VcompR, auto BcompL, auto BcompR) {
+                  auto VcompR, auto BcompL, auto BcompR) PHARE_LAMBDA_ALWAYS_INLINE {
                   auto cfastL = compute_fast_magnetosonic_(gamma_, uL.rho, BcompL, BdotBL, uL.P);
                   auto cfastR = compute_fast_magnetosonic_(gamma_, uR.rho, BcompR, BdotBR, uR.P);
-                  auto SL     = std::min({VcompL - cfastL, VcompR - cfastR});
-                  auto SR     = std::max({VcompL + cfastL, VcompR + cfastR});
+                  auto SL     = std::min(VcompL - cfastL, VcompR - cfastR);
+                  auto SR     = std::max(VcompL + cfastL, VcompR + cfastR);
 
                   return std::make_tuple(SL, SR);
               };
 
         auto compute_hlld_speeds
             = [&](auto rhoL, auto rhoR, auto PL, auto PR, auto BdotBL, auto BdotBR, auto VcompL,
-                  auto VcompR, auto BcompL, auto BcompR) {
+                  auto VcompR, auto BcompL, auto BcompR) PHARE_LAMBDA_ALWAYS_INLINE {
                   auto [SL, SR] = compute_hll_speeds(rhoL, rhoR, PL, PR, BdotBL, BdotBR, VcompL,
                                                      VcompR, BcompL, BcompR);
 
@@ -615,13 +618,14 @@ private:
                         get(fR));
         };
 
-        return PerIndex{
-            flux([](auto const& u) { return u.rho; }),
-            {flux([](auto const& u) { return u.V.x; }), flux([](auto const& u) { return u.V.y; }),
-             flux([](auto const& u) { return u.V.z; })},
-            {flux([](auto const& u) { return u.B.x; }), flux([](auto const& u) { return u.B.y; }),
-             flux([](auto const& u) { return u.B.z; })},
-            flux([](auto const& u) { return u.P; })};
+        return PerIndex{flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.rho; }),
+                        {flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.V.x; }),
+                         flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.V.y; }),
+                         flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.V.z; })},
+                        {flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.B.x; }),
+                         flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.B.y; }),
+                         flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.B.z; })},
+                        flux([](auto const& u) PHARE_LAMBDA_ALWAYS_INLINE { return u.P; })};
     }
 
     // in the hllc fallback used in idefix/pluto, they use hll averages for the magnetic field. we
