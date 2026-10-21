@@ -6,6 +6,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <type_traits>
 
 namespace PHARE::core
 {
@@ -25,47 +26,40 @@ public:
 
     template<typename... Indexes>
     value_type operator()(Indexes... indexes) const
+        requires(sizeof...(Indexes) == dimension && (std::is_integral_v<Indexes> && ...))
     {
-        static_assert(sizeof...(Indexes) == dimension);
         return (*this)(
             std::array<std::uint32_t, dimension>{static_cast<std::uint32_t>(indexes)...});
     }
 
     value_type operator()(std::array<std::uint32_t, dimension> const& index) const
     {
-        value_type value = 0;
-        for (std::uint32_t corner = 0; corner < (1u << dimension); ++corner)
-        {
-            auto node         = index;
-            value_type weight = 1;
-            bool inStencil    = true;
-            for (std::size_t d = 0; d < dimension; ++d)
-            {
-                std::uint32_t const upper = (corner >> d) & 1u;
-                if (source_[d] == destination_[d])
-                {
-                    if (upper)
-                    {
-                        inStencil = false;
-                        break;
-                    }
-                }
-                else
-                {
-                    weight *= 0.5;
-                    node[d] = source_[d] == QtyCentering::primal ? node[d] + upper
-                                                                 : node[d] + upper - 1;
-                }
-            }
-            if (inStencil)
-                value += weight * field_(node);
-        }
-        return value;
+        return averageFrom_<0>(index);
     }
 
     auto const& centering() const { return destination_; }
 
 private:
+    template<std::size_t d>
+    value_type averageFrom_(std::array<std::uint32_t, dimension> const& node) const
+    {
+        if constexpr (d == dimension)
+            return field_(node);
+        else
+        {
+            if (source_[d] == destination_[d])
+                return averageFrom_<d + 1>(node);
+
+            auto lower = node;
+            auto upper = node;
+            if (source_[d] == QtyCentering::primal)
+                upper[d] += 1;
+            else
+                lower[d] -= 1;
+            return (averageFrom_<d + 1>(lower) + averageFrom_<d + 1>(upper)) / 2;
+        }
+    }
+
     Field field_;
     std::array<QtyCentering, dimension> source_;
     std::array<QtyCentering, dimension> destination_;
