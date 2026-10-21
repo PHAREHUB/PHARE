@@ -314,8 +314,8 @@ namespace amr
             magFluxesZGhostRefiners_.registerLevel(hierarchy, level);
 
             magGhostsRefiners_.registerLevel(hierarchy, level);
-            magMaxRefiners_.registerLevel(hierarchy, level);
-            magMaxModelRefiners_.registerLevel(hierarchy, level);
+            if (levelNumber == rootLevelNumber)
+                magMaxModelRefiners_.registerLevel(hierarchy, level);
 
             if (levelNumber != rootLevelNumber)
             {
@@ -350,7 +350,6 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
-            magMaxModelRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
 
             densityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             momentumInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
@@ -506,7 +505,6 @@ namespace amr
 
             setNaNsOnVecfieldGhosts(B, level);
             magGhostsRefiners_.fill(B, level.getLevelNumber(), fillTime);
-            magMaxRefiners_.fill(B, level.getLevelNumber(), fillTime);
         }
 
         std::string name() override { return stratName; }
@@ -625,11 +623,6 @@ namespace amr
                     info->ghostMagnetic[i], info->modelMagnetic, Bold_.name(), BfieldRegridOp_,
                     vecFieldTimeOp_, info->ghostMagnetic[i], nonOverwriteInteriorTFfillPattern,
                     magPatchStrats[i]);
-
-                magMaxRefiners_.addStaticRefiner(
-                    info->ghostMagnetic[i], info->ghostMagnetic[i], nullptr, info->ghostMagnetic[i],
-                    std::make_shared<
-                        TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
             }
 
             magMaxModelRefiners_.addStaticRefiner(
@@ -805,7 +798,7 @@ namespace amr
         GhostRefinerPool magFluxesZGhostRefiners_{resourcesManager_};
 
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
-        VecFieldGhostMaxRefinerPool magMaxRefiners_{resourcesManager_};
+        // root level only: the initial B equalize in fillRootGhosts
         VecFieldGhostMaxRefinerPool magMaxModelRefiners_{resourcesManager_};
 
         InitRefinerPool densityInitRefiners_{resourcesManager_};
