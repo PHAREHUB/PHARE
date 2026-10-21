@@ -14,6 +14,11 @@
 
 namespace PHARE::amr
 {
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ */
 template<typename Model>
 class DefaultTaggerStrategy
     : public ComponentWiseTaggerStrategy<DefaultTaggerStrategy<Model>, Model>
@@ -21,15 +26,28 @@ class DefaultTaggerStrategy
     using Super = ComponentWiseTaggerStrategy<DefaultTaggerStrategy<Model>, Model>;
 
 public:
+    /// TOFILL
     using recentered_field_type                  = Super::recentered_field_type;
-    static constexpr auto dimension              = Model::dimension;
-    static constexpr std::uint32_t stencil_reach = dimension == 1 ? 3 : 2;
+    static constexpr auto dimension              = Model::dimension;       ///< TOFILL
+    static constexpr std::uint32_t stencil_reach = dimension == 1 ? 3 : 2; ///< TOFILL
 
+    /**
+     * @brief TOFILL
+     *
+     * @param dict TOFILL
+     */
     explicit DefaultTaggerStrategy(initializer::PHAREDict const& dict)
         : Super{dict}
     {
     }
 
+    /**
+     * @brief TOFILL
+     *
+     * @param F TOFILL
+     * @param cell TOFILL
+     * @return TOFILL
+     */
     double indicator(recentered_field_type const& F,
                      std::array<std::uint32_t, dimension> const& cell) const
     {
@@ -58,6 +76,12 @@ public:
         }
     }
 
+    /**
+     * @brief TOFILL
+     *
+     * @param indicators TOFILL
+     * @return TOFILL
+     */
     static double combine(std::span<double const> indicators)
         requires(dimension == 1)
     {

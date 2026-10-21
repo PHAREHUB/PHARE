@@ -20,15 +20,28 @@
 
 namespace PHARE::amr
 {
+/**
+ * @brief TOFILL
+ *
+ * @tparam Derived TOFILL
+ * @tparam Model TOFILL
+ */
 template<typename Derived, typename Model>
 class ComponentWiseTaggerStrategy : public TaggerStrategy<Model>
 {
 public:
+    /// TOFILL
     using gridlayout_type           = Model::gridlayout_type;
-    static constexpr auto dimension = Model::dimension;
+    static constexpr auto dimension = Model::dimension; ///< TOFILL
+    /// TOFILL
     using recentered_field_type
         = core::RecenteredField<gridlayout_type, tagging::tagged_field_t<Model>>;
 
+    /**
+     * @brief TOFILL
+     *
+     * @param dict TOFILL
+     */
     explicit ComponentWiseTaggerStrategy(initializer::PHAREDict const& dict)
         : quantities_{tagging::parseQuantities(dict)}
     {
@@ -43,14 +56,23 @@ public:
         }
     }
 
+    /**
+     * @brief TOFILL
+     *
+     * @param model TOFILL
+     * @param layout TOFILL
+     * @param tags TOFILL
+     */
     void tag(Model& model, gridlayout_type const& layout, int* tags) const final;
 
 private:
+    /// TOFILL
     static constexpr std::uint32_t ghostWidth_()
     {
         return static_cast<std::uint32_t>(gridlayout_type::options.field_ghost_width);
     }
 
+    /// TOFILL
     static constexpr std::uint32_t margin_()
     {
         auto constexpr reach  = Derived::stencil_reach;
@@ -58,9 +80,10 @@ private:
         return reach > ghosts ? reach - ghosts : 0;
     }
 
+    /// TOFILL
     Derived const& derived_() const { return static_cast<Derived const&>(*this); }
 
-    std::vector<tagging::QuantityThreshold> quantities_;
+    std::vector<tagging::QuantityThreshold> quantities_; ///< TOFILL
 };
 
 

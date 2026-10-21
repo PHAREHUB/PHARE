@@ -13,16 +13,27 @@
 
 namespace PHARE::amr
 {
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ */
 template<typename Model>
 class LohnerTaggerStrategy : public ComponentWiseTaggerStrategy<LohnerTaggerStrategy<Model>, Model>
 {
     using Super = ComponentWiseTaggerStrategy<LohnerTaggerStrategy<Model>, Model>;
 
 public:
+    /// TOFILL
     using recentered_field_type                  = Super::recentered_field_type;
-    static constexpr auto dimension              = Model::dimension;
-    static constexpr std::uint32_t stencil_reach = 1;
+    static constexpr auto dimension              = Model::dimension; ///< TOFILL
+    static constexpr std::uint32_t stencil_reach = 1;                ///< TOFILL
 
+    /**
+     * @brief TOFILL
+     *
+     * @param dict TOFILL
+     */
     explicit LohnerTaggerStrategy(initializer::PHAREDict const& dict)
         : Super{dict}
         , reltol_{cppdict::get_value(dict, "params/reltol", 0.02)}
@@ -30,6 +41,13 @@ public:
     {
     }
 
+    /**
+     * @brief TOFILL
+     *
+     * @param field TOFILL
+     * @param cell TOFILL
+     * @return TOFILL
+     */
     double indicator(recentered_field_type const& field,
                      std::array<std::uint32_t, dimension> const& cell) const
     {
@@ -52,8 +70,8 @@ public:
     }
 
 private:
-    double reltol_;
-    double abstol_;
+    double reltol_; ///< TOFILL
+    double abstol_; ///< TOFILL
 };
 
 } // namespace PHARE::amr

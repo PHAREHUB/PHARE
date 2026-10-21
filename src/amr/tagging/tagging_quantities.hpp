@@ -19,15 +19,25 @@
 
 namespace PHARE::amr::tagging
 {
+/**
+ * @brief TOFILL
+ */
 struct QuantityThreshold
 {
-    std::string name;
-    double threshold;
+    std::string name; ///< TOFILL
+    double threshold; ///< TOFILL
 
+    /// TOFILL
     bool operator==(QuantityThreshold const&) const = default;
 };
 
 
+/**
+ * @brief TOFILL
+ *
+ * @param dict TOFILL
+ * @return TOFILL
+ */
 inline std::vector<QuantityThreshold> parseQuantities(initializer::PHAREDict const& dict)
 {
     if (!dict.contains("nbr_quantities"))
@@ -44,6 +54,13 @@ inline std::vector<QuantityThreshold> parseQuantities(initializer::PHAREDict con
 }
 
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ * @param model TOFILL
+ * @return TOFILL
+ */
 template<typename Model>
 auto& magneticField(Model& model)
 {
@@ -56,18 +73,40 @@ auto& magneticField(Model& model)
 }
 
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ */
 template<typename Model>
 using tagged_field_t = std::decay_t<
     decltype(magneticField(std::declval<Model&>()).getComponent(core::Component::X))>;
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ */
 template<typename Model>
 using tagged_component_t = tagged_field_t<Model>;
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ */
 template<typename Model>
 auto constexpr max_tagged_components_v
     = std::decay_t<decltype(magneticField(std::declval<Model&>()))>::size();
 
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ * @param model TOFILL
+ * @return TOFILL
+ */
 template<typename Model>
 auto taggableQuantities(Model& model)
 {
@@ -108,6 +147,12 @@ auto taggableQuantities(Model& model)
 }
 
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ * @return TOFILL
+ */
 template<typename Model>
 constexpr auto notAvailableQuantities()
 {
@@ -134,6 +179,14 @@ constexpr auto notAvailableQuantities()
 }
 
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ * @param model TOFILL
+ * @param name TOFILL
+ * @return TOFILL
+ */
 template<typename Model>
 std::vector<tagged_component_t<Model>> resolveQuantity(Model& model, std::string const& name)
 {
@@ -157,6 +210,14 @@ std::vector<tagged_component_t<Model>> resolveQuantity(Model& model, std::string
 }
 
 
+/**
+ * @brief TOFILL
+ *
+ * @tparam Model TOFILL
+ * @param model TOFILL
+ * @param quantities TOFILL
+ * @return TOFILL
+ */
 template<typename Model>
 auto resolveQuantities(Model& model, std::vector<QuantityThreshold> const& quantities)
 {
