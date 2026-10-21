@@ -2,6 +2,7 @@
 #define PHARE_TEST_SIMULATOR_PER_TEST_HPP
 
 #include "phare_solver.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "simulator/simulator.hpp"
 #include "initializer/python_data_provider.hpp"
@@ -110,8 +111,9 @@ struct SimulatorTestParam : private HierarchyMaker<opts.dimension>, public PHARE
 
     SimulatorTestParam(std::string job_py = "job")
         : HierarchyMaker<dim>{dict(job_py)}
-        , Simulator{dict(job_py), this->hierarchy}
+        , Simulator{this->hierarchy}
     {
+        Simulator::setup(dict(job_py));
         Simulator::initialize();
     }
 

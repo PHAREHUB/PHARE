@@ -1,4 +1,5 @@
 #include "push_bench.hpp"
+#include "simulator/simulator_def.hpp"
 
 template<std::size_t dim, std::size_t interp>
 void push(benchmark::State& state)
