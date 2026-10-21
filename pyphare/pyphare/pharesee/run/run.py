@@ -7,6 +7,7 @@ from pyphare.pharesee.hierarchy import ScalarField, VectorField
 
 from pyphare.pharesee.hierarchy.hierarchy_utils import compute_hier_from
 from pyphare.pharesee.hierarchy.hierarchy_utils import flat_finest_field
+from pyphare.pharesee.hierarchy.fromh5 import pop_attribute_from_h5
 from pyphare.core.phare_utilities import listify
 
 from pyphare.logger import getLogger
@@ -345,33 +346,10 @@ class Run:
         return c
 
     def GetMass(self, pop_name, **kwargs):
-        return self._get_pop_attribute(pop_name, "pop_mass")
+        return pop_attribute_from_h5(self.path, pop_name, "pop_mass")
 
     def GetCharge(self, pop_name, **kwargs):
-        return self._get_pop_attribute(pop_name, "pop_charge")
-
-    def _get_pop_attribute(self, pop_name, attribute):
-        list_of_qty = ["density", "charge_density", "flux", "domain", "levelGhost"]
-        values = []
-
-        import h5py
-
-        for qty in list_of_qty:
-            file = os.path.join(self.path, "ions_pop_{}_{}.h5".format(pop_name, qty))
-            if os.path.isfile(file):
-                with h5py.File(file, "r") as h5_file:
-                    if attribute not in h5_file.attrs:
-                        raise ValueError(
-                            f"{file} has no {attribute} attribute, it was probably written "
-                            "by an older PHARE version"
-                        )
-                    values.append(h5_file.attrs[attribute])
-
-        if not values:
-            raise ValueError(f"no file of population {pop_name} found in {self.path}")
-        assert all(v == values[0] for v in values)
-
-        return values[0]
+        return pop_attribute_from_h5(self.path, pop_name, "pop_charge")
 
     def GetDomainSize(self, **kwargs):
         import h5py
