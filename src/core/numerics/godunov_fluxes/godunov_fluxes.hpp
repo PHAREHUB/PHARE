@@ -289,7 +289,7 @@ private:
                 double* jtz  = &jT[Component::Z](f0);
                 double* rhot = &ct_state.template getRhot<direction>()(f0);
 
-                PHARE_IVDEP
+                PHARE_VECTORIZE_IVDEP
                 for (int k = 0; k < nf; ++k)
                 {
                     auto uL = state_at(up, k);
@@ -309,7 +309,7 @@ private:
             }
             else
             {
-                PHARE_IVDEP
+                PHARE_VECTORIZE_IVDEP
                 for (int k = 0; k < nf; ++k)
                 {
                     auto uL = state_at(up, k);

@@ -43,7 +43,7 @@ public:
         // node's abscissa (blending the endpoint ghosts here would use scheme weights, not
         // the node's time-interpolation alpha).
         for_N<num_fields>([&](auto i) {
-            layout_.evalOnBoxIndependent(std::get<i>(result_fields), [&](auto... indices) {
+            layout_.evalOnBox(std::get<i>(result_fields), [&](auto... indices) {
                 RKstep_(result_fields, weight_tuple, state_field_tuples, i, {indices...});
             });
         });

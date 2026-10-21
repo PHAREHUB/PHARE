@@ -16,14 +16,16 @@
 #define PHARE_ALWAYS_INLINE inline
 #endif
 
-// on a loop whose iterations are independent but which reads and writes more arrays than the
-// compiler checks for overlap at run time: lets it vectorise without those checks
+// on a loop that must vectorise, whose iterations are independent but which reads and writes
+// more arrays than the compiler checks for overlap at run time: lets it vectorise without those
+// checks. clang's only way to state the independence also requires vectorisation, so there a loop
+// it cannot vectorise is a -Wpass-failed warning.
 #if defined(__clang__)
-#define PHARE_IVDEP _Pragma("clang loop vectorize(assume_safety)")
+#define PHARE_VECTORIZE_IVDEP _Pragma("clang loop vectorize(assume_safety)")
 #elif defined(__GNUC__)
-#define PHARE_IVDEP _Pragma("GCC ivdep")
+#define PHARE_VECTORIZE_IVDEP _Pragma("GCC ivdep")
 #else
-#define PHARE_IVDEP
+#define PHARE_VECTORIZE_IVDEP
 #endif
 
 #if !defined(NDEBUG) || defined(PHARE_FORCE_DEBUG_DO)

@@ -32,7 +32,7 @@ public:
         // flux centerings are looked up once, not per cell
         std::array<std::array<QtyCentering, dimension>, sizeof...(Fluxes)> const centerings{
             layout_.centering(fluxes.physicalQuantity())...};
-        layout_.evalOnBoxIndependent(Unew, [&](auto&... args) mutable {
+        layout_.evalOnBox(Unew, [&](auto&... args) mutable {
             finite_volume_euler_(U, Unew, {args...}, centerings, fluxes...);
         });
     }
