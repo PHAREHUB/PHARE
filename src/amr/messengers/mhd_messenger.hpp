@@ -76,6 +76,10 @@ namespace amr
 
             resourcesManager_->registerResources(Bold_);
 
+            // refreshed in prepareStep
+            resourcesManager_->excludeFromRestarts(rhoOld_, Vold_, Pold_, rhoVold_, EtotOld_,
+                                                   Bold_);
+
             // also magnetic fluxes ? or should we use static refiners instead ?
         }
 
@@ -567,8 +571,7 @@ namespace amr
             // we need a separate patch strategy for each refiner so that each one can register
             // their required ids
             magneticPatchStratPerGhostRefiner_ = [&]() {
-                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>>
-                    result;
+                std::vector<std::shared_ptr<MagneticRefinePatchStrategy<VectorFieldDataT>>> result;
 
                 result.reserve(info->ghostMagnetic.size());
 
