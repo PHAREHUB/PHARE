@@ -35,9 +35,8 @@ public:
     // Butcher fluxes are used to accumulate fluxes over multiple stages, the corresponding buffer
     // should only contain the fluxes over one time step. The accumulation over all substeps is
     // delegated to the solver.
-    void operator()(MHDModel& model, Super::MHDStateT& state,
-                    Super::FluxT& fluxes, Super::Messenger& bc,
-                    Super::level_t& level, double const currentTime,
+    void operator()(MHDModel& model, Super::MHDStateT& state, Super::FluxT& fluxes,
+                    Super::Messenger& bc, Super::level_t& level, double const currentTime,
                     double const newTime) override
     {
         auto& state1 = this->extra_states_[0];

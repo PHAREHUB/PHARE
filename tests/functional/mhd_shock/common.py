@@ -1,15 +1,14 @@
-#!/usr/bin/env python3
-
 import os
-import numpy as np
+from dataclasses import dataclass, field
 from pathlib import Path
-from dataclasses import field
 
-from pyphare import cpp
+import matplotlib.pyplot as plt
+import numpy as np
+
 import pyphare.pharein as ph
+from pyphare import cpp
 from pyphare.pharesee.run import Run
-from pyphare.simulator.simulator import Simulator, startMPI
-
+from pyphare.simulator.simulator import Simulator
 from tests.simulator import SimulatorTest
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
@@ -17,23 +16,51 @@ os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 ph.NO_GUI()
 
 
-final_time = 80
-time_step = 0.2
-timestamps = [final_time]
-diag_dir = "phare_outputs/shock"
+@dataclass
+class State:
+    gamma: float
+    rho: float
+    p: float
+    bx: float
+    by: float
+    b: float = field(init=False)
+    cs: float = field(init=False)
+    va: float = field(init=False)
+    cf_fast: float = field(init=False)
+    cf_slow: float = field(init=False)
+
+    def __post_init__(self):
+        b = np.linalg.norm([self.bx, self.by])
+        cs = np.sqrt(self.gamma * self.p / self.rho)
+        va = b / np.sqrt(self.rho)
+        cos_theta = self.bx / b
+        common = np.sqrt((cs**2 + va**2) ** 2 - (4.0 * cs**2 * va**2 * cos_theta**2))
+        cf_fast = np.sqrt((cs**2 + va**2 + common) / 2)
+        cf_slow = np.sqrt((cs**2 + va**2 - common) / 2)
+        self.b, self.cs, self.va, self.cf_fast, self.cf_slow = (
+            b,
+            cs,
+            va,
+            cf_fast,
+            cf_slow,
+        )
 
 
-def config():
-    cells = (800,)
-    dl = (1.0,)
+gamma = 5.0 / 3.0
+BX = 0.75
+LEFT_INIT = State(gamma, 1.0, 1.0, BX, 1.0)
+RIGHT_INIT = State(gamma, 0.125, 0.1, BX, -1.0)
+ncells = 800
+dx = 1.0
 
+
+def config(time_step, final_time, timestamps, diag_dir, x0, u, **kwargs):
     sim = ph.Simulation(
         smallest_patch_size=15,
-        # largest_patch_size=25,
         time_step=time_step,
         final_time=final_time,
-        cells=cells,
-        dl=dl,
+        cells=(ncells,),
+        dl=(dx,),
         refinement="tagging",
         max_mhd_level=1,
         max_nbr_levels=1,
@@ -46,20 +73,21 @@ def config():
         strict=True,
         eta=0.0,
         nu=0.0,
-        gamma=5.0 / 3.0,
+        gamma=gamma,
         reconstruction="Linear",
         limiter="VanLeer",
         riemann="Rusanov",
         mhd_timestepper="TVDRK2",
         hall=False,
         model_options=["MHDModel"],
+        **kwargs,
     )
 
     def density(x):
-        return np.where(x < (cells[0] * dl[0] / 2), 1, 0.125)
+        return np.where(x < x0, LEFT_INIT.rho, RIGHT_INIT.rho)
 
     def vx(x):
-        return 0.0
+        return u
 
     def vy(x):
         return 0.0
@@ -68,16 +96,16 @@ def config():
         return 0.0
 
     def bx(x):
-        return 0.75
+        return BX
 
     def by(x):
-        return np.where(x < (cells[0] * dl[0] / 2), 1, -1)
+        return np.where(x < x0, LEFT_INIT.by, RIGHT_INIT.by)
 
     def bz(x):
         return 0.0
 
     def p(x):
-        return np.where(x < (cells[0] * dl[0] / 2), 1, 0.1)
+        return np.where(x < x0, LEFT_INIT.p, RIGHT_INIT.p)
 
     ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
 
@@ -93,7 +121,7 @@ def plot_file_for_qty(plot_dir, qty, time):
     return f"{plot_dir}/shock_{qty}_t{time}.png"
 
 
-def plot(diag_dir, plot_dir):
+def plot(diag_dir, plot_dir, timestamps):
     run = Run(diag_dir)
     for time in timestamps:
         run.GetMHDrho(time).plot(
@@ -113,36 +141,32 @@ def plot(diag_dir, plot_dir):
         run.GetMHDP(time).plot(
             filename=plot_file_for_qty(plot_dir, "p", time), plot_patches=True
         )
+        plt.close("all")
 
 
 class ShockTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(ShockTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(ShockTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
         ph.global_vars.sim = None
 
-    def test_run(self):
+    def check(self, diag_dir):
+        pass
+
+    def run_case(self, time_step, final_time, timestamps, diag_dir, x0, u, **kwargs):
         self.register_diag_dir_for_cleanup(diag_dir)
-        sim = config()
+        sim = config(time_step, final_time, timestamps, diag_dir, x0, u, **kwargs)
         Simulator(sim).run().reset()
         if not sim.dry_run and cpp.mpi_rank() == 0:
+            self.check(diag_dir)
             plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
             plot_dir.mkdir(parents=True, exist_ok=True)
-            plot(diag_dir, plot_dir)
+            plot(diag_dir, plot_dir, timestamps)
         cpp.mpi_barrier()
         return self
-
-
-def main():
-    Simulator(config()).run()
-
-
-if __name__ == "__main__":
-    startMPI()
-    ShockTest().test_run().tearDown()

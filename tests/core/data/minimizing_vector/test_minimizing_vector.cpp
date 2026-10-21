@@ -105,7 +105,10 @@ TEST(MinimizingVector, dataPointerMatchesElements)
 {
     MinimizingVector<int> v;
     v.get(4);
-    v[0] = 1; v[1] = 2; v[2] = 3; v[3] = 4;
+    v[0]    = 1;
+    v[1]    = 2;
+    v[2]    = 3;
+    v[3]    = 4;
     auto* p = v.data();
     for (int i = 0; i < 4; ++i)
         EXPECT_EQ(p[i], i + 1);
@@ -116,7 +119,9 @@ TEST(MinimizingVector, operatorStarReturnsUnderlyingVector)
 {
     MinimizingVector<int> v;
     v.get(3);
-    v[0] = 10; v[1] = 20; v[2] = 30;
+    v[0]        = 10;
+    v[1]        = 20;
+    v[2]        = 30;
     auto& inner = *v;
     EXPECT_EQ(inner.size(), 3u);
     EXPECT_EQ(inner[1], 20);

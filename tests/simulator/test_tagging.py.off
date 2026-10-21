@@ -102,7 +102,6 @@ out = "phare_outputs/tagging_test/"
 simArgs = {
     "time_step_nbr": 30000,
     "final_time": 30.0,
-    "boundary_types": "periodic",
     "cells": 200,
     "dl": 0.3,
     "refinement": "tagging",
@@ -154,7 +153,7 @@ class TaggingTest(unittest.TestCase):
         import h5py  # see doc/conventions.md section 2.1.1
 
         test_id = self.ddt_test_id()
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simInput[key] = [simInput[key] for d in range(dim)]
 
         for interp in range(1, 4):

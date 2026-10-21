@@ -1,4 +1,4 @@
-# add_subdirectory(boundary_condition)
+add_subdirectory(boundary_condition)
 add_subdirectory(interpolator)
 add_subdirectory(pusher)
 add_subdirectory(ampere)

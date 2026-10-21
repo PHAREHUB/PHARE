@@ -101,7 +101,6 @@ def config(mode, order, diag_dir):
         time_step_nbr=nsteps,
         cells=cells,
         dl=dl,
-        boundary_types=["periodic", "periodic"],
         refinement_order=order,  # <-- path under test
         strict=True,
         nesting_buffer=1,

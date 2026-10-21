@@ -1,37 +1,39 @@
-#!/usr/bin/env python3
-
 import os
-import numpy as np
 from pathlib import Path
 
-from pyphare import cpp
-import pyphare.pharein as ph
-from pyphare.pharesee.run import Run
-from pyphare.simulator.simulator import Simulator, startMPI
+import matplotlib.pyplot as plt
+import numpy as np
 
+import pyphare.pharein as ph
+from pyphare import cpp
+from pyphare.pharesee.run import Run
+from pyphare.simulator.simulator import Simulator
 from tests.simulator import SimulatorTest
 
 os.environ["PHARE_SCOPE_TIMING"] = "1"  # turn on scope timing
 
 ph.NO_GUI()
 
-cells = (150, 75)
+full_cells = (160, 80)
+dl = (0.375, 0.375)
+Lx, Ly = (n * d for n, d in zip(full_cells, dl))
 time_step = 0.005
-final_time = 50
-timestamps = np.arange(0, final_time + time_step, final_time / 5)
-diag_dir = "phare_outputs/mhd_harris"
 
 hall = True
 
 
-def config():
+def timestamps(final_time):
+    return np.arange(0, final_time + time_step, final_time / 5)
+
+
+def config(cells, final_time, diag_dir, **kwargs):
     L = 0.5
 
     sim = ph.Simulation(
         time_step=time_step,
         final_time=final_time,
         cells=cells,
-        dl=(0.40, 0.40),
+        dl=dl,
         refinement="tagging",
         max_mhd_level=2,
         max_nbr_levels=2,
@@ -53,17 +55,17 @@ def config():
         mhd_timestepper="TVDRK3",
         hall=hall,
         model_options=["MHDModel"],
+        **kwargs,
     )
 
     def S(y, y0, l):
         return 0.5 * (1.0 + np.tanh((y - y0) / l))
 
     def density(x, y):
-        Ly = sim.simulation_domain()[1]
         return (
             0.4
-            + 1.0 / np.cosh((y - Ly * 0.3) / L) ** 2
-            + 1.0 / np.cosh((y - Ly * 0.7) / L) ** 2
+            + 1.0 / np.cosh((y - Ly * 0.25) / L) ** 2
+            + 1.0 / np.cosh((y - Ly * 0.75) / L) ** 2
         )
 
     def vx(x, y):
@@ -76,31 +78,27 @@ def config():
         return 0.0
 
     def bx(x, y):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
         sigma = 1.0
         dB = 0.1
 
         x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
+        y1 = y - 0.25 * Ly
+        y2 = y - 0.75 * Ly
 
         dBx1 = -2 * dB * y1 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
         dBx2 = 2 * dB * y2 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
 
         v1 = -1
         v2 = 1.0
-        return v1 + (v2 - v1) * (S(y, Ly * 0.3, L) - S(y, Ly * 0.7, L)) + dBx1 + dBx2
+        return v1 + (v2 - v1) * (S(y, Ly * 0.25, L) - S(y, Ly * 0.75, L)) + dBx1 + dBx2
 
     def by(x, y):
-        Lx = sim.simulation_domain()[0]
-        Ly = sim.simulation_domain()[1]
         sigma = 1.0
         dB = 0.1
 
         x0 = x - 0.5 * Lx
-        y1 = y - 0.3 * Ly
-        y2 = y - 0.7 * Ly
+        y1 = y - 0.25 * Ly
+        y2 = y - 0.75 * Ly
 
         dBy1 = 2 * dB * x0 * np.exp(-(x0**2 + y1**2) / (sigma) ** 2)
         dBy2 = -2 * dB * x0 * np.exp(-(x0**2 + y2**2) / (sigma) ** 2)
@@ -115,10 +113,10 @@ def config():
 
     ph.MHDModel(density=density, vx=vx, vy=vy, vz=vz, bx=bx, by=by, bz=bz, p=p)
 
-    ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps)
+    ph.ElectromagDiagnostics(quantity="B", write_timestamps=timestamps(final_time))
 
     for quantity in ["rho", "V", "P"]:
-        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps)
+        ph.MHDDiagnostics(quantity=quantity, write_timestamps=timestamps(final_time))
 
     return sim
 
@@ -127,9 +125,9 @@ def plot_file_for_qty(plot_dir, qty, time):
     return f"{plot_dir}/harris_{qty}_t{time}.png"
 
 
-def plot(diag_dir, plot_dir):
+def plot(diag_dir, plot_dir, times):
     run = Run(diag_dir)
-    for time in timestamps:
+    for time in times:
         run.GetDivB(time).plot(
             filename=plot_file_for_qty(plot_dir, "divb", time),
             plot_patches=True,
@@ -162,32 +160,32 @@ def plot(diag_dir, plot_dir):
                 qty="z",
                 plot_patches=True,
             )
+        plt.close("all")
 
 
 class HarrisTest(SimulatorTest):
     def __init__(self, *args, **kwargs):
-        super(HarrisTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.simulator = None
 
     def tearDown(self):
-        super(HarrisTest, self).tearDown()
+        super().tearDown()
         if self.simulator is not None:
             self.simulator.reset()
         self.simulator = None
         ph.global_vars.sim = None
 
-    def test_run(self):
+    def check(self, diag_dir):
+        pass
+
+    def run_case(self, cells, final_time, diag_dir, **kwargs):
         self.register_diag_dir_for_cleanup(diag_dir)
-        sim = config()
+        sim = config(cells, final_time, diag_dir, **kwargs)
         Simulator(sim).run().reset()
         if not sim.dry_run and cpp.mpi_rank() == 0:
             plot_dir = Path(f"{diag_dir}_plots") / str(cpp.mpi_size())
             plot_dir.mkdir(parents=True, exist_ok=True)
-            plot(diag_dir, plot_dir)
+            plot(diag_dir, plot_dir, timestamps(final_time))
+            self.check(diag_dir)
         cpp.mpi_barrier()
         return self
-
-
-if __name__ == "__main__":
-    startMPI()
-    HarrisTest().test_run().tearDown()
