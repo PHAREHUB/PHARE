@@ -466,173 +466,10 @@ void fillField(Field& field, Fn&& fn)
                     field(i, j, k) = fn(std::array<std::uint32_t, 3>{i, j, k});
 }
 
-template<std::size_t dim>
-double legacyProfile(std::size_t component, std::array<std::uint32_t, dim> const& idx)
-{
-    if (dim == 1 and component == 0)
-        return 1.0;
-    double wave = 0.;
-    for (std::size_t d = 1; d < dim; ++d)
-        wave += std::sin(0.9 * idx[d] + 0.4 * d + component);
-    return (1. + component) * std::tanh((idx[0] - 11.0) / 2.0) + 0.05 * wave;
-}
-
-
-template<typename GridLayoutT, typename Field>
-void legacyDefaultTags(Field const& Bx, Field const& By, Field const& Bz, GridLayoutT const& layout,
-                       double threshold_, int* tags)
-{
-    using gridlayout_type           = GridLayoutT;
-    static auto constexpr dimension = GridLayoutT::dimension;
-
-    auto const& start_x
-        = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::X);
-    auto const& end_x = layout.nbrCells()[0] - 1;
-
-    bool constexpr c_ordering = false;
-    auto tagsv = PHARE::core::NdArrayView<dimension, int, c_ordering>(tags, layout.nbrCells());
-
-    if constexpr (dimension == 1)
-    {
-        auto constexpr doLastCell = gridlayout_type::options.field_ghost_width > 2;
-        std::size_t oneOrZero     = doLastCell ? 1 : 0;
-        for (auto iCell = 0u, ix = start_x; iCell < end_x + oneOrZero; ++ix, ++iCell)
-        {
-            auto Byavg     = 0.2 * (By(ix - 2) + By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2));
-            auto Bzavg     = 0.2 * (Bz(ix - 2) + Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2));
-            auto Byavgp1   = 0.2 * (By(ix - 1) + By(ix) + By(ix + 1) + By(ix + 2) + By(ix + 3));
-            auto Bzavgp1   = 0.2 * (Bz(ix - 1) + Bz(ix) + Bz(ix + 1) + Bz(ix + 2) + Bz(ix + 3));
-            auto criter_by = std::abs(Byavgp1 - Byavg) / (1 + std::abs(Byavg));
-            auto criter_bz = std::abs(Bzavgp1 - Bzavg) / (1 + std::abs(Bzavg));
-            auto criter_b  = std::sqrt(criter_by * criter_by + criter_bz * criter_bz);
-            auto criter    = criter_b;
-
-            if (criter > threshold_)
-            {
-                tagsv(iCell) = 1;
-            }
-            else
-                tagsv(iCell) = 0;
-        }
-    }
-    if constexpr (dimension == 2)
-    {
-        auto const& start_y
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Y);
-
-        auto const& end_y = layout.nbrCells()[1] - 1;
-
-        for (auto iTag_x = 0u, ix = start_x; iTag_x <= end_x; ++ix, ++iTag_x)
-        {
-            for (auto iTag_y = 0u, iy = start_y; iTag_y <= end_y; ++iy, ++iTag_y)
-            {
-                auto field_diff = [&](auto const& F) //
-                {
-                    auto const delta_2x = std::abs(F(ix + 2, iy) - F(ix, iy));
-                    auto const delta_2y = std::abs(F(ix, iy + 2) - F(ix, iy));
-                    auto const delta_x  = std::abs(F(ix + 1, iy) - F(ix, iy));
-                    auto const delta_y  = std::abs(F(ix, iy + 1) - F(ix, iy));
-
-                    auto const criter_x = delta_2x / (1 + delta_x);
-                    auto const criter_y = delta_2y / (1 + delta_y);
-
-                    return std::make_tuple(criter_x, criter_y);
-                };
-
-                auto const& [Bx_x, Bx_y] = field_diff(Bx);
-                auto const& [By_x, By_y] = field_diff(By);
-                auto const& [Bz_x, Bz_y] = field_diff(Bz);
-                auto crit                = std::max({Bx_x, Bx_y, By_x, By_y, Bz_x, Bz_y});
-
-                if (crit > threshold_)
-                {
-                    tagsv(iTag_x, iTag_y) = 1;
-                }
-                else
-                {
-                    tagsv(iTag_x, iTag_y) = 0;
-                }
-            }
-        }
-    }
-    if constexpr (dimension == 3)
-    {
-        auto const& start_y
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Y);
-        auto const& start_z
-            = layout.physicalStartIndex(PHARE::core::QtyCentering::dual, PHARE::core::Direction::Z);
-
-        auto const& end_y = layout.nbrCells()[1] - 1;
-        auto const& end_z = layout.nbrCells()[2] - 1;
-
-        for (auto iTag_x = 0u, ix = start_x; iTag_x <= end_x; ++ix, ++iTag_x)
-        {
-            for (auto iTag_y = 0u, iy = start_y; iTag_y <= end_y; ++iy, ++iTag_y)
-            {
-                for (auto iTag_z = 0u, iz = start_z; iTag_z <= end_z; ++iz, ++iTag_z)
-                {
-                    auto const field_diff = [&](auto const& F) {
-                        auto const delta_2x = std::abs(F(ix + 2, iy, iz) - F(ix, iy, iz));
-                        auto const delta_2y = std::abs(F(ix, iy + 2, iz) - F(ix, iy, iz));
-                        auto const delta_2z = std::abs(F(ix, iy, iz + 2) - F(ix, iy, iz));
-                        auto const delta_x  = std::abs(F(ix + 1, iy, iz) - F(ix, iy, iz));
-                        auto const delta_y  = std::abs(F(ix, iy + 1, iz) - F(ix, iy, iz));
-                        auto const delta_z  = std::abs(F(ix, iy, iz + 1) - F(ix, iy, iz));
-
-                        auto const criter_x = delta_2x / (1 + delta_x);
-                        auto const criter_y = delta_2y / (1 + delta_y);
-                        auto const criter_z = delta_2z / (1 + delta_z);
-
-                        return std::make_tuple(criter_x, criter_y, criter_z);
-                    };
-
-                    auto const& [Bx_x, Bx_y, Bx_z] = field_diff(Bx);
-                    auto const& [By_x, By_y, By_z] = field_diff(By);
-                    auto const& [Bz_x, Bz_y, Bz_z] = field_diff(Bz);
-                    auto const crit
-                        = std::max({Bx_x, Bx_y, Bx_z, By_x, By_y, By_z, Bz_x, Bz_y, Bz_z});
-
-                    if (crit > threshold_)
-                    {
-                        tagsv(iTag_x, iTag_y, iTag_z) = 1;
-                    }
-                    else
-                    {
-                        tagsv(iTag_x, iTag_y, iTag_z) = 0;
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-template<typename Model>
-void fillLegacyB(Model& model)
-{
-    using PHARE::core::Component;
-    auto constexpr dim = Model::dimension;
-    auto& B            = model.state.electromag.B;
-    for (std::size_t c = 0; c < 3; ++c)
-        fillField(B.getComponent(static_cast<Component>(c)),
-                  [&](auto const& idx) { return legacyProfile<dim>(c, idx); });
-}
-
 template<typename Model>
 std::vector<int> sentinelTags(Model const& model)
 {
     return std::vector<int>(PHARE::core::product(model.layout.nbrCells()), -1);
-}
-
-template<typename Model>
-std::vector<int> legacyTags(Model& model, double threshold)
-{
-    using PHARE::core::Component;
-    auto& B   = model.state.electromag.B;
-    auto tags = sentinelTags(model);
-    legacyDefaultTags(B.getComponent(Component::X), B.getComponent(Component::Y),
-                      B.getComponent(Component::Z), model.layout, threshold, tags.data());
-    return tags;
 }
 
 template<typename Model>
@@ -655,51 +492,6 @@ PHARE::initializer::PHAREDict quantitiesDict(std::vector<tagging::QuantityThresh
     }
     return dict;
 }
-
-void expectSomeTaggedSomeNot(std::vector<int> const& tags)
-{
-    EXPECT_NE(std::count(tags.begin(), tags.end(), 1), 0);
-    EXPECT_NE(std::count(tags.begin(), tags.end(), 0), 0);
-}
-
-
-template<typename Model>
-struct DefaultStrategyLegacy : public ::testing::Test
-{
-    DefaultStrategyLegacy() { fillLegacyB(model); }
-    Model model{24};
-};
-
-using LegacyModels = testing::Types<MockHybridModel<1, 1>, MockHybridModel<1, 2>,
-                                    MockHybridModel<2, 1>, MockHybridModel<3, 1>>;
-TYPED_TEST_SUITE(DefaultStrategyLegacy, LegacyModels);
-
-TYPED_TEST(DefaultStrategyLegacy, MatchesLegacyOnB)
-{
-    PHARE::initializer::PHAREDict dict;
-    dict["threshold"]   = 0.1;
-    auto const expected = legacyTags(this->model, 0.1);
-    expectSomeTaggedSomeNot(expected);
-    EXPECT_EQ(strategyTags(this->model, dict), expected);
-}
-
-TYPED_TEST(DefaultStrategyLegacy, MatchesLegacyWithExplicitBQuantity)
-{
-    auto const expected = legacyTags(this->model, 0.1);
-    EXPECT_EQ(strategyTags(this->model, quantitiesDict({{"B", 0.1}})), expected);
-}
-
-TEST(DefaultStrategy, NaNOrderingMatchesLegacy)
-{
-    using PHARE::core::Component;
-    MockHybridModel<2> model{24};
-    fillLegacyB(model);
-    model.state.electromag.B.getComponent(Component::Y)(13, 9)
-        = std::numeric_limits<double>::quiet_NaN();
-    auto const expected = legacyTags(model, 0.1);
-    EXPECT_EQ(strategyTags(model, quantitiesDict({{"B", 0.1}})), expected);
-}
-
 
 template<typename Model>
 void fillMHDStep(Model& model, double low, double high)
@@ -1051,6 +843,98 @@ TEST(ComponentWise, WarnsAtConstructionWhenStencilTooWide)
     EXPECT_EQ(testing::internal::GetCapturedStdout(), "");
 }
 
+
+
+TEST(DefaultStrategy, OneDimensionalNormOverComponents)
+{
+    using PHARE::core::Component;
+    using Model = MockHybridModel<1>;
+    Model model;
+    auto const step = [](auto const& idx) { return idx[0] >= ghostWidth<Model> + 10 ? 2. : 0.; };
+    fillB(model, 0., 0., 0.);
+    fillField(model.state.electromag.B.getComponent(Component::Y), step);
+    fillField(model.state.electromag.B.getComponent(Component::Z), step);
+
+    auto const tags = strategyTags(model, quantitiesDict({{"B", 0.5}}));
+    for (std::size_t i = 0; i < tags.size(); ++i)
+        EXPECT_EQ(tags[i], i == 7 ? 1 : 0) << i;
+    EXPECT_TRUE(allEqual(strategyTags(model, quantitiesDict({{"By", 0.5}})), 0));
+}
+
+TEST(DefaultStrategy, ReadsCellCentredValues)
+{
+    using PHARE::core::Component;
+    using Model = MockHybridModel<2>;
+    Model model;
+    fillB(model, 0., 0., 0.);
+    fillField(model.state.electromag.B.getComponent(Component::X),
+              [](auto const& idx) { return idx[0] == ghostWidth<Model> + 10 ? 0.3 : 0.; });
+    EXPECT_TRUE(allEqual(strategyTags(model, quantitiesDict({{"Bx", 0.2}})), 0));
+}
+
+template<typename Model>
+std::pair<std::vector<int>, std::string> alternatingByTagsAndWarning()
+{
+    Model model;
+    fillB(model, 0., 0., 0.);
+    fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
+              [](auto const& idx) { return idx[0] % 2 ? 10. : -10.; });
+    auto tags = sentinelTags(model);
+    testing::internal::CaptureStdout();
+    DefaultTaggerStrategy<Model> const strategy{quantitiesDict({{"By", 0.5}})};
+    auto const warning = testing::internal::GetCapturedStdout();
+    strategy.tag(model, model.layout, tags.data());
+    return {tags, warning};
+}
+
+TEST(DefaultStrategy, OneDimensionalBorderDependsOnGhostWidth)
+{
+    auto const [twoGhosts, twoGhostsWarning] = alternatingByTagsAndWarning<MockHybridModel<1, 1>>();
+    EXPECT_EQ(twoGhosts.front(), 0);
+    EXPECT_EQ(twoGhosts.back(), 0);
+    EXPECT_TRUE(allEqual(std::vector<int>(twoGhosts.begin() + 1, twoGhosts.end() - 1), 1));
+    EXPECT_TRUE(contains(twoGhostsWarning, "stencil reach"));
+
+    auto const [fourGhosts, fourGhostsWarning]
+        = alternatingByTagsAndWarning<MockHybridModel<1, 2>>();
+    EXPECT_TRUE(allEqual(fourGhosts, 1));
+    EXPECT_EQ(fourGhostsWarning, "");
+}
+
+TEST(DefaultStrategy, TagsScalarStep3DAlongEachAxis)
+{
+    using Model = MockMHDModel<3>;
+    Model model{12};
+    for (std::size_t axis = 0; axis < 3; ++axis)
+    {
+        fillField(model.state.rho,
+                  [&](auto const& idx) { return idx[axis] >= ghostWidth<Model> + 6 ? 2. : 1.; });
+        auto const tags = strategyTags(model, quantitiesDict({{"rho", 0.1}}));
+        auto const n    = model.layout.nbrCells();
+        for (std::uint32_t ix = 0; ix < n[0]; ++ix)
+            for (std::uint32_t iy = 0; iy < n[1]; ++iy)
+                for (std::uint32_t iz = 0; iz < n[2]; ++iz)
+                {
+                    auto const t = std::array{ix, iy, iz}[axis];
+                    EXPECT_EQ(tags[ix + n[0] * (iy + n[1] * iz)], t == 4 or t == 5 ? 1 : 0)
+                        << axis << ": " << ix << " " << iy << " " << iz;
+                }
+    }
+}
+
+TEST(DefaultStrategy, TwoDimensionalTestsComponentsSeparately)
+{
+    using PHARE::core::Component;
+    using Model = MockHybridModel<2>;
+    Model model;
+    auto const step = [](auto const& idx) { return idx[0] >= ghostWidth<Model> + 10 ? 0.4 : 0.; };
+    fillB(model, 0., 0., 0.);
+    fillField(model.state.electromag.B.getComponent(Component::Y), step);
+    fillField(model.state.electromag.B.getComponent(Component::Z), step);
+    EXPECT_TRUE(allEqual(strategyTags(model, quantitiesDict({{"B", 0.5}})), 0));
+    expectColumns(model, strategyTags(model, quantitiesDict({{"B", 0.3}})), {8},
+                  {0, 1, 2, 3, 4, 5, 6, 7, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19});
+}
 
 
 template<typename Fn>
