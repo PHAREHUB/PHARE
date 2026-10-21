@@ -993,11 +993,17 @@ TEST(ComponentWise, WarnsAtConstructionWhenStencilTooWide)
 template<typename Fn>
 double lohnerOnDualBy(Fn&& fn, std::uint32_t i, double reltol)
 {
-    MockHybridModel<1> model;
-    fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
-              [&](auto const& idx) { return fn(idx[0]); });
-    return lohner::indicator<1>(tagging::resolveQuantity(model, "By"),
-                                std::array<std::uint32_t, 1>{i}, reltol, 1e-30);
+    using Model      = MockHybridModel<1>;
+    using field_type = LohnerTaggerStrategy<Model>::recentered_field_type;
+    Model model;
+    auto& By = model.state.electromag.B.getComponent(PHARE::core::Component::Y);
+    fillField(By, [&](auto const& idx) { return fn(idx[0]); });
+
+    PHARE::initializer::PHAREDict dict;
+    dict["params"]["reltol"] = reltol;
+    dict["params"]["abstol"] = 1e-30;
+    LohnerTaggerStrategy<Model> const lohner{dict};
+    return lohner.indicator(field_type{By, {PHARE::core::QtyCentering::dual}}, {i});
 }
 
 TEST(LohnerIndicator, FlatAndLinearRampAreZero)
@@ -1017,19 +1023,6 @@ TEST(LohnerIndicator, ReltolDampsSmallVariations)
     auto const step = [](auto i) { return i <= 10 ? 100.0 : 100.01; };
     EXPECT_LT(lohnerOnDualBy(step, 10, 0.02), 0.01);
     EXPECT_GT(lohnerOnDualBy(step, 10, 0.0), 0.9);
-}
-
-TEST(LohnerIndicator, CellCenteredAveragesPrimal)
-{
-    MockHybridModel<1> model;
-    auto& B = model.state.electromag.B;
-    fillField(B.getComponent(PHARE::core::Component::X),
-              [](auto const& idx) { return static_cast<double>(idx[0]); });
-    fillField(B.getComponent(PHARE::core::Component::Y),
-              [](auto const& idx) { return static_cast<double>(idx[0]); });
-    auto const idx = std::array<std::uint32_t, 1>{7};
-    EXPECT_DOUBLE_EQ(lohner::cellCentered<1>(tagging::resolveQuantity(model, "Bx")[0], idx), 7.5);
-    EXPECT_DOUBLE_EQ(lohner::cellCentered<1>(tagging::resolveQuantity(model, "By")[0], idx), 7.0);
 }
 
 
@@ -1065,6 +1058,22 @@ TEST(LohnerStrategy, ParamsFromDict)
     dict["params"]["reltol"] = 0.0;
     auto const undamped      = lohnerTags(model, dict);
     expectColumns(model, undamped, {9, 10}, {0, 1, 2, 3, 4, 5, 6, 13, 14, 15, 16, 17, 18, 19});
+}
+
+TEST(LohnerStrategy, VectorQuantityIsOrOverComponents)
+{
+    using Model = MockHybridModel<1>;
+    Model model;
+    fillB(model, 1., 0., 0.);
+    fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
+              [](auto const& idx) { return idx[0] % 2 ? 1e-3 : -1e-3; });
+
+    auto onB                 = quantitiesDict({{"B", 0.5}});
+    onB["params"]["abstol"]  = 1e-8;
+    auto onBx                = quantitiesDict({{"Bx", 0.5}});
+    onBx["params"]["abstol"] = 1e-8;
+    EXPECT_TRUE(allEqual(lohnerTags(model, onB), 1));
+    EXPECT_TRUE(allEqual(lohnerTags(model, onBx), 0));
 }
 
 TEST(TaggerFactory, hybridAndMHDMethods)
