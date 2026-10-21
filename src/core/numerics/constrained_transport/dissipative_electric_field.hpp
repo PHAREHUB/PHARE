@@ -3,6 +3,7 @@
 
 #include "core/def.hpp"
 #include "core/numerics/ohm/ohm.hpp"
+#include "core/numerics/differential_operators.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
@@ -72,7 +73,7 @@ public:
                         e += eta * Jc(idx);
                     if constexpr (isHyperResistive)
                         e -= hyper_coef_<component, hyper>(B, rho, idx)
-                             * layout_.laplacian(Jc, idx);
+                             * laplacian(layout_, Jc, idx);
                     Ec(idx) = e;
                 });
             });
@@ -91,9 +92,9 @@ private:
             auto const dx        = *std::min_element(meshSize.begin(), meshSize.end());
 
             auto coef = [&]<auto BxProj, auto ByProj, auto BzProj, auto rhoProj>() {
-                auto const bx = GridLayout::template project<BxProj>(B(Component::X), idx);
-                auto const by = GridLayout::template project<ByProj>(B(Component::Y), idx);
-                auto const bz = GridLayout::template project<BzProj>(B(Component::Z), idx);
+                auto const bx = GridLayout::template project<BxProj>(B[Component::X], idx);
+                auto const by = GridLayout::template project<ByProj>(B[Component::Y], idx);
+                auto const bz = GridLayout::template project<BzProj>(B[Component::Z], idx);
                 auto const n  = GridLayout::template project<rhoProj>(rho, idx);
                 auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);

@@ -28,11 +28,9 @@ public:
                     Super::level_t& level, double const currentTime,
                     double const newTime) override
     {
-        this->resetButcherFluxes_(model, level);
-
         euler_(model, state, state, fluxes, bc, level, currentTime, newTime);
 
-        this->accumulateButcherFluxes_(model, state.E, fluxes, level);
+        this->setButcherFluxes_(model, state.E, fluxes, level);
     }
 
     void registerResources(MHDModel& model) override

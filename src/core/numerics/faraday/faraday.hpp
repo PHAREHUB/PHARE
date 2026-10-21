@@ -5,6 +5,7 @@
 
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+#include "core/numerics/differential_operators.hpp"
 
 
 namespace PHARE::core
@@ -15,8 +16,6 @@ namespace PHARE::core
 template<typename GridLayout>
 class Faraday
 {
-    constexpr static auto dimension = GridLayout::dimension;
-
 public:
     Faraday(GridLayout const& layout)
         : layout_{layout}
@@ -32,8 +31,6 @@ public:
 
         this->dt_ = dt;
 
-        // can't use structured bindings because
-        //   "reference to local binding declared in enclosing function"
         auto const& Bx = B(Component::X);
         auto const& By = B(Component::Y);
         auto const& Bz = B(Component::Z);
@@ -42,57 +39,22 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        layout_.evalOnBox(Bxnew, [&](auto&... args) mutable { BxEq_(Bx, E, Bxnew, args...); });
-        layout_.evalOnBox(Bynew, [&](auto&... args) mutable { ByEq_(By, E, Bynew, args...); });
-        layout_.evalOnBox(Bznew, [&](auto&... args) mutable { BzEq_(Bz, E, Bznew, args...); });
+        auto const curlX = curl<Component::X>(layout_, E, Bxnew);
+        auto const curlY = curl<Component::Y>(layout_, E, Bynew);
+        auto const curlZ = curl<Component::Z>(layout_, E, Bznew);
+
+        layout_.evalOnBoxIndependent(
+            Bxnew, [&](auto const&... ijk) { Bxnew(ijk...) = Bx(ijk...) - dt_ * curlX({ijk...}); });
+        layout_.evalOnBoxIndependent(
+            Bynew, [&](auto const&... ijk) { Bynew(ijk...) = By(ijk...) - dt_ * curlY({ijk...}); });
+        layout_.evalOnBoxIndependent(
+            Bznew, [&](auto const&... ijk) { Bznew(ijk...) = Bz(ijk...) - dt_ * curlZ({ijk...}); });
     }
 
 
 private:
     double dt_;
     GridLayout layout_;
-
-    template<typename VecField, typename Field, typename... Indexes>
-    void BxEq_(Field const& Bx, VecField const& E, Field& Bxnew, Indexes const&... ijk) const
-    {
-        auto const& [_, Ey, Ez] = E();
-
-        if constexpr (dimension == 1)
-            Bxnew(ijk...) = Bx(ijk...);
-
-        if constexpr (dimension == 2)
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_.template deriv<Direction::Y>(Ez, {ijk...});
-
-        if constexpr (dimension == 3)
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * layout_.template deriv<Direction::Y>(Ez, {ijk...})
-                            + dt_ * layout_.template deriv<Direction::Z>(Ey, {ijk...});
-    }
-
-    template<typename VecField, typename Field, typename... Indexes>
-    void ByEq_(Field const& By, VecField const& E, Field& Bynew, Indexes const&... ijk) const
-    {
-        auto const& [Ex, _, Ez] = E();
-
-        if constexpr (dimension == 1 || dimension == 2)
-            Bynew(ijk...) = By(ijk...) + dt_ * layout_.template deriv<Direction::X>(Ez, {ijk...});
-
-        if constexpr (dimension == 3)
-            Bynew(ijk...) = By(ijk...) - dt_ * layout_.template deriv<Direction::Z>(Ex, {ijk...})
-                            + dt_ * layout_.template deriv<Direction::X>(Ez, {ijk...});
-    }
-
-    template<typename VecField, typename Field, typename... Indexes>
-    void BzEq_(Field const& Bz, VecField const& E, Field& Bznew, Indexes const&... ijk) const
-    {
-        auto const& [Ex, Ey, _] = E();
-
-        if constexpr (dimension == 1)
-            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_.template deriv<Direction::X>(Ey, {ijk...});
-
-        else
-            Bznew(ijk...) = Bz(ijk...) - dt_ * layout_.template deriv<Direction::X>(Ey, {ijk...})
-                            + dt_ * layout_.template deriv<Direction::Y>(Ex, {ijk...});
-    }
 };
 
 } // namespace PHARE::core

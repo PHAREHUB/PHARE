@@ -563,143 +563,6 @@ namespace core
         }
 
 
-        /** @brief returns the local 1st order derivative of the Field operand
-         * at a multidimensional index and in a given direction.
-         * The function can perform 1D, 2D and 3D 1st order derivatives, depending
-         * on the dimensionality of the GridLayout.
-         */
-        template<auto direction, typename Field>
-        NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index) const
-        {
-            auto fieldCentering = centering(operand.physicalQuantity());
-            using PHARE::core::dirX;
-            using PHARE::core::dirY;
-            using PHARE::core::dirZ;
-
-            if constexpr (Field::dimension == 1)
-            {
-                auto next = operand(nextIndex(fieldCentering[dirX], index[0]));
-                auto prev = operand(prevIndex(fieldCentering[dirX], index[0]));
-                return inverseMeshSize_[dirX] * (next - prev);
-            }
-
-            else if constexpr (Field::dimension == 2)
-            {
-                if constexpr (direction == Direction::X)
-                {
-                    auto next = operand(nextIndex(fieldCentering[dirX], index[0]), index[1]);
-                    auto prev = operand(prevIndex(fieldCentering[dirX], index[0]), index[1]);
-                    return inverseMeshSize_[dirX] * (next - prev);
-                }
-
-                if constexpr (direction == Direction::Y)
-                {
-                    auto next = operand(index[0], nextIndex(fieldCentering[dirY], index[1]));
-                    auto prev = operand(index[0], prevIndex(fieldCentering[dirY], index[1]));
-                    return inverseMeshSize_[dirY] * (next - prev);
-                }
-            }
-            else if constexpr (Field::dimension == 3)
-            {
-                if constexpr (direction == Direction::X)
-                {
-                    auto next
-                        = operand(nextIndex(fieldCentering[dirX], index[0]), index[1], index[2]);
-                    auto prev
-                        = operand(prevIndex(fieldCentering[dirX], index[0]), index[1], index[2]);
-                    return inverseMeshSize_[dirX] * (next - prev);
-                }
-
-                if constexpr (direction == Direction::Y)
-                {
-                    auto next
-                        = operand(index[0], nextIndex(fieldCentering[dirY], index[1]), index[2]);
-                    auto prev
-                        = operand(index[0], prevIndex(fieldCentering[dirY], index[1]), index[2]);
-                    return inverseMeshSize_[dirY] * (next - prev);
-                }
-                if constexpr (direction == Direction::Z)
-                {
-                    auto next
-                        = operand(index[0], index[1], nextIndex(fieldCentering[dirZ], index[2]));
-                    auto prev
-                        = operand(index[0], index[1], prevIndex(fieldCentering[dirZ], index[2]));
-                    return inverseMeshSize_[dirZ] * (next - prev);
-                }
-            }
-        }
-
-
-        /** @brief returns the local laplacian of the Field operand
-         * at a multidimensional index.
-         * The function can perform 1D, 2D and 3D laplacian, depending
-         * on the dimensionality of the GridLayout.
-         */
-        template<typename Field>
-        NO_DISCARD auto laplacian(Field const& operand, MeshIndex<Field::dimension> index) const
-        {
-            static_assert(Field::dimension == dimension,
-                          "field dimension must be equal to gridlayout dimension");
-            using PHARE::core::dirX;
-            using PHARE::core::dirY;
-            using PHARE::core::dirZ;
-
-            if constexpr (Field::dimension == 1)
-            {
-                auto prevX = operand(index[0] - 1);
-                auto hereX = operand(index[0]);
-                auto nextX = operand(index[0] + 1);
-
-                return inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
-                       * (nextX - 2.0 * hereX + prevX);
-            }
-
-            else if constexpr (Field::dimension == 2)
-            {
-                auto prevX = operand(index[0] - 1, index[1]);
-                auto hereX = operand(index[0], index[1]);
-                auto nextX = operand(index[0] + 1, index[1]);
-
-                auto lapX = inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
-                            * (nextX - 2.0 * hereX + prevX);
-
-                auto prevY = operand(index[0], index[1] - 1);
-                auto hereY = operand(index[0], index[1]);
-                auto nextY = operand(index[0], index[1] + 1);
-
-                auto lapY = inverseMeshSize_[dirY] * inverseMeshSize_[dirY]
-                            * (nextY - 2.0 * hereY + prevY);
-
-                return lapX + lapY;
-            }
-            else if constexpr (Field::dimension == 3)
-            {
-                auto prevX = operand(index[0] - 1, index[1], index[2]);
-                auto hereX = operand(index[0], index[1], index[2]);
-                auto nextX = operand(index[0] + 1, index[1], index[2]);
-
-                auto lapX = inverseMeshSize_[dirX] * inverseMeshSize_[dirX]
-                            * (nextX - 2.0 * hereX + prevX);
-
-                auto prevY = operand(index[0], index[1] - 1, index[2]);
-                auto hereY = operand(index[0], index[1], index[2]);
-                auto nextY = operand(index[0], index[1] + 1, index[2]);
-
-                auto lapY = inverseMeshSize_[dirY] * inverseMeshSize_[dirY]
-                            * (nextY - 2.0 * hereY + prevY);
-
-                auto prevZ = operand(index[0], index[1], index[2] - 1);
-                auto hereZ = operand(index[0], index[1], index[2]);
-                auto nextZ = operand(index[0], index[1], index[2] + 1);
-
-                auto lapZ = inverseMeshSize_[dirZ] * inverseMeshSize_[dirZ]
-                            * (nextZ - 2.0 * hereZ + prevZ);
-
-                return lapX + lapY + lapZ;
-            }
-        }
-
-
         /**
          * @brief localToAMR returns the AMR index associated with the given local one.
          * This method only deals with **cell** indexes.
@@ -1239,6 +1102,28 @@ namespace core
 
             evalOnBox_(field, fn, indices);
         }
+        // evalOnBox / evalOnGhostBox for fn that writes only at its own index (pointwise
+        // updates): the innermost loop is marked free of cross-iteration aliasing
+        template<typename Field, typename Fn>
+        void evalOnBoxIndependent(Field& field, Fn&& fn) const
+        {
+            auto indices = [&](auto const& centering, auto const direction) {
+                return this->physicalStartToEnd(centering, direction);
+            };
+
+            evalOnBox_<true>(field, fn, indices);
+        }
+
+        template<typename Field, typename Fn>
+        void evalOnGhostBoxIndependent(Field& field, Fn&& fn) const
+        {
+            auto indices = [&](auto const& centering, auto const direction) {
+                return this->ghostStartToEnd(centering, direction);
+            };
+
+            evalOnBox_<true>(field, fn, indices);
+        }
+
         auto levelNumber() const { return levelNumber_; }
 
 
@@ -1251,33 +1136,44 @@ namespace core
         }
 
     private:
-        template<typename Field, typename IndicesFn, typename Fn>
+        // innermost loop of evalOnBox_; `independent` promises the compiler that iterations
+        // do not alias each other's writes (see evalOnBoxIndependent)
+        template<bool independent>
+        static void evalOnLine_(auto const i0, auto const i1, auto&& fn)
+        {
+            if constexpr (independent)
+            {
+                PHARE_IVDEP
+                for (auto i = i0; i <= i1; ++i)
+                    fn(i);
+            }
+            else
+                for (auto i = i0; i <= i1; ++i)
+                    fn(i);
+        }
+
+        template<bool independent = false, typename Field, typename IndicesFn, typename Fn>
         static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd)
         {
             auto const [ix0, ix1] = startToEnd(field, Direction::X);
-            for (auto ix = ix0; ix <= ix1; ++ix)
+            if constexpr (dimension == 1)
+                evalOnLine_<independent>(ix0, ix1,
+                                         [&](auto ix) PHARE_LAMBDA_ALWAYS_INLINE { fn(ix); });
+            else
             {
-                if constexpr (dimension == 1)
+                auto const [iy0, iy1] = startToEnd(field, Direction::Y);
+                for (auto ix = ix0; ix <= ix1; ++ix)
                 {
-                    fn(ix);
-                }
-                else
-                {
-                    auto const [iy0, iy1] = startToEnd(field, Direction::Y);
-
-                    for (auto iy = iy0; iy <= iy1; ++iy)
+                    if constexpr (dimension == 2)
+                        evalOnLine_<independent>(
+                            iy0, iy1, [&](auto iy) PHARE_LAMBDA_ALWAYS_INLINE { fn(ix, iy); });
+                    else
                     {
-                        if constexpr (dimension == 2)
-                        {
-                            fn(ix, iy);
-                        }
-                        else
-                        {
-                            auto const [iz0, iz1] = startToEnd(field, Direction::Z);
-
-                            for (auto iz = iz0; iz <= iz1; ++iz)
-                                fn(ix, iy, iz);
-                        }
+                        auto const [iz0, iz1] = startToEnd(field, Direction::Z);
+                        for (auto iy = iy0; iy <= iy1; ++iy)
+                            evalOnLine_<independent>(
+                                iz0, iz1,
+                                [&](auto iz) PHARE_LAMBDA_ALWAYS_INLINE { fn(ix, iy, iz); });
                     }
                 }
             }

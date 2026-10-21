@@ -112,6 +112,18 @@ protected:
         }
     }
 
+    // first stage: assigning the weighted fluxes replaces zeroing then accumulating them
+    void setButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
+                           double const coef = 1.0)
+    {
+        auto& rm = *model.resourcesManager;
+        for (auto& _ : rm.enumerate(level, butcherFluxes_, butcherE_, fluxes, E))
+        {
+            core::operate<core::SetEqualProduct>(butcherFluxes_, fluxes, coef);
+            core::operate<core::SetEqualProduct>(butcherE_, E, coef);
+        }
+    }
+
     void accumulateButcherFluxes_(MHDModel& model, auto& E, auto& fluxes, auto& level,
                                   double const coef = 1.0)
     {

@@ -57,15 +57,15 @@ public:
     template<typename Field, typename VecField>
     void rhoVToVOnGhostBox(Field& rho, VecField const& rhoV, VecField& V) const
     {
-        layout_.evalOnGhostBox(rho,
-                               [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
+        layout_.evalOnGhostBoxIndependent(
+            rho, [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
     }
 
     template<typename Field, typename VecField>
     void eosEtotToPOnGhostBox(double const gamma, Field const& rho, VecField const& rhoV,
                               VecField const& B, Field& Etot, Field& P) const
     {
-        layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
+        layout_.evalOnGhostBoxIndependent(rho, [&](auto&... args) mutable {
             eosEtotToP_(gamma, rho, rhoV, B, Etot, P, {args...});
         });
     }
@@ -75,13 +75,13 @@ private:
     static void rhoVToV_(Field& rho, VecField const& rhoV, VecField& V,
                          MeshIndex<Field::dimension> index)
     {
-        auto const& rhoVx = rhoV(Component::X);
-        auto const& rhoVy = rhoV(Component::Y);
-        auto const& rhoVz = rhoV(Component::Z);
+        auto const& rhoVx = rhoV[Component::X];
+        auto const& rhoVy = rhoV[Component::Y];
+        auto const& rhoVz = rhoV[Component::Z];
 
-        auto& Vx = V(Component::X);
-        auto& Vy = V(Component::Y);
-        auto& Vz = V(Component::Z);
+        auto& Vx = V[Component::X];
+        auto& Vy = V[Component::Y];
+        auto& Vz = V[Component::Z];
 
         auto&& [x, y, z] = rhoVToV(rho(index), rhoVx(index), rhoVy(index), rhoVz(index));
         Vx(index)        = x;
@@ -94,13 +94,13 @@ private:
                             VecField const& B, Field& Etot, Field& P,
                             MeshIndex<Field::dimension> index)
     {
-        auto const& rhoVx = rhoV(Component::X);
-        auto const& rhoVy = rhoV(Component::Y);
-        auto const& rhoVz = rhoV(Component::Z);
+        auto const& rhoVx = rhoV[Component::X];
+        auto const& rhoVy = rhoV[Component::Y];
+        auto const& rhoVz = rhoV[Component::Z];
 
-        auto const& Bx = B(Component::X);
-        auto const& By = B(Component::Y);
-        auto const& Bz = B(Component::Z);
+        auto const& Bx = B[Component::X];
+        auto const& By = B[Component::Y];
+        auto const& Bz = B[Component::Z];
 
         auto const vx = rhoVx(index) / rho(index);
         auto const vy = rhoVy(index) / rho(index);

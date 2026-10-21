@@ -113,6 +113,17 @@ public:
     }
 
     template<auto direction>
+    auto& getRhot()
+    {
+        if constexpr (direction == Direction::X)
+            return transverse_state_[0].rhot_x;
+        else if constexpr (direction == Direction::Y)
+            return transverse_state_[0].rhot_y;
+        else if constexpr (direction == Direction::Z)
+            return transverse_state_[0].rhot_z;
+    }
+
+    template<auto direction>
     auto& getRhot() const
     {
         if constexpr (direction == Direction::X)
