@@ -164,7 +164,8 @@ public:
      * The touch-up reaches exactly one coarse cell, so it is self-consistent only over a union of
      * whole coarse cells (coarse_cell_round_out.hpp). SAMRAI fill boxes are not: a recursive
      * schedule's coarse-interpolation temporary plus its one-cell ring always cuts a coarse cell
-     * in half, leaving the far shared faces unwritten.
+     * in half, leaving the far shared faces unwritten. Stage 1 fills them from the coarse level,
+     * except where a copy of same-level data already did (copiesWholeCoarseCells).
      *
      * Round-out grows each edge by one index, so the region stays inside the allocation iff
      * field_ghost_width >= fill_ring + 1. That holds everywhere we support, but with zero slack:
