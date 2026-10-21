@@ -8,8 +8,10 @@
 #
 # The scripts that judge a PR (res/ci/gate/) are taken from the base branch (master), never
 # from the PR: a PR cannot change the rules it is judged by. gate-selftest runs the PR's own
-# scripts on their fixtures. This file itself comes from the PR (pull_request event): .github/**
-# and res/ci/** are in CODEOWNERS, so a PR that changes them needs a code owner's approval.
+# scripts on their fixtures. This file itself comes from the PR (pull_request event), and so does
+# pyproject.toml (its "lint" group pins clang-format and ruff, [tool.ruff] configures ruff):
+# .github/**, res/ci/** and pyproject.toml are in CODEOWNERS, so a PR that changes them needs a
+# code owner's approval.
 
 name: gate
 
