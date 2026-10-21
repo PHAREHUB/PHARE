@@ -61,18 +61,14 @@ void test_fields(GridLayout const& layout, Field const& field0, T1 const& field1
 
     EXPECT_EQ(field0.shape(), field1.shape());
 
-    auto not_nan = [&](auto const& f0, auto const& f1, auto&... idxs) {
-        auto const& v0 = f0(idxs...);
-        auto const& v1 = f1(idxs...);
+    // captureless, evalOn*Box calls not_nan(idx, field0, field1)
+    auto constexpr not_nan = [](auto const& idx, auto const& f0, auto const& f1) {
+        auto const& v0 = f0(idx);
+        auto const& v1 = f1(idx);
 
         std::ostringstream oss;
-        oss << "(";
-        ((oss << idxs << ","), ...);
-        std::string idx_str = oss.str();
-        if constexpr (sizeof...(idxs) > 0)
-            idx_str.back() = ')';
-        else
-            idx_str += ')';
+        oss << idx;
+        std::string const idx_str = oss.str();
 
         if (std::isnan(v0) || std::isnan(v1))
             throw std::runtime_error("This 1dfield should not be NaN at index " + idx_str);
@@ -81,9 +77,9 @@ void test_fields(GridLayout const& layout, Field const& field0, T1 const& field1
     };
 
     if (valid_ghost_box(field0.physicalQuantity()))
-        layout.evalOnGhostBox(field0, [&](auto&... idxs) { not_nan(field0, field1, idxs...); });
+        layout.evalOnGhostBox(field0, not_nan, field0, field1);
     else
-        layout.evalOnBox(field0, [&](auto&... idxs) { not_nan(field0, field1, idxs...); });
+        layout.evalOnBox(field0, not_nan, field0, field1);
 }
 
 

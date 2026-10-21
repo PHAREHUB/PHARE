@@ -416,7 +416,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
             auto pei_X = layout.physicalEndIndex(Fcomp, Direction::X);
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
             {
-                auto const JOnV = GridYee::template project<projector>(Jcomp, {i});
+                auto const JOnV = GridYee::template project<projector>(Jcomp, Point{i});
                 EXPECT_DOUBLE_EQ(Vecomp(i), (Fcomp(i) - JOnV) / Ne_(i));
             }
         }
@@ -429,7 +429,7 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
             for (std::uint32_t i = psi_X; i < pei_X; ++i)
                 for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
                 {
-                    auto const JOnV = GridYee::template project<projector>(Jcomp, {i, j});
+                    auto const JOnV = GridYee::template project<projector>(Jcomp, Point{i, j});
                     EXPECT_DOUBLE_EQ(Vecomp(i, j), (Fcomp(i, j) - JOnV) / Ne_(i, j));
                 }
         }
@@ -445,7 +445,8 @@ TYPED_TEST(ElectronsTest, ThatElectronsVelocityEqualChargeFluxMinusJOverNe)
                 for (std::uint32_t j = psi_Y; j < pei_Y; ++j)
                     for (std::uint32_t k = psi_Z; k < pei_Z; ++k)
                     {
-                        auto const JOnV = GridYee::template project<projector>(Jcomp, {i, j, k});
+                        auto const JOnV
+                            = GridYee::template project<projector>(Jcomp, Point{i, j, k});
                         EXPECT_DOUBLE_EQ(Vecomp(i, j, k), (Fcomp(i, j, k) - JOnV) / Ne_(i, j, k));
                     }
         }
@@ -696,9 +697,12 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
     {
         auto const expected = (chargeFlux[c] - this->current[c]) / Ne;
         auto& Vecomp        = this->Ve[c];
-        layout.evalOnBox(Vecomp, [&](auto const&... args) {
-            EXPECT_DOUBLE_EQ(Vecomp(args...), expected) << "component " << c;
-        });
+        layout.evalOnBox(
+            Vecomp,
+            [](auto const& ijk, auto const& V, auto const expected_, auto const c_) {
+                EXPECT_DOUBLE_EQ(V(ijk), expected_) << "component " << c_;
+            },
+            Vecomp, expected, c);
     }
 }
 

@@ -3,7 +3,6 @@
 
 
 #include "core/numerics/ohm/ohm.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 
@@ -44,28 +43,41 @@ public:
         auto const& By_x = fluxes.B_fx(Component::Y);
         auto const& Bz_x = fluxes.B_fx(Component::Z);
 
+        // evalOnBox calls fn(index, self, args...): fn is captureless and forwards to the
+        // matching member of self (*this), all state passed through args
+        [[maybe_unused]] auto constexpr ExEq
+            = [](auto const& i, auto const& self, auto&&... args) { self.ExEq_(i, args...); };
+        auto constexpr EyEq
+            = [](auto const& i, auto const& self, auto&&... args) { self.EyEq_(i, args...); };
+        auto constexpr EzEq
+            = [](auto const& i, auto const& self, auto&&... args) { self.EzEq_(i, args...); };
+        auto constexpr resistive = [](auto const& i, auto const& self, auto&&... args) {
+            self.resistive_contribution_(i, args...);
+        };
+        auto constexpr hyperresistive = []<auto component>() {
+            return [](auto const& i, auto const& self, auto&&... args) {
+                self.template hyperresistive_contribution_<component>(i, args...);
+            };
+        };
+
         if constexpr (dimension == 1)
         {
-            layout_.evalOnBox(Ey, [&](auto&... args) mutable { EyEq_(Ey, {args...}, Bz_x); });
+            layout_.evalOnBox(Ey, EyEq, *this, Ey, Bz_x);
 
-            layout_.evalOnBox(Ez, [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x); });
+            layout_.evalOnBox(Ez, EzEq, *this, Ez, By_x);
 
             if (is_resistive_)
             {
-                layout_.evalOnBox(
-                    Ey, [&](auto&... args) mutable { resistive_contribution_(Ey, Jy, {args...}); });
-                layout_.evalOnBox(
-                    Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
+                layout_.evalOnBox(Ey, resistive, *this, Ey, Jy);
+                layout_.evalOnBox(Ez, resistive, *this, Ez, Jz);
             }
 
             if (is_hyper_resistive_)
             {
-                layout_.evalOnBox(Ey, [&](auto&... args) mutable {
-                    hyperresistive_contribution_<Component::Y>(Ey, Jy, B, rho, {args...});
-                });
-                layout_.evalOnBox(Ez, [&](auto&... args) mutable {
-                    hyperresistive_contribution_<Component::Z>(Ez, Jz, B, rho, {args...});
-                });
+                layout_.evalOnBox(Ey, hyperresistive.template operator()<Component::Y>(), *this, Ey,
+                                  Jy, B, rho);
+                layout_.evalOnBox(Ez, hyperresistive.template operator()<Component::Z>(), *this, Ez,
+                                  Jz, B, rho);
             }
         }
         else if constexpr (dimension >= 2)
@@ -75,49 +87,39 @@ public:
 
             if constexpr (dimension == 2)
             {
-                layout_.evalOnBox(Ex, [&](auto&... args) mutable { ExEq_(Ex, {args...}, Bz_y); });
+                layout_.evalOnBox(Ex, ExEq, *this, Ex, Bz_y);
 
-                layout_.evalOnBox(Ey, [&](auto&... args) mutable { EyEq_(Ey, {args...}, Bz_x); });
+                layout_.evalOnBox(Ey, EyEq, *this, Ey, Bz_x);
 
-                layout_.evalOnBox(Ez,
-                                  [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x, Bx_y); });
+                layout_.evalOnBox(Ez, EzEq, *this, Ez, By_x, Bx_y);
             }
             else if constexpr (dimension == 3)
             {
                 auto const& Bx_z = fluxes.B_fz(Component::X);
                 auto const& By_z = fluxes.B_fz(Component::Y);
 
-                layout_.evalOnBox(Ex,
-                                  [&](auto&... args) mutable { ExEq_(Ex, {args...}, Bz_y, By_z); });
+                layout_.evalOnBox(Ex, ExEq, *this, Ex, Bz_y, By_z);
 
-                layout_.evalOnBox(Ey,
-                                  [&](auto&... args) mutable { EyEq_(Ey, {args...}, Bz_x, Bx_z); });
+                layout_.evalOnBox(Ey, EyEq, *this, Ey, Bz_x, Bx_z);
 
-                layout_.evalOnBox(Ez,
-                                  [&](auto&... args) mutable { EzEq_(Ez, {args...}, By_x, Bx_y); });
+                layout_.evalOnBox(Ez, EzEq, *this, Ez, By_x, Bx_y);
             }
 
             if (is_resistive_)
             {
-                layout_.evalOnBox(
-                    Ex, [&](auto&... args) mutable { resistive_contribution_(Ex, Jx, {args...}); });
-                layout_.evalOnBox(
-                    Ey, [&](auto&... args) mutable { resistive_contribution_(Ey, Jy, {args...}); });
-                layout_.evalOnBox(
-                    Ez, [&](auto&... args) mutable { resistive_contribution_(Ez, Jz, {args...}); });
+                layout_.evalOnBox(Ex, resistive, *this, Ex, Jx);
+                layout_.evalOnBox(Ey, resistive, *this, Ey, Jy);
+                layout_.evalOnBox(Ez, resistive, *this, Ez, Jz);
             }
 
             if (is_hyper_resistive_)
             {
-                layout_.evalOnBox(Ex, [&](auto&... args) mutable {
-                    hyperresistive_contribution_<Component::X>(Ex, Jx, B, rho, {args...});
-                });
-                layout_.evalOnBox(Ey, [&](auto&... args) mutable {
-                    hyperresistive_contribution_<Component::Y>(Ey, Jy, B, rho, {args...});
-                });
-                layout_.evalOnBox(Ez, [&](auto&... args) mutable {
-                    hyperresistive_contribution_<Component::Z>(Ez, Jz, B, rho, {args...});
-                });
+                layout_.evalOnBox(Ex, hyperresistive.template operator()<Component::X>(), *this, Ex,
+                                  Jx, B, rho);
+                layout_.evalOnBox(Ey, hyperresistive.template operator()<Component::Y>(), *this, Ey,
+                                  Jy, B, rho);
+                layout_.evalOnBox(Ez, hyperresistive.template operator()<Component::Z>(), *this, Ez,
+                                  Jz, B, rho);
             }
         }
     }
@@ -131,7 +133,7 @@ private:
     bool const is_hyper_resistive_;
 
     template<typename Field, typename... Fluxes>
-    void ExEq_(Field& Ex, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
+    void ExEq_(auto const& index, Field& Ex, Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
@@ -155,7 +157,7 @@ private:
     }
 
     template<typename Field, typename... Fluxes>
-    void EyEq_(Field& Ey, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
+    void EyEq_(auto const& index, Field& Ey, Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
@@ -176,7 +178,7 @@ private:
     }
 
     template<typename Field, typename... Fluxes>
-    void EzEq_(Field& Ez, MeshIndex<Field::dimension> index, Fluxes const&... fluxes) const
+    void EzEq_(auto const& index, Field& Ez, Fluxes const&... fluxes) const
     {
         auto&& flux_tuple = std::forward_as_tuple(fluxes...);
 
@@ -206,14 +208,14 @@ private:
     }
 
     template<typename Field>
-    void resistive_contribution_(Field& E, Field const& J, MeshIndex<Field::dimension> index) const
+    void resistive_contribution_(auto const& index, Field& E, Field const& J) const
     {
         E(index) += eta_ * J(index);
     }
 
     template<auto component, typename Field, typename VecField>
-    void hyperresistive_contribution_(Field& E, Field const& J, VecField const& B, Field const& rho,
-                                      MeshIndex<Field::dimension> index) const
+    void hyperresistive_contribution_(auto const& index, Field& E, Field const& J,
+                                      VecField const& B, Field const& rho) const
     {
         if (hyper_mode_ == HyperMode::constant)
             return constant_hyperresistive_<component>(E, J, index);
@@ -224,14 +226,14 @@ private:
     }
 
     template<auto component, typename Field>
-    void constant_hyperresistive_(Field& E, Field const& J, MeshIndex<Field::dimension> index) const
+    void constant_hyperresistive_(Field& E, Field const& J, auto const& index) const
     {
         E(index) -= nu_ * layout_.laplacian(J, index);
     }
 
     template<auto component, typename Field, typename VecField>
     void spatial_hyperresistive_(Field& E, Field const& J, VecField const& B, Field const& rho,
-                                 MeshIndex<Field::dimension> index) const
+                                 auto const& index) const
     {
         auto minMeshSize = [&]() {
             auto const meshSize = layout_.meshSize();

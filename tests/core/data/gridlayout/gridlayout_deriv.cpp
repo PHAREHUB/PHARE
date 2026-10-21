@@ -49,7 +49,7 @@ TYPED_TEST(a1DDerivative, DXBY1D)
 
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, {lcl_idx});
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->By, lcl_idx);
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[lcl_idx[0]], 1e-12));
     }
 }
@@ -70,7 +70,7 @@ TYPED_TEST(a1DDerivative, DXEZ1D)
 
     for (auto const lcl_idx : this->layout.AMRToLocal(this->layout.AMRBox()))
     {
-        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, {lcl_idx});
+        auto const localDerivative = this->layout.template deriv<Direction::X>(this->Ez, lcl_idx);
         EXPECT_THAT(localDerivative, ::testing::DoubleNear(expDerValue[lcl_idx[0]], 1e-12));
     }
 }

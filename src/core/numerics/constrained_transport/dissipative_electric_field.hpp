@@ -3,7 +3,6 @@
 
 #include "core/def.hpp"
 #include "core/numerics/ohm/ohm.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -65,23 +64,32 @@ public:
                 constexpr auto component = static_cast<Component>(i());
                 auto& Ec                 = E(component);
                 auto const& Jc           = J(component);
-                layout_.evalOnBox(Ec, [&](auto&... args) {
-                    MeshIndex<dimension> idx{args...};
-                    double e = 0.;
-                    if constexpr (isResistive)
-                        e += eta * Jc(idx);
-                    if constexpr (isHyperResistive)
-                        e -= hyper_coef_<component, hyper>(B, rho, idx)
-                             * layout_.laplacian(Jc, idx);
-                    Ec(idx) = e;
-                });
+                // fn is captureless, state is forwarded: evalOnBox calls fn(idx, self, args...)
+                layout_.evalOnBox(
+                    Ec,
+                    [](auto const& idx, auto const& self, auto&&... args) {
+                        self.template EEq_<component, isResistive, isHyperResistive, hyper>(
+                            idx, args...);
+                    },
+                    *this, Ec, Jc, B, rho);
             });
         });
     }
 
 private:
+    template<auto component, bool isResistive, bool isHyperResistive, HyperMode hyper>
+    void EEq_(auto const& idx, auto& Ec, auto const& Jc, auto const& B, auto const& rho) const
+    {
+        double e = 0.;
+        if constexpr (isResistive)
+            e += eta * Jc(idx);
+        if constexpr (isHyperResistive)
+            e -= hyper_coef_<component, hyper>(B, rho, idx) * layout_.laplacian(Jc, idx);
+        Ec(idx) = e;
+    }
+
     template<auto component, HyperMode hyper>
-    double hyper_coef_(auto const& B, auto const& rho, MeshIndex<dimension> idx) const
+    double hyper_coef_(auto const& B, auto const& rho, auto const& idx) const
     {
         if constexpr (hyper == HyperMode::constant)
             return nu;
