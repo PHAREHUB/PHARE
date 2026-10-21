@@ -57,7 +57,6 @@ set( SOURCES_INC
      utilities/box/box.hpp
      utilities/algorithm.hpp
      utilities/constants.hpp
-     utilities/index/index.hpp
      utilities/meta/meta_utilities.hpp
      utilities/partitionner/partitionner.hpp
      utilities/point/point.hpp
@@ -67,7 +66,6 @@ set( SOURCES_INC
 
 set( SOURCES_CPP
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
-     utilities/index/index.cpp
     )
 
 set( CORE_EXTRA_SOURCES_CPP )

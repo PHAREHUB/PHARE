@@ -6,7 +6,7 @@
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/utilities/constants.hpp"
-#include "core/utilities/index/index.hpp"
+#include "core/utilities/point/point.hpp"
 #include "core/utilities/types.hpp"
 
 #include <array>
@@ -15,8 +15,8 @@
 
 namespace PHARE::core::detail
 {
-template<std::size_t d, typename Array, std::size_t dim>
-double shifted(Array const& array, MeshIndex<dim> const& idx, int const shift)
+template<std::size_t d, typename Array, typename T, std::size_t dim>
+double shifted(Array const& array, Point<T, dim> const& idx, int const shift)
 {
     return for_N_fold<dim>([&](auto... i) { return array((i == d ? idx[i] + shift : idx[i])...); });
 }
@@ -67,7 +67,8 @@ public:
 
     NO_DISCARD std::array<QtyCentering, dim> centering() const { return centering_; }
 
-    NO_DISCARD double operator()(MeshIndex<dim> const idx) const
+    template<typename T>
+    NO_DISCARD double operator()(Point<T, dim> const& idx) const
     {
         return scale_
                * (detail::shifted<d>(view_, idx, shift_ + 1)
@@ -94,7 +95,11 @@ public:
 
     NO_DISCARD std::array<QtyCentering, dim> centering() const { return centering_; }
 
-    NO_DISCARD double operator()(MeshIndex<dim> const) const { return 0.; }
+    template<typename T>
+    NO_DISCARD double operator()(Point<T, dim> const&) const
+    {
+        return 0.;
+    }
 
 private:
     std::array<QtyCentering, dim> centering_;
@@ -122,7 +127,8 @@ namespace detail
 
         NO_DISCARD std::array<QtyCentering, dim> centering() const { return dj_vk_.centering(); }
 
-        NO_DISCARD double operator()(MeshIndex<dim> const idx) const
+        template<typename T>
+        NO_DISCARD double operator()(Point<T, dim> const& idx) const
         {
             if constexpr (j >= dim && k < dim)
                 return -dk_vj_(idx);
@@ -171,7 +177,8 @@ public:
 
     NO_DISCARD std::array<QtyCentering, dim> centering() const { return dx_vx_.centering(); }
 
-    NO_DISCARD double operator()(MeshIndex<dim> const idx) const
+    template<typename T>
+    NO_DISCARD double operator()(Point<T, dim> const& idx) const
     {
         return dx_vx_(idx) + dy_vy_(idx) + dz_vz_(idx);
     }
@@ -208,9 +215,9 @@ auto div(GridLayout const& layout, VecField const& v)
     return Div<GridLayout::dimension>{layout, v};
 }
 
-template<typename GridLayout, typename Src>
+template<typename GridLayout, typename Src, typename T>
 NO_DISCARD double laplacian(GridLayout const& layout, Src const& f,
-                            MeshIndex<GridLayout::dimension> const idx)
+                            Point<T, GridLayout::dimension> const& idx)
 {
     static_assert(Src::dimension == GridLayout::dimension,
                   "field and layout dimensions must match");

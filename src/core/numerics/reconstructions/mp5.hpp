@@ -3,7 +3,6 @@
 
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/slope_limiters/min_mod.hpp"
-#include "core/utilities/index/index.hpp"
 #include <utility>
 
 namespace PHARE::core
@@ -17,7 +16,7 @@ public:
     using GridLayout_t = GridLayout;
 
     template<auto direction, typename Field>
-    static auto reconstruct(Field const& F, MeshIndex<Field::dimension> index)
+    static auto reconstruct(Field const& F, auto const& index)
     {
         auto u_3
             = F(GridLayout::template previous<direction>(GridLayout::template previous<direction>(
@@ -35,7 +34,7 @@ public:
     }
 
     template<auto direction, auto Projection, typename Field>
-    static auto center_reconstruct(Field const& U, MeshIndex<Field::dimension> index)
+    static auto center_reconstruct(Field const& U, auto const& index)
     {
         auto u_3 = GridLayout::template project<Projection>(
             U, GridLayout::template previous<direction>(GridLayout::template previous<direction>(

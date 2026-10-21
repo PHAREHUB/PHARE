@@ -6,7 +6,6 @@
 #include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/constants.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 
 #include "gridlayoutdefs.hpp"
@@ -571,7 +570,7 @@ namespace core
         template<typename T>
         NO_DISCARD auto localToAMR(Point<T, dimension> const& localPoint) const
         {
-            static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+            static_assert(std::is_integral_v<T>, "Error, must be an integral Point");
             Point<int, dimension> pointAMR;
 
             // any direction, it's the same because we want cells
@@ -593,7 +592,7 @@ namespace core
         template<typename T>
         NO_DISCARD auto localToAMR(Box<T, dimension> const& localBox) const
         {
-            static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+            static_assert(std::is_integral_v<T>, "Error, must be an integral Point");
             auto AMRBox = Box<int, dimension>{};
 
             AMRBox.lower = localToAMR(localBox.lower);
@@ -610,7 +609,7 @@ namespace core
         template<typename T>
         NO_DISCARD auto AMRToLocal(Point<T, dimension> const& AMRPoint) const
         {
-            static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+            static_assert(std::is_integral_v<T>, "Error, must be an integral Point");
             Point<std::uint32_t, dimension> localPoint;
 
             // any direction, it's the same because we want cells
@@ -634,7 +633,7 @@ namespace core
         template<typename T>
         NO_DISCARD auto AMRToLocal(Box<T, dimension> const& AMRBox) const
         {
-            static_assert(std::is_integral_v<T>, "Error, must be MeshIndex (integral Point)");
+            static_assert(std::is_integral_v<T>, "Error, must be an integral Point");
             auto localBox = Box<std::uint32_t, dimension>{};
 
             localBox.lower = AMRToLocal(AMRBox.lower);
@@ -646,8 +645,7 @@ namespace core
 
 
         template<auto func, typename Field>
-        NO_DISCARD static typename Field::type project(Field const& field,
-                                                       MeshIndex<dimension> index)
+        NO_DISCARD static typename Field::type project(Field const& field, auto const& index)
         {
             auto constexpr wps = func();
 
@@ -1038,88 +1036,36 @@ namespace core
 
 
         template<auto direction>
-        static MeshIndex<dimension> next(MeshIndex<dimension> index)
+        static auto next(auto const& index)
         {
-            if constexpr (dimension == 1)
-            {
-                return make_index(index[0] + 1);
-            }
-            else if constexpr (dimension == 2)
-            {
-                if constexpr (direction == Direction::X)
-                {
-                    return make_index(index[0] + 1, index[1]);
-                }
-                else if constexpr (direction == Direction::Y)
-                {
-                    return make_index(index[0], index[1] + 1);
-                }
-            }
-            else if constexpr (dimension == 3)
-            {
-                if constexpr (direction == Direction::X)
-                {
-                    return make_index(index[0] + 1, index[1], index[2]);
-                }
-                else if constexpr (direction == Direction::Y)
-                {
-                    return make_index(index[0], index[1] + 1, index[2]);
-                }
-                else if constexpr (direction == Direction::Z)
-                {
-                    return make_index(index[0], index[1], index[2] + 1);
-                }
-            }
+            auto next = index;
+            ++next[static_cast<std::size_t>(direction)];
+            return next;
         }
 
         template<auto direction>
-        static MeshIndex<dimension> previous(MeshIndex<dimension> index)
+        static auto previous(auto const& index)
         {
-            if constexpr (dimension == 1)
-            {
-                return make_index(index[0] - 1);
-            }
-            else if constexpr (dimension == 2)
-            {
-                if constexpr (direction == Direction::X)
-                {
-                    return make_index(index[0] - 1, index[1]);
-                }
-                else if constexpr (direction == Direction::Y)
-                {
-                    return make_index(index[0], index[1] - 1);
-                }
-            }
-            else if constexpr (dimension == 3)
-            {
-                if constexpr (direction == Direction::X)
-                {
-                    return make_index(index[0] - 1, index[1], index[2]);
-                }
-                else if constexpr (direction == Direction::Y)
-                {
-                    return make_index(index[0], index[1] - 1, index[2]);
-                }
-                else if constexpr (direction == Direction::Z)
-                {
-                    return make_index(index[0], index[1], index[2] - 1);
-                }
-            }
+            auto previous = index;
+            --previous[static_cast<std::size_t>(direction)];
+            return previous;
         }
 
-        template<typename Field, typename Fn>
-        void evalOnBox(Field& field, Fn&& fn) const
+        // fn must be captureless: evalOn*Box calls fn(index, args...), so any state it needs
+        // is passed through args rather than captured (required to run fn on GPU)
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnBox(Field& field, Fn&& fn, Args&&... args) const
         {
             auto indices = [&](auto const& centering, auto const direction) {
                 return this->physicalStartToEnd(centering, direction);
             };
 
-            evalOnBox_(field, fn, indices);
+            evalOnBox_(field, fn, indices, args...);
         }
 
-        template<typename Field, typename Fn>
-        void evalOnBiggerBox(Field& field, Point<std::uint32_t, dimension> const& grow,
-                             Fn&& fn) const
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnBiggerBox(Field& field, Point<std::uint32_t, dimension> const& grow, Fn&& fn,
+                             Args&&... args) const
         {
             auto indices = [&](auto const& centering, auto const direction) {
                 auto [start, end] = this->physicalStartToEnd(centering, direction);
@@ -1127,12 +1073,12 @@ namespace core
                                       end + grow[static_cast<std::size_t>(direction)]);
             };
 
-            evalOnBox_(field, fn, indices);
+            evalOnBox_(field, fn, indices, args...);
         }
 
-        template<typename Field, typename Fn>
+        template<typename Field, typename Fn, typename... Args>
         void evalOnShrinkedGhostBox(Field& field, Point<std::uint32_t, dimension> const& shrink,
-                                    Fn&& fn) const
+                                    Fn&& fn, Args&&... args) const
         {
             auto indices = [&](auto const& centering, auto const direction) {
                 auto [start, end] = this->ghostStartToEnd(centering, direction);
@@ -1140,17 +1086,17 @@ namespace core
                                       end - shrink[static_cast<std::size_t>(direction)]);
             };
 
-            evalOnBox_(field, fn, indices);
+            evalOnBox_(field, fn, indices, args...);
         }
 
-        template<typename Field, typename Fn>
-        void evalOnGhostBox(Field& field, Fn&& fn) const
+        template<typename Field, typename Fn, typename... Args>
+        void evalOnGhostBox(Field& field, Fn&& fn, Args&&... args) const
         {
             auto indices = [&](auto const& centering, auto const direction) {
                 return this->ghostStartToEnd(centering, direction);
             };
 
-            evalOnBox_(field, fn, indices);
+            evalOnBox_(field, fn, indices, args...);
         }
         auto levelNumber() const { return levelNumber_; }
 
@@ -1164,32 +1110,37 @@ namespace core
         }
 
     private:
-        template<typename Field, typename IndicesFn, typename Fn>
-        static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd)
+        template<typename Field, typename IndicesFn, typename Fn, typename... Args>
+        static void evalOnBox_(Field& field, Fn& fn, IndicesFn& startToEnd, Args&... args)
         {
+            static_assert(std::is_empty_v<std::decay_t<Fn>>,
+                          "evalOn*Box: fn must be captureless, pass state through args");
+
+            Point<std::uint32_t, dimension> ijk;
+
             auto const [ix0, ix1] = startToEnd(field, Direction::X);
-            for (auto ix = ix0; ix <= ix1; ++ix)
+            for (ijk[0] = ix0; ijk[0] <= ix1; ++ijk[0])
             {
                 if constexpr (dimension == 1)
                 {
-                    fn(ix);
+                    fn(ijk, args...);
                 }
                 else
                 {
                     auto const [iy0, iy1] = startToEnd(field, Direction::Y);
 
-                    for (auto iy = iy0; iy <= iy1; ++iy)
+                    for (ijk[1] = iy0; ijk[1] <= iy1; ++ijk[1])
                     {
                         if constexpr (dimension == 2)
                         {
-                            fn(ix, iy);
+                            fn(ijk, args...);
                         }
                         else
                         {
                             auto const [iz0, iz1] = startToEnd(field, Direction::Z);
 
-                            for (auto iz = iz0; iz <= iz1; ++iz)
-                                fn(ix, iy, iz);
+                            for (ijk[2] = iz0; ijk[2] <= iz1; ++ijk[2])
+                                fn(ijk, args...);
                         }
                     }
                 }
