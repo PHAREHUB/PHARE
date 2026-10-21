@@ -56,45 +56,12 @@ public:
 
 
 
-    NO_DISCARD Field const& density() const
-    {
-        if (isUsable())
-        {
-            return ions_.chargeDensity();
-        }
-        else
-        {
-            throw std::runtime_error("Error, cannot return density because "
-                                     "StandardHybridElectronFluxComputer is not usable");
-        }
-    }
+    NO_DISCARD Field const& density() const { return ions_.chargeDensity(); }
 
-    NO_DISCARD Field& density()
-    {
-        if (isUsable())
-        {
-            return ions_.chargeDensity();
-        }
-        else
-        {
-            throw std::runtime_error("Error, cannot return density because "
-                                     "StandardHybridElectronFluxComputer is not usable");
-        }
-    }
+    NO_DISCARD Field& density() { return ions_.chargeDensity(); }
 
 
-    NO_DISCARD VecField& velocity()
-    {
-        if (isUsable())
-        {
-            return Ve_;
-        }
-        else
-        {
-            throw std::runtime_error("Error, cannot return velocity because "
-                                     "StandardHybridElectronFluxComputer is not usable");
-        }
-    }
+    NO_DISCARD VecField& velocity() { return Ve_; }
 
 
     void computeDensity() {}
@@ -188,25 +155,17 @@ public:
 
 
 
-    NO_DISCARD Field& pressure()
-    {
-        if (!Pe_.isUsable())
-            throw std::runtime_error("Error - isothermal closure pressure not usable");
-        return Pe_;
-    }
-    NO_DISCARD Field const& pressure() const
-    {
-        if (!Pe_.isUsable())
-            throw std::runtime_error("Error - isothermal closure pressure not usable");
-        return Pe_;
-    }
+    NO_DISCARD Field& pressure() { return Pe_; }
+    NO_DISCARD Field const& pressure() const { return Pe_; }
 
     void computePressure(GridLayout const& /*layout*/)
     {
         static_assert(Field::is_contiguous, "Error - assumes Field date is contiguous");
 
-        if (!Pe_.isUsable())
-            throw std::runtime_error("Error - isothermal closure pressure not usable");
+        PHARE_DEBUG_DO({
+            if (!Pe_.isUsable())
+                throw std::runtime_error("Error - isothermal closure pressure not usable");
+        })
 
         auto const& Ne_ = ions_.chargeDensity();
         std::transform(std::begin(Ne_), std::end(Ne_), std::begin(Pe_),
@@ -305,14 +264,14 @@ public:
 
     void update(GridLayout const& layout)
     {
-        if (isUsable())
-        {
-            momentModel_.computeDensity();
-            momentModel_.computeBulkVelocity(layout);
-            momentModel_.computePressure(layout);
-        }
-        else
-            throw std::runtime_error("Error - Electron  is not usable");
+        PHARE_DEBUG_DO({
+            if (!isUsable())
+                throw std::runtime_error("Error - Electron is not usable");
+        })
+
+        momentModel_.computeDensity();
+        momentModel_.computeBulkVelocity(layout);
+        momentModel_.computePressure(layout);
     }
 
 

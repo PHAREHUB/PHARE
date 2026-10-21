@@ -112,8 +112,11 @@ public:
 
     void zero()
     {
-        if (!isUsable())
-            throw std::runtime_error("Error, cannot zero the TensorField because it is not usable");
+        PHARE_DEBUG_DO({
+            if (!isUsable())
+                throw std::runtime_error(
+                    "Error, cannot zero the TensorField because it is not usable");
+        })
 
         for (auto& component : components_)
             component.zero();
@@ -129,21 +132,13 @@ public:
 
 
 
-    void _check() const
-    {
-        if (!isUsable())
-            throw std::runtime_error("Error - TensorField not usable");
-    }
-
     NO_DISCARD field_type& getComponent(Component component)
     {
-        _check();
         return components_[_get_index_for(component)];
     }
 
     NO_DISCARD field_type const& getComponent(Component component) const
     {
-        _check();
         return components_[_get_index_for(component)];
     }
 
@@ -184,17 +179,13 @@ public:
 
     void copyData(TensorField const& source)
     {
-        if (isUsable() && source.isUsable())
-        {
-            for (std::size_t i = 0; i < N; ++i)
-            {
-                components_[i].copyData(source.components_[i]);
-            }
-        }
-        else
-        {
-            throw std::runtime_error("Error, unusable TensorField, cannot copyData");
-        }
+        PHARE_DEBUG_DO({
+            if (!isUsable() || !source.isUsable())
+                throw std::runtime_error("Error, unusable TensorField, cannot copyData");
+        })
+
+        for (std::size_t i = 0; i < N; ++i)
+            components_[i].copyData(source.components_[i]);
     }
 
 

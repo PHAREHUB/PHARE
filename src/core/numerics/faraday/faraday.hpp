@@ -3,6 +3,7 @@
 
 #include <cstddef>
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
@@ -27,8 +28,11 @@ public:
     template<typename VecField>
     void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
     {
-        if (!(B.isUsable() && E.isUsable() && Bnew.isUsable()))
-            throw std::runtime_error("Error - Faraday - not all VecField parameters are usable");
+        PHARE_DEBUG_DO({
+            if (!(B.isUsable() && E.isUsable() && Bnew.isUsable()))
+                throw std::runtime_error(
+                    "Error - Faraday - not all VecField parameters are usable");
+        })
 
         this->dt_ = dt;
 

@@ -303,8 +303,8 @@ namespace core
         }
 
 
-        auto& operator[](std::size_t const i) const { return populations_[i]; }
-        auto& operator[](std::size_t const i) { return populations_[i]; }
+        auto& operator[](std::size_t const i) const { return population(i); }
+        auto& operator[](std::size_t const i) { return population(i); }
 
     private:
         field_type massDensity_;
