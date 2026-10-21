@@ -10,6 +10,18 @@
 
 namespace PHARE::core
 {
+
+/**
+ * @brief Read-only view of a field as if it had another centering.
+ *
+ * Values are computed when read by linear interpolation. Nothing is allocated.
+ *
+ * Primal -> dual is valid on every index. Dual -> primal is not valid on the outermost
+ * primal ghost node of each side.
+ *
+ * Holds a copy of the Field (pointer and shape): rebuild it once the field is set on
+ * another patch.
+ */
 template<typename GridLayout, typename Field>
 class RecenteredField
 {
@@ -40,16 +52,21 @@ public:
     auto const& centering() const { return destination_; }
 
 private:
+    /// recursive helper to compute the tensor product of the 1D recentering operation
     template<std::size_t d>
     value_type averageFrom_(std::array<std::uint32_t, dimension> const& node) const
     {
         if constexpr (d == dimension)
+            // end of the recursion
             return field_(node);
         else
         {
             if (source_[d] == destination_[d])
+                // no recentering needed, return the result of the next recursion
                 return averageFrom_<d + 1>(node);
 
+            // the centering differs in the current direction `d`; so return the average
+            // of the results of the next recursion, applied to lower and upper nodes.
             auto lower = node;
             auto upper = node;
             if (source_[d] == QtyCentering::primal)
@@ -60,9 +77,9 @@ private:
         }
     }
 
-    Field field_;
-    std::array<QtyCentering, dimension> source_;
-    std::array<QtyCentering, dimension> destination_;
+    Field field_;                                     ///< source field
+    std::array<QtyCentering, dimension> source_;      ///< source field's centering
+    std::array<QtyCentering, dimension> destination_; ///< destination centering
 };
 
 } // namespace PHARE::core
