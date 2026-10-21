@@ -2,6 +2,7 @@
 #define PHARE_OHM_HPP
 
 
+#include "core/def.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -52,19 +53,24 @@ public:
     void operator()(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
                     VecField const& J, VecField& Enew)
     {
+        // checked once here: the per-cell code below uses the unchecked operator[] accessors
+        if (!isUsable(n, Ve, Pe, B, J, Enew))
+            throw std::runtime_error("Error - Ohm - not all parameters are usable");
+
         // lift the resistive / hyper-resistive runtime flags into compile-time tags: the per-cell
         // E_Eq_ branches only via if constexpr, skipping the projection / laplacian when eta or
         // nu is zero without ever testing the flags inside the evalOnBox loop.
-        Constexprifier{isResistive(),
-                       isHyperResistive()}([&]<bool isResistiveV, bool isHyperResistiveV>() {
-            solve_<isResistiveV, isHyperResistiveV>(n, Ve, Pe, B, J, Enew);
-        });
+        Constexprifier{isResistive(), isHyperResistive(), hyper_mode}(
+            [&]<bool isResistiveV, bool isHyperResistiveV, HyperMode hyperModeV>() {
+                solve_<isResistiveV, isHyperResistiveV, hyperModeV>(n, Ve, Pe, B, J, Enew);
+            });
     }
 
 private:
     GridLayout layout_;
 
-    template<bool isResistive, bool isHyperResistive, typename VecField, typename Field>
+    template<bool isResistive, bool isHyperResistive, HyperMode hyperMode, typename VecField,
+             typename Field>
     void solve_(Field const& n, VecField const& Ve, Field const& Pe, VecField const& B,
                 VecField const& J, VecField& Enew) const
     {
@@ -74,16 +80,16 @@ private:
 
         auto const gradPe = grad(layout_, Pe);
 
-        layout_.evalOnBox(Exnew, [&](auto&... args) {
-            this->template E_Eq_<Component::X, isResistive, isHyperResistive>(
+        layout_.evalOnBoxIndependent(Exnew, [&](auto&... args) PHARE_LAMBDA_ALWAYS_INLINE {
+            this->template E_Eq_<Component::X, isResistive, isHyperResistive, hyperMode>(
                 Pack{Enew, n, Ve, B, J}, gradPe.x, args...);
         });
-        layout_.evalOnBox(Eynew, [&](auto&... args) {
-            this->template E_Eq_<Component::Y, isResistive, isHyperResistive>(
+        layout_.evalOnBoxIndependent(Eynew, [&](auto&... args) PHARE_LAMBDA_ALWAYS_INLINE {
+            this->template E_Eq_<Component::Y, isResistive, isHyperResistive, hyperMode>(
                 Pack{Enew, n, Ve, B, J}, gradPe.y, args...);
         });
-        layout_.evalOnBox(Eznew, [&](auto&... args) {
-            this->template E_Eq_<Component::Z, isResistive, isHyperResistive>(
+        layout_.evalOnBoxIndependent(Eznew, [&](auto&... args) PHARE_LAMBDA_ALWAYS_INLINE {
+            this->template E_Eq_<Component::Z, isResistive, isHyperResistive, hyperMode>(
                 Pack{Enew, n, Ve, B, J}, gradPe.z, args...);
         });
     }
@@ -97,12 +103,12 @@ private:
     };
 
 
-    template<auto Tag, bool isResistive, bool isHyperResistive, typename OhmPack, typename GradPe,
-             typename... IDXs>
-    void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
+    template<auto Tag, bool isResistive, bool isHyperResistive, HyperMode hyperMode,
+             typename OhmPack, typename GradPe, typename... IDXs>
+    PHARE_ALWAYS_INLINE void E_Eq_(OhmPack&& pack, GradPe const& gradPe, IDXs const&... ijk) const
     {
-        auto const& [E, n, Ve, B, J]     = pack;
-        auto& Exyz                       = E(Tag);
+        auto const& [E, n, Ve, B, J] = pack;
+        auto& Exyz                   = E[Tag];
 
         static_assert(Components::check<Tag>());
 
@@ -111,7 +117,7 @@ private:
         if constexpr (isResistive)
             E_ += resistive_<Tag>(J, {ijk...});
         if constexpr (isHyperResistive)
-            E_ += hyperresistive_<Tag>(J, B, n, {ijk...});
+            E_ += hyperresistive_<Tag, hyperMode>(J, B, n, {ijk...});
 
         Exyz(ijk...) = E_;
     }
@@ -119,15 +125,16 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
+    PHARE_ALWAYS_INLINE auto ideal_(VecField const& Ve, VecField const& B,
+                                    MeshIndex<dimension> index) const
     {
         if constexpr (component == Component::X)
         {
-            auto const& Vy = Ve(Component::Y);
-            auto const& Vz = Ve(Component::Z);
+            auto const& Vy = Ve[Component::Y];
+            auto const& Vz = Ve[Component::Z];
 
-            auto const& By = B(Component::Y);
-            auto const& Bz = B(Component::Z);
+            auto const& By = B[Component::Y];
+            auto const& Bz = B[Component::Z];
 
             auto const vyOnEx = GridLayout::template project<GridLayout::momentsToEx>(Vy, index);
             auto const vzOnEx = GridLayout::template project<GridLayout::momentsToEx>(Vz, index);
@@ -139,10 +146,10 @@ private:
 
         if constexpr (component == Component::Y)
         {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vz = Ve(Component::Z);
-            auto const& Bx = B(Component::X);
-            auto const& Bz = B(Component::Z);
+            auto const& Vx = Ve[Component::X];
+            auto const& Vz = Ve[Component::Z];
+            auto const& Bx = B[Component::X];
+            auto const& Bz = B[Component::Z];
 
             auto const vxOnEy = GridLayout::template project<GridLayout::momentsToEy>(Vx, index);
             auto const vzOnEy = GridLayout::template project<GridLayout::momentsToEy>(Vz, index);
@@ -154,10 +161,10 @@ private:
 
         if constexpr (component == Component::Z)
         {
-            auto const& Vx = Ve(Component::X);
-            auto const& Vy = Ve(Component::Y);
-            auto const& Bx = B(Component::X);
-            auto const& By = B(Component::Y);
+            auto const& Vx = Ve[Component::X];
+            auto const& Vy = Ve[Component::Y];
+            auto const& Bx = B[Component::X];
+            auto const& By = B[Component::Y];
 
             auto const vxOnEz = GridLayout::template project<GridLayout::momentsToEz>(Vx, index);
             auto const vyOnEz = GridLayout::template project<GridLayout::momentsToEz>(Vy, index);
@@ -170,7 +177,8 @@ private:
 
 
     template<auto component, typename Field, typename GradPe>
-    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
+    PHARE_ALWAYS_INLINE auto pressure_(Field const& n, GradPe const& gradPe,
+                                       MeshIndex<Field::dimension> index) const
     {
         if constexpr (component == Component::X)
         {
@@ -212,9 +220,10 @@ private:
 
 
     template<auto component, typename VecField>
-    auto resistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    PHARE_ALWAYS_INLINE auto resistive_(VecField const& J,
+                                        MeshIndex<VecField::dimension> index) const
     {
-        auto const& Jxyx = J(component);
+        auto const& Jxyx = J[component];
 
         if constexpr (component == Component::X)
         {
@@ -235,41 +244,44 @@ private:
         }
     }
 
-    template<auto component, typename VecField, typename Field>
-    auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                         MeshIndex<VecField::dimension> index) const
+    template<auto component, HyperMode hyperMode, typename VecField, typename Field>
+    PHARE_ALWAYS_INLINE auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
+                                             MeshIndex<VecField::dimension> index) const
     {
-        if (hyper_mode == HyperMode::constant)
+        if constexpr (hyperMode == HyperMode::constant)
             return constant_hyperresistive_<component>(J, index);
-        else if (hyper_mode == HyperMode::spatial)
+        else
             return spatial_hyperresistive_<component>(J, B, n, index);
-        else // should not happen but otherwise -Wreturn-type fails with Werror
-            throw std::runtime_error("Error - Ohm - unknown hyper_mode");
     }
 
 
     template<auto component, typename VecField>
-    auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    PHARE_ALWAYS_INLINE auto constant_hyperresistive_(VecField const& J,
+                                                      MeshIndex<VecField::dimension> index) const
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
-        return -nu * laplacian(layout_, J(component), index);
+        return -nu * laplacian(layout_, J[component], index);
     }
 
 
     template<auto component, typename VecField, typename Field>
-    auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                                 MeshIndex<VecField::dimension> index) const
+    PHARE_ALWAYS_INLINE auto spatial_hyperresistive_(VecField const& J, VecField const& B,
+                                                     Field const& n,
+                                                     MeshIndex<VecField::dimension> index) const
     {
-        auto const lvlCoeff        = 1. / std::pow(4, layout_.levelNumber());
+        // 1 / 4^level without pow: a libcall the loop vectoriser cannot hoist (errno)
+        auto const lvlCoeff
+            = 1. / static_cast<double>(std::size_t{1} << (2 * layout_.levelNumber()));
         auto constexpr min_density = 0.1;
-        auto computeHR             = [&]<auto BxProj, auto ByProj, auto BzProj, auto nProj>() {
-            auto const BxOnE = GridLayout::template project<BxProj>(B(Component::X), index);
-            auto const ByOnE = GridLayout::template project<ByProj>(B(Component::Y), index);
-            auto const BzOnE = GridLayout::template project<BzProj>(B(Component::Z), index);
-            auto const nOnE  = GridLayout::template project<nProj>(n, index);
-            auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
-            return -nu * (b / (nOnE + min_density) + 1) * lvlCoeff
-                   * laplacian(layout_, J(component), index);
-        };
+        auto computeHR
+            = [&]<auto BxProj, auto ByProj, auto BzProj, auto nProj>() PHARE_LAMBDA_ALWAYS_INLINE {
+                  auto const BxOnE = GridLayout::template project<BxProj>(B[Component::X], index);
+                  auto const ByOnE = GridLayout::template project<ByProj>(B[Component::Y], index);
+                  auto const BzOnE = GridLayout::template project<BzProj>(B[Component::Z], index);
+                  auto const nOnE  = GridLayout::template project<nProj>(n, index);
+                  auto b           = std::sqrt(BxOnE * BxOnE + ByOnE * ByOnE + BzOnE * BzOnE);
+                  return -nu * (b / (nOnE + min_density) + 1) * lvlCoeff
+                         * laplacian(layout_, J[component], index);
+              };
         if constexpr (component == Component::X)
         {
             return computeHR.template operator()<GridLayout::BxToEx, GridLayout::ByToEx,
