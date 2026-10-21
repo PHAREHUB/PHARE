@@ -1,3 +1,6 @@
+
+#include "simulator/simulator_def.hpp"
+
 #include "tools/bench/core/bench.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp"
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"

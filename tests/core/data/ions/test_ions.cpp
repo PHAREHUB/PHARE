@@ -1,5 +1,6 @@
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/data/ions/ions.hpp"
 #include "core/data/vecfield/vecfield.hpp"

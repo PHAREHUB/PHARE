@@ -1,6 +1,7 @@
 
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/data/grid/grid.hpp"
 #include "test_resources_manager.hpp"
