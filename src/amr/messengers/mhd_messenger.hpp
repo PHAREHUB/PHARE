@@ -426,6 +426,13 @@ namespace amr
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
             fillMagneticGhosts(mhdModel.state.B, level, initDataTime);
+
+            // the faces on both sides of a periodic boundary are one face, initialised at two
+            // coordinates: make the patches holding them agree once, before anything reads B.
+            // Only after the refill: the max runs over whole ghost overlaps, and ghosts still
+            // holding the initializer's values would leak into the interior.
+            magMaxModelRefiners_.fill(mhdModel.state.B, level.getLevelNumber(), initDataTime);
+
             fillMomentsGhosts(mhdModel.state, level, initDataTime);
         }
 
