@@ -65,6 +65,10 @@ using tagged_field_t = std::decay_t<
 template<typename Model>
 using tagged_component_t = std::reference_wrapper<tagged_field_t<Model> const>;
 
+template<typename Model>
+auto constexpr max_tagged_components_v
+    = std::decay_t<decltype(magneticField(std::declval<Model&>()))>::size();
+
 
 template<typename Model>
 auto taggableQuantities(Model& model)
@@ -160,7 +164,13 @@ auto resolveQuantities(Model& model, std::vector<QuantityThreshold> const& quant
 {
     std::vector<std::pair<std::vector<tagged_component_t<Model>>, double>> resolved;
     for (auto const& [name, threshold] : quantities)
+    {
         resolved.emplace_back(resolveQuantity(model, name), threshold);
+        if (resolved.back().first.size() > max_tagged_components_v<Model>)
+            throw std::runtime_error("tagging quantity '" + name + "' has more than "
+                                     + std::to_string(max_tagged_components_v<Model>)
+                                     + " components");
+    }
     return resolved;
 }
 

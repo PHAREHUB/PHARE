@@ -17,6 +17,7 @@
 
 #include <cmath>
 #include <limits>
+#include <span>
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -809,6 +810,38 @@ public:
     }
 };
 
+template<typename Model>
+class NormCriterion : public ComponentWiseTaggerStrategy<NormCriterion<Model>, Model>
+{
+    using Super      = ComponentWiseTaggerStrategy<NormCriterion<Model>, Model>;
+    using field_type = Super::recentered_field_type;
+
+public:
+    static constexpr std::uint32_t stencil_reach = 0;
+
+    explicit NormCriterion(PHARE::initializer::PHAREDict const& dict)
+        : Super{dict}
+    {
+    }
+
+    double indicator(field_type const& field,
+                     std::array<std::uint32_t, Model::dimension> const& cell) const
+    {
+        return field(cell);
+    }
+
+    static double combine(std::span<double const> indicators)
+    {
+        double sum = 0.;
+        for (auto const c : indicators)
+            sum += c * c;
+        return std::sqrt(sum);
+    }
+};
+
+static_assert(tagging::max_tagged_components_v<MockHybridModel<2>> == 3);
+static_assert(tagging::max_tagged_components_v<MockMHDModel<2>> == 3);
+
 template<typename Strategy, typename Model>
 std::vector<int> tagsOf(Strategy const& strategy, Model& model)
 {
@@ -866,6 +899,46 @@ TEST(ComponentWise, PerQuantityThresholds)
     EXPECT_TRUE(allEqual(tags({{"rho", 2.}, {"Etot", 2.}}), 1));
     EXPECT_TRUE(allEqual(tags({{"rho", 2.}, {"Etot", 5.}}), 0));
     EXPECT_TRUE(allEqual(tags({{"rho", 1.}}), 0));
+}
+
+template<typename Model>
+void fillMHDB(Model& model, double bx, double by, double bz)
+{
+    using PHARE::core::Component;
+    fillConstant(model.state.B.getComponent(Component::X), bx);
+    fillConstant(model.state.B.getComponent(Component::Y), by);
+    fillConstant(model.state.B.getComponent(Component::Z), bz);
+}
+
+TEST(ComponentWise, CombineReducesTheComponentsOfOneQuantity)
+{
+    using Model = MockMHDModel<2>;
+    Model model;
+    auto const normTags = [&](std::vector<tagging::QuantityThreshold> const& quantities) {
+        return tagsOf(NormCriterion<Model>{quantitiesDict(quantities)}, model);
+    };
+
+    fillMHDB(model, 0.4, 0.4, 0.);
+    fillConstant(model.state.rho, 0.);
+    EXPECT_TRUE(
+        allEqual(tagsOf(CellValueCriterion<Model>{quantitiesDict({{"B", 0.5}})}, model), 0));
+    EXPECT_TRUE(allEqual(normTags({{"B", 0.5}}), 1));
+
+    fillMHDB(model, 0.3, 0.3, 0.);
+    fillConstant(model.state.rho, 0.3);
+    EXPECT_TRUE(allEqual(normTags({{"B", 0.5}, {"rho", 0.5}}), 0));
+    EXPECT_TRUE(allEqual(normTags({{"rho", 0.2}}), 1));
+}
+
+TEST(ComponentWise, CombineNaNOnlyFailsItsQuantity)
+{
+    using Model = MockMHDModel<2>;
+    Model model;
+    fillMHDB(model, std::numeric_limits<double>::quiet_NaN(), 1., 0.);
+    fillConstant(model.state.rho, 1.);
+    EXPECT_TRUE(allEqual(tagsOf(NormCriterion<Model>{quantitiesDict({{"B", 0.5}})}, model), 0));
+    EXPECT_TRUE(allEqual(
+        tagsOf(NormCriterion<Model>{quantitiesDict({{"B", 0.5}, {"rho", 0.5}})}, model), 1));
 }
 
 TEST(ComponentWise, NaNComponentDoesNotMaskOthers)

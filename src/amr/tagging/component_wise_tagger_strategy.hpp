@@ -15,6 +15,7 @@
 #include <array>
 #include <cstddef>
 #include <cstdint>
+#include <span>
 #include <utility>
 #include <vector>
 #include <iostream>
@@ -70,10 +71,18 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
 {
     auto const allDual = core::ConstArray<core::QtyCentering, dimension>(core::QtyCentering::dual);
 
-    std::vector<std::pair<recentered_field_type, double>> components;
-    for (auto const& [quantity, threshold] : tagging::resolveQuantities(model, quantities_))
-        for (auto const& component : quantity)
-            components.emplace_back(recentered_field_type{component.get(), allDual}, threshold);
+    std::vector<std::pair<std::vector<recentered_field_type>, double>> quantities;
+    for (auto const& [components, threshold] : tagging::resolveQuantities(model, quantities_))
+    {
+        auto& [fields, quantityThreshold] = quantities.emplace_back();
+        quantityThreshold                 = threshold;
+        for (auto const& component : components)
+            fields.emplace_back(component.get(), allDual);
+    }
+
+    constexpr bool hasCombine
+        = requires(std::span<double const> indicators) { Derived::combine(indicators); };
+    std::array<double, tagging::max_tagged_components_v<Model>> indicators;
 
     auto const nbrCells = layout.nbrCells();
     std::array<std::uint32_t, dimension> start;
@@ -96,12 +105,23 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
             cell[d] = tagIdx[d] + start[d];
         }
 
-        auto const exceeds = [&](auto const& component) {
-            return derived_().indicator(component.first, cell) > component.second;
+        auto const passes = [&](auto const& quantity) {
+            auto const& [fields, threshold] = quantity;
+            if constexpr (hasCombine)
+            {
+                for (std::size_t c = 0; c < fields.size(); ++c)
+                    indicators[c] = derived_().indicator(fields[c], cell);
+                return Derived::combine(std::span<double const>(indicators.data(), fields.size()))
+                       > threshold;
+            }
+            else
+                return std::any_of(std::begin(fields), std::end(fields), [&](auto const& field) {
+                    return derived_().indicator(field, cell) > threshold;
+                });
         };
         tagsv(tagIndex...)
-            = !inBorder and std::any_of(std::begin(components), std::end(components), exceeds) ? 1
-                                                                                               : 0;
+            = !inBorder and std::any_of(std::begin(quantities), std::end(quantities), passes) ? 1
+                                                                                              : 0;
     };
 
     if constexpr (dimension == 1)
