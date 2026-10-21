@@ -1,16 +1,13 @@
 import unittest
 from unittest import mock
+
 import numpy as np
-
-
-import pyphare.pharein.global_vars as global_vars
-
 from pyphare.core import phare_utilities
-from pyphare.pharein import simulation
-from pyphare.pharein.mhd_model import MHDModel
-from pyphare.pharein import tagging
+from pyphare.pharein import global_vars, simulation, tagging
 from pyphare.pharein.initialize import general, hybrid, mhd
-import pyphare.pharein as ph
+from pyphare.pharein.mhd_model import MHDModel
+
+from pyphare import pharein as ph
 
 
 class TestSimulation(unittest.TestCase):

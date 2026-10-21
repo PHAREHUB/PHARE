@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import ClassVar
 
 _TAGGING_PATH = "simulation/AMR/refinement/tagging/"
 
@@ -27,6 +28,7 @@ _NOT_AVAILABLE = {
 @dataclass
 class Tagging:
     method = None
+    expected_params: ClassVar[dict[str, type]] = {}
 
     quantities: list[tuple[str, float]]
 
@@ -45,6 +47,7 @@ class DefaultTagging(Tagging):
 @dataclass
 class LohnerTagging(Tagging):
     method = "lohner"
+    expected_params: ClassVar[dict[str, type]] = {"reltol": float, "abstol": float}
 
     reltol: float = 0.02
     abstol: float = 1e-8
@@ -55,9 +58,9 @@ class LohnerTagging(Tagging):
         dp.add_double(_TAGGING_PATH + "params/abstol", self.abstol)
 
 
-_TAGGER_SPECS = {
-    "default": (DefaultTagging, {}),
-    "lohner": (LohnerTagging, {"reltol": float, "abstol": float}),
+_TAGGERS = {
+    "default": DefaultTagging,
+    "lohner": LohnerTagging,
 }
 
 
@@ -92,23 +95,23 @@ def resolve_tagging(**kwargs):
         )
 
     method = spec.get("method", "default")
-    if method not in _TAGGER_SPECS:
+    if method not in _TAGGERS:
         raise ValueError(
-            f"Error: invalid tagging method '{method}', expected one of {tuple(_TAGGER_SPECS)}"
+            f"Error: invalid tagging method '{method}', expected one of {tuple(_TAGGERS)}"
         )
-    cls, param_coercions = _TAGGER_SPECS[method]
+    cls = _TAGGERS[method]
 
     params = spec.get("params", None) or {}
     if not isinstance(params, dict):
         raise TypeError("Error: tagging 'params' must be a dict {name: value}")
-    unknown = set(params) - set(param_coercions)
+    unknown = set(params) - set(cls.expected_params)
     if unknown:
         raise ValueError(
             f"Error: invalid tagging params {sorted(unknown)} for method '{method}',"
-            f" expected keys among {tuple(param_coercions)}"
+            f" expected keys among {tuple(cls.expected_params)}"
         )
     param_kwargs = {
-        name: param_coercions[name](value) for name, value in params.items()
+        name: cls.expected_params[name](value) for name, value in params.items()
     }
 
     quantities = spec.get("quantities", None)
