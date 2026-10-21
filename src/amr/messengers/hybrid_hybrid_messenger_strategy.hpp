@@ -114,8 +114,6 @@ namespace amr
 
             resourcesManager_->registerResources(Bold_);
             resourcesManager_->registerResources(Eold_);
-            resourcesManager_->registerResources(NiOld_);
-            resourcesManager_->registerResources(ViOld_);
             resourcesManager_->registerResources(sumVec_);
             resourcesManager_->registerResources(sumField_);
             resourcesManager_->registerResources(sumTensor_);
@@ -138,8 +136,6 @@ namespace amr
         {
             resourcesManager_->allocate(Bold_, patch, allocateTime);
             resourcesManager_->allocate(Eold_, patch, allocateTime);
-            resourcesManager_->allocate(NiOld_, patch, allocateTime);
-            resourcesManager_->allocate(ViOld_, patch, allocateTime);
             resourcesManager_->allocate(sumVec_, patch, allocateTime);
             resourcesManager_->allocate(sumField_, patch, allocateTime);
             resourcesManager_->allocate(sumTensor_, patch, allocateTime);
@@ -224,12 +220,9 @@ namespace amr
 
             elecGhostsRefiners_.registerLevel(hierarchy, level);
             magGhostsRefiners_.registerLevel(hierarchy, level);
-            // chargeDensityLevelGhostsRefiners_.registerLevel(hierarchy, level);
-            // velLevelGhostsRefiners_.registerLevel(hierarchy, level);
             domainGhostPartRefiners_.registerLevel(hierarchy, level);
 
             chargeDensityPatchGhostsRefiners_.registerLevel(hierarchy, level);
-            velPatchGhostsRefiners_.registerLevel(hierarchy, level);
 
             for (auto& refiner : popFluxBorderSumRefiners_)
                 refiner.registerLevel(hierarchy, level);
@@ -263,7 +256,6 @@ namespace amr
                 // and these for coarsening
                 electroSynchronizers_.registerLevel(hierarchy, level);
                 chargeDensitySynchronizers_.registerLevel(hierarchy, level);
-                ionBulkVelSynchronizers_.registerLevel(hierarchy, level);
                 ionChargeFluxSynchronizers_.registerLevel(hierarchy, level);
             }
         }
@@ -470,8 +462,8 @@ namespace amr
 
         void fillIonBorders(IonsT& /*ions*/, level_t& level, double const fillTime) override
         {
-            assert(ionFluxBorderMaxRefiners_.size() == 2); // bulk velocity & charge flux
-            assert(ionDensityBorderMaxRefiners_.size() == 2);
+            assert(ionFluxBorderMaxRefiners_.size() == 1);    // charge flux
+            assert(ionDensityBorderMaxRefiners_.size() == 1); // charge density
 
             for (auto& refiner : ionFluxBorderMaxRefiners_)
                 refiner.fill(level.getLevelNumber(), fillTime);
@@ -529,28 +521,6 @@ namespace amr
             }
         }
 
-
-        /* pure (patch and level) ghost nodes are filled by applying a regular ghost
-         * schedule i.e. that does not overwrite the border patch node previously well
-         * calculated from particles Note : the ghost schedule only fills the total density
-         * and bulk velocity and NOT population densities and fluxes. These partial moments
-         * are already completed by the "sum" schedules (+= on incomplete nodes)*/
-        // virtual void fillIonMomentGhosts(IonsT& ions, level_t& level,
-        //                                  double const afterPushTime) override
-        // {
-        //     PHARE_LOG_SCOPE(3, "HybridHybridMessengerStrategy::fillIonMomentGhosts");
-        //     auto& chargeDensity = ions.chargeDensity();
-        //     auto& velocity      = ions.velocity();
-        //
-        //
-        //     if (level.getLevelNumber() != 0)
-        //     {
-        //         setNaNsOnFieldGhosts(chargeDensity, level);
-        //         setNaNsOnVecfieldGhosts(velocity, level);
-        //     }
-        //     chargeDensityLevelGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
-        //     velLevelGhostsRefiners_.fill(level.getLevelNumber(), afterPushTime);
-        // }
 
         /**
          * @brief firstStep : in the HybridHybridMessengerStrategy, the firstStep method is
@@ -627,13 +597,12 @@ namespace amr
         /**
          * @brief prepareStep is the concrete implementation of the
          * HybridMessengerStrategy::prepareStep method For hybrid-Hybrid communications.
-         * This method copies the electromagnetic field, the density and bulk velocity,
-         * defined at t=n. Since prepareStep() is called just before advancing the level,
-         * this operation actually saves the t=n versions of B, E, Ni, Vi into the
-         * messenger. When the time comes that the next finer level needs to time
-         * interpolate these quantities at its ghost nodes, this level will be able to
-         * interpolate at required time because the t=n fields of previous next coarser
-         * step will be in the messenger.
+         * This method copies the electromagnetic field defined at t=n. Since prepareStep()
+         * is called just before advancing the level, this operation actually saves the t=n
+         * versions of B and E into the messenger. When the time comes that the next finer
+         * level needs to time interpolate these quantities at its ghost nodes, this level
+         * will be able to interpolate at required time because the t=n fields of previous
+         * next coarser step will be in the messenger.
          */
         void prepareStep(IPhysicalModel& model, level_t& level, double currentTime) override
         {
@@ -644,20 +613,13 @@ namespace amr
             {
                 auto dataOnPatch = resourcesManager_->setOnPatch(
                     *patch, hybridModel.state.electromag, hybridModel.state.J,
-                    hybridModel.state.ions, Bold_, Eold_, NiOld_, ViOld_);
+                    hybridModel.state.ions, Bold_, Eold_);
 
                 resourcesManager_->setTime(Bold_, *patch, currentTime);
                 resourcesManager_->setTime(Eold_, *patch, currentTime);
-                resourcesManager_->setTime(NiOld_, *patch, currentTime);
-                resourcesManager_->setTime(ViOld_, *patch, currentTime);
-
-                auto& Vi = hybridModel.state.ions.velocity();
-                auto& Ni = hybridModel.state.ions.chargeDensity();
 
                 Bold_.copyData(hybridModel.state.electromag.B);
                 Eold_.copyData(hybridModel.state.electromag.E);
-                ViOld_.copyData(Vi);
-                NiOld_.copyData(Ni);
             }
         }
 
@@ -698,7 +660,6 @@ namespace amr
             // call coarsning schedules...
             electroSynchronizers_.sync(levelNumber);
             chargeDensitySynchronizers_.sync(levelNumber);
-            ionBulkVelSynchronizers_.sync(levelNumber);
             ionChargeFluxSynchronizers_.sync(levelNumber);
         }
 
@@ -727,7 +688,6 @@ namespace amr
             elecGhostsRefiners_.fill(hybridModel.state.electromag.E, levelNumber, time);
 
             chargeDensityPatchGhostsRefiners_.fill(levelNumber, time);
-            velPatchGhostsRefiners_.fill(hybridModel.state.ions.velocity(), levelNumber, time);
         }
 
     private:
@@ -750,11 +710,10 @@ namespace amr
                     makeMagneticRefineKernel<GridLayoutT, GridT>(config.order));
             };
 
-            fieldRefineOp_    = fieldKernel();
-            vecFieldRefineOp_ = vecKernel();
-            BInitRefineOp_    = magKernel();
-            BRefineOp_        = magKernel();
-            EfieldRefineOp_   = vecKernel();
+            fieldRefineOp_  = fieldKernel();
+            BInitRefineOp_  = magKernel();
+            BRefineOp_      = magKernel();
+            EfieldRefineOp_ = vecKernel();
         }
 
         void registerGhostComms_(std::unique_ptr<HybridMessengerInfo> const& info)
@@ -810,22 +769,11 @@ namespace amr
             // J has no refiner: it is never communicated, each level computes it
             // locally via Ampere on physical+1 from the time-refined B ghosts.
 
-            // chargeDensityLevelGhostsRefiners_.addTimeRefiner(
-            //     info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldRefineOp_,
-            //     fieldTimeOp_, info->modelIonDensity, nonOverwriteInteriorFieldFillPattern);
-            //
-            //
-            // velLevelGhostsRefiners_.addTimeRefiners(
-            //     info->ghostBulkVelocity, info->modelIonBulkVelocity, ViOld_.name(),
-            //     vecFieldRefineOp_, vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
-
-            chargeDensityPatchGhostsRefiners_.addTimeRefiner(
-                info->modelIonDensity, info->modelIonDensity, NiOld_.name(), fieldRefineOp_,
-                fieldTimeOp_, info->modelIonDensity, nonOverwriteInteriorFieldFillPattern);
-
-            velPatchGhostsRefiners_.addTimeRefiners(
-                info->ghostBulkVelocity, info->modelIonBulkVelocity, ViOld_.name(),
-                vecFieldRefineOp_, vecFieldTimeOp_, nonOverwriteInteriorTFfillPattern);
+            // same level schedule: patch ghost nodes are copied from neighbor patches at the
+            // same time, no time interpolation
+            chargeDensityPatchGhostsRefiners_.addStaticRefiner(
+                info->modelIonDensity, fieldRefineOp_, info->modelIonDensity,
+                nonOverwriteInteriorFieldFillPattern);
         }
 
 
@@ -878,14 +826,14 @@ namespace amr
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
 
-            assert(info->maxBorderFields.size() == 2); // mass & charge densities
+            assert(info->maxBorderFields.size() == 1); // charge density
             for (auto const& field : info->maxBorderFields)
                 ionDensityBorderMaxRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
                         field, field, nullptr, field,
                         std::make_shared<FieldGhostInterpOverlapFillPattern<GridLayoutT>>());
 
-            assert(info->maxBorderVecFields.size() == 2); // bulk velocity & charge flux
+            assert(info->maxBorderVecFields.size() == 1); // charge flux
             for (auto const& vecfield : info->maxBorderVecFields)
                 ionFluxBorderMaxRefiners_.emplace_back(resourcesManager_)
                     .addStaticRefiner(
@@ -900,9 +848,6 @@ namespace amr
         {
             electroSynchronizers_.add(info->modelElectric, electricFieldCoarseningOp_,
                                       info->modelElectric);
-
-            ionBulkVelSynchronizers_.add(info->modelIonBulkVelocity, vecFieldMomentsCoarseningOp_,
-                                         info->modelIonBulkVelocity);
 
             // no patch ghost refill after sync for the charge flux: the electron velocity
             // is only computed and used on the physical box
@@ -993,8 +938,6 @@ namespace amr
 
         VecFieldT Bold_{stratName + "_Bold", core::HybridQuantity::Vector::B};
         VecFieldT Eold_{stratName + "_Eold", core::HybridQuantity::Vector::E};
-        VecFieldT ViOld_{stratName + "_VBulkOld", core::HybridQuantity::Vector::V};
-        FieldT NiOld_{stratName + "_NiOld", core::HybridQuantity::Scalar::rho};
 
         TensorFieldT sumTensor_{"PHARE_sumTensor", core::HybridQuantity::Tensor::M};
         VecFieldT sumVec_{"PHARE_sumVec", core::HybridQuantity::Vector::V};
@@ -1063,30 +1006,15 @@ namespace amr
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
 
         // moment ghosts
-        // The border node is already complete by the deposit of ghost particles
-        // these refiners are used to fill ghost nodes, and therefore, owing to
-        // the GhostField tag, will only assign pure ghost nodes. Border nodes will
-        // be overwritten only on level borders, which does not seem to be an issue.
-        // ******
-        // NOTE :
-        // *****
-        // these and all the code that use them is commented
-        // the reason for not deleting is that in its current state the code
-        // only deposits levelghost particles which therefore leaves some of the level
-        // ghost nodes incomplete (missing the outside contribution).
-        // We thought about replacing levelghost particle deposit by filling a level ghost schedule
-        // but at interp order >=2, levelghost particles will contribute to inner domain nodes
-        // which a schedule will not do so we need them.
-        // Keeping this code here is a way to ease the filling of pure level ghost nodes
-        // if we decide to do so one day. This would overwrite what level ghost particles
-        // have deposited on level ghost nodes, but since it is incomplete it does not matter
-        // on the other hand this would be necessary if we wanted to have a multiple point
-        // coarsening operator for moments.
-        // LevelBorderFieldRefinerPool chargeDensityLevelGhostsRefiners_{resourcesManager_};
-        // LevelBorderFieldRefinerPool velLevelGhostsRefiners_{resourcesManager_};
+        // There is no level ghost refiner for the moments: on level ghost nodes they come
+        // only from the deposit of level ghost particles, which leaves the outermost level
+        // ghost nodes incomplete (missing the outside contribution). A level ghost schedule
+        // cannot replace that deposit: at interp order >= 2, level ghost particles also
+        // contribute to domain nodes. Such a schedule would be needed to fill the pure level
+        // ghost nodes of the charge density and charge flux, or to coarsen moments with a
+        // multiple point operator.
 
         PatchGhostRefinerPool chargeDensityPatchGhostsRefiners_{resourcesManager_};
-        PatchGhostRefinerPool velPatchGhostsRefiners_{resourcesManager_};
 
         // pool of refiners for interior particles of each population
         // and the associated refinement operator
@@ -1110,14 +1038,12 @@ namespace amr
         DomainGhostPartRefinerPool domainGhostPartRefiners_{resourcesManager_};
 
         SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
-        SynchronizerPool<rm_t> ionBulkVelSynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> ionChargeFluxSynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
 
 
         // built in the ctor body (makeRefineOperators_) from the composite runtime kernels.
         RefOp_ptr fieldRefineOp_;
-        RefOp_ptr vecFieldRefineOp_;
 
 
         RefOp_ptr BInitRefineOp_;
@@ -1137,7 +1063,6 @@ namespace amr
             = std::make_shared<TensorFieldFillPattern<dimension /*, rank=1*/>>(
                 /*overwrite_interior=*/true);
 
-        std::shared_ptr<TimeInterpolateOperator> fieldTimeOp_{std::make_shared<FieldTimeInterp>()};
         std::shared_ptr<TimeInterpolateOperator> vecFieldTimeOp_{
             std::make_shared<VecFieldTimeInterp>()};
 

@@ -106,11 +106,6 @@ namespace amr
         {
         }
 
-        // void fillIonMomentGhosts(IonsT& /*ions*/, level_t& /*level*/,
-        //                          double const /*fillTime*/) override
-        // {
-        // }
-
 
         void fillFluxBorders(IonsT& /*ions*/, level_t& /*level*/,
                              double const /*fillTime*/) override
