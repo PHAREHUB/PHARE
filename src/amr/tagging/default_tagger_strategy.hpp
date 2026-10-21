@@ -42,15 +42,16 @@ public:
         }
         else
         {
-            double crit = 0.;
+            auto const f0 = F(cell);
+            double crit   = 0.;
             for (std::size_t d = 0; d < dimension; ++d)
             {
                 auto next  = cell;
                 auto next2 = cell;
                 next[d] += 1;
                 next2[d] += 2;
-                auto const delta_2 = std::abs(F(next2) - F(cell));
-                auto const delta   = std::abs(F(next) - F(cell));
+                auto const delta_2 = std::abs(F(next2) - f0);
+                auto const delta   = std::abs(F(next) - f0);
                 crit               = std::max(crit, delta_2 / (1 + delta));
             }
             return crit;
