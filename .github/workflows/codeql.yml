@@ -1,24 +1,16 @@
 name: "CodeQL"
 
+# on PRs: called from ci.yml, which also does the paths filtering
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # github.workflow is the caller's name when called: the suffix keeps this group apart from ci's
+  group: ${{ github.workflow }}-codeql-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 on:
+  workflow_call:
   push:
     branches: [ "master" ]
-  pull_request:
-    branches: [ "master" ]
-    # no analysis for PRs that only touch CI, docs or markdown; later patterns win
-    paths:
-      - '**'
-      - '!.github/**'
-      - '!res/ci/**'
-      - '!doc/**'
-      - '!**/*.md'
-      - '!codecov.yml'
-      - '.github/workflows/codeql.yml'
-      - '.github/codeql-config.yml'
   schedule:
     - cron: "42 19 * * 4"
 

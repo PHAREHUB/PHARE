@@ -1,20 +1,14 @@
 name: CMake Ubuntu
 
+# on PRs: called from ci.yml, which also does the paths filtering
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # github.workflow is the caller's name when called: the suffix keeps this group apart from ci's
+  group: ${{ github.workflow }}-cmake-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 on:
-  pull_request:
-    # no build for PRs that only touch CI, docs or markdown; later patterns win
-    paths:
-      - '**'
-      - '!.github/**'
-      - '!res/ci/**'
-      - '!doc/**'
-      - '!**/*.md'
-      - '!codecov.yml'
-      - '.github/workflows/cmake_ubuntu.yml'
+  workflow_call:
   workflow_dispatch:
 
 jobs:

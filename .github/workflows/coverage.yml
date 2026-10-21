@@ -3,22 +3,18 @@ name: Coverage
 # gcov line coverage of the C++ sources, uploaded to codecov.io (config in codecov.yml)
 #  test scope: default levels (1-10) without the nightly label
 
+# on PRs: called from ci.yml, which also does the paths filtering
+
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  # github.workflow is the caller's name when called: the suffix keeps this group apart from ci's
+  group: ${{ github.workflow }}-coverage-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 on:
-  pull_request:
-    # no coverage for PRs that only touch CI, docs or markdown; later patterns win
-    paths:
-      - '**'
-      - '!.github/**'
-      - '!res/ci/**'
-      - '!doc/**'
-      - '!**/*.md'
-      - '!codecov.yml'
-      - '.github/workflows/coverage.yml'
-      - 'codecov.yml'
+  workflow_call:
+    secrets:
+      CODECOV_TOKEN:
+        required: false # fork PRs have none: Codecov takes tokenless uploads from them
   push:
     branches: [master] # master reports are the base PRs are compared to
   workflow_dispatch:
