@@ -5,7 +5,6 @@
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/ohm/ohm.hpp"
-#include "core/utilities/index/index.hpp"
 
 #include <cmath>
 
@@ -40,20 +39,29 @@ public:
         auto& Ey = E(Component::Y);
         auto& Ez = E(Component::Z);
 
-        layout_.evalOnBox(Ex, [&](auto&... args) { ExEq_(ct_state, Ex, B, {args...}); });
-        layout_.evalOnBox(Ey, [&](auto&... args) { EyEq_(ct_state, Ey, B, {args...}); });
-        layout_.evalOnBox(Ez, [&](auto&... args) { EzEq_(ct_state, Ez, B, {args...}); });
+        // evalOnBox calls fn(idx, self, args...): fn is captureless, state is forwarded
+        layout_.evalOnBox(
+            Ex, [](auto const& i, auto const& self, auto&&... args) { self.ExEq_(i, args...); },
+            *this, ct_state, Ex, B);
+        layout_.evalOnBox(
+            Ey, [](auto const& i, auto const& self, auto&&... args) { self.EyEq_(i, args...); },
+            *this, ct_state, Ey, B);
+        layout_.evalOnBox(
+            Ez, [](auto const& i, auto const& self, auto&&... args) { self.EzEq_(i, args...); },
+            *this, ct_state, Ez, B);
 
         if (is_dissipative_)
         {
             auto const& Ediss = dissipative_electric_state.E();
             for (auto c : {Component::X, Component::Y, Component::Z})
-                layout_.evalOnBox(E(c), [&](auto&... args) { E(c)(args...) += Ediss(c)(args...); });
+                layout_.evalOnBox(
+                    E(c), [](auto const& i, auto& Ec, auto const& Ed) { Ec(i) += Ed(i); }, E(c),
+                    Ediss(c));
         }
     }
 
 private:
-    void ExEq_(auto& ct_state, auto& Ex, auto const& B, MeshIndex<dimension> idx) const
+    void ExEq_(auto const& idx, auto& ct_state, auto& Ex, auto const& B) const
     {
         if constexpr (dimension == 2)
         {
@@ -144,7 +152,7 @@ private:
         }
     }
 
-    void EyEq_(auto& ct_state, auto& Ey, auto const& B, MeshIndex<dimension> idx) const
+    void EyEq_(auto const& idx, auto& ct_state, auto& Ey, auto const& B) const
     {
         if constexpr (dimension <= 2)
         {
@@ -232,7 +240,7 @@ private:
         }
     }
 
-    void EzEq_(auto& ct_state, auto& Ez, auto const& B, MeshIndex<dimension> idx) const
+    void EzEq_(auto const& idx, auto& ct_state, auto& Ez, auto const& B) const
     {
         if constexpr (dimension == 1)
         {

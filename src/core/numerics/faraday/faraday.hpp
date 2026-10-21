@@ -44,15 +44,14 @@ public:
 
         auto const curlE = curl(layout_, E);
 
-        layout_.evalOnBox(Bxnew, [&](auto const&... ijk) {
-            Bxnew(ijk...) = Bx(ijk...) - dt_ * curlE.x({ijk...});
-        });
-        layout_.evalOnBox(Bynew, [&](auto const&... ijk) {
-            Bynew(ijk...) = By(ijk...) - dt_ * curlE.y({ijk...});
-        });
-        layout_.evalOnBox(Bznew, [&](auto const&... ijk) {
-            Bznew(ijk...) = Bz(ijk...) - dt_ * curlE.z({ijk...});
-        });
+        // evalOnBox calls fn(point, trailingArgs...); the trailing args here
+        // (Bc, curlE component, Bcnew, dt_) are passed through rather than captured
+        auto constexpr BEq = [](auto const& ijk, auto const& Bc, auto const& curlEc, auto& Bcnew,
+                                double const dt) { Bcnew(ijk) = Bc(ijk) - dt * curlEc(ijk); };
+
+        layout_.evalOnBox(Bxnew, BEq, Bx, curlE.x, Bxnew, dt_);
+        layout_.evalOnBox(Bynew, BEq, By, curlE.y, Bynew, dt_);
+        layout_.evalOnBox(Bznew, BEq, Bz, curlE.z, Bznew, dt_);
     }
 
 

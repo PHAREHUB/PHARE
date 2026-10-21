@@ -2,7 +2,6 @@
 #include "phare_core.hpp"
 #include "simulator/simulator_def.hpp"
 
-#include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/numerics/faraday/faraday.hpp"

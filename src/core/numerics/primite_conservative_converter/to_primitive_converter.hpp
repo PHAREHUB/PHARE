@@ -2,7 +2,6 @@
 #define PHARE_CORE_NUMERICS_TO_PRIMITIVE_CONVERTER_HPP
 
 
-#include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -57,23 +56,21 @@ public:
     template<typename Field, typename VecField>
     void rhoVToVOnGhostBox(Field& rho, VecField const& rhoV, VecField& V) const
     {
-        layout_.evalOnGhostBox(rho,
-                               [&](auto&... args) mutable { rhoVToV_(rho, rhoV, V, {args...}); });
+        // evalOnGhostBox calls fn(index, args...): fn is captureless, state is forwarded
+        layout_.evalOnGhostBox(rho, [](auto&&... args) { rhoVToV_(args...); }, rho, rhoV, V);
     }
 
     template<typename Field, typename VecField>
     void eosEtotToPOnGhostBox(double const gamma, Field const& rho, VecField const& rhoV,
                               VecField const& B, Field& Etot, Field& P) const
     {
-        layout_.evalOnGhostBox(rho, [&](auto&... args) mutable {
-            eosEtotToP_(gamma, rho, rhoV, B, Etot, P, {args...});
-        });
+        layout_.evalOnGhostBox(
+            rho, [](auto&&... args) { eosEtotToP_(args...); }, gamma, rho, rhoV, B, Etot, P);
     }
 
 private:
     template<typename Field, typename VecField>
-    static void rhoVToV_(Field& rho, VecField const& rhoV, VecField& V,
-                         MeshIndex<Field::dimension> index)
+    static void rhoVToV_(auto const& index, Field& rho, VecField const& rhoV, VecField& V)
     {
         auto const& rhoVx = rhoV(Component::X);
         auto const& rhoVy = rhoV(Component::Y);
@@ -90,9 +87,8 @@ private:
     }
 
     template<typename Field, typename VecField>
-    static void eosEtotToP_(double const gamma, Field const& rho, VecField const& rhoV,
-                            VecField const& B, Field& Etot, Field& P,
-                            MeshIndex<Field::dimension> index)
+    static void eosEtotToP_(auto const& index, double const gamma, Field const& rho,
+                            VecField const& rhoV, VecField const& B, Field& Etot, Field& P)
     {
         auto const& rhoVx = rhoV(Component::X);
         auto const& rhoVy = rhoV(Component::Y);

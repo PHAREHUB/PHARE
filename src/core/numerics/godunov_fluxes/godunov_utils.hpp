@@ -7,7 +7,6 @@
 #include "core/models/quantities/mhd_quantities.hpp"
 #include "core/numerics/primite_conservative_converter/to_conservative_converter.hpp"
 #include "core/utilities/algorithm.hpp"
-#include "core/utilities/index/index.hpp"
 
 #include <array>
 #include <cassert>
@@ -58,8 +57,7 @@ struct PerIndexVector
 };
 
 template<typename Field>
-PerIndexVector<typename Field::value_type&> toPerIndexVector(Field& field,
-                                                             MeshIndex<Field::dimension> idx)
+PerIndexVector<typename Field::value_type&> toPerIndexVector(Field& field, auto const& idx)
 {
     return PerIndexVector<typename Field::value_type&>{
         field(Component::X)(idx), field(Component::Y)(idx), field(Component::Z)(idx)};
@@ -178,7 +176,7 @@ struct AllFluxes
     }
 
     template<auto direction>
-    auto get_dir(MeshIndex<Field::dimension> index)
+    auto get_dir(auto const& index)
         requires((!ViewVector<Field>) && (!ViewVector<VecField>))
     {
         using Float = typename Field::value_type;

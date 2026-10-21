@@ -43,7 +43,7 @@ TYPED_TEST(a1DLaplacian, LaplacianJx1D)
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
-        auto localLaplacian = laplacian(this->layout, this->Jx, make_index(ix));
+        auto localLaplacian = laplacian(this->layout, this->Jx, Point{ix});
         EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
     }
 }
@@ -72,7 +72,7 @@ TYPED_TEST(a1DLaplacian, LaplacianJy1D)
 
     for (auto ix = psi_X; ix <= pei_X; ++ix)
     {
-        auto localLaplacian = laplacian(this->layout, this->Jy, make_index(ix));
+        auto localLaplacian = laplacian(this->layout, this->Jy, Point{ix});
         EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
     }
 }
@@ -101,7 +101,7 @@ TYPED_TEST(a1DLaplacian, LaplacianJz1D)
 
     for (std::uint32_t ix = psi_X; ix <= pei_X; ++ix)
     {
-        auto localLaplacian = laplacian(this->layout, this->Jz, make_index(ix));
+        auto localLaplacian = laplacian(this->layout, this->Jz, Point{ix});
         EXPECT_THAT(localLaplacian, ::testing::DoubleNear(expLapValue[ix], 1e-12));
     }
 }
@@ -152,7 +152,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJx2D)
     {
         for (auto iy = psi_Y; iy <= pei_Y; ++iy)
         {
-            auto localLaplacian = laplacian(this->layout, this->Jx, make_index(ix, iy));
+            auto localLaplacian = laplacian(this->layout, this->Jx, Point{ix, iy});
 
             auto index_ = ix * nPts_[1] + iy;
 
@@ -195,7 +195,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJy2D)
     {
         for (auto iy = psi_Y; iy <= pei_Y; ++iy)
         {
-            auto localLaplacian = laplacian(this->layout, this->Jy, make_index(ix, iy));
+            auto localLaplacian = laplacian(this->layout, this->Jy, Point{ix, iy});
 
             auto index_ = ix * nPts_[1] + iy;
 
@@ -238,7 +238,7 @@ TYPED_TEST(a2DLaplacian, LaplacianJz2D)
     {
         for (auto iy = psi_Y; iy <= pei_Y; ++iy)
         {
-            auto localLaplacian = laplacian(this->layout, this->Jz, make_index(ix, iy));
+            auto localLaplacian = laplacian(this->layout, this->Jz, Point{ix, iy});
 
             auto index_ = ix * nPts_[1] + iy;
 
@@ -304,7 +304,7 @@ TYPED_TEST(a3DLaplacian, LaplacianJx3D)
         {
             for (auto iz = psi_Z; iz <= pei_Z; ++iz)
             {
-                auto localLaplacian = laplacian(this->layout, this->Jx, make_index(ix, iy, iz));
+                auto localLaplacian = laplacian(this->layout, this->Jx, Point{ix, iy, iz});
 
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
 
@@ -359,7 +359,7 @@ TYPED_TEST(a3DLaplacian, LaplacianJy3D)
         {
             for (auto iz = psi_Z; iz <= pei_Z; ++iz)
             {
-                auto localLaplacian = laplacian(this->layout, this->Jy, make_index(ix, iy, iz));
+                auto localLaplacian = laplacian(this->layout, this->Jy, Point{ix, iy, iz});
 
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
 
@@ -414,7 +414,7 @@ TYPED_TEST(a3DLaplacian, LaplacianJz3D)
         {
             for (auto iz = psi_Z; iz <= pei_Z; ++iz)
             {
-                auto localLaplacian = laplacian(this->layout, this->Jz, make_index(ix, iy, iz));
+                auto localLaplacian = laplacian(this->layout, this->Jz, Point{ix, iy, iz});
 
                 auto index_ = ix * nPts_[1] * nPts_[2] + iy * nPts_[2] + iz;
 

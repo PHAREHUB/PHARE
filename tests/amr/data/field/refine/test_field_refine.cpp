@@ -16,7 +16,6 @@
 #include "amr/data/tensorfield/tensor_field_data.hpp"
 
 #include "core/utilities/box/box.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/boundary/boundary_manager.hpp"
 
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
