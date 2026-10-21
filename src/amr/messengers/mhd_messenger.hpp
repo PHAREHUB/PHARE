@@ -278,7 +278,6 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             stateInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
-            magMaxRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
 
             fillGhostsAtInitTime_(mhdModel, *level, initDataTime);
         }
@@ -348,6 +347,12 @@ namespace amr
             auto& mhdModel = static_cast<MHDModel&>(model);
             fillStateGhosts(mhdModel.state, level, initDataTime);
 
+            // the faces on both sides of a periodic boundary are one face, initialised at two
+            // coordinates: make the patches holding them agree once, before anything reads B.
+            // Only after the refill: the max runs over whole ghost overlaps, and ghosts still
+            // holding the initializer's values would leak into the interior.
+            magMaxRefiners_.fill(mhdModel.state.B, level.getLevelNumber(), initDataTime);
+
             // the finer levels refill their ghosts from this level's old data
             prepareStep(model, level, initDataTime);
         }
@@ -368,8 +373,7 @@ namespace amr
             // quantities, the ghosts are filled in the end of the euler step anyways.
         }
 
-        // Fills the ghosts of the conserved state (B, rho, rhoV, Etot), then equalizes the B
-        // values shared by neighbour patches.
+        // Fills the ghosts of the conserved state (B, rho, rhoV, Etot).
         void fillStateGhosts(MHDStateT& state, level_t const& level, double const fillTime)
         {
             PHARE_LOG_SCOPE(3, "MHDMessenger::fillStateGhosts");
@@ -381,7 +385,6 @@ namespace amr
             setNaNsOnVecfieldGhosts(state.rhoV, level);
             setNaNsOnFieldGhosts(state.Etot, level);
             stateGhostsRefiners_.fillByKey(state.B.name(), levelNumber, fillTime);
-            magMaxRefiners_.fill(state.B, levelNumber, fillTime);
         }
 
         void fillElectricGhosts(VecFieldT& E, level_t const& level, double const fillTime)
@@ -407,7 +410,8 @@ namespace amr
             {
                 forEachGhostFieldPool_([&](auto& pool) { pool.registerLevel(hierarchy, level); });
             }
-            magMaxRefiners_.registerLevel(hierarchy, level);
+            if (levelNumber == rootLevelNumber)
+                magMaxRefiners_.registerLevel(hierarchy, level);
         }
 
 
@@ -583,12 +587,12 @@ namespace amr
                         std::vector<CompositeRefinePatchStrategy::strategy_ptr>{
                             magPatchStrats[i], rhoPatchStrats[i], momentumPatchStrats[i],
                             totalEnergyPatchStrats[i]}));
-
-                magMaxRefiners_.addStaticRefiner(
-                    info->ghostMagnetic[i], info->ghostMagnetic[i], nullptr, info->ghostMagnetic[i],
-                    std::make_shared<
-                        TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
             }
+
+            magMaxRefiners_.addStaticRefiner(
+                info->modelMagnetic, info->modelMagnetic, nullptr, info->modelMagnetic,
+                std::make_shared<
+                    TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
         }
 
 
@@ -748,7 +752,7 @@ namespace amr
         // B, rho, rhoV and Etot of each state, keyed by the state's B name
         GhostRefinerPool stateGhostsRefiners_{resourcesManager_};
 
-        // ghostMagnetic includes the model B, also equalized after regrid
+        // model B on the root level only: the initial equalize in fillRootGhosts
         VecFieldGhostMaxRefinerPool magMaxRefiners_{resourcesManager_};
 
         // B, rho, rhoV and Etot of the model state on new and regridded levels
