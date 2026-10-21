@@ -12,6 +12,7 @@
 #include "amr/samrai.hpp"
 #include "amr/utilities/box/amr_box.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
+#include <SAMRAI/hier/BoxContainer.h>
 #include <amr/data/particles/particles_variable_fill_pattern.hpp>
 
 
@@ -459,7 +460,6 @@ namespace amr
         ParticleArray levelGhostParticlesNew;
 
         core::ParticlesPack<ParticleArray> pack;
-
 
     private:
         //! interiorLocalBox_ is the box, in local index space, that goes from the first to the
