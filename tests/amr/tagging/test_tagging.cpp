@@ -6,6 +6,7 @@
 #include "amr/tagging/tagger_factory.hpp"
 #include "amr/tagging/tagging_quantities.hpp"
 #include "amr/tagging/default_tagger_strategy.hpp"
+#include "amr/tagging/component_wise_tagger_strategy.hpp"
 #include "amr/tagging/lohner_tagger_strategy.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
@@ -769,6 +770,222 @@ TEST(DefaultStrategy, PerQuantityThreshold)
     EXPECT_NE(std::count(low.begin(), low.end(), 1), 0);
     auto const high = strategyTags(model, quantitiesDict({{"rho", 1e10}}));
     EXPECT_EQ(std::count(high.begin(), high.end(), 1), 0);
+}
+
+
+
+template<typename Model, std::uint32_t reach>
+class ConstantCriterion : public ComponentWiseTaggerStrategy<ConstantCriterion<Model, reach>, Model>
+{
+    using Super      = ComponentWiseTaggerStrategy<ConstantCriterion<Model, reach>, Model>;
+    using field_type = Super::recentered_field_type;
+
+public:
+    static constexpr std::uint32_t stencil_reach = reach;
+
+    ConstantCriterion(PHARE::initializer::PHAREDict const& dict, double value)
+        : Super{dict}
+        , value_{value}
+    {
+    }
+
+    double indicator(field_type const&, std::array<std::uint32_t, Model::dimension> const&) const
+    {
+        return value_;
+    }
+
+private:
+    double value_;
+};
+
+template<typename Model>
+class CellValueCriterion : public ComponentWiseTaggerStrategy<CellValueCriterion<Model>, Model>
+{
+    using Super      = ComponentWiseTaggerStrategy<CellValueCriterion<Model>, Model>;
+    using field_type = Super::recentered_field_type;
+
+public:
+    static constexpr std::uint32_t stencil_reach = 0;
+
+    explicit CellValueCriterion(PHARE::initializer::PHAREDict const& dict)
+        : Super{dict}
+    {
+    }
+
+    double indicator(field_type const& field,
+                     std::array<std::uint32_t, Model::dimension> const& cell) const
+    {
+        return field(cell);
+    }
+};
+
+template<typename Strategy, typename Model>
+std::vector<int> tagsOf(Strategy const& strategy, Model& model)
+{
+    auto tags = sentinelTags(model);
+    strategy.tag(model, model.layout, tags.data());
+    return tags;
+}
+
+bool allEqual(std::vector<int> const& tags, int value)
+{
+    return std::all_of(tags.begin(), tags.end(), [&](int tag) { return tag == value; });
+}
+
+template<typename Field>
+void fillConstant(Field& field, double value)
+{
+    fillField(field, [&](auto const&) { return value; });
+}
+
+template<typename Model>
+void fillB(Model& model, double bx, double by, double bz)
+{
+    using PHARE::core::Component;
+    auto& B = model.state.electromag.B;
+    fillConstant(B.getComponent(Component::X), bx);
+    fillConstant(B.getComponent(Component::Y), by);
+    fillConstant(B.getComponent(Component::Z), bz);
+}
+
+template<typename Model>
+auto constexpr ghostWidth
+    = static_cast<std::uint32_t>(Model::gridlayout_type::options.field_ghost_width);
+
+
+TEST(ComponentWise, OrOverComponentsOfAVector)
+{
+    using Model = MockHybridModel<2>;
+    Model model;
+    fillB(model, 0., 0., 1.);
+    EXPECT_TRUE(
+        allEqual(tagsOf(CellValueCriterion<Model>{quantitiesDict({{"B", 0.5}})}, model), 1));
+    EXPECT_TRUE(
+        allEqual(tagsOf(CellValueCriterion<Model>{quantitiesDict({{"Bx", 0.5}})}, model), 0));
+}
+
+TEST(ComponentWise, PerQuantityThresholds)
+{
+    using Model = MockMHDModel<2>;
+    Model model;
+    fillConstant(model.state.rho, 1.);
+    fillConstant(model.state.Etot, 3.);
+    auto const tags = [&](std::vector<tagging::QuantityThreshold> const& quantities) {
+        return tagsOf(CellValueCriterion<Model>{quantitiesDict(quantities)}, model);
+    };
+    EXPECT_TRUE(allEqual(tags({{"rho", 2.}, {"Etot", 2.}}), 1));
+    EXPECT_TRUE(allEqual(tags({{"rho", 2.}, {"Etot", 5.}}), 0));
+    EXPECT_TRUE(allEqual(tags({{"rho", 1.}}), 0));
+}
+
+TEST(ComponentWise, NaNComponentDoesNotMaskOthers)
+{
+    using Model = MockHybridModel<2>;
+    Model model;
+    fillB(model, std::numeric_limits<double>::quiet_NaN(), 0., 1.);
+    EXPECT_TRUE(
+        allEqual(tagsOf(CellValueCriterion<Model>{quantitiesDict({{"B", 0.5}})}, model), 1));
+}
+
+TEST(ComponentWise, ReusedAcrossPatches)
+{
+    using Model = MockHybridModel<2>;
+    Model patchA, patchB;
+    fillB(patchA, 0., 0., 1.);
+    fillB(patchB, 0., 0., 0.);
+    CellValueCriterion<Model> const criterion{quantitiesDict({{"B", 0.5}})};
+    EXPECT_TRUE(allEqual(tagsOf(criterion, patchA), 1));
+    EXPECT_TRUE(allEqual(tagsOf(criterion, patchB), 0));
+}
+
+TEST(ComponentWise, TagsFollowFortranOrdering)
+{
+    {
+        using Model = MockMHDModel<2>;
+        Model model;
+        fillField(model.state.rho,
+                  [](auto const& idx) { return idx[0] >= ghostWidth<Model> + 10 ? 1. : 0.; });
+        auto const tags = tagsOf(CellValueCriterion<Model>{quantitiesDict({{"rho", 0.5}})}, model);
+        expectColumns(model, tags, {10, 11, 12, 13, 14, 15, 16, 17, 18, 19},
+                      {0, 1, 2, 3, 4, 5, 6, 7, 8, 9});
+    }
+    {
+        using Model = MockMHDModel<3>;
+        Model model{12};
+        fillField(model.state.rho,
+                  [](auto const& idx) { return idx[0] >= ghostWidth<Model> + 6 ? 1. : 0.; });
+        auto const tags = tagsOf(CellValueCriterion<Model>{quantitiesDict({{"rho", 0.5}})}, model);
+        auto const n    = model.layout.nbrCells();
+        for (std::uint32_t ix = 0; ix < n[0]; ++ix)
+            for (std::uint32_t iy = 0; iy < n[1]; ++iy)
+                for (std::uint32_t iz = 0; iz < n[2]; ++iz)
+                    EXPECT_EQ(tags[ix + n[0] * (iy + n[1] * iz)], ix >= 6 ? 1 : 0)
+                        << ix << " " << iy << " " << iz;
+    }
+}
+
+
+template<typename Model>
+struct ComponentWiseWideStencil : public ::testing::Test
+{
+};
+
+using HybridModels = testing::Types<MockHybridModel<1>, MockHybridModel<2>, MockHybridModel<3>>;
+TYPED_TEST_SUITE(ComponentWiseWideStencil, HybridModels);
+
+TYPED_TEST(ComponentWiseWideStencil, LeavesBorderUntagged)
+{
+    using Model        = TypeParam;
+    auto constexpr dim = Model::dimension;
+    auto constexpr gw  = ghostWidth<Model>;
+    Model model{8};
+    auto const dict     = quantitiesDict({{"B", 0.5}});
+    auto const nbrCells = model.layout.nbrCells();
+
+    auto const tags = tagsOf(ConstantCriterion<Model, gw + 1>{dict, 1.}, model);
+    for (std::size_t i = 0; i < tags.size(); ++i)
+    {
+        auto rest     = i;
+        bool interior = true;
+        for (std::size_t d = 0; d < dim; ++d)
+        {
+            auto const t = rest % nbrCells[d];
+            rest /= nbrCells[d];
+            interior = interior and t >= 1 and t + 1 < nbrCells[d];
+        }
+        EXPECT_EQ(tags[i], interior ? 1 : 0) << i;
+    }
+
+    EXPECT_TRUE(allEqual(tagsOf(ConstantCriterion<Model, gw>{dict, 1.}, model), 1));
+}
+
+TEST(ComponentWise, PatchNarrowerThanBorderIsAllUntagged)
+{
+    using Model = MockHybridModel<1>;
+    Model model{2};
+    auto const tags = tagsOf(
+        ConstantCriterion<Model, ghostWidth<Model> + 2>{quantitiesDict({{"B", 0.5}}), 1.}, model);
+    EXPECT_TRUE(allEqual(tags, 0));
+}
+
+TEST(ComponentWise, WarnsAtConstructionWhenStencilTooWide)
+{
+    using Model       = MockHybridModel<2>;
+    auto constexpr gw = ghostWidth<Model>;
+    Model model;
+    auto const dict = quantitiesDict({{"B", 0.5}});
+
+    testing::internal::CaptureStdout();
+    ConstantCriterion<Model, gw + 1> const wide{dict, 1.};
+    EXPECT_TRUE(contains(testing::internal::GetCapturedStdout(), "stencil reach"));
+
+    testing::internal::CaptureStdout();
+    ConstantCriterion<Model, gw> const fits{dict, 1.};
+    EXPECT_EQ(testing::internal::GetCapturedStdout(), "");
+
+    testing::internal::CaptureStdout();
+    auto const tags = tagsOf(wide, model);
+    EXPECT_EQ(testing::internal::GetCapturedStdout(), "");
 }
 
 
