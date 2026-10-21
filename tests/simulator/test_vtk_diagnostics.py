@@ -120,7 +120,7 @@ def config(sim):
         },
         alpha={
             "mass": 4,
-            "charge": 1,
+            "charge": 2,
             "density": density,
             **vvv,
             "nbr_part_per_cell": ppc,
@@ -183,6 +183,15 @@ class VTKDiagnosticsTest(SimulatorTest):
         local_out = self._run(ndim, interp, simInput)
 
         if cpp.mpi_rank() == 0:
+            import h5py
+
+            for pop, mass, charge in [("protons", 1, 1), ("alpha", 4, 2)]:
+                for qty in ["density", "charge_density", "flux"]:
+                    file = f"{local_out}/ions_pop_{pop}_{qty}.vtkhdf"
+                    with h5py.File(file, "r") as h5_file:
+                        self.assertEqual(h5_file.attrs["pop_mass"], mass)
+                        self.assertEqual(h5_file.attrs["pop_charge"], charge)
+
             try:
                 from pyphare.pharesee.phare_vtk import plot as plot_vtk
 
