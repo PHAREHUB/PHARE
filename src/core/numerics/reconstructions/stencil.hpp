@@ -28,8 +28,8 @@ auto centred_stencil(Field const& F, MeshIndex<Field::dimension> index)
 // Reconstruction::faces_of for n consecutive cells of a contiguous line, the stencil running
 // with `stride` through `u`: same values as cell_faces, in a loop the compiler can vectorise
 template<typename Reconstruction>
-void cell_faces_line(double const* __restrict u, std::ptrdiff_t const stride, int const n,
-                     double* __restrict lower, double* __restrict upper)
+void cell_faces_line(double const* u, std::ptrdiff_t const stride, int const n, double* lower,
+                     double* upper)
 {
     constexpr int w = Reconstruction::nghosts - 1;
     for (int k = 0; k < n; ++k)
