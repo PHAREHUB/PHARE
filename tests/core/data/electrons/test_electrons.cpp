@@ -1,20 +1,19 @@
 
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "initializer/data_provider.hpp"
 
-#include "core/data/electrons/electrons.hpp"
 #include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
+#include "core/data/ions/ions.hpp"
+#include "src/core/utilities/types.hpp"
 #include "core/data/vecfield/vecfield.hpp"
+#include "core/data/electrons/electrons.hpp"
+#include "core/data/electromag/electromag.hpp"
 #include "core/data/tensorfield/tensorfield.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
-#include "core/data/ions/ions.hpp"
-#include "core/data/electromag/electromag.hpp"
-#include "src/core/utilities/types.hpp"
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include "tests/initializer/init_functions.hpp"

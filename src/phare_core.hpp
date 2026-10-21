@@ -7,16 +7,12 @@
 #include "core/data/vecfield/vecfield.hpp"
 #include "core/data/electrons/electrons.hpp"
 #include "core/data/electromag/electromag.hpp"
+#include "core/models/options/mhd_options.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array.hpp"
+#include "core/models/options/hybrid_options.hpp"
 #include "core/data/ions/ion_population/ion_population.hpp"
 #include "core/data/ions/particle_initializers/maxwellian_particle_initializer.hpp"
-
-
-#include "core/models/options/mhd_options.hpp"
-#include "core/models/options/hybrid_options.hpp"
-
-#include "phare_simulator_options.hpp"
 
 #include "dict.hpp"
 
@@ -27,7 +23,7 @@
 namespace PHARE::core
 {
 
-template<SimOpts opts>
+template<auto opts>
 struct PHARE_Types
 {
     auto static constexpr dimension = opts.dimension;
@@ -72,7 +68,6 @@ struct PHARE_Types
         using Electromag_t                  = Electromag<VecField_t>;
         using GridLayout_t                  = GridLayout<mhd_options>;
     };
-
 };
 
 struct PHARE_Sim_Types

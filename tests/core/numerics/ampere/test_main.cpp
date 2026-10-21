@@ -1,11 +1,11 @@
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
+
 #include "core/data/field/field.hpp"
-#include "core/data/grid/gridlayout.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
-#include "core/data/grid/gridlayoutimplyee.hpp"
 
 #include "tests/core/data/field/test_field.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"

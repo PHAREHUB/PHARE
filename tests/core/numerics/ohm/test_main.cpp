@@ -1,5 +1,6 @@
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -200,16 +201,16 @@ struct OhmTest : public ::testing::Test
                         auto point = this->layout.fieldNodeCoordinates(
                             n, this->layout.localToAMR(Point{ix, iy, iz}.as_signed()));
 
-                        n(ix, iy, iz)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
-                                         * std::cosh(0.5 * point[2]);
+                        n(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
+                                        * std::cosh(0.5 * point[2]);
                         Vx(ix, iy, iz) = std::sinh(0.2 * point[0]) * std::sinh(0.2 * point[1])
                                          * std::sinh(0.2 * point[2]);
                         Vy(ix, iy, iz) = std::sinh(0.3 * point[0]) * std::sinh(0.3 * point[1])
                                          * std::sinh(0.3 * point[2]);
                         Vz(ix, iy, iz) = std::sinh(0.4 * point[0]) * std::sinh(0.4 * point[1])
                                          * std::sinh(0.4 * point[2]);
-                        P(ix, iy, iz)  = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
-                                         * std::cosh(0.5 * point[2]);
+                        P(ix, iy, iz) = std::cosh(0.5 * point[0]) * std::cosh(0.5 * point[1])
+                                        * std::cosh(0.5 * point[2]);
                     }
                     for (auto iz = gsi_d_Z; iz <= gei_d_Z; ++iz)
                     {

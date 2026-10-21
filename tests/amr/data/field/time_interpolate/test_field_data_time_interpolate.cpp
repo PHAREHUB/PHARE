@@ -1,21 +1,18 @@
 
 #include "phare_core.hpp"
-
+#include "simulator/simulator_def.hpp"
 
 #include "phare_mpi.hpp"
 
 #include <SAMRAI/tbox/SAMRAIManager.h>
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 
-#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 
 #include "amr/data/field/time_interpolate/field_linear_time_interpolate.hpp"
 
 #include "core/data/grid/grid.hpp"
-#include "core/data/grid/gridlayout.hpp"
-#include "core/data/grid/gridlayout_impl.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
 

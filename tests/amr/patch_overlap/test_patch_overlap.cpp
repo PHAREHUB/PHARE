@@ -4,6 +4,7 @@
 
 #include "phare_core.hpp"
 #include "phare_mpi.hpp" // IWYU pragma: keep
+#include "simulator/simulator_def.hpp"
 
 #include "core/models/quantities/hybrid_quantities.hpp"
 #include "amr/resources_manager/amr_utils.hpp"
