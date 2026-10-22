@@ -5,6 +5,7 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/data/grid/gridlayoutdefs.hpp"
 
+#include "amr/data/field/centered_factory.hpp"
 #include "amr/data/tensorfield/tensor_field_data_factory.hpp"
 
 #include <SAMRAI/hier/Variable.h>
@@ -32,8 +33,10 @@ public:
                         bool fineBoundaryRepresentsVariable = false)
         : SAMRAI::hier::Variable(
               name,
-              std::make_shared<TensorFieldDataFactory<rank, GridLayoutT, Grid_t, PhysicalQuantity>>(
-                  fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty), name, qty))
+              make_centered_factory<
+                  TensorFieldDataFactory<rank, GridLayoutT, Grid_t, PhysicalQuantity>, GridLayoutT>(
+                  qty, fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty), name,
+                  qty))
         , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
         , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_(qty)}
     {

@@ -8,6 +8,7 @@
 
 #include <utility>
 
+#include "centered_factory.hpp"
 #include "field_data_factory.hpp"
 
 namespace PHARE
@@ -36,10 +37,11 @@ namespace amr
          */
         FieldVariable(std::string const& name, PhysicalQuantity qty,
                       bool fineBoundaryRepresentsVariable = false)
-            : SAMRAI::hier::Variable(name,
-                                     std::make_shared<FieldDataFactory<GridLayoutT, FieldImpl>>(
-                                         fineBoundaryRepresentsVariable,
-                                         computeDataLivesOnPatchBorder_(qty), name, qty))
+            : SAMRAI::hier::Variable(
+                  name,
+                  make_centered_factory<FieldDataFactory<GridLayoutT, FieldImpl>, GridLayoutT>(
+                      qty, fineBoundaryRepresentsVariable, computeDataLivesOnPatchBorder_(qty),
+                      name, qty))
             , fineBoundaryRepresentsVariable_{fineBoundaryRepresentsVariable}
             , dataLivesOnPatchBorder_{computeDataLivesOnPatchBorder_(qty)}
         {
