@@ -8,6 +8,7 @@
 #include "core/numerics/ion_updater/ion_updater/ion_updater_impl0.hpp"
 
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 
