@@ -6,6 +6,7 @@
 #include "phare_mpi.hpp" // IWYU pragma: keep
 #include "core/utilities/box/box.hpp"
 
+#include "amr/amr_constants.hpp"
 
 #include "SAMRAI/hier/Box.h"
 
