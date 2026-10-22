@@ -174,6 +174,8 @@ public:
 
     NO_DISCARD auto& getIons() const { return this->model_.state.ions; }
 
+    NO_DISCARD auto& getElectrons() const { return this->model_.state.electrons; }
+
     auto& tmpField() { return tmpField_; }
 
     auto& tmpVecField() { return tmpVec_; }

@@ -162,9 +162,25 @@ class Run:
         return self._get(Pi, time, merged, interp)  # should later be a TensorField
 
     def GetPe(self, time, merged=False, interp="nearest", all_primal=True):
-        hier = self._get_hierarchy(time, "ions_charge_density.h5")
+        """
+        the electron pressure as dumped by FluidDiagnostics(quantity="electron_pressure"),
+        or, without that output, n*Te for the isothermal closure. Only domain nodes
+        of the dumped pressure are meaningful.
+        """
+        if os.path.exists(os.path.join(self.path, "electrons_pressure.h5")):
+            hier = self._get_hierarchy(time, "electrons_pressure.h5")
+            if not all_primal:
+                return self._get(hier, time, merged, interp)
+            return ScalarField.FROM(compute_hier_from(hc.drop_ghosts, hier))
 
-        Te = hier.sim.electrons.closure.Te
+        hier = self._get_hierarchy(time, "ions_charge_density.h5")
+        closure = hier.sim.electrons.closure
+        if closure.name() != "isothermal":
+            raise ValueError(
+                f"no electron pressure output for the '{closure.name()}' closure:"
+                ' add FluidDiagnostics(quantity="electron_pressure")'
+            )
+        Te = closure.Te
 
         if not all_primal:
             return Te * self._get(hier, time, merged, interp)
