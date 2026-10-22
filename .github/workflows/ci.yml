@@ -1,0 +1,89 @@
+# One run per PR push: the build workflows are reusable (on: workflow_call) and called from
+# here as jobs, so the Actions page shows a single "ci" row per push instead of one per workflow.
+#
+# Each called workflow keeps its own triggers for runs outside PRs (push to master, schedule,
+# workflow_dispatch). The path filters they had on pull_request are done by the changes job below:
+# a called workflow has no trigger of its own, so no paths filter.
+#
+# Not called from here:
+#   gate.yml           re-runs on label and body edits (edited/labeled/unlabeled), in seconds,
+#                      without re-running the builds
+#   labels.yml         pull_request_target: needs a write token on fork PRs
+#   review-threads.yml triggered by reviews, not by pushes
+
+name: ci
+
+on:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  changes:
+    # what the old per-workflow paths filters did: no build for PRs that only touch CI, docs or
+    # markdown, unless the PR changes the workflow (or its config) that does the build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      build: ${{ steps.filter.outputs.build }}
+      codeql: ${{ steps.filter.outputs.codeql }}
+      coverage: ${{ steps.filter.outputs.coverage }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - id: filter
+        env:
+          BASE: ${{ github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event.pull_request.head.sha }}
+        run: |
+          files=$(git diff --name-only "$(git merge-base "$BASE" "$HEAD")" "$HEAD")
+          code=false
+          while IFS= read -r f; do
+            [ -n "$f" ] || continue
+            case "$f" in
+              .github/*|res/ci/*|doc/*|*.md|codecov.yml) ;;
+              *) code=true ;;
+            esac
+          done <<< "$files"
+          touched() { # any of the given files changed
+            for p in "$@"; do grep -qxF "$p" <<< "$files" && return 0; done
+            return 1
+          }
+          run_if() { # true when code changed or any of the given files did
+            { $code || touched "$@"; } && echo true || echo false
+          }
+          wf=.github/workflows
+          {
+            echo "build=$(run_if $wf/ci.yml $wf/cmake_ubuntu.yml)"
+            echo "codeql=$(run_if $wf/ci.yml $wf/codeql.yml .github/codeql-config.yml)"
+            echo "coverage=$(run_if $wf/ci.yml $wf/coverage.yml codecov.yml)"
+          } | tee -a "$GITHUB_OUTPUT"
+
+  build:
+    needs: changes
+    if: needs.changes.outputs.build == 'true'
+    uses: ./.github/workflows/cmake_ubuntu.yml
+
+  codeql:
+    needs: changes
+    if: needs.changes.outputs.codeql == 'true' && github.base_ref == 'master'
+    uses: ./.github/workflows/codeql.yml
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  coverage:
+    needs: changes
+    if: needs.changes.outputs.coverage == 'true'
+    uses: ./.github/workflows/coverage.yml
+    secrets:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
