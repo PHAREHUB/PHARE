@@ -2,7 +2,6 @@
 #define PHARE_CORE_NUMERICS_TIME_INTEGRATOR_UTILS_HPP
 
 
-#include "core/utilities/index/index.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
 namespace PHARE::core
@@ -43,9 +42,10 @@ public:
         // node's abscissa (blending the endpoint ghosts here would use scheme weights, not
         // the node's time-interpolation alpha).
         for_N<num_fields>([&](auto i) {
-            layout_.evalOnBox(std::get<i>(result_fields), [&](auto... indices) {
-                RKstep_(result_fields, weight_tuple, state_field_tuples, i, {indices...});
-            });
+            // evalOnBox calls fn(index, args...): fn is captureless, state is forwarded
+            layout_.evalOnBox(
+                std::get<i>(result_fields), [](auto&&... args) { RKstep_(args...); }, result_fields,
+                weight_tuple, state_field_tuples, i);
         });
     }
 
@@ -59,8 +59,8 @@ private:
     }
 
     template<typename ReturnState, typename WeightsTuple, typename StatesTuple, typename IndexType>
-    static void RKstep_(ReturnState& res, WeightsTuple const& weights, StatesTuple const& states,
-                        IndexType field_index, MeshIndex<dimension> const index)
+    static void RKstep_(auto const& index, ReturnState& res, WeightsTuple const& weights,
+                        StatesTuple const& states, IndexType field_index)
     {
         auto sum = 0.0;
 

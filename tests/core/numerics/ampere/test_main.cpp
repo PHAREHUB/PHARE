@@ -3,7 +3,7 @@
 #include "simulator/simulator_def.hpp"
 
 #include "core/data/field/field.hpp"
-#include "core/utilities/index/index.hpp"
+#include "core/data/grid/gridlayout.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 
@@ -25,7 +25,7 @@ struct GridLayoutMock1D
     static auto const dimension = 1u;
 
     template<auto direction>
-    double deriv(FieldMock<1> const& /*f*/, MeshIndex<1u> /*mi*/)
+    double deriv(FieldMock<1> const& /*f*/, auto const& /*mi*/)
     {
         return 0;
     }
@@ -40,7 +40,7 @@ struct GridLayoutMock2D
     static auto const dimension = 2u;
 
     template<auto direction>
-    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<2u> /*mi*/)
+    double deriv(FieldMock<dimension> const& /*f*/, auto const& /*mi*/)
     {
         return 0;
     }
@@ -55,7 +55,7 @@ struct GridLayoutMock3D
     static auto const dimension = 3u;
 
     template<auto direction>
-    double deriv(FieldMock<dimension> const& /*f*/, MeshIndex<3u> /*mi*/)
+    double deriv(FieldMock<dimension> const& /*f*/, auto const& /*mi*/)
     {
         return 0;
     }

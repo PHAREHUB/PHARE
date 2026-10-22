@@ -343,28 +343,30 @@ double SolverPPC<HybridModel, AMR_Types>::computeStableDt(IPhysicalModel_t& mode
 
         auto const meshSize = layout.meshSize();
 
-        auto const& Bx = B(core::Component::X);
-        auto const& By = B(core::Component::Y);
-        auto const& Bz = B(core::Component::Z);
+        // evalOnBox calls fn(index, args...): fn is captureless, state (and the dt being
+        // reduced) is forwarded
+        layout.evalOnBox(
+            n,
+            [](auto const& index, double& dt, auto const& n, auto const& B, auto const& meshSize,
+               double const wave) {
+                auto const& [Bx, By, Bz] = B();
 
-        layout.evalOnBox(n, [&](auto&... args) mutable {
-            core::MeshIndex<dimension> const index{args...};
+                auto const rho = n(index);
+                auto const bx  = GridLayout::template project<GridLayout::BxToMoments>(Bx, index);
+                auto const by  = GridLayout::template project<GridLayout::ByToMoments>(By, index);
+                auto const bz  = GridLayout::template project<GridLayout::BzToMoments>(Bz, index);
 
-            auto const rho = n(index);
-            auto const bx  = GridLayout::template project<GridLayout::BxToMoments>(Bx, index);
-            auto const by  = GridLayout::template project<GridLayout::ByToMoments>(By, index);
-            auto const bz  = GridLayout::template project<GridLayout::BzToMoments>(Bz, index);
+                auto const BdotB = bx * bx + by * by + bz * bz;
 
-            auto const BdotB = bx * bx + by * by + bz * bz;
+                double invDtWhistler = 0;
+                for (std::size_t d = 0; d < dimension; ++d)
+                    invDtWhistler += std::numbers::pi
+                                     * core::compute_whistler_(1.0 / meshSize[d], rho, BdotB)
+                                     / meshSize[d];
 
-            double invDtWhistler = 0;
-            for (std::size_t d = 0; d < dimension; ++d)
-                invDtWhistler += std::numbers::pi
-                                 * core::compute_whistler_(1.0 / meshSize[d], rho, BdotB)
-                                 / meshSize[d];
-
-            dt = std::min(dt, wave / invDtWhistler);
-        });
+                dt = std::min(dt, wave / invDtWhistler);
+            },
+            dt, n, B, meshSize, wave);
     }
 
     return dt;

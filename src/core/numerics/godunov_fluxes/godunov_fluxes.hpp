@@ -3,7 +3,6 @@
 
 #include "core/numerics/ohm/ohm.hpp"
 #include "core/utilities/types.hpp"
-#include "core/utilities/index/index.hpp"
 #include "core/utilities/point/point.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
@@ -105,56 +104,23 @@ public:
         for_N<num_directions>([&](auto i) {
             constexpr Direction direction = std::get<i>(directions);
 
+            // evalOn*Box call fn(indices, self, args...): fn is captureless and forwards to
+            // the matching member of self (*this), all state passed through args
             layout_.evalOnBiggerBox(
                 fluxes.template expose_centering<direction>(),
-                getGrow<direction, dimension>(Reconstruction_t::nghosts), [&](auto&... indices) {
-                    auto&& [uL, uR]
-                        = Reconstructor_t::template reconstruct<direction>(state, {indices...});
-                    auto&& u = std::forward_as_tuple(uL, uR);
-
-                    if constexpr (Hall)
-                    {
-                        auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
-                            direction, GridLayout::implT::edgeXToCellCenter,
-                            GridLayout::implT::edgeYToCellCenter,
-                            GridLayout::implT::edgeZToCellCenter>(state.J, {indices...});
-
-                        auto const& j = std::forward_as_tuple(jL, jR);
-
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u),
-                                                                          std::get<i>(j));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
-                                                          riemann_.uct_coefs, {indices...});
-                    }
-                    else
-                    {
-                        auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
-                            return equations_.template compute<direction>(std::get<i>(u));
-                        });
-
-                        fluxes.template get_dir<direction>({indices...})
-                            = riemann_.template solve<direction>(uL, uR, fL, fR);
-
-                        ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs,
-                                                          {indices...});
-                    }
-                });
+                getGrow<direction, dimension>(Reconstruction_t::nghosts),
+                [](auto const& indices, auto& self, auto&&... args) {
+                    self.template fluxEq_<direction>(indices, args...);
+                },
+                *this, ct_state, state, fluxes);
 
             if (is_resistive_ || is_hyper_resistive_)
-                layout_.evalOnBox(fluxes.template expose_centering<direction>(),
-                                  [&](auto&... indices) {
-                                      auto F = fluxes.template get_dir<direction>({indices...});
-                                      auto const [Et, Bt] = transverse_on_face_<direction>(
-                                          dissipative_electric_state.E(), state.B, {indices...});
-                                      equations_.template dissipative_contributions<direction>(
-                                          Et, Bt, F.B, F.Etot());
-                                  });
+                layout_.evalOnBox(
+                    fluxes.template expose_centering<direction>(),
+                    [](auto const& indices, auto& self, auto&&... args) {
+                        self.template dissipativeEq_<direction>(indices, args...);
+                    },
+                    *this, dissipative_electric_state, state, fluxes);
         });
     }
 
@@ -163,7 +129,54 @@ public:
 
 private:
     template<auto direction>
-    auto transverse_on_face_(auto const& E, auto const& B, MeshIndex<dimension> idx) const
+    void fluxEq_(auto const& indices, auto& ct_state, auto& state, auto& fluxes)
+    {
+        auto&& [uL, uR] = Reconstructor_t::template reconstruct<direction>(state, indices);
+        auto&& u        = std::forward_as_tuple(uL, uR);
+
+        if constexpr (Hall)
+        {
+            auto const& [jL, jR] = Reconstructor_t::template center_reconstruct<
+                direction, GridLayout::implT::edgeXToCellCenter,
+                GridLayout::implT::edgeYToCellCenter, GridLayout::implT::edgeZToCellCenter>(
+                state.J, indices);
+
+            auto const& j = std::forward_as_tuple(jL, jR);
+
+            auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>([&](auto i) {
+                return equations_.template compute<direction>(std::get<i>(u), std::get<i>(j));
+            });
+
+            fluxes.template get_dir<direction>(indices)
+                = riemann_.template solve<direction>(uL, uR, fL, fR, jL, jR);
+
+            ct_state.template save<direction>(riemann_.vt, riemann_.jt, riemann_.rhot,
+                                              riemann_.uct_coefs, indices);
+        }
+        else
+        {
+            auto const& [fL, fR] = for_N<2, for_N_R_mode::make_tuple>(
+                [&](auto i) { return equations_.template compute<direction>(std::get<i>(u)); });
+
+            fluxes.template get_dir<direction>(indices)
+                = riemann_.template solve<direction>(uL, uR, fL, fR);
+
+            ct_state.template save<direction>(riemann_.vt, riemann_.uct_coefs, indices);
+        }
+    }
+
+    template<auto direction>
+    void dissipativeEq_(auto const& indices, auto const& dissipative_electric_state,
+                        auto const& state, auto& fluxes)
+    {
+        auto F = fluxes.template get_dir<direction>(indices);
+        auto const [Et, Bt]
+            = transverse_on_face_<direction>(dissipative_electric_state.E(), state.B, indices);
+        equations_.template dissipative_contributions<direction>(Et, Bt, F.B, F.Etot());
+    }
+
+    template<auto direction>
+    auto transverse_on_face_(auto const& E, auto const& B, auto const& idx) const
     {
         using implT        = GridLayout::implT;
         auto constexpr nan = std::numeric_limits<double>::quiet_NaN();
