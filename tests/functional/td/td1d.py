@@ -18,7 +18,6 @@ def config():
         largest_patch_size=20,
         time_step_nbr=2000,  # number of time steps (not specified if time_step and final_time provided)
         final_time=20.0,  # simulation final time (not specified if time_step and time_step_nbr provided)
-        boundary_types="periodic",  # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=500,  # integer or tuple length == dimension
         dl=1.0,  # mesh size of the root level, float or tuple
         refinement_boxes={

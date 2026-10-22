@@ -14,6 +14,7 @@
 #include <array>
 #include <tuple>
 #include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <functional>
 #include <type_traits>
@@ -796,6 +797,47 @@ namespace core
         }
 
 
+        /**
+         * @brief Returns the index of @p index mirrored across a boundary.
+         *
+         * @param direction The direction normal to the boundary.
+         * @param side Whether we reflect across the Lower or Upper boundary.
+         * @param centering The staggering of the data along @p direction.
+         * @param index The directional index to be reflected.
+         *
+         * @return The reflected directional index.
+         */
+        NO_DISCARD inline std::uint32_t boundaryMirrored(Direction direction, Side side,
+                                                         QtyCentering centering,
+                                                         std::uint32_t const index) const
+        {
+            std::int32_t const s         = static_cast<std::int32_t>(side);
+            std::size_t const iCent      = static_cast<std::size_t>(centering);
+            std::size_t const iDir       = static_cast<std::size_t>(direction);
+            std::int32_t const i         = static_cast<std::int32_t>(index);
+            std::uint32_t const limitIdx = (side == Side::Lower)
+                                               ? physicalStartIndexTable_[iCent][iDir]
+                                               : physicalEndIndexTable_[iCent][iDir];
+            std::int32_t const b         = static_cast<std::int32_t>(limitIdx);
+            if (centering == QtyCentering::primal)
+                return static_cast<std::uint32_t>(i - 2 * (i - b));
+            else
+                return static_cast<std::uint32_t>(i - 2 * (i - b) + s);
+        }
+
+        template<std::size_t dim>
+        NO_DISCARD inline Point<std::uint32_t, dim>
+        boundaryMirrored(Direction direction, Side side, QtyCentering centering,
+                         Point<std::uint32_t, dim> const point) const
+        {
+            std::size_t const iDir = static_cast<std::size_t>(direction);
+            auto mirroredPoint     = point;
+            // iDir < dim always holds for a valid call; the guard lets the compiler drop the
+            // impossible out-of-bounds branch (avoids a GCC -Warray-bounds false positive in 1D).
+            if (iDir < dim)
+                mirroredPoint[iDir] = boundaryMirrored(direction, side, centering, point[iDir]);
+            return mirroredPoint;
+        }
 
         // ----------------------------------------------------------------------
         //                      LAYOUT SPECIFIC METHODS
@@ -944,6 +986,20 @@ namespace core
             return newCentering;
         }
 
+
+        /**
+         * @brief toFieldBox takes a cell-centered box, local or AMR, and creates a box
+         * that is adequate for the specified quantity. The layout is used to know
+         * the centering of the specified quantity.
+         *
+         * @see FieldGeometry::toFieldBox
+         *
+         * */
+        template<typename T>
+        NO_DISCARD static Box<T, dimension> toFieldBox(Box<T, dimension> const& box, Scalar qty)
+        {
+            return toCenteredBox(box, centering(qty));
+        }
 
         /**
          * @brief momentsToEx return the indexes and associated coef to compute the linear
@@ -1109,14 +1165,7 @@ namespace core
 
 
 
-        auto AMRBoxFor(auto const& field) const
-        {
-            auto const centerings = centering(field);
-            auto box              = AMRBox_;
-            for (std::uint8_t i = 0; i < dimension; ++i)
-                box.upper[i] += (centerings[i] == QtyCentering::primal) ? 1 : 0;
-            return box;
-        }
+        auto AMRBoxFor(auto const& field) const { return toCenteredBox(AMRBox_, centering(field)); }
 
         auto AMRGhostBoxFor(auto const& field) const
         {
@@ -1206,7 +1255,8 @@ namespace core
         }
 
         template<typename Field, typename Fn>
-        void evalOnBiggerBox(Field& field, Point<uint32_t, dimension> const& grow, Fn&& fn) const
+        void evalOnBiggerBox(Field& field, Point<std::uint32_t, dimension> const& grow,
+                             Fn&& fn) const
         {
             auto indices = [&](auto const& centering, auto const direction) {
                 auto [start, end] = this->physicalStartToEnd(centering, direction);
@@ -1218,7 +1268,7 @@ namespace core
         }
 
         template<typename Field, typename Fn>
-        void evalOnShrinkedGhostBox(Field& field, Point<uint32_t, dimension> const& shrink,
+        void evalOnShrinkedGhostBox(Field& field, Point<std::uint32_t, dimension> const& shrink,
                                     Fn&& fn) const
         {
             auto indices = [&](auto const& centering, auto const direction) {

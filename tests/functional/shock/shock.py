@@ -23,7 +23,6 @@ def config(interp_order):
         largest_patch_size=20,
         time_step=0.005,  # number of time steps (not specified if time_step and final_time provided)
         final_time=30,  # simulation final time (not specified if time_step and time_step_nbr provided)
-        boundary_types="periodic",  # boundary condition, string or tuple, length == len(cell) == len(dl)
         cells=2500,  # integer or tuple length == dimension
         dl=0.2,  # mesh size of the root level, float or tuple
         # max_nbr_levels=1,          # (default=1) max nbr of levels in the AMR hierarchy

@@ -273,7 +273,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
         EXPECT_EQ(expected, attr);
     };
 
-    std::vector<std::string> const boundaryTypes(dimension, "periodic");
+    std::vector<int> const periodicities(dimension, 1);
     std::size_t popAttrChecks = 0;
     for (auto const& fileType : h5FileTypes)
     {
@@ -299,7 +299,7 @@ void validateAttributes(Simulator& sim, Hi5Diagnostic& hi5)
             double pop_mass = 0;
             rootGroup.getAttribute("pop_mass").read(pop_mass);
             EXPECT_DOUBLE_EQ(pop_mass, 1.0);
-            _check_equal(rootGroup, boundaryTypes, "boundary_conditions");
+            _check_equal(rootGroup, periodicities, "periodicities");
         }
     }
     EXPECT_EQ(popAttrChecks, expectedPopNbr * expectedPopAttrFiles);

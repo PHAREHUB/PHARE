@@ -12,6 +12,7 @@
 #include <tuple>
 #include <cassert>
 #include <cstddef>
+#include <cstdint>
 
 
 
@@ -112,7 +113,7 @@ private:
                         += static_cast<Delta_t>(pattern.deltas_[rpIndex][iDim]);
                     Delta_t integra = std::floor(fineParticle.delta[iDim]);
                     fineParticle.delta[iDim] -= integra;
-                    fineParticle.iCell[iDim] += static_cast<int32_t>(integra);
+                    fineParticle.iCell[iDim] += static_cast<std::int32_t>(integra);
                 }
             }
         });

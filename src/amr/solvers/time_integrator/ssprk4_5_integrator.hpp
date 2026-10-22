@@ -147,10 +147,10 @@ private:
     // t_n + c_i*dt that each intermediate node approximates. Used to fill coarse-fine ghosts
     // by linear time interpolation at the node's own time. Match Spiteri-Ruuth SSPRK(5,4)
     // c = [0.39175, 0.58608, 0.47454, 0.93501].
-    static constexpr double c1_{w0_};                // state1
-    static constexpr double c2_{w11_ * c1_ + w12_};  // state2
-    static constexpr double c3_{w21_ * c2_ + w22_};  // state3
-    static constexpr double c4_{w31_ * c3_ + w32_};  // state4
+    static constexpr double c1_{w0_};               // state1
+    static constexpr double c2_{w11_ * c1_ + w12_}; // state2
+    static constexpr double c3_{w21_ * c2_ + w22_}; // state3
+    static constexpr double c4_{w31_ * c3_ + w32_}; // state4
 
     Euler<FVMethodStrategy, MHDModel> euler_;
     ComputeFluxes<FVMethodStrategy, MHDModel> compute_fluxes_;

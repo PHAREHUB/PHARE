@@ -32,7 +32,7 @@ TYPED_TEST_P(AFieldData1DCenteredOnEx, CopyLikeACellData)
     auto iStart = this->param.destinationFieldData->gridLayout.ghostStartIndex(destinationField,
                                                                                Direction::X);
     auto iEnd   = this->param.destinationFieldData->gridLayout.ghostEndIndex(destinationField,
-                                                                           Direction::X);
+                                                                             Direction::X);
 
     for (auto ix = iStart; ix <= iEnd; ++ix)
     {
@@ -60,7 +60,7 @@ TYPED_TEST_P(AFieldData1DCenteredOnEx, CopyLikeACellData)
     iStart = this->param.destinationFieldData->gridLayout.ghostStartIndex(destinationField,
                                                                           Direction::X);
     iEnd   = this->param.destinationFieldData->gridLayout.ghostEndIndex(destinationField,
-                                                                      Direction::X);
+                                                                        Direction::X);
 
 
     double const* cellDataStart = this->destinationCellData->getPointer();

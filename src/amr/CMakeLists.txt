@@ -15,6 +15,7 @@ set( SOURCES_INC
      data/field/coarsening/mhd_flux_coarsener.hpp
      data/field/field_data.hpp
      data/field/field_data_factory.hpp
+     data/field/field_data_traits.hpp
      data/field/field_geometry.hpp
      data/field/field_overlap.hpp
      data/field/field_variable.hpp
@@ -23,8 +24,11 @@ set( SOURCES_INC
      data/field/refine/composite_field_refiner.hpp
      data/field/refine/coarse_cell_round_out.hpp
      data/field/refine/magnetic_composite_refiner.hpp
+     data/field/refine/field_refine_patch_strategy.hpp
      data/field/refine/magnetic_refine_patch_strategy.hpp
      data/field/time_interpolate/field_linear_time_interpolate.hpp
+     data/tensorfield/tensor_field_data.hpp
+     data/tensorfield/tensor_field_data_traits.hpp
      resources_manager/field_resource.hpp
      resources_manager/particle_resource.hpp
      resources_manager/amr_utils.hpp

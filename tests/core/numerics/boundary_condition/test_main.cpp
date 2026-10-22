@@ -8,7 +8,6 @@
 #include "core/utilities/box/box.hpp"
 
 
-
 using namespace PHARE::core;
 
 class ABoundaryConditionWhereAllParticlesLeave : public ::testing::Test
@@ -16,13 +15,13 @@ class ABoundaryConditionWhereAllParticlesLeave : public ::testing::Test
 public:
     ABoundaryConditionWhereAllParticlesLeave()
         : boundaryBoxes{bbox}
-        , leavingParticles_(10)
+        , leavingParticles_(Box<int, 2>{Point<int, 2>{0, 0}, Point<int, 2>{20, 20}}, 10)
     {
         bc.setBoundaryBoxes(boundaryBoxes);
         for (auto& part : leavingParticles_)
         {
-            part.iCell[0] = 5;  // these particles are out...
-            part.iCell[1] = -1; // and not through the boundarybox
+            part.iCell[0] = 5;
+            part.iCell[1] = -1;
         }
     }
 
@@ -36,8 +35,6 @@ protected:
 };
 
 
-
-
 TEST_F(ABoundaryConditionWhereAllParticlesLeave, removesOutgoingParticles)
 {
     auto toDelete
@@ -46,8 +43,6 @@ TEST_F(ABoundaryConditionWhereAllParticlesLeave, removesOutgoingParticles)
 
     EXPECT_EQ(0, leavingParticles_.size());
 }
-
-
 
 
 int main(int argc, char** argv)

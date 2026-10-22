@@ -106,7 +106,6 @@ out = "phare_outputs/diagnostic_test/"
 simArgs = {
     "time_step_nbr": 30000,
     "final_time": 30.0,
-    "boundary_types": "periodic",
     "cells": 40,
     "dl": 0.3,
     "diag_options": {
@@ -183,7 +182,6 @@ def cadence_args(diagdir, **extra):
         max_mhd_level=1,
         time_step={"mode": "adaptive", "cfl_wave": 0.8},
         final_time=100.0,  # generous: we control the number of steps manually
-        boundary_types="periodic",
         cells=20,
         dl=0.3,
         diag_options=dict(
@@ -281,7 +279,7 @@ class DiagnosticsTest(SimulatorTest):
         print("test_dump_diags ndim/interp:{}/{}".format(ndim, interp))
 
         # configure simulation ndim sized values
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simInput[key] = [simInput[key] for d in range(ndim)]
 
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
@@ -309,7 +307,7 @@ class DiagnosticsTest(SimulatorTest):
 
         simInput = copy.deepcopy(simArgs)
         # configure simulation ndim sized values
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simInput[key] = [simInput[key] for d in range(ndim)]
 
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]
@@ -391,7 +389,7 @@ class DiagnosticsTest(SimulatorTest):
 
     def test_diagnostics_requires_non_empty_timestamps(self, ndim=1, interp=1):
         simInput = copy.deepcopy(simArgs)
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simInput[key] = [simInput[key] for d in range(ndim)]
 
         b0 = [[10 for i in range(ndim)], [19 for i in range(ndim)]]

@@ -120,7 +120,6 @@ simArgs = dict(
     #   in this way neither simulations have any regrids, so are still comparable
     time_step_nbr=5,  # avoid regrid for refinement boxes https://github.com/LLNL/SAMRAI/issues/199
     time_step=timestep,
-    boundary_types="periodic",
     cells=200,
     dl=0.3,
     diag_options=dict(format="phareh5", options=dict(dir=out, mode="overwrite")),
@@ -227,7 +226,7 @@ class RestartsTest(SimulatorTest):
 
         simput = copy.deepcopy(simInput)
 
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simput[key] = [simput[key]] * ndim
 
         if "refinement" not in simput:
@@ -298,7 +297,7 @@ class RestartsTest(SimulatorTest):
         simput = copy.deepcopy(simInput)
         simput["time_step_nbr"] = 2  # forcing restart after first advance
 
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simput[key] = [simput[key]] * ndim
 
         if "refinement" not in simput:
@@ -360,7 +359,7 @@ class RestartsTest(SimulatorTest):
     def test_mode_conserve(self, ndim=1, interp=1, simput=dup(simArgs)):
         print(f"test_mode_conserve dim/interp:{ndim}/{interp}")
 
-        for key in ["cells", "dl", "boundary_types"]:
+        for key in ["cells", "dl"]:
             simput[key] = [simput[key]] * ndim
 
         # first simulation

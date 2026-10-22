@@ -17,6 +17,7 @@
 
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/index/index.hpp"
+#include "core/boundary/boundary_manager.hpp"
 
 #include <SAMRAI/tbox/SAMRAI_MPI.h>
 #include <SAMRAI/tbox/SAMRAIManager.h>
@@ -384,9 +385,10 @@ double fineByAt(int i, int j)
 
 constexpr int fieldGhosts = static_cast<int>(GridYee2D::options.field_ghost_width);
 
-using VecFieldData2D = PHARE::amr::TensorFieldData<1, GridYee2D, Grid2D, HybridQuantity>;
-using MagStrategy2D  = MagneticRefinePatchStrategy<VecFieldData2D>;
-using FieldGeom2D    = FieldGeometry<GridYee2D, HybridQuantity::Scalar>;
+using BoundaryManager2D = BoundaryManager<GridYee2D, Grid2D::field_type>;
+using VecFieldData2D    = PHARE::amr::TensorFieldData<1, GridYee2D, Grid2D, HybridQuantity>;
+using MagStrategy2D     = MagneticRefinePatchStrategy<VecFieldData2D, BoundaryManager2D>;
+using FieldGeom2D       = FieldGeometry<GridYee2D, HybridQuantity::Scalar>;
 
 GridYee2D layoutOf(SAMRAI::hier::Box const& cellBox, double dl)
 {
@@ -542,28 +544,12 @@ TEST(magneticProlongation2D, halfCoveredCoarseCellsAreRejected)
 // then apply the stage-2 divergence-equalizing correction, sharing one DivScratch per postprocess
 // pass -- the same contract as MagneticRefinePatchStrategy::postprocessRefine.
 //
-// The strategy class only reads, from its TensorFieldDataT template parameter, the compile-time
-// typedefs used at class scope (Geometry/gridlayout_type/N/dimension); Geometry and ResMan are
-// never touched by the statics under test, so both are empty stand-ins.
-//
 // Order 2 only: CompositeFieldRefiner static_asserts order == 2. The touch-up statics are
 // order-independent, so order 2 exercises the whole stage-2 contract (the stage-1 snapshot,
 // per-zone equalization).
 namespace
 {
-struct DummyGeometry2D
-{
-};
-
-struct DummyTensorFieldData2D
-{
-    using Geometry                         = DummyGeometry2D;
-    using gridlayout_type                  = GridYee2D;
-    static constexpr std::size_t N         = 3;
-    static constexpr std::size_t dimension = 2;
-};
-
-using TouchUp2D = MagneticRefinePatchStrategy<DummyTensorFieldData2D>;
+using TouchUp2D = MagStrategy2D;
 
 // A GridLayout whose AMRToLocal is the identity (AMR index == array-local index): avoids
 // depending on GridLayoutImplYee's internal ghost-width value, matching the "lower=0 =>

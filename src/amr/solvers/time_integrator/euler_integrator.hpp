@@ -23,9 +23,8 @@ public:
     {
     }
 
-    void operator()(MHDModel& model, Super::MHDStateT& state,
-                    Super::FluxT& fluxes, Super::Messenger& bc,
-                    Super::level_t& level, double const currentTime,
+    void operator()(MHDModel& model, Super::MHDStateT& state, Super::FluxT& fluxes,
+                    Super::Messenger& bc, Super::level_t& level, double const currentTime,
                     double const newTime) override
     {
         this->resetButcherFluxes_(model, level);
