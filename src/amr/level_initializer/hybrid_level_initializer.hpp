@@ -92,7 +92,7 @@ namespace solver
             auto const neighbors = amr::makeSameLevelNeighbors(*hierarchy, levelNumber);
             for (auto& patch : rm.enumerate(level, ions))
                 ions.eraseDomainParticlesIn(
-                    amr::makeNonOwnedBoxesFor<GridLayoutT::dimension>(*patch, neighbors));
+                    amr::makePatchGhostBoxes<GridLayoutT>(*patch, neighbors).nonOwned());
 
             // now all particles are here, we must compute moments.
             for (auto& patch : rm.enumerate(level, ions))

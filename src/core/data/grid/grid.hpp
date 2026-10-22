@@ -89,6 +89,7 @@ public:
     // returns view when getting address of this object, could be misleading, but convenient
     NO_DISCARD auto operator&() { return &field_; }
     NO_DISCARD auto operator&() const { return &field_; }
+    NO_DISCARD auto operator*() const { return field_; }
 
 private:
     std::string name_{"No Name"};
