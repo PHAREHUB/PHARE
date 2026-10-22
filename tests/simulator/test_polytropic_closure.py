@@ -99,7 +99,7 @@ def domain_nodes(hier, time, ilvl):
     """x and values on the domain nodes of level ilvl, overlaps removed"""
     xs, vs = [], []
     for patch in hier.level(ilvl, time).patches:
-        pdata = list(patch.patch_datas.values())[0]
+        pdata = next(iter(patch.patch_datas.values()))
         g = pdata.ghosts_nbr[0]
         domain = slice(g, len(pdata.x) - g)
         xs.append(np.asarray(pdata.x)[domain])
@@ -125,6 +125,9 @@ class PolytropicClosureTest(unittest.TestCase):
         run = Run(diag_dir)
 
         x, s = entropy(run, final_time, ilvl)
+
+        # the default (all primal) reading path of the dumped pressure works too
+        self.assertIsNotNone(run.GetPe(final_time))
 
         def rms(shift):
             return np.sqrt(np.mean((s - s0(x - shift)) ** 2))

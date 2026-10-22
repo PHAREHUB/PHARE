@@ -130,6 +130,9 @@ public:
         // the refine operators only write fine nodes that are NaN (PHARE's marker for
         // "to be filled from the coarser level", see composite_field_refiner.hpp): without
         // this reset, ghost nodes at level borders keep the value of their first fill
+        // Hybrid runs are periodic (pharein refuses domain_boundaries without the MHD
+        // model), so every ghost reset here is refilled. Physical boundaries would need a
+        // boundary fill for the step state before this closure could use them.
         resetGhostsToNaN_(levelNumber, *name);
 
         stepStateGhostAlgo_.getOrCreateSchedule(hierarchy_, levelNumber).fillData(fillTime);

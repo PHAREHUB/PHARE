@@ -171,7 +171,7 @@ class Run:
             hier = self._get_hierarchy(time, "electrons_pressure.h5")
             if not all_primal:
                 return self._get(hier, time, merged, interp)
-            return ScalarField.FROM(compute_hier_from(hc.drop_ghosts, hier))
+            return ScalarField.FROM(compute_hier_from(_compute_to_primal, hier, scalar="P"))
 
         hier = self._get_hierarchy(time, "ions_charge_density.h5")
         closure = hier.sim.electrons.closure

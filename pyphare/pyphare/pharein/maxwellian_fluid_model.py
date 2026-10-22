@@ -249,7 +249,9 @@ class MaxwellianFluidModel(object):
         """
         min_density = sim.min_density
         if not isinstance(min_density, numbers.Real) or isinstance(min_density, bool):
-            raise ValueError(f"min_density must be a number, got {type(min_density).__name__}")
+            raise TypeError(f"min_density must be a number, got {type(min_density).__name__}")
+        if not np.isfinite(min_density) or min_density < 0:
+            raise ValueError(f"min_density must be finite and >= 0 (0 disables the check), got {min_density}")
 
         nodes = [np.arange(sim.cells[d] + 1) * sim.dl[d] for d in range(sim.ndim)]
         nodes_per_slab = int(np.prod([len(n) for n in nodes[1:]]))
@@ -264,10 +266,12 @@ class MaxwellianFluidModel(object):
                 charge = self.model_dict[pop]["charge"]
                 total += charge * np.broadcast_to(density(*coords), total.shape)
 
-            if np.isnan(total).any():
-                i = np.unravel_index(np.argmax(np.isnan(total)), total.shape)
+            if not np.isfinite(total).all():
+                i = np.unravel_index(np.argmax(~np.isfinite(total)), total.shape)
                 position = tuple(float(c[i]) for c in coords)
-                raise ValueError(f"Error - the initial ion charge density is NaN at {position}")
+                raise ValueError(
+                    f"Error - the initial ion charge density is {total[i]} at {position}"
+                )
 
             magnitude = np.abs(total)
             i = np.unravel_index(np.argmin(magnitude), total.shape)

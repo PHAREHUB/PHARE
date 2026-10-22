@@ -143,8 +143,8 @@ Two closures are available:
 
 .. code-block:: python
 
-    def Pe(x):
-        return 0.1 * density(x) ** (5.0 / 3.0)
+    def Pe(*xyz):  # any dimension, same arguments as density
+        return 0.1 * density(*xyz) ** (5.0 / 3.0)
 
     ph.ElectronModel(closure="polytropic", Pe=Pe, Gamma=5.0 / 3.0)
 

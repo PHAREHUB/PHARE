@@ -19,7 +19,7 @@ class IsothermalClosure(object):
         return IsothermalClosure.closure_name
 
 
-class PolytropicClosure(object):
+class PolytropicClosure:
     closure_name = "polytropic"
 
     def __init__(self, **kwargs):

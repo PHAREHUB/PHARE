@@ -13,10 +13,10 @@ from pyphare.simulator.simulator import startMPI
 ph.NO_GUI()
 
 
-def setup_simulation(density=lambda x: 1.0, sim_args={}, **electrons):
+def setup_simulation(density=lambda x: 1.0, sim_args=None, **electrons):
     ph.global_vars.sim = None
     sim = ph.Simulation(
-        **sim_args,
+        **(sim_args or {}),
         time_step_nbr=1,
         final_time=0.001,
         cells=20,
@@ -63,12 +63,12 @@ class ElectronInputsTest(unittest.TestCase):
 
     def test_numeric_types_are_accepted(self):
         cases = [
-            dict(closure="isothermal", Te=0),
-            dict(closure="isothermal", Te=0.12),
-            dict(closure="isothermal", Te=np.int64(1)),
-            dict(closure="isothermal", Te=np.float32(0.12)),
-            dict(closure="polytropic", Gamma=2, Pe=lambda x: 0.1),
-            dict(closure="polytropic", Gamma=np.float64(5 / 3), Pe=lambda x: 0.1),
+            {"closure": "isothermal", "Te": 0},
+            {"closure": "isothermal", "Te": 0.12},
+            {"closure": "isothermal", "Te": np.int64(1)},
+            {"closure": "isothermal", "Te": np.float32(0.12)},
+            {"closure": "polytropic", "Gamma": 2, "Pe": lambda x: 0.1},
+            {"closure": "polytropic", "Gamma": np.float64(5 / 3), "Pe": lambda x: 0.1},
         ]
         for electrons in cases:
             with self.subTest(**{k: repr(v) for k, v in electrons.items()}):
@@ -79,7 +79,7 @@ class ElectronInputsTest(unittest.TestCase):
         for bad in ([0.12], True, None):
             with self.subTest(Te=repr(bad)):
                 setup_simulation(closure="isothermal", Te=bad)
-                with self.assertRaisesRegex(ValueError, "pressure_closure/Te"):
+                with self.assertRaisesRegex(TypeError, "pressure_closure/Te"):
                     ph.populateDict()
 
     def test_too_low_initial_density_is_refused(self):
@@ -93,6 +93,21 @@ class ElectronInputsTest(unittest.TestCase):
         setup_simulation(
             density=hole, sim_args={"min_density": 1e-4}, closure="isothermal", Te=0.1
         )
+
+    def test_min_density_must_be_a_finite_non_negative_number(self):
+        with self.assertRaises(TypeError):
+            setup_simulation(sim_args={"min_density": "0.01"}, closure="isothermal", Te=0.1)
+        for bad in (-1.0, float("inf"), float("nan")):
+            with self.subTest(min_density=bad), self.assertRaises(ValueError):
+                setup_simulation(sim_args={"min_density": bad}, closure="isothermal", Te=0.1)
+        # 0 disables the check
+        setup_simulation(
+            density=lambda x: 0.0 * x, sim_args={"min_density": 0}, closure="isothermal", Te=0.1
+        )
+
+    def test_infinite_initial_density_is_refused(self):
+        with self.assertRaisesRegex(ValueError, "inf"):
+            setup_simulation(density=lambda x: np.inf + 0 * x, closure="isothermal", Te=0.1)
 
     def test_polytropic_default_gamma_is_five_thirds(self):
         sim = setup_simulation(closure="polytropic")

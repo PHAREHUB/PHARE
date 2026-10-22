@@ -79,7 +79,7 @@ def _populate_electrons(dp, sim):
         elif callable(value):
             dp.add_init_function(sim.ndim, "simulation/" + path, value)
         else:
-            raise ValueError(
+            raise TypeError(
                 f"electrons entry '{path}' should be a str, int, float or callable,"
                 f" got {type(value).__name__}"
             )
