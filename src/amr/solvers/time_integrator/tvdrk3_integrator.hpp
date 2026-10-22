@@ -63,8 +63,7 @@ public:
         // where it time-interpolates at U2's own abscissa.
         double const stageTime = currentTime + 0.5 * (newTime - currentTime);
         TimeSetter{level, model, stageTime}(state2.rho, state2.rhoV, state2.Etot, state2.B);
-        bc.fillMagneticGhosts(state2.B, level, stageTime);
-        bc.fillMomentsGhosts(state2, level, stageTime);
+        bc.fillStateGhosts(state2, level, stageTime);
 
         // U2 = Euler(U2)
         euler_(model, state2, state2, fluxes, bc, level, currentTime, newTime);

@@ -31,8 +31,9 @@ namespace PHARE::amr
  * the domain boundaries. Refinement customization via preprocessRefine and postProcessRefine is
  * deferred to child classes.
  *
- * Each refiner is expected to hold an instance of this class, but all these instances will point to
- * the same common boundary manager.
+ * Each quantity a refiner fills is expected to have its own instance of this class (combined by a
+ * CompositeRefinePatchStrategy when a refiner fills several), but all these instances will point
+ * to the same common boundary manager.
  *
  * @tparam ScalarOrTensorFieldDataT The data type for fields or tensor fields.
  * @tparam BoundaryManagerT Manager responsible for providing boundary condition objects.
