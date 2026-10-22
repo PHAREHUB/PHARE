@@ -28,6 +28,7 @@
 #include "initializer/data_provider.hpp"
 
 #include "amr/load_balancing/load_balancer_details.hpp"
+#include "amr/wrappers/regrid_skip.hpp"
 
 
 namespace PHARE::amr
@@ -195,9 +196,11 @@ Integrator<_dimension>::Integrator(
         throw std::runtime_error(std::string{"Unknown clustering type "} + clustering_type);
     }();
 
-    auto gridding = std::make_shared<SAMRAI::mesh::GriddingAlgorithm>(
+    auto regridSkip = std::make_shared<RegridSkipState>();
+    auto gridding   = std::make_shared<SAMRAI::mesh::GriddingAlgorithm>(
         hierarchy, "GriddingAlgorithm", std::shared_ptr<SAMRAI::tbox::Database>{}, standardTag,
-        clustering, loadBalancer);
+        std::make_shared<RegridSkipBoxGenerator>(clustering, hierarchy, regridSkip),
+        std::make_shared<RegridSkipLoadBalancer>(loadBalancer, regridSkip));
 
     std::shared_ptr<SAMRAI::tbox::Database> db
         = std::make_shared<SAMRAI::tbox::MemoryDatabase>("TRIdb");
