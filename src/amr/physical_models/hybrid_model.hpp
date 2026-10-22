@@ -141,9 +141,9 @@ public:
     // is no same-level source yet (initial refinement), or the replaced level
     // on regrid, whose overlap should be preserved rather than
     // re-interpolated from the coarser level.
-    void initElectronPressureOnNewLevel(
-        int const levelNumber, double const fillTime,
-        std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel = nullptr)
+    void initElectronPressureOnNewLevel(int const levelNumber, double const fillTime,
+                                        std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel
+                                        = nullptr)
     {
         if (!hierarchy_)
             throw std::runtime_error(
@@ -155,8 +155,7 @@ public:
         initAlgo.registerRefine(pe_id, pe_id, pe_id, fieldRefineOp_);
 
         auto const level = hierarchy_->getPatchLevel(levelNumber);
-        initAlgo.createSchedule(level, oldLevel, levelNumber - 1, hierarchy_)
-            ->fillData(fillTime);
+        initAlgo.createSchedule(level, oldLevel, levelNumber - 1, hierarchy_)->fillData(fillTime);
     }
 
     // SolverPPC::advanceLevel only gets a bare hierarchy reference; only
@@ -248,19 +247,20 @@ private:
         auto& getOrCreateSchedule(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                                   int const ilvl)
         {
-            auto const level   = hierarchy->getPatchLevel(ilvl);
-            auto const coarser = ilvl > 0 ? hierarchy->getPatchLevel(ilvl - 1) : nullptr;
-            auto schedule_iter = schedules_.find(ilvl);
+            auto const level           = hierarchy->getPatchLevel(ilvl);
+            auto const coarser         = ilvl > 0 ? hierarchy->getPatchLevel(ilvl - 1) : nullptr;
+            auto schedule_iter         = schedules_.find(ilvl);
             auto const create_schedule = schedule_iter == schedules_.end()
                                          or schedule_iter->second.level.lock() != level
                                          or schedule_iter->second.coarser.lock() != coarser;
 
             if (create_schedule)
-                schedule_iter = schedules_
-                                    .insert_or_assign(
-                                        ilvl, Entry{level, coarser,
-                                                    algo_->createSchedule(level, ilvl - 1, hierarchy)})
-                                    .first;
+                schedule_iter
+                    = schedules_
+                          .insert_or_assign(
+                              ilvl, Entry{level, coarser,
+                                          algo_->createSchedule(level, ilvl - 1, hierarchy)})
+                          .first;
 
             return *schedule_iter->second.schedule;
         }

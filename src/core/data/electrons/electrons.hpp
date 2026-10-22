@@ -62,20 +62,11 @@ public:
     //-------------------------------------------------------------------------
 
 
-    NO_DISCARD Field const& density() const
-    {
-        return ions_.chargeDensity();
-    }
+    NO_DISCARD Field const& density() const { return ions_.chargeDensity(); }
 
-    NO_DISCARD Field& density()
-    {
-        return ions_.chargeDensity();
-    }
+    NO_DISCARD Field& density() { return ions_.chargeDensity(); }
 
-    NO_DISCARD VecField& velocity()
-    {
-        return Ve_;
-    }
+    NO_DISCARD VecField& velocity() { return Ve_; }
 
     void computeDensity() {}
 
@@ -166,15 +157,9 @@ public:
 
     void virtual initialize(GridLayout const& layout) = 0;
 
-    NO_DISCARD Field& pressure()
-    {
-        return Pe_;
-    }
+    NO_DISCARD Field& pressure() { return Pe_; }
 
-    NO_DISCARD Field const& pressure() const
-    {
-        return Pe_;
-    }
+    NO_DISCARD Field const& pressure() const { return Pe_; }
 
     // called once per time step, before the first computePressure of that step,
     // for closures that evolve the pressure in time (stages of a step all advance
@@ -355,8 +340,8 @@ public:
         if (maxCourant > 1)
         {
             std::stringstream msg;
-            msg << "Error - polytropic closure: sum over directions of |Ve|*dt/dx is "
-                << maxCourant << " > 1 on level " << layout.levelNumber() << " at AMR node "
+            msg << "Error - polytropic closure: sum over directions of |Ve|*dt/dx is " << maxCourant
+                << " > 1 on level " << layout.levelNumber() << " at AMR node "
                 << layout.localToAMR(Point{worst}) << " (n = " << N_(worst) << ", Ve =";
             for (std::size_t d = 0; d < dim; ++d)
                 msg << " " << V_[d](worst);
@@ -371,7 +356,7 @@ public:
             if (n <= 0) // see beginStep
                 return;
 
-            auto const s = sN(index) - dt * upwindAdvection_(V_, sN, index, inverseMeshSize);
+            auto const s     = sN(index) - dt * upwindAdvection_(V_, sN, index, inverseMeshSize);
             this->Pe_(index) = s * std::pow(n, gamma_);
             Te(index)        = this->Pe_(index) / n;
         });
@@ -570,7 +555,7 @@ public:
 private:
     initializer::PHAREDict dict_;
     FluxComputer fluxComput_;
-    VecField B_;  // needed for CGL
+    VecField B_; // needed for CGL
     std::unique_ptr<ElectronPressureClosure<FluxComputer>> pressureClosure_;
 };
 
@@ -614,8 +599,10 @@ public:
         if (stepStateName())
             throw std::runtime_error(
                 "Error - Electrons::update cannot be used with a closure that has a step "
-                "state (" + *stepStateName() + "): its ghosts must be filled between "
-                "beginStep and computePressure");
+                "state ("
+                + *stepStateName()
+                + "): its ghosts must be filled between "
+                  "beginStep and computePressure");
 
         if (isUsable())
         {

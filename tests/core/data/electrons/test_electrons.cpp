@@ -207,7 +207,7 @@ struct ElectronsFixture
                 B.set_on(vf);
             },
             [&](FieldND& f) {
-                if(f.name() == "Te") // could be tmp field
+                if (f.name() == "Te") // could be tmp field
                     f.setBuffer(&Te);
             },
             [](auto&) {
@@ -742,8 +742,8 @@ struct TwoPopulationElectronsTest : public ::testing::Test
         auto&& fc  = std::get<0>(emm.getCompileTimeResourcesViewList());
         Ve.set_on(std::get<0>(fc.getCompileTimeResourcesViewList()));
 
-        auto&& pc               = std::get<1>(emm.getCompileTimeResourcesViewList());
-        auto const& [fc_, P]    = pc.getCompileTimeResourcesViewList();
+        auto&& pc            = std::get<1>(emm.getCompileTimeResourcesViewList());
+        auto const& [fc_, P] = pc.getCompileTimeResourcesViewList();
         P.setBuffer(&Pe);
         // the pressure closure holds its own copy of the flux computer
         Ve.set_on(std::get<0>(fc_.getCompileTimeResourcesViewList()));
@@ -870,8 +870,8 @@ struct PolytropicClosureFixture
     using Field1 = Field_t<dim>;
     using GridT  = Grid_t<dim>;
 
-    double gamma = 5. / 3.;
-    static constexpr double dx    = 0.1;
+    double gamma                            = 5. / 3.;
+    static constexpr double dx              = 0.1;
     static constexpr std::uint32_t nbrCells = dim == 1 ? 50 : 20;
     static constexpr double length          = dx * nbrCells;
 
@@ -1031,7 +1031,8 @@ TEST(PolytropicElectronPressureClosure, courantOneShiftsByExactlyOneNodeDownstre
         SCOPED_TRACE("Ve = " + std::to_string(v));
         closure_test::Fixture1D f;
         auto const Pe0 = [&](double x) {
-            return 1. + 0.1 * std::sin(2 * pi * x / f.length) + 0.05 * std::cos(4 * pi * x / f.length);
+            return 1. + 0.1 * std::sin(2 * pi * x / f.length)
+                   + 0.05 * std::cos(4 * pi * x / f.length);
         };
 
         f.fill(f.V(Component::X), [&](double) { return v; });
@@ -1061,11 +1062,11 @@ TEST(PolytropicElectronPressureClosure, advectionMatchesTheExactDiscreteSolution
         SCOPED_TRACE("Ve = " + std::to_string(v));
         closure_test::Fixture1D f;
 
-        double const amplitude  = 0.1;
-        double const wavenumber = 2 * pi * 5 / f.length; // 10 nodes per wavelength
-        double const courant    = 0.5;
-        double const dt         = courant * f.dx / std::abs(v);
-        double const theta      = wavenumber * f.dx;
+        double const amplitude     = 0.1;
+        double const wavenumber    = 2 * pi * 5 / f.length; // 10 nodes per wavelength
+        double const courant       = 0.5;
+        double const dt            = courant * f.dx / std::abs(v);
+        double const theta         = wavenumber * f.dx;
         std::size_t const nbrSteps = 200;
 
         // v > 0: s_i - c (s_i - s_{i-1});  v < 0: s_i + c (s_{i+1} - s_i)
@@ -1113,7 +1114,7 @@ TEST(PolytropicElectronPressureClosure, stabilityLimitSumsTheDirectionsIn2D)
     f.fill(f.V(Component::Y), [](double, double) { return 1.; });
     f.fill(f.Pe, [](double, double) { return 1.; });
 
-    EXPECT_NO_THROW(f.step(0.5 * f.dx));  // 0.5 + 0.5
+    EXPECT_NO_THROW(f.step(0.5 * f.dx));                   // 0.5 + 0.5
     EXPECT_THROW(f.step(0.75 * f.dx), std::runtime_error); // each 0.75 < 1, sum 1.5
 }
 
@@ -1131,14 +1132,15 @@ TEST(PolytropicElectronPressureClosure, advectionMatchesTheExactDiscreteSolution
 
     double const amplitude = 0.1;
     double const vx = 1., vy = -0.5;
-    double const dt          = 0.4 * f.dx / (std::abs(vx) + std::abs(vy)); // sum of Courant 0.4
-    double const kx          = 2 * pi * 2 / f.length;
-    double const ky          = 2 * pi * 3 / f.length;
-    double const cx          = std::abs(vx) * dt / f.dx;
-    double const cy          = std::abs(vy) * dt / f.dx;
+    double const dt            = 0.4 * f.dx / (std::abs(vx) + std::abs(vy)); // sum of Courant 0.4
+    double const kx            = 2 * pi * 2 / f.length;
+    double const ky            = 2 * pi * 3 / f.length;
+    double const cx            = std::abs(vx) * dt / f.dx;
+    double const cy            = std::abs(vy) * dt / f.dx;
     std::size_t const nbrSteps = 100;
 
-    auto const g = 1. - cx * (1. - std::exp(-1i * kx * f.dx)) + cy * (std::exp(1i * ky * f.dx) - 1.);
+    auto const g
+        = 1. - cx * (1. - std::exp(-1i * kx * f.dx)) + cy * (std::exp(1i * ky * f.dx) - 1.);
 
     f.fill(f.V(Component::X), [&](double, double) { return vx; });
     f.fill(f.V(Component::Y), [&](double, double) { return vy; });
@@ -1149,11 +1151,10 @@ TEST(PolytropicElectronPressureClosure, advectionMatchesTheExactDiscreteSolution
 
     auto const gn = std::pow(g, static_cast<double>(nbrSteps));
     f.layout.evalOnBox(f.Pe, [&](auto const&... ijk) {
-        auto const index = std::array{ijk...};
-        double const x   = (static_cast<double>(index[0]) - f.start) * f.dx;
-        double const y   = (static_cast<double>(index[1]) - f.start) * f.dx;
-        double const expected
-            = 1. + amplitude * std::imag(gn * std::exp(1i * (kx * x + ky * y)));
+        auto const index      = std::array{ijk...};
+        double const x        = (static_cast<double>(index[0]) - f.start) * f.dx;
+        double const y        = (static_cast<double>(index[1]) - f.start) * f.dx;
+        double const expected = 1. + amplitude * std::imag(gn * std::exp(1i * (kx * x + ky * y)));
         EXPECT_NEAR(f.Pe(index), expected, 1e-12) << "at node " << index[0] << "," << index[1];
     });
 }

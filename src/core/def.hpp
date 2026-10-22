@@ -69,8 +69,8 @@ NO_DISCARD bool isUsable(auto const&... args)
             usable = arg.isUsable();
         PHARE_DEBUG_DO({
             if (!usable)
-                std::cerr << __FILE__ << ":" << __LINE__ << " - "
-                          << detail::get_resource_name(arg) << " not usable!" << std::endl;
+                std::cerr << __FILE__ << ":" << __LINE__ << " - " << detail::get_resource_name(arg)
+                          << " not usable!" << std::endl;
         })
         return usable;
     };
@@ -88,8 +88,8 @@ NO_DISCARD bool isSettable(auto const&... args)
             settable = arg.isSettable();
         PHARE_DEBUG_DO({
             if (!settable)
-                std::cerr << __FILE__ << ":" << __LINE__ << " - "
-                          << detail::get_resource_name(arg) << " not settable!" << std::endl;
+                std::cerr << __FILE__ << ":" << __LINE__ << " - " << detail::get_resource_name(arg)
+                          << " not settable!" << std::endl;
         })
         return settable;
     };

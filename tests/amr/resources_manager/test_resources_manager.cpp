@@ -409,7 +409,7 @@ TEST(usingResourcesManager, test_variants)
             auto dataOnPatch = resourcesManager.setOnPatch(*patch, resourceUser);
             auto&& [r0, r1]  = resourceUser.get();
             r1.rho.data()[4] = 5;
-            
+
             ++patches;
         }
 

@@ -40,8 +40,8 @@ namespace core
         {
         }
 
-        IonPopulation(IonPopulation const&) = default;
-        IonPopulation(IonPopulation&&)      = default;
+        IonPopulation(IonPopulation const&)            = default;
+        IonPopulation(IonPopulation&&)                 = default;
         IonPopulation& operator=(IonPopulation const&) = default;
         IonPopulation& operator=(IonPopulation&&)      = default;
 

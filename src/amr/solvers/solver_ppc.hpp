@@ -184,8 +184,8 @@ private:
     // ion moments and the electron pressure are still at time n: each stage then
     // advances the pressure from that state rather than from the previous stage.
     // The state saved by beginStep has its ghosts filled once, right after.
-    void update_electrons(auto& level, auto& model, double const currentTime,
-                          double const newTime, bool const beginStep)
+    void update_electrons(auto& level, auto& model, double const currentTime, double const newTime,
+                          bool const beginStep)
     {
         auto& rm        = *model.resourcesManager;
         auto& electrons = model.state.electrons;
