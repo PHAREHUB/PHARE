@@ -123,6 +123,8 @@ FluidDiagnosticWriter<H5Writer>::HybridFluidInitializer::operator()(auto const i
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
     if (isActiveDiag(diagnostic, tree, "charge_flux"))
         return file_initializer.template initTensorFieldFileLevel<1>(ilvl);
+    if (isActiveDiag(diagnostic, "/electrons/", "pressure"))
+        return file_initializer.initFieldFileLevel(ilvl);
 
     for (auto& pop : ions)
     {
@@ -231,6 +233,8 @@ void FluidDiagnosticWriter<H5Writer>::HybridFluidWriter::operator()(auto const& 
         file_writer.template writeTensorField<1>(ions.velocity(), layout);
     else if (isActiveDiag(diagnostic, tree, "charge_flux"))
         file_writer.template writeTensorField<1>(ions.chargeFlux(), layout);
+    else if (isActiveDiag(diagnostic, "/electrons/", "pressure"))
+        file_writer.writeField(modelView.getElectrons().pressure(), layout);
     else
     {
         for (auto& pop : ions)

@@ -180,11 +180,46 @@ private:
         return *level;
     }
 
-    void update_electrons(auto& level, auto& model)
+    // beginStep is true only for the first stage of a step (predictor1), where the
+    // ion moments and the electron pressure are still at time n: each stage then
+    // advances the pressure from that state rather than from the previous stage.
+    // The state saved by beginStep has its ghosts filled once, right after.
+    void update_electrons(auto& level, auto& model, double const currentTime, double const newTime,
+                          bool const beginStep)
     {
-        auto& rm = *model.resourcesManager;
-        for (auto& patch : rm.enumerate(level, model.state.electrons))
-            model.state.electrons.update(amr::layoutFromPatch<GridLayout>(*patch));
+        auto& rm        = *model.resourcesManager;
+        auto& electrons = model.state.electrons;
+        auto const dt   = newTime - currentTime;
+
+        // any of the per patch steps below may fail on some patches only (e.g. the
+        // polytropic stability limit): every rank must learn about it before the next
+        // collective step (ghost filling, Ohm), so each loop is checked collectively
+        auto const onEveryPatch = [&](auto&& fn) {
+            try
+            {
+                for (auto& patch : rm.enumerate(level, electrons))
+                    fn(amr::layoutFromPatch<GridLayout>(*patch));
+            }
+            catch (std::runtime_error const& ex)
+            {
+                PHARE_LOG_ERROR(ex.what());
+            }
+            if (mpi::any_errors())
+                throw std::runtime_error("Error - SolverPPC::update_electrons failed, see log");
+        };
+
+        onEveryPatch([&](auto const& layout) {
+            electrons.computeDensity();
+            electrons.computeBulkVelocity(layout);
+        });
+
+        if (beginStep)
+        {
+            onEveryPatch([&](auto const& layout) { electrons.beginStep(layout); });
+            model.fillElectronStepStateGhosts(level.getLevelNumber(), currentTime);
+        }
+
+        onEveryPatch([&](auto const& layout) { electrons.computePressure(layout, dt); });
     }
 
 
@@ -436,7 +471,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor1_(level_t& level, HybridModel&
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor1_.ohm");
-        update_electrons(level, model);
+        update_electrons(level, model, currentTime, newTime, true);
         ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
@@ -474,7 +509,7 @@ void SolverPPC<HybridModel, AMR_Types>::predictor2_(level_t& level, HybridModel&
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::predictor2_.ohm");
-        update_electrons(level, model);
+        update_electrons(level, model, currentTime, newTime, false);
         ohm(electromagPred_.B, electromagPred_.E, model.state.electrons);
         setTime(electromagPred_.E);
     }
@@ -516,8 +551,7 @@ void SolverPPC<HybridModel, AMR_Types>::corrector_(level_t& level, HybridModel& 
     Ohm_t ohm{ohm_info, level, model};
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::corrector_.ohm");
-
-        update_electrons(level, model);
+        update_electrons(level, model, currentTime, newTime, false);
         ohm(electromag.B, electromag.E, model.state.electrons);
         setTime(model.state.electromag.E);
     }

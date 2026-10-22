@@ -6,13 +6,12 @@
 #include "core/utilities/algorithm.hpp"
 #include "core/models/physical_state.hpp"
 #include "core/models/quantities/hybrid_quantities.hpp"
+#include "core/data/electrons/electrons.hpp"
 
 #include "initializer/data_provider.hpp"
 
-
-#include <string>
 #include <sstream>
-
+#include <string>
 
 namespace PHARE
 {
@@ -27,6 +26,7 @@ namespace core
     class HybridState : public IPhysicalState
     {
         using VecField = typename Electromag::vecfield_type;
+        using FluxComputer_t = StandardHybridElectronFluxComputer<Ions>;
 
     public:
         static constexpr auto dimension = Ions::dimension;
@@ -35,7 +35,7 @@ namespace core
             : electromag{dict["electromag"]}
             , ions{dict["ions"]}
             , J{"J", HybridQuantity::Vector::J}
-            , electrons{dict["electrons"], ions, J}
+            , electrons{dict["electrons"], FluxComputer_t{ions, J}, electromag.B}
         {
         }
 
@@ -58,16 +58,11 @@ namespace core
         //                  start the ResourcesUser interface
         //-------------------------------------------------------------------------
 
-        NO_DISCARD bool isUsable() const
-        {
-            return electromag.isUsable() and ions.isUsable() && J.isUsable();
-        }
-
-
+        NO_DISCARD bool isUsable() const { return core::isUsable(electromag, ions, J, electrons); }
 
         NO_DISCARD bool isSettable() const
         {
-            return electromag.isSettable() and ions.isSettable() && J.isSettable();
+            return core::isSettable(electromag, ions, J, electrons);
         }
 
 

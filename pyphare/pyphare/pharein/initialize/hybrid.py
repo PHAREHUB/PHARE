@@ -1,3 +1,5 @@
+import numbers
+
 from .dict_populator import DictPopulator
 
 
@@ -69,8 +71,15 @@ def _populate_electrons(dp, sim):
     if sim.electrons is None:
         raise RuntimeError("Error - no electrons registered to this Simulation")
 
-    for item in sim.electrons.dict_path():
-        if isinstance(item[1], str):
-            dp.add_string("simulation/" + item[0], item[1])
+    for path, value in sim.electrons.dict_path():
+        if isinstance(value, str):
+            dp.add_string("simulation/" + path, value)
+        elif isinstance(value, numbers.Real) and not isinstance(value, bool):
+            dp.add_double("simulation/" + path, value)
+        elif callable(value):
+            dp.add_init_function(sim.ndim, "simulation/" + path, value)
         else:
-            dp.add_double("simulation/" + item[0], item[1])
+            raise TypeError(
+                f"electrons entry '{path}' should be a str, int, float or callable,"
+                f" got {type(value).__name__}"
+            )

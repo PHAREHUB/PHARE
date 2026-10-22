@@ -250,6 +250,11 @@ void Simulator<opts>::hybrid_init(initializer::PHAREDict const& dict)
     hyb_.model_ = std::make_shared<HybridModel>(dict["simulation"], hyb_.resman_);
     hyb_.resman_->registerResources(hyb_.model_->state); // still valid, never moved
 
+    // set once here rather than relying on HybridLevelInitializer::initialize()
+    // (which is skipped for a level restored from a restart file): hierarchy_
+    // exists identically on a fresh start or a restart, before any advanceLevel.
+    hyb_.model_->setHierarchy(hierarchy_);
+
     // we register the hybrid model for all possible levels in the hierarchy
     // since for now it is the only model available, same for the solver
     multiphysInteg_->registerModel(maxMHDLevel_, maxLevelNumber_ - 1, hyb_.model_);

@@ -1,15 +1,17 @@
 #ifndef PHARE_TENSORFIELD_HPP
 #define PHARE_TENSORFIELD_HPP
 
-#include <cstddef>
-#include <string>
-#include <array>
-#include <vector>
-#include <unordered_map>
 
 #include "core/def.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
+
+
+#include <array>
+#include <string>
+#include <vector>
+#include <cstddef>
+#include <unordered_map>
 
 namespace PHARE::core::detail
 {
@@ -64,7 +66,7 @@ public:
     TensorField()                                     = delete;
     TensorField(TensorField const& source)            = default;
     TensorField(TensorField&& source)                 = default;
-    TensorField& operator=(TensorField const& source) = delete;
+    TensorField& operator=(TensorField const& source) = default;
     TensorField& operator=(TensorField&& source)      = default;
 
     TensorField(std::string const& name, tensor_t physQty)
@@ -231,9 +233,9 @@ private:
     tensor_t qty_;
     std::string const name_{"No Name"};
     std::array<typename PhysicalQuantity::Scalar, N> physQties_;
-    std::array<std::string, N> const componentNames_;
+    std::array<std::string, N> componentNames_;
     std::array<field_type, N> components_;
-    std::unordered_map<std::string, std::size_t> const nameToIndex_;
+    std::unordered_map<std::string, std::size_t> nameToIndex_;
 };
 
 

@@ -100,6 +100,17 @@ Examples:
 - ``tests/functional/harris/harris_2d.py`` - one population.
 - ``tests/functional/ionIonBeam/ion_ion_beam1d.py`` - two populations.
 
+Minimum density
+^^^^^^^^^^^^^^^
+
+The electron velocity :math:`\mathbf{V}_e = (\sum_s q_s \mathbf{F}_s - \mathbf{J})/n`
+and Ohm's law divide by the ion charge density, so ``Simulation`` refuses an
+initial condition whose total ion charge density, in absolute value, goes below
+``min_density`` (default 0.01) on any grid node of the domain, whatever the
+electron closure. This is a change of behaviour: inputs with deliberately
+rarefied regions must now set it explicitly, e.g.
+``Simulation(..., min_density=1e-3)``.
+
 A Hybrid simulation also requires an ``ElectronModel`` block, see below.
 
 Hybrid: ElectronModel
@@ -117,6 +128,34 @@ closure, and is required in every Hybrid simulation.
     import pyphare.pharein as ph
 
     ph.ElectronModel(closure="isothermal", Te=0.2)
+
+Two closures are available:
+
+- ``closure="isothermal"`` with ``Te``: the electron temperature is constant in
+  space and time, and :math:`P_e = n T_e`.
+- ``closure="polytropic"`` with ``Pe``, a function of the coordinates giving the
+  initial electron pressure, and ``Gamma`` (default 5/3). The electrons are
+  adiabatic: :math:`s = P_e / n^\gamma` is carried by the electron flow,
+  :math:`\partial_t s + \mathbf{V}_e \cdot \nabla s = 0`, and
+  :math:`P_e = s\, n^\gamma`. With an initial pressure
+  :math:`P_e = P_0 (n/n_0)^\gamma`, :math:`s` is uniform and stays so: this is
+  the usual polytropic law. A non-uniform initial :math:`s` is transported.
+
+.. code-block:: python
+
+    def Pe(*xyz):  # any dimension, same arguments as density
+        return 0.1 * density(*xyz) ** (5.0 / 3.0)
+
+    ph.ElectronModel(closure="polytropic", Pe=Pe, Gamma=5.0 / 3.0)
+
+The transport uses a first-order upwind scheme in space and is first order in
+time (each predictor/corrector stage advances :math:`s` from the start of the
+step), stable only if :math:`\sum_d |V_{e,d}|\, \Delta t / \Delta x_d \le 1` at
+every node. The simulation stops with an error otherwise; reduce ``time_step``.
+The electron pressure can be written with
+``FluidDiagnostics(quantity="electron_pressure")``. Vacuum is not supported (see
+the minimum density above): where the ion density drops to zero during a run,
+:math:`s` and :math:`P_e` are left unchanged at that node.
 
 Not needed for an MHD simulation.
 

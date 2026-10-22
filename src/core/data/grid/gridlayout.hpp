@@ -568,6 +568,9 @@ namespace core
          * at a multidimensional index and in a given direction.
          * The function can perform 1D, 2D and 3D 1st order derivatives, depending
          * on the dimensionality of the GridLayout.
+         * This function then gives a derivative value at 'index' which centering
+         * is the opposite of the centering of 'operand'
+         * if 'operand' is primal, the derivative is at the dual 'index' location
          */
         template<auto direction, typename Field>
         NO_DISCARD auto deriv(Field const& operand, MeshIndex<Field::dimension> index) const
