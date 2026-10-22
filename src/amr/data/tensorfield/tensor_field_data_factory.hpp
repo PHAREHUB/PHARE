@@ -49,7 +49,7 @@ public:
     /*** \brief Clone the current TensorFieldDataFactory
      */
     std::shared_ptr<SAMRAI::hier::PatchDataFactory>
-    cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) final
+    cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) override
     {
         return std::make_shared<TensorFieldDataFactory>(fineBoundaryRepresentsVariable_,
                                                         dataLivesOnPatchBorder_, name_, quantity_);
@@ -137,7 +137,7 @@ public:
 
 
 
-private:
+protected:
     bool const fineBoundaryRepresentsVariable_ = false;
     bool const dataLivesOnPatchBorder_         = false;
     tensor_t const quantity_;

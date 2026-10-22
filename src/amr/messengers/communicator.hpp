@@ -57,17 +57,8 @@ namespace amr
         Communicator(Communicator const&) = delete;
         Communicator(Communicator&&)      = default;
 
-        // we have an algorithm for each quantity, like Bx, By, Bz
-        // even if they are to be refined/synced together.
-        // the reason is that SAMRAI assumes that all Variables registered
-        // to an Algorithm that are of the same type will correspond to data
-        // having the same layout. This is what they do with, e.g. CellVariable
-        // and CellData. This assumption ("Equivalent Classes")allow them to
-        // take the geometry from the first of the quantities that share the same Variable type.
-        // In PHARE all our FieldDatas have the same FieldVariable type but
-        // the data layout is managed by the GridLayout and will be different.
-        // For instance, although  Bx, By, Bz are all FieldData and FieldVariable
-        // their data layout is different and their shape is thus different.
+        // items of different centerings may share an algorithm, since their factory types differ
+        // (centered_factory.hpp)
         std::vector<std::unique_ptr<Algorithm>> algos;
 
         auto& add_algorithm()

@@ -47,7 +47,7 @@ namespace amr
         /*** \brief Clone the current FieldDataFactory
          */
         std::shared_ptr<SAMRAI::hier::PatchDataFactory>
-        cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) final
+        cloneFactory(SAMRAI::hier::IntVector const& /*ghost*/) override
         {
             return std::make_shared<FieldDataFactory>(fineBoundaryRepresentsVariable_,
                                                       dataLivesOnPatchBorder_, name_, quantity_);
@@ -171,7 +171,7 @@ namespace amr
 
 
 
-    private:
+    protected:
         bool const fineBoundaryRepresentsVariable_ = false;
         bool const dataLivesOnPatchBorder_         = false;
         PhysicalQuantity const quantity_;
