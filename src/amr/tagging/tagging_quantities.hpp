@@ -8,6 +8,7 @@
 
 #include "initializer/data_provider.hpp"
 
+#include <map>
 #include <array>
 #include <string>
 #include <vector>
@@ -20,46 +21,40 @@
 namespace PHARE::amr::tagging
 {
 /**
- * @brief TOFILL
- */
-struct QuantityThreshold
-{
-    std::string name; ///< TOFILL
-    double threshold; ///< TOFILL
-
-    /// TOFILL
-    bool operator==(QuantityThreshold const&) const = default;
-};
-
-
-/**
- * @brief TOFILL
+ * @brief Read the names and thresholds of the tagged quantities from the config dict.
  *
- * @param dict TOFILL
- * @return TOFILL
+ * The quantities are the entries "Q0" to "Q<nbr_quantities - 1>", each with a "name" and a
+ * "threshold", as written by pharein. Without "nbr_quantities", B is tagged with the threshold
+ * "threshold" (default 0.1).
+ *
+ * @param dict Config dict at path "simulation/AMR/refinement/tagging"
+ * @return The threshold of each quantity, keyed by quantity name
+ * @throws std::runtime_error if a quantity name is given more than once
  */
-inline std::vector<QuantityThreshold> parseQuantities(initializer::PHAREDict const& dict)
+inline std::map<std::string, double> parseQuantities(initializer::PHAREDict const& dict)
 {
     if (!dict.contains("nbr_quantities"))
         return {{"B", cppdict::get_value(dict, "threshold", 0.1)}};
 
-    std::vector<QuantityThreshold> quantities;
+    std::map<std::string, double> quantities;
     auto const nbrQuantities = dict["nbr_quantities"].template to<int>();
     for (int i = 0; i < nbrQuantities; ++i)
     {
         auto const& quantity = dict["Q" + std::to_string(i)];
-        quantities.emplace_back(quantity["name"], quantity["threshold"]);
+        auto const name      = quantity["name"].template to<std::string>();
+        if (!quantities.emplace(name, quantity["threshold"].template to<double>()).second)
+            throw std::runtime_error("tagging quantity '" + name + "' is given more than once");
     }
     return quantities;
 }
 
 
 /**
- * @brief TOFILL
+ * @brief The magnetic field of the model.
  *
- * @tparam Model TOFILL
- * @param model TOFILL
- * @return TOFILL
+ * @tparam Model The physical model
+ * @param model The physical model
+ * @return a reference to the model's magnetic field
  */
 template<typename Model>
 auto& magneticField(Model& model)
@@ -74,26 +69,27 @@ auto& magneticField(Model& model)
 
 
 /**
- * @brief TOFILL
+ * @brief The field type of the tagged components, the one of a magnetic field component.
  *
- * @tparam Model TOFILL
+ * @tparam Model The physical model
  */
 template<typename Model>
 using tagged_field_t = std::decay_t<
     decltype(magneticField(std::declval<Model&>()).getComponent(core::Component::X))>;
 
 /**
- * @brief TOFILL
+ * @brief A tagged component: a copy of the component's field view (data pointer and shape), only
+ * valid on the patch the model was set on when it was taken.
  *
- * @tparam Model TOFILL
+ * @tparam Model The physical model
  */
 template<typename Model>
 using tagged_component_t = tagged_field_t<Model>;
 
 /**
- * @brief TOFILL
+ * @brief The largest number of components of a tagged quantity, the one of a vector field.
  *
- * @tparam Model TOFILL
+ * @tparam Model The physical model
  */
 template<typename Model>
 auto constexpr max_tagged_components_v
@@ -101,46 +97,75 @@ auto constexpr max_tagged_components_v
 
 
 /**
- * @brief TOFILL
+ * @brief A function returning the components of a quantity, taken from a model set on a patch.
  *
- * @tparam Model TOFILL
- * @param model TOFILL
- * @return TOFILL
+ * @tparam Model The physical model
  */
 template<typename Model>
-auto taggableQuantities(Model& model)
+using quantity_accessor_t = std::vector<tagged_component_t<Model>> (*)(Model&);
+
+
+/**
+ * @brief A tagged quantity, resolved from its name: how to get its components from
+ * the model, along with its threshold.
+ *
+ * @tparam Model The physical model
+ */
+template<typename Model>
+struct TaggedQuantityAccessor
+{
+    quantity_accessor_t<Model> components; ///< the components of the quantity on the current patch
+    double threshold;                      ///< the criterion's threshold for this quantity
+};
+
+
+/**
+ * @brief The quantities available for tagging in the model, each name mapped to the accessor of its
+ * components.
+ *
+ * B, Bx, By and Bz for both models, plus rho (or density), rhoV (or momentum), rhoVx, rhoVy, rhoVz
+ * and Etot for the MHD model.
+ *
+ * @tparam Model The physical model
+ * @return the list of (name, accessor) pairs
+ */
+template<typename Model>
+auto taggableQuantities()
 {
     using Tagged     = tagged_component_t<Model>;
     using Components = std::vector<Tagged>;
+    using Accessor   = quantity_accessor_t<Model>;
     using core::Component;
+    static_assert(max_tagged_components_v<Model> >= 3);
 
-    auto const scalar = [](auto const& field) { return Components{Tagged{field}}; };
-    auto const one    = [](auto const& vecfield, Component c) {
+    static constexpr auto scalar = [](auto const& field) { return Components{Tagged{field}}; };
+    static constexpr auto one    = [](auto const& vecfield, Component c) {
         return Components{Tagged{vecfield.getComponent(c)}};
     };
-    auto const all = [](auto const& vecfield) {
+    static constexpr auto all = [](auto const& vecfield) {
         return Components{Tagged{vecfield.getComponent(Component::X)},
                           Tagged{vecfield.getComponent(Component::Y)},
                           Tagged{vecfield.getComponent(Component::Z)}};
     };
 
-    auto const& B = magneticField(model);
-    std::vector<std::pair<std::string, Components>> quantities{{"B", all(B)},
-                                                               {"Bx", one(B, Component::X)},
-                                                               {"By", one(B, Component::Y)},
-                                                               {"Bz", one(B, Component::Z)}};
+    std::vector<std::pair<std::string, Accessor>> quantities{
+        {"B", [](Model& model) { return all(magneticField(model)); }},
+        {"Bx", [](Model& model) { return one(magneticField(model), Component::X); }},
+        {"By", [](Model& model) { return one(magneticField(model), Component::Y); }},
+        {"Bz", [](Model& model) { return one(magneticField(model), Component::Z); }}};
 
     if constexpr (solver::is_mhd_model_v<Model>)
     {
-        auto const& state = model.state;
-        quantities.insert(quantities.end(), {{"rho", scalar(state.rho)},
-                                             {"density", scalar(state.rho)},
-                                             {"rhoV", all(state.rhoV)},
-                                             {"momentum", all(state.rhoV)},
-                                             {"rhoVx", one(state.rhoV, Component::X)},
-                                             {"rhoVy", one(state.rhoV, Component::Y)},
-                                             {"rhoVz", one(state.rhoV, Component::Z)},
-                                             {"Etot", scalar(state.Etot)}});
+        quantities.insert(
+            quantities.end(),
+            {{"rho", [](Model& model) { return scalar(model.state.rho); }},
+             {"density", [](Model& model) { return scalar(model.state.rho); }},
+             {"rhoV", [](Model& model) { return all(model.state.rhoV); }},
+             {"momentum", [](Model& model) { return all(model.state.rhoV); }},
+             {"rhoVx", [](Model& model) { return one(model.state.rhoV, Component::X); }},
+             {"rhoVy", [](Model& model) { return one(model.state.rhoV, Component::Y); }},
+             {"rhoVz", [](Model& model) { return one(model.state.rhoV, Component::Z); }},
+             {"Etot", [](Model& model) { return scalar(model.state.Etot); }}});
     }
 
     return quantities;
@@ -148,10 +173,11 @@ auto taggableQuantities(Model& model)
 
 
 /**
- * @brief TOFILL
+ * @brief The names of quantities of the model that are not available for tagging yet, so that they
+ * get a clearer error than unknown names.
  *
- * @tparam Model TOFILL
- * @return TOFILL
+ * @tparam Model The physical model
+ * @return the list of names
  */
 template<typename Model>
 constexpr auto notAvailableQuantities()
@@ -180,22 +206,23 @@ constexpr auto notAvailableQuantities()
 
 
 /**
- * @brief TOFILL
+ * @brief The accessor to the components of the quantity of the given name.
  *
- * @tparam Model TOFILL
- * @param model TOFILL
- * @param name TOFILL
- * @return TOFILL
+ * @tparam Model The physical model
+ * @param name The name of the quantity
+ * @return the accessor to the quantity's components
+ * @throws std::runtime_error if the quantity is not available for tagging yet, or unknown for this
+ * model (the message then lists the allowed names)
  */
 template<typename Model>
-std::vector<tagged_component_t<Model>> resolveQuantity(Model& model, std::string const& name)
+quantity_accessor_t<Model> resolveQuantity(std::string const& name)
 {
-    auto quantities = taggableQuantities(model);
+    auto const quantities = taggableQuantities<Model>();
 
     auto const found = std::find_if(std::begin(quantities), std::end(quantities),
                                     [&](auto const& quantity) { return quantity.first == name; });
     if (found != std::end(quantities))
-        return std::move(found->second);
+        return found->second;
 
     auto constexpr notAvailable = notAvailableQuantities<Model>();
     if (std::find(std::begin(notAvailable), std::end(notAvailable), name) != std::end(notAvailable))
@@ -211,26 +238,35 @@ std::vector<tagged_component_t<Model>> resolveQuantity(Model& model, std::string
 
 
 /**
- * @brief TOFILL
+ * @brief Resolve each quantity name to the accessor to its components, keeping its threshold.
  *
- * @tparam Model TOFILL
- * @param model TOFILL
- * @param quantities TOFILL
- * @return TOFILL
+ * @tparam Model The physical model
+ * @param quantities The threshold of each quantity, keyed by quantity name
+ * @return the accessor and threshold of each quantity, in name order
+ * @throws std::runtime_error as resolveQuantity() does
  */
 template<typename Model>
-auto resolveQuantities(Model& model, std::vector<QuantityThreshold> const& quantities)
+std::vector<TaggedQuantityAccessor<Model>>
+resolveQuantities(std::map<std::string, double> const& quantities)
 {
-    std::vector<std::pair<std::vector<tagged_component_t<Model>>, double>> resolved;
+    std::vector<TaggedQuantityAccessor<Model>> resolved;
     for (auto const& [name, threshold] : quantities)
-    {
-        resolved.emplace_back(resolveQuantity(model, name), threshold);
-        if (resolved.back().first.size() > max_tagged_components_v<Model>)
-            throw std::runtime_error("tagging quantity '" + name + "' has more than "
-                                     + std::to_string(max_tagged_components_v<Model>)
-                                     + " components");
-    }
+        resolved.emplace_back(resolveQuantity<Model>(name), threshold);
     return resolved;
+}
+
+/**
+ * @brief Read the tagged quantities from the config dict and resolve them.
+ *
+ * @tparam Model The physical model
+ * @param dict config dict at path "simulation/AMR/refinement/tagging"
+ * @return the accessor and threshold of each quantity, in name order
+ * @throws std::runtime_error as parseQuantities() and resolveQuantity() do
+ */
+template<typename Model>
+std::vector<TaggedQuantityAccessor<Model>> resolveQuantities(initializer::PHAREDict const& dict)
+{
+    return resolveQuantities<Model>(parseQuantities(dict));
 }
 
 } // namespace PHARE::amr::tagging

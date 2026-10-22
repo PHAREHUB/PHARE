@@ -15,35 +15,69 @@
 #include <cstddef>
 #include <cstdint>
 #include <span>
-#include <utility>
 #include <vector>
 
 namespace PHARE::amr
 {
 /**
- * @brief TOFILL
+ * @brief CRTP base for tagging based on a single criterion applied to a list of quantities.
  *
- * @tparam Derived TOFILL
- * @tparam Model TOFILL
+ * The criterion is made of an indicator function (the same for all quantities), and a per-quantity
+ * threshold. The criterion is met in a cell if at least one quantity has its indicator exceeding
+ * its threshold.
+ *
+ * This class expects its child to implement the indicator with the following interface:
+ *
+ * @code
+ * double indicator(recentered_field_type const& field,
+ *                  std::array<std::uint32_t, dimension> const& cell) const;
+ * @endcode
+ *
+ * where `field` is one component of a quantity, viewed at cell centres, and `cell` the index of the
+ * cell in the field arrays, the first ghost cell having index 0.
+ *
+ * The CRTP child is also expected to provide a `static constexpr std::uint32_t stencil_reach`, the
+ * largest number of cells the indicator reads away from `cell`, to avoid out-of-bounds access in
+ * case the ghost layer width is not large enough. In this case, a margin at the patch border is
+ * left with untagged cells.
+ *
+ * For a vector quantity, a single threshold is given for all components. Components are then
+ * treated as individual quantities. Optionally, there is a possibility to compare a combination of
+ * the components' indicator values, instead of comparing them individually. In this case the CRTP
+ * child should implement the following interface that produces a single value out of the
+ * components' values:
+ *
+ * @code
+ * static double combine(std::span<double const> indicators);
+ * @endcode
+ *
+ * where `indicators` holds the indicator value of each component of the quantity, in component
+ * order (a single value for a scalar quantity). The returned value is compared to the threshold.
+ *
+ * Not providing this interface is equivalent to having a combine function returning the max of the
+ * values (if we assume no-NaN is involved). This functionality is only there to keep the behavior
+ * of the 1D default tagger strategy for now.
+ *
+ * @tparam Derived The CRTP child class
+ * @tparam Model The physical model
  */
 template<typename Derived, typename Model>
 class ComponentWiseTaggerStrategy : public TaggerStrategy<Model>
 {
 public:
-    /// TOFILL
-    using gridlayout_type           = Model::gridlayout_type;
-    static constexpr auto dimension = Model::dimension; ///< TOFILL
-    /// TOFILL
+    using gridlayout_type = Model::gridlayout_type;
     using recentered_field_type
         = core::RecenteredField<gridlayout_type, tagging::tagged_field_t<Model>>;
 
+    static constexpr auto dimension = Model::dimension;
+
     /**
-     * @brief TOFILL
+     * @brief Constructor
      *
-     * @param dict TOFILL
+     * @param dict config dict at path "simulation/AMR/refinement/tagging"
      */
     explicit ComponentWiseTaggerStrategy(initializer::PHAREDict const& dict)
-        : quantities_{tagging::parseQuantities(dict)}
+        : quantities_{tagging::resolveQuantities<Model>(dict)}
     {
         auto constexpr reach  = Derived::stencil_reach;
         auto constexpr ghosts = ghostWidth_();
@@ -57,22 +91,32 @@ public:
     }
 
     /**
-     * @brief TOFILL
+     * @brief The main tag function, called once per patch by ConcreteTagger::tag()
+     * (amr/tagging/concrete_tagger.hpp), after the model has been set on that patch.
      *
-     * @param model TOFILL
-     * @param layout TOFILL
-     * @param tags TOFILL
+     * @param model The physical model, set on the patch.
+     * @param layout The grid layout of the current patch.
+     * @param tags The array of tag values, one per cell of the patch, in Fortran ordering.
      */
     void tag(Model& model, gridlayout_type const& layout, int* tags) const final;
 
 private:
-    /// TOFILL
+    /// Bundles the components' recentered views of a single quantity, along with its threshold.
+    struct TaggedQuantityRecenteredComponents
+    {
+        std::vector<recentered_field_type>
+            recenteredFields; ///< recentered views of the components' fields.
+        double threshold;     ///< the criterion's threshold for this quantity.
+    };
+
+    /// Retrieve the ghost layer width
     static constexpr std::uint32_t ghostWidth_()
     {
         return static_cast<std::uint32_t>(gridlayout_type::options.field_ghost_width);
     }
 
-    /// TOFILL
+    /// Return the layer size of untaggable physical cells near the patch border, because of the
+    /// stencil size of the indicator function.
     static constexpr std::uint32_t margin_()
     {
         auto constexpr reach  = Derived::stencil_reach;
@@ -80,10 +124,11 @@ private:
         return reach > ghosts ? reach - ghosts : 0;
     }
 
-    /// TOFILL
+    /// CRTP downcast helper.
     Derived const& derived_() const { return static_cast<Derived const&>(*this); }
 
-    std::vector<tagging::QuantityThreshold> quantities_; ///< TOFILL
+    /// The list of each quantity's model accessor (also contains the threshold)
+    std::vector<tagging::TaggedQuantityAccessor<Model>> quantities_;
 };
 
 
@@ -93,17 +138,20 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
 {
     auto const allDual = core::ConstArray<core::QtyCentering, dimension>(core::QtyCentering::dual);
 
-    std::vector<std::pair<std::vector<recentered_field_type>, double>> quantities;
-    for (auto const& [components, threshold] : tagging::resolveQuantities(model, quantities_))
+    // build the recentered views of all quantities' components
+    std::vector<TaggedQuantityRecenteredComponents> quantities;
+    for (auto const& [components, threshold] : quantities_)
     {
-        auto& [fields, quantityThreshold] = quantities.emplace_back();
-        quantityThreshold                 = threshold;
-        for (auto const& component : components)
-            fields.emplace_back(component, allDual);
+        auto& quantity     = quantities.emplace_back();
+        quantity.threshold = threshold;
+        for (auto const& component : components(model))
+            quantity.recenteredFields.emplace_back(component, allDual);
     }
 
+    // check at compile time if `combine` is defined by the CRTP child
     constexpr bool hasCombine
         = requires(std::span<double const> indicators) { Derived::combine(indicators); };
+    // a buffer to store the components' indicator values of a single quantity
     std::array<double, tagging::max_tagged_components_v<Model>> indicators;
 
     auto const nbrCells = layout.nbrCells();
@@ -115,35 +163,47 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
     auto constexpr margin = margin_();
     auto const nbrTags    = core::product(nbrCells);
 
-    for (std::size_t i = 0; i < nbrTags; ++i)
+    for (std::size_t tagId = 0; tagId < nbrTags; ++tagId)
     {
-        std::array<std::uint32_t, dimension> cell;
-        bool inBorder = false;
-        auto rest     = i;
+        // determine at the same time the indices of the cell corresponding to tagId, and if the
+        // cell is inside the untaggable margin. tagId is a flat index in Fortran ordering (first
+        // index fastest), decoded here one direction at a time.
+        std::array<std::uint32_t, dimension> cellId;
+        bool inUntaggableMargin = false;
+        auto rest               = tagId;
         for (std::size_t d = 0; d < dimension; ++d)
         {
             auto const t = static_cast<std::uint32_t>(rest % nbrCells[d]);
             rest /= nbrCells[d];
             if constexpr (margin > 0)
-                inBorder = inBorder or t < margin or t + margin >= nbrCells[d];
-            cell[d] = t + start[d];
+                inUntaggableMargin = inUntaggableMargin or t < margin or t + margin >= nbrCells[d];
+            cellId[d] = t + start[d];
         }
 
+        // lambda expressing the tagging criterion for a single tagged quantity
         auto const passes = [&](auto const& quantity) {
-            auto const& [fields, threshold] = quantity;
+            auto const& [recenteredFields, threshold] = quantity;
             if constexpr (hasCombine)
             {
-                for (std::size_t c = 0; c < fields.size(); ++c)
-                    indicators[c] = derived_().indicator(fields[c], cell);
-                return Derived::combine(std::span<double const>(indicators.data(), fields.size()))
+                // the child implements `combine`, so a custom combination of the indicator values
+                // is compared to the threshold
+                for (std::size_t c = 0; c < recenteredFields.size(); ++c)
+                    indicators[c] = derived_().indicator(recenteredFields[c], cellId);
+                return Derived::combine(
+                           std::span<double const>(indicators.data(), recenteredFields.size()))
                        > threshold;
             }
             else
-                return core::any(fields, [&](auto const& field) {
-                    return derived_().indicator(field, cell) > threshold;
+                // no `combine` implemented: simply compare each value to the threshold, and return
+                // true if any exceeds it.
+                return core::any(recenteredFields, [&](auto const& field) {
+                    return derived_().indicator(field, cellId) > threshold;
                 });
         };
-        tags[i] = !inBorder and core::any(quantities, passes) ? 1 : 0;
+
+        // this sets directly a null tag if the cell is in the untaggable margin, without evaluating
+        // the lambda above, so there is no out-of-bounds memory access.
+        tags[tagId] = !inUntaggableMargin and core::any(quantities, passes) ? 1 : 0;
     }
 }
 

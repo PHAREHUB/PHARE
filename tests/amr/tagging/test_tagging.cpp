@@ -17,6 +17,7 @@
 
 #include <cmath>
 #include <limits>
+#include <map>
 #include <span>
 #include <string>
 #include <vector>
@@ -322,11 +323,17 @@ struct MockMHDModel
 
 
 template<typename Model>
-std::string resolveError(Model& model, std::string const& name)
+auto resolved(Model& model, std::string const& name)
+{
+    return tagging::resolveQuantity<Model>(name)(model);
+}
+
+template<typename Model>
+std::string resolveError(std::string const& name)
 {
     try
     {
-        tagging::resolveQuantity(model, name);
+        tagging::resolveQuantity<Model>(name);
     }
     catch (std::runtime_error const& e)
     {
@@ -349,7 +356,7 @@ TEST(TaggingQuantities, parseQuantitiesReadsList)
     dict["Q0"]["threshold"] = 0.1;
     dict["Q1"]["name"]      = std::string{"rho"};
     dict["Q1"]["threshold"] = 0.4;
-    auto const expected     = std::vector<tagging::QuantityThreshold>{{"B", 0.1}, {"rho", 0.4}};
+    auto const expected     = std::map<std::string, double>{{"B", 0.1}, {"rho", 0.4}};
     EXPECT_TRUE(tagging::parseQuantities(dict) == expected);
 }
 
@@ -357,12 +364,21 @@ TEST(TaggingQuantities, parseQuantitiesFallsBackToBAtThreshold)
 {
     PHARE::initializer::PHAREDict dict;
     dict["threshold"] = 0.2;
-    EXPECT_TRUE(tagging::parseQuantities(dict)
-                == (std::vector<tagging::QuantityThreshold>{{"B", 0.2}}));
+    EXPECT_TRUE(tagging::parseQuantities(dict) == (std::map<std::string, double>{{"B", 0.2}}));
 
     PHARE::initializer::PHAREDict empty;
-    EXPECT_TRUE(tagging::parseQuantities(empty)
-                == (std::vector<tagging::QuantityThreshold>{{"B", 0.1}}));
+    EXPECT_TRUE(tagging::parseQuantities(empty) == (std::map<std::string, double>{{"B", 0.1}}));
+}
+
+TEST(TaggingQuantities, parseQuantitiesRejectsDuplicates)
+{
+    PHARE::initializer::PHAREDict dict;
+    dict["nbr_quantities"]  = 2;
+    dict["Q0"]["name"]      = std::string{"B"};
+    dict["Q0"]["threshold"] = 0.1;
+    dict["Q1"]["name"]      = std::string{"B"};
+    dict["Q1"]["threshold"] = 0.4;
+    EXPECT_THROW(tagging::parseQuantities(dict), std::runtime_error);
 }
 
 TEST(TaggingQuantities, hybridB)
@@ -371,13 +387,13 @@ TEST(TaggingQuantities, hybridB)
     MockHybridModel<2> model;
     auto& B = model.state.electromag.B;
 
-    auto const comps = tagging::resolveQuantity(model, "B");
+    auto const comps = resolved(model, "B");
     ASSERT_EQ(comps.size(), 3u);
     EXPECT_EQ(comps[0].data(), B.getComponent(Component::X).data());
     EXPECT_EQ(comps[1].data(), B.getComponent(Component::Y).data());
     EXPECT_EQ(comps[2].data(), B.getComponent(Component::Z).data());
 
-    auto const by = tagging::resolveQuantity(model, "By");
+    auto const by = resolved(model, "By");
     ASSERT_EQ(by.size(), 1u);
     EXPECT_EQ(by[0].data(), B.getComponent(Component::Y).data());
 }
@@ -390,28 +406,28 @@ TEST(TaggingQuantities, mhdAllowed)
 
     for (std::string const name : {"rho", "density"})
     {
-        auto const c = tagging::resolveQuantity(model, name);
+        auto const c = resolved(model, name);
         ASSERT_EQ(c.size(), 1u) << name;
         EXPECT_EQ(c[0].data(), s.rho.data()) << name;
     }
     for (std::string const name : {"rhoV", "momentum"})
     {
-        auto const c = tagging::resolveQuantity(model, name);
+        auto const c = resolved(model, name);
         ASSERT_EQ(c.size(), 3u) << name;
         EXPECT_EQ(c[0].data(), s.rhoV.getComponent(Component::X).data()) << name;
         EXPECT_EQ(c[1].data(), s.rhoV.getComponent(Component::Y).data()) << name;
         EXPECT_EQ(c[2].data(), s.rhoV.getComponent(Component::Z).data()) << name;
     }
 
-    auto const rhoVy = tagging::resolveQuantity(model, "rhoVy");
+    auto const rhoVy = resolved(model, "rhoVy");
     ASSERT_EQ(rhoVy.size(), 1u);
     EXPECT_EQ(rhoVy[0].data(), s.rhoV.getComponent(Component::Y).data());
 
-    auto const etot = tagging::resolveQuantity(model, "Etot");
+    auto const etot = resolved(model, "Etot");
     ASSERT_EQ(etot.size(), 1u);
     EXPECT_EQ(etot[0].data(), s.Etot.data());
 
-    auto const b = tagging::resolveQuantity(model, "B");
+    auto const b = resolved(model, "B");
     ASSERT_EQ(b.size(), 3u);
     EXPECT_EQ(b[0].data(), s.B.getComponent(Component::X).data());
     EXPECT_EQ(b[1].data(), s.B.getComponent(Component::Y).data());
@@ -420,27 +436,26 @@ TEST(TaggingQuantities, mhdAllowed)
 
 TEST(TaggingQuantities, notAvailableForTaggingYet)
 {
-    MockHybridModel<2> hybrid;
     for (std::string const name :
          {"J", "Jx", "Jy", "Jz", "E", "Ex", "Ey", "Ez", "density", "massDensity", "chargeDensity",
           "velocity", "bulkVel", "momentum", "pressure"})
-        EXPECT_TRUE(contains(resolveError(hybrid, name), "not available for tagging yet")) << name;
+        EXPECT_TRUE(
+            contains(resolveError<MockHybridModel<2>>(name), "not available for tagging yet"))
+            << name;
 
-    MockMHDModel<2> mhd;
     for (std::string const name : {"J", "Jx", "Jy", "Jz", "E", "Ex", "Ey", "Ez", "V", "Vx", "Vy",
                                    "Vz", "velocity", "P", "pressure"})
-        EXPECT_TRUE(contains(resolveError(mhd, name), "not available for tagging yet")) << name;
+        EXPECT_TRUE(contains(resolveError<MockMHDModel<2>>(name), "not available for tagging yet"))
+            << name;
 }
 
 TEST(TaggingQuantities, unknownListsAllowed)
 {
-    MockHybridModel<2> hybrid;
-    auto const hybridError = resolveError(hybrid, "rho");
+    auto const hybridError = resolveError<MockHybridModel<2>>("rho");
     EXPECT_TRUE(contains(hybridError, "unknown")) << hybridError;
     EXPECT_TRUE(contains(hybridError, "Bz")) << hybridError;
 
-    MockMHDModel<2> mhd;
-    auto const mhdError = resolveError(mhd, "nonsense");
+    auto const mhdError = resolveError<MockMHDModel<2>>("nonsense");
     EXPECT_TRUE(contains(mhdError, "unknown")) << mhdError;
     EXPECT_TRUE(contains(mhdError, "Etot")) << mhdError;
 }
@@ -480,15 +495,16 @@ std::vector<int> strategyTags(Model& model, PHARE::initializer::PHAREDict const&
     return tags;
 }
 
-PHARE::initializer::PHAREDict quantitiesDict(std::vector<tagging::QuantityThreshold> const& qs)
+PHARE::initializer::PHAREDict quantitiesDict(std::map<std::string, double> const& qs)
 {
     PHARE::initializer::PHAREDict dict;
     dict["nbr_quantities"] = static_cast<int>(qs.size());
-    for (std::size_t i = 0; i < qs.size(); ++i)
+    std::size_t i          = 0;
+    for (auto const& [name, threshold] : qs)
     {
-        auto const path         = "Q" + std::to_string(i);
-        dict[path]["name"]      = qs[i].name;
-        dict[path]["threshold"] = qs[i].threshold;
+        auto const path         = "Q" + std::to_string(i++);
+        dict[path]["name"]      = name;
+        dict[path]["threshold"] = threshold;
     }
     return dict;
 }
@@ -685,7 +701,7 @@ TEST(ComponentWise, PerQuantityThresholds)
     Model model;
     fillConstant(model.state.rho, 1.);
     fillConstant(model.state.Etot, 3.);
-    auto const tags = [&](std::vector<tagging::QuantityThreshold> const& quantities) {
+    auto const tags = [&](std::map<std::string, double> const& quantities) {
         return tagsOf(CellValueCriterion<Model>{quantitiesDict(quantities)}, model);
     };
     EXPECT_TRUE(allEqual(tags({{"rho", 2.}, {"Etot", 2.}}), 1));
@@ -706,7 +722,7 @@ TEST(ComponentWise, CombineReducesTheComponentsOfOneQuantity)
 {
     using Model = MockMHDModel<2>;
     Model model;
-    auto const normTags = [&](std::vector<tagging::QuantityThreshold> const& quantities) {
+    auto const normTags = [&](std::map<std::string, double> const& quantities) {
         return tagsOf(NormCriterion<Model>{quantitiesDict(quantities)}, model);
     };
 
@@ -751,6 +767,14 @@ TEST(ComponentWise, ReusedAcrossPatches)
     CellValueCriterion<Model> const criterion{quantitiesDict({{"B", 0.5}})};
     EXPECT_TRUE(allEqual(tagsOf(criterion, patchA), 1));
     EXPECT_TRUE(allEqual(tagsOf(criterion, patchB), 0));
+}
+
+TEST(ComponentWise, InvalidQuantityThrowsAtConstruction)
+{
+    using Model = MockMHDModel<2>;
+    EXPECT_THROW(CellValueCriterion<Model>{quantitiesDict({{"rho", 0.1}, {"nonsense", 0.1}})},
+                 std::runtime_error);
+    EXPECT_THROW(DefaultTaggerStrategy<Model>{quantitiesDict({{"V", 0.1}})}, std::runtime_error);
 }
 
 TEST(ComponentWise, TagsFollowFortranOrdering)
