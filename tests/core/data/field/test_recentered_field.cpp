@@ -24,7 +24,7 @@ template<std::size_t dim>
 using Field_t = Grid_t<dim>::field_type;
 
 template<std::size_t dim>
-using Recentered = RecenteredField<YeeLayout<dim>, Field_t<dim>>;
+using Recentered = RecenteredField<Field_t<dim>>;
 
 auto constexpr primal = QtyCentering::primal;
 auto constexpr dual   = QtyCentering::dual;
@@ -70,7 +70,7 @@ TEST(RecenteredField, SameCenteringReadsDirectly)
     auto& f = *(&by);
     fill<1>(f, [](auto const& i) { return 1.0 * i[0] * i[0]; });
 
-    Recentered<1> const rf{f, {dual}};
+    Recentered<1> const rf{layout, f, {dual}};
     for (std::uint32_t i = 0; i < nDual<1>; ++i)
         EXPECT_EQ(rf(i), f(i)) << i;
 }
@@ -82,7 +82,7 @@ TEST(RecenteredField, PrimalToDualAveragesTwoNodes)
     auto& f = *(&bx);
     fill<1>(f, [](auto const& i) { return 1.0 * i[0] * i[0]; });
 
-    Recentered<1> const rf{f, {dual}};
+    Recentered<1> const rf{layout, f, {dual}};
     for (std::uint32_t i = 0; i < nDual<1>; ++i)
         EXPECT_EQ(rf(i), 0.5 * (1.0 * i * i + 1.0 * (i + 1) * (i + 1))) << i;
 }
@@ -94,7 +94,7 @@ TEST(RecenteredField, DualToPrimalAveragesTwoCellsExceptOnOutermostPrimalGhosts)
     auto& f = *(&by);
     fill<1>(f, [](auto const& i) { return 1.0 * i[0] * i[0]; });
 
-    Recentered<1> const rf{f, {primal}};
+    Recentered<1> const rf{layout, f, {primal}};
     for (std::uint32_t i = 1; i < nDual<1>; ++i)
         EXPECT_EQ(rf(i), 0.5 * (1.0 * (i - 1) * (i - 1) + 1.0 * i * i)) << i;
 }
@@ -108,7 +108,7 @@ TEST(RecenteredField, CornerAverage2D)
         = [](std::uint32_t i, std::uint32_t j) { return 1.0 * i * i + 7.0 * j * j * j; };
     fill<2>(f, [&](auto const& idx) { return profile(idx[0], idx[1]); });
 
-    Recentered<2> const rf{f, {dual, dual}};
+    Recentered<2> const rf{layout, f, {dual, dual}};
     forEachIndex<2>({0, 0}, {nDual<2>, nDual<2>}, [&](auto const& idx) {
         auto const [i, j] = idx;
         EXPECT_EQ(
@@ -151,7 +151,7 @@ TYPED_TEST(RecenteredFieldLinear, LinearFieldsToCellCentres)
             return value;
         });
 
-        Recentered<dim> const rf{f, allDual};
+        Recentered<dim> const rf{layout, f, allDual};
         forEachIndex<dim>(ConstArray<std::uint32_t, dim>(0),
                           ConstArray<std::uint32_t, dim>(nDual<dim>), [&](auto const& idx) {
                               double expected = 0.;
@@ -168,7 +168,7 @@ TEST(RecenteredField, ExposesDestinationCentering)
     auto const layout = TestGridLayout<YeeLayout<2>>::make(nCells);
     Grid_t<2> bx{"Bx", layout, HybridQuantity::Scalar::Bx, 0.};
     auto const destination = std::array{primal, dual};
-    Recentered<2> const rf{*(&bx), destination};
+    Recentered<2> const rf{layout, *(&bx), destination};
     EXPECT_EQ(rf.centering(), destination);
 }
 

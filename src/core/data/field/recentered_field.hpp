@@ -22,16 +22,18 @@ namespace PHARE::core
  * Holds a copy of the Field (pointer and shape): rebuild it once the field is set on
  * another patch.
  */
-template<typename GridLayout, typename Field>
+template<typename Field>
 class RecenteredField
 {
 public:
-    static constexpr auto dimension = GridLayout::dimension;
+    static constexpr auto dimension = Field::dimension;
     using value_type                = Field::value_type;
 
-    RecenteredField(Field const& field, std::array<QtyCentering, dimension> const& destination)
+    template<typename GridLayout>
+    RecenteredField(GridLayout const& layout, Field const& field,
+                    std::array<QtyCentering, dimension> const& destination)
         : field_{field}
-        , source_{GridLayout::centering(field)}
+        , source_{layout.centering(field)}
         , destination_{destination}
     {
     }
