@@ -107,16 +107,10 @@ class Particles:
         assert len(box.lower) == self.ndim
 
         if box_type == "cell":
-            if self.ndim == 1:
-                idx = np.where((self.iCells >= box.lower) & (self.iCells <= box.upper))[
-                    0
-                ]
-            else:
-
-                def isin(p, b):
-                    return p in b
-
-                idx = np.where(np.apply_along_axis(isin, 1, self.iCells, box))[0]
+            # same as "iCell in box" (Box.__contains__) for every particle:
+            # lower <= iCell <= upper on all axes, upper bound inclusive
+            in_box = (self.iCells >= box.lower) & (self.iCells <= box.upper)
+            idx = np.where(np.all(in_box, axis=1))[0]
 
         elif box_type == "pos":
             assert self.ndim == 1  # unhandled otherwise
