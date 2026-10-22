@@ -1,6 +1,8 @@
 #ifndef PHARE_CORE_DEF_HPP
 #define PHARE_CORE_DEF_HPP
 
+#include <string>
+#include <iostream>
 #include <type_traits>
 
 #define NO_DISCARD [[nodiscard]]
@@ -18,6 +20,36 @@
 #define PHARE_STR_CAT(x, y) PHARE_TOKEN_PASTE(x, y)
 
 
+
+namespace PHARE::core::detail
+{
+template<typename Resource>
+concept HasNameMethod = requires(Resource const& res) { res.name(); };
+
+template<typename Resource>
+concept HasArrowNameMethod = requires(Resource const& res) { res->name(); };
+
+auto get_resource_name(auto const& res)
+    requires HasNameMethod<std::decay_t<decltype(res)>>
+{
+    return res.name();
+}
+
+auto get_resource_name(auto const& res)
+    requires(!HasNameMethod<std::decay_t<decltype(res)>>
+             and HasArrowNameMethod<std::decay_t<decltype(res)>>)
+{
+    return res->name();
+}
+
+auto get_resource_name(auto const&...)
+{
+    return std::string{"unknown resource"};
+}
+
+} // namespace PHARE::core::detail
+
+
 namespace PHARE::core
 {
 
@@ -30,10 +62,17 @@ concept FloatingPoint = std::is_floating_point_v<T>;
 NO_DISCARD bool isUsable(auto const&... args)
 {
     auto check = [](auto const& arg) {
+        bool usable = true;
         if constexpr (std::is_pointer_v<std::decay_t<decltype(arg)>>)
-            return arg != nullptr;
+            usable = arg != nullptr;
         else
-            return arg.isUsable();
+            usable = arg.isUsable();
+        PHARE_DEBUG_DO({
+            if (!usable)
+                std::cerr << __FILE__ << ":" << __LINE__ << " - "
+                          << detail::get_resource_name(arg) << " not usable!" << std::endl;
+        })
+        return usable;
     };
     return (check(args) && ...);
 }
@@ -42,10 +81,17 @@ NO_DISCARD bool isUsable(auto const&... args)
 NO_DISCARD bool isSettable(auto const&... args)
 {
     auto check = [](auto const& arg) {
+        bool settable = true;
         if constexpr (std::is_pointer_v<std::decay_t<decltype(arg)>>)
-            return arg == nullptr;
+            settable = arg == nullptr;
         else
-            return arg.isSettable();
+            settable = arg.isSettable();
+        PHARE_DEBUG_DO({
+            if (!settable)
+                std::cerr << __FILE__ << ":" << __LINE__ << " - "
+                          << detail::get_resource_name(arg) << " not settable!" << std::endl;
+        })
+        return settable;
     };
     return (check(args) && ...);
 }

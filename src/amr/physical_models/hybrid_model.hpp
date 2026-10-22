@@ -12,8 +12,16 @@
 #include "amr/physical_models/physical_model.hpp"
 #include "amr/messengers/hybrid_messenger_info.hpp"
 #include "amr/resources_manager/resources_manager.hpp"
+#include "amr/data/field/refine/field_refine_operator.hpp"
+#include "amr/data/field/refine/composite_field_refiner.hpp"
+#include "amr/data/field/field_variable_fill_pattern.hpp"
 
+#include <SAMRAI/xfer/RefineAlgorithm.h>
+#include <SAMRAI/xfer/RefineSchedule.h>
+#include <SAMRAI/hier/PatchHierarchy.h>
 
+#include <map>
+#include <limits>
 #include <string>
 
 namespace PHARE::solver
@@ -85,6 +93,81 @@ public:
     }
 
 
+    // The electron pressure closure may save a state in beginStep (e.g. the
+    // polytropic s = Pe/N^gamma) that its computePressure then reads on ghost nodes.
+    // beginStep only sets it on domain nodes, since moments are not complete on all
+    // ghost nodes (next to a level border); its ghosts are filled here, from
+    // neighbor patches and, at level borders, interpolated from the coarser level's
+    // state (saved when the coarser level started its current step, not time
+    // interpolated). Must be called once per step and level, after every patch's
+    // beginStep and before any computePressure. Nothing to do for a closure
+    // without such a state. Ohm only reads Pe and Ve on domain nodes, so neither
+    // needs ghosts.
+    //
+    // Needs a real refine operator (not nullptr): on level > 0 a patch's ghost
+    // region can reach into territory only covered by the coarser level,
+    // which needs genuine interpolation, not a same-resolution copy. Needs a
+    // non-overwrite-interior fill pattern so the schedule only touches ghost
+    // nodes, not the domain values of this patch.
+    void fillElectronStepStateGhosts(int const levelNumber, double const fillTime)
+    {
+        auto const name = state.electrons.stepStateName();
+        if (!name)
+            return;
+
+        if (!hierarchy_)
+            throw std::runtime_error(
+                "Error - HybridModel::fillElectronStepStateGhosts called before setHierarchy()");
+
+        if (not electronGhostAlgoDeclared_)
+        {
+            auto&& [id] = resourcesManager->getIDsList(*name);
+            stepStateGhostAlgo_.algo_->registerRefine(id, id, id, fieldRefineOp_,
+                                                      nonOverwriteInteriorFieldFillPattern_);
+            electronGhostAlgoDeclared_ = true;
+        }
+
+        // the refine operators only write fine nodes that are NaN (PHARE's marker for
+        // "to be filled from the coarser level", see composite_field_refiner.hpp): without
+        // this reset, ghost nodes at level borders keep the value of their first fill
+        resetGhostsToNaN_(levelNumber, *name);
+
+        stepStateGhostAlgo_.getOrCreateSchedule(hierarchy_, levelNumber).fillData(fillTime);
+    }
+
+    // A brand new level never gets Pe_'s domain cells set at all: unlike Ve_
+    // (recomputed statelessly from ions/J every step, so it self-heals), Pe_
+    // carries genuinely evolved state, like B/E. oldLevel is null when there
+    // is no same-level source yet (initial refinement), or the replaced level
+    // on regrid, whose overlap should be preserved rather than
+    // re-interpolated from the coarser level.
+    void initElectronPressureOnNewLevel(
+        int const levelNumber, double const fillTime,
+        std::shared_ptr<SAMRAI::hier::PatchLevel> const& oldLevel = nullptr)
+    {
+        if (!hierarchy_)
+            throw std::runtime_error(
+                "Error - HybridModel::initElectronPressureOnNewLevel called before setHierarchy()");
+
+        auto&& [pe_id] = resourcesManager->getIDsList(state.electrons.pressure().name());
+
+        SAMRAI::xfer::RefineAlgorithm initAlgo;
+        initAlgo.registerRefine(pe_id, pe_id, pe_id, fieldRefineOp_);
+
+        auto const level = hierarchy_->getPatchLevel(levelNumber);
+        initAlgo.createSchedule(level, oldLevel, levelNumber - 1, hierarchy_)
+            ->fillData(fillTime);
+    }
+
+    // SolverPPC::advanceLevel only gets a bare hierarchy reference; only
+    // HybridLevelInitializer::initialize() has the actual shared_ptr that
+    // SAMRAI's coarse-fine createSchedule() needs, so it's cached here.
+    void setHierarchy(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy)
+    {
+        hierarchy_ = hierarchy;
+    }
+
+
     HybridModel(PHARE::initializer::PHAREDict const& dict,
                 std::shared_ptr<resources_manager_type> const& _resourcesManager)
         : IPhysicalModel<AMR_Types>{model_name}
@@ -122,6 +205,91 @@ public:
     //-------------------------------------------------------------------------
 
     std::unordered_map<std::string, std::shared_ptr<core::NdArrayVector<dimension, int>>> tags;
+
+private:
+    // sets every non domain node of the named field to NaN, on every patch of the level
+    void resetGhostsToNaN_(int const levelNumber, std::string const& name)
+    {
+        using FieldData_t = amr::FieldData<GridLayoutT, Grid_t>;
+
+        auto&& [id] = resourcesManager->getIDsList(name);
+        for (auto& patch : *hierarchy_->getPatchLevel(levelNumber))
+        {
+            auto& field       = FieldData_t::getField(*patch, id);
+            auto const layout = amr::layoutFromPatch<GridLayoutT>(*patch);
+
+            std::array<std::pair<std::uint32_t, std::uint32_t>, dimension> domain;
+            for (std::size_t d = 0; d < dimension; ++d)
+            {
+                auto const [start, end] = layout.physicalStartToEnd(
+                    field.physicalQuantity(), static_cast<core::Direction>(d));
+                domain[d] = {start, end};
+            }
+
+            layout.evalOnGhostBox(field, [&](auto const&... ijk) {
+                auto const index = std::array{ijk...};
+                for (std::size_t d = 0; d < dimension; ++d)
+                    if (index[d] < domain[d].first or index[d] > domain[d].second)
+                    {
+                        field(index) = std::numeric_limits<double>::quiet_NaN();
+                        return;
+                    }
+            });
+        }
+    }
+
+    // schedules are cached by level number, but a regrid replaces the
+    // PatchLevel object for that number -- the weak_ptrs detect that so a
+    // stale schedule isn't silently reused against a destroyed level. The
+    // schedule also binds the next coarser level (level border ghosts are refined
+    // from it), so a regrid of that level must invalidate it too.
+    struct GhostFillAlgo
+    {
+        auto& getOrCreateSchedule(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                                  int const ilvl)
+        {
+            auto const level   = hierarchy->getPatchLevel(ilvl);
+            auto const coarser = ilvl > 0 ? hierarchy->getPatchLevel(ilvl - 1) : nullptr;
+            auto schedule_iter = schedules_.find(ilvl);
+            auto const create_schedule = schedule_iter == schedules_.end()
+                                         or schedule_iter->second.level.lock() != level
+                                         or schedule_iter->second.coarser.lock() != coarser;
+
+            if (create_schedule)
+                schedule_iter = schedules_
+                                    .insert_or_assign(
+                                        ilvl, Entry{level, coarser,
+                                                    algo_->createSchedule(level, ilvl - 1, hierarchy)})
+                                    .first;
+
+            return *schedule_iter->second.schedule;
+        }
+
+        struct Entry
+        {
+            std::weak_ptr<SAMRAI::hier::PatchLevel> level; // invalidated if the Level is destroyed
+            std::weak_ptr<SAMRAI::hier::PatchLevel> coarser; // same for the next coarser level
+            std::shared_ptr<SAMRAI::xfer::RefineSchedule> schedule;
+        };
+
+        std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> algo_
+            = std::make_unique<SAMRAI::xfer::RefineAlgorithm>();
+        std::map<int, Entry> schedules_;
+    };
+
+    std::shared_ptr<SAMRAI::hier::PatchHierarchy> hierarchy_;
+
+    bool electronGhostAlgoDeclared_ = false;
+    GhostFillAlgo stepStateGhostAlgo_;
+
+    // same kernel as the messenger's field refine operator; linear (order 2) is the only
+    // refinement order supported (see amr::RefinementConfig)
+    std::shared_ptr<SAMRAI::hier::RefineOperator> fieldRefineOp_
+        = std::make_shared<amr::KernelFieldRefineOperator<GridLayoutT, Grid_t>>(
+            amr::makeRefineKernel<GridLayoutT, Grid_t>(amr::FieldRefinementOrder::Linear));
+
+    std::shared_ptr<amr::FieldFillPattern<dimension>> nonOverwriteInteriorFieldFillPattern_
+        = std::make_shared<amr::FieldFillPattern<dimension>>();
 };
 
 
@@ -137,20 +305,17 @@ template<typename GridLayoutT, typename Electromag, typename Ions, typename Elec
 void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::initialize(
     level_t& level)
 {
-    for (auto& patch : level)
+    auto& rm = *this->resourcesManager;
+    for (auto& patch : rm.enumerate(level, state))
     {
-        // first initialize the ions
-        auto layout = amr::layoutFromPatch<gridlayout_type>(*patch);
-        auto& ions  = state.ions;
-        auto _ = this->resourcesManager->setOnPatch(*patch, state.electromag, state.ions, state.J);
+        auto const layout = amr::layoutFromPatch<gridlayout_type>(*patch);
 
-        for (auto& pop : ions)
-        {
-            auto const& info         = pop.particleInitializerInfo();
-            auto particleInitializer = ParticleInitializerFactory::create(info);
-            particleInitializer->loadParticles(pop.domainParticles(), layout);
-        }
+        for (auto& pop : state.ions)
+            ParticleInitializerFactory::create(pop.particleInitializerInfo())
+                ->loadParticles(pop.domainParticles(), layout);
 
+
+        state.electrons.initialize(layout);
         state.electromag.initialize(layout);
     }
 }
@@ -170,6 +335,10 @@ void HybridModel<GridLayoutT, Electromag, Ions, Electrons, AMR_Types, Grid_t>::f
     hybridInfo.modelElectric      = state.electromag.E.name();
     hybridInfo.modelIonDensity    = state.ions.chargeDensityName();
     hybridInfo.modelIonChargeFlux = state.ions.chargeFlux().name();
+    // electron pressure is a state for closures that evolve it (polytropic): the
+    // coarser level must take the finer one's where they overlap, consistently
+    // with the synchronized density, as for E
+    hybridInfo.modelElectronPressure = state.electrons.pressure().name();
 
     hybridInfo.initElectric.emplace_back(state.electromag.E.name());
     hybridInfo.initMagnetic.emplace_back(state.electromag.B.name());

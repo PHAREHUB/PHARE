@@ -41,6 +41,7 @@ namespace amr
         std::string modelElectric;
         std::string modelIonChargeFlux;
         std::string modelIonDensity;
+        std::string modelElectronPressure;
 
         // store names of vector fields that need to be initialized by refinement
         // moments are initialized by particles so only EM fields need to be init.

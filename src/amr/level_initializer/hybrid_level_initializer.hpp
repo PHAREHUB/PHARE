@@ -65,6 +65,8 @@ namespace solver
                 PHARE_LOG_LINE_STR("regriding level " + std::to_string(levelNumber));
                 PHARE_LOG_START(3, "hybridLevelInitializer::initialize : regriding block");
                 messenger.regrid(hierarchy, levelNumber, oldLevel, model, initDataTime);
+                // messenger.regrid above doesn't know about Pe_ (not in fillMessengerInfo)
+                hybridModel.initElectronPressureOnNewLevel(levelNumber, initDataTime, oldLevel);
                 PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : regriding block");
             }
             else
@@ -80,6 +82,8 @@ namespace solver
                 {
                     PHARE_LOG_START(3, "hybridLevelInitializer::initialize : initlevel");
                     messenger.initLevel(model, level, initDataTime);
+                    // initLevel above doesn't touch Pe_'s domain cells either
+                    hybridModel.initElectronPressureOnNewLevel(levelNumber, initDataTime);
                     PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : initlevel");
                 }
             }
@@ -152,8 +156,20 @@ namespace solver
                 auto& E         = hybridModel.state.electromag.E;
                 auto& electrons = hybridModel.state.electrons;
 
+                // split as in SolverPPC::update_electrons (see comment there)
                 for (auto& patch : rm.enumerate(level, electrons))
-                    electrons.update(amr::layoutFromPatch<GridLayoutT>(*patch));
+                {
+                    electrons.computeDensity();
+                    electrons.computeBulkVelocity(amr::layoutFromPatch<GridLayoutT>(*patch));
+                }
+
+                for (auto& patch : rm.enumerate(level, electrons))
+                    electrons.beginStep(amr::layoutFromPatch<GridLayoutT>(*patch));
+
+                hybridModel.fillElectronStepStateGhosts(levelNumber, 0.0);
+
+                for (auto& patch : rm.enumerate(level, electrons))
+                    electrons.computePressure(amr::layoutFromPatch<GridLayoutT>(*patch), 0.0);
 
                 Ohm_t{ohm_info, level, hybridModel}(B, J, E, electrons);
                 setTime(E);

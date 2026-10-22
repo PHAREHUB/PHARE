@@ -261,6 +261,7 @@ namespace amr
                 electroSynchronizers_.registerLevel(hierarchy, level);
                 chargeDensitySynchronizers_.registerLevel(hierarchy, level);
                 ionChargeFluxSynchronizers_.registerLevel(hierarchy, level);
+                electronPressureSynchronizers_.registerLevel(hierarchy, level);
             }
         }
 
@@ -665,6 +666,7 @@ namespace amr
             electroSynchronizers_.sync(levelNumber);
             chargeDensitySynchronizers_.sync(levelNumber);
             ionChargeFluxSynchronizers_.sync(levelNumber);
+            electronPressureSynchronizers_.sync(levelNumber);
         }
 
         // this function coarsens the fluxSum onto the corresponding coarser fluxes (E in hybrid),
@@ -862,6 +864,11 @@ namespace amr
 
             chargeDensitySynchronizers_.add(info->modelIonDensity, fieldMomentsCoarseningOp_,
                                             info->modelIonDensity);
+
+            // Pe is primal like the moments: injection of the fine node values
+            electronPressureSynchronizers_.add(info->modelElectronPressure,
+                                               fieldMomentsCoarseningOp_,
+                                               info->modelElectronPressure);
         }
 
 
@@ -1046,6 +1053,7 @@ namespace amr
 
         SynchronizerPool<rm_t> chargeDensitySynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> ionChargeFluxSynchronizers_{resourcesManager_};
+        SynchronizerPool<rm_t> electronPressureSynchronizers_{resourcesManager_};
         SynchronizerPool<rm_t> electroSynchronizers_{resourcesManager_};
 
 
