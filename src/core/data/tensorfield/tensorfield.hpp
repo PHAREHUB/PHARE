@@ -184,8 +184,7 @@ public:
                 throw std::runtime_error("Error, unusable TensorField, cannot copyData");
         })
 
-        for (std::size_t i = 0; i < N; ++i)
-            components_[i].copyData(source.components_[i]);
+        for_N<N>([&](auto i) { components_[i].copyData(source.components_[i]); });
     }
 
 

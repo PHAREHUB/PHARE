@@ -29,7 +29,7 @@ public:
     void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
     {
         PHARE_DEBUG_DO({
-            if (!(B.isUsable() && E.isUsable() && Bnew.isUsable()))
+            if (!isUsable(B, E, Bnew))
                 throw std::runtime_error(
                     "Error - Faraday - not all VecField parameters are usable");
         })
