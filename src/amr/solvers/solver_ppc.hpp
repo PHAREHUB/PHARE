@@ -615,6 +615,43 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     // this needs to be done before calling the messenger
     setTime(ions);
 
+    // the domain_only predictor deposits its pushed copies in the updater. Otherwise the
+    // moments are deposited once every particle sits on the patch owning its cell, as at
+    // level initialization: a particle leaving for a neighbor is deposited there, as a domain
+    // particle, and the border sums below complete the nodes shared by patches.
+    if (mode != core::UpdaterMode::domain_only)
+    {
+        {
+            PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonGhostParticles");
+
+            // the filter below is exact only if the updater kept owned domain particles only
+            PHARE_DEBUG_DO({
+                for (auto& patch : rm.enumerate(level, ions))
+                {
+                    auto const& boxes = levelBoxing.at(amr::to_string(patch->getGlobalId()));
+                    for (auto const& pop : ions)
+                        for (auto const& particle : pop.domainParticles())
+                            if (!boxes.isOwned(particle.iCell))
+                                throw std::runtime_error("domain particle outside owned cells");
+                }
+            })
+
+            fromCoarser.fillIonGhostParticles(ions, level, newTime);
+
+            // the exchange hands a leaving particle to every patch whose domain contains its
+            // cell; on overlapping patches only the owner keeps it
+            for (auto& patch : rm.enumerate(level, ions))
+                ions.eraseDomainParticlesIn(
+                    levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
+        }
+        {
+            PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::depositDomain");
+            for (auto& patch : rm.enumerate(level, ions))
+                ionUpdater_.depositDomain(
+                    ions, levelBoxing.at(amr::to_string(patch->getGlobalId())).layout);
+        }
+    }
+
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillFluxBorders");
         fromCoarser.fillFluxBorders(ions, level, newTime);
@@ -626,31 +663,6 @@ void SolverPPC<HybridModel, AMR_Types>::moveIons_(level_t& level, HybridModel& m
     {
         PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonPopMomentGhosts");
         fromCoarser.fillIonPopMomentGhosts(ions, level, newTime);
-    }
-
-    if (mode != core::UpdaterMode::domain_only)
-    {
-        PHARE_LOG_SCOPE(1, "SolverPPC::moveIons::fillIonGhostParticles");
-
-        // the filter below is exact only if the updater kept owned domain particles only
-        PHARE_DEBUG_DO({
-            for (auto& patch : rm.enumerate(level, ions))
-            {
-                auto const& boxes = levelBoxing.at(amr::to_string(patch->getGlobalId()));
-                for (auto const& pop : ions)
-                    for (auto const& particle : pop.domainParticles())
-                        if (!boxes.isOwned(particle.iCell))
-                            throw std::runtime_error("domain particle outside owned cells");
-            }
-        })
-
-        fromCoarser.fillIonGhostParticles(ions, level, newTime);
-
-        // the exchange hands a leaving particle to every patch whose domain contains its
-        // cell; on overlapping patches only the owner keeps it
-        for (auto& patch : rm.enumerate(level, ions))
-            ions.eraseDomainParticlesIn(
-                levelBoxing.at(amr::to_string(patch->getGlobalId())).nonOwnedBoxes);
     }
 
     for (auto& patch : rm.enumerate(level, ions))
