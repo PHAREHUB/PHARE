@@ -12,6 +12,10 @@ class TypeWriter
 public:
     virtual void write(DiagnosticProperties&)   = 0;
     virtual void compute(DiagnosticProperties&) = 0;
+
+    // request the model temporaries the diagnostic needs, when the diagnostic is declared
+    virtual void requestTemporaries(DiagnosticProperties&) {}
+
     virtual ~TypeWriter() {}
 };
 
