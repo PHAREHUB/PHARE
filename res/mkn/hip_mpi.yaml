@@ -2,7 +2,7 @@ property:
   cxx_flags: >-
     --std=c++20 -fsized-deallocation -fPIC -DPHARE_LOG_SCOPE_PRINT=1
     -DPHARE_FORCE_LOG_LINE
-    -DPHARE_HAVE_MKN_GPU=1 -DMKN_GPU_ROCM=1 -DDMKN_GPU_CUDA=0
+    -DPHARE_HAVE_MKN_GPU=1 -DPHARE_HAVE_GPU_HARDWARE=1 -DMKN_GPU_ROCM=1 -DDMKN_GPU_CUDA=0
 
 local:
   repo: /mkn/r

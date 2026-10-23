@@ -195,6 +195,149 @@ struct MultiBorisBackend
 
     template<auto mode>
     static void move_gpu_copy(auto& in, auto const i);
+
+    // Combined Boris push + particle-to-mesh deposit in a single GPU kernel.
+    // Originals are untouched: each thread works on a register copy.
+    // Qualifying particles (isIn filter_box and not in exclude_boxes after push) are atomically
+    // placed into a shared warp buffer. Once the buffer holds a full warp the whole warp
+    // deposits together; any remainder is flushed at the end.
+    //
+    // Shared memory layout (launcher.ds must cover):
+    //   [4 * ziz * sizeof(double)]            field accumulators
+    //   [2 * warp_size * sizeof(Particle_t)]  warp buffer
+    //   [sizeof(int)]                          atomic fill counter
+    //
+    // 2*warp_size slots are the minimum needed: before a batch buf_count can be
+    // warp_size-1, and if every thread in the batch qualifies buf_count reaches
+    // 2*warp_size-1 — still within bounds.
+    template<typename Field_t, auto particle_type_v, auto alloc_mode_v>
+    static void on_tiles_push_deposit(auto& particles, auto const& electromag, auto& Flux,
+                                      auto& Rhop, auto const& filter_box, auto const& exclude_boxes,
+                                      double const coef1, auto const& halfdt,
+                                      double const coef = 1.) _PHARE_DEV_FN_
+    {
+#if PHARE_HAVE_MKN_GPU_HW
+        static_assert(
+            std::is_same_v<Interpolator_t,
+                           core::Interpolator<dim, GridLayout_t::options.interp_order, true>>,
+            "GPU must be atomic");
+
+        using TensorField_t = basic::TensorField<typename Field_t::value_type, 1>;
+        using Scalar_vt     = typename Field_t::value_type;
+        using VecField_vt   = basic::TensorField<Scalar_vt, 1>;
+        using Electromag_vt = basic::Electromag<VecField_vt>;
+        using Particle_t    = ParticleDefaults<dim>::Particle_t;
+
+        extern __shared__ double data[];
+
+        auto& rhop_tile = Rhop[blockIdx.x];
+        auto ft         = Flux.template as<TensorField_t>([&](auto& c) { return c[blockIdx.x](); });
+        auto& pdensity  = rhop_tile();
+
+        auto const tbox                   = rhop_tile.ghost_box();
+        auto const ziz                    = product(tbox.shape());
+        auto const tidx                   = threadIdx.x;
+        auto const ws                     = kernel::warp_size();
+        auto const& [flux0, flux1, flux2] = ft();
+        auto const r0                     = pdensity;
+        auto flux                         = ft;
+
+        auto rhop = make_array_view(&data[ziz * 0], pdensity.shape());
+        auto fx   = make_array_view(&data[ziz * 1], flux[0].shape());
+        auto fy   = make_array_view(&data[ziz * 2], flux[1].shape());
+        auto fz   = make_array_view(&data[ziz * 3], flux[2].shape());
+
+        pdensity.reset(rhop);
+        flux[0].reset(fx);
+        flux[1].reset(fy);
+        flux[2].reset(fz);
+
+        // Warp buffer and atomic counter after the field region.
+        auto* const part_buf = reinterpret_cast<Particle_t*>(reinterpret_cast<char*>(&data[0])
+                                                             + ziz * 4 * sizeof(double));
+        auto& buf_count      = *reinterpret_cast<int*>(reinterpret_cast<char*>(part_buf)
+                                                       + 2 * ws * sizeof(Particle_t));
+
+        for (int i = tidx; i < static_cast<int>(ziz * 4); i += blockDim.x)
+            data[i] = 0;
+        if (tidx == 0)
+            buf_count = 0;
+
+        __syncthreads();
+
+        // Per-tile EM view and layout
+        auto const em = electromag.template as<Electromag_vt>([=] _PHARE_ALL_FN_(auto const& vf) {
+            return for_N_make_array<3>(
+                [&vf] _PHARE_ALL_FN_(auto i) { return vf[i][blockIdx.x](); });
+        });
+        auto const& tile_layout = electromag.E[0][blockIdx.x].layout();
+
+        auto& tile        = particles()[blockIdx.x];
+        auto& parts       = tile();
+        auto const n      = parts.size();
+        auto const nbatch = (n + ws - 1) / ws;
+
+        for (std::size_t batch = 0; batch < nbatch; ++batch)
+        {
+            std::size_t const pidx = batch * ws + tidx;
+            if (pidx < n)
+            {
+                Particle_t p = parts[pidx]; // register copy — original untouched
+
+                p.iCell() = boris::advance<alloc_mode_v>(p, halfdt);
+                {
+                    Interpolator_t interp;
+                    boris::accelerate(p, interp.m2p(p, em, tile_layout), coef1);
+                }
+                p.iCell() = boris::advance<alloc_mode_v>(p, halfdt);
+
+                if (isIn(p.iCell(), filter_box) and !isIn(p.iCell(), exclude_boxes))
+                {
+                    int const slot = atomicAdd(&buf_count, 1);
+                    part_buf[slot] = p;
+                }
+            }
+
+            __syncthreads();
+
+            // Once a full warp is available, deposit it and compact the buffer.
+            if (buf_count >= static_cast<int>(ws))
+            {
+                Interpolator_t interp;
+                interp.particleToMesh(part_buf[tidx], pdensity, flux, tbox, coef);
+
+                __syncthreads();
+
+                int const remaining = buf_count - static_cast<int>(ws);
+                if (tidx < remaining)
+                    part_buf[tidx] = part_buf[tidx + ws];
+                if (tidx == 0)
+                    buf_count = remaining;
+
+                __syncthreads();
+            }
+        }
+
+        // Flush any remaining particles (partial warp).
+        if (tidx < buf_count)
+        {
+            Interpolator_t interp;
+            interp.particleToMesh(part_buf[tidx], pdensity, flux, tbox, coef);
+        }
+
+        __syncthreads();
+
+        pdensity.reset(r0);
+
+        for (int i = tidx; i < static_cast<int>(ziz); i += blockDim.x)
+        {
+            pdensity.data()[i] += rhop.data()[i];
+            flux0.data()[i] += fx.data()[i];
+            flux1.data()[i] += fy.data()[i];
+            flux2.data()[i] += fz.data()[i];
+        }
+#endif
+    }
 };
 
 
@@ -377,9 +520,7 @@ void MultiBorisBackend<layout, ModelAccessor, Interpolator>::move_gpu_copy(
 {
 #if PHARE_HAVE_GPU
     static_assert(has_gpu_copy);
-    using Tile_vt_       = Electromag_t::vecfield_type::field_type::value_type;
-    using Interpolating_ = Interpolating<dim, GridLayout_t::options.interp_order,
-                                         /*atomic_ops=*/true, Interpolator_t>;
+    using Tile_vt_ = Electromag_t::vecfield_type::field_type::value_type;
 
     auto view       = in.accessor[i];
     auto [ions, em] = view.args;
@@ -409,8 +550,7 @@ void MultiBorisBackend<layout, ModelAccessor, Interpolator>::move_gpu_copy(
                   + static_cast<std::uint32_t>(sizeof(int));
             assert(launcher.ds < 65000);
             launcher.stream(in.streamer.streams[i], [=] __device__() mutable {
-                Interpolating_::template on_tiles_push_deposit<Tile_vt_, ParticleType::Domain,
-                                                               Particles_t::alloc_mode>(
+                on_tiles_push_deposit<Tile_vt_, ParticleType::Domain, Particles_t::alloc_mode>(
                     parts, em, flux, rhop, filter_box, exclude_boxes, coef1, halfdt);
             });
         };

@@ -153,6 +153,7 @@ void ParticlesRefining<HybridTypes, splitType, Splitter>::forBoxes(
     SAMRAI::hier::BoxContainer const& boxes)
 {
     using ArrayParticleArray = array_type_t;
+    using Partitioner_t = core::ParticleArrayPartitioner<AllocatorMode::CPU, ArrayParticleArray>;
 
     auto const domainBox = phare_box_from<dim>(destParticlesData.getBox());
 
@@ -161,22 +162,14 @@ void ParticlesRefining<HybridTypes, splitType, Splitter>::forBoxes(
         auto& [p_count, refinedParticles] = refined_info;
         auto const particleRefinedPos     = toFineGrid(particle);
         split(particleRefinedPos, particle, refinedParticles);
-        p_count = core::ParticleArrayPartitioner<alloc_mode, ArrayParticleArray>{refinedParticles}(
-                      dst_box)
-                      .size();
+        p_count = Partitioner_t{refinedParticles}(dst_box).size();
 
         if constexpr (ParticleType_v != ParticleType::Domain)
         {
-            p_count
-                = core::ParticleArrayPartitioner<alloc_mode, ArrayParticleArray>{refinedParticles,
-                                                                                 0, p_count}(
-                      phare_box_from<dim>(destParticlesData.getGhostBox()))
-                      .size();
-            p_count
-                = core::ParticleArrayPartitioner<alloc_mode, ArrayParticleArray>{refinedParticles,
-                                                                                 0, p_count}
-                      .notIn(domainBox)
-                      .size();
+            p_count = Partitioner_t{refinedParticles, 0,
+                                    p_count}(phare_box_from<dim>(destParticlesData.getGhostBox()))
+                          .size();
+            p_count = Partitioner_t{refinedParticles, 0, p_count}.notIn(domainBox).size();
         }
 
         return refined_info;

@@ -24,55 +24,70 @@ interp_orders = [1]
 class LayoutInitL0Test(_LayoutInitL0Test):
     @data(*permute(ndim_list, interp_orders))
     @unpack
-    def test_init_matches_reference_layout(self, ndim, interp_order, cmp_layout):
+    def test_init_matches_reference_layout(
+        self, ndim, interp_order, cmp_layout, allocator
+    ):
         print(
             f"{self._testMethodName} ndim={ndim} interp={interp_order} layout={cmp_layout}"
+            f" allocator={allocator}"
         )
-        self._compare_init(ndim, interp_order, cmp_layout)
+        self._compare_init(ndim, interp_order, cmp_layout, allocator)
 
 
 @ddt
 class LayoutInitL1Test(_LayoutInitL1Test):
     @data(*permute(ndim_list, interp_orders))
     @unpack
-    def test_init_matches_reference_layout(self, ndim, interp_order, cmp_layout):
+    def test_init_matches_reference_layout(
+        self, ndim, interp_order, cmp_layout, allocator
+    ):
         print(
             f"{self._testMethodName} ndim={ndim} interp={interp_order} layout={cmp_layout}"
+            f" allocator={allocator}"
         )
-        self._compare_init(ndim, interp_order, cmp_layout)
+        self._compare_init(ndim, interp_order, cmp_layout, allocator)
 
 
 @ddt
 class LayoutAdvanceL0Test(_LayoutAdvanceL0Test):
     @data(*permute(ndim_list, interp_orders))
     @unpack
-    def test_advance_matches_reference_layout(self, ndim, interp_order, cmp_layout):
+    def test_advance_matches_reference_layout(
+        self, ndim, interp_order, cmp_layout, allocator
+    ):
         print(
             f"{self._testMethodName} ndim={ndim} interp={interp_order} layout={cmp_layout}"
+            f" allocator={allocator}"
         )
-        self._compare_advance(ndim, interp_order, cmp_layout)
+        self._compare_advance(ndim, interp_order, cmp_layout, allocator)
 
 
 @ddt
 class LayoutAdvanceL1Test(_LayoutAdvanceL1Test):
     @data(*permute(ndim_list, interp_orders))
     @unpack
-    def test_advance_matches_reference_layout(self, ndim, interp_order, cmp_layout):
+    def test_advance_matches_reference_layout(
+        self, ndim, interp_order, cmp_layout, allocator
+    ):
         print(
             f"{self._testMethodName} ndim={ndim} interp={interp_order} layout={cmp_layout}"
+            f" allocator={allocator}"
         )
-        self._compare_advance(ndim, interp_order, cmp_layout)
+        self._compare_advance(ndim, interp_order, cmp_layout, allocator)
 
 
 @ddt
 class LayoutAdvanceL2Test(_LayoutAdvanceL2Test):
     @data(*permute(ndim_list, interp_orders))
     @unpack
-    def test_advance_matches_reference_layout(self, ndim, interp_order, cmp_layout):
+    def test_advance_matches_reference_layout(
+        self, ndim, interp_order, cmp_layout, allocator
+    ):
         print(
             f"{self._testMethodName} ndim={ndim} interp={interp_order} layout={cmp_layout}"
+            f" allocator={allocator}"
         )
-        self._compare_advance(ndim, interp_order, cmp_layout)
+        self._compare_advance(ndim, interp_order, cmp_layout, allocator)
 
 
 if __name__ == "__main__":

@@ -129,6 +129,15 @@ void ParticlesAppender<LM::AoSMapped, AM::CPU, LM::AoSPC, AM::GPU_UNIFIED>::oper
 }
 
 
+template<>
+template<auto type, typename Src, typename Dst>
+void ParticlesAppender<LM::AoS, AM::GPU_UNIFIED, LM::AoSPC, AM::GPU_UNIFIED>::operator()( //
+    Src const& src, Dst& dst)
+{
+    ParticlesAppender<LM::AoS, AM::CPU, LM::AoSPC, AM::CPU>{}.template operator()<type>(src, dst);
+}
+
+
 template<> // slow - unified memory, CPU path
 template<auto type, typename Src, typename Dst>
 void ParticlesAppender<LM::AoSMapped, AM::CPU, LM::AoSPCTS, AM::GPU_UNIFIED>::operator()( //

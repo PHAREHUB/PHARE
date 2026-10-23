@@ -7,7 +7,7 @@ property:
     --std=c++20 -fPIC -fsized-deallocation -Wno-unknown-cuda-version
     -Xclang -fcuda-allow-variadic-functions
     -x cuda --cuda-gpu-arch=sm_${cuda.arch} -DMKN_GPU_CUDA=1 -DMKN_GPU_ROCM=0
-    -DPHARE_HAVE_MKN_GPU=1
+    -DPHARE_HAVE_MKN_GPU=1 -DPHARE_HAVE_GPU_HARDWARE=1
 
 # -DPHARE_FORCE_LOG_LINE
   lnk.flags: -lcudart # -lineinfo # -rdynamic # -fuse-ld=gold

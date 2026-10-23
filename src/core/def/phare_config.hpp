@@ -2,6 +2,10 @@
 #define PHARE_CORE_DEF_PHARE_CONFIG_HPP
 
 
+#if !defined(PHARE_HAVE_GPU_HARDWARE)
+#define PHARE_HAVE_GPU_HARDWARE 0
+#endif
+
 #include "core/def/detail/build_config.hpp"
 #include "core/def/detail/umpire.hpp"
 #include "core/def/detail/raja.hpp" // checks for umpire to know if gpu
@@ -12,14 +16,7 @@
 #include <cstdint>
 
 #if !defined(PHARE_HAVE_GPU)
-#if PHARE_HAVE_MKN_GPU_HW // or PHARE_HAVE_UMPIRE
-#define PHARE_HAVE_GPU 1
-#endif // PHARE_HAVE_MKN_GPU_HW or PHARE_HAVE_UMPIRE
-#endif // !defined(PHARE_HAVE_GPU)
-
-
-#if !defined(PHARE_HAVE_GPU)
-#define PHARE_HAVE_GPU 0
+#define PHARE_HAVE_GPU PHARE_HAVE_GPU_HARDWARE
 #endif // !defined(PHARE_HAVE_GPU)
 
 
@@ -52,7 +49,7 @@ struct CompileOptions
     static constexpr bool WithRAJA     = PHARE_HAVE_RAJA;
     static constexpr bool WithThrust   = PHARE_HAVE_THRUST;
     static constexpr bool WithKokkos   = PHARE_HAVE_KOKKOS;
-    static constexpr bool WithGpu      = WithUmpire || WithMknGpu;
+    static constexpr bool WithGpu      = PHARE_HAVE_GPU_HARDWARE;
 };
 
 

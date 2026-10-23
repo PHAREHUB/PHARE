@@ -74,10 +74,17 @@ private:
     using Faraday_t = FaradayLevelTransformer<HybridModel>;
     using Ampere_t  = AmpereLevelTransformer<HybridModel>;
     using Ohm_t     = OhmLevelTransformer<HybridModel>;
+#if PHARE_HAVE_MKN_GPU
+    using ParallelIonUpdater_t
+        = std::conditional_t<ParticleArray::alloc_mode == AllocatorMode::GPU_UNIFIED,
+                             core::mkn_xyz::ParallelIonUpdater<ParticleArray, GridLayout>,
+                             core::ParallelIonUpdater<ParticleArray, GridLayout>>;
+#else
+    using ParallelIonUpdater_t = core::ParallelIonUpdater<ParticleArray, GridLayout>;
+#endif
     using IonUpdater_t
         = std::conditional_t<ParticleArray::layout_mode == core::LayoutMode::AoSMapped,
-                             core::IonUpdater<ParticleArray, GridLayout>,
-                             core::ParallelIonUpdater<ParticleArray, GridLayout>>;
+                             core::IonUpdater<ParticleArray, GridLayout>, ParallelIonUpdater_t>;
     using Boxing_t = IonUpdater_t::Boxing_t;
 
     Electromag electromagPred_{"EMPred"};

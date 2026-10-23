@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_TILES_TILING_OPTIONS_HPP
 #define PHARE_CORE_DATA_TILES_TILING_OPTIONS_HPP
 
+#include "core/def.hpp"
 #include "core/utilities/types.hpp"
 
 #include <string>
@@ -24,11 +25,21 @@ struct TilingOptions
     std::size_t max_tile_size               = 10;
     std::size_t min_patch_size_before_split = 2 * min_tile_size;
 
-    // unset env vars keep the defaults above; max defaults to at least min, so setting only the
-    // min can't leave max < min
-    NO_DISCARD static TilingOptions from_env()
+    template<auto alloc_mode, std::size_t dim>
+    NO_DISCARD static TilingOptions defaults_for()
     {
         TilingOptions opts;
+        if constexpr (alloc_mode == AllocatorMode::GPU_UNIFIED and dim == 3)
+            opts.max_tile_size = 6;
+        return opts;
+    }
+
+    // unset env vars keep the defaults given; max defaults to at least min, so setting only the
+    // min can't leave max < min
+    NO_DISCARD static TilingOptions from_env() { return from_env(TilingOptions{}); }
+
+    NO_DISCARD static TilingOptions from_env(TilingOptions opts)
+    {
         opts.min_tile_size = get_env_as(min_tile_key, opts.min_tile_size);
         opts.max_tile_size
             = get_env_as(max_tile_key, std::max(opts.min_tile_size, opts.max_tile_size));

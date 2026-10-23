@@ -2,6 +2,7 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_APPENDING_DETAIL_DEF_APPENDING
 #define PHARE_CORE_DATA_PARTICLES_APPENDING_DETAIL_DEF_APPENDING
 
+#include "core/utilities/types.hpp"
 #include "core/data/particles/particle_array_def.hpp"
 
 #include <cstddef>
@@ -22,7 +23,10 @@ struct ParticlesAppender
     auto constexpr static dst_alloc_mode  = dst_alloc_mde;
 
     template<auto type, typename Src, typename Dst>
-    void operator()(Src const& src, Dst& dst);
+    void operator()(Src const&, Dst&)
+    {
+        static_assert(dependent_false_v<Src>, "no ParticlesAppender impl");
+    }
 
     std::size_t const start;
     std::size_t const end;

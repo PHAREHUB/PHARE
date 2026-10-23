@@ -140,6 +140,8 @@ PYBIND11_MODULE(cpp_etc, m, py::mod_gil_not_used())
         .finalize();
 
     m.def("supported_layouts", supported_layouts);
+    m.def("gpu_unified_supported",
+          []() { return allocator_mode_supported<AllocatorMode::GPU_UNIFIED>(); });
 
     py::native_enum<AllocatorMode>(m, "AllocatorMode", "enum.Enum")
         .value("CPU", AllocatorMode::CPU)

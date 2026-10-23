@@ -119,6 +119,10 @@ option(withUmpire "Use Umpire Tooling" OFF)
 option(withMkn "Use mkn::gpu" OFF)
 
 
+# -DwithGpu=OFF
+option(withGpu "Build for GPU hardware (requires withMkn)" OFF)
+
+
 
 
 # print options
@@ -138,6 +142,8 @@ function(print_phare_options)
   message("build with asan support                     : " ${asan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
+  message("build with mkn.gpu                           : " ${withMkn})
+  message("build for GPU hardware                      : " ${withGpu})
   message("profile guided optimization generate        : " ${PGO_GEN})
   message("profile guided optimization use             : " ${PGO_USE})
 

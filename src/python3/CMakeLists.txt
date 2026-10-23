@@ -4,17 +4,15 @@ project(phare_python3)
 
 if(NOT PHARE_PERMUTATIONS)
   set(PHARE_PERMUTATIONS "${PHARE_PROJECT_DIR}/res/sim/all.txt")
+  if(withMkn)
+    list(APPEND PHARE_PERMUTATIONS "${PHARE_PROJECT_DIR}/res/sim/gpu.txt")
+  endif()
 endif()
 
-file(STRINGS ${PHARE_PERMUTATIONS} THIS_FILE)
-
-while(THIS_FILE)
-    list(POP_FRONT THIS_FILE LINE)
-
-    # Skip empty lines and comments
+function(phare_add_permutation LINE)
     string(STRIP "${LINE}" LINE)
     if("${LINE}" STREQUAL "" OR "${LINE}" MATCHES "^#" OR NOT "${LINE}" MATCHES "^[0-9]")
-        continue()
+        return()
     endif()
 
     string(REPLACE "," ";" LINE_LIST ${LINE})
@@ -42,6 +40,9 @@ while(THIS_FILE)
 
     string(REPLACE "," "_" OUT ${LINE})
     SET(MOD_STR "cpp_${OUT}")
+    if(TARGET ${MOD_STR})
+        return()
+    endif()
     list(JOIN LINE_LIST "," LINE) # semicolon separated list to csv
 
     pybind11_add_module(${MOD_STR} cpp_simulator.cpp)
@@ -60,7 +61,18 @@ while(THIS_FILE)
     # this is on by default "pybind11_add_module" but can interfere with coverage so we disable it if coverage is enabled
     set_property(TARGET ${MOD_STR} PROPERTY INTERPROCEDURAL_OPTIMIZATION ${PHARE_INTERPROCEDURAL_OPTIMIZATION})
     set_property(TARGET ${MOD_STR} APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
-endwhile()
+endfunction()
+
+function(phare_add_permutations PERMUTATIONS_FILE)
+    file(STRINGS ${PERMUTATIONS_FILE} THIS_FILE)
+    foreach(LINE IN LISTS THIS_FILE)
+        phare_add_permutation("${LINE}")
+    endforeach()
+endfunction()
+
+foreach(PERMUTATIONS_FILE IN LISTS PHARE_PERMUTATIONS)
+    phare_add_permutations(${PERMUTATIONS_FILE})
+endforeach()
 
 # cpp_etc == everything not simulator related!
 pybind11_add_module(cpp_etc cpp_etc.cpp)

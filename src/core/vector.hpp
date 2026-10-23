@@ -15,7 +15,7 @@ namespace PHARE
 
 auto constexpr default_allocator_mode()
 {
-    if constexpr (CompileOptions::WithUmpire or CompileOptions::WithMknGpuHW)
+    if constexpr (CompileOptions::WithGpu)
         return AllocatorMode::GPU_UNIFIED;
     return AllocatorMode::CPU;
 }
@@ -28,8 +28,7 @@ bool constexpr allocator_mode_supported()
     else if constexpr (/*allocator_mode == AllocatorMode::GPU
                        or */
                        allocator_mode == AllocatorMode::GPU_UNIFIED)
-        return CompileOptions::WithMknGpuHW or CompileOptions::WithUmpire
-               or CompileOptions::WithKokkos;
+        return CompileOptions::WithGpu or CompileOptions::WithMknGpu;
     return false;
 }
 
@@ -80,7 +79,7 @@ auto constexpr allocator()
                       or */
                        allocator_mode == AllocatorMode::GPU_UNIFIED)
     {
-        if constexpr (CompileOptions::WithMknGpuHW)
+        if constexpr (CompileOptions::WithMknGpu)
         {
             PHARE_WITH_MKN_GPU({
                 if constexpr (mode == 0) // for fields
