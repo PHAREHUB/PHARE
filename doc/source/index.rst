@@ -87,6 +87,7 @@ Warning: This documentation is a work in progress. It is not complete and may co
 
    usage/run_from_python
    usage/simulation
+   usage/amr_tagging
    usage/models
    usage/diagnostics
    usage/load_balancing
