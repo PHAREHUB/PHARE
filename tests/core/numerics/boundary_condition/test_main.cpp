@@ -15,7 +15,7 @@ class ABoundaryConditionWhereAllParticlesLeave : public ::testing::Test
 public:
     ABoundaryConditionWhereAllParticlesLeave()
         : boundaryBoxes{bbox}
-        , leavingParticles_(Box<int, 2>{Point<int, 2>{0, 0}, Point<int, 2>{20, 20}}, 10)
+        , leavingParticles_(Box<int, 2>{Point<int, 2>{0, 0}, Point<int, 2>{20, 20}}, 10u)
     {
         bc.setBoundaryBoxes(boundaryBoxes);
 

@@ -9,6 +9,8 @@
 
 #include "amr/data/field/field_data.hpp"
 #include "amr/data/tensorfield/tensor_field_overlap.hpp"
+#include "amr/data/tensorfield/tensor_field_data.hpp"
+#include "amr/resources_manager/tensor_field_resource.hpp"
 
 #include "field_refiner_kernel.hpp"
 
@@ -16,6 +18,7 @@
 #include <SAMRAI/hier/RefineOperator.h>
 
 #include <cstddef>
+#include <stdexcept>
 #include <type_traits>
 
 namespace PHARE::amr

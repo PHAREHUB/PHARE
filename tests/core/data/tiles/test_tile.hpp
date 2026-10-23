@@ -8,6 +8,8 @@
 
 #include "gtest/gtest.h"
 
+#include <unordered_set>
+
 using namespace PHARE::core;
 
 template<typename TileSet>

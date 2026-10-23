@@ -288,7 +288,6 @@ EqualityReport compare_field_domains(GridLayout const& layout, FieldTileSet<T0s.
     return compare_field_domains(layout, cmp, ref, diff);
 }
 
-
 } // namespace PHARE::core
 
 

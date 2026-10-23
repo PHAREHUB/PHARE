@@ -276,3 +276,19 @@ class ParticleData(PatchData):
         return phut.EqualityCheck(
             self.compare(that), f"particles {self.name} vs {that.name}"
         )
+
+
+class LiveParticleData(PatchData):
+    """
+    PatchData wrapping a LiveParticles (C++ reference, no SoA copy).
+    """
+
+    def __init__(self, layout, data, pop_name):
+        super().__init__(layout, "particles")
+        self.dataset = data
+        self.pop_name = pop_name
+        self.name = pop_name
+        self.ndim = layout.box.ndim
+
+    def size(self):
+        return self.dataset.size()

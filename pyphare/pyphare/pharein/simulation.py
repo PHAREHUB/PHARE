@@ -202,7 +202,7 @@ def check_particle_layout(**kwargs):
     return particle_layout
 
 
-valid_allocators = ("CPU",)
+valid_allocators = ("CPU", "GPU_UNIFIED")
 
 
 def check_allocator(**kwargs):
@@ -1045,7 +1045,7 @@ class Simulation:
 
             * **layout** (``str``), layout of the physical quantities on the mesh (default = "yee")
             * **particle_layout** (``str``), in-memory particle array layout, one of "AoSMapped", "AoSPCTS" (default = "AoSMapped")
-            * **allocator** (``str``), particle/field data allocator, one of "CPU" (default = "CPU")
+            * **allocator** (``str``), particle/field data allocator, one of "CPU", "GPU_UNIFIED" (default = "CPU")
             * **threading** (``dict``), thread pools per MPI rank, ``{"pools": 1, "threads_per_pool": 1}`` (default). A pool works one patch at a time, its threads the tiles of that patch, so only tiled particle layouts use more than one thread. Overridden by the env vars ``PHARE_THREAD_POOLS`` and ``PHARE_THREADS_PER_POOL``
 
 
@@ -1119,7 +1119,7 @@ class Simulation:
         * **tagging_threshold** (``float``), default=0.1, used only when `refinement="tagging"`. Threshold of the tagging criterion above which a cell is flagged for refinement. Lower values tag more cells and produce more/larger refined regions. See :ref:`tagging-for-refinement` for the underlying theory.
         * **max_nbr_levels** (``int``), default=1, max number of levels in the hierarchy. With `refinement="boxes"` this is derived automatically from the number of levels given in `refinement_boxes`; with `refinement="tagging"` it must be given explicitly (it otherwise silently defaults to 1, i.e. no refinement).
         * **tag_buffer** (``int``), default=1, number of cells by which each tagged cell is grown, in every direction, before clustering into boxes. E.g. with `tag_buffer=1`, a single tagged cell becomes surrounded by a 1-cell-wide layer of also-tagged cells: 3 tagged cells in 1D, 9 in 2D. The larger `tag_buffer`, the wider refined regions will be around tagged cells.
-        * **clustering** (``str`` or ``dict``), type of :ref:`clustering` to use for AMR. String form: {"berger", "tile" (default)}. Dict form: ``{"method": "tile", "tile_size": 16, "allow_remote_tile_extent": False}``. ``tile_size`` (int or per-dim list, default 8) controls the SAMRAI tile grid granularity — larger values reduce patch overlap risk and produce fewer, larger patches. ``allow_remote_tile_extent`` (bool, default ``True``) — set to ``False`` to disable cross-MPI-rank tile clustering, which eliminates overlap path 1 at the cost of smaller per-rank patches (useful as a diagnostic). :ref:`tile <tiling>` results in wider patches, less artifacts and better scalability than :ref:`berger <berger-rigoutsos>`.
+        * **clustering** (``str`` or ``dict``), type of :ref:`clustering` to use for AMR. String form: ``"tile"`` (default) or ``"berger"``. Dict form: ``{"method": "tile", "tile_size": 16, "allow_remote_tile_extent": False}``. ``tile_size`` (int or per-dim list, default 8) controls the SAMRAI tile grid granularity — larger values reduce patch overlap risk and produce fewer, larger patches. ``allow_remote_tile_extent`` (bool, default ``True``) — set to ``False`` to disable cross-MPI-rank tile clustering, which eliminates overlap path 1 at the cost of smaller per-rank patches (useful as a diagnostic). :ref:`tile <tiling>` results in wider patches, less artifacts and better scalability than :ref:`berger <berger-rigoutsos>`.
 
         **Expert parameters:**
 

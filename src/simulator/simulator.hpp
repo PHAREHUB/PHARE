@@ -644,7 +644,6 @@ std::unique_ptr<Simulator> makeSimulator(std::shared_ptr<amr::Hierarchy> const& 
 }
 
 
-
 } // namespace PHARE
 
 #endif /*PHARE_SIMULATOR_SIMULATOR_H*/

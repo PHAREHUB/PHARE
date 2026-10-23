@@ -1,6 +1,7 @@
 #ifndef PHARE_OHM_HPP
 #define PHARE_OHM_HPP
 
+#include "core/def.hpp"
 #include "core/utilities/index/index.hpp"
 #include "core/utilities/meta/meta_utilities.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
@@ -115,7 +116,8 @@ private:
 
 
     template<auto component, typename VecField>
-    auto ideal_(VecField const& Ve, VecField const& B, MeshIndex<dimension> index) const
+    auto ideal_(VecField const& Ve, VecField const& B,
+                MeshIndex<dimension> index) const _PHARE_ALL_FN_
     {
         if constexpr (component == Component::X)
         {
@@ -166,7 +168,8 @@ private:
 
 
     template<auto component, typename Field, typename GradPe>
-    auto pressure_(Field const& n, GradPe const& gradPe, MeshIndex<Field::dimension> index) const
+    auto pressure_(Field const& n, GradPe const& gradPe,
+                   MeshIndex<Field::dimension> index) const _PHARE_ALL_FN_
     {
         if constexpr (component == Component::X)
         {
@@ -208,7 +211,7 @@ private:
 
 
     template<auto component, typename VecField>
-    auto resistive_(VecField const& J, MeshIndex<dimension> index) const
+    auto resistive_(VecField const& J, MeshIndex<dimension> index) const _PHARE_ALL_FN_
     {
         auto const& Jxyx = J(component);
 
@@ -233,7 +236,7 @@ private:
 
     template<auto component, typename VecField, typename Field>
     auto hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                         MeshIndex<VecField::dimension> index) const
+                         MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     {
         // if compile error, fix this function
         static_assert(static_cast<std::underlying_type_t<HyperMode>>(HyperMode::count) == 2);
@@ -247,14 +250,15 @@ private:
 
 
     template<auto component, typename VecField>
-    auto constant_hyperresistive_(VecField const& J, MeshIndex<VecField::dimension> index) const
+    auto constant_hyperresistive_(VecField const& J,
+                                  MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     { // TODO : https://github.com/PHAREHUB/PHARE/issues/3
         return -nu * laplacian(layout_, J(component), index);
     }
 
     template<auto component, typename VecField, typename Field>
     auto spatial_hyperresistive_(VecField const& J, VecField const& B, Field const& n,
-                                 MeshIndex<VecField::dimension> index) const
+                                 MeshIndex<VecField::dimension> index) const _PHARE_ALL_FN_
     {
         auto const lvlCoeff = 1. / std::pow(4, layout_.levelNumber());
 

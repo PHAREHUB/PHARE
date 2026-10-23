@@ -1,4 +1,4 @@
-#
+# tests/simulator/test_initialization.py
 #  Common base class across hybrid and mhd tests
 #   see
 #      tests/simulator/initialize/test_init_mhd.py

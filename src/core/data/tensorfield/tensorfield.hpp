@@ -47,7 +47,7 @@ auto static tensor_field_make_fields(std::array<std::string, N> const& names, Qt
 }
 
 template<std::size_t rank>
-auto static tensor_field_index_for(Component const component)
+auto static tensor_field_index_for(Component const component) _PHARE_ALL_FN_
 {
     auto const val = static_cast<std::underlying_type_t<Component>>(component);
     if constexpr (rank == 1)
@@ -69,40 +69,36 @@ struct TensorField
     auto constexpr static N                = detail::tensor_field_dim_from_rank<rank>();
     static constexpr std::size_t dimension = Field_t::dimension;
 
-    TensorField(std::array<Field_t, N> const& components)
-        : components_{components}
+    TensorField(std::array<Field_t, N> const& components) _PHARE_ALL_FN_ : components_{components}
     {
     }
 
-    TensorField(std::array<Field_t, N>& components)
-        : components_{components}
-    {
-    }
-    TensorField(TensorField const& source)            = default;
-    TensorField(TensorField&& source)                 = default;
-    TensorField& operator=(TensorField const& source) = default;
-    TensorField& operator=(TensorField&& source)      = default;
+    TensorField(std::array<Field_t, N>& components) _PHARE_ALL_FN_ : components_{components} {}
+    TensorField(TensorField const& source) _PHARE_ALL_FN_            = default;
+    TensorField(TensorField&& source) _PHARE_ALL_FN_                 = default;
+    TensorField& operator=(TensorField const& source) _PHARE_ALL_FN_ = default;
+    TensorField& operator=(TensorField&& source) _PHARE_ALL_FN_      = default;
 
 
     template<typename... Args>
     TensorField(Args&&... args)
         requires(sizeof...(Args) == N)
-        : components_{args...}
+    _PHARE_ALL_FN_ : components_{args...}
     {
     }
 
 
-    auto& operator[](std::size_t const i) { return components_[i]; }
-    auto& operator[](std::size_t const i) const { return components_[i]; }
-    auto& operator()() { return components_; }
-    auto& operator()() const { return components_; }
+    auto& operator[](std::size_t const i) _PHARE_ALL_FN_ { return components_[i]; }
+    auto& operator[](std::size_t const i) const _PHARE_ALL_FN_ { return components_[i]; }
+    auto& operator()() _PHARE_ALL_FN_ { return components_; }
+    auto& operator()() const _PHARE_ALL_FN_ { return components_; }
 
-    auto& operator()(Component component)
+    auto& operator()(Component component) _PHARE_ALL_FN_
     {
         return components_[detail::tensor_field_index_for<rank>(component)];
     }
 
-    auto& operator()(Component component) const
+    auto& operator()(Component component) const _PHARE_ALL_FN_
     {
         return components_[detail::tensor_field_index_for<rank>(component)];
     }
@@ -134,20 +130,20 @@ struct TensorField
 
 
     //! return true if the TensorField can be used to access component data
-    NO_DISCARD bool isUsable() const
+    NO_DISCARD bool isUsable() const _PHARE_ALL_FN_
     {
         return std::all_of(std::begin(components_), std::end(components_),
                            [](auto const& c) { return c.isUsable(); });
     }
 
-    NO_DISCARD bool isSettable() const
+    NO_DISCARD bool isSettable() const _PHARE_ALL_FN_
     {
         return std::all_of(std::begin(components_), std::end(components_),
                            [](auto const& c) { return c.isSettable(); });
     }
 
     template<typename V>
-    auto as(auto&& a, auto&&... args)
+    auto as(auto&& a, auto&&... args) _PHARE_ALL_FN_
     {
         V r{for_N<N, for_N_R_mode::make_array>([&](auto i) { return a(components_[i], args...); })};
         PHARE_ASSERT(r.isUsable());
@@ -155,7 +151,7 @@ struct TensorField
     }
 
     template<typename V>
-    auto as(auto&& a, auto&&... args) const
+    auto as(auto&& a, auto&&... args) const _PHARE_ALL_FN_
     {
         return V{
             for_N<N, for_N_R_mode::make_array>([&](auto i) { return a(components_[i], args...); })};
@@ -247,12 +243,12 @@ public:
 
 
 
-    NO_DISCARD field_type& getComponent(Component component)
+    NO_DISCARD field_type& getComponent(Component component) _PHARE_ALL_FN_
     {
         return components_[detail::tensor_field_index_for<rank>(component)];
     }
 
-    NO_DISCARD field_type const& getComponent(Component component) const
+    NO_DISCARD field_type const& getComponent(Component component) const _PHARE_ALL_FN_
     {
         return components_[detail::tensor_field_index_for<rank>(component)];
     }
@@ -265,11 +261,11 @@ public:
 
 
 
-    NO_DISCARD auto& components() const
+    NO_DISCARD auto& components() const _PHARE_ALL_FN_
     {                       // std::array can't work on gpu?
         return components_; // reinterpret_cast<raw_array_ct>(components_);
     }
-    NO_DISCARD auto& components()
+    NO_DISCARD auto& components() _PHARE_ALL_FN_
     {
         return components_; // reinterpret_cast<raw_array_t>(components_);
     }
@@ -351,6 +347,79 @@ inline std::ostream& operator<<(std::ostream& out,
     return out;
 }
 
+template<typename TensorField>
+void check_tensor_field(std::vector<TensorField> const& vec)
+{
+#if PHARE_DEBUG
+    for (auto const& tf : vec)
+        check_tensor_field(deref(tf));
+#endif // PHARE_DEBUG
+}
+
+
+template<typename Field_t, std::size_t rank>
+void check_tensor_field(basic::TensorField<Field_t, rank> const& tf, auto const& layout)
+{
+    static_assert(is_field_v<Field_t> || is_field_tile_set_v<Field_t>);
+
+#if PHARE_DEBUG
+    if constexpr (is_field_v<Field_t>)
+    {
+        for (auto const& field : tf)
+            check_field(field, layout);
+    }
+    else if constexpr (is_field_tile_set_v<Field_t>)
+    {
+        using Tile_vt        = Field_t::value_type::value_type;
+        using TensorField_vt = basic::TensorField<Tile_vt, rank>;
+
+        for (std::size_t tidx = 0; tidx < tf[0].ntiles(); ++tidx)
+            check_tensor_field(tf.template as<TensorField_vt>([&](auto& c) { return c()[tidx](); }),
+                               tf[0][tidx].layout());
+    }
+    else
+        static_assert(dependent_false_v<Field_t>);
+#endif // PHARE_DEBUG
+}
+
+
+template<typename Field_t, std::size_t rank>
+void check_tensor_field(basic::TensorField<Field_t, rank> const& tf)
+{
+    static_assert(is_field_v<Field_t> || is_field_tile_set_v<Field_t>);
+
+#if PHARE_DEBUG
+    if constexpr (is_field_v<Field_t>)
+    {
+        for (auto const& field : tf)
+            check_field(field);
+    }
+    else if constexpr (is_field_tile_set_v<Field_t>)
+    {
+        using Tile_vt        = Field_t::value_type::value_type;
+        using TensorField_vt = basic::TensorField<Tile_vt, rank>;
+
+        for (std::size_t tidx = 0; tidx < tf[0].ntiles(); ++tidx)
+            check_tensor_field(
+                tf.template as<TensorField_vt>([&](auto& c) { return c()[tidx](); }));
+    }
+    else
+        static_assert(dependent_false_v<Field_t>);
+#endif // PHARE_DEBUG
+}
+
+
+
+void check_tensor_fields(auto const&... tfs)
+{
+#if PHARE_DEBUG
+    (check_tensor_field(tfs), ...);
+#endif // PHARE_DEBUG
+}
+
+
 } // namespace PHARE::core
+
+
 
 #endif /* PHARE_TENSORFIELD_HPP */

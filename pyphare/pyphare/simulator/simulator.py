@@ -149,7 +149,7 @@ class Simulator:
             ) from e
 
     def advance(self):
-        self._check_setup()
+        self._check_init()
         if self.simulation.dry_run:
             return self
 
@@ -184,8 +184,7 @@ class Simulator:
            ``PHARE_SIM_MON`` environment variable if left None. Requires the optional ``phlop`` package
            (``python3 -m pip install phlop``); silently does nothing if it isn't installed.
         """
-        if not self.initialized:
-            self.initialize()
+        self._check_init()
 
         if monitoring is None:  # check env
             monitoring = SIM_MONITOR
@@ -287,9 +286,9 @@ class Simulator:
         self.initialized = True
         return self
 
-    def _check_setup(self):
-        if not self.cpp_sim:
-            self.setup()
+    def _check_init(self):
+        if not self.initialized:
+            self.initialize()
 
     def print_summary(self):
         summary = self.summary()  # NO DEADLOCK!
@@ -299,6 +298,10 @@ class Simulator:
     def summary(self):
         self._check_setup()
         return self.cpp_sim.summary()
+
+    def _check_setup(self):
+        if not self.cpp_sim:
+            self.setup()
 
     def _log_to_file(self):
         """

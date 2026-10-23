@@ -219,6 +219,7 @@ class RestartsTest(SimulatorTest):
             self.assertGreaterEqual(n_patches, n_levels)  # at least one patch per level
 
     @data(
+        *permute(dup(dict()), expected_num_levels=2),  # refinement boxes set later
         *permute(
             dup(
                 dict(

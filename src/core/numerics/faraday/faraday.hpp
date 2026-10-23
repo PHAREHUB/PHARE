@@ -1,6 +1,7 @@
 #ifndef PHARE_FARADAY_HPP
 #define PHARE_FARADAY_HPP
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 #include "core/numerics/differential_operators.hpp"
@@ -18,7 +19,7 @@ public:
     }
 
     template<typename VecField>
-    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt) _PHARE_ALL_FN_
     {
         dt_ = dt;
         // can't use structured bindings because

@@ -40,6 +40,7 @@ if(HighFive)
 
   if(${HDF5_IS_PARALLEL})
       message("HDF5 PARALLEL detected")
+      target_compile_definitions(HighFive INTERFACE H5_HAVE_PARALLEL)
   else()
       message(WARNING "HDF5 NOT PARALLEL")
   endif()

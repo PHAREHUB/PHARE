@@ -161,17 +161,20 @@ void ParticlesRefining<HybridTypes, splitType, Splitter>::forBoxes(
         auto& [p_count, refinedParticles] = refined_info;
         auto const particleRefinedPos     = toFineGrid(particle);
         split(particleRefinedPos, particle, refinedParticles);
-        p_count
-            = core::ParticleArrayPartitioner<ArrayParticleArray>{refinedParticles}(dst_box).size();
+        p_count = core::ParticleArrayPartitioner<alloc_mode, ArrayParticleArray>{refinedParticles}(
+                      dst_box)
+                      .size();
 
         if constexpr (ParticleType_v != ParticleType::Domain)
         {
             p_count
-                = core::ParticleArrayPartitioner<ArrayParticleArray>{refinedParticles, 0, p_count}(
+                = core::ParticleArrayPartitioner<alloc_mode, ArrayParticleArray>{refinedParticles,
+                                                                                 0, p_count}(
                       phare_box_from<dim>(destParticlesData.getGhostBox()))
                       .size();
             p_count
-                = core::ParticleArrayPartitioner<ArrayParticleArray>{refinedParticles, 0, p_count}
+                = core::ParticleArrayPartitioner<alloc_mode, ArrayParticleArray>{refinedParticles,
+                                                                                 0, p_count}
                       .notIn(domainBox)
                       .size();
         }

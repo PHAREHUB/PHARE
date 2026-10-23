@@ -299,3 +299,34 @@ class SimulatorTest(unittest.TestCase):
                 if os.path.exists(diag_dir):
                     shutil.rmtree(diag_dir)
         cpp.mpi_barrier()
+
+
+def debug_tracer():
+    """
+    print live stack trace during execution
+    """
+
+    import os
+    import sys
+
+    def tracefunc(frame, event, arg, indent=[0]):
+        filename = os.path.basename(frame.f_code.co_filename)
+        line_number = frame.f_lineno
+        if event == "call":
+            indent[0] += 2
+            print(
+                "-" * indent[0] + "> enter function",
+                frame.f_code.co_name,
+                f"{filename} {line_number}",
+            )
+        elif event == "return":
+            print(
+                "<" + "-" * indent[0],
+                "exit function",
+                frame.f_code.co_name,
+                f"{filename} {line_number}",
+            )
+            indent[0] -= 2
+        return tracefunc
+
+    sys.setprofile(tracefunc)

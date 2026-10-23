@@ -28,7 +28,7 @@ class MHDAdvanceTest(AdvanceTestBase):
         extra_diag_options=None,
         timestamps=None,
         diag_outputs="",
-        **kwargs
+        **kwargs,
     ):
         # the shared hybrid+MHD base passes this positionally: an MHD-only run
         # has no interp order, so it is accepted and deliberately unused --

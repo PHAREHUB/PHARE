@@ -175,6 +175,7 @@ class Diagnostics:
     create two independent diagnostics: it extends the existing one's list
     of timestamps with the new ones instead.
     """
+
     h5_flush_never = 0
     cpp_dep_vers = try_cpp_dep_vers()
 

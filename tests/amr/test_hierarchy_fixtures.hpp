@@ -369,7 +369,8 @@ struct AfullHybridBasicHierarchy
 
     std::shared_ptr<HybridMessenger<HybridModelT>> messenger{
         std::make_shared<HybridMessenger<HybridModelT>>(
-            std::make_unique<HybridHybridT>(resourcesManagerHybrid, firstHybLevel))};
+            std::make_unique<HybridHybridT>(resourcesManagerHybrid, hybridModel->boundaryManager,
+                                            firstHybLevel))};
 
     std::shared_ptr<SolverPPC<HybridModelT, SAMRAI_Types>> solver{
         std::make_shared<SolverPPC<HybridModelT, SAMRAI_Types>>(dict["simulation"]["algo"])};

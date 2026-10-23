@@ -1,12 +1,18 @@
 #ifndef PHARE_CORE_DATA_FIELD_FIELD_BOX_HPP
 #define PHARE_CORE_DATA_FIELD_FIELD_BOX_HPP
 
+#ifndef PHARE_FIELD_BOX_IMPL
+#define PHARE_FIELD_BOX_IMPL 0
+#endif
+
+
 #include "core/data/grid/grid.hpp"
 #include "core/utilities/types.hpp"
 #include "core/data/field/field.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/data/grid/grid_tiles.hpp"
 #include "core/data/field/field_box_span.hpp"
+#include "core/data/field/field_overlaps.hpp"
 
 #include <vector>
 #include <cmath>
@@ -257,7 +263,7 @@ void operate_on_fields(FieldBox<GridTileSet<T0s...>>& dst, FieldBox<T1s...> cons
     PHARE_LOG_SCOPE(3, "operate_on_fields<GridTileSet,T1s...>");
 
     using Src = std::decay_t<decltype(src.field)>;
-    static_assert(is_field_v<Src>);
+    static_assert(is_ndarray_v<Src>); // may be a raw view, e.g. an unpacked stream buffer
 
     auto const amr_selection_box = dst.field.layout().localToAMR(dst.lcl_box);
     auto const pq                = dst.field.physicalQuantity();
@@ -371,6 +377,7 @@ void operate_on_fields(FieldBox<Grid<T0s...>>& dst, FieldBox<GridTileSet<T1s...>
     auto const dst_selection_box = shift(dst_layout.localToAMR(dst.lcl_box), src.offset_ * -1);
     assert(src_selection_box.shape() == dst_selection_box.shape());
 
+#if PHARE_FIELD_BOX_IMPL == 0
     for (auto const& src_tile : src.field())
     {
         if (skip(src.field, src_tile))
@@ -391,6 +398,33 @@ void operate_on_fields(FieldBox<Grid<T0s...>>& dst, FieldBox<GridTileSet<T1s...>
                     Operator{dst.field(*dst_it)}(src_tile()(*src_it));
             }
     }
+#endif
+
+#if PHARE_FIELD_BOX_IMPL == 1
+    auto constexpr static dim  = FieldBox<Grid<T0s...>>::dimension;
+    auto constexpr static opts = FieldOpts<HybridQuantity::Scalar, double>{dim};
+
+    auto const& patch_layout = src.field()[0].layout().copy_as(src.field.box());
+    auto const ghost_box     = patch_layout.AMRGhostBoxFor(pq);
+    using GridLayout_t       = std::decay_t<decltype(patch_layout)>;
+    using FieldOverlaps_t    = FieldTileOverlaps<GridLayout_t, opts>;
+    auto const& field_patch  = FieldOverlaps_t::getQuantity(patch_layout, src.field);
+
+    auto const& tile_span = field_patch.tile_span;
+
+    for (auto const src_lix : src.lcl_box)
+    {
+        auto const& amr_idx = patch_layout.localToAMR(src_lix);
+        auto const& dst_lix = dst_layout.AMRToLocal(amr_idx);
+
+        for (auto const* src_tile_ptr : tile_span.cells(src_lix))
+        {
+            auto const& src_tile     = *src_tile_ptr;
+            auto const& src_tile_lix = src_tile.layout().AMRToLocal(amr_idx);
+            Operator{dst.field(dst_lix)}(src_tile()(src_tile_lix));
+        }
+    }
+#endif
 }
 
 template<typename Operator, typename... T0s, typename... T1s>
@@ -536,9 +570,31 @@ void copy_fields(FieldTileSet<T0s...>& dst, basic::Field<opts> const& src)
     assert(dst().size());
     auto const& patch_layout = dst()[0].layout().copy_as(dst.box());
 
+#if PHARE_FIELD_BOX_IMPL == 0
     for (auto& tile : dst)
         FieldBox{tile(), tile.layout(), tile.ghost_box()}.op(
             FieldBox{src, patch_layout, tile.ghost_box()});
+#endif
+
+#if PHARE_FIELD_BOX_IMPL == 1
+    using GridLayout_t      = std::decay_t<decltype(patch_layout)>;
+    using FieldOverlaps_t   = FieldTileOverlaps<GridLayout_t, opts>;
+    auto const& field_patch = FieldOverlaps_t::getQuantity(patch_layout, dst);
+
+    for (std::size_t i = 0; i < dst().size(); ++i)
+    {
+        auto& tile = dst()[i];
+        for (auto const& slab : field_patch[i].ghost_slabs)
+            for (auto const& [dst_lcl_point, row_size] : slab)
+            {
+                auto const& amr_point     = tile.layout().localToAMR(dst_lcl_point);
+                auto const& src_lcl_point = patch_layout.AMRToLocal(amr_point);
+                auto* src_start           = &src(src_lcl_point);
+                auto* dst_start           = &tile(dst_lcl_point);
+                std::copy(src_start, src_start + row_size, dst_start);
+            }
+    }
+#endif
 }
 
 // only writes tile tile_idx, distinct tiles can be copied concurrently
@@ -728,7 +784,10 @@ auto& reduce_into_(GridTiles_t const& tiles, Grid_t& grid)
 
     grid.reshape(tiles.shape());
     grid.zero();
+    assert(sum_field(grid) < 1e-15);
     auto const& patch_layout = tiles[0].layout().copy_as(tiles.box());
+
+#if PHARE_FIELD_BOX_IMPL == 0
 
     auto const pq      = tiles.physicalQuantity();
     auto const get_box = [&](auto const& tile) { return tile.layout().AMRGhostBoxFor(pq); };
@@ -739,6 +798,31 @@ auto& reduce_into_(GridTiles_t const& tiles, Grid_t& grid)
         FieldBox{grid, patch_layout, patch_layout.AMRToLocal(tile_box)}. //
             template op<Operator>(core::FieldBox{tile(), tile_layout, tile_box});
     }
+
+#elif PHARE_FIELD_BOX_IMPL == 1
+
+    auto constexpr static dim  = Grid_t::dimension;
+    auto constexpr static opts = FieldOpts<HybridQuantity::Scalar, double>{dim};
+    using GridLayout_t         = std::decay_t<decltype(patch_layout)>;
+    using FieldOverlaps_t      = FieldTileOverlaps<GridLayout_t, opts>;
+    auto const& field_patch    = FieldOverlaps_t::getQuantity(patch_layout, tiles);
+
+    for (std::size_t i = 0; i < tiles().size(); ++i)
+    {
+        auto const& tile = tiles()[i];
+        for (auto const& slab : field_patch[i].ghost_slabs)
+            for (auto const& [src_lcl_point, row_size] : slab)
+            {
+                auto const& src_start     = &tile()(src_lcl_point);
+                auto const& amr_point     = tile.layout().localToAMR(src_lcl_point);
+                auto const& dst_lcl_point = patch_layout.AMRToLocal(amr_point);
+                auto* dst_start           = &grid(dst_lcl_point);
+                for (std::uint16_t j = 0; j < row_size; ++j)
+                    Operator{*(dst_start + j)}(*(src_start + j));
+            }
+    }
+#endif
+
     return grid;
 }
 
@@ -786,10 +870,33 @@ auto& reduce_single(Dst& dst, TiledField const& tiles,
     return dst;
 }
 
+
+template<typename TiledField>
+bool no_nans(TiledField const& field)
+    requires(is_field_tile_set_v<TiledField>)
+{
+    for (auto const& tile : field())
+        for (auto const& v : tile())
+            if (std::isnan(v))
+                return false;
+    return true;
+}
+template<typename Field>
+bool no_nans(Field const& field)
+    requires(not is_field_tile_set_v<Field>)
+{
+    for (auto const& v : field)
+        if (std::isnan(v))
+            return false;
+    return true;
+}
+
+
 template<typename Tiles>
 auto reduce(Tiles const& input)
     requires(is_field_tile_set_v<Tiles>)
 {
+    // assert(no_nans(input));
     using Grid_t = Tiles::grid_type;
     Grid_t grid{input.name(), input.physicalQuantity(), input.shape()};
     reduce_into(grid, input);
@@ -800,7 +907,21 @@ template<typename Tiles>
 auto& reduce(Tiles const& input)
     requires(!is_field_tile_set_v<Tiles>)
 {
+    assert(no_nans(input));
     return input;
+}
+
+
+template<typename GL, auto opts>
+void FieldTileOverlaps<GL, opts>::sync_inner_ghosts(auto& field, auto const& overlaps_per_tile)
+{
+    using value_type = decltype(opts)::value_type;
+
+    for (std::size_t i = 0; i < field().size(); ++i)
+        for (auto const& overlap : overlaps_per_tile[i].overlaps)
+            operate_on_fields<SetEqual<value_type>>(
+                FieldBox{field()[i], field()[i].layout(), overlap.lcl_dst},
+                FieldBox{*overlap.src, field()[i].layout(), overlap.lcl_src});
 }
 
 

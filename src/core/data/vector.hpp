@@ -5,21 +5,9 @@
 
 #include <vector>
 #include <cstdint>
-#include <string_view>
 
 namespace PHARE::core
 {
-
-enum class AllocatorMode : std::uint16_t { CPU = 0 };
-
-std::string_view constexpr enum_name(AllocatorMode const mode)
-{
-    switch (mode)
-    {
-        case AllocatorMode::CPU: return "CPU";
-    }
-    return "UNKNOWN";
-}
 
 // Will automagically shrink itself if the requested sizes are
 //  below a threshold for some number of requests
