@@ -57,7 +57,11 @@ set( SOURCES_INC
      tagging/tagger_factory.hpp
      tagging/concrete_tagger.hpp
      tagging/tagger_strategy.hpp
+     tagging/component_wise_tagger_strategy.hpp
+     tagging/tagging_quantities.hpp
      tagging/default_tagger_strategy.hpp
+     tagging/lohner_per_direction_tagger_strategy.hpp
+     tagging/lohner_cross_derivatives_tagger_strategy.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
      solvers/solver_mhd.hpp

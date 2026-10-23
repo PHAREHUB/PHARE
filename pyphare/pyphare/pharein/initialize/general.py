@@ -72,6 +72,7 @@ def populate_amr(dp, sim):
         dp.add_double(
             "simulation/AMR/refinement/tagging/threshold", sim.tagging_threshold
         )
+        sim.tagging.populate_dict(dp)
     else:
         dp.add_string(
             "simulation/AMR/refinement/tagging/method", "none"
