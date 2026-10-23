@@ -314,8 +314,8 @@ namespace amr
             magFluxesZGhostRefiners_.registerLevel(hierarchy, level);
 
             magGhostsRefiners_.registerLevel(hierarchy, level);
-            magMaxRefiners_.registerLevel(hierarchy, level);
-            magMaxModelRefiners_.registerLevel(hierarchy, level);
+            if (levelNumber == rootLevelNumber)
+                magMaxModelRefiners_.registerLevel(hierarchy, level);
 
             if (levelNumber != rootLevelNumber)
             {
@@ -350,11 +350,12 @@ namespace amr
             bool isRegriddingL0 = levelNumber == 0 and oldLevel;
 
             magneticRegriding_(hierarchy, level, oldLevel, initDataTime);
-            magMaxModelRefiners_.fill(mhdModel.state.B, level->getLevelNumber(), initDataTime);
 
             densityInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             momentumInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
             totalEnergyInitRefiners_.regrid(hierarchy, levelNumber, oldLevel, initDataTime);
+
+            fillGhostsAtInitTime_(mhdModel, *level, initDataTime);
 
             // magPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
             // elecPatchGhostsRefineSchedules[levelNumber]->fillData(initDataTime);
@@ -385,6 +386,8 @@ namespace amr
             densityInitRefiners_.fill(levelNumber, initDataTime);
             momentumInitRefiners_.fill(levelNumber, initDataTime);
             totalEnergyInitRefiners_.fill(levelNumber, initDataTime);
+
+            fillGhostsAtInitTime_(mhdModel, level, initDataTime);
         }
 
         void firstStep(IPhysicalModel& model, level_t& level, double const currentTime,
@@ -426,7 +429,17 @@ namespace amr
         {
             auto& mhdModel = static_cast<MHDModel&>(model);
             fillMagneticGhosts(mhdModel.state.B, level, initDataTime);
+
+            // the faces on both sides of a periodic boundary are one face, initialised at two
+            // coordinates: make the patches holding them agree once, before anything reads B.
+            // Only after the refill: the max runs over whole ghost overlaps, and ghosts still
+            // holding the initializer's values would leak into the interior.
+            magMaxModelRefiners_.fill(mhdModel.state.B, level.getLevelNumber(), initDataTime);
+
             fillMomentsGhosts(mhdModel.state, level, initDataTime);
+
+            // the finer levels refill their ghosts from this level's old data
+            prepareStep(model, level, initDataTime);
         }
 
         void synchronize(level_t& level) final {}
@@ -492,7 +505,6 @@ namespace amr
 
             setNaNsOnVecfieldGhosts(B, level);
             magGhostsRefiners_.fill(B, level.getLevelNumber(), fillTime);
-            magMaxRefiners_.fill(B, level.getLevelNumber(), fillTime);
         }
 
         std::string name() override { return stratName; }
@@ -500,6 +512,20 @@ namespace amr
 
 
     private:
+        // The init and regrid schedules interpolate in space only, reading coarser levels at their
+        // latest time. A level made between two coarser syncs gets ghosts from coarser data ahead
+        // of its init time: refill them, interpolated in time as in a step. The refill reads the
+        // coarser levels' old data, so every level made keeps its own as of its init time.
+        void fillGhostsAtInitTime_(MHDModel& model, level_t& level, double const initDataTime)
+        {
+            if (level.getLevelNumber() != rootLevelNumber)
+            {
+                fillMagneticGhosts(model.state.B, level, initDataTime);
+                fillMomentsGhosts(model.state, level, initDataTime);
+            }
+            prepareStep(model, level, initDataTime);
+        }
+
         // Select the field-refinement operators once at construction. The composite runtime
         // kernels are built from the configured order.
         void makeRefineOperators_(RefinementConfig const& config)
@@ -597,11 +623,6 @@ namespace amr
                     info->ghostMagnetic[i], info->modelMagnetic, Bold_.name(), BfieldRegridOp_,
                     vecFieldTimeOp_, info->ghostMagnetic[i], nonOverwriteInteriorTFfillPattern,
                     magPatchStrats[i]);
-
-                magMaxRefiners_.addStaticRefiner(
-                    info->ghostMagnetic[i], info->ghostMagnetic[i], nullptr, info->ghostMagnetic[i],
-                    std::make_shared<
-                        TensorFieldGhostInterpOverlapFillPattern<GridLayoutT, /*rank_=*/1>>());
             }
 
             magMaxModelRefiners_.addStaticRefiner(
@@ -777,7 +798,7 @@ namespace amr
         GhostRefinerPool magFluxesZGhostRefiners_{resourcesManager_};
 
         GhostRefinerPool magGhostsRefiners_{resourcesManager_};
-        VecFieldGhostMaxRefinerPool magMaxRefiners_{resourcesManager_};
+        // root level only: the initial B equalize in fillRootGhosts
         VecFieldGhostMaxRefinerPool magMaxModelRefiners_{resourcesManager_};
 
         InitRefinerPool densityInitRefiners_{resourcesManager_};
