@@ -162,10 +162,8 @@ public:
     {
         static_assert(Field::is_contiguous, "Error - assumes Field date is contiguous");
 
-        PHARE_DEBUG_DO({
-            if (!Pe_.isUsable())
-                throw std::runtime_error("Error - isothermal closure pressure not usable");
-        })
+        if (!Pe_.isUsable())
+            throw std::runtime_error("Error - isothermal closure pressure not usable");
 
         auto const& Ne_ = ions_.chargeDensity();
         std::transform(std::begin(Ne_), std::end(Ne_), std::begin(Pe_),
@@ -264,10 +262,8 @@ public:
 
     void update(GridLayout const& layout)
     {
-        PHARE_DEBUG_DO({
-            if (!isUsable())
-                throw std::runtime_error("Error - Electron is not usable");
-        })
+        if (!isUsable())
+            throw std::runtime_error("Error - Electron is not usable");
 
         momentModel_.computeDensity();
         momentModel_.computeBulkVelocity(layout);

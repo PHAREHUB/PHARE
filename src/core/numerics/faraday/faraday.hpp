@@ -28,11 +28,8 @@ public:
     template<typename VecField>
     void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
     {
-        PHARE_DEBUG_DO({
-            if (!isUsable(B, E, Bnew))
-                throw std::runtime_error(
-                    "Error - Faraday - not all VecField parameters are usable");
-        })
+        if (!isUsable(B, E, Bnew))
+            throw std::runtime_error("Error - Faraday - not all VecField parameters are usable");
 
         this->dt_ = dt;
 
