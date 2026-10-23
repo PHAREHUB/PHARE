@@ -30,8 +30,8 @@ public:
     using value_type                = Field::value_type;
 
     template<typename GridLayout>
-    RecenteredField(GridLayout const& layout, Field const& field,
-                    std::array<QtyCentering, dimension> const& destination)
+    RecenteredField(Field const& field, std::array<QtyCentering, dimension> const& destination,
+                    GridLayout const& layout)
         : field_{field}
         , source_{layout.centering(field)}
         , destination_{destination}
