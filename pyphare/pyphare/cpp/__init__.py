@@ -5,8 +5,10 @@
 import os
 import json
 import importlib
+from pathlib import Path
 
 _libs = {}
+_pybindlibs_checked = False
 
 
 def _simulator_id_parts(sim):
@@ -39,13 +41,49 @@ def permutation_line(sim):
     return ",".join(_simulator_id_parts(sim))
 
 
+def _pythonpath_pybindlibs():
+    for entry in os.environ.get("PYTHONPATH", "").split(os.pathsep):
+        if entry and (Path(entry) / "pybindlibs" / "__init__.py").is_file():
+            return (Path(entry) / "pybindlibs").resolve()
+    return None
+
+
+def _check_pybindlibs_not_shadowed(pybindlibs):
+    expected = _pythonpath_pybindlibs()
+    if expected is None:
+        return
+    if pybindlibs.__file__:
+        loaded = Path(pybindlibs.__file__).resolve().parent
+    else:
+        loaded = Path(next(iter(pybindlibs.__path__))).resolve()
+    if loaded != expected:
+        raise ImportError(
+            f"pybindlibs was imported from {loaded}, not from {expected} found on PYTHONPATH.\n"
+            "An editable install of PHARE in this environment (uv sync, uv run or pip install -e)"
+            " takes precedence over PYTHONPATH.\n"
+            "Remove it from this environment (uv sync --no-install-project, or"
+            " pip uninstall pyphare), or unset PYTHONPATH to use the installed build."
+        )
+
+
+def _pybindlibs():
+    global _pybindlibs_checked
+
+    import pybindlibs
+
+    if not _pybindlibs_checked:
+        _check_pybindlibs_not_shadowed(pybindlibs)
+        _pybindlibs_checked = True
+    return pybindlibs
+
+
 def built_simulator_ids():
     """Permutations present in the loaded build, or None if pybindlibs itself is
     not importable (no build on PYTHONPATH at all)."""
     import pkgutil
 
     try:
-        import pybindlibs
+        pybindlibs = _pybindlibs()
     except ModuleNotFoundError:
         return None
 
@@ -54,6 +92,15 @@ def built_simulator_ids():
         for _, name, _ in pkgutil.iter_modules(pybindlibs.__path__)
         if name.startswith("cpp_") and name != "cpp_etc"
     )
+
+
+def _pybindlibs_location():
+    try:
+        pybindlibs = _pybindlibs()
+    except ModuleNotFoundError:
+        return "pybindlibs not importable"
+
+    return ", ".join(pybindlibs.__path__)
 
 
 def _no_such_module_message(sim, mod_str):
@@ -68,7 +115,13 @@ def _no_such_module_message(sim, mod_str):
         f"No module named '{mod_str}'.\n"
         f"This run needs the build permutation\n"
         f"    {permutation_line(sim)}\n"
-        f"Add it to a res/sim permutation file (res/sim/all.txt) and rebuild.\n"
+        f"pybindlibs loaded from: {_pybindlibs_location()}\n"
+        f"To add it, either:\n"
+        f"  - CMake build: add the line to a res/sim permutation file (res/sim/all.txt) and rebuild\n"
+        f"  - installed package: reinstall with a permutation file that lists every permutation\n"
+        f"    you need, for example a copy of res/sim/all.txt plus this line, since a reinstall\n"
+        f"    installs exactly the file's set:\n"
+        f"    pip install . -C cmake.define.PHARE_PERMUTATIONS=<file>\n"
         f"Permutations currently built:\n{listing}"
     )
 
@@ -79,6 +132,7 @@ def cpp_lib(sim):
     mod_str = f"pybindlibs.cpp_{simulator_id(sim)}"
     if mod_str not in _libs:
         try:
+            _pybindlibs()
             _libs[mod_str] = importlib.import_module(mod_str)
         except ModuleNotFoundError as e:
             raise ModuleNotFoundError(_no_such_module_message(sim, mod_str)) from e
@@ -86,6 +140,7 @@ def cpp_lib(sim):
 
 
 def cpp_etc_lib():
+    _pybindlibs()
     return importlib.import_module("pybindlibs.cpp_etc")
 
 
