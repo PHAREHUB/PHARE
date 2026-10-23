@@ -36,7 +36,7 @@ public:
         Mzz,
         count
     };
-    enum class Vector { B, E, J, V };
+    enum class Vector { B, E, J, V, count };
     enum class Tensor { M, count };
 
     static constexpr auto all_primal_field = Scalar::rho;

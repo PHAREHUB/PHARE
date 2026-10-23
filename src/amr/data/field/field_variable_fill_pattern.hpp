@@ -19,6 +19,17 @@
 
 namespace PHARE::amr
 {
+// SAMRAI groups the items of an algorithm by fill pattern type: this runtime flag is invisible to
+// it, so the communicators check that the items of a group agree on it
+class OverwriteInteriorFillPattern
+{
+public:
+    virtual bool overwriteInterior() const = 0;
+
+protected:
+    ~OverwriteInteriorFillPattern() = default;
+};
+
 /*
   This class is used to synchronize pure ghost values from src domain values
     in that case, we default overwrite_interior to "false" so none of the two patches overwrites
@@ -28,7 +39,8 @@ namespace PHARE::amr
 */
 // This class is mostly a copy of BoxGeometryVariableFillPattern
 template<std::size_t dimension>
-class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern
+class FieldFillPattern : public SAMRAI::xfer::VariableFillPattern,
+                         public OverwriteInteriorFillPattern
 {
     constexpr static std::size_t dim = dimension;
 
@@ -42,6 +54,8 @@ public:
 
 
     virtual ~FieldFillPattern() {}
+
+    bool overwriteInterior() const final { return overwrite_interior_; }
 
     std::shared_ptr<SAMRAI::hier::BoxOverlap>
     calculateOverlap(SAMRAI::hier::BoxGeometry const& dst_geometry,
@@ -132,7 +146,8 @@ private:
 
 
 template<std::size_t dimension, std::size_t rank_ = 1>
-class TensorFieldFillPattern : public SAMRAI::xfer::VariableFillPattern
+class TensorFieldFillPattern : public SAMRAI::xfer::VariableFillPattern,
+                               public OverwriteInteriorFillPattern
 {
     static constexpr std::size_t N = core::detail::tensor_field_dim_from_rank<rank_>();
 
@@ -143,6 +158,8 @@ public:
     }
 
     ~TensorFieldFillPattern() override = default;
+
+    bool overwriteInterior() const final { return overwrite_interior_; }
 
     std::shared_ptr<SAMRAI::hier::BoxOverlap>
     calculateOverlap(SAMRAI::hier::BoxGeometry const& dst_geometry,

@@ -88,6 +88,15 @@ namespace amr
                        std::shared_ptr<SAMRAI::xfer::VariableFillPattern> fillPattern = nullptr,
                        std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat  = nullptr);
 
+        /** @brief add one refiner filling all the given items with a single schedule. */
+        void addRefiner(std::string const& key, std::vector<RefineItem> const& items,
+                        std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat = nullptr)
+        {
+            auto const [it, success] = refiners_.insert({key, Refiner_t(items, rm_, patchStrat)});
+            if (!success)
+                throw std::runtime_error(key + " is already registered");
+        }
+
         /**
          * @brief fill the given pool of refiners with a new refiner per VecField
          * in ghostVecs. Data will be spatially refined using the specified refinement
@@ -126,10 +135,16 @@ namespace amr
         template<typename VecFieldT>
         void fill(VecFieldT& vec, int const levelNumber, double const fillTime)
         {
-            if (refiners_.count(vec.name()) == 0)
-                throw std::runtime_error("no refiner for " + vec.name());
+            fillByKey(vec.name(), levelNumber, fillTime);
+        }
 
-            refiners_.at(vec.name()).fill(vec, levelNumber, fillTime);
+        /** @brief executes the communications of the refiner registered under key. */
+        void fillByKey(std::string const& key, int const levelNumber, double const fillTime) const
+        {
+            if (refiners_.count(key) == 0)
+                throw std::runtime_error("no refiner for " + key);
+
+            refiners_.at(key).fill(levelNumber, fillTime);
         }
 
 

@@ -55,7 +55,7 @@ public:
 
         count
     };
-    enum class Vector { V, B, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal };
+    enum class Vector { V, B, rhoV, E, J, VecFlux_x, VecFlux_y, VecFlux_z, VecAllPrimal, count };
     enum class Tensor { count };
 
     static constexpr auto all_primal_field = Scalar::ScalarAllPrimal;
