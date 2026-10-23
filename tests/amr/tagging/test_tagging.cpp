@@ -588,7 +588,8 @@ public:
     {
     }
 
-    double indicator(field_type const&, std::array<std::uint32_t, Model::dimension> const&) const
+    double indicator(field_type const&, std::array<std::uint32_t, Model::dimension> const&,
+                     Model::gridlayout_type const&) const
     {
         return value_;
     }
@@ -612,7 +613,8 @@ public:
     }
 
     double indicator(field_type const& field,
-                     std::array<std::uint32_t, Model::dimension> const& cell) const
+                     std::array<std::uint32_t, Model::dimension> const& cell,
+                     Model::gridlayout_type const&) const
     {
         return field(cell);
     }
@@ -633,7 +635,8 @@ public:
     }
 
     double indicator(field_type const& field,
-                     std::array<std::uint32_t, Model::dimension> const& cell) const
+                     std::array<std::uint32_t, Model::dimension> const& cell,
+                     Model::gridlayout_type const&) const
     {
         return field(cell);
     }
@@ -644,6 +647,27 @@ public:
         for (auto const c : indicators)
             sum += c * c;
         return std::sqrt(sum);
+    }
+};
+
+template<typename Model>
+class MeshSizeCriterion : public ComponentWiseTaggerStrategy<MeshSizeCriterion<Model>, Model>
+{
+    using Super      = ComponentWiseTaggerStrategy<MeshSizeCriterion<Model>, Model>;
+    using field_type = Super::recentered_field_type;
+
+public:
+    static constexpr std::uint32_t stencil_reach = 0;
+
+    explicit MeshSizeCriterion(PHARE::initializer::PHAREDict const& dict)
+        : Super{dict}
+    {
+    }
+
+    double indicator(field_type const&, std::array<std::uint32_t, Model::dimension> const&,
+                     Model::gridlayout_type const& layout) const
+    {
+        return layout.meshSize()[0];
     }
 };
 
@@ -767,6 +791,17 @@ TEST(ComponentWise, ReusedAcrossPatches)
     CellValueCriterion<Model> const criterion{quantitiesDict({{"B", 0.5}})};
     EXPECT_TRUE(allEqual(tagsOf(criterion, patchA), 1));
     EXPECT_TRUE(allEqual(tagsOf(criterion, patchB), 0));
+}
+
+TEST(ComponentWise, IndicatorReceivesThePatchLayout)
+{
+    using Model = MockMHDModel<2>;
+    Model model;
+    auto const dx = model.layout.meshSize()[0];
+    EXPECT_TRUE(
+        allEqual(tagsOf(MeshSizeCriterion<Model>{quantitiesDict({{"rho", 0.9 * dx}})}, model), 1));
+    EXPECT_TRUE(
+        allEqual(tagsOf(MeshSizeCriterion<Model>{quantitiesDict({{"rho", 1.1 * dx}})}, model), 0));
 }
 
 TEST(ComponentWise, InvalidQuantityThrowsAtConstruction)
@@ -974,7 +1009,7 @@ double lohnerOnDualBy(Fn&& fn, std::uint32_t i, double reltol)
     dict["params"]["reltol"] = reltol;
     dict["params"]["abstol"] = 1e-30;
     LohnerTaggerStrategy<Model> const lohner{dict};
-    return lohner.indicator(field_type{By, {PHARE::core::QtyCentering::dual}}, {i});
+    return lohner.indicator(field_type{By, {PHARE::core::QtyCentering::dual}}, {i}, model.layout);
 }
 
 TEST(LohnerIndicator, FlatAndLinearRampAreZero)

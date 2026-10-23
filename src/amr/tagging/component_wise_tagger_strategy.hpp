@@ -30,11 +30,13 @@ namespace PHARE::amr
  *
  * @code
  * double indicator(recentered_field_type const& field,
- *                  std::array<std::uint32_t, dimension> const& cell) const;
+ *                  std::array<std::uint32_t, dimension> const& cell,
+ *                  gridlayout_type const& layout) const;
  * @endcode
  *
- * where `field` is one component of a quantity, viewed at cell centres, and `cell` the index of the
- * cell in the field arrays, the first ghost cell having index 0.
+ * where `field` is one component of a quantity, viewed at cell centres, `cell` the index of the
+ * cell in the field arrays, the first ghost cell having index 0, and `layout` the layout of the
+ * patch being tagged.
  *
  * The CRTP child is also expected to provide a `static constexpr std::uint32_t stencil_reach`, the
  * largest number of cells the indicator reads away from `cell`, to avoid out-of-bounds access in
@@ -188,7 +190,7 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
                 // the child implements `combine`, so a custom combination of the indicator values
                 // is compared to the threshold
                 for (std::size_t c = 0; c < recenteredFields.size(); ++c)
-                    indicators[c] = derived_().indicator(recenteredFields[c], cellId);
+                    indicators[c] = derived_().indicator(recenteredFields[c], cellId, layout);
                 return Derived::combine(
                            std::span<double const>(indicators.data(), recenteredFields.size()))
                        > threshold;
@@ -197,7 +199,7 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
                 // no `combine` implemented: simply compare each value to the threshold, and return
                 // true if any exceeds it.
                 return core::any(recenteredFields, [&](auto const& field) {
-                    return derived_().indicator(field, cellId) > threshold;
+                    return derived_().indicator(field, cellId, layout) > threshold;
                 });
         };
 

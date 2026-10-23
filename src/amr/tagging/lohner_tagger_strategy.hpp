@@ -46,10 +46,12 @@ public:
      *
      * @param field TOFILL
      * @param cell TOFILL
+     * @param layout unused by this criterion
      * @return TOFILL
      */
     double indicator(recentered_field_type const& field,
-                     std::array<std::uint32_t, dimension> const& cell) const
+                     std::array<std::uint32_t, dimension> const& cell,
+                     Model::gridlayout_type const&) const
     {
         auto const a_0 = field(cell);
         double crit    = 0.;
