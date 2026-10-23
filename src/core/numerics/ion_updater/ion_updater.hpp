@@ -198,10 +198,11 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
         // first push all domain particles twice
         // accumulate those inNonLevelGhostBox
         auto outRange = makeIndexRange(domain);
-        auto allowed = outRange = pusher_->move(outRange, outRange, em, pop.mass(), interpolator_,
-                                                layout, boxing.noop, boxing.inNonLevelGhostBox);
+        auto allowed  = outRange
+            = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_, layout,
+                            boxing.noop, boxing.inNonLevelGhostBox);
 
-        interpolator_(allowed, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+        interpolator_(allowed, pop.particleDensity(), pop.flux(), layout);
 
 
         // push those in the ghostArea (i.e. stop pushing if they're not out of it)
@@ -212,11 +213,11 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositDomain_(Ions& ion
 
             auto outRange = makeIndexRange(tmp_particles_);
 
-            auto enteredInDomain = pusher_->move(outRange, outRange, em, pop.mass(), interpolator_,
-                                                 layout, boxing.inGhostBox, boxing.inOwnedDomain);
+            auto enteredInDomain
+                = pusher_->move(outRange, outRange, em, pop.charge(), pop.mass(), interpolator_,
+                                layout, boxing.inGhostBox, boxing.inOwnedDomain);
 
-            interpolator_(enteredInDomain, pop.particleDensity(), pop.chargeDensity(), pop.flux(),
-                          layout);
+            interpolator_(enteredInDomain, pop.particleDensity(), pop.flux(), layout);
         };
 
         // After this function is done domain particles overlaping ghost layers of neighbor patches
@@ -257,8 +258,9 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         auto& domainParticles = pop.domainParticles();
         auto domainPartRange  = makeIndexRange(domainParticles);
 
-        auto inDomain = pusher_->move(domainPartRange, domainPartRange, em, pop.mass(),
-                                      interpolator_, layout, boxing.noop, boxing.inOwnedDomain);
+        auto inDomain
+            = pusher_->move(domainPartRange, domainPartRange, em, pop.charge(), pop.mass(),
+                            interpolator_, layout, boxing.noop, boxing.inOwnedDomain);
 
         auto now_ghosts = makeRange(domainParticles, inDomain.iend(), domainParticles.size());
         auto const not_level_ghosts = boxing.inNonLevelGhostBox(now_ghosts);
@@ -291,8 +293,8 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         {
             auto particleRange = makeIndexRange(pop.levelGhostParticles());
             auto inGhostLayerRange
-                = pusher_->move(particleRange, particleRange, em, pop.mass(), interpolator_, layout,
-                                boxing.inGhostBox, boxing.inGhostLayer);
+                = pusher_->move(particleRange, particleRange, em, pop.charge(), pop.mass(),
+                                interpolator_, layout, boxing.inGhostBox, boxing.inGhostLayer);
 
             auto& particleArray = particleRange.array();
             particleArray.export_particles(domainParticles,
@@ -303,9 +305,9 @@ void IonUpdater<Ions, Electromag, GridLayout>::updateAndDepositAll_(Ions& ions,
         }
 
         interpolator_( //
-            domainParticles, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+            domainParticles, pop.particleDensity(), pop.flux(), layout);
         interpolator_( //
-            patchGhost, pop.particleDensity(), pop.chargeDensity(), pop.flux(), layout);
+            patchGhost, pop.particleDensity(), pop.flux(), layout);
     }
 }
 

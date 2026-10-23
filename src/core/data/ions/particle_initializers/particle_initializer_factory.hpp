@@ -45,8 +45,6 @@ namespace core
 
                 auto& vthz = dict["thermal_velocity_z"].template to<FunctionType>();
 
-                auto charge = dict["charge"].template to<double>();
-
                 auto densityCutOff = cppdict::get_value(dict, "density_cut_off", double{1e-16});
 
                 auto nbrPartPerCell = dict["nbr_part_per_cell"].template to<int>();
@@ -67,8 +65,8 @@ namespace core
                 {
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, seed, Basis::Cartesian,
-                        magneticField, densityCutOff);
+                        density, v, vth, nbrPartPerCell, seed, Basis::Cartesian, magneticField,
+                        densityCutOff);
                 }
                 else if (basisName == "magnetic")
                 {
@@ -78,8 +76,8 @@ namespace core
 
                     return std::make_unique<
                         MaxwellianParticleInitializer<ParticleArray, GridLayout>>(
-                        density, v, vth, charge, nbrPartPerCell, seed, Basis::Magnetic,
-                        magneticField, densityCutOff);
+                        density, v, vth, nbrPartPerCell, seed, Basis::Magnetic, magneticField,
+                        densityCutOff);
                 }
             }
             // TODO throw?

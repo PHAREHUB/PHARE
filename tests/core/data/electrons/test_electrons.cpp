@@ -647,7 +647,6 @@ struct TwoPopulationElectronsTest : public ::testing::Test
             auto const& pop = pops[i];
             auto& buffers   = popBuffers[i];
             fill(buffers.particleDensity, pop.density);
-            fill(buffers.chargeDensity, pop.charge * pop.density);
             for (std::size_t c = 0; c < 3; ++c)
                 fill(buffers.flux[c], pop.density * pop.velocity[c]);
         }
@@ -700,26 +699,6 @@ TYPED_TEST(TwoPopulationElectronsTest, ThatElectronVelocityIsChargeWeighted)
             EXPECT_DOUBLE_EQ(Vecomp(args...), expected) << "component " << c;
         });
     }
-}
-
-
-
-
-TYPED_TEST(TwoPopulationElectronsTest, ThatParticlesMustCarryTheirPopulationCharge)
-{
-    auto& sodium    = this->ions[1];
-    auto& particles = this->popBuffers[1].domainParticles;
-
-    typename TestFixture::ParticleArray_t::Particle_t particle;
-    particle.weight = 1.;
-    particle.charge = sodium.charge();
-    particle.iCell  = this->layout.AMRBox().lower.toArray();
-    particles.push_back(particle);
-    EXPECT_TRUE(sodium.particlesHaveCharge());
-
-    particles[0].charge = 2. * sodium.charge();
-    EXPECT_FALSE(sodium.particlesHaveCharge());
-    PHARE_DEBUG_DO(EXPECT_THROW(this->ions.computeChargeFlux(), std::runtime_error);)
 }
 
 

@@ -49,7 +49,8 @@ public:
     /** see Pusher::move() documentation*/
 #if 0
     ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
-                       Electromag const& emFields, double mass, Interpolator& interpolator,
+                       Electromag const& emFields, double charge, double mass,
+                       Interpolator& interpolator,
                        ParticleSelector const& particleIsNotLeaving, BoundaryCondition& bc,
                        GridLayout const& layout) override
     {
@@ -91,9 +92,9 @@ public:
 
 
     ParticleRange move(ParticleRange const& rangeIn, ParticleRange& rangeOut,
-                       Electromag const& emFields, double mass, Interpolator& interpolator,
-                       GridLayout const& layout, ParticleSelector firstSelector,
-                       ParticleSelector secondSelector) override
+                       Electromag const& emFields, double charge, double mass,
+                       Interpolator& interpolator, GridLayout const& layout,
+                       ParticleSelector firstSelector, ParticleSelector secondSelector) override
     {
         PHARE_LOG_SCOPE(3, "Boris::move_no_bc");
 
@@ -106,6 +107,7 @@ public:
         rangeOut = firstSelector(rangeOut);
 
         double const dto2m = 0.5 * dt_ / mass;
+        double const coef1 = charge * dto2m;
         for (auto idx = rangeOut.ibegin(); idx < rangeOut.iend(); ++idx)
         {
             auto& currPart = rangeOut.array()[idx];
@@ -113,7 +115,7 @@ public:
             //  get electromagnetic fields interpolated on the particles of rangeOut stop at newEnd.
             //  get the particle velocity from t=n to t=n+1
             auto const& local_em = interpolator(currPart, emFields, layout);
-            accelerate_(currPart, local_em, dto2m);
+            accelerate_(currPart, local_em, coef1);
 
             // now advance the particles from t=n+1/2 to t=n+1 using v_{n+1} just calculated
             // and get a pointer to the first leaving particle
@@ -188,13 +190,12 @@ private:
             // we push to rangeOut, which contains crap
             // the push will only touch the particle position
             // but the next step being the acceleration of
-            // rangeOut, we need to copy rangeIn weights, charge
+            // rangeOut, we need to copy rangeIn weights
             // and velocity. This is done here although
             // not strictly speaking this function's business
             // to take advantage that we're already looping
             // over rangeIn particles.
 
-            outParticles[outIdx].charge = inParticles[inIdx].charge;
             outParticles[outIdx].weight = inParticles[inIdx].weight;
             outParticles[outIdx].v      = inParticles[inIdx].v;
 
@@ -237,14 +238,11 @@ private:
     /** Accelerate the particles in rangeIn and put the new velocity in rangeOut
      */
     template<typename Particle_t, typename ParticleEB>
-    void accelerate_(Particle_t& part, ParticleEB const& particleEB, double const& dto2m)
+    void accelerate_(Particle_t& part, ParticleEB const& particleEB, double const coef1)
     {
         auto& [pE, pB]        = particleEB;
         auto& [pEx, pEy, pEz] = pE;
         auto& [pBx, pBy, pBz] = pB;
-
-
-        double const coef1 = part.charge * dto2m;
 
         // We now apply the 3 steps of the BORIS PUSHER
 

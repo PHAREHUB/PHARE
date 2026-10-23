@@ -18,6 +18,7 @@
 #include "initializer/data_provider.hpp"
 #include "particle_initializers/particle_initializer_factory.hpp"
 #include "core/utilities/algorithm.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/utilities/range/range.hpp"
 
@@ -79,17 +80,23 @@ namespace core
         tensorfield_type const& momentumTensor() const { return momentumTensor_; }
         tensorfield_type& momentumTensor() { return momentumTensor_; }
 
+        // the charge density of a population is its charge times its particle density,
+        // which is complete (border sums, level ghost particles) when this is called
         void computeChargeDensity()
         {
             chargeDensity_.zero();
 
-            for (auto const& pop : populations_)
+            for (auto& pop : populations_)
             {
                 // we sum over all nodes contiguously, including ghosts
                 // nodes. This is more efficient and easier to code as we don't
                 // have to account for the field dimensionality.
 
-                auto& popDensity = pop.chargeDensity();
+                auto const& particleDensity = pop.particleDensity();
+                auto& popDensity            = pop.chargeDensity();
+                std::transform(std::begin(particleDensity), std::end(particleDensity),
+                               std::begin(popDensity),
+                               [q = pop.charge()](Float const& n) { return q * n; });
                 std::transform(std::begin(chargeDensity_), std::end(chargeDensity_),
                                std::begin(popDensity), std::begin(chargeDensity_),
                                std::plus<Float>{});
@@ -151,17 +158,9 @@ namespace core
         }
 
 
-        // sum_s q_s F_s, the charge flux entering the electron velocity.
-        // Exact only if every particle of a population carries the population charge.
+        // sum_s q_s F_s, the charge flux entering the electron velocity
         void computeChargeFlux()
         {
-            PHARE_DEBUG_DO({
-                for (auto const& pop : populations_)
-                    if (!pop.particlesHaveCharge())
-                        throw std::runtime_error("Ions::computeChargeFlux: population " + pop.name()
-                                                 + " has particles not carrying its charge");
-            })
-
             chargeFlux_.zero();
 
             for (auto const& pop : populations_)
@@ -235,34 +234,20 @@ namespace core
             return populations_[i];
         }
 
-        // in the following isUsable and isSettable the massDensity_ is not checked
-        // because it is for internal use only so no object will ever need to access it.
         NO_DISCARD bool isUsable() const
         {
-            bool usable = chargeDensity_.isUsable() and bulkVelocity_.isUsable()
-                          and momentumTensor_.isUsable() and massDensity_.isUsable()
-                          and chargeFlux_.isUsable();
-
-            for (auto const& pop : populations_)
-            {
-                usable = usable and pop.isUsable();
-            }
-            return usable;
+            return core::isUsable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
+                                  chargeFlux_)
+                   and core::all(populations_, [](auto const& pop) { return pop.isUsable(); });
         }
 
 
 
         NO_DISCARD bool isSettable() const
         {
-            bool settable = massDensity_.isSettable() and chargeDensity_.isSettable()
-                            and bulkVelocity_.isSettable() and momentumTensor_.isSettable()
-                            and chargeFlux_.isSettable();
-
-            for (auto const& pop : populations_)
-            {
-                settable = settable and pop.isSettable();
-            }
-            return settable;
+            return core::isSettable(chargeDensity_, bulkVelocity_, momentumTensor_, massDensity_,
+                                    chargeFlux_)
+                   and core::all(populations_, [](auto const& pop) { return pop.isSettable(); });
         }
 
 

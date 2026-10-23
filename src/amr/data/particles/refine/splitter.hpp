@@ -102,7 +102,6 @@ private:
             {
                 FineParticle fineParticle = particles[idx++];
                 fineParticle.weight       = particle.weight * weight * power[dimension - 1];
-                fineParticle.charge       = particle.charge;
                 fineParticle.iCell        = particle.iCell;
                 fineParticle.delta        = particle.delta;
                 fineParticle.v            = particle.v;

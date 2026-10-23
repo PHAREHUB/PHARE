@@ -20,8 +20,10 @@ namespace PHARE::diagnostic::h5
  *
  * Possible outputs
  *
- * /t#/pl#/p#/ions/pop_(1,2,...)/domain/(weight, charge, iCell, delta, v)
- * /t#/pl#/p#/ions/pop_(1,2,...)/levelGhost/(weight, charge, iCell, delta, v)
+ * /t#/pl#/p#/ions/pop_(1,2,...)/domain/(weight, iCell, delta, v)
+ * /t#/pl#/p#/ions/pop_(1,2,...)/levelGhost/(weight, iCell, delta, v)
+ *
+ * the particle charge is the population charge, file attribute pop_charge
  */
 template<typename H5Writer>
 class ParticlesDiagnosticWriter : public H5TypeWriter<H5Writer>

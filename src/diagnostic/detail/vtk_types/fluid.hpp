@@ -212,6 +212,17 @@ void FluidDiagnosticWriter<H5Writer>::setup(DiagnosticProperties& diagnostic)
             init(ilvl);
         },
         this->h5Writer_.minLevel, this->h5Writer_.maxLevel);
+
+    if constexpr (solver::is_hybrid_model_v<Model_t>)
+        for (auto const& pop : modelView.getIons())
+            if (diagnostic.quantity.starts_with("/ions/pop/" + pop.name() + "/"))
+            {
+                typename H5Writer::Attributes popAttributes;
+                popAttributes["pop_mass"]   = pop.mass();
+                popAttributes["pop_charge"] = pop.charge();
+                this->h5Writer_.writeGlobalAttributeDict(this->getOrCreateH5File(diagnostic),
+                                                         popAttributes, "/");
+            }
 }
 
 

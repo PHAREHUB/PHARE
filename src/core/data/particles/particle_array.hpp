@@ -261,19 +261,16 @@ namespace core
             : iCell(s * dim)
             , delta(s * dim)
             , weight(s)
-            , charge(s)
             , v(s * 3)
         {
         }
 
         template<typename Container_int, typename Container_double>
         ContiguousParticles(Container_int&& _iCell, Container_double&& _delta,
-                            Container_double&& _weight, Container_double&& _charge,
-                            Container_double&& _v)
+                            Container_double&& _weight, Container_double&& _v)
             : iCell{_iCell}
             , delta{_delta}
             , weight{_weight}
-            , charge{_charge}
             , v{_v}
         {
         }
@@ -291,7 +288,6 @@ namespace core
         {
             return {
                 *const_cast<double*>(weight.data() + i),     //
-                *const_cast<double*>(charge.data() + i),     //
                 *_array_cast<dim>(iCell.data() + (dim * i)), //
                 *_array_cast<dim>(delta.data() + (dim * i)), //
                 *_array_cast<3>(v.data() + (3 * i)),
@@ -329,14 +325,8 @@ namespace core
             std::vector<ParticleView<dim>> views;
         };
 
-        NO_DISCARD auto as_tuple()
-        {
-            return std::forward_as_tuple(weight, charge, iCell, delta, v);
-        }
-        NO_DISCARD auto as_tuple() const
-        {
-            return std::forward_as_tuple(weight, charge, iCell, delta, v);
-        }
+        NO_DISCARD auto as_tuple() { return std::forward_as_tuple(weight, iCell, delta, v); }
+        NO_DISCARD auto as_tuple() const { return std::forward_as_tuple(weight, iCell, delta, v); }
 
         NO_DISCARD auto begin() { return iterator(this); }
         NO_DISCARD auto cbegin() const { return iterator(this); }
@@ -346,7 +336,7 @@ namespace core
 
         container_t<int> iCell;
         container_t<double> delta;
-        container_t<double> weight, charge, v;
+        container_t<double> weight, v;
     };
 
 
