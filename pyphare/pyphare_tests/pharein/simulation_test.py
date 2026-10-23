@@ -218,30 +218,42 @@ class TestSimulation(unittest.TestCase):
         with self.assertRaises(ValueError):
             tagging.resolve_tagging(
                 refinement="tagging",
-                tagging={"method": "lohner", "quantites": {"rho": 0.4}},
+                tagging={"method": "lohner-per-direction", "quantites": {"rho": 0.4}},
             )
 
     def test_tagging_without_refinement_raises(self):
         with self.assertRaises(ValueError):
             tagging.resolve_tagging(
                 max_nbr_levels=3,
-                tagging={"method": "lohner", "quantities": {"B": 0.1}},
+                tagging={"method": "lohner-per-direction", "quantities": {"B": 0.1}},
             )
 
     def test_tagging_valid_spec_normalizes(self):
         tag = tagging.resolve_tagging(
             refinement="tagging",
             tagging={
-                "method": "lohner",
+                "method": "lohner-per-direction",
                 "quantities": {"B": 0.1},
                 "params": {"reltol": 0.02},
             },
         )
-        self.assertIsInstance(tag, tagging.LohnerTagging)
-        self.assertEqual(tag.method, "lohner")
+        self.assertIsInstance(tag, tagging.LohnerPerDirectionTagging)
+        self.assertEqual(tag.method, "lohner-per-direction")
         self.assertEqual(tag.quantities, [("B", 0.1)])
         self.assertEqual(tag.reltol, 0.02)
         self.assertEqual(tag.abstol, 1e-8)
+
+    def test_tagging_lohner_default_params(self):
+        tag = tagging.resolve_tagging(
+            refinement="tagging", tagging={"method": "lohner-per-direction"}
+        )
+        self.assertEqual(tag.reltol, 0.01)
+        self.assertEqual(tag.abstol, 1e-8)
+
+    def test_tagging_old_lohner_name_rejected(self):
+        with self.assertRaises(ValueError) as error:
+            tagging.resolve_tagging(refinement="tagging", tagging={"method": "lohner"})
+        self.assertIn("lohner-per-direction", str(error.exception))
 
     def test_tagging_none_when_not_tagging(self):
         self.assertIsNone(tagging.resolve_tagging())
@@ -266,14 +278,14 @@ class TestSimulation(unittest.TestCase):
             self.assertIn("not available for tagging yet", str(error.exception))
 
     def test_tagging_fallback_uses_tagging_threshold(self):
-        for spec in ({"method": "lohner"}, {"quantities": {}}):
+        for spec in ({"method": "lohner-per-direction"}, {"quantities": {}}):
             tag = tagging.resolve_tagging(
                 refinement="tagging", tagging_threshold=0.3, tagging=spec
             )
             self.assertEqual(tag.quantities, [("B", 0.3)])
 
     def test_re_numpify_does_not_corrupt_tagging_quantities(self):
-        tag = tagging.LohnerTagging(quantities=[("B", 0.1), ("rho", 0.4)])
+        tag = tagging.LohnerPerDirectionTagging(quantities=[("B", 0.1), ("rho", 0.4)])
         simulation.re_numpify_recursive(tag, "quantities")
         self.assertEqual(tag.quantities, [("B", 0.1), ("rho", 0.4)])
         self.assertIsInstance(tag.quantities, list)
@@ -290,7 +302,7 @@ class TestSimulation(unittest.TestCase):
     def test_tagging_serialize_deserialize_roundtrip_preserves_quantities(self):
         sim = self.tagging_simulation(
             tagging={
-                "method": "lohner",
+                "method": "lohner-per-direction",
                 "quantities": {"B": 0.1, "rho": 0.4},
                 "params": {"reltol": 0.02},
             },
@@ -333,7 +345,7 @@ class TestSimulation(unittest.TestCase):
         def one(x):
             return 1.0 + 0.0 * x
 
-        for method in ("default", "lohner"):
+        for method in ("default", "lohner-per-direction"):
             global_vars.sim = None
             self.tagging_simulation(tagging={"method": method})
             ph.MaxwellianFluidModel(bx=one, by=one, bz=one, protons={"density": one})
@@ -376,7 +388,7 @@ class TestTaggingPopulateDict(unittest.TestCase):
         tag = tagging.resolve_tagging(
             refinement="tagging",
             tagging={
-                "method": "lohner",
+                "method": "lohner-per-direction",
                 "quantities": {"B": 0.1, "rho": 0.4},
                 "params": {"reltol": 0.02, "abstol": 1e-20},
             },

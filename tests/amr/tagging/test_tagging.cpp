@@ -7,7 +7,7 @@
 #include "amr/tagging/tagging_quantities.hpp"
 #include "amr/tagging/default_tagger_strategy.hpp"
 #include "amr/tagging/component_wise_tagger_strategy.hpp"
-#include "amr/tagging/lohner_tagger_strategy.hpp"
+#include "amr/tagging/lohner_per_direction_tagger_strategy.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -1000,7 +1000,7 @@ template<typename Fn>
 double lohnerOnDualBy(Fn&& fn, std::uint32_t i, double reltol)
 {
     using Model      = MockHybridModel<1>;
-    using field_type = LohnerTaggerStrategy<Model>::recentered_field_type;
+    using field_type = LohnerPerDirectionTaggerStrategy<Model>::recentered_field_type;
     Model model;
     auto& By = model.state.electromag.B.getComponent(PHARE::core::Component::Y);
     fillField(By, [&](auto const& idx) { return fn(idx[0]); });
@@ -1008,7 +1008,7 @@ double lohnerOnDualBy(Fn&& fn, std::uint32_t i, double reltol)
     PHARE::initializer::PHAREDict dict;
     dict["params"]["reltol"] = reltol;
     dict["params"]["abstol"] = 1e-30;
-    LohnerTaggerStrategy<Model> const lohner{dict};
+    LohnerPerDirectionTaggerStrategy<Model> const lohner{dict};
     return lohner.indicator(field_type{By, {PHARE::core::QtyCentering::dual}}, {i}, model.layout);
 }
 
@@ -1036,7 +1036,7 @@ template<typename Model>
 std::vector<int> lohnerTags(Model& model, PHARE::initializer::PHAREDict const& dict)
 {
     auto tags = sentinelTags(model);
-    LohnerTaggerStrategy<Model>{dict}.tag(model, model.layout, tags.data());
+    LohnerPerDirectionTaggerStrategy<Model>{dict}.tag(model, model.layout, tags.data());
     return tags;
 }
 
@@ -1129,12 +1129,55 @@ TEST(LohnerStrategy, DefaultAbstolIs1e8)
     EXPECT_TRUE(allEqual(lohnerTags(model, noFloor), 1));
 }
 
+template<typename Strategy, typename Model, typename Fn>
+double indicatorAt(Model& model, Fn&& fn, std::array<std::uint32_t, Model::dimension> cell,
+                   double reltol, double abstol, typename Model::gridlayout_type const& layout)
+{
+    fillField(model.state.rho, [&](auto const& idx) { return fn(idx); });
+    PHARE::initializer::PHAREDict dict;
+    dict["params"]["reltol"] = reltol;
+    dict["params"]["abstol"] = abstol;
+    auto const allDual       = PHARE::core::ConstArray<PHARE::core::QtyCentering, Model::dimension>(
+        PHARE::core::QtyCentering::dual);
+    return Strategy{dict}.indicator(
+        typename Strategy::recentered_field_type{model.state.rho, allDual}, cell, layout);
+}
+
+TEST(LohnerPerDirection, RatioOfSummedSquaresIn2D)
+{
+    MockMHDModel<2> model;
+    auto const u = [](auto const& idx) {
+        return static_cast<double>(idx[0] * idx[0] + 2 * idx[1] * idx[1]);
+    };
+    EXPECT_NEAR((indicatorAt<LohnerPerDirectionTaggerStrategy<MockMHDModel<2>>>(
+                    model, u, {10, 10}, 0.01, 0., model.layout)),
+                std::sqrt(20. / (52.02 * 52.02 + 92.04 * 92.04)), 1e-14);
+}
+
+TEST(LohnerPerDirection, ZeroFieldWithoutAbstolIsZero)
+{
+    MockMHDModel<2> model;
+    EXPECT_EQ((indicatorAt<LohnerPerDirectionTaggerStrategy<MockMHDModel<2>>>(
+                  model, [](auto const&) { return 0.; }, {10, 10}, 0.01, 0., model.layout)),
+              0.);
+}
+
+TEST(LohnerPerDirection, DefaultReltolIs001)
+{
+    MockMHDModel<1> model;
+    fillField(model.state.rho, [](auto const& idx) { return idx[0] <= 10 ? 0. : 1.; });
+    auto const allDual
+        = PHARE::core::ConstArray<PHARE::core::QtyCentering, 1>(PHARE::core::QtyCentering::dual);
+    LohnerPerDirectionTaggerStrategy<MockMHDModel<1>> const lohner{PHARE::initializer::PHAREDict{}};
+    EXPECT_NEAR(lohner.indicator({model.state.rho, allDual}, {10}, model.layout), 1. / 1.01, 1e-7);
+}
+
 TEST(TaggerFactory, hybridAndMHDMethods)
 {
     using hybrid_model = PHARE::solver::PHARE_Types<PHARE::SimOpts{1ul, 1ul, 2ul}>::Hybrid::Model_t;
     using mhd_model    = PHARE::solver::PHARE_Types<mhdOpts(1)>::MHD::Model_t;
 
-    for (std::string const method : {"default", "lohner"})
+    for (std::string const method : {"default", "lohner-per-direction"})
     {
         PHARE::initializer::PHAREDict dict;
         dict["hybrid_method"] = method;

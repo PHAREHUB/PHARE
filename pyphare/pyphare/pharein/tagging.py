@@ -46,10 +46,9 @@ class DefaultTagging(Tagging):
 
 @dataclass
 class LohnerTagging(Tagging):
-    method = "lohner"
     expected_params: ClassVar[dict[str, type]] = {"reltol": float, "abstol": float}
 
-    reltol: float = 0.02
+    reltol: float = 0.01
     abstol: float = 1e-8
 
     def populate_dict(self, dp):
@@ -58,9 +57,14 @@ class LohnerTagging(Tagging):
         dp.add_double(_TAGGING_PATH + "params/abstol", self.abstol)
 
 
+@dataclass
+class LohnerPerDirectionTagging(LohnerTagging):
+    method = "lohner-per-direction"
+
+
 _TAGGERS = {
     "default": DefaultTagging,
-    "lohner": LohnerTagging,
+    "lohner-per-direction": LohnerPerDirectionTagging,
 }
 
 

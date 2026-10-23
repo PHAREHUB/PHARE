@@ -60,7 +60,7 @@ set( SOURCES_INC
      tagging/component_wise_tagger_strategy.hpp
      tagging/tagging_quantities.hpp
      tagging/default_tagger_strategy.hpp
-     tagging/lohner_tagger_strategy.hpp
+     tagging/lohner_per_direction_tagger_strategy.hpp
      solvers/solver.hpp
      solvers/solver_ppc.hpp
      solvers/solver_mhd.hpp

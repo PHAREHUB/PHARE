@@ -16,7 +16,7 @@ dl = 0.2
 middle = cells * dl / 2
 max_nbr_levels = 3
 time_step_nbr = 3
-thresholds = {"default": 0.05, "lohner": 0.3}
+thresholds = {"default": 0.05, "lohner-per-direction": 0.3}
 diag_root = "phare_outputs/tagging_quantities"
 
 
