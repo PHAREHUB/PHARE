@@ -173,7 +173,7 @@ def pop_attribute_from_h5(path, pop_name, attribute):
     values = []
 
     for qty in list_of_qty:
-        file = os.path.join(path, "ions_pop_{}_{}.h5".format(pop_name, qty))
+        file = os.path.join(path, f"ions_pop_{pop_name}_{qty}.h5")
         if os.path.isfile(file):
             with h5py.File(file, "r") as h5_file:
                 if attribute not in h5_file.attrs:

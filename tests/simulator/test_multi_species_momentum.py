@@ -9,12 +9,12 @@ Using the mass-weighted velocity in Ohm's law instead makes it rotate (#1466).
 """
 
 import unittest
+
 import numpy as np
 
 import pyphare.pharein as ph
 from pyphare.core.box import Box1D
 from pyphare.simulator.simulator import Simulator
-
 from tests.simulator import SimulatorTest
 
 ph.NO_GUI()
