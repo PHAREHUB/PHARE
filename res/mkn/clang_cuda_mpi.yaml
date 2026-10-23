@@ -1,0 +1,34 @@
+
+super: clang_cuda
+
+# property:
+#   cuda.arch: 120
+#   cxx.flags: >-
+#     --std=c++20 -fPIC -fsized-deallocation -Wno-unknown-cuda-version
+#     -Xclang -fcuda-allow-variadic-functions
+#     -x cuda --cuda-gpu-arch=sm_${cuda.arch}
+#     -DPHARE_HAVE_MKN_GPU=1 -DPHARE_FORCE_LOG_LINE
+#   lnk.flags: -lcudart # -rdynamic # -fuse-ld=gold -Wl,-z,defs
+
+
+# env: |
+#   MKN_GPU_BX_THREADS=512
+
+env: |
+  OMPI_CXX=clang++
+  PATH=/opt/mpi/cuda/bin:${PATH}
+  MKN_GPU_BX_THREADS=256
+
+# inc: /usr/local/cuda-13.2/targets/x86_64-linux/include/cccl
+# path: /usr/local/cuda/targets/x86_64-linux/lib
+
+compiler:
+  mask:
+    g++:
+      mpicxx
+
+file:
+  - type: cpp:cxx:cc
+    archiver: ar -cr
+    compiler:  mpicxx ${cxx.flags}
+    linker:  mpicxx ${lnk.flags}

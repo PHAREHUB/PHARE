@@ -263,7 +263,7 @@ def mhdGhostNbrFromReconstruction(reconstruction):
         "weno3": 4,
         "wenoz": 4,
         "mp5": 4,
-    }.get(reconstruction)
+    }.get(reconstruction.lower())
 
 
 class GridLayout(object):
@@ -317,6 +317,7 @@ class GridLayout(object):
             "CFx",
             "CFy",
             "CFz",
+            "value",
         ]
 
         self.yeeCentering = YeeCentering()

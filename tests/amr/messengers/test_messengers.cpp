@@ -1,5 +1,6 @@
 
 
+
 // #include "amr/samrai.hpp"
 // #include "simulator/simulator.hpp"
 
@@ -8,7 +9,7 @@
 // #include "test_messenger_tag_strategy.hpp"
 // #include "tests/initializer/init_functions.hpp"
 
-// #include "gmock/gmock.h"
+
 // #include "gtest/gtest.h"
 
 
@@ -450,7 +451,7 @@
 // struct AfullHybridBasicHierarchy
 // {
 //     static constexpr std::size_t interpOrder = 1;
-//     static constexpr PHARE::SimOpts opts{dimension, interpOrder, nbRefinePart};
+//     static constexpr auto opts = PHARE::SimOpts{dimension, interpOrder, nbRefinePart};
 
 //     using Simulator         = PHARE::Simulator<opts>;
 //     using HybridModelT      = Simulator::HybridModel;
