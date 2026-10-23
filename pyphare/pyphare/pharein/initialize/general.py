@@ -2,9 +2,8 @@ import os
 
 import numpy as np
 from pyphare.core.phare_utilities import is_scalar
-from pyphare.pharein.load_balancer import LoadBalancer
-from pyphare.pharein.simulation import deserialize as deserialize_sim
 from pyphare.pharein.simulation import serialize as serialize_sim
+from pyphare.pharein.simulation import deserialize as deserialize_sim
 
 from .dict_populator import DictPopulator
 
@@ -83,24 +82,23 @@ def populate_amr(dp, sim):
 
 
 def populate_load_balancer(dp, sim):
-    lb = sim.load_balancer or LoadBalancer(active=False, _register=False)
     base = "simulation/AMR/loadbalancing"
-    dp.add_bool(f"{base}/active", lb.active)
-    dp.add_string(f"{base}/mode", lb.mode)
-    dp.add_double(f"{base}/tolerance", lb.tol)
+    lb = sim.load_balancer
+    dp.add_bool(f"{base}/active", True if lb else False)
+    if lb:
+        dp.add_string(f"{base}/mode", lb.mode)
+        dp.add_double(f"{base}/tolerance", lb.tol)
+        dp.add_bool(f"{base}/auto", lb.auto)
+        dp.add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
+        dp.add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)
+        dp.add_size_t(
+            f"{base}/next_rebalance_backoff_multiplier",
+            lb.next_rebalance_backoff_multiplier,
+        )
 
-    # if mode==nppc, imbalance allowed
-    dp.add_bool(f"{base}/auto", lb.auto)
-    dp.add_size_t(f"{base}/next_rebalance", lb.next_rebalance)
-    dp.add_size_t(f"{base}/max_next_rebalance", lb.max_next_rebalance)
-    dp.add_size_t(
-        f"{base}/next_rebalance_backoff_multiplier",
-        lb.next_rebalance_backoff_multiplier,
-    )
-
-    # cadence based values
-    dp.add_size_t(f"{base}/every", lb.every)
-    dp.add_bool(f"{base}/on_init", lb.on_init)
+        # cadence based values
+        dp.add_size_t(f"{base}/every", lb.every)
+        dp.add_bool(f"{base}/on_init", lb.on_init)
 
 
 def populate_diagnostics(dp, sim, serialized_sim):
