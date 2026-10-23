@@ -1,11 +1,10 @@
 #ifndef PHARE_AMR_LOAD_BALANCER_LOAD_BALANCER_DETAILS_HPP
 #define PHARE_AMR_LOAD_BALANCER_LOAD_BALANCER_DETAILS_HPP
 
-#include <string>
-#include <cstdint>
-
-#include "core/logger.hpp"
 #include "initializer/data_provider.hpp"
+
+#include <string>
+#include <cstddef>
 
 namespace PHARE::amr
 {

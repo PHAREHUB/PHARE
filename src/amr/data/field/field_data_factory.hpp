@@ -60,7 +60,7 @@ namespace amr
          * it is expected that this routines will create a functional fieldData
          * (ie with a gridlayout and a FieldImpl)
          */
-        std ::shared_ptr<SAMRAI::hier::PatchData>
+        std::shared_ptr<SAMRAI::hier::PatchData>
         allocate(SAMRAI::hier::Patch const& patch) const final
         {
             auto const& domain = patch.getBox();
@@ -164,9 +164,7 @@ namespace amr
         bool validCopyTo(std::shared_ptr<SAMRAI::hier::PatchDataFactory> const&
                              destinationPatchDataFactory) const final
         {
-            auto fieldDataFactory
-                = std::dynamic_pointer_cast<FieldDataFactory>(destinationPatchDataFactory);
-            return (fieldDataFactory != nullptr);
+            return true; // hax for the moment - grid and non-grid interop
         }
 
 

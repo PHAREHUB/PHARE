@@ -1,4 +1,4 @@
-#
+# tests/simulator/test_initialization.py
 #  Common base class across hybrid and mhd tests
 #   see
 #      tests/simulator/initialize/test_init_mhd.py
@@ -234,7 +234,7 @@ class InitializationTest(SimulatorTest):
                     )
 
     def _test_density_decreases_as_1overSqrtN(
-        self, dim, interp_order, nbr_particles=None, cells=960
+        self, dim, interp_order, nbr_particles=None, cells=960, **kwargs
     ):
         import matplotlib.pyplot as plt
 
@@ -257,6 +257,7 @@ class InitializationTest(SimulatorTest):
                 largest_patch_size=int(cells / 2),
                 cells=cells,
                 dl=0.0125,
+                **kwargs,
             )
 
             model = ph.global_vars.sim.model

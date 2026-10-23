@@ -1,0 +1,86 @@
+{
+
+    "version": "0.2.0",
+    "compounds": [
+            {
+                "name": "Debug mpirun -n 4",
+                "configurations": [
+                    "mpirun",
+                    "proc 0",
+                    "proc 1",
+                    "proc 2",
+                    "proc 3"
+
+                ],
+                "stopAll": true
+            },
+    ],
+    "configurations": [
+        {
+            "name": "proc 0",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "python3",
+            "miDebuggerServerAddress": "localhost:5678",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "sleep",
+        },
+        {
+            "name": "proc 1",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "python3",
+            "miDebuggerServerAddress": "localhost:5679",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "sleep",
+        },
+        {
+            "name": "proc 2",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "python3",
+            "miDebuggerServerAddress": "localhost:5680",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "sleep",
+        },
+        {
+            "name": "proc 3",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "python3",
+            "miDebuggerServerAddress": "localhost:5681",
+            "cwd": "${workspaceFolder}",
+            "preLaunchTask": "sleep",
+        },
+        {
+            "name": "mpirun",
+            "type": "cppdbg",
+            "request": "launch",
+            "program": "/usr/bin/mpirun",
+            "cwd": "${workspaceFolder}",
+            "environment": [
+                {"name": "OMP_NUM_THREADS","value": "1"},
+            ],
+            "linux": {
+                "MIMode": "gdb",
+                "setupCommands": [
+                    {
+                        "description": "Enable pretty-printing for gdb",
+                        "text": "-enable-pretty-printing",
+                        "ignoreFailures": true
+                    }
+                ]
+            },
+            "args": [
+                    "-n",
+                    "4",
+                    "--bind-to",
+                    "none",
+                    "./tools/mpidbg.sh",
+                    "python3",
+                    "-Ou",
+                    "tests/functional/harris/harris_2d.py",
+            ],
+        },
+    ]
+}

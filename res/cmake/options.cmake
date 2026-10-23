@@ -105,6 +105,26 @@ option(SAMRAI_BUILD_SHARED_LIBS "Build SAMRAI shared libraries" ON)
 option(PHARE_EXE "Build PHARE EXE" OFF)
 
 
+# -DwithKokkos=OFF
+option(withKokkos "Use Kokkos Tooling" OFF)
+
+
+# -DwithRaja=OFF
+option(withRaja "Use RAJA Tooling" OFF)
+# -DwithUmpire=OFF
+option(withUmpire "Use Umpire Tooling" OFF)
+
+
+# -DwithMkn=OFF
+option(withMkn "Use mkn::gpu" OFF)
+
+
+# -DwithGpu=OFF
+option(withGpu "Build for GPU hardware (requires withMkn)" OFF)
+
+
+
+
 # print options
 function(print_phare_options)
 
@@ -122,6 +142,8 @@ function(print_phare_options)
   message("build with asan support                     : " ${asan})
   message("build with ccache (if found) in devMode     : " ${withCcache})
   message("build with LLNL Caliper                     : " ${withCaliper})
+  message("build with mkn.gpu                           : " ${withMkn})
+  message("build for GPU hardware                      : " ${withGpu})
   message("profile guided optimization generate        : " ${PGO_GEN})
   message("profile guided optimization use             : " ${PGO_USE})
 

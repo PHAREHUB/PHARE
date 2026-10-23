@@ -2,6 +2,7 @@
 #define PHARE_CORE_GRID_GRIDLAYOUTYEE_MHD_HPP
 
 #include "core/def.hpp"
+#include "core/utilities/types.hpp"
 #include "core/utilities/constants.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/models/quantities/mhd_quantities.hpp"
@@ -175,7 +176,7 @@ public:
     // ------------------------------------------------------------------------
 public:
     NO_DISCARD constexpr static std::array<QtyCentering, dim>
-    centering(MHDQuantity::Scalar MHDQuantity)
+    centering(MHDQuantity::Scalar MHDQuantity) _PHARE_ALL_FN_
     {
         constexpr GridData gridData_{};
         if constexpr (dim == 1)
@@ -234,7 +235,9 @@ public:
                     return {{qtyCentering_[gridData_.iVecAllPrimalY][gridData_.idirX]}};
                 case MHDQuantity::Scalar::VecAllPrimalZ:
                     return {{qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirX]}};
-                default: throw std::runtime_error("Wrong MHDQuantity");
+                default:
+                    throw_runtime_error("Wrong MHDQuantity");
+                    return ConstArray<QtyCentering, dim>(QtyCentering::primal);
             }
         }
 
@@ -332,7 +335,9 @@ public:
                 case MHDQuantity::Scalar::VecAllPrimalZ:
                     return {{qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirX],
                              qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirY]}};
-                default: throw std::runtime_error("Wrong MHDQuantity");
+                default:
+                    throw_runtime_error("Wrong MHDQuantity");
+                    return ConstArray<QtyCentering, dim>(QtyCentering::primal);
             }
         }
 
@@ -476,13 +481,15 @@ public:
                     return {{qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirX],
                              qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirY],
                              qtyCentering_[gridData_.iVecAllPrimalZ][gridData_.idirZ]}};
-                default: throw std::runtime_error("Wrong MHDQuantity");
+                default:
+                    throw_runtime_error("Wrong MHDQuantity");
+                    return ConstArray<QtyCentering, dim>(QtyCentering::primal);
             }
         }
     }
 
     NO_DISCARD constexpr static std::array<std::array<QtyCentering, dim>, 3>
-    centering(MHDQuantity::Vector MHDQuantity)
+    centering(MHDQuantity::Vector MHDQuantity) _PHARE_ALL_FN_
     {
         switch (MHDQuantity)
         {
@@ -527,7 +534,10 @@ public:
                          centering(MHDQuantity::Scalar::VecAllPrimalY),
                          centering(MHDQuantity::Scalar::VecAllPrimalZ)}};
 
-            default: throw std::runtime_error("Wrong MHDQuantity");
+            default:
+                throw_runtime_error("Wrong MHDQuantity");
+                return ConstArray<std::array<QtyCentering, dim>, 3>(
+                    ConstArray<QtyCentering, dim>(QtyCentering::primal));
         }
     }
 

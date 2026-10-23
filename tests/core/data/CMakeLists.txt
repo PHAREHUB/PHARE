@@ -1,5 +1,6 @@
 add_subdirectory(minimizing_vector)
 add_subdirectory(ndarray)
+add_subdirectory(field)
 add_subdirectory(grid)
 add_subdirectory(gridlayout)
 add_subdirectory(vecfield)

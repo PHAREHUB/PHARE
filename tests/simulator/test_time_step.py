@@ -1,4 +1,4 @@
-#
+# tests/simulator/test_time_step.py
 # Config-level validation tests for the time_step option (constant scalar vs adaptive dict).
 # These only construct ph.Simulation (pharein) and never run the simulator, so they are cheap
 # and need no cpp module / MPI / HighFive.

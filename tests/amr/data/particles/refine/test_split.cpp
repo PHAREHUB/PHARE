@@ -10,6 +10,7 @@
 
 #include "core/utilities/types.hpp"
 #include "core/data/particles/particle.hpp"
+#include "core/data/particles/particle_array.hpp"
 #include "amr/data/particles/refine/split.hpp"
 
 #include "gmock/gmock.h"
@@ -73,7 +74,7 @@ TYPED_TEST(SplitterTest, split_box_holds_every_contributing_parent)
     constexpr int maxCell = 4;
 
     TypeParam splitter{};
-    std::array<PHARE::core::Particle<dim>, TypeParam::nbRefinedPart> children;
+    PHARE::core::AoSParticleArray<dim> children(TypeParam::nbRefinedPart);
     int furthestContributor = 0;
 
     for (std::size_t iDim = 0; iDim < dim; ++iDim)
@@ -81,14 +82,15 @@ TYPED_TEST(SplitterTest, split_box_holds_every_contributing_parent)
             for (double const delta : {0., 0.25, 0.5, 0.75, 0.999})
             {
                 PHARE::core::Particle<dim> parent;
-                parent.weight = 1;
-                parent.delta.fill(0.5);
-                parent.iCell[iDim] = cell;
-                parent.delta[iDim] = delta;
+                parent.weight() = 1;
+                parent.delta().fill(0.5);
+                parent.iCell()[iDim] = cell;
+                parent.delta()[iDim] = delta;
 
-                splitter(parent, children);
+                // parent is already on the fine grid, so it is also its own fine iCell/delta
+                splitter(parent, parent, children);
                 for (auto const& child : children)
-                    if (child.iCell[iDim] == 0) // child in the box, a single cell at the origin
+                    if (child.iCell()[iDim] == 0) // child in the box, a single cell at the origin
                         furthestContributor = std::max(furthestContributor, std::abs(cell));
             }
 

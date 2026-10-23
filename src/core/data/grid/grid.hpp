@@ -1,19 +1,19 @@
 #ifndef PHARE_CORE_DATA_GRID_GRID_BASE_HPP
 #define PHARE_CORE_DATA_GRID_GRID_BASE_HPP
 
-
 #include "core/def.hpp"
 #include "core/data/field/field.hpp"
-
+#include "core/def/phare_config.hpp"
 
 #include <array>
 #include <string>
 #include <cassert>
 #include <optional>
+#include <algorithm>
+
 
 namespace PHARE::core
 {
-
 
 /* Grid is the structure owning the field type memory via its inheritance from NdArrayImpl
 Grid exists to decouple the usage of memory by computing routines from the allocation of
@@ -25,13 +25,14 @@ convenience, Grid can spawn its own Field view.
 template<typename NdArrayImpl, typename PhysicalQuantity>
 class Grid : public NdArrayImpl
 {
-    using Super = NdArrayImpl;
-
 public:
+    using Super                      = NdArrayImpl;
+    auto constexpr static dimension  = NdArrayImpl::dimension;
+    auto constexpr static alloc_mode = NdArrayImpl::allocator_mode;
+
     using value_type             = typename NdArrayImpl::type;
     using physical_quantity_type = PhysicalQuantity;
-    using NdArrayImpl::dimension;
-    using field_type = Field<dimension, PhysicalQuantity, value_type>;
+    using field_type             = Field<dimension, PhysicalQuantity, value_type, alloc_mode>;
 
 
     Grid()                              = delete;
@@ -63,7 +64,6 @@ public:
         static_assert(sizeof...(Dims) == dimension, "Invalid dimension");
     }
 
-
     Grid(Grid const& source) // let field_ default
         : Super{source}
         , name_{source.name()}
@@ -71,9 +71,7 @@ public:
     {
     }
 
-
     NO_DISCARD std::string name() const { return name_; }
-
     NO_DISCARD constexpr PhysicalQuantity physicalQuantity() const { return qty_; }
 
     template<typename That>
@@ -84,11 +82,19 @@ public:
         std::copy(that.data(), that.data() + Super::size(), Super::data());
     }
 
-    void zero() { field_.zero(); } // is always usable
+    void zero() { field_.zero(); }              // is always usable
+    void fill(auto const v) { field_.fill(v); } // is always usable
 
     // returns view when getting address of this object, could be misleading, but convenient
     NO_DISCARD auto operator&() { return &field_; }
     NO_DISCARD auto operator&() const { return &field_; }
+
+    NO_DISCARD operator field_type&() { return field_; }
+    NO_DISCARD auto& operator*() { return field_; }
+    NO_DISCARD auto& operator*() const { return field_; }
+
+    template<typename, typename>
+    friend std::ostream& operator<<(std::ostream& out, Grid const&);
 
 private:
     std::string name_{"No Name"};
@@ -96,6 +102,27 @@ private:
     field_type field_{name_, qty_, Super::data(), Super::shape()};
 };
 
+
+
+
+template<typename Arr, typename PQ>
+inline std::ostream& operator<<(std::ostream& out, Grid<Arr, PQ> const& f)
+{
+    out << *f;
+    return out;
+}
+
+template<typename Arr, typename PQ>
+inline auto sum_field(Grid<Arr, PQ> const& f)
+{
+    return sum_field(*f);
+}
+
+template<typename Arr, typename PQ>
+inline auto sum_not_nan(Grid<Arr, PQ> const& f)
+{
+    return sum_not_nan(*f);
+}
 
 
 } // namespace PHARE::core

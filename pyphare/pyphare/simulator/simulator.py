@@ -1,19 +1,18 @@
-#
-#
-#
+# pyphare/pyphare/simulator/simulator.py
 
 import os
 import sys
-import datetime
 import atexit
-import time as timem
+import datetime
+import traceback
 import numpy as np
-import pyphare.pharein as ph
+import time as timem
 from pathlib import Path
-from . import monitoring as mon
 
 from pyphare import cpp
 from pyphare.cpp import validate
+import pyphare.pharein as ph
+from . import monitoring as mon
 import pyphare.pharein.restarts as restarts
 
 
@@ -102,11 +101,11 @@ class Simulator:
             self.print_eol = "\r"
         self.print_eol = kwargs.get("print_eol", self.print_eol)
         self.log_to_file = kwargs.get("log_to_file", True)
-
         self.auto_dump = auto_dump
         import pyphare.simulator._simulator as _simulator
 
         _simulator.obj = self
+        self.cpp_lib = None
 
     def __del__(self):
         self.reset()
@@ -130,8 +129,6 @@ class Simulator:
             self.cpp_sim = make_cpp_simulator(self.cpp_lib, self.cpp_hier)
             return self
         except Exception:
-            import traceback
-
             print('Exception caught in "Simulator.setup()": {}'.format(sys.exc_info()))
             print(traceback.format_exc())
             raise ValueError("Error in Simulator.setup(), see previous error")
@@ -157,6 +154,7 @@ class Simulator:
                     sys.exc_info()[0]
                 )
             )
+            print(traceback.format_exc())
             raise ValueError("Error in Simulator.initialize(), see previous error")
 
     def advance(self):
@@ -195,17 +193,14 @@ class Simulator:
            ``PHARE_SIM_MON`` environment variable if left None. Requires the optional ``phlop`` package
            (``python3 -m pip install phlop``); silently does nothing if it isn't installed.
         """
-
         self._check_init()
 
         if monitoring is None:  # check env
             monitoring = SIM_MONITOR
-
         if self.simulation.dry_run:
             return self
         if monitoring:
-            interval = monitoring if isinstance(monitoring, int) else 100  # seconds
-            mon.setup_monitoring(interval)
+            mon.setup_monitoring(monitoring)
         perf = []
         end_time = self.cpp_sim.endTime()
         t = self.cpp_sim.currentTime()
@@ -221,6 +216,7 @@ class Simulator:
             perf.append(ticktock)
             tot += ticktock
             t = self.cpp_sim.currentTime()
+
             if cpp.mpi_rank() == 0:
                 delta = datetime.timedelta(seconds=tot)
                 print(
@@ -237,7 +233,7 @@ class Simulator:
             plot_timestep_time(perf)
 
         mon.monitoring_shutdown()
-        return self.reset()
+        return self
 
     def dump(self, *args):
         assert len(args) == 0 or len(args) == 2
@@ -296,6 +292,15 @@ class Simulator:
     def _check_init(self):
         if not self.initialized:
             self.initialize()
+
+    def print_summary(self):
+        summary = self.summary()  # NO DEADLOCK!
+        if cpp.mpi_rank() == 0:
+            print("SUMMARY:", summary)
+
+    def summary(self):
+        self._check_setup()
+        return self.cpp_sim.summary()
 
     def _check_setup(self):
         if not self.cpp_sim:

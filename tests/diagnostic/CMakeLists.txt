@@ -51,4 +51,3 @@ if(HighFive)
   message(STATUS "diagnostic working directory " ${PHARE_PROJECT_DIR})
 
 endif()
-

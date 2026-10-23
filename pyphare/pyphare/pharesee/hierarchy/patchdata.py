@@ -1,6 +1,4 @@
-#
-#
-#
+# pyphare/pyphare/pharesee/hierarchy/patchdata.py
 
 import numpy as np
 
@@ -67,9 +65,11 @@ class FieldData(PatchData):
         return self.__str__()
 
     def compare(self, that, atol=1e-16):
-        return self.field_name == that.field_name and phut.fp_any_all_close(
-            self.dataset[:], that.dataset[:], atol=atol
-        )
+        try:
+            phut.assert_fp_any_all_close(self[:], that[:], atol=atol)
+        except AssertionError as e:
+            return phut.EqualityCheck(False, str(e))
+        return self.field_name == that.field_name
 
     def __eq__(self, that):
         return self.compare(that)
@@ -195,7 +195,6 @@ class FieldData(PatchData):
             f"centering not specified and cannot be inferred from field name : {field_name}"
         )
 
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         return field_data_array_ufunc(self, ufunc, method, *inputs, **kwargs)
 
@@ -276,9 +275,27 @@ class ParticleData(PatchData):
     def size(self):
         return self.dataset.size()
 
-    def compare(self, that, *args, **kwargs):
+    def compare(self, that, atol=1e-12):
         """args/kwargs may include atol for consistency with field::compare"""
-        return self.name == that.name and self.dataset == that.dataset
+        return self.name == that.name and self.dataset.compare(that.dataset, atol)
 
     def __eq__(self, that):
-        return self.compare(that)
+        return phut.EqualityCheck(
+            self.compare(that), f"particles {self.name} vs {that.name}"
+        )
+
+
+class LiveParticleData(PatchData):
+    """
+    PatchData wrapping a LiveParticles (C++ reference, no SoA copy).
+    """
+
+    def __init__(self, layout, data, pop_name):
+        super().__init__(layout, "particles")
+        self.dataset = data
+        self.pop_name = pop_name
+        self.name = pop_name
+        self.ndim = layout.box.ndim
+
+    def size(self):
+        return self.dataset.size()

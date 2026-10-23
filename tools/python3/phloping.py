@@ -1,4 +1,4 @@
-#
+# tools/python3/phloping.py
 # parsing PHARE scope funtion timers
 #
 
@@ -94,7 +94,8 @@ class ScopeTimerFile(phst.ScopeTimerFile):
         inits = ["HybridLevelInitializer::initialize_level"]
         for root in self.roots:
             if self(root.k) == "Simulator::initialize":
-                return sum(1 if self(c.k) in inits else 0 for c in root.c)
+                if nlevels := sum(1 if self(c.k) in inits else 0 for c in root.c):
+                    return nlevels
 
         # of if for some reason init logs are missing fallback
         first_advance = self.advances[0]  # all should be the same
@@ -163,28 +164,6 @@ def make_scope_timer_file_from(input):
         return file_parser(None, input)
     supe = phst.lines_parser(input)
     return ScopeTimerFile(supe.id_keys, supe.roots, run=None)
-
-
-def write_root_as_csv(scope_timer_file, outfile, headers=None, regex=None):
-    from contextlib import redirect_stdout
-
-    with open(outfile, "w") as f:
-        with redirect_stdout(f):
-            print_root_as_csv(scope_timer_file, headers, regex)
-
-
-def print_root_as_csv(scope_timer_file, n_parts, headers=None, regex=None):
-    stf = scope_timer_file  # alias
-    stf = file_parser(stf) if isinstance(stf, str) else stf
-
-    if headers:
-        print(",".join(headers))
-    for root in stf.roots:
-        s = stf(root.k)
-        if regex and regex not in s:
-            continue
-        bits = s.split(",")
-        print(f"{s}{root.t},{root.t/n_parts}")
 
 
 def _cli_args():
