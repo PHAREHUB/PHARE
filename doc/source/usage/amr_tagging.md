@@ -52,15 +52,15 @@ ph.Simulation(
 )
 ```
 
-- `method` is the criterion: `"default"` (the default), `"lohner-per-direction"` (Löhner's
-  estimator in the form of PLUTO) or `"lohner-cross-derivatives"` (Löhner's estimator in the form of
-  FLASH, with cross derivatives).
+- `method` is the criterion: `"default"` (the default), `"lohner-per-direction"` (Löhner's estimator
+  in the form of PLUTO) or `"lohner-cross-derivatives"` (Löhner's estimator in the form of FLASH,
+  with cross derivatives).
 - `quantities` is a `dict` mapping each tagged quantity to its threshold. A cell is tagged if the
   criterion is met for at least one quantity, each quantity being compared to its own threshold.
   Without `quantities`, the magnetic field is tagged with threshold `tagging_threshold`. A list of
   `(name, threshold)` pairs is also accepted, a name given twice being an error.
-- `params` holds the parameters of the method. Both Löhner methods accept `reltol` (default
-  $0.01$) and `abstol` (default $10^{-8}$), `"default"` has none. An unknown parameter is an error.
+- `params` holds the parameters of the method. Both Löhner methods accept `reltol` (default $0.01$)
+  and `abstol` (default $10^{-8}$), `"default"` has none. An unknown parameter is an error.
 
 Giving `tagging` without `refinement="tagging"` is an error.
 
@@ -90,13 +90,7 @@ The criteria are not on the same scale, so a threshold does not carry over from 
 another.
 
 - `"lohner-per-direction"` and `"lohner-cross-derivatives"` are dimensionless and lie between 0 and
-  $1/(1 + \mathrm{reltol})$, about 0.99, which they approach at strong discontinuities. Their
-  thresholds are typically a few tenths. In noisy hybrid runs, `abstol` has to be set above the noise
-  level of the quantities whose mean is close to zero. The cross-derivative form reads points two
-  cells apart, so the same threshold does not tag the same cells with both forms. In 2D and 3D, at a
-  sharp jump aligned with the grid, it peaks on the cells next to the jump and drops to about 0.44
-  (2D) or 0.33 (3D) on the two cells of the jump: with a higher threshold, only a `tag_buffer` of
-  at least 1 covers the jump itself.
+  $1/(1 + \mathrm{reltol})$. Their thresholds are typically a few tenths.
 - `"default"` measures the variations of the quantity in code units, absolutely when they are small
   compared with 1 and relatively when they are large.
 

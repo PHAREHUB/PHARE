@@ -15,9 +15,9 @@
 namespace PHARE::amr
 {
 /**
- * @brief TOFILL
+ * @brief PHARE's default refinement criterion.
  *
- * @tparam Model TOFILL
+ * @tparam Model The physical model
  */
 template<typename Model>
 class DefaultTaggerStrategy
@@ -26,15 +26,17 @@ class DefaultTaggerStrategy
     using Super = ComponentWiseTaggerStrategy<DefaultTaggerStrategy<Model>, Model>;
 
 public:
-    /// TOFILL
-    using recentered_field_type                  = Super::recentered_field_type;
-    static constexpr auto dimension              = Model::dimension;       ///< TOFILL
-    static constexpr std::uint32_t stencil_reach = dimension == 1 ? 3 : 2; ///< TOFILL
+    /// cell-centred view of one component of a tagged quantity
+    using recentered_field_type = Super::recentered_field_type;
+
+    static constexpr auto dimension = Model::dimension; ///< dimension of the model
+    /// the indicator reads F(i-2) to F(i+3) in 1D, F(i) to F(i+2) in 2D and 3D
+    static constexpr std::uint32_t stencil_reach = dimension == 1 ? 3 : 2;
 
     /**
-     * @brief TOFILL
+     * @brief Constructor
      *
-     * @param dict TOFILL
+     * @param dict config dict at path "simulation/AMR/refinement/tagging"
      */
     explicit DefaultTaggerStrategy(initializer::PHAREDict const& dict)
         : Super{dict}
@@ -42,12 +44,12 @@ public:
     }
 
     /**
-     * @brief TOFILL
+     * @brief The indicator of one component in one cell
      *
-     * @param F TOFILL
-     * @param cell TOFILL
+     * @param F The component, viewed at cell centres
+     * @param cell The index of the cell in the field arrays, the first ghost cell having index 0
      * @param layout unused by this criterion
-     * @return TOFILL
+     * @return the indicator value at the cell
      */
     double indicator(recentered_field_type const& F,
                      std::array<std::uint32_t, dimension> const& cell,
@@ -79,10 +81,10 @@ public:
     }
 
     /**
-     * @brief TOFILL
+     * @brief Combines the indicators of the components of a quantity, in 1D only
      *
-     * @param indicators TOFILL
-     * @return TOFILL
+     * @param indicators The indicator of each component of the quantity
+     * @return their L2 norm, compared with the quantity's threshold
      */
     static double combine(std::span<double const> indicators)
         requires(dimension == 1)

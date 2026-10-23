@@ -11,13 +11,12 @@ by changing the number and geometry of some patches of that level. This typicall
 needs for refinement evolve with the solution over time.
 
 Concretely, regridding means removing an entire level from the AMR hierarchy and replacing it by a
-new one. The so-called "new" level is initialized by copying values from the old level wherever
-they overlap, and by refining values from coarser levels where they do not.
+new one. The so-called "new" level is initialized by copying values from the old level wherever they
+overlap, and by refining values from coarser levels where they do not.
 
-Technically, regridding involves different methods depending on whether particle data or field
-data is refined. The specific operation performed also depends on the type of field being refined:
-for instance, the magnetic field refinement must preserve the divergence-free character of the
-field.
+Technically, regridding involves different methods depending on whether particle data or field data
+is refined. The specific operation performed also depends on the type of field being refined: for
+instance, the magnetic field refinement must preserve the divergence-free character of the field.
 
 ## Field refinement
 
@@ -53,14 +52,9 @@ cell is tagged if any of them exceeds $\tau$. The default criterion in 1D is the
 combines the indicators of the components into one value before comparing it with $\tau$.
 
 The criteria read cell-centred values. A quantity that is not cell-centred, such as a magnetic field
-component stored on cell faces, is averaged over the two neighbouring values in each direction
-where it is not cell-centred.
-
-In 2D and 3D, the default criterion computes the indicator along each direction separately and keeps
-the largest value, while the two forms of Löhner's criterion combine the directions in a single
-ratio. Below, $u(x)$ denotes the cell-centred value of one component in the cell of index $x$,
-$e_p$ the unit offset along direction $p$, and $a_i$ the value in cell $i$ along the direction
-considered.
+component stored on cell faces, is averaged over the two neighbouring values in each direction where
+it is not cell-centred. Below, $u(\vb{x})$ denotes the cell-centred value of one component in the
+cell of index $\vb{x}$, and $\vu{e}_p$ the unit offset along direction $p$.
 
 An indicator reads the values up to a few cells away from the tagged cell, its stencil reach. When
 this reach exceeds the number of ghost cells of the fields, the corresponding outermost layers of
@@ -77,13 +71,15 @@ literature, which both lie between 0 and $1/(1 + \epsilon_r)$.
 
 #### Per direction
 
-`lohner-per-direction` is the form of PLUTO[^mignone2012]. Along each direction $d$, with
-$a_{i \pm 1}$ the neighbours of the cell along $d$,
+`lohner-per-direction` is the form of PLUTO[^mignone2012]. Along each direction $d$,
 
 $$
-n_d = |a_{i+1} - 2a_i + a_{i-1}|, \qquad
-D_d = |a_{i+1} - a_i| + |a_i - a_{i-1}|
-      + \epsilon_r \left(|a_{i+1}| + 2|a_i| + |a_{i-1}|\right) + \epsilon_a
+\begin{aligned}
+n_d &= \left|u(\vb{x} + \vu{e}_d) - 2u(\vb{x}) + u(\vb{x} - \vu{e}_d)\right|, \\
+D_d &= \left|u(\vb{x} + \vu{e}_d) - u(\vb{x})\right| + \left|u(\vb{x}) - u(\vb{x} - \vu{e}_d)\right| \\
+    &\quad + \epsilon_r \left(\left|u(\vb{x} + \vu{e}_d)\right| + 2\left|u(\vb{x})\right|
+      + \left|u(\vb{x} - \vu{e}_d)\right|\right) + \epsilon_a
+\end{aligned}
 $$
 
 and the directions are combined in a single ratio,
@@ -98,71 +94,47 @@ The stencil reach is one cell.
 
 `lohner-cross-derivatives` is the form of FLASH[^flash4ug] [^fryxell2000], which includes all the
 cross derivatives and reads points two cells apart. With the slope over two cells
-$\Delta_p u(y) = u(y + e_p) - u(y - e_p)$, every ordered pair of directions $(p, q)$, $p = q$
-included, contributes
+$\Delta_p u(\vb{y}) = u(\vb{y} + \vu{e}_p) - u(\vb{y} - \vu{e}_p)$, every ordered pair of directions
+$(p, q)$, $p = q$ included, contributes
 
 $$
-n_{pq} = \left|\Delta_p u(x + e_q) - \Delta_p u(x - e_q)\right|, \qquad
-D_{pq} = |\Delta_p u(x + e_q)| + |\Delta_p u(x - e_q)| + \epsilon_r S_{pq} + \epsilon_a
+\begin{aligned}
+n_{pq} &= \left|\Delta_p u(\vb{x} + \vu{e}_q) - \Delta_p u(\vb{x} - \vu{e}_q)\right|, \\
+D_{pq} &= \left|\Delta_p u(\vb{x} + \vu{e}_q)\right| + \left|\Delta_p u(\vb{x} - \vu{e}_q)\right|
+          + \epsilon_r S_{pq} + \epsilon_a
+\end{aligned}
 $$
 
-where $S_{pq}$ is the sum of $|u|$ over the four points $x \pm e_q \pm e_p$. The pairs are weighted
-by the mesh sizes $\Delta x_p$ of the patch,
+where $S_{pq}$ is the sum of $|u|$ over the four points $\vb{x} \pm \vu{e}_q \pm \vu{e}_p$. The
+pairs are weighted by the mesh sizes $\Delta x_p$ of the patch,
 
 $$
 I = \sqrt{\frac{\sum_{p,q} \left(w_{pq}\, n_{pq}\right)^2}{\sum_{p,q} \left(w_{pq}\, D_{pq}\right)^2}},
 \qquad w_{pq} = \frac{1}{\Delta x_p \Delta x_q}
 $$
 
-The weights cancel on a mesh whose cells have the same size in every direction, and only the ratios
-between the mesh sizes matter, so the indicator does not depend on the level. In 1D, the indicator
-reduces to
-
-$$
-I_i = \frac{|a_{i+2} - 2a_i + a_{i-2}|}
-           {|a_{i+2} - a_i| + |a_i - a_{i-2}|
-            + \epsilon_r \left(|a_{i+2}| + 2|a_i| + |a_{i-2}|\right) + \epsilon_a}
-$$
-
-The stencil reach is two cells. In 2D and 3D, at a sharp jump aligned with the grid, the pairs
-$p \neq q$ add the slope of the jump to the denominator without adding to the numerator on the two
-cells of the jump, where $I$ drops to about $1/((1 + \epsilon_r)\sqrt{1 + 4(d - 1)})$, that is 0.44
-in 2D and 0.33 in 3D for dimension $d$, while it stays close to 1 on the cells next to the jump.
+The stencil reach is two cells.
 
 ### Default criterion
 
-In 2D and 3D, along each direction,
+In 2D and 3D, along each direction $d$,
 
 $$
-I_i = \frac{|a_{i+2} - a_i|}{1 + |a_{i+1} - a_i|}
+I_d = \frac{\left|u(\vb{x} + 2\vu{e}_d) - u(\vb{x})\right|}{1 + \left|u(\vb{x} + \vu{e}_d) - u(\vb{x})\right|}
 $$
 
-with a stencil reach of two cells.
+and the largest value over the directions is kept, with a stencil reach of two cells.
 
-In 1D, with $\bar a_i$ the average of the five values $a_{i-2}$ to $a_{i+2}$,
+In 1D, with $\bar u(\vb{x})$ the average of the five values $u(\vb{x} + k\vu{e}_x)$,
+$k = -2, \dots, 2$,
 
 $$
-I_i = \frac{|\bar a_{i+1} - \bar a_i|}{1 + |\bar a_i|}
-    = \frac{|a_{i+3} - a_{i-2}|}{5\,(1 + |\bar a_i|)}
+I = \frac{\left|\bar u(\vb{x} + \vu{e}_x) - \bar u(\vb{x})\right|}{1 + \left|\bar u(\vb{x})\right|}
+  = \frac{\left|u(\vb{x} + 3\vu{e}_x) - u(\vb{x} - 2\vu{e}_x)\right|}{5\,\left(1 + \left|\bar u(\vb{x})\right|\right)}
 $$
 
 with a stencil reach of three cells. For a vector quantity, the indicators $I^c$ of its components
 are combined into $\sqrt{\sum_c (I^c)^2}$, which is compared with $\tau$.
-
-[^lohner1987]: R. Löhner, *An adaptive finite element scheme for transient problems in CFD*,
-    Computer Methods in Applied Mechanics and Engineering 61 (1987),
-    <https://doi.org/10.1016/0045-7825(87)90098-3>
-
-[^fryxell2000]: B. Fryxell et al., *FLASH: an adaptive mesh hydrodynamics code for modeling
-    astrophysical thermonuclear flashes*, The Astrophysical Journal Supplement Series 131 (2000),
-    273-334
-
-[^mignone2012]: A. Mignone et al., *The PLUTO code for adaptive mesh computations in astrophysical
-    fluid dynamics*, The Astrophysical Journal Supplement Series 198 (2012), 7, eq. 50-51,
-    <https://arxiv.org/abs/1110.0740>
-
-[^flash4ug]: FLASH4 user guide, §8.6.3.1 Refinement Criteria, eq. 8.3-8.4,
-    <https://flash.rochester.edu/site/flashcode/user_support/flash4_ug_4p62/node59.html>
 
 (clustering)=
 
@@ -175,3 +147,18 @@ are combined into $\sqrt{\sum_c (I^c)^2}$, which is compared with $\tau$.
 (berger-rigoutsos)=
 
 ### Berger-Rigoutsos
+
+[^lohner1987]: R. Löhner, *An adaptive finite element scheme for transient problems in CFD*,
+    Computer Methods in Applied Mechanics and Engineering 61 (1987),
+    <https://doi.org/10.1016/0045-7825(87)90098-3>
+
+[^mignone2012]: A. Mignone et al., *The PLUTO code for adaptive mesh computations in astrophysical
+    fluid dynamics*, The Astrophysical Journal Supplement Series 198 (2012), 7, eq.
+    50-51, <https://arxiv.org/abs/1110.0740>
+
+[^flash4ug]: FLASH4 user guide, §8.6.3.1 Refinement Criteria, eq. 8.3-8.4,
+    <https://flash.rochester.edu/site/flashcode/user_support/flash4_ug_4p62/node59.html>
+
+[^fryxell2000]: B. Fryxell et al., *FLASH: an adaptive mesh hydrodynamics code for modeling
+    astrophysical thermonuclear flashes*, The Astrophysical Journal Supplement Series
+    131 (2000), 273-334, <https://iopscience.iop.org/article/10.1086/317361/fulltext/>

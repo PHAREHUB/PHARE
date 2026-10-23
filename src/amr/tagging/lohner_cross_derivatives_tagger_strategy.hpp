@@ -13,14 +13,9 @@
 namespace PHARE::amr
 {
 /**
- * @brief Löhner's error estimator in the form of FLASH (user guide §8.6.3.1, eq. 8.3-8.4), with
- * all cross derivatives, on a stencil of points two cells apart.
- *
- * With the slope over two cells S_p(y) = u(y + e_p) - u(y - e_p), every ordered pair of directions
- * (p, q) contributes n_pq = |S_p(x + e_q) - S_p(x - e_q)| and
- * D_pq = |S_p(x + e_q)| + |S_p(x - e_q)| + reltol (sum of |u| over the four points used) + abstol,
- * both weighted by 1/(dx_p dx_q). The indicator sqrt(sum (w n)^2 / sum (w D)^2) lies in
- * [0, 1/(1 + reltol)), and only depends on the ratios between the mesh sizes.
+ * @brief Löhner's criterion in the form of FLASH (user guide
+ * https://flash.rochester.edu/site/flashcode/user_support/flash4_ug_4p62/node59.html, eq. 8.3-8.4),
+ * with all cross derivatives, on a stencil of points two cells apart.
  *
  * @tparam Model The physical model
  */
@@ -32,15 +27,15 @@ class LohnerCrossDerivativesTaggerStrategy
 
 public:
     /// cell-centred view of one component of a tagged quantity
-    using recentered_field_type                  = Super::recentered_field_type;
+    using recentered_field_type = Super::recentered_field_type;
+
     static constexpr auto dimension              = Model::dimension; ///< dimension of the model
     static constexpr std::uint32_t stencil_reach = 2; ///< the estimator reads two cells away
 
     /**
      * @brief Constructor
      *
-     * @param dict config dict at path "simulation/AMR/refinement/tagging", from which
-     * "params/reltol" (default 0.01) and "params/abstol" (default 1e-8) are read
+     * @param dict config dict at path "simulation/AMR/refinement/tagging"
      */
     explicit LohnerCrossDerivativesTaggerStrategy(initializer::PHAREDict const& dict)
         : Super{dict}
@@ -50,12 +45,12 @@ public:
     }
 
     /**
-     * @brief The estimator of one component in one cell
+     * @brief The indicator
      *
      * @param field The component, viewed at cell centres
      * @param cell The index of the cell in the field arrays
-     * @param layout The layout of the patch, whose mesh sizes weight each pair of directions
-     * @return the ratio of weighted summed squares, 0 when the denominator vanishes
+     * @param layout The layout of the patch
+     * @return Lohner's indicator with cross derivatives
      */
     double indicator(recentered_field_type const& field,
                      std::array<std::uint32_t, dimension> const& cell,

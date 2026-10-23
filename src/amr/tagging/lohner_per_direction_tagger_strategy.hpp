@@ -13,12 +13,8 @@
 namespace PHARE::amr
 {
 /**
- * @brief Löhner's error estimator in the form of PLUTO (Mignone et al. 2012, ApJS 198, 7,
- * eq. 50-51), without cross derivatives.
- *
- * Along each direction d, the second difference n_d = |a+ - 2 a0 + a-| is compared with
- * D_d = |a+ - a0| + |a0 - a-| + reltol (|a+| + 2 |a0| + |a-|) + abstol, and the directions are
- * combined in a single ratio, sqrt(sum_d n_d^2 / sum_d D_d^2), which lies in [0, 1/(1 + reltol)).
+ * @brief Löhner's criterion in the form of PLUTO (Mignone et al. 2012, ApJS 198, 7, eq. 50-51,
+ * https://iopscience.iop.org/article/10.1088/0067-0049/198/1/7/pdf).
  *
  * @tparam Model The physical model
  */
@@ -30,15 +26,15 @@ class LohnerPerDirectionTaggerStrategy
 
 public:
     /// cell-centred view of one component of a tagged quantity
-    using recentered_field_type                  = Super::recentered_field_type;
+    using recentered_field_type = Super::recentered_field_type;
+
     static constexpr auto dimension              = Model::dimension; ///< dimension of the model
     static constexpr std::uint32_t stencil_reach = 1; ///< the estimator reads the two neighbours
 
     /**
      * @brief Constructor
      *
-     * @param dict config dict at path "simulation/AMR/refinement/tagging", from which
-     * "params/reltol" (default 0.01) and "params/abstol" (default 1e-8) are read
+     * @param dict config dict at path "simulation/AMR/refinement/tagging"
      */
     explicit LohnerPerDirectionTaggerStrategy(initializer::PHAREDict const& dict)
         : Super{dict}
@@ -48,12 +44,12 @@ public:
     }
 
     /**
-     * @brief The estimator of one component in one cell
+     * @brief The indicator of one component in one cell
      *
      * @param field The component, viewed at cell centres
-     * @param cell The index of the cell in the field arrays
+     * @param cell The index of the cell in the field arrays, the first ghost cell having index 0
      * @param layout unused by this criterion
-     * @return the ratio of summed squares, 0 when the denominator vanishes
+     * @return indicator value
      */
     double indicator(recentered_field_type const& field,
                      std::array<std::uint32_t, dimension> const& cell,
