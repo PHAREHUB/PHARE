@@ -62,9 +62,15 @@ class LohnerPerDirectionTagging(LohnerTagging):
     method = "lohner-per-direction"
 
 
+@dataclass
+class LohnerCrossDerivativesTagging(LohnerTagging):
+    method = "lohner-cross-derivatives"
+
+
 _TAGGERS = {
     "default": DefaultTagging,
     "lohner-per-direction": LohnerPerDirectionTagging,
+    "lohner-cross-derivatives": LohnerCrossDerivativesTagging,
 }
 
 

@@ -250,6 +250,16 @@ class TestSimulation(unittest.TestCase):
         self.assertEqual(tag.reltol, 0.01)
         self.assertEqual(tag.abstol, 1e-8)
 
+    def test_tagging_lohner_cross_derivatives(self):
+        tag = tagging.resolve_tagging(
+            refinement="tagging",
+            tagging={"method": "lohner-cross-derivatives", "params": {"abstol": 1e-6}},
+        )
+        self.assertIsInstance(tag, tagging.LohnerCrossDerivativesTagging)
+        self.assertEqual(tag.method, "lohner-cross-derivatives")
+        self.assertEqual(tag.reltol, 0.01)
+        self.assertEqual(tag.abstol, 1e-6)
+
     def test_tagging_old_lohner_name_rejected(self):
         with self.assertRaises(ValueError) as error:
             tagging.resolve_tagging(refinement="tagging", tagging={"method": "lohner"})
@@ -345,7 +355,11 @@ class TestSimulation(unittest.TestCase):
         def one(x):
             return 1.0 + 0.0 * x
 
-        for method in ("default", "lohner-per-direction"):
+        for method in (
+            "default",
+            "lohner-per-direction",
+            "lohner-cross-derivatives",
+        ):
             global_vars.sim = None
             self.tagging_simulation(tagging={"method": method})
             ph.MaxwellianFluidModel(bx=one, by=one, bz=one, protons={"density": one})

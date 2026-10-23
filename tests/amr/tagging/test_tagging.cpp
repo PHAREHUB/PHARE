@@ -8,6 +8,7 @@
 #include "amr/tagging/default_tagger_strategy.hpp"
 #include "amr/tagging/component_wise_tagger_strategy.hpp"
 #include "amr/tagging/lohner_per_direction_tagger_strategy.hpp"
+#include "amr/tagging/lohner_cross_derivatives_tagger_strategy.hpp"
 
 #include "tests/core/data/gridlayout/test_gridlayout.hpp"
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
@@ -18,6 +19,7 @@
 #include <cmath>
 #include <limits>
 #include <map>
+#include <random>
 #include <span>
 #include <string>
 #include <vector>
@@ -1172,12 +1174,115 @@ TEST(LohnerPerDirection, DefaultReltolIs001)
     EXPECT_NEAR(lohner.indicator({model.state.rho, allDual}, {10}, model.layout), 1. / 1.01, 1e-7);
 }
 
+using PerDirection2 = LohnerPerDirectionTaggerStrategy<MockMHDModel<2>>;
+using Cross1        = LohnerCrossDerivativesTaggerStrategy<MockMHDModel<1>>;
+using Cross2        = LohnerCrossDerivativesTaggerStrategy<MockMHDModel<2>>;
+using Cross3        = LohnerCrossDerivativesTaggerStrategy<MockMHDModel<3>>;
+
+TEST(LohnerCrossDerivatives, OneDimensionIsFlashEq83)
+{
+    MockMHDModel<1> model;
+    auto const u = [](auto const& idx) { return static_cast<double>(idx[0] * idx[0]); };
+    EXPECT_NEAR((indicatorAt<Cross1>(model, u, {10}, 0.01, 0., model.layout)), 8. / 84.08, 1e-14);
+}
+
+TEST(LohnerCrossDerivatives, SaddleSeenOnlyByCrossTerms)
+{
+    MockMHDModel<2> model;
+    auto const saddle = [](auto const& idx) {
+        return (static_cast<double>(idx[0]) - 10.) * (static_cast<double>(idx[1]) - 10.);
+    };
+    EXPECT_EQ((indicatorAt<PerDirection2>(model, saddle, {10, 10}, 0.01, 1e-8, model.layout)), 0.);
+    EXPECT_NEAR((indicatorAt<Cross2>(model, saddle, {10, 10}, 0.01, 0., model.layout)), 4. / 4.04,
+                1e-14);
+}
+
+TEST(LohnerCrossDerivatives, SaddleIn3DMatches2D)
+{
+    MockMHDModel<3> model;
+    auto const saddle = [](auto const& idx) {
+        return (static_cast<double>(idx[0]) - 10.) * (static_cast<double>(idx[1]) - 10.);
+    };
+    EXPECT_NEAR((indicatorAt<Cross3>(model, saddle, {10, 10, 10}, 0.01, 0., model.layout)),
+                4. / 4.04, 1e-14);
+}
+
+TEST(LohnerCrossDerivatives, MeshSizeWeightsAreLevelIndependent)
+{
+    using Layout = MockMHDModel<2>::gridlayout_type;
+    MockMHDModel<2> model;
+    auto const u = [](auto const& idx) {
+        auto const i = static_cast<double>(idx[0]), j = static_cast<double>(idx[1]);
+        return i * i + (i - 10.) * (j - 10.);
+    };
+    auto const at = [&](double dx, double dy) {
+        Layout const layout{{dx, dy}, {20u, 20u}, PHARE::core::Point<double, 2>{0., 0.}};
+        return indicatorAt<Cross2>(model, u, {10, 10}, 0.01, 0., layout);
+    };
+    EXPECT_NEAR(at(1., 1.), 0.08218558436423791, 1e-14);
+    EXPECT_NEAR(at(1., 2.), 0.09018587026447226, 1e-14);
+    EXPECT_NEAR(at(2., 4.), at(1., 2.), 1e-14);
+}
+
+TEST(LohnerCrossDerivatives, ZeroFieldWithoutAbstolIsZero)
+{
+    MockMHDModel<2> model;
+    EXPECT_EQ((indicatorAt<Cross2>(
+                  model, [](auto const&) { return 0.; }, {10, 10}, 0.01, 0., model.layout)),
+              0.);
+}
+
+TEST(LohnerCrossDerivatives, DefaultReltolIs001)
+{
+    MockMHDModel<1> model;
+    fillField(model.state.rho, [](auto const& idx) { return idx[0] <= 11 ? 0. : 1.; });
+    auto const allDual
+        = PHARE::core::ConstArray<PHARE::core::QtyCentering, 1>(PHARE::core::QtyCentering::dual);
+    Cross1 const cross{PHARE::initializer::PHAREDict{}};
+    EXPECT_NEAR(cross.indicator({model.state.rho, allDual}, {10}, model.layout), 1. / 1.01, 1e-7);
+}
+
+TEST(LohnerCrossDerivatives, BoundedOnRandomFields)
+{
+    MockMHDModel<2> model;
+    std::mt19937 gen{42};
+    std::uniform_real_distribution<double> dist{-5., 5.};
+    fillField(model.state.rho, [&](auto const&) { return dist(gen); });
+    auto const allDual
+        = PHARE::core::ConstArray<PHARE::core::QtyCentering, 2>(PHARE::core::QtyCentering::dual);
+    PHARE::initializer::PHAREDict dict;
+    Cross2 const cross{dict};
+    PerDirection2 const perDirection{dict};
+    for (std::uint32_t i = 4; i < 20; ++i)
+        for (std::uint32_t j = 4; j < 20; ++j)
+        {
+            EXPECT_LT(cross.indicator({model.state.rho, allDual}, {i, j}, model.layout), 1. / 1.01);
+            EXPECT_LT(perDirection.indicator({model.state.rho, allDual}, {i, j}, model.layout),
+                      1. / 1.01);
+        }
+}
+
+TEST(LohnerCrossDerivatives, CrossDerivativesTagsEveryCellAtGhostWidthTwo)
+{
+    using Model = MockHybridModel<2>;
+    Model model;
+    fillB(model, 1., 0., 0.);
+    fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
+              [](auto const& idx) { return idx[0] >= ghostWidth<Model> + 10 ? 1. : 0.; });
+    static_assert(ghostWidth<Model> == 2);
+    auto tags = sentinelTags(model);
+    LohnerCrossDerivativesTaggerStrategy<Model>{quantitiesDict({{"B", 0.5}})}.tag(
+        model, model.layout, tags.data());
+    EXPECT_EQ(std::count(tags.begin(), tags.end(), -1), 0);
+    EXPECT_NE(std::count(tags.begin(), tags.end(), 1), 0);
+}
+
 TEST(TaggerFactory, hybridAndMHDMethods)
 {
     using hybrid_model = PHARE::solver::PHARE_Types<PHARE::SimOpts{1ul, 1ul, 2ul}>::Hybrid::Model_t;
     using mhd_model    = PHARE::solver::PHARE_Types<mhdOpts(1)>::MHD::Model_t;
 
-    for (std::string const method : {"default", "lohner-per-direction"})
+    for (std::string const method : {"default", "lohner-per-direction", "lohner-cross-derivatives"})
     {
         PHARE::initializer::PHAREDict dict;
         dict["hybrid_method"] = method;
