@@ -67,9 +67,8 @@ template<typename Derived, typename Model>
 class ComponentWiseTaggerStrategy : public TaggerStrategy<Model>
 {
 public:
-    using gridlayout_type = Model::gridlayout_type;
-    using recentered_field_type
-        = core::RecenteredField<gridlayout_type, tagging::tagged_field_t<Model>>;
+    using gridlayout_type       = Model::gridlayout_type;
+    using recentered_field_type = core::RecenteredField<tagging::tagged_field_t<Model>>;
 
     static constexpr auto dimension = Model::dimension;
 
@@ -147,7 +146,7 @@ void ComponentWiseTaggerStrategy<Derived, Model>::tag(Model& model, gridlayout_t
         auto& quantity     = quantities.emplace_back();
         quantity.threshold = threshold;
         for (auto const& component : components(model))
-            quantity.recenteredFields.emplace_back(component, allDual);
+            quantity.recenteredFields.emplace_back(component, allDual, layout);
     }
 
     // check at compile time if `combine` is defined by the CRTP child

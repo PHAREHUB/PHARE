@@ -1011,7 +1011,8 @@ double lohnerOnDualBy(Fn&& fn, std::uint32_t i, double reltol)
     dict["params"]["reltol"] = reltol;
     dict["params"]["abstol"] = 1e-30;
     LohnerPerDirectionTaggerStrategy<Model> const lohner{dict};
-    return lohner.indicator(field_type{By, {PHARE::core::QtyCentering::dual}}, {i}, model.layout);
+    return lohner.indicator(field_type{By, {PHARE::core::QtyCentering::dual}, model.layout}, {i},
+                            model.layout);
 }
 
 TEST(LohnerIndicator, FlatAndLinearRampAreZero)
@@ -1142,7 +1143,7 @@ double indicatorAt(Model& model, Fn&& fn, std::array<std::uint32_t, Model::dimen
     auto const allDual       = PHARE::core::ConstArray<PHARE::core::QtyCentering, Model::dimension>(
         PHARE::core::QtyCentering::dual);
     return Strategy{dict}.indicator(
-        typename Strategy::recentered_field_type{model.state.rho, allDual}, cell, layout);
+        typename Strategy::recentered_field_type{model.state.rho, allDual, layout}, cell, layout);
 }
 
 TEST(LohnerPerDirection, RatioOfSummedSquaresIn2D)
@@ -1171,7 +1172,8 @@ TEST(LohnerPerDirection, DefaultReltolIs001)
     auto const allDual
         = PHARE::core::ConstArray<PHARE::core::QtyCentering, 1>(PHARE::core::QtyCentering::dual);
     LohnerPerDirectionTaggerStrategy<MockMHDModel<1>> const lohner{PHARE::initializer::PHAREDict{}};
-    EXPECT_NEAR(lohner.indicator({model.state.rho, allDual}, {10}, model.layout), 1. / 1.01, 1e-7);
+    EXPECT_NEAR(lohner.indicator({model.state.rho, allDual, model.layout}, {10}, model.layout),
+                1. / 1.01, 1e-7);
 }
 
 using PerDirection2 = LohnerPerDirectionTaggerStrategy<MockMHDModel<2>>;
@@ -1239,7 +1241,8 @@ TEST(LohnerCrossDerivatives, DefaultReltolIs001)
     auto const allDual
         = PHARE::core::ConstArray<PHARE::core::QtyCentering, 1>(PHARE::core::QtyCentering::dual);
     Cross1 const cross{PHARE::initializer::PHAREDict{}};
-    EXPECT_NEAR(cross.indicator({model.state.rho, allDual}, {10}, model.layout), 1. / 1.01, 1e-7);
+    EXPECT_NEAR(cross.indicator({model.state.rho, allDual, model.layout}, {10}, model.layout),
+                1. / 1.01, 1e-7);
 }
 
 TEST(LohnerCrossDerivatives, BoundedOnRandomFields)
@@ -1256,8 +1259,11 @@ TEST(LohnerCrossDerivatives, BoundedOnRandomFields)
     for (std::uint32_t i = 4; i < 20; ++i)
         for (std::uint32_t j = 4; j < 20; ++j)
         {
-            EXPECT_LT(cross.indicator({model.state.rho, allDual}, {i, j}, model.layout), 1. / 1.01);
-            EXPECT_LT(perDirection.indicator({model.state.rho, allDual}, {i, j}, model.layout),
+            EXPECT_LT(
+                cross.indicator({model.state.rho, allDual, model.layout}, {i, j}, model.layout),
+                1. / 1.01);
+            EXPECT_LT(perDirection.indicator({model.state.rho, allDual, model.layout}, {i, j},
+                                             model.layout),
                       1. / 1.01);
         }
 }
