@@ -1265,16 +1265,24 @@ TEST(LohnerCrossDerivatives, BoundedOnRandomFields)
 TEST(LohnerCrossDerivatives, CrossDerivativesTagsEveryCellAtGhostWidthTwo)
 {
     using Model = MockHybridModel<2>;
-    Model model;
-    fillB(model, 1., 0., 0.);
-    fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
-              [](auto const& idx) { return idx[0] >= ghostWidth<Model> + 10 ? 1. : 0.; });
     static_assert(ghostWidth<Model> == 2);
-    auto tags = sentinelTags(model);
-    LohnerCrossDerivativesTaggerStrategy<Model>{quantitiesDict({{"B", 0.5}})}.tag(
-        model, model.layout, tags.data());
-    EXPECT_EQ(std::count(tags.begin(), tags.end(), -1), 0);
-    EXPECT_NE(std::count(tags.begin(), tags.end(), 1), 0);
+    Model model;
+    auto const expectTagged = [&](std::uint32_t jump, std::vector<std::uint32_t> const& tagged) {
+        fillB(model, 1., 0., 0.);
+        fillField(model.state.electromag.B.getComponent(PHARE::core::Component::Y),
+                  [&](auto const& idx) { return idx[0] >= ghostWidth<Model> + jump ? 1. : 0.; });
+        auto tags = sentinelTags(model);
+        LohnerCrossDerivativesTaggerStrategy<Model>{quantitiesDict({{"B", 0.5}})}.tag(
+            model, model.layout, tags.data());
+        std::vector<std::uint32_t> untagged;
+        for (std::uint32_t ix = 0; ix < model.layout.nbrCells()[0]; ++ix)
+            if (std::find(tagged.begin(), tagged.end(), ix) == tagged.end())
+                untagged.push_back(ix);
+        expectColumns(model, tags, tagged, untagged);
+    };
+    expectTagged(10, {8, 11});
+    expectTagged(2, {0, 3});
+    expectTagged(18, {16, 19});
 }
 
 TEST(TaggerFactory, hybridAndMHDMethods)

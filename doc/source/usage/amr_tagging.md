@@ -93,7 +93,10 @@ another.
   $1/(1 + \mathrm{reltol})$, about 0.99, which they approach at strong discontinuities. Their
   thresholds are typically a few tenths. In noisy hybrid runs, `abstol` has to be set above the noise
   level of the quantities whose mean is close to zero. The cross-derivative form reads points two
-  cells apart, so the same threshold does not tag the same cells with both forms.
+  cells apart, so the same threshold does not tag the same cells with both forms. In 2D and 3D, at a
+  sharp jump aligned with the grid, it peaks on the cells next to the jump and drops to about 0.44
+  (2D) or 0.33 (3D) on the two cells of the jump: with a higher threshold, only a `tag_buffer` of
+  at least 1 covers the jump itself.
 - `"default"` measures the variations of the quantity in code units, absolutely when they are small
   compared with 1 and relatively when they are large.
 

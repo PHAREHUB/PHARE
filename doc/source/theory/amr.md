@@ -124,7 +124,10 @@ I_i = \frac{|a_{i+2} - 2a_i + a_{i-2}|}
             + \epsilon_r \left(|a_{i+2}| + 2|a_i| + |a_{i-2}|\right) + \epsilon_a}
 $$
 
-The stencil reach is two cells.
+The stencil reach is two cells. In 2D and 3D, at a sharp jump aligned with the grid, the pairs
+$p \neq q$ add the slope of the jump to the denominator without adding to the numerator on the two
+cells of the jump, where $I$ drops to about $1/((1 + \epsilon_r)\sqrt{1 + 4(d - 1)})$, that is 0.44
+in 2D and 0.33 in 3D for dimension $d$, while it stays close to 1 on the cells next to the jump.
 
 ### Default criterion
 
