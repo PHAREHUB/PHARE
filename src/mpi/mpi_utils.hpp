@@ -40,6 +40,12 @@ NO_DISCARD std::string date_time(std::string format = "%Y-%m-%d-%H:%M:%S");
 
 NO_DISCARD std::int64_t unix_timestamp_now();
 
+NO_DISCARD std::string hostname();
+
+// true for the lowest rank on each host
+// collective on first call! every rank must make the first call
+NO_DISCARD bool is_root_rank_for_host();
+
 inline bool is_init()
 {
     int flag = 0;

@@ -5,6 +5,7 @@
 #include "mpi_utils.hpp"
 
 #include <iostream>
+#include <algorithm>
 
 #ifndef PHARE_ERRORS_USE_MPI_ABORT
 #define PHARE_ERRORS_USE_MPI_ABORT 1
@@ -92,6 +93,25 @@ std::string date_time(std::string format)
 std::int64_t unix_timestamp_now()
 { // static cast as std::time_t typedef can vary across operating systems
     return all_get_from_rank_0([]() { return static_cast<std::int64_t>(std::time(NULL)); });
+}
+
+std::string hostname()
+{
+    char name[MPI_MAX_PROCESSOR_NAME];
+    int len = 0;
+    MPI_Get_processor_name(name, &len);
+    return std::string(name, len);
+}
+
+bool is_root_rank_for_host()
+{
+    static bool const is_root = [] {
+        auto const host  = hostname();
+        auto const hosts = collect(host);
+        auto const first = std::find(hosts.begin(), hosts.end(), host);
+        return std::distance(hosts.begin(), first) == rank();
+    }();
+    return is_root;
 }
 
 } // namespace PHARE::mpi

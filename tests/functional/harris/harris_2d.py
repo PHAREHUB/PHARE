@@ -50,6 +50,7 @@ def config():
         },
         strict=True,
         nesting_buffer=1,
+        write_reports=True,
     )
 
     def density(x, y):
