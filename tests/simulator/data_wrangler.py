@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import unittest
+
 import numpy as np
 
 from pyphare.simulator.simulator import Simulator
@@ -11,7 +12,7 @@ from tests.simulator import populate_simulation
 
 class DataWranglerTest(unittest.TestCase):
     def __init__(self, *args, **kwargs):
-        super(DataWranglerTest, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.dw = None
         self.simulator = None
 
@@ -27,8 +28,8 @@ class DataWranglerTest(unittest.TestCase):
             print("\n", self.dw.lvl0PopFluxes())
             print("\n", self.dw.lvl0EM())
 
-            for pop, particles in self.dw.getPatchLevel(0).getParticles().items():
-                for key, patches in particles.items():
+            for particles in self.dw.getPatchLevel(0).getParticles().values():
+                for patches in particles.values():
                     for patch in patches:
                         self.assertTrue(isinstance(patch.lower, np.ndarray))
                         self.assertTrue(isinstance(patch.upper, np.ndarray))

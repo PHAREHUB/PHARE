@@ -48,7 +48,7 @@ def setup_monitoring(interval=10):
 
     _globals.stats_man = sm.AttachableRuntimeStatsManager(
         valdict(yaml=monitoring_yaml_file(), interval=interval),
-        dict(rank=cpp.mpi_rank()),
+        {"rank": cpp.mpi_rank()},
     ).start()
 
 

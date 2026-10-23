@@ -1,12 +1,11 @@
-import os
-import sys
-import shutil
-import tempfile
-import datetime
 import contextlib
+import datetime
+import os
+import shutil
+import sys
+import tempfile
 from pathlib import Path
 from zipfile import ZipFile
-
 
 SEARCH_PATHS = list(set([os.getcwd()] + sys.path))
 

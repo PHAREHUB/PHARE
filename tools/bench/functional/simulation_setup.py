@@ -2,8 +2,8 @@
 
 
 def setup(**kwargs):
-    from pyphare.core.phare_utilities import np_array_ify, NO_GUI
     import pyphare.pharein as ph
+    from pyphare.core.phare_utilities import NO_GUI, np_array_ify
 
     NO_GUI()
 
@@ -50,14 +50,12 @@ def setup(**kwargs):
             "charge": kwargs.get("charge", 1),
             "density": density,
             "nbr_part_per_cell": kwargs.get("ppc", 10),
-            **{
-                "vbulkx": vxyz,
-                "vbulky": vxyz,
-                "vbulkz": vxyz,
-                "vthx": vthxyz,
-                "vthy": vthxyz,
-                "vthz": vthxyz,
-            },
+            "vbulkx": vxyz,
+            "vbulky": vxyz,
+            "vbulkz": vxyz,
+            "vthx": vthxyz,
+            "vthy": vthxyz,
+            "vthz": vthxyz,
         },
     )
     ph.ElectronModel(closure="isothermal", Te=kwargs.get("Te", 0.12))

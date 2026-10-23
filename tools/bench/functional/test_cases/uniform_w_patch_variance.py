@@ -1,9 +1,10 @@
 """
-  This test case is for assessing the impact of copy/stream for various patch size and parameter sets
+This test case is for assessing the impact of copy/stream for various patch size and parameter sets
 """
 
 import os
 from pathlib import Path
+
 from pyphare.pharein.simulation import supported_dimensions
 
 FILE_DIR = Path(__file__).resolve().parent

@@ -1,10 +1,8 @@
-#!/usr/bin/env pyhton
-#!coding: utf-8
+#!/usr/bin/env python3
 
 
 import os
 import sys
-
 
 # this script writes the following file
 # in 1D, in 2D and in 3D :
@@ -338,36 +336,43 @@ def BxToEx(dim, interpOrder):
     order 2
     """
     if dim == 1:
-        return tupleToString((
-            dim, interpOrder, 2,
-            0,
-            1,
-            0.5
-        ))
+        return tupleToString((dim, interpOrder, 2, 0, 1, 0.5))
     if dim == 2:
-        return tupleToString((
-            dim, interpOrder, 4,
-            0, -1,
-            0,  0,
-            1, -1,
-            1,  0,
-            0.25
-        ))
+        return tupleToString((dim, interpOrder, 4, 0, -1, 0, 0, 1, -1, 1, 0, 0.25))
     if dim == 3:
-        return tupleToString((
-            dim, interpOrder, 8,
+        return tupleToString(
+            (
+                dim,
+                interpOrder,
+                8,
+                0,
+                -1,
+                -1,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                1,
+                -1,
+                -1,
+                1,
+                -1,
+                0,
+                1,
+                0,
+                -1,
+                1,
+                0,
+                0,
+                0.125,
+            )
+        )
 
-            0, -1, -1,
-            0, -1,  0,
-            0,  0, -1,
-            0,  0,  0,
-            1, -1, -1,
-            1, -1,  0,
-            1,  0, -1,
-            1,  0,  0,
-
-            0.125
-        ))
 
 def ByToEy(dim, interpOrder):
     """
@@ -375,36 +380,43 @@ def ByToEy(dim, interpOrder):
     order 2
     """
     if dim == 1:
-        return tupleToString((
-            dim, interpOrder, 2,
-            -1,
-             0,
-            0.5
-        ))
+        return tupleToString((dim, interpOrder, 2, -1, 0, 0.5))
     if dim == 2:
-        return tupleToString((
-            dim, interpOrder, 4,
-            -1, 0,
-            -1, 1,
-             0, 0,
-             0, 1,
-            0.25
-        ))
+        return tupleToString((dim, interpOrder, 4, -1, 0, -1, 1, 0, 0, 0, 1, 0.25))
     if dim == 3:
-        return tupleToString((
-            dim, interpOrder, 8,
+        return tupleToString(
+            (
+                dim,
+                interpOrder,
+                8,
+                -1,
+                0,
+                -1,
+                -1,
+                0,
+                0,
+                -1,
+                1,
+                -1,
+                -1,
+                1,
+                0,
+                0,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                0,
+                1,
+                -1,
+                0,
+                1,
+                0,
+                0.125,
+            )
+        )
 
-            -1, 0, -1,
-            -1, 0,  0,
-            -1, 1, -1,
-            -1, 1,  0,
-             0, 0, -1,
-             0, 0,  0,
-             0, 1, -1,
-             0, 1,  0,
-
-            0.125
-        ))
 
 def BzToEz(dim, interpOrder):
     """
@@ -413,36 +425,43 @@ def BzToEz(dim, interpOrder):
     """
 
     if dim == 1:
-        return tupleToString((
-            dim, interpOrder, 2,
-            -1,
-             0,
-            0.5
-        ))
+        return tupleToString((dim, interpOrder, 2, -1, 0, 0.5))
     if dim == 2:
-        return tupleToString((
-            dim, interpOrder, 4,
-            -1, -1,
-            -1,  0,
-             0, -1,
-             0,  0,
-            0.25
-        ))
+        return tupleToString((dim, interpOrder, 4, -1, -1, -1, 0, 0, -1, 0, 0, 0.25))
     if dim == 3:
-        return tupleToString((
-            dim, interpOrder, 8,
+        return tupleToString(
+            (
+                dim,
+                interpOrder,
+                8,
+                -1,
+                -1,
+                0,
+                -1,
+                -1,
+                1,
+                -1,
+                0,
+                0,
+                -1,
+                0,
+                1,
+                0,
+                -1,
+                0,
+                0,
+                -1,
+                1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0.125,
+            )
+        )
 
-            -1, -1, 0,
-            -1, -1, 1,
-            -1,  0, 0,
-            -1,  0, 1,
-             0, -1, 0,
-             0, -1, 1,
-             0,  0, 0,
-             0,  0, 1,
-
-            0.125
-        ))
 
 def main(path="./"):
     if len(sys.argv) == 2:
@@ -478,8 +497,9 @@ def main(path="./"):
         outFile = open(os.path.join(path, filename), "w")
 
         for dim in [1, 2, 3]:
-            for interpOrder in [1, 2, 3]:
-                outFile.write(cases[case](dim, interpOrder) + "\n")
+            outFile.writelines(
+                cases[case](dim, interpOrder) + "\n" for interpOrder in [1, 2, 3]
+            )
 
         outFile.close()
 

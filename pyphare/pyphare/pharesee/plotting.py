@@ -1,14 +1,14 @@
+import matplotlib.pyplot as plt
+import numpy as np
+from matplotlib.colors import LogNorm, Normalize
 from matplotlib.transforms import Bbox, TransformedBbox, blended_transform_factory
 from mpl_toolkits.axes_grid1.inset_locator import (
-    BboxPatch,
     BboxConnector,
     BboxConnectorPatch,
+    BboxPatch,
 )
-from pyphare.core.phare_utilities import listify
 
-import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import LogNorm, Normalize
+from pyphare.core.phare_utilities import listify
 
 
 def dist_plot(particles, **kwargs):
@@ -34,16 +34,17 @@ def dist_plot(particles, **kwargs):
 
     return value : fig,ax
     """
-    from pyphare.pharesee.particles import Particles, aggregate
     from scipy.interpolate import LinearNDInterpolator
+
+    from pyphare.pharesee.particles import Particles, aggregate
 
     if isinstance(particles, list):
         particles = aggregate(particles)
     elif isinstance(particles, dict):
-        particles = aggregate([p for p in particles.values()])
+        particles = aggregate(list(particles.values()))
 
     if not isinstance(particles, Particles):
-        raise ValueError("Error, 'particles' type should be Particles, list or dict")
+        raise TypeError("Error, 'particles' type should be Particles, list or dict")
 
     if "ax" not in kwargs:
         fig, ax = plt.subplots()
@@ -129,7 +130,7 @@ def dist_plot(particles, **kwargs):
 
     elif len(axis) == 1:
         bins = kwargs.get("bins", (50))
-        cuts = kwargs.get("cuts", None)
+        cuts = kwargs.get("cuts")
         ndim = particles.ndim
 
         if cuts is not None:
@@ -188,26 +189,23 @@ def dist_plot(particles, **kwargs):
     if "ylim" in kwargs:
         ax.set_ylim(kwargs["ylim"])
 
-    if "bulk" in kwargs:
-        if kwargs["bulk"] is True:
-            if axis[0] in vaxis:
-                ax.axvline(
-                    np.average(
-                        new_particles.v[:, vaxis[axis[0]]],
-                        weights=new_particles.weights,
-                    ),
-                    color="w",
-                    ls="--",
-                )
-            if axis[1] in vaxis:
-                ax.axhline(
-                    np.average(
-                        new_particles.v[:, vaxis[axis[1]]],
-                        weights=new_particles.weights,
-                    ),
-                    color="w",
-                    ls="--",
-                )
+    if "bulk" in kwargs and kwargs["bulk"] is True:
+        if axis[0] in vaxis:
+            ax.axvline(
+                np.average(
+                    new_particles.v[:, vaxis[axis[0]]], weights=new_particles.weights
+                ),
+                color="w",
+                ls="--",
+            )
+        if axis[1] in vaxis:
+            ax.axhline(
+                np.average(
+                    new_particles.v[:, vaxis[axis[1]]], weights=new_particles.weights
+                ),
+                color="w",
+                ls="--",
+            )
 
     if "filename" in kwargs:
         fig.savefig(kwargs["filename"])

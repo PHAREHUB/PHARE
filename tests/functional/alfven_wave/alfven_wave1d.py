@@ -1,14 +1,12 @@
 #!/usr/bin/env python3
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 import pyphare.pharein as ph
-from pyphare.simulator.simulator import Simulator
 from pyphare.pharesee.hierarchy.fromh5 import get_times_from_h5
 from pyphare.pharesee.run import Run
-
-
-import numpy as np
-import matplotlib.pyplot as plt
-
+from pyphare.simulator.simulator import Simulator
 
 ph.NO_GUI()
 
@@ -114,9 +112,10 @@ def wave(x, a0, k, phi):
 
 
 def phase_speed(run_path, ampl, xmax):
-    from scipy.signal import medfilt
-    from scipy.optimize import curve_fit
     import os
+
+    from scipy.optimize import curve_fit
+    from scipy.signal import medfilt
 
     time = get_times_from_h5(os.path.join(run_path, "EM_B.h5"))
     r = Run(run_path)
@@ -147,7 +146,7 @@ def main():
         return
 
     if cpp.mpi_rank() == 0:
-        vphi, t, phi, a, k = phase_speed(".", 0.01, 1000)
+        vphi, t, _phi, _a, _k = phase_speed(".", 0.01, 1000)
 
         r = Run(".", 0)
         t = get_times_from_h5("EM_B.h5")
@@ -182,7 +181,7 @@ def main():
         ax.set_ylabel(r"$B_y$")
         ax.legend(ncol=4, loc="upper center")
         ax.set_ylim((-0.012, 0.013))
-        ax.set_title(r"$V_\phi = {:6.4f}$".format(vphi.mean()))
+        ax.set_title(rf"$V_\phi = {vphi.mean():6.4f}$")
 
         ax.axvspan(x0, x1, alpha=0.2)
         fig.tight_layout()

@@ -1,10 +1,6 @@
-#
-#
-#
-
-import os
-import json
 import importlib
+import json
+import os
 
 _libs = {}
 
@@ -98,27 +94,27 @@ def build_config_as_json():
 
 
 def splitter_type(sim):
-    return getattr(cpp_lib(sim), "Splitter")
+    return cpp_lib(sim).Splitter
 
 
 def split_pyarrays_fn(sim):
-    return getattr(cpp_lib(sim), "split_pyarray_particles")
+    return cpp_lib(sim).split_pyarray_particles
 
 
 def mpi_rank():
-    return getattr(cpp_etc_lib(), "mpi_rank")()
+    return cpp_etc_lib().mpi_rank()
 
 
 def mpi_size():
-    return getattr(cpp_etc_lib(), "mpi_size")()
+    return cpp_etc_lib().mpi_size()
 
 
 def mpi_barrier():
-    return getattr(cpp_etc_lib(), "mpi_barrier")()
+    return cpp_etc_lib().mpi_barrier()
 
 
 def mpi_initialized():
-    return getattr(cpp_etc_lib(), "mpi_initialized")()
+    return cpp_etc_lib().mpi_initialized()
 
 
 def print_rank0(*args, **kwargs):

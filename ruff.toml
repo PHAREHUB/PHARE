@@ -1,0 +1,43 @@
+# explicit rule selection: ruff's default rule set changes between versions,
+#  this keeps local runs and the CI gate checking the same rules
+
+target-version = "py311" # CMakeLists.txt find_package(Python 3.11 ...)
+
+[lint]
+select = [
+    "E4", "E7", "E9", "F", # pycodestyle errors, pyflakes
+    "I",                   # import sorting
+    "UP",                  # pyupgrade
+    "B",                   # bugbear
+    "C4",                  # comprehensions
+    "SIM",                 # simplify
+    "PERF",                # perflint
+    "PIE",
+    "RUF",
+    "PLE", "PLW",          # pylint errors, warnings
+    "EXE",                 # shebangs
+    "TID253",              # banned module level imports, see below
+    "TRY004",              # TypeError for invalid types
+    "BLE001",              # blind except Exception
+    "PLR0402",             # from a import b over import a.b as b
+]
+ignore = [
+    "EXE001",  # test scripts have shebangs but are run by ctest via python3
+    "C408",    # dict(a=1) is fine
+    "B905",    # zip() without strict=, lengths are matched by construction
+    "E741",    # l/I/O names, used in physics formulas
+    "E731",    # lambda assignment
+    "PLW2901", # loop variable reassigned in the loop body
+    "SIM108",  # if/else instead of ternary
+    "PERF203", # try/except in loop
+    "PERF401", # manual list comprehension
+    "RUF005",  # [*a, b] instead of a + [b]
+    "PLW1641", # __eq__ without __hash__: python already sets __hash__ = None
+]
+
+[lint.isort]
+known-first-party = ["pyphare", "tests"]
+
+[lint.flake8-tidy-imports]
+# may pull in the wrong libhdf5.so/libmpi.so/system libs, import inside functions instead
+banned-module-level-imports = ["h5py", "mpi4py", "scipy.optimize"]

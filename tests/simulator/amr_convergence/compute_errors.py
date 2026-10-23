@@ -54,7 +54,8 @@ def conserved_fields(run, time):
     b = patchwise(run.GetB(time, all_primal=False), time, ["Bx", "By", "Bz"])
     rho = patchwise(run.GetMHDrho(time, all_primal=False), time, ["mhdRho"])
     rhoV = patchwise(
-        run.GetMHDrhoV(time, all_primal=False), time,
+        run.GetMHDrhoV(time, all_primal=False),
+        time,
         ["mhdRhoVx", "mhdRhoVy", "mhdRhoVz"],
     )
     etot = patchwise(run.GetMHDEtot(time, all_primal=False), time, ["mhdEtot"])
@@ -101,14 +102,14 @@ def composite_errors(run, final_time, fine_box, refinement_ratio=2, ndim=2):
             f"patch layout changed between t=0 and t={final_time}: "
             f"{sorted(f1.keys() ^ f0.keys())}"
         )
-    comp_num = {v: 0.0 for v in CONSERVED}
+    comp_num = dict.fromkeys(CONSERVED, 0.0)
     comp_den = 0.0
     lvl_num, lvl_den = {}, {}
     for key in f1:
         ilvl = key[0]
         mask = valid_mask(key, fine_box, ndim)
         w = float(refinement_ratio) ** (-ndim * ilvl)  # relative cell volume
-        ln = lvl_num.setdefault(ilvl, {v: 0.0 for v in CONSERVED})
+        ln = lvl_num.setdefault(ilvl, dict.fromkeys(CONSERVED, 0.0))
         for v in CONSERVED:
             if f1[key][v].shape != f0[key][v].shape:
                 raise RuntimeError(
@@ -116,7 +117,9 @@ def composite_errors(run, final_time, fine_box, refinement_ratio=2, ndim=2):
                 )
             diff = np.abs(f1[key][v] - f0[key][v])
             if diff.shape != mask.shape:
-                raise RuntimeError(f"{v}: field shape {diff.shape} != mask {mask.shape}")
+                raise RuntimeError(
+                    f"{v}: field shape {diff.shape} != mask {mask.shape}"
+                )
             comp_num[v] += (diff * mask).sum() * w
             # masked exactly like comp_num: on the coarse level the fine-covered region is
             # represented by the fine level, so counting it here would mix two resolutions into
@@ -139,7 +142,7 @@ def uniform_error(run, final_time):
     if f1.keys() != f0.keys():
         raise RuntimeError(f"patch layout changed between t=0 and t={final_time}")
 
-    num = {v: 0.0 for v in CONSERVED}
+    num = dict.fromkeys(CONSERVED, 0.0)
     den = 0.0
     for key in f1:
         if key[0] != 0:

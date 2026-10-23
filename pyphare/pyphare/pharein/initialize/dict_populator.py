@@ -44,7 +44,7 @@ class DictPopulator:
         self.pp.add_optional_size_t(path, val)
 
     def add_init_function(self, ndim, path, fn):
-        adder = getattr(self.pp, "addInitFunction{:d}".format(ndim) + "D")
+        adder = getattr(self.pp, f"addInitFunction{ndim:d}" + "D")
         adder(path, fn_wrapper(fn))
 
     def add_enum_int(self, path, enum_name, member_name):

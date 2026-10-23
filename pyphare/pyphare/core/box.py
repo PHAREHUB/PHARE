@@ -1,5 +1,6 @@
 import numpy as np
-from .phare_utilities import np_array_ify, is_scalar, is_nd_array
+
+from .phare_utilities import is_nd_array, is_scalar, np_array_ify
 
 
 class Box:
@@ -43,7 +44,7 @@ class Box:
         return self.nCells()
 
     def __str__(self):
-        return "Box({},{})".format(self.lower.tolist(), self.upper.tolist())
+        return f"Box({self.lower.tolist()},{self.upper.tolist()})"
 
     def __repr__(self):
         return self.__str__()
@@ -68,7 +69,7 @@ class Box:
 
     def __sub__(self, other):
         if isinstance(other, (list, tuple)):
-            assert all([isinstance(item, Box) for item in other])
+            assert all(isinstance(item, Box) for item in other)
             return remove_all(self, other)
         assert isinstance(other, Box)
         return remove(self, other)
