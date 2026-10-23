@@ -340,7 +340,7 @@ class ElectromagDiagnostics(Diagnostics):
     **quantity**, one of: "E" (electric field), "B" (magnetic field).
     """
 
-    em_quantities = ["E", "B"]
+    em_quantities = ["E", "B", "B0"]
     type = "electromag"
 
     def __init__(self, **kwargs):

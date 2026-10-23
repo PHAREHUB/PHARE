@@ -83,6 +83,7 @@ namespace solver
                     PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : initlevel");
                 }
             }
+            hybridModel.initializeExternalField(level, initDataTime);
 
             auto& ions = hybridModel.state.ions;
             auto& rm   = *hybridModel.resourcesManager;
