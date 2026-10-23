@@ -373,7 +373,8 @@ namespace solver
             }
 
             PHARE_LOG_SCOPE(1, "Multiphys::resetHierarchyConfiguration::registerInterLevel");
-            // SAMRAI may pass (ln, ln) and keep finer levels, or keep unchanged levels altogether.
+            // coarsestLevel and finestLevel cannot bound the rebuild: SAMRAI may pass the same
+            // level number for both while finer levels still exist, or skip unchanged levels.
             // Every level from the lowest re-initialised one up to the finest reads it directly
             // or through recursive coarse interpolation; levels below it are still valid, and
             // nothing is to be done when no level was re-initialised.

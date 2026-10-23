@@ -216,7 +216,6 @@ public:
     }
 
 
-    /** @brief drops the schedules registered for the given level number. */
     void removeLevel(int const levelNumber)
     {
         Communicator<RefinerTypes, ResourcesManager::dimension>::removeLevel(levelNumber);

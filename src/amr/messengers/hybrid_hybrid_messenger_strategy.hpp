@@ -204,10 +204,6 @@ namespace amr
 
 
 
-        /**
-         * @brief builds the schedules reading only level levelNumber. The level's inter-level
-         * schedules are erased first, a re-initialised level makes them stale.
-         */
         void registerSameLevelSchedules(hierarchy_ptr const& hierarchy,
                                         int const levelNumber) override
         {
@@ -247,14 +243,9 @@ namespace amr
 
 
 
-        /**
-         * @brief builds the schedules reading coarser levels, stale whenever a coarser level is
-         * replaced.
-         */
         void registerInterLevelSchedules(hierarchy_ptr const& hierarchy,
                                          int const levelNumber) override
         {
-            // no coarser level on the root level
             if (levelNumber == rootLevelNumber)
                 return;
 
@@ -347,8 +338,7 @@ namespace amr
 
             auto const levelPtr = hierarchy->getPatchLevel(levelNumber);
 
-            // the init-only refinement schedules (magnetic, electric, domain particles,
-            // level ghost old) are transient, built here and in regrid() at fill time
+            // init-only schedules are used once, so they are built at fill time, not stored
             BalgoInit
                 .createSchedule(levelPtr, nullptr, levelNumber - 1, hierarchy,
                                 &magneticRefinePatchStrategy_)
@@ -880,7 +870,6 @@ namespace amr
 
 
 
-        // builds, fills and discards the transient level-ghost-old schedules
         void fillLevelGhostParticlesOld_(std::shared_ptr<hierarchy_t> const& hierarchy,
                                          std::shared_ptr<level_t> const& level,
                                          double const fillTime)

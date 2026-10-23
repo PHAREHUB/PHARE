@@ -164,8 +164,7 @@ namespace amr
         /**
          * @brief initLevel is used by the MultiPhysicsIntegrator to initialize a level at time
          * initDataTime from a coarser level iLevel-1. The initialization is performed on all
-         * quantities registered during registerQuantities(). The hierarchy is needed to build
-         * the transient init schedules.
+         * quantities registered during registerQuantities().
          */
         virtual void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model,
                                level_t& level, double const initDataTime)
