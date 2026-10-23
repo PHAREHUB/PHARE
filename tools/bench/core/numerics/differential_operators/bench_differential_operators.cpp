@@ -1,4 +1,5 @@
 #include "phare_core.hpp"
+#include "simulator/simulator_def.hpp"
 #include "core/numerics/ampere/ampere.hpp"
 #include "core/numerics/faraday/faraday.hpp"
 
