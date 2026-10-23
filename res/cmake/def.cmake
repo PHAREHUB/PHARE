@@ -223,7 +223,9 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
     endif()
     if(NOT testMPI OR (testMPI AND forceSerialTests))
       add_phare_test_build_flags_(${binary})
-      add_test(NAME ${binary} COMMAND ./${binary} WORKING_DIRECTORY ${directory})
+      # one gtest report per binary, see res/cmake/gtest_output.sh
+      add_test(NAME ${binary} COMMAND sh ${PHARE_PROJECT_DIR}/res/cmake/gtest_output.sh ./${binary}
+                WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary})
     else()
       skip_building(${binary})
@@ -249,9 +251,9 @@ if (test AND ${PHARE_EXEC_LEVEL_MIN} GREATER 0) # 0 = no tests
         return()
       endif()
       add_phare_test_build_flags_(${binary})
-      # only rank 0 writes GTEST_OUTPUT, see res/cmake/gtest_rank0_output.sh
+      # one gtest report per binary, written by rank 0 only, see res/cmake/gtest_output.sh
       add_test(NAME ${binary} COMMAND mpirun -n ${PHARE_MPI_PROCS} ${PHARE_MPIRUN_POSTFIX}
-                sh ${PHARE_PROJECT_DIR}/res/cmake/gtest_rank0_output.sh ./${binary}
+                sh ${PHARE_PROJECT_DIR}/res/cmake/gtest_output.sh ./${binary}
                 WORKING_DIRECTORY ${directory})
       add_phare_test_(${binary})
       set_test_procs_(${binary} ${PHARE_MPI_PROCS})
