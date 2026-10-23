@@ -91,9 +91,9 @@ private:
             auto const dx        = *std::min_element(meshSize.begin(), meshSize.end());
 
             auto coef = [&]<auto BxProj, auto ByProj, auto BzProj, auto rhoProj>() {
-                auto const bx = GridLayout::template project<BxProj>(B(Component::X), idx);
-                auto const by = GridLayout::template project<ByProj>(B(Component::Y), idx);
-                auto const bz = GridLayout::template project<BzProj>(B(Component::Z), idx);
+                auto const bx = GridLayout::template project<BxProj>(B[Component::X], idx);
+                auto const by = GridLayout::template project<ByProj>(B[Component::Y], idx);
+                auto const bz = GridLayout::template project<BzProj>(B[Component::Z], idx);
                 auto const n  = GridLayout::template project<rhoProj>(rho, idx);
                 auto const b  = std::sqrt(bx * bx + by * by + bz * bz);
                 return nu * dx * dx * (b / n + 1);

@@ -66,7 +66,6 @@ set( SOURCES_INC
 
 set( SOURCES_CPP
      data/ions/particle_initializers/maxwellian_particle_initializer.cpp
-     utilities/index/index.cpp
     )
 
 set( CORE_EXTRA_SOURCES_CPP )
