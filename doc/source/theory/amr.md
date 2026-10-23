@@ -56,9 +56,11 @@ The criteria read cell-centred values. A quantity that is not cell-centred, such
 component stored on cell faces, is averaged over the two neighbouring values in each direction
 where it is not cell-centred.
 
-In 2D and 3D, the indicator is computed along each direction separately, from the values of the
-cells aligned with the tagged cell, and the largest of these values is kept. Below, $a_i$ denotes
-the cell-centred value of one component in cell $i$ along the direction considered.
+In 2D and 3D, the default criterion computes the indicator along each direction separately and keeps
+the largest value, while the two forms of Löhner's criterion combine the directions in a single
+ratio. Below, $u(x)$ denotes the cell-centred value of one component in the cell of index $x$,
+$e_p$ the unit offset along direction $p$, and $a_i$ the value in cell $i$ along the direction
+considered.
 
 An indicator reads the values up to a few cells away from the tagged cell, its stencil reach. When
 this reach exceeds the number of ghost cells of the fields, the corresponding outermost layers of
@@ -66,21 +68,63 @@ cells of each patch are not tagged. Debug builds print a warning at startup when
 
 ### Löhner's criterion
 
-This criterion is the error estimator of Löhner[^lohner1987], in the form used by the FLASH
-code[^fryxell2000]. It is computed along each direction separately, without the cross derivatives
-that the multidimensional form of FLASH combines with the other directions into a single ratio:
+Löhner's error estimator[^lohner1987] measures the change of slope from one cell to the next,
+normalized by the slopes themselves. A noise filter, weighted by $\epsilon_r$, ignores the
+variations that are small compared with the local value of the quantity, and $\epsilon_a$ is an
+absolute floor, in code units. $\epsilon_r$ and $\epsilon_a$ are the parameters `reltol` (default
+0.01) and `abstol` (default $10^{-8}$). PHARE provides the two multidimensional forms of the
+literature, which both lie between 0 and $1/(1 + \epsilon_r)$.
+
+#### Per direction
+
+`lohner-per-direction` is the form of PLUTO[^mignone2012]. Along each direction $d$, with
+$a_{i \pm 1}$ the neighbours of the cell along $d$,
 
 $$
-I_i = \frac{|a_{i+1} - 2a_i + a_{i-1}|}
-           {|a_{i+1} - a_i| + |a_i - a_{i-1}|
-            + \epsilon_r \left(|a_{i+1}| + 2|a_i| + |a_{i-1}|\right) + \epsilon_a}
+n_d = |a_{i+1} - 2a_i + a_{i-1}|, \qquad
+D_d = |a_{i+1} - a_i| + |a_i - a_{i-1}|
+      + \epsilon_r \left(|a_{i+1}| + 2|a_i| + |a_{i-1}|\right) + \epsilon_a
 $$
 
-where $\epsilon_r$ and $\epsilon_a$ are the parameters `reltol` (default 0.02) and `abstol`
-(default $10^{-8}$). The numerator is the change of slope from one cell to the next, normalized by
-the slopes themselves. The term in $\epsilon_r$ is a noise filter, which ignores the variations
-that are small compared with the local value of the quantity, and $\epsilon_a$ is an absolute
-floor, in code units. The stencil reach is one cell.
+and the directions are combined in a single ratio,
+
+$$
+I = \sqrt{\frac{\sum_d n_d^2}{\sum_d D_d^2}}
+$$
+
+The stencil reach is one cell.
+
+#### With cross derivatives
+
+`lohner-cross-derivatives` is the form of FLASH[^flash4ug] [^fryxell2000], which includes all the
+cross derivatives and reads points two cells apart. With the slope over two cells
+$\Delta_p u(y) = u(y + e_p) - u(y - e_p)$, every ordered pair of directions $(p, q)$, $p = q$
+included, contributes
+
+$$
+n_{pq} = \left|\Delta_p u(x + e_q) - \Delta_p u(x - e_q)\right|, \qquad
+D_{pq} = |\Delta_p u(x + e_q)| + |\Delta_p u(x - e_q)| + \epsilon_r S_{pq} + \epsilon_a
+$$
+
+where $S_{pq}$ is the sum of $|u|$ over the four points $x \pm e_q \pm e_p$. The pairs are weighted
+by the mesh sizes $\Delta x_p$ of the patch,
+
+$$
+I = \sqrt{\frac{\sum_{p,q} \left(w_{pq}\, n_{pq}\right)^2}{\sum_{p,q} \left(w_{pq}\, D_{pq}\right)^2}},
+\qquad w_{pq} = \frac{1}{\Delta x_p \Delta x_q}
+$$
+
+The weights cancel on a mesh whose cells have the same size in every direction, and only the ratios
+between the mesh sizes matter, so the indicator does not depend on the level. In 1D, the indicator
+reduces to
+
+$$
+I_i = \frac{|a_{i+2} - 2a_i + a_{i-2}|}
+           {|a_{i+2} - a_i| + |a_i - a_{i-2}|
+            + \epsilon_r \left(|a_{i+2}| + 2|a_i| + |a_{i-2}|\right) + \epsilon_a}
+$$
+
+The stencil reach is two cells.
 
 ### Default criterion
 
@@ -109,6 +153,13 @@ are combined into $\sqrt{\sum_c (I^c)^2}$, which is compared with $\tau$.
 [^fryxell2000]: B. Fryxell et al., *FLASH: an adaptive mesh hydrodynamics code for modeling
     astrophysical thermonuclear flashes*, The Astrophysical Journal Supplement Series 131 (2000),
     273-334
+
+[^mignone2012]: A. Mignone et al., *The PLUTO code for adaptive mesh computations in astrophysical
+    fluid dynamics*, The Astrophysical Journal Supplement Series 198 (2012), 7, eq. 50-51,
+    <https://arxiv.org/abs/1110.0740>
+
+[^flash4ug]: FLASH4 user guide, §8.6.3.1 Refinement Criteria, eq. 8.3-8.4,
+    <https://flash.rochester.edu/site/flashcode/user_support/flash4_ug_4p62/node59.html>
 
 (clustering)=
 

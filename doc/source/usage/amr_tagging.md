@@ -45,20 +45,22 @@ ph.Simulation(
     refinement="tagging",
     max_nbr_levels=3,
     tagging={
-        "method": "lohner",
+        "method": "lohner-per-direction",
         "quantities": {"B": 0.5, "rho": 0.5},
-        "params": {"reltol": 0.02, "abstol": 1e-8},
+        "params": {"reltol": 0.01, "abstol": 1e-8},
     },
 )
 ```
 
-- `method` is the criterion: `"default"` (the default) or `"lohner"`.
+- `method` is the criterion: `"default"` (the default), `"lohner-per-direction"` (Löhner's
+  estimator in the form of PLUTO) or `"lohner-cross-derivatives"` (Löhner's estimator in the form of
+  FLASH, with cross derivatives).
 - `quantities` is a `dict` mapping each tagged quantity to its threshold. A cell is tagged if the
   criterion is met for at least one quantity, each quantity being compared to its own threshold.
   Without `quantities`, the magnetic field is tagged with threshold `tagging_threshold`. A list of
   `(name, threshold)` pairs is also accepted, a name given twice being an error.
-- `params` holds the parameters of the method. `"lohner"` accepts `reltol` (default $0.02$) and
-  `abstol` (default $10^{-8}$), `"default"` has none. An unknown parameter is an error.
+- `params` holds the parameters of the method. Both Löhner methods accept `reltol` (default
+  $0.01$) and `abstol` (default $10^{-8}$), `"default"` has none. An unknown parameter is an error.
 
 Giving `tagging` without `refinement="tagging"` is an error.
 
@@ -84,12 +86,14 @@ threshold. Giving components separately allows a different threshold for each of
 
 ### Choosing a threshold
 
-The two criteria are not on the same scale, so a threshold does not carry over from one method to
-the other.
+The criteria are not on the same scale, so a threshold does not carry over from one method to
+another.
 
-- `"lohner"` is dimensionless and lies between 0 and $1/(1 + \mathrm{reltol})$, which it approaches
-  at strong discontinuities. Its thresholds are typically a few tenths. In noisy hybrid runs,
-  `abstol` has to be set above the noise level of the quantities whose mean is close to zero.
+- `"lohner-per-direction"` and `"lohner-cross-derivatives"` are dimensionless and lie between 0 and
+  $1/(1 + \mathrm{reltol})$, about 0.99, which they approach at strong discontinuities. Their
+  thresholds are typically a few tenths. In noisy hybrid runs, `abstol` has to be set above the noise
+  level of the quantities whose mean is close to zero. The cross-derivative form reads points two
+  cells apart, so the same threshold does not tag the same cells with both forms.
 - `"default"` measures the variations of the quantity in code units, absolutely when they are small
   compared with 1 and relatively when they are large.
 
@@ -116,6 +120,6 @@ ph.Simulation(
     # ...
     refinement="tagging",
     max_nbr_levels=4,
-    tagging={"method": "lohner", "quantities": {"rho": 0.4, "Bz": 0.3}},
+    tagging={"method": "lohner-per-direction", "quantities": {"rho": 0.4, "Bz": 0.3}},
 )
 ```
