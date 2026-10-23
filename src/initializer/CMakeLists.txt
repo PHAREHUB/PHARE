@@ -29,3 +29,4 @@ set_target_properties(dictator
     LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/pybindlibs"
 )
 set_property(TARGET dictator APPEND_STRING PROPERTY LINK_FLAGS " ${PHARE_LINK_FLAGS}")
+set_property(GLOBAL APPEND PROPERTY PHARE_PYTHON_MODULES dictator)

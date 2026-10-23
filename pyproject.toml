@@ -1,0 +1,83 @@
+[build-system]
+requires = ["scikit-build-core>=0.11"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "pyphare"
+dynamic = ["version"]
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "scipy",
+    "h5py",
+    "matplotlib",
+    "seaborn",
+    "dill",
+]
+
+[dependency-groups]
+test = ["ddt"]
+vtk = ["vtk"]
+timing = ["phlop"]
+docs = [
+    "pandas",
+    "appdirs",
+    "requests",
+    "urllib3>=1.26.0",
+    "packaging",
+    "numpy",
+    "python_dateutil",
+    "tqdm",
+    "matplotlib",
+    "PyYAML",
+    "sphinx<8.2.0",  # this version breaks nbsphinx
+    "sphinx-rtd-theme",
+    "argh",
+    "numpydoc",
+    "sphinx-gallery<0.11.0",
+    "nbsphinx",
+    "ipympl",
+    "ipywidgets",
+    "sphinx-codeautolink",
+    "sphinxcontrib-apidoc",
+    "myst-parser",
+]
+lint = [
+    "clang-format==20.1.8",
+    "ruff==0.16.10",
+]
+dev = [
+    { include-group = "test" },
+    { include-group = "lint" },
+]
+
+[tool.scikit-build]
+minimum-version = "build-system.requires"
+cmake.version = ">=3.20.1"
+build-dir = "_skbuild/{wheel_tag}"
+wheel.packages = ["pyphare/pyphare"]
+install.components = ["pyphare"]
+metadata.version.provider = "scikit_build_core.metadata.regex"
+metadata.version.input = "CMakeLists.txt"
+metadata.version.regex = 'project\(PHARE VERSION (?P<value>[0-9.]+)'
+
+[tool.scikit-build.cmake.define]
+test = "OFF"
+devMode = "OFF"
+phare_configurator = "ON"
+forceGetPybind = "ON"
+
+[tool.uv]
+cache-keys = [
+    { file = "pyproject.toml" },
+    { file = "CMakeLists.txt" },
+    { file = "res/sim/*.txt" },
+    { git = { commit = true } },
+    { file = "src/**/*.hpp" },
+    { file = "src/**/*.cpp" },
+    { file = "src/**/CMakeLists.txt" },
+    { file = "res/cmake/**/*.cmake" },
+]
+
+[tool.ruff]
+src = [".", "pyphare"]

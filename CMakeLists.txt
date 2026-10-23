@@ -47,6 +47,8 @@ if(PHARE_WITH_CCACHE)
 endif()
 ####
 
+include("${PHARE_PROJECT_DIR}/res/cmake/jobs.cmake")
+include("${PHARE_PROJECT_DIR}/res/cmake/ninja_progress.cmake")
 include("${PHARE_PROJECT_DIR}/res/cmake/test.cmake")
 
 #*******************************************************************************
@@ -59,6 +61,7 @@ add_subdirectory(src/diagnostic)
 add_subdirectory(src/simulator)
 add_subdirectory(src/python3)
 add_subdirectory(src/phare)
+include("${PHARE_PROJECT_DIR}/res/cmake/install.cmake")
 #*******************************************************************************
 
 include("${PHARE_PROJECT_DIR}/res/cmake/bench.cmake")
