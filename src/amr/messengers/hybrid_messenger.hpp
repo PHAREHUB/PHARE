@@ -110,11 +110,21 @@ namespace amr
 
 
         /**
-         * @brief see IMessenger::registerLevel
+         * @brief see IMessenger::registerSameLevelSchedules
          */
-        void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) override
+        void registerSameLevelSchedules(hierarchy_ptr const& hierarchy,
+                                        int const levelNumber) override
         {
-            strat_->registerLevel(hierarchy, levelNumber);
+            strat_->registerSameLevelSchedules(hierarchy, levelNumber);
+        }
+
+        /**
+         * @brief see IMessenger::registerInterLevelSchedules
+         */
+        void registerInterLevelSchedules(hierarchy_ptr const& hierarchy,
+                                         int const levelNumber) override
+        {
+            strat_->registerInterLevelSchedules(hierarchy, levelNumber);
         }
 
 
@@ -137,9 +147,10 @@ namespace amr
          * @param levelNumber
          * @param initDataTime
          */
-        void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime) override
+        void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model, level_t& level,
+                       double const initDataTime) override
         {
-            strat_->initLevel(model, level, initDataTime);
+            strat_->initLevel(hierarchy, model, level, initDataTime);
         }
 
 

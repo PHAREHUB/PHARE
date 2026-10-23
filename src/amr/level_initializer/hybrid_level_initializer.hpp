@@ -79,7 +79,7 @@ namespace solver
                 else
                 {
                     PHARE_LOG_START(3, "hybridLevelInitializer::initialize : initlevel");
-                    messenger.initLevel(model, level, initDataTime);
+                    messenger.initLevel(hierarchy, model, level, initDataTime);
                     PHARE_LOG_STOP(3, "hybridLevelInitializer::initialize : initlevel");
                 }
             }

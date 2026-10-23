@@ -43,6 +43,155 @@ class Refiner : private Communicator<RefinerTypes, ResourcesManager::dimension>
 
     std::shared_ptr<SAMRAI::xfer::RefinePatchStrategy> patchStrat_ = nullptr;
 
+private:
+    // builds (does not store) the schedule for this Refiner's Type on the given level
+    std::shared_ptr<SAMRAI::xfer::RefineSchedule>
+    makeSchedule_(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                  std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                  std::unique_ptr<SAMRAI::xfer::RefineAlgorithm> const& algo) const
+    {
+        auto const levelNumber = level->getLevelNumber();
+
+        // for GhostField we need schedules that take on the level where there is an
+        // overlap (there is always for patches lying inside the level) and goes to
+        // coarser level where there is not (patch lying on the level border) Create a
+        // communication schedule that communicates data within a single level and
+        // interpolates data from coarser hierarchy levels where needed.
+
+        // Data will be communicated from the interiors of the source data on the given
+        // level to the interiors and ghosts of destination data on the same level where
+        // those sources and destinations overlap. Where they do not overlap,
+        // data will be interpolated from source data on coarser levels in the patch
+        // hierarchy. Data is time interpolated between old and new sources on coarser
+        // levels when and where time interpolation is needed and copied from the source
+        // components on the patch level into the destination components otherwise. Note
+        // that the next coarser level number must correspond to a level in the
+        // hierarchy that represents a region of coarser index space than the
+        // destination level. Note that the schedule remains valid as long as the levels
+        // involved in its creation do not change; thus, it can be used for multiple
+        // data communication cycles.
+        if constexpr (Type == RefinerType::GhostField)
+        {
+            return algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
+                                        hierarchy, patchStrat_.get());
+        }
+
+        else if constexpr (Type == RefinerType::PatchGhostField)
+        {
+            return algo->createSchedule(level, patchStrat_.get());
+        }
+
+
+        // schedule used to += density and flux for populations
+        // on incomplete overlaped ghost box nodes
+        else if constexpr (Type == RefinerType::PatchFieldBorderSum)
+        {
+            return algo->createSchedule(
+                level, patchStrat_.get(),
+                std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, PlusEqualsOp>>());
+        }
+
+
+        else if constexpr (Type == RefinerType::PatchTensorFieldBorderSum)
+        {
+            return algo->createSchedule(
+                level, patchStrat_.get(),
+                std::make_shared<
+                    FieldBorderOpTransactionFactory<TensorFieldData_t, PlusEqualsOp>>());
+        }
+
+
+        else if constexpr (Type == RefinerType::PatchVecFieldBorderSum)
+        {
+            return algo->createSchedule(
+                level, patchStrat_.get(),
+                std::make_shared<FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>());
+        }
+
+
+        // schedule used to == max of density and flux for populations
+        // on complete overlaped ghost box nodes
+        else if constexpr (Type == RefinerType::PatchFieldBorderMax)
+        {
+            return algo->createSchedule(
+                level, patchStrat_.get(),
+                std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, SetMaxOp>>());
+        }
+
+
+        // schedule used to == max of density and flux for populations
+        // on complete overlaped ghost box nodes
+        else if constexpr (Type == RefinerType::PatchVecFieldBorderMax)
+        {
+            return algo->createSchedule(
+                level, patchStrat_.get(),
+                std::make_shared<FieldBorderOpTransactionFactory<VecFieldData_t, SetMaxOp>>());
+        }
+
+        // this createSchedule overload is used to initialize fields.
+        // note that here we must take that createsSchedule() overload and put nullptr
+        // as src since we want to take from coarser level everywhere. using the
+        // createSchedule overload that takes level, next_coarser_level only would
+        // result in interior ghost nodes to be filled with interior of neighbor patches
+        // but there is nothing there.
+        else if constexpr (Type == RefinerType::InitField)
+        {
+            return algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy,
+                                        patchStrat_.get());
+        }
+
+
+        // here we create the schedule that will intialize the particles that lie within
+        // the interior of the patches (no ghost, no coarse to fine). We take almost the
+        // same overload as for fields above but the version that takes a
+        // PatchLevelFillPattern. Here the PatchLevelInteriorFillPattern is used because
+        // we want to fill particles only within the interior of the patches of the
+        // level. The reason is that filling the their ghost regions with refined
+        // particles would not ensure the ghosts to be clones of neighbor patches
+        // particles if the splitting from coarser levels is not deterministic.
+        else if constexpr (Type == RefinerType::InitInteriorPart)
+        {
+            return algo->createSchedule(
+                std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(), level, nullptr,
+                levelNumber - 1, hierarchy, patchStrat_.get());
+        }
+
+
+        // this will fill ghosts on level border only (i.e. not patch ghost nodes)
+        // it is not used at the moment but would be useful if the moment ghosts
+        // are filled on level border (see Note in hybhyb)
+        else if constexpr (Type == RefinerType::LevelBorderField)
+        {
+            return algo->createSchedule(
+                std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
+                level->getNextCoarserHierarchyLevelNumber(), hierarchy, patchStrat_.get());
+        }
+
+
+        // here we create a schedule that will refine particles from coarser level and
+        // put them into the level coarse to fine boundary. These are the
+        // levelGhostParticlesOld particles. we thus take the same createSchedule
+        // overload as above but pass it a PatchLevelBorderFillPattern.
+        else if constexpr (Type == RefinerType::LevelBorderParticles)
+        {
+            return algo->createSchedule(
+                std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level, nullptr,
+                levelNumber - 1, hierarchy, patchStrat_.get());
+        }
+
+
+        else if constexpr (Type == RefinerType::ExteriorGhostParticles)
+        {
+            return algo->createSchedule(level, patchStrat_.get());
+        }
+
+        else
+        {
+            throw std::runtime_error("No Schedule for RefinerType");
+        }
+    }
+
+
 public:
     void registerLevel(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
                        std::shared_ptr<SAMRAI::hier::PatchLevel> const& level)
@@ -50,173 +199,27 @@ public:
         auto levelNumber = level->getLevelNumber();
 
         for (auto& algo : this->algos)
-        {
-            // for GhostField we need schedules that take on the level where there is an
-            // overlap (there is always for patches lying inside the level) and goes to
-            // coarser level where there is not (patch lying on the level border) Create a
-            // communication schedule that communicates data within a single level and
-            // interpolates data from coarser hierarchy levels where needed.
-
-            // Data will be communicated from the interiors of the source data on the given
-            // level to the interiors and ghosts of destination data on the same level where
-            // those sources and destinations overlap. Where they do not overlap,
-            // data will be interpolated from source data on coarser levels in the patch
-            // hierarchy. Data is time interpolated between old and new sources on coarser
-            // levels when and where time interpolation is needed and copied from the source
-            // components on the patch level into the destination components otherwise. Note
-            // that the next coarser level number must correspond to a level in the
-            // hierarchy that represents a region of coarser index space than the
-            // destination level. Note that the schedule remains valid as long as the levels
-            // involved in its creation do not change; thus, it can be used for multiple
-            // data communication cycles.
-            if constexpr (Type == RefinerType::GhostField)
-            {
-                this->add(algo,
-                          algo->createSchedule(level, level->getNextCoarserHierarchyLevelNumber(),
-                                               hierarchy, patchStrat_.get()),
-                          levelNumber);
-            }
-
-            else if constexpr (Type == RefinerType::PatchGhostField)
-            {
-                this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
-            }
-
-
-            // schedule used to += density and flux for populations
-            // on incomplete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchFieldBorderSum)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<FieldData_t, PlusEqualsOp>>()),
-                          levelNumber);
-            }
-
-
-            else if constexpr (Type == RefinerType::PatchTensorFieldBorderSum)
-            {
-                this->add(
-                    algo,
-                    algo->createSchedule(
-                        level, patchStrat_.get(),
-                        std::make_shared<
-                            FieldBorderOpTransactionFactory<TensorFieldData_t, PlusEqualsOp>>()),
-                    levelNumber);
-            }
-
-
-            else if constexpr (Type == RefinerType::PatchVecFieldBorderSum)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<VecFieldData_t, PlusEqualsOp>>()),
-                          levelNumber);
-            }
-
-
-            // schedule used to == max of density and flux for populations
-            // on complete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchFieldBorderMax)
-            {
-                this->add(
-                    algo,
-                    algo->createSchedule(
-                        level, patchStrat_.get(),
-                        std::make_shared<FieldBorderOpTransactionFactory<FieldData_t, SetMaxOp>>()),
-                    levelNumber);
-            }
-
-
-            // schedule used to == max of density and flux for populations
-            // on complete overlaped ghost box nodes
-            else if constexpr (Type == RefinerType::PatchVecFieldBorderMax)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              level, patchStrat_.get(),
-                              std::make_shared<
-                                  FieldBorderOpTransactionFactory<VecFieldData_t, SetMaxOp>>()),
-                          levelNumber);
-            }
-
-            // this createSchedule overload is used to initialize fields.
-            // note that here we must take that createsSchedule() overload and put nullptr
-            // as src since we want to take from coarser level everywhere. using the
-            // createSchedule overload that takes level, next_coarser_level only would
-            // result in interior ghost nodes to be filled with interior of neighbor patches
-            // but there is nothing there.
-            else if constexpr (Type == RefinerType::InitField)
-            {
-                this->add(algo,
-                          algo->createSchedule(level, nullptr, levelNumber - 1, hierarchy,
-                                               patchStrat_.get()),
-                          levelNumber);
-            }
-
-
-            // here we create the schedule that will intialize the particles that lie within
-            // the interior of the patches (no ghost, no coarse to fine). We take almost the
-            // same overload as for fields above but the version that takes a
-            // PatchLevelFillPattern. Here the PatchLevelInteriorFillPattern is used because
-            // we want to fill particles only within the interior of the patches of the
-            // level. The reason is that filling the their ghost regions with refined
-            // particles would not ensure the ghosts to be clones of neighbor patches
-            // particles if the splitting from coarser levels is not deterministic.
-            else if constexpr (Type == RefinerType::InitInteriorPart)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              std::make_shared<SAMRAI::xfer::PatchLevelInteriorFillPattern>(),
-                              level, nullptr, levelNumber - 1, hierarchy, patchStrat_.get()),
-                          levelNumber);
-            }
-
-
-            // this will fill ghosts on level border only (i.e. not patch ghost nodes)
-            // it is not used at the moment but would be useful if the moment ghosts
-            // are filled on level border (see Note in hybhyb)
-            else if constexpr (Type == RefinerType::LevelBorderField)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
-                              level->getNextCoarserHierarchyLevelNumber(), hierarchy,
-                              patchStrat_.get()),
-                          levelNumber);
-            }
-
-
-            // here we create a schedule that will refine particles from coarser level and
-            // put them into the level coarse to fine boundary. These are the
-            // levelGhostParticlesOld particles. we thus take the same createSchedule
-            // overload as above but pass it a PatchLevelBorderFillPattern.
-            else if constexpr (Type == RefinerType::LevelBorderParticles)
-            {
-                this->add(algo,
-                          algo->createSchedule(
-                              std::make_shared<SAMRAI::xfer::PatchLevelBorderFillPattern>(), level,
-                              nullptr, levelNumber - 1, hierarchy, patchStrat_.get()),
-                          levelNumber);
-            }
-
-
-            else if constexpr (Type == RefinerType::ExteriorGhostParticles)
-            {
-                this->add(algo, algo->createSchedule(level, patchStrat_.get()), levelNumber);
-            }
-
-            else
-            {
-                throw std::runtime_error("No Schedule for RefinerType");
-            }
-        }
+            this->add(algo, makeSchedule_(hierarchy, level, algo), levelNumber);
     }
 
+
+    /** @brief builds the schedules for the level, fills once and discards them. */
+    void fillTransient(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,
+                       std::shared_ptr<SAMRAI::hier::PatchLevel> const& level,
+                       double const fillTime) const
+    {
+        if (this->algos.size() == 0)
+            throw std::runtime_error("Algorithms are not configured");
+
+        for (auto const& algo : this->algos)
+            makeSchedule_(hierarchy, level, algo)->fillData(fillTime);
+    }
+
+
+    void removeLevel(int const levelNumber)
+    {
+        Communicator<RefinerTypes, ResourcesManager::dimension>::removeLevel(levelNumber);
+    }
 
 
     void regrid(std::shared_ptr<SAMRAI::hier::PatchHierarchy> const& hierarchy,

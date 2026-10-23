@@ -54,7 +54,13 @@ namespace amr
         virtual std::unique_ptr<IMessengerInfo> emptyInfoFromFiner()   = 0;
 
 
-        virtual void registerLevel(hierarchy_ptr const& hierarchy, int const levelNumber) = 0;
+        virtual void registerSameLevelSchedules(hierarchy_ptr const& hierarchy,
+                                                int const levelNumber)
+            = 0;
+
+        virtual void registerInterLevelSchedules(hierarchy_ptr const& hierarchy,
+                                                 int const levelNumber)
+            = 0;
 
         virtual void regrid(hierarchy_ptr const& hierarchy, int const levelNumber,
                             level_ptr const& oldLevel, IPhysicalModel& model,
@@ -63,7 +69,8 @@ namespace amr
 
         // domain filling methods
         // used during level creation
-        virtual void initLevel(IPhysicalModel& model, level_t& level, double const initDataTime)
+        virtual void initLevel(hierarchy_ptr const& hierarchy, IPhysicalModel& model,
+                               level_t& level, double const initDataTime)
             = 0;
 
         // ghost filling

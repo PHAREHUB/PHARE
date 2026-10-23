@@ -55,7 +55,13 @@ namespace amr
         {
         }
 
-        void registerLevel(hierarchy_ptr const& /*hierarchy*/, int const /*levelNumber*/) override
+        void registerSameLevelSchedules(hierarchy_ptr const& /*hierarchy*/,
+                                        int const /*levelNumber*/) override
+        {
+        }
+
+        void registerInterLevelSchedules(hierarchy_ptr const& /*hierarchy*/,
+                                         int const /*levelNumber*/) override
         {
         }
 
@@ -80,8 +86,8 @@ namespace amr
 
         std::string coarseModelName() const override { return MHDModel::model_name; }
 
-        void initLevel(IPhysicalModel& /*model*/, level_t& /*level*/,
-                       double const /*initDataTime*/) override
+        void initLevel(hierarchy_ptr const& /*hierarchy*/, IPhysicalModel& /*model*/,
+                       level_t& /*level*/, double const /*initDataTime*/) override
         {
         }
 

@@ -324,40 +324,22 @@ namespace solver
 
             bool const isRegriddingL0 = isRegridding and levelNumber == 0;
 
-            if (isRegriddingL0)
+            // same-level schedules only; inter-level ones are built in
+            // resetHierarchyConfiguration once the hierarchy is complete.
             {
-                messenger.registerLevel(hierarchy, levelNumber);
+                PHARE_LOG_SCOPE(1, "Multiphys::initializeLevelData::registerLevel");
+                messenger.registerSameLevelSchedules(hierarchy, levelNumber);
             }
-            else if (isRegridding)
-            {
-                // regriding the current level has broken schedules for which
-                // this level is the source or destination
-                // we therefore need to rebuild them
-                auto const finestLvlNbr = hierarchy->getFinestLevelNumber();
-                auto nextFiner = (levelNumber == finestLvlNbr) ? levelNumber : levelNumber + 1;
+            firstReinitializedLevel_ = std::min(firstReinitializedLevel_, levelNumber);
 
-                for (auto ilvl = levelNumber; ilvl <= nextFiner; ++ilvl)
-                {
-                    messenger.registerLevel(hierarchy, ilvl);
-                }
+            if (isRegridding and not isRegriddingL0)
                 solver.onRegrid();
-            }
-            else
-            {
-                // we're not regriding, just making a new level
-                messenger.registerLevel(hierarchy, levelNumber);
-            }
 
             levelInitializer.initialize(hierarchy, levelNumber, oldLevel, model, messenger,
                                         initDataTime, isRegridding);
 
             if (isRegriddingL0)
-            {
-                for (auto ilvl = 1; ilvl <= hierarchy->getFinestLevelNumber(); ++ilvl)
-                    messenger.registerLevel(hierarchy, ilvl);
-
                 solver.onRegrid();
-            }
             else
                 load_balancer_manager_->estimate(*level, model);
         }
@@ -373,10 +355,9 @@ namespace solver
             // likely need to go here somehow https://github.com/PHAREHUB/PHARE/issues/664
             if (!restartInitialized_ and SamraiLifeCycle::getRestartManager()->isFromRestart())
             {
-                auto& messenger = getMessengerWithCoarser_(coarsestLevel);
                 for (auto ilvl = coarsestLevel; ilvl <= finestLevel; ++ilvl)
                 {
-                    messenger.registerLevel(hierarchy, ilvl);
+                    getMessengerWithCoarser_(ilvl).registerLevel(hierarchy, ilvl);
 
                     auto level = hierarchy->getPatchLevel(ilvl);
                     for (auto& patch : *level)
@@ -388,7 +369,19 @@ namespace solver
                     load_balancer_manager_->estimate(*level, getModel_(ilvl));
                 }
                 restartInitialized_ = true;
+                return;
             }
+
+            PHARE_LOG_SCOPE(1, "Multiphys::resetHierarchyConfiguration::registerInterLevel");
+            // coarsestLevel and finestLevel cannot bound the rebuild: SAMRAI may pass the same
+            // level number for both while finer levels still exist, or skip unchanged levels.
+            // Every level from the lowest re-initialised one up to the finest reads it directly
+            // or through recursive coarse interpolation; levels below it are still valid, and
+            // nothing is to be done when no level was re-initialised.
+            for (auto ilvl = firstReinitializedLevel_; ilvl <= hierarchy->getFinestLevelNumber();
+                 ++ilvl)
+                getMessengerWithCoarser_(ilvl).registerInterLevelSchedules(hierarchy, ilvl);
+            firstReinitializedLevel_ = std::numeric_limits<int>::max();
         }
 
 
@@ -653,6 +646,9 @@ namespace solver
 
 
     private:
+        // lowest level re-initialised since the last resetHierarchyConfiguration
+        int firstReinitializedLevel_ = std::numeric_limits<int>::max();
+
         bool restartInitialized_ = false;
         int nbrOfLevels_;
         std::unordered_map<std::size_t, double> subcycleEndTimes_;
