@@ -1,3 +1,14 @@
+//  tests/core/numerics/ampere/test_tileset_ampere.cpp
+//
+//  requires
+//  - cmake:    -DwithPhlop
+//  - cxxflags: -DPHARE_LOG_LEVEL=1
+//  - env:      PHARE_SCOPE_TIMING=1
+
+// USE HIP_VISIBLE_DEVICES OR CUDA_VISIBLE_DEVICES env vars
+// #define PHARE_UNDEF_ASSERT
+
+#include "core/def/phare_config.hpp"
 
 #include "core/utilities/types.hpp"
 #include "core/utilities/thread_pool.hpp"
@@ -60,7 +71,11 @@ void compare(GridLayout_t const& layout, R& ref, C& cmp)
     using enum AllocatorMode;
     auto constexpr static n_components = 3;
 
-    double diff           = 1e-15;
+    double diff = 1e-15;
+
+    // if constexpr (alloc_mode == GPU_UNIFIED)
+    //     diff *= 1e3; // atomic no order guaranteed
+
     auto const& patch_box = layout.AMRBox();
     for (std::size_t c = 0; c < n_components; ++c)
     {
@@ -171,6 +186,9 @@ struct AmpereTileTest : public ::testing::Test
 // clang-format off
 using Permutations_t = testing::Types< // ! notice commas !
      TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU>
+PHARE_WITH_GPU(
+    ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED>
+)
 >;
 // clang-format on
 
@@ -193,6 +211,9 @@ TYPED_TEST(AmpereTileTest, dispatch)
 
 int main(int argc, char** argv)
 {
+    // assert(phlop::ScopeTimerMan::INSTANCE().active);
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    auto r = RUN_ALL_TESTS();
+    PHARE_WITH_PHLOP(phlop::threaded::ScopeTimerMan::reset());
+    return r;
 }

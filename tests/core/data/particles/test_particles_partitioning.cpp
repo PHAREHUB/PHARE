@@ -1,7 +1,7 @@
 
 #include "phare_core.hpp"
 
-#include "core/data/particles/particle_array_partitioner.hpp"
+#include "core/data/particles/partitioning/particles_partitioning.hpp"
 
 #include "tests/core/data/vecfield/test_vecfield_fixtures.hpp"
 #include "tests/core/data/electromag/test_electromag_fixtures.hpp"
@@ -104,7 +104,7 @@ TYPED_TEST(ParticlesDataTest, works)
 {
     using Test            = TypeParam;
     using ParticleArray_t = typename TestFixture::Particles_t;
-    using Partitioner     = ParticleArrayPartitioner<ParticleArray_t>;
+    using Partitioner     = ParticleArrayPartitioner<ParticleArray_t::alloc_mode, ParticleArray_t>;
     auto& middle          = this->middle;
     auto& particles       = middle.domainParticles;
 
@@ -137,7 +137,7 @@ TYPED_TEST(ParticlesDataTest, worksVector)
 {
     using Test            = TypeParam;
     using ParticleArray_t = typename TestFixture::Particles_t;
-    using Partitioner     = ParticleArrayPartitioner<ParticleArray_t>;
+    using Partitioner     = ParticleArrayPartitioner<ParticleArray_t::alloc_mode, ParticleArray_t>;
     auto& middle          = this->middle;
     auto& particles       = middle.domainParticles;
 

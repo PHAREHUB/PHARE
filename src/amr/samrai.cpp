@@ -32,11 +32,14 @@ SamraiLifeCycle::SamraiLifeCycle(int argc, char** argv)
                 .file_name(".phare/timings/rank." + std::to_string(mpi::rank()) + ".txt")
                 .init();
     })
+    PHARE_WITH_KOKKOS(Kokkos::initialize(argc, argv); Kokkos::print_configuration(std::cout);)
 }
 ENABLE_WARNING(array-bounds, array-bounds, 42)
 
 SamraiLifeCycle::~SamraiLifeCycle()
 {
+    PHARE_WITH_KOKKOS(Kokkos::finalize();)
+
     SAMRAI::tbox::SAMRAIManager::shutdown();
     SAMRAI::tbox::SAMRAIManager::finalize();
     SAMRAI::tbox::SAMRAI_MPI::finalize();

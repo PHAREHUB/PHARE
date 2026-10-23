@@ -1,7 +1,16 @@
+//  tests/core/numerics/ion_updater/test_multi_updater.cpp
+//
+//  requires
+//  - cmake:    -DwithPhlop
+//  - cxxflags: -DPHARE_LOG_LEVEL=1
+//  - env:      PHARE_SCOPE_TIMING=1
+
+// USE HIP_VISIBLE_DEVICES OR CUDA_VISIBLE_DEVICES env vars
 
 #include <stdexcept>
 #include "core/logger.hpp"
 
+#include "core/utilities/monitoring.hpp"
 #include "core/utilities/thread_pool.hpp" // defaults to 1 thread, setup during static init!
 #include "core/data/particles/particle_array.hpp"
 #include "core/numerics/ion_updater/ion_updater.hpp" // IWYU pragma: keep
@@ -23,16 +32,29 @@
 namespace PHARE::core
 {
 // RUNTIME ENV VAR OVERRIDES
-auto static const cells     = get_env_as("PHARE_CELLS", std::uint32_t{30});
-auto static const ppc       = get_env_as("PHARE_PPC", std::size_t{100});
+auto static const bytes     = get_env_as("PHARE_GPU_BYTES", std::uint64_t{500000000}); // .5GB
+auto static const cells     = get_env_as("PHARE_CELLS", std::uint32_t{20});
+auto static const ppc       = get_env_as("PHARE_PPC", std::size_t{33});
 auto static const seed      = get_env_as("PHARE_SEED", std::size_t{1067});
 auto static const n_patches = get_env_as("PHARE_PATCHES", std::size_t{1});
 auto static const dt        = get_env_as("PHARE_TIMESTEP", double{.001});
+auto static const shufle    = get_env_as("PHARE_UNSORTED", std::size_t{0});
+auto static const do_cmp    = get_env_as("PHARE_COMPARE", std::size_t{1});
 auto static const n_threads = get_env_as("PHARE_THREADS", std::size_t{1});
 auto static const n_push    = get_env_as("PHARE_PUSHES", std::size_t{1});
+auto static const cmp_only  = get_env_as("PHARE_CMP_ONLY", std::size_t{0});
+auto static const ref_only  = get_env_as("PHARE_REF_ONLY", std::size_t{0});
 
 bool static const premain = []() {
+    assert(!(cmp_only and ref_only) && "Cant have both only");
+    PHARE_WITH_MKN_GPU({ //
+        mkn::gpu::setLimitMallocHeapSize(bytes);
+        // per-thread device stack (default ~1KB) overflows in the MultiBoris push kernel
+        mkn::gpu::setLimitStackSize(get_env_as("PHARE_GPU_STACK", std::size_t{16384}));
+    })
+
     PHARE_WITH_PHLOP({
+        PHARE_LOG_LINE_SS("compare    : " << do_cmp);
         PHARE_LOG_LINE_SS("cells      : " << cells);
         PHARE_LOG_LINE_SS("ppc        : " << ppc);
         PHARE_LOG_LINE_SS("particles  : " << std::pow(cells, 3) * ppc);
@@ -47,37 +69,58 @@ bool static const premain = []() {
 
 auto& pool = *ThreadPool::INSTANCE().thread_pools[0];
 
-// as solver_ppc.hpp
-template<typename ParticleArray, typename GridLayout>
-using IonUpdater_t = std::conditional_t<ParticleArray::layout_mode == LayoutMode::AoSMapped,
-                                        IonUpdater<ParticleArray, GridLayout>,
-                                        ParallelIonUpdater<ParticleArray, GridLayout>>;
 
-template<typename Patches>
-void ref_update(UpdaterMode mode, Patches& patches)
+// serial       = IonUpdater, one patch at a time (always used for the ref patches)
+// parallel     = ParallelIonUpdater, all patches via BS thread pool
+// mkn_parallel = mkn_xyz::ParallelIonUpdater, all patches via mkn.gpu ThreadedStreamLauncher
+enum class UpdaterVersion : std::uint16_t { serial = 0, parallel, mkn_parallel };
+
+template<UpdaterVersion version, typename ParticleArray_t, typename GridLayout_t>
+auto constexpr updater_impl()
 {
-    using GridLayout_t = Patches::value_type::GridLayout_t;
+    if constexpr (version == UpdaterVersion::serial)
+        return static_cast<IonUpdater<ParticleArray_t, GridLayout_t>*>(0);
+    else if constexpr (version == UpdaterVersion::parallel)
+        return static_cast<ParallelIonUpdater<ParticleArray_t, GridLayout_t>*>(0);
+#if PHARE_HAVE_MKN_GPU
+    else if constexpr (version == UpdaterVersion::mkn_parallel)
+        return static_cast<mkn_xyz::ParallelIonUpdater<ParticleArray_t, GridLayout_t>*>(0);
+#endif
+}
+
+template<UpdaterVersion version, typename ParticleArray_t, typename GridLayout_t>
+using Updater_t = std::decay_t<decltype(*updater_impl<version, ParticleArray_t, GridLayout_t>())>;
+
+
+namespace detail::strings
+{
+    constexpr static std::string_view update  = "update,";
+    constexpr static std::string_view compare = "compare,";
+    constexpr static std::string_view cma     = ",";
+} // namespace detail::strings
+
+
+template<typename IonUpdater_t, typename Patches>
+void update_serial(UpdaterMode mode, Patches& patches)
+{
+    using Boxing_t = IonUpdater_t::Boxing_t;
 
     for (std::size_t i = 0; i < n_push; ++i)
         for (auto& patch : patches)
         {
             auto& [layout, ions, em, electromag] = patch.model.state;
-            using ParticleArray_t = std::decay_t<decltype(ions)>::particle_array_type;
-            using Updater_t       = IonUpdater_t<ParticleArray_t, GridLayout_t>;
-            using Boxing_t        = Updater_t::Boxing_t;
 
             Boxing_t const boxing{layout, {layout.AMRBox()}};
-            Updater_t{}.updatePopulations(ions, electromag, boxing, dt, mode);
+            IonUpdater_t{}.updatePopulations(ions, electromag, boxing, dt, mode);
             ions.computeChargeDensity();
             ions.computeBulkVelocity();
         }
 }
 
-template<typename Patches>
-void cmp_update(UpdaterMode mode, Patches& patches)
+template<typename IonUpdater_t, typename Patches>
+void update_parallel(UpdaterMode mode, Patches& patches)
 {
-    using GridLayout_t = Patches::value_type::GridLayout_t;
-    using Boxing_t     = PHARE::core::UpdaterSelectionBoxing<GridLayout_t>;
+    using Boxing_t = IonUpdater_t::Boxing_t;
 
     auto const& layout = patches[0].layout;
     std::unordered_map<std::string, Boxing_t> boxings;
@@ -89,15 +132,22 @@ void cmp_update(UpdaterMode mode, Patches& patches)
     };
     auto accessor = test::make_model_level_accessor(patches, quantities);
 
-    using Ions_t          = std::decay_t<decltype(patches[0].model.state.ions)>;
-    using ParticleArray_t = Ions_t::particle_array_type;
+    try
+    {
+        particle_array_domain_is_valid(
+            patches[0].model.state.ions.populations[0].particles.domain_particles, layout.AMRBox());
+        PHARE_LOG_LINE_STR("pre-push domain_particles valid");
+    }
+    catch (std::exception const& e)
+    {
+        PHARE_LOG_LINE_SS("pre-push domain_particles INVALID: " << e.what());
+    }
 
     try
     {
         for (std::size_t i = 0; i < n_push; ++i)
         {
-            IonUpdater_t<ParticleArray_t, GridLayout_t>{}.updatePopulations(accessor, boxings, dt,
-                                                                            mode);
+            IonUpdater_t{}.updatePopulations(accessor, boxings, dt, mode);
 
             for (auto& patch : patches)
             {
@@ -113,6 +163,23 @@ void cmp_update(UpdaterMode mode, Patches& patches)
     }
 }
 
+template<UpdaterVersion version, typename Patches>
+void update(UpdaterMode mode, Patches& patches)
+{
+    using GridLayout_t = Patches::value_type::GridLayout_t;
+    using Particles    = Patches::value_type::Model_t::particle_array_type;
+    using IonUpdater_t = Updater_t<version, Particles, GridLayout_t>;
+    auto constexpr function_id
+        = join_string_views_v<detail::strings::update, Particles::type_id, detail::strings::cma>;
+    PHARE_LOG_LINE_STR(function_id);
+    PHARE_LOG_SCOPE(1, function_id);
+
+    if constexpr (version == UpdaterVersion::serial)
+        update_serial<IonUpdater_t>(mode, patches);
+    else
+        update_parallel<IonUpdater_t>(mode, patches);
+}
+
 
 template<auto opts>
 auto make_ref_ions(auto const& layout)
@@ -124,6 +191,8 @@ auto make_ref_ions(auto const& layout)
     auto const disperse = [&](auto& particles) {
         delta_disperse(particles.domain_particles, seed);
         vary_velocity(particles.domain_particles, -6, 6, seed);
+        if (shufle > 0)
+            shuffle(particles.domain_particles, seed);
 
         delta_disperse(particles.level_ghost_particles, seed);
         vary_velocity(particles.level_ghost_particles, -6, 6, seed);
@@ -162,6 +231,8 @@ auto from_ions(auto const& layout, auto const& from)
         from.populations[0].particles.domain_particles,
         ions.populations[0].particles.domain_particles);
 
+    particle_array_domain_is_valid(ions.populations[0].particles.domain_particles, layout.AMRBox());
+
     _add_particles_from.template operator()<ParticleType::LevelGhost>(
         from.populations[0].particles.level_ghost_particles,
         ions.populations[0].particles.level_ghost_particles);
@@ -190,6 +261,19 @@ void check_particles(GridLayout_t const& layout, P0& ref, P1& cmp_, double const
     auto const sort_box = type == ParticleType::Domain
                               ? box
                               : grow(box, GridLayout_t::options.particle_ghost_width);
+    try
+    {
+        if constexpr (type == ParticleType::Domain)
+            particle_array_domain_is_valid(cmp_, box);
+        else
+            particle_array_ghost_is_valid(cmp_, box, sort_box);
+        PHARE_LOG_LINE_SS(name << " post-push cmp_ valid size=" << cmp_.size());
+    }
+    catch (std::exception const& e)
+    {
+        PHARE_LOG_LINE_SS(name << " post-push cmp_ INVALID: " << e.what());
+        EXPECT_TRUE(0 == 1);
+    }
 
     auto cmp = [&]() {
         if constexpr (type == ParticleType::LevelGhost and is_tiled(P1::layout_mode))
@@ -222,12 +306,18 @@ template<typename GridLayout_t, typename R, typename C>
 void compare(GridLayout_t const& layout, R& ref, C& cmp)
 {
     using ParticleArray_t = C::ParticleArray_t;
+    auto constexpr function_id
+        = join_string_views_v<detail::strings::compare, ParticleArray_t::type_id,
+                              detail::strings::cma>;
+    PHARE_LOG_SCOPE(1, function_id);
 
     using enum LayoutMode;
     using enum AllocatorMode;
 
     double diff = 1e-15;
-    if constexpr (is_tiled(ParticleArray_t::layout_mode))
+    if constexpr (ParticleArray_t::alloc_mode == GPU_UNIFIED)
+        diff *= 1e3; // atomics no order guaranteed
+    else if constexpr (is_tiled(ParticleArray_t::layout_mode))
         diff *= 1e1; // p2m op order diff
 
     check_particles<ParticleType::Domain>(layout, ref.populations[0].particles.domain_particles,
@@ -271,15 +361,18 @@ void compare(GridLayout_t const& layout, R& ref, C& cmp)
 }
 
 
-template<std::size_t _dim, auto _layout_mode, auto _alloc_mode, auto _updater_mode>
+template<std::size_t _dim, auto _layout_mode, auto _alloc_mode, auto _updater_mode,
+         auto _updater = UpdaterVersion::parallel>
 struct TestParam
 {
     static_assert(std::is_same_v<decltype(_layout_mode), LayoutMode>);
     static_assert(std::is_same_v<decltype(_alloc_mode), AllocatorMode>);
+    static_assert(std::is_same_v<decltype(_updater), UpdaterVersion>);
     auto constexpr static dim          = _dim;
     auto constexpr static layout_mode  = _layout_mode;
     auto constexpr static alloc_mode   = _alloc_mode;
     auto constexpr static updater_mode = _updater_mode;
+    auto constexpr static updater      = _updater;
     auto constexpr static opts
         = SimOpts{.dimension = _dim, .layout_mode = _layout_mode, .alloc_mode = _alloc_mode};
 };
@@ -293,6 +386,7 @@ struct MultiPatchIonUpdaterTest : public ::testing::Test
     auto constexpr static layout_mode  = Param::layout_mode;
     auto constexpr static alloc_mode   = Param::alloc_mode;
     auto constexpr static updater_mode = Param::updater_mode;
+    auto constexpr static updater      = Param::updater;
 
     auto constexpr static ref_opts = SimOpts{.dimension = dim};
     auto constexpr static cmp_opts = Param::opts;
@@ -328,15 +422,20 @@ struct MultiPatchIonUpdaterTest : public ::testing::Test
         cmp_patches.reserve(n_patches);
         auto& ref = ref_patches.emplace_back(ref_layout, make_ref_ions<ref_opts>(ref_layout));
 
-        for (std::size_t i = 0; i < n_patches; i++)
-            cmp_patches.emplace_back(cmp_layout,
-                                     from_ions<cmp_opts>(cmp_layout, ref.model.state.ions));
+        if (!ref_only)
+            for (std::size_t i = 0; i < n_patches; i++)
+                cmp_patches.emplace_back(cmp_layout,
+                                         from_ions<cmp_opts>(cmp_layout, ref.model.state.ions));
 
-        ref_update(updater_mode, ref_patches);
-        cmp_update(updater_mode, cmp_patches);
+        if (!cmp_only)
+            update<UpdaterVersion::serial>(updater_mode, ref_patches);
 
-        for (auto& cmp : cmp_patches)
-            compare(cmp_layout, ref_patches[0].model.state.ions, cmp.model.state.ions);
+        if (!ref_only)
+            update<updater>(updater_mode, cmp_patches);
+
+        if (do_cmp)
+            for (auto& cmp : cmp_patches)
+                compare(cmp_layout, ref_patches[0].model.state.ions, cmp.model.state.ions);
     }
 
 
@@ -354,10 +453,32 @@ using Permutations_t = testing::Types< // ! notice commas !
    ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
    ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only>
    ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
-   // ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only>
-   // ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<1, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<1, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::all>
    ,TestParam<2, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::domain_only>
    ,TestParam<2, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::all>
+   ,TestParam<3, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::domain_only>
+   ,TestParam<3, LayoutMode::AoSCMTS, AllocatorMode::CPU, UpdaterMode::all>
+
+PHARE_WITH_MKN_GPU(
+   ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
+   ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
+   ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
+   ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
+   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
+   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
+)
+
+PHARE_WITH_GPU(
+   ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
+   ,TestParam<1, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
+   ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
+   ,TestParam<2, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
+   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::domain_only, UpdaterVersion::mkn_parallel>
+   ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED, UpdaterMode::all,         UpdaterVersion::mkn_parallel>
+)
 
 >;
 // clang-format on
@@ -385,6 +506,7 @@ int main(int argc, char** argv)
     {
         auto r = RUN_ALL_TESTS();
         PHARE_WITH_PHLOP(phlop::scope_timer().shutdown());
+        PHARE::core::MemoryMonitoring::PRINT();
         return r;
     }
     catch (std::runtime_error const& e)

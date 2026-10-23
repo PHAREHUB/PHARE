@@ -201,6 +201,8 @@ namespace solver
     };
 
 } // namespace solver
+
 } // namespace PHARE
+
 
 #endif

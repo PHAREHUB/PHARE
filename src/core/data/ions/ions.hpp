@@ -106,6 +106,7 @@ namespace core
 
         void computeMassDensity(auto const&... tile_idx)
         {
+            check();
             auto&& massDensity = maybe_tile_at(massDensity_, tile_idx...);
             massDensity.zero();
 
@@ -125,6 +126,7 @@ namespace core
 
         void computeBulkVelocity(auto const&... tile_idx)
         {
+            check();
             computeMassDensity(tile_idx...);
 
             auto&& massDensity  = maybe_tile_at(massDensity_, tile_idx...);
@@ -288,10 +290,21 @@ namespace core
         }
 
 
-        auto& operator[](std::size_t const i) const { return populations_[i]; }
         auto& operator[](std::size_t const i) { return populations_[i]; }
+        auto& operator[](std::size_t const i) const { return populations_[i]; }
+
 
     private:
+        void check() const
+        {
+            // assert(no_nans(massDensity_));
+            // assert(no_nans(chargeDensity_));
+            // assert(no_nans(bulkVelocity_[0]));
+            // assert(no_nans(bulkVelocity_[1]));
+            // assert(no_nans(bulkVelocity_[2]));
+        }
+
+
         field_type massDensity_;
         field_type chargeDensity_;
         vecfield_type bulkVelocity_;

@@ -1,3 +1,11 @@
+//  tests/core/numerics/ohm/test_tileset_ohm.cpp
+//
+// #define PHARE_UNDEF_ASSERT
+
+#include "core/logger.hpp"    // scope timing
+#include "core/def/phlop.hpp" // scope timing
+
+#include "core/def/phare_config.hpp"
 
 #include "core/utilities/types.hpp"
 #include "core/numerics/ohm/ohm.hpp"
@@ -41,8 +49,39 @@ void cmp_do(Patch& patch)
     using VecField_vt  = basic::TensorField<Field_vt, 1>;
 
     auto constexpr tile_accessor = [](auto& ts, auto const ti) { return ts[ti]; };
-    OhmSingleTransformer{{eta, nu}}(patch.layout, *patch.n, *patch.V, *patch.P, *patch.em.B,
-                                    *patch.J, *patch.emNew.E);
+    solver::OhmSingleTransformer{{eta, nu}}(patch.layout, *patch.n, *patch.V, *patch.P,
+                                            *patch.em.B, *patch.J, *patch.emNew.E);
+
+    // auto const n_tiles = patch.em.B[0]().size();
+    // for (std::uint16_t ti = 0; ti < n_tiles; ++ti)
+    // {
+    //     auto const n = *patch.n[ti];
+    //     auto const V = patch.V.template as<VecField_vt>(tile_accessor, ti);
+    //     auto const P = *patch.P[ti];
+    //     auto const B = patch.em.B.template as<VecField_vt>(tile_accessor, ti);
+    //     auto const J = patch.J.template as<VecField_vt>(tile_accessor, ti);
+    //     auto ENew    = patch.emNew.E.template as<VecField_vt>(tile_accessor, ti);
+    //     ohm(patch.em.E[0][ti].layout(), n, V, P, B, J, ENew);
+    // }
+
+    // pool.detach_task([&]() {
+    //     auto const n_tiles = patch.em.B[0]().size();
+    //     for (std::uint16_t ti = 0; ti < n_tiles; ++ti)
+    //     {
+    //         auto const n = *patch.n[ti];
+    //         auto const P = *patch.P[ti];
+    //         auto const V = patch.V.template as<VecField_vt>(tile_accessor, ti);
+    //         auto const J = patch.J.template as<VecField_vt>(tile_accessor, ti);
+    //         auto const B = patch.em.B.template as<VecField_vt>(tile_accessor, ti);
+    //         auto ENew    = patch.emNew.E.template as<VecField_vt>(tile_accessor, ti);
+
+    //         pool.detach_task([=, layout = patch.em.E[0][ti].layout()]() mutable {
+    //             Ohm<GridLayout_t>{layout, eta, nu}(n, V, P, B, J, ENew);
+    //         });
+    //     }
+    // });
+
+    // pool.wait();
 }
 
 template<auto alloc_mode, typename GridLayout_t, typename R, typename C>
@@ -52,7 +91,11 @@ void compare(GridLayout_t const& layout, R& ref, C& cmp)
     using enum AllocatorMode;
     auto constexpr static n_components = 3;
 
-    double diff           = 1e-15;
+    double diff = 1e-15;
+
+    // if constexpr (alloc_mode == GPU_UNIFIED)
+    //     diff *= 1e3; // atomic no order guaranteed
+
     auto const& patch_box = layout.AMRBox();
 
     for (std::size_t c = 0; c < n_components; ++c)
@@ -168,6 +211,9 @@ struct OhmTileTest : public ::testing::Test
 using Permutations_t = testing::Types< // ! notice commas !
 
      TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::CPU>
+PHARE_WITH_GPU(
+    ,TestParam<3, LayoutMode::AoSPCTS, AllocatorMode::GPU_UNIFIED>
+)
 
 >;
 // clang-format on
@@ -193,6 +239,9 @@ TYPED_TEST(OhmTileTest, dispatch)
 
 int main(int argc, char** argv)
 {
+    PHARE_WITH_PHLOP(phlop::threaded::ScopeTimerMan::INSTANCE().init();)
     ::testing::InitGoogleTest(&argc, argv);
-    return RUN_ALL_TESTS();
+    auto const ret = RUN_ALL_TESTS();
+    PHARE_WITH_PHLOP(phlop::threaded::ScopeTimerMan::reset();)
+    return ret;
 }

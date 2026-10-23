@@ -24,6 +24,7 @@ namespace core
             else
                 throw std::runtime_error("rank must be 1 or 2");
         }
+
         template<typename T>
         static Component at(T t)
         {

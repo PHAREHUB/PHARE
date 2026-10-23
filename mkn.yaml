@@ -164,7 +164,6 @@ profile:
     tests/core/numerics/ohm/test_tileset_ohm.cpp
     tests/core/data/field/test_field_overlaps.cpp
     tests/core/data/tiles/test_tile_set_mapper.cpp
-    tests/core/data/utilities/box/test_box_span.cpp
     tests/core/data/vecfield/test_vecfield_init.cpp
     tests/core/numerics/ion_updater/test_updater.cpp
     tests/core/data/particles/test_particles_AoSTS.cpp
@@ -177,6 +176,7 @@ profile:
     tests/core/data/tiles/test_tile_set_ghost_box_overlaps.cpp
     tests/core/data/particles/sorting/test_particle_sorting.cpp
     tests/core/numerics/ion_updater/test_multi_updater.cpp
+    tests/core/utilities/box/test_box_span.cpp
 #tools/bench/amr/data/field/schedules/bench_field_schedules.cpp
 #tests/core/numerics/ion_updater/test_updater_pp_main.cpp
 

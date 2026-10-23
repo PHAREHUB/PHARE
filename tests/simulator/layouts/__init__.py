@@ -25,6 +25,7 @@ from tests.simulator.advance.test_advance_hybrid import HybridAdvanceTest
 _ref_layout = "AoSMapped"
 cells = 14
 ppc_per_dim = [100, 33, 15]
+# os.environ["PHARE_TILING_MIN_BEFORE_SPLIT"] = "1000"
 
 
 def permute(ndim_list, interp_orders=[1]):

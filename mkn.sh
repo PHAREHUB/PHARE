@@ -14,6 +14,7 @@ FILE="tests/amr/data/particles/refine/test_particles_data_split.cpp"
 FILE="tests/core/data/particles/test_particle_array_consistency.cpp"
 FILE="tests/amr/data/field/test_fields_schedules.cpp"
 FILE="tests/core/data/particles/test_particle_array_synchronisation.cpp"
+FILE="tests/core/data/vecfield/test_vecfield_init.cpp"
 FILE="tests/core/numerics/ion_updater/test_multi_updater.cpp"
 CARGS=${CARGS:-""}
 

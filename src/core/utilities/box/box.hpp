@@ -103,7 +103,7 @@ struct Box
     }
 
 
-    NO_DISCARD auto unsafe_intersection(Box const& other) const // no optional on gpu
+    NO_DISCARD auto unsafe_intersection(Box const& other) const _PHARE_ALL_FN_ // no optional on gpu
     {
         Box intersection{other};
         for (auto idim = 0u; idim < dim; ++idim)
@@ -118,7 +118,7 @@ struct Box
 
 
     template<typename Modifier>
-    auto& grow(Modifier const& size)
+    auto& grow(Modifier const& size) _PHARE_ALL_FN_
     {
         lower -= size;
         upper += size;
@@ -127,7 +127,7 @@ struct Box
 
 
     template<typename Modifier>
-    auto& shrink(Modifier const& size)
+    auto& shrink(Modifier const& size) _PHARE_ALL_FN_
     {
         lower += size;
         upper -= size;
@@ -135,17 +135,17 @@ struct Box
     }
 
 
-    NO_DISCARD auto shape() const { return upper - lower + 1; }
-    NO_DISCARD std::size_t size() const { return core::product(shape()); }
+    NO_DISCARD auto shape() const _PHARE_ALL_FN_ { return upper - lower + 1; }
+    NO_DISCARD std::size_t size() const _PHARE_ALL_FN_ { return core::product(shape()); }
 
 
-    NO_DISCARD auto begin() { return iterator{this, lower}; }
+    NO_DISCARD auto begin() _PHARE_ALL_FN_ { return iterator{this, lower}; }
 
     //   // since the 1D scan of the multidimensional box is done assuming C ordering
     //   // the end (in the sense of container.end()) is one beyond last for the last
     //   // direction only, previous dimensions have not reached the end.
-    NO_DISCARD auto begin() const { return iterator{this, lower}; }
-    NO_DISCARD auto end()
+    NO_DISCARD auto begin() const _PHARE_ALL_FN_ { return iterator{this, lower}; }
+    NO_DISCARD auto end() _PHARE_ALL_FN_
     {
         static_assert(dim <= 3 and dim > 0);
         // following could maybe be a one liner?
@@ -163,7 +163,7 @@ struct Box
         }
     }
 
-    NO_DISCARD auto end() const
+    NO_DISCARD auto end() const _PHARE_ALL_FN_
     {
         static_assert(dim <= 3 and dim > 0);
         if constexpr (dim == 1)
@@ -226,18 +226,18 @@ template<typename Type, std::size_t dim>
 class box_iterator
 {
 public:
-    box_iterator(Box<Type, dim> const* box, Point<Type, dim> index = Point<Type, dim>{})
-        : box_{box}
-        , index_{index}
+    box_iterator(Box<Type, dim> const* box,
+                 Point<Type, dim> index = Point<Type, dim>{}) _PHARE_ALL_FN_ : box_{box},
+                                                                               index_{index}
     {
     }
 
 public:
-    NO_DISCARD auto& operator*() const { return index_; }
-    // NO_DISCARD auto operator->() const  { return &index_; }
+    NO_DISCARD auto& operator*() const _PHARE_ALL_FN_ { return index_; }
+    // NO_DISCARD auto operator->() const _PHARE_ALL_FN_ { return &index_; }
 
 
-    void increment(std::size_t idim)
+    void increment(std::size_t idim) _PHARE_ALL_FN_
     {
         index_[idim]++;
         if (idim == 0)
@@ -250,14 +250,14 @@ public:
         }
     }
 
-    auto& operator++()
+    auto& operator++() _PHARE_ALL_FN_
     {
         increment(dim - 1);
         return *this;
     }
 
 
-    auto& operator+(std::uint32_t s)
+    auto& operator+(std::uint32_t s) _PHARE_ALL_FN_
     {
         auto lo = box_->upper;
         for (std::uint16_t d = 0; d < dim; ++d)
@@ -279,7 +279,7 @@ public:
         return *this;
     }
 
-    bool operator!=(box_iterator const& other) const
+    bool operator!=(box_iterator const& other) const _PHARE_ALL_FN_
     {
         return box_ != other.box_ or index_ != other.index_;
     }
@@ -410,14 +410,15 @@ struct boxes_iterator
 };
 
 template<typename Particle>
-NO_DISCARD auto isIn(Particle const& particle, Box<int, Particle::dimension> const& box)
+NO_DISCARD auto _PHARE_ALL_FN_ isIn(Particle const& particle,
+                                    Box<int, Particle::dimension> const& box)
     -> decltype(isIn(particle.iCell(), box), bool())
 {
     return isIn(particle.iCell(), box);
 }
 
 template<template<typename, std::size_t> typename Point, typename Type, std::size_t SIZE>
-NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
+NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box) _PHARE_ALL_FN_
 {
     for (std::size_t iDim = 0; iDim < SIZE; ++iDim)
         if (point[iDim] < box.lower[iDim] || point[iDim] > box.upper[iDim])
@@ -431,7 +432,7 @@ NO_DISCARD bool isIn(Point<Type, SIZE> const& point, Box<Type, SIZE> const& box)
  * Returns occurs at the first box the point is in.
  */
 template<Spannable Boxes>
-NO_DISCARD bool isIn(auto const& point, Boxes const& boxes)
+NO_DISCARD bool _PHARE_ALL_FN_ isIn(auto const& point, Boxes const& boxes)
 {
     for (auto const& box : boxes)
         if (isIn(point, box))
@@ -442,7 +443,7 @@ NO_DISCARD bool isIn(auto const& point, Boxes const& boxes)
 
 
 template<typename Type, std::size_t dim, typename OType>
-Box<Type, dim> grow(Box<Type, dim> const& box, std::array<Type, dim> const& by)
+Box<Type, dim> grow(Box<Type, dim> const& box, std::array<Type, dim> const& by) _PHARE_ALL_FN_
 {
     auto copy{box};
     copy.grow(by);
@@ -451,7 +452,7 @@ Box<Type, dim> grow(Box<Type, dim> const& box, std::array<Type, dim> const& by)
 
 
 template<typename Type, std::size_t dim, typename OType>
-Box<Type, dim> grow(Box<Type, dim> const& box, OType const& size)
+Box<Type, dim> grow(Box<Type, dim> const& box, OType const& size) _PHARE_ALL_FN_
 {
     auto copy{box};
     copy.grow(size);
@@ -460,7 +461,7 @@ Box<Type, dim> grow(Box<Type, dim> const& box, OType const& size)
 
 
 template<typename Type, std::size_t dim, typename T2>
-NO_DISCARD Box<Type, dim> shrink(Box<Type, dim> const& box, T2 const& size)
+NO_DISCARD Box<Type, dim> shrink(Box<Type, dim> const& box, T2 const& size) _PHARE_ALL_FN_
 {
     auto copy{box};
     copy.shrink(size);
@@ -736,7 +737,7 @@ auto box_from_zero_to_upper(Point_t<Type, SIZE> const& upper)
 }
 
 template<template<typename, std::size_t> typename Point_t, typename Type, std::size_t SIZE>
-auto box_from_zero_to_upper_minus_one(Point_t<Type, SIZE> const& upper)
+auto box_from_zero_to_upper_minus_one(Point_t<Type, SIZE> const& upper) _PHARE_ALL_FN_
 {
     return core::Box<std::uint32_t, SIZE>{
         core::Point<std::uint32_t, SIZE>{core::ConstArray<std::uint32_t, SIZE>()},
@@ -745,13 +746,13 @@ auto box_from_zero_to_upper_minus_one(Point_t<Type, SIZE> const& upper)
 }
 
 template<std::size_t SIZE>
-NO_DISCARD auto as_unsigned(Box<int, SIZE> const& box)
+NO_DISCARD auto as_unsigned(Box<int, SIZE> const& box) _PHARE_ALL_FN_
 {
     return Box<std::uint32_t, SIZE>{box.lower.as_unsigned(), box.upper.as_unsigned()};
 }
 
 template<template<typename, std::size_t> typename Point_t, typename Type, std::size_t SIZE>
-NO_DISCARD auto asBox(Point_t<Type, SIZE> const& point)
+NO_DISCARD auto asBox(Point_t<Type, SIZE> const& point) _PHARE_ALL_FN_
 {
     return Box<Type, SIZE>{point, point};
 }

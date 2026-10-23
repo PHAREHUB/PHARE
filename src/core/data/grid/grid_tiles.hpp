@@ -5,6 +5,7 @@
 #include "core/data/tiles/tile_set.hpp"
 #include "core/data/field/field_tiles.hpp"
 
+#include <cmath>
 #include <tuple>
 #include <string>
 #include <optional>
@@ -56,10 +57,10 @@ struct GridTile : public FieldTile<GridLayout_t, Field_t>
     GridTile& operator=(GridTile const&) = delete;
     GridTile& operator=(GridTile&&)      = default;
 
-    Super& operator*() { return *this; }
-    Super const& operator*() const { return *this; }
+    Super& operator*() _PHARE_ALL_FN_ { return *this; }
+    Super const& operator*() const _PHARE_ALL_FN_ { return *this; }
 
-    NO_DISCARD auto physicalQuantity() const { return (**this).physicalQuantity(); }
+    NO_DISCARD auto physicalQuantity() const _PHARE_ALL_FN_ { return (**this).physicalQuantity(); }
 
 private:
     void reset() { (**this)() = Field_t{(**this).physicalQuantity(), arr.data(), arr.shape()}; }
@@ -105,6 +106,7 @@ public:
         assert((**this)[0]().data());
         if (val)
             fill(*val);
+        // ptr = &TileOverlaps_t::getOrCreateQuantity(layout_, *this);
     }
 
     GridTileSet(GridTileSet const& that)
@@ -117,6 +119,7 @@ public:
         View::setBuffer(this);
         assert((**this)[0]().data());
         assert(View::isUsable());
+        // ptr = &TileOverlaps_t::getOrCreateQuantity(layout_, *this);
     }
 
     GridTileSet(GridTileSet&&) = default;
@@ -146,7 +149,7 @@ public:
     NO_DISCARD auto begin() const { return super().begin(); }
     NO_DISCARD auto end() { return super().end(); }
     NO_DISCARD auto end() const { return super().end(); }
-    NO_DISCARD auto size() const { return View::size(); }
+    NO_DISCARD auto size() const _PHARE_ALL_FN_ { return View::size(); }
     auto& layout() const { return layout_; }
 
     Super& super() { return *this; }
@@ -168,7 +171,67 @@ private:
     std::string name_;
     GridLayout_t layout_;
     std::uint32_t max_tile_size_;
+
+    // FieldTileOverlaps<field_opts>::Level::Patch* ptr = nullptr;
 };
+
+
+
+template<typename GridLayout_t, typename Grid_t, typename Field_t>
+inline std::ostream& operator<<(std::ostream& out,
+                                FieldTileSet<GridLayout_t, Grid_t, Field_t> const& ts)
+{
+    for (auto const& tile : ts())
+        out << tile();
+
+    return out;
+}
+
+
+template<typename GridLayout_t, typename Grid_t, typename Field_t>
+inline auto sum_field(FieldTileSet<GridLayout_t, Grid_t, Field_t> const& ts)
+{
+    return sum_from(ts(), [](auto const& tile) { return sum(tile()); });
+}
+
+template<typename GridLayout_t, typename Grid_t, typename Field_t>
+inline auto sum_not_nan(FieldTileSet<GridLayout_t, Grid_t, Field_t> const& ts)
+{
+    return sum_from(ts(), [](auto const& tile) {
+        typename Grid_t::value_type s = 0;
+        for (auto const& v : tile())
+            if (!std::isnan(v))
+                s += v;
+        return s;
+    });
+}
+
+
+template<typename GridLayout_t, typename Grid_t, typename Field_t>
+void check_field(basic::FieldTileSet<GridLayout_t, Grid_t, Field_t> const& f,
+                 GridLayout_t const& layout)
+{
+#if PHARE_DEBUG
+    auto const domainBox = layout.AMRBoxFor(f);
+
+    for (auto& tile : f())
+        if (auto const overlap = **tile * domainBox)
+            for (auto const& bix : tile.layout().AMRToLocal(*overlap))
+            {
+                assert(not std::isnan(tile()(bix)));
+            }
+#endif // PHARE_DEBUG
+}
+
+template<typename GridLayout_t, typename Grid_t, typename Field_t>
+void check_field(basic::FieldTileSet<GridLayout_t, Grid_t, Field_t> const& f)
+{
+#if PHARE_DEBUG
+    for (auto& tile : f())
+        check_field(tile());
+#endif // PHARE_DEBUG
+}
+
 
 } // namespace PHARE::core
 

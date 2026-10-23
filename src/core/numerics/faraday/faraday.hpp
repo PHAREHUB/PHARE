@@ -1,6 +1,7 @@
 #ifndef PHARE_FARADAY_HPP
 #define PHARE_FARADAY_HPP
 
+#include "core/def.hpp"
 #include "core/data/grid/gridlayoutdefs.hpp"
 #include "core/data/vecfield/vecfield_component.hpp"
 
@@ -19,7 +20,7 @@ public:
     }
 
     template<typename VecField>
-    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt)
+    void operator()(VecField const& B, VecField const& E, VecField& Bnew, double dt) _PHARE_ALL_FN_
     {
         dt_ = dt;
         // can't use structured bindings because
@@ -32,9 +33,12 @@ public:
         auto& Bynew = Bnew(Component::Y);
         auto& Bznew = Bnew(Component::Z);
 
-        layout_.evalOnBox(Bxnew, [](auto&&... args) { BxEq_(args...); }, Bx, E, Bxnew, *this);
-        layout_.evalOnBox(Bynew, [](auto&&... args) { ByEq_(args...); }, By, E, Bynew, *this);
-        layout_.evalOnBox(Bznew, [](auto&&... args) { BzEq_(args...); }, Bz, E, Bznew, *this);
+        layout_.evalOnBox(
+            Bxnew, [] _PHARE_ALL_FN_(auto&&... args) { BxEq_(args...); }, Bx, E, Bxnew, *this);
+        layout_.evalOnBox(
+            Bynew, [] _PHARE_ALL_FN_(auto&&... args) { ByEq_(args...); }, By, E, Bynew, *this);
+        layout_.evalOnBox(
+            Bznew, [] _PHARE_ALL_FN_(auto&&... args) { BzEq_(args...); }, Bz, E, Bznew, *this);
     }
 
 private:
@@ -44,7 +48,7 @@ private:
 
 
     template<typename IJK, typename... Args>
-    static void BxEq_(IJK const& ijk, Args&&... args)
+    static void BxEq_(IJK const& ijk, Args&&... args) _PHARE_ALL_FN_
     {
         auto const& [Bx, E, Bxnew, self] = std::forward_as_tuple(args...);
         auto const& [layout, dt]         = self;
@@ -62,7 +66,7 @@ private:
     }
 
     template<typename IJK, typename... Args>
-    static void ByEq_(IJK const& ijk, Args&&... args)
+    static void ByEq_(IJK const& ijk, Args&&... args) _PHARE_ALL_FN_
     {
         auto const& [By, E, Bynew, self] = std::forward_as_tuple(args...);
         auto const& [layout, dt]         = self;
@@ -77,7 +81,7 @@ private:
     }
 
     template<typename IJK, typename... Args>
-    static void BzEq_(IJK const& ijk, Args&&... args)
+    static void BzEq_(IJK const& ijk, Args&&... args) _PHARE_ALL_FN_
     {
         auto const& [Bz, E, Bznew, self] = std::forward_as_tuple(args...);
         auto const& [layout, dt]         = self;

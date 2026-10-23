@@ -1,6 +1,4 @@
-#
-#
-#
+# pyphare/pyphare/cpp/__init__.py
 
 import os
 import json

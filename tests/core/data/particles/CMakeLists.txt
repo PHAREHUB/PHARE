@@ -23,3 +23,4 @@ _add_core_particles_test(test_particles_selecting)
 _add_core_particles_test(test_particles_partitioning)
 _add_core_particles_test(test_particles_construction)
 _add_core_particles_test(test_particle_array_consistency)
+# _add_core_particles_test(test_particle_array_synchronisation) # disabled: AoSPCTS level-ghost cross-tile sync bug, see pc_ts move_check

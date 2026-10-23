@@ -3,7 +3,7 @@
 #include "core/utilities/point/point.hpp"
 #include "core/data/particles/particle.hpp"
 #include "core/data/particles/particle_array.hpp"
-#include "core/data/particles/particle_array_partitioner.hpp"
+#include "core/data/particles/partitioning/particles_partitioning.hpp"
 
 #include "tests/core/data/particles/test_particles.hpp"
 
@@ -294,7 +294,7 @@ TEST_F(ParticlePartitioner, partition_ghosts)
 
     auto L = [&](auto&& particles) {
         using ParticleArray_t = std::decay_t<decltype(particles)>;
-        using Partitioner     = ParticleArrayPartitioner<ParticleArray_t>;
+        using Partitioner = ParticleArrayPartitioner<ParticleArray_t::alloc_mode, ParticleArray_t>;
 
         std::size_t ppc = 10;
         add_particles(particles, super_ghost_box, ppc);
@@ -330,3 +330,95 @@ TEST_F(ParticlePartitioner, partition_ghosts)
     L(AoSParticleArray<dim>{});
     // PHARE_WITH_THRUST(L(SoAParticleArray<dim>{}));
 }
+
+
+
+// TEST_F(ParticlePartitioner, partition_overlaps)
+// {
+//     auto constexpr static dim               = 3;
+//     auto constexpr static extra_ghost_cells = 2;
+//     using box_t                             = Box<int, dim>;
+//     using point_t                           = Point<int, dim>;
+
+//     box_t middle_box{{10, 10, 10}, {14, 14, 14}};
+
+//     std::vector<box_t> neighbor_boxes;
+//     for (int x = 1; x < 4; ++x)
+//     {
+//         auto x0 = x * 5;
+
+//         for (int y = 1; y < 4; ++y)
+//         {
+//             auto y0 = y * 5;
+
+//             for (int z = 1; z < 4; ++z)
+//             {
+//                 auto z0 = z * 5;
+
+//                 point_t p{x0, y0, z0};
+//                 if (p == middle_box.lower)
+//                     continue;
+
+//                 neighbor_boxes.push_back(box_t{{x0, y0, z0}, {x0 + 4, y0 + 4, z0 + 4}});
+//             }
+//         }
+//     }
+
+//     assert(not any_overlaps(neighbor_boxes));
+//     assert(not any_overlaps(neighbor_boxes, middle_box));
+//     auto neighbor_ghost_boxes
+//         = generate_from([](auto box) { return box.grow(extra_ghost_cells); }, neighbor_boxes);
+//     assert(all_overlaps(neighbor_ghost_boxes, middle_box));
+
+//     auto overlaps = distinct_overlaps(neighbor_ghost_boxes, middle_box);
+//     assert(not any_overlaps(overlaps));
+//     EXPECT_EQ(std::pow(5, 3) - 1, sum_from(overlaps, [](auto& r) { return r.size(); }));
+
+//     auto middle_ghost_box = grow(middle_box, extra_ghost_cells);
+//     auto ghost_boxes      = middle_ghost_box.remove(middle_box);
+
+//     auto L = [&](auto&& particles) {
+//         std::size_t ppc = 10;
+//         add_particles_in(particles, middle_ghost_box, ppc);
+//         assert(particles.size() == std::pow(9, 3) * ppc);
+
+//         auto all_boxes = neighbor_boxes;
+//         neighbor_boxes.emplace_back();
+//         // auto iterators = partition<extra_ghost_cells>(particles, middle_box, neighbor_boxes);
+//         auto iterators = ParticleArrayPartitioner<ParticleArray_t>{particles}(
+//             std::array{middle_box, grow(middle_box, extra_ghost_cells)});
+
+//         assert(iterators.size() > 1);
+
+//         assert(particles.begin() == iterators[0].begin());
+//         assert(std::distance(particles.begin(), iterators[0].end()) == ppc);
+
+//         for (auto it = particles.begin(); it != iterators[0].end(); ++it)
+//             assert((not isIn((*it).iCell(), ghost_boxes)) and (not isIn((*it).iCell(),
+//             overlaps)));
+
+
+//         for (std::size_t i = 1; i < iterators.size(); ++i)
+//             for (auto it = iterators[i].begin(); it != iterators[i].end(); ++it)
+//                 assert(isIn((*it).iCell(), overlaps));
+
+//         for (auto it = iterators.back().end(); it != particles.end(); ++it)
+//             assert(isIn((*it).iCell(), ghost_boxes));
+
+//         auto n_ghost_particles = std::distance(iterators.back().end(), particles.end());
+//         assert(n_ghost_particles == (std::pow(9, 3) - std::pow(5, 3)) * ppc);
+//     };
+
+//     L(AoSParticleArray<dim>{});
+//     // L(SoAParticleArray<dim>{});
+// }
+
+
+
+
+// int main(int argc, char** argv)
+//{
+//     ::testing::InitGoogleTest(&argc, argv);
+//
+//     return RUN_ALL_TESTS();
+// }

@@ -117,7 +117,7 @@ public:
 
 
     /** see Pusher::move() documentation*/
-    void setMeshAndTimeStep(std::array<double, dim> const& ms, double const ts)
+    void setMeshAndTimeStep(std::array<double, dim> const& ms, double const ts) _PHARE_ALL_FN_
     {
         std::transform(std::begin(ms), std::end(ms), std::begin(halfDtOverDl_),
                        [ts](double const& x) { return 0.5 * ts / x; });
@@ -202,7 +202,7 @@ private:
 
     template<typename Particles, typename ParticleEB>
     void static accelerate_(Particles& particles, ParticleEB const& particleEB, double const coef1,
-                            std::size_t const idx)
+                            std::size_t const idx) _PHARE_ALL_FN_
     {
         auto particle = particles.begin() + idx;
         boris::accelerate(deref(particle), particleEB, coef1);

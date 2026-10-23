@@ -1,6 +1,7 @@
 #ifndef PHARE_CORE_DATA_PARTICLES_PARTICLE_TRANSLATION_TRACKING_HPP
 #define PHARE_CORE_DATA_PARTICLES_PARTICLE_TRANSLATION_TRACKING_HPP
 
+#include "core/vector.hpp"
 #include "core/utilities/span.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
@@ -20,29 +21,37 @@ template<std::size_t dim, auto alloc_mode>
 class ParticleTranslationTracker
 {
 public:
+    using SIZE_T  = default_span_size_t;
     using box_t   = Box<int, dim>;
     using lobox_t = Box<std::uint32_t, dim>;
 
     template<typename T>
     using nd_array_t = NdArrayVector<dim, T, /*c_order=*/true, alloc_mode>;
 
-    using size_t_vector = std::vector<std::size_t>;
+    template<typename T>
+    using vec_helper = PHARE::Vector<T, alloc_mode, 1>;
 
-    auto& box() const { return box_; }
-    auto& ghost_box() const { return ghost_box_; }
+    using size_t_vec_helper = vec_helper<std::size_t>;
+    using size_t_vector     = typename size_t_vec_helper::vector_t;
 
-    auto local_cell(std::array<int, dim> const& icell) const
+    auto& box() const _PHARE_ALL_FN_ { return box_; }
+    auto& ghost_box() const _PHARE_ALL_FN_ { return ghost_box_; }
+
+    auto local_cell(std::array<int, dim> const& icell) const _PHARE_ALL_FN_
     {
         return as_local_cell(ghost_box_, icell);
     }
-    auto local_cell(Point<int, dim> const& icell) const { return local_cell(icell.toArray()); }
+    auto local_cell(Point<int, dim> const& icell) const _PHARE_ALL_FN_
+    {
+        return local_cell(icell.toArray());
+    }
 
-    auto local_box() const
+    auto local_box() const _PHARE_ALL_FN_
     {
         return box_from_zero_to_upper_minus_one(
             ghost_box_.shape().template toArray<std::uint32_t>());
     }
-    auto local_box(Box<int, dim> const& from) const
+    auto local_box(Box<int, dim> const& from) const _PHARE_ALL_FN_
     {
         return lobox_t{local_cell(from.lower), local_cell(from.upper)};
     }
@@ -70,10 +79,10 @@ protected:
 
     nd_array_t<size_t_vector> gaps_{local_box().shape()};
     nd_array_t<Span<std::size_t>> gap_views_{local_box().shape()};
-    nd_array_t<std::size_t> gap_idx_{local_box().shape()};
-    nd_array_t<std::size_t> add_into_{local_box().shape()};
-    nd_array_t<std::size_t> left_{local_box().shape()};
-    nd_array_t<std::size_t> cap_{local_box().shape()};
+    nd_array_t<SIZE_T> gap_idx_{local_box().shape()};
+    nd_array_t<SIZE_T> add_into_{local_box().shape()};
+    nd_array_t<SIZE_T> left_{local_box().shape()};
+    nd_array_t<SIZE_T> cap_{local_box().shape()};
     nd_array_t<std::size_t> cell_size_{local_box().shape()};
 
     std::size_t total_size = 0;
@@ -92,21 +101,25 @@ template<std::size_t dim>
 class ParticleTranslationTrackerSpan
 {
 public:
+    using SIZE_T  = default_span_size_t;
     using lobox_t = Box<std::uint32_t, dim>;
 
-    auto size() const { return size_; }
+    auto size() const _PHARE_ALL_FN_ { return size_; }
 
-    auto& box() const { return box_; }
-    auto& ghost_box() const { return ghost_box_; }
+    auto& box() const _PHARE_ALL_FN_ { return box_; }
+    auto& ghost_box() const _PHARE_ALL_FN_ { return ghost_box_; }
 
-    auto local_cell(std::array<int, dim> const& icell) const
+    auto local_cell(std::array<int, dim> const& icell) const _PHARE_ALL_FN_
     {
         return as_local_cell(ghost_box_, icell);
     }
-    auto local_cell(Point<int, dim> const& icell) const { return local_cell(icell.toArray()); }
+    auto local_cell(Point<int, dim> const& icell) const _PHARE_ALL_FN_
+    {
+        return local_cell(icell.toArray());
+    }
 
-    auto& local_box() const { return local_ghost_box_; }
-    auto local_box(Box<int, dim> const& from) const
+    auto& local_box() const _PHARE_ALL_FN_ { return local_ghost_box_; }
+    auto local_box(Box<int, dim> const& from) const _PHARE_ALL_FN_
     {
         return lobox_t{local_cell(from.lower), local_cell(from.upper)};
     }
@@ -117,7 +130,7 @@ protected:
     struct Init
     {
         NdArrayView<dim, Span<std::size_t>> gaps;
-        NdArrayView<dim, std::size_t> gap_idx, add_into, cap, left;
+        NdArrayView<dim, SIZE_T> gap_idx, add_into, cap, left;
         std::size_t size;
         Box<int, dim> box, ghost_box;
         lobox_t local_ghost_box;
@@ -137,7 +150,7 @@ protected:
     }
 
     NdArrayView<dim, Span<std::size_t>> gaps_;
-    NdArrayView<dim, std::size_t> gap_idx_, add_into_, cap_, left_;
+    NdArrayView<dim, SIZE_T> gap_idx_, add_into_, cap_, left_;
     std::size_t size_;
 
     Box<int, dim> box_, ghost_box_;

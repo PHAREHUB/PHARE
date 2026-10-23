@@ -29,7 +29,10 @@ concept Spannable = requires(T t) {
 
 
 
-template<typename T, typename SIZE = std::size_t>
+using default_span_size_t = unsigned long long int; // CUDA doesn't like std::size_t
+
+
+template<typename T, typename SIZE = default_span_size_t>
 struct Span
 {
     using value_type = std::decay_t<T>;
@@ -45,16 +48,16 @@ struct Span
     Span& operator=(Span&&)      = default;
     Span& operator=(Span const&) = default;
 
-    NO_DISCARD auto& operator[](SIZE i) { return ptr[i]; }
-    NO_DISCARD auto& operator[](SIZE i) const { return ptr[i]; }
-    NO_DISCARD T const* cdata() const { return ptr; }
-    NO_DISCARD auto data() const { return ptr; }
-    NO_DISCARD auto data() { return ptr; }
-    NO_DISCARD auto begin() { return ptr; }
-    NO_DISCARD auto begin() const { return ptr; }
-    NO_DISCARD auto end() { return ptr + s; }
-    NO_DISCARD auto end() const { return ptr + s; }
-    NO_DISCARD SIZE const& size() const { return s; }
+    NO_DISCARD auto& operator[](SIZE i) _PHARE_ALL_FN_ { return ptr[i]; }
+    NO_DISCARD auto& operator[](SIZE i) const _PHARE_ALL_FN_ { return ptr[i]; }
+    NO_DISCARD T const* cdata() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto data() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto data() _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto begin() _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto begin() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto end() _PHARE_ALL_FN_ { return ptr + s; }
+    NO_DISCARD auto end() const _PHARE_ALL_FN_ { return ptr + s; }
+    NO_DISCARD SIZE const& size() const _PHARE_ALL_FN_ { return s; }
     NO_DISCARD auto size_address() { return &s; }
 
     T* ptr = nullptr;
@@ -87,7 +90,7 @@ auto make_const_span(Container_t const& container)
 }
 
 
-template<typename T, typename SIZE = std::size_t>
+template<typename T, typename SIZE = default_span_size_t>
 class VectorSpan : private StackVar<std::vector<T>>, public core::Span<T, SIZE>
 {
     using Vector = StackVar<std::vector<T>>;
@@ -130,7 +133,7 @@ private:
 
 
 
-template<typename T, typename SIZE = std::size_t, typename Alloc = std::allocator<T>>
+template<typename T, typename SIZE = default_span_size_t, typename Alloc = std::allocator<T>>
 struct SpanSet
 {
     using value_type = T;
@@ -227,7 +230,7 @@ auto flatten(std::vector<std::array<T, size>>& data)
 }
 
 
-template<typename V, typename T, typename SIZE = std::size_t>
+template<typename V, typename T, typename SIZE = default_span_size_t>
 struct ViewSpan // represent vector of T as Span of V
 {
     auto constexpr static real_size = sizeof(T);
@@ -245,25 +248,28 @@ struct ViewSpan // represent vector of T as Span of V
     ViewSpan& operator=(ViewSpan const&) = default;
 
     template<typename P>
-    auto static as(auto&& ptr)
+    auto static as(auto&& ptr) _PHARE_ALL_FN_
     {
         return reinterpret_cast<P>(ptr);
     }
 
-    auto hax(std::size_t const i) { return as<V*>(as<T*>(ptr) + i); }
-    auto hax(std::size_t const i) const { return as<V const*>(as<T const*>(ptr) + i); }
+    auto hax(std::size_t const i) _PHARE_ALL_FN_ { return as<V*>(as<T*>(ptr) + i); }
+    auto hax(std::size_t const i) const _PHARE_ALL_FN_
+    {
+        return as<V const*>(as<T const*>(ptr) + i);
+    }
 
-    NO_DISCARD auto& operator[](SIZE const i) { return *hax(i); }
-    NO_DISCARD auto& operator[](SIZE const i) const { return *hax(i); }
-    NO_DISCARD auto data() const { return ptr; }
-    NO_DISCARD auto data() { return ptr; }
-    NO_DISCARD SIZE const& size() const { return s; }
+    NO_DISCARD auto& operator[](SIZE const i) _PHARE_ALL_FN_ { return *hax(i); }
+    NO_DISCARD auto& operator[](SIZE const i) const _PHARE_ALL_FN_ { return *hax(i); }
+    NO_DISCARD auto data() const _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD auto data() _PHARE_ALL_FN_ { return ptr; }
+    NO_DISCARD SIZE const& size() const _PHARE_ALL_FN_ { return s; }
 
     // DO NOT USE ON GPU! // USE operator[]!!!!
-    NO_DISCARD auto begin() { return as<T*>(ptr); }
-    NO_DISCARD auto begin() const { return as<T const*>(ptr); }
-    NO_DISCARD auto end() { return as<T*>(ptr) + s; }
-    NO_DISCARD auto end() const { return as<T const*>(ptr) + s; }
+    NO_DISCARD auto begin() _PHARE_HST_FN_ { return as<T*>(ptr); }
+    NO_DISCARD auto begin() const _PHARE_HST_FN_ { return as<T const*>(ptr); }
+    NO_DISCARD auto end() _PHARE_HST_FN_ { return as<T*>(ptr) + s; }
+    NO_DISCARD auto end() const _PHARE_HST_FN_ { return as<T const*>(ptr) + s; }
 
     V* ptr = nullptr;
     SIZE s = 0;

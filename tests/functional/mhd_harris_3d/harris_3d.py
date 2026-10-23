@@ -1,4 +1,4 @@
-#
+# tests/functional/mhd_harris_3d/harris_3d.py
 
 import numpy as np
 from pathlib import Path

@@ -2,6 +2,7 @@
 #define PHARE_CORE_DATA_FIELD_FIELD_TILES_HPP
 
 #include "core/def.hpp"
+#include "core/vector.hpp"
 #include "core/utilities/box/box.hpp"
 #include "core/data/tiles/tile_set.hpp"
 #include "core/data/tiles/tile_set_traversal.hpp"
@@ -70,41 +71,44 @@ public:
     {
     }
 
-    auto& operator()() { return field_; }
-    auto& operator()() const { return field_; }
-    Super& operator*() { return *this; }
-    Super const& operator*() const { return *this; }
-    auto& layout() const { return layout_; }
+    auto& operator()() _PHARE_ALL_FN_ { return field_; }
+    auto& operator()() const _PHARE_ALL_FN_ { return field_; }
+    Super& operator*() _PHARE_ALL_FN_ { return *this; }
+    Super const& operator*() const _PHARE_ALL_FN_ { return *this; }
+    auto& layout() const _PHARE_ALL_FN_ { return layout_; }
 
-    auto ghost_box() const { return ghost_box_; }
-    auto field_box() const { return shrink(ghost_box(), GridLayout_t::options.field_ghost_width); }
+    auto ghost_box() const _PHARE_ALL_FN_ { return ghost_box_; }
+    auto field_box() const _PHARE_ALL_FN_
+    {
+        return shrink(ghost_box(), GridLayout_t::options.field_ghost_width);
+    }
 
     template<template<typename, std::size_t> typename Point_t>
-    auto& operator()(Point_t<std::uint32_t, dimension> const& point)
+    auto& operator()(Point_t<std::uint32_t, dimension> const& point) _PHARE_ALL_FN_
     {
         return field_(point);
     }
     template<template<typename, std::size_t> typename Point_t>
-    auto& operator()(Point_t<std::uint32_t, dimension> const& point) const
+    auto& operator()(Point_t<std::uint32_t, dimension> const& point) const _PHARE_ALL_FN_
     {
         return field_(point);
     }
     template<typename... IJK>
     auto& operator()(IJK const&... ijk)
         requires(sizeof...(IJK) == dimension)
-
+    _PHARE_ALL_FN_
     {
         return field_(to_point<std::uint32_t>(ijk...));
     }
     template<typename... IJK>
     auto& operator()(IJK const&... ijk) const
         requires(sizeof...(IJK) == dimension)
-
+    _PHARE_ALL_FN_
     {
         return field_(to_point<std::uint32_t>(ijk...));
     }
 
-    NO_DISCARD auto physicalQuantity() const { return field_.physicalQuantity(); }
+    NO_DISCARD auto physicalQuantity() const _PHARE_ALL_FN_ { return field_.physicalQuantity(); }
 
     bool isUsable() const { return field_.isUsable(); }
     bool isSettable() const { return !isUsable(); }
@@ -150,21 +154,23 @@ public:
     auto constexpr static dimension  = GridLayout_t::dimension;
     auto constexpr static alloc_mode = Grid_t::alloc_mode;
 
-    FieldTileSet(auto physicalQuantity)
-        : Super{{}, nullptr, 0, nullptr, {}}
-        , qty_{physicalQuantity}
+    FieldTileSet(auto physicalQuantity) _PHARE_ALL_FN_ : Super{{}, nullptr, 0, nullptr, {}},
+                                                         qty_{physicalQuantity}
     {
     }
 
-    FieldTileSet(FieldTileSet const&)            = default;
-    FieldTileSet(FieldTileSet&&)                 = delete;
-    FieldTileSet& operator=(FieldTileSet const&) = delete;
-    FieldTileSet& operator=(FieldTileSet&&)      = delete;
+    FieldTileSet(FieldTileSet const&) _PHARE_ALL_FN_            = default;
+    FieldTileSet(FieldTileSet&&) _PHARE_ALL_FN_                 = delete;
+    FieldTileSet& operator=(FieldTileSet const&) _PHARE_ALL_FN_ = delete;
+    FieldTileSet& operator=(FieldTileSet&&) _PHARE_ALL_FN_      = delete;
 
-    void setBuffer(std::nullptr_t ptr) { super() = Super{{}, nullptr, 0, nullptr, {}}; }
+    void setBuffer(std::nullptr_t ptr) _PHARE_ALL_FN_
+    {
+        super() = Super{{}, nullptr, 0, nullptr, {}};
+    }
 
     template<typename FieldLike>
-    void setBuffer(FieldLike* const field)
+    void setBuffer(FieldLike* const field) _PHARE_ALL_FN_
     {
         auto data = field ? field->data() : nullptr;
         if (data)
@@ -189,20 +195,37 @@ public:
         if (!Super::data())
             throw std::runtime_error("invalid state");
 
+        using vec_helper = PHARE::Vector<type, alloc_mode>;
         for (auto& tile : *this)
-            std::fill(tile().data(), tile().data() + tile().size(), 0);
+            vec_helper::fill(tile().data(), tile().size(), 0);
     }
 
     void fill(auto const v)
     {
         if (!Super::data())
             throw std::runtime_error("invalid state");
+
+        using vec_helper = PHARE::Vector<type, alloc_mode>;
         for (auto& tile : *this)
-            std::fill(tile().data(), tile().data() + tile().size(), v);
+            vec_helper::fill(tile().data(), tile().size(), v);
     }
 
-    auto& operator()() { return super()(); }
-    auto& operator()() const { return super()(); }
+    auto& operator()() _PHARE_ALL_FN_
+    {
+        PHARE_ASSERT(isUsable());
+        return super()();
+    }
+    auto& operator()() const _PHARE_ALL_FN_
+    {
+        PHARE_ASSERT(isUsable());
+        return super()();
+    }
+
+    void setData(auto* const data) _PHARE_ALL_FN_
+    {
+        throw std::runtime_error("fix?");
+        /*Super::setBuffer(data);*/
+    }
 
     bool isUsable() const { return Super::data() != nullptr; }
     bool isSettable() const { return !isUsable(); }
@@ -213,12 +236,21 @@ public:
             std::copy(that[tidx]().data(), that[tidx]().data() + that[tidx]().size(),
                       super()[tidx]().data());
     }
-    NO_DISCARD auto size() const { return ghost_box_.size(); } // NOT ntiles!
-    NO_DISCARD auto shape() const { return *ghost_box_.shape().as_unsigned(); }
-    NO_DISCARD auto ghost_box() const { return ghost_box_; }
+    NO_DISCARD auto size() const _PHARE_ALL_FN_ { return ghost_box_.size(); } // NOT ntiles!
+    NO_DISCARD auto shape() const _PHARE_ALL_FN_ { return *ghost_box_.shape().as_unsigned(); }
+    NO_DISCARD auto ghost_box() const _PHARE_ALL_FN_ { return ghost_box_; }
 
     NO_DISCARD auto at(auto const&... args) { return super().at(args...); }
     NO_DISCARD auto at(auto const&... args) const { return super().at(args...); }
+
+    void check(bool const nan = false) const
+    {
+        // for (auto& tile : super())
+        // {
+        //     assert(tile().size() < static_cast<std::size_t>(1e6));
+        //     tile().check();
+        // }
+    }
 
     void sync_inner_ghosts()
     {
@@ -246,7 +278,10 @@ public:
     auto max_tile_size() const { return max_tile_size_; }
     auto ntiles() const { return Super::size(); }
 
-    NO_DISCARD auto physicalQuantity() const { return qty_; }
+    template<typename, typename, typename>
+    friend std::ostream& operator<<(std::ostream&, FieldTileSet const&);
+
+    NO_DISCARD auto physicalQuantity() const _PHARE_ALL_FN_ { return qty_; }
 
 private:
     Super& super() { return *this; }
@@ -277,9 +312,9 @@ class FieldTileSet : public basic::FieldTileSet<GridLayout_t, Grid_t, Field_t>
 public:
     using Super = basic::FieldTileSet<GridLayout_t, Grid_t, Field_t>;
 
-    FieldTileSet(std::string const& name, auto physicalQuantity)
-        : Super{physicalQuantity}
-        , name_{name}
+    FieldTileSet(std::string const& name, auto physicalQuantity) _PHARE_ALL_FN_
+        : Super{physicalQuantity},
+          name_{name}
     {
     }
 

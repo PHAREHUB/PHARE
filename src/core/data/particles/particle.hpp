@@ -11,8 +11,10 @@
 #include <algorithm>
 #include <type_traits>
 
+
 namespace PHARE::core
 {
+
 
 template<size_t dim>
 struct Particle
@@ -20,29 +22,32 @@ struct Particle
     static_assert(dim > 0 and dim < 4, "Only dimensions 1,2,3 are supported.");
     static auto constexpr dimension = dim;
 
-    constexpr Particle() {}
+    constexpr Particle() _PHARE_ALL_FN_ {}
     Particle(Particle const&)            = default;
     Particle(Particle&&)                 = default;
     Particle& operator=(Particle const&) = default;
     Particle& operator=(Particle&&)      = default;
 
     Particle(double const& a_weight, std::array<int, dim> const& cell,
-             std::array<double, dim> const& a_delta, std::array<double, 3> const& a_v) //
-        : weight_{a_weight}
-        , iCell_{cell}
-        , delta_{a_delta}
-        , v_{a_v}
+             std::array<double, dim> const& a_delta,
+             std::array<double, 3> const& a_v) _PHARE_ALL_FN_ //
+        : weight_{a_weight},
+          iCell_{cell},
+          delta_{a_delta},
+          v_{a_v}
     {
     }
 
+
     template<typename Particle_t>
-    Particle(Particle_t const& p) //
-        : weight_{p.weight()}
-        , iCell_{p.iCell()}
-        , delta_{p.delta()}
-        , v_{p.v()}
+    Particle(Particle_t const& p) _PHARE_ALL_FN_ //
+        : weight_{p.weight()},
+          iCell_{p.iCell()},
+          delta_{p.delta()},
+          v_{p.v()}
     {
     }
+
 
     //                                                             1d  2d  3d
     double weight_                 = 0;                         // 8   8   8
@@ -58,20 +63,21 @@ struct Particle
                (this->v_ == that.v_);
     }
 
-    auto& weight() { return weight_; }
-    auto& weight() const { return weight_; }
+    auto& weight() _PHARE_ALL_FN_ { return weight_; }
+    auto& weight() const _PHARE_ALL_FN_ { return weight_; }
 
-    auto& iCell() { return iCell_; }
-    auto& iCell() const { return iCell_; }
+    auto& iCell() _PHARE_ALL_FN_ { return iCell_; }
+    auto& iCell() const _PHARE_ALL_FN_ { return iCell_; }
 
-    auto& delta() { return delta_; }
-    auto& delta() const { return delta_; }
+    auto& delta() _PHARE_ALL_FN_ { return delta_; }
+    auto& delta() const _PHARE_ALL_FN_ { return delta_; }
 
-    auto& v() { return v_; }
-    auto& v() const { return v_; }
+    auto& v() _PHARE_ALL_FN_ { return v_; }
+    auto& v() const _PHARE_ALL_FN_ { return v_; }
 
     template<std::size_t dimension>
     friend std::ostream& operator<<(std::ostream& out, Particle<dimension> const& particle);
+
 
     auto copy() const { return *this; }
 };
@@ -89,25 +95,20 @@ struct ParticleDeltaDistribution
 {
     template<typename Generator>
     NO_DISCARD T operator()(Generator& generator)
-    {
-        return dist(generator);
-    }
+    { return dist(generator); }
     std::uniform_real_distribution<T> dist{0, 1. - std::numeric_limits<T>::epsilon()};
 };
 
 
 template<typename T, std::size_t dim>
-NO_DISCARD auto cellAsPoint(std::array<T, dim> const& iCell)
-{
-    return Point<int, dim>{iCell};
-}
+NO_DISCARD auto cellAsPoint(std::array<T, dim> const& iCell) _PHARE_ALL_FN_
+{ return Point<int, dim>{iCell}; }
 
 
 template<typename Particle>
-NO_DISCARD auto cellAsPoint(Particle const& particle)
-{
-    return cellAsPoint(particle.iCell());
-}
+NO_DISCARD auto cellAsPoint(Particle const& particle) _PHARE_ALL_FN_
+{ return cellAsPoint(particle.iCell()); }
+
 
 
 template<std::size_t dim>
@@ -122,6 +123,28 @@ struct ParticlePosition
     auto& delta() const { return _delta; }
 };
 
+
+
+template<size_t dim>
+struct CountedParticle : public Particle<dim>
+{
+    CountedParticle(double const& a_weight, std::array<int, dim> const& cell,
+                    std::array<double, dim> const& a_delta, std::array<double, 3> const& a_v,
+                    std::size_t const& id_ = 0) _PHARE_ALL_FN_
+        : Particle<dim>{a_weight, cell, a_delta, a_v},
+          id{id_}
+    {
+    }
+    CountedParticle() _PHARE_ALL_FN_ {}
+
+    std::size_t id = 0;
+
+    auto copy() const { return *this; }
+    auto& super() const { return *this; }
+
+    template<std::size_t dimension>
+    friend std::ostream& operator<<(std::ostream& out, CountedParticle<dimension> const& particle);
+};
 
 template<size_t dim>
 auto to_string(Particle<dim> const& particle)
@@ -144,6 +167,8 @@ template<template<std::size_t> typename Particle_t, std::size_t dim, typename St
 Stream& write_to_stream(Particle_t<dim> const& particle, Stream& out, bool const new_line = true)
 {
     out << to_string(particle);
+    if constexpr (std::is_same_v<Particle_t<dim>, CountedParticle<dim>>)
+        out << ", id : " << particle.id;
     if (new_line)
         out << '\n';
     return out;
@@ -151,9 +176,16 @@ Stream& write_to_stream(Particle_t<dim> const& particle, Stream& out, bool const
 
 template<std::size_t dim>
 std::ostream& operator<<(std::ostream& out, Particle<dim> const& particle)
+{ return write_to_stream(particle, out); }
+
+template<std::size_t dim>
+std::ostream& operator<<(std::ostream& out, CountedParticle<dim> const& particle)
 {
-    return write_to_stream(particle, out);
+    write_to_stream(particle, out, /*new_line =*/false);
+    out << '\n';
+    return out;
 }
+
 
 
 template<std::size_t dim>
@@ -204,7 +236,6 @@ operator==(ParticleA<dim> const& particleA, ParticleB<dim> const& particleB)
            particleA.delta == particleB.delta and   //
            particleA.v == particleB.v;
 }
-
 
 auto shift_particle(auto particle, auto const& shift)
 {

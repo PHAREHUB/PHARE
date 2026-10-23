@@ -2,6 +2,7 @@
 #define PHARE_TEST_DIAGNOSTIC_INCLUDE_HPP
 
 #include "phare_core.hpp"
+#include "core/data/grid/grid_tiles.hpp"
 
 #include "diagnostic/detail/h5writer.hpp"
 #include "diagnostic/diagnostic_manager.hpp"

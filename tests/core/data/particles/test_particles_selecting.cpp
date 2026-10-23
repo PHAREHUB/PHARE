@@ -16,9 +16,32 @@
 namespace PHARE::core
 {
 
-auto static const cells = get_env_as("PHARE_CELLS", std::uint32_t{4});
-auto static const ppc   = get_env_as("PHARE_PPC", std::size_t{1});
+auto static const bytes   = get_env_as("PHARE_GPU_BYTES", std::uint64_t{500000000});
+auto static const cells   = get_env_as("PHARE_CELLS", std::uint32_t{4});
+auto static const ppc     = get_env_as("PHARE_PPC", std::size_t{1});
+bool static const premain = []() {
+    //     PHARE_WITH_MKN_GPU({
+    //         PHARE_LOG_LINE_STR("bytes: " << bytes); //
+    //         mkn::gpu::setDevice(0);
+    //         mkn::gpu::prinfo();
+    //         mkn::gpu::setLimitMallocHeapSize(bytes);
+    //         mkn::gpu::print_gpu_mem_used();
+    //     })
+    //     PHARE_WITH_PHLOP(                           //
+    //         PHARE_LOG_LINE_STR("cells: " << cells); //
+    //         PHARE_LOG_LINE_STR("ppc  : " << ppc);   //
 
+    //         using namespace PHARE; //
+    //         using namespace std::literals;
+    //         if (auto e = core::get_env("PHARE_SCOPE_TIMING", "false"); e == "1" || e == "true")
+    //             phlop::threaded::ScopeTimerMan::INSTANCE()
+    //                 .file_name(".phare_times.0.txt")
+    //                 // .force_strings()
+    //                 // .headers("fn"s, "dim"s, "layout"s, "alloc"s, "storage"s, "time"s)
+    //                 .init(); //
+    //     )
+    return true;
+}();
 
 template<std::size_t _dim, auto lm, auto am>
 struct TestParam

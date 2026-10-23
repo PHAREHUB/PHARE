@@ -3,9 +3,16 @@
 
 #include "core/operators.hpp"
 #include "core/utilities/span.hpp"
+#include "core/utilities/kernels.hpp"
+#include "core/utilities/monitoring.hpp"
 #include "core/data/ndarray/ndarray_vector.hpp"
 #include "core/data/particles/particle_array_def.hpp"
 #include "core/data/particles/particle_translation_tracking.hpp"
+
+#if PHARE_HAVE_THRUST
+#include "core/data/particles/arrays/particle_array_soa.hpp"
+#include "core/data/particles/arrays/particle_array_soavx.hpp"
+#endif
 
 namespace PHARE::core
 {
@@ -26,6 +33,7 @@ protected:
     using Base::size_;
 
 public:
+    using SIZE_T                     = typename Base::SIZE_T;
     auto static constexpr alloc_mode = Particles::alloc_mode;
     auto static constexpr dim        = Particles::dimension;
     using This                       = PerCellSpan<Particles>;
@@ -47,32 +55,55 @@ public:
     template<typename PerCellArray>
     PerCellSpan(PerCellArray& arr);
 
-    auto size(std::size_t const& idx) const { return particles_.data()[idx].size(); }
+    auto size(std::size_t const& idx) const _PHARE_ALL_FN_ { return particles_.data()[idx].size(); }
 
     auto& operator()() const { return particles_; }
-    auto& operator()(locell_t const& cell) { return particles_(cell); }
-    auto& operator()(locell_t const& cell) const { return particles_(cell); }
+    auto& operator()(locell_t const& cell) _PHARE_ALL_FN_ { return particles_(cell); }
+    auto& operator()(locell_t const& cell) const _PHARE_ALL_FN_ { return particles_(cell); }
 
+    // CPU: walks every cell on the host; GPU_UNIFIED: one kernel thread per cell, on the
+    // given stream if one is passed
     template<std::uint8_t PHASE = 0, auto type = ParticleType::Domain, typename... Args>
     void sync(Args&&... args);
 
+    // per-thread entry points for the GPU kernels launched by sync() - cell from kernel::idx()
     template<std::uint8_t PHASE = 0, auto type = ParticleType::Domain>
-    void sync_add_new(locell_t const& bix);
+    void sync_add_new() _PHARE_ALL_FN_;
 
     template<std::uint8_t PHASE = 0, auto type = ParticleType::Domain>
-    void sync_rm_left(locell_t const& bix);
+    void sync_rm_left() _PHARE_ALL_FN_;
+
+    template<std::uint8_t PHASE = 0, auto type = ParticleType::Domain>
+    void sync_add_new(locell_t const& bix) _PHARE_ALL_FN_;
+
+    template<std::uint8_t PHASE = 0, auto type = ParticleType::Domain>
+    void sync_rm_left(locell_t const& bix) _PHARE_ALL_FN_;
 
     // as above, but also removes an externally registered, ascending-sorted list of
     // leavers in the same descending swap-pop — two separate passes would move particles
     // the other list still indexes
     template<std::uint8_t PHASE = 0, auto type = ParticleType::Domain>
-    void sync_rm_left(locell_t const& bix, std::size_t const* x_gaps, std::size_t& x_size,
-                      std::size_t& x_left);
+    void sync_rm_left(locell_t const& bix, std::size_t const* x_gaps, SIZE_T& x_size,
+                      SIZE_T& x_left) _PHARE_ALL_FN_;
 
     // append src[idx] into cell bix if capacity allows — false when the cell is full
-    bool append_from(locell_t const& bix, auto const& src, std::size_t const idx);
+    bool append_from(locell_t const& bix, auto const& src, std::size_t const idx) _PHARE_ALL_FN_;
 
-    void static sort(auto from, auto to) { std::sort(from, to); }
+    void static sort(auto from, auto to) _PHARE_ALL_FN_
+    {
+        [[maybe_unused]] int sorted = 0;
+        PHARE_WITH_THRUST({ //
+            ++sorted;
+            thrust::sort(thrust::seq, from, to);
+        })
+        //
+        PHARE_WITH_THRUST_ELSE({ //
+            ++sorted;
+            std::sort(from, to);
+        }) //
+
+        assert(sorted == 1);
+    }
 
     void clear()
     {
@@ -107,7 +138,7 @@ protected:
     }
 
     NdArrayView<dim, Particles> particles_;
-    NdArrayView<dim, std::size_t> off_sets_;
+    NdArrayView<dim, SIZE_T> off_sets_;
 
 }; // PerCellSpan
 
@@ -135,6 +166,7 @@ protected:
     using Base::left_;
 
 public:
+    using SIZE_T                       = typename Base::SIZE_T;
     auto static constexpr dim          = Particles::dimension;
     auto static constexpr alloc_mode   = Particles::alloc_mode;
     auto static constexpr layout_mode  = Particles::layout_mode;
@@ -150,8 +182,12 @@ public:
     using per_cell_particles           = Particles;
     using per_tile_particles           = Particles; // MultiBoris compatibility
 
-    using size_t_vector   = std::vector<std::size_t>;
-    using particle_vector = std::vector<Particle_t>;
+    template<typename T>
+    using vec_helper = typename Base::template vec_helper<T>;
+
+    using size_t_vector       = typename Base::size_t_vector;
+    using particle_vec_helper = vec_helper<Particle_t>;
+    using particle_vector     = typename particle_vec_helper::vector_t;
 
     using Base::box;
     using Base::ghost_box;
@@ -206,7 +242,14 @@ public:
     template<typename V>
     static auto& get_vec(V& v)
     {
-        return v;
+        if constexpr (CompileOptions::WithMknGpu and alloc_mode == AllocatorMode::GPU_UNIFIED)
+        {
+            PHARE_WITH_MKN_GPU(return mkn::gpu::as_super(v));
+        }
+        else
+        {
+            return v;
+        }
     }
 
     void push_back(Particle_t&& p) { emplace_back(p); }
@@ -261,24 +304,41 @@ public:
 
     void static resize(Particles& ps, std::size_t const& s, bool const& copy = true)
     {
-        resize(ps.particles_, s, copy);
+        if constexpr (any_in(layout_mode, LayoutMode::SoA))
+            apply(ps.as_tuple(), [&](auto& v) { resize(v, s, copy); });
+        else
+            resize(ps.particles_, s, copy);
     }
 
     template<typename V>
     void static resize(V& v, std::size_t const& s, bool const& copy = true)
     {
-        v.resize(s);
+        if constexpr (CompileOptions::WithMknGpu and alloc_mode == AllocatorMode::GPU_UNIFIED)
+            PHARE_WITH_MKN_GPU(mkn::gpu::resize(v, s, copy));
+
+        else
+            v.resize(s);
     }
 
     void static reserve(Particles& ps, std::size_t const& s, bool const& copy = true)
     {
-        reserve(ps.particles_, s, copy);
+        if constexpr (any_in(layout_mode, LayoutMode::SoA))
+            apply(ps.as_tuple(), [&](auto& v) { reserve(v, s, copy); });
+        else
+            reserve(ps.particles_, s, copy);
     }
 
     template<typename V>
     void static reserve(V& v, std::size_t const& s, bool const& copy = true)
     {
-        v.reserve(s);
+        if (s > v.capacity())
+            MemoryMonitoring::LOG(__PRETTY_FUNCTION__);
+
+        if constexpr (CompileOptions::WithMknGpu and alloc_mode == AllocatorMode::GPU_UNIFIED)
+            PHARE_WITH_MKN_GPU(mkn::gpu::reserve(v, s, copy));
+
+        else
+            v.reserve(s);
     }
 
 protected:
@@ -305,7 +365,7 @@ protected:
 
     NdArrayVector<dim, Particles, c_order, alloc_mode> particles_{local_box().shape()};
     NdArrayVector<dim, PSpan_t, c_order, alloc_mode> particles_views_{local_box().shape()};
-    NdArrayVector<dim, std::size_t, c_order, alloc_mode> off_sets_{local_box().shape()};
+    NdArrayVector<dim, SIZE_T, c_order, alloc_mode> off_sets_{local_box().shape()};
 
 }; // PerCellVector<Particles>
 
@@ -428,6 +488,7 @@ void PerCellVector<Particles>::on_appended()
     static_assert(type != ParticleType::All);
 
     PHARE_LOG_SCOPE(3, "PerCellVector::on_appended");
+    MemoryMonitoring::LOG(__PRETTY_FUNCTION__);
 
     total_size = 0;
     for (auto const& bix : local_box())
@@ -497,8 +558,8 @@ struct PerCellParticles : public Super_
     PerCellParticles& operator=(PerCellParticles&& from)      = default;
     PerCellParticles& operator=(PerCellParticles const& from) = default;
 
-    auto data() const { return particles_.data(); }
-    auto data() { return particles_.data(); }
+    auto data() const _PHARE_ALL_FN_ { return particles_.data(); }
+    auto data() _PHARE_ALL_FN_ { return particles_.data(); }
 
     template<auto S = storage_mode, typename = std::enable_if_t<S == StorageMode::VECTOR>>
     auto operator[](Box<std::uint32_t, dimension> const& local) const
@@ -521,7 +582,7 @@ struct PerCellParticles : public Super_
     // the particle already carries its NEW cell (set by the caller); pt carries the OLD
     // cell so the departure can be registered against it — mirrors the TS/PCTS move_check
     template<auto particle_type>
-    auto& move_check(auto const& pt, std::size_t const& idx, auto& particle);
+    auto& move_check(auto const& pt, std::size_t const& idx, auto& particle) _PHARE_ALL_FN_;
 
     void print() const {}
     void check() const {}
@@ -538,11 +599,13 @@ struct PerCellParticles : public Super_
 // cell so the departure can be registered against it — mirrors the TS/PCTS move_check
 template<typename Super_>
 template<auto particle_type>
-auto& PerCellParticles<Super_>::move_check(auto const& pt, std::size_t const& idx, auto& particle)
+auto& PerCellParticles<Super_>::move_check(auto const& pt, std::size_t const& idx,
+                                           auto& particle) _PHARE_ALL_FN_
 {
     static_assert(any_in(particle_type, ParticleType::Domain, ParticleType::LevelGhost));
     bool constexpr static ATOMIC = true;
-    using Op                     = Operators<std::size_t, ATOMIC>;
+    bool constexpr static GPU    = alloc_mode == AllocatorMode::GPU_UNIFIED;
+    using Op                     = Operators<typename Super::SIZE_T, ATOMIC, GPU>;
 
     auto const& newcell = particle.iCell();
     if (array_equals(newcell, pt.icell))
@@ -576,12 +639,13 @@ PerCellSpan<Particles>::PerCellSpan(PerCellArray& arr)
 
 template<typename Particles>
 bool PerCellSpan<Particles>::append_from(locell_t const& bix, auto const& src,
-                                         std::size_t const idx)
+                                         std::size_t const idx) _PHARE_ALL_FN_
 {
     bool constexpr static atomic = true;
+    bool constexpr static GPU    = alloc_mode == AllocatorMode::GPU_UNIFIED;
     auto const& cap              = cap_(bix);
     auto& nparts                 = particles_(bix);
-    using Op   = Operators<std::decay_t<decltype(*nparts.size_address())>, atomic>;
+    using Op   = Operators<std::decay_t<decltype(*nparts.size_address())>, atomic, GPU>;
     auto npidx = nparts.size();
     while (true)
     {
@@ -603,17 +667,57 @@ template<typename Particles>
 template<std::uint8_t PHASE, auto type, typename... Args>
 void PerCellSpan<Particles>::sync(Args&&... args)
 {
-    for (auto const& bix : local_box())
-        sync_add_new<PHASE, type>(bix.toArray());
+    PHARE_LOG_SCOPE(1, "PerCellSpan::sync");
 
-    for (auto const& bix : local_box())
-        sync_rm_left<PHASE, type>(bix.toArray());
+    if constexpr (alloc_mode == AllocatorMode::CPU)
+    {
+        for (auto const& bix : local_box())
+            sync_add_new<PHASE, type>(bix.toArray());
+
+        for (auto const& bix : local_box())
+            sync_rm_left<PHASE, type>(bix.toArray());
+    }
+    else if constexpr (alloc_mode == AllocatorMode::GPU_UNIFIED)
+    {
+        PHARE_WITH_MKN_GPU({
+            auto view         = *this;
+            auto const& gabox = local_box();
+            if constexpr (sizeof...(Args) == 0)
+            {
+                kernel::launch(gabox.size(), [=] _PHARE_ALL_FN_() mutable {
+                    view.template sync_add_new<PHASE, type>();
+                });
+                kernel::launch(gabox.size(), [=] _PHARE_ALL_FN_() mutable {
+                    view.template sync_rm_left<PHASE, type>();
+                });
+            }
+            else
+            {
+                auto const& [stream] = std::forward_as_tuple(args...);
+                kernel::launch(stream, gabox.size(), [=] _PHARE_ALL_FN_() mutable {
+                    view.template sync_add_new<PHASE, type>();
+                });
+                kernel::launch(stream, gabox.size(), [=] _PHARE_ALL_FN_() mutable {
+                    view.template sync_rm_left<PHASE, type>();
+                });
+            }
+        })
+    }
 }
 
 
 template<typename Particles>
 template<std::uint8_t PHASE, auto type>
-void PerCellSpan<Particles>::sync_add_new(locell_t const& bix)
+void PerCellSpan<Particles>::sync_add_new() _PHARE_ALL_FN_
+{
+#if PHARE_HAVE_MKN_GPU
+    sync_add_new<PHASE, type>((*(local_box().begin() + kernel::idx())).toArray());
+#endif // PHARE_HAVE_MKN_GPU
+}
+
+template<typename Particles>
+template<std::uint8_t PHASE, auto type>
+void PerCellSpan<Particles>::sync_add_new(locell_t const& bix) _PHARE_ALL_FN_
 {
     auto const& n_gaps = gap_idx_(bix);
     auto& gaps         = gaps_(bix);
@@ -655,7 +759,16 @@ void PerCellSpan<Particles>::sync_add_new(locell_t const& bix)
 
 template<typename Particles>
 template<std::uint8_t PHASE, auto type>
-void PerCellSpan<Particles>::sync_rm_left(locell_t const& bix)
+void PerCellSpan<Particles>::sync_rm_left() _PHARE_ALL_FN_
+{
+#if PHARE_HAVE_MKN_GPU
+    sync_rm_left<PHASE, type>((*(local_box().begin() + kernel::idx())).toArray());
+#endif // PHARE_HAVE_MKN_GPU
+}
+
+template<typename Particles>
+template<std::uint8_t PHASE, auto type>
+void PerCellSpan<Particles>::sync_rm_left(locell_t const& bix) _PHARE_ALL_FN_
 {
     // add_into_(bix) is now precisely decremented, once per accepted arrival, right
     // in sync_add_new (see there) — so by the time every tile's own sync_add_new
@@ -663,15 +776,15 @@ void PerCellSpan<Particles>::sync_rm_left(locell_t const& bix)
     // unconditionally here (rather than the old `-= left_(bix)`, which conflated
     // bix's arrival count with a same-named but differently-scoped departure count)
     // so the next cycle starts clean regardless.
-    add_into_(bix)     = 0;
-    std::size_t x_size = 0, x_left = 0;
+    add_into_(bix) = 0;
+    SIZE_T x_size = 0, x_left = 0;
     sync_rm_left<PHASE, type>(bix, nullptr, x_size, x_left);
 }
 
 template<typename Particles>
 template<std::uint8_t PHASE, auto type>
 void PerCellSpan<Particles>::sync_rm_left(locell_t const& bix, std::size_t const* x_gaps,
-                                          std::size_t& x_size, std::size_t& x_left)
+                                          SIZE_T& x_size, SIZE_T& x_left) _PHARE_ALL_FN_
 {
     auto const& gaps = gaps_(bix);
     auto& real       = particles_(bix);
