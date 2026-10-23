@@ -30,8 +30,8 @@ public:
     using value_type                = Field::value_type;
 
     template<typename GridLayout>
-    RecenteredField(GridLayout const& layout, Field const& field,
-                    std::array<QtyCentering, dimension> const& destination)
+    RecenteredField(Field const& field, std::array<QtyCentering, dimension> const& destination,
+                    GridLayout const& layout)
         : field_{field}
         , source_{layout.centering(field)}
         , destination_{destination}
@@ -75,7 +75,7 @@ private:
                 upper[d] += 1;
             else
                 lower[d] -= 1;
-            return (averageFrom_<d + 1>(lower) + averageFrom_<d + 1>(upper)) / 2;
+            return 0.5 * (averageFrom_<d + 1>(lower) + averageFrom_<d + 1>(upper));
         }
     }
 
