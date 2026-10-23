@@ -35,7 +35,7 @@ CI:
       - any-glob-to-any-file: [".github/**", "res/ci/**"]
 build:
   - changed-files:
-      - any-glob-to-any-file: ["**/CMakeLists.txt", "res/cmake/**", "requirements*.txt"]
+      - any-glob-to-any-file: ["**/CMakeLists.txt", "res/cmake/**", "requirements*.txt", "pyproject.toml"]
 documentation:
   - changed-files:
       - any-glob-to-any-file: ["doc/**", "**/*.md"]

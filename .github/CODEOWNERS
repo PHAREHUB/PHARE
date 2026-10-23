@@ -8,3 +8,4 @@
 CMakeLists.txt              @nicolasaunai
 /.clang-format              @nicolasaunai
 /.clang-tidy                @nicolasaunai
+/pyproject.toml             @nicolasaunai
